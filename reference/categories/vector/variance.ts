@@ -1,41 +1,41 @@
 import { getOperatorArgs } from '../../api'
 import type { VectorReductionReference } from '.'
 
-export const meanReference: VectorReductionReference<'mean'> = {
-  'vec:mean': {
-    title: 'vec:mean',
+export const varianceReference: VectorReductionReference<'variance'> = {
+  'vec:variance': {
+    title: 'vec:variance',
     category: 'Vector',
-    description: 'Returns the `mean` of all elements in the `vector`.',
-    linkName: 'vec-colon-mean',
+    description: 'Returns the `variance` of all elements in the `vector`.',
+    linkName: 'vec-colon-variance',
     returns: {
       type: 'number',
     },
     args: {
       vector: {
         type: 'vector',
-        description: 'The `vector` to calculate the `mean` of.',
+        description: 'The `vector` to calculate the variance of.',
       },
     },
     variants: [
       { argumentNames: ['vector'] },
     ],
     examples: [
-      'vec:mean([1, 2, 3])',
-      'vec:mean([1, 2, -3])',
+      'vec:variance([1, 2, 3])',
+      'vec:variance([1, 2, -3])',
     ],
   },
-  'vec:moving-mean': {
-    title: 'vec:moving-mean',
+  'vec:moving-variance': {
+    title: 'vec:moving-variance',
     category: 'Vector',
-    description: 'Returns the `moving mean` of the `vector` with a given window size.',
-    linkName: 'vec-colon-moving-mean',
+    description: 'Returns the `moving variance` of the `vector` with a given window size.',
+    linkName: 'vec-colon-moving-variance',
     returns: {
       type: 'vector',
     },
     args: {
       vector: {
         type: 'vector',
-        description: 'The `vector` to calculate the `moving mean` of.',
+        description: 'The `vector` to calculate the `moving variance` of.',
       },
       windowSize: {
         type: 'integer',
@@ -47,22 +47,22 @@ export const meanReference: VectorReductionReference<'mean'> = {
       { argumentNames: ['vector', 'windowSize'] },
     ],
     examples: [
-      'vec:moving-mean([1, 2, 3, 4, 5], 3)',
-      'vec:moving-mean([1, 2, 3, 4, 5], 10)',
+      'vec:moving-variance([1, 2, 3, 4, 5], 3)',
+      'vec:moving-variance([1, 2, 3, 4, 5], 10)',
     ],
   },
-  'vec:centered-moving-mean': {
-    title: 'vec:centered-moving-mean',
+  'vec:centered-moving-variance': {
+    title: 'vec:centered-moving-variance',
     category: 'Vector',
-    description: 'Returns the `centered moving mean` of the `vector` with a given window size.',
-    linkName: 'vec-colon-centered-moving-mean',
+    description: 'Returns the `centered moving variance` of the `vector` with a given window size.',
+    linkName: 'vec-colon-centered-moving-variance',
     returns: {
       type: 'vector',
     },
     args: {
       vector: {
         type: 'vector',
-        description: 'The `vector` to calculate the `centered moving mean` of.',
+        description: 'The `vector` to calculate the `centered moving variance` of.',
       },
       windowSize: {
         type: 'integer',
@@ -84,30 +84,33 @@ export const meanReference: VectorReductionReference<'mean'> = {
       { argumentNames: ['vector', 'windowSize', 'paddingValue', 'rightPaddingValue'] },
     ],
     examples: [
-      'vec:centered-moving-mean([1, 2, 3, 4, 5], 3)',
-      'vec:centered-moving-mean([1, 2, 3, 4, 5], 3, 10)',
-      'vec:centered-moving-mean([1, 2, 3, 4, 5], 10)',
+      '[1, 2, 3, 4, 5] vec:centered-moving-variance 3',
+      'vec:centered-moving-variance([1, 2, 3, 4, 5], 3)',
+      'vec:centered-moving-variance([1, 2, 3, 4, 5], 3, 1)',
+      'vec:centered-moving-variance([1, 2, 3, 4, 5], 3, 1, 5)',
+      'vec:centered-moving-variance([1, 2, 3, 4, 5], 3, 0, 6)',
+      'vec:centered-moving-variance([1, 2, 3, 4, 5], 10)',
     ],
   },
-  'vec:running-mean': {
-    title: 'vec:running-mean',
+  'vec:running-variance': {
+    title: 'vec:running-variance',
     category: 'Vector',
-    description: 'Returns the `running mean` of the `vector`.',
-    linkName: 'vec-colon-running-mean',
+    description: 'Returns the `running variance` of the `vector`.',
+    linkName: 'vec-colon-running-variance',
     returns: {
       type: 'vector',
     },
     args: {
       vector: {
         type: 'vector',
-        description: 'The `vector` to calculate the `running mean` of.',
+        description: 'The `vector` to calculate the `running variance` of.',
       },
     },
     variants: [
       { argumentNames: ['vector'] },
     ],
     examples: [
-      'vec:running-mean([1, 2, 3, 4, 5])',
+      'vec:running-variance([1, 2, 3, 4, 5])',
     ],
   },
 }
