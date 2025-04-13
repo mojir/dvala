@@ -1,4 +1,4 @@
-import { transpose } from '../table/transpose'
+import { transpose } from '../../grid/transpose'
 import { isIdentity } from './isIdentity'
 import { isSquare } from './isSquare'
 import { multiply } from './multiply'
