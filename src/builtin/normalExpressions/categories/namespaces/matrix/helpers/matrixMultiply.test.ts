@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { multiply } from './multiply'
+import { matrixMultiply } from './matrixMultiply'
 
-describe('multiply', () => {
+describe('matrixMultiply', () => {
   it('should return null if matrices cannot be multiplied (invalid dimensions)', () => {
     const A = [[1, 2], [3, 4]]
     const B = [[1, 2, 3]]
-    expect(() => multiply(A, B)).toThrow()
+    expect(() => matrixMultiply(A, B)).toThrow()
   })
 
   it('should return the correct result for valid matrices', () => {
@@ -21,14 +21,14 @@ describe('multiply', () => {
       [19, 22],
       [43, 50],
     ]
-    expect(multiply(A, B)).toEqual(expected)
+    expect(matrixMultiply(A, B)).toEqual(expected)
   })
 
   it('should handle single-element matrices', () => {
     const A = [[2]]
     const B = [[3]]
     const expected = [[6]]
-    expect(multiply(A, B)).toEqual(expected)
+    expect(matrixMultiply(A, B)).toEqual(expected)
   })
 
   it('should handle non-square matrices', () => {
@@ -45,7 +45,7 @@ describe('multiply', () => {
       [58, 64],
       [139, 154],
     ]
-    expect(multiply(A, B)).toEqual(expected)
+    expect(matrixMultiply(A, B)).toEqual(expected)
   })
 
   it('should return a zero matrix if one of the matrices is a zero matrix', () => {
@@ -61,6 +61,6 @@ describe('multiply', () => {
       [0, 0],
       [0, 0],
     ]
-    expect(multiply(A, B)).toEqual(expected)
+    expect(matrixMultiply(A, B)).toEqual(expected)
   })
 })

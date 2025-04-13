@@ -4,7 +4,7 @@
  * @param B The second input matrix (n x p)
  * @returns The result matrix C (m x p) where C = A × B
  */
-export function multiply(A: number[][], B: number[][]): number[][] {
+export function matrixMultiply(A: number[][], B: number[][]): number[][] {
   // Check if matrices can be multiplied
   if (A.length === 0 || B.length === 0 || A[0]!.length !== B.length) {
     throw new Error('Matrix dimensions do not match for multiplication')
