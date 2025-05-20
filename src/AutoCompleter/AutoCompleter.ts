@@ -1,7 +1,7 @@
-import { normalExpressionKeys, specialExpressionKeys } from './builtin'
-import type { ContextParams } from './Lits/Lits'
-import type { TokenType } from './tokenizer/token'
-import type { TokenStream } from './tokenizer/tokenize'
+import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
+import type { ContextParams } from '../Lits/Lits'
+import type { TokenType } from '../tokenizer/token'
+import type { TokenStream } from '../tokenizer/tokenize'
 
 const autoCompleteTokenTypes: TokenType[] = [
   'Operator',
@@ -18,7 +18,7 @@ const litsCommands = new Set([...normalExpressionKeys, ...specialExpressionKeys]
 
 // TODO: replace with get suggestions function
 export class AutoCompleter {
-  private searchPattern: string = ''
+  private searchPrefix: string = ''
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
@@ -37,8 +37,8 @@ export class AutoCompleter {
       return
     }
 
-    this.searchPattern = tokenValue.toLowerCase()
-    this.suggestions = this.getAllSuggestions(params)
+    this.searchPrefix = tokenValue.toLowerCase()
+    this.generateSuggestions(params)
   }
 
   public getNextSuggestion(): AutoCompleteSuggestion | null {
@@ -58,7 +58,7 @@ export class AutoCompleter {
 
     return {
       suggestion: this.suggestions[this.suggestionIndex]!,
-      searchPattern: this.searchPattern,
+      searchPattern: this.searchPrefix,
     }
   }
 
@@ -79,37 +79,45 @@ export class AutoCompleter {
 
     return {
       suggestion: this.suggestions[this.suggestionIndex]!,
-      searchPattern: this.searchPattern,
+      searchPattern: this.searchPrefix,
     }
   }
 
-  private getAllSuggestions(params: ContextParams): string[] {
+  public getSuggestions(): string[] {
+    return [...this.suggestions]
+  }
+
+  public getSearchPrefix(): string {
+    return this.searchPrefix
+  }
+
+  private generateSuggestions(params: ContextParams) {
     const suggestions = new Set<string>()
 
     litsCommands.forEach((name) => {
-      if (name.toLowerCase().startsWith(this.searchPattern)) {
+      if (name.toLowerCase().startsWith(this.searchPrefix)) {
         suggestions.add(name)
       }
     })
 
-    Object.keys(params.globalContext?.values ?? {})
-      .filter(name => name.toLowerCase().startsWith(this.searchPattern))
+    Object.keys(params.globalContext ?? {})
+      .filter(name => name.toLowerCase().startsWith(this.searchPrefix))
       .forEach(name => suggestions.add(name))
 
     params.contexts?.forEach((context) => {
-      Object.keys(context.values ?? {})
-        .filter(name => name.toLowerCase().startsWith(this.searchPattern))
+      Object.keys(context)
+        .filter(name => name.toLowerCase().startsWith(this.searchPrefix))
         .forEach(name => suggestions.add(name))
     })
 
     Object.keys(params.jsFunctions ?? {})
-      .filter(name => name.toLowerCase().startsWith(this.searchPattern))
+      .filter(name => name.toLowerCase().startsWith(this.searchPrefix))
       .forEach(name => suggestions.add(name))
 
     Object.keys(params.values ?? {})
-      .filter(name => name.toLowerCase().startsWith(this.searchPattern))
+      .filter(name => name.toLowerCase().startsWith(this.searchPrefix))
       .forEach(name => suggestions.add(name))
 
-    return [...suggestions].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+    this.suggestions = [...suggestions].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
   }
 }
