@@ -1,12 +1,15 @@
-import type { LitsError } from '../../../errors'
-import { AssertionError } from '../../../errors'
-import type { Any } from '../../../interface'
-import { compare, deepEqual } from '../../../utils'
-import type { BuiltinNormalExpressions } from '../../interface'
-import { asAny, assertFunctionLike } from '../../../typeGuards/lits'
-import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
+import type { LitsError } from '../../errors'
+import { AssertionError } from '../../errors'
+import type { Any } from '../../interface'
+import { compare, deepEqual } from '../../utils'
+import type { BuiltinNormalExpressions } from '../../builtin/interface'
+import { asAny, assertFunctionLike } from '../../typeGuards/lits'
+import { assertString, assertStringOrNumber } from '../../typeGuards/string'
+import type { LitsNamespace } from '../interface'
 
-export const assertNormalExpression: BuiltinNormalExpressions = {
+// TODO, remove some, add some. E.g. type guards, assert-number, assert-string, etc.
+
+const assertNormalExpression: BuiltinNormalExpressions = {
   'assert': {
     evaluate: (params, sourceCodeInfo): Any => {
       const value = params[0]
@@ -23,6 +26,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (!deepEqual(asAny(first, sourceCodeInfo), asAny(second, sourceCodeInfo), sourceCodeInfo)) {
@@ -39,6 +43,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (deepEqual(asAny(first, sourceCodeInfo), asAny(second, sourceCodeInfo), sourceCodeInfo)) {
@@ -57,6 +62,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
       assertStringOrNumber(second, sourceCodeInfo)
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (compare(first, second, sourceCodeInfo) <= 0)
@@ -72,6 +78,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
       assertStringOrNumber(second, sourceCodeInfo)
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (compare(first, second, sourceCodeInfo) < 0)
@@ -87,6 +94,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
       assertStringOrNumber(second, sourceCodeInfo)
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (compare(first, second, sourceCodeInfo) >= 0)
@@ -102,6 +110,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
       assertStringOrNumber(second, sourceCodeInfo)
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (compare(first, second, sourceCodeInfo) > 0)
@@ -115,6 +124,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (first !== true)
@@ -128,6 +138,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (first !== false)
@@ -141,6 +152,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (!first)
@@ -154,6 +166,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (first)
@@ -167,6 +180,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       if (first !== null)
@@ -180,6 +194,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([func, message], sourceCodeInfo, contextStack, { executeFunction }): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       assertFunctionLike(func, sourceCodeInfo)
@@ -197,6 +212,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([func, throwMessage, message], sourceCodeInfo, contextStack, { executeFunction }): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       assertString(throwMessage, sourceCodeInfo)
@@ -222,6 +238,7 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([func, message], sourceCodeInfo, contextStack, { executeFunction }): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
+        message = ` ${message}`
       }
       message ??= ''
       assertFunctionLike(func, sourceCodeInfo)
@@ -235,4 +252,9 @@ export const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
+}
+
+export const assertNamespace: LitsNamespace = {
+  name: 'Assert',
+  functions: assertNormalExpression,
 }
