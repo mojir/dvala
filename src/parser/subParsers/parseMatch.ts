@@ -1,26 +1,36 @@
-import type { SwitchNode } from '../../builtin/specialExpressions/switch'
+import type { MatchCase, MatchNode } from '../../builtin/specialExpressions/match'
 import { type SymbolToken, assertReservedSymbolToken, isReservedSymbolToken } from '../../tokenizer/token'
-import type { AstNode } from '../types'
 import { NodeTypes } from '../../constants/constants'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 import { parseImplicitBlock } from './parseImplicitBlock'
+import { parseBindingTarget } from './parseBindingTarget'
 
-export function parseSwitch(ctx: ParserContext, token: SymbolToken): SwitchNode {
+export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
   ctx.advance()
   const valueExpression = ctx.parseExpression()
-  const params: [AstNode, AstNode][] = []
+  const params: MatchCase[] = []
 
   while (!ctx.isAtEnd() && !isReservedSymbolToken(ctx.tryPeek(), 'end')) {
     assertReservedSymbolToken(ctx.tryPeek(), 'case')
     ctx.advance()
-    const caseExpression = ctx.parseExpression()
+
+    // Parse pattern instead of expression
+    const pattern = parseBindingTarget(ctx, { allowLiteralPatterns: true })
+
+    // Check for optional guard: `when <expression>`
+    let guard
+    if (isReservedSymbolToken(ctx.tryPeek(), 'when')) {
+      ctx.advance()
+      guard = ctx.parseExpression()
+    }
+
     assertReservedSymbolToken(ctx.tryPeek(), 'then')
     ctx.advance()
     const thenExpression = parseImplicitBlock(ctx, ['case', 'end'])
 
-    params.push([caseExpression, thenExpression])
+    params.push([pattern, thenExpression, guard])
     if (isReservedSymbolToken(ctx.tryPeek(), 'end')) {
       break
     }
@@ -29,5 +39,5 @@ export function parseSwitch(ctx: ParserContext, token: SymbolToken): SwitchNode 
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.switch, valueExpression, params]], token[2]) satisfies SwitchNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.match, valueExpression, params]], token[2]) satisfies MatchNode
 }
