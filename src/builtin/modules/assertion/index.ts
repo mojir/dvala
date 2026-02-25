@@ -1,6 +1,5 @@
 import type { LitsError } from '../../../errors'
 import { AssertionError } from '../../../errors'
-import type { Any } from '../../../interface'
 import { compare, deepEqual } from '../../../utils'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import { asAny, assertFunctionLike, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/lits'
@@ -14,18 +13,6 @@ import type { LitsModule } from '../interface'
 import { moduleDocs } from './docs'
 
 const assertNormalExpression: BuiltinNormalExpressions = {
-  'assert': {
-    evaluate: (params, sourceCodeInfo): Any => {
-      const value = params[0]
-      const message = params.length === 2 ? params[1] : `${value}`
-      assertString(message, sourceCodeInfo)
-      if (!value)
-        throw new AssertionError(message, sourceCodeInfo)
-
-      return asAny(value, sourceCodeInfo)
-    },
-    arity: { min: 1, max: 2 },
-  },
   'assert=': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
@@ -445,6 +432,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 }
 
 export const assertModule: LitsModule = {
-  name: 'assert',
+  name: 'assertion',
   functions: assertNormalExpression,
 }
