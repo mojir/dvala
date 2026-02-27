@@ -118,3 +118,7 @@ Values are compared by structure, not by reference. Two arrays with the same ele
 ```
 { a: 1 } == { a: 1 }
 ```
+
+```
+{ a: 1, b: 2 } == { b: 2, a: 1 }
+```
