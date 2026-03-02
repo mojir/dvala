@@ -1,12 +1,12 @@
 {
-  "name": "@mojir/lits",
-  "version": "2.6.5",
-  "description": "Lits is a pure functional programming language implemented in TypeScript",
+  "name": "@mojir/dvala",
+  "version": "0.0.2",
+  "description": "dvala",
   "author": "Albert Mojir",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mojir/lits.git"
+    "url": "git+https://github.com/mojir/dvala.git"
   },
   "keywords": [
     "Lits",
