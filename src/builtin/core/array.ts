@@ -1,0 +1,245 @@
+import type { Arr } from '../../interface'
+import { assertArray } from '../../typeGuards/array'
+import { asNumber, assertNumber } from '../../typeGuards/number'
+import type { BuiltinNormalExpressions } from '../interface'
+import { assertFunctionLike } from '../../typeGuards/lits'
+import { toFixedArity } from '../../utils/arity'
+import { chain, mapSequential } from '../../utils/maybePromise'
+
+export const arrayNormalExpression: BuiltinNormalExpressions = {
+  'range': {
+    evaluate: (params, sourceCodeInfo): Arr => {
+      const [first, second, third] = params
+      let from: number
+      let to: number
+      let step: number
+      assertNumber(first, sourceCodeInfo, { finite: true })
+
+      if (params.length === 1) {
+        from = 0
+        to = first
+        step = to >= 0 ? 1 : -1
+      }
+      else if (params.length === 2) {
+        assertNumber(second, sourceCodeInfo, { finite: true })
+        from = first
+        to = second
+        step = to >= from ? 1 : -1
+      }
+      else {
+        assertNumber(second, sourceCodeInfo, { finite: true })
+        assertNumber(third, sourceCodeInfo, { finite: true })
+        from = first
+        to = second
+        step = third
+        if (to > from)
+          assertNumber(step, sourceCodeInfo, { positive: true })
+        else if (to < from)
+          assertNumber(step, sourceCodeInfo, { negative: true })
+        else
+          assertNumber(step, sourceCodeInfo, { nonZero: true })
+      }
+
+      const result: number[] = []
+
+      for (let i = from; step < 0 ? i > to : i < to; i += step)
+        result.push(i)
+
+      return result
+    },
+    arity: { min: 1, max: 3 },
+    docs: {
+      category: 'array',
+      returns: { type: 'number', array: true },
+      args: {
+        a: { type: 'number' },
+        b: { type: 'number' },
+        step: { type: 'number' },
+      },
+      variants: [
+        { argumentNames: ['b'] },
+        { argumentNames: ['a', 'b'] },
+        { argumentNames: ['a', 'b', 'step'] },
+      ],
+      description: `$range creates an array with a range of numbers from $a to $b (exclusive), by $step.
+
+$a defaults to 0.
+$step defaults to 1.`,
+      seeAlso: ['repeat', 'vector.linspace'],
+      examples: [
+        'range(4)',
+        'range(1, 4)',
+        '1 range 10',
+        'range(0.4, 4.9)',
+        `
+range(
+  0.25, // start value
+  1,    // end value (exclusive)
+  0.25, // step value
+)`,
+      ],
+    },
+  },
+
+  'repeat': {
+    evaluate: ([value, count], sourceCodeInfo): Arr => {
+      assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
+      const result: Arr = []
+      for (let i = 0; i < count; i += 1)
+        result.push(value)
+
+      return result
+    },
+    arity: toFixedArity(2),
+    docs: {
+      category: 'array',
+      returns: { type: 'any', array: true },
+      args: {
+        a: { type: 'any' },
+        b: { type: 'integer' },
+      },
+      variants: [{ argumentNames: ['a', 'b'] }],
+      description: 'Returns an array with $a repeated $b times.',
+      seeAlso: ['range', 'string.string-repeat'],
+      examples: [
+        'repeat(10, 3)',
+        'repeat(10, 0)',
+        '"Albert" repeat 5',
+      ],
+    },
+  },
+
+  'flatten': {
+    evaluate: ([seq, depth], sourceCodeInfo): Arr => {
+      assertArray(seq, sourceCodeInfo)
+
+      const actualDepth = depth === undefined || depth === Number.POSITIVE_INFINITY
+        ? Number.POSITIVE_INFINITY
+        : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
+
+      return seq.flat(actualDepth)
+    },
+    arity: { min: 1, max: 2 },
+    docs: {
+      category: 'array',
+      returns: { type: 'any', array: true },
+      args: {
+        x: { type: ['array', 'any'], description: 'If $x is not an array, `[ ]` is returned.' },
+      },
+      variants: [{ argumentNames: ['x'] }],
+      description: 'Takes a nested array $x and flattens it.',
+      seeAlso: ['mapcat'],
+      examples: [
+        'flatten([1, 2, [3, 4], 5])',
+        `
+let foo = "bar";
+flatten([
+  1,
+  " 2 A ",
+  [foo, [4, ["ABC"]]],
+  6,
+])`,
+      ],
+      hideOperatorForm: true,
+    },
+  },
+  'mapcat': {
+    evaluate: ([arr, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
+      assertArray(arr, sourceCodeInfo)
+      assertFunctionLike(fn, sourceCodeInfo)
+      return chain(
+        mapSequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo)),
+        mapped => mapped.flat(1),
+      )
+    },
+    arity: toFixedArity(2),
+    docs: {
+      category: 'array',
+      returns: { type: 'collection' },
+      args: {
+        a: { type: 'collection' },
+        b: { type: 'function' },
+        colls: { type: 'collection', array: true },
+        fun: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['colls', 'fun'] }],
+      description: 'Returns the result of applying concat to the result of applying map to $fun and $colls.',
+      seeAlso: ['flatten', 'map', '++'],
+      examples: [
+        '[[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]] mapcat reverse',
+        'mapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)',
+        '[[3, 2, 1, 0,], [6, 5, 4,], [9, 8, 7]] mapcat reverse',
+        `
+let foo = (n) -> do
+  [n - 1, n, n + 1]
+end;
+[1, 2, 3] mapcat foo`,
+        `
+mapcat(
+  [[1, 2], [2, 2], [2, 3]],
+  -> $ filter odd?
+)`,
+      ],
+    },
+  },
+  'moving-fn': {
+    evaluate: ([arr, windowSize, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
+      assertArray(arr, sourceCodeInfo)
+      assertNumber(windowSize, sourceCodeInfo, { integer: true, lte: arr.length })
+      assertFunctionLike(fn, sourceCodeInfo)
+
+      const windows: Arr[] = []
+      for (let i = 0; i <= arr.length - windowSize; i++) {
+        windows.push(arr.slice(i, i + windowSize))
+      }
+      return mapSequential(windows, window => executeFunction(fn, [window], contextStack, sourceCodeInfo))
+    },
+    arity: toFixedArity(3),
+    docs: {
+      category: 'array',
+      returns: { type: 'array' },
+      args: {
+        arr: { type: 'array' },
+        windowSize: { type: 'number', description: 'The size of the moving window.' },
+        fn: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
+      description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
+      seeAlso: ['running-fn', 'vector.moving-mean'],
+      examples: [
+        'moving-fn([1, 2, 3], 2, sum)',
+        'moving-fn([1, 2, 3], 1, sum)',
+        'moving-fn([1, 2, 3], 3, sum)',
+      ],
+    },
+  },
+  'running-fn': {
+    evaluate: ([arr, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
+      assertArray(arr, sourceCodeInfo)
+      assertFunctionLike(fn, sourceCodeInfo)
+
+      const subArrays: Arr[] = []
+      for (let i = 0; i < arr.length; i += 1) {
+        subArrays.push(arr.slice(0, i + 1))
+      }
+      return mapSequential(subArrays, subArr => executeFunction(fn, [subArr], contextStack, sourceCodeInfo))
+    },
+    arity: toFixedArity(2),
+    docs: {
+      category: 'array',
+      returns: { type: 'array' },
+      args: {
+        a: { type: 'array' },
+        b: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['a', 'b'] }],
+      description: 'Returns the result of applying $b to each element of $a.',
+      seeAlso: ['moving-fn', 'vector.running-mean'],
+      examples: [
+        'running-fn([1, 2, 3], sum)',
+        'running-fn([1, 2, 3], max)',
+        'running-fn([1, 2, 3], min)',
+      ],
+    },
+  },
+}

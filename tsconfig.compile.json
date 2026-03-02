@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*",
+    "__tests__/**/*.test.ts",
+    "cli/**/*",
+    "common/**/*",
+    "playground-builder/**/*",
+    "playground-www/**/*",
+    "reference/**/*",
+    "vite.config.mts",
+    "./*.js",
+    "./*.json"
+  ],
+  "exclude": []
+}
