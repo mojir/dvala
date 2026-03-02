@@ -274,6 +274,14 @@ button:focus {
 
 /************ SIDEBAR **********/
 
+#sidebar .sidebar-collapsible-header {
+  color: rgb(163 163 163);
+}
+
+#sidebar .sidebar-collapsible-header:hover {
+  color: rgb(245 245 245);
+}
+
 #sidebar .active-sidebar-entry {
   background-color: rgb(82 82 82);
   color: white;

@@ -24,7 +24,7 @@ function writeIndexPage() {
 <html lang="en">
   <head>
     <title>Playground</title>
-    <link rel='shortcut icon' type='image/x-icon' href='favicon.ico' />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
     <meta name="description" content="A reference and a playground for Dvala">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8">

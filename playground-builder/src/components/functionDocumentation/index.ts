@@ -1,5 +1,5 @@
-import { allReference, getLinkName, isCustomReference, isFunctionReference } from '../../../../reference'
-import type { CustomReference, FunctionReference, Reference } from '../../../../reference'
+import { allReference, getLinkName, isCustomReference, isEffectReference, isFunctionReference } from '../../../../reference'
+import type { CustomReference, EffectReference, FunctionReference, Reference } from '../../../../reference'
 import { styles } from '../../styles'
 import { formatDvalaExpression } from '../../formatter/rules'
 import { formatDescription } from './description'
@@ -35,11 +35,14 @@ function getDocumentation(reference: Reference) {
       ? getSignature(reference)
       : isCustomReference(reference)
         ? getCustomSignatureSection(reference)
-        : `<div ${styles('mb-4')}></div>`}
+        : isEffectReference(reference)
+          ? getEffectSignatureSection(reference)
+          : `<div ${styles('mb-4')}></div>`}
 
     ${getSection('Description', formatDescription(reference.description, reference), 'mb-3', 'text-base')}
 
     ${isFunctionReference(reference) ? getSection('Arguments', getArgumentInfo(reference)) : ''}
+    ${isEffectReference(reference) && Object.keys(reference.args).length > 0 ? getSection('Arguments', getEffectArgumentInfo(reference)) : ''}
     ${isCustomReference(reference) && reference.details ? getSection('Details', getDetailsTable(reference.details)) : ''}
 
     ${functionReferences
@@ -78,6 +81,26 @@ function getCustomSignatureSection(reference: CustomReference) {
   return `<div ${styles('mb-6', 'mt-4', 'font-mono', 'text-base')}>
     ${getCustomSignature(reference.customVariants)}
   </div>`
+}
+
+function getEffectSignatureSection(reference: EffectReference) {
+  const argNames = Object.keys(reference.args)
+  const argsStr = argNames.length > 0 ? `, ${argNames.join(', ')}` : ''
+  return `<div ${styles('mb-6', 'mt-4', 'font-mono', 'text-base')}>
+    <span>perform(effect(${reference.title})${argsStr})</span>
+  </div>`
+}
+
+function getEffectArgumentInfo(reference: EffectReference) {
+  return `<table ${styles('text-sm')}>
+  ${Object.entries(reference.args).map(([argName, arg]) => {
+    return `<tr>
+              <td>${formatDvalaExpression(argName)}</td>
+              <td ${styles('pl-4', 'whitespace-nowrap')}>${arg.type}</td>
+              ${arg.description ? `<td ${styles('pl-4', 'italic', 'text-base')}>${formatDescription(arg.description)}</td>` : ''}
+            </tr>`
+  }).join(' ')}
+  </table>`
 }
 
 function getSeeAlsoLinks(references: Reference[]) {

@@ -1,5 +1,5 @@
 import { describe, expect, it, test } from 'vitest'
-import { allReference, apiReference, getLinkName, isCustomReference, isDatatypeReference, isFunctionReference, isShorthandReference, moduleReference, normalExpressionReference } from '../reference'
+import { allReference, apiReference, getLinkName, isCustomReference, isDatatypeReference, isEffectReference, isFunctionReference, isShorthandReference, moduleReference, normalExpressionReference } from '../reference'
 import { normalExpressionKeys, specialExpressionKeys, specialExpressions } from '../src/builtin'
 import { isUnknownRecord } from '../src/typeGuards'
 import { canBeOperator } from '../src/utils/arity'
@@ -8,7 +8,7 @@ import { isReservedSymbol } from '../src/tokenizer/reservedNames'
 import { Dvala } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
 import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
-import { type ApiName, categories, isApiName } from '../reference/api'
+import { type ApiName, categories } from '../reference/api'
 import '../src/initReferenceData'
 import { corePageExamples } from '../playground-builder/src/components/corePage'
 import { moduleExamples } from '../playground-builder/src/components/modulesPage'
@@ -107,6 +107,10 @@ describe('seeAlso', () => {
       if (!('seeAlso' in ref) || !ref.seeAlso) {
         continue
       }
+      // Effects have one-way seeAlso (referencing special expressions)
+      if (isEffectReference(ref)) {
+        continue
+      }
       for (const target of ref.seeAlso) {
         const targetRef = allReference[target]
         if (!targetRef) {
@@ -120,32 +124,18 @@ describe('seeAlso', () => {
     expect(asymmetric, `Asymmetric seeAlso:\n${asymmetric.join('\n')}`).toEqual([])
   })
 
-  it('all seeAlso entries are valid ApiNames', () => {
+  it('all seeAlso entries point to entries that exist in allReference', () => {
     const invalidRefs: string[] = []
     for (const [key, ref] of Object.entries(allReference)) {
       if ('seeAlso' in ref && ref.seeAlso) {
         for (const sa of ref.seeAlso) {
-          if (!isApiName(sa)) {
+          if (!(sa in allReference)) {
             invalidRefs.push(`${key} -> ${sa}`)
           }
         }
       }
     }
     expect(invalidRefs, `Invalid seeAlso refs: ${invalidRefs.join(', ')}`).toEqual([])
-  })
-
-  it('all seeAlso entries point to entries that exist in allReference', () => {
-    const missing: string[] = []
-    for (const [key, ref] of Object.entries(allReference)) {
-      if ('seeAlso' in ref && ref.seeAlso) {
-        for (const sa of ref.seeAlso) {
-          if (!(sa in allReference)) {
-            missing.push(`${key} -> ${sa}`)
-          }
-        }
-      }
-    }
-    expect(missing, `Missing seeAlso targets: ${missing.join(', ')}`).toEqual([])
   })
 })
 

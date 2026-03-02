@@ -10,8 +10,8 @@ export function getStartPage(): string {
       v${version}
     </div>
     <div ${styles('flex', 'text-center', 'flex-col', 'items-center')}>
-      <div ${styles('text-huge')}>Dvala</div>
-      <div ${styles('flex', 'gap-16', 'text-2xl')}>
+      <img src="images/dvala-logo.png" alt="Dvala" ${styles('max-width: 400px;', 'width: 100%;')}>
+      <div ${styles('flex', 'gap-16', 'text-2xl', 'mt-8')}>
         <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} onclick="Playground.showPage('example-page', 'smooth')" title="Examples">${labIcon}<span ${styles('text-base')}>Examples</span></a>
         <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} onclick="Playground.showPage('${tutorials[0]!.id}', 'smooth')" title="Tutorials">${lampIcon}<span ${styles('text-base')}>Tutorials</span></a>
         <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} href="https://github.com/mojir/dvala" target="_blank" title="GitHub">${githubIcon}<span ${styles('text-base')}>GitHub</span></a>

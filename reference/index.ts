@@ -40,6 +40,7 @@ import { bitwiseUtilsModule } from '../src/builtin/modules/bitwise'
 import { convertModule } from '../src/builtin/modules/convert'
 import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName, VectorApiName } from './api'
 import { datatype } from './datatype'
+import { effect } from './effect'
 import { shorthand } from './shorthand'
 
 // --- Helper: derive FunctionReference from co-located docs ---
@@ -170,7 +171,7 @@ export interface CommonReference<T extends Category> {
   category: T
   examples: string[]
   description: string
-  seeAlso?: ApiName[]
+  seeAlso?: string[]
 }
 export type FunctionReference<T extends Category = Category> = CommonReference<T> & {
   returns: TypedValue
@@ -194,7 +195,13 @@ export interface DatatypeReference extends CommonReference<'datatype'> {
   datatype: true
 }
 
-export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference
+export interface EffectReference extends CommonReference<'effect'> {
+  effect: true
+  args: Record<string, Argument>
+  returns: TypedValue
+}
+
+export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | EffectReference
 
 export function isFunctionReference<T extends Category>(ref: Reference<T>): ref is FunctionReference<T> {
   return 'returns' in ref && 'args' in ref && 'variants' in ref
@@ -210,6 +217,10 @@ export function isShorthandReference<T extends Category>(ref: Reference<T>): ref
 
 export function isDatatypeReference<T extends Category>(ref: Reference<T>): ref is DatatypeReference {
   return 'datatype' in ref
+}
+
+export function isEffectReference<T extends Category>(ref: Reference<T>): ref is EffectReference {
+  return 'effect' in ref
 }
 
 export const normalExpressionReference: Record<CoreNormalExpressionName, FunctionReference> = {
@@ -279,8 +290,11 @@ export const functionReference = {
 // Core API reference (always available)
 export const apiReference: Record<CoreApiName, Reference> = sortByCategory({ ...functionReference, ...shorthand, ...datatype })
 
-// All references including modules (for search and full documentation)
-export const allReference: Record<ApiName, Reference> = sortByCategory({ ...apiReference, ...moduleReference })
+// Effect reference
+export const effectReference: Record<string, EffectReference> = effect
+
+// All references including modules and effects (for search and full documentation)
+export const allReference: Record<string, Reference> = sortByCategory({ ...apiReference, ...moduleReference, ...effectReference })
 
 Object.values(allReference).forEach((ref) => {
   ref.title = ref.title.replace(/"/g, '&quot;')

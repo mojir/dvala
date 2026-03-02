@@ -1,6 +1,6 @@
 import type { Reference } from '../../../reference'
-import { apiReference, getLinkName, moduleReference } from '../../../reference'
-import { coreCategories, moduleCategories } from '../../../reference/api'
+import { apiReference, effectReference, getLinkName, moduleReference } from '../../../reference'
+import { moduleCategories } from '../../../reference/api'
 import { chevronRightIcon, homeIcon, labIcon, lampIcon, searchIcon } from '../icons'
 import { styles } from '../styles'
 import { isTutorialFolder, tutorialItems } from './tutorials'
@@ -16,52 +16,70 @@ function menuLink(icon: string, title: string, onclick: string) {
 }
 
 export function getSideBar() {
-  const categoryCollections = Object.values(apiReference).reduce((result: Record<string, Reference[]>, obj) => {
-    result[obj.category] = result[obj.category] || []
-    result[obj.category]!.push(obj)
-    return result
-  }, {})
+  // Group apiReference items by category for the new structure
+  const specialExpressionRefs: Reference[] = []
+  const coreFunctionRefs: Reference[] = []
+  const shorthandRefs: Reference[] = []
+  const datatypeRefs: Reference[] = []
 
+  for (const obj of Object.values(apiReference)) {
+    switch (obj.category) {
+      case 'special-expression':
+        specialExpressionRefs.push(obj)
+        break
+      case 'shorthand':
+        shorthandRefs.push(obj)
+        break
+      case 'datatype':
+        datatypeRefs.push(obj)
+        break
+      default:
+        coreFunctionRefs.push(obj)
+        break
+    }
+  }
+
+  const effectRefs = Object.values(effectReference)
+
+  // Group module references by module category
   const moduleCategoryCollections = Object.values(moduleReference).reduce((result: Record<string, Reference[]>, obj) => {
     result[obj.category] = result[obj.category] || []
     result[obj.category]!.push(obj)
     return result
   }, {})
 
-  const renderCategory = (categoryKey: string, collections: Record<string, Reference[]>) => {
+  const sortRefs = (refs: Reference[]) => refs.sort((a, b) => {
+    const aSpecial = a.title[0]!.match(/[^a-z]/i)
+    const bSpecial = b.title[0]!.match(/[^a-z]/i)
+    if (aSpecial && !bSpecial)
+      return -1
+    if (!aSpecial && bSpecial)
+      return 1
+    return (a.title < b.title ? -1 : a.title > b.title ? 1 : 0)
+  })
+
+  const renderRefLink = (obj: Reference) => {
+    const linkName = getLinkName(obj)
+    const name = `${escape(obj.title)}`
+    return `<a id="${linkName}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${linkName}', 'smooth')">${name}</a>`
+  }
+
+  const renderApiSection = (sectionId: string, label: string, refs: Reference[]) => {
     return `
       <div ${styles('flex', 'flex-col', 'gap-1')}>
-        <div 
-          ${styles('text-color-gray-200', 'flex', 'items-center', 'gap-1', 'cursor-pointer')}
-          onclick="Playground.toggleCoreCategory('${categoryKey}')"
+        <div
+          class="sidebar-collapsible-header"
+          ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
+          onclick="Playground.toggleApiSection('${sectionId}')"
         >
-          <span id="core-chevron-${categoryKey}" class="core-chevron">${chevronRightIcon}</span>
-          <span>${categoryKey}</span>
+          <span id="api-chevron-${sectionId}" class="api-chevron">${chevronRightIcon}</span>
+          <span>${label}</span>
         </div>
         <div 
-          id="core-content-${categoryKey.replace(/\s+/g, '-')}" 
+          id="api-content-${sectionId}" 
           ${styles('flex-col', 'ml-2', 'text-color-gray-400', 'text-base', 'display: none;')}
         >
-          ${
-            collections[categoryKey]
-              ? collections[categoryKey]
-                  .sort((a, b) => {
-                    const aSpecial = a.title[0]!.match(/[^a-z]/i)
-                    const bSpecial = b.title[0]!.match(/[^a-z]/i)
-                    if (aSpecial && !bSpecial)
-                      return -1
-                    if (!aSpecial && bSpecial)
-                      return 1
-                    return (a.title < b.title ? -1 : a.title > b.title ? 1 : 0)
-                  })
-                  .map((obj) => {
-                    const linkName = getLinkName(obj)
-                    const name = `${escape(obj.title)}`
-                    return `<a id="${linkName}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${linkName}', 'smooth')">${name}</a>`
-                  })
-                  .join('\n')
-              : ''
-          }
+          ${sortRefs(refs).map(renderRefLink).join('\n')}
         </div>
       </div>`
   }
@@ -69,8 +87,9 @@ export function getSideBar() {
   const renderModuleCategory = (categoryKey: string) => {
     return `
       <div ${styles('flex', 'flex-col', 'gap-1')}>
-        <div 
-          ${styles('text-color-gray-200', 'flex', 'items-center', 'gap-1', 'cursor-pointer')}
+        <div
+          class="sidebar-collapsible-header"
+          ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
           onclick="Playground.toggleModuleCategory('${categoryKey}')"
         >
           <span id="ns-chevron-${categoryKey}" class="ns-chevron">${chevronRightIcon}</span>
@@ -82,16 +101,7 @@ export function getSideBar() {
         >
           ${
             moduleCategoryCollections[categoryKey]
-              ? moduleCategoryCollections[categoryKey]
-                  .sort((a, b) => {
-                    const aSpecial = a.title[0]!.match(/[^a-z]/i)
-                    const bSpecial = b.title[0]!.match(/[^a-z]/i)
-                    if (aSpecial && !bSpecial)
-                      return -1
-                    if (!aSpecial && bSpecial)
-                      return 1
-                    return (a.title < b.title ? -1 : a.title > b.title ? 1 : 0)
-                  })
+              ? sortRefs(moduleCategoryCollections[categoryKey])
                   .map((obj) => {
                     const linkName = getLinkName(obj)
                     // Strip module prefix (e.g., "vector." from "vector.sum")
@@ -137,19 +147,33 @@ export function getSideBar() {
         }).join('\n')}
       </div>
     </div>
-    <!-- Core Categories (Collapsible) -->
-    <div ${styles('flex', 'flex-col', 'gap-2', 'my-4')}>
-      <div id='core-page_link' ${styles('text-color-gray-300', 'text-base', 'font-bold', 'mb-1', 'cursor-pointer')} onclick="Playground.showPage('core-page', 'smooth')">Core reference</div>
-      <div ${styles('flex', 'flex-col', 'gap-2')}>
-        ${coreCategories.map(categoryKey => renderCategory(categoryKey, categoryCollections)).join('\n')}
-      </div>
-    </div>
 
-    <!-- Module Categories (Collapsible) -->
-    <div ${styles('flex', 'flex-col', 'gap-2', 'my-4', 'border-t', 'border-gray-700', 'pt-4')}>
-      <div id='modules-page_link' ${styles('text-color-gray-300', 'text-base', 'font-bold', 'mb-1', 'cursor-pointer')} onclick="Playground.showPage('modules-page', 'smooth')">Module reference</div>
+    <!-- API Reference -->
+    <div ${styles('flex', 'flex-col', 'gap-2', 'my-4')}>
+      <div ${styles('text-color-gray-400', 'text-base', 'font-bold', 'mb-1')}>API Reference</div>
       <div ${styles('flex', 'flex-col', 'gap-2')}>
-        ${moduleCategories.map(categoryKey => renderModuleCategory(categoryKey)).join('\n')}
+        ${renderApiSection('special-expressions', 'Special expressions', specialExpressionRefs)}
+        ${renderApiSection('core-functions', 'Core functions', coreFunctionRefs)}
+        ${renderApiSection('effects', 'Effects', effectRefs)}
+        ${renderApiSection('shorthands', 'Shorthands', shorthandRefs)}
+        ${renderApiSection('datatypes', 'Datatypes', datatypeRefs)}
+        <!-- Modules (collapsible with sub-collapsibles) -->
+        <div ${styles('flex', 'flex-col', 'gap-1')}>
+          <div
+            class="sidebar-collapsible-header"
+            ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
+            onclick="Playground.toggleApiSection('modules')"
+          >
+            <span id="api-chevron-modules" class="api-chevron">${chevronRightIcon}</span>
+            <span>Modules</span>
+          </div>
+          <div
+            id="api-content-modules"
+            ${styles('flex-col', 'ml-2', 'gap-2', 'display: none;')}
+          >
+            ${moduleCategories.map(categoryKey => renderModuleCategory(categoryKey)).join('\n')}
+          </div>
+        </div>
       </div>
     </div>
   </nav>
