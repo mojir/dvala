@@ -1,7 +1,9 @@
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import convertModuleSource from './convert.dvala'
 
 // --- Conversion factor tables ---
 // Each category maps unit abbreviations to a factor relative to a base unit.
@@ -417,4 +419,6 @@ const convertFunctions: BuiltinNormalExpressions = {
 export const convertModule: DvalaModule = {
   name: 'convert',
   functions: convertFunctions,
+  source: convertModuleSource,
+  docs: moduleDocsFromFunctions(convertFunctions),
 }

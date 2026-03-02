@@ -7,7 +7,9 @@ import { toNonNegativeInteger } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
 import type { DvalaModule } from '../interface'
+import { moduleDocsFromFunctions } from '../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
+import stringModuleSource from './string.dvala'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {
   'string-repeat': {
@@ -470,4 +472,6 @@ function applyPlaceholders(templateString: string, placeholders: unknown[], sour
 export const stringUtilsModule: DvalaModule = {
   name: 'string',
   functions: stringUtilsFunctions,
+  source: stringModuleSource,
+  docs: moduleDocsFromFunctions(stringUtilsFunctions),
 }

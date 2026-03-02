@@ -2,8 +2,10 @@ const typescript = require('@rollup/plugin-typescript')
 const jsonPlugin = require('@rollup/plugin-json')
 const terser = require('@rollup/plugin-terser')
 const pkg = require('./package.json')
+const { dvalaSourcePlugin } = require('./rollup.plugins')
 
 const basePlugins = [
+  dvalaSourcePlugin(),
   typescript({
     tsconfig: 'tsconfig.json',
   }),

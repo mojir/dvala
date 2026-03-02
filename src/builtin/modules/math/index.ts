@@ -4,7 +4,9 @@ import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import { DvalaError } from '../../../errors'
 import type { BuiltinNormalExpressions } from '../../interface'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import mathModuleSource from './math.dvala'
 
 type NumberVectorOrMatrix = number | number[] | number[][]
 
@@ -502,4 +504,6 @@ to-deg([[0, PI], [PI / 2, 3 * PI / 2]])`,
 export const mathUtilsModule: DvalaModule = {
   name: 'math',
   functions: mathUtilsFunctions,
+  source: mathModuleSource,
+  docs: moduleDocsFromFunctions(mathUtilsFunctions),
 }

@@ -23,6 +23,7 @@ import { matrixMultiply } from './helpers/matrixMultiply'
 import { minor } from './helpers/minor'
 import { norm1 } from './helpers/norm1'
 import { trace } from './helpers/trace'
+import matrixModuleSource from './matrix.dvala'
 
 export const matrixNormalExpression: BuiltinNormalExpressions = {
   'mul': {
@@ -255,4 +256,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const matrixModule: DvalaModule = {
   name: 'matrix',
   functions: matrixNormalExpression,
+  source: matrixModuleSource,
+  docs: moduleDocs,
 }

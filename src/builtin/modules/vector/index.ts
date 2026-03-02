@@ -12,6 +12,7 @@ import { hasOutliers, outliers } from './outliers'
 import { calcPercentile } from './percentile'
 import { quartiles } from './quartiles'
 import { reductionFunctionNormalExpressions } from './reductionFunctions'
+import vectorModuleSource from './vector.dvala'
 
 const vectorFunctions: BuiltinNormalExpressions = {
   'monotonic?': {
@@ -325,4 +326,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const vectorModule: DvalaModule = {
   name: 'vector',
   functions: vectorFunctions,
+  source: vectorModuleSource,
+  docs: moduleDocs,
 }

@@ -17,7 +17,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       `let { random! } = import(random);
 random!()`,
     ],
-    seeAlso: ['random.random-float!', 'random.random-int!', 'random.random-boolean!'],
+    seeAlso: ['random.random-float!', 'random.random-int!', 'random.random-boolean'],
   },
   'random-int!': {
     category: 'random',
@@ -113,7 +113,7 @@ random-float!(1, 100)`,
     ],
     seeAlso: ['random.random!', 'random.random-int!', 'random.random-int-inclusive!'],
   },
-  'random-boolean!': {
+  'random-boolean': {
     category: 'random',
     description: 'Returns a random boolean.',
     returns: {
@@ -133,10 +133,10 @@ random-float!(1, 100)`,
       },
     ],
     examples: [
-      `let { random-boolean! } = import(random);
-random-boolean!()`,
-      `let { random-boolean! } = import(random);
-random-boolean!(0.99)`,
+      `let { random-boolean } = import(random);
+random-boolean()`,
+      `let { random-boolean } = import(random);
+random-boolean(0.99)`,
     ],
     seeAlso: ['random.random!'],
   },

@@ -23,6 +23,7 @@ import { dot } from './helpers/dot'
 import { subtract } from './helpers/subtract'
 import { scale } from './helpers/scale'
 import { length } from './helpers/length'
+import linearAlgebraModuleSource from './linear-algebra.dvala'
 
 export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
   'rotate2d': {
@@ -706,4 +707,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const linearAlgebraModule: DvalaModule = {
   name: 'linear-algebra',
   functions: linearAlgebraNormalExpression,
+  source: linearAlgebraModuleSource,
+  docs: moduleDocs,
 }

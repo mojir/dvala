@@ -592,6 +592,25 @@ export interface DebugStepFrame {
  * - **Post-processing**: NanCheckFrame
  * - **Debug**: DebugStepFrame
  */
+// ---------------------------------------------------------------------------
+// Module import
+// ---------------------------------------------------------------------------
+
+/**
+ * Merges the result of evaluating a module's Dvala source with the module's
+ * TypeScript functions. The source must evaluate to an object; its entries
+ * are spread over the TS functions map and the combined object is returned
+ * as the import result. The merged result is cached in `env` so subsequent
+ * imports of the same module reuse the evaluated closures.
+ */
+export interface ImportMergeFrame {
+  type: 'ImportMerge'
+  tsFunctions: Obj
+  moduleName: string
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 export type Frame =
   // Program flow
   | SequenceFrame
@@ -631,6 +650,8 @@ export type Frame =
   | NanCheckFrame
   // Debug
   | DebugStepFrame
+  // Module import
+  | ImportMergeFrame
 
 /**
  * Array type alias for readability — a continuation stack is just

@@ -1,8 +1,10 @@
 const resolve = require('@rollup/plugin-node-resolve')
 const typescript = require('@rollup/plugin-typescript')
 const jsonPlugin = require('@rollup/plugin-json')
+const { dvalaSourcePlugin } = require('./rollup.plugins')
 
 const plugins = [
+  dvalaSourcePlugin(),
   typescript({
     tsconfig: 'tsconfig.cli.json',
   }),

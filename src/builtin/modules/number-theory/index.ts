@@ -7,6 +7,7 @@ import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
+import numberTheoryModuleSource from './number-theory.dvala'
 import { combinationsNormalExpressions } from './combinations'
 import { derangementsNormalExpressions } from './derangements'
 import { divisorsNormalExpressions, getDivisors, getProperDivisors } from './divisors'
@@ -470,4 +471,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const numberTheoryModule: DvalaModule = {
   name: 'number-theory',
   functions: combinatoricalNormalExpression,
+  source: numberTheoryModuleSource,
+  docs: moduleDocs,
 }
