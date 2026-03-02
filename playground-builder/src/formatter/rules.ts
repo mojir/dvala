@@ -189,7 +189,7 @@ const internalLinkRule: FormatterRule = (text, index) => {
   if (match) {
     const target = match[1]!
     const displayText = match[2]
-    const reference = allReference[target as keyof typeof allReference]
+    const reference = allReference[target]
     if (reference) {
       const linkName = getLinkName(reference)
       const label = displayText ?? target

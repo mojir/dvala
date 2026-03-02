@@ -63,6 +63,7 @@ export const categoryRecord = {
   'convert': true,
   'shorthand': true,
   'datatype': true,
+  'effect': true,
 } as const
 
 export type Category = keyof typeof categoryRecord
