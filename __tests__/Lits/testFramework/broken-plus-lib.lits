@@ -1,0 +1,2 @@
+let plus = (a, b) -> ADD(a, b);
+{plus: plus}

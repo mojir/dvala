@@ -1,31 +1,159 @@
 {
-  "name": "@mojir/dvala",
-  "version": "0.0.1",
-  "description": "dvala",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "name": "@mojir/lits",
+  "version": "2.6.5",
+  "description": "Lits is a pure functional programming language implemented in TypeScript",
+  "author": "Albert Mojir",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mojir/lits.git"
+  },
+  "keywords": [
+    "Lits",
+    "Functional",
+    "Pure",
+    "Typescript",
+    "Web",
+    "Compiler",
+    "AST",
+    "Interpreter",
+    "Clojure"
+  ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    },
+    "./full": {
+      "types": "./dist/src/full.d.ts",
+      "import": "./dist/full.esm.js",
+      "require": "./dist/full.js"
+    },
+    "./bundler": {
+      "types": "./dist/src/bundler.d.ts",
+      "import": "./dist/bundler.esm.js",
+      "require": "./dist/bundler.js"
+    },
+    "./modules/assertion": {
+      "types": "./dist/src/modules/assertion.d.ts",
+      "import": "./dist/modules/assertion.esm.js",
+      "require": "./dist/modules/assertion.js"
+    },
+    "./modules/grid": {
+      "types": "./dist/src/modules/grid.d.ts",
+      "import": "./dist/modules/grid.esm.js",
+      "require": "./dist/modules/grid.js"
+    },
+    "./modules/random": {
+      "types": "./dist/src/modules/random.d.ts",
+      "import": "./dist/modules/random.esm.js",
+      "require": "./dist/modules/random.js"
+    },
+    "./modules/vector": {
+      "types": "./dist/src/modules/vector.d.ts",
+      "import": "./dist/modules/vector.esm.js",
+      "require": "./dist/modules/vector.js"
+    },
+    "./modules/linear-algebra": {
+      "types": "./dist/src/modules/linear-algebra.d.ts",
+      "import": "./dist/modules/linear-algebra.esm.js",
+      "require": "./dist/modules/linear-algebra.js"
+    },
+    "./modules/matrix": {
+      "types": "./dist/src/modules/matrix.d.ts",
+      "import": "./dist/modules/matrix.esm.js",
+      "require": "./dist/modules/matrix.js"
+    },
+    "./modules/number-theory": {
+      "types": "./dist/src/modules/number-theory.d.ts",
+      "import": "./dist/modules/number-theory.esm.js",
+      "require": "./dist/modules/number-theory.js"
+    },
+    "./modules/math": {
+      "types": "./dist/src/modules/math.d.ts",
+      "import": "./dist/modules/math.esm.js",
+      "require": "./dist/modules/math.js"
+    },
+    "./modules/functional": {
+      "types": "./dist/src/modules/functional.d.ts",
+      "import": "./dist/modules/functional.esm.js",
+      "require": "./dist/modules/functional.js"
+    },
+    "./modules/string": {
+      "types": "./dist/src/modules/string.d.ts",
+      "import": "./dist/modules/string.esm.js",
+      "require": "./dist/modules/string.js"
+    },
+    "./modules/collection": {
+      "types": "./dist/src/modules/collection.d.ts",
+      "import": "./dist/modules/collection.esm.js",
+      "require": "./dist/modules/collection.js"
+    },
+    "./modules/sequence": {
+      "types": "./dist/src/modules/sequence.d.ts",
+      "import": "./dist/modules/sequence.esm.js",
+      "require": "./dist/modules/sequence.js"
+    },
+    "./modules/bitwise": {
+      "types": "./dist/src/modules/bitwise.d.ts",
+      "import": "./dist/modules/bitwise.esm.js",
+      "require": "./dist/modules/bitwise.js"
+    },
+    "./modules/convert": {
+      "types": "./dist/src/modules/convert.d.ts",
+      "import": "./dist/modules/convert.esm.js",
+      "require": "./dist/modules/convert.js"
+    },
+    "./debug": {
+      "types": "./dist/src/debug.d.ts",
+      "import": "./dist/debug.esm.js",
+      "require": "./dist/debug.js"
     }
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "iife": "dist/lits.iife.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "lits": "dist/cli/cli.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
-  },
-  "keywords": [],
-  "author": "Albert Mojir",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/mojir/dvala.git"
+    "test": "vitest run --coverage",
+    "vitest": "vitest",
+    "lint": "eslint . --fix",
+    "lint:no-fix": "eslint .",
+    "typecheck": "tsc -p ./tsconfig.compile.json --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "check:no-fix": "npm run lint:no-fix && npm run typecheck && npm run test",
+    "clean": "npm run clean-lits && npm run clean-playground",
+    "clean-lits": "rm -rf dist build",
+    "clean-playground": "rm -rf playground-builder/build playground-www/build",
+    "build": "npm run build-lits && npm run build-cli && npm run build-playground",
+    "build-lits": "npm run clean-lits && rollup -c",
+    "build-playground": "npm run clean-playground && rollup -c rollup.config.playground-builder.js && rollup -c rollup.config.playground-www.js && node ./playground-builder/build/buildPlaygroundSite.js",
+    "build-cli": "rollup -c rollup.config.cli.js",
+    "lits": "node ./dist/cli/cli.js",
+    "dev": "npx serve docs -p 9901",
+    "lcov": "open-cli ./coverage/index.html"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "@antfu/eslint-config": "2.21.1",
+    "@mermaid-js/mermaid-cli": "^11.12.0",
+    "@rollup/plugin-json": "6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "11.1.6",
+    "@types/node": "22.7.6",
+    "@vitest/coverage-v8": "1.6.0",
+    "open-cli": "8.0.0",
+    "rollup": "4.18.0",
+    "serve": "^14.2.4",
+    "tslib": "2.6.3",
+    "typescript": "5.5.2",
+    "vitest": "1.6.0"
   }
 }
