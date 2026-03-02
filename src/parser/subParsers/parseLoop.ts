@@ -1,7 +1,7 @@
 import type { LoopNode } from '../../builtin/specialExpressions/loop'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { BindingNode } from '../types'
 import type { SymbolToken } from '../../tokenizer/token'
 import { assertLParenToken, assertOperatorToken, assertRParenToken, isOperatorToken, isRParenToken } from '../../tokenizer/token'
@@ -30,7 +30,7 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
     token = ctx.tryPeek()
   }
   if (bindingNodes.length === 0) {
-    throw new LitsError('Expected binding', ctx.peekSourceCodeInfo())
+    throw new DvalaError('Expected binding', ctx.peekSourceCodeInfo())
   }
 
   assertRParenToken(token)

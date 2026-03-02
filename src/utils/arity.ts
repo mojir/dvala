@@ -1,8 +1,8 @@
 import type { Arity } from '../builtin/interface'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { FunctionLike } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { isColl } from '../typeGuards/lits'
+import { isColl } from '../typeGuards/dvala'
 import { valueToString } from './debug/debugTools'
 
 export function arityAccepts(arity: Arity, nbrOfParams: number): boolean {
@@ -54,14 +54,14 @@ export function getArityFromFunction(param: FunctionLike): Arity {
 export function assertNumberOfParams(arity: Arity, length: number, sourceCodeInfo: SourceCodeInfo | undefined): void {
   const { min, max } = arity
   if (typeof min === 'number' && length < min) {
-    throw new LitsError(
+    throw new DvalaError(
       `Wrong number of arguments, expected at least ${min}, got ${valueToString(length)}.`,
       sourceCodeInfo,
     )
   }
 
   if (typeof max === 'number' && length > max) {
-    throw new LitsError(
+    throw new DvalaError(
       `Wrong number of arguments, expected at most ${max}, got ${valueToString(length)}.`,
       sourceCodeInfo,
     )

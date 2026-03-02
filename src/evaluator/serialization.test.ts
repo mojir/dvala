@@ -146,18 +146,18 @@ describe('isSerializable', () => {
     })
 
     it('should accept arrays containing EffectRef', () => {
-      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'lits.log' }
+      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.log' }
       expect(isSerializable([1, ref] as Any)).toBe(true)
     })
 
     it('should accept objects containing EffectRef', () => {
-      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'lits.now' }
+      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.now' }
       const obj: Any = { eff: ref }
       expect(isSerializable(obj)).toBe(true)
     })
   })
 
-  describe('litsFunction types', () => {
+  describe('dvalaFunction types', () => {
     it('should accept UserDefinedFunction', () => {
       expect(isSerializable(makeUserDefinedFunction() as Any)).toBe(true)
     })

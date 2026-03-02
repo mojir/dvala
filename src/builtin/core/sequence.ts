@@ -1,6 +1,6 @@
 import type { Any, Arr, Seq } from '../../interface'
 import { assertCharArray } from '../../typeGuards/array'
-import { asAny, assertAny, assertFunctionLike, assertSeq } from '../../typeGuards/lits'
+import { asAny, assertAny, assertFunctionLike, assertSeq } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual, toAny } from '../../utils'

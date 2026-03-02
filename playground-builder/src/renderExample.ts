@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
-import { Lits } from '../../src/Lits/Lits'
-import { formatLitsExpression } from './formatter/rules'
+import { Dvala } from '../../src/Dvala/Dvala'
+import { formatDvalaExpression } from './formatter/rules'
 import { copyIcon, playIcon } from './icons'
 import { styles } from './styles'
 
-const lits = new Lits({ debug: false, modules: allBuiltinModules })
+const dvala = new Dvala({ debug: false, modules: allBuiltinModules })
 
 export interface RenderExampleOptions {
   noRun?: boolean
@@ -17,7 +17,7 @@ export function renderExample(example: string | string[], name: string, options?
   const code = Array.isArray(example) ? example.join('\n') : example
   const { noRun = false, noResult = false } = options ?? {}
   const encodedUriExample = btoa(encodeURIComponent(code))
-  const formattedExample = formatLitsExpression(code)
+  const formattedExample = formatDvalaExpression(code)
 
   const playButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.addToPlayground('${name}', '${encodedUriExample}')">${playIcon}</div>`
   const copyButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.copyExample('${encodedUriExample}')">${copyIcon}</div>`
@@ -32,7 +32,7 @@ export function renderExample(example: string | string[], name: string, options?
   const oldLog = console.log
   console.log = function () {}
   try {
-    const result = lits.run(`try\n${code}\ncatch(e) e end`)
+    const result = dvala.run(`try\n${code}\ncatch(e) e end`)
     const stringifiedResult = stringifyValue(result, true)
     const resultSection = noResult
       ? ''

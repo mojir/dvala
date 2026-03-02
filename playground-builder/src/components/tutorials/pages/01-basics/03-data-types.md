@@ -1,10 +1,10 @@
 # Data Types
 
-Lits has a small set of data types. Every value is immutable and fully serializable as JSON.
+Dvala has a small set of data types. Every value is immutable and fully serializable as JSON.
 
 ## Numbers
 
-Numbers can be integers or floats. Lits also supports hexadecimal, binary, octal, and scientific notation:
+Numbers can be integers or floats. Dvala also supports hexadecimal, binary, octal, and scientific notation:
 
 ```
 42

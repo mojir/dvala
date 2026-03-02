@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { deepEqual } from '../../../utils'
 import { getUnit } from './helpers/getUnit'
 import { linearAlgebraModule } from './'
 
-const lits = new Lits({ modules: [linearAlgebraModule] })
+const dvala = new Dvala({ modules: [linearAlgebraModule] })
 
 // Helper to run lin module functions with the new import syntax
 function runLin(code: string): unknown {
   // Replace all 'lin:functionName(' with 'lin.functionName(' and add import at start
   const modifiedCode = `let lin = import(linear-algebra); ${code.replace(/lin:/g, 'lin.')}`
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('linalg functions', () => {
@@ -26,11 +26,11 @@ describe('linalg functions', () => {
       // Case with zero angle
       expect(runLin('lin:rotate2d([1, 0], 0)')).toEqual([1, 0])
       // Case with empty vector (should throw an error)
-      expect(() => runLin('lin:rotate2d([], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate2d([], PI / 2)')).toThrowError(DvalaError)
       // Case with single element vector (should throw an error)
-      expect(() => runLin('lin:rotate2d([42], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate2d([42], PI / 2)')).toThrowError(DvalaError)
       // Case with 3D vector (should throw an error)
-      expect(() => runLin('lin:rotate2d([1, 0, 0], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate2d([1, 0, 0], PI / 2)')).toThrowError(DvalaError)
     })
   })
   describe('lin:rotate3d', () => {
@@ -44,13 +44,13 @@ describe('linalg functions', () => {
       // Case with zero vector
       expect(runLin('lin:rotate3d([0, 0, 0], [0, 1, 0], PI)')).toEqual([0, 0, 0])
       // Case with zero axis (should throw an error)
-      expect(() => runLin('lin:rotate3d([1, 1, 1], [0, 0, 0], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate3d([1, 1, 1], [0, 0, 0], PI / 2)')).toThrowError(DvalaError)
       // Case with empty vector (should throw an error)
-      expect(() => runLin('lin:rotate3d([], [0, 1, 0], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate3d([], [0, 1, 0], PI / 2)')).toThrowError(DvalaError)
       // Case with single element vector (should throw an error)
-      expect(() => runLin('lin:rotate3d([42], [0, 1, 0], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate3d([42], [0, 1, 0], PI / 2)')).toThrowError(DvalaError)
       // Case with non-3D vector (should throw an error)
-      expect(() => runLin('lin:rotate3d([1, 2], [0, 1, 0], PI / 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:rotate3d([1, 2], [0, 1, 0], PI / 2)')).toThrowError(DvalaError)
     })
   })
   describe('lin:lerp', () => {
@@ -80,7 +80,7 @@ describe('linalg functions', () => {
       expect(deepEqual(runLin('lin:lerp([], [], 0.5)'), [])).toBeTruthy()
 
       // Different dimensions (should throw an error)
-      expect(() => runLin('lin:lerp([1, 2], [1, 2, 3], 0.5)')).toThrowError(LitsError)
+      expect(() => runLin('lin:lerp([1, 2], [1, 2, 3], 0.5)')).toThrowError(DvalaError)
     })
   })
 
@@ -108,13 +108,13 @@ describe('linalg functions', () => {
       expect(deepEqual(runLin('lin:reflect([0, 0, 0], [0, 1, 0])'), [0, 0, 0])).toBeTruthy()
 
       // Empty vectors (should throw an error)
-      expect(() => runLin('lin:reflect([], [0, 1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:reflect([], [0, 1])')).toThrowError(DvalaError)
 
       // Different dimensions (should throw an error)
-      expect(() => runLin('lin:reflect([1, 2], [0, 1, 0])')).toThrowError(LitsError)
+      expect(() => runLin('lin:reflect([1, 2], [0, 1, 0])')).toThrowError(DvalaError)
 
       // Zero normal vector (should throw an error because normalization fails)
-      expect(() => runLin('lin:reflect([1, 2], [0, 0])')).toThrowError(LitsError)
+      expect(() => runLin('lin:reflect([1, 2], [0, 0])')).toThrowError(DvalaError)
     })
   })
 
@@ -138,7 +138,7 @@ describe('linalg functions', () => {
       expect(deepEqual(runLin('lin:refract([0, -1, 0], [0, 1, 0], 0.75)'), [0, -1, 0])).toBeTruthy()
 
       // Eta = 0 (non-physical)
-      expect(() => deepEqual(runLin('lin:refract([1, -1, 0], [0, 1, 0], 0)'), [0, -1, 0])).toThrowError(LitsError)
+      expect(() => deepEqual(runLin('lin:refract([1, -1, 0], [0, 1, 0], 0)'), [0, -1, 0])).toThrowError(DvalaError)
 
       // Eta = 1 (no change in medium)
       const norm = 'lin:normalize-l2([1, -1, 0])'
@@ -148,16 +148,16 @@ describe('linalg functions', () => {
       expect(deepEqual(runLin('lin:refract([1], [1], 0.5)'), [-1])).toBeTruthy()
 
       // Empty vectors (should throw an error)
-      expect(() => runLin('lin:refract([1, 1], [0, 0], 1.5)')).toThrowError(LitsError)
+      expect(() => runLin('lin:refract([1, 1], [0, 0], 1.5)')).toThrowError(DvalaError)
 
       // Empty vectors (should throw an error)
-      expect(() => runLin('lin:refract([], [0, 1], 1.5)')).toThrowError(LitsError)
+      expect(() => runLin('lin:refract([], [0, 1], 1.5)')).toThrowError(DvalaError)
 
       // Different dimensions (should throw an error)
-      expect(() => runLin('lin:refract([1, 2], [0, 1, 0], 1.5)')).toThrowError(LitsError)
+      expect(() => runLin('lin:refract([1, 2], [0, 1, 0], 1.5)')).toThrowError(DvalaError)
 
       // Zero normal vector (should throw an error because normalization fails)
-      expect(() => runLin('lin:refract([1, 2], [0, 0], 1.5)')).toThrowError(LitsError)
+      expect(() => runLin('lin:refract([1, 2], [0, 0], 1.5)')).toThrowError(DvalaError)
     })
   })
 
@@ -186,9 +186,9 @@ describe('linalg functions', () => {
       // Case with mixed numbers
       expect(runLin('lin:cross([1, -2, 3], [4, 5, -6])')).toEqual([-3, 18, 13])
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:cross([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cross([], [])')).toThrowError(DvalaError)
       // Case with single element vectors (should throw an error)
-      expect(() => runLin('lin:cross([42], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cross([42], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:normalize-minmax', () => {
@@ -282,7 +282,7 @@ describe('linalg functions', () => {
       // Single element array
       expect(runLin('lin:normalize-l2([42])')).toEqual([1])
 
-      expect(() => runLin('lin:normalize-l2([0, 0, 0, 0])')).toThrow(LitsError)
+      expect(() => runLin('lin:normalize-l2([0, 0, 0, 0])')).toThrow(DvalaError)
     })
   })
   describe('lin:normalize-log', () => {
@@ -299,7 +299,7 @@ describe('linalg functions', () => {
       // Single element array
       expect(runLin('lin:normalize-log([42])')).toEqual([0])
 
-      expect(() => runLin('lin:normalize-log([-42])')).toThrow(LitsError)
+      expect(() => runLin('lin:normalize-log([-42])')).toThrow(DvalaError)
     })
   })
   describe('lin:angle', () => {
@@ -314,9 +314,9 @@ describe('linalg functions', () => {
       expect(runLin('lin:angle([42], [1])')).toBeCloseTo(0)
       expect(runLin('lin:angle([42], [-1])')).toBeCloseTo(Math.PI)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:angle([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:angle([0, 0], [1, 0])')).toThrowError(LitsError)
-      expect(() => runLin('lin:angle([1, 0, 1], [1, 0])')).toThrowError(LitsError)
+      expect(() => runLin('lin:angle([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:angle([0, 0], [1, 0])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:angle([1, 0, 1], [1, 0])')).toThrowError(DvalaError)
     })
   })
   describe('lin:projection', () => {
@@ -330,9 +330,9 @@ describe('linalg functions', () => {
       // Case with single element vectors (should throw an error)
       expect(runLin('lin:projection([42], [1])')).toEqual([42])
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:projection([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:projection([1, 0], [0, 0])')).toThrowError(LitsError)
-      expect(() => runLin('lin:projection([1, 0, 1], [1, 0])')).toThrowError(LitsError)
+      expect(() => runLin('lin:projection([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:projection([1, 0], [0, 0])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:projection([1, 0, 1], [1, 0])')).toThrowError(DvalaError)
     })
   })
   describe('lin:orthogonal?', () => {
@@ -346,9 +346,9 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:orthogonal?([42], [1])')).toEqual(false)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:orthogonal?([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:orthogonal?([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:orthogonal?([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:orthogonal?([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:parallel?', () => {
@@ -368,9 +368,9 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:parallel?([42], [1])')).toEqual(true)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:parallel?([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:parallel?([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:parallel?([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:parallel?([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:collinear?', () => {
@@ -393,9 +393,9 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:collinear?([42], [1])')).toEqual(true)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:collinear?([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:collinear?([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:collinear?([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:collinear?([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:cosine-similarity', () => {
@@ -409,11 +409,11 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:cosine-similarity([42], [1])')).toBeCloseTo(1)
       // Case with zero vector
-      expect(() => runLin('lin:cosine-similarity([0, 0, 0], [1, 2, 3])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cosine-similarity([0, 0, 0], [1, 2, 3])')).toThrowError(DvalaError)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:cosine-similarity([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cosine-similarity([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:cosine-similarity([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cosine-similarity([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:euclidean-distance', () => {
@@ -429,10 +429,10 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:euclidean-distance([42], [1])')).toEqual(41)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:euclidean-distance([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:euclidean-distance([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:euclidean-distance([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:euclidean-distance([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:euclidean-distance([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:euclidean-distance([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:euclidean-norm', () => {
@@ -446,7 +446,7 @@ describe('linalg functions', () => {
       // Case with single element vector
       expect(runLin('lin:euclidean-norm([42])')).toEqual(42)
       // Case with empty vector
-      expect(() => runLin('lin:euclidean-norm([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:euclidean-norm([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:manhattan-distance', () => {
@@ -462,9 +462,9 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:manhattan-distance([42], [1])')).toEqual(41)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:manhattan-distance([], [])')).toThrowError(LitsError)
+      expect(() => runLin('lin:manhattan-distance([], [])')).toThrowError(DvalaError)
 
-      expect(() => runLin('lin:manhattan-distance([1, 2], [2])')).toThrowError(LitsError)
+      expect(() => runLin('lin:manhattan-distance([1, 2], [2])')).toThrowError(DvalaError)
     })
   })
   describe('lin:manhattan-norm', () => {
@@ -478,7 +478,7 @@ describe('linalg functions', () => {
       // Case with single element vector
       expect(runLin('lin:manhattan-norm([42])')).toEqual(42)
       // Case with empty vector
-      expect(() => runLin('lin:manhattan-norm([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:manhattan-norm([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:hamming-distance', () => {
@@ -494,8 +494,8 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:hamming-distance([42], [1])')).toEqual(1)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:hamming-distance([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:hamming-distance([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:hamming-distance([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:hamming-distance([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:hamming-norm', () => {
@@ -509,7 +509,7 @@ describe('linalg functions', () => {
       // Case with single element vector
       expect(runLin('lin:hamming-norm([42])')).toEqual(1)
       // Case with empty vector
-      expect(() => runLin('lin:hamming-norm([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:hamming-norm([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:chebyshev-distance', () => {
@@ -525,8 +525,8 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:chebyshev-distance([42], [1])')).toEqual(41)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:chebyshev-distance([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:chebyshev-distance([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:chebyshev-distance([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:chebyshev-distance([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:chebyshev-norm', () => {
@@ -540,7 +540,7 @@ describe('linalg functions', () => {
       // Case with single element vector
       expect(runLin('lin:chebyshev-norm([42])')).toEqual(42)
       // Case with empty vector
-      expect(() => runLin('lin:chebyshev-norm([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:chebyshev-norm([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:minkowski-distance', () => {
@@ -562,11 +562,11 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:minkowski-distance([42], [1], 3)')).toBeCloseTo(41)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:minkowski-distance([], [], 3)')).toThrowError(LitsError)
+      expect(() => runLin('lin:minkowski-distance([], [], 3)')).toThrowError(DvalaError)
       // Case with invalid p value (should throw an error)
-      expect(() => runLin('lin:minkowski-distance([1, 2], [4, 6], 0)')).toThrowError(LitsError)
-      expect(() => runLin('lin:minkowski-distance([1, 2], [4, 6], -1)')).toThrowError(LitsError)
-      expect(() => runLin('lin:minkowski-distance([1, 2, 3], [4, 6], 2)')).toThrowError(LitsError)
+      expect(() => runLin('lin:minkowski-distance([1, 2], [4, 6], 0)')).toThrowError(DvalaError)
+      expect(() => runLin('lin:minkowski-distance([1, 2], [4, 6], -1)')).toThrowError(DvalaError)
+      expect(() => runLin('lin:minkowski-distance([1, 2, 3], [4, 6], 2)')).toThrowError(DvalaError)
     })
   })
   describe('lin:minkowski-norm', () => {
@@ -586,10 +586,10 @@ describe('linalg functions', () => {
       // Case with single element vector
       expect(runLin('lin:minkowski-norm([42], 3)')).toBeCloseTo(42)
       // Case with empty vector (should throw an error)
-      expect(() => runLin('lin:minkowski-norm([], 3)')).toThrowError(LitsError)
+      expect(() => runLin('lin:minkowski-norm([], 3)')).toThrowError(DvalaError)
       // Case with invalid p value (should throw an error)
-      expect(() => runLin('lin:minkowski-distance([1, 2], 0)')).toThrowError(LitsError)
-      expect(() => runLin('lin:minkowski-distance([1, 2], -1)')).toThrowError(LitsError)
+      expect(() => runLin('lin:minkowski-distance([1, 2], 0)')).toThrowError(DvalaError)
+      expect(() => runLin('lin:minkowski-distance([1, 2], -1)')).toThrowError(DvalaError)
     })
   })
   describe('lin:cov', () => {
@@ -603,8 +603,8 @@ describe('linalg functions', () => {
       // Case with single element vectors
       expect(runLin('lin:cov([42], [1])')).toBe(0)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:cov([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:cov([1, 2], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:cov([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:cov([1, 2], [1])')).toThrowError(DvalaError)
     })
   })
   describe('lin:corr', () => {
@@ -616,10 +616,10 @@ describe('linalg functions', () => {
       // Case with mixed numbers
       expect(runLin('lin:corr([1, -2, 3], [-4, 5, -6])')).toBeCloseTo(-0.972)
       // Case with single element vectors (should throw an error)
-      expect(() => runLin('lin:corr([42], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:corr([42], [1])')).toThrowError(DvalaError)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:corr([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:corr([1, 2], [2])')).toThrowError(LitsError)
+      expect(() => runLin('lin:corr([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:corr([1, 2], [2])')).toThrowError(DvalaError)
     })
   })
   describe('lin:spearman-corr', () => {
@@ -631,11 +631,11 @@ describe('linalg functions', () => {
       expect(runLin('lin:spearman-corr([1, 2, 3, 4, 100], [1, 2, 3, 4, 5])')).toBeCloseTo(1)
 
       // Case with single element vectors (should throw an error)
-      expect(() => runLin('lin:spearman-corr([42], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:spearman-corr([42], [1])')).toThrowError(DvalaError)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:spearman-corr([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:spearman-corr([1, 2], [1])')).toThrowError(LitsError)
-      expect(() => runLin('lin:spearman-corr([1, 1], [1, 2])')).toThrowError(LitsError)
+      expect(() => runLin('lin:spearman-corr([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:spearman-corr([1, 2], [1])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:spearman-corr([1, 1], [1, 2])')).toThrowError(DvalaError)
     })
   })
   describe('lin:pearson-corr', () => {
@@ -647,11 +647,11 @@ describe('linalg functions', () => {
       expect(runLin('lin:pearson-corr([1, 2, 3, 4, 100], [1, 2, 3, 4, 5])')).toBeCloseTo(0.725)
 
       // Case with single element vectors (should throw an error)
-      expect(() => runLin('lin:pearson-corr([42], [1])')).toThrowError(LitsError)
+      expect(() => runLin('lin:pearson-corr([42], [1])')).toThrowError(DvalaError)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:pearson-corr([], [])')).toThrowError(LitsError)
-      expect(() => runLin('lin:pearson-corr([1, 2], [1])')).toThrowError(LitsError)
-      expect(() => runLin('lin:pearson-corr([1, 1], [1, 2])')).toThrowError(LitsError)
+      expect(() => runLin('lin:pearson-corr([], [])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:pearson-corr([1, 2], [1])')).toThrowError(DvalaError)
+      expect(() => runLin('lin:pearson-corr([1, 1], [1, 2])')).toThrowError(DvalaError)
     })
   })
 
@@ -697,7 +697,7 @@ describe('linalg functions', () => {
       expect(() => runLin('lin:kendall-tau([5, 5, 5, 5], [1, 2, 3, 4])')).toThrow('Not enough data to calculate Kendall\'s Tau')
 
       // All ties in vector B
-      expect(() => runLin('lin:kendall-tau([1, 2, 3, 4], [7, 7, 7, 7])')).toThrow(LitsError)
+      expect(() => runLin('lin:kendall-tau([1, 2, 3, 4], [7, 7, 7, 7])')).toThrow(DvalaError)
 
       // Mixed ties and values
       expect(runLin('lin:kendall-tau([1, 1, 3, 4], [5, 5, 7, 8])')).toBeCloseTo(1.0)
@@ -709,11 +709,11 @@ describe('linalg functions', () => {
       expect(runLin('lin:kendall-tau([1, 2, 3, 4, 5], [1, 3, 2, 5, 4])')).toBeCloseTo(0.6)
 
       // Empty arrays (should throw an error)
-      expect(() => runLin('lin:kendall-tau([], [])')).toThrow(LitsError)
+      expect(() => runLin('lin:kendall-tau([], [])')).toThrow(DvalaError)
 
       // Boundary case: arrays of length 1
-      expect(() => runLin('lin:kendall-tau([1], [2])')).toThrow(LitsError)
-      expect(() => runLin('lin:kendall-tau([1, 2, 3], [1, 2])')).toThrow(LitsError)
+      expect(() => runLin('lin:kendall-tau([1], [2])')).toThrow(DvalaError)
+      expect(() => runLin('lin:kendall-tau([1, 2, 3], [1, 2])')).toThrow(DvalaError)
 
       // All tied pairs (corner case)
       expect(() => runLin('lin:kendall-tau([1, 1, 1], [2, 2, 2])')).toThrow('Not enough data to calculate Kendall\'s Tau')
@@ -744,9 +744,9 @@ describe('linalg functions', () => {
       expect(runLin('lin:autocorrelation([1, 1, 1, 1, 1], 0)')).toBe(1)
 
       // Case with zero lag
-      expect(() => runLin('lin:autocorrelation([42], 0)')).toThrowError(LitsError)
+      expect(() => runLin('lin:autocorrelation([42], 0)')).toThrowError(DvalaError)
       // Case with empty vectors (should throw an error)
-      expect(() => runLin('lin:autocorrelation([], 0)')).toThrowError(LitsError)
+      expect(() => runLin('lin:autocorrelation([], 0)')).toThrowError(DvalaError)
     })
   })
   describe('lin:cross-correlation', () => {
@@ -785,8 +785,8 @@ describe('linalg functions', () => {
       expect(runLin('lin:cross-correlation([1, 2, 3, 4, 5], [1, 2, 3, 4, 5], -1)')).toBeCloseTo(1)
       expect(runLin('lin:cross-correlation([1, 2, 3, 4, 5], [5, 4, 3, 2, 1], -1)')).toBeCloseTo(-1)
 
-      expect(() => runLin('lin:cross-correlation([1, 2, 3, 4, 5, 6], [5, 4, 3, 2, 1], -1)')).toThrow(LitsError)
-      expect(() => runLin('lin:cross-correlation([1], [5], -1)')).toThrow(LitsError)
+      expect(() => runLin('lin:cross-correlation([1, 2, 3, 4, 5, 6], [5, 4, 3, 2, 1], -1)')).toThrow(DvalaError)
+      expect(() => runLin('lin:cross-correlation([1], [5], -1)')).toThrow(DvalaError)
     })
   })
   describe('lin:rref', () => {
@@ -807,7 +807,7 @@ describe('linalg functions', () => {
   [4, 5, 6]
 ])`)).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
       // Case with empty matrix (should throw an error)
-      expect(() => runLin('lin:rref([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:rref([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:solve', () => {
@@ -841,7 +841,7 @@ describe('linalg functions', () => {
       // Small values / precision test
       expect(runLin('lin:solve([[1, 1], [2, 2]], [5, 7])')).toBeNull()
 
-      expect(() => runLin('lin:solve([[1, 1], [2, 2]], [5, 7, 3])')).toThrow(LitsError)
+      expect(() => runLin('lin:solve([[1, 1], [2, 2]], [5, 7, 3])')).toThrow(DvalaError)
 
       // Larger system (4×4)
       expect(runLin(`lin:solve([
@@ -863,9 +863,9 @@ describe('linalg functions', () => {
 
       expect(runLin('lin:to-polar([0, 0])')).toEqual([0, 0])
       // Case with single element vector (should throw an error)
-      expect(() => runLin('lin:to-polar([42])')).toThrowError(LitsError)
+      expect(() => runLin('lin:to-polar([42])')).toThrowError(DvalaError)
       // Case with empty vector (should throw an error)
-      expect(() => runLin('lin:to-polar([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:to-polar([])')).toThrowError(DvalaError)
     })
   })
   describe('lin:from-polar', () => {
@@ -886,9 +886,9 @@ describe('linalg functions', () => {
         0,
       ])
       // Case with single element vector (should throw an error)
-      expect(() => runLin('lin:from-polar([42])')).toThrowError(LitsError)
+      expect(() => runLin('lin:from-polar([42])')).toThrowError(DvalaError)
       // Case with empty vector (should throw an error)
-      expect(() => runLin('lin:from-polar([])')).toThrowError(LitsError)
+      expect(() => runLin('lin:from-polar([])')).toThrowError(DvalaError)
     })
   })
 })

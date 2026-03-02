@@ -2,7 +2,7 @@ import type { Builtin } from '../builtin/interface'
 import type { DoNode } from '../builtin/specialExpressions/block'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type { EvaluateNode } from '../evaluator/interface'
 import type { Ast, AstNode, NormalExpressionNode, SpecialExpressionNode, SpreadNode, UserDefinedSymbolNode } from '../parser/types'
@@ -82,6 +82,6 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
 
     /* v8 ignore next 2 */
     default:
-      throw new LitsError(`Unhandled node type: ${nodeType satisfies never}`, node[2])
+      throw new DvalaError(`Unhandled node type: ${nodeType satisfies never}`, node[2])
   }
 }

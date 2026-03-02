@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { randomModule } from './'
 
-const lits = new Lits({ modules: [randomModule] })
+const dvala = new Dvala({ modules: [randomModule] })
 
 // Helper to run random module functions with the new import syntax
 function runRandom(code: string): unknown {
   // Replace '!:functionName(' with 'let r = import(random); r.functionName!('
   const modifiedCode = code.replace(/!:(\S+?)\(/g, 'let r = import(random); r.$1!(')
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('random', () => {
@@ -90,7 +90,7 @@ describe('random', () => {
       const array: any[] = []
       expect(() => {
         runRandom(`!:random-sample(${JSON.stringify(array)}, 3)`)
-      }).toThrow(LitsError)
+      }).toThrow(DvalaError)
     })
   })
   describe('random-sample-unique', () => {
@@ -106,13 +106,13 @@ describe('random', () => {
       const array = [1, 2, 3]
       expect(() => {
         runRandom(`!:random-sample-unique(${JSON.stringify(array)}, 4)`)
-      }).toThrowError(LitsError)
+      }).toThrowError(DvalaError)
     })
     it('should throw an error when sampling from empty array', () => {
       const array: number[] = []
       expect(() => {
         runRandom(`!:random-sample-unique(${JSON.stringify(array)}, 0)`)
-      }).toThrowError(LitsError)
+      }).toThrowError(DvalaError)
     })
   })
   describe('shuffle', () => {
@@ -179,7 +179,7 @@ describe('random', () => {
       }
     })
     it('should throw', () => {
-      expect(() => runRandom('!:random-char("")')).toThrow(LitsError)
+      expect(() => runRandom('!:random-char("")')).toThrow(DvalaError)
     })
   })
   describe('random-string', () => {
@@ -194,7 +194,7 @@ describe('random', () => {
       }
     })
     it('should throw', () => {
-      expect(() => runRandom('!:random-string(1, "")')).toThrow(LitsError)
+      expect(() => runRandom('!:random-string(1, "")')).toThrow(DvalaError)
     })
   })
   describe('random-id', () => {
@@ -220,11 +220,11 @@ describe('random', () => {
 
 describe('import with destructuring', () => {
   it('should import a single function via destructuring', () => {
-    expect(typeof lits.run('let { random! } = import(random); random!()')).toBe('number')
+    expect(typeof dvala.run('let { random! } = import(random); random!()')).toBe('number')
   })
 
   it('should import uuid via destructuring', () => {
-    const uuid = lits.run('let { uuid! } = import(random); uuid!()') as string
+    const uuid = dvala.run('let { uuid! } = import(random); uuid!()') as string
     expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 })

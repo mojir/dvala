@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import { asBinaryOperator, asSymbolicOperator } from './operators'
 
 describe('operators', () => {
   describe('guards', () => {
     test('asBinaryOperator', () => {
       expect(() => asBinaryOperator('??')).not.toThrow()
-      expect(() => asBinaryOperator('...')).toThrow(LitsError)
+      expect(() => asBinaryOperator('...')).toThrow(DvalaError)
     })
     test('asSymbolOperator', () => {
       expect(() => asSymbolicOperator('??')).not.toThrow()

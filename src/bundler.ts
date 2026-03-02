@@ -1,3 +1,3 @@
 export { bundle } from './bundler/index'
-export type { LitsBundle } from './bundler/interface'
-export { isLitsBundle } from './bundler/interface'
+export type { DvalaBundle } from './bundler/interface'
+export { isDvalaBundle } from './bundler/interface'

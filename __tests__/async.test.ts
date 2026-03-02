@@ -1,36 +1,36 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 import { collectionUtilsModule } from '../src/builtin/modules/collection'
 import { gridModule } from '../src/builtin/modules/grid'
 import { numberTheoryModule } from '../src/builtin/modules/number-theory'
 import { sequenceUtilsModule } from '../src/builtin/modules/sequence'
-import type { LitsFunction } from '../src/parser/types'
+import type { DvalaFunction } from '../src/parser/types'
 
 describe('async support', () => {
   describe('async.run with sync functions', () => {
-    const lits = new Lits()
+    const dvala = new Dvala()
 
     it('should handle simple sync operations', async () => {
-      expect(await lits.async.run('1 + 2')).toBe(3)
+      expect(await dvala.async.run('1 + 2')).toBe(3)
     })
 
     it('should handle map with sync functions', async () => {
-      expect(await lits.async.run('map([1, 2, 3], inc)')).toEqual([2, 3, 4])
+      expect(await dvala.async.run('map([1, 2, 3], inc)')).toEqual([2, 3, 4])
     })
 
     it('should handle filter with sync functions', async () => {
-      expect(await lits.async.run('filter([1, 2, 3, 4, 5], odd?)')).toEqual([1, 3, 5])
+      expect(await dvala.async.run('filter([1, 2, 3, 4, 5], odd?)')).toEqual([1, 3, 5])
     })
 
     it('should handle reduce with sync functions', async () => {
-      expect(await lits.async.run('reduce([1, 2, 3], +, 0)')).toBe(6)
+      expect(await dvala.async.run('reduce([1, 2, 3], +, 0)')).toBe(6)
     })
   })
 
   describe('async.run with async JS functions', () => {
     it('should await async JS function result in simple expression', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('10 + foo()', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('10 + foo()', {
         bindings: {
           foo: async () => 5,
         },
@@ -39,8 +39,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in let binding', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('let x = foo(); x * 2', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('let x = foo(); x * 2', {
         bindings: {
           foo: async () => 21,
         },
@@ -49,8 +49,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in if condition', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('if foo() then "yes" else "no" end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('if foo() then "yes" else "no" end', {
         bindings: {
           foo: async () => true,
         },
@@ -59,8 +59,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in if then-branch', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('if true then foo() else "no" end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('if true then foo() else "no" end', {
         bindings: {
           foo: async () => 'yes',
         },
@@ -69,8 +69,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in and expression', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('foo() && 42', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('foo() && 42', {
         bindings: {
           foo: async () => true,
         },
@@ -79,8 +79,8 @@ describe('async support', () => {
     })
 
     it('should short-circuit async and when first value is falsy', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('foo() && bar()', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('foo() && bar()', {
         bindings: {
           foo: async () => false,
           bar: async () => { throw new Error('should not be called') },
@@ -90,8 +90,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in or expression', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('foo() || 42', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('foo() || 42', {
         bindings: {
           foo: async () => null,
         },
@@ -100,8 +100,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function with let and semicolons', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('let x = foo(); x + 1', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('let x = foo(); x + 1', {
         bindings: {
           foo: async () => 10,
         },
@@ -110,8 +110,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in block', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('do foo(); bar() end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('do foo(); bar() end', {
         bindings: {
           foo: async () => 1,
           bar: async () => 2,
@@ -121,8 +121,8 @@ describe('async support', () => {
     })
 
     it('should await async JS function in try/catch', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('try foo() catch "caught" end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('try foo() catch "caught" end', {
         bindings: {
           foo: async () => {
             throw new Error('async error')
@@ -133,8 +133,8 @@ describe('async support', () => {
     })
 
     it('should handle async inside cond', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('cond case false then 1 case foo() then 2 case true then 3 end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('cond case false then 1 case foo() then 2 case true then 3 end', {
         bindings: {
           foo: async () => true,
         },
@@ -143,8 +143,8 @@ describe('async support', () => {
     })
 
     it('should handle async in pipe operator', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('5 |> foo |> inc', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('5 |> foo |> inc', {
         bindings: {
           foo: async (x: number) => x * 2,
         },
@@ -153,8 +153,8 @@ describe('async support', () => {
     })
 
     it('should handle async in apply', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('apply(foo, [1, 2, 3])', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('apply(foo, [1, 2, 3])', {
         bindings: {
           foo: async (...args: number[]) => args.reduce((a, b) => a + b, 0),
         },
@@ -165,8 +165,8 @@ describe('async support', () => {
 
   describe('run() throws on async result', () => {
     it('should throw when sync run() encounters async JS function', () => {
-      const lits = new Lits()
-      expect(() => lits.run('foo()', {
+      const dvala = new Dvala()
+      expect(() => dvala.run('foo()', {
         bindings: {
           foo: async () => 5,
         },
@@ -176,8 +176,8 @@ describe('async support', () => {
 
   describe('async with HOFs', () => {
     it('should handle async in map callback', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('map([1, 2, 3], foo)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('map([1, 2, 3], foo)', {
         bindings: {
           foo: async (x: number) => x * 10,
         },
@@ -186,8 +186,8 @@ describe('async support', () => {
     })
 
     it('should handle async in filter callback', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('filter([1, 2, 3, 4, 5], foo)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('filter([1, 2, 3, 4, 5], foo)', {
         bindings: {
           foo: async (x: number) => x > 3,
         },
@@ -196,8 +196,8 @@ describe('async support', () => {
     })
 
     it('should handle async in reduce callback', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('reduce([1, 2, 3], foo, 0)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('reduce([1, 2, 3], foo, 0)', {
         bindings: {
           foo: async (acc: number, x: number) => acc + x,
         },
@@ -206,8 +206,8 @@ describe('async support', () => {
     })
 
     it('should handle async in some callback', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('some([1, 2, 3, 4], foo)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('some([1, 2, 3, 4], foo)', {
         bindings: {
           foo: async (x: number) => x > 3,
         },
@@ -218,8 +218,8 @@ describe('async support', () => {
 
   describe('async with recur and loop', () => {
     it('should handle async function called from loop/recur', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         loop(i = 0, acc = 0) -> do
           if i >= 5
             then acc
@@ -238,8 +238,8 @@ describe('async support', () => {
 
   describe('async error handling', () => {
     it('should propagate async errors', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('foo()', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('foo()', {
         bindings: {
           foo: async () => {
             throw new Error('async failure')
@@ -249,8 +249,8 @@ describe('async support', () => {
     })
 
     it('should catch async errors in try/catch', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('try foo() catch "handled" end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('try foo() catch "handled" end', {
         bindings: {
           foo: async () => {
             throw new Error('async error')
@@ -261,8 +261,8 @@ describe('async support', () => {
     })
 
     it('should bind error variable from async throw', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('try foo() catch(err) err.message end', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('try foo() catch(err) err.message end', {
         bindings: {
           foo: async () => {
             throw new Error('async boom')
@@ -273,8 +273,8 @@ describe('async support', () => {
     })
 
     it('should catch async error after sync expressions in try body', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         try
           let x = 10;
           let y = foo();
@@ -293,15 +293,15 @@ describe('async support', () => {
     })
 
     it('should wrap sync and async native errors identically', async () => {
-      const lits = new Lits()
-      const syncResult = await lits.async.run('try syncFoo() catch(err) err.message end', {
+      const dvala = new Dvala()
+      const syncResult = await dvala.async.run('try syncFoo() catch(err) err.message end', {
         bindings: {
           syncFoo: () => {
             throw new Error('kaboom')
           },
         },
       })
-      const asyncResult = await lits.async.run('try asyncFoo() catch(err) err.message end', {
+      const asyncResult = await dvala.async.run('try asyncFoo() catch(err) err.message end', {
         bindings: {
           asyncFoo: async () => {
             throw new Error('kaboom')
@@ -313,8 +313,8 @@ describe('async support', () => {
     })
 
     it('should catch async error inside map within try', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         try
           map([1, 2, 3], x -> foo(x))
         catch(err)
@@ -336,8 +336,8 @@ describe('async support', () => {
   describe('async with multiple sequential async calls', () => {
     it('should evaluate async calls sequentially', async () => {
       const callOrder: number[] = []
-      const lits = new Lits()
-      const result = await lits.async.run('foo(1) + foo(2) + foo(3)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('foo(1) + foo(2) + foo(3)', {
         bindings: {
           foo: async (x: number) => {
             await new Promise(resolve => setTimeout(resolve, 10))
@@ -357,96 +357,96 @@ describe('async support', () => {
     const asyncFirst = async (x: string) => x[0]
 
     it('position with async predicate', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.position([1, 2, 3, 4], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.position([1, 2, 3, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(1)
     })
 
     it('position with async predicate matching first element', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.position([2, 3, 4], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.position([2, 3, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(0)
     })
 
     it('position with async predicate matching no element', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.position([1, 3, 5], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.position([1, 3, 5], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(null)
     })
 
     it('sort-by with async key function', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.sort-by([3, 1, 2], dbl)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.sort-by([3, 1, 2], dbl)', {
         bindings: { dbl: asyncDouble },
       })
       expect(result).toEqual([1, 2, 3])
     })
 
     it('take-while with async predicate', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('take-while([2, 4, 5, 6], isEven)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('take-while([2, 4, 5, 6], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([2, 4])
     })
 
     it('take-while with async predicate on string', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('take-while("aabbc", isA)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('take-while("aabbc", isA)', {
         bindings: { isA: async (c: unknown) => c === 'a' },
       })
       expect(result).toBe('aa')
     })
 
     it('drop-while with async predicate', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('drop-while([2, 4, 5, 6], isEven)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('drop-while([2, 4, 5, 6], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([5, 6])
     })
 
     it('drop-while with async predicate on string', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('drop-while("aabbc", isA)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('drop-while("aabbc", isA)', {
         bindings: { isA: async (c: unknown) => c === 'a' },
       })
       expect(result).toBe('bbc')
     })
 
     it('remove with async predicate', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.remove([1, 2, 3, 4], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.remove([1, 2, 3, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([1, 3])
     })
 
     it('split-with with async predicate', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.split-with([2, 4, 5, 6], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.split-with([2, 4, 5, 6], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([[2, 4], [5, 6]])
     })
 
     it('group-by with async key function', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.group-by(["ab", "ac", "bc"], getFirst)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.group-by(["ab", "ac", "bc"], getFirst)', {
         bindings: { getFirst: asyncFirst },
       })
       expect(result).toEqual({ a: ['ab', 'ac'], b: ['bc'] })
     })
 
     it('partition-by with async function', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      const result = await lits.async.run('let su = import(sequence); su.partition-by([1, 1, 2, 2, 3], isEven)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      const result = await dvala.async.run('let su = import(sequence); su.partition-by([1, 1, 2, 2, 3], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([[1, 1], [2, 2], [3]])
@@ -459,64 +459,64 @@ describe('async support', () => {
     const asyncDouble = async (x: number) => x * 2
 
     it('filteri with async predicate', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.filteri([1, 2, 3, 4], (x, i) -> isEven(x))', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.filteri([1, 2, 3, 4], (x, i) -> isEven(x))', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toEqual([2, 4])
     })
 
     it('mapi with async function', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> dbl(x))', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> dbl(x))', {
         bindings: { dbl: asyncDouble },
       })
       expect(result).toEqual([2, 4, 6])
     })
 
     it('update with async function', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.update({ a: 1 }, "a", incr)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.update({ a: 1 }, "a", incr)', {
         bindings: { incr: asyncInc },
       })
       expect(result).toEqual({ a: 2 })
     })
 
     it('every? with async predicate', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.every?([2, 4, 6], isEven)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.every?([2, 4, 6], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(true)
     })
 
     it('every? with async predicate failing on first element', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.every?([1, 2, 4], isEven)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.every?([1, 2, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(false)
     })
 
     it('any? with async predicate', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.any?([1, 3, 4], isEven)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.any?([1, 3, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(true)
     })
 
     it('not-any? with async predicate', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.not-any?([1, 3, 5], isEven)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.not-any?([1, 3, 5], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(true)
     })
 
     it('not-every? with async predicate', async () => {
-      const lits = new Lits({ modules: [collectionUtilsModule] })
-      const result = await lits.async.run('let cu = import(collection); cu.not-every?([2, 3, 4], isEven)', {
+      const dvala = new Dvala({ modules: [collectionUtilsModule] })
+      const result = await dvala.async.run('let cu = import(collection); cu.not-every?([2, 3, 4], isEven)', {
         bindings: { isEven: asyncIsEven },
       })
       expect(result).toBe(true)
@@ -530,56 +530,56 @@ describe('async support', () => {
     const asyncAllPositive = async (row: number[]) => row.every(x => x > 0)
 
     it('cell-every? with async predicate', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.cell-every?(g.fill(2, 2, 1), isPos)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.cell-every?(g.fill(2, 2, 1), isPos)', {
         bindings: { isPos: asyncIsPositive },
       })
       expect(result).toBe(true)
     })
 
     it('some? with async predicate', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.some?(g.fill(2, 2, 0), isPos)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.some?(g.fill(2, 2, 0), isPos)', {
         bindings: { isPos: asyncIsPositive },
       })
       expect(result).toBe(false)
     })
 
     it('every-row? with async predicate', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.every-row?(g.fill(2, 2, 1), allPos)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.every-row?(g.fill(2, 2, 1), allPos)', {
         bindings: { allPos: asyncAllPositive },
       })
       expect(result).toBe(true)
     })
 
     it('some-row? with async predicate', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.some-row?([[1, 2], [-1, -2]], allPos)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.some-row?([[1, 2], [-1, -2]], allPos)', {
         bindings: { allPos: asyncAllPositive },
       })
       expect(result).toBe(true)
     })
 
     it('generate with async generator', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.generate(2, 3, mul)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.generate(2, 3, mul)', {
         bindings: { mul: asyncMul },
       })
       expect(result).toEqual([[0, 1, 2], [10, 11, 12]])
     })
 
     it('cell-map with async function', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.cell-map([[1, 2], [3, 4]], dbl)', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.cell-map([[1, 2], [3, 4]], dbl)', {
         bindings: { dbl: asyncDouble },
       })
       expect(result).toEqual([[2, 4], [6, 8]])
     })
 
     it('cell-mapi with async function', async () => {
-      const lits = new Lits({ modules: [gridModule] })
-      const result = await lits.async.run('let g = import(grid); g.cell-mapi([[1, 2], [3, 4]], (val, r, c) -> mul(r, c))', {
+      const dvala = new Dvala({ modules: [gridModule] })
+      const result = await dvala.async.run('let g = import(grid); g.cell-mapi([[1, 2], [3, 4]], (val, r, c) -> mul(r, c))', {
         bindings: { mul: asyncMul },
       })
       expect(result).toEqual([[0, 1], [10, 11]])
@@ -588,10 +588,10 @@ describe('async support', () => {
 
   describe('async bugs — number-theory take-while', () => {
     it('should correctly evaluate async predicate in take-while', async () => {
-      const lits = new Lits({ modules: [numberTheoryModule] })
+      const dvala = new Dvala({ modules: [numberTheoryModule] })
       // fibonacci-take-while with async predicate: take fib numbers while < 10
       // Fibonacci: 0, 1, 1, 2, 3, 5, 8, 13, ...  → should return [0, 1, 1, 2, 3, 5, 8]
-      const result = await lits.async.run(
+      const result = await dvala.async.run(
         'let nt = import(number-theory); nt.fibonacci-take-while(lessThan10)',
         {
           bindings: {
@@ -605,8 +605,8 @@ describe('async support', () => {
 
   describe('async — destructuring default values', () => {
     it('should resolve async default in array destructuring via let', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(
+      const dvala = new Dvala()
+      const result = await dvala.async.run(
         'let [a = getFive()] = []; a + 1',
         {
           bindings: {
@@ -618,8 +618,8 @@ describe('async support', () => {
     })
 
     it('should resolve async default in object destructuring via let', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(
+      const dvala = new Dvala()
+      const result = await dvala.async.run(
         'let { a = getFive() } = {}; a + 1',
         {
           bindings: {
@@ -631,8 +631,8 @@ describe('async support', () => {
     })
 
     it('should resolve async default in user-defined function argument', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(
+      const dvala = new Dvala()
+      const result = await dvala.async.run(
         `
           let foo = ([x = getFive()]) -> x * 2;
           foo([])
@@ -647,8 +647,8 @@ describe('async support', () => {
     })
 
     it('should resolve async default in loop/recur bindings', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(
+      const dvala = new Dvala()
+      const result = await dvala.async.run(
         `
           loop ({ x = getFive() } = {}) ->
             if x > 0 then
@@ -667,8 +667,8 @@ describe('async support', () => {
     })
 
     it('should resolve async default in for loop let-bindings', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(
+      const dvala = new Dvala()
+      const result = await dvala.async.run(
         `
           for (pair in [[1, 2], [3, 4], [5]] let [x, y = getFive()] = pair) -> x + y
         `,
@@ -682,10 +682,10 @@ describe('async support', () => {
     })
 
     it('should resolve async default in doseq let-bindings', async () => {
-      const lits = new Lits()
+      const dvala = new Dvala()
       // doseq returns null, but we verify it completes without error
       // and bindings resolve properly
-      const result = await lits.async.run(
+      const result = await dvala.async.run(
         `
           doseq (pair in [[1, 2], [5]] let [x, y = getFive()] = pair) -> x + y;
           true
@@ -702,8 +702,8 @@ describe('async support', () => {
 
   describe('async — bernoulli take-while', () => {
     it('should handle async predicate in bernoulli take-while', async () => {
-      const lits = new Lits({ modules: [numberTheoryModule] })
-      const result = await lits.async.run(
+      const dvala = new Dvala({ modules: [numberTheoryModule] })
+      const result = await dvala.async.run(
         'let nt = import(number-theory); nt.bernoulli-take-while(asyncPred)',
         {
           bindings: {
@@ -716,18 +716,18 @@ describe('async support', () => {
   })
 
   describe('async.apply', () => {
-    it('should apply a lits function with async.apply', async () => {
-      const lits = new Lits()
-      const fn = lits.run('-> $ + 1') as LitsFunction
-      const result = await lits.async.apply(fn, [9])
+    it('should apply a dvala function with async.apply', async () => {
+      const dvala = new Dvala()
+      const fn = dvala.run('-> $ + 1') as DvalaFunction
+      const result = await dvala.async.apply(fn, [9])
       expect(result).toBe(10)
     })
   })
 
   describe('sort with async comparator throws', () => {
     it('should throw when sort uses async comparator on strings', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('sort("cba", asyncCmp)', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('sort("cba", asyncCmp)', {
         bindings: {
           asyncCmp: async (a: unknown, b: unknown) => (a as string).localeCompare(b as string),
         },
@@ -735,8 +735,8 @@ describe('async support', () => {
     })
 
     it('should throw when sort uses async comparator on arrays', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('sort([3, 1, 2], asyncCmp)', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('sort([3, 1, 2], asyncCmp)', {
         bindings: {
           asyncCmp: async (a: unknown, b: unknown) => (a as number) - (b as number),
         },
@@ -744,8 +744,8 @@ describe('async support', () => {
     })
 
     it('should throw when sort-by uses async comparator', async () => {
-      const lits = new Lits({ modules: [sequenceUtilsModule] })
-      await expect(lits.async.run('let su = import(sequence); su.sort-by([3, 1, 2], identity, asyncCmp)', {
+      const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+      await expect(dvala.async.run('let su = import(sequence); su.sort-by([3, 1, 2], identity, asyncCmp)', {
         bindings: {
           asyncCmp: async (a: unknown, b: unknown) => (a as number) - (b as number),
         },
@@ -755,8 +755,8 @@ describe('async support', () => {
 
   describe('async native function errors', () => {
     it('should handle async native fn rejecting with a string', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('boom()', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('boom()', {
         bindings: {
           // eslint-disable-next-line ts/no-throw-literal
           boom: async () => { throw 'string error' },
@@ -765,8 +765,8 @@ describe('async support', () => {
     })
 
     it('should handle async native fn rejecting with an Error object', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('boom()', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('boom()', {
         bindings: {
           boom: async () => { throw new Error('object error') },
         },
@@ -776,8 +776,8 @@ describe('async support', () => {
 
   describe('async recur in user-defined function', () => {
     it('should handle async recur in user-defined function body', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         let countdown = (n) -> if n <= 0 then asyncZero() else recur(n - 1) end;
         countdown(3)
       `, {
@@ -791,8 +791,8 @@ describe('async support', () => {
 
   describe('async for loop without let bindings', () => {
     it('should work with async predicate in for body without let', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run('for (x in [1, 2, 3]) -> asyncDouble(x)', {
+      const dvala = new Dvala()
+      const result = await dvala.async.run('for (x in [1, 2, 3]) -> asyncDouble(x)', {
         bindings: {
           asyncDouble: async (x: unknown) => (x as number) * 2,
         },
@@ -803,8 +803,8 @@ describe('async support', () => {
 
   describe('async native fn rejecting with non-string non-object', () => {
     it('should show <no message> for rejection with a number', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run('boom()', {
+      const dvala = new Dvala()
+      await expect(dvala.async.run('boom()', {
         bindings: {
           // eslint-disable-next-line prefer-promise-reject-errors
           boom: () => Promise.reject(42),
@@ -815,8 +815,8 @@ describe('async support', () => {
 
   describe('async recur with async body in user-defined function', () => {
     it('should handle recur after async call in function body', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         let f = (n) -> do
           asyncFn();
           if n <= 0 then 0 else recur(n - 1) end
@@ -831,8 +831,8 @@ describe('async support', () => {
 
   describe('async loop/recur', () => {
     it('should handle async loop body with recur', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         loop (n = 3, acc = 0) -> do
           let v = asyncFn(n);
           if n <= 0 then acc else recur(n - 1, acc + v) end
@@ -845,8 +845,8 @@ describe('async support', () => {
     })
 
     it('should propagate non-recur errors from async loop body', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run(`
+      const dvala = new Dvala()
+      await expect(dvala.async.run(`
         loop (n = 0) -> do
           asyncFn();
           throw("loop-error")
@@ -857,8 +857,8 @@ describe('async support', () => {
     })
 
     it('should handle async binding defaults during recur', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         loop ({ x, y = asyncFn() } = { x: 3 }) ->
           if x <= 0 then y
           else recur({ x: x - 1 })
@@ -870,8 +870,8 @@ describe('async support', () => {
     })
 
     it('should throw on recur param count mismatch in async loop', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run(`
+      const dvala = new Dvala()
+      await expect(dvala.async.run(`
         loop (n = 3, acc = 0) -> do
           asyncFn();
           recur(1)
@@ -882,8 +882,8 @@ describe('async support', () => {
     })
 
     it('should propagate non-recur errors through iterate in async loop', async () => {
-      const lits = new Lits()
-      await expect(lits.async.run(`
+      const dvala = new Dvala()
+      await expect(dvala.async.run(`
         loop ({ x = asyncFn() } = { x: 1 }) ->
           if x <= 0 then throw("done")
           else recur({})
@@ -894,8 +894,8 @@ describe('async support', () => {
     })
 
     it('should handle multiple bindings with async defaults during recur', async () => {
-      const lits = new Lits()
-      const result = await lits.async.run(`
+      const dvala = new Dvala()
+      const result = await dvala.async.run(`
         loop ({ x = asyncFn() } = { x: 1 }, y = 0) ->
           if x <= 0 then y
           else recur({}, y + 1)

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('deficient', () => {
   it('should return the correct sequence', () => {
@@ -14,7 +14,7 @@ describe('deficient', () => {
     expect(runNth('nth:deficient-seq(2)')).toEqual([1, 2])
     expect(runNth('nth:deficient-seq(3)')).toEqual([1, 2, 3])
     expect(runNth('nth:deficient-seq(18)')).toEqual([1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 19, 21, 22])
-    expect(() => runNth('nth:deficient-seq(0)')).toThrow(LitsError)
+    expect(() => runNth('nth:deficient-seq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

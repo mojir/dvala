@@ -1,7 +1,7 @@
 /**
- * Time-travel debugger for Lits.
+ * Time-travel debugger for Dvala.
  *
- * Entry point: `@mojir/lits/debug`
+ * Entry point: `@mojir/dvala/debug`
  *
  * Creates a debugger that intercepts every compound expression evaluation,
  * recording the full execution state as serializable blobs. This enables:
@@ -12,7 +12,7 @@
  *
  * Usage:
  * ```typescript
- * import { createDebugger } from '@mojir/lits/debug'
+ * import { createDebugger } from '@mojir/dvala/debug'
  *
  * const dbg = createDebugger({ handlers })
  * await dbg.run(source)
@@ -24,8 +24,8 @@
  */
 
 import type { Any, Obj } from './interface'
-import { LitsError } from './errors'
-import type { LitsModule } from './builtin/modules/interface'
+import { DvalaError } from './errors'
+import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
 import { evaluateWithEffects, resumeWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
@@ -72,21 +72,21 @@ export interface HistoryEntry {
 export interface DebuggerOptions {
   /** Host effect handlers (e.g., 'llm.complete'). */
   handlers?: Handlers
-  /** Plain value bindings accessible from Lits code. */
+  /** Plain value bindings accessible from Dvala code. */
   bindings?: Record<string, Any>
-  /** Lits modules to make available via import. */
-  modules?: LitsModule[]
+  /** Dvala modules to make available via import. */
+  modules?: DvalaModule[]
 }
 
 /**
- * The Lits time-travel debugger interface.
+ * The Dvala time-travel debugger interface.
  *
  * After `run(source)`, the debugger pauses at the first debug step.
  * Use `stepForward`/`stepBackward`/`jumpTo` to navigate execution history.
  * Use `rerunFrom` to explore alternate timelines.
  */
-export interface LitsDebugger {
-  /** Run a Lits program in debug mode. Pauses at the first debug step. */
+export interface DvalaDebugger {
+  /** Run a Dvala program in debug mode. Pauses at the first debug step. */
   run: (source: string) => Promise<RunResult>
 
   /** Advance one step forward in execution. */
@@ -160,7 +160,7 @@ function parseStepInfo(meta: Any): StepInfo {
  * Create a time-travel debugger instance.
  *
  * The debugger intercepts every compound expression evaluation by injecting
- * a `lits.debug.step` effect handler that suspends at each step. Each
+ * a `dvala.debug.step` effect handler that suspends at each step. Each
  * suspension captures the full execution state as a serializable blob,
  * enabling forward/backward navigation and alternate timelines.
  *
@@ -175,7 +175,7 @@ function parseStepInfo(meta: Any): StepInfo {
  * await dbg.stepBackward()
  * ```
  */
-export function createDebugger(options?: DebuggerOptions): LitsDebugger {
+export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   const history: HistoryEntry[] = []
   let currentStep = -1
   const userHandlers = options?.handlers ?? {}
@@ -192,7 +192,7 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
   // Merge user handlers with the debug step handler
   const handlers: Handlers = {
     ...userHandlers,
-    'lits.debug.step': debugHandler,
+    'dvala.debug.step': debugHandler,
   }
 
   /**
@@ -235,14 +235,14 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
       return await resumeWithEffects(k, value, handlers)
     }
     catch (error) {
-      if (error instanceof LitsError) {
+      if (error instanceof DvalaError) {
         return { type: 'error', error }
       }
-      return { type: 'error', error: new LitsError(`${error}`, undefined) }
+      return { type: 'error', error: new DvalaError(`${error}`, undefined) }
     }
   }
 
-  const debugger_: LitsDebugger = {
+  const debugger_: DvalaDebugger = {
     get history() {
       return history
     },
@@ -275,10 +275,10 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
         return processResult(result)
       }
       catch (error) {
-        if (error instanceof LitsError) {
+        if (error instanceof DvalaError) {
           return { type: 'error', error }
         }
-        return { type: 'error', error: new LitsError(`${error}`, undefined) }
+        return { type: 'error', error: new DvalaError(`${error}`, undefined) }
       }
     },
 
@@ -291,7 +291,7 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
 
       // At the end of history — need to actually resume execution
       if (currentStep < 0 || currentStep >= history.length) {
-        return { type: 'error', error: new LitsError('No current step to advance from', undefined) }
+        return { type: 'error', error: new DvalaError('No current step to advance from', undefined) }
       }
 
       const entry = history[currentStep]!
@@ -303,7 +303,7 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
 
     async stepBackward(): Promise<RunResult> {
       if (currentStep <= 0) {
-        return { type: 'error', error: new LitsError('Already at the beginning of execution history', undefined) }
+        return { type: 'error', error: new DvalaError('Already at the beginning of execution history', undefined) }
       }
       currentStep--
       const entry = history[currentStep]!
@@ -312,7 +312,7 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
 
     async jumpTo(index: number): Promise<RunResult> {
       if (index < 0 || index >= history.length) {
-        return { type: 'error', error: new LitsError(`Step index ${index} out of range (0..${history.length - 1})`, undefined) }
+        return { type: 'error', error: new DvalaError(`Step index ${index} out of range (0..${history.length - 1})`, undefined) }
       }
       currentStep = index
       const entry = history[currentStep]!
@@ -321,7 +321,7 @@ export function createDebugger(options?: DebuggerOptions): LitsDebugger {
 
     async rerunFrom(index: number, alternateValue: Any): Promise<RunResult> {
       if (index < 0 || index >= history.length) {
-        return { type: 'error', error: new LitsError(`Step index ${index} out of range (0..${history.length - 1})`, undefined) }
+        return { type: 'error', error: new DvalaError(`Step index ${index} out of range (0..${history.length - 1})`, undefined) }
       }
 
       // Truncate history after the rerun point

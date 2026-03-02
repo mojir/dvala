@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('partition', () => {
   it('should return the correct sequence', () => {
@@ -315,8 +315,8 @@ describe('partition', () => {
       8030248384943040,
       8620496275465025,
     ])
-    expect(() => runNth('nth:partition-seq(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:partition-seq(300)')).toThrow(LitsError)
+    expect(() => runNth('nth:partition-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:partition-seq(300)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

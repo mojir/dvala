@@ -1,4 +1,4 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { ReservedSymbol } from './reservedNames'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 
@@ -314,5 +314,5 @@ export function asA_BinaryOperatorToken(token: Token | undefined): OperatorToken
 
 function throwUnexpectedToken(expected: TokenType, expectedValue: string | undefined, actual: Token | undefined): never {
   const actualOutput = actual ? `${actual[0]} '${actual[1]}'` : 'end of input'
-  throw new LitsError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, actual?.[2])
+  throw new DvalaError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, actual?.[2])
 }

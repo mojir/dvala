@@ -10,13 +10,13 @@ const docs: CustomDocs = {
     'effect(name)',
   ],
   details: [
-    ['name', 'dotted identifier', 'The effect name, e.g. `llm.complete` or `lits.log`.'],
+    ['name', 'dotted identifier', 'The effect name, e.g. `llm.complete` or `dvala.log`.'],
   ],
   description: 'Returns the unique effect reference for the given name. '
     + 'Calling `effect` with the same name always returns the same reference. '
     + 'Effect references are first-class values that can be stored, passed, and compared with `==`.',
   examples: [
-    'effect(lits.log)',
+    'effect(dvala.log)',
     '==(effect(llm.complete), effect(llm.complete))',
   ],
 }

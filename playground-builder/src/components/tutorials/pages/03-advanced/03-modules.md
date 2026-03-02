@@ -1,6 +1,6 @@
 # Modules
 
-Lits provides domain-specific function libraries as opt-in modules. Import them to access specialized functionality.
+Dvala provides domain-specific function libraries as opt-in modules. Import them to access specialized functionality.
 
 ## Importing a Module
 

@@ -1,4 +1,4 @@
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
 import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken } from '../../tokenizer/token'
@@ -56,12 +56,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   if (isSymbolToken(firstToken)) {
     const symbol = parseSymbol(ctx)
     if (!isUserDefinedSymbolNode(symbol)) {
-      throw new LitsError('Expected user defined symbol', firstToken[2])
+      throw new DvalaError('Expected user defined symbol', firstToken[2])
     }
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
-      throw new LitsError('Expected assignment', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected assignment', ctx.peekSourceCodeInfo())
     }
 
     return withSourceCodeInfo([bindingTargetTypes.symbol, [symbol, defaultValue]], firstToken[2])
@@ -70,12 +70,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   // Rest
   if (isOperatorToken(firstToken, '...')) {
     if (noRest) {
-      throw new LitsError('Rest element not allowed', firstToken[2])
+      throw new DvalaError('Rest element not allowed', firstToken[2])
     }
     ctx.advance()
     const symbol = asUserDefinedSymbolNode(parseSymbol(ctx))
     if (isOperatorToken(ctx.tryPeek(), '=')) {
-      throw new LitsError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
     }
     return withSourceCodeInfo([bindingTargetTypes.rest, [symbol[1], undefined]], firstToken[2])
   }
@@ -89,7 +89,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     let rest = false
     while (!isRBracketToken(token)) {
       if (rest) {
-        throw new LitsError('Rest argument must be last', token[2])
+        throw new DvalaError('Rest argument must be last', token[2])
       }
       if (isOperatorToken(token, ',')) {
         elements.push(null)
@@ -117,7 +117,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
-      throw new LitsError('Expected assignment', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected assignment', ctx.peekSourceCodeInfo())
     }
 
     return withSourceCodeInfo([bindingTargetTypes.array, [elements, defaultValue]], firstToken[2])
@@ -131,7 +131,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     let rest = false
     while (!isRBraceToken(token)) {
       if (rest) {
-        throw new LitsError('Rest argument must be last', token[2])
+        throw new DvalaError('Rest argument must be last', token[2])
       }
       if (isOperatorToken(token, '...')) {
         rest = true
@@ -143,12 +143,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       token = ctx.peek()
       if (isReservedSymbolToken(token, 'as')) {
         if (rest) {
-          throw new LitsError('Rest argument can not have alias', token[2])
+          throw new DvalaError('Rest argument can not have alias', token[2])
         }
         ctx.advance()
         const name = asUserDefinedSymbolNode(parseSymbol(ctx))
         if (elements[name[1]]) {
-          throw new LitsError(`Duplicate binding name: ${name}`, token[2])
+          throw new DvalaError(`Duplicate binding name: ${name}`, token[2])
         }
         elements[keyName] = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)]], firstToken[2])
       }
@@ -156,10 +156,10 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         // Without 'as' alias, the key becomes the binding name - must be user-defined symbol
         const key = asUserDefinedSymbolNode(keySymbol, keySymbol[2])
         if (elements[key[1]]) {
-          throw new LitsError(`Duplicate binding name: ${key}`, token[2])
+          throw new DvalaError(`Duplicate binding name: ${key}`, token[2])
         }
         if (rest && isOperatorToken(ctx.tryPeek(), '=')) {
-          throw new LitsError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
+          throw new DvalaError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
         }
 
         elements[key[1]] = rest
@@ -172,12 +172,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         if (allowLiteralPatterns) {
           // In pattern matching context, allow literals, nested objects/arrays, and variable bindings after ':'
           if (!isLBraceToken(token) && !isLBracketToken(token) && !isLiteralToken(token)) {
-            throw new LitsError('Expected literal, object or array pattern', token[2])
+            throw new DvalaError('Expected literal, object or array pattern', token[2])
           }
         }
         else {
           if (!isLBraceToken(token) && !isLBracketToken(token)) {
-            throw new LitsError('Expected object or array', token[2])
+            throw new DvalaError('Expected object or array', token[2])
           }
         }
         elements[keyName] = parseBindingTarget(ctx, { allowLiteralPatterns })
@@ -194,13 +194,13 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
-      throw new LitsError('Expected assignment', token[2])
+      throw new DvalaError('Expected assignment', token[2])
     }
 
     return withSourceCodeInfo([bindingTargetTypes.object, [elements, defaultValue]], firstToken[2])
   }
 
-  throw new LitsError('Expected symbol', ctx.peekSourceCodeInfo())
+  throw new DvalaError('Expected symbol', ctx.peekSourceCodeInfo())
 }
 
 function parseOptionalDefaulValue(ctx: ParserContext): AstNode | undefined {

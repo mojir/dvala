@@ -12,7 +12,7 @@ export interface Example {
 export const examples: Example[] = [
   {
     id: 'default',
-    name: 'Simple Lits program',
+    name: 'Simple Dvala program',
     description: 'A super simple example.',
     code: `
 10 + 20
@@ -56,7 +56,7 @@ write!([1, 2, 3][2]);
   {
     id: 'async-example',
     name: 'Async functions',
-    description: 'Demonstrates using async JavaScript functions from Lits. The playground runs in async mode, so async JS functions are automatically awaited.',
+    description: 'Demonstrates using async JavaScript functions from Dvala. The playground runs in async mode, so async JS functions are automatically awaited.',
     context: {
       fnBindings: {
         'fetch-user': `async (id) => {
@@ -194,7 +194,7 @@ main!()
       },
     },
     code: `
-// Functional Text Adventure Game in Lits
+// Functional Text Adventure Game in Dvala
 
 // Define locations
 let locations = {
@@ -538,7 +538,7 @@ end;
 
 // Start game
 let start-game = () -> do
-  alert!("=== Lits Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
+  alert!("=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
   game-loop(initial-state)
 end;
 

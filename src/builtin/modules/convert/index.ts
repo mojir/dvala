@@ -1,7 +1,7 @@
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 
 // --- Conversion factor tables ---
 // Each category maps unit abbreviations to a factor relative to a base unit.
@@ -414,7 +414,7 @@ const convertFunctions: BuiltinNormalExpressions = {
   ...generateTemperatureConversions(),
 }
 
-export const convertModule: LitsModule = {
+export const convertModule: DvalaModule = {
   name: 'convert',
   functions: convertFunctions,
 }

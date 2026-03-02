@@ -1,5 +1,5 @@
 import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
-import type { ContextParams, Lits } from '../Lits/Lits'
+import type { ContextParams, Dvala } from '../Dvala/Dvala'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 
 type AutoCompleteSuggestion = {
@@ -7,7 +7,7 @@ type AutoCompleteSuggestion = {
   position: number
 }
 
-const litsCommands = new Set([...normalExpressionKeys, ...specialExpressionKeys, ...Object.keys(reservedSymbolRecord)])
+const dvalaCommands = new Set([...normalExpressionKeys, ...specialExpressionKeys, ...Object.keys(reservedSymbolRecord)])
 
 // TODO: replace with get suggestions function
 export class AutoCompleter {
@@ -17,9 +17,9 @@ export class AutoCompleter {
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
-  constructor(public readonly originalProgram: string, public readonly originalPosition: number, lits: Lits, params: ContextParams) {
+  constructor(public readonly originalProgram: string, public readonly originalPosition: number, dvala: Dvala, params: ContextParams) {
     const partialProgram = this.originalProgram.slice(0, this.originalPosition)
-    const tokenStream = lits.tokenize(partialProgram)
+    const tokenStream = dvala.tokenize(partialProgram)
 
     const lastToken = tokenStream.tokens.at(-1)
     if (!lastToken) {
@@ -125,7 +125,7 @@ export class AutoCompleter {
   private generateWithPredicate(params: ContextParams, shouldInclude: (suggestion: string) => boolean): string[] {
     const suggestions = new Set<string>()
 
-    litsCommands.forEach((suggestion) => {
+    dvalaCommands.forEach((suggestion) => {
       if (shouldInclude(suggestion)) {
         suggestions.add(suggestion)
       }

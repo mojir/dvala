@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { vectorModule } from './'
 
-const lits = new Lits({ modules: [vectorModule] })
+const dvala = new Dvala({ modules: [vectorModule] })
 
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {
   // Replace 'vec:functionName(' with 'let v = import(vector); v.functionName('
   const modifiedCode = code.replace(/vec:(\S+?)\(/g, 'let v = import(vector); v.$1(')
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('vector functions', () => {
@@ -77,7 +77,7 @@ describe('vector functions', () => {
       expect(runVec('vec:mode([1, 2, 3])')).toEqual([1, 2, 3])
       expect(runVec('vec:mode([1, 2, 2, 3])')).toEqual([2])
       expect(runVec('vec:mode([0])')).toEqual([0])
-      expect(() => runVec('vec:mode([])')).toThrowError(LitsError)
+      expect(() => runVec('vec:mode([])')).toThrowError(DvalaError)
     })
   })
   describe('vec:min-index', () => {
@@ -85,7 +85,7 @@ describe('vector functions', () => {
       expect(runVec('vec:min-index([1, 2, 3])')).toEqual(0)
       expect(runVec('vec:min-index([3, 2, 1])')).toEqual(2)
       expect(runVec('vec:min-index([0])')).toEqual(0)
-      expect(() => runVec('vec:min-index([])')).toThrowError(LitsError)
+      expect(() => runVec('vec:min-index([])')).toThrowError(DvalaError)
     })
   })
   describe('vec:max-index', () => {
@@ -93,7 +93,7 @@ describe('vector functions', () => {
       expect(runVec('vec:max-index([1, 2, 3])')).toEqual(2)
       expect(runVec('vec:max-index([3, 2, 1])')).toEqual(0)
       expect(runVec('vec:max-index([0])')).toEqual(0)
-      expect(() => runVec('vec:max-index([])')).toThrowError(LitsError)
+      expect(() => runVec('vec:max-index([])')).toThrowError(DvalaError)
     })
   })
   describe('vec:sort-indices', () => {
@@ -117,9 +117,9 @@ describe('vector functions', () => {
     it('should create a linearly spaced vector', () => {
       expect(runVec('vec:linspace(1, 10, 5)')).toEqual([1, 3.25, 5.5, 7.75, 10])
       expect(runVec('vec:linspace(1, 10, 0)')).toEqual([])
-      expect(() => runVec('vec:linspace(1, 10, -1)')).toThrowError(LitsError)
+      expect(() => runVec('vec:linspace(1, 10, -1)')).toThrowError(DvalaError)
       expect(runVec('vec:linspace(1, 10, 1)')).toEqual([1])
-      expect(() => runVec('vec:linspace(1, 10)')).toThrowError(LitsError)
+      expect(() => runVec('vec:linspace(1, 10)')).toThrowError(DvalaError)
     })
   })
   describe('vec:cumsum', () => {
@@ -145,9 +145,9 @@ describe('vector functions', () => {
     it('should calculate the quartiles of a vector', () => {
       expect(runVec('vec:quartiles([1, 2, 3, 4])')).toEqual([1.5, 2.5, 3.5])
       expect(runVec('vec:quartiles([1, 2, 3, 4, 5])')).toEqual([1.5, 3, 4.5])
-      expect(() => runVec('vec:quartiles([1])')).toThrowError(LitsError)
-      expect(() => runVec('vec:quartiles([1, 2, 3])')).toThrowError(LitsError)
-      expect(() => runVec('vec:quartiles([])')).toThrowError(LitsError)
+      expect(() => runVec('vec:quartiles([1])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:quartiles([1, 2, 3])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:quartiles([])')).toThrowError(DvalaError)
     })
   })
   describe('vec:percentile', () => {
@@ -309,7 +309,7 @@ describe('vector functions', () => {
       expect(runVec('vec:ecdf([1, 2, 2, 3, 2, 6, 4, 3, 2, 4, 1, 3, 2, 9, 10, 12], 5)')).toEqual(0.75)
       expect(runVec('vec:ecdf([1], 3)')).toEqual(1)
       expect(runVec('vec:ecdf([1], 0)')).toEqual(0)
-      expect(() => runVec('vec:ecdf([], 1)')).toThrow(LitsError)
+      expect(() => runVec('vec:ecdf([], 1)')).toThrow(DvalaError)
     })
   })
   describe('vec:outliers?', () => {
@@ -339,7 +339,7 @@ describe('vector functions', () => {
       expect(runVec('vec:bincount([1, 2, 2, 3])')).toEqual([0, 1, 2, 1])
       expect(runVec('vec:bincount([1, 2, 2, 3], 5)')).toEqual([0, 1, 2, 1, 0])
       expect(runVec('vec:bincount([1, 2, 2, 3], 5, [1, 2, 3, 4])')).toEqual([0, 1, 5, 4, 0])
-      expect(() => runVec('vec:bincount([1, 2, 2, 3], 5, [1, 2, 3])')).toThrowError(LitsError)
+      expect(() => runVec('vec:bincount([1, 2, 2, 3], 5, [1, 2, 3])')).toThrowError(DvalaError)
     })
   })
   describe('vec:winsorize', () => {
@@ -361,8 +361,8 @@ describe('vector functions', () => {
       expect(runVec('vec:mse([1, 2, 3], [4, 5, 6])')).toEqual(9)
       expect(runVec('vec:mse([1, 2], [1, 1])')).toEqual(0.5)
       expect(runVec('vec:mse([1], [1])')).toEqual(0)
-      expect(() => runVec('vec:mse([], [])')).toThrowError(LitsError)
-      expect(() => runVec('vec:mse([2, 1], [1])')).toThrowError(LitsError)
+      expect(() => runVec('vec:mse([], [])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:mse([2, 1], [1])')).toThrowError(DvalaError)
     })
   })
   describe('vec:mae', () => {
@@ -371,8 +371,8 @@ describe('vector functions', () => {
       expect(runVec('vec:mae([1, 2, 3], [4, 5, 6])')).toEqual(3)
       expect(runVec('vec:mae([1, 2], [1, 1])')).toEqual(0.5)
       expect(runVec('vec:mae([1], [1])')).toEqual(0)
-      expect(() => runVec('vec:mae([], [])')).toThrowError(LitsError)
-      expect(() => runVec('vec:mae([2, 1], [2])')).toThrowError(LitsError)
+      expect(() => runVec('vec:mae([], [])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:mae([2, 1], [2])')).toThrowError(DvalaError)
     })
   })
   describe('vec:rmse', () => {
@@ -381,8 +381,8 @@ describe('vector functions', () => {
       expect(runVec('vec:rmse([1, 2, 3], [4, 5, 6])')).toEqual(3)
       expect(runVec('vec:rmse([1, 2], [1, 1])')).toEqual(0.7071067811865476)
       expect(runVec('vec:rmse([1], [1])')).toEqual(0)
-      expect(() => runVec('vec:rmse([], [])')).toThrowError(LitsError)
-      expect(() => runVec('vec:rmse([2, 1], [1])')).toThrowError(LitsError)
+      expect(() => runVec('vec:rmse([], [])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:rmse([2, 1], [1])')).toThrowError(DvalaError)
     })
   })
   describe('vec:smape', () => {
@@ -392,8 +392,8 @@ describe('vector functions', () => {
       expect(runVec('vec:smape([0, 1, 2], [0, 3, 4])')).toEqual(0.5555555555555555)
       expect(runVec('vec:smape([1, 2], [1, 1])')).toEqual(0.3333333333333333)
       expect(runVec('vec:smape([1], [1])')).toEqual(0)
-      expect(() => runVec('vec:smape([], [])')).toThrowError(LitsError)
-      expect(() => runVec('vec:smape([2, 1], [2])')).toThrowError(LitsError)
+      expect(() => runVec('vec:smape([], [])')).toThrowError(DvalaError)
+      expect(() => runVec('vec:smape([2, 1], [2])')).toThrowError(DvalaError)
     })
   })
 })

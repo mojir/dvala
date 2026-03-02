@@ -537,7 +537,7 @@ export interface BindingDefaultFrame {
  * NaN guard after evaluating a normal expression.
  *
  * Normal expressions go through a NaN check: if the result is `NaN`, a
- * `LitsError` is thrown. This frame wraps that check.
+ * `DvalaError` is thrown. This frame wraps that check.
  */
 export interface NanCheckFrame {
   type: 'NanCheck'
@@ -549,14 +549,14 @@ export interface NanCheckFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * Injected by the trampoline in debug mode (when a `lits.debug.step` handler
+ * Injected by the trampoline in debug mode (when a `dvala.debug.step` handler
  * is registered). Wraps compound expression evaluation to intercept the result
- * and produce a `PerformStep` for `lits.debug.step`.
+ * and produce a `PerformStep` for `dvala.debug.step`.
  *
  * Two-phase lifecycle:
  * 1. **awaitValue**: Pushed before evaluating a compound node. Receives the
  *    node's evaluation result, builds step info, and produces a `PerformStep`
- *    for `lits.debug.step` with the step info as args.
+ *    for `dvala.debug.step` with the step info as args.
  * 2. **awaitPerform**: The debug perform completed (handler resumed or
  *    suspension was resumed). Passes the value through to the next frame.
  *    For normal stepping, the debugger resumes with the original value.

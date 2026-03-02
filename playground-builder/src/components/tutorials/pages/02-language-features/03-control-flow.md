@@ -1,6 +1,6 @@
 # Control Flow
 
-Since everything in Lits is an expression, all control flow constructs return values.
+Since everything in Dvala is an expression, all control flow constructs return values.
 
 ## If / Then / Else
 

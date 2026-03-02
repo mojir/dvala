@@ -1,6 +1,6 @@
 # Collections
 
-Lits has three collection types: arrays, objects, and strings. All are immutable — every operation returns a new collection.
+Dvala has three collection types: arrays, objects, and strings. All are immutable — every operation returns a new collection.
 
 ## Arrays
 

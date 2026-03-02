@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
-import { isEffectRef, isObj } from '../typeGuards/lits'
+import { isEffectRef, isObj } from '../typeGuards/dvala'
 import { EFFECT_SYMBOL } from '../utils/symbols'
 import { clearEffectRefInternMap, getEffectRef } from './effectRef'
 
@@ -23,7 +23,7 @@ describe('getEffectRef', () => {
 
   it('should return different references for different names', () => {
     const a = getEffectRef('llm.complete')
-    const b = getEffectRef('lits.log')
+    const b = getEffectRef('dvala.log')
     expect(a).not.toBe(b)
   })
 

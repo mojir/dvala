@@ -9,7 +9,7 @@ import os from 'node:os'
 import type { UnknownRecord } from '../../src/interface'
 
 const historyDir = path.join(os.homedir(), '.config')
-const historyFile = path.join(historyDir, 'lits_history.txt')
+const historyFile = path.join(historyDir, 'dvala_history.txt')
 
 function isHistoryEnabled() {
   if (fs.existsSync(historyFile))

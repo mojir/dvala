@@ -1,4 +1,4 @@
-import type { LitsModule } from './builtin/modules/interface'
+import type { DvalaModule } from './builtin/modules/interface'
 import { assertModule } from './builtin/modules/assertion'
 import { gridModule } from './builtin/modules/grid'
 import { randomModule } from './builtin/modules/random'
@@ -14,7 +14,7 @@ import { sequenceUtilsModule } from './builtin/modules/sequence'
 import { bitwiseUtilsModule } from './builtin/modules/bitwise'
 import { convertModule } from './builtin/modules/convert'
 
-export const allBuiltinModules: LitsModule[] = [
+export const allBuiltinModules: DvalaModule[] = [
   assertModule,
   gridModule,
   randomModule,

@@ -7,8 +7,8 @@ import process from 'node:process'
 export function renderMermaidToSvg(code: string): string {
   const tmpDir = os.tmpdir()
   const timestamp = Date.now()
-  const inputFile = path.join(tmpDir, `lits-mermaid-${timestamp}.mmd`)
-  const outputFile = path.join(tmpDir, `lits-mermaid-${timestamp}.svg`)
+  const inputFile = path.join(tmpDir, `dvala-mermaid-${timestamp}.mmd`)
+  const outputFile = path.join(tmpDir, `dvala-mermaid-${timestamp}.svg`)
   const mmdc = path.resolve(process.cwd(), 'node_modules/.bin/mmdc')
 
   try {

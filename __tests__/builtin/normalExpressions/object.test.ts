@@ -1,90 +1,90 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../src/Lits/Lits'
-import { LitsError } from '../../../src/errors'
+import { Dvala } from '../../../src/Dvala/Dvala'
+import { DvalaError } from '../../../src/errors'
 
 describe('object functions', () => {
-  for (const lits of [new Lits(), new Lits({ debug: true })]) {
+  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
     describe('keys', () => {
       it('samples', () => {
-        expect(lits.run('object()')).toEqual({})
-        // expect(lits.run('keys(object())')).toEqual([])
-        // expect(lits.run('keys(object("x", 1))')).toEqual(['x'])
-        // expect(lits.run('keys(object("x", null, "y", 2))')).toEqual(['x', 'y'])
-        // expect(() => lits.run('keys()')).toThrow(LitsError)
-        // expect(() => lits.run('keys(0)')).toThrow(LitsError)
-        // expect(() => lits.run('keys(true)')).toThrow(LitsError)
-        // expect(() => lits.run('keys(false)')).toThrow(LitsError)
-        // expect(() => lits.run('keys(null)')).toThrow(LitsError)
-        // expect(() => lits.run('keys([1])')).toThrow(LitsError)
+        expect(dvala.run('object()')).toEqual({})
+        // expect(dvala.run('keys(object())')).toEqual([])
+        // expect(dvala.run('keys(object("x", 1))')).toEqual(['x'])
+        // expect(dvala.run('keys(object("x", null, "y", 2))')).toEqual(['x', 'y'])
+        // expect(() => dvala.run('keys()')).toThrow(DvalaError)
+        // expect(() => dvala.run('keys(0)')).toThrow(DvalaError)
+        // expect(() => dvala.run('keys(true)')).toThrow(DvalaError)
+        // expect(() => dvala.run('keys(false)')).toThrow(DvalaError)
+        // expect(() => dvala.run('keys(null)')).toThrow(DvalaError)
+        // expect(() => dvala.run('keys([1])')).toThrow(DvalaError)
       })
     })
 
     describe('vals', () => {
       it('samples', () => {
-        expect(lits.run('vals(object())')).toEqual([])
-        expect(lits.run('vals(object("x", 1))')).toEqual([1])
-        expect(lits.run('vals(object("x", null, "y", 2))')).toEqual([null, 2])
-        expect(() => lits.run('vals()')).toThrow(LitsError)
-        expect(() => lits.run('vals(object("x") object("x"))')).toThrow(LitsError)
-        expect(() => lits.run('vals(0)')).toThrow(LitsError)
-        expect(() => lits.run('vals(true)')).toThrow(LitsError)
-        expect(() => lits.run('vals(false)')).toThrow(LitsError)
-        expect(() => lits.run('vals(null)')).toThrow(LitsError)
-        expect(() => lits.run('vals([1])')).toThrow(LitsError)
+        expect(dvala.run('vals(object())')).toEqual([])
+        expect(dvala.run('vals(object("x", 1))')).toEqual([1])
+        expect(dvala.run('vals(object("x", null, "y", 2))')).toEqual([null, 2])
+        expect(() => dvala.run('vals()')).toThrow(DvalaError)
+        expect(() => dvala.run('vals(object("x") object("x"))')).toThrow(DvalaError)
+        expect(() => dvala.run('vals(0)')).toThrow(DvalaError)
+        expect(() => dvala.run('vals(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('vals(false)')).toThrow(DvalaError)
+        expect(() => dvala.run('vals(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('vals([1])')).toThrow(DvalaError)
       })
     })
 
     describe('entries', () => {
       it('samples', () => {
-        expect(lits.run('entries(object())')).toEqual([])
-        expect(lits.run('entries(object("x", 1))')).toEqual([['x', 1]])
-        expect(lits.run('entries(object("x", null, "y", 2))')).toEqual([
+        expect(dvala.run('entries(object())')).toEqual([])
+        expect(dvala.run('entries(object("x", 1))')).toEqual([['x', 1]])
+        expect(dvala.run('entries(object("x", null, "y", 2))')).toEqual([
           ['x', null],
           ['y', 2],
         ])
-        expect(() => lits.run('entries()')).toThrow(LitsError)
-        expect(() => lits.run('entries(object("x") object("x"))')).toThrow(LitsError)
-        expect(() => lits.run('entries(0)')).toThrow(LitsError)
-        expect(() => lits.run('entries(true)')).toThrow(LitsError)
-        expect(() => lits.run('entries(false)')).toThrow(LitsError)
-        expect(() => lits.run('entries(null)')).toThrow(LitsError)
-        expect(() => lits.run('entries([1])')).toThrow(LitsError)
+        expect(() => dvala.run('entries()')).toThrow(DvalaError)
+        expect(() => dvala.run('entries(object("x") object("x"))')).toThrow(DvalaError)
+        expect(() => dvala.run('entries(0)')).toThrow(DvalaError)
+        expect(() => dvala.run('entries(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('entries(false)')).toThrow(DvalaError)
+        expect(() => dvala.run('entries(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('entries([1])')).toThrow(DvalaError)
       })
     })
 
     describe('find', () => {
       it('samples', () => {
-        expect(lits.run('find(object("x", 1), "a")')).toBeNull()
-        expect(lits.run('find(object("x", 1), "x")')).toEqual(['x', 1])
-        expect(lits.run('find(object("x", 1, "y", 2), "x")')).toEqual(['x', 1])
-        expect(() => lits.run('find()')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"), object("x"))')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"), null)')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"), true)')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"), false)')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"), "x" "y")')).toThrow(LitsError)
-        expect(() => lits.run('find(object("x"))')).toThrow(LitsError)
-        expect(() => lits.run('find([], "x")')).toThrow(LitsError)
-        expect(() => lits.run('find(null, "x")')).toThrow(LitsError)
-        expect(() => lits.run('find(false, "x")')).toThrow(LitsError)
-        expect(() => lits.run('find(4, "x")')).toThrow(LitsError)
+        expect(dvala.run('find(object("x", 1), "a")')).toBeNull()
+        expect(dvala.run('find(object("x", 1), "x")')).toEqual(['x', 1])
+        expect(dvala.run('find(object("x", 1, "y", 2), "x")')).toEqual(['x', 1])
+        expect(() => dvala.run('find()')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"), object("x"))')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"), null)')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"), true)')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"), false)')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"), "x" "y")')).toThrow(DvalaError)
+        expect(() => dvala.run('find(object("x"))')).toThrow(DvalaError)
+        expect(() => dvala.run('find([], "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('find(null, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('find(false, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('find(4, "x")')).toThrow(DvalaError)
       })
     })
 
     describe('dissoc', () => {
       it('samples', () => {
-        expect(lits.run('dissoc(object(), "x")')).toEqual({})
-        expect(lits.run('dissoc(object("x", 1, "y", 2), "x")')).toEqual({ y: 2 })
-        expect(lits.run('dissoc(object("x", 1), "")')).toEqual({ x: 1 })
-        expect(lits.run('dissoc(object("x", object()), "x")')).toEqual({})
-        expect(() => lits.run('dissoc()')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(object("x", 1) 1)')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(object("x"), object("x"))')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(0, "x")')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(true, "x")')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(false, "x")')).toThrow(LitsError)
-        expect(() => lits.run('dissoc(null, "x")')).toThrow(LitsError)
-        expect(() => lits.run('dissoc([1], "x")')).toThrow(LitsError)
+        expect(dvala.run('dissoc(object(), "x")')).toEqual({})
+        expect(dvala.run('dissoc(object("x", 1, "y", 2), "x")')).toEqual({ y: 2 })
+        expect(dvala.run('dissoc(object("x", 1), "")')).toEqual({ x: 1 })
+        expect(dvala.run('dissoc(object("x", object()), "x")')).toEqual({})
+        expect(() => dvala.run('dissoc()')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(object("x", 1) 1)')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(object("x"), object("x"))')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(0, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(true, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(false, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc(null, "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('dissoc([1], "x")')).toThrow(DvalaError)
       })
       it('delete atribute', () => {
         const program = `
@@ -92,7 +92,7 @@ describe('object functions', () => {
         dissoc(obj, "x");
         obj
       `
-        expect(lits.run(program)).toEqual({ x: 10 })
+        expect(dvala.run(program)).toEqual({ x: 10 })
       })
 
       it('delete unexisting attribute', () => {
@@ -101,46 +101,46 @@ describe('object functions', () => {
         dissoc(obj, "y");
         obj
       `
-        expect(lits.run(program)).toEqual({ x: 10 })
+        expect(dvala.run(program)).toEqual({ x: 10 })
       })
     })
 
     describe('merge', () => {
       it('samples', () => {
-        expect(lits.run('merge(object("x", 10))')).toEqual({ x: 10 })
-        expect(lits.run('merge(object("x", 10), object("y", 20))')).toEqual({ x: 10, y: 20 })
-        expect(lits.run('merge(object("x", 10), object("x", 5))')).toEqual({ x: 5 })
-        expect(lits.run('merge({}, { x: 10 }, { y: 10 }, { z: 10 })')).toEqual({
+        expect(dvala.run('merge(object("x", 10))')).toEqual({ x: 10 })
+        expect(dvala.run('merge(object("x", 10), object("y", 20))')).toEqual({ x: 10, y: 20 })
+        expect(dvala.run('merge(object("x", 10), object("x", 5))')).toEqual({ x: 5 })
+        expect(dvala.run('merge({}, { x: 10 }, { y: 10 }, { z: 10 })')).toEqual({
           x: 10,
           y: 10,
           z: 10,
         })
-        expect(lits.run('merge()')).toBeNull()
-        expect(() => lits.run('merge(1)')).toThrow(LitsError)
-        expect(() => lits.run('merge(:1)')).toThrow(LitsError)
-        expect(() => lits.run('merge(true)')).toThrow(LitsError)
-        expect(() => lits.run('merge(false)')).toThrow(LitsError)
-        expect(() => lits.run('merge(null)')).toThrow(LitsError)
-        expect(() => lits.run('merge((array))')).toThrow(LitsError)
+        expect(dvala.run('merge()')).toBeNull()
+        expect(() => dvala.run('merge(1)')).toThrow(DvalaError)
+        expect(() => dvala.run('merge(:1)')).toThrow(DvalaError)
+        expect(() => dvala.run('merge(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('merge(false)')).toThrow(DvalaError)
+        expect(() => dvala.run('merge(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('merge((array))')).toThrow(DvalaError)
       })
 
       describe('merge-with', () => {
         it('samples', () => {
-          expect(lits.run('merge-with(object("x", 10), object("y", 20), +)')).toEqual({
+          expect(dvala.run('merge-with(object("x", 10), object("y", 20), +)')).toEqual({
             x: 10,
             y: 20,
           })
-          expect(lits.run('merge-with(object("x", 10), object("x", 15, "y", 20), +)')).toEqual({
+          expect(dvala.run('merge-with(object("x", 10), object("x", 15, "y", 20), +)')).toEqual({
             x: 25,
             y: 20,
           })
-          expect(lits.run('merge-with(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual({
+          expect(dvala.run('merge-with(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual({
             x: -80,
           })
-          expect(() => lits.run('merge-with(+)')).toThrow(LitsError)
-          expect(() => lits.run('merge-with()')).toThrow(LitsError)
-          expect(() => lits.run('merge-with(+, "kjh")')).toThrow(LitsError)
-          expect(() => lits.run('merge-with(+, [1, 2, 3])')).toThrow(LitsError)
+          expect(() => dvala.run('merge-with(+)')).toThrow(DvalaError)
+          expect(() => dvala.run('merge-with()')).toThrow(DvalaError)
+          expect(() => dvala.run('merge-with(+, "kjh")')).toThrow(DvalaError)
+          expect(() => dvala.run('merge-with(+, [1, 2, 3])')).toThrow(DvalaError)
         })
       })
 
@@ -150,32 +150,32 @@ describe('object functions', () => {
         let obj2 = merge(obj1);
         identical?(obj1, obj2)
       `
-        expect(lits.run(program)).toBe(false)
+        expect(dvala.run(program)).toBe(false)
       })
     })
 
     describe('zipmap', () => {
       it('samples', () => {
-        expect(lits.run('zipmap(["a", "b", "c"], [10, null, [1, 2, 3]])')).toEqual({ a: 10, b: null, c: [1, 2, 3] })
-        expect(lits.run('zipmap(["a", "b"], [10, null, [1, 2, 3]])')).toEqual({ a: 10, b: null })
-        expect(lits.run('zipmap(["a", "b", "c"], [10, null])')).toEqual({ a: 10, b: null })
-        expect(lits.run('zipmap(["a", "b", "c"], [])')).toEqual({})
-        expect(lits.run('zipmap([], [10, null, [1, 2, 3]])')).toEqual({})
-        expect(lits.run('zipmap([], [])')).toEqual({})
-        expect(() => lits.run('zipmap([])')).toThrow(LitsError)
-        expect(() => lits.run('zipmap("abc", [])')).toThrow(LitsError)
-        expect(() => lits.run('zipmap([], "abc)')).toThrow(LitsError)
-        expect(() => lits.run('zipmap([], [], [])')).toThrow(LitsError)
+        expect(dvala.run('zipmap(["a", "b", "c"], [10, null, [1, 2, 3]])')).toEqual({ a: 10, b: null, c: [1, 2, 3] })
+        expect(dvala.run('zipmap(["a", "b"], [10, null, [1, 2, 3]])')).toEqual({ a: 10, b: null })
+        expect(dvala.run('zipmap(["a", "b", "c"], [10, null])')).toEqual({ a: 10, b: null })
+        expect(dvala.run('zipmap(["a", "b", "c"], [])')).toEqual({})
+        expect(dvala.run('zipmap([], [10, null, [1, 2, 3]])')).toEqual({})
+        expect(dvala.run('zipmap([], [])')).toEqual({})
+        expect(() => dvala.run('zipmap([])')).toThrow(DvalaError)
+        expect(() => dvala.run('zipmap("abc", [])')).toThrow(DvalaError)
+        expect(() => dvala.run('zipmap([], "abc)')).toThrow(DvalaError)
+        expect(() => dvala.run('zipmap([], [], [])')).toThrow(DvalaError)
       })
     })
 
     describe('select-keys', () => {
       it('samples', () => {
-        expect(lits.run('select-keys({a: 1, b: 2, c: 3}, ["a", "b"])')).toEqual({ a: 1, b: 2 })
-        expect(lits.run('select-keys({a: 1}, ["a", "b"])')).toEqual({ a: 1 })
-        expect(() => lits.run('select-keys({a: 1})')).toThrow(LitsError)
-        expect(() => lits.run('select-keys({a: 1}, "a")')).toThrow(LitsError)
-        expect(() => lits.run('select-keys({a: 1}, ["a"], ["a"])')).toThrow(LitsError)
+        expect(dvala.run('select-keys({a: 1, b: 2, c: 3}, ["a", "b"])')).toEqual({ a: 1, b: 2 })
+        expect(dvala.run('select-keys({a: 1}, ["a", "b"])')).toEqual({ a: 1 })
+        expect(() => dvala.run('select-keys({a: 1})')).toThrow(DvalaError)
+        expect(() => dvala.run('select-keys({a: 1}, "a")')).toThrow(DvalaError)
+        expect(() => dvala.run('select-keys({a: 1}, ["a"], ["a"])')).toThrow(DvalaError)
       })
     })
   }

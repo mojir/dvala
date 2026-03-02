@@ -1,12 +1,12 @@
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import type { Any, Arr } from '../../../interface'
 import { assertArray } from '../../../typeGuards/array'
-import { asAny } from '../../../typeGuards/lits'
+import { asAny } from '../../../typeGuards/dvala'
 import { assertNumber } from '../../../typeGuards/number'
 import { assertString } from '../../../typeGuards/string'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
 
 const randomFunctions: BuiltinNormalExpressions = {
@@ -67,7 +67,7 @@ const randomFunctions: BuiltinNormalExpressions = {
       assertArray(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       if (array.length === 0) {
-        throw new LitsError('Cannot sample from an empty array.', sourceCodeInfo)
+        throw new DvalaError('Cannot sample from an empty array.', sourceCodeInfo)
       }
 
       const result: Arr = []
@@ -89,7 +89,7 @@ const randomFunctions: BuiltinNormalExpressions = {
       assertArray(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true, lte: array.length })
       if (array.length === 0) {
-        throw new LitsError('Cannot sample from an empty array.', sourceCodeInfo)
+        throw new DvalaError('Cannot sample from an empty array.', sourceCodeInfo)
       }
       const result: Arr = []
 
@@ -208,7 +208,7 @@ const randomFunctions: BuiltinNormalExpressions = {
     evaluate: ([charSet], sourceCodeInfo): string => {
       assertString(charSet, sourceCodeInfo)
       if (charSet.length === 0) {
-        throw new LitsError('Character set cannot be empty.', sourceCodeInfo)
+        throw new DvalaError('Character set cannot be empty.', sourceCodeInfo)
       }
       const randomIndex = Math.floor(Math.random() * charSet.length)
       return charSet[randomIndex]!
@@ -221,7 +221,7 @@ const randomFunctions: BuiltinNormalExpressions = {
       assertNumber(length, sourceCodeInfo, { integer: true, positive: true })
       assertString(charSet, sourceCodeInfo)
       if (charSet.length === 0) {
-        throw new LitsError('Character set cannot be empty.', sourceCodeInfo)
+        throw new DvalaError('Character set cannot be empty.', sourceCodeInfo)
       }
       let result = ''
       for (let i = 0; i < length; i++) {
@@ -313,7 +313,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
     randomFunctions[key].docs = docs
 }
 
-export const randomModule: LitsModule = {
+export const randomModule: DvalaModule = {
   name: 'random',
   functions: randomFunctions,
 }

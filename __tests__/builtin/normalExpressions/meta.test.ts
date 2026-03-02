@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../src/Lits/Lits'
+import { Dvala } from '../../../src/Dvala/Dvala'
 import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
 import type { ExecuteFunction } from '../../../src/evaluator/interface'
@@ -7,14 +7,14 @@ import { FUNCTION_SYMBOL } from '../../../src/utils/symbols'
 import '../../../src/initReferenceData'
 
 describe('misc functions', () => {
-  for (const lits of [new Lits(), new Lits({ debug: true })]) {
+  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
     describe('doc', () => {
       it('should return the doc for a function', () => {
-        expect((lits.run('doc(>=)') as string).length).toBeGreaterThan(0)
-        expect((lits.run('doc(>=(_))') as string).length).toBe(0)
-        expect((lits.run('doc(number?)') as string).length).toBeGreaterThan(0)
-        expect(lits.run('doc(2)')).toBe('')
-        expect(lits.run(`
+        expect((dvala.run('doc(>=)') as string).length).toBeGreaterThan(0)
+        expect((dvala.run('doc(>=(_))') as string).length).toBe(0)
+        expect((dvala.run('doc(number?)') as string).length).toBeGreaterThan(0)
+        expect(dvala.run('doc(2)')).toBe('')
+        expect(dvala.run(`
           let add = (a, b) -> do
             """
             Adds two numbers together.
@@ -25,7 +25,7 @@ describe('misc functions', () => {
           end;
           doc(add)
         `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
-        expect(lits.run(`
+        expect(dvala.run(`
           let add = (a, b) -> do
             """
             Adds two numbers together.
@@ -34,7 +34,7 @@ describe('misc functions', () => {
           end;
           doc(add)
         `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
-        expect(lits.run(`
+        expect(dvala.run(`
           let add = (a, b) -> do
             """
             Adds two numbers together.
@@ -43,7 +43,7 @@ describe('misc functions', () => {
           end;
           doc(add)
         `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
-        expect(lits.run(`
+        expect(dvala.run(`
           let add = () -> do
             """Escaping\\""".""";
             a + b
@@ -54,9 +54,9 @@ describe('misc functions', () => {
     })
     describe('arity', () => {
       it('should return the arity of a function', () => {
-        expect(lits.run('arity(+)')).toEqual({})
-        expect(lits.run('arity(1)')).toEqual({ min: 1, max: 1 })
-        expect(lits.run('arity((...x) -> x)')).toEqual({})
+        expect(dvala.run('arity(+)')).toEqual({})
+        expect(dvala.run('arity(1)')).toEqual({ min: 1, max: 1 })
+        expect(dvala.run('arity((...x) -> x)')).toEqual({})
       })
     })
   }

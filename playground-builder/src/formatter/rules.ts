@@ -1,7 +1,7 @@
 import { styles } from '../styles'
 import type { TextFormatter } from '../../../common/createFormatter'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
-import { Lits } from '../../../src/Lits/Lits'
+import { Dvala } from '../../../src/Dvala/Dvala'
 import { allBuiltinModules } from '../../../src/allModules'
 import type { Token } from '../../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
@@ -71,13 +71,13 @@ const inlineCodeRule: FormatterRule = (text, index) => {
       throw new Error(`No end \` found for rule inlineCodeRule: ${text}`)
 
     count += 1
-    const formattedText = formatLitsExpression(body)
+    const formattedText = formatDvalaExpression(body)
     return { count, formattedText }
   }
   return { count: 0, formattedText: '' }
 }
 
-const lits = new Lits({ debug: false, modules: allBuiltinModules })
+const dvala = new Dvala({ debug: false, modules: allBuiltinModules })
 
 export type StyleOverride = {
   values: string[]
@@ -87,9 +87,9 @@ export type StyleOverride = {
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 
-export function formatLitsExpression(program: string, styleOverride?: StyleOverride): string {
+export function formatDvalaExpression(program: string, styleOverride?: StyleOverride): string {
   try {
-    const tokens = lits.tokenize(program).tokens
+    const tokens = dvala.tokenize(program).tokens
     const spans = tokens.map((token) => {
       const style = styleOverride?.values.includes(token[1]) ? styleOverride.style : getStylesFromToken(token)
       return `<span ${style}>${token[1]}</span>`

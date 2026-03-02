@@ -11,16 +11,16 @@ export const defaultState = {
   'context-scroll-top': 0 as number,
   'context-selection-start': 0 as number,
   'context-selection-end': 0 as number,
-  'lits-code': '' as string,
-  'lits-code-scroll-top': 0 as number,
-  'lits-code-selection-start': 0 as number,
-  'lits-code-selection-end': 0 as number,
+  'dvala-code': '' as string,
+  'dvala-code-scroll-top': 0 as number,
+  'dvala-code-selection-start': 0 as number,
+  'dvala-code-selection-end': 0 as number,
   'output': '' as string,
   'output-scroll-top': 0 as number,
   'new-context-name': '' as string,
   'new-context-value': '' as string,
   'debug': false as boolean,
-  'focused-panel': null as 'lits-code' | 'context' | null,
+  'focused-panel': null as 'dvala-code' | 'context' | null,
 } as const
 
 type State = {
@@ -31,7 +31,7 @@ type Key = keyof typeof defaultState
 type StorageKey = `playground-${Key}`
 
 let contextHistoryListener: undefined | ((status: HistoryStatus) => void)
-let litsCodeHistoryListener: undefined | ((status: HistoryStatus) => void)
+let dvalaCodeHistoryListener: undefined | ((status: HistoryStatus) => void)
 
 const state: State = {
   ...defaultState,
@@ -47,8 +47,8 @@ const contextHistory = new StateHistory(createContextHistoryEntry(), (status) =>
   contextHistoryListener?.(status)
 })
 
-const litsCodeHistory = new StateHistory(createLitsCodeHistoryEntry(), (status) => {
-  litsCodeHistoryListener?.(status)
+const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntry(), (status) => {
+  dvalaCodeHistoryListener?.(status)
 })
 
 function createContextHistoryEntry(): HistoryEntry {
@@ -59,25 +59,25 @@ function createContextHistoryEntry(): HistoryEntry {
   }
 }
 
-function createLitsCodeHistoryEntry(): HistoryEntry {
+function createDvalaCodeHistoryEntry(): HistoryEntry {
   return {
-    text: state['lits-code'],
-    selectionStart: state['lits-code-selection-start'],
-    selectionEnd: state['lits-code-selection-end'],
+    text: state['dvala-code'],
+    selectionStart: state['dvala-code-selection-start'],
+    selectionEnd: state['dvala-code-selection-end'],
   }
 }
 
 function pushHistory() {
   contextHistory.push(createContextHistoryEntry())
-  litsCodeHistory.push(createLitsCodeHistoryEntry())
+  dvalaCodeHistory.push(createDvalaCodeHistoryEntry())
 }
 
 export function setContextHistoryListener(listener: (status: HistoryStatus) => void) {
   contextHistoryListener = listener
 }
 
-export function setLitsCodeHistoryListener(listener: (status: HistoryStatus) => void) {
-  litsCodeHistoryListener = listener
+export function setDvalaCodeHistoryListener(listener: (status: HistoryStatus) => void) {
+  dvalaCodeHistoryListener = listener
 }
 
 export function updateState(newState: Partial<State>) {
@@ -106,7 +106,7 @@ function setState<T extends keyof State>(key: T, value: State[T]) {
 export function clearAllStates() {
   localStorage.clear()
   Object.assign(state, defaultState)
-  litsCodeHistory.reset(createLitsCodeHistoryEntry())
+  dvalaCodeHistory.reset(createDvalaCodeHistoryEntry())
   contextHistory.reset(createContextHistoryEntry())
 }
 
@@ -124,7 +124,7 @@ export function getState<T extends keyof State>(key: T): State[T] {
 
 export function encodeState() {
   const sharedState: Partial<State> = {
-    'lits-code': state['lits-code'],
+    'dvala-code': state['dvala-code'],
     'context': state.context,
   }
   return btoa(encodeURIComponent(JSON.stringify(sharedState)))
@@ -170,13 +170,13 @@ export function redoContext() {
   }
 }
 
-export function undoLitsCode() {
+export function undoDvalaCode() {
   try {
-    const historyEntry = litsCodeHistory.undo()
+    const historyEntry = dvalaCodeHistory.undo()
     saveState({
-      'lits-code': historyEntry.text,
-      'lits-code-selection-start': historyEntry.selectionStart,
-      'lits-code-selection-end': historyEntry.selectionEnd,
+      'dvala-code': historyEntry.text,
+      'dvala-code-selection-start': historyEntry.selectionStart,
+      'dvala-code-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
   }
@@ -185,13 +185,13 @@ export function undoLitsCode() {
   }
 }
 
-export function redoLitsCode() {
+export function redoDvalaCode() {
   try {
-    const historyEntry = litsCodeHistory.redo()
+    const historyEntry = dvalaCodeHistory.redo()
     saveState({
-      'lits-code': historyEntry.text,
-      'lits-code-selection-start': historyEntry.selectionStart,
-      'lits-code-selection-end': historyEntry.selectionEnd,
+      'dvala-code': historyEntry.text,
+      'dvala-code-selection-start': historyEntry.selectionStart,
+      'dvala-code-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
   }

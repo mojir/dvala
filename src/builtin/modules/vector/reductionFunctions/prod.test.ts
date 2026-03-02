@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { vectorModule } from '..'
 
-const lits = new Lits({ modules: [vectorModule] })
+const dvala = new Dvala({ modules: [vectorModule] })
 
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {
   // Add module import prefix to function calls
   const modifiedCode = `let v = import(vector); v.${code}`
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('prod', () => {

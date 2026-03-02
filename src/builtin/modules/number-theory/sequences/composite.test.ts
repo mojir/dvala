@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('composite', () => {
   it('should return the correct sequence', () => {
@@ -14,7 +14,7 @@ describe('composite', () => {
     expect(runNth('nth:composite-seq(2)')).toEqual([4, 6])
     expect(runNth('nth:composite-seq(3)')).toEqual([4, 6, 8])
     expect(runNth('nth:composite-seq(4)')).toEqual([4, 6, 8, 9])
-    expect(() => runNth('nth:composite-seq(0)')).toThrow(LitsError)
+    expect(() => runNth('nth:composite-seq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

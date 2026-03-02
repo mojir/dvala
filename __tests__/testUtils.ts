@@ -1,9 +1,9 @@
 import { expect } from 'vitest'
 import { ContextStackImpl } from '../src/evaluator/ContextStack'
 import type { Obj } from '../src/interface'
-import { isRegularExpression } from '../src/typeGuards/lits'
+import { isRegularExpression } from '../src/typeGuards/dvala'
 import type { Context } from '../src/evaluator/interface'
-import { LitsError } from '../src/errors'
+import { DvalaError } from '../src/errors'
 
 export interface TypeGuardTestData {
   valid: unknown[]
@@ -27,9 +27,9 @@ export function testTypeGuars(
       expect(is(validData)).toBe(false)
 
     // eslint-disable-next-line ts/no-unsafe-return
-    expect(() => assert(validData)).toThrow(LitsError)
+    expect(() => assert(validData)).toThrow(DvalaError)
     // eslint-disable-next-line ts/no-unsafe-return
-    expect(() => as(validData)).toThrow(LitsError)
+    expect(() => as(validData)).toThrow(DvalaError)
   })
 }
 
@@ -82,7 +82,7 @@ const privateTestData: TestData = {
     zero: 0,
   },
   string: 'Albert',
-  stringArray: ['Albert', 'Mojir', 'Lits', 'Immutable'],
+  stringArray: ['Albert', 'Mojir', 'Dvala', 'Immutable'],
   true: true,
   zero: 0,
   emptyArray: [],

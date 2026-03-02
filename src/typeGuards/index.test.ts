@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import { assertNumberOfParams, canBeOperator } from '../utils/arity'
 import {
   asNonUndefined,
@@ -16,7 +16,7 @@ describe('typeGuards index file', () => {
   })
 
   it('asNotUndefined', () => {
-    expect(() => asNonUndefined(undefined)).toThrow(LitsError)
+    expect(() => asNonUndefined(undefined)).toThrow(DvalaError)
     expect(asNonUndefined(null)).toBe(null)
     expect(asNonUndefined(false)).toBe(false)
     expect(asNonUndefined(true)).toBe(true)
@@ -25,8 +25,8 @@ describe('typeGuards index file', () => {
     expect(asNonUndefined(obj)).toBe(obj)
   })
   it('assertNotUndefined', () => {
-    expect(() => assertNonUndefined(undefined)).toThrow(LitsError)
-    expect(() => assertNonUndefined(undefined)).toThrow(LitsError)
+    expect(() => assertNonUndefined(undefined)).toThrow(DvalaError)
+    expect(() => assertNonUndefined(undefined)).toThrow(DvalaError)
     expect(() => assertNonUndefined(null)).not.toThrow()
     expect(() => assertNonUndefined(false)).not.toThrow()
     expect(() => assertNonUndefined(true)).not.toThrow()
@@ -35,40 +35,40 @@ describe('typeGuards index file', () => {
   })
   it('assertLength', () => {
     expect(() => assertNumberOfParams({ min: 0, max: 0 }, 0, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 0, max: 0 }, 1, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 0, max: 0 }, 1, undefined)).toThrow(DvalaError)
     expect(() => assertNumberOfParams({ min: 1, max: 1 }, 1, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 1, max: 1 }, 0, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 1, max: 1 }, 2, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 1, max: 1 }, 0, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 1, max: 1 }, 2, undefined)).toThrow(DvalaError)
     expect(() => assertNumberOfParams({ min: 2, max: 2 }, 2, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 2, max: 2 }, 1, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 2, max: 2 }, 3, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 2, max: 2 }, 1, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 2, max: 2 }, 3, undefined)).toThrow(DvalaError)
     expect(() => assertNumberOfParams({}, 0, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1 }, 5, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1 }, 4, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1 }, 3, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1 }, 2, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1 }, 1, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 1 }, 0, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ max: 3 }, 5, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ max: 3 }, 4, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 1 }, 0, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ max: 3 }, 5, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ max: 3 }, 4, undefined)).toThrow(DvalaError)
     expect(() => assertNumberOfParams({ max: 3 }, 3, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ max: 3 }, 2, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ max: 3 }, 1, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ max: 3 }, 0, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 0, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 0, undefined)).toThrow(DvalaError)
     expect(() => assertNumberOfParams({ min: 1, max: 3 }, 1, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1, max: 3 }, 2, undefined)).not.toThrow()
     expect(() => assertNumberOfParams({ min: 1, max: 3 }, 3, undefined)).not.toThrow()
-    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 4, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 5, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 6, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 0, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 1, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 2, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 3, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 4, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 5, undefined)).toThrow(LitsError)
-    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 6, undefined)).toThrow(LitsError)
+    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 4, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 5, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 1, max: 3 }, 6, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 0, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 1, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 2, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 3, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 4, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 5, undefined)).toThrow(DvalaError)
+    expect(() => assertNumberOfParams({ min: 3, max: 1 }, 6, undefined)).toThrow(DvalaError)
   })
 
   it('unknownRecord', () => {

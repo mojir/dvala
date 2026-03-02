@@ -25,7 +25,7 @@ function writeIndexPage() {
   <head>
     <title>Playground</title>
     <link rel='shortcut icon' type='image/x-icon' href='favicon.ico' />
-    <meta name="description" content="A reference and a playground for Lits">
+    <meta name="description" content="A reference and a playground for Dvala">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8">
     <link rel="stylesheet" href="styles.css">

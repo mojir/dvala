@@ -1,7 +1,7 @@
 import type { Any, Arr, Obj, Seq } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { asArray, assertArray, assertCharArray } from '../../../typeGuards/array'
-import { asAny, asSeq, assertAny, assertFunctionLike, assertSeq } from '../../../typeGuards/lits'
+import { asAny, asSeq, assertAny, assertFunctionLike, assertSeq } from '../../../typeGuards/dvala'
 import { asNumber, assertNumber } from '../../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
 import { collHasKey, compare, deepEqual, toNonNegativeInteger } from '../../../utils'
@@ -9,7 +9,7 @@ import { toFixedArity } from '../../../utils/arity'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import { chain, filterSequential, findIndexSequential, mapSequential, reduceSequential } from '../../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../../interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
   'position': {
@@ -807,7 +807,7 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
   return isStringSeq ? result.map(x => x.join('')) : result
 }
 
-export const sequenceUtilsModule: LitsModule = {
+export const sequenceUtilsModule: DvalaModule = {
   name: 'sequence',
   functions: sequenceUtilsFunctions,
 }

@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { tokenize } from '../tokenizer/tokenize'
-import { Lits } from '../Lits/Lits'
+import { Dvala } from '../Dvala/Dvala'
 
 describe('typeGuards index file', () => {
   test('transformSymbolTokens', () => {
-    const lits = new Lits()
+    const dvala = new Dvala()
     const tokenStream = tokenize('a + b', false, undefined)
-    expect(lits.transformSymbols(tokenStream, s => s.toUpperCase()).tokens).toEqual([
+    expect(dvala.transformSymbols(tokenStream, s => s.toUpperCase()).tokens).toEqual([
       ['Symbol', 'A'],
       ['Whitespace', ' '],
       ['Operator', '+'],

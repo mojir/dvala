@@ -3,13 +3,13 @@ import type { ExecuteFunction } from '../../evaluator/interface'
 import type { Any, Arr, Coll, Obj, Seq } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { collHasKey, deepEqual, toAny } from '../../utils'
-import { asAny, asFunctionLike, assertAny, assertColl, assertFunctionLike, assertObj, assertSeq, isObj, isSeq } from '../../typeGuards/lits'
+import { asAny, asFunctionLike, assertAny, assertColl, assertFunctionLike, assertObj, assertSeq, isObj, isSeq } from '../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../interface'
 import { assertArray } from '../../typeGuards/array'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '../../typeGuards/string'
 import type { FunctionLike } from '../../parser/types'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import { toFixedArity } from '../../utils/arity'
 import type { MaybePromise } from '../../utils/maybePromise'
 import { chain, mapSequential, reduceSequential } from '../../utils/maybePromise'
@@ -34,10 +34,10 @@ function mapObjects({
     assertObj(obj, sourceCodeInfo)
     const objKeys = Object.keys(obj)
     if (objKeys.length !== keys.length) {
-      throw new LitsError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
+      throw new DvalaError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
     }
     if (!objKeys.every(key => keys.includes(key))) {
-      throw new LitsError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
+      throw new DvalaError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
     }
     Object.entries(obj).forEach(([key, value]) => {
       if (!params[key])

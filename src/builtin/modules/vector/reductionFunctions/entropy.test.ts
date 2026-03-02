@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { vectorModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [vectorModule] })
+const dvala = new Dvala({ modules: [vectorModule] })
 
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {
   // Add module import prefix to function calls
   const modifiedCode = `let v = import(vector); v.${code}`
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('iqr', () => {
@@ -18,13 +18,13 @@ describe('iqr', () => {
     expect(runVec('entropy([1, 2, 3])')).toEqual(1.584962500721156)
     expect(runVec('entropy([1, 2, 2, 3])')).toEqual(1.5)
     expect(runVec('entropy([0])')).toEqual(0)
-    expect(() => runVec('entropy([])')).toThrowError(LitsError)
+    expect(() => runVec('entropy([])')).toThrowError(DvalaError)
   })
   it('should calculate the moving entropy of a vector', () => {
     expect(runVec('moving-entropy([1, 1, 2, 3, 3, 3], 4)')).toEqual([1.5, 1.5, 0.8112781244591328])
     expect(runVec('moving-entropy([1, 1, 2, 3, 3, 3], 3)')).toEqual([0.9182958340544896, 1.584962500721156, 0.9182958340544896, 0])
     expect(runVec('moving-entropy([1, 2], 2)')).toEqual([1])
-    expect(() => runVec('moving-entropy([], 3)')).toThrowError(LitsError)
+    expect(() => runVec('moving-entropy([], 3)')).toThrowError(DvalaError)
   })
   it('should calculate the centered moving entropy of a vector with padding', () => {
     expect(runVec('centered-moving-entropy([1, 1, 2, 3, 3, 3], 4)')).toEqual([null, null, 1.5, 1.5, 0.8112781244591328, null])
@@ -34,6 +34,6 @@ describe('iqr', () => {
   it('should calculate the running entropy of a vector', () => {
     expect(runVec('running-entropy([1, 1, 2, 3, 3, 3])')).toEqual([0, 0, 0.9182958340544896, 1.5, 1.5219280948873621, 1.4591479170272448])
     expect(runVec('running-entropy([1, 2])')).toEqual([0, 1])
-    expect(() => runVec('running-entropy([])')).toThrowError(LitsError)
+    expect(() => runVec('running-entropy([])')).toThrowError(DvalaError)
   })
 })

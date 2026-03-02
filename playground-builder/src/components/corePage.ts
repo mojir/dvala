@@ -17,7 +17,7 @@ export function getCorePage(): string {
 
     <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
       <p ${styles('mb-4')}>
-        Core functions are <strong>always available</strong> in Lits — no imports needed.
+        Core functions are <strong>always available</strong> in Dvala — no imports needed.
         They cover the fundamental building blocks of the language: control flow, data manipulation,
         math, string handling, predicates, and more.
       </p>

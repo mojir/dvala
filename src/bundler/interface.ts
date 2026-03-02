@@ -6,18 +6,18 @@
  * The bundle is pure JSON — fully serializable and portable
  * (e.g., build on a server, run in a browser).
  */
-export interface LitsBundle {
+export interface DvalaBundle {
   /** The main program source, with file imports rewritten to bare symbols. */
   program: string
   /** Ordered array of [canonicalName, source] pairs. Dependencies come before dependents. */
   fileModules: [string, string][]
 }
 
-export function isLitsBundle(value: unknown): value is LitsBundle {
+export function isDvalaBundle(value: unknown): value is DvalaBundle {
   return (
     typeof value === 'object'
     && value !== null
-    && typeof (value as LitsBundle).program === 'string'
-    && Array.isArray((value as LitsBundle).fileModules)
+    && typeof (value as DvalaBundle).program === 'string'
+    && Array.isArray((value as DvalaBundle).fileModules)
   )
 }

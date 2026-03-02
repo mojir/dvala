@@ -3,7 +3,7 @@ import { normalExpressionTypes } from '../../builtin/normalExpressions'
 import type { IfNode } from '../../builtin/specialExpressions/if'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
 import { isA_BinaryOperatorToken, isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
@@ -95,7 +95,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
       if (isSpecialBuiltinSymbolNode(operatorSymbol)) {
-        throw new LitsError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
+        throw new DvalaError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2])
     }
@@ -106,7 +106,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       ctx.advance()
       const trueNode = parseExpression(ctx)
       if (!isOperatorToken(ctx.tryPeek(), ':')) {
-        throw new LitsError('Expected :', ctx.peekSourceCodeInfo())
+        throw new DvalaError('Expected :', ctx.peekSourceCodeInfo())
       }
       ctx.advance()
       const falseNode = parseExpression(ctx)

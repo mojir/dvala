@@ -1,10 +1,10 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import { type ArrayBindingTarget, type AstNode, type BindingTarget, type RestBindingTarget, type UserDefinedSymbolNode, bindingTargetTypes } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { assertUnknownRecord, isUnknownRecord } from '../typeGuards'
 import { assertArray } from '../typeGuards/array'
-import { asAny, assertAny } from '../typeGuards/lits'
+import { asAny, assertAny } from '../typeGuards/dvala'
 import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential } from '../utils/maybePromise'
 import { deepEqual } from '../utils'
@@ -162,13 +162,13 @@ function getNamesFromBindingTarget(target: BindingTarget | null, names: Record<s
   }
   else if (target[0] === bindingTargetTypes.rest) {
     if (names[target[1][0]]) {
-      throw new LitsError(`Duplicate binding name: ${target[1][0]}`, target[2])
+      throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, target[2])
     }
     names[target[1][0]] = true
   }
   else if (target[0] === bindingTargetTypes.symbol) {
     if (names[target[1][0][1]]) {
-      throw new LitsError(`Duplicate binding name: ${target[1][0]}`, target[2])
+      throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, target[2])
     }
     names[target[1][0][1]] = true
   }

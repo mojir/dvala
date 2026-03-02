@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('abundant', () => {
   it('should return the correct sequence', () => {
@@ -14,7 +14,7 @@ describe('abundant', () => {
     expect(runNth('nth:abundant-seq(2)')).toEqual([12, 18])
     expect(runNth('nth:abundant-seq(3)')).toEqual([12, 18, 20])
     expect(runNth('nth:abundant-seq(21)')).toEqual([12, 18, 20, 24, 30, 36, 40, 42, 48, 54, 56, 60, 66, 70, 72, 78, 80, 84, 88, 90, 96])
-    expect(() => runNth('nth:abundant-seq(0)')).toThrow(LitsError)
+    expect(() => runNth('nth:abundant-seq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

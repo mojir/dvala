@@ -2,10 +2,10 @@ import type { SpecialExpression } from '../builtin'
 import { builtin, normalExpressionKeys, specialExpressionKeys } from '../builtin'
 import { allNormalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import { LitsError, UndefinedSymbolError } from '../errors'
+import { DvalaError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
-import type { ContextParams, JsFunction } from '../Lits/Lits'
-import type { LitsModule } from '../builtin/modules/interface'
+import type { ContextParams, JsFunction } from '../Dvala/Dvala'
+import type { DvalaModule } from '../builtin/modules/interface'
 import type { NativeJsFunction, NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
@@ -22,7 +22,7 @@ export class ContextStackImpl {
   public globalContext: Context
   private values?: Record<string, unknown>
   private nativeJsFunctions?: Record<string, NativeJsFunction>
-  private modules: Map<string, LitsModule>
+  private modules: Map<string, DvalaModule>
   private valueModules: Map<string, unknown>
   public pure: boolean
   constructor({
@@ -36,7 +36,7 @@ export class ContextStackImpl {
     contexts: Context[]
     values?: Record<string, unknown>
     nativeJsFunctions?: Record<string, NativeJsFunction>
-    modules?: Map<string, LitsModule>
+    modules?: Map<string, DvalaModule>
     valueModules?: Map<string, unknown>
     pure?: boolean
   }) {
@@ -44,7 +44,7 @@ export class ContextStackImpl {
     this._contexts = contexts
     this.values = hostValues
     this.nativeJsFunctions = nativeJsFunctions
-    this.modules = modules ?? new Map<string, LitsModule>()
+    this.modules = modules ?? new Map<string, DvalaModule>()
     this.valueModules = valueModules ?? new Map<string, unknown>()
     this.pure = pure ?? false
   }
@@ -80,7 +80,7 @@ export class ContextStackImpl {
     globalContextIndex: number
     values?: Record<string, unknown>
     nativeJsFunctions?: Record<string, NativeJsFunction>
-    modules?: Map<string, LitsModule>
+    modules?: Map<string, DvalaModule>
     pure: boolean
   }): ContextStackImpl {
     const cs = new ContextStackImpl({
@@ -107,7 +107,7 @@ export class ContextStackImpl {
     }
   }
 
-  public getModule(name: string): LitsModule | undefined {
+  public getModule(name: string): DvalaModule | undefined {
     return this.modules.get(name)
   }
 
@@ -146,11 +146,11 @@ export class ContextStackImpl {
     const currentContext = this._contexts[0]!
     for (const [name, value] of Object.entries(values)) {
       if (currentContext[name]) {
-        throw new LitsError(`Cannot redefine value "${name}"`, sourceCodeInfo)
+        throw new DvalaError(`Cannot redefine value "${name}"`, sourceCodeInfo)
       }
       const shadowedName = getShadowedBuiltinName(name)
       if (shadowedName) {
-        throw new LitsError(`Cannot shadow ${shadowedName}`, sourceCodeInfo)
+        throw new DvalaError(`Cannot shadow ${shadowedName}`, sourceCodeInfo)
       }
       currentContext[name] = { value: toAny(value) }
     }
@@ -217,7 +217,7 @@ export class ContextStackImpl {
           } satisfies SpecialBuiltinFunction
         }
         default:
-          throw new LitsError(`Unknown special builtin symbol type: ${functionType}`, node[2])
+          throw new DvalaError(`Unknown special builtin symbol type: ${functionType}`, node[2])
       }
     }
     if (isNormalBuiltinSymbolNode(node)) {
@@ -255,11 +255,11 @@ function getShadowedBuiltinName(name: string): string | null {
 function assertNotShadowingBuiltin(name: string): void {
   const shadowedName = getShadowedBuiltinName(name)
   if (shadowedName) {
-    throw new LitsError(`Cannot shadow ${shadowedName}`, undefined)
+    throw new DvalaError(`Cannot shadow ${shadowedName}`, undefined)
   }
 }
 
-export function createContextStack(params: ContextParams = {}, modules?: Map<string, LitsModule>, pure?: boolean): ContextStack {
+export function createContextStack(params: ContextParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
@@ -271,7 +271,7 @@ export function createContextStack(params: ContextParams = {}, modules?: Map<str
   if (params.bindings) {
     for (const [identifier, entry] of Object.entries(params.bindings)) {
       if (identifier.includes('.')) {
-        throw new LitsError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
+        throw new DvalaError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
       }
 
       const isFunction = typeof entry === 'function'

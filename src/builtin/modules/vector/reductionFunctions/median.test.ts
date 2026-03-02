@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { vectorModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [vectorModule] })
+const dvala = new Dvala({ modules: [vectorModule] })
 
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {
   // Add module import prefix to function calls
   const modifiedCode = `let v = import(vector); v.${code}`
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('median', () => {
@@ -29,6 +29,6 @@ describe('median', () => {
     expect(runVec('running-median([1, -3, 2])')).toEqual([1, -1, 1])
     expect(runVec('running-median([-1, -2, -3])')).toEqual([-1, -1.5, -2])
     expect(runVec('running-median([0])')).toEqual([0])
-    expect(() => runVec('running-median([])')).toThrowError(LitsError)
+    expect(() => runVec('running-median([])')).toThrowError(DvalaError)
   })
 })

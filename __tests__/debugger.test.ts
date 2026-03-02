@@ -6,7 +6,7 @@ import type { Any } from '../src/interface'
 import { assertModule } from '../src/builtin/modules/assertion'
 
 describe('phase 7 — Time-Travel Debugger', () => {
-  describe('7a: lits.debug.step injection', () => {
+  describe('7a: dvala.debug.step injection', () => {
     it('should pause at the first debug step', async () => {
       const dbg = createDebugger()
       const result = await dbg.run('1 + 2')
@@ -258,13 +258,13 @@ describe('phase 7 — Time-Travel Debugger', () => {
     it('should work with standard effects', async () => {
       const dbg = createDebugger({
         handlers: {
-          'lits.now': async ({ resume }) => {
+          'dvala.now': async ({ resume }) => {
             resume(1234567890)
           },
         },
       })
 
-      let r = await dbg.run('perform(effect(lits.now))')
+      let r = await dbg.run('perform(effect(dvala.now))')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -361,7 +361,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
   })
 
   describe('7b: Debugger API — bindings', () => {
-    it('should pass bindings to the Lits program', async () => {
+    it('should pass bindings to the Dvala program', async () => {
       const dbg = createDebugger({
         bindings: { myVal: 42 },
       })
@@ -418,14 +418,14 @@ describe('phase 7 — Time-Travel Debugger', () => {
       let _callCount = 0
       const dbg = createDebugger({
         handlers: {
-          'lits.random': async ({ resume }) => {
+          'dvala.random': async ({ resume }) => {
             _callCount++
             resume(0.42)
           },
         },
       })
 
-      let r = await dbg.run('perform(effect(lits.random))')
+      let r = await dbg.run('perform(effect(dvala.random))')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -549,8 +549,8 @@ describe('phase 7 — Time-Travel Debugger', () => {
       expect(r.type).toBe('suspended')
     })
 
-    it('should handle non-LitsError thrown during run', async () => {
-      // Use an invalid source that triggers a non-LitsError
+    it('should handle non-DvalaError thrown during run', async () => {
+      // Use an invalid source that triggers a non-DvalaError
       // We mock by providing a handler that throws a native error
       const dbg = createDebugger({
         handlers: {

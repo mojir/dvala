@@ -1,4 +1,4 @@
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedArrays'
 import { assertNumber, isNumber } from '../../typeGuards/number'
@@ -24,12 +24,12 @@ function getNumberVectorOrMatrixOperation(
       hasMatrix = true
     }
     else if (!isNumber(param)) {
-      throw new LitsError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
+      throw new DvalaError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
     }
   }
   if (hasMatrix) {
     if (hasVector) {
-      throw new LitsError('Cannot mix vector and matrix types', sourceCodeInfo)
+      throw new DvalaError('Cannot mix vector and matrix types', sourceCodeInfo)
     }
     let rows: number | null = null
     let cold: number | null = null
@@ -41,7 +41,7 @@ function getNumberVectorOrMatrixOperation(
         }
         else {
           if (param.length !== rows || param[0]!.length !== cold) {
-            throw new LitsError('Matrix dimensions do not match', sourceCodeInfo)
+            throw new DvalaError('Matrix dimensions do not match', sourceCodeInfo)
           }
         }
       }
@@ -63,7 +63,7 @@ function getNumberVectorOrMatrixOperation(
         }
         else {
           if (param.length !== length) {
-            throw new LitsError('Vector lengths do not match', sourceCodeInfo)
+            throw new DvalaError('Vector lengths do not match', sourceCodeInfo)
           }
         }
       }

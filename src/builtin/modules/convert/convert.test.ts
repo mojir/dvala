@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
+import { Dvala } from '../../../Dvala/Dvala'
 import { convertModule } from './'
 
-const lits = new Lits({ modules: [convertModule] })
+const dvala = new Dvala({ modules: [convertModule] })
 
 function runConvert(code: string): unknown {
-  return lits.run(`let c = import(convert); ${code.replace(/convert:/g, 'c.')}`)
+  return dvala.run(`let c = import(convert); ${code.replace(/convert:/g, 'c.')}`)
 }
 
 describe('convert module', () => {

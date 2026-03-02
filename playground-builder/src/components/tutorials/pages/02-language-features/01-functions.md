@@ -1,6 +1,6 @@
 # Functions
 
-Functions are first-class values in Lits. You can define them, pass them around, and compose them freely.
+Functions are first-class values in Dvala. You can define them, pass them around, and compose them freely.
 
 ## Arrow Functions
 

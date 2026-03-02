@@ -81,22 +81,22 @@ export function getPlayground() {
   
       ><div id="resize-divider-1" ${styles('width: 5px;', 'h-full', 'cursor-col-resize', 'bg-gray-600')}></div
   
-      ><div id="lits-panel" ${styles('h-full')}>
-        <div ${styles('PanelHeader')} onclick="Playground.focusLitsCode()">
-          <div id="lits-code-title" ${styles('flex', 'gap-1', 'w-full', 'items-center')}>
-            <span id="lits-panel-debug-info" ${styles('flex', 'items-center', 'text-xl')}>${debugIcon}</span>
-            <div id="lits-code-title-string" ${styles('text-lg', 'font-sans', 'cursor-pointer')}>Code</div>
+      ><div id="dvala-panel" ${styles('h-full')}>
+        <div ${styles('PanelHeader')} onclick="Playground.focusDvalaCode()">
+          <div id="dvala-code-title" ${styles('flex', 'gap-1', 'w-full', 'items-center')}>
+            <span id="dvala-panel-debug-info" ${styles('flex', 'items-center', 'text-xl')}>${debugIcon}</span>
+            <div id="dvala-code-title-string" ${styles('text-lg', 'font-sans', 'cursor-pointer')}>Code</div>
           </div>
           <div
-            id="lits-links"
+            id="dvala-links"
             onclick="event.preventDefault(); event.stopPropagation()"
             ${styles('text-color-gray-400', 'bg-gray-800', 'h-full')}
           >
             <div ${styles('h-full', 'flex', 'flex-row', 'gap-1', 'text-sm', 'text-color-gray-400', 'items-center')}>
               <a onclick="Playground.run()" ${styles('text-xl', 'flex', 'items-center')}>${playIcon}</a>
-              <a id="lits-code-undo-button" onclick="Playground.undoLitsCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
-              <a id="lits-code-redo-button" onclick="Playground.redoLitsCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
-              <a onclick="Playground.resetLitsCode()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>
+              <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
+              <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
+              <a onclick="Playground.resetDvalaCode()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>
               <div>
                 <a onclick="Playground.openMoreMenu()" ${styles('text-xl', 'flex', 'items-center')}>${hamburgerIcon}</a>
                 <div id="more-menu" ${styles('hidden', 'max-width: 20rem;', 'absolute', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'bg-gray-700')}>
@@ -157,7 +157,7 @@ export function getPlayground() {
             </div>
           </div>
         </div>
-        <textarea ${styles('height: calc(100% - 32px);', 'border-0')} id="lits-textarea" class="fancy-scroll" spellcheck="false"></textarea>
+        <textarea ${styles('height: calc(100% - 32px);', 'border-0')} id="dvala-textarea" class="fancy-scroll" spellcheck="false"></textarea>
       </div
   
       ><div id="resize-divider-2" ${styles('width: 5px;', 'h-full', 'cursor-col-resize', 'bg-gray-600', 'h-full')}></div

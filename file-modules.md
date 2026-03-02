@@ -2,11 +2,11 @@
 
 ## Problem
 
-Lits currently has two separate mechanisms for referencing external code:
+Dvala currently has two separate mechanisms for referencing external code:
 
-1. **`import(moduleName)`** — a language-level special expression that imports registered builtin modules (e.g., `import(vector)`, `import(math)`). These are TypeScript-implemented modules injected via `new Lits({ modules: [...] })`.
+1. **`import(moduleName)`** — a language-level special expression that imports registered builtin modules (e.g., `import(vector)`, `import(math)`). These are TypeScript-implemented modules injected via `new Dvala({ modules: [...] })`.
 
-2. **`// @include file.lits`** — a comment-based directive used only by the test framework. It's invisible to the language, parsed by TypeScript host code, and has no general-purpose use.
+2. **`// @include file.dvala`** — a comment-based directive used only by the test framework. It's invisible to the language, parsed by TypeScript host code, and has no general-purpose use.
 
 This is not clean. The goal is to unify file imports under the existing `import` syntax and introduce a bundler for multi-file projects.
 
@@ -14,21 +14,21 @@ This is not clean. The goal is to unify file imports under the existing `import`
 
 ### Phase 1 — Bundler (build time)
 
-A standalone function (not a method on `Lits`) that:
+A standalone function (not a method on `Dvala`) that:
 
-1. Reads the entry file and scans for `import("./path/to/file.lits")` calls (string argument = file import).
+1. Reads the entry file and scans for `import("./path/to/file.dvala")` calls (string argument = file import).
 2. Recursively resolves all file imports, following `import("...")` in each referenced file.
 3. Resolves all relative paths to absolute paths, deduplicating files that are referenced from multiple locations.
-4. Assigns each unique file a **canonical module name** (a valid Lits symbol).
+4. Assigns each unique file a **canonical module name** (a valid Dvala symbol).
 5. Detects circular dependencies and throws an error if found.
 6. Topologically sorts the file modules by dependency order.
 7. Ensures no canonical module name collides with a builtin module name — adjusts the name if needed.
-8. Rewrites all `import("./path/to/file.lits")` calls to `import(canonicalName)` (string argument → bare symbol).
-9. Outputs a `LitsBundle`.
+8. Rewrites all `import("./path/to/file.dvala")` calls to `import(canonicalName)` (string argument → bare symbol).
+9. Outputs a `DvalaBundle`.
 
-### Phase 2 — Existing `Lits.run` (runtime)
+### Phase 2 — Existing `Dvala.run` (runtime)
 
-`Lits.run` accepts `string | LitsBundle`. When it receives a bundle:
+`Dvala.run` accepts `string | DvalaBundle`. When it receives a bundle:
 
 1. Iterates `fileModules` in order (dependency order).
 2. For each `[name, source]`: parses and evaluates the source, registers the result as a **value module** keyed by `name`.
@@ -39,7 +39,7 @@ No changes to the parser or tokenizer are needed — the bundler rewrites string
 ## Bundle Format
 
 ```typescript
-interface LitsBundle {
+interface DvalaBundle {
   program: string
   fileModules: [string, string][]  // [canonicalName, source][], ordered by dependency
 }
@@ -47,37 +47,37 @@ interface LitsBundle {
 
 - `program`: The main program source, with file imports rewritten to bare symbols.
 - `fileModules`: An ordered array of `[canonicalName, source]` pairs. Array (not object) because order matters — dependencies must be evaluated before dependents.
-- All values are strings (unparsed Lits source code). Pre-parsing to ASTs is a potential future optimization, not included in the initial implementation.
+- All values are strings (unparsed Dvala source code). Pre-parsing to ASTs is a potential future optimization, not included in the initial implementation.
 - The bundle is pure JSON — fully serializable and portable (e.g., build on a server, run in a browser).
 
 ## Bundler API
 
-The bundler is a standalone function, separate from the `Lits` class:
+The bundler is a standalone function, separate from the `Dvala` class:
 
 ```typescript
-// Separate entry point: '@mojir/lits/bundler'
-import { bundle } from '@mojir/lits/bundler'
+// Separate entry point: '@mojir/dvala/bundler'
+import { bundle } from '@mojir/dvala/bundler'
 
-const b = bundle('./main.lits')
+const b = bundle('./main.dvala')
 ```
 
 Import paths can be:
-- **Relative**: `import("./lib/utils.lits")`, `import("../../shared/helpers.lits")`
-- **Absolute**: `import("/opt/lits-libs/utils.lits")`
+- **Relative**: `import("./lib/utils.dvala")`, `import("../../shared/helpers.dvala")`
+- **Absolute**: `import("/opt/dvala-libs/utils.dvala")`
 
 Paths outside the project root are allowed — no restrictions.
 
 ```typescript
 // Runtime (anywhere, including browser)
-import { Lits } from '@mojir/lits'
-const lits = new Lits()
-lits.run(b)
+import { Dvala } from '@mojir/dvala'
+const dvala = new Dvala()
+dvala.run(b)
 ```
 
-**Why standalone, not on the Lits class:**
-- Bundling is a build-time concern; `Lits` is the runtime.
-- Bundling requires file system access; the `Lits` class doesn't and shouldn't.
-- Separate entry point (`@mojir/lits/bundler`) — browser consumers never pay for it.
+**Why standalone, not on the Dvala class:**
+- Bundling is a build-time concern; `Dvala` is the runtime.
+- Bundling requires file system access; the `Dvala` class doesn't and shouldn't.
+- Separate entry point (`@mojir/dvala/bundler`) — browser consumers never pay for it.
 
 ## Canonical Module Names
 
@@ -85,10 +85,10 @@ The bundler resolves every `import("...")` to an absolute file path, then derive
 
 The bundler should prefer readable names:
 
-- **Files under the entry directory**: Path relative to the entry file's directory, with `.lits` stripped. E.g., `lib/utils` for `./lib/utils.lits`.
+- **Files under the entry directory**: Path relative to the entry file's directory, with `.dvala` stripped. E.g., `lib/utils` for `./lib/utils.dvala`.
 - **Files outside the entry directory**: The bundler derives a readable name from the file path (e.g., using the last N path segments). If there's a collision, the bundler disambiguates (e.g., by adding more path segments or a suffix).
 
-Canonical names are always valid Lits symbols (no dots — `.lits` extension is stripped). They are naturally distinct from builtin module names (bare words like `math`, `vector`) because file module names contain path separators (`/`).
+Canonical names are always valid Dvala symbols (no dots — `.dvala` extension is stripped). They are naturally distinct from builtin module names (bare words like `math`, `vector`) because file module names contain path separators (`/`).
 
 ### Deduplication
 
@@ -100,32 +100,32 @@ Circular imports are not supported. The bundler detects cycles during dependency
 
 ### Name Collisions with Builtin Modules
 
-If a canonical module name would collide with a builtin module name (e.g., `./math.lits` at the project root would naturally get the name `math`), the bundler adjusts the canonical name to avoid the collision (e.g., `_math` or `file/math`). The user never needs to worry about this — canonical names are an internal bundler detail. In practice, collisions are rare because file module names under subdirectories contain `/` (e.g., `lib/math`), which naturally distinguishes them from bare builtin names.
+If a canonical module name would collide with a builtin module name (e.g., `./math.dvala` at the project root would naturally get the name `math`), the bundler adjusts the canonical name to avoid the collision (e.g., `_math` or `file/math`). The user never needs to worry about this — canonical names are an internal bundler detail. In practice, collisions are rare because file module names under subdirectories contain `/` (e.g., `lib/math`), which naturally distinguishes them from bare builtin names.
 
 ## Value Modules
 
-Currently, `import(moduleName)` only works with **builtin modules** (`LitsModule`), which contain `BuiltinNormalExpression` objects with TypeScript `evaluate` functions. File modules are different — they evaluate to a plain Lits value.
+Currently, `import(moduleName)` only works with **builtin modules** (`DvalaModule`), which contain `BuiltinNormalExpression` objects with TypeScript `evaluate` functions. File modules are different — they evaluate to a plain Dvala value.
 
 The `import` evaluator handles two kinds of modules:
 
-- **Builtin modules** (`LitsModule`): Existing behavior. Wraps functions as `ModuleFunction` descriptors.
+- **Builtin modules** (`DvalaModule`): Existing behavior. Wraps functions as `ModuleFunction` descriptors.
 - **Value modules** (new): The result of evaluating a file module source. `import(name)` returns the stored value directly — no wrapping.
 
-A file module can evaluate to **any Lits value**: object, array, number, string, null, function, etc.
+A file module can evaluate to **any Dvala value**: object, array, number, string, null, function, etc.
 
-```lits
-// math-helpers.lits → evaluates to an object
+```dvala
+// math-helpers.dvala → evaluates to an object
 let add = (a, b) -> a + b;
 {add: add}
 
-// constants.lits → evaluates to a number
+// constants.dvala → evaluates to a number
 42
 
-// names.lits → evaluates to an array
+// names.dvala → evaluates to an array
 ["alice", "bob"]
 ```
 
-```lits
+```dvala
 let { add } = import(math-helpers);   // object → destructure
 let answer = import(constants);        // number → use directly
 let names = import(names);             // array → use directly
@@ -133,20 +133,20 @@ let names = import(names);             // array → use directly
 
 The `ContextStack` needs a second map (or a unified map with a discriminated union) to hold value modules alongside builtin modules.
 
-## Changes to `Lits.run`
+## Changes to `Dvala.run`
 
-`Lits.run` signature becomes:
+`Dvala.run` signature becomes:
 
 ```typescript
-run(programOrBundle: string | LitsBundle, params?: ContextParams & FilePathParams): unknown
+run(programOrBundle: string | DvalaBundle, params?: ContextParams & FilePathParams): unknown
 ```
 
 - `string`: Today's behavior — tokenize, parse, evaluate.
-- `LitsBundle`: Evaluate file modules in order, register as value modules, then parse and evaluate the main program.
+- `DvalaBundle`: Evaluate file modules in order, register as value modules, then parse and evaluate the main program.
 
 ## Removing `evaluate` from the Public API
 
-`Lits.evaluate(ast, params)` can be removed from the public API. With `Lits.run` accepting bundles, there's no external need for `evaluate`. It becomes a private implementation detail.
+`Dvala.evaluate(ast, params)` can be removed from the public API. With `Dvala.run` accepting bundles, there's no external need for `evaluate`. It becomes a private implementation detail.
 
 Current external usage is minimal:
 - 2 calls in a performance test file (can use `run`)
@@ -154,10 +154,10 @@ Current external usage is minimal:
 
 ## Replacing `@include`
 
-The `// @include file.lits` comment directive in the test framework is replaced by standard `import("./file.lits")` syntax. The test framework would use the bundler to resolve imports before running tests, or construct a `LitsBundle` directly.
+The `// @include file.dvala` comment directive in the test framework is replaced by standard `import("./file.dvala")` syntax. The test framework would use the bundler to resolve imports before running tests, or construct a `DvalaBundle` directly.
 
 ## Future Considerations (Not in Initial Implementation)
 
 - **Bundler options**: `bundle(entry, options?)` — an optional second argument for configuration such as `noAccessOutsideProject`, `parse` (output ASTs instead of source strings), `optimize` (AST optimization when parsing), and parser options (e.g., `debug`). The current zero-config signature extends naturally without breaking changes.
-- **Pre-parsed bundles**: A `{ parse: true }` option on the bundler to output ASTs instead of source strings. Would require `LitsBundle` to become a discriminated union or generic to represent both source and AST bundles. Would enable an eval-only runtime entry point (`@mojir/lits/eval`) that excludes the tokenizer and parser for smaller browser bundles.
-- **Eval-only entry point**: `@mojir/lits/eval` — a minimal runtime that only accepts pre-parsed ASTs/bundles, excluding tokenizer and parser code.
+- **Pre-parsed bundles**: A `{ parse: true }` option on the bundler to output ASTs instead of source strings. Would require `DvalaBundle` to become a discriminated union or generic to represent both source and AST bundles. Would enable an eval-only runtime entry point (`@mojir/dvala/eval`) that excludes the tokenizer and parser for smaller browser bundles.
+- **Eval-only entry point**: `@mojir/dvala/eval` — a minimal runtime that only accepts pre-parsed ASTs/bundles, excluding tokenizer and parser code.

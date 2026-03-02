@@ -1,0 +1,3 @@
+let a = import("./lib/dep-a.dvala");
+let b = import("./lib/dep-b.dvala");
+a + b

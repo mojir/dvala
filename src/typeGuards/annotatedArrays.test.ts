@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import { assert2dVector, assert3dVector, assertGrid, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector, is2dVector, is3dVector, isGrid, isMatrix, isSquareMatrix, isVector } from './annotatedArrays'
 
 describe('annotatedArrays', () => {
@@ -53,9 +53,9 @@ describe('annotatedArrays', () => {
   })
 
   it('should assert square matrices correctly', () => {
-    expect(() => assertSquareMatrix([[1, 2], [3, 4]], undefined)).not.toThrow(LitsError)
-    expect(() => assertSquareMatrix([[1, 2], [3]], undefined)).toThrow(LitsError)
-    expect(() => assertSquareMatrix([[1, 2]], undefined)).toThrow(LitsError)
+    expect(() => assertSquareMatrix([[1, 2], [3, 4]], undefined)).not.toThrow(DvalaError)
+    expect(() => assertSquareMatrix([[1, 2], [3]], undefined)).toThrow(DvalaError)
+    expect(() => assertSquareMatrix([[1, 2]], undefined)).toThrow(DvalaError)
   })
 
   it('should check for 2d vectors', () => {

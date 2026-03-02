@@ -8,18 +8,18 @@ import { version } from '../../package.json'
 import { runTest } from '../../src/testFramework'
 import type { Reference } from '../../reference'
 import { apiReference, isFunctionReference } from '../../reference'
-import { asAny } from '../../src/typeGuards/lits'
+import { asAny } from '../../src/typeGuards/dvala'
 import type { UnknownRecord } from '../../src/interface'
 import { stringifyValue } from '../../common/utils'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
 import type { Context } from '../../src/evaluator/interface'
-import { Lits } from '../../src/Lits/Lits'
+import { Dvala } from '../../src/Dvala/Dvala'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
-import { isLitsBundle } from '../../src/bundler/interface'
-import type { LitsBundle } from '../../src/bundler/interface'
+import { isDvalaBundle } from '../../src/bundler/interface'
+import type { DvalaBundle } from '../../src/bundler/interface'
 import { Colors, createColorizer } from './colorizer'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
@@ -113,11 +113,11 @@ const config = processArguments(process.argv.slice(2))
 
 const cliModules = getCliModules()
 
-function createLits(context: Context, pure: boolean) {
-  const _lits = new Lits({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
+function createDvala(context: Context, pure: boolean) {
+  const _dvala = new Dvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   return {
-    run: (program: string | LitsBundle) =>
-      _lits.run(program, {
+    run: (program: string | DvalaBundle) =>
+      _dvala.run(program, {
         globalContext: context,
         globalModuleScope: true,
         pure,
@@ -127,10 +127,10 @@ function createLits(context: Context, pure: boolean) {
 
 switch (config.subcommand) {
   case 'run': {
-    const lits = createLits(config.context, config.pure)
+    const dvala = createDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
-      const result = lits.run(content)
+      const result = dvala.run(content)
       if (config.printResult) {
         console.log(result)
       }
@@ -143,7 +143,7 @@ switch (config.subcommand) {
     break
   }
   case 'run-bundle': {
-    const lits = createLits(config.context, config.pure)
+    const dvala = createDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
       let parsed: unknown
@@ -154,11 +154,11 @@ switch (config.subcommand) {
         printErrorMessage(`Invalid bundle: ${config.filename} is not valid JSON`)
         process.exit(1)
       }
-      if (!isLitsBundle(parsed)) {
-        printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Lits bundle (expected "program" string and "fileModules" array)`)
+      if (!isDvalaBundle(parsed)) {
+        printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Dvala bundle (expected "program" string and "fileModules" array)`)
         process.exit(1)
       }
-      const result = lits.run(parsed)
+      const result = dvala.run(parsed)
       if (config.printResult) {
         console.log(result)
       }
@@ -171,9 +171,9 @@ switch (config.subcommand) {
     break
   }
   case 'eval': {
-    const lits = createLits(config.context, config.pure)
+    const dvala = createDvala(config.context, config.pure)
     try {
-      const result = lits.run(config.expression)
+      const result = dvala.run(config.expression)
       if (config.printResult) {
         console.log(result)
       }
@@ -205,15 +205,15 @@ switch (config.subcommand) {
     break
   }
   case 'test': {
-    runLitsTest(config.filename, config.testPattern)
+    runDvalaTest(config.filename, config.testPattern)
     process.exit(0)
     break
   }
   case 'repl': {
     if (config.loadFilename) {
-      const lits = createLits(config.context, false)
+      const dvala = createDvala(config.context, false)
       const content = fs.readFileSync(config.loadFilename, { encoding: 'utf-8' })
-      const result = lits.run(content)
+      const result = dvala.run(content)
       if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
         for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
           config.context[key] = { value: asAny(value) }
@@ -235,9 +235,9 @@ switch (config.subcommand) {
   }
 }
 
-function runLitsTest(testPath: string, testNamePattern: Maybe<string>) {
-  if (!testPath.match(/\.test\.lits/)) {
-    printErrorMessage('Test file must end with .test.lits')
+function runDvalaTest(testPath: string, testNamePattern: Maybe<string>) {
+  if (!testPath.match(/\.test\.dvala/)) {
+    printErrorMessage('Test file must end with .test.dvala')
     process.exit(1)
   }
   const { success, tap } = runTest({
@@ -252,9 +252,9 @@ function runLitsTest(testPath: string, testNamePattern: Maybe<string>) {
 }
 
 function execute(expression: string, context: Context): boolean {
-  const lits = createLits(context, false)
+  const dvala = createDvala(context, false)
   try {
-    const result = lits.run(expression)
+    const result = dvala.run(expression)
     historyResults.unshift(result)
     if (historyResults.length > 9) {
       historyResults.length = 9
@@ -591,14 +591,14 @@ function processArguments(args: string[]): Config {
       return { subcommand: 'help' }
     }
     default: {
-      printErrorMessage(`Unknown subcommand "${first}". Run "lits help" for usage.`)
+      printErrorMessage(`Unknown subcommand "${first}". Run "dvala help" for usage.`)
       process.exit(1)
     }
   }
 }
 
 function runREPL(context: Context) {
-  console.log(`Welcome to Lits v${version}.
+  console.log(`Welcome to Dvala v${version}.
 Type ${fmt.italic('`help')} for more information.`)
 
   const rl = createReadlineInterface({
@@ -674,14 +674,14 @@ function printHelp() {
 
 function printUsage() {
   console.log(`
-Usage: lits [subcommand] [options]
+Usage: dvala [subcommand] [options]
 
 Subcommands:
-  run <file> [options]            Run a .lits file
+  run <file> [options]            Run a .dvala file
   run-bundle <file> [options]     Run a .json bundle
-  eval <expression> [options]     Evaluate a Lits expression
+  eval <expression> [options]     Evaluate a Dvala expression
   bundle <entry> [options]        Bundle a multi-file project
-  test <file> [options]           Run a .test.lits test file
+  test <file> [options]           Run a .test.dvala test file
   repl [options]                  Start an interactive REPL
   help                            Show this help
 
@@ -698,13 +698,13 @@ Test options:
   --pattern=<regex>               Only run tests matching pattern
 
 Repl options:
-  -l, --load=<file>               Preload a .lits file into the REPL context
+  -l, --load=<file>               Preload a .dvala file into the REPL context
   -c, --context=<json>            Context as a JSON string
   -C, --context-file=<file>       Context from a .json file
 
 Global options:
   -h, --help                      Show this help
-  --version                       Print lits version
+  --version                       Print dvala version
 
 With no subcommand, starts an interactive REPL.
 `.trim())

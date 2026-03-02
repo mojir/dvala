@@ -1,6 +1,0 @@
-// @include success-program.lits
-
-let { assert= } = import(assertion);
-
-// @test
-assert=(sub(1, 2), -1);

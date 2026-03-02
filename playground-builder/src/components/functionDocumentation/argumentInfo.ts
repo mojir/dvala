@@ -1,5 +1,5 @@
 import type { FunctionReference } from '../../../../reference'
-import { formatLitsExpression } from '../../formatter/rules'
+import { formatDvalaExpression } from '../../formatter/rules'
 import { createStyles, css } from '../../styles'
 import { formatDescription } from './description'
 import { getType } from './getType'
@@ -22,7 +22,7 @@ export function getArgumentInfo(reference: FunctionReference) {
   return `<table ${styles('text-sm')}>
   ${Object.entries(args).map(([argName, arg]) => {
     return `<tr>
-              <td>${formatLitsExpression(argName)}</span></td>
+              <td>${formatDvalaExpression(argName)}</span></td>
               <td ${styles('pl-4', 'whitespace-nowrap')}>${getType(arg)}</td>
               ${arg.description ? `<td ${styles('pl-4', 'italic', 'text-base')}>${formatDescription(arg.description, reference)}</td>` : ''}
             </tr>`

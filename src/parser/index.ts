@@ -1,5 +1,5 @@
 import type { TokenStream } from '../tokenizer/tokenize'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import { isOperatorToken } from '../tokenizer/token'
 import type { AstNode } from './types'
 import { createParserContext, parseExpression } from './subParsers/parseExpression'
@@ -9,7 +9,7 @@ export { createParserContext, parseExpression }
 export function parse(tokenStream: TokenStream): AstNode[] {
   tokenStream.tokens.forEach((token) => {
     if (token[0] === 'Error') {
-      throw new LitsError(token[3], token[2])
+      throw new DvalaError(token[3], token[2])
     }
   })
 
@@ -24,7 +24,7 @@ export function parse(tokenStream: TokenStream): AstNode[] {
     }
     else {
       if (!ctx.isAtEnd()) {
-        throw new LitsError('Expected ;', ctx.peekSourceCodeInfo())
+        throw new DvalaError('Expected ;', ctx.peekSourceCodeInfo())
       }
     }
   }

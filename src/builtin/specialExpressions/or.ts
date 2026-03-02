@@ -1,6 +1,6 @@
 import type { Any } from '../../interface'
 import type { AstNode, SpecialExpressionNode } from '../../parser/types'
-import { asAny } from '../../typeGuards/lits'
+import { asAny } from '../../typeGuards/dvala'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 import type { specialExpressionTypes } from '../specialExpressionTypes'
 

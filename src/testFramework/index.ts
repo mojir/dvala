@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { LitsError } from '../errors'
-import { Lits } from '../Lits/Lits'
+import { DvalaError } from '../errors'
+import { Dvala } from '../Dvala/Dvala'
 import { allBuiltinModules } from '../allModules'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getCodeMarker } from '../utils/debug/getCodeMarker'
@@ -45,9 +45,9 @@ export function runTest({ testPath: filePath, testNamePattern }: RunTestParams):
       }
       else {
         try {
-          const lits = new Lits({ debug: true, modules: allBuiltinModules })
-          const bindings = getBindings(includedFilePaths, lits)
-          lits.run(testChunkProgram.program, {
+          const dvala = new Dvala({ debug: true, modules: allBuiltinModules })
+          const bindings = getBindings(includedFilePaths, dvala)
+          dvala.run(testChunkProgram.program, {
             bindings,
             filePath,
           })
@@ -67,17 +67,17 @@ export function runTest({ testPath: filePath, testNamePattern }: RunTestParams):
   return testResult
 }
 
-function readLitsFile(litsPath: string): string {
-  if (!litsPath.endsWith('.lits'))
-    throw new Error(`Expected .lits file, got ${litsPath}`)
+function readDvalaFile(dvalaPath: string): string {
+  if (!dvalaPath.endsWith('.dvala'))
+    throw new Error(`Expected .dvala file, got ${dvalaPath}`)
 
-  return fs.readFileSync(litsPath, { encoding: 'utf-8' })
+  return fs.readFileSync(dvalaPath, { encoding: 'utf-8' })
 }
 
-function getBindings(includedFilePaths: string[], lits: Lits): Record<string, unknown> {
+function getBindings(includedFilePaths: string[], dvala: Dvala): Record<string, unknown> {
   return includedFilePaths.reduce((acc: Record<string, unknown>, filePath) => {
-    const fileContent = readLitsFile(filePath)
-    const result = lits.run(fileContent, { filePath, bindings: acc })
+    const fileContent = readDvalaFile(filePath)
+    const result = dvala.run(fileContent, { filePath, bindings: acc })
     if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
       // First definition wins (preserves old context layer lookup order)
       for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
@@ -110,7 +110,7 @@ function getIncludedFilePaths(absoluteFilePath: string): string[] {
 }
 
 function readIncludeDirectives(filePath: string): string[] {
-  const fileContent = readLitsFile(filePath)
+  const fileContent = readDvalaFile(filePath)
   const dirname = path.dirname(filePath)
   let okToInclude = true
   return fileContent.split('\n').reduce((acc: string[], line) => {
@@ -131,7 +131,7 @@ function readIncludeDirectives(filePath: string): string[] {
 
 // Splitting test file based on @test annotations
 function getTestChunks(testPath: string): TestChunk[] {
-  const testProgram = readLitsFile(testPath)
+  const testProgram = readDvalaFile(testPath)
   let currentTest: TestChunk | undefined
   let setupCode = ''
   return testProgram.split('\n').reduce((result: TestChunk[], line, index) => {
@@ -150,7 +150,7 @@ function getTestChunks(testPath: string): TestChunk[] {
       currentTest = {
         directive: (directive || null) as TestChunk['directive'],
         name: testName,
-        // Adding new-lines to make lits debug information report correct rows
+        // Adding new-lines to make dvala debug information report correct rows
         program:
           setupCode + [...Array(currentLineNbr + 2 - setupCode.split('\n').length).keys()].map(() => '').join('\n'),
       }
@@ -169,7 +169,7 @@ function getTestChunks(testPath: string): TestChunk[] {
 export function getErrorYaml(error: unknown): string {
   const message = getErrorMessage(error)
   /* v8 ignore next 7 */
-  if (!isAbstractLitsError(error)) {
+  if (!isAbstractDvalaError(error)) {
     return `
   ---
   message: ${JSON.stringify(message)}
@@ -217,7 +217,7 @@ function getLocation(sourceCodeInfo: SourceCodeInfo): string {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (!isAbstractLitsError(error)) {
+  if (!isAbstractDvalaError(error)) {
     // error should always be an Error (other cases is just for kicks)
     /* v8 ignore next 1 */
     return typeof error === 'string' ? error : error instanceof Error ? error.message : 'Unknown error'
@@ -225,6 +225,6 @@ function getErrorMessage(error: unknown): string {
   return error.shortMessage
 }
 
-function isAbstractLitsError(error: unknown): error is LitsError {
-  return error instanceof LitsError
+function isAbstractDvalaError(error: unknown): error is DvalaError {
+  return error instanceof DvalaError
 }

@@ -1,15 +1,15 @@
-import type { LitsError } from '../../../errors'
+import type { DvalaError } from '../../../errors'
 import { AssertionError } from '../../../errors'
 import { compare, deepEqual } from '../../../utils'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import { asAny, assertFunctionLike, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/lits'
-import { isLitsFunction } from '../../../typeGuards/litsFunction'
+import { asAny, assertFunctionLike, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/dvala'
+import { isDvalaFunction } from '../../../typeGuards/dvalaFunction'
 import { isNumber } from '../../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
 import { isGrid, isMatrix, isVector } from '../../../typeGuards/annotatedArrays'
 import { chain, tryCatch } from '../../../utils/maybePromise'
 import type { MaybePromise } from '../../../utils/maybePromise'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
 
 const assertNormalExpression: BuiltinNormalExpressions = {
@@ -212,7 +212,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
           throw new AssertionError(`Expected function to throw "${throwMessage}".${message}`, sourceCodeInfo)
         }),
         (error) => {
-          const errorMessage = (error as LitsError).shortMessage
+          const errorMessage = (error as DvalaError).shortMessage
           if (errorMessage !== throwMessage) {
             throw new AssertionError(
               `Expected function to throw "${throwMessage}", but thrown "${errorMessage}".${message}`,
@@ -291,7 +291,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
         message = ` ${message}`
       }
       message ??= ''
-      if (!isLitsFunction(first))
+      if (!isDvalaFunction(first))
         throw new AssertionError(`Expected ${JSON.stringify(first)} to be a function.${message}`, sourceCodeInfo)
 
       return null
@@ -431,7 +431,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
     assertNormalExpression[key].docs = docs
 }
 
-export const assertModule: LitsModule = {
+export const assertModule: DvalaModule = {
   name: 'assertion',
   functions: assertNormalExpression,
 }

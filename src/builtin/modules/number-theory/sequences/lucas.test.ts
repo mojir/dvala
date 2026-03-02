@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('lucas', () => {
   it('should return the correct sequence', () => {
@@ -93,8 +93,8 @@ describe('lucas', () => {
       4721424167835364,
       7639424778862807,
     ])
-    expect(() => runNth('nth:lucas-seq(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:lucas-seq(78)')).toThrow(LitsError)
+    expect(() => runNth('nth:lucas-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:lucas-seq(78)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

@@ -1,6 +1,6 @@
 import type { Any } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { asAny, assertAny } from '../../typeGuards/lits'
+import { asAny, assertAny } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { asStringOrNumber, assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'

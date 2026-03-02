@@ -1,6 +1,6 @@
 # Loops & Recursion
 
-Lits provides `for` comprehensions for building arrays, `doseq` for side effects, and `loop`/`recur` for tail-recursive iteration.
+Dvala provides `for` comprehensions for building arrays, `doseq` for side effects, and `loop`/`recur` for tail-recursive iteration.
 
 ## For Comprehensions
 

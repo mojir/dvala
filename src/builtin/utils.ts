@@ -1,4 +1,4 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type { AstNode, BindingTarget } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -20,14 +20,14 @@ export function assertNameNotDefined<T>(
 
   // TODO only subset of special expressions are necessary to check (CommonSpecialExpressionType)
   if (specialExpressionTypes[name as SpecialExpressionName])
-    throw new LitsError(`Cannot define variable ${name}, it's a special expression.`, sourceCodeInfo)
+    throw new DvalaError(`Cannot define variable ${name}, it's a special expression.`, sourceCodeInfo)
 
   if (builtin.normalExpressions[name])
-    throw new LitsError(`Cannot define variable ${name}, it's a builtin function.`, sourceCodeInfo)
+    throw new DvalaError(`Cannot define variable ${name}, it's a builtin function.`, sourceCodeInfo)
 
   if (isReservedSymbol(name))
-    throw new LitsError(`Cannot define variable ${name}, it's a reserved name.`, sourceCodeInfo)
+    throw new DvalaError(`Cannot define variable ${name}, it's a reserved name.`, sourceCodeInfo)
 
   if (contextStack.globalContext[name])
-    throw new LitsError(`Name already defined "${name}".`, sourceCodeInfo)
+    throw new DvalaError(`Name already defined "${name}".`, sourceCodeInfo)
 }

@@ -1,4 +1,4 @@
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 import { assertVector } from '../../../../typeGuards/annotatedArrays'
 import { assertNumber } from '../../../../typeGuards/number'
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../../../../builtin/interface'
@@ -97,14 +97,14 @@ function createReductionNormalExpression(
     evaluate: ([vector], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new LitsError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       try {
         return reductionFunction(vector)
       }
       catch (error) {
-        throw new LitsError(error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -133,7 +133,7 @@ function createMovingNormalExpression(
         return result
       }
       catch (error) {
-        throw new LitsError(error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),
@@ -149,7 +149,7 @@ function createCenteredMovingNormalExpression(
     evaluate: ([vector, windowSize, leftPadding, rightPadding], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new LitsError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       assertNumber(windowSize, sourceCodeInfo, { integer: true, finite: true, gte: minLength, lte: vector.length })
@@ -186,7 +186,7 @@ function createCenteredMovingNormalExpression(
         }
       }
       catch (error) {
-        throw new LitsError(error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
 
       result.push(...Array<null>(vector.length - end).fill(null))
@@ -204,7 +204,7 @@ function createRunningNormalExpression(
     evaluate: ([vector], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new LitsError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       if (vector.length === 0) {
@@ -221,7 +221,7 @@ function createRunningNormalExpression(
         return result
       }
       catch (error) {
-        throw new LitsError(error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),

@@ -2,7 +2,7 @@ import { getAllBindingTargetNames } from '../../builtin/bindingNode'
 import type { DoSeqNode, ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { AstNode, BindingNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { SymbolToken, Token } from '../../tokenizer/token'
@@ -29,7 +29,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
     const existingBoundNames = forLoopBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0][1][0])))
     const newBoundNames = getAllBindingTargetNames(loopBinding[0][1][0])
     if (Object.keys(newBoundNames).some(n => existingBoundNames.includes(n))) {
-      throw new LitsError('Duplicate binding', loopBinding[0][2])
+      throw new DvalaError('Duplicate binding', loopBinding[0][2])
     }
     forLoopBindings.push(loopBinding)
     if (isOperatorToken(ctx.tryPeek(), ',')) {
@@ -66,7 +66,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
       const existingBoundNames = letBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[1][0])))
       const newBoundNames = Object.keys(getAllBindingTargetNames(letNode[1][1][1][0]))
       if (newBoundNames.some(n => existingBoundNames.includes(n))) {
-        throw new LitsError('Duplicate binding', letNode[1][1][2])
+        throw new DvalaError('Duplicate binding', letNode[1][1][2])
       }
 
       letBindings.push(letNode[1][1])
@@ -134,7 +134,7 @@ function parseBinding(ctx: ParserContext): BindingNode {
 function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[]): void {
   if (!isInternalLoopBindingDelimiter(token, symbols)) {
     const symbolsString = `${[...symbols, ','].map(symbol => `"${symbol}"`).join(', ')} or ")"`
-    throw new LitsError(`Expected symbol ${symbolsString}`, token[2])
+    throw new DvalaError(`Expected symbol ${symbolsString}`, token[2])
   }
 }
 

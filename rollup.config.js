@@ -116,7 +116,7 @@ module.exports = [
         file: pkg.iife,
         format: 'iife',
         sourcemap: true,
-        name: 'Lits',
+        name: 'Dvala',
       },
     ],
     plugins: pluginsMinimal,

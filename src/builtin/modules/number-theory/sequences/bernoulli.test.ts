@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('bernoulli', () => {
   it('should return the correct sequence', () => {
@@ -17,7 +17,7 @@ describe('bernoulli', () => {
     expect((runNth('nth:bernoulli-seq(7)') as number[])[4]).toBeCloseTo(-1 / 30, 10)
     expect((runNth('nth:bernoulli-seq(7)') as number[])[5]).toBe(0)
     expect((runNth('nth:bernoulli-seq(7)') as number[])[6]).toBeCloseTo(1 / 42, 10)
-    expect(() => runNth('nth:bernoulli-seq(0)')).toThrow(LitsError)
+    expect(() => runNth('nth:bernoulli-seq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
