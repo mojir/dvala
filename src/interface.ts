@@ -1,4 +1,4 @@
-import type { EffectRef, DvalaFunction, RegularExpression } from './parser/types'
+import type { DvalaFunction, EffectRef, RegularExpression } from './parser/types'
 
 export type Arr = unknown[]
 export type Seq = string | Arr
