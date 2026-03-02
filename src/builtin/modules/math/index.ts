@@ -2,9 +2,9 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { isMatrix, isVector } from '../../../typeGuards/annotatedArrays'
 import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import type { BuiltinNormalExpressions } from '../../interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 
 type NumberVectorOrMatrix = number | number[] | number[][]
 
@@ -22,7 +22,7 @@ function getNumberVectorOrMatrixOperation(
     return ['matrix', param]
   }
   if (!isNumber(param)) {
-    throw new LitsError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
+    throw new DvalaError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
   }
   return ['number', param]
 }
@@ -499,7 +499,7 @@ to-deg([[0, PI], [PI / 2, 3 * PI / 2]])`,
   },
 }
 
-export const mathUtilsModule: LitsModule = {
+export const mathUtilsModule: DvalaModule = {
   name: 'math',
   functions: mathUtilsFunctions,
 }

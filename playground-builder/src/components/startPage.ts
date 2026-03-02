@@ -10,16 +10,16 @@ export function getStartPage(): string {
       v${version}
     </div>
     <div ${styles('flex', 'text-center', 'flex-col', 'items-center')}>
-      <div ${styles('text-huge')}>Lits</div>
+      <div ${styles('text-huge')}>Dvala</div>
       <div ${styles('flex', 'gap-16', 'text-2xl')}>
         <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} onclick="Playground.showPage('example-page', 'smooth')" title="Examples">${labIcon}<span ${styles('text-base')}>Examples</span></a>
         <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} onclick="Playground.showPage('${tutorials[0]!.id}', 'smooth')" title="Tutorials">${lampIcon}<span ${styles('text-base')}>Tutorials</span></a>
-        <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} href="https://github.com/mojir/lits" target="_blank" title="GitHub">${githubIcon}<span ${styles('text-base')}>GitHub</span></a>
+        <a class="external-links" ${styles('flex', 'items-center', 'gap-2')} href="https://github.com/mojir/dvala" target="_blank" title="GitHub">${githubIcon}<span ${styles('text-base')}>GitHub</span></a>
       </div>
     </div>
     <div ${styles('flex', 'justify-center', 'mt-6', 'mb-4')}>
       <div ${styles('font-sans', 'max-width: 600px;', 'text-color-gray-300', 'flex', 'flex-col')}>
-        <div ${styles('mt-4')}>Lits is a sandboxed, suspendable virtual machine that embeds in any JavaScript runtime. With algebraic effects and serializable continuations, execution state becomes a JSON blob — pause anywhere, resume across processes and time, and debug backward through history.</div>
+        <div ${styles('mt-4')}>Dvala is a sandboxed, suspendable virtual machine that embeds in any JavaScript runtime. With algebraic effects and serializable continuations, execution state becomes a JSON blob — pause anywhere, resume across processes and time, and debug backward through history.</div>
         <div ${styles('mt-4')}>Features</div>
         <div ${styles('mt-4', 'ml-6', 'flex', 'flex-col', 'text-base', 'gap-2')}>
           <div ${styles('flex', 'flex-row', 'gap-4', 'items-start')}>
@@ -68,7 +68,7 @@ export function getStartPage(): string {
             <div ${styles('mt-px')}>${checkIcon}</div>
             <div>
               <span ${styles('font-bold')}>JavaScript interoperability</span>
-              <span ${styles('text-color-gray-400')}> - JavaScript values and functions can easily be exposed in Lits</span>
+              <span ${styles('text-color-gray-400')}> - JavaScript values and functions can easily be exposed in Dvala</span>
             </div>
           </div>
           <div ${styles('flex', 'flex-row', 'gap-4', 'items-start')}>

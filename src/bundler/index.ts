@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { LitsBundle } from './interface'
+import type { DvalaBundle } from './interface'
 
 const builtinModuleNames = new Set([
   'assert',
@@ -19,19 +19,19 @@ const builtinModuleNames = new Set([
 ])
 
 /**
- * Regex to match `import("...")` or `import('...')` calls in Lits source.
+ * Regex to match `import("...")` or `import('...')` calls in Dvala source.
  * Captures the file path inside the quotes.
  */
 const fileImportPattern = /import\(\s*"([^"]+)"\s*\)|import\(\s*'([^']+)'\s*\)/g
 
 /**
- * Bundles a Lits entry file and all its file imports into a LitsBundle.
+ * Bundles a Dvala entry file and all its file imports into a DvalaBundle.
  *
- * Resolves all `import("./path/to/file.lits")` calls recursively,
+ * Resolves all `import("./path/to/file.dvala")` calls recursively,
  * deduplicates, detects circular dependencies, topologically sorts,
  * and rewrites file imports to bare symbol imports.
  */
-export function bundle(entryPath: string): LitsBundle {
+export function bundle(entryPath: string): DvalaBundle {
   const absoluteEntryPath = path.resolve(entryPath)
   const entryDir = path.dirname(absoluteEntryPath)
 
@@ -124,7 +124,7 @@ export function bundle(entryPath: string): LitsBundle {
 
     // If the file is under the entry directory (no leading ..)
     if (!relativePath.startsWith('..')) {
-      // Strip .lits extension
+      // Strip .dvala extension
       return stripExtension(relativePath)
     }
 
@@ -136,8 +136,8 @@ export function bundle(entryPath: string): LitsBundle {
   }
 
   function stripExtension(filePath: string): string {
-    if (filePath.endsWith('.lits')) {
-      return filePath.slice(0, -5)
+    if (filePath.endsWith('.dvala')) {
+      return filePath.slice(0, -('.dvala'.length))
     }
     return filePath
   }

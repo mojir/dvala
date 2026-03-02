@@ -1,2 +1,0 @@
-let a = import("./circular-a.lits");
-2

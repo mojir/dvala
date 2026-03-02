@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { JsFunction } from '../../../../../src'
 import type { Any } from '../../../../../src/interface'
-import type { LitsModule } from '../../../../../src/builtin/modules/interface'
+import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
 import type { BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
 
 let initiated = false
@@ -420,7 +420,7 @@ function jsFnToExpression(jsFn: JsFunction): BuiltinNormalExpressions[string] {
   }
 }
 
-export function getFsModule(): LitsModule {
+export function getFsModule(): DvalaModule {
   init()
   return {
     name: 'cli-fs',

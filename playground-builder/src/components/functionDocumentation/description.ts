@@ -1,6 +1,6 @@
 import { type FunctionReference, type Reference, isFunctionReference } from '../../../../reference'
 import { createFormatter } from '../../../../common/createFormatter'
-import { createVariableRule, formatLitsExpression, mdRules } from '../../formatter/rules'
+import { createVariableRule, formatDvalaExpression, mdRules } from '../../formatter/rules'
 import { styles } from '../../styles'
 import { findAllOccurrences } from '../../../../common/utils'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../../src/symbolPatterns'
@@ -30,7 +30,7 @@ function formatFunctionDescription(description: string, reference: FunctionRefer
   )
 
   const argumentRule = createVariableRule(
-    variableName => formatLitsExpression(variableName),
+    variableName => formatDvalaExpression(variableName),
     variableName => isArgumentName(variableName, reference),
   )
 

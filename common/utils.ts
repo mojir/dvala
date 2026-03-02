@@ -1,12 +1,12 @@
 import type { UnknownRecord } from '../src/interface'
-import { isRegularExpression } from '../src/typeGuards/lits'
-import { isLitsFunction } from '../src/typeGuards/litsFunction'
+import { isRegularExpression } from '../src/typeGuards/dvala'
+import { isDvalaFunction } from '../src/typeGuards/dvalaFunction'
 import { isMatrix, isVector } from '../src/typeGuards/annotatedArrays'
 
 export function stringifyValue(value: unknown, html: boolean): string {
   const gt = html ? '&gt;' : '>'
   const lt = html ? '&lt;' : '<'
-  if (isLitsFunction(value)) {
+  if (isDvalaFunction(value)) {
     if (value.functionType === 'Builtin')
       return `${lt}builtin function ${value.normalBuiltinSymbolType}${gt}`
     else

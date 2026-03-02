@@ -1,6 +1,6 @@
 import type { Any } from '../../interface'
 import { AssertionError } from '../../errors'
-import { asAny } from '../../typeGuards/lits'
+import { asAny } from '../../typeGuards/dvala'
 import { assertString } from '../../typeGuards/string'
 import type { BuiltinNormalExpressions } from '../interface'
 

@@ -1,5 +1,5 @@
 /**
- * LitsValue Serialization Contract
+ * DvalaValue Serialization Contract
  *
  * Defines which runtime value types can be serialized to JSON and restored.
  * Used at suspension time to produce clear errors when non-serializable
@@ -25,14 +25,14 @@
  */
 
 import type { Any } from '../interface'
-import { isLitsFunction } from '../typeGuards/litsFunction'
-import { isEffectRef, isRegularExpression } from '../typeGuards/lits'
+import { isDvalaFunction } from '../typeGuards/dvalaFunction'
+import { isEffectRef, isRegularExpression } from '../typeGuards/dvala'
 import type {
-  LitsFunction,
+  DvalaFunction,
 } from '../parser/types'
 
 /**
- * Checks whether a Lits runtime value is fully JSON-serializable.
+ * Checks whether a Dvala runtime value is fully JSON-serializable.
  *
  * Returns `true` if the value can be serialized and later restored.
  * Returns `false` if any part of the value contains a NativeJsFunction
@@ -66,9 +66,9 @@ export function isSerializable(value: Any, visited = new Set<object>()): boolean
     return true
   }
 
-  // LitsFunction — check by functionType
-  if (isLitsFunction(value)) {
-    return isLitsFunctionSerializable(value, visited)
+  // DvalaFunction — check by functionType
+  if (isDvalaFunction(value)) {
+    return isDvalaFunctionSerializable(value, visited)
   }
 
   // Array — serializable if all elements are
@@ -85,7 +85,7 @@ export function isSerializable(value: Any, visited = new Set<object>()): boolean
   return false
 }
 
-function isLitsFunctionSerializable(fn: LitsFunction, visited: Set<object>): boolean {
+function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): boolean {
   switch (fn.functionType) {
     // Always serializable — contain only primitive/index data
     case 'UserDefined':
@@ -166,7 +166,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
     return null
   }
 
-  if (isLitsFunction(value)) {
+  if (isDvalaFunction(value)) {
     if (value.functionType === 'NativeJsFunction') {
       return `${path} is a NativeJsFunction (${value.name ?? 'anonymous'}). NativeJsFunctions are not serializable — they are re-injected from bindings on resume.`
     }

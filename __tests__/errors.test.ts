@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LitsError, RecurSignal, UserDefinedError, isLitsError } from '../src/errors'
+import { DvalaError, RecurSignal, UserDefinedError, isDvalaError } from '../src/errors'
 
 describe('errors', () => {
   it('recurSignal', () => {
@@ -20,21 +20,21 @@ describe('errors', () => {
     expect(err.name).toBe('UserDefinedError')
     expect(err.message).toBe('A message\nLocation 1:1\n(+ 1 2)\n^      ')
   })
-  describe('isLitsError', () => {
-    it('isLitsError', () => {
+  describe('isDvalaError', () => {
+    it('isDvalaError', () => {
       const error = new Error('An error')
-      const litsError = new LitsError('An error', undefined)
+      const dvalaError = new DvalaError('An error', undefined)
       const recurSignal = new RecurSignal([100])
       const userDefinedError = new UserDefinedError('An error')
 
-      expect(isLitsError(litsError)).toBe(true)
-      expect(isLitsError(userDefinedError)).toBe(true)
+      expect(isDvalaError(dvalaError)).toBe(true)
+      expect(isDvalaError(userDefinedError)).toBe(true)
 
-      expect(isLitsError(error)).toBe(false)
-      expect(isLitsError(recurSignal)).toBe(false)
-      expect(isLitsError({})).toBe(false)
-      expect(isLitsError(null)).toBe(false)
-      expect(isLitsError(undefined)).toBe(false)
+      expect(isDvalaError(error)).toBe(false)
+      expect(isDvalaError(recurSignal)).toBe(false)
+      expect(isDvalaError({})).toBe(false)
+      expect(isDvalaError(null)).toBe(false)
+      expect(isDvalaError(undefined)).toBe(false)
     })
   })
 })

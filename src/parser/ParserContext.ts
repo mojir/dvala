@@ -1,4 +1,4 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { SourceCodeInfo, Token } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { AstNode } from './types'
@@ -28,7 +28,7 @@ export class ParserContext {
       const lastToken = this.tokens.at(-1)
       /* v8 ignore next */
       const sourceCodeInfo = lastToken ? lastToken[2] : undefined
-      throw new LitsError('Unexpected end of input', sourceCodeInfo)
+      throw new DvalaError('Unexpected end of input', sourceCodeInfo)
     }
     return token
   }

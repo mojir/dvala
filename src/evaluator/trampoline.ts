@@ -29,7 +29,7 @@ import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes, getNodeTypeName } from '../constants/constants'
-import { LitsError, RecurSignal, UndefinedSymbolError, UserDefinedError } from '../errors'
+import { DvalaError, RecurSignal, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import type {
@@ -44,7 +44,7 @@ import type {
   FNullFunction,
   FunctionLike,
   JuxtFunction,
-  LitsFunction,
+  DvalaFunction,
   ModuleFunction,
   NativeJsFunction,
   NormalBuiltinFunction,
@@ -66,8 +66,8 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedArrays'
 import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
-import { asAny, asFunctionLike, assertEffectRef, assertSeq, isAny, isEffectRef, isObj } from '../typeGuards/lits'
-import { isLitsFunction } from '../typeGuards/litsFunction'
+import { asAny, asFunctionLike, assertEffectRef, assertSeq, isAny, isEffectRef, isObj } from '../typeGuards/dvala'
+import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { toAny } from '../utils'
@@ -140,7 +140,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
       const result = evaluateNormalExpressionRecursive(node as NormalExpressionNode, contextStack)
       return chain(result, (resolved) => {
         if (typeof resolved === 'number' && Number.isNaN(resolved)) {
-          throw new LitsError('Number is NaN', node[2])
+          throw new DvalaError('Number is NaN', node[2])
         }
         return annotate(resolved)
       })
@@ -154,7 +154,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
         return annotate(runSyncTrampoline(initial))
       }
       catch (error) {
-        if (error instanceof LitsError && error.message.includes('Unexpected async operation')) {
+        if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
           const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: [] }
           return runAsyncTrampoline(freshInitial).then(r => annotate(r))
         }
@@ -163,7 +163,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
     }
     /* v8 ignore next 2 */
     default:
-      throw new LitsError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
+      throw new DvalaError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
   }
 }
 
@@ -180,7 +180,7 @@ function evaluateParamsRecursive(
           params.push(...spreadValue)
         }
         else {
-          throw new LitsError(`Spread operator requires an array, got ${valueToString(paramNode)}`, paramNode[2])
+          throw new DvalaError(`Spread operator requires an array, got ${valueToString(paramNode)}`, paramNode[2])
         }
       })
     }
@@ -220,7 +220,7 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         const type = nameSymbol[1]
         const normalExpression = builtin.allNormalExpressions[type]!
         if (contextStack.pure && normalExpression.pure === false) {
-          throw new LitsError(`Cannot call impure function '${normalExpression.name}' in pure mode`, node[2])
+          throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, node[2])
         }
         return normalExpression.evaluate(params, node[2], contextStack, { executeFunction: executeFunctionRecursive })
       }
@@ -255,8 +255,8 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
 }
 
 function executeFunctionRecursive(fn: FunctionLike, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  if (isLitsFunction(fn)) {
-    return executeLitsFunctionRecursive(fn, params, contextStack, sourceCodeInfo)
+  if (isDvalaFunction(fn)) {
+    return executeDvalaFunctionRecursive(fn, params, contextStack, sourceCodeInfo)
   }
   if (Array.isArray(fn)) {
     return evaluateArrayAsFunction(fn, params, sourceCodeInfo)
@@ -271,14 +271,14 @@ function executeFunctionRecursive(fn: FunctionLike, params: Arr, contextStack: C
     return evaluateNumberAsFunction(fn, params, sourceCodeInfo)
   }
   /* v8 ignore next 1 */
-  throw new LitsError('Unexpected function type', sourceCodeInfo)
+  throw new DvalaError('Unexpected function type', sourceCodeInfo)
 }
 
 /**
- * Execute a LitsFunction recursively. This is the old-style executor
+ * Execute a DvalaFunction recursively. This is the old-style executor
  * used as a fallback for normal expression callbacks.
  */
-function executeLitsFunctionRecursive(fn: LitsFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
+function executeDvalaFunctionRecursive(fn: DvalaFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   switch (fn.functionType) {
     case 'UserDefined':
       return executeUserDefinedRecursive(fn, params, contextStack, sourceCodeInfo)
@@ -312,7 +312,7 @@ function executeLitsFunctionRecursive(fn: LitsFunction, params: Arr, contextStac
 function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   function setupAndExecute(currentParams: Arr): MaybePromise<Any> {
     if (!arityAcceptsMin(fn.arity, currentParams.length)) {
-      throw new LitsError(`Expected ${fn.arity} arguments, got ${currentParams.length}.`, sourceCodeInfo)
+      throw new DvalaError(`Expected ${fn.arity} arguments, got ${currentParams.length}.`, sourceCodeInfo)
     }
     const evaluatedFunction = fn.evaluatedfunction
     const args = evaluatedFunction[0]
@@ -400,7 +400,7 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
 function executePartialRecursive(fn: PartialFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   const actualParams = [...fn.params]
   if (params.length !== fn.placeholders.length) {
-    throw new LitsError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
+    throw new DvalaError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
   }
   const paramsCopy = [...params]
   for (const placeholderIndex of fn.placeholders) {
@@ -413,7 +413,7 @@ function executeCompRecursive(fn: CompFunction, params: Arr, contextStack: Conte
   const { params: f } = fn
   if (f.length === 0) {
     if (params.length !== 1)
-      throw new LitsError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
+      throw new DvalaError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
     return asAny(params[0], sourceCodeInfo)
   }
   let result: MaybePromise<Arr> = params
@@ -466,7 +466,7 @@ function executeFnullRecursive(fn: FNullFunction, params: Arr, contextStack: Con
 function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   const normalExpression = asNonUndefined(builtin.allNormalExpressions[fn.normalBuiltinSymbolType], sourceCodeInfo)
   if (contextStack.pure && normalExpression.pure === false) {
-    throw new LitsError(`Cannot call impure function '${fn.name}' in pure mode`, sourceCodeInfo)
+    throw new DvalaError(`Cannot call impure function '${fn.name}' in pure mode`, sourceCodeInfo)
   }
   return normalExpression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
 }
@@ -476,20 +476,20 @@ function executeSpecialBuiltinRecursive(fn: SpecialBuiltinFunction, params: Arr,
   if (specialExpression.evaluateAsNormalExpression) {
     return specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
   }
-  throw new LitsError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
+  throw new DvalaError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
 }
 
 function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const litsModule = contextStack.getModule(fn.moduleName)
-  if (!litsModule) {
-    throw new LitsError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
+  const dvalaModule = contextStack.getModule(fn.moduleName)
+  if (!dvalaModule) {
+    throw new DvalaError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
   }
-  const expression = litsModule.functions[fn.functionName]
+  const expression = dvalaModule.functions[fn.functionName]
   if (!expression) {
-    throw new LitsError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
+    throw new DvalaError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
   }
   if (contextStack.pure && expression.pure === false) {
-    throw new LitsError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
+    throw new DvalaError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
   }
   assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
   return expression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
@@ -497,7 +497,7 @@ function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: C
 
 function executeNativeJsFunctionRecursive(fn: NativeJsFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   if (contextStack.pure && !fn.nativeFn.pure) {
-    throw new LitsError(`Cannot call impure native function '${fn.name}' in pure mode`, sourceCodeInfo)
+    throw new DvalaError(`Cannot call impure native function '${fn.name}' in pure mode`, sourceCodeInfo)
   }
   try {
     const result = fn.nativeFn.fn(...params)
@@ -510,7 +510,7 @@ function executeNativeJsFunctionRecursive(fn: NativeJsFunction, params: Arr, con
             : isUnknownRecord(error) && typeof error.message === 'string'
               ? error.message
               : '<no message>'
-          throw new LitsError(`Native function threw: "${message}"`, sourceCodeInfo)
+          throw new DvalaError(`Native function threw: "${message}"`, sourceCodeInfo)
         },
       )
     }
@@ -522,7 +522,7 @@ function executeNativeJsFunctionRecursive(fn: NativeJsFunction, params: Arr, con
       : isUnknownRecord(error) && typeof error.message === 'string'
         ? error.message
         : '<no message>'
-    throw new LitsError(`Native function threw: "${message}"`, sourceCodeInfo)
+    throw new DvalaError(`Native function threw: "${message}"`, sourceCodeInfo)
   }
 }
 
@@ -532,7 +532,7 @@ function executeNativeJsFunctionRecursive(fn: NativeJsFunction, params: Arr, con
 
 function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new LitsError('Object as function requires one string parameter.', sourceCodeInfo)
+    throw new DvalaError('Object as function requires one string parameter.', sourceCodeInfo)
   const key = params[0]
   assertString(key, sourceCodeInfo)
   return toAny(fn[key])
@@ -540,7 +540,7 @@ function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceC
 
 function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new LitsError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
+    throw new DvalaError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
   const index = params[0]
   assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
   return toAny(fn[index])
@@ -548,13 +548,13 @@ function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCo
 
 function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new LitsError('String as function requires one Obj parameter.', sourceCodeInfo)
+    throw new DvalaError('String as function requires one Obj parameter.', sourceCodeInfo)
   const param = toAny(params[0])
   if (isObj(param))
     return toAny((param)[fn])
   if (isNumber(param, { integer: true }))
     return toAny(fn[param])
-  throw new LitsError(
+  throw new DvalaError(
     `string as function expects Obj or integer parameter, got ${valueToString(param)}`,
     sourceCodeInfo,
   )
@@ -563,7 +563,7 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
 function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   assertNumber(fn, undefined, { integer: true })
   if (params.length !== 1)
-    throw new LitsError('Number as function requires one Arr parameter.', sourceCodeInfo)
+    throw new DvalaError('Number as function requires one Arr parameter.', sourceCodeInfo)
   const param = params[0]
   assertSeq(param, sourceCodeInfo)
   return toAny(param[fn])
@@ -576,7 +576,7 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
 function evaluateReservedSymbol(node: ReservedSymbolNode): Any {
   const reservedName = node[1]
   if (!['true', 'false', 'null'].includes(reservedName)) {
-    throw new LitsError(`Reserved symbol ${reservedName} cannot be evaluated`, node[2])
+    throw new DvalaError(`Reserved symbol ${reservedName} cannot be evaluated`, node[2])
   }
   const value = reservedSymbolRecord[reservedName]
   return asNonUndefined(value, node[2])
@@ -636,7 +636,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return stepSpecialExpression(node as SpecialExpressionNode, env, k)
     /* v8 ignore next 2 */
     default:
-      throw new LitsError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
+      throw new DvalaError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
   }
 }
 
@@ -1074,7 +1074,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
       const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
       const arity = { min: min > 0 ? min : undefined, max }
-      const litsFunction: LitsFunction = {
+      const dvalaFunction: DvalaFunction = {
         [FUNCTION_SYMBOL]: true,
         sourceCodeInfo: node[2],
         functionType: 'UserDefined',
@@ -1083,7 +1083,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         arity,
         docString,
       }
-      return { type: 'Value', value: litsFunction, k }
+      return { type: 'Value', value: dvalaFunction, k }
     }
 
     // --- defined? ---
@@ -1105,12 +1105,12 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         return { type: 'Value', value: valueModule.value as Any, k }
       }
       // Fall back to builtin modules
-      const litsModule = env.getModule(moduleName)
-      if (!litsModule) {
-        throw new LitsError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
+      const dvalaModule = env.getModule(moduleName)
+      if (!dvalaModule) {
+        throw new DvalaError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
       }
       const result: Record<string, ModuleFunction> = {}
-      for (const [functionName, expression] of Object.entries(litsModule.functions)) {
+      for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
         result[functionName] = {
           [FUNCTION_SYMBOL]: true,
           sourceCodeInfo,
@@ -1171,7 +1171,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
 
     /* v8 ignore next 2 */
     default:
-      throw new LitsError(`Unknown special expression type: ${type}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown special expression type: ${type}`, sourceCodeInfo)
   }
 }
 
@@ -1209,7 +1209,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       const builtinType = nameSymbol[1]
       const normalExpression = builtin.allNormalExpressions[builtinType]!
       if (env.pure && normalExpression.pure === false) {
-        throw new LitsError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
+        throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
       // Call the normal expression directly — it may use executeFunction internally
       const result = normalExpression.evaluate(params, sourceCodeInfo, env, { executeFunction: executeFunctionRecursive })
@@ -1255,8 +1255,8 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
     return { type: 'Value', value: partialFunction, k }
   }
 
-  if (isLitsFunction(fn)) {
-    return dispatchLitsFunction(fn, params, env, sourceCodeInfo, k)
+  if (isDvalaFunction(fn)) {
+    return dispatchDvalaFunction(fn, params, env, sourceCodeInfo, k)
   }
 
   // Non-function callables: arrays, objects, strings, numbers
@@ -1273,14 +1273,14 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
     return { type: 'Value', value: evaluateNumberAsFunction(fn, params, sourceCodeInfo), k }
   }
   /* v8 ignore next 1 */
-  throw new LitsError('Unexpected function type', sourceCodeInfo)
+  throw new DvalaError('Unexpected function type', sourceCodeInfo)
 }
 
 /**
- * Dispatch a LitsFunction. User-defined functions are set up with frames;
+ * Dispatch a DvalaFunction. User-defined functions are set up with frames;
  * compound function types (Comp, Juxt, etc.) use the recursive executor.
  */
-function dispatchLitsFunction(fn: LitsFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
+function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
   switch (fn.functionType) {
     case 'UserDefined': {
       return setupUserDefinedCall(fn, params, env, sourceCodeInfo, k)
@@ -1299,7 +1299,7 @@ function dispatchLitsFunction(fn: LitsFunction, params: Arr, env: ContextStack, 
     case 'SpecialBuiltin':
     case 'Module':
     case 'NativeJsFunction': {
-      const result = executeLitsFunctionRecursive(fn, params, env, sourceCodeInfo)
+      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
     }
   }
@@ -1314,7 +1314,7 @@ function dispatchLitsFunction(fn: LitsFunction, params: Arr, env: ContextStack, 
  */
 function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
   if (!arityAcceptsMin(fn.arity, params.length)) {
-    throw new LitsError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
+    throw new DvalaError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
   }
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
@@ -1465,7 +1465,7 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame
-      throw new LitsError(`Unhandled frame type: ${(_exhaustive as Frame).type}`, undefined)
+      throw new DvalaError(`Unhandled frame type: ${(_exhaustive as Frame).type}`, undefined)
     }
   }
 }
@@ -1565,7 +1565,7 @@ function processMatchCase(frame: MatchFrame, k: ContinuationStack): Step {
     if (bindings instanceof Promise) {
       // Async tryMatch — fall back to recursive evaluation
       // This handles the case where pattern matching involves async operations
-      throw new LitsError('Async pattern matching not supported in trampoline yet', sourceCodeInfo)
+      throw new DvalaError('Async pattern matching not supported in trampoline yet', sourceCodeInfo)
     }
 
     if (bindings === null) {
@@ -1675,7 +1675,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
   // Process the completed value
   if (frame.isSpread) {
     if (!Array.isArray(value)) {
-      throw new LitsError('Spread value is not an array', sourceCodeInfo)
+      throw new DvalaError('Spread value is not an array', sourceCodeInfo)
     }
     result.push(...value)
   }
@@ -1706,7 +1706,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
   if (frame.isSpread) {
     // Spread value should be an object
     if (!isUnknownRecord(value)) {
-      throw new LitsError('Spread value is not an object', sourceCodeInfo)
+      throw new DvalaError('Spread value is not an object', sourceCodeInfo)
     }
     Object.assign(result, value)
     // Advance to next entry
@@ -1730,7 +1730,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     assertString(value, sourceCodeInfo)
     const valueNode = nodes[frame.index + 1]
     if (valueNode === undefined) {
-      throw new LitsError('Missing value for key', sourceCodeInfo)
+      throw new DvalaError('Missing value for key', sourceCodeInfo)
     }
     const newFrame: ObjectBuildFrame = { ...frame, currentKey: value }
     return { type: 'Eval', node: valueNode, env, k: [newFrame, ...k] }
@@ -1853,7 +1853,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       // A let-binding value has been evaluated; handled via recursive fallback
       // (processForLetBindings handles this inline)
       /* v8 ignore next 1 */
-      throw new LitsError('ForLoop evalLet should not reach applyFrame', sourceCodeInfo)
+      throw new DvalaError('ForLoop evalLet should not reach applyFrame', sourceCodeInfo)
     }
 
     case 'evalWhen': {
@@ -1896,7 +1896,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
 
     /* v8 ignore next 2 */
     case 'evalElement':
-      throw new LitsError(`Unexpected ForLoop phase: ${frame.phase}`, sourceCodeInfo)
+      throw new DvalaError(`Unexpected ForLoop phase: ${frame.phase}`, sourceCodeInfo)
   }
 
   /* v8 ignore next 1 */
@@ -2075,7 +2075,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
       const remainingK = k.slice(i + 1)
 
       if (params.length !== bindingNodes.length) {
-        throw new LitsError(
+        throw new DvalaError(
           `recur expected ${bindingNodes.length} parameters, got ${params.length}`,
           sourceCodeInfo,
         )
@@ -2130,7 +2130,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
     }
   }
 
-  throw new LitsError('recur called outside of loop or function body', sourceCodeInfo)
+  throw new DvalaError('recur called outside of loop or function body', sourceCodeInfo)
 }
 
 function applyTryCatch(_value: Any, k: ContinuationStack): Step {
@@ -2195,7 +2195,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
  * TryWithFrame. If found, evaluate the handler and use its return value as the
  * result of the perform call. If not found, throw an unhandled effect error.
  *
- * Handler semantics (per P&P / Lits contract):
+ * Handler semantics (per P&P / Dvala contract):
  * - Handler receives the perform args as an array: `([arg1, arg2]) -> ...`
  * - Handler's return value IS the resume value — no explicit resume needed
  * - Handlers run OUTSIDE the try/with scope — the TryWithFrame is removed
@@ -2256,14 +2256,14 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
     return dispatchHostHandler(hostHandler, args, k, signal, sourceCodeInfo)
   }
 
-  // No host handler — check standard effects (lits.log, lits.now, etc.).
+  // No host handler — check standard effects (dvala.log, dvala.now, etc.).
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(args, k, sourceCodeInfo)
   }
 
   // No handler at all — unhandled effect.
-  throw new LitsError(`Unhandled effect: '${effect.name}'`, sourceCodeInfo)
+  throw new DvalaError(`Unhandled effect: '${effect.name}'`, sourceCodeInfo)
 }
 
 /**
@@ -2280,8 +2280,8 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
  *   continuation `k` and optional metadata. The effect trampoline loop
  *   catches this and returns `RunResult.suspended`.
  *
- * Host handler errors are treated as Lits-level errors — they're fed to
- * `unwindToTryCatch` so that Lits `try/catch` blocks can intercept them.
+ * Host handler errors are treated as Dvala-level errors — they're fed to
+ * `unwindToTryCatch` so that Dvala `try/catch` blocks can intercept them.
  */
 function dispatchHostHandler(
   handler: EffectHandler,
@@ -2300,7 +2300,7 @@ function dispatchHostHandler(
       signal: effectSignal,
       resume: (value: Any | Promise<Any>) => {
         if (settled) {
-          throw new LitsError('Effect handler called resume() more than once or after suspend()', sourceCodeInfo)
+          throw new DvalaError('Effect handler called resume() more than once or after suspend()', sourceCodeInfo)
         }
         settled = true
 
@@ -2310,10 +2310,10 @@ function dispatchHostHandler(
               resolve({ type: 'Value', value: v, k })
             },
             (e) => {
-              // The promise-value rejected — treat as a Lits-level error
-              // so try/catch in the Lits program can handle it.
+              // The promise-value rejected — treat as a Dvala-level error
+              // so try/catch in the Dvala program can handle it.
               try {
-                resolve(unwindToTryCatch(e instanceof Error ? new LitsError(e, sourceCodeInfo) : new LitsError(`${e}`, sourceCodeInfo), k))
+                resolve(unwindToTryCatch(e instanceof Error ? new DvalaError(e, sourceCodeInfo) : new DvalaError(`${e}`, sourceCodeInfo), k))
               }
               catch (unwoundError) {
                 reject(unwoundError)
@@ -2327,7 +2327,7 @@ function dispatchHostHandler(
       },
       suspend: (meta?: Any) => {
         if (settled) {
-          throw new LitsError('Effect handler called suspend() more than once or after resume()', sourceCodeInfo)
+          throw new DvalaError('Effect handler called suspend() more than once or after resume()', sourceCodeInfo)
         }
         settled = true
         reject(new SuspensionSignal(k, meta))
@@ -2344,9 +2344,9 @@ function dispatchHostHandler(
         reject(e)
       }
       else {
-        // Handler itself threw — treat as a Lits-level error.
+        // Handler itself threw — treat as a Dvala-level error.
         try {
-          resolve(unwindToTryCatch(e instanceof Error ? new LitsError(e, sourceCodeInfo) : new LitsError(`${e}`, sourceCodeInfo), k))
+          resolve(unwindToTryCatch(e instanceof Error ? new DvalaError(e, sourceCodeInfo) : new DvalaError(`${e}`, sourceCodeInfo), k))
         }
         catch (unwoundError) {
           reject(unwoundError)
@@ -2420,13 +2420,13 @@ async function executeParallelBranches(
   // Collect outcomes
   const completedBranches: Array<{ index: number, value: Any }> = []
   const suspendedBranches: Array<{ index: number, blob: string, meta?: Any }> = []
-  const errors: LitsError[] = []
+  const errors: DvalaError[] = []
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i]!
     if (result.status === 'rejected') {
       // runEffectLoop should never reject, but handle defensively
-      errors.push(new LitsError(`${result.reason}`, undefined))
+      errors.push(new DvalaError(`${result.reason}`, undefined))
     }
     else {
       const r = result.value
@@ -2542,12 +2542,12 @@ async function executeRaceBranches(
 
     // No completed branch — collect suspended and errored
     const suspendedMetas: Any[] = []
-    const errors: LitsError[] = []
+    const errors: DvalaError[] = []
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i]!
       if (result.status === 'rejected') {
-        errors.push(new LitsError(`${result.reason}`, undefined))
+        errors.push(new DvalaError(`${result.reason}`, undefined))
       }
       else {
         const r = result.value
@@ -2576,7 +2576,7 @@ async function executeRaceBranches(
 
     // All branches errored — throw aggregate error
     const messages = errors.map(e => e.message).join('; ')
-    throw new LitsError(`race: all branches failed: ${messages}`, undefined)
+    throw new DvalaError(`race: all branches failed: ${messages}`, undefined)
   }
   finally {
     parentSignal.removeEventListener('abort', onParentAbort)
@@ -2662,7 +2662,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   // Process the completed value
   if (isSpreadNode(currentArgNode)) {
     if (!Array.isArray(value)) {
-      throw new LitsError(`Spread operator requires an array, got ${valueToString(value)}`, currentArgNode[2])
+      throw new DvalaError(`Spread operator requires an array, got ${valueToString(value)}`, currentArgNode[2])
     }
     params.push(...value)
   }
@@ -2730,7 +2730,7 @@ function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: Continua
   const { target, record, env, sourceCodeInfo } = frame
   const valueRecord = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
   if (valueRecord instanceof Promise) {
-    throw new LitsError('Async binding default evaluation not supported in trampoline yet', sourceCodeInfo)
+    throw new DvalaError('Async binding default evaluation not supported in trampoline yet', sourceCodeInfo)
   }
   Object.assign(record, valueRecord)
   return { type: 'Value', value, k }
@@ -2738,7 +2738,7 @@ function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: Continua
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
   if (typeof value === 'number' && Number.isNaN(value)) {
-    throw new LitsError('Number is NaN', frame.sourceCodeInfo)
+    throw new DvalaError('Number is NaN', frame.sourceCodeInfo)
   }
   return { type: 'Value', value: annotate(value), k }
 }
@@ -2750,7 +2750,7 @@ function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): 
 /**
  * Extract all visible bindings from a ContextStack as a flat record.
  * Iterates from outermost to innermost scope so that inner bindings
- * shadow outer ones, matching Lits scoping semantics.
+ * shadow outer ones, matching Dvala scoping semantics.
  */
 export function extractBindings(env: ContextStack): Record<string, Any> {
   const result: Record<string, Any> = {}
@@ -2775,7 +2775,7 @@ export function extractBindings(env: ContextStack): Record<string, Any> {
  * Apply a DebugStepFrame.
  *
  * Phase 'awaitValue': The compound expression just evaluated to `value`.
- *   Build step info and produce a PerformStep for `lits.debug.step`.
+ *   Build step info and produce a PerformStep for `dvala.debug.step`.
  *   Push self (in 'awaitPerform' phase) onto k so that when the debug
  *   perform completes, the value flows through correctly.
  *
@@ -2803,7 +2803,7 @@ function applyDebugStep(frame: DebugStepFrame, value: Any, k: ContinuationStack)
       sourceCodeInfo: frame.sourceCodeInfo,
       env: frame.env,
     }
-    const debugEffect = getEffectRef('lits.debug.step')
+    const debugEffect = getEffectRef('dvala.debug.step')
     return { type: 'Perform', effect: debugEffect, args: [stepInfo as Any], k: [awaitFrame, ...k] }
   }
 
@@ -2839,7 +2839,7 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any, is
       if (typeof v === 'string' || Array.isArray(v) || isObj(v)) {
         return v
       }
-      throw new LitsError(`Expected collection, got ${valueToString(v)}`, s)
+      throw new DvalaError(`Expected collection, got ${valueToString(v)}`, s)
     },
     isSeq: (v: Any) => typeof v === 'string' || Array.isArray(v),
   }
@@ -2909,7 +2909,7 @@ export function runSyncTrampoline(initial: Step): Any {
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
-      throw new LitsError('Unexpected async operation in synchronous context. Use async.run() for async operations.', undefined)
+      throw new DvalaError('Unexpected async operation in synchronous context. Use async.run() for async operations.', undefined)
     }
     if (step.type === 'Value' && step.k.length === 0) {
       return step.value
@@ -2970,7 +2970,7 @@ export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any
     return runSyncTrampoline(initial)
   }
   catch (error) {
-    if (error instanceof LitsError && error.message.includes('Unexpected async operation')) {
+    if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       // An async operation was encountered — re-run with the async trampoline.
       // We must rebuild the initial step since the sync attempt may have
       // partially mutated frames.
@@ -2984,7 +2984,7 @@ export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any
 /**
  * Evaluate an AST using the async trampoline directly.
  * Use this when the caller knows that async operations may be involved
- * (e.g., from Lits.async.run) to avoid the sync-first-then-retry pattern
+ * (e.g., from Dvala.async.run) to avoid the sync-first-then-retry pattern
  * which can cause side effects to be executed twice.
  */
 export function evaluateAsync(ast: Ast, contextStack: ContextStack): Promise<Any> {
@@ -3003,7 +3003,7 @@ export function evaluateNode(node: AstNode, contextStack: ContextStack): MaybePr
     return runSyncTrampoline(initial)
   }
   catch (error) {
-    if (error instanceof LitsError && error.message.includes('Unexpected async operation')) {
+    if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: [] }
       return runAsyncTrampoline(freshInitial)
     }
@@ -3064,11 +3064,11 @@ export async function resumeWithEffects(
  * Shared effect trampoline loop used by both `evaluateWithEffects` and
  * `resumeWithEffects`. Runs the trampoline to completion, suspension, or error.
  *
- * When `handlers` includes a `lits.debug.step` handler, the loop enters
+ * When `handlers` includes a `dvala.debug.step` handler, the loop enters
  * debug mode: before evaluating compound nodes (NormalExpression,
  * SpecialExpression) that have source code info, a `DebugStepFrame` is
  * pushed onto the continuation stack. This causes each compound expression
- * to fire a `perform(lits.debug.step, stepInfo)` after evaluation,
+ * to fire a `perform(dvala.debug.step, stepInfo)` after evaluation,
  * enabling the time-travel debugger.
  */
 async function runEffectLoop(
@@ -3076,7 +3076,7 @@ async function runEffectLoop(
   handlers: Handlers | undefined,
   signal: AbortSignal,
 ): Promise<RunResult> {
-  const debugMode = handlers != null && 'lits.debug.step' in handlers
+  const debugMode = handlers != null && 'dvala.debug.step' in handlers
 
   try {
     let step: Step | Promise<Step> = initial
@@ -3110,9 +3110,9 @@ async function runEffectLoop(
       const blob = serializeSuspension(error.k, error.meta)
       return { type: 'suspended', blob, meta: error.meta }
     }
-    if (error instanceof LitsError) {
+    if (error instanceof DvalaError) {
       return { type: 'error', error }
     }
-    return { type: 'error', error: new LitsError(`${error}`, undefined) }
+    return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 }

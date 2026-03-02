@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('polygonal', () => {
   it('should return the correct sequence', () => {
@@ -14,8 +14,8 @@ describe('polygonal', () => {
     expect(runNth('nth:polygonal-seq(4, 2)')).toEqual([1, 4])
     expect(runNth('nth:polygonal-seq(5, 3)')).toEqual([1, 5, 12])
     expect(runNth('nth:polygonal-seq(6, 5)')).toEqual([1, 6, 15, 28, 45])
-    expect(() => runNth('nth:polygonal-seq(2, 1)')).toThrow(LitsError)
-    expect(() => runNth('nth:polygonal-seq(3, 0)')).toThrow(LitsError)
+    expect(() => runNth('nth:polygonal-seq(2, 1)')).toThrow(DvalaError)
+    expect(() => runNth('nth:polygonal-seq(3, 0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

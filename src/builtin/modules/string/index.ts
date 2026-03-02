@@ -1,4 +1,4 @@
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import { asNonUndefined } from '../../../typeGuards'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
@@ -6,7 +6,7 @@ import { asStringOrNumber, assertString } from '../../../typeGuards/string'
 import { toNonNegativeInteger } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {
@@ -49,7 +49,7 @@ string-repeat("***", 0)`,
         return String.fromCodePoint(int)
       }
       catch (error) {
-        throw new LitsError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -361,7 +361,7 @@ encode-base64("Albert")`,
         )
       }
       catch (error) {
-        throw new LitsError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -406,7 +406,7 @@ encode-uri-component("Hi everyone!?")`,
         return decodeURIComponent(value)
       }
       catch (error) {
-        throw new LitsError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -467,7 +467,7 @@ function applyPlaceholders(templateString: string, placeholders: unknown[], sour
   return templateString
 }
 
-export const stringUtilsModule: LitsModule = {
+export const stringUtilsModule: DvalaModule = {
   name: 'string',
   functions: stringUtilsFunctions,
 }

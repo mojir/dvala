@@ -1,4 +1,4 @@
-import type { FilePathParams } from '../Lits/Lits'
+import type { FilePathParams } from '../Dvala/Dvala'
 import { tokenizeShebang, tokenizers } from './tokenizers'
 import type { SourceCodeInfo, Token, TokenDescriptor } from './token'
 

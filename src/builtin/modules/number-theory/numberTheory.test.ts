@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { numberTheoryModule } from './'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('number theory', () => {
   describe('nth:coprime?', () => {
@@ -29,7 +29,7 @@ describe('number theory', () => {
       expect(runNth('nth:divisible-by?(10, 5)')).toEqual(true)
       expect(runNth('nth:divisible-by?(11, 5)')).toEqual(false)
       expect(runNth('nth:divisible-by?(11, 0)')).toEqual(false)
-      expect(() => runNth('nth:divisible-by?(2.5, 0.5)')).toThrow(LitsError)
+      expect(() => runNth('nth:divisible-by?(2.5, 0.5)')).toThrow(DvalaError)
     })
   })
   describe('nth:gcd', () => {
@@ -98,7 +98,7 @@ describe('number theory', () => {
       expect(runNth('nth:amicable?(220, 220)')).toEqual(false)
       expect(runNth('nth:amicable?(1, 1)')).toEqual(false)
       expect(runNth('nth:amicable?(2, 2)')).toEqual(false)
-      expect(() => runNth('nth:amicable?(0, 0)')).toThrow(LitsError)
+      expect(() => runNth('nth:amicable?(0, 0)')).toThrow(DvalaError)
     })
   })
 
@@ -304,7 +304,7 @@ describe('number theory', () => {
       expect(runNth('nth:mod-inv(7, 19)')).toEqual(11)
       expect(runNth('nth:mod-inv(8, 23)')).toEqual(3)
       expect(runNth('nth:mod-inv(9, 29)')).toEqual(13)
-      expect(() => runNth('nth:mod-inv(4, 6)')).toThrow(LitsError)
+      expect(() => runNth('nth:mod-inv(4, 6)')).toThrow(DvalaError)
     })
   })
   describe('extended-gcd', () => {
@@ -322,8 +322,8 @@ describe('number theory', () => {
       expect(runNth('nth:chinese-remainder([2, 3], [3, 5])')).toEqual(8)
       expect(runNth('nth:chinese-remainder([2, 3], [3, 5])')).toEqual(8)
       expect(runNth('nth:chinese-remainder([1, 2, 3], [2, 3, 5])')).toEqual(23)
-      expect(() => runNth('nth:chinese-remainder([1, 2, 4], [2, 3, 6])')).toThrow(LitsError)
-      expect(() => runNth('nth:chinese-remainder([1, 2], [2, 3, 5])')).toThrow(LitsError)
+      expect(() => runNth('nth:chinese-remainder([1, 2, 4], [2, 3, 6])')).toThrow(DvalaError)
+      expect(() => runNth('nth:chinese-remainder([1, 2], [2, 3, 5])')).toThrow(DvalaError)
     })
   })
   describe('nth:stirling-first', () => {
@@ -338,9 +338,9 @@ describe('number theory', () => {
       expect(runNth('nth:stirling-first(4, 2)')).toEqual(11)
       expect(runNth('nth:stirling-first(4, 3)')).toEqual(6)
       expect(runNth('nth:stirling-first(4, 4)')).toEqual(1)
-      expect(() => runNth('nth:stirling-first(4, 5)')).toThrow(LitsError)
-      expect(() => runNth('nth:stirling-first(4, 0)')).toThrow(LitsError)
-      expect(() => runNth('nth:stirling-first(0, 0)')).toThrow(LitsError)
+      expect(() => runNth('nth:stirling-first(4, 5)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirling-first(4, 0)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirling-first(0, 0)')).toThrow(DvalaError)
     })
   })
   describe('nth:stirling-second', () => {
@@ -355,9 +355,9 @@ describe('number theory', () => {
       expect(runNth('nth:stirling-second(4, 2)')).toEqual(7)
       expect(runNth('nth:stirling-second(4, 3)')).toEqual(6)
       expect(runNth('nth:stirling-second(4, 4)')).toEqual(1)
-      expect(() => runNth('nth:stirling-first(4, 5)')).toThrow(LitsError)
-      expect(() => runNth('nth:stirling-first(4, 0)')).toThrow(LitsError)
-      expect(() => runNth('nth:stirling-first(0, 0)')).toThrow(LitsError)
+      expect(() => runNth('nth:stirling-first(4, 5)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirling-first(4, 0)')).toThrow(DvalaError)
+      expect(() => runNth('nth:stirling-first(0, 0)')).toThrow(DvalaError)
     })
   })
 })

@@ -3,7 +3,7 @@ import type { ExecuteFunction } from '../../../evaluator/interface'
 import type { Any, Arr, Coll, Obj } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { cloneColl, collHasKey, toAny, toNonNegativeInteger } from '../../../utils'
-import { asColl, assertAny, assertColl, assertFunctionLike, assertObj, isColl, isObj } from '../../../typeGuards/lits'
+import { asColl, assertAny, assertColl, assertFunctionLike, assertObj, isColl, isObj } from '../../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber, isNumber } from '../../../typeGuards/number'
@@ -12,7 +12,7 @@ import type { FunctionLike } from '../../../parser/types'
 import { toFixedArity } from '../../../utils/arity'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import { chain, everySequential, filterSequential, mapSequential, reduceSequential, someSequential } from '../../../utils/maybePromise'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 
 // --- Private helper: get value from collection by key ---
 function get(coll: Coll, key: string | number): Any | undefined {
@@ -1049,7 +1049,7 @@ cu.not-every?(
   },
 }
 
-export const collectionUtilsModule: LitsModule = {
+export const collectionUtilsModule: DvalaModule = {
   name: 'collection',
   functions: collectionUtilsFunctions,
 }

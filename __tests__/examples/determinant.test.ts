@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../src/Lits/Lits'
+import { Dvala } from '../../src/Dvala/Dvala'
 
-const lits = new Lits({ debug: true })
+const dvala = new Dvala({ debug: true })
 describe('determinant.', () => {
   it('should compile', () => {
-    expect(lits.run(`
+    expect(dvala.run(`
 // Determinant function for square matrices
 let determinant = matrix -> do
   // Check if input is an array

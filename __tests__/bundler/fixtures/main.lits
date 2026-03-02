@@ -1,3 +1,0 @@
-let { add } = import("./lib/math-helpers.lits");
-let answer = import("./lib/constants.lits");
-add(answer, 8)

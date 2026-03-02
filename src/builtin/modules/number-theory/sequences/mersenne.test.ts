@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('mersenne', () => {
   it('should return the correct sequence', () => {
@@ -15,8 +15,8 @@ describe('mersenne', () => {
     expect(runNth('nth:mersenne-seq(3)')).toEqual([3, 7, 31])
     expect(runNth('nth:mersenne-seq(4)')).toEqual([3, 7, 31, 127])
     expect(runNth('nth:mersenne-seq(9)')).toEqual([3, 7, 31, 127, 2047, 8191, 131071, 524287, 2147483647])
-    expect(() => runNth('nth:mersenne-seq(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:mersenne-seq(20)')).toThrow(LitsError)
+    expect(() => runNth('nth:mersenne-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:mersenne-seq(20)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

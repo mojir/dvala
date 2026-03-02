@@ -1,2 +1,2 @@
 export { bitwiseUtilsModule } from '../builtin/modules/bitwise'
-export type { LitsModule } from '../builtin/modules/interface'
+export type { DvalaModule } from '../builtin/modules/interface'

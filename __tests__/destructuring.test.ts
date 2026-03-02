@@ -1,29 +1,29 @@
 import { describe, expect, test } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 import { gridModule } from '../src/builtin/modules/grid'
-import { LitsError } from '../src/errors'
+import { DvalaError } from '../src/errors'
 
-const lits = new Lits({ modules: [gridModule] })
+const dvala = new Dvala({ modules: [gridModule] })
 
-describe('lits Destructuring', () => {
+describe('dvala Destructuring', () => {
   // Basic object destructuring
   describe('basic object destructuring', () => {
     test('simple property extraction', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name } = { name: "Alice" };
         name
       `)).toBe('Alice')
     })
 
     test('multiple property extraction', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name, age } = { name: "Bob", age: 30 };
         name ++ " is " ++ str(age)
       `)).toBe('Bob is 30')
     })
 
     test('property not in object returns null', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { missing } = { name: "Charlie" };
         missing
       `)).toBe(null)
@@ -33,21 +33,21 @@ describe('lits Destructuring', () => {
   // Renaming with 'as'
   describe('renaming with "as"', () => {
     test('basic property renaming', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name as userName } = { name: "Dave" };
         userName
       `)).toBe('Dave')
     })
 
     test('multiple renames', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { firstName as name, age as years } = { firstName: "Eve", age: 28 };
         name ++ " is " ++ str(years) ++ " years old"
       `)).toBe('Eve is 28 years old')
     })
 
     test('renaming with original property name still inaccessible', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name as userName } = { name: "Frank" };
         defined?(name)
       `)).toBe(false)
@@ -57,28 +57,28 @@ describe('lits Destructuring', () => {
   // Default values
   describe('default values', () => {
     test('default when property is missing', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name = "Anonymous" } = {};
         name
       `)).toBe('Anonymous')
     })
 
     test('default not used when property exists', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name = "Anonymous" } = { name: "Grace" };
         name
       `)).toBe('Grace')
     })
 
     test('multiple defaults', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name = "Anonymous", age = 0 } = {};
         name ++ ":" ++ str(age)
       `)).toBe('Anonymous:0')
     })
 
     test('null values does not use default', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name = "Anonymous" } = { name: null };
         name
       `)).toBeNull()
@@ -88,14 +88,14 @@ describe('lits Destructuring', () => {
   // Combining renaming and defaults
   describe('combining renaming and defaults', () => {
     test('rename with default', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name as userName = "Anonymous" } = {};
         userName
       `)).toBe('Anonymous')
     })
 
     test('rename with existing value', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name as userName = "Anonymous" } = { name: "Helen" };
         userName
       `)).toBe('Helen')
@@ -105,52 +105,52 @@ describe('lits Destructuring', () => {
   // Nested destructuring
   describe('nested destructuring', () => {
     test('basic nested property', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user: { name }} = { user: { name: "Ian" }};
         name
       `)).toBe('Ian')
     })
 
     test('multiple nested properties', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user: { name, age }} = { user: { name: "Jane", age: 27 }};
         name ++ ":" ++ str(age)
       `)).toBe('Jane:27')
     })
 
     test('deeply nested properties', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user: { profile: { email }}} = { user: { profile: { email: "kevin@example.com" }}};
         email
       `)).toBe('kevin@example.com')
     })
 
     test('nested property from missing parent throws', () => {
-      expect(() => lits.run(`
+      expect(() => dvala.run(`
         let { user: { name }}: {};
         name
-      `)).toThrow(LitsError)
+      `)).toThrow(DvalaError)
     })
   })
 
   // Defaults in nested structures
   describe('defaults in nested structures', () => {
     test('default for nested property', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user: { name = "Anonymous" }} = { user: {}};
         name
       `)).toBe('Anonymous')
     })
 
     test('default for entire nested object', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user = { name: "Anonymous" }} = {};
         user.name
       `)).toBe('Anonymous')
     })
 
     test('default for nested structure pattern', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { user: { name } = { name: "Default" }} = {};
         name
       `)).toBe('Default')
@@ -160,21 +160,21 @@ describe('lits Destructuring', () => {
   // Array destructuring
   describe('array destructuring', () => {
     test('basic array elements', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, two] = [1, 2, 3];
         one + two
       `)).toBe(3)
     })
 
     test('skipping elements', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, , third] = [1, 2, 3];
         one + third
       `)).toBe(4)
     })
 
     test('elements beyond array length are null', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, two, third] = [1];
         [one, two, third]
       `)).toEqual([1, null, null])
@@ -184,21 +184,21 @@ describe('lits Destructuring', () => {
   // Array defaults
   describe('array destructuring with defaults', () => {
     test('default for missing array element', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, two = 2] = [1];
         one + two
       `)).toBe(3)
     })
 
     test('multiple defaults in arrays', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one = 1, two = 2] = [];
         one + two
       `)).toBe(3)
     })
 
     test('default for skipped element', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [, two = 2] = [];
         two
       `)).toBe(2)
@@ -208,28 +208,28 @@ describe('lits Destructuring', () => {
   // Rest pattern
   describe('rest pattern', () => {
     test('basic rest in array', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, ...others] = [1, 2, 3, 4];
         [one, others]
       `)).toEqual([1, [2, 3, 4]])
     })
 
     test('empty rest in array', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [one, ...others] = [1];
         [one, others]
       `)).toEqual([1, []])
     })
 
     test('rest in object', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name, ...others } = { name: "Linda", age: 31, city: "Boston" };
         [name, others]
       `)).toEqual(['Linda', { age: 31, city: 'Boston' }])
     })
 
     test('empty rest in object', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name, ...others } = { name: "Marcus" };
         [name, others]
       `)).toEqual(['Marcus', {}])
@@ -239,7 +239,7 @@ describe('lits Destructuring', () => {
   // Function parameters
   describe('destructuring in function parameters', () => {
     test('basic parameter destructuring', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let greet = ({ name }) -> do
           "Hello, " ++ name;
         end;
@@ -248,7 +248,7 @@ describe('lits Destructuring', () => {
     })
 
     test('parameter with default', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let greet = ({ name = "friend" }) -> do
           "Hello, " ++ name;
         end;
@@ -257,7 +257,7 @@ describe('lits Destructuring', () => {
     })
 
     test('parameter with rename', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let foo = ({ a as b = 10 }) -> do
           b;
         end;
@@ -266,7 +266,7 @@ describe('lits Destructuring', () => {
     })
 
     test('nested parameter destructuring', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let processUser = ({ profile: { name, age }}) -> do
           name ++ " is " ++ str(age);
         end;
@@ -275,7 +275,7 @@ describe('lits Destructuring', () => {
     })
 
     test('array parameter destructuring', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let processCoords = ([x, y]) -> do
           x + y;
         end;
@@ -287,7 +287,7 @@ describe('lits Destructuring', () => {
   // Edge cases
   describe('edge cases', () => {
     test('destructuring a number should fail gracefully', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         try
           let { value } = 42;
           "Should not reach here";
@@ -298,7 +298,7 @@ describe('lits Destructuring', () => {
     })
 
     test('destructuring shadowing', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let name = "outer";
         let result = do
           let { name } = { name: "inner" };
@@ -309,14 +309,14 @@ describe('lits Destructuring', () => {
     })
 
     test('empty destructuring pattern', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let {} = { a: 1 };
         "No error"
       `)).toBe('No error')
     })
 
     test('empty array destructuring', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [] = [1, 2, 3];
         "No error"
       `)).toBe('No error')
@@ -326,7 +326,7 @@ describe('lits Destructuring', () => {
   // Combinations
   describe('complex combinations', () => {
     test('mix of all features', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { 
           name as userName = "Guest",
           profile: { 
@@ -343,14 +343,14 @@ describe('lits Destructuring', () => {
     })
 
     test('array and object combined', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let [{ name }, { age }] = [{ name: "Tina" }, { age: 33 }];
         name ++ " is " ++ str(age)
       `)).toBe('Tina is 33')
     })
 
     test('object with array property', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { name, scores: [one, two] } = { name: "Uma", scores: [85, 92] };
         name ++ ": " ++ str(one + two)
       `)).toBe('Uma: 177')
@@ -360,43 +360,43 @@ describe('lits Destructuring', () => {
   // Builtin symbol names as property keys
   describe('builtin symbol names as property keys', () => {
     test('builtin symbol with "as" alias works', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { slice as my-slice } = { slice: 42 };
         my-slice
       `)).toBe(42)
     })
 
     test('multiple builtins with aliases', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { slice as s, map as m } = { slice: 1, map: 2 };
         s + m
       `)).toBe(3)
     })
 
     test('builtin symbol from import with alias works', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { cell-every? as my-every? } = import(grid);
         my-every?([[1, 2], [3, 4]], number?)
       `)).toBe(true)
     })
 
     test('builtin and user-defined symbols mixed', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let { slice as my-slice, foo } = { slice: 10, foo: 20 };
         my-slice + foo
       `)).toBe(30)
     })
 
     test('builtin symbol without alias should fail', () => {
-      expect(() => lits.run(`
+      expect(() => dvala.run(`
         let { slice } = { slice: 42 };
         slice
-      `)).toThrow(LitsError)
+      `)).toThrow(DvalaError)
     })
 
     test('special expression symbol with alias works', () => {
       // 'if', 'let', etc. are special expressions, but we can use them as keys
-      expect(lits.run(`
+      expect(dvala.run(`
         let { if as my-if } = { if: 99 };
         my-if
       `)).toBe(99)

@@ -3,7 +3,7 @@ import type { SpecialExpressionName } from '../../builtin'
 import { normalExpressionTypes } from '../../builtin/normalExpressions'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { AstNode, NormalBuiltinSymbolNode, NormalExpressionNodeExpression, SpecialBuiltinSymbolNode, StringNode } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import type { SourceCodeInfo, StringToken, TokenType } from '../../tokenizer/token'
@@ -29,7 +29,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       ctx.advance()
       const symbolToken = ctx.tryPeek()
       if (!isSymbolToken(symbolToken)) {
-        throw new LitsError('Expected symbol', ctx.peekSourceCodeInfo())
+        throw new DvalaError('Expected symbol', ctx.peekSourceCodeInfo())
       }
       const stringNode: StringNode = withSourceCodeInfo([NodeTypes.String, symbolToken[1]], symbolToken[2])
       operand = createAccessorNode(operand, stringNode, token[2])
@@ -40,7 +40,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       ctx.advance()
       const expression = ctx.parseExpression()
       if (!isRBracketToken(ctx.tryPeek())) {
-        throw new LitsError('Expected closing bracket', ctx.peekSourceCodeInfo())
+        throw new DvalaError('Expected closing bracket', ctx.peekSourceCodeInfo())
       }
       operand = createAccessorNode(operand, expression, token[2])
       ctx.advance()
@@ -68,7 +68,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     ctx.advance()
     const expression = ctx.parseExpression()
     if (!isRParenToken(ctx.peek())) {
-      throw new LitsError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
     }
     ctx.advance()
     return expression
@@ -88,7 +88,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseShorthandLambdaFunction(ctx)
     }
     else {
-      throw new LitsError(`Illegal operator: ${operatorName}`, token[2])
+      throw new DvalaError(`Illegal operator: ${operatorName}`, token[2])
     }
   }
 
@@ -138,7 +138,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseRegexpShorthand(ctx)
 
     default:
-      throw new LitsError(`Unknown token type: ${tokenType}`, token[2])
+      throw new DvalaError(`Unknown token type: ${tokenType}`, token[2])
   }
 }
 

@@ -1,7 +1,7 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
 import { assertLParenToken, isLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
@@ -72,7 +72,7 @@ function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   const functionArguments: BindingTarget[] = []
   while (!ctx.isAtEnd() && !isRParenToken(ctx.peek()) && !isSymbolToken(ctx.peek(), 'let')) {
     if (rest) {
-      throw new LitsError('Rest argument must be last', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Rest argument must be last', ctx.peekSourceCodeInfo())
     }
     const bindingTarget = parseBindingTarget(ctx)
     if (bindingTarget[1][1] !== undefined) {
@@ -82,12 +82,12 @@ function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
       rest = true
     }
     if (defaults && !bindingTarget[1][1]) {
-      throw new LitsError('Default arguments must be last', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Default arguments must be last', ctx.peekSourceCodeInfo())
     }
     functionArguments.push(bindingTarget)
 
     if (!isOperatorToken(ctx.peek(), ',') && !isRParenToken(ctx.peek()) && !isSymbolToken(ctx.peek(), 'let')) {
-      throw new LitsError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
     }
     if (isOperatorToken(ctx.peek(), ',')) {
       ctx.advance()
@@ -95,7 +95,7 @@ function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   }
 
   if (!isRParenToken(ctx.peek())) {
-    throw new LitsError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
+    throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
   }
 
   ctx.advance()
@@ -132,14 +132,14 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
         if (number === '1') {
           const mixedPercent1 = (!match[1] && dollar1 === 'WITH_1') || (match[1] && dollar1 === 'NAKED')
           if (mixedPercent1)
-            throw new LitsError('Please make up your mind, either use $ or $1', firstToken[2])
+            throw new DvalaError('Please make up your mind, either use $ or $1', firstToken[2])
 
           dollar1 = match[1] ? 'WITH_1' : 'NAKED'
         }
 
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
-          throw new LitsError('Can\'t specify more than 20 arguments', firstToken[2])
+          throw new DvalaError('Can\'t specify more than 20 arguments', firstToken[2])
       }
     }
   }

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('sylvester', () => {
   it('should return the correct sequence', () => {
@@ -16,8 +16,8 @@ describe('sylvester', () => {
     expect(runNth('nth:sylvester-seq(4)')).toEqual([2, 6, 42, 1806])
     expect(runNth('nth:sylvester-seq(5)')).toEqual([2, 6, 42, 1806, 3263442])
     expect(runNth('nth:sylvester-seq(6)')).toEqual([2, 6, 42, 1806, 3263442, 10650056950806])
-    expect(() => runNth('nth:sylvester-seq(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:sylvester-seq(7)')).toThrow(LitsError)
+    expect(() => runNth('nth:sylvester-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:sylvester-seq(7)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
@@ -27,8 +27,8 @@ describe('sylvester', () => {
     expect(runNth('nth:sylvester-nth(4)')).toEqual(1806)
     expect(runNth('nth:sylvester-nth(5)')).toEqual(3263442)
     expect(runNth('nth:sylvester-nth(6)')).toEqual(10650056950806)
-    expect(() => runNth('nth:sylvester-nth(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:sylvester-nth(7)')).toThrow(LitsError)
+    expect(() => runNth('nth:sylvester-nth(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:sylvester-nth(7)')).toThrow(DvalaError)
   })
 
   it('should return the correct takeWhile sequence', () => {

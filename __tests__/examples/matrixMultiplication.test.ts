@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../src/Lits/Lits'
+import { Dvala } from '../../src/Dvala/Dvala'
 import { collectionUtilsModule } from '../../src/builtin/modules/collection'
 
-const lits = new Lits({ debug: true, modules: [collectionUtilsModule] })
+const dvala = new Dvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {
   it('should compile', () => {
-    expect(lits.run(`
+    expect(dvala.run(`
 let { every? } = import(collection);
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do

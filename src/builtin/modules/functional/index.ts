@@ -10,9 +10,9 @@ import type {
 import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from '../../../utils/arity'
 import { FUNCTION_SYMBOL } from '../../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../../interface'
-import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/lits'
-import { LitsError } from '../../../errors'
-import type { LitsModule } from '../interface'
+import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
+import { DvalaError } from '../../../errors'
+import type { DvalaModule } from '../interface'
 
 const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
   'juxt': {
@@ -20,7 +20,7 @@ const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
       params.forEach(param => assertFunctionLike(param, sourceCodeInfo))
       const arity = getCommonArityFromFunctions(params as FunctionLike[])
       if (arity === null) {
-        throw new LitsError('All functions must accept the same number of arguments', sourceCodeInfo)
+        throw new DvalaError('All functions must accept the same number of arguments', sourceCodeInfo)
       }
       return {
         [FUNCTION_SYMBOL]: true,
@@ -216,7 +216,7 @@ every-pred(string?, -> count($) > 3)(
   },
 }
 
-export const functionalUtilsModule: LitsModule = {
+export const functionalUtilsModule: DvalaModule = {
   name: 'functional',
   functions: functionalUtilsNormalExpression,
 }

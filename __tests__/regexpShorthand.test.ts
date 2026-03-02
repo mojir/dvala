@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
-import { LitsError } from '../src/errors'
+import { Dvala } from '../src/Dvala/Dvala'
+import { DvalaError } from '../src/errors'
 import { regexpEquals } from './testUtils'
 
 describe('regexpShorthand', () => {
-  for (const lits of [new Lits(), new Lits({ debug: true })]) {
+  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
     it('samples', () => {
-      expect(regexpEquals(lits.run('#" "g'), / /g)).toBe(true)
-      expect(regexpEquals(lits.run('#"a"gi'), /a/gi)).toBe(true)
-      expect(regexpEquals(lits.run('#"a"ig'), /a/gi)).toBe(true)
-      expect(regexpEquals(lits.run('#"a"i'), /a/i)).toBe(true)
-      expect(regexpEquals(lits.run('#"^abc"'), /^abc/)).toBe(true)
-      expect(() => lits.run('#"a"is')).toThrow(LitsError)
-      expect(() => lits.run('#"a"s')).toThrow(LitsError)
-      expect(() => lits.run('#"a"ii')).toThrow(LitsError)
-      expect(() => lits.run('#"a"gg')).toThrow(LitsError)
+      expect(regexpEquals(dvala.run('#" "g'), / /g)).toBe(true)
+      expect(regexpEquals(dvala.run('#"a"gi'), /a/gi)).toBe(true)
+      expect(regexpEquals(dvala.run('#"a"ig'), /a/gi)).toBe(true)
+      expect(regexpEquals(dvala.run('#"a"i'), /a/i)).toBe(true)
+      expect(regexpEquals(dvala.run('#"^abc"'), /^abc/)).toBe(true)
+      expect(() => dvala.run('#"a"is')).toThrow(DvalaError)
+      expect(() => dvala.run('#"a"s')).toThrow(DvalaError)
+      expect(() => dvala.run('#"a"ii')).toThrow(DvalaError)
+      expect(() => dvala.run('#"a"gg')).toThrow(DvalaError)
     })
   }
 })

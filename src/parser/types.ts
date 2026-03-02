@@ -1,4 +1,4 @@
-import type { JsFunction } from '../Lits/Lits'
+import type { JsFunction } from '../Dvala/Dvala'
 import type { SpecialExpressionType } from '../builtin'
 import type { Arity } from '../builtin/interface'
 import type { specialExpressionTypes } from '../builtin/specialExpressionTypes'
@@ -11,7 +11,7 @@ import type { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/sym
 
 export type EvaluatedFunction = [BindingTarget[], AstNode[], Context]
 
-interface GenericLitsFunction {
+interface GenericDvalaFunction {
   [FUNCTION_SYMBOL]: true
   sourceCodeInfo?: SourceCodeInfo
   functionType: FunctionType
@@ -30,70 +30,70 @@ export interface EffectRef {
   name: string // e.g. 'llm.complete'
 }
 
-export interface NativeJsFunction extends GenericLitsFunction {
+export interface NativeJsFunction extends GenericDvalaFunction {
   functionType: 'NativeJsFunction'
   name: string | undefined // name
   nativeFn: JsFunction
   docString: string // documentation string
 }
 
-export interface UserDefinedFunction extends GenericLitsFunction {
+export interface UserDefinedFunction extends GenericDvalaFunction {
   functionType: 'UserDefined'
   name: string | undefined // name
   evaluatedfunction: EvaluatedFunction
   docString: string // documentation string
 }
 
-export interface PartialFunction extends GenericLitsFunction {
+export interface PartialFunction extends GenericDvalaFunction {
   functionType: 'Partial'
   function: FunctionLike
   params: Arr
   placeholders: number[] // indexes of the placeholders
 }
 
-export interface CompFunction extends GenericLitsFunction {
+export interface CompFunction extends GenericDvalaFunction {
   functionType: 'Comp'
   params: Arr
 }
 
-export interface ConstantlyFunction extends GenericLitsFunction {
+export interface ConstantlyFunction extends GenericDvalaFunction {
   functionType: 'Constantly'
   value: Any
 }
 
-export interface JuxtFunction extends GenericLitsFunction {
+export interface JuxtFunction extends GenericDvalaFunction {
   functionType: 'Juxt'
   params: Arr
 }
 
-export interface ComplementFunction extends GenericLitsFunction {
+export interface ComplementFunction extends GenericDvalaFunction {
   functionType: 'Complement'
   function: FunctionLike
 }
 
-export interface EveryPredFunction extends GenericLitsFunction {
+export interface EveryPredFunction extends GenericDvalaFunction {
   functionType: 'EveryPred'
   params: Arr
 }
 
-export interface SomePredFunction extends GenericLitsFunction {
+export interface SomePredFunction extends GenericDvalaFunction {
   functionType: 'SomePred'
   params: Arr
 }
 
-export interface FNullFunction extends GenericLitsFunction {
+export interface FNullFunction extends GenericDvalaFunction {
   functionType: 'Fnull'
   function: FunctionLike
   params: Arr
 }
 
-export interface NormalBuiltinFunction extends GenericLitsFunction {
+export interface NormalBuiltinFunction extends GenericDvalaFunction {
   functionType: 'Builtin'
   normalBuiltinSymbolType: number
   name: string
 }
 
-export interface SpecialBuiltinFunction extends GenericLitsFunction {
+export interface SpecialBuiltinFunction extends GenericDvalaFunction {
   functionType: 'SpecialBuiltin'
   specialBuiltinSymbolType:
     | typeof specialExpressionTypes['&&']
@@ -106,13 +106,13 @@ export interface SpecialBuiltinFunction extends GenericLitsFunction {
     | typeof specialExpressionTypes['??']
 }
 
-export interface ModuleFunction extends GenericLitsFunction {
+export interface ModuleFunction extends GenericDvalaFunction {
   functionType: 'Module'
   moduleName: string
   functionName: string
 }
 
-export type LitsFunction =
+export type DvalaFunction =
   | NativeJsFunction
   | UserDefinedFunction
   | NormalBuiltinFunction
@@ -127,9 +127,9 @@ export type LitsFunction =
   | SomePredFunction
   | FNullFunction
 
-export type LitsFunctionType = LitsFunction['functionType']
+export type DvalaFunctionType = DvalaFunction['functionType']
 
-export type FunctionLike = LitsFunction | Coll | number
+export type FunctionLike = DvalaFunction | Coll | number
 
 export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payload] | [T, Payload, SourceCodeInfo]
 

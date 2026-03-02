@@ -1,7 +1,7 @@
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import { withSourceCodeInfo } from '../helpers'
@@ -21,7 +21,7 @@ export function parseArray(ctx: ParserContext): ArrayNode {
     }
     const nextToken = ctx.tryPeek()
     if (!isOperatorToken(nextToken, ',') && !isRBracketToken(nextToken)) {
-      throw new LitsError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
     }
     if (isOperatorToken(nextToken, ',')) {
       ctx.advance()

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { numberTheoryModule } from './'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('partitions', () => {
   describe('nth:partitions', () => {
@@ -41,7 +41,7 @@ describe('partitions', () => {
       expect(runNth('nth:count-partitions(4)')).toEqual(5)
       expect(runNth('nth:count-partitions(5)')).toEqual(7)
       expect(runNth('nth:count-partitions(6)')).toEqual(11)
-      expect(() => runNth('nth:count-partitions(300)')).toThrow(LitsError)
+      expect(() => runNth('nth:count-partitions(300)')).toThrow(DvalaError)
     })
   })
 })

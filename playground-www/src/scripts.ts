@@ -2,7 +2,7 @@
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import type { UnknownRecord } from '../../src/interface'
-import { type ContextParams, Lits } from '../../src/Lits/Lits'
+import { type ContextParams, Dvala } from '../../src/Dvala/Dvala'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
@@ -15,21 +15,21 @@ import {
   encodeState,
   getState,
   redoContext,
-  redoLitsCode,
+  redoDvalaCode,
   saveState,
   setContextHistoryListener,
-  setLitsCodeHistoryListener,
+  setDvalaCodeHistoryListener,
   undoContext,
-  undoLitsCode,
+  undoDvalaCode,
   updateState,
 } from './state'
 import { isMac, throttle } from './utils'
 
-const getLits: (forceDebug?: 'debug') => Lits = (() => {
-  const lits = new Lits({ debug: true, modules: allBuiltinModules })
-  const litsNoDebug = new Lits({ debug: false, modules: allBuiltinModules })
+const getDvala: (forceDebug?: 'debug') => Dvala = (() => {
+  const dvala = new Dvala({ debug: true, modules: allBuiltinModules })
+  const dvalaNoDebug = new Dvala({ debug: false, modules: allBuiltinModules })
 
-  return (forceDebug?: 'debug') => forceDebug || getState('debug') ? lits : litsNoDebug
+  return (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvala : dvalaNoDebug
 })()
 
 const elements = {
@@ -38,7 +38,7 @@ const elements = {
   sidebar: document.getElementById('sidebar') as HTMLElement,
   mainPanel: document.getElementById('main-panel') as HTMLElement,
   contextPanel: document.getElementById('context-panel') as HTMLElement,
-  litsPanel: document.getElementById('lits-panel') as HTMLElement,
+  dvalaPanel: document.getElementById('dvala-panel') as HTMLElement,
   outputPanel: document.getElementById('output-panel') as HTMLElement,
   moreMenu: document.getElementById('more-menu') as HTMLElement,
   addContextMenu: document.getElementById('add-context-menu') as HTMLElement,
@@ -47,20 +47,20 @@ const elements = {
   newContextError: document.getElementById('new-context-error') as HTMLSpanElement,
   contextTextArea: document.getElementById('context-textarea') as HTMLTextAreaElement,
   outputResult: document.getElementById('output-result') as HTMLElement,
-  litsTextArea: document.getElementById('lits-textarea') as HTMLTextAreaElement,
+  dvalaTextArea: document.getElementById('dvala-textarea') as HTMLTextAreaElement,
   resizePlayground: document.getElementById('resize-playground') as HTMLElement,
   resizeDevider1: document.getElementById('resize-divider-1') as HTMLElement,
   resizeDevider2: document.getElementById('resize-divider-2') as HTMLElement,
   resizeSidebar: document.getElementById('resize-sidebar') as HTMLElement,
   toggleDebugMenuLabel: document.getElementById('toggle-debug-menu-label') as HTMLSpanElement,
-  litsPanelDebugInfo: document.getElementById('lits-panel-debug-info') as HTMLDivElement,
+  dvalaPanelDebugInfo: document.getElementById('dvala-panel-debug-info') as HTMLDivElement,
   contextUndoButton: document.getElementById('context-undo-button') as HTMLAnchorElement,
   contextRedoButton: document.getElementById('context-redo-button') as HTMLAnchorElement,
-  litsCodeUndoButton: document.getElementById('lits-code-undo-button') as HTMLAnchorElement,
-  litsCodeRedoButton: document.getElementById('lits-code-redo-button') as HTMLAnchorElement,
+  dvalaCodeUndoButton: document.getElementById('dvala-code-undo-button') as HTMLAnchorElement,
+  dvalaCodeRedoButton: document.getElementById('dvala-code-redo-button') as HTMLAnchorElement,
   contextTitle: document.getElementById('context-title') as HTMLDivElement,
-  litsCodeTitle: document.getElementById('lits-code-title') as HTMLDivElement,
-  litsCodeTitleString: document.getElementById('lits-code-title-string') as HTMLDivElement,
+  dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
+  dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
 }
 
 type MoveParams = {
@@ -212,11 +212,11 @@ function applyLayout() {
 
   const contextPanelWidth = (windowWidth * getState('resize-divider-1-percent')) / 100
   const outputPanelWidth = (windowWidth * (100 - getState('resize-divider-2-percent'))) / 100
-  const litsPanelWidth = windowWidth - contextPanelWidth - outputPanelWidth
+  const dvalaPanelWidth = windowWidth - contextPanelWidth - outputPanelWidth
 
   elements.playground.style.height = `${playgroundHeight}px`
   elements.contextPanel.style.width = `${contextPanelWidth}px`
-  elements.litsPanel.style.width = `${litsPanelWidth}px`
+  elements.dvalaPanel.style.width = `${dvalaPanelWidth}px`
   elements.outputPanel.style.width = `${outputPanelWidth}px`
   elements.sidebar.style.width = `${sidebarWidth}px`
   elements.sidebar.style.bottom = `${playgroundHeight}px`
@@ -247,20 +247,20 @@ export const redoContextHistory = throttle(() => {
   setTimeout(() => ignoreSelectionChange = false)
 })
 
-export const undoLitsCodeHistory = throttle(() => {
+export const undoDvalaCodeHistory = throttle(() => {
   ignoreSelectionChange = true
-  if (undoLitsCode()) {
+  if (undoDvalaCode()) {
     applyState()
-    focusLitsCode()
+    focusDvalaCode()
   }
   setTimeout(() => ignoreSelectionChange = false)
 })
 
-export const redoLitsCodeHistory = throttle(() => {
+export const redoDvalaCodeHistory = throttle(() => {
   ignoreSelectionChange = true
-  if (redoLitsCode()) {
+  if (redoDvalaCode()) {
     applyState()
-    focusLitsCode()
+    focusDvalaCode()
   }
   setTimeout(() => ignoreSelectionChange = false)
 })
@@ -269,7 +269,7 @@ export function resetPlayground() {
   clearAllStates()
 
   resetContext()
-  resetLitsCode()
+  resetDvalaCode()
   resetOutput()
   Search.closeSearch()
   Search.clearSearch()
@@ -388,37 +388,37 @@ export function addSampleContext() {
   setContext(JSON.stringify(context, null, 2), true)
 }
 
-export function resetLitsCode() {
-  elements.litsTextArea.value = ''
-  clearState('lits-code', 'lits-code-scroll-top', 'lits-code-selection-start', 'lits-code-selection-end')
-  focusLitsCode()
+export function resetDvalaCode() {
+  elements.dvalaTextArea.value = ''
+  clearState('dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end')
+  focusDvalaCode()
 }
 
-function setLitsCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
-  elements.litsTextArea.value = value
+function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
+  elements.dvalaTextArea.value = value
 
   if (pushToHistory) {
     saveState({
-      'lits-code': value,
-      'lits-code-selection-start': elements.litsTextArea.selectionStart,
-      'lits-code-selection-end': elements.litsTextArea.selectionEnd,
+      'dvala-code': value,
+      'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
+      'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
     }, true)
   }
   else {
-    saveState({ 'lits-code': value }, false)
+    saveState({ 'dvala-code': value }, false)
   }
 
   if (scroll === 'top')
-    elements.litsTextArea.scrollTo(0, 0)
+    elements.dvalaTextArea.scrollTo(0, 0)
   else if (scroll === 'bottom')
-    elements.litsTextArea.scrollTo({ top: elements.litsTextArea.scrollHeight, behavior: 'smooth' })
+    elements.dvalaTextArea.scrollTo({ top: elements.dvalaTextArea.scrollHeight, behavior: 'smooth' })
 }
 
-function appendLitsCode(value: string) {
-  const oldContent = getState('lits-code').trimEnd()
+function appendDvalaCode(value: string) {
+  const oldContent = getState('dvala-code').trimEnd()
 
   const newContent = oldContent ? `${oldContent}\n\n${value}` : value.trim()
-  setLitsCode(newContent, true, 'bottom')
+  setDvalaCode(newContent, true, 'bottom')
 }
 
 export function resetOutput() {
@@ -460,8 +460,8 @@ function addOutputElement(element: HTMLElement) {
 window.onload = function () {
   elements.contextUndoButton.classList.add('disabled')
   elements.contextRedoButton.classList.add('disabled')
-  elements.litsCodeUndoButton.classList.add('disabled')
-  elements.litsCodeRedoButton.classList.add('disabled')
+  elements.dvalaCodeUndoButton.classList.add('disabled')
+  elements.dvalaCodeRedoButton.classList.add('disabled')
   setContextHistoryListener((status) => {
     if (status.canUndo) {
       elements.contextUndoButton.classList.remove('disabled')
@@ -478,19 +478,19 @@ window.onload = function () {
     }
   })
 
-  setLitsCodeHistoryListener((status) => {
+  setDvalaCodeHistoryListener((status) => {
     if (status.canUndo) {
-      elements.litsCodeUndoButton.classList.remove('disabled')
+      elements.dvalaCodeUndoButton.classList.remove('disabled')
     }
     else {
-      elements.litsCodeUndoButton.classList.add('disabled')
+      elements.dvalaCodeUndoButton.classList.add('disabled')
     }
 
     if (status.canRedo) {
-      elements.litsCodeRedoButton.classList.remove('disabled')
+      elements.dvalaCodeRedoButton.classList.remove('disabled')
     }
     else {
-      elements.litsCodeRedoButton.classList.add('disabled')
+      elements.dvalaCodeRedoButton.classList.add('disabled')
     }
   })
 
@@ -641,7 +641,7 @@ window.onload = function () {
           break
         case '2':
           evt.preventDefault()
-          focusLitsCode()
+          focusDvalaCode()
           break
       }
     }
@@ -654,15 +654,15 @@ window.onload = function () {
       evt.preventDefault()
       if (document.activeElement === elements.contextTextArea)
         undoContextHistory()
-      else if (document.activeElement === elements.litsTextArea)
-        undoLitsCodeHistory()
+      else if (document.activeElement === elements.dvalaTextArea)
+        undoDvalaCodeHistory()
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
       if (document.activeElement === elements.contextTextArea)
         redoContextHistory()
-      else if (document.activeElement === elements.litsTextArea)
-        redoLitsCodeHistory()
+      else if (document.activeElement === elements.dvalaTextArea)
+        redoDvalaCodeHistory()
     }
   })
   elements.contextTextArea.addEventListener('keydown', (evt) => {
@@ -691,28 +691,28 @@ window.onload = function () {
     updateCSS()
   })
 
-  elements.litsTextArea.addEventListener('keydown', (evt) => {
-    keydownHandler(evt, () => setLitsCode(elements.litsTextArea.value, true))
+  elements.dvalaTextArea.addEventListener('keydown', (evt) => {
+    keydownHandler(evt, () => setDvalaCode(elements.dvalaTextArea.value, true))
   })
-  elements.litsTextArea.addEventListener('input', () => {
-    setLitsCode(elements.litsTextArea.value, true)
+  elements.dvalaTextArea.addEventListener('input', () => {
+    setDvalaCode(elements.dvalaTextArea.value, true)
   })
-  elements.litsTextArea.addEventListener('scroll', () => {
-    saveState({ 'lits-code-scroll-top': elements.litsTextArea.scrollTop })
+  elements.dvalaTextArea.addEventListener('scroll', () => {
+    saveState({ 'dvala-code-scroll-top': elements.dvalaTextArea.scrollTop })
   })
-  elements.litsTextArea.addEventListener('selectionchange', () => {
+  elements.dvalaTextArea.addEventListener('selectionchange', () => {
     if (!ignoreSelectionChange) {
       saveState({
-        'lits-code-selection-start': elements.litsTextArea.selectionStart,
-        'lits-code-selection-end': elements.litsTextArea.selectionEnd,
+        'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
+        'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
       })
     }
   })
-  elements.litsTextArea.addEventListener('focusin', () => {
-    saveState({ 'focused-panel': 'lits-code' })
+  elements.dvalaTextArea.addEventListener('focusin', () => {
+    saveState({ 'focused-panel': 'dvala-code' })
     updateCSS()
   })
-  elements.litsTextArea.addEventListener('focusout', () => {
+  elements.dvalaTextArea.addEventListener('focusout', () => {
     saveState({ 'focused-panel': null })
     updateCSS()
   })
@@ -771,7 +771,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getLits().getAutoCompleter(target.value, start, getLitsParamsFromContext())
+      autoCompleter = getDvala().getAutoCompleter(target.value, start, getDvalaParamsFromContext())
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -835,7 +835,7 @@ window.addEventListener('popstate', () => {
 })
 
 function truncateCode(code: string) {
-  const oneLiner = getLits().tokenize(code, { minify: true }).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
+  const oneLiner = getDvala().tokenize(code, { minify: true }).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
   const count = 100
   if (oneLiner.length <= count)
     return oneLiner
@@ -844,17 +844,17 @@ function truncateCode(code: string) {
 }
 export async function run() {
   addOutputSeparator()
-  const selectedCode = getSelectedLitsCode()
-  const code = selectedCode.code || getState('lits-code')
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection' : 'Run'
 
   appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
 
-  const litsParams = getLitsParamsFromContext()
+  const dvalaParams = getDvalaParamsFromContext()
 
   const hijacker = hijackConsole()
   try {
-    const result = await getLits().async.run(code, litsParams)
+    const result = await getDvala().async.run(code, dvalaParams)
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
   }
@@ -863,23 +863,23 @@ export async function run() {
   }
   finally {
     hijacker.releaseConsole()
-    focusLitsCode()
+    focusDvalaCode()
   }
 }
 
 export function analyze() {
   addOutputSeparator()
 
-  const selectedCode = getSelectedLitsCode()
-  const code = selectedCode.code || getState('lits-code')
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Analyze selection' : 'Analyze'
 
   appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
 
-  const litsParams = getLitsParamsFromContext()
+  const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const result = getLits('debug').getUndefinedSymbols(code, litsParams)
+    const result = getDvala('debug').getUndefinedSymbols(code, dvalaParams)
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
@@ -890,23 +890,23 @@ export function analyze() {
   }
   finally {
     hijacker.releaseConsole()
-    focusLitsCode()
+    focusDvalaCode()
   }
 }
 
 export function parse() {
   addOutputSeparator()
 
-  const selectedCode = getSelectedLitsCode()
-  const code = selectedCode.code || getState('lits-code')
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Parse selection' : 'Parse'
 
   appendOutput(`${title}${getState('debug') ? ' (debug):' : ':'} ${truncateCode(code)}`, 'comment')
 
   const hijacker = hijackConsole()
   try {
-    const tokens = getLits().tokenize(code)
-    const result = getLits().parse(tokens)
+    const tokens = getDvala().tokenize(code)
+    const result = getDvala().parse(tokens)
     const content = JSON.stringify(result, null, 2)
     appendOutput(content, 'parse')
     hijacker.releaseConsole()
@@ -917,22 +917,22 @@ export function parse() {
     hijacker.releaseConsole()
   }
   finally {
-    focusLitsCode()
+    focusDvalaCode()
   }
 }
 
 export function tokenize() {
   addOutputSeparator()
 
-  const selectedCode = getSelectedLitsCode()
-  const code = selectedCode.code || getState('lits-code')
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Tokenize selection' : 'Tokenize'
 
   appendOutput(`${title}${getState('debug') ? ' (debug):' : ':'} ${truncateCode(code)}`, 'comment')
 
   const hijacker = hijackConsole()
   try {
-    const result = getLits().tokenize(code)
+    const result = getDvala().tokenize(code)
     const content = JSON.stringify(result, null, 2)
     appendOutput(content, 'tokenize')
     hijacker.releaseConsole()
@@ -944,33 +944,33 @@ export function tokenize() {
     return
   }
   finally {
-    focusLitsCode()
+    focusDvalaCode()
   }
 }
 
 export function format() {
   addOutputSeparator()
 
-  const selectedCode = getSelectedLitsCode()
-  const code = selectedCode.code || getState('lits-code')
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Format selection' : 'Format'
 
   appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
 
-  setLitsCode(code, true)
+  setDvalaCode(code, true)
 
   if (selectedCode.code) {
     saveState({
-      'focused-panel': 'lits-code',
-      'lits-code-selection-start': selectedCode.selectionStart,
-      'lits-code-selection-end': selectedCode.selectionStart + code.length,
+      'focused-panel': 'dvala-code',
+      'dvala-code-selection-start': selectedCode.selectionStart,
+      'dvala-code-selection-end': selectedCode.selectionStart + code.length,
     })
   }
   else {
     saveState({
-      'focused-panel': 'lits-code',
-      'lits-code-selection-start': selectedCode.selectionStart,
-      'lits-code-selection-end': selectedCode.selectionEnd,
+      'focused-panel': 'dvala-code',
+      'dvala-code-selection-start': selectedCode.selectionStart,
+      'dvala-code-selection-end': selectedCode.selectionEnd,
     })
   }
   applyState()
@@ -982,18 +982,18 @@ export function toggleDebug() {
   updateCSS()
   addOutputSeparator()
   appendOutput(`Debug mode toggled ${debug ? 'ON' : 'OFF'}`, 'comment')
-  focusLitsCode()
+  focusDvalaCode()
 }
 
 export function focusContext() {
   elements.contextTextArea.focus()
 }
 
-export function focusLitsCode() {
-  elements.litsTextArea.focus()
+export function focusDvalaCode() {
+  elements.dvalaTextArea.focus()
 }
 
-function getLitsParamsFromContext(): ContextParams {
+function getDvalaParamsFromContext(): ContextParams {
   const contextString = getState('context')
   try {
     const parsedContext
@@ -1031,20 +1031,20 @@ function getLitsParamsFromContext(): ContextParams {
     return {}
   }
 }
-function getSelectedLitsCode(): {
+function getSelectedDvalaCode(): {
   code: string
   leadingCode: string
   trailingCode: string
   selectionStart: number
   selectionEnd: number
 } {
-  const selectionStart = getState('lits-code-selection-start')
-  const selectionEnd = getState('lits-code-selection-end')
+  const selectionStart = getState('dvala-code-selection-start')
+  const selectionEnd = getState('dvala-code-selection-end')
 
   return {
-    leadingCode: elements.litsTextArea.value.substring(0, selectionStart),
-    trailingCode: elements.litsTextArea.value.substring(selectionEnd),
-    code: elements.litsTextArea.value.substring(selectionStart, selectionEnd),
+    leadingCode: elements.dvalaTextArea.value.substring(0, selectionStart),
+    trailingCode: elements.dvalaTextArea.value.substring(selectionEnd),
+    code: elements.dvalaTextArea.value.substring(selectionStart, selectionEnd),
     selectionStart,
     selectionEnd,
   }
@@ -1053,8 +1053,8 @@ function getSelectedLitsCode(): {
 function applyState(scrollToTop = false) {
   const contextTextAreaSelectionStart = getState('context-selection-start')
   const contextTextAreaSelectionEnd = getState('context-selection-end')
-  const litsTextAreaSelectionStart = getState('lits-code-selection-start')
-  const litsTextAreaSelectionEnd = getState('lits-code-selection-end')
+  const dvalaTextAreaSelectionStart = getState('dvala-code-selection-start')
+  const dvalaTextAreaSelectionEnd = getState('dvala-code-selection-end')
 
   setOutput(getState('output'), false)
   getDataFromUrl()
@@ -1063,9 +1063,9 @@ function applyState(scrollToTop = false) {
   elements.contextTextArea.selectionStart = contextTextAreaSelectionStart
   elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
 
-  setLitsCode(getState('lits-code'), false, scrollToTop ? 'top' : undefined)
-  elements.litsTextArea.selectionStart = litsTextAreaSelectionStart
-  elements.litsTextArea.selectionEnd = litsTextAreaSelectionEnd
+  setDvalaCode(getState('dvala-code'), false, scrollToTop ? 'top' : undefined)
+  elements.dvalaTextArea.selectionStart = dvalaTextAreaSelectionStart
+  elements.dvalaTextArea.selectionEnd = dvalaTextAreaSelectionEnd
 
   updateCSS()
   layout()
@@ -1073,11 +1073,11 @@ function applyState(scrollToTop = false) {
   setTimeout(() => {
     if (getState('focused-panel') === 'context')
       focusContext()
-    else if (getState('focused-panel') === 'lits-code')
-      focusLitsCode()
+    else if (getState('focused-panel') === 'dvala-code')
+      focusDvalaCode()
 
     elements.contextTextArea.scrollTop = getState('context-scroll-top')
-    elements.litsTextArea.scrollTop = getState('lits-code-scroll-top')
+    elements.dvalaTextArea.scrollTop = getState('dvala-code-scroll-top')
     elements.outputResult.scrollTop = getState('output-scroll-top')
   }, 0)
 }
@@ -1085,10 +1085,10 @@ function applyState(scrollToTop = false) {
 function updateCSS() {
   const debug = getState('debug')
   elements.toggleDebugMenuLabel.textContent = debug ? 'Debug: ON' : 'Debug: OFF'
-  elements.litsPanelDebugInfo.style.display = debug ? 'flex' : 'none'
+  elements.dvalaPanelDebugInfo.style.display = debug ? 'flex' : 'none'
 
-  elements.litsCodeTitle.style.color = (getState('focused-panel') === 'lits-code') ? 'white' : ''
-  elements.litsCodeTitleString.textContent = 'Lits Code'
+  elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
+  elements.dvalaCodeTitleString.textContent = 'Dvala Code'
   elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 }
 
@@ -1137,7 +1137,7 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
 
     if (id === 'index')
-      history.replaceState(null, 'Lits', window.location.pathname + window.location.search)
+      history.replaceState(null, 'Dvala', window.location.pathname + window.location.search)
 
     else if (historyEvent === 'replace')
       history.replaceState(null, '', `#${id}`)
@@ -1159,13 +1159,13 @@ function inactivateAll() {
 
 export function addToPlayground(name: string, encodedExample: string) {
   const example = decodeURIComponent(atob(encodedExample))
-  appendLitsCode(`// Example - ${name}\n\n${example};\n`)
+  appendDvalaCode(`// Example - ${name}\n\n${example};\n`)
   addOutputSeparator()
   appendOutput('Example added to editor', 'comment')
-  saveState({ 'focused-panel': 'lits-code' })
+  saveState({ 'focused-panel': 'dvala-code' })
   applyState()
   setTimeout(() => {
-    elements.litsTextArea.scrollTo({ top: elements.litsTextArea.scrollHeight, behavior: 'smooth' })
+    elements.dvalaTextArea.scrollTo({ top: elements.dvalaTextArea.scrollHeight, behavior: 'smooth' })
   }, 10)
 }
 
@@ -1197,14 +1197,14 @@ export function setPlayground(name: string, encodedExample: string) {
   const size = Math.max(name.length + 10, 40)
   const paddingLeft = Math.floor((size - name.length) / 2)
   const paddingRight = Math.ceil((size - name.length) / 2)
-  setLitsCode(`
+  setDvalaCode(`
 ${`/*${'*'.repeat(size)}**`}
 ${` *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *`}
 ${` *${'*'.repeat(size)}**/`}
 
 ${code}
 `.trimStart(), true, 'top')
-  saveState({ 'focused-panel': 'lits-code' })
+  saveState({ 'focused-panel': 'dvala-code' })
   applyState()
   addOutputSeparator()
   appendOutput(`Example loaded: ${name}`, 'comment')

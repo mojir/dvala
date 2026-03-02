@@ -1,9 +1,9 @@
-import type { EffectRef, LitsFunction, RegularExpression } from './parser/types'
+import type { EffectRef, DvalaFunction, RegularExpression } from './parser/types'
 
 export type Arr = unknown[]
 export type Seq = string | Arr
 export type Obj = Record<string, unknown>
 export type Coll = Seq | Obj
-export type Any = Coll | string | number | boolean | null | LitsFunction | RegularExpression | EffectRef
+export type Any = Coll | string | number | boolean | null | DvalaFunction | RegularExpression | EffectRef
 
 export type UnknownRecord = Record<string, unknown>

@@ -1,11 +1,11 @@
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import type { Arr } from '../../../interface'
 import { assertVector } from '../../../typeGuards/annotatedArrays'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
 import { combinationsNormalExpressions } from './combinations'
 import { derangementsNormalExpressions } from './derangements'
@@ -351,7 +351,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
         return modInverse(a, m)
       }
       catch (error) {
-        throw new LitsError(error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),
@@ -370,13 +370,13 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
       assertVector(remainders, sourceCodeInfo)
       assertVector(moduli, sourceCodeInfo)
       if (remainders.length !== moduli.length) {
-        throw new LitsError('Remainders and moduli must have the same length.', sourceCodeInfo)
+        throw new DvalaError('Remainders and moduli must have the same length.', sourceCodeInfo)
       }
       try {
         return chineseRemainder(remainders, moduli)
       }
       catch (error) {
-        throw new LitsError((error as Error).message, sourceCodeInfo)
+        throw new DvalaError((error as Error).message, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),
@@ -467,7 +467,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
     combinatoricalNormalExpression[key].docs = docs
 }
 
-export const numberTheoryModule: LitsModule = {
+export const numberTheoryModule: DvalaModule = {
   name: 'number-theory',
   functions: combinatoricalNormalExpression,
 }

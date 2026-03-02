@@ -1,7 +1,7 @@
 import type { FunctionReference } from '../../../reference'
 import { assertNonUndefined } from '../../typeGuards'
-import { assertFunctionLike } from '../../typeGuards/lits'
-import { isLitsFunction } from '../../typeGuards/litsFunction'
+import { assertFunctionLike } from '../../typeGuards/dvala'
+import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
 import { toFixedArity } from '../../utils/arity'
 import { generateDocString } from '../../utils/docString/generateDocString'
 import type { Arity, BuiltinNormalExpressions } from '../interface'
@@ -12,7 +12,7 @@ export function getMetaNormalExpression(normalExpressionReference: Record<string
       evaluate: ([fn], sourceCodeInfo): string => {
         assertNonUndefined(normalExpressionReference)
         assertFunctionLike(fn, sourceCodeInfo)
-        if (!isLitsFunction(fn)) {
+        if (!isDvalaFunction(fn)) {
           return ''
         }
         if (fn.functionType === 'Builtin') {
@@ -54,7 +54,7 @@ doc(add)`,
     arity: {
       evaluate: ([fn], sourceCodeInfo): Arity => {
         assertFunctionLike(fn, sourceCodeInfo)
-        return isLitsFunction(fn) ? fn.arity : toFixedArity(1)
+        return isDvalaFunction(fn) ? fn.arity : toFixedArity(1)
       },
       arity: toFixedArity(1),
       docs: {

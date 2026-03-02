@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { FunctionLike, NormalBuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { normalExpressionTypes } from '../builtin/normalExpressions'
@@ -155,27 +155,27 @@ describe('arity utilities', () => {
 
     it('should throw when number of params does not match fixed count', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, node[2])).toThrow(LitsError)
+      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, node[2])).toThrow(DvalaError)
     })
 
     it('should throw when number of params is less than minimum', () => {
       const node = createTestNode([1])
-      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, node[2])).toThrow(LitsError)
+      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
     })
 
     it('should throw when number of params is more than maximum', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, node[2])).toThrow(LitsError)
+      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
     })
 
     it('should throw when min is greater than max', () => {
       const node = createTestNode([1, 2])
-      expect(() => assertNumberOfParams({ min: 3, max: 2 }, node[1][1].length, node[2])).toThrow(LitsError)
+      expect(() => assertNumberOfParams({ min: 3, max: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
     })
 
     it('should throw when max is less than min', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams({ min: 2, max: 1 }, node[1][1].length, node[2])).toThrow(LitsError)
+      expect(() => assertNumberOfParams({ min: 2, max: 1 }, node[1][1].length, node[2])).toThrow(DvalaError)
     })
 
     it('should throw with correct error message when params are less than min', () => {

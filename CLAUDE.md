@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lits is a pure functional programming language implemented in TypeScript. It features algebraic notation, JavaScript interoperability, and a comprehensive standard library.
+Dvala is a pure functional programming language implemented in TypeScript. It features algebraic notation, JavaScript interoperability, and a comprehensive standard library.
 
 ## Key Commands
 
@@ -11,7 +11,7 @@ npm run check        # lint + typecheck + test + build (full pipeline)
 npm run test         # vitest run --coverage
 npm run typecheck    # tsc -p ./tsconfig.compile.json --noEmit
 npm run lint         # eslint . --fix
-npm run build        # build all bundles (lits + cli + playground)
+npm run build        # build all bundles (dvala + cli + playground)
 ```
 
 ## Project Structure
@@ -20,15 +20,15 @@ npm run build        # build all bundles (lits + cli + playground)
 
 The package has multiple entry points configured in `package.json` `exports`:
 
-- **`@mojir/lits`** → `src/index.ts` — Minimal entry: core `Lits` class, types, type guards. No modules or reference data.
-- **`@mojir/lits/full`** → `src/full.ts` — Full entry: everything from minimal plus all modules, reference data, and API helpers.
-- **`@mojir/lits/modules/<name>`** → `src/modules/<name>.ts` — Individual module entries (assertion, grid, random, vector, linear-algebra, matrix, number-theory, math, functional, string, collection, sequence, bitwise).
+- **`@mojir/dvala`** → `src/index.ts` — Minimal entry: core `Dvala` class, types, type guards. No modules or reference data.
+- **`@mojir/dvala/full`** → `src/full.ts` — Full entry: everything from minimal plus all modules, reference data, and API helpers.
+- **`@mojir/dvala/modules/<name>`** → `src/modules/<name>.ts` — Individual module entries (assertion, grid, random, vector, linear-algebra, matrix, number-theory, math, functional, string, collection, sequence, bitwise).
 
 Rollup configs: `rollup.config.js` (library bundles), `rollup.config.cli.js` (CLI), `rollup.config.playground-builder.js`, `rollup.config.playground-www.js`.
 
 ### Source Layout (`src/`)
 
-- `Lits/Lits.ts` — Main `Lits` class. Modules are injected via constructor `config.modules`.
+- `Dvala/Dvala.ts` — Main `Dvala` class. Modules are injected via constructor `config.modules`.
 - `tokenizer/` — Lexer: source code → token stream.
 - `parser/` — Parser: token stream → AST.
 - `evaluator/` — Evaluator: AST → result value.
@@ -50,7 +50,7 @@ Rollup configs: `rollup.config.js` (library bundles), `rollup.config.cli.js` (CL
 
 ### Modules (`src/builtin/modules/`)
 
-Modules provide domain-specific function libraries. Each module is in its own directory and exports a `LitsModule` object:
+Modules provide domain-specific function libraries. Each module is in its own directory and exports a `DvalaModule` object:
 
 - `assertion/` (name: `"assertion"`) — Assertion functions.
 - `grid/` (name: `"grid"`) — 2D grid operations.
@@ -66,7 +66,7 @@ Modules provide domain-specific function libraries. Each module is in its own di
 - `sequence/` (name: `"sequence"`) — Sequence utility functions.
 - `bitwise/` (name: `"bitwise"`) — Bitwise utility functions.
 
-**Registration**: Modules are injected via `new Lits({ modules: [...] })`. The global registry (`registry.ts`) is no longer used at import time; `allModules.ts` registers all built-in modules for the full bundle.
+**Registration**: Modules are injected via `new Dvala({ modules: [...] })`. The global registry (`registry.ts`) is no longer used at import time; `allModules.ts` registers all built-in modules for the full bundle.
 
 ### Co-located Documentation
 

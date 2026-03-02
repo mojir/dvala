@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 
 describe('pattern matching (match)', () => {
-  const lits = new Lits()
-  const litsDebug = new Lits({ debug: true })
+  const dvala = new Dvala()
+  const dvalaDebug = new Dvala({ debug: true })
 
-  for (const l of [lits, litsDebug]) {
+  for (const l of [dvala, dvalaDebug]) {
     describe('literal patterns', () => {
       it('should match number literals', () => {
         expect(l.run('match 1 case 1 then "one" case 2 then "two" end')).toBe('one')

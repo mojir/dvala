@@ -15,7 +15,7 @@ export function getModulesPage(): string {
     
     <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
       <p ${styles('mb-4')}>
-        Lits organizes additional functionality into <strong>modules</strong>. 
+        Dvala organizes additional functionality into <strong>modules</strong>. 
         Unlike core functions which are always available, module functions must be 
         imported before use.
       </p>

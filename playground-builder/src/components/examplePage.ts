@@ -1,5 +1,5 @@
 import { examples } from '../../../reference/examples'
-import { formatLitsExpression } from '../formatter/rules'
+import { formatDvalaExpression } from '../formatter/rules'
 import { lampIcon, playIcon } from '../icons'
 import { styles } from '../styles'
 
@@ -35,7 +35,7 @@ export function getExamplePage(): string {
               <div class="example-action-btn" onclick="Playground.setPlayground('${example.name}', \`${encodedExample}\`)" ${styles('text-2xl', 'cursor-pointer', 'p-2')}>${playIcon}</div>
             </div>
             <div id="${`example-${index}`}" ${styles('mt-1', 'p-4', 'm-1', 'bg-gray-800')} class="hidden code"> 
-              <pre>${formatLitsExpression(example.code)}</pre>
+              <pre>${formatDvalaExpression(example.code)}</pre>
             </div>
           </div>
       `

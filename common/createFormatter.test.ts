@@ -51,8 +51,8 @@ describe('textFormatter', () => {
     const formatter = createFormatter(mdRules)
 
     it('should create an external link', () => {
-      const output = formatter('See [GitHub](https://github.com/mojir/lits) for source.')
-      expect(output).toContain('href="https://github.com/mojir/lits"')
+      const output = formatter('See [GitHub](https://github.com/mojir/dvala) for source.')
+      expect(output).toContain('href="https://github.com/mojir/dvala"')
       expect(output).toContain('target="_blank"')
       expect(output).toContain('>GitHub</a>')
     })
@@ -62,9 +62,9 @@ describe('textFormatter', () => {
     const formatter = createFormatter(mdRules)
 
     it('should render an image', () => {
-      const output = formatter('![Lits logo](images/lits-logo.svg)')
-      expect(output).toContain('src="images/lits-logo.svg"')
-      expect(output).toContain('alt="Lits logo"')
+      const output = formatter('![Dvala logo](images/dvala-logo.svg)')
+      expect(output).toContain('src="images/dvala-logo.svg"')
+      expect(output).toContain('alt="Dvala logo"')
       expect(output).toContain('<img ')
     })
 

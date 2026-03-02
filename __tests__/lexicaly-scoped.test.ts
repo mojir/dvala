@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 
-const lits = new Lits()
+const dvala = new Dvala()
 
-describe('lits Lexical Scoping', () => {
+describe('dvala Lexical Scoping', () => {
   // Basic lexical scoping
   describe('basic lexical scoping', () => {
     test('function accesses variable from parent scope', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let bar = do
           let x = 10;
           let foo = (a) -> do a * x end;
@@ -19,7 +19,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('outer scope variables are accessible in nested functions', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let outer = 5;
         
         let makeMultiplier = () -> do
@@ -36,7 +36,7 @@ describe('lits Lexical Scoping', () => {
   // Variable visibility and shadowing
   describe('variable visibility and shadowing', () => {
     test('inner scope variables don\'t leak to outer scope', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let result = do
           let outer = 10;
           do
@@ -49,7 +49,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('variable shadowing works correctly', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 5;
         let result = do
           let x = 10;
@@ -60,7 +60,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('original variable remains unchanged after shadowing', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 5;
         do
           let x = 10;
@@ -74,7 +74,7 @@ describe('lits Lexical Scoping', () => {
   // Closure behavior
   describe('closure behavior', () => {
     test('closures capture the lexical environment', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let makeCounter = () -> do
           let counter = 0;
           let increment = () -> do
@@ -90,7 +90,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('multiple closure instances maintain separate state', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let makeCounter = () -> do
           let counter = 0;
           let increment = () -> do
@@ -113,7 +113,7 @@ describe('lits Lexical Scoping', () => {
   // Lambda functions
   describe('lambda functions', () => {
     test('lambda functions capture lexical scope', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 10;
         let addX = y -> x + y;
         
@@ -127,7 +127,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('nested lambdas with multiple variable captures', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 1;
         let y = 2;
         
@@ -141,7 +141,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('constract is no longer needed for nested lambdas', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 10;
         let nested = x -> y -> x + y;  // With lexical scope, x is captured
         
@@ -153,7 +153,7 @@ describe('lits Lexical Scoping', () => {
   // Recursive functions
   describe('recursive functions', () => {
     test('recursive functions work with lexical scope', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let factorial = (n) -> do
           if n <= 1 then
             1
@@ -170,7 +170,7 @@ describe('lits Lexical Scoping', () => {
   // Function parameters
   describe('function parameters', () => {
     test('function parameters shadow outer variables', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 10;
         
         let test = (x) -> do
@@ -182,7 +182,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('modified variables in upper scope are visible in inner scope', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let result = do
           let x = 1;
           let inner = do
@@ -200,7 +200,7 @@ describe('lits Lexical Scoping', () => {
   // Control structures
   describe('control structures', () => {
     test('lexical scoping in if statements', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = 10;
         
         if true then
@@ -213,7 +213,7 @@ describe('lits Lexical Scoping', () => {
     })
 
     test('lexical scoping in for comprehensions', () => {
-      expect(lits.run(`
+      expect(dvala.run(`
         let x = "outer";
         
         let result = for (x in ["inner1", "inner2"]) -> do

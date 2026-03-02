@@ -1,4 +1,4 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { isNumber } from './number'
@@ -48,7 +48,7 @@ export function isVector(vector: unknown): vector is number[] {
 
 export function assertVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is number[] {
   if (!isVector(vector)) {
-    throw new LitsError(`Expected a vector, but got ${vector}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a vector, but got ${vector}`, sourceCodeInfo)
   }
 }
 
@@ -60,7 +60,7 @@ export function is2dVector(vector: unknown): vector is [number, number] {
 }
 export function assert2dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is [number, number] {
   if (!is2dVector(vector)) {
-    throw new LitsError(`Expected a 2d vector, but got ${vector}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a 2d vector, but got ${vector}`, sourceCodeInfo)
   }
 }
 
@@ -72,14 +72,14 @@ export function is3dVector(vector: unknown): vector is [number, number, number] 
 }
 export function assert3dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is [number, number, number] {
   if (!is3dVector(vector)) {
-    throw new LitsError(`Expected a 3d vector, but got ${vector}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a 3d vector, but got ${vector}`, sourceCodeInfo)
   }
 }
 
 export function assertNonEmptyVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is number[] {
   assertVector(vector, sourceCodeInfo)
   if (vector.length === 0) {
-    throw new LitsError(`Expected a non empty vector, but got ${vector}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a non empty vector, but got ${vector}`, sourceCodeInfo)
   }
 }
 
@@ -119,7 +119,7 @@ export function isGrid(grid: unknown): grid is unknown[][] {
 
 export function assertGrid(grid: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts grid is Any[][] {
   if (!isGrid(grid)) {
-    throw new LitsError(`Expected a grid, but got ${grid}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a grid, but got ${grid}`, sourceCodeInfo)
   }
 }
 
@@ -156,16 +156,16 @@ export function isMatrix(matrix: unknown): matrix is number[][] {
 
 export function assertMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts matrix is number[][] {
   if (!isMatrix(matrix)) {
-    throw new LitsError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
   }
 }
 
 export function assertSquareMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts matrix is number[][] {
   if (!isMatrix(matrix)) {
-    throw new LitsError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
+    throw new DvalaError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
   }
   if (matrix.length !== matrix[0]!.length) {
-    throw new LitsError(`Expected square matrix, but got ${matrix.length} and ${matrix[0]!.length}`, sourceCodeInfo)
+    throw new DvalaError(`Expected square matrix, but got ${matrix.length} and ${matrix[0]!.length}`, sourceCodeInfo)
   }
 }
 

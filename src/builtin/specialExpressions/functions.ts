@@ -2,7 +2,7 @@ import type { ContextStack } from '../../evaluator/ContextStack'
 import type { Context, EvaluateNode } from '../../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSymbols'
 import type {
-  LitsFunction,
+  DvalaFunction,
   SpecialExpressionNode,
 } from '../../parser/types'
 import { addToSet } from '../../utils'
@@ -13,7 +13,7 @@ import type { specialExpressionTypes } from '../specialExpressionTypes'
 
 export type LambdaNode = SpecialExpressionNode<[typeof specialExpressionTypes['0_lambda'], Function, string]>
 
-export const lambdaSpecialExpression: BuiltinSpecialExpression<LitsFunction, LambdaNode> = {
+export const lambdaSpecialExpression: BuiltinSpecialExpression<DvalaFunction, LambdaNode> = {
   arity: {},
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
     const fn = node[1][1]

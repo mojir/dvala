@@ -25,11 +25,11 @@
  * 3. Fill in host bindings (values, nativeJsFunctions, modules) on each instance
  */
 
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { NativeJsFunction } from '../parser/types'
-import { isLitsFunction } from '../typeGuards/litsFunction'
-import type { LitsModule } from '../builtin/modules/interface'
+import { isDvalaFunction } from '../typeGuards/dvalaFunction'
+import type { DvalaModule } from '../builtin/modules/interface'
 import { ContextStackImpl } from './ContextStack'
 import type { Context } from './interface'
 import type { ContinuationStack } from './frames'
@@ -77,7 +77,7 @@ function isCSRef(value: unknown): value is CSRef {
  * Serialize a continuation stack and optional metadata into an opaque JSON blob.
  *
  * Validates that all values are serializable (no NativeJsFunctions in frames).
- * Throws a descriptive `LitsError` if non-serializable values are found.
+ * Throws a descriptive `DvalaError` if non-serializable values are found.
  */
 export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
   // Phase 1: Collect all unique ContextStack instances
@@ -123,9 +123,9 @@ export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
     }
 
     // Check for non-serializable function types
-    if (isLitsFunction(value as Any) && (value as { functionType: string }).functionType === 'NativeJsFunction') {
+    if (isDvalaFunction(value as Any) && (value as { functionType: string }).functionType === 'NativeJsFunction') {
       const issue = describeSerializationIssue(value as Any, path)
-      throw new LitsError(
+      throw new DvalaError(
         `Cannot serialize continuation: ${issue ?? 'NativeJsFunction found in continuation stack'}`,
         undefined,
       )
@@ -184,7 +184,7 @@ export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
 export interface DeserializeOptions {
   values?: Record<string, unknown>
   nativeJsFunctions?: Record<string, NativeJsFunction>
-  modules?: Map<string, LitsModule>
+  modules?: Map<string, DvalaModule>
 }
 
 /**
@@ -202,11 +202,11 @@ export function deserializeSuspension(
     blobData = JSON.parse(blob) as SuspensionBlobData
   }
   catch {
-    throw new LitsError('Invalid suspension blob: not valid JSON', undefined)
+    throw new DvalaError('Invalid suspension blob: not valid JSON', undefined)
   }
 
   if (blobData.version !== SUSPENSION_VERSION) {
-    throw new LitsError(
+    throw new DvalaError(
       `Unsupported suspension blob version: ${blobData.version} (expected ${SUSPENSION_VERSION})`,
       undefined,
     )
@@ -237,7 +237,7 @@ export function deserializeSuspension(
     if (isCSRef(value)) {
       const cs = csMap.get(value.__csRef)
       if (!cs) {
-        throw new LitsError(`Invalid suspension blob: unknown context stack ref ${value.__csRef}`, undefined)
+        throw new DvalaError(`Invalid suspension blob: unknown context stack ref ${value.__csRef}`, undefined)
       }
       return cs
     }

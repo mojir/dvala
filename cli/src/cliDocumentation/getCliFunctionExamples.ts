@@ -2,11 +2,11 @@
 
 import { stringifyValue } from '../../../common/utils'
 import type { Reference } from '../../../reference'
-import { Lits } from '../../../src/Lits/Lits'
+import { Dvala } from '../../../src/Dvala/Dvala'
 import type { Colorizer } from '../colorizer'
-import { getLitsFormatter } from '../cliFormatterRules'
+import { getDvalaFormatter } from '../cliFormatterRules'
 
-const lits = new Lits({ debug: false })
+const dvala = new Dvala({ debug: false })
 
 export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
   const { examples } = reference
@@ -17,10 +17,10 @@ export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
       console.log = function () {}
       let result
       try {
-        result = lits.run(`(try (do ${example}) (catch e e))`)
+        result = dvala.run(`(try (do ${example}) (catch e e))`)
         const stringifiedResult = stringifyValue(result, false)
 
-        const formattedExample = getLitsFormatter(fmt)(example)
+        const formattedExample = getDvalaFormatter(fmt)(example)
 
         return `${formattedExample}
 ${fmt.gray(stringifiedResult)}`

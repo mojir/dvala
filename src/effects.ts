@@ -1,7 +1,7 @@
 /**
  * Algebraic effects — host-facing API.
  *
- * Top-level standalone functions for running Lits programs with effect handlers.
+ * Top-level standalone functions for running Dvala programs with effect handlers.
  *
  * Three levels of use:
  * 1. `runSync(source, options?)` — pure computation, sync JS functions in bindings.
@@ -21,8 +21,8 @@
  */
 
 import type { Any } from './interface'
-import { LitsError } from './errors'
-import type { LitsModule } from './builtin/modules/interface'
+import { DvalaError } from './errors'
+import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
 import { evaluate, evaluateWithEffects, resumeWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
@@ -50,7 +50,7 @@ export type { Handlers, RunResult } from './evaluator/effectTypes'
 export interface RunOptions {
   bindings?: Record<string, Any>
   handlers?: Handlers
-  modules?: LitsModule[]
+  modules?: DvalaModule[]
 }
 
 /**
@@ -59,7 +59,7 @@ export interface RunOptions {
  */
 export interface RunSyncOptions {
   bindings?: Record<string, unknown>
-  modules?: LitsModule[]
+  modules?: DvalaModule[]
 }
 
 /**
@@ -71,7 +71,7 @@ export interface RunSyncOptions {
 export interface ResumeOptions {
   bindings?: Record<string, Any>
   handlers?: Handlers
-  modules?: LitsModule[]
+  modules?: DvalaModule[]
 }
 
 // ---------------------------------------------------------------------------
@@ -152,10 +152,10 @@ export async function run(source: string, options?: RunOptions): Promise<RunResu
   }
   catch (error) {
     // Catch parse errors and other errors that occur before the trampoline.
-    if (error instanceof LitsError) {
+    if (error instanceof DvalaError) {
       return { type: 'error', error }
     }
-    return { type: 'error', error: new LitsError(`${error}`, undefined) }
+    return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 }
 
@@ -168,7 +168,7 @@ export async function run(source: string, options?: RunOptions): Promise<RunResu
  *
  * `bindings` are plain values only (no JS functions). They are re-injected
  * into the deserialized ContextStacks so that host-bound values remain
- * accessible after resume. `modules` must be provided again if the Lits
+ * accessible after resume. `modules` must be provided again if the Dvala
  * program uses `import`.
  *
  * Always resolves — never rejects. May return `completed`, `suspended`
@@ -195,9 +195,9 @@ export async function resume(blob: string, value: Any, options?: ResumeOptions):
     return await resumeWithEffects(k, value, options?.handlers)
   }
   catch (error) {
-    if (error instanceof LitsError) {
+    if (error instanceof DvalaError) {
       return { type: 'error', error }
     }
-    return { type: 'error', error: new LitsError(`${error}`, undefined) }
+    return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 }

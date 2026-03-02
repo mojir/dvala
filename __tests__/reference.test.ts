@@ -5,7 +5,7 @@ import { isUnknownRecord } from '../src/typeGuards'
 import { canBeOperator } from '../src/utils/arity'
 import { normalExpressions } from '../src/builtin/normalExpressions'
 import { isReservedSymbol } from '../src/tokenizer/reservedNames'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
 import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import { type ApiName, categories, isApiName } from '../reference/api'
@@ -14,7 +14,7 @@ import { corePageExamples } from '../playground-builder/src/components/corePage'
 import { moduleExamples } from '../playground-builder/src/components/modulesPage'
 import { getExamples, tutorials } from '../playground-builder/src/components/tutorials'
 
-const lits = new Lits({ modules: allBuiltinModules })
+const dvala = new Dvala({ modules: allBuiltinModules })
 describe('apiReference', () => {
   Object.entries(apiReference).forEach(([key, obj]) => {
     if (!isFunctionReference(obj))
@@ -80,7 +80,7 @@ describe('apiReference', () => {
       test(key, () => {
         obj.examples.forEach((example, index) => {
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          expect(() => lits.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
         })
       })
     })
@@ -155,7 +155,7 @@ describe('moduleReference', () => {
       test(key, () => {
         obj.examples.forEach((example, index) => {
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          expect(() => lits.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
         })
       })
     })
@@ -274,7 +274,7 @@ describe('allReference type consistency', () => {
 describe('corePageExamples', () => {
   corePageExamples.forEach((example, index) => {
     it(`example ${index + 1}: ${example}`, () => {
-      expect(() => lits.run(example), `Core page example ${index + 1}`).not.toThrow()
+      expect(() => dvala.run(example), `Core page example ${index + 1}`).not.toThrow()
     })
   })
 })
@@ -282,7 +282,7 @@ describe('corePageExamples', () => {
 describe('modulePageExamples', () => {
   moduleExamples.forEach((example, index) => {
     it(`example ${index + 1}: ${example}`, () => {
-      expect(() => lits.run(example), `Module page example ${index + 1}`).not.toThrow()
+      expect(() => dvala.run(example), `Module page example ${index + 1}`).not.toThrow()
     })
   })
 })
@@ -293,7 +293,7 @@ describe('tutorialExamples', () => {
       getExamples(tutorial).forEach((codeLines, index) => {
         const example = codeLines.join('\n')
         it(`example ${index + 1}: ${example}`, () => {
-          expect(() => lits.run(example), `${tutorial.title} example ${index + 1}`).not.toThrow()
+          expect(() => dvala.run(example), `${tutorial.title} example ${index + 1}`).not.toThrow()
         })
       })
     })

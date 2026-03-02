@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../../Lits/Lits'
+import { Dvala } from '../../../../Dvala/Dvala'
 import { numberTheoryModule } from '..'
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('fibonacci', () => {
   it('should return the correct sequence', () => {
@@ -95,8 +95,8 @@ describe('fibonacci', () => {
       5527939700884757,
       8944394323791464,
     ])
-    expect(() => runNth('nth:fibonacci-seq(0)')).toThrow(LitsError)
-    expect(() => runNth('nth:fibonacci-seq(80)')).toThrow(LitsError)
+    expect(() => runNth('nth:fibonacci-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:fibonacci-seq(80)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {

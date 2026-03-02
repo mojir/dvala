@@ -2,7 +2,7 @@ import { getCodeMarker } from '../src/utils/debug/getCodeMarker'
 import type { Arr } from './interface'
 import type { SourceCodeInfo } from './tokenizer/token'
 
-function getLitsErrorMessage(message: string, sourceCodeInfo?: SourceCodeInfo) {
+function getDvalaErrorMessage(message: string, sourceCodeInfo?: SourceCodeInfo) {
   if (!sourceCodeInfo) {
     return message
   }
@@ -25,7 +25,7 @@ export class RecurSignal extends Error {
   }
 }
 
-export class LitsError extends Error {
+export class DvalaError extends Error {
   public readonly sourceCodeInfo?: SourceCodeInfo
   public readonly shortMessage: string
   constructor(err: unknown, sourceCodeInfo: SourceCodeInfo | undefined) {
@@ -33,11 +33,11 @@ export class LitsError extends Error {
       ? err.message
       : `${err}`
 
-    super(getLitsErrorMessage(message, sourceCodeInfo))
+    super(getDvalaErrorMessage(message, sourceCodeInfo))
     this.shortMessage = message
     this.sourceCodeInfo = sourceCodeInfo
-    Object.setPrototypeOf(this, LitsError.prototype)
-    this.name = 'LitsError'
+    Object.setPrototypeOf(this, DvalaError.prototype)
+    this.name = 'DvalaError'
   }
 
   public getCodeMarker(): string | undefined {
@@ -45,7 +45,7 @@ export class LitsError extends Error {
   }
 }
 
-export class UserDefinedError extends LitsError {
+export class UserDefinedError extends DvalaError {
   public userMessage: string
   constructor(message: string, sourceCodeInfo?: SourceCodeInfo) {
     super(message, sourceCodeInfo)
@@ -55,7 +55,7 @@ export class UserDefinedError extends LitsError {
   }
 }
 
-export class AssertionError extends LitsError {
+export class AssertionError extends DvalaError {
   constructor(message: string | Error, sourceCodeInfo?: SourceCodeInfo) {
     super(message, sourceCodeInfo)
     Object.setPrototypeOf(this, AssertionError.prototype)
@@ -63,7 +63,7 @@ export class AssertionError extends LitsError {
   }
 }
 
-export class UndefinedSymbolError extends LitsError {
+export class UndefinedSymbolError extends DvalaError {
   public symbol: string
   constructor(symbolName: string, sourceCodeInfo?: SourceCodeInfo) {
     const message = `Undefined symbol '${symbolName}'.`
@@ -74,6 +74,6 @@ export class UndefinedSymbolError extends LitsError {
   }
 }
 
-export function isLitsError(error: unknown): error is LitsError {
-  return error instanceof LitsError
+export function isDvalaError(error: unknown): error is DvalaError {
+  return error instanceof DvalaError
 }

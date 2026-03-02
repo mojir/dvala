@@ -15,7 +15,7 @@ import type { RecurNode } from '../../builtin/specialExpressions/recur'
 import type { ThrowNode } from '../../builtin/specialExpressions/throw'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { AstNode, NormalExpressionNodeExpression, SymbolNode } from '../types'
 import { isOperatorToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { isNormalBuiltinSymbolNode, isSpecialBuiltinSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
@@ -42,14 +42,14 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     }
     const nextToken = ctx.tryPeek()
     if (!isOperatorToken(nextToken, ',') && !isRParenToken(nextToken)) {
-      throw new LitsError('Expected comma or closing parenthesis', ctx.tryPeek()?.[2])
+      throw new DvalaError('Expected comma or closing parenthesis', ctx.tryPeek()?.[2])
     }
     if (isOperatorToken(nextToken, ',')) {
       ctx.advance()
     }
   }
   if (!isRParenToken(ctx.tryPeek())) {
-    throw new LitsError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
+    throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
 
@@ -59,11 +59,11 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     // Handle import specially — extract module name as a string from the symbol argument
     if (specialExpressionType === specialExpressionTypes.import) {
       if (params.length !== 1) {
-        throw new LitsError(`import expects exactly 1 argument, got ${params.length}`, symbol[2])
+        throw new DvalaError(`import expects exactly 1 argument, got ${params.length}`, symbol[2])
       }
       const param = params[0]!
       if (!isUserDefinedSymbolNode(param)) {
-        throw new LitsError('import expects a module name (symbol), got a non-symbol argument', param[2] ?? symbol[2])
+        throw new DvalaError('import expects a module name (symbol), got a non-symbol argument', param[2] ?? symbol[2])
       }
       const moduleName = param[1]
       return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionType, moduleName]], symbol[2]) satisfies ImportNode
@@ -116,10 +116,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       case specialExpressionTypes.race:
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies RaceNode
       case specialExpressionTypes['0_lambda']:
-        throw new LitsError(`${type} is not allowed`, symbol[2])
+        throw new DvalaError(`${type} is not allowed`, symbol[2])
       /* v8 ignore next 2 */
       default:
-        throw new LitsError(`Unknown special expression: ${type satisfies never}`, symbol[2])
+        throw new DvalaError(`Unknown special expression: ${type satisfies never}`, symbol[2])
     }
   }
   else if (isNormalBuiltinSymbolNode(symbol) || isUserDefinedSymbolNode(symbol)) {
@@ -140,7 +140,7 @@ function parseEffectArgs(ctx: ParserContext, symbol: AstNode): EffectNode {
   const sourceCodeInfo = symbol[2]
   const firstToken = ctx.peek()
   if (!isSymbolToken(firstToken)) {
-    throw new LitsError('effect expects a dotted name identifier', firstToken[2])
+    throw new DvalaError('effect expects a dotted name identifier', firstToken[2])
   }
   let name = firstToken[1]
   ctx.advance()
@@ -148,13 +148,13 @@ function parseEffectArgs(ctx: ParserContext, symbol: AstNode): EffectNode {
     ctx.advance() // skip dot
     const nextToken = ctx.peek()
     if (!isSymbolToken(nextToken)) {
-      throw new LitsError('Expected identifier after dot in effect name', nextToken[2])
+      throw new DvalaError('Expected identifier after dot in effect name', nextToken[2])
     }
     name += `.${nextToken[1]}`
     ctx.advance()
   }
   if (!isRParenToken(ctx.tryPeek())) {
-    throw new LitsError('Expected closing parenthesis after effect name', ctx.peekSourceCodeInfo())
+    throw new DvalaError('Expected closing parenthesis after effect name', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
   return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.effect, name]], sourceCodeInfo) satisfies EffectNode

@@ -1,6 +1,6 @@
-import { LitsError } from '../../../../errors'
+import { DvalaError } from '../../../../errors'
 import type { SourceCodeInfo } from '../../../../tokenizer/token'
-import { assertFunctionLike } from '../../../../typeGuards/lits'
+import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { assertString } from '../../../../typeGuards/string'
 import { toFixedArity } from '../../../../utils/arity'
@@ -178,7 +178,7 @@ function createSeqNormalExpression<Type extends number | string>(
       if (typeof result[0] === 'number') {
         /* v8 ignore next 3 */
         if (result.some(n => (n as number) > Number.MAX_SAFE_INTEGER)) {
-          throw new LitsError('Result exceeds maximum safe integer', sourceCodeInfo)
+          throw new DvalaError('Result exceeds maximum safe integer', sourceCodeInfo)
         }
       }
       return result
@@ -203,7 +203,7 @@ function createTakeWhileNormalExpression<Type extends number | string>(
         if (typeof resolved[0] === 'number') {
           /* v8 ignore next 3 */
           if (resolved.some(n => (n as number) > Number.MAX_SAFE_INTEGER)) {
-            throw new LitsError('Result exceeds maximum safe integer', sourceCodeInfo)
+            throw new DvalaError('Result exceeds maximum safe integer', sourceCodeInfo)
           }
         }
         return resolved
@@ -225,7 +225,7 @@ function createNthNormalExpression<Type extends number | string>(
       if (typeof sequence[0] === 'number') {
         /* v8 ignore next 3 */
         if (sequence.some(val => (val as number) > Number.MAX_SAFE_INTEGER)) {
-          throw new LitsError('Result exceeds maximum safe integer', sourceCodeInfo)
+          throw new DvalaError('Result exceeds maximum safe integer', sourceCodeInfo)
         }
       }
       return sequence[n - 1]!

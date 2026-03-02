@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../Lits/Lits'
+import { Dvala } from '../Dvala/Dvala'
 
 describe('analyze', () => {
   describe('getUndefinedSymbols.', () => {
-    for (const lits of [new Lits(), new Lits({ debug: true })]) {
+    for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
       it('example', () => {
         const program = 'a + b'
-        const tokens = lits.tokenize(program, { minify: true })
-        const ast = lits.parse(tokens)
-        expect(lits.getUndefinedSymbols(ast)).toEqual(new Set(['a', 'b']))
+        const tokens = dvala.tokenize(program, { minify: true })
+        const ast = dvala.parse(tokens)
+        expect(dvala.getUndefinedSymbols(ast)).toEqual(new Set(['a', 'b']))
       })
     }
   })

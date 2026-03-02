@@ -10,7 +10,7 @@ import type { MaybePromise } from '../../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 import { assertArray } from '../../typeGuards/array'
-import { assertFunctionLike } from '../../typeGuards/lits'
+import { assertFunctionLike } from '../../typeGuards/dvala'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {

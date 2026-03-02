@@ -1,0 +1,8 @@
+let { add } = import("./lib/math-helpers.dvala");
+let names = import("./lib/names.dvala");
+let answer = import("./lib/constants.dvala");
+{
+  "sum": add(answer, 8),
+  "firstName": names[0],
+  "count": count(names)
+}

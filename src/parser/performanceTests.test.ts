@@ -1,15 +1,15 @@
 /* eslint-disable no-console */
 import { describe, it } from 'vitest'
-import { Lits } from '../Lits/Lits'
+import { Dvala } from '../Dvala/Dvala'
 import { evaluate } from '../evaluator/trampoline'
 import { createContextStack } from '../evaluator/ContextStack'
 
-const lits = new Lits({ debug: false, astCacheSize: 0 })
+const dvala = new Dvala({ debug: false, astCacheSize: 0 })
 
 // 6c195a7
-// lits.run is slower than eval by a factor 163.2
-// lits.parse + lits.evaluate is slower than eval by a factor 83.85
-// lits.evaluate is slower than eval by a factor 12.86
+// dvala.run is slower than eval by a factor 163.2
+// dvala.parse + dvala.evaluate is slower than eval by a factor 83.85
+// dvala.evaluate is slower than eval by a factor 12.86
 describe.skip('performance comparison', () => {
   const expressions = [
     '42', // a bit faster than eval
@@ -24,11 +24,11 @@ describe.skip('performance comparison', () => {
   ]
   const iterations = 10000
 
-  it('compares performance of lits.run and eval', () => {
+  it('compares performance of dvala.run and eval', () => {
     type ReportEntry = {
       expression: string
       eval: number
-      lits: number
+      dvala: number
     }
     const entries: ReportEntry[] = []
 
@@ -36,15 +36,15 @@ describe.skip('performance comparison', () => {
       const report: ReportEntry = {
         expression: Array.isArray(expression) ? expression[0]! : expression,
         eval: 0,
-        lits: 0,
+        dvala: 0,
       }
       entries.push(report)
 
       let startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        lits.run(Array.isArray(expression) ? expression[0]! : expression)
+        dvala.run(Array.isArray(expression) ? expression[0]! : expression)
       }
-      report.lits = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = (performance.now() - startTime) * 1000 / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
@@ -54,18 +54,18 @@ describe.skip('performance comparison', () => {
       report.eval = (performance.now() - startTime) * 1000 / iterations
     }
 
-    console.log('lits.run is slower than eval by a factor', calculateFactor(entries))
+    console.log('dvala.run is slower than eval by a factor', calculateFactor(entries))
   })
 
-  it('compares performance of lits.parse + lits.evaluate and eval', () => {
+  it('compares performance of dvala.parse + dvala.evaluate and eval', () => {
     type ReportEntry = {
       expression: string
       eval: number
-      lits: number
+      dvala: number
     }
     const entries: ReportEntry[] = []
     const expressionsWithTokenStreams = expressions.map((expression) => {
-      const tokenStream = lits.tokenize(Array.isArray(expression) ? expression[0]! : expression)
+      const tokenStream = dvala.tokenize(Array.isArray(expression) ? expression[0]! : expression)
 
       return {
         expression,
@@ -77,16 +77,16 @@ describe.skip('performance comparison', () => {
       const report: ReportEntry = {
         expression: Array.isArray(expression.expression) ? expression.expression[0]! : expression.expression,
         eval: 0,
-        lits: 0,
+        dvala: 0,
       }
       entries.push(report)
 
       let startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        const ast = lits.parse(expression.tokenStream)
+        const ast = dvala.parse(expression.tokenStream)
         void evaluate(ast, createContextStack())
       }
-      report.lits = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = (performance.now() - startTime) * 1000 / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
@@ -96,19 +96,19 @@ describe.skip('performance comparison', () => {
       report.eval = (performance.now() - startTime) * 1000 / iterations
     }
 
-    console.log('lits.parse + lits.evaluate is slower than eval by a factor', calculateFactor(entries))
+    console.log('dvala.parse + dvala.evaluate is slower than eval by a factor', calculateFactor(entries))
   })
 
-  it('compares performance of lits.evaluate and eval', () => {
+  it('compares performance of dvala.evaluate and eval', () => {
     type ReportEntry = {
       expression: string
       eval: number
-      lits: number
+      dvala: number
     }
     const entries: ReportEntry[] = []
     const expressionsWithAsts = expressions.map((expression) => {
-      const tokenStream = lits.tokenize(Array.isArray(expression) ? expression[0]! : expression)
-      const ast = lits.parse(tokenStream)
+      const tokenStream = dvala.tokenize(Array.isArray(expression) ? expression[0]! : expression)
+      const ast = dvala.parse(tokenStream)
 
       return {
         expression,
@@ -120,7 +120,7 @@ describe.skip('performance comparison', () => {
       const report: ReportEntry = {
         expression: Array.isArray(expression.expression) ? expression.expression[0]! : expression.expression,
         eval: 0,
-        lits: 0,
+        dvala: 0,
       }
       entries.push(report)
 
@@ -128,7 +128,7 @@ describe.skip('performance comparison', () => {
       for (let i = 0; i < iterations; i++) {
         void evaluate(expression.ast, createContextStack())
       }
-      report.lits = (performance.now() - startTime) * 1000 / iterations
+      report.dvala = (performance.now() - startTime) * 1000 / iterations
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
@@ -138,10 +138,10 @@ describe.skip('performance comparison', () => {
       report.eval = (performance.now() - startTime) * 1000 / iterations
     }
 
-    console.log('lits.evaluate is slower than eval by a factor', calculateFactor(entries))
+    console.log('dvala.evaluate is slower than eval by a factor', calculateFactor(entries))
   })
 })
 
-function calculateFactor(entries: { eval: number, lits: number }[]) {
-  return Math.round(100 * entries.reduce((acc, { eval: evalTime, lits: litsTime }) => acc + litsTime / evalTime, 0) / entries.length) / 100
+function calculateFactor(entries: { eval: number, dvala: number }[]) {
+  return Math.round(100 * entries.reduce((acc, { eval: evalTime, dvala: dvalaTime }) => acc + dvalaTime / evalTime, 0) / entries.length) / 100
 }

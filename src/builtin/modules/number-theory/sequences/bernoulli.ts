@@ -1,4 +1,4 @@
-import { assertFunctionLike } from '../../../../typeGuards/lits'
+import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { binomialCoefficient } from '../binomialCefficient'
 import { toFixedArity } from '../../../../utils/arity'

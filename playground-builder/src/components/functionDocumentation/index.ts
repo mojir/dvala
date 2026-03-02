@@ -1,7 +1,7 @@
 import { allReference, getLinkName, isCustomReference, isFunctionReference } from '../../../../reference'
 import type { CustomReference, FunctionReference, Reference } from '../../../../reference'
 import { styles } from '../../styles'
-import { formatLitsExpression } from '../../formatter/rules'
+import { formatDvalaExpression } from '../../formatter/rules'
 import { formatDescription } from './description'
 import { getFunctionExamples } from './functionExamples'
 import { getArgumentInfo } from './argumentInfo'
@@ -61,7 +61,7 @@ export function getDetailsTable(content: [string, string, string | undefined][])
     ${content.map(row => `
     <tr>
       <td ${styles('text-color-Rose')}>${row[0]}</td>
-      <td ${styles('pl-8')}>${formatLitsExpression(row[1])}</td>
+      <td ${styles('pl-8')}>${formatDvalaExpression(row[1])}</td>
       ${row[2] ? `<td ${styles('pl-4', 'italic', 'text-base')}>${formatDescription(row[2])}</td>` : ''}
     </tr>`,
     ).join('')}

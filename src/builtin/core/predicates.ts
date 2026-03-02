@@ -1,5 +1,5 @@
-import { isLitsFunction } from '../../typeGuards/litsFunction'
-import { assertColl, isColl, isObj, isRegularExpression, isSeq } from '../../typeGuards/lits'
+import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
+import { assertColl, isColl, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedArrays'
@@ -8,7 +8,7 @@ import { toFixedArity } from '../../utils/arity'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
   'function?': {
-    evaluate: ([first]): boolean => isLitsFunction(first),
+    evaluate: ([first]): boolean => isDvalaFunction(first),
     arity: toFixedArity(1),
     docs: {
       category: 'predicate',

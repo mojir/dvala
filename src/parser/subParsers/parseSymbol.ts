@@ -1,4 +1,4 @@
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { NormalBuiltinSymbolNode, SpecialBuiltinSymbolNode, SymbolNode } from '../types'
 import { isSymbolToken } from '../../tokenizer/token'
 import { stringFromQuotedSymbol, stringToSymbolNode } from '../helpers'
@@ -8,7 +8,7 @@ export function parseSymbol(ctx: ParserContext): SymbolNode | NormalBuiltinSymbo
   const token = ctx.peek()
   ctx.advance()
   if (!isSymbolToken(token)) {
-    throw new LitsError(`Expected symbol token, got ${token[0]}`, token[2])
+    throw new DvalaError(`Expected symbol token, got ${token[0]}`, token[2])
   }
   if (token[1][0] === '\'') {
     return stringToSymbolNode(stringFromQuotedSymbol(token[1]), token[2])

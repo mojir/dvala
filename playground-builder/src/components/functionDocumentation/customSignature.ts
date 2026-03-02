@@ -1,11 +1,11 @@
 import type { CustomReference } from '../../../../reference'
-import { formatLitsExpression } from '../../formatter/rules'
+import { formatDvalaExpression } from '../../formatter/rules'
 
 export function getCustomSignature(customVariants: CustomReference['customVariants']) {
   return `<table>
   ${customVariants.map(variant => `
     <tr>
-      <td>${formatLitsExpression(variant)}</td>
+      <td>${formatDvalaExpression(variant)}</td>
     </tr>`,
   ).join('')}
   </table>`

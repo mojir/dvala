@@ -2,25 +2,25 @@
 
 ## Installation
 
-Install Lits from npm:
+Install Dvala from npm:
 
 ```sh
-npm install @mojir/lits
+npm install @mojir/dvala
 ```
 
-## Using Lits as a Library
+## Using Dvala as a Library
 
 There are two main entry points: **minimal** and **full**.
 
 ### Minimal Bundle
 
-The minimal bundle gives you the core `Lits` class, types, and type guards. No modules or reference data are included — this keeps your bundle size small.
+The minimal bundle gives you the core `Dvala` class, types, and type guards. No modules or reference data are included — this keeps your bundle size small.
 
 ```javascript
-import { Lits } from '@mojir/lits'
+import { Dvala } from '@mojir/dvala'
 
-const lits = new Lits()
-lits.run('10 + 20') // => 30
+const dvala = new Dvala()
+dvala.run('10 + 20') // => 30
 ```
 
 This is the right choice when you want the core language and don't need optional modules like vector math or matrix operations.
@@ -30,42 +30,42 @@ This is the right choice when you want the core language and don't need optional
 The full bundle includes everything from the minimal bundle plus all built-in modules, reference data, and API helpers.
 
 ```javascript
-import { Lits, allBuiltinModules } from '@mojir/lits/full'
+import { Dvala, allBuiltinModules } from '@mojir/dvala/full'
 
-const lits = new Lits({ modules: allBuiltinModules })
-lits.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])') // => 32
+const dvala = new Dvala({ modules: allBuiltinModules })
+dvala.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])') // => 32
 ```
 
 ### Individual Modules
 
-You can also import only the modules you need and pass them to the `Lits` constructor. This gives you fine-grained control over bundle size:
+You can also import only the modules you need and pass them to the `Dvala` constructor. This gives you fine-grained control over bundle size:
 
 ```javascript
-import { Lits } from '@mojir/lits'
-import { vectorModule } from '@mojir/lits/modules/vector'
-import { matrixModule } from '@mojir/lits/modules/matrix'
+import { Dvala } from '@mojir/dvala'
+import { vectorModule } from '@mojir/dvala/modules/vector'
+import { matrixModule } from '@mojir/dvala/modules/matrix'
 
-const lits = new Lits({ modules: [vectorModule, matrixModule] })
+const dvala = new Dvala({ modules: [vectorModule, matrixModule] })
 ```
 
 Available modules: `assertion`, `grid`, `random`, `vector`, `linear-algebra`, `matrix`, `number-theory`, `math`, `functional`, `string`, `collection`, `sequence`, and `bitwise`.
 
 ### Passing Values and Functions
 
-You can expose JavaScript values and functions to Lits code via `bindings`:
+You can expose JavaScript values and functions to Dvala code via `bindings`:
 
 ```javascript
-import { Lits } from '@mojir/lits'
+import { Dvala } from '@mojir/dvala'
 
-const lits = new Lits()
+const dvala = new Dvala()
 
 // Expose JavaScript values
-lits.run('name ++ " is " ++ str(age)', {
+dvala.run('name ++ " is " ++ str(age)', {
   bindings: { name: 'Alice', age: 30 }
 }) // => "Alice is 30"
 
 // Expose JavaScript functions
-lits.run('greet("World")', {
+dvala.run('greet("World")', {
   bindings: {
     greet: name => `Hello, ${name}!`,
   }
@@ -74,50 +74,50 @@ lits.run('greet("World")', {
 
 ## CLI Tool
 
-Install the Lits CLI globally to use it from the command line:
+Install the Dvala CLI globally to use it from the command line:
 
 ```sh
-npm install --global @mojir/lits
+npm install --global @mojir/dvala
 ```
 
 ### Interactive REPL
 
-Start an interactive session by running `lits` with no arguments:
+Start an interactive session by running `dvala` with no arguments:
 
 ```sh
-$ lits
+$ dvala
 ```
 
 ### Evaluate Expressions
 
 ```sh
-$ lits eval "5 + 3"
+$ dvala eval "5 + 3"
 8
 
-$ lits eval "[1, 2, 3, 4] filter odd? map inc"
+$ dvala eval "[1, 2, 3, 4] filter odd? map inc"
 [2, 4]
 ```
 
 ### Run Files
 
 ```sh
-$ lits run script.lits
+$ dvala run script.dvala
 ```
 
 ### Other Commands
 
 | Command | Description |
 |---|---|
-| `lits eval <expr>` | Evaluate a Lits expression |
-| `lits run <file>` | Run a `.lits` source file |
-| `lits bundle <entry>` | Bundle a multi-file project into a single JSON file |
-| `lits run-bundle <file>` | Run a bundled `.json` file |
-| `lits test <file>` | Run a `.test.lits` test file |
-| `lits repl` | Start the interactive REPL (default) |
+| `dvala eval <expr>` | Evaluate a Dvala expression |
+| `dvala run <file>` | Run a `.dvala` source file |
+| `dvala bundle <entry>` | Bundle a multi-file project into a single JSON file |
+| `dvala run-bundle <file>` | Run a bundled `.json` file |
+| `dvala test <file>` | Run a `.test.dvala` test file |
+| `dvala repl` | Start the interactive REPL (default) |
 
 ## Try It Here
 
-You don't need to install anything to start learning. This playground runs Lits directly in your browser. Try it:
+You don't need to install anything to start learning. This playground runs Dvala directly in your browser. Try it:
 
 ```
 let greet = name -> str("Hello, ", name, "!");

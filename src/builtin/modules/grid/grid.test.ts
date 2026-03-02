@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { gridModule } from './'
 
 const exampleGrid1 = `[
@@ -20,13 +20,13 @@ const exampleGrid3 = `[
   [3, 4],
 ]`
 
-const lits = new Lits({ modules: [gridModule] })
+const dvala = new Dvala({ modules: [gridModule] })
 
 // Helper to run grid module functions with the new import syntax
 function runGrid(code: string): unknown {
   // Replace 'grid:functionName(' with 'let g = import(grid); g.functionName('
   const modifiedCode = code.replace(/grid:(\S+?)\(/g, 'let g = import(grid); g.$1(')
-  return lits.run(modifiedCode)
+  return dvala.run(modifiedCode)
 }
 
 describe('grid', () => {
@@ -79,8 +79,8 @@ describe('grid', () => {
       expect(runGrid(`grid:row(${exampleGrid1}, 2)`)).toEqual(['Kian', 'son', 30])
     })
     it('should throw an error if the index is out of bounds', () => {
-      expect(() => runGrid(`grid:row(${exampleGrid1}, 3)`)).toThrow(LitsError)
-      expect(() => runGrid(`grid:row(${exampleGrid1}, -1)`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:row(${exampleGrid1}, 3)`)).toThrow(DvalaError)
+      expect(() => runGrid(`grid:row(${exampleGrid1}, -1)`)).toThrow(DvalaError)
     })
   })
   describe('grid:col', () => {
@@ -90,8 +90,8 @@ describe('grid', () => {
       expect(runGrid(`grid:col(${exampleGrid1}, 2)`)).toEqual([10, 20, 30])
     })
     it('should throw an error if the index is out of bounds', () => {
-      expect(() => runGrid(`grid:col(${exampleGrid1}, 3)`)).toThrow(LitsError)
-      expect(() => runGrid(`grid:col(${exampleGrid1}, -1)`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:col(${exampleGrid1}, 3)`)).toThrow(DvalaError)
+      expect(() => runGrid(`grid:col(${exampleGrid1}, -1)`)).toThrow(DvalaError)
     })
   })
   describe('grid:shape', () => {
@@ -129,7 +129,7 @@ describe('grid', () => {
         ['Albert', 'father', 'Nina'],
         ['mother', 'Kian', 'son'],
       ])
-      expect(() => runGrid(`grid:reshape(${exampleGrid2}, 5)`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:reshape(${exampleGrid2}, 5)`)).toThrow(DvalaError)
     })
   })
   describe('grid:transpose', () => {
@@ -154,8 +154,8 @@ describe('grid', () => {
         ['mother', 20],
         ['son', 30],
       ])
-      expect(() => runGrid(`grid:crop(${exampleGrid1}, [1, 1, 1], [2, 2])`)).toThrow(LitsError)
-      expect(() => runGrid(`grid:crop(${exampleGrid1}, [1, 1], [2, 2, 2])`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:crop(${exampleGrid1}, [1, 1, 1], [2, 2])`)).toThrow(DvalaError)
+      expect(() => runGrid(`grid:crop(${exampleGrid1}, [1, 1], [2, 2, 2])`)).toThrow(DvalaError)
     })
   })
   describe('grid:slice-rows', () => {
@@ -210,7 +210,7 @@ describe('grid', () => {
         ['Nazanin', 'mother', 40],
         ['Kian', 'son', 30],
       ])
-      expect(() => runGrid(`grid:splice-rows(${exampleGrid1}, 1, 1, ["Nazanin", "mother"])`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:splice-rows(${exampleGrid1}, 1, 1, ["Nazanin", "mother"])`)).toThrow(DvalaError)
     })
   })
   describe('grid:splice-cols', () => {
@@ -225,7 +225,7 @@ describe('grid', () => {
         ['Nina', 'm', 20],
         ['Kian', 's', 30],
       ])
-      expect(() => runGrid(`grid:splice-cols(${exampleGrid1}, 1, 1, ["f", "m"])`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:splice-cols(${exampleGrid1}, 1, 1, ["f", "m"])`)).toThrow(DvalaError)
     })
   })
   describe('grid:concat-rows', () => {
@@ -237,7 +237,7 @@ describe('grid', () => {
         [1, 2],
         [3, 4],
       ])
-      expect(() => runGrid(`grid:concat-rows(${exampleGrid1}, ${exampleGrid2})`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:concat-rows(${exampleGrid1}, ${exampleGrid2})`)).toThrow(DvalaError)
     })
   })
   describe('grid:concat-cols', () => {
@@ -247,7 +247,7 @@ describe('grid', () => {
         ['Nina', 'mother', 20, 'Nina', 'mother'],
         ['Kian', 'son', 30, 'Kian', 'son'],
       ])
-      expect(() => runGrid(`grid:concat-cols(${exampleGrid2}, ${exampleGrid3})`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:concat-cols(${exampleGrid2}, ${exampleGrid3})`)).toThrow(DvalaError)
     })
   })
   describe('grid:cell-map', () => {
@@ -262,8 +262,8 @@ describe('grid', () => {
       expect(runGrid(`grid:cell-map(${exampleGrid3}, ${exampleGrid3}, +)`)).toEqual([[2, 4], [6, 8]])
     })
     it('should throw on different dimensions', () => {
-      expect(() => runGrid(`grid:cell-map(${exampleGrid3}, [[1], [2]], +)`)).toThrow(LitsError)
-      expect(() => runGrid(`grid:cell-map(${exampleGrid3}, [[1, 2]], +)`)).toThrow(LitsError)
+      expect(() => runGrid(`grid:cell-map(${exampleGrid3}, [[1], [2]], +)`)).toThrow(DvalaError)
+      expect(() => runGrid(`grid:cell-map(${exampleGrid3}, [[1, 2]], +)`)).toThrow(DvalaError)
     })
   })
   describe('grid:cell-mapi', () => {
@@ -293,7 +293,7 @@ describe('grid', () => {
         ['Kian', 'son', 30],
         ['Nazanin', 'mother', 40],
       ])
-      expect(() => runGrid(`grid:push-rows(${exampleGrid1}, ["Nazanin", 40])`)).toThrowError(LitsError)
+      expect(() => runGrid(`grid:push-rows(${exampleGrid1}, ["Nazanin", 40])`)).toThrowError(DvalaError)
     })
   })
   describe('grid:push-cols', () => {
@@ -305,7 +305,7 @@ describe('grid', () => {
       ])
     })
     it('should throw an error if the number of rows does not match', () => {
-      expect(() => runGrid(`grid:push-cols(${exampleGrid1}, ["f", "m"])`)).toThrowError(LitsError)
+      expect(() => runGrid(`grid:push-cols(${exampleGrid1}, ["f", "m"])`)).toThrowError(DvalaError)
     })
   })
   describe('grid:unshift-rows', () => {
@@ -316,10 +316,10 @@ describe('grid', () => {
         ['Nina', 'mother', 20],
         ['Kian', 'son', 30],
       ])
-      expect(() => runGrid(`grid:unshift-rows(${exampleGrid1}, ["Nazanin", 40])`)).toThrowError(LitsError)
+      expect(() => runGrid(`grid:unshift-rows(${exampleGrid1}, ["Nazanin", 40])`)).toThrowError(DvalaError)
     })
     it('should throw an error if the number of columns does not match', () => {
-      expect(() => runGrid(`grid:unshift-rows(${exampleGrid1}, ["Nazanin", "mother"])`)).toThrowError(LitsError)
+      expect(() => runGrid(`grid:unshift-rows(${exampleGrid1}, ["Nazanin", "mother"])`)).toThrowError(DvalaError)
     })
   })
   describe('grid:unshift-cols', () => {
@@ -331,7 +331,7 @@ describe('grid', () => {
       ])
     })
     it('should throw an error if the number of rows does not match', () => {
-      expect(() => runGrid(`grid:unshift-cols(${exampleGrid1}, ["f", "m"])`)).toThrowError(LitsError)
+      expect(() => runGrid(`grid:unshift-cols(${exampleGrid1}, ["f", "m"])`)).toThrowError(DvalaError)
     })
   })
   describe('grid:pop-row', () => {
@@ -382,7 +382,7 @@ describe('grid', () => {
         [1, 2],
         [3, 4],
       ])
-      expect(() => runGrid('grid:from-array([1, 2, 3], 2)')).toThrowError(LitsError)
+      expect(() => runGrid('grid:from-array([1, 2, 3], 2)')).toThrowError(DvalaError)
     })
   })
   describe('grid:rotate', () => {
@@ -431,11 +431,11 @@ describe('grid', () => {
 
 describe('import with destructuring', () => {
   it('should import a single function via destructuring', () => {
-    expect(lits.run('let { row } = import(grid); row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
+    expect(dvala.run('let { row } = import(grid); row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
   })
 
   it('should work with function composition', () => {
-    expect(lits.run(`
+    expect(dvala.run(`
       let { transpose, row } = import(grid);
       row(transpose([[1, 2], [3, 4]]), 1)
     `)).toEqual([2, 4])

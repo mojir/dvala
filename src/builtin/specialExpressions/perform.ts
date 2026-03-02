@@ -24,9 +24,9 @@ const docs: CustomDocs = {
   examples: [
     `
 try
-  perform(effect(lits.log), "hello")
+  perform(effect(dvala.log), "hello")
 with
-  case effect(lits.log) then ([msg]) -> msg
+  case effect(dvala.log) then ([msg]) -> msg
 end
 `,
   ],

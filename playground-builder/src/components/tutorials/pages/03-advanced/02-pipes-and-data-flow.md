@@ -1,6 +1,6 @@
 # Pipes & Data Flow
 
-Lits has powerful features for building readable data transformation pipelines: the pipe operator, data-as-functions, and operator-style calling.
+Dvala has powerful features for building readable data transformation pipelines: the pipe operator, data-as-functions, and operator-style calling.
 
 ## The Pipe Operator
 

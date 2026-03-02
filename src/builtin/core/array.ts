@@ -2,7 +2,7 @@ import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
-import { assertFunctionLike } from '../../typeGuards/lits'
+import { assertFunctionLike } from '../../typeGuards/dvala'
 import { toFixedArity } from '../../utils/arity'
 import { chain, mapSequential } from '../../utils/maybePromise'
 

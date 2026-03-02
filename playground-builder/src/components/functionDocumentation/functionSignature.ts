@@ -1,12 +1,12 @@
 import type { FunctionReference } from '../../../../reference'
 import { isSymbolicOperator } from '../../../../src/tokenizer/operators'
 import type { StyleOverride } from '../../formatter/rules'
-import { formatLitsExpression } from '../../formatter/rules'
+import { formatDvalaExpression } from '../../formatter/rules'
 import { styles } from '../../styles'
 import { getType } from './getType'
 
 function getOperatorExpression(name: string, styleOverride: StyleOverride) {
-  return formatLitsExpression(`a ${name} b`, styleOverride)
+  return formatDvalaExpression(`a ${name} b`, styleOverride)
 }
 
 function getOperatorSignature({ title: name, returns, _isOperator }: Pick<FunctionReference, 'title' | 'returns' | '_isOperator'>, styleOverride: StyleOverride) {
@@ -42,7 +42,7 @@ export function getFunctionSignature({ title: name, variants, args, returns, _is
     //
     return `
       <tr>
-        <td>${formatLitsExpression(expression, styleOverride)}</td>
+        <td>${formatDvalaExpression(expression, styleOverride)}</td>
         <td><span ${styles('text-color-gray-400', 'mx-4', 'text-xl', 'line-height: 1rem;')}>&rarr;</span></td>
         <td><span>${getType(returns)}</span></td>
       </tr>`

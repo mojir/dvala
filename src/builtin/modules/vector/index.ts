@@ -1,9 +1,9 @@
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import { assertNonEmptyVector, assertVector } from '../../../typeGuards/annotatedArrays'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
 import { bincount } from './bincount'
 import { calcHistogram } from './histogram'
@@ -153,7 +153,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     evaluate: ([vector], sourceCodeInfo): [number, number, number] => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < 4) {
-        throw new LitsError('Quartiles require at least four values', sourceCodeInfo)
+        throw new DvalaError('Quartiles require at least four values', sourceCodeInfo)
       }
       return quartiles(vector)
     },
@@ -223,7 +223,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       if (weights !== undefined) {
         assertVector(weights, sourceCodeInfo)
         if (weights.length !== vector.length) {
-          throw new LitsError('Weights vector must be the same length as the input vector', sourceCodeInfo)
+          throw new DvalaError('Weights vector must be the same length as the input vector', sourceCodeInfo)
         }
         weights.forEach(val => assertNumber(val, sourceCodeInfo, { finite: true }))
       }
@@ -259,7 +259,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
-        throw new LitsError('Vectors must be of the same length', sourceCodeInfo)
+        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
       }
       return vectorA.reduce((acc, val, i) => acc + (val - vectorB[i]!) ** 2, 0) / vectorA.length
     },
@@ -270,7 +270,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
-        throw new LitsError('Vectors must be of the same length', sourceCodeInfo)
+        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
       }
       return Math.sqrt(vectorA.reduce((acc, val, i) => acc + (val - vectorB[i]!) ** 2, 0) / vectorA.length)
     },
@@ -281,7 +281,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
-        throw new LitsError('Vectors must be of the same length', sourceCodeInfo)
+        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
       }
       return vectorA.reduce((acc, val, i) => acc + Math.abs(val - vectorB[i]!), 0) / vectorA.length
     },
@@ -292,7 +292,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
-        throw new LitsError('Vectors must be of the same length', sourceCodeInfo)
+        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
       }
       return vectorA.reduce((acc, val, i) => {
         const diff = Math.abs(val - vectorB[i]!)
@@ -322,7 +322,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
     vectorFunctions[key].docs = docs
 }
 
-export const vectorModule: LitsModule = {
+export const vectorModule: DvalaModule = {
   name: 'vector',
   functions: vectorFunctions,
 }

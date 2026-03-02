@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { factorialOf } from './factorial'
 import { numberTheoryModule } from './'
 
-const lits = new Lits({ modules: [numberTheoryModule] })
+const dvala = new Dvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return lits.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('factorial', () => {
   it('should return the factorial of a number', () => {
@@ -30,6 +30,6 @@ describe('nth:factorial', () => {
     expect(runNth('nth:factorial(9)')).toEqual(362880)
     expect(runNth('nth:factorial(10)')).toEqual(3628800)
     expect(runNth('nth:factorial(20)')).toEqual(2432902008176640000)
-    expect(() => runNth('nth:factorial(171)')).toThrow(LitsError)
+    expect(() => runNth('nth:factorial(171)')).toThrow(DvalaError)
   })
 })

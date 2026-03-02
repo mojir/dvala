@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '../../constants/constants'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import type { ObjectNode } from '../../builtin/specialExpressions/object'
@@ -264,42 +264,42 @@ describe('parseObject', () => {
   describe('error cases', () => {
     it('should throw on numeric key', () => {
       const ctx = createCtx('{ 1: 1 }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on missing colon', () => {
       const ctx = createCtx('{ a 1 }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on missing value', () => {
       const ctx = createCtx('{ a: }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on missing closing brace', () => {
       const ctx = createCtx('{ a: 1')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on consecutive commas', () => {
       const ctx = createCtx('{ a: 1,, b: 2 }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on missing comma between entries', () => {
       const ctx = createCtx('{ a: 1 b: 2 }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw on computed key without closing bracket', () => {
       const ctx = createCtx('{ [a: 1 }')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
 
     it('should throw when first token is not LBrace', () => {
       const ctx = createCtx('a: 1')
-      expect(() => parseObject(ctx)).toThrow(LitsError)
+      expect(() => parseObject(ctx)).toThrow(DvalaError)
     })
   })
 })

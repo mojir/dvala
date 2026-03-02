@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { DvalaError } from '../../../errors'
 import { matrixModule } from './'
 
-const lits = new Lits({ modules: [matrixModule] })
+const dvala = new Dvala({ modules: [matrixModule] })
 
 function runMat(code: string) {
-  return lits.run(`let mat = import(matrix); ${code.replace(/mat:/g, 'mat.')}`)
+  return dvala.run(`let mat = import(matrix); ${code.replace(/mat:/g, 'mat.')}`)
 }
 
 describe('matrix', () => {
@@ -15,7 +15,7 @@ describe('matrix', () => {
       expect(runMat('mat:mul([[1, 2], [3, 4]], [[5, 6], [7, 8]])')).toEqual([[19, 22], [43, 50]])
       expect(runMat('mat:mul([[1, 2, 3], [4, 5, 6]], [[7, 8], [9, 10], [11, 12]])')).toEqual([[58, 64], [139, 154]])
       expect(runMat('mat:mul([[2]], [[3]])')).toEqual([[6]])
-      expect(() => runMat('mat:mul([[2, 1]], [[3, 4]])')).toThrow(LitsError)
+      expect(() => runMat('mat:mul([[2, 1]], [[3, 4]])')).toThrow(DvalaError)
     })
   })
   describe('mat:det', () => {
@@ -30,7 +30,7 @@ describe('matrix', () => {
       expect(runMat('mat:inv([[2, 3], [5, 7]])')).toEqual([[-7, 3], [5, -2]])
     })
     it('should throw an error for non-invertible matrices', () => {
-      expect(() => runMat('mat:inv([[1, 2], [2, 4]])')).toThrow(LitsError)
+      expect(() => runMat('mat:inv([[1, 2], [2, 4]])')).toThrow(DvalaError)
     })
   })
   describe('mat:adj', () => {
@@ -189,8 +189,8 @@ describe('matrix', () => {
       ])
     })
     it('should throw an error for non-positive integer sizes', () => {
-      expect(() => runMat('mat:hilbert(-1)')).toThrow(LitsError)
-      expect(() => runMat('mat:hilbert(0)')).toThrow(LitsError)
+      expect(() => runMat('mat:hilbert(-1)')).toThrow(DvalaError)
+      expect(() => runMat('mat:hilbert(0)')).toThrow(DvalaError)
     })
   })
   describe('mat:vandermonde', () => {
@@ -206,8 +206,8 @@ describe('matrix', () => {
       ])
     })
     it('should throw an error for non-positive integer sizes', () => {
-      expect(() => runMat('mat:vandermonde(-1)')).toThrow(LitsError)
-      expect(() => runMat('mat:vandermonde(0)')).toThrow(LitsError)
+      expect(() => runMat('mat:vandermonde(-1)')).toThrow(DvalaError)
+      expect(() => runMat('mat:vandermonde(0)')).toThrow(DvalaError)
     })
   })
   describe('mat:band', () => {
@@ -225,12 +225,12 @@ describe('matrix', () => {
       ])
     })
     it('should throw an error for non-positive integer sizes', () => {
-      expect(() => runMat('mat:band(-1)')).toThrow(LitsError)
-      expect(() => runMat('mat:band(0)')).toThrow(LitsError)
+      expect(() => runMat('mat:band(-1)')).toThrow(DvalaError)
+      expect(() => runMat('mat:band(0)')).toThrow(DvalaError)
     })
     it('should throw an error for invalid bands', () => {
-      expect(() => runMat('mat:band(3, -1)')).toThrow(LitsError)
-      expect(() => runMat('mat:band(3, 4)')).toThrow(LitsError)
+      expect(() => runMat('mat:band(3, -1)')).toThrow(DvalaError)
+      expect(() => runMat('mat:band(3, 4)')).toThrow(DvalaError)
     })
   })
   describe('mat:banded?', () => {
@@ -288,10 +288,10 @@ describe('matrix', () => {
       expect(runMat('mat:rank([[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6], [4, 5, 6, 7]])')).toBe(2)
 
       // Edge cases
-      expect(() => runMat('mat:rank([[]])')).toThrowError(LitsError) // Empty matrix
+      expect(() => runMat('mat:rank([[]])')).toThrowError(DvalaError) // Empty matrix
 
       // Case with empty matrix (should throw an error)
-      expect(() => runMat('mat:rank([])')).toThrowError(LitsError)
+      expect(() => runMat('mat:rank([])')).toThrowError(DvalaError)
     })
   })
   describe('mat:frobenius-norm', () => {

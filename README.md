@@ -1,8 +1,8 @@
-# Lits
+# Dvala
 
 A suspendable virtual machine — pause anywhere, resume anytime, debug backward through time.
 
-Try it in the [Lits Playground](https://mojir.github.io/lits/).
+Try it in the [Dvala Playground](https://mojir.github.io/dvala/).
 
 ## Features
 
@@ -16,8 +16,8 @@ Try it in the [Lits Playground](https://mojir.github.io/lits/).
 - **Algebraic notation** - all operators can be used as functions, and binary functions can be used as operators
 - **First-class functions** - functions are values that can be passed, returned, and composed freely
 - **Comprehensive standard library** - rich set of functions for collections, math, strings, regular expressions, and more
-- **JavaScript interoperability** - JavaScript values and functions can be exposed directly in Lits
-- **Fully serializable** - every Lits value, including functions and regexps, is JSON-serializable
+- **JavaScript interoperability** - JavaScript values and functions can be exposed directly in Dvala
+- **Fully serializable** - every Dvala value, including functions and regexps, is JSON-serializable
 - **Structural equality** - objects are compared by value, not by reference
 - **Destructuring** - extract values from complex data structures with ease
 
@@ -26,52 +26,52 @@ Try it in the [Lits Playground](https://mojir.github.io/lits/).
 ### As a Library
 
 ```bash
-npm install @mojir/lits
+npm install @mojir/dvala
 ```
 
 ### CLI Tool
 
-Install globally to use the Lits command-line interface:
+Install globally to use the Dvala command-line interface:
 
 ```bash
-npm install --global @mojir/lits
+npm install --global @mojir/dvala
 ```
 
 #### CLI Usage
 
 ```bash
 # Start an interactive REPL session
-$ lits
+$ dvala
 
-# Evaluate Lits code directly
-$ lits eval "5 + 3"
-$ lits eval "[1, 2, 3, 4] filter odd? map inc"
+# Evaluate Dvala code directly
+$ dvala eval "5 + 3"
+$ dvala eval "[1, 2, 3, 4] filter odd? map inc"
 
-# Run a Lits file
-$ lits run script.lits
+# Run a Dvala file
+$ dvala run script.dvala
 
 # Bundle a multi-file project into a single .json file
-$ lits bundle main.lits -o bundle.lits.json
+$ dvala bundle main.dvala -o bundle.dvala.json
 
 # Run a bundle
-$ lits run-bundle bundle.lits.json
+$ dvala run-bundle bundle.dvala.json
 
 # Run tests
-$ lits test tests.test.lits
+$ dvala test tests.test.dvala
 
 # Get help
-$ lits --help
+$ dvala --help
 ```
 
 **Subcommands:**
 
 | Subcommand | Description |
 |---|---|
-| `run <file>` | Run a `.lits` source file |
+| `run <file>` | Run a `.dvala` source file |
 | `run-bundle <file>` | Run a `.json` bundle (with validation) |
-| `eval <expression>` | Evaluate a Lits expression |
+| `eval <expression>` | Evaluate a Dvala expression |
 | `bundle <entry>` | Bundle a multi-file project into a single JSON file |
-| `test <file>` | Run a `.test.lits` test file |
+| `test <file>` | Run a `.test.dvala` test file |
 | `repl` | Start an interactive REPL (default when no subcommand) |
 
 **Common options:**
@@ -83,15 +83,15 @@ $ lits --help
 | `-s, --silent` | `run`, `run-bundle`, `eval` | Suppress printing the result |
 | `-o, --output=<file>` | `bundle` | Write bundle to file (default: stdout) |
 | `--pattern=<regex>` | `test` | Only run tests matching pattern |
-| `-l, --load=<file>` | `repl` | Preload a `.lits` file into the REPL |
+| `-l, --load=<file>` | `repl` | Preload a `.dvala` file into the REPL |
 
-The REPL provides an interactive environment where you can experiment with Lits code, test functions, and explore the language features in real-time.
+The REPL provides an interactive environment where you can experiment with Dvala code, test functions, and explore the language features in real-time.
 
 ## Quick Start
 
 Here's a simple example to get you started:
 
-```lits
+```dvala
 // Defining a function - note that everything returns a value
 let square = x -> x * x;
 
@@ -110,9 +110,9 @@ let squares = [1, 2, 3, 4, 5] map square;
 
 ## Expression-Based Language
 
-In Lits, everything is an expression that evaluates to a value. This means:
+In Dvala, everything is an expression that evaluates to a value. This means:
 
-```lits
+```dvala
 // Conditional expressions always return a value
 let a = 10;
 let result = if a > 0 then "positive" else "non-positive" end;
@@ -129,13 +129,13 @@ let value = do
   temp * 2 + 1 // => 85
 end;
 ```
-This expression-based design makes Lits highly composable and eliminates the statement/expression distinction found in many other languages.
+This expression-based design makes Dvala highly composable and eliminates the statement/expression distinction found in many other languages.
 
 ## Basic Syntax
 
 ### Data Types
 
-```lits
+```dvala
 // Numbers
 42;          // integer
 3.14;        // float
@@ -166,9 +166,9 @@ null;
 
 #### Arrays (General Collections)
 
-Arrays are the primary collection type in Lits, supporting mixed data types:
+Arrays are the primary collection type in Dvala, supporting mixed data types:
 
-```lits
+```dvala
 // Basic arrays
 [1, 2, 3, 4, 5];
 ["apple", "banana", "orange"];
@@ -195,7 +195,7 @@ numbers filter odd?;           // => [1, 3, 5]
 
 A vector is simply a non-empty array containing only numbers. The `vec` module provides mathematical operations specifically for these number arrays:
 
-```lits
+```dvala
 // Import vector and linear algebra modules
 let vec = import(vector);
 let lin = import(linear-algebra);
@@ -248,7 +248,7 @@ vec.strictly-increasing?([1, 1, 2, 3, 4]); // => false
 
 A matrix is a 2D array where each row is a vector (non-empty array of numbers) and all rows have the same length. The `mat` module provides linear algebra operations for these structures:
 
-```lits
+```dvala
 // Import matrix module
 let mat = import(matrix);
 
@@ -297,7 +297,7 @@ mat.rank(matrixA);             // => matrix rank
 
 Objects store key-value pairs:
 
-```lits
+```dvala
 // Object creation
 { name: "John", age: 30 };
 { "key with spaces": "value", count: 42 };
@@ -320,9 +320,9 @@ vals(user);                  // => ["Bob", 30, "NYC"]
 
 #### Type Predicates
 
-Lits provides predicate functions to check data types at runtime:
+Dvala provides predicate functions to check data types at runtime:
 
-```lits
+```dvala
 // Basic type predicates
 number?(42);                   // => true
 string?("hello");              // => true
@@ -357,7 +357,7 @@ collection?(42);                // => false
 
 The type predicates follow a logical hierarchy:
 
-```lits
+```dvala
 // If something is a matrix, it's also a vector and an array
 let mat = [[1, 2], [3, 4]];
 matrix?(mat);                  // => true
@@ -379,9 +379,9 @@ Each data type is immutable by design - operations return new values rather than
 
 ### Mathematical Constants
 
-Lits provides predefined mathematical constants:
+Dvala provides predefined mathematical constants:
 
-```lits
+```dvala
 PI;    // => 3.141592653589793
 π;     // => 3.141592653589793 (Unicode alternative)
 E;     // => 2.718281828459045 (Euler's number)
@@ -407,7 +407,7 @@ MIN_VALUE;         // => 5e-324
 
 #### Let
 
-```lits
+```dvala
 // Simple binding
 let x = 10;
 // => 10
@@ -427,25 +427,25 @@ end;
 
 ##### Basic Object Destructuring
 
-```lits
+```dvala
 // Object destructuring
 let { name, age } = { name: "John", age: 30 };
 // name => "John", age => 30
 ```
 
-```lits
+```dvala
 // With default values
 let { name = "Unknown", age = 0 } = { name: "John" };
 // name => "John", age => 0
 ```
 
-```lits
+```dvala
 // Renaming with 'as'
 let { name as userName } = { name: "Dave" };
 // userName => "Dave"
 ```
 
-```lits
+```dvala
 // Multiple renames
 let { firstName as name, age as years } = { firstName: "Eve", age: 28 };
 // name => "Eve", years => 28
@@ -453,7 +453,7 @@ let { firstName as name, age as years } = { firstName: "Eve", age: 28 };
 
 ##### Advanced Destructuring Patterns
 
-```lits
+```dvala
 // Complex nested destructuring with defaults and renaming
 let { 
   name as userName = "Guest",
@@ -468,13 +468,13 @@ let {
 // userName => "Sam", age => 0, userEmail => "none", etc.
 ```
 
-```lits
+```dvala
 // Combining array and object destructuring
 let [{ name }, { age }] = [{ name: "Tina" }, { age: 33 }];
 // name => "Tina", age => 33
 ```
 
-```lits
+```dvala
 // Object with array property destructuring
 let { name, scores: [one, two] } = { name: "Uma", scores: [85, 92] };
 // name => "Uma", one => 85, two => 92
@@ -482,19 +482,19 @@ let { name, scores: [one, two] } = { name: "Uma", scores: [85, 92] };
 
 ##### Array Destructuring
 
-```lits
+```dvala
 // Array destructuring
 let [, , a, b] = [1, 2, 3, 4];
 // a => 3, b => 4
 ```
 
-```lits
+```dvala
 // Array destructuring with defaults
 let [one, two = 2] = [1];
 // one => 1, two => 2
 ```
 
-```lits
+```dvala
 // Skipping elements
 let [x, , z] = [1, 2, 3];
 // x => 1, z => 3
@@ -502,19 +502,19 @@ let [x, , z] = [1, 2, 3];
 
 ##### Rest Patterns
 
-```lits
+```dvala
 // Array rest pattern
 let [head, ...tail] = [1, 2, 3, 4];
 // head => 1, tail => [2, 3, 4]
 ```
 
-```lits
+```dvala
 // Object rest pattern  
 let { name, ...otherProps } = { name: "John", age: 30, city: "NYC" };
 // name => "John", otherProps => { age: 30, city: "NYC" }
 ```
 
-```lits
+```dvala
 // Empty rest patterns
 let [only, ...empty] = [1];
 // only => 1, empty => []
@@ -522,21 +522,21 @@ let [only, ...empty] = [1];
 
 ##### Function Parameter Destructuring
 
-```lits
+```dvala
 // Basic parameter destructuring
 let greet = ({ name }) -> "Hello, " ++ name;
 greet({ name: "Pat" });
 // => "Hello, Pat"
 ```
 
-```lits
+```dvala
 // With defaults in parameters
 let greet2 = ({ name = "friend" }) -> "Hello, " ++ name;
 greet2({});
 // => "Hello, friend"
 ```
 
-```lits
+```dvala
 // Nested parameter destructuring
 let processUser = ({ profile: { name, age }}) -> 
   name ++ " is " ++ str(age);
@@ -544,7 +544,7 @@ processUser({ profile: { name: "Quinn", age: 29 }});
 // => "Quinn is 29"
 ```
 
-```lits
+```dvala
 // Array parameter destructuring
 let processCoords = ([x, y]) -> x + y;
 processCoords([3, 4]);
@@ -555,7 +555,7 @@ processCoords([3, 4]);
 
 #### Lambda Functions
 
-```lits
+```dvala
 // Multi-parameter lambda
 let add = (a, b) -> a + b;
 
@@ -584,7 +584,7 @@ let factorial = n ->
 
 #### If/Unless
 
-```lits
+```dvala
 let x = 15; // Fixed value for compilation
 
 if x > 10 then
@@ -610,7 +610,7 @@ end;
 
 #### Cond
 
-```lits
+```dvala
 let x = 12;
 
 // Multi-branch conditional
@@ -636,7 +636,7 @@ end;
 
 #### Match
 
-```lits
+```dvala
 let x = 1;
 
 // Match on value
@@ -665,7 +665,7 @@ end;
 
 #### For Comprehensions
 
-```lits
+```dvala
 // Simple iteration
 for (x in [1, 2, 3, 4]) -> x * 2;
 // => [2, 4, 6, 8]
@@ -707,7 +707,7 @@ for (entry in { a: 1, b: 2 } let [key, value] = entry) -> key ++ ":" ++ str(valu
 
 #### Doseq (Side Effects)
 
-```lits
+```dvala
 // For side effects only (returns null)
 doseq (x in [1, 2, 3]) -> write!(x)
 // Prints: 1 2 3, returns null
@@ -715,7 +715,7 @@ doseq (x in [1, 2, 3]) -> write!(x)
 
 #### Loop (Tail Recursion)
 
-```lits
+```dvala
 // Loop with recur for tail recursion
 loop (n = 5, acc = 1) -> do
   if zero?(n) then
@@ -740,7 +740,7 @@ end;
 
 #### Function Recursion
 
-```lits
+```dvala
 // Simple recursive function with recur
 let factorial = (n) -> do
   if n <= 1 then
@@ -764,7 +764,7 @@ end;
 
 #### Try/Catch
 
-```lits
+```dvala
 // Basic try/catch
 let riskyOperation = () -> throw("Something went wrong");
 try
@@ -793,7 +793,7 @@ end;
 
 #### Throw
 
-```lits
+```dvala
 // Throwing errors
 try
   throw("Custom error message")
@@ -820,7 +820,7 @@ let validateAge = (age) ->
 
 ### Block Expressions
 
-```lits
+```dvala
 // Block for grouping expressions
 let computeX = () -> 5;
 let computeY = () -> 10;
@@ -850,7 +850,7 @@ end
 
 #### Array Construction
 
-```lits
+```dvala
 // Array literal
 [1, 2, 3, 4];
 
@@ -865,7 +865,7 @@ let small-set = [3, 4, 5];
 
 #### Array Spread
 
-```lits
+```dvala
 // Spread in array literals
 let combined = [1, 2, ...[3, 4, 5], 6];
 // => [1, 2, 3, 4, 5, 6]
@@ -879,7 +879,7 @@ let result = [...start, ...middle, ...stop];
 
 #### Object Construction
 
-```lits
+```dvala
 // Object literal with static keys
 { name: "John", age: 30 };
 
@@ -912,7 +912,7 @@ let propName = "score";
 
 #### Object Spread
 
-```lits
+```dvala
 // Object spread for merging
 let person = {
   name: "John",
@@ -943,7 +943,7 @@ let updated = {
 
 #### And/Or
 
-```lits
+```dvala
 // Logical AND (short-circuit)
 true && "second value";   // => "second value"
 false && "never reached"; // => false
@@ -959,7 +959,7 @@ true || "never reached";  // => true
 
 #### Null Coalescing
 
-```lits
+```dvala
 // Null coalescing operator
 null ?? "default";     // => "default"
 0 ?? "default";        // => 0 (only null/undefined are coalesced)
@@ -969,7 +969,7 @@ false ?? "default";    // => false
 
 ### Ternary Operator
 
-```lits
+```dvala
 // Conditional expression
 let age = 25;
 let result = age >= 18 ? "adult" : "minor";
@@ -986,11 +986,11 @@ let status = isLoggedIn() && hasPermission() ? "authorized" : "unauthorized";
 
 ## Variable Names
 
-Lits is generous with variable naming conventions, allowing a wide range of characters that would be invalid in many other programming languages.
+Dvala is generous with variable naming conventions, allowing a wide range of characters that would be invalid in many other programming languages.
 
 ### Basic Rules
 
-Variable names in Lits can contain almost any character except for a small set of reserved symbols. The only restrictions are:
+Variable names in Dvala can contain almost any character except for a small set of reserved symbols. The only restrictions are:
 
 **Illegal characters anywhere in a variable name:**
 - Parentheses: `(` `)`
@@ -1005,9 +1005,9 @@ Variable names in Lits can contain almost any character except for a small set o
 
 ### Unicode and Emoji Support
 
-Beyond these minimal restrictions, Lits supports Unicode characters, including emojis, in variable names:
+Beyond these minimal restrictions, Dvala supports Unicode characters, including emojis, in variable names:
 
-```lits
+```dvala
 // Unicode characters are welcome
 let résultat = 42;
 let naïve = "simple approach";
@@ -1022,9 +1022,9 @@ let result = 😅 ++ " " ++ 🚀;
 
 ### Quoted Variable Names
 
-For cases where you need to use the normally illegal characters in variable names, Lits supports quoted variable names using single quotes:
+For cases where you need to use the normally illegal characters in variable names, Dvala supports quoted variable names using single quotes:
 
-```lits
+```dvala
 // Variables with spaces and special characters
 let 'A strange variable' = 42;
 let 'user.name' = "John Doe";
@@ -1038,9 +1038,9 @@ let 'function()' = "callable";
 
 ### Practical Examples
 
-Here are some examples showcasing the flexibility of Lits variable naming:
+Here are some examples showcasing the flexibility of Dvala variable naming:
 
-```lits
+```dvala
 // Mathematical notation with Greek letters (avoiding reserved symbols)
 let α = 0.5;
 let β = 1.2;
@@ -1060,9 +1060,9 @@ let 🔧config = { debug: true };
 
 ### Important: Operator Spacing
 
-Due to Lits' flexible variable naming, **operators must be separated by whitespace**. This is crucial to understand:
+Due to Dvala' flexible variable naming, **operators must be separated by whitespace**. This is crucial to understand:
 
-```lits
+```dvala
 // This is a variable name, NOT addition!
 let x+1 = 42;
 let result1 = x+1;  // => 42
@@ -1087,16 +1087,16 @@ let a-quot = a / b;     // Division
 let a-comp = a < b;     // Comparison
 ```
 
-Without whitespace, Lits treats the entire sequence as a single variable identifier. This applies to all operators, including comparison operators, logical operators, and arithmetic operators.
+Without whitespace, Dvala treats the entire sequence as a single variable identifier. This applies to all operators, including comparison operators, logical operators, and arithmetic operators.
 
-This flexibility allows for expressive and readable code while maintaining the functional programming paradigm that Lits embodies.
+This flexibility allows for expressive and readable code while maintaining the functional programming paradigm that Dvala embodies.
 ## Operators and Functions
 
 ### Algebraic Notation
 
 All functions that take two parameters can be used as operators:
 
-```lits
+```dvala
 // As a function
 max(5, 10);    // => 10
 
@@ -1106,7 +1106,7 @@ max(5, 10);    // => 10
 
 All operators can be used as functions:
 
-```lits
+```dvala
 // As an operator
 5 + 3;         // => 8
 
@@ -1131,13 +1131,13 @@ divide(2);     // => 5
 
 ### Data Types as Functions
 
-Lits allows arrays, objects, numbers, and strings to be used as functions. This creates elegant, flexible code where data structures become accessors.
+Dvala allows arrays, objects, numbers, and strings to be used as functions. This creates elegant, flexible code where data structures become accessors.
 
 #### Arrays and Numbers as Index Accessors
 
 Arrays can be called with an index to get an element, and numbers can be called with collections to access that index:
 
-```lits
+```dvala
 let arr = [10, 20, 30, 40];
 
 // Array as function (accessing by index)
@@ -1153,7 +1153,7 @@ arr(2);          // => 30
 
 Similar to arrays, strings support indexed access in both directions:
 
-```lits
+```dvala
 let name = "Albert";
 
 // String as function (accessing character by index)
@@ -1169,7 +1169,7 @@ name(2);         // => "b"
 
 Objects can be called with property names, and strings can be called with objects to access properties:
 
-```lits
+```dvala
 let person = { foo: 1, bar: 2, name: "John" };
 
 // Object as function (accessing property by key)
@@ -1185,7 +1185,7 @@ person("name");  // => "John"
 
 This feature makes higher-order functions incredibly flexible. You can pass data directly as accessor functions:
 
-```lits
+```dvala
 let data = [
   { name: "Alice", score: 95 },
   { name: "Bob", score: 87 },
@@ -1219,7 +1219,7 @@ records map "values" map 0;
 
 #### Practical Examples
 
-```lits
+```dvala
 // Matrix column extraction
 let matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 matrix map 1;        // => [2, 5, 8] (second column)
@@ -1248,9 +1248,9 @@ This feature eliminates the need for verbose accessor functions and makes data t
 
 ### Parameter Order
 
-Lits favors subject-first parameter order for better operator chaining:
+Dvala favors subject-first parameter order for better operator chaining:
 
-```lits
+```dvala
 // Function style
 filter([1, 2, 3, 4], odd?);  // => [1, 3]
 
@@ -1262,7 +1262,7 @@ filter([1, 2, 3, 4], odd?);  // => [1, 3]
 
 The pipe operator `|>` passes the result of the left expression as the first argument to the right function:
 
-```lits
+```dvala
 // Without pipe operator
 reduce(map(filter([1, 2, 3, 4, 5, 6], odd?), -> $ * $), +, 0);
 
@@ -1299,7 +1299,7 @@ reduce(map(filter([1, 2, 3, 4, 5, 6], odd?), -> $ * $), +, 0);
 
 ### Operator Precedence
 
-Lits follows a specific operator precedence order that determines how expressions are evaluated. Operators with higher precedence are evaluated first. When operators have the same precedence, they are evaluated left-to-right.
+Dvala follows a specific operator precedence order that determines how expressions are evaluated. Operators with higher precedence are evaluated first. When operators have the same precedence, they are evaluated left-to-right.
 
 Here's the complete precedence table, from highest to lowest:
 
@@ -1320,7 +1320,7 @@ Here's the complete precedence table, from highest to lowest:
 
 #### Examples of Precedence in Action
 
-```lits
+```dvala
 // Exponentiation has highest precedence
 2 + 3 ^ 2;           // => 2 + 9 = 11 (not 5^2 = 25)
 
@@ -1345,7 +1345,7 @@ true ? 2 + 3 : 4 + 5;             // => true ? 5 : 9 = 5
 
 When in doubt, or to make your intent clear, use parentheses to override precedence:
 
-```lits
+```dvala
 // Without parentheses (follows precedence)
 2 + 3 * 4;          // => 14
 
@@ -1367,19 +1367,19 @@ let g = 5;
 
 Most operators are left-associative, meaning they evaluate from left to right when they have the same precedence:
 
-```lits
+```dvala
 10 - 5 - 2;         // => (10 - 5) - 2 = 3 (not 10 - (5 - 2) = 7)
 "a" ++ "b" ++ "c";  // => ("a" ++ "b") ++ "c" = "abc"
 ```
 
 **Exception**: Exponentiation (`^`) is right-associative:
-```lits
+```dvala
 2 ^ 3 ^ 2           // => 2 ^ (3 ^ 2) = 2 ^ 9 = 512 (not (2 ^ 3) ^ 2 = 64)
 ```
 
 ## Built-in Functions
 
-Lits comes with a comprehensive standard library of functions for:
+Dvala comes with a comprehensive standard library of functions for:
 
 - **Arithmetic and Math**: Basic operations, trigonometry, logarithms, rounding
 - **Collections**: Working with arrays and objects (get, assoc, merge, etc.)
@@ -1391,13 +1391,13 @@ Lits comes with a comprehensive standard library of functions for:
 - **Bitwise Operations**: Low-level bit manipulation
 - **Assertions**: Testing and validation utilities
 
-For a complete reference of all available functions with examples, visit the [Lits Playground](https://mojir.github.io/lits/) where you can explore the interactive documentation and try functions in real-time.
+For a complete reference of all available functions with examples, visit the [Dvala Playground](https://mojir.github.io/dvala/) where you can explore the interactive documentation and try functions in real-time.
 
 ## Serialization
 
-A unique feature of Lits is that every result from evaluation is fully serializable as JSON, including functions and regular expressions:
+A unique feature of Dvala is that every result from evaluation is fully serializable as JSON, including functions and regular expressions:
 
-```lits
+```dvala
 // Functions are serializable
 let myFunction = x -> x * 2;
 
@@ -1412,14 +1412,14 @@ let config = {
 };
 
 // All of these can be serialized to JSON and later deserialized
-// back into working Lits values, preserving their functionality
+// back into working Dvala values, preserving their functionality
 ```
 
 ## File Value
 
-A Lits file evaluates to the value of its last expression:
+A Dvala file evaluates to the value of its last expression:
 
-```lits
+```dvala
 let pi = 3.14159;
 let square = x -> x * x;
 // The file's value is the result of the last expression
@@ -1430,7 +1430,7 @@ let square = x -> x * x;
 
 ### Factorial
 
-```lits
+```dvala
 let factorial = n -> n <= 1 ? 1 : n * self(n - 1);
 
 factorial(5);  // => 120
@@ -1438,7 +1438,7 @@ factorial(5);  // => 120
 
 ### Array Processing
 
-```lits
+```dvala
 let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 // Get even numbers squared
@@ -1456,7 +1456,7 @@ let oddSum = numbers
 
 ### String Processing
 
-```lits
+```dvala
 let text = "Hello, World! How are you today?";
 
 // Word count
@@ -1475,7 +1475,7 @@ let longWords = text
 
 ### Data Transformation
 
-```lits
+```dvala
 let su = import(sequence);
 let users = [
   { name: "Alice", age: 30, department: "Engineering" },
@@ -1503,56 +1503,56 @@ let departmentAges = grouped
 The package provides multiple entry points for different use cases:
 
 ```javascript
-// Minimal entry — core Lits class, types, and type guards only.
+// Minimal entry — core Dvala class, types, and type guards only.
 // No modules or reference data. Smallest bundle size.
-import { Lits } from '@mojir/lits';
+import { Dvala } from '@mojir/dvala';
 
 // Full entry — everything from minimal plus all modules,
 // reference data, and API helpers (e.g. apiReference, isApiName).
-import { Lits, allBuiltinModules, apiReference } from '@mojir/lits/full';
+import { Dvala, allBuiltinModules, apiReference } from '@mojir/dvala/full';
 
 // Individual module entries — import only the modules you need.
-import { vectorModule } from '@mojir/lits/modules/vector';
-import { matrixModule } from '@mojir/lits/modules/matrix';
-import { linearAlgebraModule } from '@mojir/lits/modules/linearAlgebra';
-import { gridModule } from '@mojir/lits/modules/grid';
-import { randomModule } from '@mojir/lits/modules/random';
-import { assertModule } from '@mojir/lits/modules/assertion';
-import { numberTheoryModule } from '@mojir/lits/modules/numberTheory';
+import { vectorModule } from '@mojir/dvala/modules/vector';
+import { matrixModule } from '@mojir/dvala/modules/matrix';
+import { linearAlgebraModule } from '@mojir/dvala/modules/linearAlgebra';
+import { gridModule } from '@mojir/dvala/modules/grid';
+import { randomModule } from '@mojir/dvala/modules/random';
+import { assertModule } from '@mojir/dvala/modules/assertion';
+import { numberTheoryModule } from '@mojir/dvala/modules/numberTheory';
 ```
 
-To make module functions available in Lits code, pass them to the `Lits` constructor:
+To make module functions available in Dvala code, pass them to the `Dvala` constructor:
 
 ```javascript
-import { Lits } from '@mojir/lits';
-import { vectorModule } from '@mojir/lits/modules/vector';
-import { matrixModule } from '@mojir/lits/modules/matrix';
+import { Dvala } from '@mojir/dvala';
+import { vectorModule } from '@mojir/dvala/modules/vector';
+import { matrixModule } from '@mojir/dvala/modules/matrix';
 
-const lits = new Lits({ modules: [vectorModule, matrixModule] });
+const dvala = new Dvala({ modules: [vectorModule, matrixModule] });
 
-// Now you can use import(vector) and import(matrix) in Lits code
-lits.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])'); // => 32
+// Now you can use import(vector) and import(matrix) in Dvala code
+dvala.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])'); // => 32
 ```
 
-### Using Lits in JavaScript
+### Using Dvala in JavaScript
 
 ```javascript
-import { Lits } from '@mojir/lits';
+import { Dvala } from '@mojir/dvala';
 
-const lits = new Lits();
+const dvala = new Dvala();
 
 // Basic usage
-const result1 = lits.run('+(1, 2, 3)');
+const result1 = dvala.run('+(1, 2, 3)');
 console.log(result1); // 6
 
 // Provide JavaScript values
-const result2 = lits.run('name ++ " is " ++ str(age)', {
+const result2 = dvala.run('name ++ " is " ++ str(age)', {
   values: { name: 'John', age: 30 }
 });
 console.log(result2); // "John is 30"
 
 // Expose JavaScript functions
-const result3 = lits.run('myAlert("Hello from Lits!")', {
+const result3 = dvala.run('myAlert("Hello from Dvala!")', {
   jsFunctions: {
     myAlert: {
       fn: (message) => console.log(`Alert: ${message}`),
@@ -1561,16 +1561,16 @@ const result3 = lits.run('myAlert("Hello from Lits!")', {
   }
 });
 
-// Execute Lits code
-const result4 = lits.run('+(5, 3)');
+// Execute Dvala code
+const result4 = dvala.run('+(5, 3)');
 ```
 
-### Lits Class Methods
+### Dvala Class Methods
 
 ```typescript
-interface Lits {
-  // Execute Lits code directly
-  run(programOrBundle: string | LitsBundle, params?: ContextParams & FilePathParams): unknown
+interface Dvala {
+  // Execute Dvala code directly
+  run(programOrBundle: string | DvalaBundle, params?: ContextParams & FilePathParams): unknown
   
   // Find undefined symbols in code
   getUndefinedSymbols(programOrAst: string | Ast, params?: ContextParams): Set<string>
@@ -1579,13 +1579,13 @@ interface Lits {
   tokenize(program: string, params?: FilePathParams & MinifyParams): TokenStream
   parse(tokenStream: TokenStream): Ast
   
-  // Apply Lits function with JavaScript arguments
-  apply(fn: LitsFunction, fnParams: unknown[], params?: ContextParams): unknown
+  // Apply Dvala function with JavaScript arguments
+  apply(fn: DvalaFunction, fnParams: unknown[], params?: ContextParams): unknown
   
   // Utility methods
   transformSymbols(tokenStream: TokenStream, transformer: (symbol: string) => string): TokenStream
   untokenize(tokenStream: TokenStream): string
-  getRuntimeInfo(): LitsRuntimeInfo
+  getRuntimeInfo(): DvalaRuntimeInfo
 }
 ```
 
@@ -1609,8 +1609,8 @@ interface JsFunction {
 
 ## Learn More
 
-- Try Lits in the [online playground](https://mojir.github.io/lits/)
+- Try Dvala in the [online playground](https://mojir.github.io/dvala/)
 - Explore the comprehensive function reference
 - Check out more complex examples in the documentation
 
-Lits combines the elegance of functional programming with practical syntax, making it perfect for data transformation, mathematical computation, and any scenario where immutability and expressiveness are valued.
+Dvala combines the elegance of functional programming with practical syntax, making it perfect for data transformation, mathematical computation, and any scenario where immutability and expressiveness are valued.

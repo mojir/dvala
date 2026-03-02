@@ -1,45 +1,45 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 import { resume, run, runSync } from '../src/effects'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 
-const lits = new Lits()
+const dvala = new Dvala()
 
 describe('phase 2 — Local Effect Handling', () => {
   describe('2a: effect(name) special expression', () => {
     it('should return an effect reference', () => {
-      const result = lits.run('effect(lits.log)')
-      expect(result).toHaveProperty('name', 'lits.log')
+      const result = dvala.run('effect(dvala.log)')
+      expect(result).toHaveProperty('name', 'dvala.log')
     })
 
     it('should support dotted names', () => {
-      const result = lits.run('effect(llm.complete)')
+      const result = dvala.run('effect(llm.complete)')
       expect(result).toHaveProperty('name', 'llm.complete')
     })
 
     it('should support deeply dotted names', () => {
-      const result = lits.run('effect(com.myco.human.approve)')
+      const result = dvala.run('effect(com.myco.human.approve)')
       expect(result).toHaveProperty('name', 'com.myco.human.approve')
     })
 
     it('should support single-part names', () => {
-      const result = lits.run('effect(simple)')
+      const result = dvala.run('effect(simple)')
       expect(result).toHaveProperty('name', 'simple')
     })
 
     it('should return the same reference for the same name', () => {
-      const result = lits.run('==(effect(llm.complete), effect(llm.complete))')
+      const result = dvala.run('==(effect(llm.complete), effect(llm.complete))')
       expect(result).toBe(true)
     })
 
     it('should return different references for different names', () => {
-      const result = lits.run('==(effect(llm.complete), effect(llm.summarize))')
+      const result = dvala.run('==(effect(llm.complete), effect(llm.summarize))')
       expect(result).toBe(false)
     })
 
     it('should be a first-class value (stored in variables)', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let eff = effect(llm.complete);
         eff
       `)
@@ -49,7 +49,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2b: perform(eff, ...args) special expression', () => {
     it('should perform an effect with a local handler', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.effect), "hello")
         with
@@ -60,7 +60,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should perform an effect with no arguments', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.value))
         with
@@ -71,7 +71,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should perform an effect with multiple arguments', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.add), 10, 20)
         with
@@ -82,7 +82,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should pass arguments as an array to the handler', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.count), "a", "b", "c")
         with
@@ -93,11 +93,11 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should throw on unhandled effect', () => {
-      expect(() => lits.run('perform(effect(unhandled.effect), "arg")')).toThrow('Unhandled effect')
+      expect(() => dvala.run('perform(effect(unhandled.effect), "arg")')).toThrow('Unhandled effect')
     })
 
     it('should use effect references from variables', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let eff = effect(my.effect);
         try
           perform(eff, "world")
@@ -111,7 +111,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2c: TryWithFrame handler dispatch', () => {
     it('should match handlers by effect name', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(a), 1) + perform(effect(b), 2)
         with
@@ -123,7 +123,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should use the first matching handler', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let eff = effect(my.eff);
         try
           perform(eff, "test")
@@ -136,7 +136,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should delegate to outer try/with when no local match', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           try
             perform(effect(outer.eff), "value")
@@ -151,7 +151,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should nest try/with blocks correctly', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           let a = try
             perform(effect(inner), "a")
@@ -170,7 +170,7 @@ describe('phase 2 — Local Effect Handling', () => {
       // If the handler calls perform with the same effect, it should NOT match
       // the same try/with (the frame was removed). It should either match an
       // outer handler or fail as unhandled.
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           try
             perform(effect(my.eff), "original")
@@ -185,7 +185,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should allow handler return value to be the resume value', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           let x = perform(effect(my.eff), 5);
           x * 2
@@ -197,22 +197,22 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should allow effects inside handler body (delegating to outer)', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           try
             perform(effect(my.eff), "msg")
           with
-            case effect(my.eff) then ([x]) -> perform(effect(lits.log), x)
+            case effect(my.eff) then ([x]) -> perform(effect(dvala.log), x)
           end
         with
-          case effect(lits.log) then ([x]) -> "logged: " ++ x
+          case effect(dvala.log) then ([x]) -> "logged: " ++ x
         end
       `)
       expect(result).toBe('logged: msg')
     })
 
     it('should skip TryWithFrame on success (no effect performed)', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           42
         with
@@ -225,7 +225,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2d: TryCatch + TryWith interaction', () => {
     it('should handle errors with catch, not with with-handlers', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           throw("boom")
         with
@@ -238,7 +238,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should handle effects with with-handlers, not with catch', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.eff), "data")
         with
@@ -251,7 +251,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should let errors in handlers propagate to outer try/catch', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           try
             perform(effect(my.eff), "data")
@@ -270,7 +270,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should handle combined try/with/catch where body errors are caught', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           throw("body error")
         with
@@ -283,7 +283,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should handle combined try/with/catch where effects are handled', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(my.eff), "hello")
         with
@@ -297,7 +297,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should not catch errors from try body in with-handler scope', () => {
       // Error in body goes to catch, not to with
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           do
             throw("body boom");
@@ -313,7 +313,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should handle unhandled effect error in outer catch', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
           perform(effect(no.handler), "data")
         catch (e)
@@ -326,7 +326,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2e: effects as first-class values', () => {
     it('should pass effect references as function arguments', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let handle-it = (eff, value) ->
           try
             perform(eff, value)
@@ -339,7 +339,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should store effect references in data structures', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let effects = [effect(a), effect(b)];
         try
           perform(effects[0], 1) + perform(effects[1], 2)
@@ -352,7 +352,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
 
     it('should compare effect references correctly', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         let eff1 = effect(same.name);
         let eff2 = effect(same.name);
         let eff3 = effect(different.name);
@@ -555,7 +555,7 @@ describe('phase 3 — Host Async API', () => {
   })
 
   describe('3b: host handler — error handling', () => {
-    it('should catch host handler errors in Lits try/catch', async () => {
+    it('should catch host handler errors in Dvala try/catch', async () => {
       const result = await run(`
         try
           perform(effect(my.fail))
@@ -1339,11 +1339,11 @@ describe('phase 4 — Suspension & Resume', () => {
 })
 
 describe('phase 5 — Standard Effects', () => {
-  describe('5a: lits.log', () => {
+  describe('5a: dvala.log', () => {
     it('should log to console and return null (via run)', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       try {
-        const result = await run('perform(effect(lits.log), "hello", 42)')
+        const result = await run('perform(effect(dvala.log), "hello", 42)')
         expect(result).toEqual({ type: 'completed', value: null })
         expect(consoleSpy).toHaveBeenCalledWith('hello', 42)
       }
@@ -1352,10 +1352,10 @@ describe('phase 5 — Standard Effects', () => {
       }
     })
 
-    it('should log to console and return null (via Lits.run)', () => {
+    it('should log to console and return null (via Dvala.run)', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       try {
-        const result = lits.run('perform(effect(lits.log), "test")')
+        const result = dvala.run('perform(effect(dvala.log), "test")')
         expect(result).toBe(null)
         expect(consoleSpy).toHaveBeenCalledWith('test')
       }
@@ -1367,7 +1367,7 @@ describe('phase 5 — Standard Effects', () => {
     it('should log with no arguments', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       try {
-        const result = await run('perform(effect(lits.log))')
+        const result = await run('perform(effect(dvala.log))')
         expect(result).toEqual({ type: 'completed', value: null })
         expect(consoleSpy).toHaveBeenCalledWith()
       }
@@ -1378,9 +1378,9 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by host handler', async () => {
       const logs: unknown[][] = []
-      const result = await run('perform(effect(lits.log), "custom")', {
+      const result = await run('perform(effect(dvala.log), "custom")', {
         handlers: {
-          'lits.log': async ({ args, resume: r }) => {
+          'dvala.log': async ({ args, resume: r }) => {
             logs.push(args)
             r(null)
           },
@@ -1391,21 +1391,21 @@ describe('phase 5 — Standard Effects', () => {
     })
 
     it('should be overridable by local try/with', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
-          perform(effect(lits.log), "intercepted")
+          perform(effect(dvala.log), "intercepted")
         with
-          case effect(lits.log) then ([msg]) -> "logged: " ++ msg
+          case effect(dvala.log) then ([msg]) -> "logged: " ++ msg
         end
       `)
       expect(result).toBe('logged: intercepted')
     })
   })
 
-  describe('5b: lits.now', () => {
+  describe('5b: dvala.now', () => {
     it('should return a timestamp (via run)', async () => {
       const before = Date.now()
-      const result = await run('perform(effect(lits.now))')
+      const result = await run('perform(effect(dvala.now))')
       const after = Date.now()
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
@@ -1414,9 +1414,9 @@ describe('phase 5 — Standard Effects', () => {
       }
     })
 
-    it('should return a timestamp (via Lits.run sync)', () => {
+    it('should return a timestamp (via Dvala.run sync)', () => {
       const before = Date.now()
-      const result = lits.run('perform(effect(lits.now))') as number
+      const result = dvala.run('perform(effect(dvala.now))') as number
       const after = Date.now()
       expect(result).toBeGreaterThanOrEqual(before)
       expect(result).toBeLessThanOrEqual(after)
@@ -1424,29 +1424,29 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by host handler for determinism', async () => {
       const fixedTime = 1700000000000
-      const result = await run('perform(effect(lits.now))', {
+      const result = await run('perform(effect(dvala.now))', {
         handlers: {
-          'lits.now': async ({ resume: r }) => r(fixedTime),
+          'dvala.now': async ({ resume: r }) => r(fixedTime),
         },
       })
       expect(result).toEqual({ type: 'completed', value: fixedTime })
     })
 
     it('should be overridable by local try/with', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
-          perform(effect(lits.now))
+          perform(effect(dvala.now))
         with
-          case effect(lits.now) then ([]) -> 1234567890
+          case effect(dvala.now) then ([]) -> 1234567890
         end
       `)
       expect(result).toBe(1234567890)
     })
   })
 
-  describe('5c: lits.random', () => {
+  describe('5c: dvala.random', () => {
     it('should return a number in [0, 1) (via run)', async () => {
-      const result = await run('perform(effect(lits.random))')
+      const result = await run('perform(effect(dvala.random))')
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
         expect(result.value).toBeGreaterThanOrEqual(0)
@@ -1454,59 +1454,59 @@ describe('phase 5 — Standard Effects', () => {
       }
     })
 
-    it('should return a number in [0, 1) (via Lits.run sync)', () => {
-      const result = lits.run('perform(effect(lits.random))') as number
+    it('should return a number in [0, 1) (via Dvala.run sync)', () => {
+      const result = dvala.run('perform(effect(dvala.random))') as number
       expect(result).toBeGreaterThanOrEqual(0)
       expect(result).toBeLessThan(1)
     })
 
     it('should be overridable by host handler for determinism', async () => {
-      const result = await run('perform(effect(lits.random))', {
+      const result = await run('perform(effect(dvala.random))', {
         handlers: {
-          'lits.random': async ({ resume: r }) => r(0.42),
+          'dvala.random': async ({ resume: r }) => r(0.42),
         },
       })
       expect(result).toEqual({ type: 'completed', value: 0.42 })
     })
 
     it('should be overridable by local try/with', () => {
-      const result = lits.run(`
+      const result = dvala.run(`
         try
-          perform(effect(lits.random))
+          perform(effect(dvala.random))
         with
-          case effect(lits.random) then ([]) -> 0.5
+          case effect(dvala.random) then ([]) -> 0.5
         end
       `)
       expect(result).toBe(0.5)
     })
   })
 
-  describe('5d: lits.sleep', () => {
+  describe('5d: dvala.sleep', () => {
     it('should sleep and return null (via run)', async () => {
-      const result = await run('perform(effect(lits.sleep), 10)')
+      const result = await run('perform(effect(dvala.sleep), 10)')
       expect(result).toEqual({ type: 'completed', value: null })
     })
 
     it('should throw in sync context', () => {
-      expect(() => lits.run('perform(effect(lits.sleep), 10)'))
+      expect(() => dvala.run('perform(effect(dvala.sleep), 10)'))
         .toThrow()
     })
 
     it('should reject negative ms', async () => {
-      const result = await run('perform(effect(lits.sleep), -1)')
+      const result = await run('perform(effect(dvala.sleep), -1)')
       expect(result.type).toBe('error')
     })
 
     it('should reject non-number argument', async () => {
-      const result = await run('perform(effect(lits.sleep), "fast")')
+      const result = await run('perform(effect(dvala.sleep), "fast")')
       expect(result.type).toBe('error')
     })
 
     it('should be overridable by host handler', async () => {
       let sleepMs: number | undefined
-      const result = await run('perform(effect(lits.sleep), 100)', {
+      const result = await run('perform(effect(dvala.sleep), 100)', {
         handlers: {
-          'lits.sleep': async ({ args, resume: r }) => {
+          'dvala.sleep': async ({ args, resume: r }) => {
             sleepMs = args[0] as number
             r(null)
           },
@@ -1523,10 +1523,10 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const result = await run(`
           do
-            perform(effect(lits.log), "Starting");
-            let t = perform(effect(lits.now));
-            let r = perform(effect(lits.random));
-            perform(effect(lits.log), "Done");
+            perform(effect(dvala.log), "Starting");
+            let t = perform(effect(dvala.now));
+            let r = perform(effect(dvala.random));
+            perform(effect(dvala.log), "Done");
             { time: number?(t), random: number?(r) }
           end
         `)
@@ -1548,9 +1548,9 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const r1 = await run(`
           do
-            perform(effect(lits.log), "Before suspend");
+            perform(effect(dvala.log), "Before suspend");
             let input = perform(effect(my.wait));
-            perform(effect(lits.log), "After resume: " ++ input);
+            perform(effect(dvala.log), "After resume: " ++ input);
             input
           end
         `, {
@@ -1579,11 +1579,11 @@ describe('phase 5 — Standard Effects', () => {
     it('should allow overriding all standard effects for testing', async () => {
       const fixedTime = 1700000000000
       const result = await run(`
-        { now: perform(effect(lits.now)), rnd: perform(effect(lits.random)) }
+        { now: perform(effect(dvala.now)), rnd: perform(effect(dvala.random)) }
       `, {
         handlers: {
-          'lits.now': async ({ resume: r }) => r(fixedTime),
-          'lits.random': async ({ resume: r }) => r(0.42),
+          'dvala.now': async ({ resume: r }) => r(fixedTime),
+          'dvala.random': async ({ resume: r }) => r(0.42),
         },
       })
       expect(result).toEqual({
@@ -1597,9 +1597,9 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const result = runSync(`
           do
-            perform(effect(lits.log), "sync log");
-            let t = perform(effect(lits.now));
-            let r = perform(effect(lits.random));
+            perform(effect(dvala.log), "sync log");
+            let t = perform(effect(dvala.now));
+            let r = perform(effect(dvala.random));
             number?(t) && number?(r)
           end
         `)
@@ -1697,8 +1697,8 @@ describe('phase 6 — Parallel & Race', () => {
     it('should handle standard effects in branches', async () => {
       const result = await run(`
         parallel(
-          perform(effect(lits.random)),
-          perform(effect(lits.random))
+          perform(effect(dvala.random)),
+          perform(effect(dvala.random))
         )
       `)
       expect(result.type).toBe('completed')

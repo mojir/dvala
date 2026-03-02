@@ -1,2 +1,0 @@
-let m = import("./math.lits");
-m + 1

@@ -1,10 +1,10 @@
-import { LitsError } from '../../../errors'
+import { DvalaError } from '../../../errors'
 import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedArrays'
 import { assertNumber } from '../../../typeGuards/number'
 import { approxZero } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import type { LitsModule } from '../interface'
+import type { DvalaModule } from '../interface'
 import { gaussJordanElimination } from '../linear-algebra/helpers/gaussJordanElimination'
 import { moduleDocs } from './docs'
 import { adjugate } from './helpers/adjugate'
@@ -33,7 +33,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
         return matrixMultiply(matrix1, matrix2)
       }
       catch (error) {
-        throw new LitsError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
+        throw new DvalaError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),
@@ -50,7 +50,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
       assertSquareMatrix(matrix, sourceCodeInfo)
       const result = inverse(matrix)
       if (result === null) {
-        throw new LitsError('The matrix must be invertible', sourceCodeInfo)
+        throw new DvalaError('The matrix must be invertible', sourceCodeInfo)
       }
       return result
     },
@@ -252,7 +252,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
     matrixNormalExpression[key].docs = docs
 }
 
-export const matrixModule: LitsModule = {
+export const matrixModule: DvalaModule = {
   name: 'matrix',
   functions: matrixNormalExpression,
 }

@@ -115,7 +115,7 @@ const commentRule = createRule({
   stopRecursion: true,
 })
 
-const litsKeywordRule = createRule({
+const dvalaKeywordRule = createRule({
   name: 'functionName',
   startPattern: /^(null|true|false)\b/,
   startTag: `${Colors.Bright}${Colors.FgGray}`,
@@ -165,20 +165,20 @@ const getInlineCodeRule: (fmt: Colorizer) => FormatterRule = fmt => (text, index
   return { count: 0, formattedText: '' }
 }
 
-export function getLitsExpressionRules(cli: Colorizer): FormatterRule[] {
+export function getDvalaExpressionRules(cli: Colorizer): FormatterRule[] {
   return [
     commentRule,
     stringRule,
     shortcutStringRule,
     functionNameRule,
     getNumberRule(cli),
-    litsKeywordRule,
+    dvalaKeywordRule,
     nameRule,
   ]
 }
 
-export function getLitsFormatter(fmt: Colorizer) {
-  return createFormatter(getLitsExpressionRules(fmt))
+export function getDvalaFormatter(fmt: Colorizer) {
+  return createFormatter(getDvalaExpressionRules(fmt))
 }
 
 const italicRule = createRule({

@@ -1,5 +1,5 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { StringToken } from '../../tokenizer/token'
 import { asReservedSymbolToken, assertOperatorToken, assertReservedSymbolToken, isDocStringToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { smartTrim } from '../../utils'
@@ -29,7 +29,7 @@ export function parseDo(ctx: ParserContext, allowDocString = false): [DoNode, st
       ctx.advance()
     }
     else if (!isReservedSymbolToken(ctx.tryPeek(), 'end')) {
-      throw new LitsError('Expected end', ctx.peekSourceCodeInfo())
+      throw new DvalaError('Expected end', ctx.peekSourceCodeInfo())
     }
   }
   assertReservedSymbolToken(ctx.tryPeek(), 'end')

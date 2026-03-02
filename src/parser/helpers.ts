@@ -4,7 +4,7 @@ import { allNormalExpressions, normalExpressionTypes } from '../builtin/normalEx
 import type { AndNode } from '../builtin/specialExpressions/and'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { OperatorToken, SourceCodeInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isNormalBuiltinSymbolNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
@@ -146,8 +146,8 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '->':
     case '...':
     case '?':
-      throw new LitsError(`Unknown binary operator: ${operatorName}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown binary operator: ${operatorName}`, sourceCodeInfo)
     default:
-      throw new LitsError(`Unknown binary operator: ${operatorName satisfies never}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown binary operator: ${operatorName satisfies never}`, sourceCodeInfo)
   }
 }

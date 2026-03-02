@@ -1,6 +1,6 @@
 # Operators
 
-Lits has a rich set of operators. A unique feature is that operators and functions are interchangeable — operators can be called as functions and two-argument functions can be used as infix operators.
+Dvala has a rich set of operators. A unique feature is that operators and functions are interchangeable — operators can be called as functions and two-argument functions can be used as infix operators.
 
 ## Arithmetic
 

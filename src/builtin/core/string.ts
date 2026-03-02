@@ -1,7 +1,7 @@
-import { LitsError } from '../../errors'
+import { DvalaError } from '../../errors'
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
-import { assertStringOrRegularExpression, isObj } from '../../typeGuards/lits'
+import { assertStringOrRegularExpression, isObj } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
@@ -46,7 +46,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       assertString(str, sourceCodeInfo)
       const number = Number(str)
       if (Number.isNaN(number))
-        throw new LitsError(`Could not convert '${str}' to a number.`, sourceCodeInfo)
+        throw new DvalaError(`Could not convert '${str}' to a number.`, sourceCodeInfo)
 
       return number
     },

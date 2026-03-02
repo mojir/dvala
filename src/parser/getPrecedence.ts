@@ -1,4 +1,4 @@
-import { LitsError } from '../errors'
+import { DvalaError } from '../errors'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { SymbolicBinaryOperator } from '../tokenizer/operators'
 import { exponentiationPrecedence } from './helpers'
@@ -56,6 +56,6 @@ export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeIn
 
     /* v8 ignore next 2 */
     default:
-      throw new LitsError(`Unknown binary operator: ${operatorSign satisfies never}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown binary operator: ${operatorSign satisfies never}`, sourceCodeInfo)
   }
 }

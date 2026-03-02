@@ -1,8 +1,8 @@
 import { getNodeTypeName, isFunctionType, isNodeType } from '../../constants/constants'
-import type { AstNode, LitsFunction } from '../../parser/types'
+import type { AstNode, DvalaFunction } from '../../parser/types'
 import { FUNCTION_SYMBOL } from '../symbols'
 
-function isLitsFunction(func: unknown): func is LitsFunction {
+function isDvalaFunction(func: unknown): func is DvalaFunction {
   if (func === null || typeof func !== 'object')
     return false
 
@@ -16,7 +16,7 @@ function isNode(value: unknown): value is AstNode {
 }
 
 export function valueToString(value: unknown): string {
-  if (isLitsFunction(value))
+  if (isDvalaFunction(value))
     // eslint-disable-next-line ts/no-unsafe-member-access
     return `<function ${(value as any).name || '\u03BB'}>`
 

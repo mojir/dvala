@@ -63,7 +63,7 @@ describe('parseMarkdownBlocks', () => {
 
   it('should parse mixed content', () => {
     const md = [
-      'Welcome to Lits.',
+      'Welcome to Dvala.',
       '',
       '## Expressions',
       '',
@@ -77,7 +77,7 @@ describe('parseMarkdownBlocks', () => {
     ].join('\n')
     const blocks = parseMarkdownBlocks(md)
     expect(blocks).toEqual([
-      { type: 'paragraph', text: 'Welcome to Lits.' },
+      { type: 'paragraph', text: 'Welcome to Dvala.' },
       { type: 'header', level: 3, text: 'Expressions' },
       { type: 'paragraph', text: 'Everything is an expression.' },
       { type: 'code', code: '10 + 20', options: [] },

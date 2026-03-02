@@ -31,7 +31,7 @@ import type {
 import type { Step } from './step'
 import { applyFrame, runAsyncTrampoline, runSyncTrampoline, stepNode, tick } from './trampoline'
 
-// Helper: parse a Lits program and return its first AST node
+// Helper: parse a Dvala program and return its first AST node
 function parseFirst(program: string) {
   const tokenStream = tokenize(program, true, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
@@ -408,7 +408,7 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return a LitsFunction for lambda', () => {
+    it('should return a DvalaFunction for lambda', () => {
       const node = parseFirst('(x) -> x')
       const step = stepNodeSync(node, emptyEnv(), [])
       expect(step.type).toBe('Value')
@@ -475,7 +475,7 @@ describe('stepNode', () => {
       }
     })
 
-    it('should throw LitsError for recur outside loop/function', () => {
+    it('should throw DvalaError for recur outside loop/function', () => {
       const node = parseFirst('recur()')
       expect(() => stepNodeSync(node, emptyEnv(), [])).toThrow('recur called outside of loop or function body')
     })
@@ -876,7 +876,7 @@ describe('applyFrame', () => {
   })
 
   describe('recurFrame', () => {
-    it('should throw LitsError when recur has no target frame', () => {
+    it('should throw DvalaError when recur has no target frame', () => {
       const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
       const frame: RecurFrame = {
         type: 'Recur',

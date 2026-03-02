@@ -1,4 +1,4 @@
-import { assertFunctionLike } from '../../../../typeGuards/lits'
+import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { toFixedArity } from '../../../../utils/arity'
 import type { MaybePromise } from '../../../../utils/maybePromise'

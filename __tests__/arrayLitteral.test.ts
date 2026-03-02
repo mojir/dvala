@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../src/Lits/Lits'
+import { Dvala } from '../src/Dvala/Dvala'
 
 describe('array literals', () => {
-  for (const lits of [new Lits(), new Lits({ debug: true })]) {
+  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
     it('samples', () => {
-      expect(lits.run('[1, 2, 3]')).toEqual([1, 2, 3])
-      expect(lits.run('["1", null]')).toEqual(['1', null])
-      expect(lits.run('[]')).toEqual([])
+      expect(dvala.run('[1, 2, 3]')).toEqual([1, 2, 3])
+      expect(dvala.run('["1", null]')).toEqual(['1', null])
+      expect(dvala.run('[]')).toEqual([])
     })
   }
 })

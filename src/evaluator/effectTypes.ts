@@ -7,7 +7,7 @@
  */
 
 import type { Any } from '../interface'
-import type { LitsError } from '../errors'
+import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
 
 // ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ export type SuspensionBlob = string
  * Calling both, or calling either more than once, is a programming error.
  */
 export interface EffectContext {
-  /** Arguments from the Lits `perform(eff, arg1, arg2, ...)` call. */
+  /** Arguments from the Dvala `perform(eff, arg1, arg2, ...)` call. */
   args: Any[]
 
   /**
@@ -43,7 +43,7 @@ export interface EffectContext {
 
   /**
    * Resume the program with the given value (or a Promise that resolves to one).
-   * The value becomes the result of the `perform(...)` expression in Lits.
+   * The value becomes the result of the `perform(...)` expression in Dvala.
    */
   resume: (value: Any | Promise<Any>) => void
 
@@ -73,7 +73,7 @@ export type Handlers = Record<string, EffectHandler>
 export type RunResult =
   | { type: 'completed', value: Any }
   | { type: 'suspended', blob: SuspensionBlob, meta?: Any }
-  | { type: 'error', error: LitsError }
+  | { type: 'error', error: DvalaError }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline
@@ -81,7 +81,7 @@ export type RunResult =
 
 /**
  * Thrown (as a promise rejection) by `suspend()` inside a host handler.
- * Caught by the effect trampoline loop — NOT by Lits-level try/catch.
+ * Caught by the effect trampoline loop — NOT by Dvala-level try/catch.
  */
 export class SuspensionSignal {
   public readonly _brand = 'SuspensionSignal' as const

@@ -1,19 +1,19 @@
 # Intro
 
-Lits is a lightweight, pure functional programming language designed to embed directly in JavaScript applications. It runs in a secure sandbox — no file system access, no network calls, no mutation of host state — making it safe for user-supplied logic.
+Dvala is a lightweight, pure functional programming language designed to embed directly in JavaScript applications. It runs in a secure sandbox — no file system access, no network calls, no mutation of host state — making it safe for user-supplied logic.
 
-## Why Lits?
+## Why Dvala?
 
-Many applications need runtime programmability: custom formulas, dynamic business rules, scriptable workflows, or plugin systems. Letting users write raw JavaScript is a security risk. Lits solves this by providing a powerful yet sandboxed language that integrates seamlessly with any JavaScript runtime.
+Many applications need runtime programmability: custom formulas, dynamic business rules, scriptable workflows, or plugin systems. Letting users write raw JavaScript is a security risk. Dvala solves this by providing a powerful yet sandboxed language that integrates seamlessly with any JavaScript runtime.
 
 ```
-// Lits is expression-based — everything returns a value
+// Dvala is expression-based — everything returns a value
 if 10 > 5 then "big" else "small" end
 ```
 
 ## Key Features
 
-**Safe by design** — Lits code runs in a sandbox with zero access to the host environment unless explicitly granted. Users can script without the power to break things.
+**Safe by design** — Dvala code runs in a sandbox with zero access to the host environment unless explicitly granted. Users can script without the power to break things.
 
 **Pure functional** — All data is immutable and all functions are pure. No side effects, no surprises.
 
@@ -30,7 +30,7 @@ let label = if 42 >= 0 then "positive" else "negative" end;
 label
 ```
 
-**JavaScript interoperability** — JavaScript values and functions can be exposed to Lits, and Lits results are plain JavaScript values. Integration is as simple as calling `run()` with a string of code.
+**JavaScript interoperability** — JavaScript values and functions can be exposed to Dvala, and Dvala results are plain JavaScript values. Integration is as simple as calling `run()` with a string of code.
 
 **First-class functions** — Functions are values. Pass them around, return them from other functions, and compose them freely.
 
@@ -52,7 +52,7 @@ map([1, 2, 3], double);
 
 **Rich standard library** — Built-in functions for math, strings, collections, regular expressions, and more. Optional modules add vector math, linear algebra, matrix operations, number theory and more.
 
-## What Lits Looks Like
+## What Dvala Looks Like
 
 Here's a taste of what you can do:
 
@@ -79,4 +79,4 @@ people
 
 ```
 
-Ready to dive in? Continue to the next page get Lits installed.
+Ready to dive in? Continue to the next page get Dvala installed.

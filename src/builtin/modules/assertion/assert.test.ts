@@ -1,26 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { Lits } from '../../../Lits/Lits'
-import { AssertionError, LitsError } from '../../../errors'
+import { Dvala } from '../../../Dvala/Dvala'
+import { AssertionError, DvalaError } from '../../../errors'
 import { assertModule } from './'
 
 describe('assert functions', () => {
-  for (const lits of [new Lits({ modules: [assertModule] }), new Lits({ debug: true, modules: [assertModule] })]) {
+  for (const dvala of [new Dvala({ modules: [assertModule] }), new Dvala({ debug: true, modules: [assertModule] })]) {
     // Helper to run assert module functions with the new import syntax
     const runWithAssert = (code: string): unknown => {
       const modifiedCode = `let a = import(assertion); ${code}`
-      return lits.run(modifiedCode)
+      return dvala.run(modifiedCode)
     }
     describe('assert (core)', () => {
       it('samples', () => {
-        expect(() => lits.run('assert(false)')).toThrowError(AssertionError)
-        expect(() => lits.run('assert(false, "Expected true")')).toThrowError(AssertionError)
-        expect(() => lits.run('assert(null)')).toThrowError(AssertionError)
-        expect(() => lits.run('assert(0)')).toThrowError(AssertionError)
-        expect(() => lits.run('assert("")')).toThrowError(AssertionError)
-        expect(lits.run('assert([])')).toEqual([])
-        expect(lits.run('assert(true)')).toBe(true)
-        expect(lits.run('assert(1)')).toBe(1)
-        expect(lits.run('assert("0")')).toBe('0')
+        expect(() => dvala.run('assert(false)')).toThrowError(AssertionError)
+        expect(() => dvala.run('assert(false, "Expected true")')).toThrowError(AssertionError)
+        expect(() => dvala.run('assert(null)')).toThrowError(AssertionError)
+        expect(() => dvala.run('assert(0)')).toThrowError(AssertionError)
+        expect(() => dvala.run('assert("")')).toThrowError(AssertionError)
+        expect(dvala.run('assert([])')).toEqual([])
+        expect(dvala.run('assert(true)')).toBe(true)
+        expect(dvala.run('assert(1)')).toBe(1)
+        expect(dvala.run('assert("0")')).toBe('0')
       })
     })
     describe('assert=', () => {
@@ -150,24 +150,24 @@ describe('assert functions', () => {
 
     describe('assert-throws', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-throws(-> identity("X")) "Should throw")')).toThrow(LitsError)
+        expect(() => runWithAssert('a.assert-throws(-> identity("X")) "Should throw")')).toThrow(DvalaError)
         expect(() => runWithAssert('a.assert-throws(-> throw("X"))')).not.toThrow()
         expect(() => runWithAssert('a.assert-throws(-> throw("X"), "I knew it")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-throws(-> throw("X"), 10)')).toThrow(LitsError)
+        expect(() => runWithAssert('a.assert-throws(-> throw("X"), 10)')).toThrow(DvalaError)
       })
     })
 
     describe('assert-not-throws', () => {
       it('samples', () => {
         expect(() => runWithAssert('a.assert-not-throws(-> identity("X"), "Should not throw")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-not-throws(-> throw("X"))')).toThrow(LitsError)
+        expect(() => runWithAssert('a.assert-not-throws(-> throw("X"))')).toThrow(DvalaError)
       })
     })
 
     describe('assert-throws-error', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-throws-error(-> identity("X"), "X", "Should throw X")')).toThrow(LitsError)
-        expect(() => runWithAssert('a.assert-throws-error(-> throw("Y"), "X")')).toThrow(LitsError)
+        expect(() => runWithAssert('a.assert-throws-error(-> identity("X"), "X", "Should throw X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-throws-error(-> throw("Y"), "X")')).toThrow(DvalaError)
         expect(() => runWithAssert('a.assert-throws-error(-> throw("X"), "X")')).not.toThrow()
       })
     })
