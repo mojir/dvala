@@ -32,6 +32,7 @@ import { NodeTypes, getNodeTypeName } from '../constants/constants'
 import { DvalaError, RecurSignal, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
+import { parse } from '../parser'
 import type {
   Ast,
   AstNode,
@@ -61,8 +62,10 @@ import type {
   UserDefinedSymbolNode,
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 import type { SourceCodeInfo } from '../tokenizer/token'
+import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedArrays'
 import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
@@ -97,6 +100,7 @@ import type {
   ForLoopFrame,
   Frame,
   IfBranchFrame,
+  ImportMergeFrame,
   LetBindFrame,
   LoopBindFrame,
   LoopIterateFrame,
@@ -1109,7 +1113,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       if (!dvalaModule) {
         throw new DvalaError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
       }
-      const result: Record<string, ModuleFunction> = {}
+      const result: Obj = {}
       for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
         result[functionName] = {
           [FUNCTION_SYMBOL]: true,
@@ -1120,6 +1124,17 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
           arity: expression.arity,
         }
       }
+      if (dvalaModule.source) {
+        const nodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
+        const sourceEnv = env.create({})
+        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, env, sourceCodeInfo }
+        if (nodes.length === 1) {
+          return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [mergeFrame, ...k] }
+        }
+        const sequenceFrame: SequenceFrame = { type: 'Sequence', nodes, index: 1, env: sourceEnv }
+        return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [sequenceFrame, mergeFrame, ...k] }
+      }
+      env.registerValueModule(moduleName, result)
       return { type: 'Value', value: result, k }
     }
 
@@ -1462,6 +1477,11 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyNanCheck(frame, value, k)
     case 'DebugStep':
       return applyDebugStep(frame, value, k)
+    case 'ImportMerge': {
+      const merged = { ...frame.tsFunctions, ...(isObj(value) ? value : {}) }
+      frame.env.registerValueModule(frame.moduleName, merged)
+      return { type: 'Value', value: merged, k }
+    }
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame

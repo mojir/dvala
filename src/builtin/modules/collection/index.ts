@@ -12,7 +12,9 @@ import type { FunctionLike } from '../../../parser/types'
 import { toFixedArity } from '../../../utils/arity'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import { chain, everySequential, filterSequential, mapSequential, reduceSequential, someSequential } from '../../../utils/maybePromise'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import collectionModuleSource from './collection.dvala'
 
 // --- Private helper: get value from collection by key ---
 function get(coll: Coll, key: string | number): Any | undefined {
@@ -1052,4 +1054,6 @@ cu.not-every?(
 export const collectionUtilsModule: DvalaModule = {
   name: 'collection',
   functions: collectionUtilsFunctions,
+  source: collectionModuleSource,
+  docs: moduleDocsFromFunctions(collectionUtilsFunctions),
 }

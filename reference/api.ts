@@ -532,7 +532,7 @@ export const api = {
     'random.random-int!',
     'random.random-int-inclusive!',
     'random.random-float!',
-    'random.random-boolean!',
+    'random.random-boolean',
     'random.random-item!',
     'random.random-sample!',
     'random.random-sample-unique!',

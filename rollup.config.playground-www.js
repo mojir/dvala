@@ -2,8 +2,10 @@ const resolve = require('@rollup/plugin-node-resolve')
 const typescript = require('@rollup/plugin-typescript')
 const jsonPlugin = require('@rollup/plugin-json')
 const terser = require('@rollup/plugin-terser')
+const { dvalaSourcePlugin } = require('./rollup.plugins')
 
 const plugins = [
+  dvalaSourcePlugin(),
   typescript({
     tsconfig: 'tsconfig.playground-www.json',
   }),

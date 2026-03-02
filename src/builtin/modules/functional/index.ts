@@ -12,7 +12,9 @@ import { FUNCTION_SYMBOL } from '../../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
 import { DvalaError } from '../../../errors'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import functionalModuleSource from './functional.dvala'
 
 const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
   'juxt': {
@@ -219,4 +221,6 @@ every-pred(string?, -> count($) > 3)(
 export const functionalUtilsModule: DvalaModule = {
   name: 'functional',
   functions: functionalUtilsNormalExpression,
+  source: functionalModuleSource,
+  docs: moduleDocsFromFunctions(functionalUtilsNormalExpression),
 }

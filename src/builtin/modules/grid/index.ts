@@ -9,6 +9,7 @@ import type { MaybePromise } from '../../../utils/maybePromise'
 import { chain, everySequential, mapSequential, reduceSequential, someSequential } from '../../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
+import gridModuleSource from './grid.dvala'
 import { moduleDocs } from './docs'
 import { fromArray } from './fromArray'
 import { transpose } from './transpose'
@@ -628,4 +629,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const gridModule: DvalaModule = {
   name: 'grid',
   functions: gridFunctions,
+  source: gridModuleSource,
+  docs: moduleDocs,
 }

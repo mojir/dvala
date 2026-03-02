@@ -7,6 +7,7 @@ import { assertString } from '../../../typeGuards/string'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
+import randomModuleSource from './random.dvala'
 import { moduleDocs } from './docs'
 
 const randomFunctions: BuiltinNormalExpressions = {
@@ -43,15 +44,6 @@ const randomFunctions: BuiltinNormalExpressions = {
     },
     pure: false,
     arity: toFixedArity(2),
-  },
-  'random-boolean!': {
-    evaluate: ([prob], sourceCodeInfo): boolean => {
-      const probability = prob ?? 0.5
-      assertNumber(probability, sourceCodeInfo, { gte: 0, lte: 1 })
-      return Math.random() < probability
-    },
-    pure: false,
-    arity: { min: 0, max: 1 },
   },
   'random-item!': {
     evaluate: ([array], sourceCodeInfo): Any => {
@@ -316,4 +308,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const randomModule: DvalaModule = {
   name: 'random',
   functions: randomFunctions,
+  source: randomModuleSource,
+  docs: moduleDocs,
 }

@@ -1,7 +1,9 @@
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { Argument, BuiltinNormalExpressions } from '../../interface'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import bitwiseModuleSource from './bitwise.dvala'
 
 function getOperatorArgs(a: 'integer', b: 'integer'): Record<string, Argument> {
   return { a: { type: a }, b: { type: b } }
@@ -154,4 +156,6 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
 export const bitwiseUtilsModule: DvalaModule = {
   name: 'bitwise',
   functions: bitwiseUtilsNormalExpression,
+  source: bitwiseModuleSource,
+  docs: moduleDocsFromFunctions(bitwiseUtilsNormalExpression),
 }

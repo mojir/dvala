@@ -6,6 +6,7 @@ import { isSymbolicOperator } from '../src/tokenizer/operators'
 import { canBeOperator } from '../src/utils/arity'
 import type { BuiltinNormalExpressions, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
 import { isFunctionDocs } from '../src/builtin/interface'
+import type { DvalaModule } from '../src/builtin/modules/interface'
 
 // Core categories — all derive reference from co-located docs
 import { assertionNormalExpression } from '../src/builtin/core/assertion'
@@ -69,14 +70,10 @@ function docsToReference(expressions: BuiltinNormalExpressions): Record<string, 
 
 // --- Helper: derive FunctionReference from module co-located docs ---
 
-function moduledDocsToReference(moduleName: string, expressions: BuiltinNormalExpressions): Record<string, FunctionReference> {
+function moduledDocsToReference(module: DvalaModule): Record<string, FunctionReference> {
   const result: Record<string, FunctionReference> = {}
-  for (const [key, expr] of Object.entries(expressions)) {
-    const docs: FunctionDocs | undefined = expr.docs
-    if (!docs) {
-      throw new Error(`Missing docs for ${moduleName}.${key}`)
-    }
-    const qualifiedKey = `${moduleName}.${key}`
+  for (const [key, docs] of Object.entries(module.docs ?? {})) {
+    const qualifiedKey = `${module.name}.${key}`
     result[qualifiedKey] = {
       title: qualifiedKey,
       category: docs.category,
@@ -244,20 +241,20 @@ export const normalExpressionReference: Record<CoreNormalExpressionName, Functio
 // Module functions — all derived from co-located docs
 // eslint-disable-next-line ts/consistent-type-assertions
 export const moduleReference: Record<ModuleExpressionName, FunctionReference> = {
-  ...moduledDocsToReference(assertModule.name, assertModule.functions),
-  ...moduledDocsToReference(gridModule.name, gridModule.functions),
-  ...moduledDocsToReference(randomModule.name, randomModule.functions),
-  ...moduledDocsToReference(vectorModule.name, vectorModule.functions),
-  ...moduledDocsToReference(linearAlgebraModule.name, linearAlgebraModule.functions),
-  ...moduledDocsToReference(matrixModule.name, matrixModule.functions),
-  ...moduledDocsToReference(numberTheoryModule.name, numberTheoryModule.functions),
-  ...moduledDocsToReference(stringUtilsModule.name, stringUtilsModule.functions),
-  ...moduledDocsToReference(collectionUtilsModule.name, collectionUtilsModule.functions),
-  ...moduledDocsToReference(sequenceUtilsModule.name, sequenceUtilsModule.functions),
-  ...moduledDocsToReference(mathUtilsModule.name, mathUtilsModule.functions),
-  ...moduledDocsToReference(functionalUtilsModule.name, functionalUtilsModule.functions),
-  ...moduledDocsToReference(bitwiseUtilsModule.name, bitwiseUtilsModule.functions),
-  ...moduledDocsToReference(convertModule.name, convertModule.functions),
+  ...moduledDocsToReference(assertModule),
+  ...moduledDocsToReference(gridModule),
+  ...moduledDocsToReference(randomModule),
+  ...moduledDocsToReference(vectorModule),
+  ...moduledDocsToReference(linearAlgebraModule),
+  ...moduledDocsToReference(matrixModule),
+  ...moduledDocsToReference(numberTheoryModule),
+  ...moduledDocsToReference(stringUtilsModule),
+  ...moduledDocsToReference(collectionUtilsModule),
+  ...moduledDocsToReference(sequenceUtilsModule),
+  ...moduledDocsToReference(mathUtilsModule),
+  ...moduledDocsToReference(functionalUtilsModule),
+  ...moduledDocsToReference(bitwiseUtilsModule),
+  ...moduledDocsToReference(convertModule),
 } as Record<ModuleExpressionName, FunctionReference>
 
 Object.entries(normalExpressionReference).forEach(([key, obj]) => {

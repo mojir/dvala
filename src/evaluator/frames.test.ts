@@ -67,8 +67,9 @@ describe('frame types', () => {
       BindingDefault: true,
       NanCheck: true,
       DebugStep: true,
+      ImportMerge: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(26)
+    expect(Object.keys(frameTypes)).toHaveLength(27)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -108,6 +109,7 @@ describe('frame types', () => {
         case 'BindingDefault': return 'destructure'
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
+        case 'ImportMerge': return 'import'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame

@@ -9,7 +9,9 @@ import { toFixedArity } from '../../../utils/arity'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import { chain, filterSequential, findIndexSequential, mapSequential, reduceSequential } from '../../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../../interface'
+import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import sequenceModuleSource from './sequence.dvala'
 
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
   'position': {
@@ -810,4 +812,6 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
 export const sequenceUtilsModule: DvalaModule = {
   name: 'sequence',
   functions: sequenceUtilsFunctions,
+  source: sequenceModuleSource,
+  docs: moduleDocsFromFunctions(sequenceUtilsFunctions),
 }

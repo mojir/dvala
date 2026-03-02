@@ -10,6 +10,7 @@ import { isGrid, isMatrix, isVector } from '../../../typeGuards/annotatedArrays'
 import { chain, tryCatch } from '../../../utils/maybePromise'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import type { DvalaModule } from '../interface'
+import assertionModuleSource from './assertion.dvala'
 import { moduleDocs } from './docs'
 
 const assertNormalExpression: BuiltinNormalExpressions = {
@@ -434,4 +435,6 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 export const assertModule: DvalaModule = {
   name: 'assertion',
   functions: assertNormalExpression,
+  source: assertionModuleSource,
+  docs: moduleDocs,
 }
