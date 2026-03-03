@@ -1,6 +1,6 @@
 import { DvalaError } from '../../errors'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedArrays'
+import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinNormalExpressions } from '../interface'

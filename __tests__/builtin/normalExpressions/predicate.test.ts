@@ -430,5 +430,31 @@ describe('predicates', () => {
         expect(dvala.run('vector?({})')).toEqual(false)
       })
     })
+
+    describe('grid?', () => {
+      it('should determine if a value is a grid', () => {
+        expect(dvala.run('grid?([])')).toEqual(false)
+        expect(dvala.run('grid?([[]])')).toEqual(false)
+        expect(dvala.run('grid?([[1, 2], [3, 4]])')).toEqual(true)
+        expect(dvala.run('grid?([[1, 2], [3, 4], [5, 6]])')).toEqual(true)
+        expect(dvala.run('grid?([[1, 2], [3, 4], [5, "6"]])')).toEqual(true)
+        expect(dvala.run('grid?([[1, 2], [3, 4], [5, {}]])')).toEqual(true)
+        expect(dvala.run('grid?(12)')).toEqual(false)
+        expect(dvala.run('grid?({})')).toEqual(false)
+      })
+    })
+
+    describe('matrix?', () => {
+      it('should determine if a value is a matrix', () => {
+        expect(dvala.run('matrix?([])')).toEqual(false)
+        expect(dvala.run('matrix?([[]])')).toEqual(false)
+        expect(dvala.run('matrix?([[1, 2], [3, 4]])')).toEqual(true)
+        expect(dvala.run('matrix?([[1, 2], [3, 4], [5, 6]])')).toEqual(true)
+        expect(dvala.run('matrix?([[1, 2], [3, 4], [5, "6"]])')).toEqual(false)
+        expect(dvala.run('matrix?([[1, 2], [3, 4], [5, {}]])')).toEqual(false)
+        expect(dvala.run('matrix?(12)')).toEqual(false)
+        expect(dvala.run('matrix?({})')).toEqual(false)
+      })
+    })
   }
 })

@@ -59,7 +59,7 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `matrix`, a two-dimensional `array` with `numbers` where each row has the same number of columns. A `matrix` is also a `grid`.',
     examples: [
-      '[[]]',
+      '[[42]]',
       '[[1, 2], [3, 4]]',
       '[[1, 2], [3, 4], [5, 6]]',
     ],
@@ -156,6 +156,7 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     description: 'A regular expression',
     examples: [
       'regexp("^\\\\s*(.*)$")',
+      '#"^\\s*(.*)$"',
       '#"albert"ig',
     ],
   },

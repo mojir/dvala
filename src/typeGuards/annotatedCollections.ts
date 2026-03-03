@@ -4,12 +4,12 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { isNumber } from './number'
 
 const annotatedArrays = new WeakSet<unknown[]>()
-const vectors = new WeakSet<unknown[]>()
-const notVectors = new WeakSet<unknown[]>()
-const matrices = new WeakSet<unknown[]>()
-const notMatrices = new WeakSet<unknown[]>()
-const grids = new WeakSet<unknown[]>()
-const notGrids = new WeakSet<unknown[]>()
+const annotatedVectors = new WeakSet<unknown[]>()
+const annotadedNonVectors = new WeakSet<unknown[]>()
+const annotadedMatrices = new WeakSet<unknown[]>()
+const annotatedNonMatrices = new WeakSet<unknown[]>()
+const annotatedGrids = new WeakSet<unknown[]>()
+const annotatedNonGrids = new WeakSet<unknown[]>()
 
 export function annotate<T>(value: T): T {
   if (!Array.isArray(value)) {
@@ -30,19 +30,19 @@ export function isVector(vector: unknown): vector is number[] {
     return false
   }
 
-  if (vectors.has(vector)) {
+  if (annotatedVectors.has(vector)) {
     return true
   }
-  if (notVectors.has(vector)) {
+  if (annotadedNonVectors.has(vector)) {
     return false
   }
 
   if (vector.every(elem => isNumber(elem))) {
     annotatedArrays.add(vector)
-    vectors.add(vector)
+    annotatedVectors.add(vector)
     return true
   }
-  notVectors.add(vector)
+  annotadedNonVectors.add(vector)
   return false
 }
 
@@ -83,37 +83,45 @@ export function assertNonEmptyVector(vector: unknown, sourceCodeInfo: SourceCode
   }
 }
 
-export function isGrid(grid: unknown): grid is unknown[][] {
+export function isGrid(grid: unknown, typePred?: (elem: unknown) => boolean): grid is unknown[][] {
   if (!Array.isArray(grid)) {
     return false
   }
-  if (grids.has(grid)) {
+  if (annotatedGrids.has(grid)) {
     return true
   }
-  if (notGrids.has(grid)) {
+  if (annotatedNonGrids.has(grid)) {
     return false
   }
   if (grid.length === 0) {
-    notGrids.add(grid)
+    annotatedNonGrids.add(grid)
     return false
   }
   if (!Array.isArray(grid[0])) {
-    notGrids.add(grid)
+    annotatedNonGrids.add(grid)
     return false
   }
   const nbrOfCols = grid[0].length
-  for (const row of grid.slice(1)) {
+  if (nbrOfCols === 0) {
+    annotatedNonGrids.add(grid)
+    return false
+  }
+  for (const row of grid) {
     if (!Array.isArray(row)) {
-      notGrids.add(grid)
+      annotatedNonGrids.add(grid)
       return false
     }
     if (row.length !== nbrOfCols) {
-      notGrids.add(grid)
+      annotatedNonGrids.add(grid)
+      return false
+    }
+    if (typePred && row.some(cell => !typePred(cell))) {
+      annotatedNonGrids.add(grid)
       return false
     }
   }
   annotatedArrays.add(grid)
-  grids.add(grid)
+  annotatedGrids.add(grid)
   return true
 }
 
@@ -124,33 +132,13 @@ export function assertGrid(grid: unknown, sourceCodeInfo: SourceCodeInfo | undef
 }
 
 export function isMatrix(matrix: unknown): matrix is number[][] {
-  if (!Array.isArray(matrix)) {
-    return false
-  }
-  if (matrices.has(matrix)) {
-    return true
-  }
-  if (notMatrices.has(matrix)) {
-    return false
-  }
-  if (matrix.length === 0) {
-    notMatrices.add(matrix)
-    return false
-  }
-  if (!Array.isArray(matrix[0]) || matrix[0].length === 0) {
-    notMatrices.add(matrix)
-    return false
-  }
-  const nbrOfCols = matrix[0].length
-  for (const row of matrix) {
-    if (!Array.isArray(row) || row.length !== nbrOfCols || row.some(cell => !isNumber(cell))) {
-      notMatrices.add(matrix)
-      return false
+  if (!isGrid(matrix, isNumber)) {
+    if (Array.isArray(matrix)) {
+      annotatedNonMatrices.add(matrix)
     }
+    return false
   }
-  annotatedArrays.add(matrix)
-  grids.add(matrix)
-  matrices.add(matrix)
+  annotadedMatrices.add(matrix)
   return true
 }
 

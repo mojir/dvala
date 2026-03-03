@@ -1,5 +1,5 @@
 import type { SourceCodeInfo } from '../../../tokenizer/token'
-import { isMatrix, isVector } from '../../../typeGuards/annotatedArrays'
+import { isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
 import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import { DvalaError } from '../../../errors'

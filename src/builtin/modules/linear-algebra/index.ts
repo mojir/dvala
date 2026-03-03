@@ -1,5 +1,5 @@
 import { DvalaError } from '../../../errors'
-import { assert2dVector, assert3dVector, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector } from '../../../typeGuards/annotatedArrays'
+import { assert2dVector, assert3dVector, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'

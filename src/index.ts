@@ -27,7 +27,7 @@ export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError } from './errors'
 export type { ContextParams, FilePathParams, MinifyParams, PureParams, DvalaRuntimeInfo, JsFunction } from './Dvala/Dvala'
-export { isGrid, isMatrix, isVector } from './typeGuards/annotatedArrays'
+export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone functions and types

@@ -1,6 +1,6 @@
 import { DvalaError } from '../../../errors'
 import type { Arr } from '../../../interface'
-import { assertVector } from '../../../typeGuards/annotatedArrays'
+import { assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'

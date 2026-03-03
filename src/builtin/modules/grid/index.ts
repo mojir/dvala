@@ -1,6 +1,6 @@
 import { DvalaError } from '../../../errors'
 import type { Any } from '../../../interface'
-import { assertGrid, assertVector } from '../../../typeGuards/annotatedArrays'
+import { assertGrid, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
 import { asAny, asFunctionLike, assertAny, assertFunctionLike } from '../../../typeGuards/dvala'
 import { assertNumber } from '../../../typeGuards/number'
