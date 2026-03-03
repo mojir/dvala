@@ -2077,10 +2077,10 @@ function unwindToTryCatch(error: unknown, k: ContinuationStack): Step {
   throw error
 }
 
-function applyThrow(frame: ThrowFrame, value: Any, k: ContinuationStack): Step {
+function applyThrow(frame: ThrowFrame, value: Any, _k: ContinuationStack): never {
   assertString(value, frame.sourceCodeInfo, { nonEmpty: true })
-  const error = new UserDefinedError(value, frame.sourceCodeInfo)
-  return unwindToTryCatch(error, k)
+  // Throw so tick()'s catch block routes through dvala.error before try/catch fallback.
+  throw new UserDefinedError(value, frame.sourceCodeInfo)
 }
 
 /**
@@ -2402,14 +2402,13 @@ function dispatchHostHandler(
               resolve({ type: 'Value', value: v, k })
             },
             (e) => {
-              // The promise-value rejected — treat as a Dvala-level error
-              // so try/catch in the Dvala program can handle it.
-              try {
-                resolve(unwindToTryCatch(e instanceof Error ? new DvalaError(e, sourceCodeInfo) : new DvalaError(`${e}`, sourceCodeInfo), k))
-              }
-              catch (unwoundError) {
-                reject(unwoundError)
-              }
+              // The promise-value rejected — produce an ErrorStep so tick()
+              // can route through dvala.error before falling back to try/catch.
+              resolve({
+                type: 'Error',
+                error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+                k,
+              })
             },
           )
         }
@@ -2436,13 +2435,13 @@ function dispatchHostHandler(
         reject(e)
       }
       else {
-        // Handler itself threw — treat as a Dvala-level error.
-        try {
-          resolve(unwindToTryCatch(e instanceof Error ? new DvalaError(e, sourceCodeInfo) : new DvalaError(`${e}`, sourceCodeInfo), k))
-        }
-        catch (unwoundError) {
-          reject(unwoundError)
-        }
+        // Handler itself threw — produce an ErrorStep so tick() can route
+        // through dvala.error before falling back to try/catch.
+        resolve({
+          type: 'Error',
+          error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+          k,
+        })
       }
     })
   })
@@ -2918,7 +2917,11 @@ function wrapMaybePromiseAsStep(result: MaybePromise<Any>, k: ContinuationStack)
   if (result instanceof Promise) {
     return result.then(
       value => ({ type: 'Value' as const, value, k }),
-      error => unwindToTryCatch(error, k),
+      error => ({
+        type: 'Error' as const,
+        error: error instanceof DvalaError ? error : new DvalaError(`${error}`, undefined),
+        k,
+      }),
     )
   }
   return { type: 'Value', value: result, k }
@@ -2977,6 +2980,13 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
         return executeRaceBranches(step.branches, step.env, step.k, handlers, signal)
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
+      case 'Error': {
+        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal)
+        if (effectStep !== null) {
+          return effectStep
+        }
+        return unwindToTryCatch(step.error, step.k)
+      }
     }
   }
   catch (error) {
@@ -2989,7 +2999,18 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
     // Route DvalaError through the 'dvala.error' algebraic effect so that
     // do...with handlers can intercept runtime errors before try/catch.
     if (error instanceof DvalaError) {
-      const effectStep = tryDispatchDvalaError(error, step.k, handlers, signal)
+      // For Value steps, step.k[0] is the frame that was being applied when
+      // the error was thrown (e.g. ThrowFrame, LetDestructFrame, etc.).
+      // Strip it so that resumeK in tryDispatchDvalaError does not include
+      // the failing frame — otherwise the handler's return value would flow
+      // back through it, potentially re-triggering the same error in an
+      // infinite loop.
+      // For Eval/Apply steps, step.k already excludes the frame that caused
+      // the error, so no stripping is needed.
+      const kForDispatch = step.type === 'Value'
+        ? step.k.slice(1)
+        : step.k
+      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal)
       if (effectStep !== null) {
         return effectStep
       }

@@ -20,6 +20,7 @@
  * with a serializable representation in Phase 4).
  */
 
+import type { DvalaError } from '../errors'
 import type { Any, Arr } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
 import type { ContinuationStack, Frame } from './frames'
@@ -148,6 +149,21 @@ export interface ParallelResumeStep {
   k: ContinuationStack
 }
 
+/**
+ * An async operation produced an error that needs to be routed through the
+ * effect system before falling back to try/catch.
+ *
+ * Produced by async error paths (NativeJsFunction rejection, host handler
+ * rejection) instead of calling `unwindToTryCatch` directly, so that
+ * `tick()` can first attempt `dvala.error` dispatch with access to the
+ * registered `handlers` and `signal`.
+ */
+export interface ErrorStep {
+  type: 'Error'
+  error: DvalaError
+  k: ContinuationStack
+}
+
 // ---------------------------------------------------------------------------
 // Step union type
 // ---------------------------------------------------------------------------
@@ -174,3 +190,4 @@ export type Step =
   | ParallelStep
   | RaceStep
   | ParallelResumeStep
+  | ErrorStep

@@ -120,9 +120,9 @@ describe('async support', () => {
       expect(result).toBe(2)
     })
 
-    it('should await async JS function in try/catch', async () => {
+    it('should await async JS function with dvala.error handler', async () => {
       const dvala = new Dvala()
-      const result = await dvala.async.run('try foo() catch "caught" end', {
+      const result = await dvala.async.run('do foo() with case effect(dvala.error) then (args) -> "caught" end', {
         bindings: {
           foo: async () => {
             throw new Error('async error')
@@ -248,9 +248,9 @@ describe('async support', () => {
       })).rejects.toThrow('async failure')
     })
 
-    it('should catch async errors in try/catch', async () => {
+    it('should catch async errors with dvala.error handler', async () => {
       const dvala = new Dvala()
-      const result = await dvala.async.run('try foo() catch "handled" end', {
+      const result = await dvala.async.run('do foo() with case effect(dvala.error) then (args) -> "handled" end', {
         bindings: {
           foo: async () => {
             throw new Error('async error')
@@ -260,9 +260,9 @@ describe('async support', () => {
       expect(result).toBe('handled')
     })
 
-    it('should bind error variable from async throw', async () => {
+    it('should receive error message in dvala.error handler from async throw', async () => {
       const dvala = new Dvala()
-      const result = await dvala.async.run('try foo() catch(err) err.message end', {
+      const result = await dvala.async.run('do foo() with case effect(dvala.error) then ([msg]) -> msg end', {
         bindings: {
           foo: async () => {
             throw new Error('async boom')
@@ -272,20 +272,18 @@ describe('async support', () => {
       expect(result).toBe('Native function threw: "async boom"')
     })
 
-    it('should catch async error after sync expressions in try body', async () => {
+    it('should catch async error with dvala.error handler', async () => {
       const dvala = new Dvala()
       const result = await dvala.async.run(`
-        try
-          let x = 10;
-          let y = foo();
-          x + y
-        catch
-          "caught"
+        do
+          foo()
+        with
+          case effect(dvala.error) then (args) -> "caught"
         end
       `, {
         bindings: {
           foo: async () => {
-            throw new Error('mid-body error')
+            throw new Error('async error')
           },
         },
       })
@@ -294,14 +292,14 @@ describe('async support', () => {
 
     it('should wrap sync and async native errors identically', async () => {
       const dvala = new Dvala()
-      const syncResult = await dvala.async.run('try syncFoo() catch(err) err.message end', {
+      const syncResult = await dvala.async.run('do syncFoo() with case effect(dvala.error) then ([msg]) -> msg end', {
         bindings: {
           syncFoo: () => {
             throw new Error('kaboom')
           },
         },
       })
-      const asyncResult = await dvala.async.run('try asyncFoo() catch(err) err.message end', {
+      const asyncResult = await dvala.async.run('do asyncFoo() with case effect(dvala.error) then ([msg]) -> msg end', {
         bindings: {
           asyncFoo: async () => {
             throw new Error('kaboom')
@@ -312,13 +310,13 @@ describe('async support', () => {
       expect(asyncResult).toBe(syncResult)
     })
 
-    it('should catch async error inside map within try', async () => {
+    it('should catch async error inside map with dvala.error handler', async () => {
       const dvala = new Dvala()
       const result = await dvala.async.run(`
-        try
+        do
           map([1, 2, 3], x -> foo(x))
-        catch(err)
-          err.message
+        with
+          case effect(dvala.error) then ([msg]) -> msg
         end
       `, {
         bindings: {

@@ -35,7 +35,17 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
     if (isReservedSymbolToken(ctx.peek(), 'do')) {
       const parsedDo = parseDo(ctx, true)
       docString = parsedDo[1]
-      nodes = parsedDo[0][1][1]
+      const doNode = parsedDo[0]
+      const withHandlers = doNode[1][2]
+      if (withHandlers && withHandlers.length > 0) {
+        // do...with...end: preserve the full DoNode as a single expression so
+        // the with-handlers are not lost.
+        nodes = [doNode]
+      }
+      else {
+        // Plain do...end: unwrap body expressions for multi-statement lambdas.
+        nodes = doNode[1][1]
+      }
     }
     else {
       nodes = [ctx.parseExpression()]
@@ -113,7 +123,16 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const parsedDo = parseDo(ctx, true)
     docString = parsedDo[1]
-    nodes = parsedDo[0][1][1]
+    const doNode = parsedDo[0]
+    const withHandlers = doNode[1][2]
+    if (withHandlers && withHandlers.length > 0) {
+      // do...with...end: preserve the full DoNode so the with-handlers are not lost.
+      nodes = [doNode]
+    }
+    else {
+      // Plain do...end: unwrap body expressions.
+      nodes = doNode[1][1]
+    }
   }
   else {
     nodes = [ctx.parseExpression()]

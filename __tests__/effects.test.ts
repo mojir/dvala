@@ -50,7 +50,7 @@ describe('phase 2 — Local Effect Handling', () => {
   describe('2b: perform(eff, ...args) special expression', () => {
     it('should perform an effect with a local handler', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.effect), "hello")
         with
           case effect(my.effect) then ([msg]) -> upper-case(msg)
@@ -61,7 +61,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should perform an effect with no arguments', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.value))
         with
           case effect(my.value) then ([]) -> 42
@@ -72,7 +72,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should perform an effect with multiple arguments', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.add), 10, 20)
         with
           case effect(my.add) then ([a, b]) -> a + b
@@ -83,7 +83,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should pass arguments as an array to the handler', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.count), "a", "b", "c")
         with
           case effect(my.count) then (args) -> count(args)
@@ -99,7 +99,7 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should use effect references from variables', () => {
       const result = dvala.run(`
         let eff = effect(my.effect);
-        try
+        do
           perform(eff, "world")
         with
           case eff then ([msg]) -> "hello " ++ msg
@@ -112,7 +112,7 @@ describe('phase 2 — Local Effect Handling', () => {
   describe('2c: TryWithFrame handler dispatch', () => {
     it('should match handlers by effect name', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(a), 1) + perform(effect(b), 2)
         with
           case effect(a) then ([x]) -> x * 10
@@ -125,7 +125,7 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should use the first matching handler', () => {
       const result = dvala.run(`
         let eff = effect(my.eff);
-        try
+        do
           perform(eff, "test")
         with
           case eff then ([x]) -> "first: " ++ x
@@ -137,8 +137,8 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should delegate to outer try/with when no local match', () => {
       const result = dvala.run(`
-        try
-          try
+        do
+          do
             perform(effect(outer.eff), "value")
           with
             case effect(inner.eff) then ([x]) -> "inner: " ++ x
@@ -152,8 +152,8 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should nest try/with blocks correctly', () => {
       const result = dvala.run(`
-        try
-          let a = try
+        do
+          let a = do
             perform(effect(inner), "a")
           with
             case effect(inner) then ([x]) -> "inner(" ++ x ++ ")"
@@ -171,8 +171,8 @@ describe('phase 2 — Local Effect Handling', () => {
       // the same try/with (the frame was removed). It should either match an
       // outer handler or fail as unhandled.
       const result = dvala.run(`
-        try
-          try
+        do
+          do
             perform(effect(my.eff), "original")
           with
             case effect(my.eff) then ([x]) -> perform(effect(my.eff), x ++ "+delegated")
@@ -186,7 +186,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should allow handler return value to be the resume value', () => {
       const result = dvala.run(`
-        try
+        do
           let x = perform(effect(my.eff), 5);
           x * 2
         with
@@ -198,8 +198,8 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should allow effects inside handler body (delegating to outer)', () => {
       const result = dvala.run(`
-        try
-          try
+        do
+          do
             perform(effect(my.eff), "msg")
           with
             case effect(my.eff) then ([x]) -> perform(effect(dvala.log), x)
@@ -213,7 +213,7 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('should skip TryWithFrame on success (no effect performed)', () => {
       const result = dvala.run(`
-        try
+        do
           42
         with
           case effect(my.eff) then ([x]) -> x * 100
@@ -223,104 +223,96 @@ describe('phase 2 — Local Effect Handling', () => {
     })
   })
 
-  describe('2d: TryCatch + TryWith interaction', () => {
-    it('should handle errors with catch, not with with-handlers', () => {
-      const result = dvala.run(`
-        try
+  describe('2d: effects and dvala.error interaction', () => {
+    it('errors without dvala.error handler propagate as unhandled', () => {
+      // throw("boom") routes through dvala.error, but no handler → propagates
+      expect(() => dvala.run(`
+        do
           throw("boom")
         with
           case effect(my.eff) then ([x]) -> x
-        catch (e)
-          "caught: " ++ e.message
         end
-      `)
-      expect(result).toBe('caught: boom')
+      `)).toThrow('boom')
     })
 
-    it('should handle effects with with-handlers, not with catch', () => {
+    it('effects handled by matching handler; dvala.error not invoked on success', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.eff), "data")
         with
           case effect(my.eff) then ([x]) -> "handled: " ++ x
-        catch (e)
-          "caught: " ++ e.message
         end
       `)
       expect(result).toBe('handled: data')
     })
 
-    it('should let errors in handlers propagate to outer try/catch', () => {
+    it('errors from handlers propagate past inner scope to outer dvala.error handler', () => {
       const result = dvala.run(`
-        try
-          try
+        do
+          do
             perform(effect(my.eff), "data")
           with
             case effect(my.eff) then ([x]) -> throw("handler error: " ++ x)
-          catch (e)
-            "inner catch: " ++ e.message
           end
-        catch (e)
-          "outer catch: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "outer catch: " ++ msg
         end
       `)
-      // The error from the handler should NOT be caught by the inner catch.
-      // It should propagate to the outer catch.
+      // The error from the handler should NOT be caught by any inner scope.
+      // It should propagate to the outer dvala.error handler.
       expect(result).toBe('outer catch: handler error: data')
     })
 
-    it('should handle combined try/with/catch where body errors are caught', () => {
+    it('body errors caught by dvala.error handler when present', () => {
       const result = dvala.run(`
-        try
+        do
           throw("body error")
         with
           case effect(my.eff) then ([x]) -> x
-        catch (e)
-          "caught: " ++ e.message
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('caught: body error')
     })
 
-    it('should handle combined try/with/catch where effects are handled', () => {
+    it('effects handled; dvala.error handler not invoked when no error', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(my.eff), "hello")
         with
           case effect(my.eff) then ([x]) -> upper-case(x)
-        catch (e)
-          "caught: " ++ e.message
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('HELLO')
     })
 
-    it('should not catch errors from try body in with-handler scope', () => {
-      // Error in body goes to catch, not to with
+    it('errors bypass non-dvala.error handlers and reach outer dvala.error handler', () => {
       const result = dvala.run(`
-        try
+        do
           do
-            throw("body boom");
-            perform(effect(my.eff), "should not reach")
+            do
+              throw("body boom")
+            end
+          with
+            case effect(my.eff) then ([x]) -> x
           end
         with
-          case effect(my.eff) then ([x]) -> x
-        catch (e)
-          "caught: " ++ e.message
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('caught: body boom')
     })
 
-    it('should handle unhandled effect error in outer catch', () => {
+    it('unhandled effect error caught by dvala.error handler', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(no.handler), "data")
-        catch (e)
-          "caught: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `)
-      expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
+      expect(result).toBe("caught: Unhandled effect: 'no.handler'")
     })
   })
 
@@ -328,7 +320,7 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should pass effect references as function arguments', () => {
       const result = dvala.run(`
         let handle-it = (eff, value) ->
-          try
+          do
             perform(eff, value)
           with
             case eff then ([x]) -> x * 2
@@ -341,7 +333,7 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should store effect references in data structures', () => {
       const result = dvala.run(`
         let effects = [effect(a), effect(b)];
-        try
+        do
           perform(effects[0], 1) + perform(effects[1], 2)
         with
           case effect(a) then ([x]) -> x * 10
@@ -513,10 +505,10 @@ describe('phase 3 — Host Async API', () => {
 
     it('should handle async errors from promise resume', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(my.fail), "oops")
-        catch (e)
-          "caught: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `, {
         handlers: {
@@ -555,12 +547,12 @@ describe('phase 3 — Host Async API', () => {
   })
 
   describe('3b: host handler — error handling', () => {
-    it('should catch host handler errors in Dvala try/catch', async () => {
+    it('should catch host handler errors in dvala.error handler', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(my.fail))
-        catch (e)
-          "caught: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `, {
         handlers: {
@@ -595,7 +587,7 @@ describe('phase 3 — Host Async API', () => {
   describe('3b: local handlers take precedence over host handlers', () => {
     it('should use local try/with handler instead of host handler', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(my.eff), "test")
         with
           case effect(my.eff) then ([x]) -> "local: " ++ x
@@ -612,7 +604,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should delegate to host handler when local handler does not match', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(other.eff), "test")
         with
           case effect(my.eff) then ([x]) -> "local: " ++ x
@@ -629,7 +621,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should delegate from local handler to host handler via perform', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(my.eff), "msg")
         with
           case effect(my.eff) then ([x]) -> perform(effect(my.eff), x ++ "+enriched")
@@ -735,7 +727,7 @@ describe('phase 3 — Host Async API', () => {
         let llm = effect(llm.complete);
         let log-eff = effect(my.log);
 
-        try
+        do
           let msg = perform(llm, "prompt");
           perform(log-eff, msg)
         with
@@ -751,12 +743,12 @@ describe('phase 3 — Host Async API', () => {
       expect(result).toEqual({ type: 'completed', value: 'logged: LLM says: prompt' })
     })
 
-    it('should handle try/catch around host effect', async () => {
+    it('should handle dvala.error handler around host effect', async () => {
       const result = await run(`
-        try
+        do
           perform(effect(my.risky))
-        catch (e)
-          "recovered: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "recovered: " ++ msg
         end
       `, {
         handlers: {
@@ -1116,13 +1108,13 @@ describe('phase 4 — Suspension & Resume', () => {
       }
     })
 
-    it('should handle try/catch after resume', async () => {
+    it('should handle dvala.error handler after resume', async () => {
       const r1 = await run(`
-        try
+        do
           let x = perform(effect(my.wait));
           if x == "bad" then throw("bad input") else x end
-        catch (e)
-          "caught: " ++ e.message
+        with
+          case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `, {
         handlers: {
@@ -1258,7 +1250,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should work with local try/with handlers after resume', async () => {
       const r1 = await run(`
         let x = perform(effect(my.wait));
-        try
+        do
           perform(effect(my.local), x)
         with
           case effect(my.local) then ([v]) -> upper-case(v)
@@ -1382,7 +1374,7 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by local try/with', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(dvala.log), "intercepted")
         with
           case effect(dvala.log) then ([msg]) -> "logged: " ++ msg
@@ -1424,7 +1416,7 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by local try/with', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(dvala.now))
         with
           case effect(dvala.now) then ([]) -> 1234567890
@@ -1461,7 +1453,7 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by local try/with', () => {
       const result = dvala.run(`
-        try
+        do
           perform(effect(dvala.random))
         with
           case effect(dvala.random) then ([]) -> 0.5
@@ -2368,17 +2360,12 @@ describe('step 2 — dvala.error standard effect', () => {
     `)).toBe(55)
   })
 
-  it('dvala.error with takes priority over catch in try...with...catch', () => {
-    // When a TryWithFrame and TryCatchFrame are adjacent (try...with...catch...end),
-    // the dvala.error handler in with takes priority and both frames are skipped for
-    // the handler's continuation (outerK).
-    expect(dvala.run(`
-      try
+  it('dvala.error with takes priority over dvala.error handler order', () => {
+    expect(runSync(`
+      do
         0 / 0
       with
         case effect(dvala.error) then (args) -> 42
-      catch (e)
-        -1
       end
     `)).toBe(42)
   })
@@ -2392,6 +2379,28 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
       expect(result.value).toBe(99)
+    }
+  })
+
+  it('in-language dvala.error handler catches error from async host handler that throws', async () => {
+    // When a host handler for dvala.log throws, it produces an ErrorStep.
+    // tick() processes the ErrorStep and routes it through tryDispatchDvalaError,
+    // which finds the in-language do...with case effect(dvala.error) handler.
+    const result = await run(
+      `do
+        perform(effect(dvala.log), "hello")
+      with
+        case effect(dvala.error) then ([msg]) -> msg
+      end`,
+      {
+        handlers: {
+          'dvala.log': async () => { throw new Error('async host error') },
+        },
+      },
+    )
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toBe('async host error')
     }
   })
 })

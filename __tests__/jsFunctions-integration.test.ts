@@ -156,8 +156,8 @@ describe('jsFunctions integration', () => {
       expect(await dvala.async.run('5 |> fetchValue |> jsDouble', { bindings: allJsFunctions })).toBe(100)
     })
 
-    it('should handle async failure in try/catch', async () => {
-      expect(await dvala.async.run('try asyncFail() catch "caught" end', { bindings: allJsFunctions })).toBe('caught')
+    it('should handle async failure with dvala.error handler', async () => {
+      expect(await dvala.async.run('do asyncFail() with case effect(dvala.error) then (args) -> "caught" end', { bindings: allJsFunctions })).toBe('caught')
     })
 
     it('should use async JS functions in do block', async () => {
