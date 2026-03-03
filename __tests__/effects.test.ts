@@ -2279,3 +2279,119 @@ describe('step 1 — do...with...end', () => {
     })
   })
 })
+
+describe('step 2 — dvala.error standard effect', () => {
+  it('do...with catches runtime error (NaN)', () => {
+    expect(dvala.run(`
+      do
+        0 / 0
+      with
+        case effect(dvala.error) then (args) -> 42
+      end
+    `)).toBe(42)
+  })
+
+  it('handler receives error message as first arg', () => {
+    const result = dvala.run(`
+      do
+        0 / 0
+      with
+        case effect(dvala.error) then ([msg]) -> msg
+      end
+    `)
+    expect(result).toBe('Number is NaN')
+  })
+
+  it('handler return value resumes at the error site', () => {
+    // Handler returns 0, which becomes the resume value of (0/0).
+    // Execution continues: let x = 0; x + 1 => 1
+    expect(dvala.run(`
+      do
+        let x = 0 / 0;
+        x + 1
+      with
+        case effect(dvala.error) then (args) -> 0
+      end
+    `)).toBe(1)
+  })
+
+  it('unhandled runtime error still propagates when no dvala.error case', () => {
+    expect(() => dvala.run(`
+      do
+        0 / 0
+      with
+        case effect(dvala.log) then (args) -> 42
+      end
+    `)).toThrow()
+  })
+
+  it('unhandled runtime error propagates when no with clause', () => {
+    expect(() => dvala.run('0 / 0')).toThrow()
+  })
+
+  it('dvala.error handler does not intercept unrelated effects', () => {
+    expect(dvala.run(`
+      do
+        perform(effect(my.eff), 99)
+      with
+        case effect(dvala.error) then (args) -> -1
+        case effect(my.eff) then ([x]) -> x * 2
+      end
+    `)).toBe(198)
+  })
+
+  it('dvala.error handler can be nested inside outer do...with', () => {
+    expect(dvala.run(`
+      do
+        do
+          0 / 0
+        with
+          case effect(dvala.log) then (args) -> 0
+        end
+      with
+        case effect(dvala.error) then (args) -> 77
+      end
+    `)).toBe(77)
+  })
+
+  it('error in handler propagates outward', () => {
+    expect(dvala.run(`
+      do
+        do
+          0 / 0
+        with
+          case effect(dvala.error) then (args) -> 0 / 0
+        end
+      with
+        case effect(dvala.error) then (args) -> 55
+      end
+    `)).toBe(55)
+  })
+
+  it('dvala.error with takes priority over catch in try...with...catch', () => {
+    // When a TryWithFrame and TryCatchFrame are adjacent (try...with...catch...end),
+    // the dvala.error handler in with takes priority and both frames are skipped for
+    // the handler's continuation (outerK).
+    expect(dvala.run(`
+      try
+        0 / 0
+      with
+        case effect(dvala.error) then (args) -> 42
+      catch (e)
+        -1
+      end
+    `)).toBe(42)
+  })
+
+  it('dvala.error via host handler intercepts runtime errors', async () => {
+    const result = await run('0 / 0', {
+      handlers: {
+        'dvala.error': async ({ resume: doResume }) => { doResume(99) },
+      },
+    })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toBe(99)
+    }
+  })
+})
