@@ -16,8 +16,9 @@ export default defineConfig({
   test: {
     coverage: {
       exclude: [
-        '**/[.]**',
+        '*.js',
         '__tests__/**',
+        'types/**',
         '**/*.test.ts',
         'playground-builder/**',
         'playground-www/**',

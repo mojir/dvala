@@ -33,10 +33,10 @@ describe('standardEffects', () => {
   })
 
   describe('dvala.log handler', () => {
-    it('should return a ValueStep with null', () => {
+    it('should return a ValueStep with the logged value', () => {
       const handler = getStandardEffectHandler('dvala.log')!
-      const result = handler(['hello', 42], emptyK)
-      expect(result).toEqual({ type: 'Value', value: null, k: emptyK })
+      const result = handler([`hello ${42}`], emptyK)
+      expect(result).toEqual({ type: 'Value', value: `hello ${42}`, k: emptyK })
     })
   })
 

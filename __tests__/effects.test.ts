@@ -898,8 +898,9 @@ describe('phase 4 — Suspension & Resume', () => {
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`
+        let k = 2;
         let x = perform(effect(my.wait));
-        x * 2
+        x * k
       `, {
         handlers: {
           'my.wait': async ({ suspend }) => { suspend() },
@@ -1340,23 +1341,11 @@ describe('phase 4 — Suspension & Resume', () => {
 
 describe('phase 5 — Standard Effects', () => {
   describe('5a: dvala.log', () => {
-    it('should log to console and return null (via run)', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      try {
-        const result = await run('perform(effect(dvala.log), "hello", 42)')
-        expect(result).toEqual({ type: 'completed', value: null })
-        expect(consoleSpy).toHaveBeenCalledWith('hello', 42)
-      }
-      finally {
-        consoleSpy.mockRestore()
-      }
-    })
-
-    it('should log to console and return null (via Dvala.run)', () => {
+    it('should log to console and return logged value (via Dvala.run)', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       try {
         const result = dvala.run('perform(effect(dvala.log), "test")')
-        expect(result).toBe(null)
+        expect(result).toBe('test')
         expect(consoleSpy).toHaveBeenCalledWith('test')
       }
       finally {
@@ -1368,8 +1357,9 @@ describe('phase 5 — Standard Effects', () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
       try {
         const result = await run('perform(effect(dvala.log))')
-        expect(result).toEqual({ type: 'completed', value: null })
-        expect(consoleSpy).toHaveBeenCalledWith()
+
+        expect(result.type).toBe('error')
+        expect(consoleSpy).not.toHaveBeenCalled()
       }
       finally {
         consoleSpy.mockRestore()
