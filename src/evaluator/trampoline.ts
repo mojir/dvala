@@ -79,7 +79,7 @@ import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectHandler, Handlers, RunResult } from './effectTypes'
-import { SuspensionSignal, isSuspensionSignal } from './effectTypes'
+import { SuspensionSignal, findMatchingHandlers, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import { serializeSuspension } from './suspension'
@@ -2019,26 +2019,17 @@ function tryDispatchDvalaError(
     const frame = k[i]!
     if (frame.type === 'TryWith') {
       for (const handler of frame.handlers) {
-        if (isEffectRef(handler.effectRef) && handler.effectRef.name === effect.name) {
-          const resumeK = k
-          const outerK = k.slice(i + 1)
-          const effectResumeFrame: EffectResumeFrame = {
-            type: 'EffectResume',
-            resumeK,
-            sourceCodeInfo: error.sourceCodeInfo,
-          }
-          const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
-          const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
-          const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
-          return dispatchFunction(fnLike, [args], [], frame.env, error.sourceCodeInfo, handlerK)
+        if (handlerMatchesEffect(handler, effect, frame.env, error.sourceCodeInfo)) {
+          return invokeMatchedHandler(handler, frame, args, k, i, error.sourceCodeInfo)
         }
       }
     }
   }
 
-  // Check host handlers for 'dvala.error'
-  if (handlers?.['dvala.error']) {
-    return dispatchHostHandler(handlers['dvala.error'], args, k, signal, error.sourceCodeInfo)
+  // Check host handlers for 'dvala.error' (supports wildcards like 'dvala.*' or '*')
+  const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
+  if (matchingHostHandlers.length > 0) {
+    return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo)
   }
 
   return null
@@ -2203,45 +2194,87 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
  *   When handler returns V: EffectResumeFrame replaces k with original k,
  *   so V flows through body_k with TryWithFrame still on stack.
  */
+
+/**
+ * Check if a handler's case clause matches the given effect.
+ * Supports two forms:
+ * - EffectRef: exact name match (`case effect(dvala.error)`)
+ * - Predicate function: called with the effect, truthy = match (`case my-predicate`)
+ *
+ * Predicate functions must be synchronous — async predicates throw an error.
+ */
+function handlerMatchesEffect(
+  handler: EvaluatedWithHandler,
+  effect: EffectRef,
+  env: ContextStack,
+  sourceCodeInfo?: SourceCodeInfo,
+): boolean {
+  if (isEffectRef(handler.effectRef)) {
+    return handler.effectRef.name === effect.name
+  }
+  if (isDvalaFunction(handler.effectRef)) {
+    const result = executeFunctionRecursive(handler.effectRef, [effect], env, sourceCodeInfo)
+    if (result instanceof Promise) {
+      throw new DvalaError('Effect handler predicates must be synchronous', sourceCodeInfo)
+    }
+    return !!result
+  }
+  return false
+}
+
+/**
+ * Invoke a matched handler for a performed effect.
+ * Builds the handler continuation and dispatches the handler function.
+ */
+function invokeMatchedHandler(
+  handler: EvaluatedWithHandler,
+  frame: TryWithFrame,
+  args: Arr,
+  k: ContinuationStack,
+  frameIndex: number,
+  sourceCodeInfo?: SourceCodeInfo,
+): Step | Promise<Step> {
+  // resumeK = original k — handler's return value resumes here
+  // (TryWithFrame stays on the stack for subsequent performs)
+  const resumeK = k
+
+  // Determine outer_k — skip TryWithFrame so errors and effects from the
+  // handler propagate upward past the current do...with block.
+  const outerK = k.slice(frameIndex + 1)
+
+  // Handler's continuation: EffectResumeFrame bridges back to resumeK
+  const effectResumeFrame: EffectResumeFrame = {
+    type: 'EffectResume',
+    resumeK,
+    sourceCodeInfo,
+  }
+  const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
+
+  // Evaluate the handler fn expression using recursive evaluator.
+  // Handler expressions are always simple (lambda or variable refs).
+  const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
+  const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
+  // Call the handler — return value is the resume value
+  return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
+}
+
 function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal): Step | Promise<Step> {
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
       // Search this frame's handlers for a matching effect
       for (const handler of frame.handlers) {
-        if (isEffectRef(handler.effectRef) && handler.effectRef.name === effect.name) {
-          // Found a match!
-          // resumeK = original k — handler's return value resumes here
-          // (TryWithFrame stays on the stack for subsequent performs)
-          const resumeK = k
-
-          // Determine outer_k — skip TryWithFrame so errors and effects from the
-          // handler propagate upward past the current do...with block.
-          const outerK = k.slice(i + 1)
-
-          // Handler's continuation: EffectResumeFrame bridges back to resumeK
-          const effectResumeFrame: EffectResumeFrame = {
-            type: 'EffectResume',
-            resumeK,
-            sourceCodeInfo,
-          }
-          const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
-
-          // Evaluate the handler fn expression using recursive evaluator.
-          // Handler expressions are always simple (lambda or variable refs).
-          const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
-          const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
-          // Call the handler — return value is the resume value
-          return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
+        if (handlerMatchesEffect(handler, effect, frame.env, sourceCodeInfo)) {
+          return invokeMatchedHandler(handler, frame, args, k, i, sourceCodeInfo)
         }
       }
     }
   }
 
   // No matching local handler found — dispatch to host handler if available.
-  const hostHandler = handlers?.[effect.name]
-  if (hostHandler) {
-    return dispatchHostHandler(hostHandler, args, k, signal, sourceCodeInfo)
+  const matchingHostHandlers = findMatchingHandlers(effect.name, handlers)
+  if (matchingHostHandlers.length > 0) {
+    return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo)
   }
 
   // No host handler — check standard effects (dvala.log, dvala.now, etc.).
@@ -2262,92 +2295,125 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
 }
 
 /**
- * Dispatch an effect to a host-provided JavaScript handler.
+ * Dispatch an effect to host-provided JavaScript handlers (middleware chain).
  *
- * Creates an `EffectContext` with `resume` and `suspend` callbacks, then
- * calls the handler and returns a `Promise<Step>` that resolves when the
- * handler calls one of those callbacks:
+ * Creates an `EffectContext` with `resume`, `suspend`, `fail`, and `next`
+ * callbacks, then calls the first matching handler. If the handler calls
+ * `next()`, the next handler in the chain is invoked with the same context
+ * shape. If no more handlers remain after `next()`, the effect is unhandled.
  *
- * - `resume(value)` — resolves with a `ValueStep` that continues evaluation
- *   at the `perform` call site with the provided value and the original `k`.
- *   If `value` is a `Promise`, it's awaited first.
- * - `suspend(meta?)` — rejects with a `SuspensionSignal` carrying the
- *   continuation `k` and optional metadata. The effect trampoline loop
- *   catches this and returns `RunResult.suspended`.
+ * Each handler must call exactly one of `resume`, `suspend`, `fail`, or
+ * `next` before its promise resolves.
  *
- * Host handler errors are treated as Dvala-level errors — they produce
- * ErrorStep so tick() can route through dvala.error handlers.
+ * - `resume(value)` — resolves with a `ValueStep` that continues evaluation.
+ * - `suspend(meta?)` — rejects with a `SuspensionSignal`.
+ * - `fail(msg?)` — produces an `ErrorStep` routed through `dvala.error`.
+ * - `next()` — pass to the next matching handler in the chain.
  */
 function dispatchHostHandler(
-  handler: EffectHandler,
+  effectName: string,
+  matchingHandlers: Array<[string, EffectHandler]>,
   args: Arr,
   k: ContinuationStack,
   signal: AbortSignal | undefined,
   sourceCodeInfo: SourceCodeInfo | undefined,
 ): Promise<Step> {
   const effectSignal = signal ?? new AbortController().signal
+  const argsArray = Array.from(args) as Any[]
 
-  return new Promise<Step>((resolve, reject) => {
-    let settled = false
-
-    const ctx = {
-      args: Array.from(args) as Any[],
-      signal: effectSignal,
-      resume: (value: Any | Promise<Any>) => {
-        if (settled) {
-          throw new DvalaError('Effect handler called resume() more than once or after suspend()', sourceCodeInfo)
-        }
-        settled = true
-
-        if (value instanceof Promise) {
-          value.then(
-            (v) => {
-              resolve({ type: 'Value', value: v, k })
-            },
-            (e) => {
-              // The promise-value rejected — produce an ErrorStep so tick()
-              // can route through dvala.error.
-              resolve({
-                type: 'Error',
-                error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
-                k,
-              })
-            },
-          )
-        }
-        else {
-          resolve({ type: 'Value', value, k })
-        }
-      },
-      suspend: (meta?: Any) => {
-        if (settled) {
-          throw new DvalaError('Effect handler called suspend() more than once or after resume()', sourceCodeInfo)
-        }
-        settled = true
-        reject(new SuspensionSignal(k, meta))
-      },
+  // Recursive helper: try handler at `index`, with `next()` advancing to `index + 1`.
+  function tryHandler(index: number): Promise<Step> {
+    if (index >= matchingHandlers.length) {
+      // No more handlers — effect is unhandled.
+      // Return rejected Promises (not synchronous throws) so that
+      // next() can propagate via .then(resolve, reject).
+      if (effectName === 'dvala.error') {
+        const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
+        return Promise.reject(new UserDefinedError(message, sourceCodeInfo))
+      }
+      return Promise.reject(new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo))
     }
 
-    handler(ctx).catch((e) => {
-      if (settled) {
-        // Handler already resolved via resume/suspend — ignore late errors
-        return
+    const [, handler] = matchingHandlers[index]!
+
+    return new Promise<Step>((resolve, reject) => {
+      let settled = false
+
+      function assertNotSettled(operation: string): void {
+        if (settled) {
+          throw new DvalaError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
+        }
+        settled = true
       }
-      settled = true
-      if (isSuspensionSignal(e)) {
-        reject(e)
+
+      const ctx = {
+        effectName,
+        args: argsArray,
+        signal: effectSignal,
+        resume: (value: Any | Promise<Any>) => {
+          assertNotSettled('resume')
+
+          if (value instanceof Promise) {
+            value.then(
+              (v) => {
+                resolve({ type: 'Value', value: v, k })
+              },
+              (e) => {
+                resolve({
+                  type: 'Error',
+                  error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+                  k,
+                })
+              },
+            )
+          }
+          else {
+            resolve({ type: 'Value', value, k })
+          }
+        },
+        fail: (msg?: string) => {
+          assertNotSettled('fail')
+          const errorMsg = msg ?? `Effect handler failed for '${effectName}'`
+          resolve({
+            type: 'Error',
+            error: new DvalaError(errorMsg, sourceCodeInfo),
+            k,
+          })
+        },
+        suspend: (meta?: Any) => {
+          assertNotSettled('suspend')
+          reject(new SuspensionSignal(k, meta))
+        },
+        next: () => {
+          assertNotSettled('next')
+          // Advance to the next handler in the chain.
+          tryHandler(index + 1).then(resolve, reject)
+        },
       }
-      else {
-        // Handler itself threw — produce an ErrorStep so tick() can route
-        // through dvala.error.
-        resolve({
-          type: 'Error',
-          error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
-          k,
-        })
-      }
+
+      handler(ctx).catch((e) => {
+        if (settled) {
+          // Handler already resolved via resume/suspend/fail/next — ignore late errors
+          return
+        }
+        settled = true
+        if (isSuspensionSignal(e)) {
+          reject(e)
+        }
+        else {
+          // Handler itself threw — produce an ErrorStep so tick() can route
+          // through dvala.error.
+          resolve({
+            type: 'Error',
+            error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+            k,
+          })
+        }
+      })
     })
-  })
+  }
+
+  return tryHandler(0)
 }
 
 // ---------------------------------------------------------------------------

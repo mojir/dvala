@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Dvala } from '../src/Dvala/Dvala'
-import { resume, run, runSync } from '../src/effects'
+import { resume as resumeContinuation, run, runSync } from '../src/effects'
 import type { Handlers } from '../src/evaluator/effectTypes'
+import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 
 const dvala = new Dvala()
@@ -902,7 +903,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 21)
+      const r2 = await resumeContinuation(r1.blob, 21)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -919,7 +920,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 'Alice')
+      const r2 = await resumeContinuation(r1.blob, 'Alice')
       expect(r2).toEqual({ type: 'completed', value: 'Hello, Alice!' })
     })
 
@@ -940,7 +941,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, { approved: false, reason: 'Budget exceeded' })
+      const r2 = await resumeContinuation(r1.blob, { approved: false, reason: 'Budget exceeded' })
       expect(r2).toEqual({ type: 'completed', value: 'Rejected: Budget exceeded' })
     })
 
@@ -957,7 +958,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, null)
+      const r2 = await resumeContinuation(r1.blob, null)
       expect(r2).toEqual({ type: 'completed', value: true })
     })
 
@@ -976,7 +977,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 12)
+      const r2 = await resumeContinuation(r1.blob, 12)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -995,7 +996,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 14)
+      const r2 = await resumeContinuation(r1.blob, 14)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1017,14 +1018,14 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r1.meta).toEqual({ step: 1 })
 
       // Resume first suspension
-      const r2 = await resume(r1.blob, 10, { handlers })
+      const r2 = await resumeContinuation(r1.blob, 10, { handlers })
       expect(r2.type).toBe('suspended')
       if (r2.type !== 'suspended')
         return
       expect(r2.meta).toEqual({ step: 2 })
 
       // Resume second suspension
-      const r3 = await resume(r2.blob, 32)
+      const r3 = await resumeContinuation(r2.blob, 32)
       expect(r3).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1043,7 +1044,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume with handlers so my.compute works
-      const r2 = await resume(r1.blob, 21, {
+      const r2 = await resumeContinuation(r1.blob, 21, {
         handlers: {
           'my.compute': async ({ args, resume: r }) => { r((args[0] as number) * 2) },
         },
@@ -1066,14 +1067,14 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume with bindings
-      const r2 = await resume(r1.blob, 10, {
+      const r2 = await resumeContinuation(r1.blob, 10, {
         bindings: { offset: 32 },
       })
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
     it('should return error for invalid blob JSON', async () => {
-      const result = await resume('not-json', 42)
+      const result = await resumeContinuation('not-json', 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Invalid suspension blob')
@@ -1081,7 +1082,7 @@ describe('phase 4 — Suspension & Resume', () => {
     })
 
     it('should return error for wrong version', async () => {
-      const result = await resume(JSON.stringify({ version: 999, k: [], contextStacks: [] }), 42)
+      const result = await resumeContinuation(JSON.stringify({ version: 999, k: [], contextStacks: [] }), 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Unsupported suspension blob version')
@@ -1101,7 +1102,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 'boom')
+      const r2 = await resumeContinuation(r1.blob, 'boom')
       expect(r2.type).toBe('error')
       if (r2.type === 'error') {
         expect(r2.error.message).toContain('error: boom')
@@ -1125,7 +1126,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 'bad')
+      const r2 = await resumeContinuation(r1.blob, 'bad')
       expect(r2).toEqual({ type: 'completed', value: 'caught: bad input' })
     })
   })
@@ -1149,7 +1150,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume — the blob is valid and doesn't contain JS functions
-      const r2 = await resume(r1.blob, 7)
+      const r2 = await resumeContinuation(r1.blob, 7)
       expect(r2).toEqual({ type: 'completed', value: 17 }) // 2*5 + 7
     })
   })
@@ -1187,7 +1188,7 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(storedMeta.payload).toBe('[LLM: Generate Q4 report]')
 
       // Simulate: Process 2 loads blob and resumes with approval
-      const r2 = await resume(storedBlob, { approved: true, reason: null }, { handlers })
+      const r2 = await resumeContinuation(storedBlob, { approved: true, reason: null }, { handlers })
       expect(r2.type).toBe('completed')
       if (r2.type === 'completed') {
         expect(r2.value).toBe('[LLM: Finalize: [LLM: Generate Q4 report]]')
@@ -1208,7 +1209,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, { approved: false, reason: 'denied' })
+      const r2 = await resumeContinuation(r1.blob, { approved: false, reason: 'denied' })
       expect(r2).toEqual({ type: 'completed', value: 'No: denied' })
     })
 
@@ -1231,19 +1232,19 @@ describe('phase 4 — Suspension & Resume', () => {
         return
       expect((r1.meta as Record<string, unknown>).step).toBe('step1')
 
-      const r2 = await resume(r1.blob, 'A', { handlers })
+      const r2 = await resumeContinuation(r1.blob, 'A', { handlers })
       expect(r2.type).toBe('suspended')
       if (r2.type !== 'suspended')
         return
       expect((r2.meta as Record<string, unknown>).step).toBe('step2')
 
-      const r3 = await resume(r2.blob, 'B', { handlers })
+      const r3 = await resumeContinuation(r2.blob, 'B', { handlers })
       expect(r3.type).toBe('suspended')
       if (r3.type !== 'suspended')
         return
       expect((r3.meta as Record<string, unknown>).step).toBe('step3')
 
-      const r4 = await resume(r3.blob, 'C')
+      const r4 = await resumeContinuation(r3.blob, 'C')
       expect(r4).toEqual({ type: 'completed', value: ['A', 'B', 'C'] })
     })
 
@@ -1264,7 +1265,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 'hello')
+      const r2 = await resumeContinuation(r1.blob, 'hello')
       expect(r2).toEqual({ type: 'completed', value: 'HELLO' })
     })
 
@@ -1283,7 +1284,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 37)
+      const r2 = await resumeContinuation(r1.blob, 37)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1304,7 +1305,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // factor = 2, sum = 0*2 + 1*2 + 2*2 + 3*2 + 4*2 = 20
-      const r2 = await resume(r1.blob, 2)
+      const r2 = await resumeContinuation(r1.blob, 2)
       expect(r2).toEqual({ type: 'completed', value: 20 })
     })
 
@@ -1322,7 +1323,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resume(r1.blob, 4)
+      const r2 = await resumeContinuation(r1.blob, 4)
       expect(r2).toEqual({
         type: 'completed',
         value: { name: 'test', values: [1, 2, 3, 4], count: 4 },
@@ -1548,7 +1549,7 @@ describe('phase 5 — Standard Effects', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Before suspend')
         consoleSpy.mockClear()
 
-        const r2 = await resume(r1.blob, 'hello')
+        const r2 = await resumeContinuation(r1.blob, 'hello')
         expect(r2).toEqual({ type: 'completed', value: 'hello' })
         expect(consoleSpy).toHaveBeenCalledTimes(1)
         expect(consoleSpy).toHaveBeenCalledWith('After resume: hello')
@@ -1757,7 +1758,7 @@ describe('phase 6 — Parallel & Race', () => {
           return
 
         // Resume with the approval decision
-        const result2 = await resume(result1.blob, 'approved', { handlers })
+        const result2 = await resumeContinuation(result1.blob, 'approved', { handlers })
         expect(result2).toEqual({
           type: 'completed',
           value: ['fast-result', 'approved'],
@@ -1790,19 +1791,19 @@ describe('phase 6 — Parallel & Race', () => {
           return
 
         // First resume
-        const result2 = await resume(result1.blob, 'value-A', { handlers })
+        const result2 = await resumeContinuation(result1.blob, 'value-A', { handlers })
         expect(result2.type).toBe('suspended')
         if (result2.type !== 'suspended')
           return
 
         // Second resume
-        const result3 = await resume(result2.blob, 'value-B', { handlers })
+        const result3 = await resumeContinuation(result2.blob, 'value-B', { handlers })
         expect(result3.type).toBe('suspended')
         if (result3.type !== 'suspended')
           return
 
         // Third resume — all branches done
-        const result4 = await resume(result3.blob, 'value-C', { handlers })
+        const result4 = await resumeContinuation(result3.blob, 'value-C', { handlers })
         expect(result4).toEqual({
           type: 'completed',
           value: ['value-A', 'value-B', 'value-C'],
@@ -1830,12 +1831,12 @@ describe('phase 6 — Parallel & Race', () => {
         if (result1.type !== 'suspended')
           return
 
-        const result2 = await resume(result1.blob, 'approved-0', { handlers })
+        const result2 = await resumeContinuation(result1.blob, 'approved-0', { handlers })
         expect(result2.type).toBe('suspended')
         if (result2.type !== 'suspended')
           return
 
-        const result3 = await resume(result2.blob, 'approved-2', { handlers })
+        const result3 = await resumeContinuation(result2.blob, 'approved-2', { handlers })
         expect(result3).toEqual({
           type: 'completed',
           value: ['approved-0', 'fast-done', 'approved-2'],
@@ -1862,7 +1863,7 @@ describe('phase 6 — Parallel & Race', () => {
         // Standard host-side loop — identical to single suspension
         while (result.type === 'suspended') {
           const decision = decisions[decisionIndex++]!
-          result = await resume(result.blob, decision, { handlers })
+          result = await resumeContinuation(result.blob, decision, { handlers })
         }
 
         expect(result).toEqual({
@@ -1991,7 +1992,7 @@ describe('phase 6 — Parallel & Race', () => {
         return
 
       // Host decides the winner
-      const result2 = await resume(result1.blob, 'winner-value', { handlers })
+      const result2 = await resumeContinuation(result1.blob, 'winner-value', { handlers })
       expect(result2).toEqual({ type: 'completed', value: 'winner-value' })
     })
 
@@ -2402,5 +2403,588 @@ describe('step 2 — dvala.error standard effect', () => {
     if (result.type === 'completed') {
       expect(result.value).toBe('async host error')
     }
+  })
+})
+
+describe('step 9 — effect-name accessor', () => {
+  it('should return the name of an effect', () => {
+    expect(dvala.run('effect-name(effect(dvala.error))')).toBe('dvala.error')
+  })
+
+  it('should work with dotted names', () => {
+    expect(dvala.run('effect-name(effect(llm.complete))')).toBe('llm.complete')
+  })
+
+  it('should work with deeply dotted names', () => {
+    expect(dvala.run('effect-name(effect(com.myco.foo.bar))')).toBe('com.myco.foo.bar')
+  })
+
+  it('should work with effect stored in variable', () => {
+    expect(dvala.run('let e = effect(dvala.log); effect-name(e)')).toBe('dvala.log')
+  })
+
+  it('should throw on non-effect argument', () => {
+    expect(() => dvala.run('effect-name("not an effect")')).toThrow()
+  })
+})
+
+describe('step 10 — predicate-based case matching', () => {
+  it('should match with a predicate function', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case (e) -> effect-name(e) == "dvala.log"
+        then (args) -> ++ ("logged: ", first(args))
+      end
+    `)
+    expect(result).toBe('logged: hello')
+  })
+
+  it('should skip non-matching predicate and match next', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case (e) -> effect-name(e) == "dvala.error"
+        then (args) -> "error handler"
+
+        case (e) -> effect-name(e) == "dvala.log"
+        then (args) -> "log handler"
+      end
+    `)
+    expect(result).toBe('log handler')
+  })
+
+  it('should mix predicate and exact-match cases', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case effect(dvala.error)
+        then (args) -> "error handler"
+
+        case (e) -> effect-name(e) == "dvala.log"
+        then (args) -> "log handler"
+      end
+    `)
+    expect(result).toBe('log handler')
+  })
+
+  it('should support prefix matching via slice and comparison', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(com.myco.foo), "data")
+      with
+        case (e) -> slice(effect-name(e), 0, 8) == "com.myco"
+        then (args) -> "matched prefix"
+      end
+    `)
+    expect(result).toBe('matched prefix')
+  })
+
+  it('should support regex matching via re-match', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "data")
+      with
+        case (e) -> not(null?(re-match(effect-name(e), #"^dvala\\.")))
+        then (args) -> "matched regex"
+      end
+    `)
+    expect(result).toBe('matched regex')
+  })
+
+  it('should work with predicate stored in variable', () => {
+    const result = dvala.run(`
+      let is-log? = (e) -> effect-name(e) == "dvala.log";
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case is-log?
+        then (args) -> "matched"
+      end
+    `)
+    expect(result).toBe('matched')
+  })
+
+  it('should propagate unhandled effect when predicate returns false', () => {
+    expect(() => dvala.run(`
+      do
+        perform(effect(custom.eff), "data")
+      with
+        case (e) -> false
+        then (args) -> "never"
+      end
+    `)).toThrow('Unhandled effect')
+  })
+
+  it('should support predicate matching for dvala.error', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.error), "oops")
+      with
+        case (e) -> effect-name(e) == "dvala.error"
+        then ([msg]) -> msg
+      end
+    `)
+    expect(result).toBe('oops')
+  })
+
+  it('should support effect-matcher with wildcard suffix', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case effect-matcher("dvala.*")
+        then (args) -> "matched dvala wildcard"
+      end
+    `)
+    expect(result).toBe('matched dvala wildcard')
+  })
+
+  it('effect-matcher exact string should match exact name only', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala), "hello")
+      with
+        case effect-matcher("dvala")
+        then (args) -> "matched"
+      end
+    `)
+    expect(result).toBe('matched')
+  })
+
+  it('effect-matcher exact string should NOT match children', () => {
+    // "dvala" (no wildcard) is exact match only — does NOT match dvala.error
+    expect(dvala.run('let pred = effect-matcher("dvala"); pred(effect(dvala.error))')).toBe(false)
+    expect(dvala.run('let pred = effect-matcher("dvala"); pred(effect(dvala))')).toBe(true)
+  })
+
+  it('effect-matcher wildcard should enforce dot boundary', () => {
+    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(effect(dvala.error))')).toBe(false)
+    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(effect(custom.foo))')).toBe(true)
+    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(effect(customXXX))')).toBe(false)
+    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(effect(custom))')).toBe(true)
+  })
+
+  it('effect-matcher catch-all * should match everything', () => {
+    expect(dvala.run('let pred = effect-matcher("*"); pred(effect(anything))')).toBe(true)
+    expect(dvala.run('let pred = effect-matcher("*"); pred(effect(a.b.c))')).toBe(true)
+  })
+
+  it('should support effect-matcher with regexp', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case effect-matcher(#"^dvala\\.")
+        then (args) -> "matched regex"
+      end
+    `)
+    expect(result).toBe('matched regex')
+  })
+
+  it('effect-matcher regexp should work as wildcard catch-all', () => {
+    const result = dvala.run(`
+      do
+        perform(effect(anything.goes), "data")
+      with
+        case effect-matcher(#".*")
+        then (args) -> "catch-all"
+      end
+    `)
+    expect(result).toBe('catch-all')
+  })
+})
+
+// =========================================================================
+// Host handler wildcard patterns & middleware chaining
+// =========================================================================
+describe('host handler wildcard patterns', () => {
+  describe('effectNameMatchesPattern (via integration)', () => {
+    it('exact match works', async () => {
+      const result = await run('perform(effect(my.effect), 42)', {
+        handlers: {
+          'my.effect': async ({ args, resume }) => { resume(args[0]!) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 42 })
+    })
+
+    it('wildcard suffix matches child effect', async () => {
+      const result = await run('perform(effect(dvala.log), "hello")', {
+        handlers: {
+          'dvala.*': async ({ args, resume }) => { resume(args[0]!) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'hello' })
+    })
+
+    it('wildcard suffix matches the prefix itself', async () => {
+      const result = await run('perform(effect(dvala), "value")', {
+        handlers: {
+          'dvala.*': async ({ args, resume }) => { resume(args[0]!) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'value' })
+    })
+
+    it('wildcard suffix matches deeply nested effects', async () => {
+      const result = await run('perform(effect(dvala.log.verbose), "deep")', {
+        handlers: {
+          'dvala.*': async ({ args, resume }) => { resume(args[0]!) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'deep' })
+    })
+
+    it('wildcard suffix does NOT match without dot boundary', async () => {
+      // dvala.* should NOT directly match 'dvalaXXX' as an effect pattern,
+      // but when dvalaXXX is unhandled it produces dvala.error which IS matched.
+      // Test with a handler that checks effectName to verify pattern boundary.
+      let capturedEffectName = ''
+      const result = await run('perform(effect(dvalaXXX), "val")', {
+        handlers: {
+          'dvala.*': async ({ effectName, args, resume }) => {
+            capturedEffectName = effectName
+            resume(args[0]!)
+          },
+        },
+      })
+      // The handler catches dvala.error (from unhandled effect), NOT dvalaXXX directly
+      expect(result.type).toBe('completed')
+      expect(capturedEffectName).toBe('dvala.error')
+    })
+
+    it('catch-all * matches everything', async () => {
+      const result = await run('perform(effect(anything.at.all), 99)', {
+        handlers: {
+          '*': async ({ args, resume }) => { resume(args[0]!) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 99 })
+    })
+
+    it('exact match has priority over wildcard by registration order', async () => {
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.effect': async ({ resume }) => { resume('exact') },
+          '*': async ({ resume }) => { resume('catch-all') },
+        },
+      })
+      // First registered handler that matches wins
+      expect(result).toEqual({ type: 'completed', value: 'exact' })
+    })
+  })
+
+  describe('effectName on context', () => {
+    it('provides the full effect name to the handler', async () => {
+      let capturedName = ''
+      const result = await run('perform(effect(my.custom.effect), "val")', {
+        handlers: {
+          '*': async ({ effectName, args, resume }) => {
+            capturedName = effectName
+            resume(args[0]!)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'val' })
+      expect(capturedName).toBe('my.custom.effect')
+    })
+
+    it('effectName is correct for wildcard suffix handlers', async () => {
+      let capturedName = ''
+      await run('perform(effect(dvala.log), "hello")', {
+        handlers: {
+          'dvala.*': async ({ effectName, resume }) => {
+            capturedName = effectName
+            resume(null)
+          },
+        },
+      })
+      expect(capturedName).toBe('dvala.log')
+    })
+  })
+
+  describe('fail() operation', () => {
+    it('fail() produces a dvala error', async () => {
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.effect': async ({ fail }) => { fail('something went wrong') },
+        },
+      })
+      expect(result.type).toBe('error')
+      if (result.type === 'error') {
+        expect(result.error.shortMessage).toBe('something went wrong')
+      }
+    })
+
+    it('fail() with no message uses a default message', async () => {
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.effect': async ({ fail }) => { fail() },
+        },
+      })
+      expect(result.type).toBe('error')
+      if (result.type === 'error') {
+        expect(result.error.shortMessage).toContain('my.effect')
+      }
+    })
+
+    it('fail() can be caught by dvala.error in-language handler', async () => {
+      const result = await run(`
+        do
+          perform(effect(my.effect), "data")
+        with
+          case effect(dvala.error) then ([msg]) -> msg
+        end
+      `, {
+        handlers: {
+          'my.effect': async ({ fail }) => { fail('host failure') },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'host failure' })
+    })
+  })
+
+  describe('next() middleware chaining', () => {
+    it('next() passes to the next matching handler', async () => {
+      const log: string[] = []
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.*': async ({ next }) => {
+            log.push('wildcard')
+            next()
+          },
+          'my.effect': async ({ resume }) => {
+            log.push('exact')
+            resume('done')
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'done' })
+      expect(log).toEqual(['wildcard', 'exact'])
+    })
+
+    it('next() through multiple middleware handlers', async () => {
+      const log: string[] = []
+      const result = await run('perform(effect(app.action), "go")', {
+        handlers: {
+          '*': async ({ next }) => {
+            log.push('catch-all')
+            next()
+          },
+          'app.*': async ({ next }) => {
+            log.push('app-wildcard')
+            next()
+          },
+          'app.action': async ({ args, resume }) => {
+            log.push('exact')
+            resume(args[0]!)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'go' })
+      expect(log).toEqual(['catch-all', 'app-wildcard', 'exact'])
+    })
+
+    it('next() with no more handlers produces unhandled error', async () => {
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.*': async ({ next }) => { next() },
+        },
+      })
+      expect(result.type).toBe('error')
+      if (result.type === 'error') {
+        expect(result.error.shortMessage).toContain('Unhandled effect')
+      }
+    })
+
+    it('calling two operations throws immediately', async () => {
+      const result = await run('perform(effect(my.effect), "data")', {
+        handlers: {
+          'my.effect': async ({ resume }) => {
+            resume('first')
+            // Second call should throw but the handler is already settled
+            // so the error is caught by the .catch() handler
+            resume('second')
+          },
+        },
+      })
+      // First resume should succeed; the second call throws but the handler
+      // is already settled so it's an exception in the handler
+      expect(result).toEqual({ type: 'completed', value: 'first' })
+    })
+  })
+
+  describe('wildcard patterns with dvala.error', () => {
+    it('dvala.* catches runtime errors', async () => {
+      const result = await run('perform(effect(dvala.error), "test error")', {
+        handlers: {
+          'dvala.*': async ({ effectName, args, resume }) => {
+            resume(`caught ${effectName}: ${args[0]}`)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'caught dvala.error: test error' })
+    })
+
+    it('catch-all * catches runtime errors', async () => {
+      const result = await run('perform(effect(dvala.error), "boom")', {
+        handlers: {
+          '*': async ({ effectName, resume }) => {
+            resume(`caught: ${effectName}`)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'caught: dvala.error' })
+    })
+
+    it('exact dvala.error handler still works', async () => {
+      const result = await run('perform(effect(dvala.error), "oops")', {
+        handlers: {
+          'dvala.error': async ({ args, resume }) => {
+            resume(`error: ${args[0]}`)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'error: oops' })
+    })
+
+    it('next() in dvala.error handler chain', async () => {
+      const log: string[] = []
+      const result = await run('perform(effect(dvala.error), "boom")', {
+        handlers: {
+          'dvala.*': async ({ next }) => {
+            log.push('dvala-wildcard')
+            next()
+          },
+          'dvala.error': async ({ args, resume }) => {
+            log.push('dvala-error-exact')
+            resume(`handled: ${args[0]}`)
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      expect(log).toEqual(['dvala-wildcard', 'dvala-error-exact'])
+    })
+  })
+
+  describe('registration order determines chain order', () => {
+    it('handlers are called in the order they were registered', async () => {
+      const log: string[] = []
+      const handlers: Handlers = {}
+
+      // Register in specific order
+      handlers['my.effect'] = async ({ next }) => {
+        log.push('first-exact')
+        next()
+      }
+      handlers['my.*'] = async ({ next }) => {
+        log.push('second-wildcard')
+        next()
+      }
+      handlers['*'] = async ({ resume }) => {
+        log.push('third-catchall')
+        resume('done')
+      }
+
+      const result = await run('perform(effect(my.effect), "val")', { handlers })
+      expect(result).toEqual({ type: 'completed', value: 'done' })
+      expect(log).toEqual(['first-exact', 'second-wildcard', 'third-catchall'])
+    })
+  })
+
+  describe('async handlers with next()', () => {
+    it('handlers can be async and still chain with next()', async () => {
+      const log: string[] = []
+      const result = await run('perform(effect(my.effect), 10)', {
+        handlers: {
+          '*': async ({ next }) => {
+            await new Promise(resolve => setTimeout(resolve, 10))
+            log.push('async-middleware')
+            next()
+          },
+          'my.effect': async ({ args, resume }) => {
+            await new Promise(resolve => setTimeout(resolve, 10))
+            log.push('async-handler')
+            resume((args[0] as number) * 2)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 20 })
+      expect(log).toEqual(['async-middleware', 'async-handler'])
+    })
+  })
+})
+
+// =========================================================================
+// Unit tests for effectNameMatchesPattern and findMatchingHandlers
+// =========================================================================
+describe('effectNameMatchesPattern', () => {
+  it('exact match', () => {
+    expect(effectNameMatchesPattern('dvala.error', 'dvala.error')).toBe(true)
+    expect(effectNameMatchesPattern('dvala.log', 'dvala.error')).toBe(false)
+  })
+
+  it('wildcard suffix matches prefix itself', () => {
+    expect(effectNameMatchesPattern('dvala', 'dvala.*')).toBe(true)
+  })
+
+  it('wildcard suffix matches children', () => {
+    expect(effectNameMatchesPattern('dvala.error', 'dvala.*')).toBe(true)
+    expect(effectNameMatchesPattern('dvala.log', 'dvala.*')).toBe(true)
+  })
+
+  it('wildcard suffix matches deeply nested', () => {
+    expect(effectNameMatchesPattern('dvala.log.verbose', 'dvala.*')).toBe(true)
+  })
+
+  it('wildcard suffix enforces dot boundary', () => {
+    expect(effectNameMatchesPattern('dvalaXXX', 'dvala.*')).toBe(false)
+    expect(effectNameMatchesPattern('dvala-extra', 'dvala.*')).toBe(false)
+  })
+
+  it('catch-all * matches everything', () => {
+    expect(effectNameMatchesPattern('anything', '*')).toBe(true)
+    expect(effectNameMatchesPattern('a.b.c.d', '*')).toBe(true)
+    expect(effectNameMatchesPattern('', '*')).toBe(true)
+  })
+
+  it('no wildcard requires exact match', () => {
+    expect(effectNameMatchesPattern('dvala.error', 'dvala')).toBe(false)
+    expect(effectNameMatchesPattern('dvala', 'dvala')).toBe(true)
+  })
+})
+
+describe('findMatchingHandlers', () => {
+  const dummyHandler = async () => {}
+
+  it('returns empty for undefined handlers', () => {
+    expect(findMatchingHandlers('test', undefined)).toEqual([])
+  })
+
+  it('returns empty for no match', () => {
+    const handlers = { 'other.effect': dummyHandler }
+    expect(findMatchingHandlers('test.effect', handlers)).toEqual([])
+  })
+
+  it('returns exact match', () => {
+    const handlers = { 'test.effect': dummyHandler }
+    const result = findMatchingHandlers('test.effect', handlers)
+    expect(result).toHaveLength(1)
+    expect(result[0]![0]).toBe('test.effect')
+  })
+
+  it('returns multiple matching handlers in registration order', () => {
+    const handlers: Handlers = {}
+    handlers['*'] = dummyHandler
+    handlers['test.*'] = dummyHandler
+    handlers['test.effect'] = dummyHandler
+
+    const result = findMatchingHandlers('test.effect', handlers)
+    expect(result).toHaveLength(3)
+    expect(result.map(([p]) => p)).toEqual(['*', 'test.*', 'test.effect'])
   })
 })

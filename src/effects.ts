@@ -9,12 +9,16 @@
  * 3. `resume(blob, value, options?)` — resume a suspended continuation (Phase 4).
  *
  * Effect handlers are JavaScript functions that receive an `EffectContext` and must
- * call exactly one of `resume(value)` or `suspend(meta?)`:
+ * call exactly one of `resume(value)`, `suspend(meta?)`, `fail(msg?)`, or `next()`:
  *
  * ```typescript
  * handlers: {
  *   'llm.complete': async ({ args, signal, resume }) => {
  *     resume(await callLLM(args[0], signal))
+ *   },
+ *   'dvala.*': async ({ effectName, args, next }) => {
+ *     console.log(`[${effectName}]`, ...args)
+ *     next()  // pass to next matching handler
  *   }
  * }
  * ```
