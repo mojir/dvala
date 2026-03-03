@@ -841,16 +841,34 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
     }
 
-    // --- block (do...end) ---
+    // --- block (do...end, do...with...end) ---
     case specialExpressionTypes.block: {
       const nodes = node[1][1] as AstNode[]
+      const withHandlerNodes = node[1][2] as [AstNode, AstNode][] | undefined
       const newContext: Context = {}
       const newEnv = env.create(newContext)
+
+      // Build the continuation for the body
+      let bodyK = k
+      if (withHandlerNodes && withHandlerNodes.length > 0) {
+        const evaluatedHandlers: EvaluatedWithHandler[] = withHandlerNodes.map(([effectExpr, handlerNode]) => ({
+          effectRef: evaluateNodeRecursive(effectExpr, env) as Any,
+          handlerNode,
+        }))
+        const withFrame: TryWithFrame = {
+          type: 'TryWith',
+          handlers: evaluatedHandlers,
+          env,
+          sourceCodeInfo,
+        }
+        bodyK = [withFrame, ...k]
+      }
+
       if (nodes.length === 0) {
-        return { type: 'Value', value: null, k }
+        return { type: 'Value', value: null, k: bodyK }
       }
       if (nodes.length === 1) {
-        return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
+        return { type: 'Eval', node: nodes[0]!, env: newEnv, k: bodyK }
       }
       const frame: SequenceFrame = {
         type: 'Sequence',
@@ -859,7 +877,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         env: newEnv,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...k] }
+      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...bodyK] }
     }
 
     // --- let ---
@@ -2263,7 +2281,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
           // Handler expressions are always simple (lambda or variable refs).
           const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
           const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
-          // Call the handler with args as an array
+          // Call the handler — return value is the resume value
           return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
         }
       }

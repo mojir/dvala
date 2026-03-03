@@ -28,4 +28,30 @@ describe('analyze', () => {
     expect(dvala.getUndefinedSymbols('race(x, y)')).toEqual(new Set(['x', 'y']))
     expect(dvala.getUndefinedSymbols('race(1, 2)')).toEqual(new Set([]))
   })
+
+  it('do...with handlers', () => {
+    // with-handler body: undefined symbols in effect expr and handler fn
+    expect(dvala.getUndefinedSymbols(`
+      do
+        perform(effect(dvala.log), "hello")
+      with
+        case effect(dvala.log) then (args) -> null
+      end`)).toEqual(new Set([]))
+
+    // undefined symbol in handler function
+    expect(dvala.getUndefinedSymbols(`
+      do
+        1
+      with
+        case effect(dvala.log) then (args) -> undefinedHandler
+      end`)).toEqual(new Set(['undefinedHandler']))
+
+    // undefined symbol in effect expression of case
+    expect(dvala.getUndefinedSymbols(`
+      do
+        1
+      with
+        case unknownEffect then (args) -> null
+      end`)).toEqual(new Set(['unknownEffect']))
+  })
 })
