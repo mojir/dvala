@@ -2083,6 +2083,60 @@ function applyThrow(frame: ThrowFrame, value: Any, k: ContinuationStack): Step {
   return unwindToTryCatch(error, k)
 }
 
+/**
+ * Try to route a DvalaError through the 'dvala.error' algebraic effect.
+ *
+ * Mirrors the dispatch logic in `dispatchPerform` but returns `null` instead
+ * of throwing when no handler matches, so the caller can fall back to
+ * `unwindToTryCatch` for legacy try/catch compatibility.
+ *
+ * Search order:
+ * 1. Local `TryWithFrame` handlers (innermost first)
+ * 2. Host handlers registered for `'dvala.error'`
+ */
+function tryDispatchDvalaError(
+  error: DvalaError,
+  k: ContinuationStack,
+  handlers?: Handlers,
+  signal?: AbortSignal,
+): Step | Promise<Step> | null {
+  const effect = getEffectRef('dvala.error')
+  const args: Arr = [error.shortMessage]
+
+  // Check local TryWithFrame handlers (same logic as dispatchPerform)
+  for (let i = 0; i < k.length; i++) {
+    const frame = k[i]!
+    if (frame.type === 'TryWith') {
+      for (const handler of frame.handlers) {
+        if (isEffectRef(handler.effectRef) && handler.effectRef.name === effect.name) {
+          const resumeK = k
+          let skipEnd = i + 1
+          if (skipEnd < k.length && k[skipEnd]!.type === 'TryCatch') {
+            skipEnd++
+          }
+          const outerK = k.slice(skipEnd)
+          const effectResumeFrame: EffectResumeFrame = {
+            type: 'EffectResume',
+            resumeK,
+            sourceCodeInfo: error.sourceCodeInfo,
+          }
+          const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
+          const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
+          const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
+          return dispatchFunction(fnLike, [args], [], frame.env, error.sourceCodeInfo, handlerK)
+        }
+      }
+    }
+  }
+
+  // Check host handlers for 'dvala.error'
+  if (handlers?.['dvala.error']) {
+    return dispatchHostHandler(handlers['dvala.error'], args, k, signal, error.sourceCodeInfo)
+  }
+
+  return null
+}
+
 function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const { nodes, index, params, env } = frame
   params.push(value)
@@ -2932,7 +2986,15 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
       throw error
     }
-    // Search the continuation stack for a TryCatchFrame to handle the error.
+    // Route DvalaError through the 'dvala.error' algebraic effect so that
+    // do...with handlers can intercept runtime errors before try/catch.
+    if (error instanceof DvalaError) {
+      const effectStep = tryDispatchDvalaError(error, step.k, handlers, signal)
+      if (effectStep !== null) {
+        return effectStep
+      }
+    }
+    // Fallback: search the continuation stack for a TryCatchFrame to handle the error.
     // This handles both explicit throw() and runtime errors (e.g., type errors).
     return unwindToTryCatch(error, step.k)
   }
