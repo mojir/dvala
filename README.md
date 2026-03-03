@@ -762,32 +762,32 @@ end;
 
 ### Error Handling
 
-#### Try/Catch
+#### Do/With Effect Handlers
 
 ```dvala
-// Basic try/catch
+// Basic error handling with do/with
 let riskyOperation = () -> throw("Something went wrong");
-try
+do
   riskyOperation()
-catch
-  "Something went wrong"
+with
+  case effect(dvala.error) then (args) -> "Something went wrong"
 end;
 
-// With error binding
-try
+// With error message binding
+do
   riskyOperation()
-catch (error)
-  "Error: " ++ error.message
+with
+  case effect(dvala.error) then ([msg]) -> "Error: " ++ msg
 end;
 
-// Try-catch for graceful degradation
+// Error handling for graceful degradation
 let parseData = () -> { value: 42 };
 let process = (val) -> val * 2;
-try
+do
   let { value } = parseData();
   process(value)
-catch
-  "Using default value"
+with
+  case effect(dvala.error) then (args) -> "Using default value"
 end;
 ```
 
@@ -795,10 +795,10 @@ end;
 
 ```dvala
 // Throwing errors
-try
+do
   throw("Custom error message")
-catch
-  "Caught an error"
+with
+  case effect(dvala.error) then (args) -> "Caught an error"
 end;
 
 // Custom error messages in functions

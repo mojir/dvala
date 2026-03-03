@@ -15,7 +15,6 @@ import { orSpecialExpression } from './specialExpressions/or'
 import { qqSpecialExpression } from './specialExpressions/qq'
 import { recurSpecialExpression } from './specialExpressions/recur'
 import { throwSpecialExpression } from './specialExpressions/throw'
-import { trySpecialExpression } from './specialExpressions/try'
 import { arraySpecialExpression } from './specialExpressions/array'
 import { effectSpecialExpression } from './specialExpressions/effect'
 import { objectSpecialExpression } from './specialExpressions/object'
@@ -43,7 +42,6 @@ export const specialExpressions = [
   recurSpecialExpression,
   matchSpecialExpression,
   throwSpecialExpression,
-  trySpecialExpression,
   unlessSpecialExpression,
   importSpecialExpression,
   effectSpecialExpression,

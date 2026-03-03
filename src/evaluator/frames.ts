@@ -331,32 +331,13 @@ export interface RecurFrame {
 }
 
 // ---------------------------------------------------------------------------
-// Special expressions — exception & effect handling
+// Special expressions — effect handling
 // ---------------------------------------------------------------------------
 
 /**
- * `try/catch` exception boundary.
+ * `do...with` effect handler boundary.
  *
- * Pushed around the try body evaluation. If an error is thrown during
- * sub-evaluation, the trampoline pops frames up to this one and evaluates
- * the catch body in a new context with the error bound to `errorSymbol`.
- *
- * `TryCatchFrame` only catches errors — it ignores `perform` (effects).
- * `TryWithFrame` only handles effects — it ignores errors.
- * The two frame types are independent and stack correctly.
- */
-export interface TryCatchFrame {
-  type: 'TryCatch'
-  errorSymbol: string | null // null when catch has no error binding: `catch () ...`
-  catchNode: AstNode
-  env: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
- * `try/with` effect handler boundary.
- *
- * Pushed around the try body evaluation. When `perform` is called, the
+ * Pushed around the do body evaluation. When `perform` is called, the
  * trampoline searches the continuation stack for a matching `TryWithFrame`.
  * The delimited continuation between `perform` and this frame is captured.
  *
@@ -364,7 +345,7 @@ export interface TryCatchFrame {
  * The effect expressions are evaluated eagerly when entering the `try/with`
  * scope (i.e., when the frame is created) via `evaluateNodeRecursive`.
  * This ensures handler matching is deterministic and doesn't depend on
- * state changes inside the try body.
+ * state changes inside the do body.
  */
 export interface TryWithFrame {
   type: 'TryWith'
@@ -586,7 +567,7 @@ export interface DebugStepFrame {
  * - **Collection construction**: ArrayBuildFrame, ObjectBuildFrame
  * - **Binding**: LetBindFrame, LoopBindFrame, LoopIterateFrame, ForLoopFrame
  * - **Control flow**: ThrowFrame, RecurFrame
- * - **Exception & effect handling**: TryCatchFrame, TryWithFrame
+ * - **Exception & effect handling**: TryWithFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: BindingDefaultFrame
  * - **Post-processing**: NanCheckFrame
@@ -635,7 +616,6 @@ export type Frame =
   | RecurFrame
   | PerformArgsFrame
   // Exception & effect handling
-  | TryCatchFrame
   | TryWithFrame
   | EffectResumeFrame
   // Parallel resume

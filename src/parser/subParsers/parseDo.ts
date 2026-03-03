@@ -1,5 +1,4 @@
-import type { DoNode } from '../../builtin/specialExpressions/block'
-import type { WithHandler } from '../../builtin/specialExpressions/try'
+import type { DoNode, WithHandler } from '../../builtin/specialExpressions/block'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'

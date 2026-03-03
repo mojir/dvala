@@ -17,13 +17,13 @@ const docs: CustomDocs = {
     ['eff', 'expression', 'An expression evaluating to an effect value (from `effect(name)`).'],
     ['arg1, arg2, ...', 'expressions', 'Arguments passed to the effect handler.'],
   ],
-  description: 'Invokes an effect. The nearest enclosing `try/with` handler matching the effect '
+  description: 'Invokes an effect. The nearest enclosing `do/with` handler matching the effect '
     + 'intercepts the call. The handler receives the arguments as an array and its return value '
     + 'becomes the result of `perform`. If no local handler matches, the effect is dispatched '
     + 'to the host.',
   examples: [
     `
-try
+do
   perform(effect(dvala.log), "hello")
 with
   case effect(dvala.log) then ([msg]) -> msg

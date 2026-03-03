@@ -26,7 +26,6 @@ import type {
   RecurFrame,
   SequenceFrame,
   ThrowFrame,
-  TryCatchFrame,
   TryWithFrame,
 } from './frames'
 
@@ -185,7 +184,6 @@ describe('frame types', () => {
     const _throw: ThrowFrame['type'] = 'Throw'
     const _recur: RecurFrame['type'] = 'Recur'
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
-    const _tryCatch: TryCatchFrame['type'] = 'TryCatch'
     const _tryWith: TryWithFrame['type'] = 'TryWith'
     const _effectResume: EffectResumeFrame['type'] = 'EffectResume'
     const _parallelResume: ParallelResumeFrame['type'] = 'ParallelResume'
@@ -213,7 +211,6 @@ describe('frame types', () => {
     expect(_throw).toBe('Throw')
     expect(_recur).toBe('Recur')
     expect(_performArgs).toBe('PerformArgs')
-    expect(_tryCatch).toBe('TryCatch')
     expect(_tryWith).toBe('TryWith')
     expect(_effectResume).toBe('EffectResume')
     expect(_parallelResume).toBe('ParallelResume')

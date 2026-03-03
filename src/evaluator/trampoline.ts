@@ -114,7 +114,6 @@ import type {
   RecurFrame,
   SequenceFrame,
   ThrowFrame,
-  TryCatchFrame,
   TryWithFrame,
 } from './frames'
 import type { Context } from './interface'
@@ -955,56 +954,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
     }
 
-    // --- try ---
-    case specialExpressionTypes.try: {
-      const tryExpression = node[1][1] as AstNode
-      const errorSymbol = node[1][2] as SymbolNode | undefined
-      const catchExpression = node[1][3] as AstNode | undefined
-      const withHandlerNodes = node[1][4] as [AstNode, AstNode][] | undefined
-
-      // Push effect handler frame if with-handlers exist
-      if (withHandlerNodes && withHandlerNodes.length > 0) {
-        // Eagerly evaluate effect expressions using recursive evaluator.
-        // Effect expressions are always simple (effect(name) or variable refs),
-        // so synchronous evaluation is safe.
-        const evaluatedHandlers: EvaluatedWithHandler[] = withHandlerNodes.map(([effectExpr, handlerNode]) => ({
-          effectRef: evaluateNodeRecursive(effectExpr, env) as Any,
-          handlerNode,
-        }))
-        const withFrame: TryWithFrame = {
-          type: 'TryWith',
-          handlers: evaluatedHandlers,
-          env,
-          sourceCodeInfo,
-        }
-        if (catchExpression) {
-          const catchFrame: TryCatchFrame = {
-            type: 'TryCatch',
-            errorSymbol: errorSymbol ? (errorSymbol as UserDefinedSymbolNode)[1] : null,
-            catchNode: catchExpression,
-            env,
-            sourceCodeInfo,
-          }
-          return { type: 'Eval', node: tryExpression, env, k: [withFrame, catchFrame, ...k] }
-        }
-        return { type: 'Eval', node: tryExpression, env, k: [withFrame, ...k] }
-      }
-
-      // No with-handlers — just try/catch
-      if (catchExpression) {
-        const frame: TryCatchFrame = {
-          type: 'TryCatch',
-          errorSymbol: errorSymbol ? (errorSymbol as UserDefinedSymbolNode)[1] : null,
-          catchNode: catchExpression,
-          env,
-          sourceCodeInfo,
-        }
-        return { type: 'Eval', node: tryExpression, env, k: [frame, ...k] }
-      }
-      // No catch, no with — just evaluate the body
-      return { type: 'Eval', node: tryExpression, env, k }
-    }
-
     // --- throw ---
     case specialExpressionTypes.throw: {
       const throwExpr = node[1][1] as AstNode
@@ -1475,8 +1424,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyRecur(frame, value, k)
     case 'PerformArgs':
       return applyPerformArgs(frame, value, k)
-    case 'TryCatch':
-      return applyTryCatch(value, k)
     case 'TryWith':
       return applyTryWith(value, k)
     case 'EffectResume':
@@ -2058,28 +2005,16 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
 
 /**
  * Search the continuation stack for the nearest TryCatchFrame.
- * If found, evaluate the catch body with the error bound (if errorSymbol is set).
- * If not found, re-throw the error.
+ * Since TryCatchFrame has been removed, this now always re-throws the error.
+ * Kept as a helper for the transition period while `throw` still exists.
  */
-function unwindToTryCatch(error: unknown, k: ContinuationStack): Step {
-  for (let i = 0; i < k.length; i++) {
-    const f = k[i]!
-    if (f.type === 'TryCatch') {
-      const { errorSymbol, catchNode, env } = f
-      const catchContext: Context = errorSymbol
-        ? { [errorSymbol]: { value: error as Any } }
-        : {}
-      const remainingK = k.slice(i + 1)
-      return { type: 'Eval', node: catchNode, env: env.create(catchContext), k: remainingK }
-    }
-  }
-  // No TryCatchFrame found — re-throw the error
+function unwindToTryCatch(error: unknown, _k: ContinuationStack): never {
   throw error
 }
 
 function applyThrow(frame: ThrowFrame, value: Any, _k: ContinuationStack): never {
   assertString(value, frame.sourceCodeInfo, { nonEmpty: true })
-  // Throw so tick()'s catch block routes through dvala.error before try/catch fallback.
+  // Throw so tick()'s catch block routes through dvala.error.
   throw new UserDefinedError(value, frame.sourceCodeInfo)
 }
 
@@ -2088,7 +2023,7 @@ function applyThrow(frame: ThrowFrame, value: Any, _k: ContinuationStack): never
  *
  * Mirrors the dispatch logic in `dispatchPerform` but returns `null` instead
  * of throwing when no handler matches, so the caller can fall back to
- * `unwindToTryCatch` for legacy try/catch compatibility.
+ * re-throwing the error as a JS exception.
  *
  * Search order:
  * 1. Local `TryWithFrame` handlers (innermost first)
@@ -2225,12 +2160,6 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
   throw new DvalaError('recur called outside of loop or function body', sourceCodeInfo)
 }
 
-function applyTryCatch(_value: Any, k: ContinuationStack): Step {
-  // Try body completed successfully — the catch frame is discarded.
-  // The value propagates up past the TryCatchFrame.
-  return { type: 'Value', value: _value, k }
-}
-
 function applyTryWith(_value: Any, k: ContinuationStack): Step {
   // Try body completed successfully — the with frame is discarded.
   // The value propagates up past the TryWithFrame.
@@ -2297,7 +2226,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
  *   NOT the environment at the perform call site
  *
  * Continuation structure:
- *   Original k:   [...body_k, TryWithFrame(i), TryCatchFrame?(i+1), ...outer_k]
+ *   Original k:   [...body_k, TryWithFrame(i), ...outer_k]
  *   Handler's k:  [EffectResumeFrame{resumeK=k}, ...outer_k]
  *   When handler returns V: EffectResumeFrame replaces k with original k,
  *   so V flows through body_k with TryWithFrame still on stack.
@@ -2314,14 +2243,9 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
           // (TryWithFrame stays on the stack for subsequent performs)
           const resumeK = k
 
-          // Determine outer_k — skip TryWithFrame and any adjacent TryCatchFrame
-          // from the same try/with/catch block, so errors and effects from the
-          // handler propagate upward past the current try block.
-          let skipEnd = i + 1
-          if (skipEnd < k.length && k[skipEnd]!.type === 'TryCatch') {
-            skipEnd++ // also skip the TryCatchFrame from the same block
-          }
-          const outerK = k.slice(skipEnd)
+          // Determine outer_k — skip TryWithFrame so errors and effects from the
+          // handler propagate upward past the current do...with block.
+          const outerK = k.slice(i + 1)
 
           // Handler's continuation: EffectResumeFrame bridges back to resumeK
           const effectResumeFrame: EffectResumeFrame = {
@@ -2372,8 +2296,8 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
  *   continuation `k` and optional metadata. The effect trampoline loop
  *   catches this and returns `RunResult.suspended`.
  *
- * Host handler errors are treated as Dvala-level errors — they're fed to
- * `unwindToTryCatch` so that Dvala `try/catch` blocks can intercept them.
+ * Host handler errors are treated as Dvala-level errors — they produce
+ * ErrorStep so tick() can route through dvala.error handlers.
  */
 function dispatchHostHandler(
   handler: EffectHandler,
@@ -2403,7 +2327,7 @@ function dispatchHostHandler(
             },
             (e) => {
               // The promise-value rejected — produce an ErrorStep so tick()
-              // can route through dvala.error before falling back to try/catch.
+              // can route through dvala.error.
               resolve({
                 type: 'Error',
                 error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
@@ -2436,7 +2360,7 @@ function dispatchHostHandler(
       }
       else {
         // Handler itself threw — produce an ErrorStep so tick() can route
-        // through dvala.error before falling back to try/catch.
+        // through dvala.error.
         resolve({
           type: 'Error',
           error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
@@ -2997,7 +2921,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       throw error
     }
     // Route DvalaError through the 'dvala.error' algebraic effect so that
-    // do...with handlers can intercept runtime errors before try/catch.
+    // do...with handlers can intercept runtime errors.
     if (error instanceof DvalaError) {
       // For Value steps, step.k[0] is the frame that was being applied when
       // the error was thrown (e.g. ThrowFrame, LetDestructFrame, etc.).
@@ -3015,8 +2939,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
         return effectStep
       }
     }
-    // Fallback: search the continuation stack for a TryCatchFrame to handle the error.
-    // This handles both explicit throw() and runtime errors (e.g., type errors).
+    // Fallback: no handler matched — re-throw the error as a JS exception.
     return unwindToTryCatch(error, step.k)
   }
 }

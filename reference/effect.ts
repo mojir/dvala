@@ -23,7 +23,7 @@ export const effect: Record<EffectName, EffectReference> = {
       'perform(effect(dvala.log), "hello")',
       'perform(effect(dvala.log), 1, 2, 3)',
     ],
-    seeAlso: ['perform', 'effect', 'try'],
+    seeAlso: ['perform', 'effect', 'block'],
   },
   '-effect-dvala.now': {
     effect: true,
@@ -35,7 +35,7 @@ export const effect: Record<EffectName, EffectReference> = {
     examples: [
       'perform(effect(dvala.now))',
     ],
-    seeAlso: ['perform', 'effect', 'try'],
+    seeAlso: ['perform', 'effect', 'block'],
   },
   '-effect-dvala.random': {
     effect: true,
@@ -47,7 +47,7 @@ export const effect: Record<EffectName, EffectReference> = {
     examples: [
       'perform(effect(dvala.random))',
     ],
-    seeAlso: ['perform', 'effect', 'try'],
+    seeAlso: ['perform', 'effect', 'block'],
   },
   '-effect-dvala.sleep': {
     effect: true,
@@ -64,6 +64,6 @@ export const effect: Record<EffectName, EffectReference> = {
     examples: [
       'effect(dvala.sleep)',
     ],
-    seeAlso: ['perform', 'effect', 'try'],
+    seeAlso: ['perform', 'effect', 'block'],
   },
 }
