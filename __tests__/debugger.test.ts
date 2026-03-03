@@ -437,7 +437,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
 
     it('should handle errors in program', async () => {
       const dbg = createDebugger()
-      let r = await dbg.run('throw("boom")')
+      let r = await dbg.run('perform(effect(dvala.error), "boom")')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -448,7 +448,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
         do
-          throw("oops")
+          perform(effect(dvala.error), "oops")
         with
           case effect(dvala.error) then (args) -> "caught: " ++ first(args)
         end

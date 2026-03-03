@@ -464,7 +464,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert-throws } = import(assertion);\nassert-throws(-> throw("Error"))',
+      'let { assert-throws } = import(assertion);\nassert-throws(-> perform(effect(dvala.error), "Error"))',
       'let { assert-throws } = import(assertion);\ndo assert-throws(-> identity("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
     ],
     seeAlso: ['assertion.assert-throws-error', 'assertion.assert-not-throws'],
@@ -503,7 +503,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert-throws-error } = import(assertion);\ndo assert-throws-error(-> throw("Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-throws-error } = import(assertion);\ndo assert-throws-error(-> perform(effect(dvala.error), "Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
       'let { assert-throws-error } = import(assertion);\ndo assert-throws-error(-> identity("Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
     ],
     seeAlso: ['assertion.assert-throws', 'assertion.assert-not-throws'],
@@ -538,7 +538,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     examples: [
       'let { assert-not-throws } = import(assertion);\ndo assert-not-throws(-> identity("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
-      'let { assert-not-throws } = import(assertion);\ndo assert-not-throws(-> throw("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-not-throws } = import(assertion);\ndo assert-not-throws(-> perform(effect(dvala.error), "Error")) with case effect(dvala.error) then ([msg]) -> msg end',
     ],
     seeAlso: ['assertion.assert-throws', 'assertion.assert-throws-error'],
     hideOperatorForm: true,

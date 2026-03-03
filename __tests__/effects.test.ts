@@ -225,10 +225,10 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2d: effects and dvala.error interaction', () => {
     it('errors without dvala.error handler propagate as unhandled', () => {
-      // throw("boom") routes through dvala.error, but no handler → propagates
+      // perform(effect(dvala.error), "boom") routes through dvala.error, but no handler → propagates
       expect(() => dvala.run(`
         do
-          throw("boom")
+          perform(effect(dvala.error), "boom")
         with
           case effect(my.eff) then ([x]) -> x
         end
@@ -252,7 +252,7 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(effect(my.eff), "data")
           with
-            case effect(my.eff) then ([x]) -> throw("handler error: " ++ x)
+            case effect(my.eff) then ([x]) -> perform(effect(dvala.error), "handler error: " ++ x)
           end
         with
           case effect(dvala.error) then ([msg]) -> "outer catch: " ++ msg
@@ -266,7 +266,7 @@ describe('phase 2 — Local Effect Handling', () => {
     it('body errors caught by dvala.error handler when present', () => {
       const result = dvala.run(`
         do
-          throw("body error")
+          perform(effect(dvala.error), "body error")
         with
           case effect(my.eff) then ([x]) -> x
           case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
@@ -292,7 +292,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           do
             do
-              throw("body boom")
+              perform(effect(dvala.error), "body boom")
             end
           with
             case effect(my.eff) then ([x]) -> x
@@ -405,7 +405,7 @@ describe('phase 3 — Host Async API', () => {
     })
 
     it('should return error result for runtime errors', async () => {
-      const result = await run('throw("boom")')
+      const result = await run('perform(effect(dvala.error), "boom")')
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('boom')
@@ -1091,7 +1091,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should handle errors after resume', async () => {
       const r1 = await run(`
         let x = perform(effect(my.wait));
-        throw("error: " ++ x)
+        perform(effect(dvala.error), "error: " ++ x)
       `, {
         handlers: {
           'my.wait': async ({ suspend }) => { suspend() },
@@ -1112,7 +1112,7 @@ describe('phase 4 — Suspension & Resume', () => {
       const r1 = await run(`
         do
           let x = perform(effect(my.wait));
-          if x == "bad" then throw("bad input") else x end
+          if x == "bad" then perform(effect(dvala.error), "bad input") else x end
         with
           case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
@@ -1662,7 +1662,7 @@ describe('phase 6 — Parallel & Race', () => {
       const result = await run(`
         parallel(
           1 + 2,
-          throw("branch error"),
+          perform(effect(dvala.error), "branch error"),
           5 + 6
         )
       `)
@@ -1916,8 +1916,8 @@ describe('phase 6 — Parallel & Race', () => {
     it('should error if all branches error', async () => {
       const result = await run(`
         race(
-          throw("error-1"),
-          throw("error-2")
+          perform(effect(dvala.error), "error-1"),
+          perform(effect(dvala.error), "error-2")
         )
       `)
       expect(result.type).toBe('error')
@@ -2253,7 +2253,7 @@ describe('step 1 — do...with...end', () => {
         with
           case effect(my.eff) then (args) -> perform(effect(dvala.error), "something went wrong")
         end
-      `)).toThrow('Unhandled effect')
+      `)).toThrow('something went wrong')
     })
   })
 

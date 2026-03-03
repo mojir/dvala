@@ -21,17 +21,17 @@ deliberate deviations to support serializable continuations.
 ### What Dvala preserves
 
 - ✓ Effects as algebraic operations — `perform(eff, ...args)`
-- ✓ Handlers as first-class effect interpreters — `try/with`
+- ✓ Handlers as first-class effect interpreters — `do/with`
 - ✓ Lexically scoped handlers — innermost `with` wins
 - ✓ Deep handlers — effects inside handlers delegate to outer scope
-- ✓ Handlers run outside try-scope — `catch` does not protect with-handlers
+- ✓ Error is an effect — `effect(dvala.error)` replaces try/catch
 
 ### Deliberate deviations
 
 - ✗ **No return-clause**
   P&P handlers have a 'return' clause that transforms the final
   value of the body. Dvala omits this — the same transformation
-  can always be expressed by wrapping the `try/with` block.
+  can always be expressed by wrapping the `do/with` block.
 
 - ✗ **No multi-shot continuations**
   In P&P, resume is first-class and can be called multiple times.
@@ -108,14 +108,13 @@ perform(eff, arg1, arg2, ...)
 `eff` is any expression that evaluates to an effect value.
 Effect values are first-class — can be stored, passed, returned.
 
-## `try` / `with` / `catch` / `end`
+## `do` / `with` / `end`
 
 **Valid forms:**
 
-- `try ... catch ... end` — exceptions only (as before)
-- `try ... with ... end` — effects only
-- `try ... with ... catch ... end` — effects and exceptions
-- `try ... end` — invalid, use `do/end` instead
+- `do ... with case effect(dvala.error) then ... end` — error handling (errors are effects)
+- `do ... with ... end` — effects only
+- `do ... with ... case effect(dvala.error) then ... end` — effects and error handling
 
 `with` uses `case/then` syntax — consistent with `cond` and `match`.
 
@@ -139,7 +138,7 @@ Dead handlers (same reference, later position) should warn in tooling.
 let llm = effect(llm.complete)
 let alias = effect(llm.complete)   // same reference as llm
 
-try ... with
+do ... with
   case llm   then ...              // matches effect(llm.complete)
   case alias then ...              // never reached — same reference
 end
@@ -147,22 +146,22 @@ end
 
 ### Scope semantics
 
-- **try-body** sees overridden scope — with-handlers are active
+- **do-body** sees overridden scope — with-handlers are active
 - **with-handlers** see outer scope — original bindings, not overrides
-- **catch** sees outer scope — same as with-handlers
 
-### `catch` semantics
+### Error handling semantics
 
-`catch` only protects the try-body — NOT with-handlers (per P&P).
-Errors thrown inside a with-handler propagate to the nearest
-enclosing `try/catch` outside the current `try/with/end` block.
+Errors are handled via `effect(dvala.error)` — a standard effect like any other.
+`case effect(dvala.error)` in a `with` block only handles errors from the do-body.
+Errors performed inside a with-handler propagate to the nearest
+enclosing `do/with` outside the current `do/with/end` block.
 
 ### Effect lookup order
 
 ```
 perform(eff, ...)
-  → matching case in nearest enclosing try/with?   yes → use it
-  → matching case in outer try/with?               yes → use it
+  → matching case in nearest enclosing do/with?    yes → use it
+  → matching case in outer do/with?                yes → use it
   → JS handler registered in run()?                yes → use it
   → standard effect with default implementation?   yes → use it
   → DvalaError: No handler for effect 'llm.complete'
@@ -201,36 +200,35 @@ let result = perform(llm, "Summarize this")
 // Inline
 perform(effect(dvala.log), "hello")
 
-// try/with — case/then syntax, handler return value is resume value
-try
+// do/with — case/then syntax, handler return value is resume value
+do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) -> upper-case(prompt)
 end
 
-// try/catch — exceptions only
-try
+// do/with — error handling via dvala.error effect
+do
   risky-operation()
-catch (error)
-  "failed: " ++ error.message
+with
+  case effect(dvala.error) then ([msg]) -> "failed: " ++ msg
 end
 
-// try/with/catch — body errors caught, handler errors propagate upward
-try
+// do/with — body errors caught, handler errors propagate upward
+do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) ->
     if empty?(prompt) then
-      throw("Empty prompt")        // propagates to OUTER try/catch
+      perform(effect(dvala.error), "Empty prompt")  // propagates to OUTER do/with
     else
       upper-case(prompt)
     end
-catch (error)
-  "Body failed: " ++ error.message // only sees errors from body, not handlers
+  case effect(dvala.error) then ([msg]) -> "Body failed: " ++ msg // only sees errors from body, not handlers
 end
 
 // Destructuring args
-try
+do
   perform(effect(state.set), "key", 42)
 with
   case effect(state.set) then ([key, value]) -> do
@@ -240,7 +238,7 @@ with
 end
 
 // Delegating to outer handler — enriches the effect
-try
+do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) ->
@@ -249,19 +247,20 @@ end
 
 // Effects are first-class — pass as arguments
 let with-retry = (eff, max-attempts, body) ->
-  try
+  do
     body()
   with
     case eff then ([...args]) ->
       loop (attempt = 0) ->
-        try
+        do
           perform(eff, ...args)
-        catch
-          if attempt < max-attempts then
-            recur(attempt + 1)
-          else
-            throw("Max retries exceeded")
-          end
+        with
+          case effect(dvala.error) then ([msg]) ->
+            if attempt < max-attempts then
+              recur(attempt + 1)
+            else
+              perform(effect(dvala.error), "Max retries exceeded")
+            end
         end
       end
   end
@@ -272,7 +271,7 @@ with-retry(llm, 3, () ->
 
 // Recursive handler via self
 let llm = effect(llm.complete)
-try
+do
   perform(llm, "a very long prompt that needs shortening")
 with
   case llm then ([prompt]) ->
@@ -288,7 +287,7 @@ let charge   = effect(payment.charge)
 let requires = effect(payment.approval-required)
 
 let with-approval-policy = (threshold, body) ->
-  try
+  do
     body()
   with
     case charge then ([amount, account]) ->
@@ -312,10 +311,10 @@ let critique  = (doc) -> perform(llm, "Critique: " ++ doc)
 
 { summarize: summarize, critique: critique, llm: llm }
 
-// Consumer — override via try/with or JS handler in run()
+// Consumer — override via do/with or JS handler in run()
 let pkg = import(llm-package)
 
-try
+do
   pkg.summarize("document")
 with
   case effect(llm.complete) then ([p]) -> "mocked: " ++ p

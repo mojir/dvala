@@ -847,7 +847,7 @@ describe('async support', () => {
       await expect(dvala.async.run(`
         loop (n = 0) -> do
           asyncFn();
-          throw("loop-error")
+          perform(effect(dvala.error), "loop-error")
         end
       `, {
         bindings: { asyncFn: async () => 1 },
@@ -883,7 +883,7 @@ describe('async support', () => {
       const dvala = new Dvala()
       await expect(dvala.async.run(`
         loop ({ x = asyncFn() } = { x: 1 }) ->
-          if x <= 0 then throw("done")
+          if x <= 0 then perform(effect(dvala.error), "done")
           else recur({})
           end
       `, {

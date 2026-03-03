@@ -22,8 +22,8 @@ const docs: FunctionDocs = {
   ],
   description: 'Throws `UserDefinedError` with message set to $expr evaluated. $expr must evaluate to a string.',
   examples: [
-    'do throw("You shall not pass!") with case effect(dvala.error) then ([msg]) -> "Error: " ++ msg end',
-    'do throw(slice("You shall not pass!", 0, 3)) with case effect(dvala.error) then ([msg]) -> "Error: " ++ msg end',
+    'do perform(effect(dvala.error), "You shall not pass!") with case effect(dvala.error) then ([msg]) -> "Error: " ++ msg end',
+    'do perform(effect(dvala.error), slice("You shall not pass!", 0, 3)) with case effect(dvala.error) then ([msg]) -> "Error: " ++ msg end',
   ],
 }
 
