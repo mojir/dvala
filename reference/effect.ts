@@ -11,15 +11,14 @@ export const effect: Record<EffectName, EffectReference> = {
     effect: true,
     title: 'dvala.log',
     category: 'effect',
-    description: 'Logs arguments to the console. Resumes with `null` (logging is a side effect with no meaningful return value).',
+    description: 'Logs arguments to the console. Resumes with the logged value.',
     args: {
-      '...args': {
+      value: {
         type: 'any',
-        rest: true,
-        description: 'Values to log.',
+        description: 'Value to log.',
       },
     },
-    returns: { type: 'null' },
+    returns: { type: 'any' },
     examples: [
       'perform(effect(dvala.log), "hello")',
       'perform(effect(dvala.log), 1, 2, 3)',

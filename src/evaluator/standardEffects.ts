@@ -20,6 +20,7 @@
 import type { Any, Arr } from '../interface'
 import { DvalaError } from '../errors'
 import type { SourceCodeInfo } from '../tokenizer/token'
+import { assertAny } from '../typeGuards/dvala'
 import type { ContinuationStack } from './frames'
 import type { Step } from './step'
 
@@ -40,12 +41,17 @@ type StandardEffectHandler = (args: Arr, k: ContinuationStack, sourceCodeInfo?: 
 const standardEffectHandlers: Record<string, StandardEffectHandler> = {
   /**
    * `dvala.log` — Log arguments to console.
-   * Resumes with null (logging is a side effect with no meaningful return value).
+   * Resumes with the logged value.
    */
   'dvala.log': (args: Arr, k: ContinuationStack): Step => {
+    if (args.length !== 1) {
+      throw new DvalaError(`dvala.log expects exactly 1 argument, got ${args.length}`, undefined)
+    }
+    const value = args[0]
+    assertAny(value, undefined)
     // eslint-disable-next-line no-console
-    console.log(...args)
-    return { type: 'Value', value: null, k }
+    console.log(value)
+    return { type: 'Value', value, k }
   },
 
   /**
