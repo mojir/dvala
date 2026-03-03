@@ -101,7 +101,7 @@ export function isAtExpressionEnd(ctx: ParserContext): boolean {
     return [';', ',', ':'].includes(token[1])
   }
   if (isReservedSymbolToken(token)) {
-    return ['else', 'when', 'while', 'case', 'catch', 'let', 'then', 'end', 'do'].includes(token[1])
+    return ['else', 'when', 'while', 'case', 'let', 'then', 'end', 'do'].includes(token[1])
   }
   return false
 }

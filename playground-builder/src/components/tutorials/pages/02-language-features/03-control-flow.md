@@ -95,22 +95,22 @@ end
 
 ## Error Handling
 
-Use `try` / `catch` to handle errors. `throw` raises an error:
+Use `do` / `with` to handle errors. `throw` raises an error:
 
 ```
-try
+do
   throw("oops")
-catch(e)
-  e.message
+with
+  case effect(dvala.error) then ([msg]) -> msg
 end
 ```
 
 ```
 let safe-div = (a, b) ->
-  try
+  do
     a / b
-  catch
-    "error"
+  with
+    case effect(dvala.error) then (args) -> "error"
   end;
 safe-div(10, 0)
 ```

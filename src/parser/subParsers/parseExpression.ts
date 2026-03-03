@@ -21,7 +21,6 @@ import { parseLoop } from './parseLoop'
 import { parseOperand } from './parseOperand'
 import { parseMatch } from './parseMatch'
 import { parseSymbol } from './parseSymbol'
-import { parseTry } from './parseTry'
 
 export function createParserContext(tokenStream: TokenStream): ParserContext {
   const ctx = new ParserContext(tokenStream)
@@ -54,9 +53,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         break
       case 'loop':
         left = parseLoop(ctx, token)
-        break
-      case 'try':
-        left = parseTry(ctx, token)
         break
     }
   }

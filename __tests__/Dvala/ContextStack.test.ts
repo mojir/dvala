@@ -11,7 +11,7 @@ describe('contextStack', () => {
   it('should throw if storing special expression', () => {
     const contextStack = createContextStack()
 
-    expect(() => contextStack.addValues({ try: 'bar' }, undefined)).toThrow()
+    expect(() => contextStack.addValues({ throw: 'bar' }, undefined)).toThrow()
   })
   it('should throw if storing normal expression', () => {
     const contextStack = createContextStack()

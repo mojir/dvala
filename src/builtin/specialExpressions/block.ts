@@ -3,7 +3,8 @@ import type { AstNode, SpecialExpressionNode } from '../../parser/types'
 import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 import type { specialExpressionTypes } from '../specialExpressionTypes'
-import type { WithHandler } from './try'
+
+export type WithHandler = [AstNode, AstNode] // [effectExpr, handlerFn]
 
 export type DoNode = SpecialExpressionNode<[typeof specialExpressionTypes['block'], AstNode[], WithHandler[] | undefined]>
 

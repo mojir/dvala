@@ -25,7 +25,6 @@ import type {
   RecurFrame,
   SequenceFrame,
   ThrowFrame,
-  TryCatchFrame,
   TryWithFrame,
 } from './frames'
 import type { Step } from './step'
@@ -443,15 +442,6 @@ describe('stepNode', () => {
       if (step.type === 'Eval') {
         expect(step.k.length).toBe(1)
         expect(step.k[0]!.type).toBe('Match')
-      }
-    })
-
-    it('should push TryCatchFrame for try expression', () => {
-      const node = parseFirst('try 1 catch (e) e end')
-      const step = stepNodeSync(node, emptyEnv(), [])
-      expect(step.type).toBe('Eval')
-      if (step.type === 'Eval') {
-        expect(step.k.some(f => f.type === 'TryCatch')).toBe(true)
       }
     })
 
@@ -906,17 +896,6 @@ describe('applyFrame', () => {
     })
   })
 
-  describe('tryCatchFrame', () => {
-    it('should pass value through when try body succeeds', () => {
-      const frame: TryCatchFrame = { type: 'TryCatch', errorSymbol: 'e', catchNode: [NodeTypes.Number, 0], env: emptyEnv() }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(42)
-      }
-    })
-  })
-
   describe('tryWithFrame', () => {
     it('should pass value through when try body succeeds', () => {
       const frame: TryWithFrame = { type: 'TryWith', handlers: [], env: emptyEnv() }
@@ -1073,8 +1052,8 @@ describe('trampoline integration', () => {
     expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), []))).toThrow(UserDefinedError)
   })
 
-  it('should evaluate try/catch success', () => {
-    const node = parseFirst('try 42 catch (e) 0 end')
+  it('should evaluate do...with dvala.error handler on success', () => {
+    const node = parseFirst('do 42 with case effect(dvala.error) then (args) -> 0 end')
     const step = stepNodeSync(node, emptyEnv(), [])
     expect(runTrampoline(step)).toBe(42)
   })
@@ -1212,8 +1191,8 @@ describe('sync/async trampoline parity', () => {
     ['((x) -> x * 2)(21)', 42],
     ['loop (x = 0) -> if x < 5 then recur(x + 1) else x end', 5],
     ['(n -> if n > 0 then recur(n - 1) else n end)(10)', 0],
-    ['try 1 + 2 catch (e) 0 end', 3],
-    ['try throw("oops") catch (e) "caught" end', 'caught'],
+    ['do 1 + 2 with case effect(dvala.error) then (args) -> 0 end', 3],
+    ['do throw("oops") with case effect(dvala.error) then ([msg]) -> "caught" end', 'caught'],
     ['for (x in [1, 2, 3]) -> x * 10', [10, 20, 30]],
     ['match 3 case 1 then "one" case 3 then "three" end', 'three'],
   ]

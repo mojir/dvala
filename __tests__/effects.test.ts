@@ -567,7 +567,7 @@ describe('phase 3 — Host Async API', () => {
       }
     })
 
-    it('should propagate handler errors as RunResult.error when no try/catch', async () => {
+    it('should propagate handler errors as RunResult.error when no error handler', async () => {
       const result = await run(`
         perform(effect(my.fail))
       `, {

@@ -155,8 +155,7 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('for (a in [1, 2]) -> do 1, end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('for (a in [1, 2] 2) -> do 1 end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('for (a in [1, 2], 2) -> do 1 end')).toThrow(DvalaError)
-    expect(() => dvalaDebug.run('try 1; 2 catch 2; 3 end')).not.toThrow()
-    expect(() => dvalaDebug.run('try 1; 2 catch 2, end')).toThrow(DvalaError)
+    expect(() => dvalaDebug.run('do 1; 2 end')).not.toThrow()
     expect(() => dvala.getUndefinedSymbols('loop ([,x] = [1, 2]) -> do 1 end')).not.toThrow()
     expect(() => dvalaDebug.run('loop ([,x] = [1, 2]) -> do 1 end')).not.toThrow()
     expect(() => dvalaDebug.run('loop (x = 2) -> do 1, end')).toThrow(DvalaError)
@@ -476,23 +475,6 @@ describe('parser', () => {
       expect(dvala.run('unless 1 < 2 then 1 else 2 end')).toBe(2)
       expect(dvala.run('unless 1 < 2 then 1 end')).toBe(null)
       expect(dvala.run('unless 1 > 2 then 1 else 2 end')).toBe(1)
-    })
-  })
-
-  describe('try', () => {
-    test('samples', () => {
-      expect(dvala.run('try 1 + 2 catch 0 end')).toBe(3)
-      expect(dvala.run('try 1 + "2" catch 0 end')).toBe(0)
-      expect(dvala.run('try 1 + "2" catch {} end')).toEqual({})
-      expect(dvala.run('try {} catch {} end')).toEqual({})
-      expect(dvala.run(`
-        try
-          let x = "2";
-          1 + x
-        catch (error)
-          error
-        end
-      `)).toBeInstanceOf(Error)
     })
   })
 

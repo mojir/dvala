@@ -11,7 +11,6 @@ const nonNumberReservedSymbolRecord = {
   in: null,
   when: null,
   while: null,
-  catch: null,
   function: null,
   as: null,
   then: null,

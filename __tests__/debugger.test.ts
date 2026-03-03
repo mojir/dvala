@@ -274,10 +274,10 @@ describe('phase 7 — Time-Travel Debugger', () => {
       }
     })
 
-    it('should work with local try/with handlers', async () => {
+    it('should work with local do/with handlers', async () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
-        try
+        do
           perform(effect(test.mock), "input")
         with
           case effect(test.mock) then ([arg]) -> "mocked: " ++ arg
