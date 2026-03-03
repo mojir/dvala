@@ -27,7 +27,7 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
 
   return nodes.length === 1
     ? nodes[0]!
-    : withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, nodes]], ctx.peekSourceCodeInfo()) satisfies DoNode
+    : withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, nodes, undefined]], ctx.peekSourceCodeInfo()) satisfies DoNode
 }
 
 function assertImplicitBlockEnd(ctx: ParserContext, ends: ImplicitBlockEnd[]): void {

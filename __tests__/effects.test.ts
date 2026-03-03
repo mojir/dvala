@@ -2156,3 +2156,126 @@ describe('phase 6 — Parallel & Race', () => {
     })
   })
 })
+
+describe('step 1 — do...with...end', () => {
+  describe('basic do...with handler', () => {
+    it('should handle an effect — return value resumes the perform call', () => {
+      const result = dvala.run(`
+        do
+          perform(effect(my.log), "hello")
+        with
+          case effect(my.log) then ([msg]) -> "logged: " ++ msg
+        end
+      `)
+      expect(result).toBe('logged: hello')
+    })
+
+    it('should pass args as an array to the handler', () => {
+      const result = dvala.run(`
+        do
+          perform(effect(my.add), 10, 20)
+        with
+          case effect(my.add) then ([a, b]) -> a + b
+        end
+      `)
+      expect(result).toBe(30)
+    })
+
+    it('should work with no-arg perform', () => {
+      const result = dvala.run(`
+        do
+          perform(effect(my.value))
+        with
+          case effect(my.value) then (args) -> 42
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('should resume and continue the body computation', () => {
+      const result = dvala.run(`
+        do
+          let x = perform(effect(my.get));
+          x * 2
+        with
+          case effect(my.get) then (args) -> 21
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('should skip do...with frame on success (no effect performed)', () => {
+      const result = dvala.run(`
+        do
+          1 + 2
+        with
+          case effect(my.eff) then (args) -> 999
+        end
+      `)
+      expect(result).toBe(3)
+    })
+
+    it('should handle multiple cases', () => {
+      const result = dvala.run(`
+        do
+          perform(effect(a), 1) + perform(effect(b), 2)
+        with
+          case effect(a) then ([x]) -> x * 10
+          case effect(b) then ([x]) -> x * 100
+        end
+      `)
+      expect(result).toBe(210)
+    })
+
+    it('should delegate to outer do...with when no local match', () => {
+      const result = dvala.run(`
+        do
+          do
+            perform(effect(outer.eff), "value")
+          with
+            case effect(inner.eff) then ([x]) -> "inner: " ++ x
+          end
+        with
+          case effect(outer.eff) then ([x]) -> "outer: " ++ x
+        end
+      `)
+      expect(result).toBe('outer: value')
+    })
+
+    it('should work with effect references from variables', () => {
+      const result = dvala.run(`
+        let eff = effect(my.eff);
+        do
+          perform(eff, "world")
+        with
+          case eff then ([msg]) -> "hello " ++ msg
+        end
+      `)
+      expect(result).toBe('hello world')
+    })
+
+    it('should propagate errors via perform(effect(dvala.error))', () => {
+      expect(() => dvala.run(`
+        do
+          perform(effect(my.eff), "data")
+        with
+          case effect(my.eff) then (args) -> perform(effect(dvala.error), "something went wrong")
+        end
+      `)).toThrow('Unhandled effect')
+    })
+  })
+
+  describe('do...with and do body scoping', () => {
+    it('should see outer bindings from the body', () => {
+      const result = dvala.run(`
+        let prefix = "pre-";
+        do
+          perform(effect(my.eff), "value")
+        with
+          case effect(my.eff) then ([x]) -> prefix ++ x
+        end
+      `)
+      expect(result).toBe('pre-value')
+    })
+  })
+})

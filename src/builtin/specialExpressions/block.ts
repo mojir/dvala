@@ -1,23 +1,34 @@
 import type { Any } from '../../interface'
 import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 import type { specialExpressionTypes } from '../specialExpressionTypes'
+import type { WithHandler } from './try'
 
-export type DoNode = SpecialExpressionNode<[typeof specialExpressionTypes['block'], AstNode[]]>
+export type DoNode = SpecialExpressionNode<[typeof specialExpressionTypes['block'], AstNode[], WithHandler[] | undefined]>
 
 const docs: CustomDocs = {
   category: 'special-expression',
-  customVariants: ['do body end'],
+  customVariants: ['do body end', 'do body with case effect(name) then handler end'],
   details: [
     ['body', 'expressions', 'The expressions to evaluate.'],
+    ['effect(name)', 'expression', 'An expression evaluating to an effect value.'],
+    ['handler', 'expression', 'A function (args) -> result that handles the effect. Its return value resumes the perform call.'],
   ],
-  description: 'Evaluates `body`. Resulting value is the value of the last expression.',
+  description: 'Evaluates `body`. Resulting value is the value of the last expression. '
+    + 'Effect handlers can be installed via `with` to intercept `perform` calls.',
   examples: [
     `
 do
   let a = 1 + 2 + 3 + 4;
   let b = -> $ * ( $ + 1 );
   b(a)
+end`,
+    `
+do
+  perform(effect(dvala.log), "hello")
+with
+  case effect(dvala.log) then ([msg]) -> null
 end`,
   ],
 }
@@ -26,6 +37,17 @@ export const doSpecialExpression: BuiltinSpecialExpression<Any, DoNode> = {
   arity: {},
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
-    return getUndefinedSymbols(node[1][1], contextStack.create({}), builtin, evaluateNode)
+    const bodyResult = getUndefinedSymbols(node[1][1], contextStack.create({}), builtin, evaluateNode)
+    const withHandlers = node[1][2]
+    if (!withHandlers || withHandlers.length === 0) {
+      return bodyResult
+    }
+    let withResult = new Set<string>()
+    for (const [effectExpr, handlerFn] of withHandlers) {
+      const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin, evaluateNode)
+      const handlerResult = getUndefinedSymbols([handlerFn], contextStack, builtin, evaluateNode)
+      withResult = joinSets(withResult, effectResult, handlerResult)
+    }
+    return joinSets(bodyResult, withResult)
   },
 }

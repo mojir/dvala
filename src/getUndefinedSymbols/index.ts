@@ -13,7 +13,7 @@ export type UndefinedSymbols = Set<string>
 export const getUndefinedSymbols: GetUndefinedSymbols = (ast, contextStack, builtin, evaluateNode) => {
   const nodes: AstNode[] = Array.isArray(ast)
     ? ast
-    : [[NodeTypes.SpecialExpression, [specialExpressionTypes.block, ast.body]] satisfies DoNode]
+    : [[NodeTypes.SpecialExpression, [specialExpressionTypes.block, ast.body, undefined]] satisfies DoNode]
 
   const unresolvedSymbols = new Set<string>()
 
