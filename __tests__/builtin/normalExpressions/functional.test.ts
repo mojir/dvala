@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { Dvala } from '../../../src/Dvala/Dvala'
-import { DvalaError, RecurSignal, UserDefinedError } from '../../../src/errors'
+import { DvalaError, RecurSignal } from '../../../src/errors'
 import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
 
 describe('functional functions.', () => {
@@ -195,9 +195,6 @@ qq(null)`)).toBe(null)
 let r = recur;
 r(1)`)).toThrow(RecurSignal)
       })
-      expect(() => dvala.run(`
-let t = throw;
-t("error")`)).toThrow(UserDefinedError)
       expect(() => dvala.run('let t = \'if\';')).toThrow(DvalaError)
       expect(() => dvala.run('let d = defined?; d(+)')).toThrow(DvalaError)
     })

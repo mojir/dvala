@@ -23,6 +23,7 @@
 import type { DvalaError } from '../errors'
 import type { Any, Arr } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
+import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack, Frame } from './frames'
 import type { ContextStack } from './ContextStack'
 
@@ -88,6 +89,7 @@ export interface PerformStep {
   effect: EffectRef
   args: Arr
   k: ContinuationStack
+  sourceCodeInfo?: SourceCodeInfo
 }
 
 /**

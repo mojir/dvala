@@ -14,7 +14,6 @@ import { doseqSpecialExpression, forSpecialExpression } from './specialExpressio
 import { orSpecialExpression } from './specialExpressions/or'
 import { qqSpecialExpression } from './specialExpressions/qq'
 import { recurSpecialExpression } from './specialExpressions/recur'
-import { throwSpecialExpression } from './specialExpressions/throw'
 import { arraySpecialExpression } from './specialExpressions/array'
 import { effectSpecialExpression } from './specialExpressions/effect'
 import { objectSpecialExpression } from './specialExpressions/object'
@@ -41,7 +40,6 @@ export const specialExpressions = [
   objectSpecialExpression,
   recurSpecialExpression,
   matchSpecialExpression,
-  throwSpecialExpression,
   unlessSpecialExpression,
   importSpecialExpression,
   effectSpecialExpression,
@@ -63,7 +61,6 @@ export type CommonSpecialExpressionType = [
   | typeof specialExpressionTypes['if']
   | typeof specialExpressionTypes['unless']
   | typeof specialExpressionTypes['||']
-  | typeof specialExpressionTypes['throw']
   | typeof specialExpressionTypes['array']
   | typeof specialExpressionTypes['object']
   | typeof specialExpressionTypes['effect']

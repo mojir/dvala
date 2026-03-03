@@ -12,7 +12,6 @@ import type { PerformNode } from '../../builtin/specialExpressions/perform'
 import type { RaceNode } from '../../builtin/specialExpressions/race'
 import type { QqNode } from '../../builtin/specialExpressions/qq'
 import type { RecurNode } from '../../builtin/specialExpressions/recur'
-import type { ThrowNode } from '../../builtin/specialExpressions/throw'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
@@ -101,10 +100,6 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       case specialExpressionTypes['defined?']: {
         const [param] = params
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, param as SymbolNode]], symbol[2]) satisfies DefinedNode
-      }
-      case specialExpressionTypes.throw: {
-        const [param] = params
-        return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, param!]], symbol[2]) satisfies ThrowNode
       }
       case specialExpressionTypes.perform: {
         const [effectExpr, ...argExprs] = params

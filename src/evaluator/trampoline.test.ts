@@ -24,7 +24,6 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
-  ThrowFrame,
   TryWithFrame,
 } from './frames'
 import type { Step } from './step'
@@ -356,16 +355,6 @@ describe('stepNode', () => {
       if (step.type === 'Eval') {
         expect(step.k.length).toBe(1)
         expect(step.k[0]!.type).toBe('LetBind')
-      }
-    })
-
-    it('should push ThrowFrame for throw expression', () => {
-      const node = parseFirst('throw("error")')
-      const step = stepNodeSync(node, emptyEnv(), [])
-      expect(step.type).toBe('Eval')
-      if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Throw')
       }
     })
 
@@ -856,15 +845,6 @@ describe('applyFrame', () => {
     })
   })
 
-  describe('throwFrame', () => {
-    it('should throw UserDefinedError', () => {
-      const frame: ThrowFrame = {
-        type: 'Throw',
-      }
-      expect(() => applyFrameSync(frame, 'boom', [])).toThrow(UserDefinedError)
-    })
-  })
-
   describe('recurFrame', () => {
     it('should throw DvalaError when recur has no target frame', () => {
       const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
@@ -1047,8 +1027,8 @@ describe('trampoline integration', () => {
     expect(runTrampoline(step)).toBe(11)
   })
 
-  it('should evaluate throw', () => {
-    const node = parseFirst('throw("test error")')
+  it('should evaluate perform(effect(dvala.error)) as error', () => {
+    const node = parseFirst('perform(effect(dvala.error), "test error")')
     expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), []))).toThrow(UserDefinedError)
   })
 

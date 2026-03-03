@@ -59,7 +59,6 @@ import type {
   StringNode,
   SymbolNode,
   UserDefinedFunction,
-  UserDefinedSymbolNode,
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
@@ -113,7 +112,6 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
-  ThrowFrame,
   TryWithFrame,
 } from './frames'
 import type { Context } from './interface'
@@ -954,16 +952,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
     }
 
-    // --- throw ---
-    case specialExpressionTypes.throw: {
-      const throwExpr = node[1][1] as AstNode
-      const frame: ThrowFrame = {
-        type: 'Throw',
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: throwExpr, env, k: [frame, ...k] }
-    }
-
     // --- recur ---
     case specialExpressionTypes.recur: {
       const nodes = node[1][1] as AstNode[]
@@ -1418,8 +1406,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyLoopIterate(frame, value, k)
     case 'ForLoop':
       return applyForLoop(frame, value, k)
-    case 'Throw':
-      return applyThrow(frame, value, k)
     case 'Recur':
       return applyRecur(frame, value, k)
     case 'PerformArgs':
@@ -2008,16 +1994,6 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
  * Since TryCatchFrame has been removed, this now always re-throws the error.
  * Kept as a helper for the transition period while `throw` still exists.
  */
-function unwindToTryCatch(error: unknown, _k: ContinuationStack): never {
-  throw error
-}
-
-function applyThrow(frame: ThrowFrame, value: Any, _k: ContinuationStack): never {
-  assertString(value, frame.sourceCodeInfo, { nonEmpty: true })
-  // Throw so tick()'s catch block routes through dvala.error.
-  throw new UserDefinedError(value, frame.sourceCodeInfo)
-}
-
 /**
  * Try to route a DvalaError through the 'dvala.error' algebraic effect.
  *
@@ -2199,7 +2175,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
     assertEffectRef(effectRef, frame.sourceCodeInfo)
     const args = params.slice(1)
     // Produce a PerformStep — let the trampoline dispatch it
-    return { type: 'Perform', effect: effectRef, args, k }
+    return { type: 'Perform', effect: effectRef, args, k, sourceCodeInfo: frame.sourceCodeInfo }
   }
 
   // Evaluate next arg
@@ -2900,7 +2876,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.args, step.k, undefined, handlers, signal)
+        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -2912,13 +2888,14 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
         if (effectStep !== null) {
           return effectStep
         }
-        return unwindToTryCatch(step.error, step.k)
+
+        throw step.error
       }
     }
   }
   catch (error) {
     // SuspensionSignal must propagate out of tick to the effect trampoline loop
-    // (runEffectLoop). Never let unwindToTryCatch intercept it.
+    // (runEffectLoop).
     if (isSuspensionSignal(error)) {
       // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
       throw error
@@ -2927,7 +2904,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
     // do...with handlers can intercept runtime errors.
     if (error instanceof DvalaError) {
       // For Value steps, step.k[0] is the frame that was being applied when
-      // the error was thrown (e.g. ThrowFrame, LetDestructFrame, etc.).
+      // the error was thrown (e.g. LetDestructFrame, etc.).
       // Strip it so that resumeK in tryDispatchDvalaError does not include
       // the failing frame — otherwise the handler's return value would flow
       // back through it, potentially re-triggering the same error in an
@@ -2943,7 +2920,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       }
     }
     // Fallback: no handler matched — re-throw the error as a JS exception.
-    return unwindToTryCatch(error, step.k)
+    throw error
   }
 }
 

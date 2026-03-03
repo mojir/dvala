@@ -95,7 +95,7 @@ end
 
 ## Error Handling
 
-Use `do` / `with` to handle errors. `throw` raises an error:
+Use `do` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises an error:
 
 ```
 do

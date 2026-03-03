@@ -25,7 +25,6 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
-  ThrowFrame,
   TryWithFrame,
 } from './frames'
 
@@ -53,10 +52,8 @@ describe('frame types', () => {
       LoopBind: true,
       LoopIterate: true,
       ForLoop: true,
-      Throw: true,
       Recur: true,
       PerformArgs: true,
-      TryCatch: true,
       TryWith: true,
       EffectResume: true,
       ParallelResume: true,
@@ -68,7 +65,7 @@ describe('frame types', () => {
       DebugStep: true,
       ImportMerge: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(27)
+    expect(Object.keys(frameTypes)).toHaveLength(25)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -95,10 +92,8 @@ describe('frame types', () => {
         case 'LoopBind': return 'binding'
         case 'LoopIterate': return 'binding'
         case 'ForLoop': return 'binding'
-        case 'Throw': return 'control'
         case 'Recur': return 'control'
         case 'PerformArgs': return 'control'
-        case 'TryCatch': return 'exception'
         case 'TryWith': return 'effect'
         case 'EffectResume': return 'effect'
         case 'ParallelResume': return 'parallel'
@@ -147,10 +142,8 @@ describe('frame types', () => {
       'LoopBind',
       'LoopIterate',
       'ForLoop',
-      'Throw',
       'Recur',
       'PerformArgs',
-      'TryCatch',
       'TryWith',
       'EffectResume',
       'ParallelResume',
@@ -162,7 +155,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(25)
+    expect(uniqueTypes.size).toBe(23)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -181,7 +174,6 @@ describe('frame types', () => {
     const _loopBind: LoopBindFrame['type'] = 'LoopBind'
     const _loopIterate: LoopIterateFrame['type'] = 'LoopIterate'
     const _forLoop: ForLoopFrame['type'] = 'ForLoop'
-    const _throw: ThrowFrame['type'] = 'Throw'
     const _recur: RecurFrame['type'] = 'Recur'
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
     const _tryWith: TryWithFrame['type'] = 'TryWith'
@@ -208,7 +200,6 @@ describe('frame types', () => {
     expect(_loopBind).toBe('LoopBind')
     expect(_loopIterate).toBe('LoopIterate')
     expect(_forLoop).toBe('ForLoop')
-    expect(_throw).toBe('Throw')
     expect(_recur).toBe('Recur')
     expect(_performArgs).toBe('PerformArgs')
     expect(_tryWith).toBe('TryWith')
