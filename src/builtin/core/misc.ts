@@ -1,10 +1,14 @@
+import { DvalaError } from '../../errors'
+import { effectNameMatchesPattern } from '../../evaluator/effectTypes'
 import type { Any } from '../../interface'
+import type { NativeJsFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { asAny, assertAny } from '../../typeGuards/dvala'
+import { asAny, asEffectRef, assertAny, isEffectRef, isRegularExpression } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { asStringOrNumber, assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
+import { FUNCTION_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 
 function isEqual([first, ...rest]: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) {
@@ -448,6 +452,84 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'json-stringify({ a: { b: 10 }}, 2)',
       ],
       hideOperatorForm: true,
+    },
+  },
+  'effect-name': {
+    evaluate: ([first], sourceCodeInfo): string => {
+      return asEffectRef(first, sourceCodeInfo).name
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'meta',
+      returns: { type: 'string' },
+      args: {
+        e: { type: 'any', description: 'An effect reference.' },
+      },
+      variants: [{ argumentNames: ['e'] }],
+      description: 'Returns the name of an effect reference as a string.',
+      seeAlso: ['effect-matcher'],
+      examples: [
+        'effect-name(effect(dvala.error))',
+        'effect-name(effect(llm.complete))',
+      ],
+    },
+  },
+  'effect-matcher': {
+    evaluate: ([pattern], sourceCodeInfo): NativeJsFunction => {
+      if (typeof pattern === 'string') {
+        // Wildcard pattern match (same rules as host handler patterns)
+        return {
+          [FUNCTION_SYMBOL]: true,
+          sourceCodeInfo,
+          functionType: 'NativeJsFunction',
+          name: `effect-matcher("${pattern}")`,
+          arity: toFixedArity(1),
+          nativeFn: {
+            fn: (e: unknown): boolean => {
+              if (!isEffectRef(e))
+                return false
+              return effectNameMatchesPattern(e.name, pattern)
+            },
+          },
+          docString: `Matches effects with pattern "${pattern}"`,
+        }
+      }
+      if (isRegularExpression(pattern)) {
+        // Regexp match
+        const re = new RegExp((pattern).s, (pattern).f)
+        return {
+          [FUNCTION_SYMBOL]: true,
+          sourceCodeInfo,
+          functionType: 'NativeJsFunction',
+          name: 'effect-matcher(regexp)',
+          arity: toFixedArity(1),
+          nativeFn: {
+            fn: (e: unknown): boolean => {
+              if (!isEffectRef(e))
+                return false
+              return re.test(e.name)
+            },
+          },
+          docString: 'Matches effects by regexp',
+        }
+      }
+      throw new DvalaError('effect-matcher expects a string or regexp pattern', sourceCodeInfo)
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'meta',
+      returns: { type: 'function' },
+      args: {
+        pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against effect names.' },
+      },
+      variants: [{ argumentNames: ['pattern'] }],
+      description: 'Returns a predicate function that matches effects by name. If $pattern is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If $pattern is a regexp, tests the effect name against the regexp.',
+      seeAlso: ['effect-name'],
+      examples: [
+        'let pred = effect-matcher("dvala.*"); pred(effect(dvala.error))',
+        'let pred = effect-matcher("dvala.*"); pred(effect(custom.foo))',
+        'let pred = effect-matcher("*"); pred(effect(anything))',
+      ],
     },
   },
 }

@@ -151,6 +151,8 @@ export const api = {
   meta: [
     'doc',
     'arity',
+    'effect-name',
+    'effect-matcher',
   ] as const,
   misc: [
     '!=',

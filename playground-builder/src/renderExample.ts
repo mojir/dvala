@@ -32,7 +32,7 @@ export function renderExample(example: string | string[], name: string, options?
   const oldLog = console.log
   console.log = function () {}
   try {
-    const result = dvala.run(`try\n${code}\ncatch(e) e end`)
+    const result = dvala.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
     const stringifiedResult = stringifyValue(result, true)
     const resultSection = noResult
       ? ''
