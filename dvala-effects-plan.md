@@ -74,7 +74,7 @@ Interned: `effect('llm.complete')` always returns the same reference (use a `Map
 - `src/utils/symbols.ts` — Added `EFFECT_SYMBOL` marker constant (`'^^ef^^'`)
 - `src/parser/types.ts` — `EffectRef` interface with `[EFFECT_SYMBOL]: true` and `name: string`
 - `src/interface.ts` — Updated `Any` type union to include `EffectRef`
-- `src/typeGuards/dvala.ts` — `isEffectRef()`, `asEffectRef()`, `assertEffectRef()` type guards; updated `isObj()` to exclude `EffectRef`
+- `src/typeGuards/dvala.ts` — `isEffect()`, `asEffect()`, `assertEffect()` type guards; updated `isObj()` to exclude `EffectRef`
 - `src/evaluator/effectRef.ts` — `getEffectRef(name)` interning function with module-level `Map<string, EffectRef>`, plus `clearEffectRefInternMap()` for testing
 - `src/evaluator/serialization.ts` — Updated `isSerializable()` and `describeSerializationIssue()` to treat `EffectRef` as serializable
 - `src/evaluator/effectRef.test.ts` — 14 tests covering interning, type guards, and `isObj` exclusion

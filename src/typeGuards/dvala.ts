@@ -38,7 +38,7 @@ export function isObj(value: unknown): value is Obj {
     || value instanceof RegExp
     || isDvalaFunction(value)
     || isRegularExpression(value)
-    || isEffectRef(value)
+    || isEffect(value)
   )
 }
 export function asObj(value: unknown, sourceCodeInfo?: SourceCodeInfo): Obj {
@@ -98,22 +98,22 @@ export function assertStringOrRegularExpression(
     throw getAssertionError('string or RegularExpression', value, sourceCodeInfo)
 }
 
-export function isEffectRef(value: unknown): value is EffectRef {
+export function isEffect(value: unknown): value is EffectRef {
   if (value === null || typeof value !== 'object')
     return false
 
   return !!(value as EffectRef)[EFFECT_SYMBOL]
 }
-export function asEffectRef(value: unknown, sourceCodeInfo?: SourceCodeInfo): EffectRef {
-  assertEffectRef(value, sourceCodeInfo)
+export function asEffect(value: unknown, sourceCodeInfo?: SourceCodeInfo): EffectRef {
+  assertEffect(value, sourceCodeInfo)
   return value
 }
-export function assertEffectRef(
+export function assertEffect(
   value: unknown,
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is EffectRef {
-  if (!isEffectRef(value))
-    throw getAssertionError('EffectRef', value, sourceCodeInfo)
+  if (!isEffect(value))
+    throw getAssertionError('Effect', value, sourceCodeInfo)
 }
 
 function isFunctionLike(value: unknown): value is FunctionLike {

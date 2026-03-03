@@ -1000,6 +1000,24 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
+    it('should preserve comp functions across suspend/resume', async () => {
+      const r1 = await run(`
+        let f = comp(inc, (x) -> x * 2);
+        let value = perform(effect(my.wait));
+        f(value)
+      `, {
+        handlers: {
+          'my.wait': async ({ suspend }) => { suspend() },
+        },
+      })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      const r2 = await resumeContinuation(r1.blob, 5)
+      expect(r2).toEqual({ type: 'completed', value: 11 })
+    })
+
     it('should handle multiple suspensions (re-suspend on resume)', async () => {
       const handlers: Handlers = {
         'my.step': async ({ args, suspend }) => {
@@ -2595,6 +2613,50 @@ describe('step 10 — predicate-based case matching', () => {
       end
     `)
     expect(result).toBe('catch-all')
+  })
+
+  it('effect-matcher predicate should be serializable across suspend/resume', async () => {
+    const r1 = await run(`
+      do
+        let result = perform(effect(my.wait));
+        result
+      with
+        case effect-matcher("dvala.*")
+        then (args) -> "caught dvala"
+      end
+    `, {
+      handlers: {
+        'my.wait': async ({ suspend }) => { suspend() },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+
+    const r2 = await resumeContinuation(r1.blob, 42)
+    expect(r2).toEqual({ type: 'completed', value: 42 })
+  })
+
+  it('effect-matcher regexp predicate should be serializable across suspend/resume', async () => {
+    const r1 = await run(`
+      do
+        let result = perform(effect(my.wait));
+        result
+      with
+        case effect-matcher(#"^dvala\\.")
+        then (args) -> "caught dvala"
+      end
+    `, {
+      handlers: {
+        'my.wait': async ({ suspend }) => { suspend() },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+
+    const r2 = await resumeContinuation(r1.blob, 99)
+    expect(r2).toEqual({ type: 'completed', value: 99 })
   })
 })
 

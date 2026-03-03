@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
-import { isEffectRef, isObj } from '../typeGuards/dvala'
+import { isEffect, isObj } from '../typeGuards/dvala'
 import { EFFECT_SYMBOL } from '../utils/symbols'
 import { clearEffectRefInternMap, getEffectRef } from './effectRef'
 
@@ -48,39 +48,39 @@ describe('getEffectRef', () => {
   })
 })
 
-describe('isEffectRef', () => {
-  it('should return true for EffectRef values', () => {
+describe('isEffect', () => {
+  it('should return true for effect values', () => {
     const ref = getEffectRef('llm.complete')
-    expect(isEffectRef(ref)).toBe(true)
+    expect(isEffect(ref)).toBe(true)
   })
 
-  it('should return true for manually constructed EffectRef-like objects', () => {
+  it('should return true for manually constructed effect-like objects', () => {
     const ref = { [EFFECT_SYMBOL]: true, name: 'test.effect' }
-    expect(isEffectRef(ref)).toBe(true)
+    expect(isEffect(ref)).toBe(true)
   })
 
   it('should return false for null', () => {
-    expect(isEffectRef(null)).toBe(false)
+    expect(isEffect(null)).toBe(false)
   })
 
   it('should return false for primitives', () => {
-    expect(isEffectRef(42)).toBe(false)
-    expect(isEffectRef('string')).toBe(false)
-    expect(isEffectRef(true)).toBe(false)
-    expect(isEffectRef(undefined)).toBe(false)
+    expect(isEffect(42)).toBe(false)
+    expect(isEffect('string')).toBe(false)
+    expect(isEffect(true)).toBe(false)
+    expect(isEffect(undefined)).toBe(false)
   })
 
   it('should return false for plain objects', () => {
-    expect(isEffectRef({ name: 'test' })).toBe(false)
+    expect(isEffect({ name: 'test' })).toBe(false)
   })
 
   it('should return false for arrays', () => {
-    expect(isEffectRef([1, 2, 3])).toBe(false)
+    expect(isEffect([1, 2, 3])).toBe(false)
   })
 })
 
-describe('isObj excludes EffectRef', () => {
-  it('should not treat EffectRef as a plain object', () => {
+describe('isObj excludes effects', () => {
+  it('should not treat an effect as a plain object', () => {
     const ref = getEffectRef('llm.complete')
     expect(isObj(ref as Any)).toBe(false)
   })

@@ -30,6 +30,7 @@ with
 end
 `,
   ],
+  seeAlso: ['effect?'],
 }
 
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {

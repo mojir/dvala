@@ -170,6 +170,7 @@ export const api = {
     'identical?',
     'json-parse',
     'json-stringify',
+    'type-of',
   ] as const,
   object: [
     'dissoc',
@@ -194,6 +195,7 @@ export const api = {
     'collection?',
     'sequence?',
     'regexp?',
+    'effect?',
     'zero?',
     'pos?',
     'neg?',
@@ -1101,6 +1103,7 @@ export const api = {
     '-type-collection',
     '-type-sequence',
     '-type-regexp',
+    '-type-effect',
     '-type-never',
   ] as const satisfies `-type-${string}`[],
 } as const

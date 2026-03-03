@@ -1,9 +1,9 @@
 import { DvalaError } from '../../errors'
-import { effectNameMatchesPattern } from '../../evaluator/effectTypes'
 import type { Any } from '../../interface'
-import type { NativeJsFunction } from '../../parser/types'
+import type { EffectMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { asAny, asEffectRef, assertAny, isEffectRef, isRegularExpression } from '../../typeGuards/dvala'
+import { asAny, asEffect, assertAny, isEffect, isRegularExpression } from '../../typeGuards/dvala'
+import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
 import { assertNumber } from '../../typeGuards/number'
 import { asStringOrNumber, assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
@@ -456,7 +456,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
   },
   'effect-name': {
     evaluate: ([first], sourceCodeInfo): string => {
-      return asEffectRef(first, sourceCodeInfo).name
+      return asEffect(first, sourceCodeInfo).name
     },
     arity: toFixedArity(1),
     docs: {
@@ -467,7 +467,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['e'] }],
       description: 'Returns the name of an effect reference as a string.',
-      seeAlso: ['effect-matcher'],
+      seeAlso: ['effect-matcher', 'effect?'],
       examples: [
         'effect-name(effect(dvala.error))',
         'effect-name(effect(llm.complete))',
@@ -475,42 +475,27 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
     },
   },
   'effect-matcher': {
-    evaluate: ([pattern], sourceCodeInfo): NativeJsFunction => {
+    evaluate: ([pattern], sourceCodeInfo): EffectMatcherFunction => {
       if (typeof pattern === 'string') {
-        // Wildcard pattern match (same rules as host handler patterns)
         return {
           [FUNCTION_SYMBOL]: true,
           sourceCodeInfo,
-          functionType: 'NativeJsFunction',
-          name: `effect-matcher("${pattern}")`,
+          functionType: 'EffectMatcher',
+          matchType: 'string',
+          pattern,
+          flags: '',
           arity: toFixedArity(1),
-          nativeFn: {
-            fn: (e: unknown): boolean => {
-              if (!isEffectRef(e))
-                return false
-              return effectNameMatchesPattern(e.name, pattern)
-            },
-          },
-          docString: `Matches effects with pattern "${pattern}"`,
         }
       }
       if (isRegularExpression(pattern)) {
-        // Regexp match
-        const re = new RegExp((pattern).s, (pattern).f)
         return {
           [FUNCTION_SYMBOL]: true,
           sourceCodeInfo,
-          functionType: 'NativeJsFunction',
-          name: 'effect-matcher(regexp)',
+          functionType: 'EffectMatcher',
+          matchType: 'regexp',
+          pattern: pattern.s,
+          flags: pattern.f,
           arity: toFixedArity(1),
-          nativeFn: {
-            fn: (e: unknown): boolean => {
-              if (!isEffectRef(e))
-                return false
-              return re.test(e.name)
-            },
-          },
-          docString: 'Matches effects by regexp',
         }
       }
       throw new DvalaError('effect-matcher expects a string or regexp pattern', sourceCodeInfo)
@@ -524,11 +509,54 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['pattern'] }],
       description: 'Returns a predicate function that matches effects by name. If $pattern is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If $pattern is a regexp, tests the effect name against the regexp.',
-      seeAlso: ['effect-name'],
+      seeAlso: ['effect-name', 'effect?'],
       examples: [
         'let pred = effect-matcher("dvala.*"); pred(effect(dvala.error))',
         'let pred = effect-matcher("dvala.*"); pred(effect(custom.foo))',
         'let pred = effect-matcher("*"); pred(effect(anything))',
+      ],
+    },
+  },
+  'type-of': {
+    evaluate: ([value]): string => {
+      if (value === null || value === undefined)
+        return 'null'
+      if (typeof value === 'boolean')
+        return 'boolean'
+      if (typeof value === 'number')
+        return 'number'
+      if (typeof value === 'string')
+        return 'string'
+      if (isEffect(value))
+        return 'effect'
+      if (isRegularExpression(value))
+        return 'regexp'
+      if (isDvalaFunction(value))
+        return 'function'
+      if (Array.isArray(value))
+        return 'array'
+      return 'object'
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'misc',
+      returns: { type: 'string' },
+      args: {
+        x: { type: 'any', description: 'The value to inspect.' },
+      },
+      variants: [{ argumentNames: ['x'] }],
+      description: 'Returns a string representing the type of $x. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"regexp"`, and `"effect"`.',
+      seeAlso: ['number?', 'string?', 'boolean?', 'null?', 'array?', 'object?', 'function?', 'regexp?', 'effect?'],
+      examples: [
+        'type-of(42)',
+        'type-of("hello")',
+        'type-of(true)',
+        'type-of(null)',
+        'type-of([1, 2, 3])',
+        'type-of({ a: 1 })',
+        'type-of((x) -> x + 1)',
+        'type-of(regexp("^start"))',
+        'type-of(effect(dvala.log))',
       ],
     },
   },

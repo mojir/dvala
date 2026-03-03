@@ -34,6 +34,7 @@ const functionTypes = [
   'EveryPred',
   'SomePred',
   'Fnull',
+  'EffectMatcher',
   'Builtin',
   'SpecialBuiltin',
   'NativeJsFunction',
