@@ -444,13 +444,13 @@ describe('phase 7 — Time-Travel Debugger', () => {
       expect(r.type).toBe('error')
     })
 
-    it('should handle try/catch in program', async () => {
+    it('should handle dvala.error handler in program', async () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
-        try
+        do
           throw("oops")
-        catch (e)
-          "caught: " ++ e.userMessage
+        with
+          case effect(dvala.error) then (args) -> "caught: " ++ first(args)
         end
       `)
       while (r.type === 'suspended') {

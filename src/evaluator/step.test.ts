@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type {
   ApplyStep,
+  ErrorStep,
   EvalStep,
   ParallelResumeStep,
   ParallelStep,
@@ -26,8 +27,9 @@ describe('step types', () => {
       Parallel: true,
       Race: true,
       ParallelResume: true,
+      Error: true,
     }
-    expect(Object.keys(stepTypes)).toHaveLength(7)
+    expect(Object.keys(stepTypes)).toHaveLength(8)
   })
 
   it('should cover all step type discriminants exhaustively', () => {
@@ -40,6 +42,7 @@ describe('step types', () => {
         case 'Parallel': return 'concurrent'
         case 'Race': return 'concurrent'
         case 'ParallelResume': return 'concurrent'
+        case 'Error': return 'error'
         default: {
           const _exhaustive: never = step
           throw new Error(`Unhandled step type: ${(_exhaustive as Step).type}`)
@@ -59,10 +62,11 @@ describe('step types', () => {
       'Parallel',
       'Race',
       'ParallelResume',
+      'Error',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(7)
+    expect(uniqueTypes.size).toBe(8)
   })
 
   it('should export individual step interfaces for typed access', () => {
@@ -73,6 +77,7 @@ describe('step types', () => {
     const _parallel: ParallelStep['type'] = 'Parallel'
     const _race: RaceStep['type'] = 'Race'
     const _parallelResume: ParallelResumeStep['type'] = 'ParallelResume'
+    const _error: ErrorStep['type'] = 'Error'
 
     expect(_value).toBe('Value')
     expect(_eval).toBe('Eval')
@@ -81,5 +86,6 @@ describe('step types', () => {
     expect(_parallel).toBe('Parallel')
     expect(_race).toBe('Race')
     expect(_parallelResume).toBe('ParallelResume')
+    expect(_error).toBe('Error')
   })
 })
