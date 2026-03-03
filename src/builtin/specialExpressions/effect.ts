@@ -19,6 +19,7 @@ const docs: CustomDocs = {
     'effect(dvala.log)',
     '==(effect(llm.complete), effect(llm.complete))',
   ],
+  seeAlso: ['effect?'],
 }
 
 export const effectSpecialExpression: BuiltinSpecialExpression<EffectRef, EffectNode> = {

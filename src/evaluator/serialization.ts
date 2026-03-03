@@ -26,7 +26,7 @@
 
 import type { Any } from '../interface'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
-import { isEffectRef, isRegularExpression } from '../typeGuards/dvala'
+import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import type {
   DvalaFunction,
 } from '../parser/types'
@@ -62,7 +62,7 @@ export function isSerializable(value: Any, visited = new Set<object>()): boolean
   }
 
   // EffectRef — just a name string
-  if (isEffectRef(value)) {
+  if (isEffect(value)) {
     return true
   }
 
@@ -92,6 +92,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     case 'Builtin':
     case 'SpecialBuiltin':
     case 'Module':
+    case 'EffectMatcher':
       return true
 
     // NativeJsFunction — never serializable
@@ -162,7 +163,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
     return null
   }
 
-  if (isEffectRef(value)) {
+  if (isEffect(value)) {
     return null
   }
 
@@ -171,7 +172,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
       return `${path} is a NativeJsFunction (${value.name ?? 'anonymous'}). NativeJsFunctions are not serializable — they are re-injected from bindings on resume.`
     }
 
-    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module') {
+    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher') {
       return null
     }
 

@@ -29,6 +29,7 @@ const dataTypes = [
   'collection',
   'sequence',
   'regexp',
+  'effect',
   'never',
 ] as const
 export type DataType = typeof dataTypes[number]

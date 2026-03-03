@@ -160,6 +160,16 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
       '#"albert"ig',
     ],
   },
+  '-type-effect': {
+    datatype: true,
+    title: 'effect',
+    category: 'datatype',
+    description: 'An effect, created with the `effect` special expression. Effects are used with `perform` to trigger algebraic effects.',
+    examples: [
+      'effect(dvala.log)',
+      'effect(dvala.now)',
+    ],
+  },
   '-type-never': {
     datatype: true,
     title: 'never',

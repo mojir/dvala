@@ -1,5 +1,5 @@
 import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
-import { assertColl, isColl, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
+import { assertColl, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
@@ -16,7 +16,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is a function, otherwise `false`.',
-      seeAlso: ['string?', 'number?', 'boolean?', 'null?', 'array?', 'object?', 'regexp?'],
+      seeAlso: ['string?', 'number?', 'boolean?', 'null?', 'array?', 'object?', 'regexp?', 'type-of'],
       examples: [
         'function?(+)',
         'function?(/)',
@@ -37,7 +37,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is a string, otherwise `false`.',
-      seeAlso: ['blank?', 'number?', 'boolean?', 'null?', 'array?', 'object?', 'regexp?', 'function?', 'collection?', 'sequence?'],
+      seeAlso: ['blank?', 'number?', 'boolean?', 'null?', 'array?', 'object?', 'regexp?', 'function?', 'collection?', 'sequence?', 'type-of'],
       examples: [
         'string?("")',
         'string?("A string")',
@@ -58,7 +58,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is a number, otherwise `false`.',
-      seeAlso: ['integer?', 'zero?', 'pos?', 'neg?', 'finite?', 'number', 'string?', 'boolean?', 'null?', 'function?'],
+      seeAlso: ['integer?', 'zero?', 'pos?', 'neg?', 'finite?', 'number', 'string?', 'boolean?', 'null?', 'function?', 'type-of'],
       examples: [
         'number?(0)',
         'number?(2)',
@@ -102,7 +102,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is a `boolean`, otherwise `false`.',
-      seeAlso: ['true?', 'false?', 'boolean', 'string?', 'number?', 'null?', 'function?'],
+      seeAlso: ['true?', 'false?', 'boolean', 'string?', 'number?', 'null?', 'function?', 'type-of'],
       examples: [
         'boolean?(true)',
         'boolean?(false)',
@@ -122,7 +122,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is `null`, otherwise `false`.',
-      seeAlso: ['empty?', 'not-empty?', 'string?', 'number?', 'boolean?', 'function?'],
+      seeAlso: ['empty?', 'not-empty?', 'string?', 'number?', 'boolean?', 'function?', 'type-of'],
       examples: [
         'null?(null)',
         'null?(false)',
@@ -254,7 +254,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is an array, otherwise `false`.',
-      seeAlso: ['sequence?', 'collection?', 'object?', 'string?', 'vector?', 'matrix?', 'grid?', 'function?'],
+      seeAlso: ['sequence?', 'collection?', 'object?', 'string?', 'vector?', 'matrix?', 'grid?', 'function?', 'type-of'],
       examples: [
         'array?([])',
         'array?([1, 2, 3])',
@@ -323,7 +323,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is an object, otherwise `false`.',
-      seeAlso: ['collection?', 'array?', 'string?', 'function?'],
+      seeAlso: ['collection?', 'array?', 'string?', 'function?', 'type-of'],
       examples: [
         'object?(object("a", 10))',
         'object?(42)',
@@ -345,7 +345,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if $x is a regexp, otherwise `false`.',
-      seeAlso: ['regexp', 're-match', 'string?', 'function?'],
+      seeAlso: ['regexp', 're-match', 'string?', 'function?', 'type-of'],
       examples: [
         'regexp?(regexp("^start"))',
         'regexp?(#"^start")',
@@ -356,6 +356,27 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
         'regexp?(false)',
         'regexp?("false")',
         'regexp?([1, 2, 3])',
+      ],
+    },
+  },
+
+  'effect?': {
+    evaluate: ([value]): boolean => isEffect(value),
+    arity: toFixedArity(1),
+    docs: {
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { x: { type: 'any' } },
+      variants: [{ argumentNames: ['x'] }],
+      description: 'Returns `true` if $x is an effect, otherwise `false`.',
+      seeAlso: ['effect', 'effect-name', 'effect-matcher', 'perform', 'type-of'],
+      examples: [
+        'effect?(effect(dvala.log))',
+        'effect?(42)',
+        'effect?("hello")',
+        'effect?(null)',
+        'effect?({})',
+        'effect?([1, 2, 3])',
       ],
     },
   },

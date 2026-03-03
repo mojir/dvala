@@ -40,6 +40,7 @@ import type {
   BindingTarget,
   CompFunction,
   DvalaFunction,
+  EffectMatcherFunction,
   EffectRef,
   EvaluatedFunction,
   EveryPredFunction,
@@ -68,7 +69,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
-import { asAny, asFunctionLike, assertEffectRef, assertSeq, isAny, isEffectRef, isObj } from '../typeGuards/dvala'
+import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -79,7 +80,7 @@ import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectHandler, Handlers, RunResult } from './effectTypes'
-import { SuspensionSignal, findMatchingHandlers, isSuspensionSignal } from './effectTypes'
+import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import { serializeSuspension } from './suspension'
@@ -299,6 +300,8 @@ function executeDvalaFunctionRecursive(fn: DvalaFunction, params: Arr, contextSt
       return executeSomePredRecursive(fn, params, contextStack, sourceCodeInfo)
     case 'Fnull':
       return executeFnullRecursive(fn, params, contextStack, sourceCodeInfo)
+    case 'EffectMatcher':
+      return executeEffectMatcherRecursive(fn, params, sourceCodeInfo)
     case 'Builtin':
       return executeBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
     case 'SpecialBuiltin':
@@ -462,6 +465,18 @@ function executeSomePredRecursive(fn: SomePredFunction, params: Arr, contextStac
 function executeFnullRecursive(fn: FNullFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   const fnulledParams = params.map((param, index) => (param === null ? toAny(fn.params[index]) : param))
   return executeFunctionRecursive(asFunctionLike(fn.function, sourceCodeInfo), fnulledParams, contextStack, sourceCodeInfo)
+}
+
+function executeEffectMatcherRecursive(fn: EffectMatcherFunction, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
+  assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
+  const effectRef = params[0]
+  assertEffect(effectRef, sourceCodeInfo)
+  const effectName = effectRef.name
+  if (fn.matchType === 'string') {
+    return effectNameMatchesPattern(effectName, fn.pattern)
+  }
+  const regexp = new RegExp(fn.pattern, fn.flags)
+  return regexp.test(effectName)
 }
 
 function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
@@ -1265,6 +1280,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'EveryPred':
     case 'SomePred':
     case 'Fnull':
+    case 'EffectMatcher':
     case 'Builtin':
     case 'SpecialBuiltin':
     case 'Module':
@@ -2163,7 +2179,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   if (index >= argNodes.length) {
     // All values collected — first is the effect ref, rest are args
     const effectRef = params[0]!
-    assertEffectRef(effectRef, frame.sourceCodeInfo)
+    assertEffect(effectRef, frame.sourceCodeInfo)
     const args = params.slice(1)
     // Produce a PerformStep — let the trampoline dispatch it
     return { type: 'Perform', effect: effectRef, args, k, sourceCodeInfo: frame.sourceCodeInfo }
@@ -2209,7 +2225,7 @@ function handlerMatchesEffect(
   env: ContextStack,
   sourceCodeInfo?: SourceCodeInfo,
 ): boolean {
-  if (isEffectRef(handler.effectRef)) {
+  if (isEffect(handler.effectRef)) {
     return handler.effectRef.name === effect.name
   }
   if (isDvalaFunction(handler.effectRef)) {
