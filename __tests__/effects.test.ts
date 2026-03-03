@@ -312,7 +312,7 @@ describe('phase 2 — Local Effect Handling', () => {
           case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
         end
       `)
-      expect(result).toBe("caught: Unhandled effect: 'no.handler'")
+      expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
     })
   })
 

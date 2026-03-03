@@ -41,6 +41,7 @@ const config = antfu({
     'dvala-api-contract.md',
     'dvala-content.md',
     'dvala-llm-prompt.md',
+    'effect-system-redesign.md',
     'docs',
     'scripts/**/*',
   ],

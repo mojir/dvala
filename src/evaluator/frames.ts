@@ -282,19 +282,8 @@ export interface ForLoopFrame {
 }
 
 // ---------------------------------------------------------------------------
-// Special expressions — control flow
+// Special expressions — perform (effect arguments)
 // ---------------------------------------------------------------------------
-
-/**
- * `throw` — evaluate the expression, then throw `UserDefinedError`.
- *
- * The trampoline evaluates the throw's argument expression. When the value
- * arrives, `applyFrame` asserts it's a non-empty string and throws.
- */
-export interface ThrowFrame {
-  type: 'Throw'
-  sourceCodeInfo?: SourceCodeInfo
-}
 
 /**
  * `perform` argument collection — evaluate effect ref + args sequentially.
@@ -566,7 +555,7 @@ export interface DebugStepFrame {
  * - **Short-circuit**: AndFrame, OrFrame, QqFrame
  * - **Collection construction**: ArrayBuildFrame, ObjectBuildFrame
  * - **Binding**: LetBindFrame, LoopBindFrame, LoopIterateFrame, ForLoopFrame
- * - **Control flow**: ThrowFrame, RecurFrame
+ * - **Control flow**: RecurFrame
  * - **Exception & effect handling**: TryWithFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: BindingDefaultFrame
@@ -612,7 +601,6 @@ export type Frame =
   | LoopIterateFrame
   | ForLoopFrame
   // Control flow
-  | ThrowFrame
   | RecurFrame
   | PerformArgsFrame
   // Exception & effect handling

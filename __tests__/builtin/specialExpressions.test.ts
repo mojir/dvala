@@ -2,7 +2,8 @@
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { Dvala } from '../../src/Dvala/Dvala'
-import { DvalaError, UserDefinedError } from '../../src/errors'
+import type { UserDefinedError } from '../../src/errors'
+import { DvalaError } from '../../src/errors'
 import type { Arr } from '../../src/interface'
 
 const dvala = new Dvala()
@@ -25,7 +26,7 @@ describe('specialExpressions', () => {
     const dvalaNoDebug = new Dvala()
     let failed = false
     try {
-      dvalaNoDebug.run('throw(slice("An error", 3))')
+      dvalaNoDebug.run('perform(effect(dvala.error), slice("An error", 3))')
       failed = true
     }
     catch (error) {
@@ -36,12 +37,12 @@ describe('specialExpressions', () => {
 
     try {
       failed = false
-      dvalaDebug.run('throw(slice("An error", 3))')
+      dvalaDebug.run('perform(effect(dvala.error), slice("An error", 3))')
       failed = true
     }
     catch (error) {
       expect((error as UserDefinedError).message).toBe(
-        'error\nLocation 1:1\nthrow(slice("An error", 3))\n^                          ',
+        'error\nLocation 1:1\nperform(effect(dvala.error), slice("An error", 3))\n^                                                 ',
       )
     }
     if (failed)
@@ -159,7 +160,7 @@ describe('specialExpressions', () => {
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect(() => dvalaDebug.getUndefinedSymbols('let throw = a + b;')).toThrow(DvalaError)
+        expect(() => dvalaDebug.getUndefinedSymbols('let recur = a + b;')).toThrow(DvalaError)
         expect(() => dvalaDebug.getUndefinedSymbols('let + = a + b;')).toThrow(DvalaError)
         expect(dvalaDebug.getUndefinedSymbols('let [a = b] = [];')).toEqual(new Set(['b']))
         expect(dvalaDebug.getUndefinedSymbols('let foo = a + b;')).toEqual(new Set(['a', 'b']))
@@ -529,22 +530,6 @@ end;`))).toEqual(
     })
   })
 
-  describe('throw', () => {
-    it('samples', () => {
-      expect(() => dvala.run('throw("An error")')).toThrowError(UserDefinedError)
-      expect(() => dvala.run('throw(slice("An error", 3))')).toThrowError(UserDefinedError)
-      expect(() => dvala.run('throw("An error" 10)')).not.toThrowError(UserDefinedError)
-      expect(() => dvala.run('throw("An error" 10)')).toThrow(DvalaError)
-      expect(() => dvala.run('throw()')).toThrow(DvalaError)
-    })
-
-    describe('unresolvedIdentifiers', () => {
-      it('samples', () => {
-        expect((dvala.getUndefinedSymbols('throw(a / b)'))).toEqual(new Set(['a', 'b']))
-      })
-    })
-  })
-
   describe('block', () => {
     it('samples', () => {
       expect(dvala.run('do [1, 2, 3]; "[1]"; 1 + 2 end')).toBe(3)
@@ -619,10 +604,10 @@ foo(3)`)
       expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then recur(n - 1) end')).not.toThrow()
       expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then recur(n - 1, 2) end')).toThrow(DvalaError)
       expect(() => dvala.run('loop () -> if not(zero?(n)) then recur() end')).toThrow(DvalaError)
-      expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then recur(throw(1)) end')).toThrow(DvalaError)
+      expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then recur(perform(effect(dvala.error), 1)) end')).toThrow(DvalaError)
     })
-    it('throw should work', () => {
-      expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then throw(recur(n - 1, 2)) end')).toThrow(DvalaError)
+    it('error in loop should propagate', () => {
+      expect(() => dvala.run('loop (n = 3) -> if not(zero?(n)) then perform(effect(dvala.error), str(recur(n - 1, 2))) end')).toThrow(DvalaError)
       expect(() => dvala.run('loop (n) -> if not(zero?(n)) then recur(n - 1) end')).toThrow(DvalaError)
     })
 

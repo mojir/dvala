@@ -791,10 +791,10 @@ with
 end;
 ```
 
-#### Throw
+#### Raising Errors
 
 ```dvala
-// Throwing errors
+// Raising errors
 do
   perform(effect(dvala.error), "Custom error message")
 with
@@ -809,7 +809,7 @@ let divide = (a, b) ->
     a / b
   end;
 
-// Conditional error throwing
+// Conditional error raising
 let validateAge = (age) ->
   cond
     case age < 0 then perform(effect(dvala.error), "Age cannot be negative")

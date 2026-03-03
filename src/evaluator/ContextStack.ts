@@ -205,7 +205,6 @@ export class ContextStackImpl {
         case specialExpressionTypes.object:
         case specialExpressionTypes['defined?']:
         case specialExpressionTypes.recur:
-        case specialExpressionTypes.throw:
         case specialExpressionTypes['??']: {
           const specialExpression: SpecialExpression = asNonUndefined(builtin.specialExpressions[functionType], node[2])
           return {
