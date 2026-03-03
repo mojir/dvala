@@ -6,7 +6,7 @@ import { asAny, assertFunctionLike, isColl, isObj, isRegularExpression, isSeq } 
 import { isDvalaFunction } from '../../../typeGuards/dvalaFunction'
 import { isNumber } from '../../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
-import { isGrid, isMatrix, isVector } from '../../../typeGuards/annotatedArrays'
+import { isGrid, isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
 import { chain, tryCatch } from '../../../utils/maybePromise'
 import type { MaybePromise } from '../../../utils/maybePromise'
 import type { DvalaModule } from '../interface'

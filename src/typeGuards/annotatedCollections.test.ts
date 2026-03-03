@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
-import { assert2dVector, assert3dVector, assertGrid, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector, is2dVector, is3dVector, isGrid, isMatrix, isSquareMatrix, isVector } from './annotatedArrays'
+import { assert2dVector, assert3dVector, assertGrid, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector, is2dVector, is3dVector, isGrid, isMatrix, isSquareMatrix, isVector } from './annotatedCollections'
 
 describe('annotatedArrays', () => {
   it('should correctly identify vectors', () => {

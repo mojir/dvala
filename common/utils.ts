@@ -1,7 +1,7 @@
 import type { UnknownRecord } from '../src/interface'
 import { isRegularExpression } from '../src/typeGuards/dvala'
 import { isDvalaFunction } from '../src/typeGuards/dvalaFunction'
-import { isMatrix, isVector } from '../src/typeGuards/annotatedArrays'
+import { isMatrix, isVector } from '../src/typeGuards/annotatedCollections'
 
 export function stringifyValue(value: unknown, html: boolean): string {
   const gt = html ? '&gt;' : '>'

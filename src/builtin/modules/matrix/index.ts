@@ -1,5 +1,5 @@
 import { DvalaError } from '../../../errors'
-import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedArrays'
+import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { approxZero } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'

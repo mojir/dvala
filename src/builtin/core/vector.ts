@@ -1,4 +1,4 @@
-import { assertNonEmptyVector, assertVector } from '../../typeGuards/annotatedArrays'
+import { assertNonEmptyVector, assertVector } from '../../typeGuards/annotatedCollections'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinNormalExpressions } from '../interface'
 

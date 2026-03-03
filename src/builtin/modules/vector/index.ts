@@ -1,5 +1,5 @@
 import { DvalaError } from '../../../errors'
-import { assertNonEmptyVector, assertVector } from '../../../typeGuards/annotatedArrays'
+import { assertNonEmptyVector, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'

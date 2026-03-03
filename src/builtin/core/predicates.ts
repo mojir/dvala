@@ -2,7 +2,7 @@ import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
 import { assertColl, isColl, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
-import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedArrays'
+import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { EPSILON } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 
