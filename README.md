@@ -766,7 +766,7 @@ end;
 
 ```dvala
 // Basic error handling with do/with
-let riskyOperation = () -> throw("Something went wrong");
+let riskyOperation = () -> perform(effect(dvala.error), "Something went wrong");
 do
   riskyOperation()
 with
@@ -796,7 +796,7 @@ end;
 ```dvala
 // Throwing errors
 do
-  throw("Custom error message")
+  perform(effect(dvala.error), "Custom error message")
 with
   case effect(dvala.error) then (args) -> "Caught an error"
 end;
@@ -804,7 +804,7 @@ end;
 // Custom error messages in functions
 let divide = (a, b) ->
   if zero?(b) then
-    throw("Cannot divide by zero")
+    perform(effect(dvala.error), "Cannot divide by zero")
   else
     a / b
   end;
@@ -812,8 +812,8 @@ let divide = (a, b) ->
 // Conditional error throwing
 let validateAge = (age) ->
   cond
-    case age < 0 then throw("Age cannot be negative")
-    case age > 150 then throw("Age seems unrealistic")
+    case age < 0 then perform(effect(dvala.error), "Age cannot be negative")
+    case age > 150 then perform(effect(dvala.error), "Age seems unrealistic")
     case true then age
   end;
 ```

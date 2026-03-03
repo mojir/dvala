@@ -166,8 +166,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A value that can never be created',
     examples: [`
-// throw("error") will never return a value
-do throw("error") with case effect(dvala.error) then (args) -> "never" end`,
+// perform(effect(dvala.error), "error") will never return a value
+do perform(effect(dvala.error), "error") with case effect(dvala.error) then (args) -> "never" end`,
     ],
   },
 }

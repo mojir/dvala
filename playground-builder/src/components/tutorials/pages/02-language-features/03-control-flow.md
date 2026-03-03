@@ -99,7 +99,7 @@ Use `do` / `with` to handle errors. `throw` raises an error:
 
 ```
 do
-  throw("oops")
+  perform(effect(dvala.error), "oops")
 with
   case effect(dvala.error) then ([msg]) -> msg
 end

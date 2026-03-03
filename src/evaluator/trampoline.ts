@@ -2045,11 +2045,7 @@ function tryDispatchDvalaError(
       for (const handler of frame.handlers) {
         if (isEffectRef(handler.effectRef) && handler.effectRef.name === effect.name) {
           const resumeK = k
-          let skipEnd = i + 1
-          if (skipEnd < k.length && k[skipEnd]!.type === 'TryCatch') {
-            skipEnd++
-          }
-          const outerK = k.slice(skipEnd)
+          const outerK = k.slice(i + 1)
           const effectResumeFrame: EffectResumeFrame = {
             type: 'EffectResume',
             resumeK,
@@ -2276,6 +2272,13 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(args, k, sourceCodeInfo)
+  }
+
+  // dvala.error is special — when unhandled, throw UserDefinedError
+  // so the error message propagates as a proper user error.
+  if (effect.name === 'dvala.error') {
+    const message = typeof args[0] === 'string' ? args[0] : String(args[0] ?? 'Unknown error')
+    throw new UserDefinedError(message, sourceCodeInfo)
   }
 
   // No handler at all — unhandled effect.

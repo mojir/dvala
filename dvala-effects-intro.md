@@ -177,12 +177,12 @@ perform(effect(state.set), "key", 42)       // multiple arguments
 perform(effect(dvala.now))                   // no arguments
 ```
 
-### Handling effects locally — try/with
+### Handling effects locally — do/with
 
-The `try/with` construct overrides effects within a lexical scope. The handler's return value becomes the result of `perform`. No explicit `resume` is needed.
+The `do/with` construct overrides effects within a lexical scope. The handler's return value becomes the result of `perform`. No explicit `resume` is needed.
 
 ```dvala
-try
+do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) -> upper-case(prompt)   // mock the LLM
@@ -194,19 +194,18 @@ Matching is by value/reference — `effect(llm.complete)` always interns to the 
 ### Combining effect handling and error handling
 
 ```dvala
-try
+do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) ->
-    if empty?(prompt) then throw("Empty prompt")
+    if empty?(prompt) then perform(effect(dvala.error), "Empty prompt")
     else upper-case(prompt)
     end
-catch (error)
-  "Failed: " ++ error.message  // only catches errors from the body, not handlers
+  case effect(dvala.error) then ([msg]) -> "Failed: " ++ msg  // only handles errors from the body, not handlers
 end
 ```
 
-Note: errors thrown inside `with` handlers propagate *upward* to the nearest enclosing `try/catch` — not the `catch` in the same block. This follows standard algebraic effects semantics (Plotkin & Pretnar, 2009).
+Note: errors performed inside `with` handlers propagate *upward* to the nearest enclosing `do/with` — not the `case effect(dvala.error)` in the same block. This follows standard algebraic effects semantics (Plotkin & Pretnar, 2009).
 
 ### Effects as first-class values
 
@@ -214,17 +213,18 @@ Because effects are values, they can be passed as arguments, enabling composable
 
 ```dvala
 let with-retry = (eff, max-attempts, body) ->
-  try
+  do
     body()
   with
     case eff then ([...args]) ->
       loop (attempt = 0) ->
-        try
+        do
           perform(eff, ...args)
-        catch
-          if attempt < max-attempts then recur(attempt + 1)
-          else throw("Max retries exceeded")
-          end
+        with
+          case effect(dvala.error) then ([msg]) ->
+            if attempt < max-attempts then recur(attempt + 1)
+            else perform(effect(dvala.error), "Max retries exceeded")
+            end
         end
       end
   end
@@ -361,9 +361,9 @@ These are powerful orchestration engines but require learning a new programming 
 
 With Dvala, the workflow *is* the program. Serializable continuations give you Temporal-like durability without leaving the language.
 
-### vs. try/catch for error handling
+### vs. traditional try/catch for error handling
 
-`catch` handles exceptional failure — it cannot resume the computation that threw. `with` handles effects — the computation is paused, the handler runs, and execution resumes with the handler's return value.
+In traditional languages, `catch` handles exceptional failure — it cannot resume the computation that threw. In Dvala, errors are effects — `effect(dvala.error)` — handled via `do/with` just like any other effect. The computation is paused, the handler runs, and execution resumes with the handler's return value.
 
 Effects generalize exceptions. In fact, exceptions *are* a special case of effects — one where the handler never resumes.
 
@@ -421,7 +421,7 @@ Each `HistoryEntry` contains the serialized continuation, the expression and its
 
 **Single-shot continuations only** — handlers resume exactly once. This is a deliberate deviation from Plotkin & Pretnar's multi-shot model, motivated by serializability. A continuation that can be resumed multiple times cannot be meaningfully serialized.
 
-**Handlers run outside try-scope** — errors in `with` handlers propagate upward, not to the `catch` in the same block. This prevents accidental error loops and follows standard algebraic effects semantics.
+**Handlers run outside do-scope** — errors in `with` handlers propagate upward, not to the `case effect(dvala.error)` in the same block. This prevents accidental error loops and follows standard algebraic effects semantics.
 
 **Suspension is the host's responsibility** — Dvala code expresses intent via `perform`. Only JS handlers can call `suspend`. This keeps infrastructure concerns out of business logic.
 

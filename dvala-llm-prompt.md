@@ -281,18 +281,18 @@ loop (n = 5, acc = 1) ->
 // => 120
 ```
 
-### `try` / `catch` / `throw`
+### `do` / `with` / error handling
 
 ```dvala
-try
+do
   riskyOperation()
-catch(error)
-  "Failed: " ++ error.message
+with
+  case effect(dvala.error) then ([msg]) -> "Failed: " ++ msg
 end
 
-try expr catch "fallback" end   // catch without binding the error
+do expr with case effect(dvala.error) then (args) -> "fallback" end
 
-throw("Something went wrong")   // message must be a string
+perform(effect(dvala.error), "Something went wrong")
 ```
 
 ### `and` / `or` / `??`
@@ -538,7 +538,7 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 
 | Function | Description |
 |----------|-------------|
-| `assert(value, message?)` | Assert value is truthy, throw on failure |
+| `assert(value, message?)` | Assert value is truthy, error on failure |
 
 ### Bitwise (core)
 
@@ -666,11 +666,11 @@ distance({ x: 0, y: 0 }, { x: 3, y: 4 })  // => 5
 
 ```dvala
 let safe-divide = (a, b) ->
-  try
-    if b == 0 then throw("Division by zero") end;
+  do
+    if b == 0 then perform(effect(dvala.error), "Division by zero") end;
     a / b
-  catch(error)
-    error.message
+  with
+    case effect(dvala.error) then ([msg]) -> msg
   end;
 
 safe-divide(10, 2)   // => 5
