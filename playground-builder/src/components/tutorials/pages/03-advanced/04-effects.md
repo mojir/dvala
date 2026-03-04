@@ -1,37 +1,48 @@
 # Effects
 
-Dvala uses algebraic effects to handle interactions with the outside world. Any operation that isn't pure computation — logging, fetching data, waiting for a human — is an **effect**.
+## Background: Algebraic Effects
 
-## Creating Effects
+Dvala's effect system is rooted in **Handlers of Algebraic Effects** ([Plotkin & Pretnar, 2009](https://homepages.inf.ed.ac.uk/gdp/publications/Effect_Handlers.pdf)). The core idea: side effects are **operations** declared by the program, and **handlers** give them meaning — much like exception handlers, but more general. A `perform` is like a `throw` that **returns a value**.
 
-Use `effect(name)` to create an effect reference. The name is a dotted identifier:
+Dvala preserves the essential P&P model:
 
-```
-effect(dvala.log)
-```
+* Effects as algebraic operations — `perform(eff, ...args)`
+* Handlers as first-class effect interpreters — `do...with...end`
+* Lexically scoped, deep handlers — innermost handler wins; effects inside handlers propagate outward
 
-Effect references are first-class values — you can store them, compare them, and pass them around:
+Two deliberate deviations:
+
+* **No return clause** — P&P handlers have a **return** clause that transforms the body's final value. Dvala omits this; the same transformation can be expressed by wrapping the `do...with` block.
+* **No multi-shot continuations** — P&P allows a handler to resume the same continuation multiple times. Dvala restricts to single-shot because multi-shot is fundamentally incompatible with serializable continuations — the key feature that enables suspend/resume across processes and time.
+
+## Creating and Performing Effects
+
+Use `effect(name)` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
 
 ```
 let log = effect(dvala.log);
-==(log, effect(dvala.log))
+log
 ```
 
-## Performing Effects
+`perform` invokes an effect with arguments. When there is no local `do...with` handler, the effect propagates outward. For custom effects that have no standard or host handler, the program fails with an unhandled effect error. In the CLI or when embedding Dvala in JavaScript, you can register your own host handlers (covered below).
 
-`perform` invokes an effect. The nearest matching handler intercepts it:
+## Standard Effects
+
+Dvala provides a set of built-in effects that are always available without explicit handlers:
+
+* `dvala.log` — logs a value to the console, resumes with `null`
+* `dvala.random` — resumes with a random number in [0, 1)
+* `dvala.now` — resumes with the current timestamp (milliseconds since epoch)
+* `dvala.sleep` — waits for a given number of milliseconds, resumes with `null`
+* `dvala.error` — raises an error (covered in the Errors section below)
 
 ```
-do
-  perform(effect(dvala.log), "hello")
-with
-  case effect(dvala.log) then ([msg]) -> msg
-end
+perform(effect(dvala.random))
 ```
 
 ## Do / With Handlers
 
-`do...with...end` establishes local effect handlers. The handler receives the effect's arguments as an array:
+`do...with...end` establishes local effect handlers. The handler receives the effect's arguments as an array and its return value becomes the result of the `perform` call:
 
 ```
 do
@@ -55,9 +66,11 @@ with
 end
 ```
 
-## Error Handling
+## Errors
 
-Errors in Dvala are effects too. `perform(effect(dvala.error), msg)` raises an error, and `do...with` catches it:
+In Dvala, there is no `throw` or `try/catch`. Errors are effects.
+
+To raise an error, perform `dvala.error`:
 
 ```
 do
@@ -67,15 +80,29 @@ with
 end
 ```
 
-Runtime errors (like dividing by zero) are automatically routed through `dvala.error`:
+Runtime errors — like calling a function with invalid arguments — are automatically routed through `dvala.error`. This means `do...with` is the universal error-handling mechanism:
 
 ```
 do
-  1 / 0
+  sqrt(-1)
 with
-  case effect(dvala.error) then (args) -> "division error"
+  case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
 end
 ```
+
+You can mix error handling with other effect handlers in the same block:
+
+```
+do
+  let x = perform(effect(my.read));
+  sqrt(x * -1)
+with
+  case effect(my.read) then () -> 42
+  case effect(dvala.error) then ([msg]) -> "error: " ++ msg
+end
+```
+
+An unhandled `dvala.error` propagates like any other unhandled effect — up through nested handlers until it reaches the host.
 
 ## Nested Handlers
 
@@ -108,7 +135,7 @@ end
 
 ## Host Handlers (JavaScript)
 
-When running Dvala from JavaScript/TypeScript, you register **host handlers** via the `run()` function. Host handlers are async functions that receive a context object.
+When running Dvala from JavaScript/TypeScript, you register **host handlers** via the `run()` function. Host handlers are async functions that receive a context object with four actions: `resume`, `fail`, `suspend`, and `next`.
 
 ### Resume
 
@@ -200,9 +227,9 @@ const result = await run('perform(effect(app.save), "data")', {
 
 Host handler keys support three matching modes:
 
-- **Exact**: `'my.effect'` — matches only `my.effect`
-- **Prefix wildcard**: `'my.*'` — matches `my.effect`, `my.sub.deep`, and `my` itself
-- **Catch-all**: `'*'` — matches everything
+* **Exact**: `'my.effect'` — matches only `my.effect`
+* **Prefix wildcard**: `'my.*'` — matches `my.effect`, `my.sub.deep`, and `my` itself
+* **Catch-all**: `'*'` — matches everything
 
 ```typescript
 const result = await run('perform(effect(my.sub.action), "go")', {
