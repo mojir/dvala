@@ -1,4 +1,3 @@
-import type { JsFunction } from '../Dvala/Dvala'
 import type { SpecialExpressionType } from '../builtin'
 import type { Arity } from '../builtin/interface'
 import type { specialExpressionTypes } from '../builtin/specialExpressionTypes'
@@ -28,13 +27,6 @@ export interface RegularExpression {
 export interface EffectRef {
   [EFFECT_SYMBOL]: true
   name: string // e.g. 'llm.complete'
-}
-
-export interface NativeJsFunction extends GenericDvalaFunction {
-  functionType: 'NativeJsFunction'
-  name: string | undefined // name
-  nativeFn: JsFunction
-  docString: string // documentation string
 }
 
 export interface UserDefinedFunction extends GenericDvalaFunction {
@@ -119,7 +111,6 @@ export interface ModuleFunction extends GenericDvalaFunction {
 }
 
 export type DvalaFunction =
-  | NativeJsFunction
   | UserDefinedFunction
   | NormalBuiltinFunction
   | SpecialBuiltinFunction

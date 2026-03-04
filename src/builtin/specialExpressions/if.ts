@@ -17,13 +17,13 @@ const docs: CustomDocs = {
   examples: [
     `
 if true then
-  write!("TRUE")
+  "TRUE"
 else
-  write!("FALSE")
+  "FALSE"
 end`,
-    'if false then write!("TRUE") else write!("FALSE") end',
-    'if true then write!("TRUE") end',
-    'if false then write!("TRUE") end',
+    'if false then "TRUE" else "FALSE" end',
+    'if true then "TRUE" end',
+    'if false then "TRUE" end',
   ],
 }
 

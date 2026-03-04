@@ -10,12 +10,9 @@ export {
   isUserDefinedFunction,
   asUserDefinedFunction,
   assertUserDefinedFunction,
-  isNativeJsFunction,
-  asNativeJsFunction,
-  assertNativeJsFunction,
 } from './typeGuards/dvalaFunction'
 export { type Arity } from './builtin/interface'
-export { type DvalaFunction, type NativeJsFunction } from './parser/types'
+export { type DvalaFunction } from './parser/types'
 export type { Context } from './evaluator/interface'
 export type { Ast } from './parser/types'
 export type { SourceCodeInfo } from './tokenizer/token'
@@ -26,7 +23,7 @@ export type { DvalaModule } from './builtin/modules/interface'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError } from './errors'
-export type { ContextParams, FilePathParams, MinifyParams, PureParams, DvalaRuntimeInfo, JsFunction } from './Dvala/Dvala'
+export type { ContextParams, FilePathParams, MinifyParams, PureParams, DvalaRuntimeInfo } from './Dvala/Dvala'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter } from './AutoCompleter/AutoCompleter'
 

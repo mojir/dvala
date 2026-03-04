@@ -162,7 +162,6 @@ export const api = {
     '<=',
     '>=',
     'not',
-    'write!',
     'iso-date->epoch',
     'epoch->iso-date',
     'boolean',
@@ -530,28 +529,6 @@ export const api = {
     'number-theory.chinese-remainder',
     'number-theory.stirling-first',
     'number-theory.stirling-second',
-  ] as const,
-  random: [
-    'random.random!',
-    'random.random-int!',
-    'random.random-int-inclusive!',
-    'random.random-float!',
-    'random.random-boolean',
-    'random.random-item!',
-    'random.random-sample!',
-    'random.random-sample-unique!',
-    'random.shuffle!',
-    'random.random-normal!',
-    'random.random-exponential!',
-    'random.random-binomial!',
-    'random.random-poisson!',
-    'random.random-gamma!',
-    'random.random-pareto!',
-    'random.uuid!',
-    'random.random-char!',
-    'random.random-string!',
-    'random.random-id!',
-    'random.random-color!',
   ] as const,
   convert: [
     'convert.angstrom->um',
@@ -1133,7 +1110,6 @@ export type NumberTheoryApiName = typeof api.numberTheory[number]
 export type VectorApiName = typeof api.vector[number]
 export type VectorUtilsApiName = typeof api.vectorUtils[number]
 export type LinAlgApiName = typeof api.linAlg[number]
-export type RandomApiName = typeof api.random[number]
 export type MathUtilsApiName = typeof api.mathUtils[number]
 export type FunctionalUtilsApiName = typeof api.functionalUtils[number]
 export type ConvertApiName = typeof api.convert[number]
@@ -1162,7 +1138,6 @@ export type ModuleExpressionName =
   | LinAlgApiName
   | GridApiName
   | NumberTheoryApiName
-  | RandomApiName
   | MathUtilsApiName
   | FunctionalUtilsApiName
   | AssertionUtilsApiName
@@ -1208,7 +1183,6 @@ const moduleApiFunctionNames = [
   ...api.linAlg,
   ...api.grid,
   ...api.numberTheory,
-  ...api.random,
   ...api.mathUtils,
   ...api.functionalUtils,
   ...api.assertionUtils,

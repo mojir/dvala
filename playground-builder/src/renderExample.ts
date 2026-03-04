@@ -30,7 +30,11 @@ export function renderExample(example: string | string[], name: string, options?
   }
 
   const oldLog = console.log
+  const oldWarn = console.warn
+  const oldError = console.error
   console.log = function () {}
+  console.warn = function () {}
+  console.error = function () {}
   try {
     const result = dvala.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
     const stringifiedResult = stringifyValue(result, true)
@@ -50,5 +54,7 @@ export function renderExample(example: string | string[], name: string, options?
   }
   finally {
     console.log = oldLog
+    console.warn = oldWarn
+    console.error = oldError
   }
 }

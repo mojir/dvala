@@ -4,9 +4,9 @@ import { allNormalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { DvalaError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
-import type { ContextParams, JsFunction } from '../Dvala/Dvala'
+import type { ContextParams } from '../Dvala/Dvala'
 import type { DvalaModule } from '../builtin/modules/interface'
-import type { NativeJsFunction, NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
+import type { NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
 import { isNormalBuiltinSymbolNode, isSpecialBuiltinSymbolNode } from '../typeGuards/astNode'
@@ -21,21 +21,18 @@ export class ContextStackImpl {
   private _contexts: Context[]
   public globalContext: Context
   private values?: Record<string, unknown>
-  private nativeJsFunctions?: Record<string, NativeJsFunction>
   private modules: Map<string, DvalaModule>
   private valueModules: Map<string, unknown>
   public pure: boolean
   constructor({
     contexts,
     values: hostValues,
-    nativeJsFunctions,
     modules,
     valueModules,
     pure,
   }: {
     contexts: Context[]
     values?: Record<string, unknown>
-    nativeJsFunctions?: Record<string, NativeJsFunction>
     modules?: Map<string, DvalaModule>
     valueModules?: Map<string, unknown>
     pure?: boolean
@@ -43,7 +40,6 @@ export class ContextStackImpl {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
     this.values = hostValues
-    this.nativeJsFunctions = nativeJsFunctions
     this.modules = modules ?? new Map<string, DvalaModule>()
     this.valueModules = valueModules ?? new Map<string, unknown>()
     this.pure = pure ?? false
@@ -73,20 +69,18 @@ export class ContextStackImpl {
    * Create a ContextStack from deserialized data.
    * `contexts` is the restored context chain (already resolved).
    * `globalContextIndex` identifies which element is the globalContext.
-   * Host bindings (`values`, `nativeJsFunctions`, `modules`) come from resume options.
+   * Host bindings (`values`, `modules`) come from resume options.
    */
   public static fromDeserialized(params: {
     contexts: Context[]
     globalContextIndex: number
     values?: Record<string, unknown>
-    nativeJsFunctions?: Record<string, NativeJsFunction>
     modules?: Map<string, DvalaModule>
     pure: boolean
   }): ContextStackImpl {
     const cs = new ContextStackImpl({
       contexts: params.contexts,
       values: params.values,
-      nativeJsFunctions: params.nativeJsFunctions,
       modules: params.modules,
       pure: params.pure,
     })
@@ -127,7 +121,6 @@ export class ContextStackImpl {
     const contextStack = new ContextStackImpl({
       contexts: [context, ...this._contexts],
       values: this.values,
-      nativeJsFunctions: this.nativeJsFunctions,
       modules: this.modules,
       valueModules: this.valueModules,
       pure: this.pure,
@@ -163,10 +156,6 @@ export class ContextStackImpl {
         return contextEntry.value
     }
 
-    const nativeJsFunction = this.nativeJsFunctions?.[name]
-    if (nativeJsFunction)
-      return nativeJsFunction
-
     return this.values?.[name]
   }
 
@@ -182,13 +171,6 @@ export class ContextStackImpl {
     if (hostValue !== undefined) {
       return {
         value: toAny(hostValue),
-      }
-    }
-
-    const nativeJsFunction = this.nativeJsFunctions?.[value]
-    if (nativeJsFunction) {
-      return {
-        value: nativeJsFunction,
       }
     }
 
@@ -263,42 +245,18 @@ export function createContextStack(params: ContextParams = {}, modules?: Map<str
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
 
-  // Process bindings: separate plain values from JS functions
   let hostValues: Record<string, unknown> | undefined
-  let nativeJsFunctions: Record<string, NativeJsFunction> | undefined
 
   if (params.bindings) {
     for (const [identifier, entry] of Object.entries(params.bindings)) {
       if (identifier.includes('.')) {
         throw new DvalaError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
       }
-
-      const isFunction = typeof entry === 'function'
-
-      if (isFunction) {
-        const jsFunction: JsFunction = { fn: entry as (...args: any[]) => unknown }
-
-        assertNotShadowingBuiltin(identifier)
-        if (!nativeJsFunctions) {
-          nativeJsFunctions = {}
-        }
-        nativeJsFunctions[identifier] = {
-          functionType: 'NativeJsFunction',
-          nativeFn: jsFunction,
-          name: identifier,
-          [FUNCTION_SYMBOL]: true,
-          arity: jsFunction.arity ?? {},
-          docString: jsFunction.docString ?? '',
-        } satisfies NativeJsFunction
+      assertNotShadowingBuiltin(identifier)
+      if (!hostValues) {
+        hostValues = {}
       }
-      else {
-        // Plain value binding
-        assertNotShadowingBuiltin(identifier)
-        if (!hostValues) {
-          hostValues = {}
-        }
-        hostValues[identifier] = entry
-      }
+      hostValues[identifier] = entry
     }
   }
 
@@ -306,7 +264,6 @@ export function createContextStack(params: ContextParams = {}, modules?: Map<str
     contexts,
     values: hostValues,
     modules,
-    nativeJsFunctions,
     pure,
   })
   return params.globalModuleScope ? contextStack : contextStack.create({})

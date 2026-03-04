@@ -50,9 +50,9 @@ const dvala = new Dvala({ modules: [vectorModule, matrixModule] })
 
 Available modules: `assertion`, `grid`, `random`, `vector`, `linear-algebra`, `matrix`, `number-theory`, `math`, `functional`, `string`, `collection`, `sequence`, and `bitwise`.
 
-### Passing Values and Functions
+### Passing Values
 
-You can expose JavaScript values and functions to Dvala code via `bindings`:
+You can expose JavaScript values to Dvala code via `bindings`. Bindings must be serializable — plain objects, arrays, strings, numbers, booleans, or `null`. JavaScript functions are not allowed; use the [effects system](tutorial-effects) to call host-side logic from Dvala.
 
 ```javascript
 import { Dvala } from '@mojir/dvala'
@@ -64,12 +64,9 @@ dvala.run('name ++ " is " ++ str(age)', {
   bindings: { name: 'Alice', age: 30 }
 }) // => "Alice is 30"
 
-// Expose JavaScript functions
-dvala.run('greet("World")', {
-  bindings: {
-    greet: name => `Hello, ${name}!`,
-  }
-}) // => "Hello, World!"
+dvala.run('x * x', {
+  bindings: { x: 7 }
+}) // => 49
 ```
 
 ## CLI Tool

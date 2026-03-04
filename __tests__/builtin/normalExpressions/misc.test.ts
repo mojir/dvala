@@ -262,24 +262,6 @@ describe('misc functions', () => {
       })
     })
 
-    describe('write!', () => {
-      it('samples', () => {
-        expect(dvala.run('write!(1)')).toBe(1)
-        expect(dvala.run('write!("1")')).toBe('1')
-        expect(dvala.run('write!(100, [], "1")')).toBe('1')
-        expect(dvala.run('write!([])')).toEqual([])
-        expect(dvala.run('write!({})')).toEqual({})
-        expect(dvala.run('write!(null)')).toBe(null)
-        expect(dvala.run('write!(true)')).toBe(true)
-        expect(dvala.run('write!(false)')).toBe(false)
-        expect(dvala.run('write!()')).toBe(null)
-      })
-      it('that it does console.log', () => {
-        dvala.run('write!(1)')
-        expect(logSpy).toHaveBeenCalledWith(1)
-      })
-    })
-
     describe('boolean', () => {
       it('samples', () => {
         expect(dvala.run('boolean(0)')).toBe(false)

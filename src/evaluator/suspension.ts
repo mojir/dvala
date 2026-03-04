@@ -22,18 +22,16 @@
  * Deserialization reverses this:
  * 1. Parse the blob and create placeholder ContextStack instances
  * 2. Deep-resolve all `__csRef` markers back to real instances
- * 3. Fill in host bindings (values, nativeJsFunctions, modules) on each instance
+ * 3. Fill in host bindings (values, modules) on each instance
  */
 
 import { DvalaError } from '../errors'
 import type { Any } from '../interface'
-import type { NativeJsFunction } from '../parser/types'
-import { isDvalaFunction } from '../typeGuards/dvalaFunction'
+
 import type { DvalaModule } from '../builtin/modules/interface'
 import { ContextStackImpl } from './ContextStack'
 import type { Context } from './interface'
 import type { ContinuationStack } from './frames'
-import { describeSerializationIssue } from './serialization'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -76,7 +74,7 @@ function isCSRef(value: unknown): value is CSRef {
 /**
  * Serialize a continuation stack and optional metadata into an opaque JSON blob.
  *
- * Validates that all values are serializable (no NativeJsFunctions in frames).
+ * Validates that all values are serializable.
  * Throws a descriptive `DvalaError` if non-serializable values are found.
  */
 export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
@@ -120,15 +118,6 @@ export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
   function serializeValue(value: unknown, path: string): unknown {
     if (value instanceof ContextStackImpl) {
       return { __csRef: csMap.get(value)! } satisfies CSRef
-    }
-
-    // Check for non-serializable function types
-    if (isDvalaFunction(value as Any) && (value as { functionType: string }).functionType === 'NativeJsFunction') {
-      const issue = describeSerializationIssue(value as Any, path)
-      throw new DvalaError(
-        `Cannot serialize continuation: ${issue ?? 'NativeJsFunction found in continuation stack'}`,
-        undefined,
-      )
     }
 
     if (Array.isArray(value)) {
@@ -183,7 +172,6 @@ export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
 /** Options for re-injecting host bindings on resume. */
 export interface DeserializeOptions {
   values?: Record<string, unknown>
-  nativeJsFunctions?: Record<string, NativeJsFunction>
   modules?: Map<string, DvalaModule>
 }
 
@@ -225,7 +213,7 @@ export function deserializeSuspension(
       contexts: placeholderContexts,
       globalContextIndex: scs.globalContextIndex,
       values: options?.values,
-      nativeJsFunctions: options?.nativeJsFunctions,
+
       modules: options?.modules,
       pure: scs.pure,
     })

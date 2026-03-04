@@ -45,11 +45,6 @@
       "import": "./dist/modules/grid.esm.js",
       "require": "./dist/modules/grid.js"
     },
-    "./modules/random": {
-      "types": "./dist/src/modules/random.d.ts",
-      "import": "./dist/modules/random.esm.js",
-      "require": "./dist/modules/random.js"
-    },
     "./modules/vector": {
       "types": "./dist/src/modules/vector.d.ts",
       "import": "./dist/modules/vector.esm.js",

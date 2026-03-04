@@ -17,19 +17,19 @@ const docs: CustomDocs = {
   examples: [
     `
 cond
-  case false then write!("FALSE")
-  case true then write!("TRUE")
+  case false then "FALSE"
+  case true then "TRUE"
 end`,
     `
 cond
-  case false then write!("FALSE")
-  case null then write!("null")
-end ?? write!("TRUE")`,
+  case false then "FALSE"
+  case null then "null"
+end ?? "TRUE"`,
     `
 cond
-  case false then write!("FALSE")
-  case null then write!("null")
-end ?? write!("TRUE")`,
+  case false then "FALSE"
+  case null then "null"
+end ?? "TRUE"`,
   ],
 }
 

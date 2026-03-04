@@ -10,7 +10,6 @@ import { Dvala } from '../src/index'
 import { Dvala as DvalaFull, allBuiltinModules, apiReference } from '../src/full'
 import { assertModule } from '../src/modules/assertion'
 import { gridModule } from '../src/modules/grid'
-import { randomModule } from '../src/modules/random'
 import { vectorModule } from '../src/modules/vector'
 import { linearAlgebraModule } from '../src/modules/linear-algebra'
 import { matrixModule } from '../src/modules/matrix'
@@ -72,8 +71,8 @@ describe('full entry point (src/full.ts)', () => {
     expect(Object.keys(apiReference).length).toBeGreaterThan(0)
   })
 
-  it('should export allBuiltinModules with 14 modules', () => {
-    expect(allBuiltinModules).toHaveLength(14)
+  it('should export allBuiltinModules with 13 modules', () => {
+    expect(allBuiltinModules).toHaveLength(13)
   })
 })
 
@@ -89,14 +88,6 @@ describe('individual module entry points', () => {
     expect(gridModule.name).toBe('grid')
     const dvala = new Dvala({ modules: [gridModule] })
     expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
-  })
-
-  it('random module', () => {
-    expect(randomModule.name).toBe('random')
-    const dvala = new Dvala({ modules: [randomModule] })
-    const result = dvala.run('let r = import(random); r.random!()') as number
-    expect(result).toBeGreaterThanOrEqual(0)
-    expect(result).toBeLessThan(1)
   })
 
   it('vector module', () => {

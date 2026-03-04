@@ -23,7 +23,7 @@ describe('getEffectRef', () => {
 
   it('should return different references for different names', () => {
     const a = getEffectRef('llm.complete')
-    const b = getEffectRef('dvala.log')
+    const b = getEffectRef('dvala.io.println')
     expect(a).not.toBe(b)
   })
 

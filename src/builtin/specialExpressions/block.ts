@@ -27,9 +27,9 @@ do
 end`,
     `
 do
-  perform(effect(dvala.log), "hello")
+  perform(effect(dvala.io.println), "hello")
 with
-  case effect(dvala.log) then ([msg]) -> null
+  case effect(dvala.io.println) then ([msg]) -> null
 end`,
   ],
 }

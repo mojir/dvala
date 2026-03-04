@@ -1,4 +1,4 @@
-import type { DvalaFunction, NativeJsFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
+import type { DvalaFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
@@ -31,22 +31,7 @@ export function assertUserDefinedFunction(
   sourceCodeInfo?: SourceCodeInfo,
 ): asserts value is UserDefinedFunction {
   if (!isUserDefinedFunction(value))
-    throw getAssertionError('NativeJsFunction', value, sourceCodeInfo)
-}
-
-export function isNativeJsFunction(value: unknown): value is NativeJsFunction {
-  return isDvalaFunction(value) && value.functionType === 'NativeJsFunction'
-}
-export function asNativeJsFunction(value: unknown, sourceCodeInfo?: SourceCodeInfo): NativeJsFunction {
-  assertNativeJsFunction(value, sourceCodeInfo)
-  return value
-}
-export function assertNativeJsFunction(
-  value: unknown,
-  sourceCodeInfo?: SourceCodeInfo,
-): asserts value is NativeJsFunction {
-  if (!isNativeJsFunction(value))
-    throw getAssertionError('NativeJsFunction', value, sourceCodeInfo)
+    throw getAssertionError('UserDefinedFunction', value, sourceCodeInfo)
 }
 
 export function isBuiltinFunction(value: unknown): value is NormalBuiltinFunction {

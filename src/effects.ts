@@ -59,7 +59,6 @@ export interface RunOptions {
 
 /**
  * Options for `runSync()` — synchronous pure computation.
- * `bindings` may include JS functions (they become NativeJsFunctions).
  */
 export interface RunSyncOptions {
   bindings?: Record<string, unknown>
@@ -102,7 +101,6 @@ function buildAst(source: string): Ast {
 /**
  * Level 1: Pure synchronous computation.
  *
- * JS functions are allowed in `bindings` — they become NativeJsFunctions.
  * Throws if an async operation or effect is encountered.
  *
  * ```typescript
@@ -190,7 +188,6 @@ export async function resume(blob: string, value: Any, options?: ResumeOptions):
       : undefined
 
     // Deserialize the blob, re-injecting host bindings into ContextStacks.
-    // NativeJsFunctions are not supported in resume — only plain values.
     const { k } = deserializeSuspension(blob, {
       values: options?.bindings as Record<string, unknown> | undefined,
       modules,

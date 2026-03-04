@@ -251,10 +251,20 @@ function runDvalaTest(testPath: string, testNamePattern: Maybe<string>) {
     process.exit(1)
 }
 
-function execute(expression: string, context: Context): boolean {
-  const dvala = createDvala(context, false)
+async function execute(expression: string, context: Context, readLine: (msg: string) => Promise<string>): Promise<boolean> {
+  const _dvala = new Dvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
-    const result = dvala.run(expression)
+    const result = await _dvala.async.run(expression, {
+      globalContext: context,
+      globalModuleScope: true,
+      handlers: {
+        'dvala.io.read-line': async ({ args, resume }) => {
+          const message = typeof args[0] === 'string' ? args[0] : ''
+          const answer = await readLine(message)
+          resume(answer)
+        },
+      },
+    })
     historyResults.unshift(result)
     if (historyResults.length > 9) {
       historyResults.length = 9
@@ -607,9 +617,14 @@ Type ${fmt.italic('`help')} for more information.`)
     prompt: PROMPT,
   })
 
+  function readLine(message: string): Promise<string> {
+    return new Promise<string>(resolve => rl.question(message, answer => resolve(answer)))
+  }
+
   rl.prompt()
 
-  rl.on('line', (line) => {
+  // eslint-disable-next-line ts/no-misused-promises
+  rl.on('line', async (line) => {
     line = line.trim()
 
     const helpMatch = helpRegExp.exec(line)
@@ -636,7 +651,7 @@ Type ${fmt.italic('`help')} for more information.`)
       }
     }
     else if (line) {
-      execute(line, context)
+      await execute(line, context, readLine)
     }
     rl.prompt()
   }).on('close', () => {

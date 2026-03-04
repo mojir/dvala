@@ -331,35 +331,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'write!': {
-    evaluate: (params, sourceCodeInfo): Any => {
-      // eslint-disable-next-line no-console
-      console.log(...params)
-
-      if (params.length > 0)
-        return asAny(params[params.length - 1], sourceCodeInfo)
-
-      return null
-    },
-    pure: false,
-    arity: {},
-    docs: {
-      category: 'misc',
-      returns: { type: 'any' },
-      args: { values: { type: 'any', rest: true } },
-      variants: [{ argumentNames: ['values'] }],
-      description: 'It logs the $values and then returns the last argument. If called with no arguments `null` is returned.',
-      examples: [
-        'write!("A string")',
-        'write!(100, "items")',
-        'write!(object("a", 10))',
-        'write!(["a", "b", "c"])',
-        'write!(#"^start")',
-        'write!(null, true, false)',
-      ],
-      hideOperatorForm: true,
-    },
-  },
   'boolean': {
     evaluate: ([value]): boolean => {
       return !!value
@@ -556,7 +527,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'type-of({ a: 1 })',
         'type-of((x) -> x + 1)',
         'type-of(regexp("^start"))',
-        'type-of(effect(dvala.log))',
+        'type-of(effect(dvala.io.println))',
       ],
     },
   },

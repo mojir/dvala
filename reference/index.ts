@@ -27,7 +27,6 @@ import { vectorNormalExpression } from '../src/builtin/core/vector'
 // Module categories — derive reference from co-located docs
 import { assertModule } from '../src/builtin/modules/assertion'
 import { gridModule } from '../src/builtin/modules/grid'
-import { randomModule } from '../src/builtin/modules/random'
 import { vectorModule } from '../src/builtin/modules/vector'
 import { linearAlgebraModule } from '../src/builtin/modules/linear-algebra'
 import { matrixModule } from '../src/builtin/modules/matrix'
@@ -243,7 +242,6 @@ export const normalExpressionReference: Record<CoreNormalExpressionName, Functio
 export const moduleReference: Record<ModuleExpressionName, FunctionReference> = {
   ...moduledDocsToReference(assertModule),
   ...moduledDocsToReference(gridModule),
-  ...moduledDocsToReference(randomModule),
   ...moduledDocsToReference(vectorModule),
   ...moduledDocsToReference(linearAlgebraModule),
   ...moduledDocsToReference(matrixModule),

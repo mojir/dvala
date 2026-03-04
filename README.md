@@ -709,7 +709,7 @@ for (entry in { a: 1, b: 2 } let [key, value] = entry) -> key ++ ":" ++ str(valu
 
 ```dvala
 // For side effects only (returns null)
-doseq (x in [1, 2, 3]) -> write!(x)
+doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.println), x)
 // Prints: 1 2 3, returns null
 ```
 
@@ -838,10 +838,10 @@ let loadData = () -> [1, 2, 3];
 let processData = (data) -> data map -> $ * 2;
 
 do
-  write!("Starting process...");
+  perform(effect(dvala.io.println), "Starting process...");
   let data = loadData();
   let processed = processData(data);
-  write!("Process completed");
+  perform(effect(dvala.io.println), "Process completed");
   processed
 end
 ```
@@ -1516,7 +1516,6 @@ import { vectorModule } from '@mojir/dvala/modules/vector';
 import { matrixModule } from '@mojir/dvala/modules/matrix';
 import { linearAlgebraModule } from '@mojir/dvala/modules/linearAlgebra';
 import { gridModule } from '@mojir/dvala/modules/grid';
-import { randomModule } from '@mojir/dvala/modules/random';
 import { assertModule } from '@mojir/dvala/modules/assertion';
 import { numberTheoryModule } from '@mojir/dvala/modules/numberTheory';
 ```
@@ -1547,22 +1546,12 @@ console.log(result1); // 6
 
 // Provide JavaScript values
 const result2 = dvala.run('name ++ " is " ++ str(age)', {
-  values: { name: 'John', age: 30 }
+  bindings: { name: 'John', age: 30 }
 });
 console.log(result2); // "John is 30"
 
-// Expose JavaScript functions
-const result3 = dvala.run('myAlert("Hello from Dvala!")', {
-  jsFunctions: {
-    myAlert: {
-      fn: (message) => console.log(`Alert: ${message}`),
-      arity: { min: 1, max: 1 }
-    }
-  }
-});
-
 // Execute Dvala code
-const result4 = dvala.run('+(5, 3)');
+const result3 = dvala.run('+(5, 3)');
 ```
 
 ### Dvala Class Methods
@@ -1595,15 +1584,8 @@ interface Dvala {
 interface ContextParams {
   globalContext?: Context          // Global variable context
   contexts?: Context[]             // Additional context layers
-  values?: Record<string, unknown> // JavaScript values to expose
-  jsFunctions?: Record<string, JsFunction> // JavaScript functions to expose
+  bindings?: Record<string, unknown> // Serializable values to expose (no JS functions)
   globalModuleScope?: boolean      // Make top-level let bindings persist in global context
-}
-
-interface JsFunction {
-  fn: (...args: any[]) => unknown // The JavaScript function
-  arity?: Arity                   // Function arity constraints
-  docString?: string              // Documentation
 }
 ```
 

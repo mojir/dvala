@@ -231,12 +231,12 @@ describe('all tests', () => {
     })
     it('sourceCodeInfo', () => {
       try {
-        dvala.run('let n = 3; write!(m)') // Missing semi
+        dvala.run('let n = 3; n + m') // m is undefined
       }
       catch (error) {
         expect((error as DvalaError).sourceCodeInfo?.position.line).toBe(1)
 
-        expect((error as DvalaError).sourceCodeInfo?.position.column).toBe(19)
+        expect((error as DvalaError).sourceCodeInfo?.position.column).toBe(16)
       }
     })
     it('name not recognized', () => {

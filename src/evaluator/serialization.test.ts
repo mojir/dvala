@@ -10,7 +10,6 @@ import type {
   FNullFunction,
   JuxtFunction,
   ModuleFunction,
-  NativeJsFunction,
   NormalBuiltinFunction,
   PartialFunction,
   SomePredFunction,
@@ -18,18 +17,6 @@ import type {
   UserDefinedFunction,
 } from '../parser/types'
 import { describeSerializationIssue, isSerializable } from './serialization'
-
-function makeNativeJsFunction(name?: string): NativeJsFunction {
-  const fn: NativeJsFunction = {
-    [FUNCTION_SYMBOL]: true,
-    functionType: 'NativeJsFunction',
-    name: name ?? 'testFn',
-    nativeFn: { fn: () => 42 },
-    docString: '',
-    arity: {},
-  }
-  return fn
-}
 
 function makeUserDefinedFunction(): UserDefinedFunction {
   const fn: UserDefinedFunction = {
@@ -105,10 +92,6 @@ describe('isSerializable', () => {
     it('should accept nested arrays', () => {
       expect(isSerializable([[1, 2], [3, [4, 5]]])).toBe(true)
     })
-    it('should reject arrays containing NativeJsFunction', () => {
-      const arr: Any = [1, makeNativeJsFunction()]
-      expect(isSerializable(arr)).toBe(false)
-    })
   })
 
   describe('objects', () => {
@@ -120,10 +103,6 @@ describe('isSerializable', () => {
     })
     it('should accept nested objects', () => {
       expect(isSerializable({ a: { b: { c: 42 } } })).toBe(true)
-    })
-    it('should reject objects containing NativeJsFunction', () => {
-      const obj: Any = { fn: makeNativeJsFunction() }
-      expect(isSerializable(obj)).toBe(false)
     })
   })
 
@@ -146,12 +125,12 @@ describe('isSerializable', () => {
     })
 
     it('should accept arrays containing EffectRef', () => {
-      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.log' }
+      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.println' }
       expect(isSerializable([1, ref] as Any)).toBe(true)
     })
 
     it('should accept objects containing EffectRef', () => {
-      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.now' }
+      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.time.now' }
       const obj: Any = { eff: ref }
       expect(isSerializable(obj)).toBe(true)
     })
@@ -170,9 +149,6 @@ describe('isSerializable', () => {
     it('should accept ModuleFunction', () => {
       expect(isSerializable(makeModuleFunction() as Any)).toBe(true)
     })
-    it('should reject NativeJsFunction', () => {
-      expect(isSerializable(makeNativeJsFunction() as Any)).toBe(false)
-    })
   })
 
   describe('compound function types', () => {
@@ -188,18 +164,6 @@ describe('isSerializable', () => {
       expect(isSerializable(partial as Any)).toBe(true)
     })
 
-    it('should reject PartialFunction with NativeJsFunction', () => {
-      const partial: PartialFunction = {
-        [FUNCTION_SYMBOL]: true,
-        functionType: 'Partial',
-        function: makeNativeJsFunction(),
-        params: [1],
-        placeholders: [1],
-        arity: {},
-      }
-      expect(isSerializable(partial as Any)).toBe(false)
-    })
-
     it('should accept CompFunction with serializable functions', () => {
       const comp: CompFunction = {
         [FUNCTION_SYMBOL]: true,
@@ -208,16 +172,6 @@ describe('isSerializable', () => {
         arity: {},
       }
       expect(isSerializable(comp as Any)).toBe(true)
-    })
-
-    it('should reject CompFunction with NativeJsFunction', () => {
-      const comp: CompFunction = {
-        [FUNCTION_SYMBOL]: true,
-        functionType: 'Comp',
-        params: [makeUserDefinedFunction(), makeNativeJsFunction()],
-        arity: {},
-      }
-      expect(isSerializable(comp as Any)).toBe(false)
     })
 
     it('should accept ConstantlyFunction with serializable value', () => {
@@ -250,16 +204,6 @@ describe('isSerializable', () => {
       expect(isSerializable(complement as Any)).toBe(true)
     })
 
-    it('should reject ComplementFunction with NativeJsFunction', () => {
-      const complement: ComplementFunction = {
-        [FUNCTION_SYMBOL]: true,
-        functionType: 'Complement',
-        function: makeNativeJsFunction(),
-        arity: {},
-      }
-      expect(isSerializable(complement as Any)).toBe(false)
-    })
-
     it('should accept EveryPredFunction with serializable predicates', () => {
       const everyPred: EveryPredFunction = {
         [FUNCTION_SYMBOL]: true,
@@ -289,17 +233,6 @@ describe('isSerializable', () => {
         arity: {},
       }
       expect(isSerializable(fnull as Any)).toBe(true)
-    })
-
-    it('should reject FNullFunction with NativeJsFunction', () => {
-      const fnull: FNullFunction = {
-        [FUNCTION_SYMBOL]: true,
-        functionType: 'Fnull',
-        function: makeNativeJsFunction(),
-        params: [1],
-        arity: {},
-      }
-      expect(isSerializable(fnull as Any)).toBe(false)
     })
   })
 
@@ -331,34 +264,6 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue(makeBuiltinFunction() as Any)).toBeNull()
   })
 
-  it('should describe NativeJsFunction issue', () => {
-    const issue = describeSerializationIssue(makeNativeJsFunction('myFn') as Any)
-    expect(issue).toContain('NativeJsFunction')
-    expect(issue).toContain('myFn')
-  })
-
-  it('should describe nested NativeJsFunction issue with path', () => {
-    const value: Any = { data: [1, makeNativeJsFunction('deepFn')] }
-    const issue = describeSerializationIssue(value)
-    expect(issue).toContain('value.data[1]')
-    expect(issue).toContain('NativeJsFunction')
-    expect(issue).toContain('deepFn')
-  })
-
-  it('should describe NativeJsFunction inside PartialFunction', () => {
-    const partial: PartialFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Partial',
-      function: makeNativeJsFunction('innerFn'),
-      params: [],
-      placeholders: [],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(partial as Any)
-    expect(issue).toContain('value.function')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for fully serializable compound types', () => {
     const partial: PartialFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -371,32 +276,6 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue(partial as Any)).toBeNull()
   })
 
-  it('should describe NativeJsFunction inside PartialFunction params', () => {
-    const partial: PartialFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Partial',
-      function: makeUserDefinedFunction(),
-      params: [1, makeNativeJsFunction('paramFn')],
-      placeholders: [],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(partial as Any)
-    expect(issue).toContain('value.params[1]')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
-  it('should describe NativeJsFunction inside CompFunction', () => {
-    const comp: CompFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Comp',
-      params: [makeUserDefinedFunction(), makeNativeJsFunction('compFn')],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(comp as Any)
-    expect(issue).toContain('value.params[1]')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for serializable CompFunction', () => {
     const comp: CompFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -405,18 +284,6 @@ describe('describeSerializationIssue', () => {
       arity: {},
     }
     expect(describeSerializationIssue(comp as Any)).toBeNull()
-  })
-
-  it('should describe NativeJsFunction inside ComplementFunction', () => {
-    const complement: ComplementFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Complement',
-      function: makeNativeJsFunction('complFn'),
-      arity: {},
-    }
-    const issue = describeSerializationIssue(complement as Any)
-    expect(issue).toContain('value.function')
-    expect(issue).toContain('NativeJsFunction')
   })
 
   it('should return null for serializable ComplementFunction', () => {
@@ -429,18 +296,6 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue(complement as Any)).toBeNull()
   })
 
-  it('should describe NativeJsFunction inside ConstantlyFunction', () => {
-    const constantly: ConstantlyFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Constantly',
-      value: makeNativeJsFunction('constFn') as Any,
-      arity: {},
-    }
-    const issue = describeSerializationIssue(constantly as Any)
-    expect(issue).toContain('value.value')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for serializable ConstantlyFunction', () => {
     const constantly: ConstantlyFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -449,18 +304,6 @@ describe('describeSerializationIssue', () => {
       arity: {},
     }
     expect(describeSerializationIssue(constantly as Any)).toBeNull()
-  })
-
-  it('should describe NativeJsFunction inside JuxtFunction', () => {
-    const juxt: JuxtFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Juxt',
-      params: [makeNativeJsFunction('juxtFn')],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(juxt as Any)
-    expect(issue).toContain('value.params[0]')
-    expect(issue).toContain('NativeJsFunction')
   })
 
   it('should return null for serializable JuxtFunction', () => {
@@ -473,18 +316,6 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue(juxt as Any)).toBeNull()
   })
 
-  it('should describe NativeJsFunction inside EveryPredFunction', () => {
-    const everyPred: EveryPredFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'EveryPred',
-      params: [makeNativeJsFunction('epFn')],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(everyPred as Any)
-    expect(issue).toContain('value.params[0]')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for serializable EveryPredFunction', () => {
     const everyPred: EveryPredFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -495,18 +326,6 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue(everyPred as Any)).toBeNull()
   })
 
-  it('should describe NativeJsFunction inside SomePredFunction', () => {
-    const somePred: SomePredFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'SomePred',
-      params: [makeNativeJsFunction('spFn')],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(somePred as Any)
-    expect(issue).toContain('value.params[0]')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for serializable SomePredFunction', () => {
     const somePred: SomePredFunction = {
       [FUNCTION_SYMBOL]: true,
@@ -515,32 +334,6 @@ describe('describeSerializationIssue', () => {
       arity: {},
     }
     expect(describeSerializationIssue(somePred as Any)).toBeNull()
-  })
-
-  it('should describe NativeJsFunction inside FNullFunction function', () => {
-    const fnull: FNullFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Fnull',
-      function: makeNativeJsFunction('fnullFn'),
-      params: [1],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(fnull as Any)
-    expect(issue).toContain('value.function')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
-  it('should describe NativeJsFunction inside FNullFunction params', () => {
-    const fnull: FNullFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'Fnull',
-      function: makeUserDefinedFunction(),
-      params: [makeNativeJsFunction('fnullParamFn')],
-      arity: {},
-    }
-    const issue = describeSerializationIssue(fnull as Any)
-    expect(issue).toContain('value.params[0]')
-    expect(issue).toContain('NativeJsFunction')
   })
 
   it('should return null for serializable FNullFunction', () => {
@@ -558,22 +351,8 @@ describe('describeSerializationIssue', () => {
     expect(describeSerializationIssue([1, 'two', true])).toBeNull()
   })
 
-  it('should describe issue in array element', () => {
-    const arr: Any = [1, makeNativeJsFunction('arrFn')]
-    const issue = describeSerializationIssue(arr)
-    expect(issue).toContain('value[1]')
-    expect(issue).toContain('NativeJsFunction')
-  })
-
   it('should return null for serializable objects', () => {
     expect(describeSerializationIssue({ a: 1, b: 'two' })).toBeNull()
-  })
-
-  it('should describe issue in object value', () => {
-    const obj: Any = { ok: 1, bad: makeNativeJsFunction('objFn') }
-    const issue = describeSerializationIssue(obj)
-    expect(issue).toContain('value.bad')
-    expect(issue).toContain('NativeJsFunction')
   })
 
   it('should return null for RegularExpression', () => {
@@ -592,13 +371,6 @@ describe('describeSerializationIssue', () => {
 
   it('should return null for ModuleFunction', () => {
     expect(describeSerializationIssue(makeModuleFunction() as Any)).toBeNull()
-  })
-
-  it('should describe anonymous NativeJsFunction', () => {
-    const fn = makeNativeJsFunction()
-    fn.name = undefined
-    const issue = describeSerializationIssue(fn as Any)
-    expect(issue).toContain('anonymous')
   })
 
   it('should describe unknown function type', () => {
