@@ -1,8 +1,14 @@
 import process from 'node:process'
-import type { JsFunction } from '../../../../../src'
+import type { Arity, BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
 import type { Any } from '../../../../../src/interface'
 import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
-import type { BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
+
+interface JsFunction {
+  fn: (...args: any[]) => unknown
+  arity?: Arity
+  pure?: boolean
+  docString?: string
+}
 
 export function sys_cwd(): string {
   return process.cwd()

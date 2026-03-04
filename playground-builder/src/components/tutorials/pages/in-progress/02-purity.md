@@ -11,19 +11,19 @@ Dvala takes a different approach: **runtime enforcement**. The result is practic
 Dvala can enforce purity at runtime. When you run code in **pure mode**, any call to a function with effects throws an error:
 
 ```no-run
-// In pure mode, this would throw:
-// "Cannot call impure function 'write!' in pure mode"
-perform(effect(dvala.log), "Hello, anybody out there?")
+// In pure mode, performing an effect throws:
+// "Cannot perform effect 'dvala.io.println' in pure mode"
+perform(effect(dvala.io.println), "Hello, anybody out there?")
 ```
 
-An impure program is easy to identify, it is a program that does `perform`. E.g. `perform(dvala.log)`
+An impure program is easy to identify, it is a program that does `perform`. E.g. `perform(dvala.io.println)`
 
 ## Effects: The Pure Way to Do I/O
 
 Instead of calling impure functions directly, Dvala programs **perform effects** — pure descriptions of side effects that are handled externally:
 
 ```
-perform(effect(dvala.log), "This is a pure description of a side effect")
+perform(effect(dvala.io.println), "This is a pure description of a side effect")
 ```
 
 An effect call is pure in the sense that it describes **what** should happen without **doing** it directly. The handler gives the effect its meaning. This is the algebraic effects approach ([Plotkin & Pretnar, 2009](https://homepages.inf.ed.ac.uk/gdp/publications/Effect_Handlers.pdf)) — effects are operations, handlers are interpreters.
@@ -63,9 +63,9 @@ transform([1, 2, 3, 4, 5, 6])
 Pure mode only blocks impure calls that actually execute. Unreachable code is fine:
 
 ```
-// This works in pure mode — the write! branch never runs
+// This works in pure mode — the effect branch never runs
 if false then
-  perform(effect(dvala.log), "never happens")
+  perform(effect(dvala.io.println), "never happens")
 else
   42
 end

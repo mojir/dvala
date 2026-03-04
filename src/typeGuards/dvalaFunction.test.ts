@@ -1,33 +1,17 @@
 import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
-import type { DvalaFunction, NativeJsFunction } from '../parser/types'
+import type { DvalaFunction } from '../parser/types'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import { normalExpressionTypes } from '../builtin/normalExpressions'
 import {
   asDvalaFunction,
-  asNativeJsFunction,
   asUserDefinedFunction,
   assertDvalaFunction,
-  assertNativeJsFunction,
   assertUserDefinedFunction,
   isBuiltinFunction,
   isDvalaFunction,
-  isNativeJsFunction,
   isUserDefinedFunction,
 } from './dvalaFunction'
-
-function createNativeJsFunction(fn: (...args: any[]) => unknown, name?: string): NativeJsFunction {
-  return {
-    [FUNCTION_SYMBOL]: true,
-    nativeFn: {
-      fn,
-    },
-    name,
-    functionType: 'NativeJsFunction',
-    arity: {},
-    docString: '',
-  }
-}
 
 describe('dvalaFunction type guards', () => {
   const lf1: DvalaFunction = {
@@ -57,11 +41,9 @@ describe('dvalaFunction type guards', () => {
     value: 10,
     arity: {},
   }
-  const lf6 = createNativeJsFunction(() => undefined)
-  const lf7 = createNativeJsFunction(() => undefined, 'native')
 
   it('isDvalaFunction', () => {
-    const valid = [lf1, lf2, lf4, lf5, lf6, lf7]
+    const valid = [lf1, lf2, lf4, lf5]
     const invalid = ['', '1', 0, 1, true, false, null, undefined, [], {}]
     testTypeGuars(
       {
@@ -74,7 +56,7 @@ describe('dvalaFunction type guards', () => {
 
   it('isUserDefinedFunction', () => {
     const valid = [lf1]
-    const invalid = [lf2, lf4, lf5, lf6, lf7, '', '1', 0, 1, true, false, null, undefined, [], {}]
+    const invalid = [lf2, lf4, lf5, '', '1', 0, 1, true, false, null, undefined, [], {}]
 
     testTypeGuars(
       {
@@ -85,18 +67,6 @@ describe('dvalaFunction type guards', () => {
     )
   })
 
-  it('isNativeJsFunction', () => {
-    const valid = [lf6, lf7]
-    const invalid = [lf1, lf2, lf4, lf5, '', '1', 0, 1, true, false, null, undefined, [], {}]
-
-    testTypeGuars(
-      {
-        valid,
-        invalid,
-      },
-      { is: isNativeJsFunction, as: asNativeJsFunction, assert: assertNativeJsFunction },
-    )
-  })
   test('isBuiltinFunction', () => {
     expect(isBuiltinFunction(lf1)).toBe(false)
     expect(isBuiltinFunction(lf2)).toBe(true)

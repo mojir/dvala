@@ -20,7 +20,7 @@ const docs: CustomDocs = {
   examples: [`
 let a = 1 + 2 + 3 + 4;
 let b = -> $ * ( $ + 1 );
-write!("a", a, "b", b)`],
+b(a)`],
 }
 
 export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {

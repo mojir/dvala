@@ -5,7 +5,7 @@ export interface Example {
   code: string
   context?: {
     bindings?: Record<string, unknown>
-    fnBindings?: Record<string, string>
+    handlers?: Record<string, string>
   }
 }
 
@@ -32,68 +32,73 @@ let data = {
   string: "Albert"
 };
 
-write!(data.numbers[0]);
-write!(data.chars[2]);
-write!(data.string[0]);
+perform(effect(dvala.io.println), data.numbers[0]);
+perform(effect(dvala.io.println), data.chars[2]);
+perform(effect(dvala.io.println), data.string[0]);
 
-write!({a: 1, b: 2, c: 3}.b);
-write!("Albert"[3]);
-write!([1, 2, 3][2]);
+perform(effect(dvala.io.println), {a: 1, b: 2, c: 3}.b);
+perform(effect(dvala.io.println), "Albert"[3]);
+perform(effect(dvala.io.println), [1, 2, 3][2]);
     `.trim(),
   },
   {
     id: 'simple-context-example',
     name: 'Using context',
-    description: 'Simple example using a context.',
+    description: 'Simple example using bindings and a host effect handler.',
     context: {
       bindings: { x: 15, y: 27 },
-      fnBindings: { plus: '(a, b) => a + b' },
+      handlers: {
+        'host.plus': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
+      },
     },
     code: `
-  plus(x, y)
-      `.trim(),
+perform(effect(host.plus), x, y)
+    `.trim(),
   },
   {
     id: 'async-example',
-    name: 'Async functions',
-    description: 'Demonstrates using async JavaScript functions from Dvala. The playground runs in async mode, so async JS functions are automatically awaited.',
+    name: 'Async host effects',
+    description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     context: {
-      fnBindings: {
-        'fetch-user': `async (id) => {
-  const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
-  const user = await response.json();
-  return { name: user.name, email: user.email, city: user.address.city };
+      handlers: {
+        'host.fetch-user': `async ({ args: [id], resume, fail }) => {
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
+    const user = await response.json();
+    resume({ name: user.name, email: user.email, city: user.address.city });
+  } catch(e) { fail(e.message) }
 }`,
-        'fetch-posts': `async (userId) => {
-  const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
-  const posts = await response.json();
-  return posts.slice(0, 3).map(p => ({ title: p.title, body: p.body }));
+        'host.fetch-posts': `async ({ args: [userId], resume, fail }) => {
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
+    const posts = await response.json();
+    resume(posts.slice(0, 3).map(p => ({ title: p.title, body: p.body })));
+  } catch(e) { fail(e.message) }
 }`,
-        'delay': `async (ms) => {
+        'host.delay': `async ({ args: [ms], resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
-  return ms;
+  resume(ms);
 }`,
       },
     },
     code: `
-// Async JavaScript functions are automatically awaited
-// when running in the playground.
+// Call async host effects with perform(effect(...), args...)
 
 // Simulate a delay
-write!("Waiting 500ms...");
-delay(500);
-write!("Done waiting!");
+perform(effect(dvala.io.println), "Waiting 500ms...");
+perform(effect(host.delay), 500);
+perform(effect(dvala.io.println), "Done waiting!");
 
 // Fetch a user from a REST API
-let user = fetch-user(1);
-write!("User: " ++ user.name);
-write!("Email: " ++ user.email);
-write!("City: " ++ user.city);
+let user = perform(effect(host.fetch-user), 1);
+perform(effect(dvala.io.println), "User: " ++ user.name);
+perform(effect(dvala.io.println), "Email: " ++ user.email);
+perform(effect(dvala.io.println), "City: " ++ user.city);
 
 // Fetch their posts
-let posts = fetch-posts(1);
-write!("\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
-doseq (post in posts) -> write!("- " ++ post.title);
+let posts = perform(effect(host.fetch-posts), 1);
+perform(effect(dvala.io.println), "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
+doseq (post in posts) -> perform(effect(dvala.io.println), "- " ++ post.title);
     `.trim(),
   },
   {
@@ -101,82 +106,86 @@ doseq (post in posts) -> write!("- " ++ post.title);
     name: 'Interactive async',
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     context: {
-      fnBindings: {
-        'prompt': '(title) => prompt(title)',
-        'fetch-user': `async (id) => {
-  const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
-  if (!response.ok) return null;
-  const user = await response.json();
-  return { id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name };
+      handlers: {
+        'host.prompt': 'async ({ args: [title], resume }) => { resume(prompt(title)) }',
+        'host.fetch-user': `async ({ args: [id], resume, fail }) => {
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
+    if (!response.ok) { resume(null); return; }
+    const user = await response.json();
+    resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
+  } catch(e) { fail(e.message) }
 }`,
-        'fetch-todos': `async (userId) => {
-  const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
-  const todos = await response.json();
-  return todos.map(t => ({ title: t.title, completed: t.completed }));
+        'host.fetch-todos': `async ({ args: [userId], resume, fail }) => {
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
+    const todos = await response.json();
+    resume(todos.map(t => ({ title: t.title, completed: t.completed })));
+  } catch(e) { fail(e.message) }
 }`,
       },
     },
     code: `
 // Interactive async example
-// Uses prompt for user input and fetch for API calls
+// Uses host.prompt for user input and host.fetch-* for API calls
 
 let lookup-user! = (id-str) -> do
   let id = number(id-str);
   if not(number?(id)) || id < 1 || id > 10 then
-    write!("Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
+    perform(effect(dvala.io.println), "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
   else
-    write!("Fetching user " ++ str(id) ++ "...");
-    let user = fetch-user(id);
+    perform(effect(dvala.io.println), "Fetching user " ++ str(id) ++ "...");
+    let user = perform(effect(host.fetch-user), id);
     if null?(user) then
-      write!("User not found.");
+      perform(effect(dvala.io.println), "User not found.");
     else
-      write!("Name:    " ++ user.name);
-      write!("Email:   " ++ user.email);
-      write!("City:    " ++ user.city);
-      write!("Company: " ++ user.company);
+      perform(effect(dvala.io.println), "Name:    " ++ user.name);
+      perform(effect(dvala.io.println), "Email:   " ++ user.email);
+      perform(effect(dvala.io.println), "City:    " ++ user.city);
+      perform(effect(dvala.io.println), "Company: " ++ user.company);
       user;
     end
   end
 end;
 
 let show-todos! = (user) -> do
-  write!("\\nFetching todos for " ++ user.name ++ "...");
-  let todos = fetch-todos(user.id);
+  perform(effect(dvala.io.println), "\\nFetching todos for " ++ user.name ++ "...");
+  let todos = perform(effect(host.fetch-todos), user.id);
   let done = filter(todos, -> $.completed);
   let pending = filter(todos, -> not($.completed));
 
-  write!("\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
-  doseq (t in done take 5) -> write!("  ✓ " ++ t.title);
+  perform(effect(dvala.io.println), "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
+  doseq (t in done take 5) -> perform(effect(dvala.io.println), "  ✓ " ++ t.title);
   if count(done) > 5 then
-    write!("  ... and " ++ str(count(done) - 5) ++ " more");
+    perform(effect(dvala.io.println), "  ... and " ++ str(count(done) - 5) ++ " more");
   end
 
-  write!("\\nPending (" ++ str(count(pending)) ++ "):");
-  doseq (t in pending take 5) -> write!("  ○ " ++ t.title);
+  perform(effect(dvala.io.println), "\\nPending (" ++ str(count(pending)) ++ "):");
+  doseq (t in pending take 5) -> perform(effect(dvala.io.println), "  ○ " ++ t.title);
   if count(pending) > 5 then
-    write!("  ... and " ++ str(count(pending) - 5) ++ " more");
+    perform(effect(dvala.io.println), "  ... and " ++ str(count(pending) - 5) ++ " more");
   end
 end;
 
 // Main interaction loop
 let main! = () -> do
-  write!("=== User Lookup Tool ===\\n");
+  perform(effect(dvala.io.println), "=== User Lookup Tool ===\\n");
 
   loop (continue? = true) ->
     if continue? then
-      let input = prompt("Enter a user ID (1-10), or cancel to quit:");
+      let input = perform(effect(host.prompt), "Enter a user ID (1-10), or cancel to quit:");
       if null?(input) || input == "" then
-        write!("Goodbye!");
+        perform(effect(dvala.io.println), "Goodbye!");
       else
         let user = lookup-user!(input);
         if user then
-          let show = prompt("Show todos for " ++ user.name ++ "? (yes/no)");
+          let show = perform(effect(host.prompt), "Show todos for " ++ user.name ++ "? (yes/no)");
           if show == "yes" then show-todos!(user) end;
         end;
-        write!("");
+        perform(effect(dvala.io.println), "");
         recur(true)
       end
-    
+
     else null end
 end;
 
@@ -188,9 +197,9 @@ main!()
     name: 'A game',
     description: 'Text based adventure game.',
     context: {
-      fnBindings: {
-        'alert!': '(message) => alert(message)',
-        'read-line!': '(message) => prompt(message)',
+      handlers: {
+        'host.alert': 'async ({ args: [message], resume }) => { alert(message); resume(null) }',
+        'host.read-line': 'async ({ args: [message], resume }) => { resume(prompt(message)) }',
       },
     },
     code: `
@@ -519,17 +528,17 @@ end;
 
 // Game loop
 let game-loop = (state) -> do
-  alert!(describe-location(state) ++ "\\nWhat do you do? ");
+  perform(effect(host.alert), describe-location(state) ++ "\\nWhat do you do? ");
 
-  let input = read-line!();
+  let input = perform(effect(host.read-line), "");
   let command_result = parse-command(state, input);
   let new-state = first(command_result);
   let message = second(command_result);
 
-  alert!("\\n" ++ message ++ "\\n");
+  perform(effect(host.alert), "\\n" ++ message ++ "\\n");
 
   if new-state.game-over then
-    alert!("\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
+    perform(effect(host.alert), "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
     new-state
   else
     game-loop(new-state)
@@ -538,7 +547,7 @@ end;
 
 // Start game
 let start-game = () -> do
-  alert!("=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
+  perform(effect(host.alert), "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
   game-loop(initial-state)
 end;
 
@@ -742,12 +751,12 @@ let formatPhoneNumber = (data) -> do
 end;
 
 
-write!(formatPhoneNumber);
-write!(formatPhoneNumber(123234));
-write!(formatPhoneNumber("123234"));
-write!(formatPhoneNumber("1232343456"));
-write!(formatPhoneNumber("+11232343456789"));
-write!(formatPhoneNumber("+11232343456"));
+perform(effect(dvala.io.println), formatPhoneNumber);
+perform(effect(dvala.io.println), formatPhoneNumber(123234));
+perform(effect(dvala.io.println), formatPhoneNumber("123234"));
+perform(effect(dvala.io.println), formatPhoneNumber("1232343456"));
+perform(effect(dvala.io.println), formatPhoneNumber("+11232343456789"));
+perform(effect(dvala.io.println), formatPhoneNumber("+11232343456"));
   `.trim(),
   },
   {
@@ -808,8 +817,8 @@ let isoDateString? = (data) -> do
   end
 end;
 
-write!(isoDateString?("1978-12-21"));
-write!(isoDateString?("197-12-21"));
+perform(effect(dvala.io.println), isoDateString?("1978-12-21"));
+perform(effect(dvala.io.println), isoDateString?("197-12-21"));
   `.trim(),
   },
 

@@ -20,7 +20,7 @@ Two deliberate deviations:
 Use `effect(name)` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
 
 ```
-let log = effect(dvala.log);
+let log = effect(dvala.io.println);
 log
 ```
 
@@ -28,12 +28,30 @@ log
 
 ## Standard Effects
 
-Dvala provides a set of built-in effects that are always available without explicit handlers:
+Dvala provides built-in effects that are always available without explicit handlers:
 
-* `dvala.log` — logs a value to the console, resumes with `null`
+**I/O:**
+* `dvala.io.print` — writes a string to stdout (no newline), resumes with the string
+* `dvala.io.println` — writes a string to stdout with newline, resumes with the string
+* `dvala.io.error` — writes a string to stderr with newline, resumes with the string
+* `dvala.io.read-line` — reads one line of user input, resumes with the input string or `null`
+* `dvala.io.read-stdin` — reads all of stdin until EOF (Node.js only), resumes with the string
+
+**Random:**
 * `dvala.random` — resumes with a random number in [0, 1)
-* `dvala.now` — resumes with the current timestamp (milliseconds since epoch)
+* `dvala.random.uuid` — resumes with a UUID v4 string
+* `dvala.random.int` — resumes with a random integer in [min, max)
+* `dvala.random.item` — resumes with a random element from an array
+* `dvala.random.shuffle` — resumes with a new shuffled copy of an array
+
+**Time:**
+* `dvala.time.now` — resumes with the current timestamp (milliseconds since epoch)
+* `dvala.time.zone` — resumes with the IANA timezone string
+
+**Async:**
 * `dvala.sleep` — waits for a given number of milliseconds, resumes with `null`
+
+**Error:**
 * `dvala.error` — raises an error (covered in the Errors section below)
 
 ```
@@ -126,7 +144,7 @@ end
 
 ```
 do
-  perform(effect(dvala.log), "test")
+  perform(effect(dvala.io.println), "test")
 with
   case effect-matcher("dvala.*")
     then ([msg]) -> "intercepted: " ++ msg

@@ -80,15 +80,6 @@ let mat = import(matrix);
 mat.det([[1, 2], [3, 4]])
 ```
 
-## Random Module
-
-Random number generation (functions end with `!` to signal side effects):
-
-```
-let rng = import(random);
-rng.random-int!(1, 100)
-```
-
 ## String Module
 
 Additional string utilities:

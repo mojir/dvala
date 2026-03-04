@@ -39,7 +39,7 @@ describe('autoCompleter', () => {
         },
       ],
       bindings: {
-        jsFunc: { fn: () => 42 },
+        jsFunc: 42,
         value_1: 1,
         value_2: 'test',
       },
@@ -97,7 +97,7 @@ describe('autoCompleter', () => {
       expect(suggestions).toContain('localVar')
     })
 
-    it('should generate suggestions from jsFunctions in bindings', () => {
+    it('should generate suggestions from bindings', () => {
       const completer = new AutoCompleter('(js', 3, dvala, params)
       const suggestions = completer.getSuggestions()
       expect(suggestions).toContain('jsFunc')

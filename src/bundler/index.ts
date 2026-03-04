@@ -5,7 +5,6 @@ import type { DvalaBundle } from './interface'
 const builtinModuleNames = new Set([
   'assert',
   'grid',
-  'random',
   'vector',
   'linear-algebra',
   'matrix',

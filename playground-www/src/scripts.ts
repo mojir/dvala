@@ -3,6 +3,7 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import type { UnknownRecord } from '../../src/interface'
 import { type ContextParams, Dvala } from '../../src/Dvala/Dvala'
+import type { EffectHandler } from '../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
@@ -377,12 +378,7 @@ export function addSampleContext() {
     ],
   }
 
-  const fnBindings = {
-    'prompt!': '(title) => prompt(title)',
-  }
-
   context.bindings = Object.assign(sampleBindings, context.bindings)
-  context.fnBindings = Object.assign(fnBindings, context.fnBindings)
 
   setContext(JSON.stringify(context, null, 2), true)
 }
@@ -1000,21 +996,20 @@ function getDvalaParamsFromContext(): ContextParams {
         ? JSON.parse(contextString) as UnknownRecord
         : {}
 
-    const parsedFnBindings = asUnknownRecord(parsedContext.fnBindings ?? {})
-
+    const parsedHandlers = asUnknownRecord(parsedContext.handlers ?? {})
     const bindings = asUnknownRecord(parsedContext.bindings ?? {})
 
-    const fnBindings: Record<string, (...args: any[]) => unknown> = Object.entries(parsedFnBindings).reduce((acc: Record<string, (...args: any[]) => unknown>, [key, value]) => {
+    const handlers: Record<string, EffectHandler> = Object.entries(parsedHandlers).reduce((acc: Record<string, EffectHandler>, [key, value]) => {
       if (typeof value !== 'string') {
         console.log(key, value)
-        throw new TypeError(`Invalid fnBinding value. "${key}" should be a javascript function string`)
+        throw new TypeError(`Invalid handler value. "${key}" should be a javascript function string`)
       }
 
       // eslint-disable-next-line no-eval
-      const fn = eval(value) as (...args: any[]) => unknown
+      const fn = eval(value) as EffectHandler
 
       if (typeof fn !== 'function') {
-        throw new TypeError(`Invalid fnBinding value. "${key}" should be a javascript function`)
+        throw new TypeError(`Invalid handler value. "${key}" should be a javascript function`)
       }
 
       acc[key] = fn
@@ -1022,7 +1017,8 @@ function getDvalaParamsFromContext(): ContextParams {
     }, {})
 
     return {
-      bindings: { ...bindings, ...fnBindings },
+      bindings,
+      handlers: Object.keys(handlers).length > 0 ? handlers : undefined,
     }
   }
   catch (err) {

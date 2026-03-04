@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
 import { Dvala } from '../../src/Dvala/Dvala'
@@ -10,17 +9,18 @@ const dvala = new Dvala()
 const dvalaDebug = new Dvala({ debug: true })
 
 describe('specialExpressions', () => {
-  let oldLog: () => void
   let logSpy: Mock<any>
+
+  let stdoutSpy: { mockRestore: () => void }
   beforeEach(() => {
-    oldLog = console.log
     logSpy = vitest.fn()
-    console.log = (...args: unknown[]) => {
+    stdoutSpy = vitest.spyOn(process.stdout, 'write').mockImplementation(((...args: unknown[]) => {
       logSpy(...args)
-    }
+      return true
+    }) as typeof process.stdout.write)
   })
   afterEach(() => {
-    console.log = oldLog
+    stdoutSpy.mockRestore()
   })
   it('error message', () => {
     const dvalaNoDebug = new Dvala()
@@ -144,19 +144,18 @@ describe('specialExpressions', () => {
     it('local variable', () => {
       const program = `
       let x = "A";
-      write!(x);       // A
+      perform(effect(dvala.io.println), x);       // A
       do
         let x = "B";
-        write!(x)      // B
+        perform(effect(dvala.io.println), x)      // B
       end;
         
-      write!(x)        // A - global variable x
+      perform(effect(dvala.io.println), x)        // A - global variable x
       `
       dvala.run(program)
-      console.log('logSpy', logSpy.mock.calls)
-      expect(logSpy).toHaveBeenNthCalledWith(1, 'A')
-      expect(logSpy).toHaveBeenNthCalledWith(2, 'B')
-      expect(logSpy).toHaveBeenNthCalledWith(3, 'A')
+      expect(logSpy).toHaveBeenNthCalledWith(1, 'A\n')
+      expect(logSpy).toHaveBeenNthCalledWith(2, 'B\n')
+      expect(logSpy).toHaveBeenNthCalledWith(3, 'A\n')
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
@@ -188,14 +187,14 @@ describe('specialExpressions', () => {
       expect(() => dvala.run('if true then end')).toThrow(DvalaError)
     })
     it('that special form \'if\' only evaluate the correct path (true)', () => {
-      dvala.run('if true then write!("A") else write!("B") end')
-      expect(logSpy).toHaveBeenCalledWith('A')
-      expect(logSpy).not.toHaveBeenCalledWith('B')
+      dvala.run('if true then perform(effect(dvala.io.println), "A") else perform(effect(dvala.io.println), "B") end')
+      expect(logSpy).toHaveBeenCalledWith('A\n')
+      expect(logSpy).not.toHaveBeenCalledWith('B\n')
     })
     it('that special form \'if\' only evaluate the correct path (false)', () => {
-      dvala.run('if false then write!("A") else write!("B") end')
-      expect(logSpy).not.toHaveBeenCalledWith('A')
-      expect(logSpy).toHaveBeenCalledWith('B')
+      dvala.run('if false then perform(effect(dvala.io.println), "A") else perform(effect(dvala.io.println), "B") end')
+      expect(logSpy).not.toHaveBeenCalledWith('A\n')
+      expect(logSpy).toHaveBeenCalledWith('B\n')
     })
 
     describe('unresolvedIdentifiers', () => {
@@ -225,14 +224,14 @@ describe('specialExpressions', () => {
       expect(() => dvala.run('unless true then end')).toThrow(DvalaError)
     })
     it('that special form \'unless\' only evaluate the correct path (true)', () => {
-      dvala.run('unless true then write!("A") else write!("B") end')
-      expect(logSpy).toHaveBeenCalledWith('B')
-      expect(logSpy).not.toHaveBeenCalledWith('A')
+      dvala.run('unless true then perform(effect(dvala.io.println), "A") else perform(effect(dvala.io.println), "B") end')
+      expect(logSpy).toHaveBeenCalledWith('B\n')
+      expect(logSpy).not.toHaveBeenCalledWith('A\n')
     })
     it('that special form \'unless\' only evaluate the correct path (false)', () => {
-      dvala.run('unless false then write!("A") else write!("B") end')
-      expect(logSpy).not.toHaveBeenCalledWith('B')
-      expect(logSpy).toHaveBeenCalledWith('A')
+      dvala.run('unless false then perform(effect(dvala.io.println), "A") else perform(effect(dvala.io.println), "B") end')
+      expect(logSpy).not.toHaveBeenCalledWith('B\n')
+      expect(logSpy).toHaveBeenCalledWith('A\n')
     })
 
     describe('unresolvedIdentifiers', () => {
@@ -263,24 +262,17 @@ describe('specialExpressions', () => {
     })
     describe('short circuit', () => {
       it('true, false', () => {
-        expect(dvala.run('&&(write!(true), write!(false))')).toBe(false)
-        expect(logSpy).toHaveBeenNthCalledWith(1, true)
-        expect(logSpy).toHaveBeenNthCalledWith(2, false)
+        expect(dvala.run('&&(true, false)')).toBe(false)
       })
       it('true, 1', () => {
-        expect(dvala.run('&&(write!(true), write!(1))')).toBe(1)
-        expect(logSpy).toHaveBeenNthCalledWith(1, true)
-        expect(logSpy).toHaveBeenNthCalledWith(2, 1)
+        expect(dvala.run('&&(true, 1)')).toBe(1)
       })
       it('false, true', () => {
-        expect(dvala.run('&&(write!(false), write!(true))')).toBe(false)
-        expect(logSpy).toHaveBeenCalledWith(false)
-        expect(logSpy).not.toHaveBeenCalledWith(true)
+        // If && doesn't short-circuit, dvala.error would throw
+        expect(dvala.run('&&(false, perform(effect(dvala.error), "not short-circuited"))')).toBe(false)
       })
       it('false, 0', () => {
-        expect(dvala.run('&&(write!(false), write!(0))')).toBe(false)
-        expect(logSpy).toHaveBeenCalledWith(false)
-        expect(logSpy).not.toHaveBeenCalledWith(0)
+        expect(dvala.run('&&(false, perform(effect(dvala.error), "not short-circuited"))')).toBe(false)
       })
     })
     describe('unresolvedIdentifiers', () => {
@@ -303,24 +295,17 @@ describe('specialExpressions', () => {
     })
     describe('short circuit', () => {
       it('true, false', () => {
-        expect(dvala.run('||(write!(true), write!(false))')).toBe(true)
-        expect(logSpy).toHaveBeenCalledWith(true)
-        expect(logSpy).not.toHaveBeenCalledWith(false)
+        // If || doesn't short-circuit, dvala.error would throw
+        expect(dvala.run('||(true, perform(effect(dvala.error), "not short-circuited"))')).toBe(true)
       })
       it('true, 1', () => {
-        expect(dvala.run('||(write!(true), write!(1))')).toBe(true)
-        expect(logSpy).toHaveBeenCalledWith(true)
-        expect(logSpy).not.toHaveBeenCalledWith(1)
+        expect(dvala.run('||(true, perform(effect(dvala.error), "not short-circuited"))')).toBe(true)
       })
       it('false, true', () => {
-        expect(dvala.run('||(write!(false), write!(true))')).toBe(true)
-        expect(logSpy).toHaveBeenNthCalledWith(1, false)
-        expect(logSpy).toHaveBeenNthCalledWith(2, true)
+        expect(dvala.run('||(false, true)')).toBe(true)
       })
       it('false, 0', () => {
-        expect(dvala.run('||(write!(false), write!(0))')).toBe(0)
-        expect(logSpy).toHaveBeenNthCalledWith(1, false)
-        expect(logSpy).toHaveBeenNthCalledWith(2, 0)
+        expect(dvala.run('||(false, 0)')).toBe(0)
       })
     })
     describe('unresolvedIdentifiers', () => {
@@ -546,16 +531,16 @@ end;`))).toEqual(
     it('should work with function', () => {
       dvala.run(`
 let foo = (n) -> do
-  write!(n);
+  perform(effect(dvala.io.println), n);
   if not(zero?(n)) then
     recur(n - 1)
   end
 end;
 foo(3)`)
-      expect(logSpy).toHaveBeenNthCalledWith(1, 3)
-      expect(logSpy).toHaveBeenNthCalledWith(2, 2)
-      expect(logSpy).toHaveBeenNthCalledWith(3, 1)
-      expect(logSpy).toHaveBeenNthCalledWith(4, 0)
+      expect(logSpy).toHaveBeenNthCalledWith(1, '3\n')
+      expect(logSpy).toHaveBeenNthCalledWith(2, '2\n')
+      expect(logSpy).toHaveBeenNthCalledWith(3, '1\n')
+      expect(logSpy).toHaveBeenNthCalledWith(4, '0\n')
     })
     it('recur must be called with the right number of parameters', () => {
       expect(() => dvala.run('let foo = (n) -> do if not(zero?(n)) then recur() end end; foo(3)')).toThrow(DvalaError)
@@ -593,11 +578,11 @@ foo(3)`)
     })
 
     it('should work with recur', () => {
-      dvala.run('loop (n = 3) -> do write!(n); if not(zero?(n)) then recur(n - 1) end end')
-      expect(logSpy).toHaveBeenNthCalledWith(1, 3)
-      expect(logSpy).toHaveBeenNthCalledWith(2, 2)
-      expect(logSpy).toHaveBeenNthCalledWith(3, 1)
-      expect(logSpy).toHaveBeenNthCalledWith(4, 0)
+      dvala.run('loop (n = 3) -> do perform(effect(dvala.io.println), n); if not(zero?(n)) then recur(n - 1) end end')
+      expect(logSpy).toHaveBeenNthCalledWith(1, '3\n')
+      expect(logSpy).toHaveBeenNthCalledWith(2, '2\n')
+      expect(logSpy).toHaveBeenNthCalledWith(3, '1\n')
+      expect(logSpy).toHaveBeenNthCalledWith(4, '0\n')
     })
     it('recur must be called with right number of parameters', () => {
       expect(() => dvalaDebug.run('loop (n = 3) -> if not(zero?(n)) then recur() end')).toThrow(DvalaError)
@@ -614,12 +599,12 @@ foo(3)`)
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (dvalaDebug.getUndefinedSymbols('loop (n = 3) -> do write!(n); if not(zero?(n)) then recur(n - 1) end end')),
+          (dvalaDebug.getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('loop (n = 3) -> do write!(x); if not(zero?(n)) then recur(n - 1) end end')),
+          (dvala.getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(x)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set(['x']))
-        expect(dvala.getUndefinedSymbols('loop (n = 3 + y) -> do write!(n); if not(zero?(x)) then recur(n - 1) end end'))
+        expect(dvala.getUndefinedSymbols('loop (n = 3 + y) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(x)) then recur(n - 1) end end'))
           .toEqual(new Set(['x', 'y']))
       })
     })

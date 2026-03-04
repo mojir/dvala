@@ -3,10 +3,16 @@ import fs from 'node:fs'
 import process from 'node:process'
 import os from 'node:os'
 import path from 'node:path'
-import type { JsFunction } from '../../../../../src'
+import type { Arity, BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
 import type { Any } from '../../../../../src/interface'
 import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
-import type { BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
+
+interface JsFunction {
+  fn: (...args: any[]) => unknown
+  arity?: Arity
+  pure?: boolean
+  docString?: string
+}
 
 let initiated = false
 const tempFiles: string[] = []

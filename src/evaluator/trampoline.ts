@@ -48,7 +48,6 @@ import type {
   FunctionLike,
   JuxtFunction,
   ModuleFunction,
-  NativeJsFunction,
   NormalBuiltinFunction,
   NormalExpressionNode,
   NumberNode,
@@ -308,8 +307,6 @@ function executeDvalaFunctionRecursive(fn: DvalaFunction, params: Arr, contextSt
       return executeSpecialBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
     case 'Module':
       return executeModuleRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'NativeJsFunction':
-      return executeNativeJsFunctionRecursive(fn, params, contextStack, sourceCodeInfo)
   }
 }
 
@@ -509,37 +506,6 @@ function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: C
   }
   assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
   return expression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
-}
-
-function executeNativeJsFunctionRecursive(fn: NativeJsFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  if (contextStack.pure && !fn.nativeFn.pure) {
-    throw new DvalaError(`Cannot call impure native function '${fn.name}' in pure mode`, sourceCodeInfo)
-  }
-  try {
-    const result = fn.nativeFn.fn(...params)
-    if (result instanceof Promise) {
-      return result.then(
-        resolved => toAny(resolved),
-        (error: unknown) => {
-          const message = typeof error === 'string'
-            ? error
-            : isUnknownRecord(error) && typeof error.message === 'string'
-              ? error.message
-              : '<no message>'
-          throw new DvalaError(`Native function threw: "${message}"`, sourceCodeInfo)
-        },
-      )
-    }
-    return toAny(result)
-  }
-  catch (error) {
-    const message = typeof error === 'string'
-      ? error
-      : isUnknownRecord(error) && typeof error.message === 'string'
-        ? error.message
-        : '<no message>'
-    throw new DvalaError(`Native function threw: "${message}"`, sourceCodeInfo)
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1283,8 +1249,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'EffectMatcher':
     case 'Builtin':
     case 'SpecialBuiltin':
-    case 'Module':
-    case 'NativeJsFunction': {
+    case 'Module': {
       const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
     }
@@ -2293,7 +2258,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
     return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo)
   }
 
-  // No host handler — check standard effects (dvala.log, dvala.now, etc.).
+  // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(args, k, sourceCodeInfo)

@@ -37,7 +37,6 @@ const functionTypes = [
   'EffectMatcher',
   'Builtin',
   'SpecialBuiltin',
-  'NativeJsFunction',
   'Module',
 ] as const
 

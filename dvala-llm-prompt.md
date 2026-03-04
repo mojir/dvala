@@ -266,7 +266,7 @@ for (i in [1, 2], j in [10, 20]) -> i + j
 ### `doseq` (iteration for side effects — returns `null`)
 
 ```dvala
-doseq (x in [1, 2, 3]) -> write!(x)
+doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.println), x)
 ```
 
 ### `loop` / `recur` (tail-recursive loop)
@@ -313,7 +313,7 @@ defined?(x)       // true if x is defined in scope, false otherwise
 
 ```dvala
 let countdown = n -> do
-  write!(n);
+  perform(effect(dvala.io.println), n);
   if !(zero?(n)) then recur(n - 1) end
 end;
 countdown(3)
@@ -525,7 +525,6 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 
 | Function | Description |
 |----------|-------------|
-| `write!(values...)` | Log values, return last (side effect) |
 | `json-parse(s)` | Parse JSON string |
 | `json-stringify(x, indent?)` | Serialize to JSON string |
 | `epoch->iso-date(ms)` | Milliseconds to ISO date string |
@@ -582,8 +581,6 @@ sin(PI)
 **string**: `string-repeat`, `from-char-code`, `to-char-code`, `trim-left`, `trim-right`, `split-lines`, `pad-left`, `pad-right`, `template`, `encode-base64`, `decode-base64`, `encode-uri-component`, `decode-uri-component`, `capitalize`
 
 **bitwise**: `bit-not`, `bit-and-not`, `bit-flip`, `bit-set`, `bit-clear`, `bit-test`
-
-**random**: `random!`, `random-int!`, `random-int-inclusive!`, `random-float!`, `random-boolean!`, `random-item!`, `random-sample!`, `random-sample-unique!`, `shuffle!`, `random-normal!`, `random-exponential!`, `random-binomial!`, `random-poisson!`, `random-gamma!`, `random-pareto!`, `uuid!`, `random-char!`, `random-string!`, `random-id!`, `random-color!`
 
 **grid**: `every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`, `row`, `col`, `shape`, `fill`, `generate`, `reshape`, `transpose`, `flip-h`, `flip-v`, `rotate`, `reverse-rows`, `reverse-cols`, `slice`, `slice-rows`, `slice-cols`, `splice-rows`, `splice-cols`, `concat-rows`, `concat-cols`, `map`, `mapi`, `reduce`, `reducei`, `push-rows`, `unshift-rows`, `pop-row`, `shift-row`, `push-cols`, `unshift-cols`, `pop-col`, `shift-col`, `from-array`
 

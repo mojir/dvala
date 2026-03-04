@@ -3,7 +3,7 @@
  *
  * Defines which runtime value types can be serialized to JSON and restored.
  * Used at suspension time to produce clear errors when non-serializable
- * values (e.g. NativeJsFunction) are found in the continuation stack.
+ * values are found in the continuation stack.
  *
  * Serializable value types:
  *   - Primitives: number, string, boolean, null
@@ -17,11 +17,6 @@
  *     ComplementFunction, EveryPredFunction, SomePredFunction, FNullFunction:
  *     serializable only if all inner values/functions are serializable
  *   - EffectRef: stored as just the name string
- *
- * Non-serializable value types:
- *   - NativeJsFunction: contains a live JS function reference.
- *     These live in the global context and are re-injected from `bindings`
- *     on resume — they must never appear in serialized continuation frames.
  */
 
 import type { Any } from '../interface'
@@ -35,12 +30,10 @@ import type {
  * Checks whether a Dvala runtime value is fully JSON-serializable.
  *
  * Returns `true` if the value can be serialized and later restored.
- * Returns `false` if any part of the value contains a NativeJsFunction
- * or other non-serializable reference.
+ * Returns `false` if any part of the value contains a non-serializable reference.
  *
  * Uses a `Set` to track visited objects and avoid infinite loops from
- * circular references (which are themselves not serializable, but we
- * want to report NativeJsFunction as the problem, not stack overflow).
+ * circular references (which are themselves not serializable).
  */
 export function isSerializable(value: Any, visited = new Set<object>()): boolean {
   // Primitives are always serializable
@@ -94,10 +87,6 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     case 'Module':
     case 'EffectMatcher':
       return true
-
-    // NativeJsFunction — never serializable
-    case 'NativeJsFunction':
-      return false
 
     // Conditionally serializable — check inner values/functions
     case 'Partial': {
@@ -168,10 +157,6 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
   }
 
   if (isDvalaFunction(value)) {
-    if (value.functionType === 'NativeJsFunction') {
-      return `${path} is a NativeJsFunction (${value.name ?? 'anonymous'}). NativeJsFunctions are not serializable — they are re-injected from bindings on resume.`
-    }
-
     if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher') {
       return null
     }

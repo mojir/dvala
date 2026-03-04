@@ -1,7 +1,6 @@
 import type { DvalaModule } from './builtin/modules/interface'
 import { assertModule } from './builtin/modules/assertion'
 import { gridModule } from './builtin/modules/grid'
-import { randomModule } from './builtin/modules/random'
 import { vectorModule } from './builtin/modules/vector'
 import { linearAlgebraModule } from './builtin/modules/linear-algebra'
 import { matrixModule } from './builtin/modules/matrix'
@@ -17,7 +16,6 @@ import { convertModule } from './builtin/modules/convert'
 export const allBuiltinModules: DvalaModule[] = [
   assertModule,
   gridModule,
-  randomModule,
   vectorModule,
   linearAlgebraModule,
   matrixModule,

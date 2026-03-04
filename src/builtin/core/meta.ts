@@ -19,7 +19,7 @@ export function getMetaNormalExpression(normalExpressionReference: Record<string
           const reference = normalExpressionReference[fn.name]
           return reference ? generateDocString(reference) : ''
         }
-        if (fn.functionType === 'UserDefined' || fn.functionType === 'NativeJsFunction') {
+        if (fn.functionType === 'UserDefined') {
           return fn.docString
         }
         return ''

@@ -166,8 +166,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An effect, created with the `effect` special expression. Effects are used with `perform` to trigger algebraic effects.',
     examples: [
-      'effect(dvala.log)',
-      'effect(dvala.now)',
+      'effect(dvala.io.println)',
+      'effect(dvala.time.now)',
     ],
   },
   '-type-never': {

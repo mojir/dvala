@@ -22,7 +22,7 @@ The package has multiple entry points configured in `package.json` `exports`:
 
 - **`@mojir/dvala`** → `src/index.ts` — Minimal entry: core `Dvala` class, types, type guards. No modules or reference data.
 - **`@mojir/dvala/full`** → `src/full.ts` — Full entry: everything from minimal plus all modules, reference data, and API helpers.
-- **`@mojir/dvala/modules/<name>`** → `src/modules/<name>.ts` — Individual module entries (assertion, grid, random, vector, linear-algebra, matrix, number-theory, math, functional, string, collection, sequence, bitwise).
+- **`@mojir/dvala/modules/<name>`** → `src/modules/<name>.ts` — Individual module entries (assertion, grid, vector, linear-algebra, matrix, number-theory, math, functional, string, collection, sequence, bitwise).
 
 Rollup configs: `rollup.config.js` (library bundles), `rollup.config.cli.js` (CLI), `rollup.config.playground-builder.js`, `rollup.config.playground-www.js`.
 
@@ -54,7 +54,6 @@ Modules provide domain-specific function libraries. Each module is in its own di
 
 - `assertion/` (name: `"assertion"`) — Assertion functions.
 - `grid/` (name: `"grid"`) — 2D grid operations.
-- `random/` (name: `"random"`) — Random number generation.
 - `vector/` (name: `"vector"`) — Vector math.
 - `linear-algebra/` (name: `"linear-algebra"`) — Linear algebra operations.
 - `matrix/` (name: `"matrix"`) — Matrix operations.
@@ -108,7 +107,7 @@ Special expressions may use `CustomDocs` instead (with `customVariants` instead 
 
 **Core** (15): `special-expression`, `predicate`, `sequence`, `collection`, `array`, `object`, `string`, `math`, `functional`, `regular-expression`, `bitwise`, `misc`, `meta`, `shorthand`, `datatype`
 
-**Module** (13): `math`, `functional`, `string`, `collection`, `sequence`, `bitwise`, `assertion`, `vector`, `linear-algebra`, `matrix`, `grid`, `number-theory`, `random`
+**Module** (12): `math`, `functional`, `string`, `collection`, `sequence`, `bitwise`, `assertion`, `vector`, `linear-algebra`, `matrix`, `grid`, `number-theory`
 
 **Other** (2): `shorthand`, `datatype`
 

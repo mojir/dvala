@@ -155,8 +155,8 @@ export interface ParallelResumeStep {
  * An async operation produced an error that needs to be routed through the
  * effect system.
  *
- * Produced by async error paths (NativeJsFunction rejection, host handler
- * rejection) so that `tick()` can attempt `dvala.error` dispatch with
+ * Produced by async error paths (host handler rejection) so that `tick()` can
+ * attempt `dvala.error` dispatch with
  * access to the registered `handlers` and `signal`.
  */
 export interface ErrorStep {

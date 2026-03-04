@@ -10,6 +10,7 @@
     "playground-www/**/*",
     "reference/**/*",
     "vite.config.mts",
+    "vitest.setup.ts",
     "./*.js",
     "./*.json"
   ],

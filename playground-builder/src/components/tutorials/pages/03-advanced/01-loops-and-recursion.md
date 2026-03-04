@@ -87,5 +87,5 @@ fib(10)
 `doseq` iterates for side effects and returns `null`:
 
 ```
-doseq (x in [1, 2, 3]) -> write!(x)
+doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.println), x)
 ```

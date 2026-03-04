@@ -1,4 +1,0 @@
-let random-boolean = (prob = 0.5) ->
-  perform(effect(dvala.random)) < prob;
-
-{"random-boolean": random-boolean}
