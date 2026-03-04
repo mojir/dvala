@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, node/prefer-global/process */
 import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
 import { Dvala } from '../../src/Dvala/Dvala'
@@ -32,9 +32,13 @@ export function renderExample(example: string | string[], name: string, options?
   const oldLog = console.log
   const oldWarn = console.warn
   const oldError = console.error
+  const oldStdoutWrite = process.stdout.write.bind(process.stdout)
+  const oldStderrWrite = process.stderr.write.bind(process.stderr)
   console.log = function () {}
   console.warn = function () {}
   console.error = function () {}
+  process.stdout.write = (() => true) as typeof process.stdout.write
+  process.stderr.write = (() => true) as typeof process.stderr.write
   try {
     const result = dvala.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
     const stringifiedResult = stringifyValue(result, true)
@@ -56,5 +60,7 @@ export function renderExample(example: string | string[], name: string, options?
     console.log = oldLog
     console.warn = oldWarn
     console.error = oldError
+    process.stdout.write = oldStdoutWrite
+    process.stderr.write = oldStderrWrite
   }
 }
