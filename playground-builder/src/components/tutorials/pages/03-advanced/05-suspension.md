@@ -17,7 +17,7 @@ Continuations have a long history in computer science. [Scheme](https://en.wikip
 
 Most continuation systems are **in-memory only** — the captured state lives as a runtime object that cannot leave the process. If the process crashes, the continuation is lost.
 
-Dvala takes a different approach: continuations are **serializable**. When a program suspends, its entire execution state — call stack, local variables, closures — is captured as a JSON blob. This blob can be:
+Dvala takes a different approach: continuations are **serializable**. When a program suspends, its entire execution state — call stack, local variables, closures — is captured as a `Snapshot` object. This snapshot can be:
 
 * Stored in a database or file
 * Sent over a network to another machine
@@ -61,29 +61,28 @@ const result = await run(`
 })
 
 // result.type === 'suspended'
-// result.blob — the serialized continuation (opaque JSON string)
-// result.meta — { document: 'Q4 Report', assignee: 'finance-team' }
+// result.snapshot — a Snapshot object containing the serialized continuation
+// result.snapshot.meta — { document: 'Q4 Report', assignee: 'finance-team' }
 ```
 
-The `blob` is a self-contained snapshot of the program's state. The `meta` is passed through for the host's convenience — use it to carry domain context like who should act, what they're deciding on, deadlines, etc.
+The `snapshot` is a self-contained capture of the program's state. `snapshot.meta` is passed through for the host's convenience — use it to carry domain context like who should act, what they're deciding on, deadlines, etc. `snapshot.continuation` is opaque — do not inspect or modify it.
 
-### Step 3: Store the Blob
+### Step 3: Store the Snapshot
 
-The blob is just a string. Store it however you like:
+The snapshot can be serialized and stored however you like:
 
 ```typescript
 // In a database
 await db.tasks.insert({
   id: taskId,
-  blob: result.blob,
-  meta: result.meta,
+  snapshot: result.snapshot,
   createdAt: new Date(),
 })
 ```
 
 ### Step 4: Resume Later
 
-When the human (or external system) provides a response, deserialize the blob and resume:
+When the human (or external system) provides a response, load the snapshot and resume:
 
 ```typescript
 import { resume } from '@mojir/dvala/full'
@@ -92,7 +91,7 @@ import { resume } from '@mojir/dvala/full'
 const task = await db.tasks.findById(taskId)
 
 // Resume with the human's decision
-const final = await resume(task.blob, true)
+const final = await resume(task.snapshot, true)
 // final = { type: 'completed', value: 'Approved' }
 ```
 
@@ -115,12 +114,12 @@ const r1 = await run(`
   if b then "Transferred: " ++ str(a) else "Cancelled" end
 `, { handlers })
 
-// r1.type === 'suspended', r1.meta.step === 'Step 1: Enter amount'
+// r1.type === 'suspended', r1.snapshot.meta.step === 'Step 1: Enter amount'
 
-const r2 = await resume(r1.blob, 500, { handlers })
-// r2.type === 'suspended', r2.meta.step === 'Step 2: Confirm'
+const r2 = await resume(r1.snapshot, 500, { handlers })
+// r2.type === 'suspended', r2.snapshot.meta.step === 'Step 2: Confirm'
 
-const r3 = await resume(r2.blob, true)
+const r3 = await resume(r2.snapshot, true)
 // r3 = { type: 'completed', value: 'Transferred: 500' }
 ```
 
@@ -147,7 +146,7 @@ const r1 = await run(`
   },
 })
 
-const r2 = await resume(r1.blob, 14)
+const r2 = await resume(r1.snapshot, 14)
 // r2 = { type: 'completed', value: 42 }
 // The closure 'scale' and its captured 'multiplier = 3' survived serialization
 ```
@@ -158,19 +157,19 @@ const r2 = await resume(r1.blob, 14)
 
 Traditional approach: break the workflow into steps, store state in a database between steps, rebuild context on each step, handle failures at each transition.
 
-With Dvala: write the workflow as a straight-line program. Each `perform` that needs external input suspends automatically. The blob **is** your state — no schema to design, no state machine to maintain.
+With Dvala: write the workflow as a straight-line program. Each `perform` that needs external input suspends automatically. The snapshot **is** your state — no schema to design, no state machine to maintain.
 
 ### Human-in-the-Loop
 
 Traditional approach: expose a webhook endpoint, store request context in a database, match the callback to the original request, reconstruct enough context to continue.
 
-With Dvala: `perform(effect(human.approve), doc)`. The handler suspends, stores the blob, and resumes when the human responds. The program doesn't know or care that days passed.
+With Dvala: `perform(effect(human.approve), doc)`. The handler suspends, stores the snapshot, and resumes when the human responds. The program doesn't know or care that days passed.
 
 ### Crash Recovery
 
 Traditional approach: design idempotent operations, implement retry logic, save checkpoints manually.
 
-With Dvala: save the blob after each suspension. If the process crashes, load the blob and resume. The program continues from the last suspension point with all state intact.
+With Dvala: save the snapshot after each suspension. If the process crashes, load the snapshot and resume. The program continues from the last suspension point with all state intact.
 
 ### Multi-Step AI Agent Workflows
 
@@ -197,12 +196,12 @@ Every call to `run()` or `resume()` returns a `RunResult`:
 ```typescript
 type RunResult =
   | { type: 'completed', value: Any }
-  | { type: 'suspended', blob: string, meta?: Any }
+  | { type: 'suspended', snapshot: Snapshot }
   | { type: 'error', error: DvalaError }
 ```
 
 * **completed** — the program finished normally
-* **suspended** — the program paused; `blob` contains the continuation, `meta` carries domain context
+* **suspended** — the program paused; `snapshot` contains the continuation and domain metadata
 * **error** — an unhandled error occurred
 
 The host never has to catch exceptions. All outcomes are data.

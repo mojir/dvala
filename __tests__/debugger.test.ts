@@ -83,8 +83,8 @@ describe('phase 7 — Time-Travel Debugger', () => {
       await dbg.run('1 + 2')
       expect(dbg.history.length).toBeGreaterThanOrEqual(1)
       expect(dbg.current).toBeDefined()
-      expect(dbg.current!.blob).toBeDefined()
-      expect(typeof dbg.current!.blob).toBe('string')
+      expect(dbg.current!.snapshot).toBeDefined()
+      expect(dbg.current!.snapshot.continuation).toBeDefined()
       expect(dbg.current!.timestamp).toBeGreaterThan(0)
     })
 
@@ -301,13 +301,13 @@ describe('phase 7 — Time-Travel Debugger', () => {
       expect(typeof dbg.current!.timestamp).toBe('number')
     })
 
-    it('should have blobs in history entries', async () => {
+    it('should have snapshots in history entries', async () => {
       const dbg = createDebugger()
       await dbg.run('1 + 2')
-      expect(typeof dbg.current!.blob).toBe('string')
-      expect(dbg.current!.blob.length).toBeGreaterThan(0)
-      // Should be valid JSON
-      expect(() => JSON.parse(dbg.current!.blob) as unknown).not.toThrow()
+      expect(dbg.current!.snapshot).toBeDefined()
+      expect(dbg.current!.snapshot.continuation).toBeDefined()
+      // Continuation should be valid JSON
+      expect(() => JSON.parse(dbg.current!.snapshot.continuation as string) as unknown).not.toThrow()
     })
 
     it('should reset history on new run', async () => {

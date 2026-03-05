@@ -29,4 +29,4 @@ export type { AutoCompleter } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone functions and types
 export { run, runSync, resume } from './effects'
-export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, RunSyncOptions, SuspensionBlob, ResumeOptions } from './effects'
+export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, RunSyncOptions, Snapshot, ResumeOptions } from './effects'

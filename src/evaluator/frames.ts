@@ -21,6 +21,7 @@ import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContextStack } from './ContextStack'
+import type { Snapshot } from './effectTypes'
 import type { Context } from './interface'
 
 // ---------------------------------------------------------------------------
@@ -396,15 +397,15 @@ export interface EffectResumeFrame {
  * Fields:
  * - `branchCount`: total number of branches (for ordered result array)
  * - `completedBranches`: branches that already finished `{ index, value }`
- * - `suspendedBranches`: remaining suspended branches `{ index, blob, meta? }`
- *   The first entry is the one being resumed — its blob is NOT used because
+ * - `suspendedBranches`: remaining suspended branches `{ index, snapshot }`
+ *   The first entry is the one being resumed — its snapshot is NOT used because
  *   the value was already provided by the host. Subsequent entries are pending.
  */
 export interface ParallelResumeFrame {
   type: 'ParallelResume'
   branchCount: number
   completedBranches: Array<{ index: number, value: Any }>
-  suspendedBranches: Array<{ index: number, blob: string, meta?: Any }>
+  suspendedBranches: Array<{ index: number, snapshot: Snapshot }>
 }
 
 // ---------------------------------------------------------------------------

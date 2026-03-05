@@ -176,7 +176,9 @@ index counter survive across processes.
 
 ---
 
-## Step 1 — Define `Snapshot` type, update `RunResult`, extend `EffectContext`
+## Step 1 — Define `Snapshot` type, update `RunResult`, extend `EffectContext` ✅
+
+**Completed.**
 
 Add the `Snapshot` interface to `src/evaluator/effectTypes.ts`. Update `RunResult` to
 use `Snapshot` instead of `blob` + `meta`. Extend `EffectContext` with `snapshots`

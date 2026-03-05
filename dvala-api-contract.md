@@ -341,7 +341,7 @@ type DvalaValue = string | number | boolean | null | DvalaValue[] | { [key: stri
 
 type RunResult =
   | { type: 'completed'; value: DvalaValue }
-  | { type: 'suspended'; blob: SuspensionBlob; meta?: DvalaValue }
+  | { type: 'suspended'; snapshot: Snapshot }
   | { type: 'error';     error: DvalaError }
 
 interface DvalaError {
@@ -350,7 +350,18 @@ interface DvalaError {
   cause?:  unknown
 }
 
-type SuspensionBlob = string  // opaque — Dvala internal format
+interface Snapshot {
+  /** Opaque serialized continuation. Do not inspect or modify. */
+  readonly continuation: unknown
+  /** Wall-clock timestamp (Date.now()) when snapshot was taken. */
+  readonly timestamp: number
+  /** Stable sequence number (0-based, never reused within an execution lineage). */
+  readonly index: number
+  /** UUID identifying the run() or resume() call that created this snapshot. */
+  readonly runId: string
+  /** Optional domain metadata from the suspend() call. */
+  readonly meta?: DvalaValue
+}
 
 interface EffectContext {
   args:    DvalaValue[]
@@ -401,11 +412,11 @@ declare function run(
 
 ### `resume` — Resume a suspended continuation
 
-`blob` comes from `RunResult` of type `'suspended'`.
+`snapshot` comes from `RunResult` of type `'suspended'`.
 
 ```typescript
 declare function resume(
-  blob: SuspensionBlob,
+  snapshot: Snapshot,
   value: DvalaValue,
   options?: {
     handlers?: Handlers
@@ -426,15 +437,15 @@ interface StepInfo {
 }
 
 interface HistoryEntry {
-  blob:      SuspensionBlob  // for resume — opaque to host
-  step:      StepInfo        // for UI — expression, value, location, env
-  timestamp: number          // ms since epoch — enables performance profiling
+  snapshot:  Snapshot           // for resume — contains opaque continuation
+  step:      StepInfo           // for UI — expression, value, location, env
+  timestamp: number             // ms since epoch — enables performance profiling
 }
 
 interface DvalaDebugger {
   run(source: string): Promise<RunResult>
 
-  // Navigation — uses saved blobs, no external value needed
+  // Navigation — uses saved snapshots, no external value needed
   stepForward():                                        Promise<RunResult>
   stepBackward():                                       Promise<RunResult>
   jumpTo(index: number):                                Promise<RunResult>
@@ -570,8 +581,8 @@ const result3 = await run(`
 })
 
 if (result3.type === 'suspended') {
-  await db.save({ blob: result3.blob, meta: result3.meta })
-  sendSlackMessage(`Approval needed`, result3.meta)
+  await db.save({ snapshot: result3.snapshot })
+  sendSlackMessage(`Approval needed`, result3.snapshot.meta)
 }
 ```
 
@@ -579,8 +590,8 @@ Resume — days later, new process:
 
 ```typescript
 async function handleApprovalWebhook(id: string, approved: boolean, reason?: string) {
-  const { blob } = await db.load(id)
-  const result = await resume(blob, { approved, reason: reason ?? null }, {
+  const { snapshot } = await db.load(id)
+  const result = await resume(snapshot, { approved, reason: reason ?? null }, {
     handlers: {
       'llm.complete':           async ({ args, signal, resume: r }) => r(callLLM(args[0] as string, signal)),
       'com.myco.human.approve': async ({ args, suspend })           => suspend({ assignedTo: 'finance-team', payload: args[0] }),
@@ -590,7 +601,7 @@ async function handleApprovalWebhook(id: string, approved: boolean, reason?: str
   if (result.type === 'completed') {
     console.log('Workflow done:', result.value)
   } else if (result.type === 'suspended') {
-    await db.save({ blob: result.blob, meta: result.meta })
+    await db.save({ snapshot: result.snapshot })
   }
 }
 ```
@@ -655,7 +666,7 @@ function makeHandlers(workflowId: string): Handlers {
 async function runWithRecovery(source: string, workflowId: string) {
   const checkpoint = await db.loadCheckpoint(workflowId)
   if (checkpoint) {
-    return resume(checkpoint.blob, checkpoint.lastValue, { handlers: makeHandlers(workflowId) })
+    return resume(checkpoint.snapshot, checkpoint.lastValue, { handlers: makeHandlers(workflowId) })
   }
   return run(source, { handlers: makeHandlers(workflowId) })
 }
@@ -707,8 +718,8 @@ declare function sendSlackMessage(msg: string, meta?: unknown): void
 declare function days(n: number): number
 declare const db: {
   save(record: object): Promise<void>
-  load(id: string): Promise<{ blob: SuspensionBlob; meta?: DvalaValue }>
+  load(id: string): Promise<{ snapshot: Snapshot }>
   saveCheckpoint(id: string, data: object): Promise<void>
-  loadCheckpoint(id: string): Promise<{ blob: SuspensionBlob; lastValue: DvalaValue } | null>
+  loadCheckpoint(id: string): Promise<{ snapshot: Snapshot; lastValue: DvalaValue } | null>
 }
 ```
