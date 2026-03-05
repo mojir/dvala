@@ -3,9 +3,10 @@
 ## Overview
 
 Extend the effect handler system with **in-memory snapshots** and **crash recovery**.
-Programs mark checkpoint boundaries via `dvala.take-snapshot`. The runtime serializes
+Programs mark checkpoint boundaries via `dvala.checkpoint`. The runtime serializes
 the continuation stack and stores it in a managed snapshot list. Host handlers gain
-access to the snapshot history and a `resumeFrom` operation for rollback.
+access to the snapshot history, a `checkpoint()` method for explicit capture, and a
+`resumeFrom` operation for rollback.
 
 ---
 
@@ -13,7 +14,7 @@ access to the snapshot history and a `resumeFrom` operation for rollback.
 
 ### Unified `Snapshot` type
 
-All captured continuations — whether from `dvala.take-snapshot` or `suspend()` — use
+All captured continuations — whether from `dvala.checkpoint` or `suspend()` — use
 the same `Snapshot` type. This replaces the current `SuspensionBlob` + `meta` pair in
 `RunResult`.
 
@@ -82,17 +83,23 @@ The field is typed as `unknown` and marked `readonly` — hosts should not inspe
 modify it. A future `inspectSnapshot` debug utility can expose structured typed data
 for tooling.
 
-### `dvala.take-snapshot` standard effect
+### `dvala.checkpoint` standard effect
 
 ```dvala
-perform(effect(dvala.take-snapshot))                              // no metadata
-perform(effect(dvala.take-snapshot), { step: "analysis-done" })   // with metadata
+perform(effect(dvala.checkpoint))                              // no metadata
+perform(effect(dvala.checkpoint), { step: "analysis-done" })   // with metadata
 ```
 
-- Runtime serializes the current continuation stack into a `Snapshot`
+- **Unconditional capture:** The runtime always serializes the current continuation
+  stack into a `Snapshot` before any handler dispatch. This is runtime infrastructure
+  — handlers cannot accidentally suppress the snapshot.
 - Snapshot stored in an in-memory `Snapshot[]` managed by the trampoline
-- Program resumes with `null` — no interruption
-- Host can override the handler to also persist to disk/DB
+- **Then dispatches normally** through the standard handler chain (local `do...with` →
+  host handlers → standard fallback). Handlers can observe, persist to disk/DB, or
+  change the resume value.
+- If no handler intercepts it, the standard fallback resumes with `null`
+- This makes `dvala.checkpoint` unique among standard effects: it has a guaranteed
+  side effect before handler dispatch. This is a documented exception, not a precedent.
 
 ### Updated `RunResult`
 
@@ -129,6 +136,11 @@ interface EffectContext {
   // New:
   /** All snapshots taken so far, oldest first. Read-only view. */
   snapshots: readonly Snapshot[]
+
+  /** Explicitly capture a snapshot at the current continuation point.
+   *  Returns the new Snapshot. This is the host-side equivalent of
+   *  `perform(effect(dvala.checkpoint))`. */
+  checkpoint: (meta?: Any) => Snapshot
 
   /** Abandon current execution and resume from a previous snapshot.
    *  All snapshots after the target are discarded. */
@@ -209,46 +221,68 @@ The trampoline needs a mutable snapshot state that lives for the duration of a `
 - `runId: string` — generated once per `run()` / `resume()` call
 
 `runEffectLoop` creates and owns this state. It is passed into `tick()` and down to
-`dispatchHostHandler` / `dispatchPerform`. `dispatchHostHandler` includes `snapshots`
-and `resumeFrom` in the `EffectContext`.
+`dispatchHostHandler` / `dispatchPerform`. `dispatchHostHandler` includes `snapshots`,
+`checkpoint`, and `resumeFrom` in the `EffectContext`.
 
 **Files:**
 - `src/evaluator/trampoline.ts` — Thread snapshot state through `runEffectLoop` → `tick` → `dispatchHostHandler`
 
 **Tests:**
 - Verify `snapshots` is an empty array on `EffectContext` when no snapshots taken
+- Verify `checkpoint` is a function on `EffectContext`
 - Existing tests pass
 
 ---
 
-## Step 4 — Implement `dvala.take-snapshot` standard effect
+## Step 4 — Implement `dvala.checkpoint` standard effect
 
-Add a standard effect handler for `dvala.take-snapshot` that:
-1. Calls `serializeToObject(k)` to capture the current state as a plain object
-2. Creates a `Snapshot` with `continuation`, `timestamp`, `index` (from `nextSnapshotIndex++`),
-   `runId`, and optional `meta` (from `args[0]`)
-3. Pushes it onto the trampoline's `Snapshot[]`
-4. Resumes with `null`
+The `dvala.checkpoint` effect has unique dispatch semantics: **unconditional capture
+first, then normal dispatch for augmentation.**
 
-Unlike other standard effects, `dvala.take-snapshot` needs access to the snapshot list.
-This may require a different dispatch path — standard effects currently receive `(args, k, sourceCodeInfo)`
-but `dvala.take-snapshot` also needs the `Snapshot[]`.
+In `dispatchPerform`, when the effect is `dvala.checkpoint`:
+1. **Always capture first** — call `serializeToObject(k)`, create a `Snapshot` with
+   `continuation`, `timestamp`, `index` (from `nextSnapshotIndex++`), `runId`, and
+   optional `meta` (from `args[0]`). Push onto the trampoline's `Snapshot[]`.
+2. **Then dispatch normally** — continue through the standard handler chain
+   (local `do...with` → host handlers → standard fallback).
+3. If no handler intercepts, the standard fallback resumes with `null`.
+4. If a handler intercepts, it can persist, log, or change the resume value.
+   The snapshot is already captured regardless.
+
+This makes `dvala.checkpoint` unique among standard effects — it has a guaranteed
+runtime side effect before handler dispatch. No other standard effect needs this
+treatment. `dvala.io.println` should be fully replaceable; `dvala.checkpoint` is
+runtime infrastructure.
+
+> **Note (updated after `df6f55c`):** Standard effects now use `StandardEffectDefinition`
+> with co-located `docs: FunctionDocs` and `arity: Arity` in `standardEffects.ts`.
+> The handler signature is still `(args, k, sourceCodeInfo?) => Step | Promise<Step>`.
+> `getStandardEffectHandler` now wraps the handler with arity validation.
+> `dvala.checkpoint` should still be special-cased in `dispatchPerform` (option b)
+> but should also be registered in `standardEffects` for its docs/arity metadata
+> so that `deriveEffectReference()` in `reference/index.ts` picks it up automatically.
+> Its handler can be a no-op placeholder that throws — the real logic lives in
+> `dispatchPerform` which intercepts the effect name before reaching the handler.
 
 **Options:**
 - a) Pass `Snapshot[]` as an extra parameter to standard effect handlers
-- b) Handle `dvala.take-snapshot` as a special case in `dispatchPerform`, before the standard effects lookup
-- c) Make `dvala.take-snapshot` a "runtime effect" — a new category above standard effects
+- b) Handle `dvala.checkpoint` as a special case in `dispatchPerform` (unconditional capture + normal dispatch), with a docs-only entry in `standardEffects`
+- c) Make `dvala.checkpoint` a "runtime effect" — a new category above standard effects
 
-Option (b) is simplest and keeps the standard effect API clean.
+Option (b) is simplest and keeps the standard effect handler API clean.
 
 **Files:**
-- `src/evaluator/trampoline.ts` — Special-case `dvala.take-snapshot` in `dispatchPerform`
+- `src/evaluator/trampoline.ts` — Special-case `dvala.checkpoint` in `dispatchPerform` (unconditional capture before normal dispatch)
+- `src/evaluator/standardEffects.ts` — Add `StandardEffectDefinition` entry for docs/arity (handler is a no-op fallback that resumes with `null`)
 
 **Tests:**
-- `dvala.take-snapshot` resumes with `null`
-- Snapshot is captured (verify via a subsequent host handler's `ctx.snapshots`)
-- Metadata from `perform(effect(dvala.take-snapshot), meta)` appears in `snapshot.meta`
+- `dvala.checkpoint` resumes with `null` when no handler intercepts
+- Snapshot is always captured even when a host handler intercepts the effect
+- Snapshot is always captured even when a local `do...with` handler intercepts the effect
+- A `dvala.*` wildcard handler can observe/augment without preventing capture
+- Metadata from `perform(effect(dvala.checkpoint), meta)` appears in `snapshot.meta`
 - Multiple snapshots accumulate in order
+- `ctx.checkpoint(meta?)` in a host handler creates a snapshot and returns it
 - Reference docs and effect reference updated
 
 ---
@@ -320,9 +354,19 @@ the trampoline creates a `Snapshot` with the serialized continuation, current ti
 
 ## Step 7 — Reference data and documentation
 
-Add `dvala.take-snapshot` to:
-- `reference/effect.ts` — Effect reference entry
-- `src/evaluator/standardEffects.ts` — JSDoc header listing all standard effects
+> **Note (updated after `df6f55c`):** The last commit (`feat: enhance effect handling
+> and documentation`) deleted `reference/effect.ts` and moved effect docs to
+> co-located `FunctionDocs` objects inside `src/evaluator/standardEffects.ts`.
+> Effect references are now auto-derived in `reference/index.ts` via
+> `deriveEffectReference()` which reads `allStandardEffectDefinitions`.
+> The `StandardEffectDefinition` interface now has `handler`, `arity`, and `docs`.
+>
+> This means `dvala.checkpoint` docs go directly in its
+> `StandardEffectDefinition` in Step 4 (co-located with the handler), and
+> Step 7 only needs to verify reference generation and update prose docs.
+
+Add `dvala.checkpoint` to:
+- `src/evaluator/standardEffects.ts` — Co-located docs in the `StandardEffectDefinition` (done as part of Step 4)
 - `dvala-effects-intro.md` — Standard effects table
 - Tutorial pages if applicable
 
@@ -371,9 +415,10 @@ Not adding — host decides when to suspend, not the program.
 Not adding — `spawn` is a thin wrapper around `run()` the host can do itself.
 `fork` conflicts with single-shot continuation semantics.
 
-### `checkpoint()` on `EffectContext`
-Not adding as a separate method — `dvala.take-snapshot` covers the same use case
-more cleanly (program marks the boundary, runtime captures the state).
+### `takeSnapshot()` / `recordSnapshot()` on `EffectContext`
+Superseded by `ctx.checkpoint(meta?)` — explicit host-side snapshot capture.
+The Dvala program uses `perform(effect(dvala.checkpoint))`, the host handler
+uses `ctx.checkpoint()`. Same word, same concept, both sides covered.
 
 ### `inspectSnapshot` debug utility
 Out of scope for this plan. A future `inspectSnapshot` function in `@mojir/dvala/debug`
