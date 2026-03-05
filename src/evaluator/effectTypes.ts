@@ -217,6 +217,10 @@ export class SuspensionSignal {
   constructor(
     /** The captured continuation stack at the point of suspension. */
     public readonly k: ContinuationStack,
+    /** Accumulated snapshots at the point of suspension. */
+    public readonly snapshots: Snapshot[],
+    /** High-water mark for snapshot indices at the point of suspension. */
+    public readonly nextSnapshotIndex: number,
     /** Optional domain metadata passed through to RunResult. */
     public readonly meta?: Any,
   ) {}

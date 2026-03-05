@@ -188,12 +188,15 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
       : undefined
 
     // Extract the opaque continuation from the snapshot and deserialize it.
-    const { k } = deserializeFromObject(snapshot.continuation, {
+    const deserialized = deserializeFromObject(snapshot.continuation, {
       values: options?.bindings as Record<string, unknown> | undefined,
       modules,
     })
 
-    return await resumeWithEffects(k, value, options?.handlers)
+    return await resumeWithEffects(deserialized.k, value, options?.handlers, {
+      snapshots: deserialized.snapshots,
+      nextSnapshotIndex: deserialized.nextSnapshotIndex,
+    })
   }
   catch (error) {
     if (error instanceof DvalaError) {

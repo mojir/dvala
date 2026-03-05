@@ -82,7 +82,7 @@ import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from
 import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
-import { deserializeFromObject, serializeToObject } from './suspension'
+import { deserializeFromObject, serializeSuspensionBlob, serializeToObject } from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
@@ -2380,7 +2380,12 @@ function dispatchHostHandler(
         },
         suspend: (meta?: Any) => {
           assertNotSettled('suspend')
-          reject(new SuspensionSignal(k, meta))
+          reject(new SuspensionSignal(
+            k,
+            snapshotState ? snapshotState.snapshots : [],
+            snapshotState ? snapshotState.nextSnapshotIndex : 0,
+            meta,
+          ))
         },
         next: () => {
           assertNotSettled('next')
@@ -2451,7 +2456,7 @@ function dispatchHostHandler(
  */
 function throwSuspension(k: ContinuationStack, meta?: Any): never {
   // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
-  throw new SuspensionSignal(k, meta)
+  throw new SuspensionSignal(k, [], 0, meta)
 }
 
 /**
@@ -3167,12 +3172,13 @@ export async function resumeWithEffects(
   k: ContinuationStack,
   value: Any,
   handlers?: Handlers,
+  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial: Step = { type: 'Value', value, k }
 
-  return runEffectLoop(initial, handlers, signal)
+  return runEffectLoop(initial, handlers, signal, initialSnapshotState)
 }
 
 /**
@@ -3190,11 +3196,12 @@ async function runEffectLoop(
   initial: Step,
   handlers: Handlers | undefined,
   signal: AbortSignal,
+  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
 ): Promise<RunResult> {
   const debugMode = handlers != null && 'dvala.debug.step' in handlers
   const snapshotState: SnapshotState = {
-    snapshots: [],
-    nextSnapshotIndex: 0,
+    snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
+    nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
     runId: generateRunId(),
   }
 
@@ -3240,7 +3247,12 @@ async function runEffectLoop(
         continue
       }
       if (isSuspensionSignal(error)) {
-        const continuation = serializeToObject(error.k, error.meta)
+        const continuation = serializeSuspensionBlob(
+          error.k,
+          error.snapshots,
+          error.nextSnapshotIndex,
+          error.meta,
+        )
         const snapshot: Snapshot = {
           continuation,
           timestamp: Date.now(),

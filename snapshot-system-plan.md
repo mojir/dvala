@@ -305,7 +305,7 @@ The `runEffectLoop` catch block handles `ResumeFromSignal` by:
 
 ---
 
-## Step 6 — Include snapshots in suspension blobs
+## Step 6 — Include snapshots in suspension blobs ✅
 
 When `suspend()` is called, the accumulated `Snapshot[]` and `nextSnapshotIndex` must
 be serialized into the suspension blob alongside the continuation stack. On `resume()`,
