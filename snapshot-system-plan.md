@@ -329,7 +329,7 @@ the trampoline creates a `Snapshot` with the serialized continuation, current ti
 
 ---
 
-## Step 7 — Reference data and documentation
+## Step 7 — Reference data and documentation ✅
 
 > **Note (updated after `df6f55c`):** The last commit (`feat: enhance effect handling
 > and documentation`) deleted `reference/effect.ts` and moved effect docs to
@@ -353,7 +353,9 @@ Add `dvala.checkpoint` to:
 
 ---
 
-## Step 8 — Optional: `maxSnapshots` configuration
+## Step 8 — `maxSnapshots` configuration
+
+Start by asking if user wants to implement this as described or if any additions are needed.
 
 Add a configurable limit on the number of snapshots retained in memory.
 

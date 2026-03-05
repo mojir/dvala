@@ -380,6 +380,7 @@ These effects are always available with default implementations. Override them i
 | `dvala.random` | `Math.random()` | Random float 0–1 |
 | `dvala.prompt` | stdin / browser dialog | User input |
 | `dvala.sleep` | `setTimeout` | Delay |
+| `dvala.checkpoint` | resumes `null` | Snapshot current continuation |
 | `dvala.debug.step` | — | Injected in debug mode |
 
 Override in tests for determinism:
