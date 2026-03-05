@@ -222,7 +222,9 @@ All callers updated:
 
 ---
 
-## Step 3 — Thread snapshot state through the trampoline
+## Step 3 — Thread snapshot state through the trampoline ✅
+
+**Completed.**
 
 The trampoline needs a mutable snapshot state that lives for the duration of a `run()` call:
 - `snapshots: Snapshot[]` — accumulated snapshots
@@ -233,13 +235,16 @@ The trampoline needs a mutable snapshot state that lives for the duration of a `
 `dispatchHostHandler` / `dispatchPerform`. `dispatchHostHandler` includes `snapshots`,
 `checkpoint`, and `resumeFrom` in the `EffectContext`.
 
-**Files:**
-- `src/evaluator/trampoline.ts` — Thread snapshot state through `runEffectLoop` → `tick` → `dispatchHostHandler`
+Added `SnapshotState` interface to `effectTypes.ts`. Threaded `snapshotState` (optional)
+through `tick` → `dispatchPerform` → `dispatchHostHandler` → `tryDispatchDvalaError`.
+`checkpoint` now creates real snapshots via `serializeToObject`. `resumeFrom` remains
+a stub (Step 5). Suspension snapshots use `snapshotState.nextSnapshotIndex++` instead
+of hardcoded `0`.
 
-**Tests:**
-- Verify `snapshots` is an empty array on `EffectContext` when no snapshots taken
-- Verify `checkpoint` is a function on `EffectContext`
-- Existing tests pass
+**Files:**
+- `src/evaluator/effectTypes.ts` — Added `SnapshotState` interface
+- `src/evaluator/trampoline.ts` — Threaded `SnapshotState` through `runEffectLoop` → `tick` → `dispatchPerform` → `dispatchHostHandler` / `tryDispatchDvalaError`; wired real `snapshots` and `checkpoint` in `EffectContext`
+- `__tests__/effects.test.ts` — Added tests: empty snapshots, checkpoint type, resumeFrom type, checkpoint creates snapshot, snapshots accumulate, monotonic indices
 
 ---
 

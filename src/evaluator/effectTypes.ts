@@ -54,6 +54,26 @@ export function generateRunId(): string {
 }
 
 // ---------------------------------------------------------------------------
+// Snapshot state — mutable state owned by a single run()/resume() call
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutable snapshot state that lives for the duration of a single
+ * `runEffectLoop` invocation. Threaded through tick → dispatchPerform →
+ * dispatchHostHandler so that host handlers can access and create snapshots.
+ */
+export interface SnapshotState {
+  /** Accumulated snapshots, oldest first. */
+  readonly snapshots: Snapshot[]
+
+  /** High-water mark counter for snapshot indices (never reused, even across rollbacks). */
+  nextSnapshotIndex: number
+
+  /** UUID identifying this run()/resume() call. */
+  readonly runId: string
+}
+
+// ---------------------------------------------------------------------------
 // Effect handler types
 // ---------------------------------------------------------------------------
 

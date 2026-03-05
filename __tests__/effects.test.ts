@@ -961,6 +961,122 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('4a-snapshot-state: SnapshotState threading', () => {
+    it('should provide empty snapshots array when no snapshots taken', async () => {
+      let capturedSnapshots: unknown = null
+      await run(`
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toEqual([])
+    })
+
+    it('should provide checkpoint as a function on EffectContext', async () => {
+      let checkpointType: string | null = null
+      await run(`
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ checkpoint, resume: r }) => {
+            checkpointType = typeof checkpoint
+            r(null)
+          },
+        },
+      })
+      expect(checkpointType).toBe('function')
+    })
+
+    it('should provide resumeFrom as a function on EffectContext', async () => {
+      let resumeFromType: string | null = null
+      await run(`
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ resumeFrom, resume: r }) => {
+            resumeFromType = typeof resumeFrom
+            r(null)
+          },
+        },
+      })
+      expect(resumeFromType).toBe('function')
+    })
+
+    it('should create a snapshot when checkpoint is called', async () => {
+      let capturedSnapshot: unknown = null
+      const result = await run(`
+        let x = perform(effect(my.save));
+        x + 1
+      `, {
+        handlers: {
+          'my.save': async ({ checkpoint, resume: r }) => {
+            capturedSnapshot = checkpoint({ label: 'test' })
+            r(41)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 42 })
+      expect(capturedSnapshot).not.toBeNull()
+      const snap = capturedSnapshot as { timestamp: number, index: number, runId: string, meta: unknown, continuation: unknown }
+      expect(snap.index).toBe(0)
+      expect(typeof snap.runId).toBe('string')
+      expect(typeof snap.timestamp).toBe('number')
+      expect(snap.meta).toEqual({ label: 'test' })
+      expect(snap.continuation).toBeDefined()
+    })
+
+    it('should accumulate snapshots in order', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      const result = await run(`
+        perform(effect(my.first));
+        perform(effect(my.second))
+      `, {
+        handlers: {
+          'my.first': async ({ checkpoint, resume: r }) => {
+            checkpoint({ step: 1 })
+            r(null)
+          },
+          'my.second': async ({ checkpoint, snapshots, resume: r }) => {
+            checkpoint({ step: 2 })
+            capturedSnapshots = snapshots
+            r('done')
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'done' })
+      expect(capturedSnapshots).toHaveLength(2)
+      const s0 = capturedSnapshots[0] as { index: number, meta: unknown }
+      const s1 = capturedSnapshots[1] as { index: number, meta: unknown }
+      expect(s0.index).toBe(0)
+      expect(s0.meta).toEqual({ step: 1 })
+      expect(s1.index).toBe(1)
+      expect(s1.meta).toEqual({ step: 2 })
+    })
+
+    it('should assign monotonically increasing indices to snapshots', async () => {
+      const indices: number[] = []
+      await run(`
+        perform(effect(my.a));
+        perform(effect(my.b));
+        perform(effect(my.c))
+      `, {
+        handlers: {
+          'my.*': async ({ checkpoint, resume: r }) => {
+            const snap = checkpoint()
+            indices.push((snap as { index: number }).index)
+            r(null)
+          },
+        },
+      })
+      expect(indices).toEqual([0, 1, 2])
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`
