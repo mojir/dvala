@@ -1,12 +1,10 @@
 import type { Any, Arr, Seq } from '../../interface'
 import { assertCharArray } from '../../typeGuards/array'
-import { asAny, assertAny, assertFunctionLike, assertSeq } from '../../typeGuards/dvala'
+import { asAny, assertAny, assertSeq } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
-import { assertString, assertStringOrNumber } from '../../typeGuards/string'
-import { compare, deepEqual, toAny } from '../../utils'
+import { assertString } from '../../typeGuards/string'
+import { deepEqual, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import type { MaybePromise } from '../../utils/maybePromise'
-import { chain, findIndexSequential, reduceSequential } from '../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const sequenceNormalExpression: BuiltinNormalExpressions = {
@@ -372,29 +370,7 @@ For string $seq returns all but the first characters in $seq.`,
     },
   },
   'some': {
-    evaluate: ([seq, fn]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      if (seq === null)
-        return null
-
-      assertSeq(seq, sourceCodeInfo)
-
-      if (seq.length === 0)
-        return null
-
-      const items = typeof seq === 'string' ? seq.split('') : seq
-      return reduceSequential(
-        items,
-        (found: Any, elem) => {
-          if (found !== null)
-            return found
-          return chain(executeFunction(fn, [elem], contextStack, sourceCodeInfo), (result) => {
-            return result ? toAny(elem) : null
-          })
-        },
-        null as Any,
-      )
-    },
+    evaluate: () => { throw new Error('some is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -438,54 +414,7 @@ some(
     },
   },
   'sort': {
-    evaluate: (params: Arr, sourceCodeInfo, _contextStack, { executeFunction: _executeFunction }): Seq => {
-      const [seq] = params
-      const defaultComparer = params.length === 1
-      const comparer = defaultComparer ? null : params[1]
-      assertSeq(seq, sourceCodeInfo)
-
-      if (typeof seq === 'string') {
-        const result = seq.split('')
-        if (defaultComparer) {
-          result.sort((a, b) => compare(a, b, sourceCodeInfo))
-        }
-        else {
-          assertFunctionLike(comparer, sourceCodeInfo)
-          // Note: sort comparator must be synchronous — async comparators would need a different approach
-          result.sort((a, b) => {
-            const compareValue = _executeFunction(comparer, [a, b], _contextStack, sourceCodeInfo)
-            if (compareValue instanceof Promise) {
-              throw new TypeError('Async functions cannot be used as sort comparators')
-            }
-            assertNumber(compareValue, sourceCodeInfo, { finite: true })
-            return compareValue
-          })
-        }
-        return result.join('')
-      }
-
-      const result = [...seq]
-      if (defaultComparer) {
-        result.sort((a, b) => {
-          assertStringOrNumber(a, sourceCodeInfo)
-          assertStringOrNumber(b, sourceCodeInfo)
-          return compare(a, b, sourceCodeInfo)
-        })
-      }
-      else {
-        result.sort((a, b) => {
-          assertFunctionLike(comparer, sourceCodeInfo)
-          // Note: sort comparator must be synchronous
-          const compareValue = _executeFunction(comparer, [a, b], _contextStack, sourceCodeInfo)
-          if (compareValue instanceof Promise) {
-            throw new TypeError('Async functions cannot be used as sort comparators')
-          }
-          assertNumber(compareValue, sourceCodeInfo, { finite: true })
-          return compareValue
-        })
-      }
-      return result
-    },
+    evaluate: () => { throw new Error('sort is implemented in Dvala') },
     arity: { min: 1, max: 2 },
     docs: {
       category: 'sequence',
@@ -632,23 +561,7 @@ sort(
     },
   },
   'take-while': {
-    evaluate: ([seq, fn]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertSeq(seq, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const arr = typeof seq === 'string' ? seq.split('') : Array.from(seq)
-      // Find the first index where the predicate is false
-      return chain(
-        findIndexSequential(arr, elem => chain(
-          executeFunction(fn, [elem], contextStack, sourceCodeInfo),
-          result => !result,
-        )),
-        (index) => {
-          const taken = index === -1 ? arr : arr.slice(0, index)
-          return typeof seq === 'string' ? taken.join('') : taken
-        },
-      )
-    },
+    evaluate: () => { throw new Error('take-while is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -675,23 +588,7 @@ sort(
     },
   },
   'drop-while': {
-    evaluate: ([seq, fn]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertSeq(seq, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const arr = Array.isArray(seq) ? seq : seq.split('')
-      return chain(
-        findIndexSequential(arr, elem => chain(
-          executeFunction(fn, [elem], contextStack, sourceCodeInfo),
-          result => !result,
-        )),
-        (from) => {
-          if (from === -1)
-            return typeof seq === 'string' ? '' : []
-          return typeof seq === 'string' ? arr.slice(from).join('') : seq.slice(from)
-        },
-      )
-    },
+    evaluate: () => { throw new Error('drop-while is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',

@@ -1,11 +1,9 @@
 import type { Any, Arr, Obj } from '../../interface'
 import { assertArray, assertStringArray } from '../../typeGuards/array'
-import { assertFunctionLike, assertObj } from '../../typeGuards/dvala'
+import { assertObj } from '../../typeGuards/dvala'
 import { asString, assertString } from '../../typeGuards/string'
 import { collHasKey, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
-import type { MaybePromise } from '../../utils/maybePromise'
-import { chain, reduceSequential } from '../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const objectNormalExpression: BuiltinNormalExpressions = {
@@ -175,44 +173,7 @@ If no arguments are provided \`null\` is returned.`,
   },
 
   'merge-with': {
-    evaluate: (params: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      const first = params[0]
-      const fn = params.at(-1)
-      const rest = params.slice(1, -1)
-
-      assertObj(first, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      return reduceSequential(
-        rest,
-        (result: Obj, obj) => {
-          assertObj(obj, sourceCodeInfo)
-          const entries = Object.entries(obj)
-          return chain(
-            reduceSequential(
-              entries,
-              (res: Obj, entry) => {
-                const key = asString(entry[0], sourceCodeInfo)
-                const val = toAny(entry[1])
-                if (collHasKey(res, key)) {
-                  return chain(executeFunction(fn, [res[key], val], contextStack, sourceCodeInfo), (merged) => {
-                    res[key] = merged
-                    return res
-                  })
-                }
-                else {
-                  res[key] = val
-                  return res
-                }
-              },
-              result,
-            ),
-            r => r,
-          )
-        },
-        { ...first } satisfies Obj,
-      )
-    },
+    evaluate: () => { throw new Error('merge-with is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
       category: 'object',

@@ -1,0 +1,97 @@
+{
+  some: (seq, fn) -> do
+    if null?(seq) then null
+    else do
+      loop (i = 0) -> do
+        if i >= count(seq) then
+          null
+        else do
+          let elem = nth(seq, i);
+          if fn(elem) then elem
+          else recur(i + 1)
+          end
+        end
+        end
+      end
+    end
+    end
+  end,
+
+  take-while: (seq, fn) -> do
+    let is-str = string?(seq);
+    let len = count(seq);
+    let idx = loop (i = 0) -> do
+      if i >= len then
+        len
+      else if fn(nth(seq, i)) then
+        recur(i + 1)
+      else
+        i
+      end
+      end
+    end;
+    slice(seq, 0, idx)
+  end,
+
+  drop-while: (seq, fn) -> do
+    let is-str = string?(seq);
+    let len = count(seq);
+    let idx = loop (i = 0) -> do
+      if i >= len then
+        len
+      else if fn(nth(seq, i)) then
+        recur(i + 1)
+      else
+        i
+      end
+      end
+    end;
+    slice(seq, idx)
+  end,
+
+  sort: (seq, ...args) -> do
+    let cmp = if count(args) == 0 then compare else first(args) end;
+    let is-str = string?(seq);
+    let arr = if is-str then split(seq, "") else seq end;
+    let len = count(arr);
+
+    // merge two sorted arrays
+    let merge-arrays = (left, right) -> do
+      let left-len = count(left);
+      let right-len = count(right);
+      loop (result = [], li = 0, ri = 0) -> do
+        if li >= left-len then
+          ++(result, slice(right, ri))
+        else if ri >= right-len then
+          ++(result, slice(left, li))
+        else do
+          let l = nth(left, li);
+          let r = nth(right, ri);
+          if cmp(l, r) <= 0 then
+            recur(push(result, l), li + 1, ri)
+          else
+            recur(push(result, r), li, ri + 1)
+          end
+        end
+        end
+        end
+      end
+    end;
+
+    // recursive merge-sort
+    let merge-sort = (a) -> do
+      let n = count(a);
+      if n <= 1 then a
+      else do
+        let mid = floor(n / 2);
+        let left = merge-sort(slice(a, 0, mid));
+        let right = merge-sort(slice(a, mid));
+        merge-arrays(left, right)
+      end
+      end
+    end;
+
+    let sorted = merge-sort(arr);
+    if is-str then join(sorted, "") else sorted end
+  end
+}

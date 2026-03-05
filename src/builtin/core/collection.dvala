@@ -59,5 +59,63 @@
         end
       end
     end
+  end,
+
+  filter: (coll, fn) -> do
+    cond
+      case array?(coll) then
+        reduce(coll, (acc, elem) -> if fn(elem) then [...acc, elem] else acc end, [])
+
+      case string?(coll) then
+        reduce(coll, (acc, ch) -> if fn(ch) then ++(acc, ch) else acc end, "")
+
+      case object?(coll) then
+        reduce(keys(coll), (acc, k) -> do
+          if fn(coll(k)) then
+            assoc(acc, k, coll(k))
+          else
+            acc
+          end
+        end, {})
+
+      case true then
+        perform(effect(dvala.error), "Expected collection")
+    end
+  end,
+
+  reduce: (coll, fn, initial) -> do
+    cond
+      case string?(coll) then
+        loop (acc = initial, i = 0) -> do
+          if i >= count(coll) then
+            acc
+          else
+            recur(fn(acc, nth(coll, i)), i + 1)
+          end
+        end
+
+      case array?(coll) then
+        loop (acc = initial, i = 0) -> do
+          if i >= count(coll) then
+            acc
+          else
+            recur(fn(acc, nth(coll, i)), i + 1)
+          end
+        end
+
+      case object?(coll) then do
+        let values = vals(coll);
+        loop (acc = initial, i = 0) -> do
+          if i >= count(values) then
+            acc
+          else
+            recur(fn(acc, nth(values, i)), i + 1)
+          end
+        end
+      end
+
+      case true then
+        perform(effect(dvala.error), "Expected collection")
+    end
   end
 }
