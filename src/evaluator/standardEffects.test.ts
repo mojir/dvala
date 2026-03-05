@@ -22,6 +22,7 @@ describe('standardEffects', () => {
         'dvala.time.now',
         'dvala.time.zone',
         'dvala.sleep',
+        'dvala.checkpoint',
       ]))
     })
   })

@@ -248,56 +248,19 @@ of hardcoded `0`.
 
 ---
 
-## Step 4 — Implement `dvala.checkpoint` standard effect
+## Step 4 — Implement `dvala.checkpoint` standard effect ✅
 
-The `dvala.checkpoint` effect has unique dispatch semantics: **unconditional capture
-first, then normal dispatch for augmentation.**
+**Completed.**
 
-In `dispatchPerform`, when the effect is `dvala.checkpoint`:
-1. **Always capture first** — call `serializeToObject(k)`, create a `Snapshot` with
-   `continuation`, `timestamp`, `index` (from `nextSnapshotIndex++`), `runId`, and
-   optional `meta` (from `args[0]`). Push onto the trampoline's `Snapshot[]`.
-2. **Then dispatch normally** — continue through the standard handler chain
-   (local `do...with` → host handlers → standard fallback).
-3. If no handler intercepts, the standard fallback resumes with `null`.
-4. If a handler intercepts, it can persist, log, or change the resume value.
-   The snapshot is already captured regardless.
-
-This makes `dvala.checkpoint` unique among standard effects — it has a guaranteed
-runtime side effect before handler dispatch. No other standard effect needs this
-treatment. `dvala.io.println` should be fully replaceable; `dvala.checkpoint` is
-runtime infrastructure.
-
-> **Note (updated after `df6f55c`):** Standard effects now use `StandardEffectDefinition`
-> with co-located `docs: FunctionDocs` and `arity: Arity` in `standardEffects.ts`.
-> The handler signature is still `(args, k, sourceCodeInfo?) => Step | Promise<Step>`.
-> `getStandardEffectHandler` now wraps the handler with arity validation.
-> `dvala.checkpoint` should still be special-cased in `dispatchPerform` (option b)
-> but should also be registered in `standardEffects` for its docs/arity metadata
-> so that `deriveEffectReference()` in `reference/index.ts` picks it up automatically.
-> Its handler can be a no-op placeholder that throws — the real logic lives in
-> `dispatchPerform` which intercepts the effect name before reaching the handler.
-
-**Options:**
-- a) Pass `Snapshot[]` as an extra parameter to standard effect handlers
-- b) Handle `dvala.checkpoint` as a special case in `dispatchPerform` (unconditional capture + normal dispatch), with a docs-only entry in `standardEffects`
-- c) Make `dvala.checkpoint` a "runtime effect" — a new category above standard effects
-
-Option (b) is simplest and keeps the standard effect handler API clean.
+Implemented option (b): `dvala.checkpoint` is special-cased in `dispatchPerform`
+for unconditional snapshot capture before normal dispatch, with a docs/arity entry
+in `standardEffects` whose fallback handler resumes with `null`.
 
 **Files:**
 - `src/evaluator/trampoline.ts` — Special-case `dvala.checkpoint` in `dispatchPerform` (unconditional capture before normal dispatch)
-- `src/evaluator/standardEffects.ts` — Add `StandardEffectDefinition` entry for docs/arity (handler is a no-op fallback that resumes with `null`)
-
-**Tests:**
-- `dvala.checkpoint` resumes with `null` when no handler intercepts
-- Snapshot is always captured even when a host handler intercepts the effect
-- Snapshot is always captured even when a local `do...with` handler intercepts the effect
-- A `dvala.*` wildcard handler can observe/augment without preventing capture
-- Metadata from `perform(effect(dvala.checkpoint), meta)` appears in `snapshot.meta`
-- Multiple snapshots accumulate in order
-- `ctx.checkpoint(meta?)` in a host handler creates a snapshot and returns it
-- Reference docs and effect reference updated
+- `src/evaluator/standardEffects.ts` — Added `StandardEffectDefinition` entry with handler (resumes `null`), arity `{0,1}`, and co-located docs
+- `src/evaluator/standardEffects.test.ts` — Added `dvala.checkpoint` to standard effect names set
+- `__tests__/effects.test.ts` — Added 10 tests: resumes null, snapshot captured with/without handlers, host handler override, local do...with handler, wildcard handler, metadata, no meta, multiple snapshots, alongside ctx.checkpoint
 
 ---
 

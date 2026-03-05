@@ -2241,6 +2241,21 @@ function invokeMatchedHandler(
 }
 
 function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+  // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
+  // The snapshot is always captured regardless of whether any handler intercepts.
+  if (effect.name === 'dvala.checkpoint' && snapshotState) {
+    const meta = args[0] as Any | undefined
+    const continuation = serializeToObject(k)
+    const snapshot: Snapshot = {
+      continuation,
+      timestamp: Date.now(),
+      index: snapshotState.nextSnapshotIndex++,
+      runId: snapshotState.runId,
+      ...(meta !== undefined ? { meta } : {}),
+    }
+    snapshotState.snapshots.push(snapshot)
+  }
+
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
