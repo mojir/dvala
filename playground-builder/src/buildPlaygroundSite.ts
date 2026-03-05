@@ -1,3 +1,4 @@
+/* eslint-disable node/prefer-global/process */
 import path from 'node:path'
 import fs from 'node:fs'
 import { getAllDocumentationItems } from './components/functionDocumentation'
@@ -17,9 +18,20 @@ const DOC_DIR = path.resolve(__dirname, '../../docs')
 setupPredictability()
 setupDocDir()
 copyAssets()
-writeIndexPage()
+writeIndexPage().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
 
-function writeIndexPage() {
+async function writeIndexPage() {
+  const [startPage, examplePage, tutorialPages, corePage, modulesPage, docItems] = await Promise.all([
+    Promise.resolve(getStartPage()),
+    Promise.resolve(getExamplePage()),
+    getAllTutorialPages(),
+    getCorePage(),
+    getModulesPage(),
+    getAllDocumentationItems(),
+  ])
   const page = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -34,12 +46,12 @@ function writeIndexPage() {
   <body>
     <div id="wrapper" ${styles('hidden')}>
       <main id="main-panel" class="fancy-scroll">
-        ${getStartPage()}
-        ${getExamplePage()}
-        ${getAllTutorialPages()}
-        ${getCorePage()}
-        ${getModulesPage()}
-        ${getAllDocumentationItems()}
+        ${startPage}
+        ${examplePage}
+        ${tutorialPages}
+        ${corePage}
+        ${modulesPage}
+        ${docItems}
       </main>
       <div id="resize-sidebar" style="position: fixed; width: 5px; cursor: col-resize; background-color: rgb(82 82 82); top: 0; z-index: 10;"></div>
       ${getSideBar()}

@@ -63,7 +63,7 @@ describe('misc functions', () => {
 
   describe('doc with empty reference', () => {
     it('should return empty string for builtin with no reference data', () => {
-      const meta = getMetaNormalExpression({})
+      const meta = getMetaNormalExpression({}, {})
       const builtinFn = {
         [FUNCTION_SYMBOL]: true,
         type: 'function' as const,

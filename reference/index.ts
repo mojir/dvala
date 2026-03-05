@@ -38,9 +38,9 @@ import { mathUtilsModule } from '../src/builtin/modules/math'
 import { functionalUtilsModule } from '../src/builtin/modules/functional'
 import { bitwiseUtilsModule } from '../src/builtin/modules/bitwise'
 import { convertModule } from '../src/builtin/modules/convert'
+import { allStandardEffectDefinitions } from '../src/evaluator/standardEffects'
 import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName, VectorApiName } from './api'
 import { datatype } from './datatype'
-import { effect } from './effect'
 import { shorthand } from './shorthand'
 
 // --- Helper: derive FunctionReference from co-located docs ---
@@ -96,7 +96,8 @@ const collectionRef = docsToReference(collectionNormalExpression) as Record<Coll
 const functionalRef = docsToReference(functionalNormalExpression) as Record<FunctionalApiName, FunctionReference<'functional'>>
 const mathRef = docsToReference(mathNormalExpression) as Record<MathApiName, FunctionReference<'math'>>
 const emptyRef: Record<string, FunctionReference> = {}
-const metaRef = docsToReference(getMetaNormalExpression(emptyRef)) as Record<MetaApiName, FunctionReference<'meta'>>
+const emptyEffectRef: Record<string, EffectReference> = {}
+const metaRef = docsToReference(getMetaNormalExpression(emptyRef, emptyEffectRef)) as Record<MetaApiName, FunctionReference<'meta'>>
 const miscRef = docsToReference(miscNormalExpression) as Record<MiscApiName, FunctionReference<'misc'>>
 const objectRef = docsToReference(objectNormalExpression) as Record<ObjectApiName, FunctionReference<'object'>>
 const predicatesRef = docsToReference(predicatesNormalExpression) as Record<PredicateApiName, FunctionReference<'predicate'>>
@@ -195,6 +196,7 @@ export interface EffectReference extends CommonReference<'effect'> {
   effect: true
   args: Record<string, Argument>
   returns: TypedValue
+  variants: Variant[]
 }
 
 export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | EffectReference
@@ -285,8 +287,27 @@ export const functionReference = {
 // Core API reference (always available)
 export const apiReference: Record<CoreApiName, Reference> = sortByCategory({ ...functionReference, ...shorthand, ...datatype })
 
-// Effect reference
-export const effectReference: Record<string, EffectReference> = effect
+// Effect reference — derived from co-located docs in standardEffects.ts
+function deriveEffectReference(): Record<string, EffectReference> {
+  const result: Record<string, EffectReference> = {}
+  for (const [name, def] of Object.entries(allStandardEffectDefinitions)) {
+    const key = `-effect-${name}`
+    result[key] = {
+      effect: true,
+      title: name,
+      category: 'effect',
+      description: def.docs.description,
+      args: def.docs.args,
+      returns: def.docs.returns,
+      variants: def.docs.variants,
+      examples: def.docs.examples,
+      ...(def.docs.seeAlso ? { seeAlso: def.docs.seeAlso } : {}),
+    }
+  }
+  return result
+}
+
+export const effectReference: Record<string, EffectReference> = deriveEffectReference()
 
 // All references including modules and effects (for search and full documentation)
 export const allReference: Record<string, Reference> = sortByCategory({ ...apiReference, ...moduleReference, ...effectReference })

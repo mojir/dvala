@@ -1,6 +1,6 @@
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../interface'
 import type { Any } from '../../interface'
-import type { FunctionReference } from '../../../reference'
+import type { EffectReference, FunctionReference } from '../../../reference'
 import type { CoreNormalExpressionName } from '../../../reference/api'
 
 // Core categories - always available
@@ -20,9 +20,14 @@ import { getMetaNormalExpression } from '../core/meta'
 import { vectorNormalExpression } from '../core/vector'
 
 const normalExpressionReference: Record<string, FunctionReference> = {}
+const effectReference: Record<string, EffectReference> = {}
 
 export function setNormalExpressionReference(reference: Record<CoreNormalExpressionName, FunctionReference>) {
   Object.assign(normalExpressionReference, reference)
+}
+
+export function setEffectReference(reference: Record<string, EffectReference>) {
+  Object.assign(effectReference, reference)
 }
 
 const expressions: BuiltinNormalExpressions = {
@@ -33,7 +38,7 @@ const expressions: BuiltinNormalExpressions = {
   ...arrayNormalExpression,
   ...sequenceNormalExpression,
   ...mathNormalExpression,
-  ...getMetaNormalExpression(normalExpressionReference),
+  ...getMetaNormalExpression(normalExpressionReference, effectReference),
   ...miscNormalExpression,
   ...objectNormalExpression,
   ...predicatesNormalExpression,

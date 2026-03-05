@@ -13,7 +13,7 @@ export interface RenderExampleOptions {
   noResult?: boolean
 }
 
-export function renderExample(example: string | string[], name: string, options?: RenderExampleOptions): string {
+export async function renderExample(example: string | string[], name: string, options?: RenderExampleOptions): Promise<string> {
   const code = Array.isArray(example) ? example.join('\n') : example
   const { noRun = false, noResult = false } = options ?? {}
   const encodedUriExample = btoa(encodeURIComponent(code))
@@ -40,7 +40,7 @@ export function renderExample(example: string | string[], name: string, options?
   process.stdout.write = (() => true) as typeof process.stdout.write
   process.stderr.write = (() => true) as typeof process.stderr.write
   try {
-    const result = dvala.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
+    const result = await dvala.async.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
     const stringifiedResult = stringifyValue(result, true)
     const resultSection = noResult
       ? ''

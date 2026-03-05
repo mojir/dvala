@@ -10,7 +10,10 @@ export const corePageExamples = [
   'if 3 > 2 then "yes" else "no" end',
 ]
 
-export function getCorePage(): string {
+export async function getCorePage(): Promise<string> {
+  const renderedExamples = await Promise.all(
+    corePageExamples.map((example, index) => renderExample(example, `core-example-${index}`)),
+  )
   return `
   <div id="core-page" class="content">
     <div ${styles('flex', 'justify-center', 'text-3xl', 'mb-6')}>Core Functions</div>
@@ -30,7 +33,7 @@ export function getCorePage(): string {
       <p ${styles('mb-4')}>
         Here are a few examples to get started:
       </p>
-      ${corePageExamples.map((example, index) => renderExample(example, `core-example-${index}`)).join('\n')}
+      ${renderedExamples.join('\n')}
     </div>
   </div>
   `

@@ -192,11 +192,11 @@ export function parseMarkdownBlocks(markdown: string): Block[] {
 
 const formatInline = createFormatter(mdRules)
 
-export function renderMarkdown(markdown: string, namePrefix: string): string {
+export async function renderMarkdown(markdown: string, namePrefix: string): Promise<string> {
   const blocks = parseMarkdownBlocks(markdown)
   let codeBlockIndex = 0
 
-  return blocks.map((block) => {
+  const rendered = await Promise.all(blocks.map(async (block) => {
     switch (block.type) {
       case 'header':
         return block.level === 3
@@ -238,7 +238,8 @@ export function renderMarkdown(markdown: string, namePrefix: string): string {
       default:
         throw new Error(`Unknown block type: ${(block as { type: string }).type}`)
     }
-  }).join('\n')
+  }))
+  return rendered.join('\n')
 }
 
 // --- Code block extraction (for tests) ---

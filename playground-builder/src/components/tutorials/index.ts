@@ -119,8 +119,8 @@ function renderNavHeader(tutorial: TutorialEntry, index: number): string {
   return `<div ${styles('flex', 'justify-between', 'items-baseline', 'mb-6', 'border-0', 'border-b', 'border-solid', 'border-gray-600', 'pb-2')}>${prevLink}<div ${styles('text-3xl')}>${tutorial.title}</div>${nextLink}</div>`
 }
 
-function renderTutorialPage(tutorial: TutorialEntry, index: number): string {
-  const body = renderMarkdown(tutorial.body, tutorial.id)
+async function renderTutorialPage(tutorial: TutorialEntry, index: number): Promise<string> {
+  const body = await renderMarkdown(tutorial.body, tutorial.id)
   const nav = renderNavLinks(index)
   const header = renderNavHeader(tutorial, index)
 
@@ -135,6 +135,7 @@ function renderTutorialPage(tutorial: TutorialEntry, index: number): string {
   `
 }
 
-export function getAllTutorialPages(): string {
-  return tutorials.map((tutorial, index) => renderTutorialPage(tutorial, index)).join('\n')
+export async function getAllTutorialPages(): Promise<string> {
+  const pages = await Promise.all(tutorials.map((tutorial, index) => renderTutorialPage(tutorial, index)))
+  return pages.join('\n')
 }

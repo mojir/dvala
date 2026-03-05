@@ -68,8 +68,8 @@ describe('standardEffects', () => {
 
     it('should throw when called with wrong arity', () => {
       const handler = getStandardEffectHandler('dvala.io.print')!
-      expect(() => handler([], emptyK)).toThrow('expects exactly 1 argument')
-      expect(() => handler(['a', 'b'], emptyK)).toThrow('expects exactly 1 argument')
+      expect(() => handler([], emptyK)).toThrow('Wrong number of arguments, expected at least 1, got 0.')
+      expect(() => handler(['a', 'b'], emptyK)).toThrow('Wrong number of arguments, expected at most 1, got 2.')
     })
 
     it('should format and write a number', () => {
@@ -129,8 +129,8 @@ describe('standardEffects', () => {
 
     it('should throw when called with wrong arity', () => {
       const handler = getStandardEffectHandler('dvala.io.println')!
-      expect(() => handler([], emptyK)).toThrow('expects exactly 1 argument')
-      expect(() => handler(['a', 'b'], emptyK)).toThrow('expects exactly 1 argument')
+      expect(() => handler([], emptyK)).toThrow('Wrong number of arguments, expected at least 1, got 0.')
+      expect(() => handler(['a', 'b'], emptyK)).toThrow('Wrong number of arguments, expected at most 1, got 2.')
     })
 
     it('should format and write a number with newline', () => {
@@ -189,7 +189,7 @@ describe('standardEffects', () => {
 
     it('should throw when called with wrong arity', () => {
       const handler = getStandardEffectHandler('dvala.io.error')!
-      expect(() => handler([], emptyK)).toThrow('expects exactly 1 argument')
+      expect(() => handler([], emptyK)).toThrow('Wrong number of arguments, expected at least 1, got 0.')
     })
 
     it('should format and write a number to stderr', () => {
@@ -348,7 +348,7 @@ describe('standardEffects', () => {
 
     it('should throw on wrong arity', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      expect(() => handler([1], emptyK)).toThrow('expects exactly 2 arguments')
+      expect(() => handler([1], emptyK)).toThrow('Wrong number of arguments, expected at least 2, got 1.')
     })
 
     it('should throw when max <= min', () => {
@@ -411,8 +411,8 @@ describe('standardEffects', () => {
 
     it('should throw on wrong arity', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
-      expect(() => handler([], emptyK)).toThrow('expects exactly 1 argument')
-      expect(() => handler([[1], [2]], emptyK)).toThrow('expects exactly 1 argument')
+      expect(() => handler([], emptyK)).toThrow('Wrong number of arguments, expected at least 1, got 0.')
+      expect(() => handler([[1], [2]], emptyK)).toThrow('Wrong number of arguments, expected at most 1, got 2.')
     })
 
     it('should throw on non-array argument', () => {
