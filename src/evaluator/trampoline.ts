@@ -224,6 +224,9 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         if (contextStack.pure && normalExpression.pure === false) {
           throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, node[2])
         }
+        if (normalExpression.dvalaImpl) {
+          return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, node[2])
+        }
         return normalExpression.evaluate(params, node[2], contextStack, { executeFunction: executeFunctionRecursive })
       }
       else {
@@ -302,8 +305,13 @@ function executeDvalaFunctionRecursive(fn: DvalaFunction, params: Arr, contextSt
       return executeFnullRecursive(fn, params, contextStack, sourceCodeInfo)
     case 'EffectMatcher':
       return executeEffectMatcherRecursive(fn, params, sourceCodeInfo)
-    case 'Builtin':
+    case 'Builtin': {
+      const normalExpression = builtin.allNormalExpressions[fn.normalBuiltinSymbolType]!
+      if (normalExpression.dvalaImpl) {
+        return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, sourceCodeInfo)
+      }
       return executeBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
+    }
     case 'SpecialBuiltin':
       return executeSpecialBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
     case 'Module':
@@ -1163,6 +1171,9 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       if (env.pure && normalExpression.pure === false) {
         throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
+      if (normalExpression.dvalaImpl) {
+        return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
+      }
       // Call the normal expression directly — it may use executeFunction internally
       const result = normalExpression.evaluate(params, sourceCodeInfo, env, { executeFunction: executeFunctionRecursive })
       return wrapMaybePromiseAsStep(result, k)
@@ -1248,9 +1259,16 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'SomePred':
     case 'Fnull':
     case 'EffectMatcher':
-    case 'Builtin':
     case 'SpecialBuiltin':
     case 'Module': {
+      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
+      return wrapMaybePromiseAsStep(result, k)
+    }
+    case 'Builtin': {
+      const normalExpression = builtin.allNormalExpressions[fn.normalBuiltinSymbolType]!
+      if (normalExpression.dvalaImpl) {
+        return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
+      }
       const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
     }

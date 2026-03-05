@@ -19,6 +19,7 @@ import type { MaybePromise } from '../utils/maybePromise'
 import { parse } from '../parser'
 import type { Handlers } from '../evaluator/effectTypes'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
+import { initCoreDvalaSources } from '../builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 
 export interface DvalaRuntimeInfo {
@@ -61,6 +62,7 @@ export class Dvala {
   private modules: Map<string, DvalaModule>
 
   constructor(config: DvalaConfig = {}) {
+    initCoreDvalaSources()
     this.debug = config.debug ?? false
     this.astCacheSize = config.astCacheSize ?? null
     if (this.astCacheSize) {
