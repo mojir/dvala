@@ -82,6 +82,7 @@ import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from
 import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
+import type { DeserializeOptions } from './suspension'
 import { deserializeFromObject, serializeSuspensionBlob, serializeToObject } from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
@@ -2395,7 +2396,7 @@ function dispatchHostHandler(
           // Advance to the next handler in the chain.
           tryHandler(index + 1).then(resolve, reject)
         },
-        snapshots: snapshotState ? snapshotState.snapshots : [],
+        get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
         checkpoint: (meta?: Any): Snapshot => {
           if (!snapshotState) {
             throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
@@ -2415,6 +2416,9 @@ function dispatchHostHandler(
           return snapshot
         },
         resumeFrom: (snapshot: Snapshot, value: Any) => {
+          if (settled) {
+            throw new DvalaError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
+          }
           if (!snapshotState) {
             throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
           }
@@ -2422,7 +2426,7 @@ function dispatchHostHandler(
           if (!found) {
             throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
           }
-          assertNotSettled('resumeFrom')
+          settled = true
           reject(new ResumeFromSignal(found.continuation, value, found.index))
         },
       }
@@ -3160,12 +3164,13 @@ export async function evaluateWithEffects(
   contextStack: ContextStack,
   handlers?: Handlers,
   maxSnapshots?: number,
+  deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots)
+  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions)
 }
 
 /**
@@ -3180,12 +3185,13 @@ export async function resumeWithEffects(
   value: Any,
   handlers?: Handlers,
   initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
+  deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial: Step = { type: 'Value', value, k }
 
-  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots)
+  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions)
 }
 
 /**
@@ -3205,6 +3211,7 @@ async function runEffectLoop(
   signal: AbortSignal,
   initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
   maxSnapshots?: number,
+  deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const debugMode = handlers != null && 'dvala.debug.step' in handlers
   const snapshotState: SnapshotState = {
@@ -3245,7 +3252,7 @@ async function runEffectLoop(
     }
     catch (error) {
       if (isResumeFromSignal(error)) {
-        const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>)
+        const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>, deserializeOptions)
         // Discard all snapshots with index > trimToIndex
         const cutIdx = snapshotState.snapshots.findIndex(s => s.index > error.trimToIndex)
         if (cutIdx !== -1) {

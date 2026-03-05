@@ -1041,10 +1041,10 @@ describe('phase 4 — Suspension & Resume', () => {
             checkpoint({ step: 1 })
             r(null)
           },
-          'my.second': async ({ checkpoint, snapshots, resume: r }) => {
-            checkpoint({ step: 2 })
-            capturedSnapshots = snapshots
-            r('done')
+          'my.second': async (ctx) => {
+            ctx.checkpoint({ step: 2 })
+            capturedSnapshots = ctx.snapshots
+            ctx.resume('done')
           },
         },
       })
@@ -1074,6 +1074,33 @@ describe('phase 4 — Suspension & Resume', () => {
         },
       })
       expect(indices).toEqual([0, 1, 2])
+    })
+
+    it('should not let host mutation of ctx.snapshots corrupt internal state', async () => {
+      let snapshotsAfterMutation: readonly unknown[] = []
+      const result = await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.mutate));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.mutate': async ({ snapshots, resume: r }) => {
+            // Host attempts to corrupt internal state by mutating the array
+            ;(snapshots as unknown[]).length = 0
+            ;(snapshots as unknown[]).push('garbage')
+            r(null)
+          },
+          'my.check': async ({ snapshots, resume: r }) => {
+            snapshotsAfterMutation = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      // The internal snapshot list should be intact despite the mutation attempt
+      expect(snapshotsAfterMutation).toHaveLength(1)
+      expect(snapshotsAfterMutation[0]).toHaveProperty('index', 0)
+      expect(snapshotsAfterMutation[0]).toHaveProperty('continuation')
     })
   })
 
@@ -1417,6 +1444,33 @@ describe('phase 4 — Suspension & Resume', () => {
       }
     })
 
+    it('should report already-settled error before invalid-snapshot error in resumeFrom', async () => {
+      // If resume() was already called, then resumeFrom() with a bad snapshot
+      // should throw "already calling another operation", NOT "Invalid snapshot".
+      // This verifies assertNotSettled runs before snapshot validation.
+      let caughtMessage = ''
+      const result = await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.action))
+      `, {
+        handlers: {
+          'my.action': async ({ resume: r, resumeFrom }) => {
+            r(42)
+            try {
+              const fakeSnapshot = { continuation: {}, timestamp: 0, index: 999, runId: 'bogus' }
+              resumeFrom(fakeSnapshot, 0)
+            }
+            catch (e: unknown) {
+              caughtMessage = (e as Error).message
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      expect(caughtMessage).toContain('already calling another operation')
+      expect(caughtMessage).not.toContain('Invalid snapshot')
+    })
+
     it('should preserve nextSnapshotIndex across resumeFrom', async () => {
       let capturedSnapshots: readonly unknown[] = []
       let callCount = 0
@@ -1444,6 +1498,93 @@ describe('phase 4 — Suspension & Resume', () => {
       // New checkpoint at step 2 gets index 2 (not 1) — nextSnapshotIndex is preserved
       expect((capturedSnapshots[0] as { index: number }).index).toBe(0)
       expect((capturedSnapshots[1] as { index: number }).index).toBe(2)
+    })
+
+    it('should preserve host bindings after resumeFrom', async () => {
+      let callCount = 0
+      const result = await run(`
+        perform(effect(dvala.checkpoint));
+        let y = perform(effect(my.action));
+        x + y
+      `, {
+        bindings: { x: 100 },
+        handlers: {
+          'my.action': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // First call: rollback to checkpoint
+              resumeFrom(snapshots[0]!, 0)
+            }
+            else {
+              // Second call: resume normally
+              r(5)
+            }
+          },
+        },
+      })
+      // After resumeFrom, the host binding `x` should still be accessible
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(105)
+      }
+      expect(callCount).toBe(2)
+    })
+
+    it('should preserve modules after resumeFrom', async () => {
+      let callCount = 0
+      const result = await run(`
+        let m = import(math);
+        perform(effect(dvala.checkpoint));
+        let y = perform(effect(my.action));
+        m.ln(y)
+      `, {
+        modules: [mathUtilsModule],
+        handlers: {
+          'my.action': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              resumeFrom(snapshots[0]!, 0)
+            }
+            else {
+              r(1)
+            }
+          },
+        },
+      })
+      // After resumeFrom, the math module (providing `ln`) should still work
+      if (result.type === 'error') {
+        throw new Error(`Module test error: ${result.error.message}`)
+      }
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(0) // ln(1) = 0
+      }
+      expect(callCount).toBe(2)
+    })
+
+    it('should support checkpoint+resume pattern for crash recovery', async () => {
+      // Validates the corrected API contract example: checkpoint() + resume()
+      // (not suspend() + resume() which would throw "already settled")
+      const checkpoints: unknown[] = []
+      const result = await run(`
+        let llm = effect(llm.complete);
+        let a = perform(llm, "step1");
+        let b = perform(llm, "step2");
+        a ++ " " ++ b
+      `, {
+        handlers: {
+          'llm.complete': async ({ args, resume: r, checkpoint }) => {
+            const snap = checkpoint({ prompt: args[0] })
+            checkpoints.push(snap)
+            r(`result-of-${args[0]}`)
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe('result-of-step1 result-of-step2')
+      }
+      expect(checkpoints).toHaveLength(2)
     })
   })
 
