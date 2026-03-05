@@ -19,7 +19,7 @@ Today, teams solve these problems with a stack of external tools:
 
 Each tool solves one problem but introduces its own programming model, infrastructure, and failure modes. The agent logic ends up scattered across workflow definitions, database schemas, and infrastructure code.
 
-**Dvala offers a different foundation.** By extending the Dvala language with algebraic effects and serializable continuations, the execution state of any program becomes a JSON blob that can be paused, stored, transferred, and resumed — across processes, machines, and time. This means:
+**Dvala offers a different foundation.** By extending the Dvala language with algebraic effects and serializable continuations, the execution state of any program becomes a serializable snapshot that can be paused, stored, transferred, and resumed — across processes, machines, and time. This means:
 
 - **Long-running workflows** are ordinary programs, not orchestration graphs
 - **Human-in-the-loop** is a single `perform` call, not a webhook architecture
@@ -95,16 +95,16 @@ await run(source, {
 
 A handler receives the effect's arguments and chooses what to do:
 - Call `resume(value)` to continue the program with a result
-- Call `suspend(meta?)` to pause execution — saving the entire program state as a serializable blob
+- Call `suspend(meta?)` to pause execution — saving the entire program state as a serializable snapshot
 
 ### Continuations are data
 
-When a handler calls `suspend()`, Dvala captures the complete execution state — every variable binding, every pending computation — as a JSON-serializable blob. This blob can be stored in a database, sent over a network, and resumed later in a completely new process:
+When a handler calls `suspend()`, Dvala captures the complete execution state — every variable binding, every pending computation — as a `Snapshot` object. This snapshot can be stored in a database, sent over a network, and resumed later in a completely new process:
 
 ```typescript
 // Days later, in a new process
-const { blob } = await db.load(suspensionId)
-const result = await resume(blob, { approved: true }, { handlers })
+const { snapshot } = await db.load(suspensionId)
+const result = await resume(snapshot, { approved: true }, { handlers })
 ```
 
 The program continues exactly where it left off. It has no idea time passed.
@@ -147,12 +147,12 @@ Effects that can pause execution indefinitely. The program state is serialized a
 const result = await run(source, { handlers })
 
 if (result.type === 'suspended') {
-  await db.save({ blob: result.blob, meta: result.meta })
+  await db.save({ snapshot: result.snapshot })
 }
 
 // Resume later
-const { blob } = await db.load(id)
-const next = await resume(blob, humanDecision, { handlers })
+const { snapshot } = await db.load(id)
+const next = await resume(snapshot, humanDecision, { handlers })
 ```
 
 ---
@@ -251,7 +251,7 @@ const value = runSync(source, { bindings: { myFn: (x) => x * 2 } })
 const result = await run(source, { bindings, handlers })
 
 // Resume a suspended continuation
-const next = await resume(blob, resumeValue, { handlers })
+const next = await resume(snapshot, resumeValue, { handlers })
 ```
 
 ### The RunResult type
@@ -259,11 +259,11 @@ const next = await resume(blob, resumeValue, { handlers })
 ```typescript
 type RunResult =
   | { type: 'completed'; value: DvalaValue }
-  | { type: 'suspended'; blob: SuspensionBlob; meta?: DvalaValue }
+  | { type: 'suspended'; snapshot: Snapshot }
   | { type: 'error';     error: DvalaError }
 ```
 
-`blob` is an opaque string — Dvala internal format. Store it anywhere. `meta` is whatever the handler passed to `suspend(meta)` — use it to carry domain context like assignee, deadline, or priority.
+`snapshot` is a `Snapshot` object containing the opaque continuation and metadata. `snapshot.meta` is whatever the handler passed to `suspend(meta)` — use it to carry domain context like assignee, deadline, or priority. `snapshot.continuation` is opaque — do not inspect or modify it.
 
 ### Writing a handler
 
@@ -294,7 +294,7 @@ Three patterns:
 // Suspend
 'com.myco.human.approve': async ({ args, suspend }) => {
   suspend({ assignedTo: 'finance-team', payload: args[0] })
-  // execution stops here — blob is in RunResult
+  // execution stops here — snapshot is in RunResult
 }
 ```
 

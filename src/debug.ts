@@ -32,7 +32,7 @@ import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import { deserializeSuspension } from './evaluator/suspension'
-import type { Handlers, RunResult, SuspensionBlob } from './evaluator/effectTypes'
+import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -55,11 +55,11 @@ export interface StepInfo {
 
 /**
  * A single entry in the debugger's execution history.
- * Contains the serialized continuation (for resuming) and step info (for UI).
+ * Contains the captured snapshot (for resuming) and step info (for UI).
  */
 export interface HistoryEntry {
-  /** Serialized continuation at this point — opaque to host. */
-  blob: SuspensionBlob
+  /** Captured snapshot at this point — opaque to host. */
+  snapshot: Snapshot
   /** Step info for UI display: expression, value, location, bindings. */
   step: StepInfo
   /** Milliseconds since epoch — enables performance profiling. */
@@ -202,9 +202,9 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
    */
   function processResult(result: RunResult): RunResult {
     if (result.type === 'suspended') {
-      const stepInfo = parseStepInfo(result.meta ?? null)
+      const stepInfo = parseStepInfo(result.snapshot.meta ?? null)
       const entry: HistoryEntry = {
-        blob: result.blob,
+        snapshot: result.snapshot,
         step: stepInfo,
         timestamp: Date.now(),
       }
@@ -221,13 +221,14 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   }
 
   /**
-   * Resume from a specific history entry's blob with a given value.
+   * Resume from a specific history entry's snapshot with a given value.
    */
-  async function resumeFromBlob(blob: SuspensionBlob, value: Any): Promise<RunResult> {
+  async function resumeFromSnapshot(snapshot: Snapshot, value: Any): Promise<RunResult> {
     try {
       const modulesMap = modules
         ? new Map(modules.map(m => [m.name, m]))
         : undefined
+      const blob = snapshot.continuation as string
       const { k } = deserializeSuspension(blob, {
         values: bindings as Record<string, unknown> | undefined,
         modules: modulesMap,
@@ -286,7 +287,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       // If we're not at the end of history, just advance the pointer
       if (currentStep < history.length - 1) {
         currentStep++
-        return { type: 'suspended', blob: history[currentStep]!.blob, meta: history[currentStep]!.step as unknown as Any }
+        return { type: 'suspended', snapshot: history[currentStep]!.snapshot }
       }
 
       // At the end of history — need to actually resume execution
@@ -297,7 +298,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       const entry = history[currentStep]!
       // Resume with the original expression value — the DebugStepFrame(awaitPerform)
       // passes this through to the next frame
-      const result = await resumeFromBlob(entry.blob, entry.step.value)
+      const result = await resumeFromSnapshot(entry.snapshot, entry.step.value)
       return processResult(result)
     },
 
@@ -307,7 +308,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       }
       currentStep--
       const entry = history[currentStep]!
-      return { type: 'suspended', blob: entry.blob, meta: entry.step as unknown as Any }
+      return { type: 'suspended', snapshot: entry.snapshot }
     },
 
     async jumpTo(index: number): Promise<RunResult> {
@@ -316,7 +317,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       }
       currentStep = index
       const entry = history[currentStep]!
-      return { type: 'suspended', blob: entry.blob, meta: entry.step as unknown as Any }
+      return { type: 'suspended', snapshot: entry.snapshot }
     },
 
     async rerunFrom(index: number, alternateValue: Any): Promise<RunResult> {
@@ -331,7 +332,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       const entry = history[index]!
       // Resume with the alternate value — the DebugStepFrame(awaitPerform)
       // passes this through instead of the original expression value
-      const result = await resumeFromBlob(entry.blob, alternateValue)
+      const result = await resumeFromSnapshot(entry.snapshot, alternateValue)
       return processResult(result)
     },
   }

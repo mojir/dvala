@@ -78,8 +78,8 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
-import type { EffectHandler, Handlers, RunResult } from './effectTypes'
-import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, isSuspensionSignal } from './effectTypes'
+import type { EffectHandler, Handlers, RunResult, Snapshot } from './effectTypes'
+import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import { serializeSuspension } from './suspension'
@@ -2370,6 +2370,14 @@ function dispatchHostHandler(
           // Advance to the next handler in the chain.
           tryHandler(index + 1).then(resolve, reject)
         },
+        // Snapshot support — placeholders until Steps 3-5 implement full threading
+        snapshots: [] as readonly Snapshot[],
+        checkpoint: (_meta?: Any): Snapshot => {
+          throw new DvalaError('checkpoint is not yet implemented', sourceCodeInfo)
+        },
+        resumeFrom: (_snapshot: Snapshot, _value: Any) => {
+          throw new DvalaError('resumeFrom is not yet implemented', sourceCodeInfo)
+        },
       }
 
       handler(ctx).catch((e) => {
@@ -2460,7 +2468,7 @@ async function executeParallelBranches(
 
   // Collect outcomes
   const completedBranches: Array<{ index: number, value: Any }> = []
-  const suspendedBranches: Array<{ index: number, blob: string, meta?: Any }> = []
+  const suspendedBranches: Array<{ index: number, snapshot: Snapshot }> = []
   const errors: DvalaError[] = []
 
   for (let i = 0; i < results.length; i++) {
@@ -2476,7 +2484,7 @@ async function executeParallelBranches(
           completedBranches.push({ index: i, value: r.value })
           break
         case 'suspended':
-          suspendedBranches.push({ index: i, blob: r.blob, meta: r.meta })
+          suspendedBranches.push({ index: i, snapshot: r.snapshot })
           break
         case 'error':
           errors.push(r.error)
@@ -2503,7 +2511,7 @@ async function executeParallelBranches(
 
     // Throw SuspensionSignal with the first suspended branch's meta
     const firstSuspended = suspendedBranches[0]!
-    return throwSuspension(resumeK, firstSuspended.meta)
+    return throwSuspension(resumeK, firstSuspended.snapshot.meta)
   }
 
   // All branches completed — build the result array in original order
@@ -2594,7 +2602,7 @@ async function executeRaceBranches(
         const r = result.value
         switch (r.type) {
           case 'suspended':
-            suspendedMetas.push(r.meta ?? null)
+            suspendedMetas.push(r.snapshot.meta ?? null)
             break
           case 'error':
             errors.push(r.error)
@@ -2684,7 +2692,7 @@ function handleParallelResume(
       suspendedBranches: remaining,
     }
     const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
-    return throwSuspension(resumeK, nextSuspended.meta)
+    return throwSuspension(resumeK, nextSuspended.snapshot.meta)
   }
 
   // All branches now completed — build the result array in original order
@@ -3148,6 +3156,7 @@ async function runEffectLoop(
   signal: AbortSignal,
 ): Promise<RunResult> {
   const debugMode = handlers != null && 'dvala.debug.step' in handlers
+  const runId = generateRunId()
 
   try {
     let step: Step | Promise<Step> = initial
@@ -3179,7 +3188,14 @@ async function runEffectLoop(
   catch (error) {
     if (isSuspensionSignal(error)) {
       const blob = serializeSuspension(error.k, error.meta)
-      return { type: 'suspended', blob, meta: error.meta }
+      const snapshot: Snapshot = {
+        continuation: blob,
+        timestamp: Date.now(),
+        index: 0,
+        runId,
+        meta: error.meta,
+      }
+      return { type: 'suspended', snapshot }
     }
     if (error instanceof DvalaError) {
       return { type: 'error', error }

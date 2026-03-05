@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Dvala } from '../src/Dvala/Dvala'
 import { resume as resumeContinuation, run, runSync } from '../src/effects'
 import type { Handlers } from '../src/evaluator/effectTypes'
-import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
+import { effectNameMatchesPattern, findMatchingHandlers, generateRunId } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 
 const dvala = new Dvala()
@@ -645,10 +645,9 @@ describe('phase 3 — Host Async API', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        expect(result.meta).toEqual({ payload: 'please approve' })
-        expect(result.blob).toBeDefined()
-        expect(typeof result.blob).toBe('string')
-        expect(result.blob.length).toBeGreaterThan(0)
+        expect(result.snapshot.meta).toEqual({ payload: 'please approve' })
+        expect(result.snapshot).toBeDefined()
+        expect(result.snapshot.continuation).toBeDefined()
       }
     })
 
@@ -664,7 +663,7 @@ describe('phase 3 — Host Async API', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        expect(result.meta).toBeUndefined()
+        expect(result.snapshot.meta).toBeUndefined()
       }
     })
   })
@@ -844,11 +843,33 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        const parsed = JSON.parse(result.blob) as { version: number, k: unknown[], contextStacks: unknown[] }
+        const parsed = JSON.parse(result.snapshot.continuation as string) as { version: number, k: unknown[], contextStacks: unknown[] }
         expect(parsed.version).toBe(1)
         expect(parsed.k).toBeDefined()
         expect(parsed.contextStacks).toBeDefined()
         expect(Array.isArray(parsed.contextStacks)).toBe(true)
+      }
+    })
+
+    it('should produce a Snapshot with all required fields', async () => {
+      const result = await run(`
+        perform(effect(my.wait), "data")
+      `, {
+        handlers: {
+          'my.wait': async ({ suspend }) => { suspend({ info: 'test' }) },
+        },
+      })
+      expect(result.type).toBe('suspended')
+      if (result.type === 'suspended') {
+        const { snapshot } = result
+        expect(snapshot.continuation).toBeDefined()
+        expect(typeof snapshot.timestamp).toBe('number')
+        expect(snapshot.timestamp).toBeGreaterThan(0)
+        expect(typeof snapshot.index).toBe('number')
+        expect(snapshot.index).toBe(0)
+        expect(typeof snapshot.runId).toBe('string')
+        expect(snapshot.runId.length).toBeGreaterThan(0)
+        expect(snapshot.meta).toEqual({ info: 'test' })
       }
     })
 
@@ -862,7 +883,7 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        expect(result.meta).toEqual({ assignedTo: 'team-a' })
+        expect(result.snapshot.meta).toEqual({ assignedTo: 'team-a' })
       }
     })
 
@@ -876,7 +897,7 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        expect(result.meta).toBeUndefined()
+        expect(result.snapshot.meta).toBeUndefined()
       }
     })
   })
@@ -896,7 +917,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 21)
+      const r2 = await resumeContinuation(r1.snapshot, 21)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -913,7 +934,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 'Alice')
+      const r2 = await resumeContinuation(r1.snapshot, 'Alice')
       expect(r2).toEqual({ type: 'completed', value: 'Hello, Alice!' })
     })
 
@@ -934,7 +955,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, { approved: false, reason: 'Budget exceeded' })
+      const r2 = await resumeContinuation(r1.snapshot, { approved: false, reason: 'Budget exceeded' })
       expect(r2).toEqual({ type: 'completed', value: 'Rejected: Budget exceeded' })
     })
 
@@ -951,7 +972,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, null)
+      const r2 = await resumeContinuation(r1.snapshot, null)
       expect(r2).toEqual({ type: 'completed', value: true })
     })
 
@@ -970,7 +991,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 12)
+      const r2 = await resumeContinuation(r1.snapshot, 12)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -989,7 +1010,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 14)
+      const r2 = await resumeContinuation(r1.snapshot, 14)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1007,7 +1028,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 5)
+      const r2 = await resumeContinuation(r1.snapshot, 5)
       expect(r2).toEqual({ type: 'completed', value: 11 })
     })
 
@@ -1026,17 +1047,17 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r1.type).toBe('suspended')
       if (r1.type !== 'suspended')
         return
-      expect(r1.meta).toEqual({ step: 1 })
+      expect(r1.snapshot.meta).toEqual({ step: 1 })
 
       // Resume first suspension
-      const r2 = await resumeContinuation(r1.blob, 10, { handlers })
+      const r2 = await resumeContinuation(r1.snapshot, 10, { handlers })
       expect(r2.type).toBe('suspended')
       if (r2.type !== 'suspended')
         return
-      expect(r2.meta).toEqual({ step: 2 })
+      expect(r2.snapshot.meta).toEqual({ step: 2 })
 
       // Resume second suspension
-      const r3 = await resumeContinuation(r2.blob, 32)
+      const r3 = await resumeContinuation(r2.snapshot, 32)
       expect(r3).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1055,7 +1076,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume with handlers so my.compute works
-      const r2 = await resumeContinuation(r1.blob, 21, {
+      const r2 = await resumeContinuation(r1.snapshot, 21, {
         handlers: {
           'my.compute': async ({ args, resume: r }) => { r((args[0] as number) * 2) },
         },
@@ -1078,14 +1099,14 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume with bindings
-      const r2 = await resumeContinuation(r1.blob, 10, {
+      const r2 = await resumeContinuation(r1.snapshot, 10, {
         bindings: { offset: 32 },
       })
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
     it('should return error for invalid blob JSON', async () => {
-      const result = await resumeContinuation('not-json', 42)
+      const result = await resumeContinuation({ continuation: 'not-json', timestamp: 0, index: 0, runId: 'test' }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Invalid suspension blob')
@@ -1093,7 +1114,7 @@ describe('phase 4 — Suspension & Resume', () => {
     })
 
     it('should return error for wrong version', async () => {
-      const result = await resumeContinuation(JSON.stringify({ version: 999, k: [], contextStacks: [] }), 42)
+      const result = await resumeContinuation({ continuation: JSON.stringify({ version: 999, k: [], contextStacks: [] }), timestamp: 0, index: 0, runId: 'test' }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Unsupported suspension blob version')
@@ -1113,7 +1134,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 'boom')
+      const r2 = await resumeContinuation(r1.snapshot, 'boom')
       expect(r2.type).toBe('error')
       if (r2.type === 'error') {
         expect(r2.error.message).toContain('error: boom')
@@ -1137,7 +1158,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 'bad')
+      const r2 = await resumeContinuation(r1.snapshot, 'bad')
       expect(r2).toEqual({ type: 'completed', value: 'caught: bad input' })
     })
   })
@@ -1161,7 +1182,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // Resume — the blob is valid and doesn't contain JS functions
-      const r2 = await resumeContinuation(r1.blob, 7)
+      const r2 = await resumeContinuation(r1.snapshot, 7)
       expect(r2).toEqual({ type: 'completed', value: 17 }) // 2*5 + 7
     })
   })
@@ -1192,14 +1213,14 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      // Simulate: Store blob in database
-      const storedBlob = r1.blob
-      const storedMeta = r1.meta as Record<string, unknown>
+      // Simulate: Store snapshot in database
+      const storedSnapshot = r1.snapshot
+      const storedMeta = r1.snapshot.meta as Record<string, unknown>
       expect(storedMeta.assignedTo).toBe('finance-team')
       expect(storedMeta.payload).toBe('[LLM: Generate Q4 report]')
 
-      // Simulate: Process 2 loads blob and resumes with approval
-      const r2 = await resumeContinuation(storedBlob, { approved: true, reason: null }, { handlers })
+      // Simulate: Process 2 loads snapshot and resumes with approval
+      const r2 = await resumeContinuation(storedSnapshot, { approved: true, reason: null }, { handlers })
       expect(r2.type).toBe('completed')
       if (r2.type === 'completed') {
         expect(r2.value).toBe('[LLM: Finalize: [LLM: Generate Q4 report]]')
@@ -1220,7 +1241,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, { approved: false, reason: 'denied' })
+      const r2 = await resumeContinuation(r1.snapshot, { approved: false, reason: 'denied' })
       expect(r2).toEqual({ type: 'completed', value: 'No: denied' })
     })
 
@@ -1241,21 +1262,21 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r1.type).toBe('suspended')
       if (r1.type !== 'suspended')
         return
-      expect((r1.meta as Record<string, unknown>).step).toBe('step1')
+      expect((r1.snapshot.meta as Record<string, unknown>).step).toBe('step1')
 
-      const r2 = await resumeContinuation(r1.blob, 'A', { handlers })
+      const r2 = await resumeContinuation(r1.snapshot, 'A', { handlers })
       expect(r2.type).toBe('suspended')
       if (r2.type !== 'suspended')
         return
-      expect((r2.meta as Record<string, unknown>).step).toBe('step2')
+      expect((r2.snapshot.meta as Record<string, unknown>).step).toBe('step2')
 
-      const r3 = await resumeContinuation(r2.blob, 'B', { handlers })
+      const r3 = await resumeContinuation(r2.snapshot, 'B', { handlers })
       expect(r3.type).toBe('suspended')
       if (r3.type !== 'suspended')
         return
-      expect((r3.meta as Record<string, unknown>).step).toBe('step3')
+      expect((r3.snapshot.meta as Record<string, unknown>).step).toBe('step3')
 
-      const r4 = await resumeContinuation(r3.blob, 'C')
+      const r4 = await resumeContinuation(r3.snapshot, 'C')
       expect(r4).toEqual({ type: 'completed', value: ['A', 'B', 'C'] })
     })
 
@@ -1276,7 +1297,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 'hello')
+      const r2 = await resumeContinuation(r1.snapshot, 'hello')
       expect(r2).toEqual({ type: 'completed', value: 'HELLO' })
     })
 
@@ -1295,7 +1316,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 37)
+      const r2 = await resumeContinuation(r1.snapshot, 37)
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
@@ -1316,7 +1337,7 @@ describe('phase 4 — Suspension & Resume', () => {
         return
 
       // factor = 2, sum = 0*2 + 1*2 + 2*2 + 3*2 + 4*2 = 20
-      const r2 = await resumeContinuation(r1.blob, 2)
+      const r2 = await resumeContinuation(r1.snapshot, 2)
       expect(r2).toEqual({ type: 'completed', value: 20 })
     })
 
@@ -1334,7 +1355,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.blob, 4)
+      const r2 = await resumeContinuation(r1.snapshot, 4)
       expect(r2).toEqual({
         type: 'completed',
         value: { name: 'test', values: [1, 2, 3, 4], count: 4 },
@@ -1560,7 +1581,7 @@ describe('phase 5 — Standard Effects', () => {
         expect(stdoutSpy).toHaveBeenCalledWith('Before suspend\n')
         stdoutSpy.mockClear()
 
-        const r2 = await resumeContinuation(r1.blob, 'hello')
+        const r2 = await resumeContinuation(r1.snapshot, 'hello')
         expect(r2).toEqual({ type: 'completed', value: 'hello' })
         expect(stdoutSpy).toHaveBeenCalledTimes(1)
         expect(stdoutSpy).toHaveBeenCalledWith('After resume: hello\n')
@@ -1745,7 +1766,7 @@ describe('phase 6 — Parallel & Race', () => {
         })
         expect(result.type).toBe('suspended')
         if (result.type === 'suspended') {
-          expect(result.meta).toEqual({ assignedTo: 'team-lead' })
+          expect(result.snapshot.meta).toEqual({ assignedTo: 'team-lead' })
         }
       })
 
@@ -1769,7 +1790,7 @@ describe('phase 6 — Parallel & Race', () => {
           return
 
         // Resume with the approval decision
-        const result2 = await resumeContinuation(result1.blob, 'approved', { handlers })
+        const result2 = await resumeContinuation(result1.snapshot, 'approved', { handlers })
         expect(result2).toEqual({
           type: 'completed',
           value: ['fast-result', 'approved'],
@@ -1802,19 +1823,19 @@ describe('phase 6 — Parallel & Race', () => {
           return
 
         // First resume
-        const result2 = await resumeContinuation(result1.blob, 'value-A', { handlers })
+        const result2 = await resumeContinuation(result1.snapshot, 'value-A', { handlers })
         expect(result2.type).toBe('suspended')
         if (result2.type !== 'suspended')
           return
 
         // Second resume
-        const result3 = await resumeContinuation(result2.blob, 'value-B', { handlers })
+        const result3 = await resumeContinuation(result2.snapshot, 'value-B', { handlers })
         expect(result3.type).toBe('suspended')
         if (result3.type !== 'suspended')
           return
 
         // Third resume — all branches done
-        const result4 = await resumeContinuation(result3.blob, 'value-C', { handlers })
+        const result4 = await resumeContinuation(result3.snapshot, 'value-C', { handlers })
         expect(result4).toEqual({
           type: 'completed',
           value: ['value-A', 'value-B', 'value-C'],
@@ -1842,12 +1863,12 @@ describe('phase 6 — Parallel & Race', () => {
         if (result1.type !== 'suspended')
           return
 
-        const result2 = await resumeContinuation(result1.blob, 'approved-0', { handlers })
+        const result2 = await resumeContinuation(result1.snapshot, 'approved-0', { handlers })
         expect(result2.type).toBe('suspended')
         if (result2.type !== 'suspended')
           return
 
-        const result3 = await resumeContinuation(result2.blob, 'approved-2', { handlers })
+        const result3 = await resumeContinuation(result2.snapshot, 'approved-2', { handlers })
         expect(result3).toEqual({
           type: 'completed',
           value: ['approved-0', 'fast-done', 'approved-2'],
@@ -1874,7 +1895,7 @@ describe('phase 6 — Parallel & Race', () => {
         // Standard host-side loop — identical to single suspension
         while (result.type === 'suspended') {
           const decision = decisions[decisionIndex++]!
-          result = await resumeContinuation(result.blob, decision, { handlers })
+          result = await resumeContinuation(result.snapshot, decision, { handlers })
         }
 
         expect(result).toEqual({
@@ -1978,7 +1999,7 @@ describe('phase 6 — Parallel & Race', () => {
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
         // Meta contains all branch metas
-        expect(result.meta).toEqual({
+        expect(result.snapshot.meta).toEqual({
           type: 'race',
           branches: [{ branch: 'A' }, { branch: 'B' }],
         })
@@ -2003,7 +2024,7 @@ describe('phase 6 — Parallel & Race', () => {
         return
 
       // Host decides the winner
-      const result2 = await resumeContinuation(result1.blob, 'winner-value', { handlers })
+      const result2 = await resumeContinuation(result1.snapshot, 'winner-value', { handlers })
       expect(result2).toEqual({ type: 'completed', value: 'winner-value' })
     })
 
@@ -2626,7 +2647,7 @@ describe('step 10 — predicate-based case matching', () => {
     if (r1.type !== 'suspended')
       return
 
-    const r2 = await resumeContinuation(r1.blob, 42)
+    const r2 = await resumeContinuation(r1.snapshot, 42)
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
 
@@ -2648,7 +2669,7 @@ describe('step 10 — predicate-based case matching', () => {
     if (r1.type !== 'suspended')
       return
 
-    const r2 = await resumeContinuation(r1.blob, 99)
+    const r2 = await resumeContinuation(r1.snapshot, 99)
     expect(r2).toEqual({ type: 'completed', value: 99 })
   })
 })
@@ -2971,6 +2992,35 @@ describe('host handler wildcard patterns', () => {
       expect(result).toEqual({ type: 'completed', value: 20 })
       expect(log).toEqual(['async-middleware', 'async-handler'])
     })
+  })
+})
+
+// =========================================================================
+// Unit tests for generateRunId
+// =========================================================================
+describe('generateRunId', () => {
+  it('should return a UUID string', () => {
+    const id = generateRunId()
+    expect(typeof id).toBe('string')
+    expect(id.length).toBeGreaterThan(0)
+  })
+
+  it('should return unique values on each call', () => {
+    const ids = new Set(Array.from({ length: 10 }, () => generateRunId()))
+    expect(ids.size).toBe(10)
+  })
+
+  it('should use fallback when crypto.randomUUID is unavailable', () => {
+    const originalCrypto = globalThis.crypto
+    try {
+      Object.defineProperty(globalThis, 'crypto', { value: undefined, writable: true, configurable: true })
+      const id = generateRunId()
+      expect(typeof id).toBe('string')
+      expect(id).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/)
+    }
+    finally {
+      Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, writable: true, configurable: true })
+    }
   })
 })
 

@@ -6,7 +6,7 @@
  * Three levels of use:
  * 1. `runSync(source, options?)` — pure computation, sync JS functions in bindings.
  * 2. `run(source, options?)` — async effects with handlers, always completes or suspends.
- * 3. `resume(blob, value, options?)` — resume a suspended continuation (Phase 4).
+ * 3. `resume(snapshot, value, options?)` — resume a suspended continuation.
  *
  * Effect handlers are JavaScript functions that receive an `EffectContext` and must
  * call exactly one of `resume(value)`, `suspend(meta?)`, `fail(msg?)`, or `next()`:
@@ -35,10 +35,10 @@ import { parse } from './parser'
 import type { Ast } from './parser/types'
 import { deserializeSuspension } from './evaluator/suspension'
 
-import type { Handlers, RunResult } from './evaluator/effectTypes'
+import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // Re-export all types from effectTypes so consumers import from one place
-export type { EffectContext, EffectHandler, SuspensionBlob } from './evaluator/effectTypes'
+export type { EffectContext, EffectHandler, Snapshot } from './evaluator/effectTypes'
 export { SuspensionSignal, isSuspensionSignal } from './evaluator/effectTypes'
 export type { Handlers, RunResult } from './evaluator/effectTypes'
 
@@ -164,9 +164,9 @@ export async function run(source: string, options?: RunOptions): Promise<RunResu
 /**
  * Level 3: Resume a suspended continuation.
  *
- * Takes a blob from a previous `RunResult` of type `'suspended'`, a resume
- * value, and optional handlers/bindings. Re-enters the trampoline at the
- * point of suspension with the provided value.
+ * Takes a `Snapshot` from a previous `RunResult` of type `'suspended'`, a
+ * resume value, and optional handlers/bindings. Re-enters the trampoline at
+ * the point of suspension with the provided value.
  *
  * `bindings` are plain values only (no JS functions). They are re-injected
  * into the deserialized ContextStacks so that host-bound values remain
@@ -177,17 +177,18 @@ export async function run(source: string, options?: RunOptions): Promise<RunResu
  * (if another suspend is hit), or `error`.
  *
  * ```typescript
- * const blob = suspendedResult.blob
- * const next = await resume(blob, humanDecision, { handlers })
+ * const { snapshot } = suspendedResult
+ * const next = await resume(snapshot, humanDecision, { handlers })
  * ```
  */
-export async function resume(blob: string, value: Any, options?: ResumeOptions): Promise<RunResult> {
+export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOptions): Promise<RunResult> {
   try {
     const modules = options?.modules
       ? new Map(options.modules.map(m => [m.name, m]))
       : undefined
 
-    // Deserialize the blob, re-injecting host bindings into ContextStacks.
+    // Extract the opaque continuation from the snapshot and deserialize it.
+    const blob = snapshot.continuation as string
     const { k } = deserializeSuspension(blob, {
       values: options?.bindings as Record<string, unknown> | undefined,
       modules,

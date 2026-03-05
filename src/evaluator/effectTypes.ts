@@ -11,15 +11,47 @@ import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
 
 // ---------------------------------------------------------------------------
-// Suspension blob — opaque serialized continuation
+// Snapshot — captured continuation point
 // ---------------------------------------------------------------------------
 
 /**
- * Opaque string containing the serialized continuation stack.
- * Created by `suspend()`, consumed by `resume()`.
- * Internally it's JSON, but hosts should treat it as opaque.
+ * A captured continuation point. Created by `suspend()` or `checkpoint()`.
+ * The `continuation` field is opaque — hosts should not inspect or modify it.
  */
-export type SuspensionBlob = string
+export interface Snapshot {
+  /** Opaque serialized continuation. Do not inspect or modify. */
+  readonly continuation: unknown
+
+  /** Wall-clock timestamp (Date.now()) when snapshot was taken. */
+  readonly timestamp: number
+
+  /** Stable sequence number (0-based, never reused within an execution lineage). */
+  readonly index: number
+
+  /** UUID identifying the run() or resume() call that created this snapshot. */
+  readonly runId: string
+
+  /** Optional domain metadata from the perform call or suspend call. */
+  readonly meta?: Any
+}
+
+// ---------------------------------------------------------------------------
+// Run ID generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a UUID for identifying a run() or resume() call.
+ * Uses crypto.randomUUID() when available, falls back to a simple generator.
+ */
+export function generateRunId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
 
 // ---------------------------------------------------------------------------
 // Effect handler types
@@ -59,8 +91,8 @@ export interface EffectContext {
 
   /**
    * Suspend the program. The entire execution state is captured and returned
-   * in `RunResult` as `{ type: 'suspended', continuation, meta }`.
-   * `meta` is passed through to `RunResult.meta` for domain context
+   * in `RunResult` as `{ type: 'suspended', snapshot }`.
+   * `meta` is passed through to `Snapshot.meta` for domain context
    * (e.g., assignee, deadline, priority).
    */
   suspend: (meta?: Any) => void
@@ -70,6 +102,22 @@ export interface EffectContext {
    * If no further handler matches, the effect is unhandled.
    */
   next: () => void
+
+  /** All snapshots taken so far, oldest first. Read-only view. */
+  snapshots: readonly Snapshot[]
+
+  /**
+   * Explicitly capture a snapshot at the current continuation point.
+   * Returns the new Snapshot. This is the host-side equivalent of
+   * `perform(effect(dvala.checkpoint))`.
+   */
+  checkpoint: (meta?: Any) => Snapshot
+
+  /**
+   * Abandon current execution and resume from a previous snapshot.
+   * All snapshots after the target are discarded.
+   */
+  resumeFrom: (snapshot: Snapshot, value: Any) => void
 }
 
 /** An async function that handles an effect by calling `resume`, `suspend`, `fail`, or `next`. */
@@ -133,7 +181,7 @@ export function findMatchingHandlers(
  */
 export type RunResult =
   | { type: 'completed', value: Any }
-  | { type: 'suspended', blob: SuspensionBlob, meta?: Any }
+  | { type: 'suspended', snapshot: Snapshot }
   | { type: 'error', error: DvalaError }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@ import type { AstNode, EffectRef } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack, Frame } from './frames'
 import type { ContextStack } from './ContextStack'
+import type { Snapshot } from './effectTypes'
 
 // ---------------------------------------------------------------------------
 // Step variants
@@ -147,7 +148,7 @@ export interface ParallelResumeStep {
   value: Any
   branchCount: number
   completedBranches: Array<{ index: number, value: Any }>
-  suspendedBranches: Array<{ index: number, blob: string, meta?: Any }>
+  suspendedBranches: Array<{ index: number, snapshot: Snapshot }>
   k: ContinuationStack
 }
 
