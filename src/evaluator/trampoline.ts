@@ -78,7 +78,7 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
-import type { EffectHandler, Handlers, RunResult, Snapshot } from './effectTypes'
+import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
 import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
@@ -1991,6 +1991,7 @@ function tryDispatchDvalaError(
   k: ContinuationStack,
   handlers?: Handlers,
   signal?: AbortSignal,
+  snapshotState?: SnapshotState,
 ): Step | Promise<Step> | null {
   const effect = getEffectRef('dvala.error')
   const args: Arr = [error.shortMessage]
@@ -2010,7 +2011,7 @@ function tryDispatchDvalaError(
   // Check host handlers for 'dvala.error' (supports wildcards like 'dvala.*' or '*')
   const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
   if (matchingHostHandlers.length > 0) {
-    return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo)
+    return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo, snapshotState)
   }
 
   return null
@@ -2239,7 +2240,7 @@ function invokeMatchedHandler(
   return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
 }
 
-function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal): Step | Promise<Step> {
+function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
@@ -2255,7 +2256,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   // No matching local handler found — dispatch to host handler if available.
   const matchingHostHandlers = findMatchingHandlers(effect.name, handlers)
   if (matchingHostHandlers.length > 0) {
-    return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo)
+    return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo, snapshotState)
   }
 
   // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
@@ -2298,6 +2299,7 @@ function dispatchHostHandler(
   k: ContinuationStack,
   signal: AbortSignal | undefined,
   sourceCodeInfo: SourceCodeInfo | undefined,
+  snapshotState?: SnapshotState,
 ): Promise<Step> {
   const effectSignal = signal ?? new AbortController().signal
   const argsArray = Array.from(args) as Any[]
@@ -2370,10 +2372,21 @@ function dispatchHostHandler(
           // Advance to the next handler in the chain.
           tryHandler(index + 1).then(resolve, reject)
         },
-        // Snapshot support — placeholders until Steps 3-5 implement full threading
-        snapshots: [] as readonly Snapshot[],
-        checkpoint: (_meta?: Any): Snapshot => {
-          throw new DvalaError('checkpoint is not yet implemented', sourceCodeInfo)
+        snapshots: snapshotState ? snapshotState.snapshots : [],
+        checkpoint: (meta?: Any): Snapshot => {
+          if (!snapshotState) {
+            throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
+          }
+          const continuation = serializeToObject(k)
+          const snapshot: Snapshot = {
+            continuation,
+            timestamp: Date.now(),
+            index: snapshotState.nextSnapshotIndex++,
+            runId: snapshotState.runId,
+            ...(meta !== undefined ? { meta } : {}),
+          }
+          snapshotState.snapshots.push(snapshot)
+          return snapshot
         },
         resumeFrom: (_snapshot: Snapshot, _value: Any) => {
           throw new DvalaError('resumeFrom is not yet implemented', sourceCodeInfo)
@@ -2916,7 +2929,7 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any, is
  * When `handlers` and `signal` are provided (from `run()`), host handlers are
  * available as a fallback for effects not matched by any local `try/with`.
  */
-export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Step | Promise<Step> {
+export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   try {
     switch (step.type) {
       case 'Value': {
@@ -2931,7 +2944,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal)
+        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -2939,7 +2952,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'Error': {
-        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal)
+        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState)
         if (effectStep !== null) {
           return effectStep
         }
@@ -2969,7 +2982,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal): Ste
       const kForDispatch = step.type === 'Value'
         ? step.k.slice(1)
         : step.k
-      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal)
+      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState)
       if (effectStep !== null) {
         return effectStep
       }
@@ -3156,7 +3169,11 @@ async function runEffectLoop(
   signal: AbortSignal,
 ): Promise<RunResult> {
   const debugMode = handlers != null && 'dvala.debug.step' in handlers
-  const runId = generateRunId()
+  const snapshotState: SnapshotState = {
+    snapshots: [],
+    nextSnapshotIndex: 0,
+    runId: generateRunId(),
+  }
 
   try {
     let step: Step | Promise<Step> = initial
@@ -3182,7 +3199,7 @@ async function runEffectLoop(
         }
       }
 
-      step = tick(step, handlers, signal)
+      step = tick(step, handlers, signal, snapshotState)
     }
   }
   catch (error) {
@@ -3191,8 +3208,8 @@ async function runEffectLoop(
       const snapshot: Snapshot = {
         continuation,
         timestamp: Date.now(),
-        index: 0,
-        runId,
+        index: snapshotState.nextSnapshotIndex++,
+        runId: snapshotState.runId,
         meta: error.meta,
       }
       return { type: 'suspended', snapshot }
