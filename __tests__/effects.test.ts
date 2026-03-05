@@ -1255,6 +1255,198 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('5: resumeFrom on EffectContext', () => {
+    it('should resume execution from a previous checkpoint', async () => {
+      let callCount = 0
+      const result = await run(`
+        let x = 10;
+        perform(effect(dvala.checkpoint));
+        let y = perform(effect(my.action));
+        x + y
+      `, {
+        handlers: {
+          'my.action': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // First call: resume from the checkpoint
+              resumeFrom(snapshots[0]!, 0)
+            }
+            else {
+              // Second call: resume normally
+              r(5)
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(15)
+      }
+      expect(callCount).toBe(2)
+    })
+
+    it('should resume from checkpoint and produce correct value', async () => {
+      let callCount = 0
+      const result = await run(`
+        let x = 10;
+        perform(effect(dvala.checkpoint));
+        let y = perform(effect(my.get_value));
+        x + y
+      `, {
+        handlers: {
+          'my.get_value': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // First call: resume from checkpoint to replay
+              resumeFrom(snapshots[0]!, 0)
+            }
+            else {
+              // Second call: resume normally
+              r(32)
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(42)
+      }
+      expect(callCount).toBe(2)
+    })
+
+    it('should discard snapshots after the target', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      let callCount = 0
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(my.action))
+      `, {
+        handlers: {
+          'my.action': async ({ snapshots, resumeFrom, resume: r }) => {
+            callCount++
+            if (callCount === 1) {
+              // Resume from first checkpoint — should discard checkpoints 2 and 3
+              resumeFrom(snapshots[0]!, null)
+            }
+            else {
+              // Second call: capture remaining snapshots
+              capturedSnapshots = [...snapshots]
+              r(null)
+            }
+          },
+        },
+      })
+      // After resumeFrom(snapshots[0]), snapshots with index > 0 are discarded
+      // Re-execution creates new checkpoints at steps 2 and 3 (indices 3 and 4 since nextSnapshotIndex is NOT reset)
+      expect(capturedSnapshots).toHaveLength(3) // original index 0 + two new ones
+      expect((capturedSnapshots[0] as { index: number }).index).toBe(0)
+      expect((capturedSnapshots[1] as { index: number }).index).toBe(3)
+      expect((capturedSnapshots[2] as { index: number }).index).toBe(4)
+    })
+
+    it('should resume from the most recent snapshot', async () => {
+      let callCount = 0
+      const result = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        let x = perform(effect(my.get_value));
+        x
+      `, {
+        handlers: {
+          'my.get_value': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // Resume from the most recent snapshot (step 2)
+              const lastSnapshot = snapshots[snapshots.length - 1]!
+              resumeFrom(lastSnapshot, 0)
+            }
+            else {
+              r(99)
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(99)
+      }
+    })
+
+    it('should throw error for invalid snapshot', async () => {
+      const result = await run(`
+        perform(effect(my.action))
+      `, {
+        handlers: {
+          'my.action': async ({ resumeFrom }) => {
+            const fakeSnapshot = {
+              continuation: {},
+              timestamp: Date.now(),
+              index: 999,
+              runId: 'fake-run-id',
+            }
+            resumeFrom(fakeSnapshot, null)
+          },
+        },
+      })
+      expect(result.type).toBe('error')
+    })
+
+    it('should not allow resumeFrom and resume on same context', async () => {
+      const result = await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.action))
+      `, {
+        handlers: {
+          'my.action': async ({ resume: r, snapshots, resumeFrom }) => {
+            r(42)
+            // Second operation should throw (assertNotSettled)
+            try {
+              resumeFrom(snapshots[0]!, 0)
+            }
+            catch {
+              // Expected — already settled
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(42)
+      }
+    })
+
+    it('should preserve nextSnapshotIndex across resumeFrom', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      let callCount = 0
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(my.action))
+      `, {
+        handlers: {
+          'my.action': async ({ snapshots, resumeFrom, resume: r }) => {
+            callCount++
+            if (callCount === 1) {
+              // snapshots[0] has index 0, snapshots[1] has index 1
+              // Resume from first checkpoint
+              resumeFrom(snapshots[0]!, null)
+            }
+            else {
+              capturedSnapshots = [...snapshots]
+              r(null)
+            }
+          },
+        },
+      })
+      // After resumeFrom from index 0, snapshot with index 1 is discarded
+      // New checkpoint at step 2 gets index 2 (not 1) — nextSnapshotIndex is preserved
+      expect((capturedSnapshots[0] as { index: number }).index).toBe(0)
+      expect((capturedSnapshots[1] as { index: number }).index).toBe(2)
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`
