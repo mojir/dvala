@@ -31,7 +31,7 @@ import { evaluateWithEffects, resumeWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
-import { deserializeSuspension } from './evaluator/suspension'
+import { deserializeFromObject } from './evaluator/suspension'
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // ---------------------------------------------------------------------------
@@ -228,8 +228,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       const modulesMap = modules
         ? new Map(modules.map(m => [m.name, m]))
         : undefined
-      const blob = snapshot.continuation as string
-      const { k } = deserializeSuspension(blob, {
+      const { k } = deserializeFromObject(snapshot.continuation, {
         values: bindings as Record<string, unknown> | undefined,
         modules: modulesMap,
       })

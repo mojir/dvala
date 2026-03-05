@@ -306,8 +306,9 @@ describe('phase 7 — Time-Travel Debugger', () => {
       await dbg.run('1 + 2')
       expect(dbg.current!.snapshot).toBeDefined()
       expect(dbg.current!.snapshot.continuation).toBeDefined()
-      // Continuation should be valid JSON
-      expect(() => JSON.parse(dbg.current!.snapshot.continuation as string) as unknown).not.toThrow()
+      // Continuation should be a plain object (not a JSON string)
+      expect(typeof dbg.current!.snapshot.continuation).toBe('object')
+      expect(dbg.current!.snapshot.continuation).not.toBeNull()
     })
 
     it('should reset history on new run', async () => {

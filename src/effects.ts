@@ -33,7 +33,7 @@ import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import type { Ast } from './parser/types'
-import { deserializeSuspension } from './evaluator/suspension'
+import { deserializeFromObject } from './evaluator/suspension'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -188,8 +188,7 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
       : undefined
 
     // Extract the opaque continuation from the snapshot and deserialize it.
-    const blob = snapshot.continuation as string
-    const { k } = deserializeSuspension(blob, {
+    const { k } = deserializeFromObject(snapshot.continuation, {
       values: options?.bindings as Record<string, unknown> | undefined,
       modules,
     })

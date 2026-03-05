@@ -843,11 +843,11 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        const parsed = JSON.parse(result.snapshot.continuation as string) as { version: number, k: unknown[], contextStacks: unknown[] }
-        expect(parsed.version).toBe(1)
-        expect(parsed.k).toBeDefined()
-        expect(parsed.contextStacks).toBeDefined()
-        expect(Array.isArray(parsed.contextStacks)).toBe(true)
+        const blobData = result.snapshot.continuation as { version: number, k: unknown[], contextStacks: unknown[] }
+        expect(blobData.version).toBe(1)
+        expect(blobData.k).toBeDefined()
+        expect(blobData.contextStacks).toBeDefined()
+        expect(Array.isArray(blobData.contextStacks)).toBe(true)
       }
     })
 
@@ -899,6 +899,65 @@ describe('phase 4 — Suspension & Resume', () => {
       if (result.type === 'suspended') {
         expect(result.snapshot.meta).toBeUndefined()
       }
+    })
+  })
+
+  describe('4a-object: object-based serialization round-trip', () => {
+    it('should produce a plain object continuation (not a string)', async () => {
+      const result = await run(`
+        perform(effect(my.wait))
+      `, {
+        handlers: {
+          'my.wait': async ({ suspend }) => { suspend() },
+        },
+      })
+      expect(result.type).toBe('suspended')
+      if (result.type === 'suspended') {
+        expect(typeof result.snapshot.continuation).toBe('object')
+        expect(result.snapshot.continuation).not.toBeNull()
+      }
+    })
+
+    it('should survive JSON.stringify / JSON.parse round-trip', async () => {
+      const r1 = await run(`
+        let x = perform(effect(my.wait));
+        x + 1
+      `, {
+        handlers: {
+          'my.wait': async ({ suspend }) => { suspend() },
+        },
+      })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      // Simulate host persistence: full snapshot through JSON
+      const json = JSON.stringify(r1.snapshot)
+      const restored = JSON.parse(json) as typeof r1.snapshot
+
+      const r2 = await resumeContinuation(restored, 41)
+      expect(r2).toEqual({ type: 'completed', value: 42 })
+    })
+
+    it('should preserve meta through JSON round-trip', async () => {
+      const r1 = await run(`
+        perform(effect(my.wait))
+      `, {
+        handlers: {
+          'my.wait': async ({ suspend }) => { suspend({ key: 'value' }) },
+        },
+      })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      const json = JSON.stringify(r1.snapshot)
+      const restored = JSON.parse(json) as typeof r1.snapshot
+
+      expect(restored.meta).toEqual({ key: 'value' })
+
+      const r2 = await resumeContinuation(restored, 'done')
+      expect(r2).toEqual({ type: 'completed', value: 'done' })
     })
   })
 
@@ -1105,19 +1164,34 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
 
-    it('should return error for invalid blob JSON', async () => {
-      const result = await resumeContinuation({ continuation: 'not-json', timestamp: 0, index: 0, runId: 'test' }, 42)
+    it('should return error for invalid continuation object', async () => {
+      const result = await resumeContinuation({ continuation: { version: 1, k: 'bad', contextStacks: [] }, timestamp: 0, index: 0, runId: 'test' }, 42)
       expect(result.type).toBe('error')
-      if (result.type === 'error') {
-        expect(result.error.message).toContain('Invalid suspension blob')
-      }
     })
 
     it('should return error for wrong version', async () => {
-      const result = await resumeContinuation({ continuation: JSON.stringify({ version: 999, k: [], contextStacks: [] }), timestamp: 0, index: 0, runId: 'test' }, 42)
+      const result = await resumeContinuation({ continuation: { version: 999, k: [], contextStacks: [] }, timestamp: 0, index: 0, runId: 'test' }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Unsupported suspension blob version')
+      }
+    })
+
+    it('should return error for unknown context stack ref in continuation', async () => {
+      // A continuation with a __csRef pointing to a non-existent context stack
+      const result = await resumeContinuation({
+        continuation: {
+          version: 1,
+          k: [{ env: { __csRef: 999 } }],
+          contextStacks: [],
+        },
+        timestamp: 0,
+        index: 0,
+        runId: 'test',
+      }, 42)
+      expect(result.type).toBe('error')
+      if (result.type === 'error') {
+        expect(result.error.message).toContain('unknown context stack ref')
       }
     })
 
