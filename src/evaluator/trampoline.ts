@@ -79,10 +79,10 @@ import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isSuspensionSignal } from './effectTypes'
+import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
-import { serializeToObject } from './suspension'
+import { deserializeFromObject, serializeToObject } from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
@@ -2403,8 +2403,16 @@ function dispatchHostHandler(
           snapshotState.snapshots.push(snapshot)
           return snapshot
         },
-        resumeFrom: (_snapshot: Snapshot, _value: Any) => {
-          throw new DvalaError('resumeFrom is not yet implemented', sourceCodeInfo)
+        resumeFrom: (snapshot: Snapshot, value: Any) => {
+          if (!snapshotState) {
+            throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
+          }
+          const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.runId === snapshot.runId)
+          if (!found) {
+            throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
+          }
+          assertNotSettled('resumeFrom')
+          reject(new ResumeFromSignal(found.continuation, value, found.index))
         },
       }
 
@@ -2414,7 +2422,7 @@ function dispatchHostHandler(
           return
         }
         settled = true
-        if (isSuspensionSignal(e)) {
+        if (isSuspensionSignal(e) || isResumeFromSignal(e)) {
           reject(e)
         }
         else {
@@ -3190,48 +3198,62 @@ async function runEffectLoop(
     runId: generateRunId(),
   }
 
-  try {
-    let step: Step | Promise<Step> = initial
-    for (;;) {
-      if (step instanceof Promise) {
-        step = await step
-      }
-      if (step.type === 'Value' && step.k.length === 0) {
-        return { type: 'completed', value: step.value }
-      }
+  let step: Step | Promise<Step> = initial
 
-      // Debug mode: inject DebugStepFrame for compound nodes with source info
-      if (debugMode && step.type === 'Eval' && step.node[2]) {
-        const nodeType = step.node[0]
-        if (nodeType === NodeTypes.NormalExpression || nodeType === NodeTypes.SpecialExpression) {
-          const debugFrame: DebugStepFrame = {
-            type: 'DebugStep',
-            phase: 'awaitValue',
-            sourceCodeInfo: step.node[2],
-            env: step.env,
-          }
-          step = { ...step, k: [debugFrame, ...step.k] }
+  for (;;) {
+    try {
+      for (;;) {
+        if (step instanceof Promise) {
+          step = await step
         }
-      }
+        if (step.type === 'Value' && step.k.length === 0) {
+          return { type: 'completed', value: step.value }
+        }
 
-      step = tick(step, handlers, signal, snapshotState)
-    }
-  }
-  catch (error) {
-    if (isSuspensionSignal(error)) {
-      const continuation = serializeToObject(error.k, error.meta)
-      const snapshot: Snapshot = {
-        continuation,
-        timestamp: Date.now(),
-        index: snapshotState.nextSnapshotIndex++,
-        runId: snapshotState.runId,
-        meta: error.meta,
+        // Debug mode: inject DebugStepFrame for compound nodes with source info
+        if (debugMode && step.type === 'Eval' && step.node[2]) {
+          const nodeType = step.node[0]
+          if (nodeType === NodeTypes.NormalExpression || nodeType === NodeTypes.SpecialExpression) {
+            const debugFrame: DebugStepFrame = {
+              type: 'DebugStep',
+              phase: 'awaitValue',
+              sourceCodeInfo: step.node[2],
+              env: step.env,
+            }
+            step = { ...step, k: [debugFrame, ...step.k] }
+          }
+        }
+
+        step = tick(step, handlers, signal, snapshotState)
       }
-      return { type: 'suspended', snapshot }
     }
-    if (error instanceof DvalaError) {
-      return { type: 'error', error }
+    catch (error) {
+      if (isResumeFromSignal(error)) {
+        const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>)
+        // Discard all snapshots with index > trimToIndex
+        const cutIdx = snapshotState.snapshots.findIndex(s => s.index > error.trimToIndex)
+        if (cutIdx !== -1) {
+          snapshotState.snapshots.splice(cutIdx)
+        }
+        // Re-enter the loop with the restored continuation — nextSnapshotIndex is NOT reset
+        step = { type: 'Value', value: error.value, k: restoredK }
+        continue
+      }
+      if (isSuspensionSignal(error)) {
+        const continuation = serializeToObject(error.k, error.meta)
+        const snapshot: Snapshot = {
+          continuation,
+          timestamp: Date.now(),
+          index: snapshotState.nextSnapshotIndex++,
+          runId: snapshotState.runId,
+          meta: error.meta,
+        }
+        return { type: 'suspended', snapshot }
+      }
+      if (error instanceof DvalaError) {
+        return { type: 'error', error }
+      }
+      return { type: 'error', error: new DvalaError(`${error}`, undefined) }
     }
-    return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 }

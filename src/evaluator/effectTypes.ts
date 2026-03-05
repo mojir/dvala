@@ -225,3 +225,29 @@ export class SuspensionSignal {
 export function isSuspensionSignal(value: unknown): value is SuspensionSignal {
   return value instanceof SuspensionSignal
 }
+
+// ---------------------------------------------------------------------------
+// ResumeFrom signal — used internally by the trampoline
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown (as a promise rejection) by `resumeFrom()` inside a host handler.
+ * Caught by the effect trampoline loop — NOT by Dvala-level try/catch.
+ * Carries the serialized continuation from the target snapshot, the value
+ * to resume with, and the snapshot index for trimming.
+ */
+export class ResumeFromSignal {
+  public readonly _brand = 'ResumeFromSignal' as const
+  constructor(
+    /** The serialized continuation from the target snapshot. */
+    public readonly continuation: unknown,
+    /** The value to feed into the restored continuation. */
+    public readonly value: Any,
+    /** Snapshots with index > trimToIndex will be discarded. */
+    public readonly trimToIndex: number,
+  ) {}
+}
+
+export function isResumeFromSignal(value: unknown): value is ResumeFromSignal {
+  return value instanceof ResumeFromSignal
+}
