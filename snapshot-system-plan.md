@@ -264,7 +264,7 @@ in `standardEffects` whose fallback handler resumes with `null`.
 
 ---
 
-## Step 5 — Implement `resumeFrom` on `EffectContext`
+## Step 5 — Implement `resumeFrom` on `EffectContext` ✅
 
 When a host handler calls `resumeFrom(snapshot, value)`:
 1. Validate the snapshot came from the current run's snapshot list
