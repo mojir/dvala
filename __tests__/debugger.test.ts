@@ -502,7 +502,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
       const dbg = createDebugger()
       let r = await dbg.run('[1, 2, 3] |> map(_, -> $ * $) |> reduce(_, +, 0)')
       let stepCount = 0
-      const maxSteps = 1000 // safety limit
+      const maxSteps = 10000 // safety limit
 
       while (r.type === 'suspended' && stepCount < maxSteps) {
         r = await dbg.stepForward()

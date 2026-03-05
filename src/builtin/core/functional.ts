@@ -14,10 +14,7 @@ import { assertFunctionLike } from '../../typeGuards/dvala'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {
-    evaluate: ([value, func], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertFunctionLike(func, sourceCodeInfo)
-      return executeFunction(func, [value], contextStack, sourceCodeInfo)
-    },
+    evaluate: () => { throw new Error('|> is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'functional',

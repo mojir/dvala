@@ -490,6 +490,9 @@ function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, context
   if (contextStack.pure && normalExpression.pure === false) {
     throw new DvalaError(`Cannot call impure function '${fn.name}' in pure mode`, sourceCodeInfo)
   }
+  if (normalExpression.dvalaImpl) {
+    return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, sourceCodeInfo)
+  }
   return normalExpression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
 }
 

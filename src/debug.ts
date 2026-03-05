@@ -33,6 +33,7 @@ import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import { deserializeFromObject } from './evaluator/suspension'
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
+import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -176,6 +177,7 @@ function parseStepInfo(meta: Any): StepInfo {
  * ```
  */
 export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
+  initCoreDvalaSources()
   const history: HistoryEntry[] = []
   let currentStep = -1
   const userHandlers = options?.handlers ?? {}

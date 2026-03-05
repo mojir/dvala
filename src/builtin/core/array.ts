@@ -2,9 +2,7 @@ import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
-import { assertFunctionLike } from '../../typeGuards/dvala'
 import { toFixedArity } from '../../utils/arity'
-import { chain, mapSequential } from '../../utils/maybePromise'
 
 export const arrayNormalExpression: BuiltinNormalExpressions = {
   'range': {
@@ -125,12 +123,15 @@ range(
       returns: { type: 'any', array: true },
       args: {
         x: { type: ['array', 'any'], description: 'If $x is not an array, `[ ]` is returned.' },
+        depth: { type: 'integer', description: 'The depth level specifying how deep a nested array structure should be flattened. Defaults to `Infinity`.' },
       },
-      variants: [{ argumentNames: ['x'] }],
+      variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'depth'] }],
       description: 'Takes a nested array $x and flattens it.',
       seeAlso: ['mapcat'],
       examples: [
         'flatten([1, 2, [3, 4], 5])',
+        'flatten([1, [2, [3, [4]]]], 1)',
+        'flatten([1, [2, [3, [4]]]], 2)',
         `
 let foo = "bar";
 flatten([
@@ -144,14 +145,7 @@ flatten([
     },
   },
   'mapcat': {
-    evaluate: ([arr, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
-      assertArray(arr, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      return chain(
-        mapSequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo)),
-        mapped => mapped.flat(1),
-      )
-    },
+    evaluate: () => { throw new Error('mapcat is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'array',
@@ -183,17 +177,7 @@ mapcat(
     },
   },
   'moving-fn': {
-    evaluate: ([arr, windowSize, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
-      assertArray(arr, sourceCodeInfo)
-      assertNumber(windowSize, sourceCodeInfo, { integer: true, lte: arr.length })
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const windows: Arr[] = []
-      for (let i = 0; i <= arr.length - windowSize; i++) {
-        windows.push(arr.slice(i, i + windowSize))
-      }
-      return mapSequential(windows, window => executeFunction(fn, [window], contextStack, sourceCodeInfo))
-    },
+    evaluate: () => { throw new Error('moving-fn is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
       category: 'array',
@@ -214,16 +198,7 @@ mapcat(
     },
   },
   'running-fn': {
-    evaluate: ([arr, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
-      assertArray(arr, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const subArrays: Arr[] = []
-      for (let i = 0; i < arr.length; i += 1) {
-        subArrays.push(arr.slice(0, i + 1))
-      }
-      return mapSequential(subArrays, subArr => executeFunction(fn, [subArr], contextStack, sourceCodeInfo))
-    },
+    evaluate: () => { throw new Error('running-fn is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'array',

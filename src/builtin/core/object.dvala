@@ -1,0 +1,30 @@
+{
+  merge-with: (...args) -> do
+    let fn = last(args);
+    let objs = slice(args, 0, count(args) - 1);
+    if not(function?(fn)) then
+      perform(effect(dvala.error), str("Expected function, got: ", type(fn)))
+    end;
+    if count(objs) == 0 then
+      perform(effect(dvala.error), "Expected at least one object argument")
+    end;
+    reduce(rest(objs), (result, obj) -> do
+      if not(object?(obj)) then
+        perform(effect(dvala.error), str("Expected object, got: ", type(obj)))
+      end;
+      reduce(keys(obj), (res, key) -> do
+        if contains?(res, key) then
+          assoc(res, key, fn(get(res, key), get(obj, key)))
+        else
+          assoc(res, key, get(obj, key))
+        end
+      end, result)
+    end, do
+      let f = first(objs);
+      if not(object?(f)) then
+        perform(effect(dvala.error), str("Expected object, got: ", type(f)))
+      end;
+      f
+    end)
+  end
+}

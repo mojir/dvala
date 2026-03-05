@@ -1,62 +1,12 @@
-import type { ContextStack } from '../../evaluator/ContextStack'
-import type { ExecuteFunction } from '../../evaluator/interface'
-import type { Any, Arr, Coll, Obj, Seq } from '../../interface'
+import type { Any, Arr, Coll, Obj } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { collHasKey, deepEqual, toAny } from '../../utils'
-import { asAny, asFunctionLike, assertAny, assertColl, assertFunctionLike, assertObj, assertSeq, isObj, isSeq } from '../../typeGuards/dvala'
+import { asAny, assertAny, assertColl, assertObj, isObj, isSeq } from '../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../interface'
 import { assertArray } from '../../typeGuards/array'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '../../typeGuards/string'
-import type { FunctionLike } from '../../parser/types'
-import { DvalaError } from '../../errors'
 import { toFixedArity } from '../../utils/arity'
-import type { MaybePromise } from '../../utils/maybePromise'
-import { chain, mapSequential, reduceSequential } from '../../utils/maybePromise'
-
-function mapObjects({
-  colls,
-  contextStack,
-  executeFunction,
-  fn,
-  sourceCodeInfo,
-}: {
-  colls: unknown[]
-  fn: FunctionLike
-  sourceCodeInfo: SourceCodeInfo | undefined
-  contextStack: ContextStack
-  executeFunction: ExecuteFunction
-}): MaybePromise<Obj> {
-  assertObj(colls[0], sourceCodeInfo)
-  const keys = Object.keys(colls[0])
-  const params: Record<string, unknown[]> = {}
-  colls.forEach((obj) => {
-    assertObj(obj, sourceCodeInfo)
-    const objKeys = Object.keys(obj)
-    if (objKeys.length !== keys.length) {
-      throw new DvalaError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
-    }
-    if (!objKeys.every(key => keys.includes(key))) {
-      throw new DvalaError(`All objects must have the same keys. Expected: ${keys.join(', ')}. Found: ${objKeys.join(', ')}`, sourceCodeInfo)
-    }
-    Object.entries(obj).forEach(([key, value]) => {
-      if (!params[key])
-        params[key] = []
-      params[key].push(value)
-    })
-  })
-
-  const initialObj: Obj = {}
-  return reduceSequential(keys, (result: Obj, key) => {
-    return chain(
-      executeFunction(fn, params[key]!, contextStack, sourceCodeInfo),
-      (value) => {
-        result[key] = value
-        return result
-      },
-    )
-  }, initialObj)
-}
 
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
@@ -93,41 +43,7 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
 
 export const collectionNormalExpression: BuiltinNormalExpressions = {
   'filter': {
-    evaluate: ([coll, fn]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Coll> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      if (Array.isArray(coll)) {
-        return reduceSequential(coll, (result: Arr, elem) => {
-          return chain(executeFunction(fn, [elem], contextStack, sourceCodeInfo), (keep) => {
-            if (keep)
-              result.push(elem)
-            return result
-          })
-        }, [] as Arr)
-      }
-      if (isString(coll)) {
-        const chars = coll.split('')
-        return chain(
-          reduceSequential(chars, (result: string[], elem) => {
-            return chain(executeFunction(fn, [elem], contextStack, sourceCodeInfo), (keep) => {
-              if (keep)
-                result.push(elem)
-              return result
-            })
-          }, [] as string[]),
-          filtered => filtered.join(''),
-        )
-      }
-      const entries = Object.entries(coll)
-      const initialObj: Obj = {}
-      return reduceSequential(entries, (result: Obj, [key, value]) => {
-        return chain(executeFunction(fn, [value], contextStack, sourceCodeInfo), (keep) => {
-          if (keep)
-            result[key] = value
-          return result
-        })
-      }, initialObj)
-    },
+    evaluate: () => { throw new Error('filter is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -161,49 +77,7 @@ filter(
     },
   },
   'map': {
-    evaluate: (params, sourceCodeInfo, contextStack, { executeFunction }) => {
-      const fn = asFunctionLike(params.at(-1), sourceCodeInfo)
-
-      if (isObj(params[0])) {
-        return mapObjects({
-          colls: params.slice(0, -1),
-          fn,
-          sourceCodeInfo,
-          contextStack,
-          executeFunction,
-        })
-      }
-
-      const seqs = params.slice(0, -1) as Seq[]
-      assertSeq(seqs[0], sourceCodeInfo)
-
-      const isStr = typeof seqs[0] === 'string'
-      let len = seqs[0].length
-      seqs.slice(1).forEach((seq) => {
-        if (isStr) {
-          assertString(seq, sourceCodeInfo)
-        }
-        else {
-          assertArray(seq, sourceCodeInfo)
-        }
-        len = Math.min(len, seq.length)
-      })
-
-      const paramArray: unknown[][] = []
-      for (let i = 0; i < len; i++) {
-        paramArray.push(seqs.map(seq => seq[i]))
-      }
-
-      const mapped = mapSequential(paramArray, p => executeFunction(fn, p, contextStack, sourceCodeInfo))
-
-      if (!isStr) {
-        return mapped
-      }
-      return chain(mapped, (resolvedMapped) => {
-        resolvedMapped.forEach(char => assertString(char, sourceCodeInfo))
-        return resolvedMapped.join('')
-      })
-    },
+    evaluate: () => { throw new Error('map is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
       category: 'collection',
@@ -229,37 +103,7 @@ filter(
     },
   },
   'reduce': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      if (typeof coll === 'string') {
-        assertString(initial, sourceCodeInfo)
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(coll.split(''), (result: Any, elem) => {
-          return executeFunction(fn, [result, elem], contextStack, sourceCodeInfo)
-        }, initial)
-      }
-      else if (Array.isArray(coll)) {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(coll, (result: Any, elem) => {
-          return executeFunction(fn, [result, elem], contextStack, sourceCodeInfo)
-        }, initial)
-      }
-      else {
-        if (Object.keys(coll).length === 0)
-          return initial
-
-        return reduceSequential(Object.entries(coll), (result: Any, [, elem]) => {
-          return executeFunction(fn, [result, elem], contextStack, sourceCodeInfo)
-        }, initial)
-      }
-    },
+    evaluate: () => { throw new Error('reduce is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
