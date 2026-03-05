@@ -353,7 +353,7 @@ Add `dvala.checkpoint` to:
 
 ---
 
-## Step 8 — `maxSnapshots` configuration
+## Step 8 — `maxSnapshots` configuration ✅
 
 Start by asking if user wants to implement this as described or if any additions are needed.
 

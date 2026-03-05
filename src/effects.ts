@@ -55,6 +55,7 @@ export interface RunOptions {
   bindings?: Record<string, Any>
   handlers?: Handlers
   modules?: DvalaModule[]
+  maxSnapshots?: number
 }
 
 /**
@@ -75,6 +76,7 @@ export interface ResumeOptions {
   bindings?: Record<string, Any>
   handlers?: Handlers
   modules?: DvalaModule[]
+  maxSnapshots?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +152,7 @@ export async function run(source: string, options?: RunOptions): Promise<RunResu
       modules,
     )
     const ast = buildAst(source)
-    return await evaluateWithEffects(ast, contextStack, options?.handlers)
+    return await evaluateWithEffects(ast, contextStack, options?.handlers, options?.maxSnapshots)
   }
   catch (error) {
     // Catch parse errors and other errors that occur before the trampoline.
@@ -196,6 +198,7 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
     return await resumeWithEffects(deserialized.k, value, options?.handlers, {
       snapshots: deserialized.snapshots,
       nextSnapshotIndex: deserialized.nextSnapshotIndex,
+      maxSnapshots: options?.maxSnapshots,
     })
   }
   catch (error) {

@@ -2254,6 +2254,9 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
       ...(meta !== undefined ? { meta } : {}),
     }
     snapshotState.snapshots.push(snapshot)
+    if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
+      snapshotState.snapshots.shift()
+    }
   }
 
   for (let i = 0; i < k.length; i++) {
@@ -2406,6 +2409,9 @@ function dispatchHostHandler(
             ...(meta !== undefined ? { meta } : {}),
           }
           snapshotState.snapshots.push(snapshot)
+          if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
+            snapshotState.snapshots.shift()
+          }
           return snapshot
         },
         resumeFrom: (snapshot: Snapshot, value: Any) => {
@@ -3153,12 +3159,13 @@ export async function evaluateWithEffects(
   ast: Ast,
   contextStack: ContextStack,
   handlers?: Handlers,
+  maxSnapshots?: number,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal)
+  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots)
 }
 
 /**
@@ -3172,13 +3179,13 @@ export async function resumeWithEffects(
   k: ContinuationStack,
   value: Any,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
+  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial: Step = { type: 'Value', value, k }
 
-  return runEffectLoop(initial, handlers, signal, initialSnapshotState)
+  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots)
 }
 
 /**
@@ -3197,12 +3204,14 @@ async function runEffectLoop(
   handlers: Handlers | undefined,
   signal: AbortSignal,
   initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
+  maxSnapshots?: number,
 ): Promise<RunResult> {
   const debugMode = handlers != null && 'dvala.debug.step' in handlers
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
     runId: generateRunId(),
+    ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
   }
 
   let step: Step | Promise<Step> = initial

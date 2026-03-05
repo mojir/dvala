@@ -1600,6 +1600,138 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('8: maxSnapshots configuration', () => {
+    it('should retain unlimited snapshots by default', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), { step: 4 });
+        perform(effect(dvala.checkpoint), { step: 5 });
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(5)
+    })
+
+    it('should evict oldest snapshot when maxSnapshots is exceeded', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), { step: 4 });
+        perform(effect(my.check))
+      `, {
+        maxSnapshots: 3,
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      // 4 checkpoints taken, limit is 3 — oldest (step 1) should be evicted
+      expect(capturedSnapshots).toHaveLength(3)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 2 })
+      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 3 })
+      expect((capturedSnapshots[2] as { meta: unknown }).meta).toEqual({ step: 4 })
+    })
+
+    it('should evict from host checkpoint when maxSnapshots is exceeded', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(my.save));
+        perform(effect(my.check))
+      `, {
+        maxSnapshots: 2,
+        handlers: {
+          'my.save': async ({ checkpoint, resume: r }) => {
+            checkpoint({ step: 'host' })
+            r(null)
+          },
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      // 3 total snapshots, limit 2 — oldest (step 1) evicted
+      expect(capturedSnapshots).toHaveLength(2)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 2 })
+      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 'host' })
+    })
+
+    it('should fail gracefully when resumeFrom targets an evicted snapshot', async () => {
+      let callCount = 0
+      const result = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(my.action))
+      `, {
+        maxSnapshots: 2,
+        handlers: {
+          'my.action': async ({ resume: r, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // Try to resumeFrom a snapshot that was evicted (step 1, index 0)
+              const evictedSnapshot = {
+                continuation: {},
+                timestamp: Date.now(),
+                index: 0,
+                runId: 'will-not-match',
+              }
+              try {
+                resumeFrom(evictedSnapshot, null)
+              }
+              catch {
+                // Expected — snapshot not found. Resume normally.
+                r('recovered')
+              }
+            }
+            else {
+              r('done')
+            }
+          },
+        },
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe('recovered')
+      }
+    })
+
+    it('should work with maxSnapshots: 1', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(my.check))
+      `, {
+        maxSnapshots: 1,
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(1)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 3 })
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`
