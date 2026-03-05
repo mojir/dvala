@@ -71,6 +71,9 @@ export interface SnapshotState {
 
   /** UUID identifying this run()/resume() call. */
   readonly runId: string
+
+  /** Maximum number of snapshots to retain. Oldest are evicted when exceeded. */
+  readonly maxSnapshots?: number
 }
 
 // ---------------------------------------------------------------------------
