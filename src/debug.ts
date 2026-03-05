@@ -235,6 +235,9 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       return await resumeWithEffects(deserialized.k, value, handlers, {
         snapshots: deserialized.snapshots,
         nextSnapshotIndex: deserialized.nextSnapshotIndex,
+      }, {
+        values: bindings as Record<string, unknown> | undefined,
+        modules: modulesMap,
       })
     }
     catch (error) {
@@ -274,7 +277,10 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
           modulesMap,
         )
         const ast = buildDebugAst(source)
-        const result = await evaluateWithEffects(ast, contextStack, handlers)
+        const result = await evaluateWithEffects(ast, contextStack, handlers, undefined, {
+          values: bindings as Record<string, unknown> | undefined,
+          modules: modulesMap,
+        })
         return processResult(result)
       }
       catch (error) {

@@ -364,6 +364,9 @@ interface Snapshot {
 }
 
 interface EffectContext {
+  // Full dotted name of the performed effect (useful for wildcard handlers)
+  effectName: string
+
   args:    DvalaValue[]
 
   // Aborted when: race() branch loses, or runtime is disposed.
@@ -373,8 +376,25 @@ interface EffectContext {
   // Resume with value (sync) or promise (async) — Dvala detects which
   resume:  (value: DvalaValue | Promise<DvalaValue>) => void
 
+  // Propagate as a Dvala-level error — flows through dvala.error handlers
+  fail:    (msg?: string) => void
+
   // Suspend — meta passed through to RunResult
   suspend: (meta?: DvalaValue) => void
+
+  // Pass to the next registered handler whose pattern matches this effect
+  next:    () => void
+
+  // All snapshots taken so far, oldest first. Read-only view.
+  snapshots: readonly Snapshot[]
+
+  // Explicitly capture a snapshot at the current continuation point.
+  // Returns the new Snapshot. Host-side equivalent of perform(effect(dvala.checkpoint)).
+  checkpoint: (meta?: DvalaValue) => Snapshot
+
+  // Abandon current execution and resume from a previous snapshot.
+  // All snapshots after the target are discarded.
+  resumeFrom: (snapshot: Snapshot, value: DvalaValue) => void
 }
 
 type EffectHandler = (ctx: EffectContext) => Promise<void>
@@ -652,9 +672,9 @@ await run(`
 ```typescript
 function makeHandlers(workflowId: string): Handlers {
   return {
-    'llm.complete': async ({ args, signal, resume, suspend }) => {
+    'llm.complete': async ({ args, signal, resume, checkpoint }) => {
       const value = await callLLM(args[0] as string, signal)
-      suspend({ checkpoint: true, workflowId })
+      checkpoint({ workflowId })
       resume(value)
     },
     'com.myco.human.approve': async ({ args, suspend }) => {
