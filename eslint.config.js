@@ -38,6 +38,7 @@ const config = antfu({
     'file-modules.md',
     'dvala-effects-intro.md',
     'dvala-effects-plan.md',
+    'snapshot-system-plan.md',
     'dvala-api-contract.md',
     'dvala-content.md',
     'dvala-llm-prompt.md',

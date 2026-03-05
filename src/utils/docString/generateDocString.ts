@@ -1,7 +1,9 @@
 import { smartTrim } from '..'
-import type { Argument, FunctionReference, TypedValue } from '../../../reference'
+import type { Argument, EffectReference, FunctionReference, TypedValue } from '../../../reference'
 
-export function generateDocString(reference: FunctionReference): string {
+type DocStringSource = FunctionReference | EffectReference
+
+export function generateDocString(reference: DocStringSource): string {
   return smartTrim(`
     ${reference.title}
 
@@ -22,8 +24,31 @@ export function generateDocString(reference: FunctionReference): string {
 ${reference.examples.map(example => smartTrim(example, 4)).join('\n\n')}`)
 }
 
-function signature({ title, variants, args, returns, _isOperator }: FunctionReference): string[] {
+function isEffectRef(ref: DocStringSource): ref is EffectReference {
+  return 'effect' in ref
+}
+
+function signature(reference: DocStringSource): string[] {
+  const { title, variants, args, returns } = reference
+  const isOperator = !isEffectRef(reference) && reference._isOperator
+
   const functionForms = variants.map((variant) => {
+    if (isEffectRef(reference)) {
+      // Effect form: perform(effect(name), arg1, arg2)
+      const argsStr = variant.argumentNames.length > 0
+        ? `, ${variant.argumentNames.map((argName) => {
+          let result = ''
+          const arg = args[argName]!
+          if (arg.rest) {
+            result += '...'
+          }
+          result += argName
+          return result
+        }).join(', ')}`
+        : ''
+      return `  perform(effect(${title})${argsStr}) -> ${type(returns)}`
+    }
+
     const form = `  ${title}(${variant.argumentNames.map((argName) => {
       let result = ''
       const arg = args[argName]!
@@ -37,7 +62,7 @@ function signature({ title, variants, args, returns, _isOperator }: FunctionRefe
     return `${form} -> ${type(returns)}`
   })
 
-  const operatorForm = _isOperator ? ['', 'Operator:', `  a ${title} b -> ${type(returns)}`] : []
+  const operatorForm = isOperator ? ['', 'Operator:', `  a ${title} b -> ${type(returns)}`] : []
 
   return [
     ...functionForms,

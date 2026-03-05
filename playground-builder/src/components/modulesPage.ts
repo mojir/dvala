@@ -8,7 +8,9 @@ export const moduleExamples = [
   'let lin = import(linear-algebra);\n{\n "Cross product": lin.cross([1, 0, 0], [0, 1, 0]),\n  "Distance": lin.euclidean-distance([1, 1], [4, 5])\n}',
 ] as const
 
-export function getModulesPage(): string {
+export async function getModulesPage(): Promise<string> {
+  const renderedExample0 = await renderExample(moduleExamples[0], 'module-example-0')
+  const renderedExample1 = await renderExample(moduleExamples[1], 'module-example-1')
   return `
   <div id="modules-page" class="content">
     <div ${styles('flex', 'justify-center', 'text-3xl', 'mb-6')}>Modules</div>
@@ -26,11 +28,11 @@ export function getModulesPage(): string {
       <p ${styles('mb-4')}>
         Import a single function from a module:
       </p>
-      ${renderExample(moduleExamples[0], 'module-example-0')}
+      ${renderedExample0}
       <p ${styles('mb-4')}>
         Import the entire module and access multiple functions:
       </p>
-      ${renderExample(moduleExamples[1], 'module-example-1')}
+      ${renderedExample1}
       <p ${styles('text-color-gray-400')}>
         Available modules: ${moduleCategories.map((c) => {
           const ns = c

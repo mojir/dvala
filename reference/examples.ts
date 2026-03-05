@@ -196,12 +196,6 @@ main!()
     id: 'text-based-game',
     name: 'A game',
     description: 'Text based adventure game.',
-    context: {
-      handlers: {
-        'host.alert': 'async ({ args: [message], resume }) => { alert(message); resume(null) }',
-        'host.read-line': 'async ({ args: [message], resume }) => { resume(prompt(message)) }',
-      },
-    },
     code: `
 // Functional Text Adventure Game in Dvala
 
@@ -528,17 +522,15 @@ end;
 
 // Game loop
 let game-loop = (state) -> do
-  perform(effect(host.alert), describe-location(state) ++ "\\nWhat do you do? ");
-
-  let input = perform(effect(host.read-line), "");
+  let input = perform(effect(dvala.io.read-line), describe-location(state) ++ "\\nWhat do you do? ");
   let command_result = parse-command(state, input);
   let new-state = first(command_result);
   let message = second(command_result);
 
-  perform(effect(host.alert), "\\n" ++ message ++ "\\n");
+  perform(effect(dvala.io.println), "\\n" ++ message ++ "\\n");
 
   if new-state.game-over then
-    perform(effect(host.alert), "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
+    perform(effect(dvala.io.println), "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
     new-state
   else
     game-loop(new-state)
@@ -547,7 +539,7 @@ end;
 
 // Start game
 let start-game = () -> do
-  perform(effect(host.alert), "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
+  perform(effect(dvala.io.println), "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
   game-loop(initial-state)
 end;
 
@@ -871,6 +863,29 @@ let arr = [
 ];
 
 labels-from-values(arr, ["name", "age"])
+`.trim(),
+  },
+  {
+    id: 'fizzbuzz',
+    name: 'FizzBuzz',
+    description: 'The classic FizzBuzz challenge using a for comprehension with let bindings and cond.',
+    code: `
+// FizzBuzz: print numbers 1 to 30, but
+//   multiples of 3 → "Fizz"
+//   multiples of 5 → "Buzz"
+//   multiples of both → "FizzBuzz"
+
+let fizzbuzz = for (
+  n in range(1, 31)
+  let div3 = zero?(n mod 3)
+  let div5 = zero?(n mod 5)
+) -> cond
+  case div3 && div5 then "FizzBuzz"
+  case div3 then "Fizz"
+  case div5 then "Buzz"
+end ?? str(n);
+
+fizzbuzz join ", "
 `.trim(),
   },
 ]

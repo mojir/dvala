@@ -8,14 +8,17 @@ import { getArgumentInfo } from './argumentInfo'
 import { getSection } from './section'
 import { getFunctionSignature } from './functionSignature'
 import { getCustomSignature } from './customSignature'
+import { getType } from './getType'
 
-export function getAllDocumentationItems() {
-  return Object.values(allReference)
-    .map(obj => getDocumentation(obj))
-    .join('\n')
+export async function getAllDocumentationItems() {
+  const items = await Promise.all(
+    Object.values(allReference)
+      .map(obj => getDocumentation(obj)),
+  )
+  return items.join('\n')
 }
 
-function getDocumentation(reference: Reference) {
+async function getDocumentation(reference: Reference) {
   const docTitle = `${escapeTitle(reference.title)}`
 
   // Get all references for seeAlso (including module references)
@@ -54,7 +57,7 @@ function getDocumentation(reference: Reference) {
         )
       : ''}
 
-    ${getSection('Examples', getFunctionExamples(reference))}
+    ${getSection('Examples', await getFunctionExamples(reference))}
 
   </div>`
 }
@@ -84,11 +87,34 @@ function getCustomSignatureSection(reference: CustomReference) {
 }
 
 function getEffectSignatureSection(reference: EffectReference) {
-  const argNames = Object.keys(reference.args)
-  const argsStr = argNames.length > 0 ? `, ${argNames.join(', ')}` : ''
   return `<div ${styles('mb-6', 'mt-4', 'font-mono', 'text-base')}>
-    <span>perform(effect(${reference.title})${argsStr})</span>
+    ${getEffectSignature(reference)}
   </div>`
+}
+
+function getEffectSignature(reference: EffectReference) {
+  return `<table>
+  ${reference.variants.map((variant) => {
+    const argsStr = variant.argumentNames.length > 0
+      ? `, ${variant.argumentNames.map((argName) => {
+        let result = ''
+        const arg = reference.args[argName]
+        if (arg?.rest)
+          result += '...'
+        result += argName
+        return result
+      }).join(', ')}`
+      : ''
+
+    const expression = `perform(effect(${reference.title})${argsStr})`
+    return `
+      <tr>
+        <td>${formatDvalaExpression(expression)}</td>
+        <td><span ${styles('text-color-gray-400', 'mx-4', 'text-xl', 'line-height: 1rem;')}>&rarr;</span></td>
+        <td><span>${reference.returns.type}</span></td>
+      </tr>`
+  }).join('')}
+  </table>`
 }
 
 function getEffectArgumentInfo(reference: EffectReference) {
@@ -96,7 +122,7 @@ function getEffectArgumentInfo(reference: EffectReference) {
   ${Object.entries(reference.args).map(([argName, arg]) => {
     return `<tr>
               <td>${formatDvalaExpression(argName)}</td>
-              <td ${styles('pl-4', 'whitespace-nowrap')}>${arg.type}</td>
+              <td ${styles('pl-4', 'whitespace-nowrap')}>${getType(arg)}</td>
               ${arg.description ? `<td ${styles('pl-4', 'italic', 'text-base')}>${formatDescription(arg.description)}</td>` : ''}
             </tr>`
   }).join(' ')}
