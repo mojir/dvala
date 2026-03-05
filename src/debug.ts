@@ -228,11 +228,14 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       const modulesMap = modules
         ? new Map(modules.map(m => [m.name, m]))
         : undefined
-      const { k } = deserializeFromObject(snapshot.continuation, {
+      const deserialized = deserializeFromObject(snapshot.continuation, {
         values: bindings as Record<string, unknown> | undefined,
         modules: modulesMap,
       })
-      return await resumeWithEffects(k, value, handlers)
+      return await resumeWithEffects(deserialized.k, value, handlers, {
+        snapshots: deserialized.snapshots,
+        nextSnapshotIndex: deserialized.nextSnapshotIndex,
+      })
     }
     catch (error) {
       if (error instanceof DvalaError) {

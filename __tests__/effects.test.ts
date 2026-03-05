@@ -1447,6 +1447,159 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('6: snapshots in suspension blobs', () => {
+    it('should preserve snapshot history across suspend and resume', async () => {
+      const handlers: Handlers = {
+        'my.step': async ({ suspend }) => { suspend() },
+      }
+
+      // Take a checkpoint, then suspend
+      const r1 = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        let x = perform(effect(my.step));
+        x
+      `, { handlers })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      // After resume, ctx.snapshots should contain the checkpoint from before suspension
+      const r2 = await resumeContinuation(r1.snapshot, 42)
+      // The resumed program just returns x=42
+      expect(r2).toEqual({ type: 'completed', value: 42 })
+    })
+
+    it('should make pre-suspension snapshots available via ctx.snapshots after resume', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      const handlers: Handlers = {
+        'my.step': async ({ suspend }) => { suspend() },
+      }
+
+      // Take two checkpoints, then suspend
+      const r1 = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        let x = perform(effect(my.step));
+        perform(effect(my.check));
+        x
+      `, { handlers })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      const r2 = await resumeContinuation(r1.snapshot, 'hello', {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      expect(r2).toEqual({ type: 'completed', value: 'hello' })
+      // Two pre-suspension checkpoints should be preserved
+      expect(capturedSnapshots).toHaveLength(2)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 1 })
+      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 2 })
+    })
+
+    it('should append new snapshots after resume with correct indices', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      const handlers: Handlers = {
+        'my.step': async ({ suspend }) => { suspend() },
+      }
+
+      // Take one checkpoint (index 0), then suspend
+      const r1 = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        let x = perform(effect(my.step));
+        perform(effect(dvala.checkpoint), { step: "after-resume" });
+        perform(effect(my.check));
+        x
+      `, { handlers })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      const r2 = await resumeContinuation(r1.snapshot, 99, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          },
+        },
+      })
+      expect(r2).toEqual({ type: 'completed', value: 99 })
+      // Pre-suspension checkpoint (index 0) + the suspension itself consumed an index
+      // + new checkpoint after resume
+      expect(capturedSnapshots).toHaveLength(2)
+      expect((capturedSnapshots[0] as { index: number, meta: unknown }).meta).toEqual({ step: 1 })
+      const newSnap = capturedSnapshots[1] as { index: number, meta: unknown }
+      expect(newSnap.meta).toEqual({ step: 'after-resume' })
+      // New snapshot index should be > the suspension index
+      expect(newSnap.index).toBeGreaterThan((capturedSnapshots[0] as { index: number }).index)
+    })
+
+    it('should support resumeFrom with pre-suspension snapshots after resume', async () => {
+      let callCount = 0
+      const handlers: Handlers = {
+        'my.step': async ({ suspend }) => { suspend() },
+      }
+
+      // Take a checkpoint, then suspend
+      const r1 = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        let x = perform(effect(my.step));
+        let y = perform(effect(my.action));
+        x + y
+      `, { handlers })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      const r2 = await resumeContinuation(r1.snapshot, 10, {
+        handlers: {
+          'my.action': async ({ resume: r, snapshots, resumeFrom }) => {
+            callCount++
+            if (callCount === 1) {
+              // Resume from the pre-suspension checkpoint
+              resumeFrom(snapshots[0]!, 0)
+            }
+            else {
+              r(32)
+            }
+          },
+          'my.step': async ({ resume: r }) => { r(10) },
+        },
+      })
+      expect(r2.type).toBe('completed')
+      if (r2.type === 'completed') {
+        expect(r2.value).toBe(42) // x=10 + y=32
+      }
+    })
+
+    it('should survive JSON round-trip for suspension blob with snapshots', async () => {
+      const handlers: Handlers = {
+        'my.step': async ({ suspend }) => { suspend() },
+      }
+
+      const r1 = await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        let x = perform(effect(my.step));
+        x + 1
+      `, { handlers })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended')
+        return
+
+      // Simulate persistence via JSON round-trip
+      const json = JSON.stringify(r1.snapshot)
+      const restored = JSON.parse(json) as typeof r1.snapshot
+
+      const r2 = await resumeContinuation(restored, 41)
+      expect(r2).toEqual({ type: 'completed', value: 42 })
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`

@@ -31,6 +31,7 @@ import type { Any } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import { ContextStackImpl } from './ContextStack'
 import type { Context } from './interface'
+import type { Snapshot } from './effectTypes'
 import type { ContinuationStack } from './frames'
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,8 @@ interface SuspensionBlobData {
   contextStacks: SerializedContextStack[]
   k: unknown // ContinuationStack with ContextStacks replaced by refs
   meta?: Any
+  snapshots?: unknown[] // Snapshot[] preserved across suspend/resume
+  nextSnapshotIndex?: number
 }
 
 // Marker objects embedded in the serialized data
@@ -170,6 +173,26 @@ export function serializeToObject(k: ContinuationStack, meta?: Any): SuspensionB
   return blobData
 }
 
+/**
+ * Build a complete suspension blob that includes both the continuation
+ * and the accumulated snapshot state.  Snapshots are already plain
+ * JSON-compatible objects (their `continuation` fields were produced by
+ * earlier `serializeToObject` calls), so they're embedded as-is.
+ */
+export function serializeSuspensionBlob(
+  k: ContinuationStack,
+  snapshots: unknown[],
+  nextSnapshotIndex: number,
+  meta?: Any,
+): SuspensionBlobData {
+  const base = serializeToObject(k, meta)
+  if (snapshots.length > 0) {
+    base.snapshots = snapshots
+  }
+  base.nextSnapshotIndex = nextSnapshotIndex
+  return base
+}
+
 // ---------------------------------------------------------------------------
 // Deserialize
 // ---------------------------------------------------------------------------
@@ -190,7 +213,7 @@ export interface DeserializeOptions {
 export function deserializeFromObject(
   blobData: unknown,
   options?: DeserializeOptions,
-): { k: ContinuationStack, meta?: Any } {
+): { k: ContinuationStack, meta?: Any, snapshots: Snapshot[], nextSnapshotIndex: number } {
   const data = blobData as SuspensionBlobData
 
   if (data.version !== SUSPENSION_VERSION) {
@@ -262,5 +285,10 @@ export function deserializeFromObject(
   // Resolve meta
   const resolvedMeta = data.meta !== undefined ? resolveValue(data.meta) as Any : undefined
 
-  return { k: resolvedK, meta: resolvedMeta }
+  return {
+    k: resolvedK,
+    meta: resolvedMeta,
+    snapshots: (data.snapshots ?? []) as Snapshot[],
+    nextSnapshotIndex: data.nextSnapshotIndex ?? 0,
+  }
 }
