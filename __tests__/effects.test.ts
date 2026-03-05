@@ -1077,6 +1077,184 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('4a-checkpoint: dvala.checkpoint effect', () => {
+    it('should resume with null when no handler intercepts', async () => {
+      const result = await run(`
+        let x = perform(effect(dvala.checkpoint));
+        x
+      `)
+      expect(result).toEqual({ type: 'completed', value: null })
+    })
+
+    it('should always capture a snapshot even when no handler intercepts', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(1)
+    })
+
+    it('should always capture a snapshot even when a host handler intercepts', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'dvala.checkpoint': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r('intercepted')
+          },
+          'my.check': async ({ resume: r }) => { r(null) },
+        },
+      })
+      // The snapshot must be captured before the handler sees it
+      expect(capturedSnapshots).toHaveLength(1)
+    })
+
+    it('should allow host handler to override resume value', async () => {
+      const result = await run(`
+        perform(effect(dvala.checkpoint))
+      `, {
+        handlers: {
+          'dvala.checkpoint': async ({ resume: r }) => { r(42) },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 42 })
+    })
+
+    it('should always capture a snapshot even when a local do...with handler intercepts', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      const result = await run(`
+        let x = do
+          perform(effect(dvala.checkpoint))
+        with
+          case effect(dvala.checkpoint) then ([]) -> "from-local"
+        end;
+        perform(effect(my.check));
+        x
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(result).toEqual({ type: 'completed', value: 'from-local' })
+      expect(capturedSnapshots).toHaveLength(1)
+    })
+
+    it('should capture snapshot even with a dvala.* wildcard handler', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'dvala.*': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r('wildcard')
+          },
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(1)
+    })
+
+    it('should include metadata in snapshot from perform args', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: "analysis-done" });
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(1)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 'analysis-done' })
+    })
+
+    it('should have no meta when called without args', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(1)
+      expect((capturedSnapshots[0] as { meta?: unknown }).meta).toBeUndefined()
+    })
+
+    it('should accumulate multiple checkpoint snapshots in order', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(3)
+      expect((capturedSnapshots[0] as { index: number, meta: unknown }).index).toBe(0)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 1 })
+      expect((capturedSnapshots[1] as { index: number }).index).toBe(1)
+      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 2 })
+      expect((capturedSnapshots[2] as { index: number }).index).toBe(2)
+      expect((capturedSnapshots[2] as { meta: unknown }).meta).toEqual({ step: 3 })
+    })
+
+    it('should work alongside ctx.checkpoint in host handler', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await run(`
+        perform(effect(dvala.checkpoint), { from: "program" });
+        perform(effect(my.save));
+        perform(effect(my.check))
+      `, {
+        handlers: {
+          'my.save': async ({ checkpoint, resume: r }) => {
+            checkpoint({ from: 'host' })
+            r(null)
+          },
+          'my.check': async ({ snapshots, resume: r }) => {
+            capturedSnapshots = snapshots
+            r(null)
+          },
+        },
+      })
+      expect(capturedSnapshots).toHaveLength(2)
+      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ from: 'program' })
+      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ from: 'host' })
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await run(`

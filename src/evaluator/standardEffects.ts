@@ -453,6 +453,35 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
     },
   },
 
+  // ── Snapshot ──────────────────────────────────────────────────────────────
+
+  'dvala.checkpoint': {
+    // The actual snapshot capture is handled as a special case in dispatchPerform
+    // (unconditional capture before normal dispatch). This handler is the standard
+    // fallback when no local do...with or host handler intercepts the effect.
+    handler: (_args: Arr, k: ContinuationStack): Step => {
+      return { type: 'Value', value: null, k }
+    },
+    arity: { min: 0, max: 1 },
+    docs: {
+      category: 'effect',
+      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Optionally accepts a metadata value for domain context (e.g., step labels, timestamps). The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
+      returns: { type: 'null' },
+      args: {
+        meta: { type: 'any', description: 'Optional metadata to attach to the snapshot.' },
+      },
+      variants: [
+        { argumentNames: [] },
+        { argumentNames: ['meta'] },
+      ],
+      examples: [
+        'perform(effect(dvala.checkpoint))',
+        'perform(effect(dvala.checkpoint), { step: "analysis-done" })',
+      ],
+      seeAlso: ['perform', 'effect'],
+    },
+  },
+
   // ── Async ────────────────────────────────────────────────────────────────
 
   'dvala.sleep': {
