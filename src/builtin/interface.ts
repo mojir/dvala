@@ -4,6 +4,7 @@ import type { GetUndefinedSymbols, UndefinedSymbols } from '../getUndefinedSymbo
 import type { Any, Arr } from '../interface'
 import type {
   SpecialExpressionNode,
+  UserDefinedFunction,
 } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { MaybePromise } from '../utils/maybePromise'
@@ -134,6 +135,7 @@ export interface BuiltinNormalExpression<T> {
   name?: string
   arity: Arity
   docs?: FunctionDocs
+  dvalaImpl?: UserDefinedFunction
 }
 
 export type BuiltinNormalExpressions = Record<string, BuiltinNormalExpression<Any>>
