@@ -43,6 +43,7 @@ const config = antfu({
     'dvala-content.md',
     'dvala-llm-prompt.md',
     'effect-system-redesign.md',
+    'continuation-dedup-plan.md',
     'docs',
     'playground-builder/src/components/tutorials/**/*',
     'scripts/**/*',
