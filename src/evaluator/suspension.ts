@@ -30,6 +30,7 @@ import type { Any } from '../interface'
 
 import type { DvalaModule } from '../builtin/modules/interface'
 import { ContextStackImpl } from './ContextStack'
+import { dedupSubTrees, expandPoolRefs } from './dedupSubTrees'
 import type { Context } from './interface'
 import type { Snapshot } from './effectTypes'
 import type { ContinuationStack } from './frames'
@@ -38,7 +39,10 @@ import type { ContinuationStack } from './frames'
 // Constants
 // ---------------------------------------------------------------------------
 
-const SUSPENSION_VERSION = 1
+const SUSPENSION_VERSION = 2
+
+// Default size threshold for sub-tree pooling (bytes)
+const DEFAULT_DEDUP_THRESHOLD = 200
 
 // ---------------------------------------------------------------------------
 // Internal blob structure (what gets JSON-stringified)
@@ -58,6 +62,7 @@ interface SuspensionBlobData {
   meta?: Any
   snapshots?: unknown[] // Snapshot[] preserved across suspend/resume
   nextSnapshotIndex?: number
+  pool?: Record<number, unknown> // Shared sub-tree pool (v2+)
 }
 
 // Marker objects embedded in the serialized data
@@ -178,6 +183,9 @@ export function serializeToObject(k: ContinuationStack, meta?: Any): SuspensionB
  * and the accumulated snapshot state.  Snapshots are already plain
  * JSON-compatible objects (their `continuation` fields were produced by
  * earlier `serializeToObject` calls), so they're embedded as-is.
+ *
+ * Runs sub-tree deduplication across all serialized continuations to
+ * reduce blob size when snapshots share identical AST sub-trees.
  */
 export function serializeSuspensionBlob(
   k: ContinuationStack,
@@ -186,10 +194,44 @@ export function serializeSuspensionBlob(
   meta?: Any,
 ): SuspensionBlobData {
   const base = serializeToObject(k, meta)
+
   if (snapshots.length > 0) {
     base.snapshots = snapshots
   }
   base.nextSnapshotIndex = nextSnapshotIndex
+
+  // Run dedup across all serialized data to find shared sub-trees.
+  // Collect all top-level objects that may share sub-trees:
+  // contextStacks, k, meta, and each snapshot's continuation.
+  const roots: unknown[] = [base.contextStacks, base.k]
+  if (base.meta !== undefined) {
+    roots.push(base.meta)
+  }
+  if (base.snapshots) {
+    for (const snapshot of base.snapshots) {
+      roots.push(snapshot)
+    }
+  }
+
+  const { roots: dedupedRoots, pool } = dedupSubTrees(roots, DEFAULT_DEDUP_THRESHOLD)
+
+  // Reassemble the blob with deduplicated data
+  let rootIdx = 0
+  base.contextStacks = dedupedRoots[rootIdx++] as SerializedContextStack[]
+  base.k = dedupedRoots[rootIdx++]
+  if (base.meta !== undefined) {
+    base.meta = dedupedRoots[rootIdx++] as Any
+  }
+  if (base.snapshots) {
+    for (let i = 0; i < base.snapshots.length; i++) {
+      base.snapshots[i] = dedupedRoots[rootIdx++]
+    }
+  }
+
+  if (Object.keys(pool).length > 0) {
+    base.pool = pool
+  }
+
   return base
 }
 
@@ -214,13 +256,26 @@ export function deserializeFromObject(
   blobData: unknown,
   options?: DeserializeOptions,
 ): { k: ContinuationStack, meta?: Any, snapshots: Snapshot[], nextSnapshotIndex: number } {
-  const data = blobData as SuspensionBlobData
+  let data = blobData as SuspensionBlobData
 
   if (data.version !== SUSPENSION_VERSION) {
     throw new DvalaError(
       `Unsupported suspension blob version: ${data.version} (expected ${SUSPENSION_VERSION})`,
       undefined,
     )
+  }
+
+  // If the blob has a pool (v2+), expand all pool refs before processing
+  if (data.pool && Object.keys(data.pool).length > 0) {
+    const pool = data.pool
+    data = {
+      ...data,
+      contextStacks: expandPoolRefs(data.contextStacks, pool) as SerializedContextStack[],
+      k: expandPoolRefs(data.k, pool),
+      ...(data.meta !== undefined ? { meta: expandPoolRefs(data.meta, pool) as Any } : {}),
+      ...(data.snapshots ? { snapshots: data.snapshots.map(s => expandPoolRefs(s, pool)) } : {}),
+    }
+    delete data.pool
   }
 
   // Phase 1: Create placeholder ContextStack instances for each serialized one.

@@ -844,7 +844,7 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
         const blobData = result.snapshot.continuation as { version: number, k: unknown[], contextStacks: unknown[] }
-        expect(blobData.version).toBe(1)
+        expect(blobData.version).toBe(2)
         expect(blobData.k).toBeDefined()
         expect(blobData.contextStacks).toBeDefined()
         expect(Array.isArray(blobData.contextStacks)).toBe(true)
@@ -2093,7 +2093,7 @@ describe('phase 4 — Suspension & Resume', () => {
       // A continuation with a __csRef pointing to a non-existent context stack
       const result = await resumeContinuation({
         continuation: {
-          version: 1,
+          version: 2,
           k: [{ env: { __csRef: 999 } }],
           contextStacks: [],
         },
