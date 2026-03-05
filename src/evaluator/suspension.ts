@@ -72,12 +72,17 @@ function isCSRef(value: unknown): value is CSRef {
 // ---------------------------------------------------------------------------
 
 /**
- * Serialize a continuation stack and optional metadata into an opaque JSON blob.
+ * Serialize a continuation stack and optional metadata into a plain
+ * JSON-compatible object tree.
+ *
+ * The returned object is the "continuation" stored inside a `Snapshot`.
+ * It is intentionally typed as `SuspensionBlobData` internally but
+ * exposed as `unknown` via the `Snapshot` interface.
  *
  * Validates that all values are serializable.
  * Throws a descriptive `DvalaError` if non-serializable values are found.
  */
-export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
+export function serializeToObject(k: ContinuationStack, meta?: Any): SuspensionBlobData {
   // Phase 1: Collect all unique ContextStack instances
   const csMap = new Map<ContextStackImpl, number>()
   let nextId = 0
@@ -162,7 +167,7 @@ export function serializeSuspension(k: ContinuationStack, meta?: Any): string {
     ...(serializedMeta !== undefined ? { meta: serializedMeta as Any } : {}),
   }
 
-  return JSON.stringify(blobData)
+  return blobData
 }
 
 // ---------------------------------------------------------------------------
@@ -176,26 +181,21 @@ export interface DeserializeOptions {
 }
 
 /**
- * Deserialize a suspension blob back into a continuation stack and metadata.
+ * Deserialize a plain object (as produced by `serializeToObject`) back into
+ * a continuation stack and metadata.
  *
  * Reconstructs `ContextStack` instances with fresh host bindings from `options`.
  * Handles circular references between ContextStacks and their contained values.
  */
-export function deserializeSuspension(
-  blob: string,
+export function deserializeFromObject(
+  blobData: unknown,
   options?: DeserializeOptions,
 ): { k: ContinuationStack, meta?: Any } {
-  let blobData: SuspensionBlobData
-  try {
-    blobData = JSON.parse(blob) as SuspensionBlobData
-  }
-  catch {
-    throw new DvalaError('Invalid suspension blob: not valid JSON', undefined)
-  }
+  const data = blobData as SuspensionBlobData
 
-  if (blobData.version !== SUSPENSION_VERSION) {
+  if (data.version !== SUSPENSION_VERSION) {
     throw new DvalaError(
-      `Unsupported suspension blob version: ${blobData.version} (expected ${SUSPENSION_VERSION})`,
+      `Unsupported suspension blob version: ${data.version} (expected ${SUSPENSION_VERSION})`,
       undefined,
     )
   }
@@ -204,7 +204,7 @@ export function deserializeSuspension(
   // Contexts are empty initially — filled in Phase 2 after all instances exist.
   const csMap = new Map<number, ContextStackImpl>()
 
-  for (const scs of blobData.contextStacks) {
+  for (const scs of data.contextStacks) {
     const placeholderContexts = scs.contexts.map(() => {
       const ctx: Context = {}
       return ctx
@@ -243,7 +243,7 @@ export function deserializeSuspension(
   }
 
   // Fill in contexts on each ContextStack
-  for (const scs of blobData.contextStacks) {
+  for (const scs of data.contextStacks) {
     const cs = csMap.get(scs.id)!
     const resolvedContexts: Context[] = scs.contexts.map((serializedCtx) => {
       const ctx = serializedCtx as Record<string, { value: unknown }>
@@ -257,10 +257,10 @@ export function deserializeSuspension(
   }
 
   // Resolve the continuation stack
-  const resolvedK = resolveValue(blobData.k) as ContinuationStack
+  const resolvedK = resolveValue(data.k) as ContinuationStack
 
   // Resolve meta
-  const resolvedMeta = blobData.meta !== undefined ? resolveValue(blobData.meta) as Any : undefined
+  const resolvedMeta = data.meta !== undefined ? resolveValue(data.meta) as Any : undefined
 
   return { k: resolvedK, meta: resolvedMeta }
 }

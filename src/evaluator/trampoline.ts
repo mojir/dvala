@@ -82,7 +82,7 @@ import type { EffectHandler, Handlers, RunResult, Snapshot } from './effectTypes
 import { SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
-import { serializeSuspension } from './suspension'
+import { serializeToObject } from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
@@ -3187,9 +3187,9 @@ async function runEffectLoop(
   }
   catch (error) {
     if (isSuspensionSignal(error)) {
-      const blob = serializeSuspension(error.k, error.meta)
+      const continuation = serializeToObject(error.k, error.meta)
       const snapshot: Snapshot = {
-        continuation: blob,
+        continuation,
         timestamp: Date.now(),
         index: 0,
         runId,

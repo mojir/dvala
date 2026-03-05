@@ -196,22 +196,29 @@ Remove `SuspensionBlob` type alias — no longer needed in the public API.
 
 ---
 
-## Step 2 — Refactor serialization to produce plain objects
+## Step 2 — Refactor serialization to produce plain objects ✅
+
+**Completed.**
 
 Split `serializeSuspension` into two layers:
-1. `serializeToObject(k, meta?)` → returns plain object (the `continuation`)
-2. `serializeSuspension(k, meta?)` → calls `serializeToObject` + `JSON.stringify` (kept for backward compat during migration)
+1. `serializeToObject(k, meta?)` → returns plain `SuspensionBlobData` object (the `continuation`)
+2. `serializeSuspension` wrapper removed (dead code after migration)
 
 Similarly for deserialization:
 1. `deserializeFromObject(obj, options?)` → accepts plain object
-2. `deserializeSuspension(blob, options?)` → calls `JSON.parse` + `deserializeFromObject`
+2. `deserializeSuspension` wrapper removed (dead code after migration)
+
+All callers updated:
+- `trampoline.ts` uses `serializeToObject` → `Snapshot.continuation` is now a plain object
+- `effects.ts` and `debug.ts` use `deserializeFromObject` → accept the plain object directly
 
 **Files:**
-- `src/evaluator/suspension.ts` — Split serialize/deserialize into object and string layers
-
-**Tests:**
-- Round-trip test: serialize to object → deserialize from object
-- Existing blob-based tests still pass
+- `src/evaluator/suspension.ts` — Split into object layer; removed unused string wrappers
+- `src/evaluator/trampoline.ts` — Import `serializeToObject` instead of `serializeSuspension`
+- `src/effects.ts` — Import `deserializeFromObject` instead of `deserializeSuspension`
+- `src/debug.ts` — Import `deserializeFromObject` instead of `deserializeSuspension`
+- `__tests__/effects.test.ts` — Updated tests for plain-object continuation format; added round-trip and error tests
+- `__tests__/debugger.test.ts` — Updated test for plain-object continuation format
 
 ---
 
