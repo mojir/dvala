@@ -3,7 +3,6 @@ import { apiReference, effectReference, getLinkName, moduleReference } from '../
 import { moduleCategories } from '../../../reference/api'
 import { chevronRightIcon, homeIcon, labIcon, lampIcon, searchIcon } from '../icons'
 import { styles } from '../styles'
-import { isTutorialFolder, tutorialItems } from './tutorials'
 
 function menuLink(icon: string, title: string, onclick: string) {
   return `
@@ -128,25 +127,7 @@ export function getSideBar() {
     </div>
     ${menuLink(homeIcon, 'Home', 'Playground.showPage(\'index\', \'smooth\')')}
     ${menuLink(lampIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
-    <!-- Tutorials (Collapsible) -->
-    <div ${styles('flex', 'flex-col', 'gap-2')}>
-      ${menuLink(labIcon, 'Tutorials', 'Playground.toggleTutorials()')}
-      <div id="tutorial-content" ${styles('flex-col', 'ml-2', 'text-color-gray-400', 'text-base', 'display: none;')}>
-        ${tutorialItems.map((item) => {
-          if (isTutorialFolder(item)) {
-            return `
-              <div ${styles('flex', 'flex-col', 'gap-0')}>
-                <div ${styles('scroll-my-2', 'pl-2', 'text-color-gray-300')}>${item.title}</div>
-                <div ${styles('flex', 'flex-col', 'ml-4')}>
-                  ${item.entries.map(e => `<a id="${e.id}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${e.id}', 'smooth')">${e.title}</a>`).join('\n')}
-                </div>
-              </div>
-            `
-          }
-          return `<a id="${item.id}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${item.id}', 'smooth')">${item.title}</a>`
-        }).join('\n')}
-      </div>
-    </div>
+    ${menuLink(labIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
 
     <!-- API Reference -->
     <div ${styles('flex', 'flex-col', 'gap-2', 'my-4')}>

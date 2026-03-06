@@ -24,6 +24,7 @@ import {
   undoDvalaCode,
   updateState,
 } from './state'
+import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 
 const getDvala: (forceDebug?: 'debug') => Dvala = (() => {
@@ -89,6 +90,8 @@ type OutputType =
   | 'warn'
 
 let moveParams: MoveParams | null = null
+
+let syntaxOverlay: SyntaxOverlay
 let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
 
@@ -109,22 +112,8 @@ export function closeMoreMenu() {
 
 const expandedApiSections = new Set<string>()
 
-let tutorialsExpanded = false
-
-export function toggleTutorials() {
-  const content = document.getElementById('tutorial-content')
-
-  if (!content)
-    return
-
-  if (tutorialsExpanded) {
-    tutorialsExpanded = false
-    content.style.display = 'none'
-  }
-  else {
-    tutorialsExpanded = true
-    content.style.display = 'flex'
-  }
+export function showTutorialsPage() {
+  showPage('tutorials-page', 'smooth')
 }
 
 export function toggleApiSection(sectionId: string) {
@@ -391,6 +380,7 @@ export function resetDvalaCode() {
 
 function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
   elements.dvalaTextArea.value = value
+  syntaxOverlay.update()
 
   if (pushToHistory) {
     saveState({
@@ -453,6 +443,8 @@ function addOutputElement(element: HTMLElement) {
 }
 
 window.onload = function () {
+  syntaxOverlay = new SyntaxOverlay('dvala-textarea')
+
   elements.contextUndoButton.classList.add('disabled')
   elements.contextRedoButton.classList.add('disabled')
   elements.dvalaCodeUndoButton.classList.add('disabled')
@@ -691,9 +683,11 @@ window.onload = function () {
   })
   elements.dvalaTextArea.addEventListener('input', () => {
     setDvalaCode(elements.dvalaTextArea.value, true)
+    syntaxOverlay.update()
   })
   elements.dvalaTextArea.addEventListener('scroll', () => {
     saveState({ 'dvala-code-scroll-top': elements.dvalaTextArea.scrollTop })
+    syntaxOverlay.syncScroll()
   })
   elements.dvalaTextArea.addEventListener('selectionchange', () => {
     if (!ignoreSelectionChange) {
@@ -1106,12 +1100,6 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     page.classList.add('active-content')
     if (link) {
       link.classList.add('active-sidebar-entry')
-
-      // If the link is inside a collapsed tutorial section, expand it first
-      const tutorialContent = link.closest('#tutorial-content')
-      if (tutorialContent && tutorialContent instanceof HTMLElement && tutorialContent.style.display === 'none') {
-        toggleTutorials()
-      }
 
       // If the link is inside a collapsed API section, expand it first
       const apiContent = link.closest('[id^="api-content-"]')

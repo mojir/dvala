@@ -432,3 +432,53 @@ table {
     opacity: 1;
   }
 }
+
+/* Syntax overlay for dvala textarea */
+.syntax-overlay-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.syntax-overlay-container textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  color: transparent;
+  caret-color: white;
+  background-color: transparent;
+  z-index: 1;
+}
+
+.syntax-overlay-container textarea::selection {
+  background: rgba(150, 150, 150, 0.5);
+}
+
+.syntax-overlay-container textarea::-moz-selection {
+  background: rgba(150, 150, 150, 0.5);
+}
+
+.syntax-overlay-container pre {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-family: monospace;
+  background-color: rgb(30 30 30);
+  color: rgb(212 212 212);
+  border: 0;
+  white-space: pre;
+  overflow: auto;
+  pointer-events: none;
+  box-sizing: border-box;
+  line-height: normal;
+  tab-size: 2;
+}

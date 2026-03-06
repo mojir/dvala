@@ -2,11 +2,17 @@
   "publisher": "mojir",
   "name": "dvala",
   "displayName": "Dvala",
-  "version": "0.1.0",
-  "description": "Syntax highlighting for the Dvala programming language",
+  "version": "0.0.7",
+  "description": "Syntax highlighting and run support for the Dvala programming language",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mojir/dvala.git"
+  },
   "categories": [
     "Programming Languages"
   ],
+  "main": "./out/extension.js",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -30,6 +36,51 @@
         "scopeName": "source.dvala",
         "path": "./syntaxes/dvala.tmLanguage.json"
       }
+    ],
+    "commands": [
+      {
+        "command": "dvala.runFile",
+        "title": "Run Dvala File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dvala.runSelection",
+        "title": "Run Dvala Selection"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "dvala.runFile",
+          "when": "resourceLangId == dvala",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "dvala.runFile",
+          "when": "resourceLangId == dvala",
+          "group": "dvala@1"
+        },
+        {
+          "command": "dvala.runSelection",
+          "when": "resourceLangId == dvala && editorHasSelection",
+          "group": "dvala@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "dvala.runFile",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "resourceLangId == dvala"
+      }
     ]
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.5.0"
   }
 }

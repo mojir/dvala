@@ -50,6 +50,7 @@ const config = antfu({
     'docs',
     'playground-builder/src/components/tutorials/**/*',
     'scripts/**/*',
+    'vscode-dvala/**/*',
   ],
 })
 

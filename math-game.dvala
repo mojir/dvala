@@ -1,0 +1,144 @@
+// Math Quest - A text-based math game in Dvala
+
+// ─── Random number generator ─────────────────────────────────────────────────
+
+let lcg-next = (seed) -> (seed * 1103515245 + 12345) mod 2147483648;
+
+let rand-range = (seed, lo, hi) -> do
+  let s = lcg-next(seed);
+  [s, lo + (s mod (hi - lo + 1))]
+end;
+
+// ─── Question generation ──────────────────────────────────────────────────────
+
+// Returns { text, answer, ns } where ns is the next rng seed
+let make-question = (seed, level) -> do
+  let max-num = cond
+    case level == 1 then 10
+    case level == 2 then 25
+  end ?? 50;
+  let num-ops = cond
+    case level >= 2 then 4
+  end ?? 2;
+
+  let [s1, op] = rand-range(seed, 0, num-ops - 1);
+  let [s2, a]  = rand-range(s1, 2, max-num);
+  let [s3, b]  = rand-range(s2, 2, max-num);
+
+  cond
+    case op == 0 then
+      { text: str(a) ++ " + " ++ str(b), answer: a + b, ns: s3 }
+    case op == 1 then
+      let big = max(a, b);
+      let small = min(a, b);
+      { text: str(big) ++ " - " ++ str(small), answer: big - small, ns: s3 }
+    case op == 2 then
+      let [s4, x] = rand-range(s3, 2, 12);
+      let [s5, y] = rand-range(s4, 2, 12);
+      { text: str(x) ++ " x " ++ str(y), answer: x * y, ns: s5 }
+    case op == 3 then
+      let [s4, d] = rand-range(s3, 2, 12);
+      let [s5, m] = rand-range(s4, 2, 10);
+      { text: str(d * m) ++ " / " ++ str(d), answer: m, ns: s5 }
+  end ?? { text: str(a) ++ " + " ++ str(b), answer: a + b, ns: s3 }
+end;
+
+// ─── Display helpers ──────────────────────────────────────────────────────────
+
+let total-q   = 10;
+let max-lives = 3;
+let level-pts = [0, 10, 20, 30]; // points indexed by level
+
+let hearts  = (n) -> join(repeat("*", n), "");
+let empties = (n) -> join(repeat("-", n), "");
+let lives-bar = (lives) -> "[" ++ hearts(lives) ++ empties(max-lives - lives) ++ "]";
+
+let level-of = (qnum) -> cond
+  case qnum <= 3 then 1
+  case qnum <= 7 then 2
+end ?? 3;
+
+// ─── Game loop ────────────────────────────────────────────────────────────────
+
+let play = (seed) ->
+  loop (qnum = 1, score = 0, lives = max-lives, s = seed) -> do
+    if lives <= 0 || qnum > total-q then
+      { score: score, answered: qnum - 1, lives: lives }
+    else
+      let level = level-of(qnum);
+      let q     = make-question(s, level);
+      let pts   = get(level-pts, level);
+
+      perform(effect(dvala.io.println), "");
+      perform(effect(dvala.io.println),
+        "--- Question " ++ str(qnum) ++ "/" ++ str(total-q) ++
+        "  " ++ lives-bar(lives) ++
+        "  Score: " ++ str(score) ++ " ---"
+      );
+      perform(effect(dvala.io.println), "  [Level " ++ str(level) ++ "]  " ++ q.text ++ " = ?");
+
+      let input  = perform(effect(dvala.io.read-line), "  > ");
+      let parsed = number(trim(input));
+
+      if not(finite?(parsed)) then
+        perform(effect(dvala.io.println), "  ! Please enter a valid number.");
+        recur(qnum, score, lives, s)
+      else
+        if parsed == q.answer then
+          perform(effect(dvala.io.println), "  Correct! +" ++ str(pts) ++ " pts");
+          recur(qnum + 1, score + pts, lives, q.ns)
+        else
+          perform(effect(dvala.io.println), "  Wrong. The answer was " ++ str(q.answer));
+          recur(qnum + 1, score, lives - 1, q.ns)
+        end
+      end
+    end
+  end;
+
+// ─── Intro ────────────────────────────────────────────────────────────────────
+
+perform(effect(dvala.io.println), "+================================+");
+perform(effect(dvala.io.println), "|         * MATH QUEST *         |");
+perform(effect(dvala.io.println), "+================================+");
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "Answer " ++ str(total-q) ++ " questions. You have " ++ str(max-lives) ++ " lives.");
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "  Level 1  (Q 1-3)   +  -          10 pts each");
+perform(effect(dvala.io.println), "  Level 2  (Q 4-7)   +  -  x  /   20 pts each");
+perform(effect(dvala.io.println), "  Level 3  (Q 8-10)  +  -  x  /   30 pts each");
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "Max score: " ++ str(3 * 10 + 4 * 20 + 3 * 30) ++ " pts");
+perform(effect(dvala.io.println), "");
+
+let seed-raw = perform(effect(dvala.io.read-line), "Enter a seed number to start: ");
+let seed     = abs(trunc(number(trim(seed-raw)) ?? 42));
+
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "Go!");
+
+// ─── Play ─────────────────────────────────────────────────────────────────────
+
+let result = play(seed);
+
+// ─── Results ─────────────────────────────────────────────────────────────────
+
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "+================================+");
+perform(effect(dvala.io.println), "|           GAME OVER            |");
+perform(effect(dvala.io.println), "+================================+");
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "  Score:      " ++ str(result.score) ++ " / 200 pts");
+perform(effect(dvala.io.println), "  Questions:  " ++ str(result.answered) ++ " / " ++ str(total-q));
+perform(effect(dvala.io.println), "  Lives left: " ++ lives-bar(result.lives));
+perform(effect(dvala.io.println), "");
+
+let grade = cond
+  case result.score >= 180 then "*** Math Genius!"
+  case result.score >= 130 then "**  Excellent!"
+  case result.score >= 80  then "*   Good job!"
+  case result.score >= 40  then "    Keep practicing!"
+end ?? "    Better luck next time!";
+
+perform(effect(dvala.io.println), "  " ++ grade);
+perform(effect(dvala.io.println), "");
+perform(effect(dvala.io.println), "Thanks for playing Math Quest!");

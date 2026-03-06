@@ -135,7 +135,38 @@ async function renderTutorialPage(tutorial: TutorialEntry, index: number): Promi
   `
 }
 
+function getTutorialsIndexPage(): string {
+  const tocEntries = tutorialItems.map((item) => {
+    if (isTutorialFolder(item)) {
+      const folderEntries = item.entries
+        .map(e => `<a class="tutorial-nav-link" ${styles('cursor-pointer', 'pl-4', 'py-1')} onclick="Playground.showPage('${e.id}', 'smooth')">${e.title}</a>`)
+        .join('\n')
+      return `
+        <div ${styles('flex', 'flex-col', 'mb-2')}>
+          <div ${styles('text-color-gray-300', 'font-bold', 'py-1')}>${item.title}</div>
+          <div ${styles('flex', 'flex-col')}>
+            ${folderEntries}
+          </div>
+        </div>
+      `
+    }
+    return `<a class="tutorial-nav-link" ${styles('cursor-pointer', 'py-1')} onclick="Playground.showPage('${item.id}', 'smooth')">${item.title}</a>`
+  }).join('\n')
+
+  return `
+  <div id="tutorials-page" class="content">
+    <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
+      <div ${styles('text-3xl', 'mb-6', 'text-center')}>Tutorials</div>
+      <div ${styles('flex', 'flex-col', 'text-lg')}>
+        ${tocEntries}
+      </div>
+    </div>
+  </div>
+  `
+}
+
 export async function getAllTutorialPages(): Promise<string> {
+  const indexPage = getTutorialsIndexPage()
   const pages = await Promise.all(tutorials.map((tutorial, index) => renderTutorialPage(tutorial, index)))
-  return pages.join('\n')
+  return [indexPage, ...pages].join('\n')
 }

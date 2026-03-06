@@ -8,14 +8,14 @@
  * Run:  npx playwright test
  * Debug: npx playwright test --headed
  */
-import { expect, test } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Wait for the playground to fully initialize (wrapper becomes display:block). */
-async function waitForInit(page: import('@playwright/test').Page) {
+async function waitForInit(page: Page) {
   await page.waitForFunction(() => {
     const wrapper = document.getElementById('wrapper')
     return wrapper && wrapper.style.display === 'block'
@@ -23,32 +23,32 @@ async function waitForInit(page: import('@playwright/test').Page) {
 }
 
 /** Clear the playground and type code into the Dvala textarea. */
-async function setDvalaCode(page: import('@playwright/test').Page, code: string) {
+async function setDvalaCode(page: Page, code: string) {
   const textarea = page.locator('#dvala-textarea')
   await textarea.click()
   await textarea.fill(code)
 }
 
 /** Clear the context textarea and type JSON into it. */
-async function setContext(page: import('@playwright/test').Page, json: string) {
+async function setContext(page: Page, json: string) {
   const textarea = page.locator('#context-textarea')
   await textarea.click()
   await textarea.fill(json)
 }
 
 /** Click the Run button (the play icon next to the Dvala Code title). */
-async function clickRun(page: import('@playwright/test').Page) {
+async function clickRun(page: Page) {
   // The run button is the first <a> inside #dvala-links
   await page.locator('#dvala-links a').first().click()
 }
 
 /** Wait for output to appear in the output panel. */
-async function waitForOutput(page: import('@playwright/test').Page, timeout = 5000) {
+async function waitForOutput(page: Page, timeout = 5000) {
   await page.locator('#output-result').locator('span').first().waitFor({ timeout })
 }
 
 /** Get all text content of the output panel. */
-async function getOutputText(page: import('@playwright/test').Page): Promise<string> {
+async function getOutputText(page: Page): Promise<string> {
   return (await page.locator('#output-result').textContent()) ?? ''
 }
 
