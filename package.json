@@ -133,11 +133,13 @@
     "build-cli": "rollup -c rollup.config.cli.js",
     "dvala": "node ./dist/cli/cli.js",
     "dev": "npx serve docs -p 9901",
+    "test:e2e": "npx playwright test",
     "lcov": "open-cli ./coverage/index.html"
   },
   "devDependencies": {
     "@antfu/eslint-config": "2.21.1",
     "@mermaid-js/mermaid-cli": "^11.12.0",
+    "@playwright/test": "^1.58.2",
     "@rollup/plugin-json": "6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
