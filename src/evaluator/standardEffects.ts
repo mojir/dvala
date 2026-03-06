@@ -175,7 +175,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         'perform(effect(dvala.io.print), "hello")',
         'perform(effect(dvala.io.print), 42)',
       ],
-      seeAlso: ['-effect-dvala.io.println', '-effect-dvala.io.error', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.println', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
   },
 
@@ -194,7 +194,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         'perform(effect(dvala.io.println), "hello")',
         'perform(effect(dvala.io.println), [1, 2, 3])',
       ],
-      seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.error', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
   },
 
@@ -380,7 +380,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       examples: [
         'perform(effect(dvala.random.item), ["a", "b", "c"])',
       ],
-      seeAlso: ['-effect-dvala.random', '-effect-dvala.random.shuffle', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.random', '-effect-dvala.random.shuffle', '-effect-dvala.random.int', 'perform', 'effect'],
     },
   },
 
