@@ -5,6 +5,7 @@ import { Dvala } from '../../../src/Dvala/Dvala'
 import { allBuiltinModules } from '../../../src/allModules'
 import type { Token } from '../../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
+import { standardEffectNames } from '../../../src/evaluator/standardEffects'
 import { allReference, getLinkName } from '../../../reference'
 
 export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
@@ -90,8 +91,8 @@ const specialExpressionSet = new Set(specialExpressionKeys)
 export function formatDvalaExpression(program: string, styleOverride?: StyleOverride): string {
   try {
     const tokens = dvala.tokenize(program).tokens
-    const spans = tokens.map((token) => {
-      const style = styleOverride?.values.includes(token[1]) ? styleOverride.style : getStylesFromToken(token)
+    const spans = tokens.map((token, index) => {
+      const style = styleOverride?.values.includes(token[1]) ? styleOverride.style : getStylesFromToken(token, tokens, index)
       return `<span ${style}>${token[1]}</span>`
     })
 
@@ -104,7 +105,24 @@ export function formatDvalaExpression(program: string, styleOverride?: StyleOver
   }
 }
 
-function getStylesFromToken(token: Token): string {
+function isEffectName(tokens: Token[], index: number): boolean {
+  // Check if this symbol is inside effect(<name>)
+  // Pattern: effect ( <name> ) — with possible whitespace tokens between
+  let i = index - 1
+  // Skip whitespace before current token
+  while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
+  if (i < 0 || tokens[i]![0] !== 'LParen') return false
+  i--
+  while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
+  if (i < 0 || tokens[i]![0] !== 'Symbol' || tokens[i]![1] !== 'effect') return false
+  // Check closing paren after current token
+  let j = index + 1
+  while (j < tokens.length && tokens[j]![0] === 'Whitespace') j++
+  if (j >= tokens.length || tokens[j]![0] !== 'RParen') return false
+  return true
+}
+
+function getStylesFromToken(token: Token, tokens: Token[], index: number): string {
   const tokenType = token[0]
   switch (tokenType) {
     case 'string':
@@ -114,6 +132,11 @@ function getStylesFromToken(token: Token): string {
     case 'RegexpShorthand':
       return styles('text-color-Pink')
     case 'Symbol':
+      if (isEffectName(tokens, index)) {
+        return standardEffectNames.has(token[1])
+          ? styles('text-color-Blue')
+          : styles('text-color-SkyLavender')
+      }
       return specialExpressionSet.has(token[1])
         ? styles('text-color-BrightYellow')
         : normalExpressionSet.has(token[1])

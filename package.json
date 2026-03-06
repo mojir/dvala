@@ -111,7 +111,8 @@
   "iife": "dist/dvala.iife.js",
   "types": "dist/src/index.d.ts",
   "bin": {
-    "dvala": "dist/cli/cli.js"
+    "dvala": "dist/cli/cli.js",
+    "dvala-mcp": "dist/mcp-server/server.js"
   },
   "files": [
     "dist"
@@ -127,14 +128,19 @@
     "clean": "npm run clean-dvala && npm run clean-playground",
     "clean-dvala": "rm -rf dist build",
     "clean-playground": "rm -rf playground-builder/build playground-www/build",
-    "build": "npm run build-dvala && npm run build-cli && npm run build-playground",
+    "build": "npm run build-dvala && npm run build-cli && npm run build-mcp && npm run build-playground",
     "build-dvala": "npm run clean-dvala && rollup -c",
     "build-playground": "npm run clean-playground && rollup -c rollup.config.playground-builder.js && rollup -c rollup.config.playground-www.js && node ./playground-builder/build/buildPlaygroundSite.js",
     "build-cli": "rollup -c rollup.config.cli.js",
+    "build-mcp": "rollup -c rollup.config.mcp-server.js",
     "dvala": "node ./dist/cli/cli.js",
     "dev": "npx serve docs -p 9901",
     "test:e2e": "npx playwright test",
     "lcov": "open-cli ./coverage/index.html"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@antfu/eslint-config": "2.21.1",

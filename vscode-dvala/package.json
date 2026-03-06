@@ -1,0 +1,35 @@
+{
+  "publisher": "mojir",
+  "name": "dvala",
+  "displayName": "Dvala",
+  "version": "0.1.0",
+  "description": "Syntax highlighting for the Dvala programming language",
+  "categories": [
+    "Programming Languages"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "dvala",
+        "aliases": [
+          "Dvala",
+          "dvala"
+        ],
+        "extensions": [
+          ".dvala"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dvala",
+        "scopeName": "source.dvala",
+        "path": "./syntaxes/dvala.tmLanguage.json"
+      }
+    ]
+  }
+}

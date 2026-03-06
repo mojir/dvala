@@ -13,7 +13,6 @@ let _transpose = (g) ->
         case true then recur(i + 1)
       end
   end,
-
   "some?": (grid, predicate) -> do
     let cells = flatten(grid, 1);
     loop(i = 0) ->
