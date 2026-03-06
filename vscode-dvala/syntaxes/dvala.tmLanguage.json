@@ -1,0 +1,297 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Dvala",
+  "scopeName": "source.dvala",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#docstrings" },
+    { "include": "#strings" },
+    { "include": "#regexp-shorthand" },
+    { "include": "#effect-names" },
+    { "include": "#numeric-constants" },
+    { "include": "#numbers" },
+    { "include": "#reserved-symbols" },
+    { "include": "#special-expressions" },
+    { "include": "#builtin-functions" },
+    { "include": "#operators" },
+    { "include": "#brackets" },
+    { "include": "#symbols" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.dvala",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.line.shebang.dvala",
+          "match": "^#!.*$"
+        },
+        {
+          "name": "comment.block.dvala",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.begin.dvala" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.comment.end.dvala" }
+          }
+        }
+      ]
+    },
+    "docstrings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.dvala",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.dvala" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.dvala" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.dvala",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.dvala",
+          "begin": "\"",
+          "end": "\"",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.dvala" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.dvala" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.dvala",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "regexp-shorthand": {
+      "patterns": [
+        {
+          "name": "string.regexp.dvala",
+          "match": "#\"(?:[^\"\\\\]|\\\\.)*\"[gi]*"
+        }
+      ]
+    },
+    "effect-names": {
+      "patterns": [
+        {
+          "comment": "Standard effect names: dvala.error, dvala.io.*, dvala.random.*, dvala.time.*, dvala.sleep, dvala.checkpoint",
+          "match": "(effect)(\\()(dvala\\.(?:error|io\\.(?:print|println|error|read-line|read-stdin)|random(?:\\.(?:int|item|shuffle|uuid))?|time\\.(?:now|zone)|sleep|checkpoint))(\\))",
+          "captures": {
+            "1": { "name": "keyword.control.dvala" },
+            "2": { "name": "punctuation.paren.open.dvala" },
+            "3": { "name": "support.constant.effect-name.standard.dvala" },
+            "4": { "name": "punctuation.paren.close.dvala" }
+          }
+        },
+        {
+          "comment": "User-defined / custom effect names inside effect(...)",
+          "match": "(effect)(\\()([a-zA-Z_][a-zA-Z0-9_.:-]*)(\\))",
+          "captures": {
+            "1": { "name": "keyword.control.dvala" },
+            "2": { "name": "punctuation.paren.open.dvala" },
+            "3": { "name": "entity.name.type.effect-name.dvala" },
+            "4": { "name": "punctuation.paren.close.dvala" }
+          }
+        }
+      ]
+    },
+    "numeric-constants": {
+      "patterns": [
+        {
+          "name": "constant.language.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(-?(?:E|ε|PI|π|PHI|φ|POSITIVE_INFINITY|NEGATIVE_INFINITY|∞|MAX_SAFE_INTEGER|MIN_SAFE_INTEGER|MAX_VALUE|MIN_VALUE|NaN))(?=[\\s)\\]},;]|$)"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.dvala",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.octal.dvala",
+          "match": "\\b0[oO][0-7]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.dvala",
+          "match": "\\b0[bB][01]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.dvala",
+          "match": "(?<=[\\s(\\[{,;:=]|^)-?\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[eE][+-]?\\d+)?(?=[\\s)\\]},;:]|$)"
+        }
+      ]
+    },
+    "reserved-symbols": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.true.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)true(?=[\\s)\\]},;]|$)"
+        },
+        {
+          "name": "constant.language.boolean.false.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)false(?=[\\s)\\]},;]|$)"
+        },
+        {
+          "name": "constant.language.null.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)null(?=[\\s)\\]},;]|$)"
+        },
+        {
+          "comment": "Control-flow reserved words: do, else, case, each, in, when, while, function, as, then, end, with, _",
+          "name": "keyword.control.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:do|else|case|each|in|when|while|function|as|then|end|with|_)(?=[\\s)\\]},;]|$)"
+        }
+      ]
+    },
+    "special-expressions": {
+      "patterns": [
+        {
+          "comment": "Special expressions: if, let, for, cond, match, loop, block, doseq, unless, import, effect, perform, parallel, race, recur, array, object, defined?",
+          "name": "keyword.control.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|doseq|unless|import|effect|perform|parallel|race|recur|defined\\?)(?=[\\s(\\[{)\\]},;]|$)"
+        }
+      ]
+    },
+    "builtin-functions": {
+      "patterns": [
+        {
+          "comment": "Assertion & predicates",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|function\\?|string\\?|number\\?|integer\\?|boolean\\?|null\\?|zero\\?|pos\\?|neg\\?|even\\?|odd\\?|array\\?|collection\\?|sequence\\?|object\\?|regexp\\?|effect\\?|finite\\?|positive-infinity\\?|negative-infinity\\?|true\\?|false\\?|empty\\?|not-empty\\?|vector\\?|matrix\\?|grid\\?|blank\\?|identical\\?|defined\\?)(?=[\\s)\\]},;(]|$)"
+        },
+        {
+          "comment": "Collection, array, sequence functions",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:filter|map|reduce|get|count|contains\\?|assoc|range|repeat|flatten|mapcat|moving-fn|running-fn|nth|first|last|pop|index-of|push|rest|next|reverse|second|slice|some|sort|take|take-last|drop|drop-last|take-while|drop-while)(?=[\\s)\\]},;(]|$)"
+        },
+        {
+          "comment": "Math functions",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:inc|dec|quot|mod|sqrt|cbrt|round|trunc|floor|ceil|min|max|abs|sign|sum|prod|mean|median)(?=[\\s)\\]},;(]|$)"
+        },
+        {
+          "comment": "String, regexp, misc functions",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lower-case|upper-case|trim|join|split|regexp|re-match|replace|replace-all|not|boolean|compare|json-parse|json-stringify|type-of|doc|arity|epoch->iso-date|iso-date->epoch|effect-name|effect-matcher)(?=[\\s)\\]},;(]|$)"
+        },
+        {
+          "comment": "Object functions",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:keys|vals|entries|find|dissoc|merge|merge-with|zipmap|select-keys)(?=[\\s)\\]},;(]|$)"
+        },
+        {
+          "comment": "Functional",
+          "name": "entity.name.function.dvala",
+          "match": "(?<=[\\s(\\[{,;]|^)(?:apply|identity|comp|constantly)(?=[\\s)\\]},;(]|$)"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arrow.dvala",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.pipe.dvala",
+          "match": "\\|>"
+        },
+        {
+          "name": "keyword.operator.spread.dvala",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.comparison.dvala",
+          "match": "==|!=|>=|<=|[≤≥]|(?<![a-zA-Z])[<>](?![a-zA-Z])"
+        },
+        {
+          "name": "keyword.operator.logical.dvala",
+          "match": "&&|\\|\\||\\?\\?"
+        },
+        {
+          "name": "keyword.operator.arithmetic.dvala",
+          "match": "[+*/%^-]|\\+\\+"
+        },
+        {
+          "name": "keyword.operator.bitwise.dvala",
+          "match": "<<|>>>|>>|&|\\||(?<=[\\s(\\[{,;]|^)xor(?=[\\s)\\]},;]|$)"
+        },
+        {
+          "name": "keyword.operator.assignment.dvala",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.accessor.dvala",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.dvala",
+          "match": "[,;:]"
+        }
+      ]
+    },
+    "brackets": {
+      "patterns": [
+        {
+          "name": "punctuation.paren.open.dvala",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.paren.close.dvala",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.bracket.open.dvala",
+          "match": "\\["
+        },
+        {
+          "name": "punctuation.bracket.close.dvala",
+          "match": "\\]"
+        },
+        {
+          "name": "punctuation.brace.open.dvala",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.brace.close.dvala",
+          "match": "\\}"
+        }
+      ]
+    },
+    "symbols": {
+      "patterns": [
+        {
+          "comment": "Quoted symbols like 'foo-bar'",
+          "name": "variable.other.quoted.dvala",
+          "match": "'(?:[^'\\\\]|\\\\.)*'"
+        },
+        {
+          "comment": "Regular identifiers (variable names, user-defined functions)",
+          "name": "variable.other.dvala",
+          "match": "[a-zA-Z_@%^?=!$<>+*/&|~-][\\w@%^?=!$<>+*/:&|~-]*"
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,7 @@
     "src/**/*",
     "__tests__/**/*.test.ts",
     "cli/**/*",
+    "mcp-server/**/*",
     "common/**/*",
     "playground-builder/**/*",
     "playground-www/**/*",
