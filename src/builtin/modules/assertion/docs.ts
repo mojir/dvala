@@ -490,13 +490,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     variants: [
       {
         argumentNames: [
-          'value',
+          'fun',
           'error-message',
         ],
       },
       {
         argumentNames: [
-          'value',
+          'fun',
           'error-message',
           'message',
         ],

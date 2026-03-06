@@ -1262,7 +1262,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     args: {
       length: {
         type: 'integer',
-        description: 'The length of the sequence to generate. If not provided, the default is 20 (the maximum length of the pre-calculated happy numbers).',
+        description: 'The length of the sequence to generate.',
       },
     },
     variants: [
@@ -1270,9 +1270,6 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         argumentNames: [
           'length',
         ],
-      },
-      {
-        argumentNames: [],
       },
     ],
     examples: [
@@ -4196,7 +4193,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       a: {
         type: 'integer',
       },
-      b: {
+      m: {
         type: 'integer',
       },
     },

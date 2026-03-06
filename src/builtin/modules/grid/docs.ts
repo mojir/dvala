@@ -309,7 +309,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         type: 'number',
         description: 'The number of columns in the grid.',
       },
-      fn: {
+      generator: {
         type: 'function',
         description: 'The function to generate the grid. It takes two arguments: the row index and the column index.',
       },
@@ -319,7 +319,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         argumentNames: [
           'rows',
           'cols',
-          'fn',
+          'generator',
         ],
       },
     ],
@@ -809,7 +809,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         type: 'grid',
         description: 'The grid to reduce.',
       },
-      'fn': {
+      'f': {
         type: 'function',
         description: 'The function to reduce the grid. It takes two arguments: the accumulator and the current element.',
       },
@@ -822,7 +822,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       {
         argumentNames: [
           'g',
-          'fn',
+          'f',
           'initial-value',
         ],
       },
@@ -843,7 +843,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
         type: 'grid',
         description: 'The grid to reduce.',
       },
-      'fn': {
+      'f': {
         type: 'function',
         description: 'The function to reduce the grid. It takes four arguments: the accumulator, the current element, the row index, and the column index.',
       },
@@ -856,7 +856,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       {
         argumentNames: [
           'g',
-          'fn',
+          'f',
           'initial-value',
         ],
       },
