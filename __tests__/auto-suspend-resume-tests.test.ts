@@ -47,20 +47,31 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
       let b = perform(effect(my.step));
       perform(effect(my.done));
       a + b
-    `, { handlers: { ...handlers, 'my.done': async ({ snapshots, resume: r }) => { snapshotsAfterAll = [...snapshots]; r(null) } } })
+    `, { handlers: { ...handlers, 'my.done': async ({ snapshots, resume: r }) => {
+      snapshotsAfterAll = [...snapshots]
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Resume first suspend → checkpoint 2 → second suspend
     const r2 = await resumeContinuation(r1.snapshot, 10, {
-      handlers: { ...handlers, 'my.done': async ({ snapshots, resume: r }) => { snapshotsAfterAll = [...snapshots]; r(null) } },
+      handlers: { ...handlers, 'my.done': async ({ snapshots, resume: r }) => {
+        snapshotsAfterAll = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     // Resume second suspend → my.done fires
     const r3 = await resumeContinuation(r2.snapshot, 32, {
-      handlers: { 'my.done': async ({ snapshots, resume: r }) => { snapshotsAfterAll = [...snapshots]; r(null) } },
+      handlers: { 'my.done': async ({ snapshots, resume: r }) => {
+        snapshotsAfterAll = [...snapshots]
+        r(null)
+      } },
     })
     expect(r3.type).toBe('completed')
     if (r3.type === 'completed') {
@@ -86,18 +97,29 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
       perform(effect(dvala.checkpoint), { step: "c" });
       perform(effect(my.check));
       x + y
-    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } } })
+    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+      capturedSnapshots = [...snapshots]
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10, {
-      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     const r3 = await resumeContinuation(r2.snapshot, 32, {
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r3.type).toBe('completed')
     if (r3.type === 'completed') {
@@ -106,7 +128,7 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
 
     // All checkpoint indices should be strictly increasing
     expect(capturedSnapshots.length).toBe(3)
-    const indices = capturedSnapshots.map(s => (s as Snapshot).index)
+    const indices = capturedSnapshots.map(s => (s).index)
     for (let i = 1; i < indices.length; i++) {
       expect(indices[i]).toBeGreaterThan(indices[i - 1]!)
     }
@@ -119,17 +141,20 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
 
     const r1 = await run('let a = perform(effect(my.step), 1); let b = perform(effect(my.step), 2); let c = perform(effect(my.step), 3); [a, b, c]', { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
     expect((r1.snapshot.meta as Record<string, unknown>).step).toBe(1)
 
     const r2 = await resumeContinuation(r1.snapshot, 'x', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
     expect((r2.snapshot.meta as Record<string, unknown>).step).toBe(2)
 
     const r3 = await resumeContinuation(r2.snapshot, 'y', { handlers })
     expect(r3.type).toBe('suspended')
-    if (r3.type !== 'suspended') return
+    if (r3.type !== 'suspended')
+      return
     expect((r3.snapshot.meta as Record<string, unknown>).step).toBe(3)
 
     const r4 = await resumeContinuation(r3.snapshot, 'z')
@@ -156,7 +181,8 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
       x + y
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10, {
       handlers: {
@@ -165,7 +191,8 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
           if (actionCallCount === 1) {
             // Rollback to pre-suspension checkpoint
             resumeFrom(snapshots[0]!, 0)
-          } else {
+          }
+          else {
             r(32)
           }
         },
@@ -192,7 +219,8 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
       x + y
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10, {
       handlers: {
@@ -204,7 +232,8 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
             const lastSnap = snapshots[snapshots.length - 1]!
             expect(lastSnap.meta).toEqual({ step: 'after-resume' })
             resumeFrom(lastSnap, 0)
-          } else {
+          }
+          else {
             r(32)
           }
         },
@@ -238,12 +267,19 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       let x = perform(effect(my.step));
       perform(effect(my.check));
       x
-    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } } })
+    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+      capturedSnapshots = [...snapshots]
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 99, {
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
@@ -269,7 +305,8 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 41)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -289,7 +326,8 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 21)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -318,15 +356,22 @@ describe('auto: maxSnapshots across suspend/resume', () => {
       x
     `, {
       maxSnapshots: 2,
-      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // After resume, take 2 more checkpoints. Total would be 4, maxSnapshots=2 → only last 2 remain
     const r2 = await resumeContinuation(r1.snapshot, 99, {
       maxSnapshots: 2,
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
@@ -353,14 +398,21 @@ describe('auto: maxSnapshots across suspend/resume', () => {
       x
     `, {
       maxSnapshots: 1,
-      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 77, {
       maxSnapshots: 1,
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     expect(capturedSnapshots.length).toBe(1)
@@ -381,14 +433,21 @@ describe('auto: maxSnapshots across suspend/resume', () => {
       let x = perform(effect(my.step));
       perform(effect(my.check));
       x
-    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } } })
+    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+      capturedSnapshots = [...snapshots]
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Resume with maxSnapshots=2 — should trim existing to 2
     const r2 = await resumeContinuation(r1.snapshot, 42, {
       maxSnapshots: 2,
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     // Depending on implementation, either 3 preserved from blob or 2 after eviction
@@ -421,7 +480,7 @@ describe('auto: runId consistency', () => {
       },
     })
     expect(capturedSnapshots.length).toBe(3)
-    const runIds = capturedSnapshots.map(s => (s as Snapshot).runId)
+    const runIds = capturedSnapshots.map(s => (s).runId)
     expect(runIds[0]).toBe(runIds[1])
     expect(runIds[1]).toBe(runIds[2])
     // runId should be a non-empty string
@@ -441,7 +500,8 @@ describe('auto: runId consistency', () => {
       perform(effect(my.step))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // The suspension snapshot's runId should match the same run's checkpoints
     // because it was created by the same runEffectLoop call
@@ -461,12 +521,19 @@ describe('auto: runId consistency', () => {
       perform(effect(dvala.checkpoint), { step: 2 });
       perform(effect(my.check));
       x
-    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { runIdsSeen = snapshots.map(s => (s as Snapshot).runId); r(null) } } })
+    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+      runIdsSeen = snapshots.map(s => (s).runId)
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 42, {
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { runIdsSeen = snapshots.map(s => (s as Snapshot).runId); r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        runIdsSeen = snapshots.map(s => (s).runId)
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     // Two checkpoints: step 1 from original run, step 2 from resumed run
@@ -502,12 +569,12 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
       },
     })
     expect(capturedSnapshots.length).toBe(3)
-    const metas = capturedSnapshots.map(s => (s as Snapshot).meta)
+    const metas = capturedSnapshots.map(s => (s).meta)
     expect(metas[0]).toEqual({ source: 'dvala-1' })
     expect(metas[1]).toEqual({ source: 'host' })
     expect(metas[2]).toEqual({ source: 'dvala-2' })
     // Indices should be strictly increasing
-    const indices = capturedSnapshots.map(s => (s as Snapshot).index)
+    const indices = capturedSnapshots.map(s => (s).index)
     expect(indices[1]).toBeGreaterThan(indices[0]!)
     expect(indices[2]).toBeGreaterThan(indices[1]!)
   })
@@ -526,12 +593,19 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
       let x = perform(effect(my.save-and-wait));
       perform(effect(my.check));
       x
-    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } } })
+    `, { handlers: { ...handlers, 'my.check': async ({ snapshots, resume: r }) => {
+      capturedSnapshots = [...snapshots]
+      r(null)
+    } } })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 42, {
-      handlers: { 'my.check': async ({ snapshots, resume: r }) => { capturedSnapshots = [...snapshots]; r(null) } },
+      handlers: { 'my.check': async ({ snapshots, resume: r }) => {
+        capturedSnapshots = [...snapshots]
+        r(null)
+      } },
     })
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
@@ -563,7 +637,8 @@ describe('auto: resumeFrom during resumed execution', () => {
       x + y
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10, {
       handlers: {
@@ -574,7 +649,8 @@ describe('auto: resumeFrom during resumed execution', () => {
             const postResumeSnap = snapshots.find(s => (s.meta as Record<string, unknown>)?.label === 'post-resume')
             expect(postResumeSnap).toBeDefined()
             resumeFrom(postResumeSnap!, 0)
-          } else {
+          }
+          else {
             r(32)
           }
         },
@@ -605,7 +681,8 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
           if (callCount <= 3) {
             // Rollback to the same checkpoint three times
             resumeFrom(snapshots[0]!, callCount * 10)
-          } else {
+          }
+          else {
             r(999)
           }
         },
@@ -633,7 +710,8 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
           callCount++
           if (callCount <= 3) {
             resumeFrom(snapshots[0]!, callCount)
-          } else {
+          }
+          else {
             r(callCount)
           }
         },
@@ -667,7 +745,8 @@ describe('auto: suspend inside resumeFrom replay', () => {
           actionCallCount++
           if (actionCallCount === 1) {
             resumeFrom(snapshots[0]!, 'rollback')
-          } else {
+          }
+          else {
             r('done')
           }
         },
@@ -692,7 +771,8 @@ describe('auto: suspend inside resumeFrom replay', () => {
           actionCallCount++
           if (actionCallCount === 1) {
             resumeFrom(snapshots[0]!, 0)
-          } else {
+          }
+          else {
             suspend({ reason: 'needs-input' })
           }
         },
@@ -729,7 +809,8 @@ describe('auto: snapshot trimming on resumeFrom', () => {
           if (callCount === 1) {
             // Rollback to step 1 — should trim step 2 and step 3
             resumeFrom(snapshots[0]!, 'retry')
-          } else {
+          }
+          else {
             r('done')
           }
         },
@@ -747,7 +828,7 @@ describe('auto: snapshot trimming on resumeFrom', () => {
     expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ step: 2 })
     expect((capturedSnapshots[2] as Snapshot).meta).toEqual({ step: 3 })
     // Re-executed checkpoints should have higher indices than original step 1
-    const indices = capturedSnapshots.map(s => (s as Snapshot).index)
+    const indices = capturedSnapshots.map(s => (s).index)
     expect(indices[1]).toBeGreaterThan(indices[0]!)
     expect(indices[2]).toBeGreaterThan(indices[1]!)
   })
@@ -770,7 +851,8 @@ describe('auto: snapshot trimming on resumeFrom', () => {
           if (callCount === 1) {
             // Rollback to step 2 — should trim step 3 only
             resumeFrom(snapshots[1]!, 'retry')
-          } else {
+          }
+          else {
             r('done')
           }
         },
@@ -811,7 +893,8 @@ describe('auto: nextSnapshotIndex monotonicity', () => {
           callCount++
           if (callCount === 1) {
             resumeFrom(snapshots[0]!, 'first')
-          } else {
+          }
+          else {
             r('done')
           }
         },
@@ -825,7 +908,7 @@ describe('auto: nextSnapshotIndex monotonicity', () => {
     // Then the "after-rollback" checkpoint is also added.
     // Total: step 1 (original) + step 2 (re-executed) + after-rollback = 3
     expect(capturedSnapshots.length).toBe(3)
-    const indices = capturedSnapshots.map(s => (s as Snapshot).index)
+    const indices = capturedSnapshots.map(s => (s).index)
     // All indices should be strictly increasing, and re-executed ones have higher indices
     expect(indices[1]).toBeGreaterThan(indices[0]!)
     expect(indices[2]).toBeGreaterThan(indices[1]!)
@@ -840,7 +923,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('ctx.checkpoint() returns a Snapshot with correct fields', async () => {
     let returnedSnapshot: Snapshot | null = null
 
-    await run(`perform(effect(my.save))`, {
+    await run('perform(effect(my.save))', {
       handlers: {
         'my.save': async ({ checkpoint, resume: r }) => {
           returnedSnapshot = checkpoint({ label: 'test' })
@@ -859,7 +942,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('ctx.checkpoint() without meta creates snapshot without meta field', async () => {
     let returnedSnapshot: Snapshot | null = null
 
-    await run(`perform(effect(my.save))`, {
+    await run('perform(effect(my.save))', {
       handlers: {
         'my.save': async ({ checkpoint, resume: r }) => {
           returnedSnapshot = checkpoint()
@@ -875,7 +958,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('consecutive ctx.checkpoint() calls produce increasing indices', async () => {
     const snapshots: Snapshot[] = []
 
-    await run(`perform(effect(my.multi-save))`, {
+    await run('perform(effect(my.multi-save))', {
       handlers: {
         'my.multi-save': async ({ checkpoint, resume: r }) => {
           snapshots.push(checkpoint({ n: 1 }))
@@ -928,7 +1011,8 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
         handlers,
       })
       expect(r1.type).toBe('suspended')
-      if (r1.type !== 'suspended') return
+      if (r1.type !== 'suspended')
+        return
 
       // JSON round-trip
       const json = JSON.stringify(r1.snapshot)
@@ -947,7 +1031,8 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
 
     const r1 = await run('let x = perform(effect(my.step)); x', { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     expect(r1.snapshot.meta).toEqual(complexMeta)
 
@@ -978,7 +1063,8 @@ describe('auto: snapshot accumulation in suspension blobs', () => {
       x
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // The blob's continuation should contain the accumulated snapshots
     // When resumed, they should be available via ctx.snapshots
@@ -1000,11 +1086,13 @@ describe('auto: snapshot accumulation in suspension blobs', () => {
       b
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'first', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     // After second resume, check available snapshots
     const r3 = await resumeContinuation(r2.snapshot, 'second')
@@ -1024,7 +1112,8 @@ describe('auto: edge cases', () => {
     }
     const r1 = await run('let x = perform(effect(my.step)); x + 1', { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 41)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -1054,7 +1143,8 @@ describe('auto: edge cases', () => {
       perform(effect(dvala.error), "boom: " ++ x)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'test')
     expect(r2.type).toBe('error')
@@ -1078,7 +1168,8 @@ describe('auto: edge cases', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'err')
     expect(r2).toEqual({ type: 'completed', value: 'caught: boom: err' })
@@ -1125,7 +1216,8 @@ describe('auto: edge cases', () => {
       add10(input)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // JSON round-trip
     const json = JSON.stringify(r1.snapshot)
@@ -1146,7 +1238,8 @@ describe('auto: edge cases', () => {
       map([1, 2, 3], (x) -> x * factor)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10)
     expect(r2).toEqual({ type: 'completed', value: [10, 20, 30] })
@@ -1163,7 +1256,8 @@ describe('auto: edge cases', () => {
       reduce([1, 2, 3, 4], (acc, x) -> acc + x + offset, 0)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // offset=1: acc=0→0+1+1=2, acc=2→2+2+1=5, acc=5→5+3+1=9, acc=9→9+4+1=14
     const r2 = await resumeContinuation(r1.snapshot, 1)
@@ -1182,11 +1276,12 @@ describe('auto: edge cases', () => {
       x
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Double round-trip
     const json1 = JSON.stringify(r1.snapshot)
-    const restored1 = JSON.parse(json1)
+    const restored1 = JSON.parse(json1) as Snapshot
     const json2 = JSON.stringify(restored1)
     const restored2 = JSON.parse(json2) as Snapshot
 
@@ -1240,7 +1335,8 @@ describe('auto: complex workflow patterns', () => {
       expect.fail(`Got error instead of suspended: ${r1.error.message}`)
     }
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
     expect(r1.snapshot.meta).toEqual({ action: 'approve', payload: 'prepared: report' })
 
     // Resume with approval
@@ -1272,15 +1368,18 @@ describe('auto: complex workflow patterns', () => {
 
     const r1 = await run(source, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'Alice', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     const r3 = await resumeContinuation(r2.snapshot, 'alice@example.com', { handlers })
     expect(r3.type).toBe('suspended')
-    if (r3.type !== 'suspended') return
+    if (r3.type !== 'suspended')
+      return
 
     const r4 = await resumeContinuation(r3.snapshot, '555-0100')
     expect(r4).toEqual({
@@ -1309,12 +1408,14 @@ describe('auto: complex workflow patterns', () => {
     // Step 1: name
     const r1 = await run(source, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Step 2: email
     const r2 = await resumeContinuation(r1.snapshot, 'Alice', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     // Step 3: phone — user wants to go back to email
     const r3 = await resumeContinuation(r2.snapshot, 'alice@old.com', {
@@ -1327,7 +1428,8 @@ describe('auto: complex workflow patterns', () => {
             expect(afterName).toBeDefined()
             // Resume from after-name checkpoint, re-entering at email step with name='Alice' preserved
             resumeFrom(afterName!, 0) // value doesn't matter, checkpoint is at the perform return
-          } else {
+          }
+          else {
             suspend({ step: args[0] })
           }
         },
@@ -1336,12 +1438,14 @@ describe('auto: complex workflow patterns', () => {
     // After rollback to after-name, the wizard replays from the email step
     // Since the handler now suspends on second call, we get suspended at email
     expect(r3.type).toBe('suspended')
-    if (r3.type !== 'suspended') return
+    if (r3.type !== 'suspended')
+      return
 
     // Re-enter email with corrected value
     const r4 = await resumeContinuation(r3.snapshot, 'alice@new.com', { handlers })
     expect(r4.type).toBe('suspended')
-    if (r4.type !== 'suspended') return
+    if (r4.type !== 'suspended')
+      return
 
     // Enter phone
     const r5 = await resumeContinuation(r4.snapshot, '555-0100')
@@ -1365,7 +1469,8 @@ describe('auto: complex workflow patterns', () => {
           if (riskyCallCount === 1) {
             // Simulate crash — rollback to checkpoint
             resumeFrom(snapshots[0]!, 0)
-          } else {
+          }
+          else {
             // Retry succeeds
             r(21)
           }

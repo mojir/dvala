@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest'
 import { Dvala } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
 import { resume as resumeContinuation, run, runSync } from '../src/effects'
+import type { Snapshot } from '../src/effects'
 import { allStandardEffectDefinitions, standardEffectNames } from '../src/evaluator/standardEffects'
 import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
 import { isDataType } from '../src/builtin/interface'
@@ -152,9 +153,9 @@ describe('auto: standard effects seeAlso symmetry', () => {
 
 /** Effects that need special environment or are async - skip arity tests */
 const skipArityEffects = new Set([
-  'dvala.io.read-line',   // environment-dependent
-  'dvala.io.read-stdin',  // Node.js only, async
-  'dvala.sleep',          // async
+  'dvala.io.read-line', // environment-dependent
+  'dvala.io.read-stdin', // Node.js only, async
+  'dvala.sleep', // async
 ])
 
 describe('auto: standard effects arity enforcement', () => {
@@ -675,7 +676,7 @@ describe('auto: suspend/resume round-trip', () => {
 
       // Simulate persistence: JSON round-trip
       const json = JSON.stringify(r1.snapshot)
-      const restored = JSON.parse(json)
+      const restored = JSON.parse(json) as Snapshot
 
       const r2 = await resumeContinuation(restored, value)
       expect(r2.type).toBe('completed')
@@ -956,7 +957,7 @@ describe('auto: host handler patterns', () => {
 
   it('handler receives AbortSignal', async () => {
     let receivedSignal = false
-    await run(`perform(effect(my.check))`, {
+    await run('perform(effect(my.check))', {
       handlers: {
         'my.check': async ({ signal, resume: r }) => {
           receivedSignal = signal instanceof AbortSignal

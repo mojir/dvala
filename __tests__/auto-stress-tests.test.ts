@@ -73,15 +73,18 @@ describe('stress: parallel + checkpoints', () => {
       )
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'a1', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     const r3 = await resumeContinuation(r2.snapshot, 'a2', { handlers })
     expect(r3.type).toBe('suspended')
-    if (r3.type !== 'suspended') return
+    if (r3.type !== 'suspended')
+      return
 
     const r4 = await resumeContinuation(r3.snapshot, 'a3')
     expect(r4).toEqual({ type: 'completed', value: ['a1', 'a2', 'a3'] })
@@ -101,7 +104,8 @@ describe('stress: parallel + checkpoints', () => {
       map(results, -> upper-case($))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'slow')
     expect(r2.type).toBe('completed')
@@ -219,7 +223,8 @@ describe('stress: race + checkpoints/suspend', () => {
       "winner: " ++ winner
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'A-wins')
     expect(r2).toEqual({ type: 'completed', value: 'winner: A-wins' })
@@ -301,7 +306,8 @@ describe('stress: next() middleware + suspend/fail', () => {
 
     const r1 = await run('let x = perform(effect(my.wait)); x * 2', { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 21)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -338,14 +344,24 @@ describe('stress: next() middleware + suspend/fail', () => {
   it('three-level middleware chain, last suspends', async () => {
     const log: string[] = []
     const handlers: Handlers = {
-      '*': async ({ next }) => { log.push('level-1'); next() },
-      'my.*': async ({ next }) => { log.push('level-2'); next() },
-      'my.wait': async ({ suspend }) => { log.push('level-3'); suspend() },
+      '*': async ({ next }) => {
+        log.push('level-1')
+        next()
+      },
+      'my.*': async ({ next }) => {
+        log.push('level-2')
+        next()
+      },
+      'my.wait': async ({ suspend }) => {
+        log.push('level-3')
+        suspend()
+      },
     }
 
     const r1 = await run('let x = perform(effect(my.wait)); x', { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'resumed')
     expect(r2).toEqual({ type: 'completed', value: 'resumed' })
@@ -407,7 +423,8 @@ describe('stress: local + host handler priority with suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 21)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -431,7 +448,8 @@ describe('stress: local + host handler priority with suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'hello')
     expect(r2).toEqual({ type: 'completed', value: 'outer: hello' })
@@ -459,7 +477,8 @@ describe('stress: local + host handler priority with suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'deep')
     expect(r2).toEqual({ type: 'completed', value: 'L3:deep' })
@@ -480,7 +499,8 @@ describe('stress: local + host handler priority with suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'bar')
     expect(r2).toEqual({ type: 'completed', value: 'matched: bar' })
@@ -505,7 +525,8 @@ describe('stress: deep closures + effects + suspend', () => {
       add10and20(x)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
@@ -524,7 +545,8 @@ describe('stress: deep closures + effects + suspend', () => {
       map(fns, (f) -> f(factor))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 10)
     expect(r2).toEqual({ type: 'completed', value: [10, 20, 30] })
@@ -541,7 +563,8 @@ describe('stress: deep closures + effects + suspend', () => {
       pipeline(input)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // comp is right-to-left: dec(5)=4, *2=8, inc(8)=9
     const r2 = await resumeContinuation(r1.snapshot, 5)
@@ -562,7 +585,8 @@ describe('stress: deep closures + effects + suspend', () => {
       factorial(x)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 5)
     expect(r2).toEqual({ type: 'completed', value: 120 })
@@ -580,7 +604,8 @@ describe('stress: deep closures + effects + suspend', () => {
       scale3(data)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
@@ -702,7 +727,8 @@ describe('stress: loop/recur + effects', () => {
         end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Start at 0: 0+1+2+3+4 = 10
     const r2 = await resumeContinuation(r1.snapshot, 0)
@@ -807,7 +833,8 @@ describe('stress: deeply nested do/with + suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'world')
     expect(r2).toEqual({ type: 'completed', value: 'world!' })
@@ -833,7 +860,8 @@ describe('stress: deeply nested do/with + suspend', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Send "bad" → error bubbles to outer do/with
     const r2 = await resumeContinuation(r1.snapshot, 'bad')
@@ -877,7 +905,8 @@ describe('stress: effect-matcher in complex flows', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
@@ -939,7 +968,8 @@ describe('stress: dedup pool with many checkpoints', () => {
       x
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // JSON round-trip
     const json = JSON.stringify(r1.snapshot)
@@ -964,7 +994,8 @@ describe('stress: dedup pool with many checkpoints', () => {
       [f1(input), f2(input)]
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Double round-trip
     const json1 = JSON.stringify(r1.snapshot)
@@ -1025,7 +1056,8 @@ describe('stress: host bindings across complex flows', () => {
       handlers,
     })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'after', {
       bindings: { prefix: 'host-' },
@@ -1047,7 +1079,8 @@ describe('stress: host bindings across complex flows', () => {
       handlers,
     })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 6, {
       bindings: { factor: 7 },
@@ -1068,7 +1101,8 @@ describe('stress: host bindings across complex flows', () => {
       handlers,
     })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     // Resume with different offset
     const r2 = await resumeContinuation(r1.snapshot, 10, {
@@ -1130,11 +1164,13 @@ describe('stress: error propagation through effect stacks', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'ok-', { handlers })
     expect(r2.type).toBe('suspended')
-    if (r2.type !== 'suspended') return
+    if (r2.type !== 'suspended')
+      return
 
     // Send "error" to trigger the error path
     const r3 = await resumeContinuation(r2.snapshot, 'error')
@@ -1163,7 +1199,8 @@ describe('stress: error propagation through effect stacks', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 0)
     // 0/0 = NaN → dvala.error
@@ -1194,7 +1231,8 @@ describe('stress: complex data through suspend/resume', () => {
       { result: data, input: x }
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'world')
     expect(r2).toEqual({
@@ -1217,7 +1255,8 @@ describe('stress: complex data through suspend/resume', () => {
       push(data, x)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
@@ -1243,7 +1282,8 @@ describe('stress: complex data through suspend/resume', () => {
       greet(name)
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'alice')
     expect(r2).toEqual({ type: 'completed', value: 'Hello, ALICE!' })
@@ -1260,7 +1300,8 @@ describe('stress: complex data through suspend/resume', () => {
       first(re-match(input, pattern))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'order-42-confirmed')
     expect(r2).toEqual({ type: 'completed', value: '42' })
@@ -1326,7 +1367,8 @@ describe('stress: suspend inside control flow', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 21)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -1345,7 +1387,8 @@ describe('stress: suspend inside control flow', () => {
       end
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 42)
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -1360,7 +1403,8 @@ describe('stress: suspend inside control flow', () => {
       true && perform(effect(my.wait))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'truthy')
     expect(r2).toEqual({ type: 'completed', value: 'truthy' })
@@ -1375,7 +1419,8 @@ describe('stress: suspend inside control flow', () => {
       false || perform(effect(my.wait))
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, 'fallback')
     expect(r2).toEqual({ type: 'completed', value: 'fallback' })
@@ -1413,7 +1458,8 @@ describe('stress: suspend inside control flow', () => {
       a + b + c
     `, { handlers })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
 
     const r2 = await resumeContinuation(r1.snapshot, [10, 20, 12])
     expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -1444,7 +1490,8 @@ describe('stress: complex end-to-end patterns', () => {
 
     const r1 = await run(source, { handlers: handlersStep1 })
     expect(r1.type).toBe('suspended')
-    if (r1.type !== 'suspended') return
+    if (r1.type !== 'suspended')
+      return
     expect(r1.snapshot.meta).toEqual({ payload: 'transformed-data-report' })
 
     // Approve
@@ -1466,7 +1513,8 @@ describe('stress: complex end-to-end patterns', () => {
           if (attempt < 3) {
             // Simulate failure — rollback
             resumeFrom(snapshots[0]!, 0)
-          } else {
+          }
+          else {
             r(21)
           }
         },
