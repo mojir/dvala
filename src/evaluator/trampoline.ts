@@ -69,7 +69,7 @@ import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
-import { isDvalaFunction } from '../typeGuards/dvalaFunction'
+import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { toAny } from '../utils'
@@ -517,6 +517,9 @@ function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: C
     throw new DvalaError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
   }
   assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
+  if (expression.dvalaImpl) {
+    return executeUserDefinedRecursive(expression.dvalaImpl, params, contextStack, sourceCodeInfo)
+  }
   return expression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
 }
 
@@ -1075,7 +1078,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       if (dvalaModule.source) {
         const nodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
         const sourceEnv = env.create({})
-        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, env, sourceCodeInfo }
+        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
         if (nodes.length === 1) {
           return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [mergeFrame, ...k] }
         }
@@ -1262,8 +1265,17 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'SomePred':
     case 'Fnull':
     case 'EffectMatcher':
-    case 'SpecialBuiltin':
+    case 'SpecialBuiltin': {
+      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
+      return wrapMaybePromiseAsStep(result, k)
+    }
     case 'Module': {
+      const dvalaModule = env.getModule(fn.moduleName)
+      const expression = dvalaModule?.functions[fn.functionName]
+      if (expression?.dvalaImpl) {
+        assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
+        return setupUserDefinedCall(expression.dvalaImpl, params, env, sourceCodeInfo, k)
+      }
       const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
     }
@@ -1432,7 +1444,24 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     case 'DebugStep':
       return applyDebugStep(frame, value, k)
     case 'ImportMerge': {
-      const merged = { ...frame.tsFunctions, ...(isObj(value) ? value : {}) }
+      const dvalaFunctions = isObj(value) ? value : {}
+      // Set dvalaImpl on module expressions for functions overridden by .dvala source
+      for (const [name, fn] of Object.entries(dvalaFunctions)) {
+        const expression = frame.module.functions[name]
+        if (expression && isUserDefinedFunction(fn)) {
+          expression.dvalaImpl = fn
+        }
+      }
+      // Merge: .dvala functions that DON'T have a matching TS expression override entirely
+      // (they are module-only .dvala functions). Functions WITH a TS expression keep
+      // the Module function value (arity checking preserved) and dispatch via dvalaImpl.
+      const dvalaOnlyFunctions: Obj = {}
+      for (const [name, fn] of Object.entries(dvalaFunctions)) {
+        if (!frame.module.functions[name]) {
+          dvalaOnlyFunctions[name] = fn
+        }
+      }
+      const merged = { ...frame.tsFunctions, ...dvalaOnlyFunctions }
       frame.env.registerValueModule(frame.moduleName, merged)
       return { type: 'Value', value: merged, k }
     }
@@ -1989,7 +2018,12 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
 
   // All levels bound — evaluate the body
   const newFrame: ForLoopFrame = { ...frame, phase: 'evalBody' }
-  return { type: 'Eval', node: body, env, k: [newFrame, ...k] }
+  // Use env.create(frame.context) to ensure post-deserialization correctness:
+  // after serialize/deserialize, frame.context and the context inside frame.env
+  // may be separate objects, so mutations to frame.context won't be visible
+  // through frame.env. Pushing frame.context on top guarantees current values.
+  const bodyEnv = env.create(frame.context)
+  return { type: 'Eval', node: body, env: bodyEnv, k: [newFrame, ...k] }
 }
 
 /**

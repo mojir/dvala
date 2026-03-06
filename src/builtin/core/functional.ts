@@ -1,4 +1,4 @@
-import type { Any, Arr } from '../../interface'
+import type { Any } from '../../interface'
 import type {
   CompFunction,
   ConstantlyFunction,
@@ -6,10 +6,8 @@ import type {
 } from '../../parser/types'
 import { toAny } from '../../utils'
 import { getArityFromFunction, toFixedArity } from '../../utils/arity'
-import type { MaybePromise } from '../../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
-import { assertArray } from '../../typeGuards/array'
 import { assertFunctionLike } from '../../typeGuards/dvala'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
@@ -39,14 +37,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
     },
   },
   'apply': {
-    evaluate: ([func, ...params]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertFunctionLike(func, sourceCodeInfo)
-      const paramsLength = params.length
-      const last = params[paramsLength - 1]
-      assertArray(last, sourceCodeInfo)
-      const applyArray = [...params.slice(0, -1), ...last]
-      return executeFunction(func, applyArray, contextStack, sourceCodeInfo)
-    },
+    evaluate: (): never => { throw new Error('apply is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
       category: 'functional',

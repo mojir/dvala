@@ -34,6 +34,7 @@ import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import type { Ast } from './parser/types'
 import { deserializeFromObject } from './evaluator/suspension'
+import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -110,6 +111,7 @@ function buildAst(source: string): Ast {
  * ```
  */
 export function runSync(source: string, options?: RunSyncOptions): Any {
+  initCoreDvalaSources()
   const modules = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))
     : undefined
@@ -144,6 +146,7 @@ export function runSync(source: string, options?: RunSyncOptions): Any {
  */
 export async function run(source: string, options?: RunOptions): Promise<RunResult> {
   try {
+    initCoreDvalaSources()
     const modules = options?.modules
       ? new Map(options.modules.map(m => [m.name, m]))
       : undefined

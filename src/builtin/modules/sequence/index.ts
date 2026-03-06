@@ -1,13 +1,11 @@
 import type { Any, Arr, Obj, Seq } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { asArray, assertArray, assertCharArray } from '../../../typeGuards/array'
-import { asAny, asSeq, assertAny, assertFunctionLike, assertSeq } from '../../../typeGuards/dvala'
+import { asAny, asSeq, assertAny, assertSeq } from '../../../typeGuards/dvala'
 import { asNumber, assertNumber } from '../../../typeGuards/number'
-import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
-import { collHasKey, compare, deepEqual, toNonNegativeInteger } from '../../../utils'
+import { assertString } from '../../../typeGuards/string'
+import { collHasKey, deepEqual, toNonNegativeInteger } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
-import type { MaybePromise } from '../../../utils/maybePromise'
-import { chain, filterSequential, findIndexSequential, mapSequential, reduceSequential } from '../../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
@@ -15,18 +13,7 @@ import sequenceModuleSource from './sequence.dvala'
 
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
   'position': {
-    evaluate: ([seq, fn]: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<number | null> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      if (seq === null)
-        return null
-
-      assertSeq(seq, sourceCodeInfo)
-      const arr = typeof seq === 'string' ? seq.split('') : seq
-      return chain(
-        findIndexSequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo)),
-        index => index !== -1 ? index : null,
-      )
-    },
+    evaluate: () => { throw new Error('position: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -147,52 +134,7 @@ su.position(
     },
   },
   'sort-by': {
-    evaluate: (params: Arr, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Seq> => {
-      const [seq, keyfn] = params
-      const defaultComparer = params.length === 2
-
-      assertSeq(seq, sourceCodeInfo)
-      assertFunctionLike(keyfn, sourceCodeInfo)
-      const comparer = defaultComparer ? null : params[2]
-
-      const isString = typeof seq === 'string'
-      const arr = isString ? seq.split('') : [...seq]
-
-      // Pre-compute all keys using mapSequential (async-safe)
-      return chain(
-        mapSequential(arr, elem => executeFunction(keyfn, [elem], contextStack, sourceCodeInfo)),
-        (keys) => {
-          if (defaultComparer) {
-            // Create indexed pairs, sort by pre-computed keys
-            const indexed = arr.map((elem, i) => ({ elem, key: keys[i]! }))
-            indexed.sort((a, b) => {
-              assertStringOrNumber(a.key, sourceCodeInfo)
-              assertStringOrNumber(b.key, sourceCodeInfo)
-              return compare(a.key, b.key, sourceCodeInfo)
-            })
-            const sorted = indexed.map(x => x.elem)
-            return isString ? (sorted as string[]).join('') : sorted
-          }
-          else {
-            assertFunctionLike(comparer, sourceCodeInfo)
-            // Pre-compute keys, then need pairwise comparisons — these may also be async
-            // For sort-by with custom comparer, we must use a non-async sort since
-            // Array.sort requires sync comparators
-            const indexed = arr.map((elem, i) => ({ elem, key: keys[i]! }))
-            indexed.sort((a, b) => {
-              const compareValue = executeFunction(comparer, [a.key, b.key], contextStack, sourceCodeInfo)
-              if (compareValue instanceof Promise) {
-                throw new TypeError('Async functions cannot be used as sort-by comparators')
-              }
-              assertNumber(compareValue, sourceCodeInfo, { finite: true })
-              return compareValue
-            })
-            const sorted = indexed.map(x => x.elem)
-            return isString ? (sorted as string[]).join('') : sorted
-          }
-        },
-      )
-    },
+    evaluate: () => { throw new Error('sort-by: Dvala implementation should be used instead') },
     arity: { min: 2, max: 3 },
     docs: {
       category: 'sequence',
@@ -288,18 +230,7 @@ l`,
     },
   },
   'remove': {
-    evaluate: ([input, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Seq> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertSeq(input, sourceCodeInfo)
-      const arr = Array.isArray(input) ? input : input.split('')
-      return chain(
-        filterSequential(arr, elem => chain(
-          executeFunction(fn, [elem], contextStack, sourceCodeInfo),
-          result => !result,
-        )),
-        filtered => typeof input === 'string' ? filtered.join('') : filtered,
-      )
-    },
+    evaluate: () => { throw new Error('remove: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -387,23 +318,7 @@ l`,
   },
 
   'split-with': {
-    evaluate: ([seq, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Seq> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertSeq(seq, sourceCodeInfo)
-      const seqIsArray = Array.isArray(seq)
-      const arr = seqIsArray ? seq : seq.split('')
-      return chain(
-        findIndexSequential(arr, elem => chain(
-          executeFunction(fn, [elem], contextStack, sourceCodeInfo),
-          result => !result,
-        )),
-        (index) => {
-          if (index === -1)
-            return [seq, seqIsArray ? [] : '']
-          return [seq.slice(0, index), seq.slice(index)]
-        },
-      )
-    },
+    evaluate: () => { throw new Error('split-with: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -457,22 +372,7 @@ l`,
   },
 
   'group-by': {
-    evaluate: ([seq, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Obj> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertSeq(seq, sourceCodeInfo)
-      const arr = Array.isArray(seq) ? seq : seq.split('')
-
-      return reduceSequential(arr, (result: Obj, val) => {
-        return chain(executeFunction(fn, [val], contextStack, sourceCodeInfo), (key) => {
-          assertString(key, sourceCodeInfo)
-          if (!collHasKey(result, key))
-            result[key] = []
-
-          ;(result[key] as Arr).push(val)
-          return result
-        })
-      }, {})
-    },
+    evaluate: () => { throw new Error('group-by: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -580,27 +480,7 @@ l`,
   },
 
   'partition-by': {
-    evaluate: ([seq, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Seq> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertSeq(seq, sourceCodeInfo)
-      const isStringSeq = typeof seq === 'string'
-      const arr = isStringSeq ? seq.split('') : seq
-
-      type Acc = { result: Arr, oldValue: unknown }
-      return chain(
-        reduceSequential(arr, (acc: Acc, elem) => {
-          return chain(executeFunction(fn, [elem], contextStack, sourceCodeInfo), (value) => {
-            if (value !== acc.oldValue) {
-              acc.result.push([])
-              acc.oldValue = value
-            }
-            ;(acc.result[acc.result.length - 1] as Arr).push(elem)
-            return acc
-          })
-        }, { result: [], oldValue: undefined as unknown }),
-        ({ result }) => isStringSeq ? result.map(elem => (elem as Arr).join('')) : result,
-      )
-    },
+    evaluate: () => { throw new Error('partition-by: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
