@@ -6,7 +6,7 @@ Dvala provides `for` comprehensions for building arrays, `doseq` for side effect
 
 `for` iterates over a collection and returns a new array:
 
-```
+```dvala
 for (x in [1, 2, 3, 4]) -> x * 2
 ```
 
@@ -14,7 +14,7 @@ for (x in [1, 2, 3, 4]) -> x * 2
 
 Use `when` to skip elements that don't match a condition:
 
-```
+```dvala
 for (x in range(10) when odd?(x)) -> x * x
 ```
 
@@ -22,7 +22,7 @@ for (x in range(10) when odd?(x)) -> x * x
 
 `while` stops the iteration entirely when the condition becomes false:
 
-```
+```dvala
 for (x in range(100) while x < 5) -> x * 10
 ```
 
@@ -30,7 +30,7 @@ for (x in range(100) while x < 5) -> x * 10
 
 Bind intermediate values inside the comprehension:
 
-```
+```dvala
 for (x in [1, 2, 3] let sq = x * x) -> sq + 1
 ```
 
@@ -38,7 +38,7 @@ for (x in [1, 2, 3] let sq = x * x) -> sq + 1
 
 Multiple bindings produce a cartesian product:
 
-```
+```dvala
 for (i in [1, 2], j in [10, 20]) -> i + j
 ```
 
@@ -46,7 +46,7 @@ for (i in [1, 2], j in [10, 20]) -> i + j
 
 Combine `let`, `when`, and `while` for powerful queries:
 
-```
+```dvala
 for (
   i in range(10)
   let sq = i ^ 2
@@ -59,7 +59,7 @@ for (
 
 `loop` sets up initial bindings, and `recur` jumps back to the top with new values. This is tail-recursive and efficient:
 
-```
+```dvala
 loop (n = 5, acc = 1) ->
   if n <= 1 then
     acc
@@ -72,7 +72,7 @@ loop (n = 5, acc = 1) ->
 
 Inside a lambda, `self` refers to the enclosing function:
 
-```
+```dvala
 let fib = n ->
   if n <= 1 then
     n
@@ -86,6 +86,6 @@ fib(10)
 
 `doseq` iterates for side effects and returns `null`:
 
-```
+```dvala
 doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.println), x)
 ```

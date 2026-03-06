@@ -8,7 +8,7 @@ Dvala provides two structured concurrency primitives: `parallel` and `race`. Bot
 
 Since `parallel` and `race` require async mode and external effect handlers, the examples in this tutorial are shown but not executed. The concepts can be understood through local effect handlers:
 
-```
+```dvala
 do
   let a = perform(effect(my.val), 10);
   let b = perform(effect(my.val), 20);
@@ -22,7 +22,7 @@ end
 
 `parallel` evaluates multiple expressions concurrently and returns an array of all results in order:
 
-```no-run
+```dvala no-run
 // Each branch runs concurrently
 parallel(
   perform(effect(fetch.user), "alice"),
@@ -42,7 +42,7 @@ Key properties:
 
 `race` evaluates multiple expressions concurrently and returns the **first** one to complete. Losing branches are cancelled via `AbortSignal`:
 
-```no-run
+```dvala no-run
 // First response wins — others are cancelled
 race(
   perform(effect(api.primary), query),
@@ -60,7 +60,7 @@ Key properties:
 
 `parallel` and `race` are most useful with effects, since effects can be asynchronous. A synchronous expression completes immediately, so concurrency only matters when branches perform I/O or other async operations:
 
-```no-run
+```dvala no-run
 // Fetch user data and preferences concurrently
 let [user, prefs] = parallel(
   perform(effect(db.get-user), id),
@@ -78,7 +78,7 @@ When a `parallel` branch suspends (via the effect system's suspend mechanism), t
 
 Process multiple items concurrently, then combine:
 
-```no-run
+```dvala no-run
 // Process all items concurrently
 let results = parallel(
   perform(effect(process.item), items(0)),
@@ -92,7 +92,7 @@ reduce(results, +, 0)
 
 Race a computation against a timer:
 
-```no-run
+```dvala no-run
 // Either get the result or time out
 race(
   perform(effect(compute.heavy), data),
@@ -107,7 +107,7 @@ race(
 
 Try the preferred source first, fall back on failure:
 
-```no-run
+```dvala no-run
 // Fastest successful response wins
 race(
   perform(effect(cache.get), key),

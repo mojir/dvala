@@ -4,7 +4,7 @@
 
 In programming language theory, a **continuation** represents "the rest of the computation" — everything that remains to be done after the current expression evaluates. When you write:
 
-```
+```dvala
 let x = 2 + 3;
 x * 10
 ```
@@ -36,7 +36,7 @@ Suspension is triggered by a **host handler** calling `suspend()`. The Dvala pro
 
 The Dvala program calls `perform` with a custom effect. From the program's perspective, this is just a function call that will eventually return a value:
 
-```no-run
+```dvala no-run
 let decision = perform(effect(human.approve), "Q4 Report");
 if decision then "Approved" else "Rejected" end
 ```
@@ -177,7 +177,7 @@ Traditional approach: orchestration frameworks (LangChain, Temporal, Step Functi
 
 With Dvala: the agent workflow is just a program:
 
-```no-run
+```dvala no-run
 let report = perform(effect(llm.complete), "Generate Q4 report");
 let decision = perform(effect(human.approve), report);
 if decision.approved then

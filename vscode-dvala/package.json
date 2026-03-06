@@ -27,6 +27,10 @@
         "extensions": [
           ".dvala"
         ],
+        "icon": {
+          "light": "./images/dvala-icon.png",
+          "dark": "./images/dvala-icon.png"
+        },
         "configuration": "./language-configuration.json"
       }
     ],
@@ -35,6 +39,14 @@
         "language": "dvala",
         "scopeName": "source.dvala",
         "path": "./syntaxes/dvala.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.dvala.codeblock",
+        "path": "./syntaxes/dvala.markdown.json",
+        "injectTo": ["text.html.markdown"],
+        "embeddedLanguages": {
+          "meta.embedded.block.dvala": "dvala"
+        }
       }
     ],
     "commands": [
@@ -46,6 +58,11 @@
       {
         "command": "dvala.runSelection",
         "title": "Run Dvala Selection"
+      },
+      {
+        "command": "dvala.runBlock",
+        "title": "Run Dvala Block",
+        "icon": "$(play)"
       }
     ],
     "menus": {
@@ -53,6 +70,11 @@
         {
           "command": "dvala.runFile",
           "when": "resourceLangId == dvala",
+          "group": "navigation"
+        },
+        {
+          "command": "dvala.runBlock",
+          "when": "resourceLangId == markdown",
           "group": "navigation"
         }
       ],
@@ -66,15 +88,49 @@
           "command": "dvala.runSelection",
           "when": "resourceLangId == dvala && editorHasSelection",
           "group": "dvala@2"
+        },
+        {
+          "command": "dvala.runBlock",
+          "when": "resourceLangId == markdown",
+          "group": "dvala@1"
+        },
+        {
+          "command": "dvala.runSelection",
+          "when": "resourceLangId == markdown && editorHasSelection",
+          "group": "dvala@2"
         }
       ]
     },
+    "snippets": [
+      {
+        "language": "dvala",
+        "path": "./snippets/dvala.json"
+      }
+    ],
     "keybindings": [
+      {
+        "command": "dvala.runSelection",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "resourceLangId == dvala && editorHasSelection"
+      },
+      {
+        "command": "dvala.runSelection",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "resourceLangId == markdown && editorHasSelection"
+      },
       {
         "command": "dvala.runFile",
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
-        "when": "resourceLangId == dvala"
+        "when": "resourceLangId == dvala && !editorHasSelection"
+      },
+      {
+        "command": "dvala.runBlock",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "resourceLangId == markdown && !editorHasSelection"
       }
     ]
   },

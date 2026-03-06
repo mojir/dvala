@@ -6,15 +6,15 @@ Dvala has a rich set of operators. A unique feature is that operators and functi
 
 The standard math operators, with whitespace required:
 
-```
+```dvala
 2 + 3 * 4
 ```
 
-```
+```dvala
 2 ^ 10
 ```
 
-```
+```dvala
 17 % 5
 ```
 
@@ -22,15 +22,15 @@ The standard math operators, with whitespace required:
 
 Comparison operators use structural equality (`==`), not reference equality:
 
-```
+```dvala
 3 > 2
 ```
 
-```
+```dvala
 [1, 2] == [1, 2]
 ```
 
-```
+```dvala
 1 != 2
 ```
 
@@ -38,11 +38,11 @@ Comparison operators use structural equality (`==`), not reference equality:
 
 Use `++` to concatenate strings and sequences:
 
-```
+```dvala
 "Hello" ++ ", " ++ "World!"
 ```
 
-```
+```dvala
 [1, 2] ++ [3, 4]
 ```
 
@@ -50,15 +50,15 @@ Use `++` to concatenate strings and sequences:
 
 `&&` and `||` are short-circuit. `??` is the nullish coalescing operator:
 
-```
+```dvala
 true && "yes"
 ```
 
-```
+```dvala
 false || "fallback"
 ```
 
-```
+```dvala
 null ?? "default"
 ```
 
@@ -66,15 +66,15 @@ null ?? "default"
 
 Every operator can be called in function (prefix) form. Some are variadic:
 
-```
+```dvala
 +(1, 2, 3, 4, 5)
 ```
 
-```
+```dvala
 *(2, 3, 4)
 ```
 
-```
+```dvala
 <(1, 2, 3, 4)
 ```
 
@@ -82,11 +82,11 @@ Every operator can be called in function (prefix) form. Some are variadic:
 
 Any two-argument function can be used as an infix operator:
 
-```
+```dvala
 5 max 10
 ```
 
-```
+```dvala
 [1, 2, 3, 4] filter odd?
 ```
 
@@ -94,12 +94,12 @@ Any two-argument function can be used as an infix operator:
 
 Use `_` as a placeholder to create partially applied functions from operators:
 
-```
+```dvala
 let add5 = +(5, _);
 add5(10)
 ```
 
-```
+```dvala
 let half = /(_, 2);
 half(20)
 ```
@@ -108,7 +108,7 @@ half(20)
 
 The ternary `? :` works as you would expect:
 
-```
+```dvala
 let age = 25;
 age >= 18 ? "adult" : "minor"
 ```

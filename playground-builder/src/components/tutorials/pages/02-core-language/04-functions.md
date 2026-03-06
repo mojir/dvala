@@ -6,7 +6,7 @@ Functions are first-class values in Dvala. You can define them, pass them around
 
 Define functions with the arrow (`->`) syntax. For a single parameter, parentheses are optional:
 
-```
+```dvala
 let double = x -> x * 2;
 double(21)
 ```
@@ -15,7 +15,7 @@ double(21)
 
 Wrap multiple parameters in parentheses:
 
-```
+```dvala
 let add = (a, b) -> a + b;
 add(3, 4)
 ```
@@ -24,7 +24,7 @@ add(3, 4)
 
 Use empty parentheses for functions that take no arguments:
 
-```
+```dvala
 let greet = () -> "Hello!";
 greet()
 ```
@@ -33,7 +33,7 @@ greet()
 
 Parameters can have default values:
 
-```
+```dvala
 let greet = (name = "World") -> "Hello, " ++ name;
 greet()
 ```
@@ -42,7 +42,7 @@ greet()
 
 Collect remaining arguments with the rest (`...`) syntax:
 
-```
+```dvala
 let sum-all = (...nums) -> reduce(nums, +, 0);
 sum-all(1, 2, 3, 4, 5)
 ```
@@ -51,11 +51,11 @@ sum-all(1, 2, 3, 4, 5)
 
 For quick one-liners, use `->` with `$` (or `$1`, `$2`, …) for positional arguments:
 
-```
+```dvala
 map([1, 2, 3], -> $ * $)
 ```
 
-```
+```dvala
 map([1, 2, 3, 4], -> $1 + 10)
 ```
 
@@ -63,7 +63,7 @@ map([1, 2, 3, 4], -> $1 + 10)
 
 A lambda can call itself using `self`:
 
-```
+```dvala
 let factorial = n ->
   if n <= 1 then
     1
@@ -77,7 +77,7 @@ factorial(6)
 
 `comp` composes functions right-to-left — the rightmost runs first:
 
-```
+```dvala
 (comp str inc)(41)
 ```
 
@@ -85,7 +85,7 @@ factorial(6)
 
 Functions can be passed as arguments. This is the heart of functional programming:
 
-```
+```dvala
 let double = x -> x * 2;
 map([1, 2, 3, 4], double)
 ```
@@ -94,6 +94,6 @@ map([1, 2, 3, 4], double)
 
 Call a function with an array of arguments using `apply`:
 
-```
+```dvala
 apply(+, [1, 2, 3, 4, 5])
 ```

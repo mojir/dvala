@@ -10,7 +10,7 @@ Dvala is built on immutability. There is no assignment operator, no mutation, an
 
 In Dvala, once a name is bound to a value, it cannot be changed. There is no `=` reassignment and no mutation operators:
 
-```
+```dvala
 let x = 42;
 let y = x + 1;
 [x, y]
@@ -22,7 +22,7 @@ let y = x + 1;
 
 You can use `let` to create a **new** binding with the same name in a nested scope. This shadows the old binding — it does not modify it:
 
-```
+```dvala
 let x = 10;
 do
   let x = x + 5;
@@ -32,7 +32,7 @@ end
 
 The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new binding — it does not modify the original. Functions that captured the original `x` still see 10:
 
-```
+```dvala
 let x = 10;
 let get-x = () -> x;
 do
@@ -45,7 +45,7 @@ end
 
 Arrays and objects are immutable. Operations that seem to "modify" them actually return new values:
 
-```
+```dvala
 let original = [1, 2, 3];
 let extended = push(original, 4);
 [original, extended]
@@ -53,7 +53,7 @@ let extended = push(original, 4);
 
 The original array is unchanged. `push` returns a new array.
 
-```
+```dvala
 let person = { name: "Alice", age: 30 };
 let older = assoc(person, "age", 31);
 [person, older]
@@ -65,7 +65,7 @@ let older = assoc(person, "age", 31);
 
 Because values never change, any expression can be replaced by its result without affecting the program:
 
-```
+```dvala
 // These are identical — f(3) can be computed once and reused
 let f = x -> x * x + 1;
 let a = f(3);
@@ -79,7 +79,7 @@ This property — **referential transparency** — means you can reason about co
 
 Dvala programs transform data through **pipelines** of pure functions. Each step takes input and produces new output:
 
-```
+```dvala
 [1, 2, 3, 4, 5, 6, 7, 8]
   |> filter(_, even?)
   |> map(_, -> $ * $)
@@ -92,12 +92,12 @@ No data was mutated. Each operation produced a fresh value.
 
 Where imperative code would use a mutable accumulator, Dvala uses `reduce` or `loop/recur`:
 
-```
+```dvala
 // Sum of squares using reduce
 reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0)
 ```
 
-```
+```dvala
 // Factorial using loop/recur
 loop (n = 6, acc = 1) ->
   if n <= 1 then acc
@@ -111,7 +111,7 @@ Each iteration creates new bindings rather than modifying existing ones.
 
 Object operations always return new objects:
 
-```
+```dvala
 let config = { host: "localhost", port: 8080 };
 let updated = config
   |> assoc(_, "port", 3000)

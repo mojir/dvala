@@ -116,7 +116,7 @@ $ dvala run script.dvala
 
 You don't need to install anything to start learning. This playground runs Dvala directly in your browser. Try it:
 
-```
+```dvala
 let greet = name -> str("Hello, ", name, "!");
 greet("World")
 ```

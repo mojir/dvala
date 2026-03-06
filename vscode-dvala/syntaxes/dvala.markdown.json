@@ -1,0 +1,23 @@
+{
+  "fileTypes": [],
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [
+    {
+      "begin": "(^|\\G)(\\s*)(```+|~~~+)(\\s*)(dvala)(\\s.*)?$",
+      "beginCaptures": {
+        "3": { "name": "punctuation.definition.fenced.markdown" },
+        "5": { "name": "fenced_code.block.language" }
+      },
+      "end": "(^|\\G)(\\2)(\\3)\\s*$",
+      "endCaptures": {
+        "3": { "name": "punctuation.definition.fenced.markdown" }
+      },
+      "name": "markup.fenced_code.block.markdown",
+      "contentName": "meta.embedded.block.dvala",
+      "patterns": [
+        { "include": "source.dvala" }
+      ]
+    }
+  ],
+  "scopeName": "markdown.dvala.codeblock"
+}

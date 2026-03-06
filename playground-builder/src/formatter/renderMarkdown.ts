@@ -86,11 +86,15 @@ export function parseMarkdownBlocks(markdown: string): Block[] {
     // Fenced code block
     if (line.startsWith('```')) {
       flushParagraph()
-      const optionStr = line.slice(3).trim()
+      const infoStr = line.slice(3).trim()
       const foreignLanguages = ['sh', 'javascript', 'typescript', 'json', 'html', 'css']
-      const isMermaid = optionStr === 'mermaid'
-      const isForeignCode = foreignLanguages.includes(optionStr)
-      const options = (isMermaid || isForeignCode) ? [] : (optionStr ? optionStr.split(',') : [])
+      const isMermaid = infoStr === 'mermaid'
+      const isForeignCode = foreignLanguages.includes(infoStr)
+      const isDvala = infoStr === 'dvala' || infoStr.startsWith('dvala ')
+      if (!isMermaid && !isForeignCode && !isDvala) {
+        throw new Error(`Naked or unknown code block at line ${i + 1}: expected a language tag (e.g. \`\`\`dvala). Got: "${infoStr || '(empty)'}"`)
+      }
+      const options = isDvala ? infoStr.slice('dvala'.length).trim().split(/[\s,]+/).filter(Boolean) : []
       i++
       const codeLines: string[] = []
       while (i < lines.length && lines[i]!.trim() !== '```') {
@@ -103,7 +107,7 @@ export function parseMarkdownBlocks(markdown: string): Block[] {
         blocks.push({ type: 'mermaid', code: codeLines.join('\n') })
       }
       else if (isForeignCode) {
-        blocks.push({ type: 'foreignCode', language: optionStr, code: codeLines.join('\n') })
+        blocks.push({ type: 'foreignCode', language: infoStr, code: codeLines.join('\n') })
       }
       else {
         blocks.push({ type: 'code', code: codeLines.join('\n'), options })

@@ -10,12 +10,12 @@ Dvala inherits this split. Every expression is either **normal** or **special**,
 
 A normal expression evaluates **all** its arguments before executing. This is the standard calling convention — predictable and simple:
 
-```
+```dvala
 // + is normal: both 3 and 4 are evaluated, then added
 3 + 4
 ```
 
-```
+```dvala
 // map is normal: evaluates the array and the function, then applies
 map([1, 2, 3], inc)
 ```
@@ -30,7 +30,7 @@ A special expression controls **when** and **whether** each argument is evaluate
 
 `if` evaluates the condition, then evaluates **only** the matching branch:
 
-```
+```dvala
 if true then
   "this runs"
 else
@@ -44,13 +44,13 @@ If `if` were a normal expression, both branches would be evaluated before the de
 
 `&&` stops at the first falsy value. `||` stops at the first truthy value:
 
-```
+```dvala
 false && (1 / 0)
 ```
 
 The division never happens because `&&` short-circuits on `false`.
 
-```
+```dvala
 42 || (1 / 0)
 ```
 
@@ -60,7 +60,7 @@ Similarly, `||` returns 42 without evaluating the second operand.
 
 `let` binds names to values in sequence. Each binding is available to subsequent ones:
 
-```
+```dvala
 let x = 10;
 let y = x + 5;
 y * 2
@@ -72,7 +72,7 @@ This requires special evaluation: `let` must bind `x` before evaluating `x + 5`.
 
 `cond` evaluates conditions top-to-bottom, stopping at the first true one:
 
-```
+```dvala
 let temp = 25;
 cond
   case temp < 0 then "freezing"
@@ -86,7 +86,7 @@ end
 
 `loop` creates bindings and `recur` jumps back with new values. Both are special because `recur` must be recognized at the tail position:
 
-```
+```dvala
 loop (i = 0, total = 0) ->
   if i > 4 then
     total
@@ -99,7 +99,7 @@ loop (i = 0, total = 0) ->
 
 `match` compares a value against patterns without evaluating all branches:
 
-```
+```dvala
 match [1, 2, 3]
   case [a] then "one"
   case [a, b] then "two"
@@ -111,7 +111,7 @@ end
 
 `for` creates a new array from a comprehension. `doseq` iterates for side effects:
 
-```
+```dvala
 for (x in [1, 2, 3] when x > 1) -> x * 10
 ```
 
@@ -119,7 +119,7 @@ for (x in [1, 2, 3] when x > 1) -> x * 10
 
 `effect` creates an effect reference. `perform` invokes it:
 
-```
+```dvala
 let e = effect(my.double);
 do
   perform(e, 21)
@@ -132,7 +132,7 @@ end
 
 `do...end` groups expressions and evaluates them in order, returning the last:
 
-```
+```dvala
 do
   let a = 1;
   let b = 2;

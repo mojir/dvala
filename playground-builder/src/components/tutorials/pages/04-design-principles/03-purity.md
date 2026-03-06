@@ -10,7 +10,7 @@ Dvala takes a different approach: **runtime enforcement**. The result is practic
 
 Dvala can enforce purity at runtime. When you run code in **pure mode**, any call to a function with effects throws an error:
 
-```no-run
+```dvala no-run
 // In pure mode, performing an effect throws:
 // "Cannot perform effect 'dvala.io.println' in pure mode"
 perform(effect(dvala.io.println), "Hello, anybody out there?")
@@ -22,7 +22,7 @@ An impure program is easy to identify, it is a program that does `perform`. E.g.
 
 Instead of calling impure functions directly, Dvala programs **perform effects** — pure descriptions of side effects that are handled externally:
 
-```
+```dvala
 perform(effect(dvala.io.println), "This is a pure description of a side effect")
 ```
 
@@ -32,7 +32,7 @@ An effect call is pure in the sense that it describes **what** should happen wit
 
 Pure functions have powerful properties:
 
-```
+```dvala
 // Referential transparency: f(x) always returns the same result for the same x
 let f = x -> x * 2 + 1;
 [f(3), f(3), f(3)]
@@ -49,7 +49,7 @@ Because `f` is pure, every call with the same argument produces the same result.
 
 Higher-order functions preserve purity. When you pass a pure function to `map`, the entire pipeline remains pure:
 
-```
+```dvala
 let transform = (xs) ->
   xs
   |> filter(_, even?)
@@ -62,7 +62,7 @@ transform([1, 2, 3, 4, 5, 6])
 
 Pure mode only blocks impure calls that actually execute. Unreachable code is fine:
 
-```
+```dvala
 // This works in pure mode — the effect branch never runs
 if false then
   perform(effect(dvala.io.println), "never happens")
@@ -75,7 +75,7 @@ end
 
 When using Dvala's bundler, file modules are **always** evaluated in pure mode. This ensures that importing a module never causes side effects — a deliberate design choice that makes the module system predictable:
 
-```no-run
+```dvala no-run
 // File modules can define impure functions, but cannot call them
 // This would be valid in a file module:
 { greet: (name) -> "hello " ++ name }

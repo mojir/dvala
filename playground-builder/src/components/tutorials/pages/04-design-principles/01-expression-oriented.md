@@ -10,14 +10,14 @@ Dvala is purely expression-oriented. Every construct — without exception — e
 
 In statement-oriented languages, `if` controls flow. In Dvala, `if` **is** a value:
 
-```
+```dvala
 let status = if 10 > 5 then "big" else "small" end;
 status
 ```
 
 No need for a separate ternary operator (though Dvala has one for convenience):
 
-```
+```dvala
 let x = 7;
 x > 0 ? "positive" : "non-positive"
 ```
@@ -26,7 +26,7 @@ x > 0 ? "positive" : "non-positive"
 
 A `do...end` block is an expression whose value is its last sub-expression:
 
-```
+```dvala
 let result = do
   let a = 10;
   let b = 20;
@@ -41,7 +41,7 @@ This eliminates the need for explicit `return` statements. The value flows natur
 
 Pattern matching produces a value directly:
 
-```
+```dvala
 let describe = (n) ->
   match n % 2
     case 0 then "even"
@@ -54,7 +54,7 @@ describe(7)
 
 Multi-branch conditionals are also expressions:
 
-```
+```dvala
 let grade = (score) ->
   cond
     case score >= 90 then "A"
@@ -69,7 +69,7 @@ grade(85)
 
 Even iteration produces a value — the body's value when `recur` is not called:
 
-```
+```dvala
 let gcd = (a, b) ->
   loop (x = a, y = b) ->
     if y == 0 then x
@@ -82,7 +82,7 @@ gcd(48, 18)
 
 Comprehensions are expressions that produce arrays:
 
-```
+```dvala
 let squares = for (x in range(6)) -> x * x;
 squares
 ```
@@ -91,7 +91,7 @@ squares
 
 Even `do...with` error handling returns a value:
 
-```
+```dvala
 let safe-sqrt = (x) ->
   do
     sqrt(x)
@@ -113,14 +113,14 @@ In Dvala:
 
 Because everything is an expression, constructs compose freely. You can nest any expression inside any other:
 
-```
+```dvala
 map(
   [1, 2, 3, 4, 5],
   x -> if odd?(x) then x * x else x end
 )
 ```
 
-```
+```dvala
 let classify = (xs) ->
   for (x in xs) ->
     cond
