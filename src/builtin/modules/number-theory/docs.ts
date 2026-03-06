@@ -179,7 +179,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'number-theory',
     description: 'Generates the nth term of the arithmetic sequence.',
     returns: {
-      type: 'integer',
+      type: 'number',
     },
     args: {
       start: {
@@ -1078,7 +1078,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'number-theory',
     description: 'Generates the nth term of the geometric sequence.',
     returns: {
-      type: 'integer',
+      type: 'number',
     },
     args: {
       start: {
@@ -4126,8 +4126,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'number-theory',
     description: 'Returns a tuple of the base and exponent if the number is a perfect power, otherwise returns null.',
     returns: {
-      type: 'array',
-      array: true,
+      type: ['array', 'null'],
     },
     args: {
       n: {

@@ -236,6 +236,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using min-max normalization. The result is a vector with values between 0 and 1.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -264,6 +265,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using z-score normalization. The result is a vector with mean 0 and standard deviation 1.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -292,6 +294,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using robust normalization. The result is a vector with median 0 and median absolute deviation 1.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -320,6 +323,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using L1 normalization. The result is a vector with L1 norm equal to 1.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -348,6 +352,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using L2 normalization. The result is a vector with L2 norm equal to 1.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -377,6 +382,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Normalizes the vector using natural log normalization. The result is a vector with log-transformed values.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       v: {
@@ -1005,7 +1011,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'linear-algebra',
     description: 'Calculates the **autocorrelation** of a vector. The result is a vector of autocorrelation coefficients.',
     returns: {
-      type: 'vector',
+      type: 'number',
     },
     args: {
       a: {
@@ -1038,7 +1044,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'linear-algebra',
     description: 'Calculates the **cross-correlation** between two vectors. The result is a vector of cross-correlation coefficients.',
     returns: {
-      type: 'vector',
+      type: 'number',
     },
     args: {
       a: {

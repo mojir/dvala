@@ -501,7 +501,7 @@ cu.reductions(
     arity: toFixedArity(1),
     docs: {
       category: 'collection',
-      returns: { type: 'boolean' },
+      returns: { type: 'any' },
       args: {
         coll: { type: ['collection', 'null'] },
       },

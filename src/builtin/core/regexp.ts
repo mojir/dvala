@@ -66,7 +66,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
     docs: {
       category: 'regular-expression',
-      returns: { type: 'any', array: true },
+      returns: { type: 'any' },
       args: {
         a: { type: 'regexp' },
         b: { type: 'string' },
@@ -98,7 +98,7 @@ If $b is a string and matches the regular expression, a \`re-match\`-array is re
     arity: toFixedArity(3),
     docs: {
       category: 'regular-expression',
-      returns: { type: 'any', array: true },
+      returns: { type: 'string' },
       args: {
         a: { type: 'string' },
         b: { type: ['regexp', 'string'] },
@@ -128,7 +128,7 @@ If $b is a string and matches the regular expression, a \`re-match\`-array is re
     arity: toFixedArity(3),
     docs: {
       category: 'regular-expression',
-      returns: { type: 'any', array: true },
+      returns: { type: 'string' },
       args: {
         a: { type: 'string' },
         b: { type: ['regexp', 'string'] },

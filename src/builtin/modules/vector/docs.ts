@@ -1252,7 +1252,8 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'vector',
     description: 'Calculates the **running interquartile range** of a `vector`. First three element in result is `null` since **running interquartile range** is not defined for less than four elements.',
     returns: {
-      type: 'vector',
+      type: 'number',
+      array: true,
     },
     args: {
       vector: {
@@ -2593,7 +2594,8 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'vector',
     description: 'Calculates the **centered moving root mean square** of a `vector` with a given window size and padding value.',
     returns: {
-      type: 'vector',
+      type: 'number',
+      array: true,
     },
     args: {
       vector: {
@@ -3181,7 +3183,8 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     category: 'vector',
     description: 'Calculates the **centered moving entropy** of a `vector` with a given window size.',
     returns: {
-      type: 'vector',
+      type: 'number',
+      array: true,
     },
     args: {
       vector: {
@@ -3447,6 +3450,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     description: 'Returns the mode of all elements in the vector.',
     returns: {
       type: 'number',
+      array: true,
     },
     args: {
       vector: {
