@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { Dvala } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
 import { normalExpressions } from '../src/builtin/normalExpressions'
-import type { FunctionDocs, TypedValue } from '../src/builtin/interface'
+import type { TypedValue } from '../src/builtin/interface'
 import '../src/initReferenceData'
 
 const dvala = new Dvala({ modules: allBuiltinModules })
@@ -22,23 +22,23 @@ const dvala = new Dvala({ modules: allBuiltinModules })
 // DataType → Dvala predicate name mapping
 // ---------------------------------------------------------------------------
 const typeToCheck: Record<string, string | null> = {
-  'number': 'number?',
-  'string': 'string?',
-  'boolean': 'boolean?',
-  'array': 'array?',
-  'object': 'object?',
-  'function': 'function?',
-  'null': 'null?',
-  'integer': 'integer?',
-  'regexp': 'regexp?',
-  'collection': 'collection?',
-  'sequence': 'sequence?',
-  'vector': 'vector?',
-  'matrix': 'matrix?',
-  'grid': 'grid?',
-  'effect': 'effect?',
-  'any': null, // anything is valid
-  'never': null, // should throw, not return
+  number: 'number?',
+  string: 'string?',
+  boolean: 'boolean?',
+  array: 'array?',
+  object: 'object?',
+  function: 'function?',
+  null: 'null?',
+  integer: 'integer?',
+  regexp: 'regexp?',
+  collection: 'collection?',
+  sequence: 'sequence?',
+  vector: 'vector?',
+  matrix: 'matrix?',
+  grid: 'grid?',
+  effect: 'effect?',
+  any: null, // anything is valid
+  never: null, // should throw, not return
 }
 
 /**
@@ -56,7 +56,8 @@ function generateTypeCheck(varName: string, returnType: TypedValue): string | nu
 
   const types = Array.isArray(returnType.type) ? returnType.type : [returnType.type]
   const checks = types.map(t => typeToCheck[t]).filter((c): c is string => c !== null)
-  if (checks.length === 0) return null
+  if (checks.length === 0)
+    return null
   return checks.map(c => `${c}(${varName})`).join(' || ')
 }
 
@@ -82,20 +83,23 @@ function callExpr(name: string, args: string): string {
 // Expressions that need special handling
 // ---------------------------------------------------------------------------
 
-/** Expressions to skip for arity tests (e.g. they have side effects,
- *  require specific runtime context, or can't be called in function form) */
+/**
+ * Expressions to skip for arity tests (e.g. they have side effects,
+ *  require specific runtime context, or can't be called in function form)
+ */
 const skipArityTests = new Set([
-  'assert',       // throws by design on falsy
-  'write!',       // side effect
-  'inst-ms!',     // side effect (timestamps)
-  'uuid!',        // side effect
-  'rand!',        // side effect
-  'rand-int!',    // side effect
-  'boolean',      // conflicts with reserved word handling
-  'number',       // conflicts with reserved word handling
+  'assert', // throws by design on falsy
+  'write!', // side effect
+  'inst-ms!', // side effect (timestamps)
+  'uuid!', // side effect
+  'rand!', // side effect
+  'rand-int!', // side effect
+  'boolean', // conflicts with reserved word handling
+  'number', // conflicts with reserved word handling
 ])
 
-/** Expressions to skip for return-type injection on examples.
+/**
+ * Expressions to skip for return-type injection on examples.
  *  Reasons:
  *  - "usage demo": examples call the returned function, so the result
  *    doesn't match the declared return type (function)
@@ -103,7 +107,7 @@ const skipArityTests = new Set([
  *    whose last expression isn't the assertion's null return
  */
 const skipReturnTypeExamples = new Set([
-  'assert',       // examples intentionally show error handling
+  'assert', // examples intentionally show error handling
 
   // Functions that return functions — examples demonstrate USAGE (calling
   // the returned function) so the result is not a function.
@@ -112,23 +116,48 @@ const skipReturnTypeExamples = new Set([
   'effect-matcher',
 ])
 
-/** Module expressions to skip for return-type injection.
+/**
+ * Module expressions to skip for return-type injection.
  *  Key: module name, Value: set of function names to skip.
  */
 const skipModuleReturnTypeExamples: Record<string, Set<string>> = {
   // Assertion examples are complete test programs, last expr isn't null
-  'assertion': new Set([
-    'assert=', 'assert!=', 'assert-gt', 'assert-gte', 'assert-lt', 'assert-lte',
-    'assert-true', 'assert-false', 'assert-truthy', 'assert-falsy',
-    'assert-null', 'assert-throws', 'assert-throws-error', 'assert-not-throws',
-    'assert-array', 'assert-boolean', 'assert-collection', 'assert-function',
-    'assert-grid', 'assert-integer', 'assert-matrix', 'assert-number',
-    'assert-object', 'assert-regexp', 'assert-sequence', 'assert-string',
+  assertion: new Set([
+    'assert=',
+    'assert!=',
+    'assert-gt',
+    'assert-gte',
+    'assert-lt',
+    'assert-lte',
+    'assert-true',
+    'assert-false',
+    'assert-truthy',
+    'assert-falsy',
+    'assert-null',
+    'assert-throws',
+    'assert-throws-error',
+    'assert-not-throws',
+    'assert-array',
+    'assert-boolean',
+    'assert-collection',
+    'assert-function',
+    'assert-grid',
+    'assert-integer',
+    'assert-matrix',
+    'assert-number',
+    'assert-object',
+    'assert-regexp',
+    'assert-sequence',
+    'assert-string',
     'assert-vector',
   ]),
   // Examples call the returned function to demonstrate usage
-  'functional': new Set([
-    'complement', 'every-pred', 'some-pred', 'fnull', 'juxt',
+  functional: new Set([
+    'complement',
+    'every-pred',
+    'some-pred',
+    'fnull',
+    'juxt',
   ]),
 }
 
@@ -138,8 +167,8 @@ const skipModuleReturnTypeExamples: Record<string, Set<string>> = {
  * overloads) that don't match the primary declared return type.
  */
 const skipCoreExampleIndices: Record<string, Set<number>> = {
-  'inc': new Set([3, 4]),   // vector/matrix element-wise demos
-  'dec': new Set([3, 4]),   // vector/matrix element-wise demos
+  inc: new Set([3, 4]), // vector/matrix element-wise demos
+  dec: new Set([3, 4]), // vector/matrix element-wise demos
 }
 
 /**
@@ -147,7 +176,7 @@ const skipCoreExampleIndices: Record<string, Set<number>> = {
  * Key: "moduleName.fnName", Value: set of 0-based indices.
  */
 const skipModuleExampleIndices: Record<string, Set<number>> = {
-  'math.asin': new Set([3, 4]),     // vector/matrix demos
+  'math.asin': new Set([3, 4]), // vector/matrix demos
   'math.acos': new Set([3, 4]),
   'math.atan': new Set([3, 4]),
   'math.sin': new Set([3, 4]),
@@ -169,19 +198,22 @@ const skipModuleExampleIndices: Record<string, Set<number>> = {
 // =========================================================================
 describe('auto: arity enforcement (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (skipArityTests.has(name)) continue
+    if (skipArityTests.has(name))
+      continue
     const { arity } = expr
 
     if (arity.min !== undefined && arity.min > 0) {
-      it(`${name}: rejects ${arity.min - 1} args (min ${arity.min})`, () => {
-        const code = callExpr(name, dummyArgs(arity.min - 1))
+      const min = arity.min
+      it(`${name}: rejects ${min - 1} args (min ${min})`, () => {
+        const code = callExpr(name, dummyArgs(min - 1))
         expect(() => dvala.run(code)).toThrow()
       })
     }
 
     if (arity.max !== undefined) {
-      it(`${name}: rejects ${arity.max + 1} args (max ${arity.max})`, () => {
-        const code = callExpr(name, dummyArgs(arity.max + 1))
+      const max = arity.max
+      it(`${name}: rejects ${max + 1} args (max ${max})`, () => {
+        const code = callExpr(name, dummyArgs(max + 1))
         expect(() => dvala.run(code)).toThrow()
       })
     }
@@ -193,15 +225,19 @@ describe('auto: arity enforcement (core)', () => {
 // =========================================================================
 describe('auto: return type on examples (core)', () => {
   for (const [name, expr] of Object.entries(normalExpressions)) {
-    if (!expr.docs) continue
-    if (skipReturnTypeExamples.has(name)) continue
-    const { returns, examples } = expr.docs as FunctionDocs
+    if (!expr.docs)
+      continue
+    if (skipReturnTypeExamples.has(name))
+      continue
+    const { returns, examples } = expr.docs
 
     const typeCheck = generateTypeCheck('__r', returns)
-    if (!typeCheck) continue // skip 'any', 'never'
+    if (!typeCheck)
+      continue // skip 'any', 'never'
 
     for (const [i, example] of examples.entries()) {
-      if (skipCoreExampleIndices[name]?.has(i)) continue
+      if (skipCoreExampleIndices[name]?.has(i))
+        continue
       it(`${name} example ${i + 1}: returns ${JSON.stringify(returns.type)}`, () => {
         const wrapped = `do
   let __r = do
@@ -220,23 +256,27 @@ end`
 // 3. MODULE EXPRESSIONS — arity + return type
 // =========================================================================
 for (const mod of allBuiltinModules) {
-  if (!mod.docs) continue
+  if (!mod.docs)
+    continue
 
   describe(`auto: arity enforcement (${mod.name})`, () => {
     for (const [fnName, expr] of Object.entries(mod.functions)) {
-      if (skipArityTests.has(fnName)) continue
+      if (skipArityTests.has(fnName))
+        continue
       const { arity } = expr
 
       if (arity.min !== undefined && arity.min > 0) {
-        it(`${mod.name}.${fnName}: rejects ${arity.min - 1} args (min ${arity.min})`, () => {
-          const code = `do import "${mod.name}" as __m; __m.${fnName}(${dummyArgs(arity.min - 1)}) end`
+        const min = arity.min
+        it(`${mod.name}.${fnName}: rejects ${min - 1} args (min ${min})`, () => {
+          const code = `do import "${mod.name}" as __m; __m.${fnName}(${dummyArgs(min - 1)}) end`
           expect(() => dvala.run(code)).toThrow()
         })
       }
 
       if (arity.max !== undefined) {
-        it(`${mod.name}.${fnName}: rejects ${arity.max + 1} args (max ${arity.max})`, () => {
-          const code = `do import "${mod.name}" as __m; __m.${fnName}(${dummyArgs(arity.max + 1)}) end`
+        const max = arity.max
+        it(`${mod.name}.${fnName}: rejects ${max + 1} args (max ${max})`, () => {
+          const code = `do import "${mod.name}" as __m; __m.${fnName}(${dummyArgs(max + 1)}) end`
           expect(() => dvala.run(code)).toThrow()
         })
       }
@@ -248,8 +288,10 @@ for (const mod of allBuiltinModules) {
 
     // Pre-check: skip if no testable examples exist for this module
     const hasTestable = Object.entries(mod.docs!).some(([fnName, docs]) => {
-      if (skipReturnTypeExamples.has(fnName)) return false
-      if (moduleSkips?.has(fnName)) return false
+      if (skipReturnTypeExamples.has(fnName))
+        return false
+      if (moduleSkips?.has(fnName))
+        return false
       return generateTypeCheck('__r', docs.returns) !== null
         && docs.examples.some((_e, i) => !skipModuleExampleIndices[`${mod.name}.${fnName}`]?.has(i))
     })
@@ -259,15 +301,19 @@ for (const mod of allBuiltinModules) {
     }
 
     for (const [fnName, docs] of Object.entries(mod.docs!)) {
-      if (skipReturnTypeExamples.has(fnName)) continue
-      if (moduleSkips?.has(fnName)) continue
+      if (skipReturnTypeExamples.has(fnName))
+        continue
+      if (moduleSkips?.has(fnName))
+        continue
 
       const typeCheck = generateTypeCheck('__r', docs.returns)
-      if (!typeCheck) continue
+      if (!typeCheck)
+        continue
 
       for (const [i, example] of docs.examples.entries()) {
         const moduleExampleKey = `${mod.name}.${fnName}`
-        if (skipModuleExampleIndices[moduleExampleKey]?.has(i)) continue
+        if (skipModuleExampleIndices[moduleExampleKey]?.has(i))
+          continue
         it(`${mod.name}.${fnName} example ${i + 1}: returns ${JSON.stringify(docs.returns.type)}`, () => {
           const wrapped = `do
   let __r = do

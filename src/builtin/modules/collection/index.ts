@@ -225,8 +225,8 @@ cu.assoc-in(
         'fun-args': { type: 'any', rest: true },
       },
       variants: [
-        { argumentNames: ['coll', 'value', 'fun'] },
-        { argumentNames: ['coll', 'value', 'fun', 'fun-args'] },
+        { argumentNames: ['coll', 'key', 'fun'] },
+        { argumentNames: ['coll', 'key', 'fun', 'fun-args'] },
       ],
       description: `
 Updates a value in the $coll collection, where $key is a key. $fun is a function
