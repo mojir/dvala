@@ -16,6 +16,7 @@
  */
 
 import type { Any, Arr, Obj } from '../interface'
+import type { DvalaModule } from '../builtin/modules/interface'
 import type { AstNode, BindingNode, BindingTarget, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
@@ -578,6 +579,7 @@ export interface ImportMergeFrame {
   type: 'ImportMerge'
   tsFunctions: Obj
   moduleName: string
+  module: DvalaModule
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }

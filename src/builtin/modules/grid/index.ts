@@ -2,11 +2,9 @@ import { DvalaError } from '../../../errors'
 import type { Any } from '../../../interface'
 import { assertGrid, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
-import { asAny, asFunctionLike, assertAny, assertFunctionLike } from '../../../typeGuards/dvala'
+import { assertAny } from '../../../typeGuards/dvala'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
-import type { MaybePromise } from '../../../utils/maybePromise'
-import { chain, everySequential, mapSequential, reduceSequential, someSequential } from '../../../utils/maybePromise'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import type { DvalaModule } from '../interface'
 import gridModuleSource from './grid.dvala'
@@ -16,70 +14,38 @@ import { transpose } from './transpose'
 
 const gridFunctions: BuiltinNormalExpressions = {
   'cell-every?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      const cells: Any[] = []
-      for (const row of grid) {
-        for (const cell of row) {
-          cells.push(cell)
-        }
-      }
-      return everySequential(cells, cell => executeFunction(predicate, [cell], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('cell-every?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'some?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      const cells: Any[] = []
-      for (const row of grid) {
-        for (const cell of row) {
-          cells.push(cell)
-        }
-      }
-      return someSequential(cells, cell => executeFunction(predicate, [cell], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('some?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'every-row?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      return everySequential(Array.from(grid), row => executeFunction(predicate, [row], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('every-row?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'some-row?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      return someSequential(Array.from(grid), row => executeFunction(predicate, [row], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('some-row?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'every-col?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      const transposed = transpose(grid)
-      return everySequential(Array.from(transposed), row => executeFunction(predicate, [row], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('every-col?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'some-col?': {
-    evaluate: ([grid, predicate], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(predicate, sourceCodeInfo)
-
-      const transposed = transpose(grid)
-      return someSequential(Array.from(transposed), row => executeFunction(predicate, [row], contextStack, sourceCodeInfo))
+    evaluate: () => {
+      throw new Error('some-col?: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
@@ -124,22 +90,8 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'generate': {
-    evaluate: ([rows, cols, generator], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any[][]> => {
-      assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })
-      assertNumber(cols, sourceCodeInfo, { integer: true, positive: true })
-      assertFunctionLike(generator, sourceCodeInfo)
-
-      return mapSequential(Array.from({ length: rows }), (_, i) => {
-        return mapSequential(Array.from({ length: cols }), (__, j) => {
-          return chain(
-            executeFunction(generator, [i, j], contextStack, sourceCodeInfo),
-            (value) => {
-              assertAny(value, sourceCodeInfo)
-              return value
-            },
-          )
-        })
-      })
+    evaluate: () => {
+      throw new Error('generate: Dvala implementation should be used instead')
     },
     arity: toFixedArity(3),
   },
@@ -419,82 +371,26 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: { min: 1 },
   },
   'cell-map': {
-    evaluate: (params, sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any[][]> => {
-      const fn = asFunctionLike(params.at(-1), sourceCodeInfo)
-      const grids = params.slice(0, -1)
-      assertGrid(grids[0], sourceCodeInfo)
-      const rows = grids[0].length
-      const cols = grids[0][0]!.length
-      grids.slice(1).forEach((grid) => {
-        assertGrid(grid, sourceCodeInfo)
-        if (grid.length !== rows) {
-          throw new DvalaError(`All grids must have the same number of rows, but got ${rows} and ${grid.length}`, sourceCodeInfo)
-        }
-        if (grid[0]!.length !== cols) {
-          throw new DvalaError(`All grids must have the same number of columns, but got ${cols} and ${grid[0]!.length}`, sourceCodeInfo)
-        }
-      })
-
-      return mapSequential(Array.from({ length: rows }), (_, i) => {
-        return mapSequential(Array.from({ length: cols }), (__, j) => {
-          const args = grids.map(grid => (grid as Any[][])[i]![j])
-          return chain(executeFunction(fn, args, contextStack, sourceCodeInfo), val => asAny(val))
-        })
-      })
+    evaluate: () => {
+      throw new Error('cell-map: Dvala implementation should be used instead')
     },
     arity: { min: 2 },
   },
   'cell-mapi': {
-    evaluate: ([grid, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any[][]> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const rows = grid.length
-      const cols = grid[0]!.length
-
-      return mapSequential(Array.from({ length: rows }), (_, i) => {
-        return mapSequential(Array.from({ length: cols }), (__, j) => {
-          return chain(executeFunction(fn, [grid[i]![j], i, j], contextStack, sourceCodeInfo), val => asAny(val))
-        })
-      })
+    evaluate: () => {
+      throw new Error('cell-mapi: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
   'cell-reduce': {
-    evaluate: ([grid, fn, initialValue], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const cells: Any[] = []
-      for (const row of grid) {
-        for (const cell of row) {
-          cells.push(cell)
-        }
-      }
-      return reduceSequential(
-        cells,
-        (accumulator, cell) => executeFunction(fn, [accumulator, cell], contextStack, sourceCodeInfo),
-        asAny(initialValue),
-      )
+    evaluate: () => {
+      throw new Error('cell-reduce: Dvala implementation should be used instead')
     },
     arity: toFixedArity(3),
   },
   'cell-reducei': {
-    evaluate: ([grid, fn, initialValue], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertGrid(grid, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const cells: { cell: Any, i: number, j: number }[] = []
-      for (let i = 0; i < grid.length; i += 1) {
-        for (let j = 0; j < grid[i]!.length; j += 1) {
-          cells.push({ cell: grid[i]![j]!, i, j })
-        }
-      }
-      return reduceSequential(
-        cells,
-        (accumulator, { cell, i, j }) => executeFunction(fn, [accumulator, cell, i, j], contextStack, sourceCodeInfo),
-        asAny(initialValue),
-      )
+    evaluate: () => {
+      throw new Error('cell-reducei: Dvala implementation should be used instead')
     },
     arity: toFixedArity(3),
   },

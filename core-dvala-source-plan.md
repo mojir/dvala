@@ -169,20 +169,158 @@ case 'Builtin': {
 3. Verify `doc(map)` still works
 4. Verify reference tests still pass
 
-### Phase 3: Remaining HOF Migrations
+### Phase 3: Core HOF Migrations ✅
 
-Migrate looping HOFs one at a time:
-- `filter`, `reduce` (collection.ts)
-- `sort` (merge-sort in sequence.dvala)
-- `some`, `every`, `none` (sequence.ts)
-- `take-while`, `drop-while` (sequence.ts)
-- `flat-map`, `mapcat` (array.ts)
-- etc.
+Migrated core looping HOFs:
+- ✅ `map`, `filter`, `reduce` → `collection.dvala`
+- ✅ `sort`, `some`, `take-while`, `drop-while` → `sequence.dvala`
+- ✅ `mapcat`, `moving-fn`, `running-fn` → `array.dvala`
+- ✅ `merge-with` → `object.dvala`
+- ✅ `|>` → `functional.dvala`
+- ⏭️ `apply` — left in TS (primitive, requires spread semantics)
 
-### Phase 4: Cleanup
+### Phase 4: Core Cleanup ✅
 
-- Remove unused TS `evaluate` implementations for fully-migrated functions
-- Or keep them as documentation / fallback
+- ✅ Replaced all 13 TS `evaluate` bodies with stubs
+- ✅ Removed dead helper code (`mapObjects`, unused imports)
+- ✅ Added 5th injection point (`executeBuiltinRecursive`)
+- ✅ Fixed debugger (`createDebugger` now calls `initCoreDvalaSources()`)
+- ✅ All 5349 tests passing, coverage 97.04%
+
+---
+
+## Phase 5: Module Function Migrations
+
+**End goal: Remove `executeFunction` from the `evaluate` signature entirely.**
+
+Every module function that currently receives `{ executeFunction }` must be reimplemented in Dvala. Once all are migrated, `executeFunction` can be removed from `BuiltinNormalExpression.evaluate` and from the evaluator's call-dispatch logic.
+
+### 5.1 Core — `functional`
+
+| Function | File | Notes |
+|----------|------|-------|
+| `apply` | `functional.ts` | Spreads last arg into call. Could become `(fn, ...args) -> fn(...(++ (butlast(args)) (last(args))))` |
+
+### 5.2 Module: `collection` (13 functions)
+
+| Function | Notes |
+|----------|-------|
+| `update` | Applies fn to element at key. Uses `update()` helper |
+| `update-in` | Nested update via key path. Uses `update()` helper + `cloneAndGetMeta()` |
+| `filteri` | Filter with index — `(coll, fn)` where fn receives `(elem, index)` |
+| `mapi` | Map with index — `(coll, fn)` where fn receives `(elem, index)` |
+| `reducei` | Reduce with index — `(coll, fn, init)` where fn receives `(acc, elem, index)` |
+| `reduce-right` | Reduce from end — reverse + reduce |
+| `reducei-right` | Reduce from end with index |
+| `reductions` | Intermediate reduce values (scan) |
+| `reductionsi` | Indexed scan |
+| `every?` | Test all elements — `every(coll, fn)` |
+| `any?` | Test any element — `some(coll, fn)` on entries |
+| `not-any?` | `not(any?(coll, fn))` |
+| `not-every?` | `not(every?(coll, fn))` |
+
+### 5.3 Module: `sequence` (6 functions)
+
+| Function | Notes |
+|----------|-------|
+| `position` | Find index of first match by predicate |
+| `sort-by` | Sort by key function, optional custom comparator |
+| `remove` | Inverse filter: keep elements where `fn` is falsy |
+| `split-with` | `[take-while(seq, fn), drop-while(seq, fn)]` |
+| `group-by` | Group elements by key function result |
+| `partition-by` | Partition when fn return value changes |
+
+### 5.4 Module: `grid` (11 functions)
+
+| Function | Notes |
+|----------|-------|
+| `cell-every?` | Test all cells |
+| `some?` | Test any cell |
+| `every-row?` | Test all rows |
+| `some-row?` | Test any row |
+| `every-col?` | Transpose + test all rows |
+| `some-col?` | Transpose + test any row |
+| `generate` | Build grid from `(i, j) -> value` generator |
+| `cell-map` | Map over cells (multi-grid) |
+| `cell-mapi` | Map over cells with `(cell, i, j)` |
+| `cell-reduce` | Reduce over all cells |
+| `cell-reducei` | Reduce over cells with `(acc, cell, i, j)` |
+
+### 5.5 Module: `assertion` (3 functions)
+
+| Function | Notes |
+|----------|-------|
+| `assert-throws` | Call fn, expect error. Use `try...with case effect(dvala.error)` |
+| `assert-throws-error` | Call fn, expect specific error message |
+| `assert-not-throws` | Call fn, expect no error |
+
+### 5.6 Module: `number-theory` (31 `*-take-while` functions)
+
+All follow the same "generate values while predicate holds" pattern.
+
+**Direct implementations (4):**
+
+| Function | Notes |
+|----------|-------|
+| `arithmetic-take-while` | `(start, step, fn)` — arithmetic progression while fn holds |
+| `geometric-take-while` | `(start, ratio, fn)` — geometric progression while fn holds |
+| `polygonal-take-while` | `(sides, fn)` — polygonal numbers while fn holds |
+| `bernoulli-take-while` | `(fn)` — Bernoulli numbers while fn holds |
+
+**Factory-generated via `createTakeWhileNormalExpression` (27):**
+
+| Function | Source |
+|----------|--------|
+| `abundant-take-while` | `addSequence(abundantSequence)` |
+| `bell-take-while` | `getFiniteNumberSequence('bell', ...)` |
+| `catalan-take-while` | `getFiniteNumberSequence('catalan', ...)` |
+| `collatz-take-while` | `addSequence(collatzSequence)` |
+| `composite-take-while` | `addSequence(compositeSequence)` |
+| `deficient-take-while` | `addSequence(deficientSequence)` |
+| `factorial-take-while` | `getFiniteNumberSequence('factorial', ...)` |
+| `fibonacci-take-while` | `getFiniteNumberSequence('fibonacci', ...)` |
+| `golomb-take-while` | `addSequence(golombSequence)` |
+| `happy-take-while` | `addSequence(happySequence)` |
+| `juggler-take-while` | `addSequence(jugglerSequence)` |
+| `look-and-say-take-while` | `addSequence(lookAndSaySequence)` |
+| `lucas-take-while` | `getFiniteNumberSequence('lucas', ...)` |
+| `lucky-take-while` | `addSequence(luckySequence)` |
+| `mersenne-take-while` | `getFiniteNumberSequence('mersenne', ...)` |
+| `padovan-take-while` | `addSequence(padovanSequence)` |
+| `partition-take-while` | `getFiniteNumberSequence('partition', ...)` |
+| `pell-take-while` | `getFiniteNumberSequence('pell', ...)` |
+| `perfect-take-while` | `getFiniteNumberSequence('perfect', ...)` |
+| `perfect-cube-take-while` | `addSequence(perfectCubeSequence)` |
+| `perfect-power-take-while` | `addSequence(perfectPowerSequence)` |
+| `perfect-square-take-while` | `addSequence(perfectSquareSequence)` |
+| `prime-take-while` | `addSequence(primeSequence)` |
+| `recaman-take-while` | `addSequence(recamanSequence)` |
+| `sylvester-take-while` | `getFiniteNumberSequence('sylvester', ...)` |
+| `thue-morse-take-while` | `addSequence(thueMorseSequence)` |
+| `tribonacci-take-while` | `getFiniteNumberSequence('tribonacci', ...)` |
+
+### Summary
+
+| Category | Functions | Count |
+|----------|-----------|-------|
+| Core `functional` | `apply` | 1 |
+| Module `collection` | `update`, `update-in`, `filteri`, `mapi`, `reducei`, `reduce-right`, `reducei-right`, `reductions`, `reductionsi`, `every?`, `any?`, `not-any?`, `not-every?` | 13 |
+| Module `sequence` | `position`, `sort-by`, `remove`, `split-with`, `group-by`, `partition-by` | 6 |
+| Module `grid` | `cell-every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`, `generate`, `cell-map`, `cell-mapi`, `cell-reduce`, `cell-reducei` | 11 |
+| Module `assertion` | `assert-throws`, `assert-throws-error`, `assert-not-throws` | 3 |
+| Module `number-theory` | 4 direct + 27 factory `*-take-while` | 31 |
+| **Total** | | **65** |
+
+### Phase 6: Final Cleanup — Remove `executeFunction`
+
+Once all 65 functions are migrated:
+
+1. Remove `executeFunction` parameter from `NormalExpressionEvaluator` type in `interface.ts`
+2. Remove `ExecuteFunction` type from `evaluator/interface.ts`
+3. Stop passing `{ executeFunction: executeFunctionRecursive }` in trampoline dispatch
+4. Clean up all stub `evaluate` implementations that reference `executeFunction`
+5. Remove `executeFunction` from all module evaluate signatures
+6. Verify all tests pass
 
 ## DX Checklist
 

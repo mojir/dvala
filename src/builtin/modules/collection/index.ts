@@ -1,17 +1,12 @@
-import type { ContextStack } from '../../../evaluator/ContextStack'
-import type { ExecuteFunction } from '../../../evaluator/interface'
 import type { Any, Arr, Coll, Obj } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
-import { cloneColl, collHasKey, toAny, toNonNegativeInteger } from '../../../utils'
-import { asColl, assertAny, assertColl, assertFunctionLike, assertObj, isColl, isObj } from '../../../typeGuards/dvala'
+import { cloneColl, collHasKey, toAny } from '../../../utils'
+import { asColl, assertAny, assertColl, assertObj, isColl, isObj } from '../../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber, isNumber } from '../../../typeGuards/number'
-import { asString, asStringOrNumber, assertString, assertStringOrNumber } from '../../../typeGuards/string'
-import type { FunctionLike } from '../../../parser/types'
+import { asStringOrNumber, assertString, assertStringOrNumber } from '../../../typeGuards/string'
 import { toFixedArity } from '../../../utils/arity'
-import type { MaybePromise } from '../../../utils/maybePromise'
-import { chain, everySequential, filterSequential, mapSequential, reduceSequential, someSequential } from '../../../utils/maybePromise'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 import collectionModuleSource from './collection.dvala'
@@ -48,56 +43,6 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
   const copy = { ...coll }
   copy[key] = value
   return copy
-}
-
-// --- Private helper: update value in collection ---
-function update(
-  coll: Coll,
-  key: string | number,
-  fn: FunctionLike,
-  params: Arr,
-  contextStack: ContextStack,
-  executeFunction: ExecuteFunction,
-  sourceCodeInfo?: SourceCodeInfo,
-): MaybePromise<Coll> {
-  if (isObj(coll)) {
-    assertString(key, sourceCodeInfo)
-    const result = { ...coll }
-    return chain(executeFunction(fn, [result[key], ...params], contextStack, sourceCodeInfo), (val) => {
-      result[key] = val
-      return result
-    })
-  }
-  else {
-    assertNumber(key, sourceCodeInfo)
-    const intKey = toNonNegativeInteger(key)
-    assertNumber(intKey, sourceCodeInfo, { lte: coll.length })
-    if (Array.isArray(coll)) {
-      return chain(
-        mapSequential(Array.from({ length: coll.length + (intKey === coll.length ? 1 : 0) }), (_, index) => {
-          if (intKey === index)
-            return executeFunction(fn, [coll[index], ...params], contextStack, sourceCodeInfo)
-          return coll[index] as Any
-        }),
-        result => result,
-      )
-    }
-    else {
-      const chars = coll.split('')
-      return chain(
-        mapSequential(Array.from({ length: chars.length + (intKey === chars.length ? 1 : 0) }), (_, index) => {
-          if (intKey === index) {
-            return chain(
-              executeFunction(fn, [chars[index], ...params], contextStack, sourceCodeInfo),
-              val => asString(val, sourceCodeInfo, { char: true }),
-            )
-          }
-          return chars[index] as string
-        }),
-        result => result.join(''),
-      )
-    }
-  }
 }
 
 interface CollMeta {
@@ -268,12 +213,7 @@ cu.assoc-in(
     },
   },
   'update': {
-    evaluate: ([coll, key, fn, ...params], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Coll> => {
-      assertColl(coll, sourceCodeInfo)
-      assertStringOrNumber(key, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      return update(coll, key, fn, params, contextStack, executeFunction, sourceCodeInfo)
-    },
+    evaluate: () => { throw new Error('update: Dvala implementation should be used instead') },
     arity: { min: 3 },
     docs: {
       category: 'collection',
@@ -311,42 +251,7 @@ cu.update(
     },
   },
   'update-in': {
-    evaluate: ([originalColl, keys, fn, ...params], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Coll> => {
-      assertColl(originalColl, sourceCodeInfo)
-      assertArray(keys, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      if (keys.length === 1) {
-        assertStringOrNumber(keys[0], sourceCodeInfo)
-        return update(originalColl, keys[0], fn, params, contextStack, executeFunction, sourceCodeInfo)
-      }
-
-      const { coll, innerCollMeta } = cloneAndGetMeta(originalColl, keys, sourceCodeInfo)
-
-      const lastKey = asStringOrNumber(keys[keys.length - 1], sourceCodeInfo)
-      const parentKey = asStringOrNumber(keys[keys.length - 2], sourceCodeInfo)
-
-      if (Array.isArray(innerCollMeta.parent)) {
-        assertNumber(parentKey, sourceCodeInfo)
-        return chain(
-          update(innerCollMeta.coll, lastKey, fn, params, contextStack, executeFunction, sourceCodeInfo),
-          (updated) => {
-            ;(innerCollMeta.parent as Any[])[parentKey] = updated
-            return coll
-          },
-        )
-      }
-      else {
-        assertString(parentKey, sourceCodeInfo)
-        return chain(
-          update(innerCollMeta.coll, lastKey, fn, params, contextStack, executeFunction, sourceCodeInfo),
-          (updated) => {
-            ;(innerCollMeta.parent as Record<string, unknown>)[parentKey] = updated
-            return coll
-          },
-        )
-      }
-    },
+    evaluate: () => { throw new Error('update-in: Dvala implementation should be used instead') },
     arity: { min: 3 },
     docs: {
       category: 'collection',
@@ -402,26 +307,7 @@ cu.update-in(
     },
   },
   'filteri': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Coll> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      if (Array.isArray(coll)) {
-        return filterSequential(coll, (elem, index) => executeFunction(fn, [elem, index], contextStack, sourceCodeInfo))
-      }
-      if (typeof coll === 'string') {
-        return chain(
-          filterSequential(coll.split(''), (elem, index) => executeFunction(fn, [elem, index], contextStack, sourceCodeInfo)),
-          filtered => filtered.join(''),
-        )
-      }
-      return chain(
-        filterSequential(Object.entries(coll), ([key, value]) => executeFunction(fn, [value, key], contextStack, sourceCodeInfo)),
-        filtered => filtered.reduce((result: Obj, [key, value]) => {
-          result[key] = value
-          return result
-        }, {}),
-      )
-    },
+    evaluate: () => { throw new Error('filteri: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -444,27 +330,7 @@ cu.update-in(
     },
   },
   'mapi': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Coll> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      if (Array.isArray(coll)) {
-        return mapSequential(coll, (elem, index) => executeFunction(fn, [elem, index], contextStack, sourceCodeInfo))
-      }
-      if (typeof coll === 'string') {
-        return chain(
-          mapSequential(coll.split(''), (elem, index) => executeFunction(fn, [elem, index], contextStack, sourceCodeInfo)),
-          mapped => mapped.join(''),
-        )
-      }
-      const entries = Object.entries(coll)
-      return reduceSequential(entries, (acc: Obj, [key, value]) => {
-        return chain(executeFunction(fn, [value, key], contextStack, sourceCodeInfo), (result) => {
-          acc[key] = result
-          return acc
-        })
-      }, {})
-    },
+    evaluate: () => { throw new Error('mapi: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -489,43 +355,7 @@ cu.update-in(
     },
   },
   'reducei': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      if (typeof coll === 'string') {
-        assertString(initial, sourceCodeInfo)
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          coll.split('').map((elem, index) => ({ elem, index })),
-          (result, { elem, index }) => executeFunction(fn, [result, elem, index], contextStack, sourceCodeInfo),
-          initial as Any,
-        )
-      }
-      else if (Array.isArray(coll)) {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          coll.map((elem, index) => ({ elem, index })),
-          (result, { elem, index }) => executeFunction(fn, [result, elem, index], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-      else {
-        if (Object.keys(coll).length === 0)
-          return initial
-
-        return reduceSequential(
-          Object.entries(coll),
-          (result, [key, elem]) => executeFunction(fn, [result, elem, key], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-    },
+    evaluate: () => { throw new Error('reducei: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -552,42 +382,7 @@ cu.update-in(
     },
   },
   'reduce-right': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      if (typeof coll === 'string') {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          Array.from(coll.split('')).reverse(),
-          (result, elem) => executeFunction(fn, [result, elem], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-      else if (Array.isArray(coll)) {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          Array.from(coll).reverse(),
-          (result, elem) => executeFunction(fn, [result, elem], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-      else {
-        if (Object.keys(coll).length === 0)
-          return initial
-
-        return reduceSequential(
-          Object.entries(coll).reverse(),
-          (result, [, elem]) => executeFunction(fn, [result, elem], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-    },
+    evaluate: () => { throw new Error('reduce-right: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -607,42 +402,7 @@ cu.update-in(
     },
   },
   'reducei-right': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      if (typeof coll === 'string') {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          Array.from(coll.split('')).reverse().map((elem, _, arr) => ({ elem, index: arr.length - 1 - _ })),
-          (result, { elem, index }) => executeFunction(fn, [result, elem, index], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-      else if (Array.isArray(coll)) {
-        if (coll.length === 0)
-          return initial
-
-        return reduceSequential(
-          Array.from(coll).reverse().map((elem, _, arr) => ({ elem, index: arr.length - 1 - _ })),
-          (result, { elem, index }) => executeFunction(fn, [result, elem, index], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-      else {
-        if (Object.keys(coll).length === 0)
-          return initial
-
-        return reduceSequential(
-          Object.entries(coll).reverse(),
-          (result, [key, elem]) => executeFunction(fn, [result, elem, key], contextStack, sourceCodeInfo),
-          initial,
-        )
-      }
-    },
+    evaluate: () => { throw new Error('reducei-right: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -669,37 +429,7 @@ cu.update-in(
     },
   },
   'reductions': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      assertAny(initial, sourceCodeInfo)
-
-      const items: Any[] = typeof coll === 'string'
-        ? (assertString(initial, sourceCodeInfo), coll.length === 0 ? [] : coll.split(''))
-        : Array.isArray(coll)
-          ? (coll.length === 0 ? [] : Array.from(coll) as Any[])
-          : (Object.keys(coll).length === 0 ? [] : Object.entries(coll).map(([, v]) => v as Any))
-
-      if (items.length === 0)
-        return [initial]
-
-      const resultArray: Any[] = [initial]
-      return chain(
-        reduceSequential(
-          items,
-          (result, elem) => {
-            return chain(executeFunction(fn, [result, elem], contextStack, sourceCodeInfo), (newVal) => {
-              resultArray.push(newVal)
-              return newVal
-            })
-          },
-          initial,
-        ),
-        () => resultArray,
-      )
-    },
+    evaluate: () => { throw new Error('reductions: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -728,39 +458,7 @@ cu.reductions(
     },
   },
   'reductionsi': {
-    evaluate: ([coll, fn, initial], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<Any> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertAny(initial, sourceCodeInfo)
-
-      assertAny(initial, sourceCodeInfo)
-
-      type IndexedItem = { elem: Any, key: string | number }
-      const toIndexedItem = (elem: Any, key: string | number): IndexedItem => ({ elem, key })
-      const items: IndexedItem[] = typeof coll === 'string'
-        ? (assertString(initial, sourceCodeInfo), coll.length === 0 ? [] : coll.split('').map((elem, index) => toIndexedItem(elem, index)))
-        : Array.isArray(coll)
-          ? (coll.length === 0 ? [] : coll.map((elem, index) => toIndexedItem(elem as Any, index)))
-          : (Object.keys(coll).length === 0 ? [] : Object.entries(coll).map(([key, v]) => toIndexedItem(v as Any, key)))
-
-      if (items.length === 0)
-        return [initial]
-
-      const resultArray: Any[] = [initial]
-      return chain(
-        reduceSequential(
-          items,
-          (result, { elem, key }) => {
-            return chain(executeFunction(fn, [result, elem, key], contextStack, sourceCodeInfo), (newVal) => {
-              resultArray.push(newVal)
-              return newVal
-            })
-          },
-          initial,
-        ),
-        () => resultArray,
-      )
-    },
+    evaluate: () => { throw new Error('reductionsi: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -822,18 +520,7 @@ cu.reductions(
     },
   },
   'every?': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertColl(coll, sourceCodeInfo)
-      assertFunctionLike(fn, sourceCodeInfo)
-
-      const arr = Array.isArray(coll)
-        ? coll
-        : typeof coll === 'string'
-          ? coll.split('')
-          : Object.entries(coll)
-
-      return everySequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo))
-    },
+    evaluate: () => { throw new Error('every?: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -879,18 +566,7 @@ cu.every?(
     },
   },
   'any?': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertColl(coll, sourceCodeInfo)
-
-      const arr = Array.isArray(coll)
-        ? coll
-        : typeof coll === 'string'
-          ? coll.split('')
-          : Object.entries(coll)
-
-      return someSequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo))
-    },
+    evaluate: () => { throw new Error('any?: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -934,21 +610,7 @@ cu.any?(
     },
   },
   'not-any?': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertColl(coll, sourceCodeInfo)
-
-      const arr = Array.isArray(coll)
-        ? coll
-        : typeof coll === 'string'
-          ? coll.split('')
-          : Object.entries(coll)
-
-      return chain(
-        someSequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo)),
-        result => !result,
-      )
-    },
+    evaluate: () => { throw new Error('not-any?: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -992,21 +654,7 @@ cu.not-any?(
     },
   },
   'not-every?': {
-    evaluate: ([coll, fn], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<boolean> => {
-      assertFunctionLike(fn, sourceCodeInfo)
-      assertColl(coll, sourceCodeInfo)
-
-      const arr = Array.isArray(coll)
-        ? coll
-        : typeof coll === 'string'
-          ? coll.split('')
-          : Object.entries(coll)
-
-      return chain(
-        everySequential(arr, elem => executeFunction(fn, [elem], contextStack, sourceCodeInfo)),
-        result => !result,
-      )
-    },
+    evaluate: () => { throw new Error('not-every?: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
