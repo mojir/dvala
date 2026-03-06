@@ -327,7 +327,8 @@ describe('auto: docs metadata consistency (special expressions)', () => {
       }
 
       it('has at least one example', () => {
-        if (skipSpecialExpressionExamples.has(name)) return
+        if (skipSpecialExpressionExamples.has(name))
+          return
         expect(docs.examples.length, `${name}: no examples`).toBeGreaterThan(0)
       })
 
@@ -529,9 +530,11 @@ describe('auto: wrong-type rejection (modules)', () => {
     describe(mod.name, () => {
       // Check if any testable functions exist for this module
       const hasTestable = Object.entries(mod.docs!).some(([fnName, docs]) => {
-        if (moduleSkips?.has(fnName)) return false
+        if (moduleSkips?.has(fnName))
+          return false
         const variant = docs.variants[0]
-        if (!variant) return false
+        if (!variant)
+          return false
         return variant.argumentNames.some((argName) => {
           const arg = docs.args[argName]
           return arg && !arg.rest && getWrongValue(arg.type) !== null
@@ -599,7 +602,8 @@ describe('auto: example determinism (core)', () => {
     for (const [i, example] of docs.examples.entries()) {
       it(`${name} example ${i + 1} is deterministic`, () => {
         let result1: unknown, result2: unknown
-        let threw1 = false; let threw2 = false
+        let threw1 = false
+        let threw2 = false
         try {
           result1 = dvala.run(example)
         }
@@ -638,7 +642,8 @@ describe('auto: example determinism (modules)', () => {
         for (const [i, example] of docs.examples.entries()) {
           it(`${mod.name}.${fnName} example ${i + 1} is deterministic`, () => {
             let result1: unknown, result2: unknown
-            let threw1 = false; let threw2 = false
+            let threw1 = false
+            let threw2 = false
             try {
               result1 = dvala.run(example)
             }
