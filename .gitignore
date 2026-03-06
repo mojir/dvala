@@ -5,3 +5,4 @@ node_modules
 test-report.xml
 .DS_Store
 test-results/
+vscode-dvala/out/

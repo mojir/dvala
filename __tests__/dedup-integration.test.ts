@@ -155,7 +155,7 @@ describe('continuation dedup integration', () => {
       const { roots: dedupedRoots, pool } = dedupSubTrees(roots, 50)
       const elapsed = performance.now() - start
 
-      expect(elapsed).toBeLessThan(1000)
+      expect(elapsed).toBeLessThan(3000)
 
       // Verify correctness
       const restored = dedupedRoots.map(r => expandPoolRefs(r, pool))

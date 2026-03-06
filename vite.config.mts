@@ -32,6 +32,7 @@ export default defineConfig({
         'docs/**',
         'common/**',
         'scripts/**',
+        'vscode-dvala/**',
         '**/interface.ts',
         '**/types.ts',
         'src/index.ts',

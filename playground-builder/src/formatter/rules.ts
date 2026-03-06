@@ -111,14 +111,17 @@ function isEffectName(tokens: Token[], index: number): boolean {
   let i = index - 1
   // Skip whitespace before current token
   while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
-  if (i < 0 || tokens[i]![0] !== 'LParen') return false
+  if (i < 0 || tokens[i]![0] !== 'LParen')
+    return false
   i--
   while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
-  if (i < 0 || tokens[i]![0] !== 'Symbol' || tokens[i]![1] !== 'effect') return false
+  if (i < 0 || tokens[i]![0] !== 'Symbol' || tokens[i]![1] !== 'effect')
+    return false
   // Check closing paren after current token
   let j = index + 1
   while (j < tokens.length && tokens[j]![0] === 'Whitespace') j++
-  if (j >= tokens.length || tokens[j]![0] !== 'RParen') return false
+  if (j >= tokens.length || tokens[j]![0] !== 'RParen')
+    return false
   return true
 }
 

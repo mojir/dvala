@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "commonjs",
+    "strict": true,
+    "outDir": "out",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "typeRoots": ["../node_modules/@types", "../types"]
+  },
+  "include": ["src", "../types"],
+  "exclude": ["node_modules", ".vscode-test"]
+}
