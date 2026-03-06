@@ -116,7 +116,9 @@ export function isGrid(grid: unknown, typePred?: (elem: unknown) => boolean): gr
       return false
     }
     if (typePred && row.some(cell => !typePred(cell))) {
-      annotatedNonGrids.add(grid)
+      // typePred failure is a type constraint issue, not a structural one.
+      // Don't cache in annotatedNonGrids — the value IS structurally a grid,
+      // just not one where all cells satisfy the predicate.
       return false
     }
   }

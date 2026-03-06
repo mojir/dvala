@@ -173,7 +173,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     arity: { min: 2, max: 3 },
     docs: {
       category: 'string',
-      returns: { type: 'string' },
+      returns: { type: 'string', array: true },
       args: {
         a: { type: 'string' },
         b: { type: 'string' },

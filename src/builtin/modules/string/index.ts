@@ -22,7 +22,7 @@ const stringUtilsFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
     docs: {
       category: 'string',
-      returns: { type: 'number' },
+      returns: { type: 'string' },
       args: {
         a: { type: 'string' },
         b: { type: 'integer' },
@@ -149,7 +149,7 @@ trim-right("")`,
     arity: toFixedArity(1),
     docs: {
       category: 'string',
-      returns: { type: 'string' },
+      returns: { type: 'string', array: true },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Divides $s into an array of substrings, each representing a line.',
