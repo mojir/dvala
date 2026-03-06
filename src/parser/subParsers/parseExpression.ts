@@ -57,7 +57,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
     }
   }
   else if (isReservedSymbolToken(token, 'do')) {
-    left = parseDo(ctx)[0]
+    left = parseDo(ctx)
   }
 
   left ||= parseOperand(ctx)

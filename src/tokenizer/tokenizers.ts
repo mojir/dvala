@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, DocStringToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -55,37 +55,6 @@ const tokenizeLBrace: Tokenizer<LBraceToken> = (input, position) =>
   tokenizeToken('LBrace', '{', input, position)
 const tokenizeRBrace: Tokenizer<RBraceToken> = (input, position) =>
   tokenizeToken('RBrace', '}', input, position)
-
-export const tokenizeDocString: Tokenizer<DocStringToken> = (input, position) => {
-  if (input[position] !== '"' || input[position + 1] !== '"' || input[position + 2] !== '"')
-    return NO_MATCH
-
-  let value = '"""'
-  let length = 3
-  let char = input[position + length]
-  let nextThreeChars = input.slice(position + length, position + length + 3)
-  let escaping = false
-  while (char && (nextThreeChars !== '"""' || escaping)) {
-    length += 1
-    if (escaping) {
-      escaping = false
-      value += char
-    }
-    else {
-      if (char === '\\') {
-        escaping = true
-      }
-      value += char
-    }
-    char = input[position + length]
-    nextThreeChars = input.slice(position + length, position + length + 3)
-  }
-  if (!char) {
-    return [length, ['Error', value, undefined, `Unclosed doc string at position ${position}`]]
-  }
-  value += '"""' // closing quote
-  return [length + 3, ['DocString', value]]
-}
 
 const tokenizeString: Tokenizer<StringToken> = (input, position) => {
   if (input[position] !== '"')
@@ -436,7 +405,6 @@ export const tokenizers = [
   tokenizeRBracket,
   tokenizeLBrace,
   tokenizeRBrace,
-  tokenizeDocString,
   tokenizeString,
   tokenizeRegexpShorthand,
   tokenizeBasePrefixedNumber,

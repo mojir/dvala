@@ -2,26 +2,15 @@ import type { DoNode, WithHandler } from '../../builtin/specialExpressions/block
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { StringToken } from '../../tokenizer/token'
-import { asReservedSymbolToken, assertOperatorToken, assertReservedSymbolToken, isDocStringToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
-import { smartTrim } from '../../utils'
+import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
 import { parseImplicitBlock } from './parseImplicitBlock'
-import { parseString } from './parseString'
 
-export function parseDo(ctx: ParserContext, allowDocString = false): [DoNode, string] {
+export function parseDo(ctx: ParserContext): DoNode {
   const token = asReservedSymbolToken(ctx.tryPeek(), 'do')
   ctx.advance()
-  let docString: string = ''
-  if (allowDocString && isDocStringToken(ctx.tryPeek())) {
-    docString = parseDocString(ctx)
-    if (!ctx.isAtEnd() && !isReservedSymbolToken(ctx.tryPeek(), 'end') && !isReservedSymbolToken(ctx.tryPeek(), 'with')) {
-      assertOperatorToken(ctx.tryPeek(), ';')
-      ctx.advance()
-    }
-  }
 
   const expressions: AstNode[] = []
   while (!ctx.isAtEnd() && !isReservedSymbolToken(ctx.tryPeek(), 'end') && !isReservedSymbolToken(ctx.tryPeek(), 'with')) {
@@ -52,15 +41,5 @@ export function parseDo(ctx: ParserContext, allowDocString = false): [DoNode, st
 
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
-  return [
-      withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, expressions, withHandlers]], token[2]) satisfies DoNode,
-      docString,
-  ]
-}
-
-function parseDocString(ctx: ParserContext): string {
-  const token = ctx.peek()
-  const stringToken: StringToken = token[2] ? ['string', token[1].slice(2, -2), token[2]] : ['string', token[1].slice(2, -2)]
-  const stringNode = parseString(ctx, stringToken)
-  return smartTrim(stringNode[1]) // Extract the string value from the StringNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, expressions, withHandlers]], token[2]) satisfies DoNode
 }
