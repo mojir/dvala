@@ -25,7 +25,7 @@ describe('parseMarkdownBlocks', () => {
 
   it('should parse a code block without options', () => {
     const md = [
-      '```',
+      '```dvala',
       '10 + 20',
       '```',
     ].join('\n')
@@ -37,7 +37,7 @@ describe('parseMarkdownBlocks', () => {
 
   it('should parse a code block with options', () => {
     const md = [
-      '```no-run,no-result',
+      '```dvala no-run,no-result',
       'some code',
       '```',
     ].join('\n')
@@ -49,7 +49,7 @@ describe('parseMarkdownBlocks', () => {
 
   it('should parse a multi-line code block', () => {
     const md = [
-      '```',
+      '```dvala',
       'let x = 1;',
       'let y = 2;',
       'x + y',
@@ -69,7 +69,7 @@ describe('parseMarkdownBlocks', () => {
       '',
       'Everything is an expression.',
       '',
-      '```',
+      '```dvala',
       '10 + 20',
       '```',
       '',
@@ -239,11 +239,11 @@ describe('extractCodeBlocks', () => {
     const md = [
       'Some text',
       '',
-      '```',
+      '```dvala',
       '10 + 20',
       '```',
       '',
-      '```',
+      '```dvala',
       'let x = 1;',
       'x + 1',
       '```',
@@ -257,15 +257,15 @@ describe('extractCodeBlocks', () => {
 
   it('should exclude no-run blocks', () => {
     const md = [
-      '```',
+      '```dvala',
       '10 + 20',
       '```',
       '',
-      '```no-run',
+      '```dvala no-run',
       'pseudo code',
       '```',
       '',
-      '```no-result',
+      '```dvala no-result',
       '30 + 40',
       '```',
     ].join('\n')
@@ -278,7 +278,7 @@ describe('extractCodeBlocks', () => {
 
   it('should exclude mermaid blocks', () => {
     const md = [
-      '```',
+      '```dvala',
       '10 + 20',
       '```',
       '',
@@ -287,7 +287,7 @@ describe('extractCodeBlocks', () => {
       '    A --> B',
       '```',
       '',
-      '```',
+      '```dvala',
       '30 + 40',
       '```',
     ].join('\n')

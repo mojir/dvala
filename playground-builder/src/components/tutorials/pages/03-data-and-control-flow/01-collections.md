@@ -6,16 +6,16 @@ Dvala has three collection types: arrays, objects, and strings. All are immutabl
 
 Arrays are ordered, mixed-type collections. Access elements by index:
 
-```
+```dvala
 let arr = [10, 20, 30, 40];
 arr[2]
 ```
 
-```
+```dvala
 first([1, 2, 3])
 ```
 
-```
+```dvala
 rest([1, 2, 3])
 ```
 
@@ -23,15 +23,15 @@ rest([1, 2, 3])
 
 The core trio for transforming collections:
 
-```
+```dvala
 map([1, 2, 3, 4], -> $ * $)
 ```
 
-```
+```dvala
 filter([1, 2, 3, 4, 5, 6], even?)
 ```
 
-```
+```dvala
 reduce([1, 2, 3, 4], +, 0)
 ```
 
@@ -39,15 +39,15 @@ reduce([1, 2, 3, 4], +, 0)
 
 Slicing, reversing, sorting, and more:
 
-```
+```dvala
 slice([10, 20, 30, 40, 50], 1, 4)
 ```
 
-```
+```dvala
 reverse([1, 2, 3])
 ```
 
-```
+```dvala
 sort([3, 1, 4, 1, 5])
 ```
 
@@ -55,19 +55,19 @@ sort([3, 1, 4, 1, 5])
 
 Generate arrays with `range`, `repeat`, and `push`:
 
-```
+```dvala
 range(5)
 ```
 
-```
+```dvala
 range(2, 10, 3)
 ```
 
-```
+```dvala
 repeat("x", 4)
 ```
 
-```
+```dvala
 push([1, 2], 3, 4)
 ```
 
@@ -75,21 +75,21 @@ push([1, 2], 3, 4)
 
 Objects are key-value maps. Use `get`, `assoc`, and `dissoc` to work with them:
 
-```
+```dvala
 let user = { name: "Alice", age: 30 };
 get(user, "name")
 ```
 
-```
+```dvala
 let user = { name: "Alice", age: 30 };
 assoc(user, "age", 31)
 ```
 
-```
+```dvala
 keys({ a: 1, b: 2, c: 3 })
 ```
 
-```
+```dvala
 vals({ a: 1, b: 2, c: 3 })
 ```
 
@@ -97,7 +97,7 @@ vals({ a: 1, b: 2, c: 3 })
 
 Combine objects with `merge` — later keys win:
 
-```
+```dvala
 merge({ a: 1, b: 2 }, { b: 3, c: 4 })
 ```
 
@@ -105,14 +105,14 @@ merge({ a: 1, b: 2 }, { b: 3, c: 4 })
 
 Test properties of collections:
 
-```
+```dvala
 empty?([])
 ```
 
-```
+```dvala
 contains?([1, 2, 3], 1)
 ```
 
-```
+```dvala
 count("hello")
 ```

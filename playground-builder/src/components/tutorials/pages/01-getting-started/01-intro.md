@@ -6,7 +6,7 @@ Dvala is a lightweight, pure functional programming language designed to embed d
 
 Many applications need runtime programmability: custom formulas, dynamic business rules, scriptable workflows, or plugin systems. Letting users write raw JavaScript is a security risk. Dvala solves this by providing a powerful yet sandboxed language that integrates seamlessly with any JavaScript runtime.
 
-```
+```dvala
 // Dvala is expression-based — everything returns a value
 if 10 > 5 then "big" else "small" end
 ```
@@ -17,7 +17,7 @@ if 10 > 5 then "big" else "small" end
 
 **Pure functional** — All data is immutable and all functions are pure. No side effects, no surprises.
 
-```
+```dvala
 let original = [1, 2, 3];
 let extended = push(original, 4);
 original // => [1, 2, 3] — unchanged
@@ -25,7 +25,7 @@ original // => [1, 2, 3] — unchanged
 
 **Expression-oriented** — There are no statements. Everything — from `if` to `let` to `loop` — is an expression that returns a value.
 
-```
+```dvala
 let label = if 42 >= 0 then "positive" else "negative" end;
 label
 ```
@@ -34,14 +34,14 @@ label
 
 **First-class functions** — Functions are values. Pass them around, return them from other functions, and compose them freely.
 
-```
+```dvala
 let double = x -> x * 2;
 map([1, 2, 3], double)
 ```
 
 **Algebraic notation** — Operators can be used as functions, and two-argument functions can be used as operators. Write what reads best.
 
-```
+```dvala
 // Same result, different style
 let double = x -> x * 2;
 // As function
@@ -56,7 +56,7 @@ map([1, 2, 3], double);
 
 Here's a taste of what you can do:
 
-```
+```dvala
 let factorial = n ->
   if n <= 1
     then 1
@@ -66,7 +66,7 @@ let factorial = n ->
 factorial(10)
 ```
 
-```
+```dvala
 let people = [
   { name: "Alice", age: 30 },
   { name: "Bob", age: 25 },

@@ -12,7 +12,7 @@ Dvala programs **never** write `await`. There is no async keyword, no promise ty
 
 Consider a simple function:
 
-```
+```dvala
 let double = x -> x * 2;
 double(21)
 ```
@@ -41,7 +41,7 @@ The Dvala code inside (`1 + 2` or `fetchData()`) is written the same way. The ch
 
 Dvala's effect system is the key integration point. When a program performs an effect, the host handler decides whether to resolve it synchronously or asynchronously:
 
-```
+```dvala
 let x = perform(effect(dvala.random));
 x * 100
 ```
@@ -52,7 +52,7 @@ In the playground, `dvala.random` resolves instantly. In a different host, the s
 
 In colored languages, `map` over an async function requires a special `Promise.all(arr.map(...))` pattern. In Dvala, higher-order functions work transparently with async operations:
 
-```
+```dvala
 map([1, 2, 3, 4], inc)
 ```
 

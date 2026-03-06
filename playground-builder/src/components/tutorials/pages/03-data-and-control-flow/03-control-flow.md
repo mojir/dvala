@@ -6,11 +6,11 @@ Since everything in Dvala is an expression, all control flow constructs return v
 
 The basic conditional. Without `else`, the expression returns `null` when the condition is false:
 
-```
+```dvala
 if 10 > 5 then "big" else "small" end
 ```
 
-```
+```dvala
 if false then "nope" end
 ```
 
@@ -18,7 +18,7 @@ if false then "nope" end
 
 `unless` is a negated `if` — the body runs when the condition is false:
 
-```
+```dvala
 unless 3 > 10 then "as expected" end
 ```
 
@@ -26,7 +26,7 @@ unless 3 > 10 then "as expected" end
 
 `cond` evaluates multiple conditions in order and returns the first match:
 
-```
+```dvala
 let x = 12;
 cond
   case x < 5 then "small"
@@ -39,7 +39,7 @@ end
 
 `match` compares a value against specific cases:
 
-```
+```dvala
 let day = 3;
 match day
   case 1 then "Mon"
@@ -52,7 +52,7 @@ end
 
 A compact conditional with `? :`:
 
-```
+```dvala
 let n = 7;
 n > 0 ? "positive" : "non-positive"
 ```
@@ -61,11 +61,11 @@ n > 0 ? "positive" : "non-positive"
 
 `&&` returns the first falsy value (or the last value). `||` returns the first truthy value (or the last value):
 
-```
+```dvala
 true && "second"
 ```
 
-```
+```dvala
 null || false || "found it"
 ```
 
@@ -73,11 +73,11 @@ null || false || "found it"
 
 `??` returns the left side unless it is `null`. Unlike `||`, it does not coalesce `false` or `0`:
 
-```
+```dvala
 0 ?? "default"
 ```
 
-```
+```dvala
 null ?? "default"
 ```
 
@@ -85,7 +85,7 @@ null ?? "default"
 
 Group multiple expressions with `do` / `end`. The block returns its last expression:
 
-```
+```dvala
 do
   let a = 10;
   let b = 20;
@@ -97,7 +97,7 @@ end
 
 Use `do` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises an error:
 
-```
+```dvala
 do
   perform(effect(dvala.error), "oops")
 with
@@ -105,7 +105,7 @@ with
 end
 ```
 
-```
+```dvala
 let safe-div = (a, b) ->
   do
     a / b

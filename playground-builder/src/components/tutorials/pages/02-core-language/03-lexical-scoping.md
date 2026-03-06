@@ -10,7 +10,7 @@ Dvala is lexically scoped throughout. Every variable reference resolves to the n
 
 `let` introduces a new binding in the current scope. Bindings are visible from their declaration onward:
 
-```
+```dvala
 let x = 10;
 let y = 20;
 x + y
@@ -20,7 +20,7 @@ x + y
 
 `do...end` blocks create new scopes. Inner scopes can access outer bindings:
 
-```
+```dvala
 let outer = 5;
 do
   let inner = 10;
@@ -30,7 +30,7 @@ end
 
 But outer scopes cannot see inner bindings — they are confined to their block:
 
-```
+```dvala
 let result = do
   let secret = 42;
   secret
@@ -42,7 +42,7 @@ result
 
 A **closure** is a function that captures variables from its enclosing scope. The captured bindings travel with the function, even after the enclosing scope has returned:
 
-```
+```dvala
 let make-adder = (n) -> do
   let add = (x) -> n + x;
   add
@@ -57,7 +57,7 @@ Here `add` captures `n` from `make-adder`'s scope. When `add-ten` is called late
 
 An inner binding can **shadow** an outer one with the same name. The outer binding is unaffected:
 
-```
+```dvala
 let x = 5;
 let result = do
   let x = 99;
@@ -72,7 +72,7 @@ The inner `x` is 99, but the outer `x` remains 5. Shadowing creates a new bindin
 
 A function always refers to the environment where it was **defined**, not where it is **called**:
 
-```
+```dvala
 let x = 10;
 let add-x = y -> x + y;
 let result = do
@@ -88,7 +88,7 @@ Even though `x` is shadowed to 20 in the `do` block, `add-x` uses its own captur
 
 Parameters create local bindings that shadow any outer variables of the same name:
 
-```
+```dvala
 let x = 100;
 let f = (x) -> x * 2;
 f(7)
@@ -100,7 +100,7 @@ The parameter `x` shadows the outer `x = 100`. The function returns 14.
 
 Each call to a closure-creating function produces an independent closure with its own captured state:
 
-```
+```dvala
 let make-counter = () -> do
   let n = 0;
   let step = () -> do
@@ -120,7 +120,7 @@ let c2 = make-counter();
 
 Closures work naturally with `map`, `filter`, and other higher-order functions:
 
-```
+```dvala
 let multiplier = 3;
 map([1, 2, 3, 4], x -> x * multiplier)
 ```
@@ -131,7 +131,7 @@ The lambda captures `multiplier` from the enclosing scope.
 
 Closures can nest — each level captures from the level above:
 
-```
+```dvala
 let a = 1;
 let f = (b) -> (c) -> a + b + c;
 f(10)(100)

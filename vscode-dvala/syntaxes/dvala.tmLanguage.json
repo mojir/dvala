@@ -178,7 +178,7 @@
         {
           "comment": "Assertion & predicates",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|function\\?|string\\?|number\\?|integer\\?|boolean\\?|null\\?|zero\\?|pos\\?|neg\\?|even\\?|odd\\?|array\\?|collection\\?|sequence\\?|object\\?|regexp\\?|effect\\?|finite\\?|positive-infinity\\?|negative-infinity\\?|true\\?|false\\?|empty\\?|not-empty\\?|vector\\?|matrix\\?|grid\\?|blank\\?|identical\\?|defined\\?)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|function\\?|string\\?|number\\?|integer\\?|boolean\\?|null\\?|zero\\?|pos\\?|neg\\?|even\\?|odd\\?|array\\?|collection\\?|sequence\\?|object\\?|regexp\\?|effect\\?|finite\\?|positive-infinity\\?|negative-infinity\\?|true\\?|false\\?|empty\\?|not-empty\\?|vector\\?|matrix\\?|grid\\?|blank\\?|identical\\?)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Collection, array, sequence functions",
@@ -210,7 +210,7 @@
     "operators": {
       "patterns": [
         {
-          "name": "keyword.operator.arrow.dvala",
+          "name": "keyword.control.dvala",
           "match": "->"
         },
         {

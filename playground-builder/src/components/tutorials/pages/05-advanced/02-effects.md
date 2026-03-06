@@ -19,7 +19,7 @@ Two deliberate deviations:
 
 Use `effect(name)` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
 
-```
+```dvala
 let log = effect(dvala.io.println);
 log
 ```
@@ -54,7 +54,7 @@ Dvala provides built-in effects that are always available without explicit handl
 **Error:**
 * `dvala.error` — raises an error (covered in the Errors section below)
 
-```
+```dvala
 perform(effect(dvala.random))
 ```
 
@@ -62,7 +62,7 @@ perform(effect(dvala.random))
 
 `do...with...end` establishes local effect handlers. The handler receives the effect's arguments as an array and its return value becomes the result of the `perform` call:
 
-```
+```dvala
 do
   let x = perform(effect(my.double), 21);
   x + 1
@@ -73,7 +73,7 @@ end
 
 Multiple handlers can be defined in a single `with` block:
 
-```
+```dvala
 do
   let a = perform(effect(my.add), 10, 20);
   let b = perform(effect(my.mul), 3, 4);
@@ -90,7 +90,7 @@ In Dvala, there is no `throw` or `try/catch`. Errors are effects.
 
 To raise an error, perform `dvala.error`:
 
-```
+```dvala
 do
   perform(effect(dvala.error), "oops")
 with
@@ -100,7 +100,7 @@ end
 
 Runtime errors — like calling a function with invalid arguments — are automatically routed through `dvala.error`. This means `do...with` is the universal error-handling mechanism:
 
-```
+```dvala
 do
   sqrt(-1)
 with
@@ -110,7 +110,7 @@ end
 
 You can mix error handling with other effect handlers in the same block:
 
-```
+```dvala
 do
   let x = perform(effect(my.read));
   sqrt(x * -1)
@@ -126,7 +126,7 @@ An unhandled `dvala.error` propagates like any other unhandled effect — up thr
 
 Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate outward:
 
-```
+```dvala
 do
   do
     perform(effect(my.inner), "hi")
@@ -142,7 +142,7 @@ end
 
 `effect-matcher` creates a predicate function that matches effects by name pattern. Use it with `do...with` for wildcard matching:
 
-```
+```dvala
 do
   perform(effect(dvala.io.println), "test")
 with
