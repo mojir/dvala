@@ -2,17 +2,19 @@ import type { EffectReference, FunctionReference } from '../../../reference'
 import { assertNonUndefined } from '../../typeGuards'
 import { assertFunctionLike, isEffect } from '../../typeGuards/dvala'
 import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
+import { assertString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
 import { generateDocString } from '../../utils/docString/generateDocString'
 import type { Any } from '../../interface'
 import type { Arity, BuiltinNormalExpressions } from '../interface'
+import { FUNCTION_SYMBOL } from '../../utils/symbols'
 
 export function getMetaNormalExpression(
   normalExpressionReference: Record<string, FunctionReference>,
   effectReference: Record<string, EffectReference>,
 ): BuiltinNormalExpressions {
   return {
-    doc: {
+    'doc': {
       evaluate: ([value], sourceCodeInfo): string => {
         assertNonUndefined(normalExpressionReference)
 
@@ -44,28 +46,45 @@ export function getMetaNormalExpression(
         args: { value: { type: ['function', 'effect'] } },
         variants: [{ argumentNames: ['value'] }],
         description: 'Returns documentation string of the $value. Works on functions and effects.',
-        seeAlso: ['arity'],
+        seeAlso: ['arity', 'with-doc'],
         examples: [
           'doc(+)',
           'doc(effect(dvala.io.println))',
-          `
-let add = (x, y) -> do
-  """
-  Adds two numbers.
-  Args:
-    x: First number.
-    y: Second number.
-  Returns:
-    Sum of x and y.
-  """;
-  x + y;
-end;
-
-doc(add)`,
+          'let add = (x, y) -> x + y with-doc "Adds two numbers.";\ndoc(add)',
         ],
       },
     },
-    arity: {
+    'with-doc': {
+      evaluate: ([fn, docString], sourceCodeInfo): Any => {
+        assertFunctionLike(fn, sourceCodeInfo)
+        assertString(docString, sourceCodeInfo)
+        if (!isDvalaFunction(fn) || fn.functionType !== 'UserDefined') {
+          throw new Error('with-doc can only be used with user-defined functions')
+        }
+        return {
+          ...fn,
+          [FUNCTION_SYMBOL]: true,
+          docString,
+        }
+      },
+      arity: toFixedArity(2),
+      docs: {
+        category: 'meta',
+        returns: { type: 'function' },
+        args: {
+          a: { type: 'function' },
+          b: { type: 'string' },
+        },
+        variants: [{ argumentNames: ['a', 'b'] }],
+        description: 'Returns a new function with the documentation string $b attached. The original function is not modified.',
+        seeAlso: ['doc'],
+        examples: [
+          '((x, y) -> x + y) with-doc "Adds two numbers."',
+          'let add = (x, y) -> x + y;\nadd with-doc "Adds x and y."',
+        ],
+      },
+    },
+    'arity': {
       evaluate: ([value], sourceCodeInfo): Arity | Any => {
         // Handle effects
         if (isEffect(value)) {

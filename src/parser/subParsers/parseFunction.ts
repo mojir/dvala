@@ -31,11 +31,8 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
     }
     ctx.advance()
     let nodes: AstNode[] | undefined
-    let docString = ''
     if (isReservedSymbolToken(ctx.peek(), 'do')) {
-      const parsedDo = parseDo(ctx, true)
-      docString = parsedDo[1]
-      const doNode = parsedDo[0]
+      const doNode = parseDo(ctx)
       const withHandlers = doNode[1][2]
       if (withHandlers && withHandlers.length > 0) {
         // do...with...end: preserve the full DoNode as a single expression so
@@ -59,7 +56,6 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
           functionArguments,
           nodes,
         ],
-        docString,
       ],
     ], firstToken[2]) satisfies LambdaNode
   }
@@ -119,11 +115,8 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const startPos = ctx.getPosition()
 
   let nodes: AstNode[] | undefined
-  let docString = ''
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
-    const parsedDo = parseDo(ctx, true)
-    docString = parsedDo[1]
-    const doNode = parsedDo[0]
+    const doNode = parseDo(ctx)
     const withHandlers = doNode[1][2]
     if (withHandlers && withHandlers.length > 0) {
       // do...with...end: preserve the full DoNode so the with-handlers are not lost.
@@ -177,7 +170,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const node: LambdaNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['0_lambda'], [
     functionArguments,
     nodes,
-  ], docString]], firstToken[2])
+  ]]], firstToken[2])
 
   return node
 }

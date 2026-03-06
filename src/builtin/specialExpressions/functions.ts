@@ -11,7 +11,7 @@ import type { Builtin, BuiltinSpecialExpression } from '../interface'
 import type { Function } from '../utils'
 import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type LambdaNode = SpecialExpressionNode<[typeof specialExpressionTypes['0_lambda'], Function, string]>
+export type LambdaNode = SpecialExpressionNode<[typeof specialExpressionTypes['0_lambda'], Function]>
 
 export const lambdaSpecialExpression: BuiltinSpecialExpression<DvalaFunction, LambdaNode> = {
   arity: {},

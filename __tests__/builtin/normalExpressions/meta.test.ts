@@ -15,41 +15,37 @@ describe('misc functions', () => {
         expect((dvala.run('doc(number?)') as string).length).toBeGreaterThan(0)
         expect(dvala.run('doc(2)')).toBe('')
         expect(dvala.run(`
-          let add = (a, b) -> do
-            """
-            Adds two numbers together.
-            Returns the sum of a and b.
-            """;
-            
-            a + b
-          end;
+          let add = ((a, b) -> a + b) with-doc "Adds two numbers.";
           doc(add)
-        `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
+        `)).toBe('Adds two numbers.')
+      })
+    })
+    describe('with-doc', () => {
+      it('should attach a doc string to a function', () => {
         expect(dvala.run(`
-          let add = (a, b) -> do
-            """
-            Adds two numbers together.
-            Returns the sum of a and b.
-            """
-          end;
+          let add = ((a, b) -> a + b) with-doc "Adds two numbers.";
           doc(add)
-        `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
+        `)).toBe('Adds two numbers.')
+      })
+      it('should support operator syntax', () => {
         expect(dvala.run(`
-          let add = (a, b) -> do
-            """
-            Adds two numbers together.
-            Returns the sum of a and b.
-            """;
-          end;
-          doc(add)
-        `)).toBe('Adds two numbers together.\nReturns the sum of a and b.')
+          let add = (a, b) -> a + b;
+          let documented-add = add with-doc "Adds.";
+          doc(documented-add)
+        `)).toBe('Adds.')
+      })
+      it('should not modify the original function', () => {
         expect(dvala.run(`
-          let add = () -> do
-            """Escaping\\""".""";
-            a + b
-          end;
+          let add = (a, b) -> a + b;
+          let documented-add = add with-doc "Adds.";
           doc(add)
-        `)).toBe('Escaping""".')
+        `)).toBe('')
+      })
+      it('should preserve function behavior', () => {
+        expect(dvala.run(`
+          let add = ((a, b) -> a + b) with-doc "Adds.";
+          add(1, 2)
+        `)).toBe(3)
       })
     })
     describe('arity', () => {

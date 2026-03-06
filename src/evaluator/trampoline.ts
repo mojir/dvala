@@ -1024,7 +1024,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
     // --- lambda (fn / ->) ---
     case specialExpressionTypes['0_lambda']: {
       const fn = node[1][1] as [BindingTarget[], AstNode[], ...unknown[]]
-      const docString = (node[1][2] ?? '') as string
       const evaluatedFunc = evaluateFunction(fn, env)
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
       const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
@@ -1036,7 +1035,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         name: undefined,
         evaluatedfunction: evaluatedFunc,
         arity,
-        docString,
+        docString: '',
       }
       return { type: 'Value', value: dvalaFunction, k }
     }
