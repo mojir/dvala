@@ -1,5 +1,5 @@
 /* v8 ignore next 1000 */
-// Minimal entry point: core Dvala class, types, and type guards.
+// Minimal entry point: core types, type guards, and factory API.
 // No modules or reference data included — import from '@mojir/dvala/full'
 // for the complete bundle, or import individual modules separately.
 export {
@@ -18,12 +18,10 @@ export type { Ast } from './parser/types'
 export type { SourceCodeInfo } from './tokenizer/token'
 export type { Token, TokenType } from './tokenizer/token'
 export { normalExpressionKeys, specialExpressionKeys } from './builtin'
-export { Dvala } from './Dvala/Dvala'
 export type { DvalaModule } from './builtin/modules/interface'
 export type { DvalaBundle } from './bundler/interface'
 export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError } from './errors'
-export type { ContextParams, FilePathParams, MinifyParams, PureParams, DvalaRuntimeInfo } from './Dvala/Dvala'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 

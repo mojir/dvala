@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/index'
-import { Dvala as DvalaFull, allBuiltinModules, apiReference } from '../src/full'
+import { allBuiltinModules, apiReference, createDvala as createDvalaFull } from '../src/full'
 import { assertModule } from '../src/modules/assertion'
 import { gridModule } from '../src/modules/grid'
 import { vectorModule } from '../src/modules/vector'
@@ -47,12 +47,12 @@ describe('minimal entry point (src/index.ts)', () => {
 
 describe('full entry point (src/full.ts)', () => {
   it('should evaluate core expressions', () => {
-    const dvala = new DvalaFull({ modules: allBuiltinModules })
+    const dvala = createDvalaFull({ modules: allBuiltinModules })
     expect(dvala.run('1 + 2')).toBe(3)
   })
 
   it('should have all modules available via allBuiltinModules', () => {
-    const dvala = new DvalaFull({ modules: allBuiltinModules })
+    const dvala = createDvalaFull({ modules: allBuiltinModules })
     expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
@@ -60,7 +60,7 @@ describe('full entry point (src/full.ts)', () => {
   })
 
   it('should have reference data loaded (doc returns non-empty)', () => {
-    const dvala = new DvalaFull({ modules: allBuiltinModules })
+    const dvala = createDvalaFull({ modules: allBuiltinModules })
     const docString = dvala.run('doc(+)') as string
     expect(docString.length).toBeGreaterThan(0)
     expect(docString).toContain('+')
