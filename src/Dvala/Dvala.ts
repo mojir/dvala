@@ -238,7 +238,7 @@ export class Dvala {
   }
 
   public getAutoCompleter(program: string, position: number, params: ContextParams = {}): AutoCompleter {
-    return new AutoCompleter(program, position, this, params)
+    return new AutoCompleter(program, position, params)
   }
 }
 

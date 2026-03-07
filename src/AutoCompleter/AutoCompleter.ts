@@ -1,5 +1,6 @@
 import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
-import type { ContextParams, Dvala } from '../Dvala/Dvala'
+import type { ContextParams } from '../Dvala/Dvala'
+import { tokenize } from '../tokenizer/tokenize'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 
 type AutoCompleteSuggestion = {
@@ -17,9 +18,9 @@ export class AutoCompleter {
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
-  constructor(public readonly originalProgram: string, public readonly originalPosition: number, dvala: Dvala, params: ContextParams) {
+  constructor(public readonly originalProgram: string, public readonly originalPosition: number, params: ContextParams) {
     const partialProgram = this.originalProgram.slice(0, this.originalPosition)
-    const tokenStream = dvala.tokenize(partialProgram)
+    const tokenStream = tokenize(partialProgram, false, undefined)
 
     const lastToken = tokenStream.tokens.at(-1)
     if (!lastToken) {

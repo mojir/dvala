@@ -34,3 +34,7 @@ export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, Run
 // Factory API
 export { createDvala } from './createDvala'
 export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
+
+// Standalone tooling
+export { tokenizeSource, parseTokenStream, untokenize, getUndefinedSymbols, getAutoCompleter } from './tooling'
+export type { TokenStream } from './tooling'
