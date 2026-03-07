@@ -1,12 +1,13 @@
 import { describe, expect, it, test } from 'vitest'
-import { Dvala } from '../Dvala/Dvala'
+import { createDvala } from '../createDvala'
+import { getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../tooling'
 import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
 import { mathUtilsModule } from '../builtin/modules/math'
 
-const dvala = new Dvala()
-const dvalaDebug = new Dvala({ debug: true })
-const dvalaWithMathUtils = new Dvala({ modules: [mathUtilsModule] })
+const dvala = createDvala()
+const dvalaDebug = createDvala({ debug: true })
+const dvalaWithMathUtils = createDvala({ modules: [mathUtilsModule] })
 
 describe('parser', () => {
   describe('conditional operator', () => {
@@ -72,7 +73,7 @@ describe('parser', () => {
 
   describe('reserved symbol _', () => {
     it('should parse reserved symbol _', () => {
-      expect(dvala.parse(dvala.tokenize('as'))).toEqual({
+      expect(parseTokenStream(tokenizeSource('as'))).toEqual({
         body: [
           [
             NodeTypes.ReservedSymbol,
@@ -95,7 +96,7 @@ describe('parser', () => {
   })
 
   test('random samples0', () => {
-    expect(() => dvalaDebug.getUndefinedSymbols('let { x, ...x } = {};')).toThrow(DvalaError)
+    expect(() => getUndefinedSymbols('let { x, ...x } = {};')).toThrow(DvalaError)
   })
 
   test('random samples', () => {
@@ -118,10 +119,10 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('1e2e2')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('re-match("Albert", #"as(d")')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('let _0 = 0;')).not.toThrow()
-    expect(() => dvalaDebug.getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
-    expect(() => dvalaDebug.getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
-    expect(() => dvalaDebug.getUndefinedSymbols('let foo = ([,,a,a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
-    expect(() => dvalaDebug.getUndefinedSymbols('let foo = ([,,a]) -> a; foo([1, 2, 3])')).not.toThrow()
+    expect(() => getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
+    expect(() => getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
+    expect(() => getUndefinedSymbols('let foo = ([,,a,a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
+    expect(() => getUndefinedSymbols('let foo = ([,,a]) -> a; foo([1, 2, 3])')).not.toThrow()
     expect(() => dvalaDebug.run('let foo = ([,,a]) -> a; foo([1, 2, 3])')).not.toThrow()
     expect(() => dvalaDebug.run('let foo = ({a}) -> a; foo({})')).not.toThrow()
     expect(() => dvalaDebug.run('let foo = ({a, [a]}) -> a;')).toThrow(DvalaError)
@@ -156,7 +157,7 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('for (a in [1, 2] 2) -> do 1 end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('for (a in [1, 2], 2) -> do 1 end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('do 1; 2 end')).not.toThrow()
-    expect(() => dvala.getUndefinedSymbols('loop ([,x] = [1, 2]) -> do 1 end')).not.toThrow()
+    expect(() => getUndefinedSymbols('loop ([,x] = [1, 2]) -> do 1 end')).not.toThrow()
     expect(() => dvalaDebug.run('loop ([,x] = [1, 2]) -> do 1 end')).not.toThrow()
     expect(() => dvalaDebug.run('loop (x = 2) -> do 1, end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('loop) -> do 1 end')).toThrow(DvalaError)
@@ -422,7 +423,7 @@ describe('parser', () => {
       expect(dvala.run('-5.2e-1')).toBe(-0.52)
       expect(dvala.run('5')).toBe(5)
       expect(dvala.run('-10')).toBe(-10)
-      expect(dvala.tokenize('-10').tokens).toEqual([
+      expect(tokenizeSource('-10').tokens).toEqual([
         ['Number', '-10'],
       ])
     })
@@ -487,7 +488,7 @@ describe('parser', () => {
   describe('debug', () => {
     test('samples', () => {
       expect(dvalaDebug.run('2 + 3')).toBe(5)
-      expect(dvalaDebug.tokenize('2 + 3').tokens).toEqual([
+      expect(tokenizeSource('2 + 3', true).tokens).toEqual([
         [
           'Number',
           '2',
@@ -545,7 +546,7 @@ describe('parser', () => {
         ],
       ])
       expect(dvalaDebug.run('-2')).toBe(-2)
-      expect(dvalaDebug.tokenize('-2').tokens).toEqual([
+      expect(tokenizeSource('-2', true).tokens).toEqual([
         [
           'Number',
           '-2',

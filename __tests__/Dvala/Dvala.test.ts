@@ -1,29 +1,24 @@
-import { beforeEach, describe, expect, it, test } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createDvala } from '../../src/createDvala'
 import { DvalaError, UndefinedSymbolError } from '../../src/errors'
 import { Cache } from '../../src/Dvala/Cache'
-import { Dvala } from '../../src/Dvala/Dvala'
-import { assertDvalaFunction } from '../../src/typeGuards/dvalaFunction'
-import type { Ast, NormalExpressionNodeWithName } from '../../src/parser/types'
+import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, transformSymbols, untokenize } from '../../src/tooling'
+import type { Ast } from '../../src/parser/types'
 import { NodeTypes } from '../../src/constants/constants'
-import { normalExpressionTypes } from '../../src/builtin/normalExpressions'
-import type { Context } from '../../src/evaluator/interface'
 import { vectorModule } from '../../src/builtin/modules/vector'
 
 describe('all tests', () => {
   describe('auto completer', () => {
     it('should return empty array if no token stream', () => {
-      const dvala = new Dvala()
-      const autoCompleter = dvala.getAutoCompleter('', 0)
+      const autoCompleter = getAutoCompleter('', 0)
       expect(autoCompleter.getNextSuggestion()).toBeNull()
     })
     it('should return empty array if invalid token stream', () => {
-      const dvala = new Dvala()
-      const autoCompleter = dvala.getAutoCompleter('12s', 3)
+      const autoCompleter = getAutoCompleter('12s', 3)
       expect(autoCompleter.getNextSuggestion()).toBeNull()
     })
     it('should return xxx', () => {
-      const dvala = new Dvala()
-      const autoCompleter = dvala.getAutoCompleter('1 + xx + 2', 6, { bindings: { xxx: 1 } })
+      const autoCompleter = getAutoCompleter('1 + xx + 2', 6, { bindings: { xxx: 1 } })
       expect(autoCompleter.getNextSuggestion()).toEqual({
         program: '1 + xxx + 2',
         position: 7,
@@ -31,75 +26,23 @@ describe('all tests', () => {
     })
   })
 
-  describe('tEST', () => {
-    let dvala: Dvala
-    beforeEach(() => {
-      dvala = new Dvala({ debug: true, astCacheSize: 0 })
-    })
-    it('without params', () => {
-      const fn = dvala.run('-> $1 + $2')
-      assertDvalaFunction(fn)
-      expect(dvala.apply(fn, [2, 3])).toBe(5)
-    })
-    it('with empty params', () => {
-      const fn = dvala.run('-> $1 + $2')
-      assertDvalaFunction(fn)
-      expect(dvala.apply(fn, [2, 3], {})).toBe(5)
-    })
-
-    it('with params', () => {
-      const fn = dvala.run('-> $1 + $2 + x')
-      assertDvalaFunction(fn)
-      expect(dvala.apply(fn, [2, 3], { contexts: [{ x: { value: 1 } }] })).toBe(6)
-    })
-  })
-
-  describe('runtime info', () => {
-    it('getRuntimeInfo().', () => {
-      const dvala = new Dvala()
-      expect(dvala.getRuntimeInfo()).toMatchSnapshot()
-    })
-    it('getRuntimeInfo() with ast cache > 0', () => {
-      const dvala = new Dvala({ astCacheSize: 10 })
-      expect(dvala.getRuntimeInfo()).toMatchSnapshot()
-    })
-    it('getRuntimeInfo() with ast cache = 0', () => {
-      const dvala = new Dvala({ astCacheSize: 0 })
-      expect(dvala.getRuntimeInfo()).toMatchSnapshot()
-    })
-  })
-
   describe('bindings', () => {
-    let dvala: Dvala
+    let dvala: ReturnType<typeof createDvala>
     beforeEach(() => {
-      dvala = new Dvala({ debug: true })
+      dvala = createDvala({ debug: true })
     })
     it('a function via bindings.', () => {
-      dvala = new Dvala({ astCacheSize: 10 })
+      dvala = createDvala({ cache: 10 })
       const bindings = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
       expect(dvala.run('tripple(10)', { bindings })).toBe(30)
       expect(dvala.run('tripple(10)', { bindings })).toBe(30)
     })
 
     it('a function - no cache', () => {
-      dvala = new Dvala({ debug: true })
+      dvala = createDvala({ debug: true })
       const bindings = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
       expect(dvala.run('tripple(10)', { bindings })).toBe(30)
       expect(dvala.run('tripple(10)', { bindings })).toBe(30)
-    })
-
-    it('a function - initial cache', () => {
-      const initialCache: Record<string, Ast> = {
-        '2 ^ 4': {
-          hasDebugData: false,
-          body: [
-            [NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['^'] as number], [[NodeTypes.Number, 2], [NodeTypes.Number, 2]]]] satisfies NormalExpressionNodeWithName,
-          ],
-        },
-      }
-      dvala = new Dvala({ astCacheSize: 10, initialCache })
-      expect(dvala.run('2 ^ 2')).toBe(4)
-      expect(dvala.run('2 ^ 4')).toBe(4)
     })
 
     it('a variable.', () => {
@@ -122,19 +65,6 @@ describe('all tests', () => {
 
     it('a function with a built in special expression name', () => {
       expect(() => dvala.run('let and = (x) -> x + 1 end')).toThrow(DvalaError)
-    })
-
-    test('global context with globalModuleScope', () => {
-      const globalContext: Context = {}
-      dvala.run('let magicNumber = 42; let double = magicNumber * 2;', { globalContext, globalModuleScope: true })
-      expect(globalContext).toEqual({
-        magicNumber: {
-          value: 42,
-        },
-        double: {
-          value: 84,
-        },
-      })
     })
 
     it('more than one', () => {
@@ -225,9 +155,9 @@ describe('all tests', () => {
   })
 
   describe('regressions', () => {
-    let dvala: Dvala
+    let dvala: ReturnType<typeof createDvala>
     beforeEach(() => {
-      dvala = new Dvala({ debug: true })
+      dvala = createDvala({ debug: true })
     })
     it('sourceCodeInfo', () => {
       try {
@@ -272,56 +202,35 @@ describe('all tests', () => {
 
   describe('getUndefinedSymbols', () => {
     it('should find undefined symbols from string input', () => {
-      const dvala = new Dvala()
-      const result = dvala.getUndefinedSymbols('x + y')
-      expect(result).toEqual(new Set(['x', 'y']))
-    })
-
-    it('should find undefined symbols from AST input', () => {
-      const dvala = new Dvala()
-      const parsedAst = dvala.parse(dvala.tokenize('x + y'))
-      const result = dvala.getUndefinedSymbols(parsedAst)
+      const result = getUndefinedSymbols('x + y')
       expect(result).toEqual(new Set(['x', 'y']))
     })
 
     it('should return empty set when all symbols are defined', () => {
-      const dvala = new Dvala()
-      const result = dvala.getUndefinedSymbols('1 + 2')
+      const result = getUndefinedSymbols('1 + 2')
       expect(result).toEqual(new Set())
     })
 
     it('should return empty set for import expression', () => {
-      const dvala = new Dvala({ modules: [vectorModule] })
-      const result = dvala.getUndefinedSymbols('let v = import(vector); v.sum([1, 2])')
+      const result = getUndefinedSymbols('let v = import(vector); v.sum([1, 2])', { modules: [vectorModule] })
       expect(result).toEqual(new Set())
     })
   })
 
   describe('transformSymbols', () => {
     it('should transform symbol tokens', () => {
-      const dvala = new Dvala()
-      const tokenStream = dvala.tokenize('x + y')
-      const transformed = dvala.transformSymbols(tokenStream, s => s === 'x' ? 'a' : s)
-      const result = dvala.untokenize(transformed)
+      const tokenStream = tokenizeSource('x + y')
+      const transformed = transformSymbols(tokenStream, s => s === 'x' ? 'a' : s)
+      const result = untokenize(transformed)
       expect(result).toBe('a + y')
     })
   })
 
   describe('untokenize', () => {
     it('should convert token stream back to source code', () => {
-      const dvala = new Dvala()
-      const tokenStream = dvala.tokenize('1 + 2')
-      const result = dvala.untokenize(tokenStream)
+      const tokenStream = tokenizeSource('1 + 2')
+      const result = untokenize(tokenStream)
       expect(result).toBe('1 + 2')
-    })
-  })
-
-  describe('tokenize with minify', () => {
-    it('should minify token stream when minify option is true', () => {
-      const dvala = new Dvala()
-      const normal = dvala.tokenize('1  +  2')
-      const minified = dvala.tokenize('1  +  2', { minify: true })
-      expect(minified.tokens.length).toBeLessThanOrEqual(normal.tokens.length)
     })
   })
 })

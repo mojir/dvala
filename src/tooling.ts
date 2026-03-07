@@ -7,7 +7,7 @@
 
 import { builtin } from './builtin'
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
-import type { ContextParams } from './Dvala/Dvala'
+import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 import { createContextStack } from './evaluator/ContextStack'
 import { evaluateNode } from './evaluator/trampoline'
 import { getUndefinedSymbols as getUndefinedSymbolsInternal } from './getUndefinedSymbols'
@@ -17,6 +17,7 @@ import type { TokenStream } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import type { Ast } from './parser/types'
+import { transformSymbolTokens } from './transformer'
 import { untokenize } from './untokenizer'
 
 export type { TokenStream }
@@ -44,6 +45,13 @@ export function parseTokenStream(tokenStream: TokenStream): Ast {
 export { untokenize }
 
 /**
+ * Transform all symbol tokens in a token stream using the provided function.
+ */
+export function transformSymbols(tokenStream: TokenStream, transformer: (symbol: string) => string): TokenStream {
+  return transformSymbolTokens(tokenStream, transformer)
+}
+
+/**
  * Get all undefined symbols in a Dvala program.
  *
  * @param source - Dvala source code
@@ -58,8 +66,7 @@ export function getUndefinedSymbols(
   const modulesMap = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))
     : undefined
-  const params: ContextParams = { bindings: options?.bindings }
-  const contextStack = createContextStack(params, modulesMap)
+  const contextStack = createContextStack({ bindings: options?.bindings }, modulesMap)
   const tokenStream = tokenize(source, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
   const ast: Ast = { body: parse(minified), hasDebugData: false }
@@ -71,8 +78,8 @@ export function getUndefinedSymbols(
  *
  * @param program - Full Dvala source code
  * @param position - Cursor position (character offset)
- * @param params - Optional context params (bindings, globalContext, contexts)
+ * @param params - Optional params (bindings to include as suggestions)
  */
-export function getAutoCompleter(program: string, position: number, params: ContextParams = {}): AutoCompleter {
+export function getAutoCompleter(program: string, position: number, params: AutoCompleterParams = {}): AutoCompleter {
   return new AutoCompleter(program, position, params)
 }

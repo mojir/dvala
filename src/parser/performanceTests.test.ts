@@ -1,10 +1,11 @@
 /* eslint-disable no-console */
 import { describe, it } from 'vitest'
-import { Dvala } from '../Dvala/Dvala'
+import { createDvala } from '../createDvala'
+import { parseTokenStream, tokenizeSource } from '../tooling'
 import { evaluate } from '../evaluator/trampoline'
 import { createContextStack } from '../evaluator/ContextStack'
 
-const dvala = new Dvala({ debug: false, astCacheSize: 0 })
+const dvala = createDvala()
 
 // 6c195a7
 // dvala.run is slower than eval by a factor 163.2
@@ -65,7 +66,7 @@ describe.skip('performance comparison', () => {
     }
     const entries: ReportEntry[] = []
     const expressionsWithTokenStreams = expressions.map((expression) => {
-      const tokenStream = dvala.tokenize(Array.isArray(expression) ? expression[0]! : expression)
+      const tokenStream = tokenizeSource(Array.isArray(expression) ? expression[0]! : expression)
 
       return {
         expression,
@@ -83,7 +84,7 @@ describe.skip('performance comparison', () => {
 
       let startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        const ast = dvala.parse(expression.tokenStream)
+        const ast = parseTokenStream(expression.tokenStream)
         void evaluate(ast, createContextStack())
       }
       report.dvala = (performance.now() - startTime) * 1000 / iterations
@@ -107,8 +108,8 @@ describe.skip('performance comparison', () => {
     }
     const entries: ReportEntry[] = []
     const expressionsWithAsts = expressions.map((expression) => {
-      const tokenStream = dvala.tokenize(Array.isArray(expression) ? expression[0]! : expression)
-      const ast = dvala.parse(tokenStream)
+      const tokenStream = tokenizeSource(Array.isArray(expression) ? expression[0]! : expression)
+      const ast = parseTokenStream(tokenStream)
 
       return {
         expression,

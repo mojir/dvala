@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../Dvala/Dvala'
+import { tokenizeSource, untokenize } from '../tooling'
 
 const examples = [
   '1 + 2',
@@ -9,10 +9,9 @@ const examples = [
 describe('untokenizer', () => {
   describe('untokenize', () => {
     it('should untokenize Examples', () => {
-      const dvala = new Dvala()
       for (const example of examples) {
-        const tokenStream = dvala.tokenize(example)
-        const result = dvala.untokenize(tokenStream)
+        const tokenStream = tokenizeSource(example)
+        const result = untokenize(tokenStream)
         expect(result).toBe(example)
       }
     })

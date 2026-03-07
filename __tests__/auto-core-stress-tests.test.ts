@@ -17,12 +17,19 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
+import type { RunResult } from '../src/effects'
 import { allBuiltinModules } from '../src/allModules'
-import type { DvalaBundle } from '../src/bundler/interface'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
-const dvalaDebug = new Dvala({ modules: allBuiltinModules, debug: true })
+const dvala = createDvala({ modules: allBuiltinModules })
+const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true })
+
+function runValue(result: RunResult): unknown {
+  if (result.type !== 'completed')
+    throw new Error(`Expected completed result, got ${result.type}`)
+  return result.value
+}
 
 // ---------------------------------------------------------------------------
 // 1. Round-trip fidelity (tokenize → untokenize)
@@ -90,8 +97,8 @@ describe('round-trip: tokenize → untokenize', () => {
 
   for (const program of programs) {
     it(`round-trips: ${program.slice(0, 60)}`, () => {
-      const tokenStream = dvala.tokenize(program)
-      const result = dvala.untokenize(tokenStream)
+      const tokenStream = tokenizeSource(program)
+      const result = untokenize(tokenStream)
       expect(result).toBe(program)
     })
   }
@@ -108,7 +115,7 @@ describe('round-trip: tokenize → untokenize', () => {
     ]
     for (const program of evalPrograms) {
       const original = dvala.run(program)
-      const roundTripped = dvala.untokenize(dvala.tokenize(program))
+      const roundTripped = untokenize(tokenizeSource(program))
       const afterRoundTrip = dvala.run(roundTripped)
       expect(afterRoundTrip).toEqual(original)
     }
@@ -141,96 +148,6 @@ describe('module system edge cases', () => {
 
   it('import unknown module throws', () => {
     expect(() => dvala.run('import(nonexistent)')).toThrow()
-  })
-
-  it('file module returning null', () => {
-    const result = dvala.run({
-      program: 'import(null-mod)',
-      fileModules: [['null-mod', 'null']],
-    })
-    expect(result).toBeNull()
-  })
-
-  it('file module returning a number', () => {
-    const result = dvala.run({
-      program: 'let x = import(num-mod); x * 3',
-      fileModules: [['num-mod', '14']],
-    })
-    expect(result).toBe(42)
-  })
-
-  it('file module returning an array', () => {
-    const result = dvala.run({
-      program: 'let arr = import(arr-mod); count(arr)',
-      fileModules: [['arr-mod', '[10, 20, 30]']],
-    })
-    expect(result).toBe(3)
-  })
-
-  it('file module with functions and destructuring', () => {
-    const bundle: DvalaBundle = {
-      program: 'let { double, triple } = import(math-helpers); double(triple(7))',
-      fileModules: [
-        ['math-helpers', `{
-          double: (x) -> x * 2,
-          triple: (x) -> x * 3
-        }`],
-      ],
-    }
-    expect(dvala.run(bundle)).toBe(42)
-  })
-
-  it('file module importing another file module', () => {
-    const bundle: DvalaBundle = {
-      program: 'let m = import(top); m.compute(5)',
-      fileModules: [
-        ['base', '{ factor: 10 }'],
-        ['top', 'let b = import(base); { compute: (x) -> x * b.factor }'],
-      ],
-    }
-    expect(dvala.run(bundle)).toBe(50)
-  })
-
-  it('diamond dependency — same shared module evaluates once', () => {
-    const bundle: DvalaBundle = {
-      program: `
-        let a = import(dep-a);
-        let b = import(dep-b);
-        a.val + b.val
-      `,
-      fileModules: [
-        ['shared', '{ base: 100 }'],
-        ['dep-a', 'let s = import(shared); { val: s.base + 1 }'],
-        ['dep-b', 'let s = import(shared); { val: s.base + 2 }'],
-      ],
-    }
-    expect(dvala.run(bundle)).toBe(203)
-  })
-
-  it('file module cannot shadow a builtin module imported in main program', () => {
-    // If fileModules has name "vector" it becomes a value module,
-    // which is checked BEFORE builtins — so it DOES shadow
-    const bundle: DvalaBundle = {
-      program: 'let v = import(vector); v.custom',
-      fileModules: [['vector', '{ custom: "shadowed" }']],
-    }
-    expect(dvala.run(bundle)).toBe('shadowed')
-  })
-
-  it('file module uses builtins', () => {
-    const bundle: DvalaBundle = {
-      program: 'let m = import(helpers); m.doubled',
-      fileModules: [['helpers', '{ doubled: map([1, 2, 3], -> $ * 2) }']],
-    }
-    expect(dvala.run(bundle)).toEqual([2, 4, 6])
-  })
-
-  it('async.run with bundle works', async () => {
-    const bundle: DvalaBundle = {
-      program: 'let m = import(my-mod); m.add(3, 4)',
-      fileModules: [['my-mod', '{ add: (a, b) -> a + b }']],
-    }
-    expect(await dvala.async.run(bundle)).toBe(7)
   })
 })
 
@@ -599,15 +516,7 @@ describe('pure mode enforcement', () => {
   })
 
   it('pure async works', async () => {
-    expect(await dvala.async.run('1 + 2 * 3', { pure: true })).toBe(7)
-  })
-
-  it('file modules in bundle evaluated in pure mode', () => {
-    const bundle: DvalaBundle = {
-      program: 'let m = import(helpers); m.result',
-      fileModules: [['helpers', '{ result: map([1, 2, 3], -> $ * 2) }']],
-    }
-    expect(dvala.run(bundle)).toEqual([2, 4, 6])
+    expect(runValue(await dvala.runAsync('1 + 2 * 3', { pure: true }))).toBe(7)
   })
 })
 
@@ -617,31 +526,31 @@ describe('pure mode enforcement', () => {
 
 describe('getUndefinedSymbols', () => {
   it('simple expression with all defined', () => {
-    expect(dvala.getUndefinedSymbols('1 + 2')).toEqual(new Set())
+    expect(getUndefinedSymbols('1 + 2')).toEqual(new Set())
   })
 
   it('simple expression with undefined symbol', () => {
-    expect(dvala.getUndefinedSymbols('x + 1')).toEqual(new Set(['x']))
+    expect(getUndefinedSymbols('x + 1')).toEqual(new Set(['x']))
   })
 
   it('let-bound symbols are defined', () => {
-    expect(dvala.getUndefinedSymbols('let x = 1; x + 1')).toEqual(new Set())
+    expect(getUndefinedSymbols('let x = 1; x + 1')).toEqual(new Set())
   })
 
   it('builtins are not undefined', () => {
-    expect(dvala.getUndefinedSymbols('map([1, 2, 3], inc)')).toEqual(new Set())
+    expect(getUndefinedSymbols('map([1, 2, 3], inc)')).toEqual(new Set())
   })
 
   it('host bindings resolve undefined symbols', () => {
-    expect(dvala.getUndefinedSymbols('x + 1', { bindings: { x: 42 } })).toEqual(new Set())
+    expect(getUndefinedSymbols('x + 1', { bindings: { x: 42 } })).toEqual(new Set())
   })
 
   it('nested function parameters are defined', () => {
-    expect(dvala.getUndefinedSymbols('let f = (x, y) -> x + y; f(1, 2)')).toEqual(new Set())
+    expect(getUndefinedSymbols('let f = (x, y) -> x + y; f(1, 2)')).toEqual(new Set())
   })
 
   it('closure references to outer scope are defined', () => {
-    expect(dvala.getUndefinedSymbols(`
+    expect(getUndefinedSymbols(`
       let x = 10;
       let f = (y) -> x + y;
       f(1)
@@ -649,38 +558,38 @@ describe('getUndefinedSymbols', () => {
   })
 
   it('match pattern variables are defined within case body', () => {
-    expect(dvala.getUndefinedSymbols('match val case [x, y] then x + y end'))
+    expect(getUndefinedSymbols('match val case [x, y] then x + y end'))
       .toEqual(new Set(['val']))
   })
 
   it('for loop variable is defined within body', () => {
-    expect(dvala.getUndefinedSymbols('for (x in items) -> x * 2'))
+    expect(getUndefinedSymbols('for (x in items) -> x * 2'))
       .toEqual(new Set(['items']))
   })
 
   it('loop bindings are defined within loop body', () => {
-    expect(dvala.getUndefinedSymbols(
+    expect(getUndefinedSymbols(
       'loop(i = 0, acc = start) -> if i >= n then acc else recur(i + 1, acc + i) end',
     )).toEqual(new Set(['start', 'n']))
   })
 
   it('destructuring lhs variables are defined', () => {
-    expect(dvala.getUndefinedSymbols('let [a, b] = pair; a + b'))
+    expect(getUndefinedSymbols('let [a, b] = pair; a + b'))
       .toEqual(new Set(['pair']))
   })
 
   it('do block variables do not leak', () => {
-    expect(dvala.getUndefinedSymbols('do let x = 1; x end; x'))
+    expect(getUndefinedSymbols('do let x = 1; x end; x'))
       .toEqual(new Set(['x']))
   })
 
   it('import symbols are defined', () => {
-    expect(dvala.getUndefinedSymbols('let v = import(vector); v.stdev([1, 2, 3])'))
+    expect(getUndefinedSymbols('let v = import(vector); v.stdev([1, 2, 3])'))
       .toEqual(new Set())
   })
 
   it('multiple undefined symbols detected', () => {
-    const result = dvala.getUndefinedSymbols('a + b + c')
+    const result = getUndefinedSymbols('a + b + c')
     expect(result).toEqual(new Set(['a', 'b', 'c']))
   })
 })
@@ -1005,42 +914,25 @@ describe('higher-order function edge cases', () => {
 // ---------------------------------------------------------------------------
 
 describe('dvala API edge cases', () => {
-  it('dvala.apply calls a function created by run', () => {
-    const fn = dvala.run('(x, y) -> x + y') as never
-    expect(dvala.apply(fn, [10, 32])).toBe(42)
-  })
-
-  it('dvala.async.apply works', async () => {
-    const fn = dvala.run('(x) -> x * 2') as never
-    expect(await dvala.async.apply(fn, [21])).toBe(42)
-  })
-
   it('tokenize produces a token stream', () => {
-    const ts = dvala.tokenize('1 + 2')
+    const ts = tokenizeSource('1 + 2')
     expect(ts.tokens.length).toBeGreaterThan(0)
   })
 
   it('parse produces an AST', () => {
-    const ts = dvala.tokenize('1 + 2')
-    const ast = dvala.parse(ts)
+    const ast = parseTokenStream(tokenizeSource('1 + 2'))
     expect(ast.body.length).toBe(1)
   })
 
   it('transformSymbols transforms user-defined symbols', () => {
-    const ts = dvala.tokenize('let x = 1; x + y')
-    const transformed = dvala.transformSymbols(ts, s => s === 'x' ? 'a' : s)
-    const result = dvala.untokenize(transformed)
+    const ts = tokenizeSource('let x = 1; x + y')
+    const transformed = transformSymbols(ts, s => s === 'x' ? 'a' : s)
+    const result = untokenize(transformed)
     expect(result).toBe('let a = 1; a + y')
   })
 
-  it('getRuntimeInfo returns valid info', () => {
-    const info = dvala.getRuntimeInfo()
-    expect(info).toHaveProperty('debug')
-    expect(info).toHaveProperty('astCacheSize')
-  })
-
   it('getAutoCompleter returns an object', () => {
-    const ac = dvala.getAutoCompleter('let x = ma', 10)
+    const ac = getAutoCompleter('let x = ma', 10)
     expect(ac).toBeDefined()
   })
 

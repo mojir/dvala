@@ -12,9 +12,11 @@
  * stable as the playground UI evolves.
  */
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
+import type { RunResult } from '../src/effects'
 import type { ContextParams } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
 import { StateHistory } from '../playground-www/src/StateHistory'
 import type { HistoryEntry, HistoryStatus } from '../playground-www/src/StateHistory'
 import { stringifyValue } from '../common/utils'
@@ -24,8 +26,14 @@ import { examples } from '../reference/examples'
 // Helpers – mirror the playground's own patterns
 // ---------------------------------------------------------------------------
 
-function createDvala(debug = false) {
-  return new Dvala({ debug, modules: allBuiltinModules })
+function makePlaygroundDvala(debug = false) {
+  return createDvala({ debug, modules: allBuiltinModules })
+}
+
+function runValue(result: RunResult): unknown {
+  if (result.type !== 'completed')
+    throw new Error(`Expected completed result, got ${result.type}`)
+  return result.value
 }
 
 /** Parse a JSON context string just like the playground does. */
@@ -124,81 +132,81 @@ describe('stateHistory', () => {
 // ---------------------------------------------------------------------------
 
 describe('playground workflows', () => {
-  const dvala = createDvala()
-  const dvalaDebug = createDvala(true)
+  const dvala = makePlaygroundDvala()
 
   describe('run', () => {
     it('evaluates simple arithmetic', async () => {
-      const result = await dvala.async.run('10 + 20')
+      const result = runValue(await dvala.runAsync('10 + 20'))
       expect(result).toBe(30)
     })
 
     it('evaluates with context bindings', async () => {
-      const result = await dvala.async.run('x + y', { bindings: { x: 15, y: 27 } })
+      const result = runValue(await dvala.runAsync('x + y', { bindings: { x: 15, y: 27 } }))
       expect(result).toBe(42)
     })
 
     it('evaluates complex expressions', async () => {
-      const result = await dvala.async.run('((a, b) -> a + b)(3, 4)')
+      const result = runValue(await dvala.runAsync('((a, b) -> a + b)(3, 4)'))
       expect(result).toBe(7)
     })
 
     it('evaluates let expressions', async () => {
-      const result = await dvala.async.run('let x = 10; let y = 20; x + y')
+      const result = runValue(await dvala.runAsync('let x = 10; let y = 20; x + y'))
       expect(result).toBe(30)
     })
 
     it('supports array operations', async () => {
-      const result = await dvala.async.run('map([1, 2, 3], -> $ * $)')
+      const result = runValue(await dvala.runAsync('map([1, 2, 3], -> $ * $)'))
       expect(result).toEqual([1, 4, 9])
     })
 
     it('supports object access', async () => {
-      const result = await dvala.async.run('{a: 1, b: 2, c: 3}.b')
+      const result = runValue(await dvala.runAsync('{a: 1, b: 2, c: 3}.b'))
       expect(result).toBe(2)
     })
 
     it('formats output using stringifyValue', async () => {
-      const result = await dvala.async.run('"hello world"')
+      const result = runValue(await dvala.runAsync('"hello world"'))
       expect(stringifyValue(result, false)).toBe('"hello world"')
     })
 
-    it('throws on invalid code', async () => {
-      await expect(dvala.async.run('(+ 1')).rejects.toThrow()
+    it('returns error result on invalid code', async () => {
+      const result = await dvala.runAsync('(+ 1')
+      expect(result.type).toBe('error')
     })
   })
 
   describe('analyze (getUndefinedSymbols)', () => {
     it('returns empty set for fully-resolved code', () => {
-      const result = dvalaDebug.getUndefinedSymbols('10 + 20')
+      const result = getUndefinedSymbols('10 + 20')
       expect(result.size).toBe(0)
     })
 
     it('detects undefined symbols', () => {
-      const result = dvalaDebug.getUndefinedSymbols('x + y')
+      const result = getUndefinedSymbols('x + y')
       expect(result.has('x')).toBe(true)
       expect(result.has('y')).toBe(true)
     })
 
     it('resolves symbols provided via bindings', () => {
-      const result = dvalaDebug.getUndefinedSymbols('x + y', { bindings: { x: 1, y: 2 } })
+      const result = getUndefinedSymbols('x + y', { bindings: { x: 1, y: 2 } })
       expect(result.size).toBe(0)
     })
 
     it('resolves symbols defined with let', () => {
-      const result = dvalaDebug.getUndefinedSymbols('let z = 5; z + 1')
+      const result = getUndefinedSymbols('let z = 5; z + 1')
       expect(result.size).toBe(0)
     })
   })
 
   describe('tokenize', () => {
     it('produces tokens for valid code', () => {
-      const tokenStream = dvala.tokenize('10 + 20')
+      const tokenStream = tokenizeSource('10 + 20')
       expect(tokenStream.tokens.length).toBeGreaterThan(0)
     })
 
     it('includes expected token types', () => {
-      const tokenStream = dvala.tokenize('let x = 42')
+      const tokenStream = tokenizeSource('let x = 42')
       const types = tokenStream.tokens.map(t => t[0])
       expect(types).toContain('Symbol')
       expect(types).toContain('Number')
@@ -207,20 +215,18 @@ describe('playground workflows', () => {
 
   describe('parse', () => {
     it('produces an AST from tokens', () => {
-      const tokens = dvala.tokenize('10 + 20')
-      const ast = dvala.parse(tokens)
+      const ast = parseTokenStream(tokenizeSource('10 + 20'))
       expect(ast.body).toBeDefined()
       expect(ast.body.length).toBeGreaterThan(0)
     })
 
     it('round-trips tokenize → parse → evaluate', async () => {
       const code = 'let x = 5; x * x'
-      const tokens = dvala.tokenize(code)
-      const ast = dvala.parse(tokens)
+      const ast = parseTokenStream(tokenizeSource(code))
       expect(ast.body.length).toBeGreaterThan(0)
 
       // Verify the same code evaluates correctly
-      const result = await dvala.async.run(code)
+      const result = runValue(await dvala.runAsync(code))
       expect(result).toBe(25)
     })
   })
@@ -228,18 +234,16 @@ describe('playground workflows', () => {
   describe('format (untokenize)', () => {
     it('round-trips code through tokenize → untokenize', () => {
       const code = '(+ 1 2)'
-      const tokens = dvala.tokenize(code)
-      const formatted = dvala.untokenize(tokens)
+      const formatted = untokenize(tokenizeSource(code))
       expect(formatted.trim()).toBe(code)
     })
 
     it('preserves semantics after formatting', async () => {
       const code = 'let x = 10;   let y = 20;   x   +   y'
-      const tokens = dvala.tokenize(code)
-      const formatted = dvala.untokenize(tokens)
+      const formatted = untokenize(tokenizeSource(code))
 
-      const original = await dvala.async.run(code)
-      const reformatted = await dvala.async.run(formatted)
+      const original = runValue(await dvala.runAsync(code))
+      const reformatted = runValue(await dvala.runAsync(formatted))
       expect(reformatted).toBe(original)
     })
   })
@@ -289,7 +293,7 @@ describe('state encoding', () => {
 // ---------------------------------------------------------------------------
 
 describe('built-in examples', () => {
-  const dvala = createDvala()
+  const dvala = makePlaygroundDvala()
 
   it('has examples defined', () => {
     expect(examples.length).toBeGreaterThan(0)
@@ -302,8 +306,7 @@ describe('built-in examples', () => {
 
   for (const example of parseableExamples) {
     it(`tokenizes and parses: ${example.name}`, () => {
-      const tokens = dvala.tokenize(example.code)
-      const ast = dvala.parse(tokens)
+      const ast = parseTokenStream(tokenizeSource(example.code))
       expect(ast.body.length).toBeGreaterThan(0)
     })
   }
@@ -318,8 +321,8 @@ describe('built-in examples', () => {
       if (example.context?.bindings) {
         params.bindings = example.context.bindings
       }
-      // Should not throw
-      await dvala.async.run(example.code, params)
+      const result = await dvala.runAsync(example.code, { bindings: params.bindings })
+      expect(result.type).not.toBe('error')
     })
   }
 })
@@ -344,10 +347,10 @@ describe('context parsing', () => {
   })
 
   it('uses bindings in evaluation', async () => {
-    const dvala = createDvala()
+    const dvala = makePlaygroundDvala()
     const contextJson = '{"bindings": {"items": [1, 2, 3, 4, 5]}}'
     const params = parseContext(contextJson)
-    const result = await dvala.async.run('reduce(items, +, 0)', params)
+    const result = runValue(await dvala.runAsync('reduce(items, +, 0)', { bindings: params.bindings }))
     expect(result).toBe(15)
   })
 
@@ -361,17 +364,15 @@ describe('context parsing', () => {
 // ---------------------------------------------------------------------------
 
 describe('autoCompleter', () => {
-  const dvala = createDvala()
-
   it('provides suggestions for partial input', () => {
-    const completer = dvala.getAutoCompleter('ma', 2)
+    const completer = getAutoCompleter('ma', 2)
     const suggestion = completer.getNextSuggestion()
     expect(suggestion).not.toBeNull()
     expect(suggestion!.program.length).toBeGreaterThan(0)
   })
 
   it('cycles through suggestions', () => {
-    const completer = dvala.getAutoCompleter('fi', 2)
+    const completer = getAutoCompleter('fi', 2)
     const first = completer.getNextSuggestion()
     const second = completer.getNextSuggestion()
     // Should provide at least one suggestion
@@ -384,7 +385,7 @@ describe('autoCompleter', () => {
 
   it('returns original state on no match', () => {
     const code = 'xyzzyNotAFunction'
-    const completer = dvala.getAutoCompleter(code, code.length)
+    const completer = getAutoCompleter(code, code.length)
     // If no match, suggestion may be null or return something
     // The key is it doesn't crash
     expect(() => completer.getNextSuggestion()).not.toThrow()

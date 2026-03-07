@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../Dvala/Dvala'
+import { getUndefinedSymbols } from '../tooling'
 
 describe('analyze', () => {
   describe('getUndefinedSymbols.', () => {
-    for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
-      it('example', () => {
-        const program = 'a + b'
-        const tokens = dvala.tokenize(program, { minify: true })
-        const ast = dvala.parse(tokens)
-        expect(dvala.getUndefinedSymbols(ast)).toEqual(new Set(['a', 'b']))
-      })
-    }
+    it('example', () => {
+      expect(getUndefinedSymbols('a + b')).toEqual(new Set(['a', 'b']))
+    })
   })
 })

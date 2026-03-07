@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { bundle } from '../../src/bundler'
 import { isDvalaBundle } from '../../src/bundler/interface'
 import type { DvalaBundle } from '../../src/bundler/interface'
-import { Dvala } from '../../src/Dvala/Dvala'
 
 const fixturesDir = path.resolve(__dirname, 'fixtures')
 
@@ -130,99 +129,5 @@ describe('isDvalaBundle', () => {
     expect(isDvalaBundle({})).toBe(false)
     expect(isDvalaBundle({ program: 'code' })).toBe(false)
     expect(isDvalaBundle({ fileModules: [] })).toBe(false)
-  })
-})
-
-describe('dvala.run with DvalaBundle', () => {
-  const dvala = new Dvala()
-
-  it('runs a bundle with no file modules', () => {
-    const result = dvala.run({
-      program: '1 + 2 + 3',
-      fileModules: [],
-    })
-    expect(result).toBe(6)
-  })
-
-  it('runs a bundle with a value module (number)', () => {
-    const result = dvala.run({
-      program: 'let x = import(my-const); x + 1',
-      fileModules: [['my-const', '42']],
-    })
-    expect(result).toBe(43)
-  })
-
-  it('runs a bundle with a value module (object with functions)', () => {
-    const result = dvala.run({
-      program: 'let { add } = import(helpers); add(3, 4)',
-      fileModules: [['helpers', 'let add = (a, b) -> a + b; {"add": add}']],
-    })
-    expect(result).toBe(7)
-  })
-
-  it('runs a bundle with a value module (array)', () => {
-    const result = dvala.run({
-      program: 'let names = import(names); names[1]',
-      fileModules: [['names', '["alice", "bob"]']],
-    })
-    expect(result).toBe('bob')
-  })
-
-  it('runs a bundle with multiple file modules in dependency order', () => {
-    const result = dvala.run({
-      program: 'let a = import(dep-a); let b = import(dep-b); a + b',
-      fileModules: [
-        ['base', '10'],
-        ['dep-a', 'let b = import(base); b + 1'],
-        ['dep-b', 'let b = import(base); b + 2'],
-      ],
-    })
-    expect(result).toBe(23) // (10+1) + (10+2)
-  })
-
-  it('runs a bundled file end-to-end', () => {
-    const b = bundle(path.join(fixturesDir, 'main.dvala'))
-    const result = dvala.run(b)
-    expect(result).toBe(50) // add(42, 8) = 50
-  })
-
-  it('runs diamond dependency end-to-end', () => {
-    const b = bundle(path.join(fixturesDir, 'diamond.dvala'))
-    const result = dvala.run(b)
-    expect(result).toBe(203) // (100+1) + (100+2) = 203
-  })
-
-  it('runs multi-import end-to-end', () => {
-    const b = bundle(path.join(fixturesDir, 'multi-import.dvala'))
-    const result = dvala.run(b) as Record<string, unknown>
-    expect(result).toEqual({
-      sum: 50, // add(42, 8)
-      firstName: 'alice',
-      count: 3,
-    })
-  })
-
-  it('runs a bundle with async.run', async () => {
-    const result = await dvala.async.run({
-      program: 'let x = import(my-const); x + 1',
-      fileModules: [['my-const', '99']],
-    })
-    expect(result).toBe(100)
-  })
-
-  it('throws TypeError when a file module evaluation returns a Promise', () => {
-    const asyncFn = async () => 42
-    expect(() => dvala.run({
-      program: 'import(my-module)',
-      fileModules: [['my-module', 'asyncFn()']],
-    }, { bindings: { asyncFn } })).toThrow()
-  })
-
-  it('throws TypeError when the main program evaluation returns a Promise', () => {
-    const asyncFn = async () => 42
-    expect(() => dvala.run({
-      program: 'asyncFn()',
-      fileModules: [],
-    }, { bindings: { asyncFn } })).toThrow(TypeError)
   })
 })
