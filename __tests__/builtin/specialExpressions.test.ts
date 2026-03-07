@@ -1,12 +1,13 @@
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import type { UserDefinedError } from '../../src/errors'
 import { DvalaError } from '../../src/errors'
 import type { Arr } from '../../src/interface'
+import { getUndefinedSymbols } from '../../src/tooling'
 
-const dvala = new Dvala()
-const dvalaDebug = new Dvala({ debug: true })
+const dvala = createDvala()
+const dvalaDebug = createDvala({ debug: true })
 
 describe('specialExpressions', () => {
   let logSpy: Mock<any>
@@ -23,7 +24,7 @@ describe('specialExpressions', () => {
     stdoutSpy.mockRestore()
   })
   it('error message', () => {
-    const dvalaNoDebug = new Dvala()
+    const dvalaNoDebug = createDvala()
     let failed = false
     try {
       dvalaNoDebug.run('perform(effect(dvala.error), slice("An error", 3))')
@@ -67,12 +68,12 @@ describe('specialExpressions', () => {
       expect(dvala.run('[0, "1", null, true, false, [[]], object()]')).toEqual([0, '1', null, true, false, [[]], {}])
     })
     test('findUnresolvedIdentifiers', () => {
-      expect(dvalaDebug.getUndefinedSymbols('array(1, a, b)')).toEqual(new Set(['a', 'b']))
-      expect(dvalaDebug.getUndefinedSymbols('array(1, 2, 3)')).toEqual(new Set())
-      expect(dvalaDebug.getUndefinedSymbols('[1, ...x]')).toEqual(new Set('x'))
-      expect(dvalaDebug.getUndefinedSymbols('[1, ...[...[x], y]]')).toEqual(new Set(['x', 'y']))
-      expect(dvalaDebug.getUndefinedSymbols('let {a = b} = {};')).toEqual(new Set(['b']))
-      expect(dvalaDebug.getUndefinedSymbols('let foo = ({a = b} = {}) -> do a end;')).toEqual(new Set(['b']))
+      expect(getUndefinedSymbols('array(1, a, b)')).toEqual(new Set(['a', 'b']))
+      expect(getUndefinedSymbols('array(1, 2, 3)')).toEqual(new Set())
+      expect(getUndefinedSymbols('[1, ...x]')).toEqual(new Set('x'))
+      expect(getUndefinedSymbols('[1, ...[...[x], y]]')).toEqual(new Set(['x', 'y']))
+      expect(getUndefinedSymbols('let {a = b} = {};')).toEqual(new Set(['b']))
+      expect(getUndefinedSymbols('let foo = ({a = b} = {}) -> do a end;')).toEqual(new Set(['b']))
     })
   })
 
@@ -116,11 +117,11 @@ describe('specialExpressions', () => {
       expect(() => dvala.run('object(object(), 1)')).toThrow(DvalaError)
     })
     test('findUnresolvedIdentifiers', () => {
-      expect(dvalaDebug.getUndefinedSymbols('{ [foo]: bar }')).toEqual(new Set(['foo', 'bar']))
-      expect(dvalaDebug.getUndefinedSymbols('object("x", 1, a, b)')).toEqual(new Set(['a', 'b']))
-      expect(dvalaDebug.getUndefinedSymbols('object("x", 1, 2, 3)')).toEqual(new Set())
-      expect(dvalaDebug.getUndefinedSymbols('{ x: 1, ...y }')).toEqual(new Set('y'))
-      expect(dvalaDebug.getUndefinedSymbols('{ x: 1, ...{ ...{ a: y }, z: z } }')).toEqual(new Set(['y', 'z']))
+      expect(getUndefinedSymbols('{ [foo]: bar }')).toEqual(new Set(['foo', 'bar']))
+      expect(getUndefinedSymbols('object("x", 1, a, b)')).toEqual(new Set(['a', 'b']))
+      expect(getUndefinedSymbols('object("x", 1, 2, 3)')).toEqual(new Set())
+      expect(getUndefinedSymbols('{ x: 1, ...y }')).toEqual(new Set('y'))
+      expect(getUndefinedSymbols('{ x: 1, ...{ ...{ a: y }, z: z } }')).toEqual(new Set(['y', 'z']))
     })
   })
 
@@ -159,11 +160,11 @@ describe('specialExpressions', () => {
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect(() => dvalaDebug.getUndefinedSymbols('let recur = a + b;')).toThrow(DvalaError)
-        expect(() => dvalaDebug.getUndefinedSymbols('let + = a + b;')).toThrow(DvalaError)
-        expect(dvalaDebug.getUndefinedSymbols('let [a = b] = [];')).toEqual(new Set(['b']))
-        expect(dvalaDebug.getUndefinedSymbols('let foo = a + b;')).toEqual(new Set(['a', 'b']))
-        expect(dvala.getUndefinedSymbols('let foo = a + b; foo')).toEqual(new Set(['a', 'b']))
+        expect(() => getUndefinedSymbols('let recur = a + b;')).toThrow(DvalaError)
+        expect(() => getUndefinedSymbols('let + = a + b;')).toThrow(DvalaError)
+        expect(getUndefinedSymbols('let [a = b] = [];')).toEqual(new Set(['b']))
+        expect(getUndefinedSymbols('let foo = a + b;')).toEqual(new Set(['a', 'b']))
+        expect(getUndefinedSymbols('let foo = a + b; foo')).toEqual(new Set(['a', 'b']))
       })
     })
   })
@@ -199,8 +200,8 @@ describe('specialExpressions', () => {
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvalaDebug.getUndefinedSymbols('if a > b then a else b end'))).toEqual(new Set(['a', 'b']))
-        expect((dvala.getUndefinedSymbols('if a > b then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
+        expect((getUndefinedSymbols('if a > b then a else b end'))).toEqual(new Set(['a', 'b']))
+        expect((getUndefinedSymbols('if a > b then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
   })
@@ -236,8 +237,8 @@ describe('specialExpressions', () => {
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('unless a > b then a else b end'))).toEqual(new Set(['a', 'b']))
-        expect((dvala.getUndefinedSymbols('unless a > b then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
+        expect((getUndefinedSymbols('unless a > b then a else b end'))).toEqual(new Set(['a', 'b']))
+        expect((getUndefinedSymbols('unless a > b then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
   })
@@ -277,7 +278,7 @@ describe('specialExpressions', () => {
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('&&(false, b)'))).toEqual(new Set(['b']))
+        expect((getUndefinedSymbols('&&(false, b)'))).toEqual(new Set(['b']))
       })
     })
   })
@@ -310,7 +311,7 @@ describe('specialExpressions', () => {
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('||(true, b, c + d)'))).toEqual(new Set(['b', 'c', 'd']))
+        expect((getUndefinedSymbols('||(true, b, c + d)'))).toEqual(new Set(['b', 'c', 'd']))
       })
     })
   })
@@ -349,7 +350,7 @@ end`),
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('cond case true then a case false then b case a > 1 then c case true then d end'))).toEqual(
+        expect((getUndefinedSymbols('cond case true then a case false then b case a > 1 then c case true then d end'))).toEqual(
           new Set(['a', 'b', 'c', 'd']),
         )
       })
@@ -378,7 +379,7 @@ end`),
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('match foo case true then a case false then b case _ then d end'))).toEqual(
+        expect((getUndefinedSymbols('match foo case true then a case false then b case _ then d end'))).toEqual(
           new Set(['foo', 'a', 'b', 'd']),
         )
       })
@@ -480,7 +481,7 @@ applyWithVal(inc, 10)`)).toBe(11)
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols(`
+        expect((getUndefinedSymbols(`
 let foo = (a) -> do
   if a == 1 then
     1
@@ -490,11 +491,11 @@ let foo = (a) -> do
 end;`))).toEqual(
           new Set(),
         )
-        expect((dvala.getUndefinedSymbols('let foo = (a, b) -> do str(a, b, c) end;'))).toEqual(new Set(['c']))
-        expect((dvala.getUndefinedSymbols('let foo = (a, b) -> do str(a, b, c) end; foo(x, y)'))).toEqual(
+        expect((getUndefinedSymbols('let foo = (a, b) -> do str(a, b, c) end;'))).toEqual(new Set(['c']))
+        expect((getUndefinedSymbols('let foo = (a, b) -> do str(a, b, c) end; foo(x, y)'))).toEqual(
           new Set(['c', 'x', 'y']),
         )
-        expect((dvala.getUndefinedSymbols('let add = (a, b, ...the-rest) -> do a + b; [a](10) end;'))).toEqual(new Set())
+        expect((getUndefinedSymbols('let add = (a, b, ...the-rest) -> do a + b; [a](10) end;'))).toEqual(new Set())
       })
     })
   })
@@ -507,11 +508,11 @@ end;`))).toEqual(
 
   describe('unresolvedIdentifiers', () => {
     it('samples', () => {
-      expect((dvala.getUndefinedSymbols('(a, b) -> str(a, b, c)'))).toEqual(new Set(['c']))
-      expect((dvala.getUndefinedSymbols('let foo = (a, b) -> str(a, b, c); foo(1, x)'))).toEqual(
+      expect((getUndefinedSymbols('(a, b) -> str(a, b, c)'))).toEqual(new Set(['c']))
+      expect((getUndefinedSymbols('let foo = (a, b) -> str(a, b, c); foo(1, x)'))).toEqual(
         new Set(['c', 'x']),
       )
-      expect((dvala.getUndefinedSymbols('(a, b, ...the-rest) -> do a + b; [a](10) end'))).toEqual(new Set())
+      expect((getUndefinedSymbols('(a, b, ...the-rest) -> do a + b; [a](10) end'))).toEqual(new Set())
     })
   })
 
@@ -522,7 +523,7 @@ end;`))).toEqual(
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('do [a, 2, 3]; "[1]"; 1 + b end'))).toEqual(new Set(['a', 'b']))
+        expect((getUndefinedSymbols('do [a, 2, 3]; "[1]"; 1 + b end'))).toEqual(new Set(['a', 'b']))
       })
     })
   })
@@ -555,9 +556,9 @@ foo(3)`)
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('(-> if not(zero?($)) then recur($ - 1) end)(3)')))
+        expect((getUndefinedSymbols('(-> if not(zero?($)) then recur($ - 1) end)(3)')))
           .toEqual(new Set())
-        expect((dvala.getUndefinedSymbols('(-> if not(zero?($)) then recur($ - a) end)(3)')))
+        expect((getUndefinedSymbols('(-> if not(zero?($)) then recur($ - a) end)(3)')))
           .toEqual(new Set('a'))
       })
     })
@@ -599,12 +600,12 @@ foo(3)`)
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (dvalaDebug.getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(n)) then recur(n - 1) end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(x)); if not(zero?(n)) then recur(n - 1) end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(effect(dvala.io.println), str(x)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set(['x']))
-        expect(dvala.getUndefinedSymbols('loop (n = 3 + y) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(x)) then recur(n - 1) end end'))
+        expect(getUndefinedSymbols('loop (n = 3 + y) -> do perform(effect(dvala.io.println), str(n)); if not(zero?(x)) then recur(n - 1) end end'))
           .toEqual(new Set(['x', 'y']))
       })
     })
@@ -637,16 +638,16 @@ foo(3)`)
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (dvala.getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
         ).toEqual(new Set(['a', 'b', 'c', 'd']))
         expect(
-          (dvala.getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, a] let y = x * b while even?(c)) -> d')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, a] let y = x * b while even?(c)) -> d')),
         ).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
@@ -666,13 +667,13 @@ foo(3)`)
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (dvala.getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
+          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
+          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (dvala.getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
+          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
         ).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
@@ -691,7 +692,7 @@ foo(3)`)
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((dvala.getUndefinedSymbols('defined?(x)'))).toEqual(new Set(['x']))
+        expect((getUndefinedSymbols('defined?(x)'))).toEqual(new Set(['x']))
       })
     })
   })
@@ -716,8 +717,8 @@ foo(3)`)
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect(dvala.getUndefinedSymbols('??(x)')).toEqual(new Set(['x']))
-        expect(dvala.getUndefinedSymbols('??(x, y)')).toEqual(new Set(['x', 'y']))
+        expect(getUndefinedSymbols('??(x)')).toEqual(new Set(['x']))
+        expect(getUndefinedSymbols('??(x, y)')).toEqual(new Set(['x', 'y']))
       })
     })
   })

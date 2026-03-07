@@ -1,40 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { ContextParams } from '../Dvala/Dvala'
-import type { DvalaFunction } from '../parser/types'
-import { FUNCTION_SYMBOL } from '../utils/symbols'
+import type { AutoCompleterParams } from './AutoCompleter'
 import { AutoCompleter } from './AutoCompleter'
 
 describe('autoCompleter', () => {
-  let params: ContextParams
+  let params: AutoCompleterParams
 
   beforeEach(() => {
-    const testFunction: DvalaFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'UserDefined',
-      name: 'testFunction',
-      evaluatedfunction: [[], [], {}],
-      arity: {},
-      docString: '',
-    }
-    const localFunction: DvalaFunction = {
-      [FUNCTION_SYMBOL]: true,
-      functionType: 'UserDefined',
-      name: 'localFunction',
-      evaluatedfunction: [[], [], {}],
-      arity: {},
-      docString: '',
-    }
     params = {
-      globalContext: {
-        globalVar: { value: 'value' },
-        testFunction: { value: testFunction },
-      },
-      contexts: [
-        {
-          localVar: { value: 'value' },
-          localFunction: { value: localFunction },
-        },
-      ],
       bindings: {
         jsFunc: 42,
         value_1: 1,
@@ -80,18 +52,6 @@ describe('autoCompleter', () => {
       const completer = new AutoCompleter('(def', 4, params)
       const suggestions = completer.getSuggestions()
       expect(suggestions).toContain('defined?')
-    })
-
-    it('should generate suggestions from globalContext', () => {
-      const completer = new AutoCompleter('(global', 7, params)
-      const suggestions = completer.getSuggestions()
-      expect(suggestions).toContain('globalVar')
-    })
-
-    it('should generate suggestions from contexts', () => {
-      const completer = new AutoCompleter('(local', 6, params)
-      const suggestions = completer.getSuggestions()
-      expect(suggestions).toContain('localVar')
     })
 
     it('should generate suggestions from bindings', () => {

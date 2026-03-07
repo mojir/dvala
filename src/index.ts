@@ -25,7 +25,7 @@ export { isDvalaBundle } from './bundler/interface'
 export { type DvalaError, isDvalaError } from './errors'
 export type { ContextParams, FilePathParams, MinifyParams, PureParams, DvalaRuntimeInfo } from './Dvala/Dvala'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
-export type { AutoCompleter } from './AutoCompleter/AutoCompleter'
+export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone functions and types
 export { run, runSync, resume } from './effects'
@@ -36,5 +36,5 @@ export { createDvala } from './createDvala'
 export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
 
 // Standalone tooling
-export { tokenizeSource, parseTokenStream, untokenize, getUndefinedSymbols, getAutoCompleter } from './tooling'
+export { tokenizeSource, parseTokenStream, transformSymbols, untokenize, getUndefinedSymbols, getAutoCompleter } from './tooling'
 export type { TokenStream } from './tooling'

@@ -1,7 +1,10 @@
 import { normalExpressionKeys, specialExpressionKeys } from '../builtin'
-import type { ContextParams } from '../Dvala/Dvala'
 import { tokenize } from '../tokenizer/tokenize'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
+
+export interface AutoCompleterParams {
+  bindings?: Record<string, unknown>
+}
 
 type AutoCompleteSuggestion = {
   program: string
@@ -18,7 +21,7 @@ export class AutoCompleter {
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
-  constructor(public readonly originalProgram: string, public readonly originalPosition: number, params: ContextParams) {
+  constructor(public readonly originalProgram: string, public readonly originalPosition: number, params: AutoCompleterParams = {}) {
     const partialProgram = this.originalProgram.slice(0, this.originalPosition)
     const tokenStream = tokenize(partialProgram, false, undefined)
 
@@ -101,7 +104,7 @@ export class AutoCompleter {
     return this.searchString
   }
 
-  private generateSuggestions(params: ContextParams): string[] {
+  private generateSuggestions(params: AutoCompleterParams): string[] {
     const blacklist = new Set<string>(['0_defn', '0_lambda'])
 
     const startsWithCaseSensitive = this.generateWithPredicate(params, suggestion =>
@@ -123,23 +126,13 @@ export class AutoCompleter {
     return [...startsWithCaseSensitive, ...startsWithCaseInsensitive, ...includesCaseSensitive, ...includesCaseInsensitive]
   }
 
-  private generateWithPredicate(params: ContextParams, shouldInclude: (suggestion: string) => boolean): string[] {
+  private generateWithPredicate(params: AutoCompleterParams, shouldInclude: (suggestion: string) => boolean): string[] {
     const suggestions = new Set<string>()
 
     dvalaCommands.forEach((suggestion) => {
       if (shouldInclude(suggestion)) {
         suggestions.add(suggestion)
       }
-    })
-
-    Object.keys(params.globalContext ?? {})
-      .filter(shouldInclude)
-      .forEach(suggestion => suggestions.add(suggestion))
-
-    params.contexts?.forEach((context) => {
-      Object.keys(context)
-        .filter(shouldInclude)
-        .forEach(suggestion => suggestions.add(suggestion))
     })
 
     Object.keys(params.bindings ?? {})

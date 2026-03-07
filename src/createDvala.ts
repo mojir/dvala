@@ -1,3 +1,5 @@
+import { AutoCompleter } from './AutoCompleter/AutoCompleter'
+import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
@@ -9,6 +11,7 @@ import type { Ast } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Dvala/Cache'
 import type { Handlers, RunResult, SyncHandlers } from './evaluator/effectTypes'
+import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
@@ -36,6 +39,8 @@ export interface DvalaRunAsyncOptions {
 export interface DvalaRunner {
   run: (source: string, options?: DvalaRunOptions) => unknown
   runAsync: (source: string, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+  getUndefinedSymbols: (source: string) => Set<string>
+  getAutoCompleter: (program: string, position: number) => AutoCompleter
 }
 
 function assertSerializableBindings(bindings: Record<string, unknown> | undefined): void {
@@ -196,6 +201,16 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         }
         return { type: 'error', error: new DvalaError(`${error}`, undefined) }
       }
+    },
+
+    getUndefinedSymbols(source: string): Set<string> {
+      const modulesList = modules ? [...modules.values()] : undefined
+      return standaloneGetUndefinedSymbols(source, { bindings: factoryBindings, modules: modulesList })
+    },
+
+    getAutoCompleter(program: string, position: number): AutoCompleter {
+      const params: AutoCompleterParams = { bindings: factoryBindings }
+      return new AutoCompleter(program, position, params)
     },
   }
 }
