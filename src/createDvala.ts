@@ -28,6 +28,7 @@ export interface DvalaRunOptions {
   bindings?: Record<string, unknown>
   syncHandlers?: SyncHandlers
   pure?: boolean
+  filePath?: string
 }
 
 export interface DvalaRunAsyncOptions {
@@ -90,16 +91,17 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const debug = options?.debug ?? false
   const cache = options?.cache ? new Cache(options.cache) : null
 
-  function buildAst(source: string): Ast {
-    if (cache) {
+  function buildAst(source: string, filePath?: string): Ast {
+    if (!filePath && cache) {
       const cached = cache.get(source)
       if (cached)
         return cached
     }
-    const tokenStream = tokenize(source, debug, undefined)
+    const tokenStream = tokenize(source, debug, filePath)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
     const ast: Ast = { body: parse(minified), hasDebugData: debug }
-    cache?.set(source, ast)
+    if (!filePath)
+      cache?.set(source, ast)
     return ast
   }
 
@@ -163,7 +165,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       assertNotPureWithHandlers(pure, syncHandlers, undefined)
 
       const contextStack = createContextStack({ bindings }, modules, pure)
-      const ast = buildAst(source)
+      const ast = buildAst(source, runOptions?.filePath)
 
       if (syncHandlers) {
         return evaluateWithSyncEffects(ast, contextStack, syncHandlers)

@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { DvalaError } from '../errors'
-import { Dvala } from '../Dvala/Dvala'
+import { createDvala } from '../createDvala'
+import type { DvalaRunner } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getCodeMarker } from '../utils/debug/getCodeMarker'
@@ -45,7 +46,7 @@ export function runTest({ testPath: filePath, testNamePattern }: RunTestParams):
       }
       else {
         try {
-          const dvala = new Dvala({ debug: true, modules: allBuiltinModules })
+          const dvala = createDvala({ debug: true, modules: allBuiltinModules })
           const bindings = getBindings(includedFilePaths, dvala)
           dvala.run(testChunkProgram.program, {
             bindings,
@@ -74,7 +75,7 @@ function readDvalaFile(dvalaPath: string): string {
   return fs.readFileSync(dvalaPath, { encoding: 'utf-8' })
 }
 
-function getBindings(includedFilePaths: string[], dvala: Dvala): Record<string, unknown> {
+function getBindings(includedFilePaths: string[], dvala: DvalaRunner): Record<string, unknown> {
   return includedFilePaths.reduce((acc: Record<string, unknown>, filePath) => {
     const fileContent = readDvalaFile(filePath)
     const result = dvala.run(fileContent, { filePath, bindings: acc })

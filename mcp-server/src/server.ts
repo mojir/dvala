@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { version } from '../../package.json'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { stringifyValue } from '../../common/utils'
@@ -26,7 +26,7 @@ import {
 import { specialExpressionTypes } from '../../src/builtin/specialExpressionTypes'
 import { examples } from '../../reference/examples'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules })
 
 // ---------------------------------------------------------------------------
 // Helpers

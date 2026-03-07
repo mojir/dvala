@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
 import type { Reference } from '../../reference/index'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
@@ -128,7 +128,7 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
   channel.appendLine(`Running ${label}`)
   channel.appendLine('─'.repeat(50))
 
-  const dvala = new Dvala({ modules: allBuiltinModules, debug: true })
+  const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
   const handlers: Handlers = {
     'dvala.io.print': async (ctx) => {
@@ -188,8 +188,11 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
 
   const collection = getDiagnosticCollection()
   try {
-    const result = await dvala.async.run(code, { handlers })
-    channel.appendLine(`=> ${stringifyValue(result, false)}`)
+    const runResult = await dvala.runAsync(code, { effectHandlers: handlers })
+    if (runResult.type === 'error')
+      throw runResult.error
+    const value = runResult.type === 'completed' ? runResult.value : runResult.snapshot
+    channel.appendLine(`=> ${stringifyValue(value, false)}`)
     if (uri) collection.set(uri, [])
   }
   catch (error) {

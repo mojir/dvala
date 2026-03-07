@@ -1,10 +1,8 @@
-import { Dvala } from '../../src/Dvala/Dvala'
-import { allBuiltinModules } from '../../src/allModules'
 import type { Token } from '../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
+import { tokenizeSource } from '../../src/tooling'
 
-const dvala = new Dvala({ debug: false, modules: allBuiltinModules })
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 
@@ -90,7 +88,7 @@ function isCommentToken(token: Token): boolean {
 
 function tokenizeToHtml(code: string): string {
   try {
-    const tokens = dvala.tokenize(code).tokens
+    const tokens = tokenizeSource(code).tokens
     return tokens.map((token, index) => {
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token, tokens, index)

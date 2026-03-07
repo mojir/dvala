@@ -1,12 +1,12 @@
 /* eslint-disable no-console, node/prefer-global/process */
 import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import { formatDvalaExpression } from './formatter/rules'
 import { copyIcon, playIcon } from './icons'
 import { styles } from './styles'
 
-const dvala = new Dvala({ debug: false, modules: allBuiltinModules })
+const dvala = createDvala({ debug: false, modules: allBuiltinModules })
 
 export interface RenderExampleOptions {
   noRun?: boolean
@@ -40,7 +40,10 @@ export async function renderExample(example: string | string[], name: string, op
   process.stdout.write = (() => true) as typeof process.stdout.write
   process.stderr.write = (() => true) as typeof process.stderr.write
   try {
-    const result = await dvala.async.run(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
+    const runResult = await dvala.runAsync(`do\n${code}\nwith case effect(dvala.error) then ([msg]) -> msg end`)
+    if (runResult.type === 'error')
+      throw runResult.error
+    const result = runResult.type === 'completed' ? runResult.value : null
     const stringifiedResult = stringifyValue(result, true)
     const resultSection = noResult
       ? ''
