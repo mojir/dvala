@@ -1,12 +1,11 @@
 import { styles } from '../styles'
 import type { TextFormatter } from '../../../common/createFormatter'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
-import { Dvala } from '../../../src/Dvala/Dvala'
-import { allBuiltinModules } from '../../../src/allModules'
 import type { Token } from '../../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
 import { standardEffectNames } from '../../../src/evaluator/standardEffects'
 import { allReference, getLinkName } from '../../../reference'
+import { tokenizeSource } from '../../../src/tooling'
 
 export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
   count: number
@@ -78,8 +77,6 @@ const inlineCodeRule: FormatterRule = (text, index) => {
   return { count: 0, formattedText: '' }
 }
 
-const dvala = new Dvala({ debug: false, modules: allBuiltinModules })
-
 export type StyleOverride = {
   values: string[]
   style: string
@@ -90,7 +87,7 @@ const specialExpressionSet = new Set(specialExpressionKeys)
 
 export function formatDvalaExpression(program: string, styleOverride?: StyleOverride): string {
   try {
-    const tokens = dvala.tokenize(program).tokens
+    const tokens = tokenizeSource(program).tokens
     const spans = tokens.map((token, index) => {
       const style = styleOverride?.values.includes(token[1]) ? styleOverride.style : getStylesFromToken(token, tokens, index)
       return `<span ${style}>${token[1]}</span>`

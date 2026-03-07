@@ -4,7 +4,6 @@ import { allNormalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { DvalaError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
-import type { ContextParams } from '../Dvala/Dvala'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -14,6 +13,13 @@ import { toAny } from '../utils'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { Context, LookUpResult } from './interface'
 import { isContextEntry } from './interface'
+
+interface CreateContextStackParams {
+  globalContext?: Context
+  contexts?: Context[]
+  bindings?: Record<string, unknown>
+  globalModuleScope?: boolean
+}
 
 export type ContextStack = ContextStackImpl
 
@@ -240,7 +246,7 @@ function assertNotShadowingBuiltin(name: string): void {
   }
 }
 
-export function createContextStack(params: ContextParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean): ContextStack {
+export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]

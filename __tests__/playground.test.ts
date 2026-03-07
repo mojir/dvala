@@ -14,7 +14,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/effects'
-import type { ContextParams } from '../src/Dvala/Dvala'
 import { allBuiltinModules } from '../src/allModules'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../src/tooling'
 import { StateHistory } from '../playground-www/src/StateHistory'
@@ -37,7 +36,7 @@ function runValue(result: RunResult): unknown {
 }
 
 /** Parse a JSON context string just like the playground does. */
-function parseContext(contextJson: string): ContextParams {
+function parseContext(contextJson: string): { bindings?: Record<string, unknown> } {
   if (!contextJson.trim())
     return {}
 
@@ -317,11 +316,7 @@ describe('built-in examples', () => {
 
   for (const example of runnableExamples) {
     it(`runs without error: ${example.name}`, async () => {
-      const params: ContextParams = {}
-      if (example.context?.bindings) {
-        params.bindings = example.context.bindings
-      }
-      const result = await dvala.runAsync(example.code, { bindings: params.bindings })
+      const result = await dvala.runAsync(example.code, { bindings: example.context?.bindings })
       expect(result.type).not.toBe('error')
     })
   }

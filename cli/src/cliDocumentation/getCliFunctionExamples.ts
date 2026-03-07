@@ -2,11 +2,11 @@
 
 import { stringifyValue } from '../../../common/utils'
 import type { Reference } from '../../../reference'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import type { Colorizer } from '../colorizer'
 import { getDvalaFormatter } from '../cliFormatterRules'
 
-const dvala = new Dvala({ debug: false })
+const dvala = createDvala({ debug: false })
 
 export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
   const { examples } = reference

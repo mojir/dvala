@@ -1,4 +1,3 @@
-import type { FilePathParams } from '../Dvala/Dvala'
 import { tokenizeShebang, tokenizers } from './tokenizers'
 import type { SourceCodeInfo, Token, TokenDescriptor } from './token'
 
@@ -8,7 +7,7 @@ export interface TokenStream {
   filePath?: string
 }
 
-export function tokenize(input: string, debug: boolean, filePath: FilePathParams['filePath']): TokenStream {
+export function tokenize(input: string, debug: boolean, filePath: string | undefined): TokenStream {
   let position = 0
   const tokenStream: TokenStream = {
     tokens: [],
