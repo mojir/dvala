@@ -2810,3 +2810,108 @@ describe('effects.ts — resume catch non-DvalaError (line 219-221)', () => {
     expect(result.type).toBe('error')
   })
 })
+
+// ---------------------------------------------------------------------------
+// debug.ts — non-DvalaError catch in run and resumeFromSnapshot
+// ---------------------------------------------------------------------------
+
+describe('debug.ts — non-DvalaError catch in run', () => {
+  it('should wrap non-DvalaError from debugger run (line 291-293)', async () => {
+    const dbg = createDebugger()
+    const result = await dbg.run(null as unknown as string)
+    expect(result.type).toBe('error')
+  })
+})
+
+describe('debug.ts — catch paths in resumeFromSnapshot', () => {
+  it('should wrap non-DvalaError from resumeFromSnapshot (line 249)', async () => {
+    const dbg = createDebugger()
+    const r1 = await dbg.run('1 + 2')
+    expect(r1.type).toBe('suspended')
+
+    // Corrupt with null continuation → TypeError (not DvalaError)
+    const history = dbg.history as { snapshot: unknown }[]
+    if (history.length > 0) {
+      history[0]!.snapshot = { continuation: null }
+    }
+    const r2 = await dbg.stepForward()
+    if (r2.type === 'suspended') {
+      const r3 = await dbg.stepForward()
+      expect(r3.type).toBe('error')
+    }
+    else {
+      expect(r2.type).toBe('error')
+    }
+  })
+
+  it('should catch DvalaError from resumeFromSnapshot (line 246-248)', async () => {
+    const dbg = createDebugger()
+    const r1 = await dbg.run('1 + 2')
+    expect(r1.type).toBe('suspended')
+
+    // Corrupt with wrong version → DvalaError from deserializeFromObject
+    const history = dbg.history as { snapshot: unknown }[]
+    if (history.length > 0) {
+      history[0]!.snapshot = { continuation: { version: 9999 } }
+    }
+    const r2 = await dbg.stepForward()
+    if (r2.type === 'suspended') {
+      const r3 = await dbg.stepForward()
+      expect(r3.type).toBe('error')
+    }
+    else {
+      expect(r2.type).toBe('error')
+    }
+  })
+})
+
+describe('debug.ts — parseStepInfo with null/missing meta', () => {
+  it('should handle suspension with no meta (line 140, 207)', async () => {
+    const dbg = createDebugger({
+      handlers: {
+        'my.noMeta': async ({ suspend }) => { suspend() },
+      },
+    })
+    const r1 = await dbg.run('perform(effect(my.noMeta))')
+    expect(r1.type).toBe('suspended')
+
+    let result = r1
+    let found = false
+    for (let i = 0; i < 20 && result.type === 'suspended'; i++) {
+      result = await dbg.stepForward()
+      if (result.type === 'suspended') {
+        const entry = dbg.current
+        if (entry && entry.step.expression === '') {
+          found = true
+          break
+        }
+      }
+    }
+    expect(found).toBe(true)
+  })
+
+  it('should handle suspension with incomplete meta (lines 146-152)', async () => {
+    const dbg = createDebugger({
+      handlers: {
+        'my.partialMeta': async ({ suspend }) => { suspend({}) },
+      },
+    })
+    const r1 = await dbg.run('perform(effect(my.partialMeta))')
+    expect(r1.type).toBe('suspended')
+
+    let result = r1
+    let found = false
+    for (let i = 0; i < 20 && result.type === 'suspended'; i++) {
+      result = await dbg.stepForward()
+      if (result.type === 'suspended') {
+        const entry = dbg.current
+        if (entry && entry.step.expression === '' && entry.step.location.line === 0) {
+          // This is the user suspend with incomplete meta → defaults used
+          found = true
+          break
+        }
+      }
+    }
+    expect(found).toBe(true)
+  })
+})

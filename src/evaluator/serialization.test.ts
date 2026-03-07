@@ -8,6 +8,7 @@ import type {
   EffectRef,
   EveryPredFunction,
   FNullFunction,
+  FunctionLike,
   JuxtFunction,
   ModuleFunction,
   NormalBuiltinFunction,
@@ -394,5 +395,106 @@ describe('isSerializable edge cases', () => {
   it('should return false for unexpected non-object non-primitive value', () => {
     // Force an unexpected type (e.g. undefined) through the type system
     expect(isSerializable(undefined as unknown as Any)).toBe(false)
+  })
+})
+
+// Non-serializable inner values in compound function types
+const BAD = undefined as unknown as Any
+
+describe('describeSerializationIssue — non-serializable compound functions', () => {
+  it('should detect non-serializable inner function in Partial', () => {
+    const partial: PartialFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Partial',
+      function: BAD as unknown as FunctionLike,
+      params: [1],
+      placeholders: [],
+      arity: {},
+    }
+    expect(describeSerializationIssue(partial as Any)).toContain('.function')
+  })
+
+  it('should detect non-serializable param in Partial', () => {
+    const partial: PartialFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Partial',
+      function: makeUserDefinedFunction(),
+      params: [BAD],
+      placeholders: [],
+      arity: {},
+    }
+    expect(describeSerializationIssue(partial as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable param in Comp', () => {
+    const comp: CompFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Comp',
+      params: [BAD],
+      arity: {},
+    }
+    expect(describeSerializationIssue(comp as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable param in Juxt', () => {
+    const juxt: JuxtFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Juxt',
+      params: [BAD],
+      arity: {},
+    }
+    expect(describeSerializationIssue(juxt as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable param in EveryPred', () => {
+    const everyPred: EveryPredFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'EveryPred',
+      params: [BAD],
+      arity: {},
+    }
+    expect(describeSerializationIssue(everyPred as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable param in SomePred', () => {
+    const somePred: SomePredFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'SomePred',
+      params: [BAD],
+      arity: {},
+    }
+    expect(describeSerializationIssue(somePred as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable inner function in Fnull', () => {
+    const fnull: FNullFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Fnull',
+      function: BAD as unknown as FunctionLike,
+      params: [1],
+      arity: {},
+    }
+    expect(describeSerializationIssue(fnull as Any)).toContain('.function')
+  })
+
+  it('should detect non-serializable param in Fnull', () => {
+    const fnull: FNullFunction = {
+      [FUNCTION_SYMBOL]: true,
+      functionType: 'Fnull',
+      function: makeUserDefinedFunction(),
+      params: [BAD],
+      arity: {},
+    }
+    expect(describeSerializationIssue(fnull as Any)).toContain('params[0]')
+  })
+
+  it('should detect non-serializable element in array', () => {
+    const arr = [1, BAD, 3]
+    expect(describeSerializationIssue(arr)).toContain('[1]')
+  })
+
+  it('should detect non-serializable value in object', () => {
+    const obj = { a: 1, b: BAD }
+    expect(describeSerializationIssue(obj)).toContain('.b')
   })
 })
