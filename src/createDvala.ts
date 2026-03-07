@@ -12,7 +12,7 @@ import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
-import type { Handlers, RunResult, SyncHandlers } from './evaluator/effectTypes'
+import type { Handlers, RunResult } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
@@ -20,7 +20,6 @@ export interface CreateDvalaOptions {
   modules?: DvalaModule[]
   bindings?: Record<string, unknown>
   effectHandlers?: Handlers
-  syncHandlers?: SyncHandlers
   cache?: number
   /** Enable debug tokenization: captures source positions for better error messages. */
   debug?: boolean
@@ -28,7 +27,7 @@ export interface CreateDvalaOptions {
 
 export interface DvalaRunOptions {
   bindings?: Record<string, unknown>
-  syncHandlers?: SyncHandlers
+  effectHandlers?: Handlers
   pure?: boolean
   filePath?: string
 }
@@ -90,7 +89,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     : undefined
   const factoryBindings = options?.bindings
   const factoryEffectHandlers = options?.effectHandlers
-  const factorySyncHandlers = options?.syncHandlers
   const debug = options?.debug ?? false
   const cache = options?.cache ? new Cache(options.cache) : null
 
@@ -114,21 +112,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     return { ...factoryBindings, ...runBindings }
   }
 
-  function mergeSyncHandlers(runSyncHandlers?: SyncHandlers): SyncHandlers | undefined {
-    if (!factorySyncHandlers && !runSyncHandlers)
-      return undefined
-    // Run handlers first (checked first), factory handlers fill in the rest.
-    // For same key, run overrides factory.
-    const result: SyncHandlers = { ...runSyncHandlers }
-    if (factorySyncHandlers) {
-      for (const [k, v] of Object.entries(factorySyncHandlers)) {
-        if (!(k in result))
-          result[k] = v
-      }
-    }
-    return result
-  }
-
   function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
     if (!factoryEffectHandlers && !runEffectHandlers)
       return undefined
@@ -146,14 +129,12 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
   function assertNotPureWithHandlers(
     pure: boolean,
-    syncHandlers: SyncHandlers | undefined,
     effectHandlers: Handlers | undefined,
   ): void {
     if (!pure)
       return
-    const hasSyncHandlers = syncHandlers && Object.keys(syncHandlers).length > 0
     const hasEffectHandlers = effectHandlers && Object.keys(effectHandlers).length > 0
-    if (hasSyncHandlers || hasEffectHandlers) {
+    if (hasEffectHandlers) {
       throw new TypeError('Cannot use pure mode with effect handlers')
     }
   }
@@ -162,10 +143,10 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     run(source: string | DvalaBundle, runOptions?: DvalaRunOptions): unknown {
       assertSerializableBindings(runOptions?.bindings)
       const bindings = mergeBindings(runOptions?.bindings)
-      const syncHandlers = mergeSyncHandlers(runOptions?.syncHandlers)
+      const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
 
-      assertNotPureWithHandlers(pure, syncHandlers, undefined)
+      assertNotPureWithHandlers(pure, effectHandlers)
 
       const contextStack = createContextStack({ bindings }, modules, pure)
 
@@ -187,8 +168,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       const ast = buildAst(source, runOptions?.filePath)
 
-      if (syncHandlers) {
-        return evaluateWithSyncEffects(ast, contextStack, syncHandlers)
+      if (effectHandlers) {
+        return evaluateWithSyncEffects(ast, contextStack, effectHandlers)
       }
 
       const result = evaluate(ast, contextStack)
@@ -204,7 +185,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
 
-      assertNotPureWithHandlers(pure, undefined, effectHandlers)
+      assertNotPureWithHandlers(pure, effectHandlers)
 
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)

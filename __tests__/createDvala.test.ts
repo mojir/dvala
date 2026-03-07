@@ -45,44 +45,44 @@ describe('createDvala', () => {
   })
 
   describe('sync effect handlers', () => {
-    it('run uses syncHandlers from factory', () => {
+    it('run uses effectHandlers from factory', () => {
       const d = createDvala({
-        syncHandlers: {
+        effectHandlers: {
           'my.val': ({ resume }) => resume(42),
         },
       })
       expect(d.run('perform(effect(my.val))')).toBe(42)
     })
 
-    it('run uses syncHandlers from per-run options', () => {
+    it('run uses effectHandlers from per-run options', () => {
       const d = createDvala()
       expect(d.run('perform(effect(my.val))', {
-        syncHandlers: { 'my.val': ({ resume }) => resume(99) },
+        effectHandlers: { 'my.val': ({ resume }) => resume(99) },
       })).toBe(99)
     })
 
-    it('per-run syncHandlers are stacked on top of factory syncHandlers', () => {
+    it('per-run effectHandlers are stacked on top of factory effectHandlers', () => {
       const d = createDvala({
-        syncHandlers: { 'my.*': ({ resume }) => resume('factory') },
+        effectHandlers: { 'my.*': ({ resume }) => resume('factory') },
       })
       expect(d.run('perform(effect(my.specific))', {
-        syncHandlers: { 'my.specific': ({ resume }) => resume('run') },
+        effectHandlers: { 'my.specific': ({ resume }) => resume('run') },
       })).toBe('run')
     })
   })
 
   describe('pure mode', () => {
-    it('pure mode with syncHandlers throws at run time', () => {
+    it('pure mode with effectHandlers throws at run time', () => {
       const d = createDvala()
       expect(() => d.run('1 + 1', {
         pure: true,
-        syncHandlers: { 'my.effect': ({ resume }) => resume(1) },
+        effectHandlers: { 'my.effect': ({ resume }) => resume(1) },
       })).toThrow('Cannot use pure mode with effect handlers')
     })
 
-    it('pure mode with factory syncHandlers throws at run time', () => {
+    it('pure mode with factory effectHandlers throws at run time', () => {
       const d = createDvala({
-        syncHandlers: { 'my.effect': ({ resume }) => resume(1) },
+        effectHandlers: { 'my.effect': ({ resume }) => resume(1) },
       })
       expect(() => d.run('1 + 1', { pure: true })).toThrow('Cannot use pure mode with effect handlers')
     })

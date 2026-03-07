@@ -78,8 +78,8 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
-import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState, SyncEffectContext, SyncEffectHandler, SyncHandlers } from './effectTypes'
-import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, findMatchingSyncHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
+import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -2047,7 +2047,6 @@ function tryDispatchDvalaError(
   handlers?: Handlers,
   signal?: AbortSignal,
   snapshotState?: SnapshotState,
-  syncHandlers?: SyncHandlers,
 ): Step | Promise<Step> | null {
   const effect = getEffectRef('dvala.error')
   const args: Arr = [error.shortMessage]
@@ -2068,12 +2067,6 @@ function tryDispatchDvalaError(
   const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
   if (matchingHostHandlers.length > 0) {
     return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo, snapshotState)
-  }
-
-  // Check sync host handlers for 'dvala.error'
-  const matchingSyncHandlers = findMatchingSyncHandlers('dvala.error', syncHandlers)
-  if (matchingSyncHandlers.length > 0) {
-    return dispatchSyncHostHandler('dvala.error', matchingSyncHandlers, args, k, error.sourceCodeInfo)
   }
 
   return null
@@ -2302,7 +2295,7 @@ function invokeMatchedHandler(
   return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
 }
 
-function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, syncHandlers?: SyncHandlers): Step | Promise<Step> {
+function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
@@ -2339,12 +2332,6 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
     return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo, snapshotState)
   }
 
-  // No async host handler — check sync host handlers.
-  const matchingSyncHandlers = findMatchingSyncHandlers(effect.name, syncHandlers)
-  if (matchingSyncHandlers.length > 0) {
-    return dispatchSyncHostHandler(effect.name, matchingSyncHandlers, args, k, sourceCodeInfo)
-  }
-
   // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
@@ -2371,12 +2358,16 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
  * shape. If no more handlers remain after `next()`, the effect is unhandled.
  *
  * Each handler must call exactly one of `resume`, `suspend`, `fail`, or
- * `next` before its promise resolves.
+ * `next` before its promise resolves (async) or before returning (sync).
  *
  * - `resume(value)` — resolves with a `ValueStep` that continues evaluation.
- * - `suspend(meta?)` — rejects with a `SuspensionSignal`.
+ * - `suspend(meta?)` — throws a `SuspensionSignal`.
  * - `fail(msg?)` — produces an `ErrorStep` routed through `dvala.error`.
  * - `next()` — pass to the next matching handler in the chain.
+ *
+ * Handlers may return `void` (synchronous) or `Promise<void>` (async).
+ * When all handlers in a chain are synchronous, this function returns
+ * a `Step` synchronously, allowing use from the sync trampoline.
  */
 function dispatchHostHandler(
   effectName: string,
@@ -2386,163 +2377,30 @@ function dispatchHostHandler(
   signal: AbortSignal | undefined,
   sourceCodeInfo: SourceCodeInfo | undefined,
   snapshotState?: SnapshotState,
-): Promise<Step> {
+): Step | Promise<Step> {
   const effectSignal = signal ?? new AbortController().signal
   const argsArray = Array.from(args) as Any[]
 
-  // Recursive helper: try handler at `index`, with `next()` advancing to `index + 1`.
-  function tryHandler(index: number): Promise<Step> {
-    if (index >= matchingHandlers.length) {
-      // No more handlers — effect is unhandled.
-      // Return rejected Promises (not synchronous throws) so that
-      // next() can propagate via .then(resolve, reject).
-      if (effectName === 'dvala.error') {
-        const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
-        return Promise.reject(new UserDefinedError(message, sourceCodeInfo))
-      }
-      return Promise.reject(new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo))
+  type HandlerOutcome =
+    | { kind: 'step', step: Step }
+    | { kind: 'asyncResume', promise: Promise<Any> }
+    | { kind: 'throw', error: unknown }
+    | { kind: 'next' }
+
+  function resolveOutcome(o: HandlerOutcome, nextIndex: number): Step | Promise<Step> {
+    switch (o.kind) {
+      case 'step': return o.step
+      case 'asyncResume': return o.promise.then(
+        (v): Step => ({ type: 'Value', value: v, k }),
+        (e): Step => ({ type: 'Error', error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo), k }),
+      )
+      case 'throw': throw o.error
+      case 'next': return tryHandler(nextIndex)
     }
-
-    const [, handler] = matchingHandlers[index]!
-
-    return new Promise<Step>((resolve, reject) => {
-      let settled = false
-
-      function assertNotSettled(operation: string): void {
-        if (settled) {
-          throw new DvalaError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
-        }
-        settled = true
-      }
-
-      const ctx = {
-        effectName,
-        args: argsArray,
-        signal: effectSignal,
-        resume: (value: Any | Promise<Any>) => {
-          assertNotSettled('resume')
-
-          if (value instanceof Promise) {
-            value.then(
-              (v) => {
-                resolve({ type: 'Value', value: v, k })
-              },
-              (e) => {
-                resolve({
-                  type: 'Error',
-                  error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
-                  k,
-                })
-              },
-            )
-          }
-          else {
-            resolve({ type: 'Value', value, k })
-          }
-        },
-        fail: (msg?: string) => {
-          assertNotSettled('fail')
-          const errorMsg = msg ?? `Effect handler failed for '${effectName}'`
-          resolve({
-            type: 'Error',
-            error: new DvalaError(errorMsg, sourceCodeInfo),
-            k,
-          })
-        },
-        suspend: (meta?: Any) => {
-          assertNotSettled('suspend')
-          reject(new SuspensionSignal(
-            k,
-            snapshotState ? snapshotState.snapshots : [],
-            snapshotState ? snapshotState.nextSnapshotIndex : 0,
-            meta,
-          ))
-        },
-        next: () => {
-          assertNotSettled('next')
-          // Advance to the next handler in the chain.
-          tryHandler(index + 1).then(resolve, reject)
-        },
-        get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
-        checkpoint: (meta?: Any): Snapshot => {
-          if (!snapshotState) {
-            throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
-          }
-          const continuation = serializeToObject(k)
-          const snapshot: Snapshot = {
-            continuation,
-            timestamp: Date.now(),
-            index: snapshotState.nextSnapshotIndex++,
-            runId: snapshotState.runId,
-            ...(meta !== undefined ? { meta } : {}),
-          }
-          snapshotState.snapshots.push(snapshot)
-          if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
-            snapshotState.snapshots.shift()
-          }
-          return snapshot
-        },
-        resumeFrom: (snapshot: Snapshot, value: Any) => {
-          if (settled) {
-            throw new DvalaError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
-          }
-          if (!snapshotState) {
-            throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
-          }
-          const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.runId === snapshot.runId)
-          if (!found) {
-            throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
-          }
-          settled = true
-          reject(new ResumeFromSignal(found.continuation, value, found.index))
-        },
-      }
-
-      handler(ctx).catch((e) => {
-        if (settled) {
-          // Handler already resolved via resume/suspend/fail/next — ignore late errors
-          return
-        }
-        settled = true
-        if (isSuspensionSignal(e) || isResumeFromSignal(e)) {
-          reject(e)
-        }
-        else {
-          // Handler itself threw — produce an ErrorStep so tick() can route
-          // through dvala.error.
-          resolve({
-            type: 'Error',
-            error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
-            k,
-          })
-        }
-      })
-    })
   }
 
-  return tryHandler(0)
-}
-
-/**
- * Dispatch an effect to synchronous JavaScript handlers.
- *
- * Calls handlers in order, supporting `next()` to advance the chain.
- * Returns a `Step` synchronously — never a Promise.
- *
- * - `resume(value)` — returns a `ValueStep` continuing evaluation.
- * - `fail(msg?)` — throws a `UserDefinedError` routed through `dvala.error`.
- * - `next()` — calls the next matching handler in the chain.
- */
-function dispatchSyncHostHandler(
-  effectName: string,
-  matchingHandlers: Array<[string, SyncEffectHandler]>,
-  args: Arr,
-  k: ContinuationStack,
-  sourceCodeInfo?: SourceCodeInfo,
-): Step {
-  const argsArray = Array.from(args) as Any[]
-
-  function tryHandler(index: number): Step {
+  // Recursive helper: try handler at `index`, with `next()` advancing to `index + 1`.
+  function tryHandler(index: number): Step | Promise<Step> {
     if (index >= matchingHandlers.length) {
       if (effectName === 'dvala.error') {
         const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
@@ -2552,7 +2410,8 @@ function dispatchSyncHostHandler(
     }
 
     const [, handler] = matchingHandlers[index]!
-    let result: Step | undefined
+
+    let outcome: HandlerOutcome | undefined
     let settled = false
 
     function assertNotSettled(operation: string): void {
@@ -2562,31 +2421,117 @@ function dispatchSyncHostHandler(
       settled = true
     }
 
-    const ctx: SyncEffectContext = {
+    const ctx: EffectContext = {
       effectName,
       args: argsArray,
-      resume: (value: Any) => {
+      signal: effectSignal,
+      resume: (value: Any | Promise<Any>) => {
         assertNotSettled('resume')
-        result = { type: 'Value', value, k }
+        if (value instanceof Promise) {
+          outcome = { kind: 'asyncResume', promise: value }
+        }
+        else {
+          outcome = { kind: 'step', step: { type: 'Value', value, k } }
+        }
       },
       fail: (msg?: string) => {
         assertNotSettled('fail')
-        const message = msg ?? `Effect '${effectName}' failed`
-        throw new UserDefinedError(message, sourceCodeInfo)
+        const errorMsg = msg ?? `Effect handler failed for '${effectName}'`
+        outcome = { kind: 'step', step: { type: 'Error', error: new DvalaError(errorMsg, sourceCodeInfo), k } }
+      },
+      suspend: (meta?: Any) => {
+        assertNotSettled('suspend')
+        outcome = {
+          kind: 'throw',
+          error: new SuspensionSignal(
+            k,
+            snapshotState ? snapshotState.snapshots : [],
+            snapshotState ? snapshotState.nextSnapshotIndex : 0,
+            meta,
+          ),
+        }
       },
       next: () => {
         assertNotSettled('next')
-        result = tryHandler(index + 1)
+        outcome = { kind: 'next' }
+      },
+      get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
+      checkpoint: (meta?: Any): Snapshot => {
+        if (!snapshotState) {
+          throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
+        }
+        const continuation = serializeToObject(k)
+        const snapshot: Snapshot = {
+          continuation,
+          timestamp: Date.now(),
+          index: snapshotState.nextSnapshotIndex++,
+          runId: snapshotState.runId,
+          ...(meta !== undefined ? { meta } : {}),
+        }
+        snapshotState.snapshots.push(snapshot)
+        if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
+          snapshotState.snapshots.shift()
+        }
+        return snapshot
+      },
+      resumeFrom: (snapshot: Snapshot, value: Any) => {
+        if (settled) {
+          throw new DvalaError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
+        }
+        if (!snapshotState) {
+          throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
+        }
+        const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.runId === snapshot.runId)
+        if (!found) {
+          throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
+        }
+        settled = true
+        outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, value, found.index) }
       },
     }
 
-    handler(ctx)
+    const handlerResult = handler(ctx)
 
-    if (!settled) {
-      throw new DvalaError(`Sync effect handler for '${effectName}' did not call resume(), fail(), or next()`, sourceCodeInfo)
+    if (!(handlerResult instanceof Promise)) {
+      // Synchronous handler — outcome must already be set
+      if (!outcome) {
+        throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), or next()`, sourceCodeInfo)
+      }
+      return resolveOutcome(outcome, index + 1)
     }
 
-    return result!
+    // Async handler
+    if (outcome) {
+      // Handler settled synchronously before the async part
+      handlerResult.catch(() => {}) // suppress unhandled rejection
+      return resolveOutcome(outcome, index + 1)
+    }
+
+    // Not yet settled — wait for the handler's promise
+    return handlerResult.then(
+      () => {
+        if (!outcome) {
+          throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), or next()`, sourceCodeInfo)
+        }
+        return resolveOutcome(outcome, index + 1)
+      },
+      (e) => {
+        if (outcome) {
+          // Already settled — return that result, ignore the rejection
+          return resolveOutcome(outcome, index + 1)
+        }
+        if (isSuspensionSignal(e) || isResumeFromSignal(e)) {
+          // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal/ResumeFromSignal is a signaling mechanism
+          throw e
+        }
+        const errorStep: Step = {
+          type: 'Error',
+          error: e instanceof DvalaError ? e : new DvalaError(e instanceof Error ? e : `${e}`, sourceCodeInfo),
+          k,
+        }
+        return errorStep
+      },
+    )
   }
 
   return tryHandler(0)
@@ -3103,7 +3048,7 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any, is
  * When `handlers` and `signal` are provided (from `run()`), host handlers are
  * available as a fallback for effects not matched by any local `try/with`.
  */
-export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, syncHandlers?: SyncHandlers): Step | Promise<Step> {
+export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   try {
     switch (step.type) {
       case 'Value': {
@@ -3118,7 +3063,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState, syncHandlers)
+        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -3126,7 +3071,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'Error': {
-        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState, syncHandlers)
+        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState)
         if (effectStep !== null) {
           return effectStep
         }
@@ -3156,7 +3101,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       const kForDispatch = step.type === 'Value'
         ? step.k.slice(1)
         : step.k
-      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState, syncHandlers)
+      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState)
       if (effectStep !== null) {
         return effectStep
       }
@@ -3171,7 +3116,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
  * Throws if any step produces a Promise (i.e., an async operation was
  * encountered in a synchronous context).
  */
-export function runSyncTrampoline(initial: Step, syncHandlers?: SyncHandlers): Any {
+export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any {
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
@@ -3180,7 +3125,7 @@ export function runSyncTrampoline(initial: Step, syncHandlers?: SyncHandlers): A
     if (step.type === 'Value' && step.k.length === 0) {
       return step.value
     }
-    step = tick(step, undefined, undefined, undefined, syncHandlers)
+    step = tick(step, effectHandlers)
   }
 }
 
@@ -3310,26 +3255,26 @@ export async function evaluateWithEffects(
 }
 
 /**
- * Evaluate an AST synchronously with sync effect handler support.
+ * Evaluate an AST synchronously with effect handler support.
  *
- * Uses the sync trampoline with `syncHandlers` threaded through `tick`.
- * Throws if an async operation is encountered (same as plain `evaluate`
- * in sync mode). Sync handlers may call `resume(value)`, `fail(msg?)`,
- * or `next()` — but not `suspend()`.
+ * Uses the sync trampoline with `effectHandlers` threaded through `tick`.
+ * Throws if an async operation is encountered (e.g., an async handler
+ * is used). Handlers may call `resume(value)`, `fail(msg?)`, or `next()`.
+ * Calling `suspend()` will throw a runtime error.
  */
 export function evaluateWithSyncEffects(
   ast: Ast,
   contextStack: ContextStack,
-  syncHandlers?: SyncHandlers,
+  effectHandlers?: Handlers,
 ): Any {
   const initial = buildInitialStep(ast.body, contextStack)
   try {
-    return runSyncTrampoline(initial, syncHandlers)
+    return runSyncTrampoline(initial, effectHandlers)
   }
   catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       const freshInitial = buildInitialStep(ast.body, contextStack)
-      return runSyncTrampoline(freshInitial, syncHandlers)
+      return runSyncTrampoline(freshInitial, effectHandlers)
     }
     throw error
   }
