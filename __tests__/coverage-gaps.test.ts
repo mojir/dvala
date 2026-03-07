@@ -22,6 +22,9 @@ import { sequenceNormalExpression } from '../src/builtin/core/sequence'
 import { sequenceUtilsModule } from '../src/builtin/modules/sequence'
 import { collectionUtilsModule } from '../src/builtin/modules/collection'
 import { gridModule } from '../src/builtin/modules/grid'
+import { someSequential } from '../src/utils/maybePromise'
+import { generateDocString } from '../src/utils/docString/generateDocString'
+import type { EffectReference } from '../reference'
 
 /**
  * Tests targeting uncovered lines in the trampoline's recursive evaluator paths,
@@ -2679,5 +2682,131 @@ describe('dvala — runBundle async error', () => {
     // However, this is hard to trigger directly since effects require async.
     // Instead, test that synchronous run works correctly for normal cases.
     expect(dvala.run('1 + 2')).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// meta.ts — doc() on effect with no reference entry (line 25 falsy branch)
+// ---------------------------------------------------------------------------
+
+describe('meta — doc on unknown effect', () => {
+  it('should return empty string for doc on unregistered effect', () => {
+    const result = dvala.run('doc(effect(nonexistent.effect.name))')
+    expect(result).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// maybePromise.ts — chainRemainingSome: initial promise resolves truthy (line 163)
+// ---------------------------------------------------------------------------
+
+describe('maybePromise — someSequential async truthy first element', () => {
+  it('should return true when first callback returns a truthy promise', async () => {
+    const result = someSequential([1, 2, 3], () => Promise.resolve(true))
+    expect(result).toBeInstanceOf(Promise)
+    await expect(result).resolves.toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// generateDocString.ts — effect signature with rest arg (lines 43-44)
+// ---------------------------------------------------------------------------
+
+describe('generateDocString — effect with rest argument', () => {
+  it('should include ... prefix for rest args in effect signature', () => {
+    const ref: EffectReference = {
+      effect: true,
+      title: 'test.effect',
+      category: 'effect',
+      description: 'A test effect',
+      args: {
+        items: { type: 'any', rest: true, description: 'The items' },
+      },
+      returns: { type: 'any' },
+      variants: [{ argumentNames: ['items'] }],
+      examples: ['(perform (effect test.effect) 1 2 3)'],
+    }
+    const result = generateDocString(ref)
+    expect(result).toContain('...items')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dvala.ts — runBundle with async program (lines 152-153)
+// ---------------------------------------------------------------------------
+
+describe('dvala.ts — runBundle throws on async result', () => {
+  it('should throw when bundle program returns a promise', () => {
+    const bundle = {
+      program: 'parallel(1, 2)',
+      fileModules: [] as [string, string][],
+    }
+    expect(() => dvala.run(bundle)).toThrow('Unexpected async result in synchronous runBundle()')
+  })
+})
+
+describe('dvala.ts — effect binding in assertSerializable (line 271)', () => {
+  it('should accept effect values in bindings', () => {
+    const eff = dvala.run('effect(test.effect)')
+    expect(dvala.run('x', { bindings: { x: eff } })).toBe(eff)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseFunction.ts — shorthand lambda with do...with...end (lines 122-124)
+// ---------------------------------------------------------------------------
+
+describe('parseFunction — shorthand lambda with do...with...end', () => {
+  it('should parse shorthand lambda containing do...with...end handlers', () => {
+    const program = `
+      let f = -> do
+        perform(effect(my.eff), $)
+      with
+        case effect(my.eff) then ([x]) -> x * 2
+      end;
+      f(21)
+    `
+    expect(dvala.run(program)).toBe(42)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// effects.ts — run() and resume() error handling and modules branches
+// ---------------------------------------------------------------------------
+
+describe('effects.ts — run error wrapping non-DvalaError', () => {
+  it('should wrap non-DvalaError thrown during run (line 169-170)', async () => {
+    // Pass null as source to trigger a non-DvalaError (TypeError) in tokenize
+    const result = await run(null as unknown as string)
+    expect(result.type).toBe('error')
+  })
+})
+
+describe('effects.ts — resume with modules (line 195-196)', () => {
+  it('should pass modules option through to resume', async () => {
+    const handlers: Handlers = {
+      'test.suspend': async ({ suspend }) => { suspend() },
+    }
+    const r1 = await run(`
+      perform(effect(test.suspend))
+    `, { handlers })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+
+    // Resume with modules option to cover the truthy branch
+    const r2 = await resume(r1.snapshot, 42, { modules: [] })
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toBe(42)
+    }
+  })
+})
+
+describe('effects.ts — resume catch non-DvalaError (line 219-221)', () => {
+  it('should wrap non-DvalaError thrown during resume', async () => {
+    // Pass null as snapshot to trigger a TypeError (cannot read properties of null)
+    const result = await resume(null as never, null)
+    expect(result.type).toBe('error')
   })
 })
