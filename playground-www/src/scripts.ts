@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
-import type { UnknownRecord } from '../../src/interface'
+import type { Any, UnknownRecord } from '../../src/interface'
 import { type ContextParams, Dvala } from '../../src/Dvala/Dvala'
-import type { EffectHandler } from '../../src/evaluator/effectTypes'
+import type { EffectContext, EffectHandler } from '../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
@@ -63,6 +63,14 @@ const elements = {
   contextTitle: document.getElementById('context-title') as HTMLDivElement,
   dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
   dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
+  effectModal: document.getElementById('effect-modal') as HTMLDivElement,
+  effectModalName: document.getElementById('effect-modal-name') as HTMLElement,
+  effectModalArgs: document.getElementById('effect-modal-args') as HTMLDivElement,
+  effectModalMainButtons: document.getElementById('effect-modal-main-buttons') as HTMLDivElement,
+  effectModalInputSection: document.getElementById('effect-modal-input-section') as HTMLDivElement,
+  effectModalInputLabel: document.getElementById('effect-modal-input-label') as HTMLSpanElement,
+  effectModalValue: document.getElementById('effect-modal-value') as HTMLTextAreaElement,
+  effectModalError: document.getElementById('effect-modal-error') as HTMLSpanElement,
 }
 
 type MoveParams = {
@@ -94,6 +102,9 @@ let moveParams: MoveParams | null = null
 let syntaxOverlay: SyntaxOverlay
 let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
+let pendingEffectCtx: EffectContext | null = null
+let pendingEffectResolve: (() => void) | null = null
+let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 
 function calculateDimensions() {
   return {
@@ -635,7 +646,15 @@ window.onload = function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
+      if (pendingEffectAction)
+        cancelEffectAction()
+      else if (pendingEffectCtx)
+        selectEffectAction('ignore')
       evt.preventDefault()
+    }
+    if (evt.key === 'Enter' && pendingEffectCtx && !pendingEffectAction) {
+      evt.preventDefault()
+      selectEffectAction('resume')
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
@@ -982,6 +1001,121 @@ export function focusDvalaCode() {
   elements.dvalaTextArea.focus()
 }
 
+async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
+  pendingEffectCtx = ctx
+  elements.effectModalName.textContent = ctx.effectName
+  elements.effectModalArgs.innerHTML = ''
+  if (ctx.args.length === 0) {
+    const empty = document.createElement('span')
+    empty.textContent = '(no arguments)'
+    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    elements.effectModalArgs.appendChild(empty)
+  }
+  else {
+    ctx.args.forEach((arg) => {
+      const row = document.createElement('div')
+      row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
+      const code = document.createElement('code')
+      code.textContent = JSON.stringify(arg, null, 2)
+      code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+      row.appendChild(code)
+      elements.effectModalArgs.appendChild(row)
+    })
+  }
+  elements.effectModalInputSection.style.display = 'none'
+  elements.effectModalMainButtons.style.opacity = '1'
+  elements.effectModalMainButtons.style.pointerEvents = 'auto'
+  elements.effectModal.style.display = 'flex'
+  return new Promise((resolve) => {
+    pendingEffectResolve = resolve
+  })
+}
+
+function closeEffectModal() {
+  elements.effectModal.style.display = 'none'
+  pendingEffectCtx = null
+  pendingEffectResolve = null
+  pendingEffectAction = null
+}
+
+export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'ignore') {
+  if (!pendingEffectCtx || !pendingEffectResolve)
+    return
+
+  if (action === 'ignore') {
+    const resolve = pendingEffectResolve
+    pendingEffectCtx.next()
+    closeEffectModal()
+    resolve()
+    return
+  }
+
+  pendingEffectAction = action
+  const labels: Record<typeof action, string> = {
+    resume: 'Resume value (JSON)',
+    fail: 'Error message (optional)',
+    suspend: 'Meta (JSON, optional)',
+  }
+  elements.effectModalInputLabel.textContent = labels[action]
+  elements.effectModalValue.value = action === 'resume' ? 'null' : ''
+  elements.effectModalError.style.display = 'none'
+  elements.effectModalMainButtons.style.opacity = '0.4'
+  elements.effectModalMainButtons.style.pointerEvents = 'none'
+  elements.effectModalInputSection.style.display = 'flex'
+  elements.effectModalValue.focus()
+}
+
+export function cancelEffectAction() {
+  pendingEffectAction = null
+  elements.effectModalInputSection.style.display = 'none'
+  elements.effectModalMainButtons.style.opacity = '1'
+  elements.effectModalMainButtons.style.pointerEvents = 'auto'
+}
+
+export function confirmEffectAction() {
+  if (!pendingEffectCtx || !pendingEffectResolve || !pendingEffectAction)
+    return
+
+  const valueStr = elements.effectModalValue.value.trim()
+  const resolve = pendingEffectResolve
+
+  if (pendingEffectAction === 'resume') {
+    try {
+      const value = JSON.parse(valueStr) as Any
+      pendingEffectCtx.resume(value)
+      closeEffectModal()
+      resolve()
+    }
+    catch {
+      elements.effectModalError.textContent = 'Invalid JSON'
+      elements.effectModalError.style.display = 'block'
+      elements.effectModalValue.focus()
+    }
+  }
+  else if (pendingEffectAction === 'fail') {
+    pendingEffectCtx.fail(valueStr || undefined)
+    closeEffectModal()
+    resolve()
+  }
+  else if (pendingEffectAction === 'suspend') {
+    let meta: Any | undefined
+    if (valueStr) {
+      try {
+        meta = JSON.parse(valueStr) as Any
+      }
+      catch {
+        elements.effectModalError.textContent = 'Invalid JSON'
+        elements.effectModalError.style.display = 'block'
+        elements.effectModalValue.focus()
+        return
+      }
+    }
+    pendingEffectCtx.suspend(meta)
+    closeEffectModal()
+    resolve()
+  }
+}
+
 function getDvalaParamsFromContext(): ContextParams {
   const contextString = getState('context')
   try {
@@ -1010,9 +1144,12 @@ function getDvalaParamsFromContext(): ContextParams {
       return acc
     }, {})
 
+    if (!handlers['*'])
+      handlers['*'] = defaultEffectHandler
+
     return {
       bindings,
-      handlers: Object.keys(handlers).length > 0 ? handlers : undefined,
+      handlers,
     }
   }
   catch (err) {
