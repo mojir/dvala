@@ -47,6 +47,8 @@ const config = antfu({
     'effect-system-redesign.md',
     'continuation-dedup-plan.md',
     'core-dvala-source-plan.md',
+    'chaining-api-design.md',
+    'fix-suspend-through-hofs.md',
     'docs',
     'playground-builder/src/components/tutorials/**/*',
     'scripts/**/*',
