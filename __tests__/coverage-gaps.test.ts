@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../src/allModules'
 import { createDebugger } from '../src/debug'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { resume, run } from '../src/effects'
+import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
 import '../src/initReferenceData'
@@ -31,8 +32,8 @@ import type { EffectReference } from '../reference'
  * edge cases in special expressions, and miscellaneous coverage gaps.
  */
 
-const dvala = new Dvala()
-const dvalaFull = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala()
+const dvalaFull = createDvala({ modules: allBuiltinModules })
 
 // ---------------------------------------------------------------------------
 // Recursive evaluator path — compound function types
@@ -286,15 +287,13 @@ describe('effect matching with function predicate', () => {
 
 describe('evaluateNode via getUndefinedSymbols', () => {
   it('should handle getUndefinedSymbols with function defaults', () => {
-    const d = new Dvala()
     // This exercises evaluateNode when analyzing function default values
-    const result = d.getUndefinedSymbols('let f = (a, b = 10) -> a + b; f(1)')
+    const result = getUndefinedSymbols('let f = (a, b = 10) -> a + b; f(1)')
     expect(result).toEqual(new Set())
   })
 
   it('should report undefined symbols in function body', () => {
-    const d = new Dvala()
-    const result = d.getUndefinedSymbols('let f = (a) -> a + unknown; f(1)')
+    const result = getUndefinedSymbols('let f = (a) -> a + unknown; f(1)')
     expect(result).toEqual(new Set(['unknown']))
   })
 })
@@ -315,27 +314,33 @@ describe('naN check in recursive evaluator', () => {
 
 describe('async trampoline operations', () => {
   it('should handle async run with user-defined functions', async () => {
-    const d = new Dvala()
-    const result = await d.async.run('let f = (x) -> x * 2; map([1, 2, 3], f)')
-    expect(result).toEqual([2, 4, 6])
+    const d = createDvala()
+    const result = await d.runAsync('let f = (x) -> x * 2; map([1, 2, 3], f)')
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toEqual([2, 4, 6])
   })
 
   it('should handle async run with comp', async () => {
-    const d = new Dvala()
-    const result = await d.async.run('let f = comp(inc, inc); f(0)')
-    expect(result).toBe(2)
+    const d = createDvala()
+    const result = await d.runAsync('let f = comp(inc, inc); f(0)')
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(2)
   })
 
   it('should handle async run with effects', async () => {
-    const d = new Dvala()
-    const result = await d.async.run(`
+    const d = createDvala()
+    const result = await d.runAsync(`
       do
         perform(effect(my.effect), 5)
       with
         case effect(my.effect) then ([x]) -> x * 10
       end
     `)
-    expect(result).toBe(50)
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(50)
   })
 })
 
@@ -481,8 +486,8 @@ describe('debug step', () => {
         ctx.resume(ctx.args[0]!)
       },
     }
-    const d = new Dvala({ debug: true })
-    await d.async.run('1 + 2', { handlers })
+    const d = createDvala({ debug: true })
+    await d.runAsync('1 + 2', { effectHandlers: handlers })
     expect(steps.length).toBeGreaterThan(0)
   })
 })
@@ -493,7 +498,7 @@ describe('debug step', () => {
 
 describe('generateDocString edge cases', () => {
   it('should generate doc string for effect reference', () => {
-    const d = new Dvala()
+    const d = createDvala()
     // Exercise the effect doc generation path
     const result = d.run('effect(dvala.io.println)')
     expect(result).toHaveProperty('name', 'dvala.io.println')
@@ -693,22 +698,26 @@ describe('?? — skipUndefinedQq and advanceQq edge cases', () => {
 
 describe('setupUserDefinedCall async fallbacks', () => {
   it('should handle async default value in user-defined function', async () => {
-    const d = new Dvala({ modules: allBuiltinModules })
+    const d = createDvala({ modules: allBuiltinModules })
     // Default value expressions that involve async operations
-    const result = await d.async.run(`
+    const result = await d.runAsync(`
       let f = (a, b = a + 1) -> a + b;
       f(5)
     `)
-    expect(result).toBe(11)
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(11)
   })
 
   it('should handle function with rest args in async context', async () => {
-    const d = new Dvala()
-    const result = await d.async.run(`
+    const d = createDvala()
+    const result = await d.runAsync(`
       let f = (a, ...the-rest) -> [a, the-rest];
       f(1, 2, 3)
     `)
-    expect(result).toEqual([1, [2, 3]])
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toEqual([1, [2, 3]])
   })
 })
 
@@ -957,13 +966,15 @@ describe('applyBindingDefault — destructuring with defaults', () => {
 
 describe('wrapMaybePromiseAsStep — async compound function', () => {
   it('should handle async compound function that resolves', async () => {
-    const d = new Dvala({ modules: allBuiltinModules })
-    const result = await d.async.run(`
+    const d = createDvala({ modules: allBuiltinModules })
+    const result = await d.runAsync(`
       let { juxt } = import(functional);
       let f = juxt(inc, dec);
       f(5)
     `)
-    expect(result).toEqual([6, 4])
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toEqual([6, 4])
   })
 })
 
@@ -973,8 +984,7 @@ describe('wrapMaybePromiseAsStep — async compound function', () => {
 
 describe('evaluateNode — exported function', () => {
   it('should handle getUndefinedSymbols with closures and defaults', () => {
-    const d = new Dvala()
-    const result = d.getUndefinedSymbols(`
+    const result = getUndefinedSymbols(`
       let f = (a, b = 10) -> a + b + unknown_var
       f(1)
     `)
@@ -1010,9 +1020,11 @@ describe('debug step — error during evaluation', () => {
         ctx.resume(stepInfo.value as never)
       },
     }
-    const d = new Dvala({ debug: true })
-    const result = await d.async.run('1 + 2', { handlers })
-    expect(result).toBe(3)
+    const d = createDvala({ debug: true })
+    const result = await d.runAsync('1 + 2', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(3)
   })
 })
 
@@ -1572,7 +1584,7 @@ describe('meta — doc and arity with effects', () => {
 
 describe('contextStack — shadowing builtin via bindings', () => {
   it('should throw when trying to shadow a builtin value via bindings', () => {
-    expect(() => new Dvala().run('1', { bindings: { self: 42 } }))
+    expect(() => createDvala().run('1', { bindings: { self: 42 } }))
       .toThrow('Cannot shadow')
   })
 })
@@ -1686,37 +1698,43 @@ describe('effects — error handling', () => {
 
 describe('dvala.async.run — with effect handlers', () => {
   it('should handle completed effect result', async () => {
-    const d = new Dvala()
-    const result = await d.async.run(`
+    const d = createDvala()
+    const result = await d.runAsync(`
       perform(effect(test.echo), 42)
     `, {
-      handlers: {
+      effectHandlers: {
         'test.echo': async ({ args, resume: doResume }) => { doResume(args[0]!) },
       },
     })
-    expect(result).toBe(42)
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(42)
   })
 
-  it('should throw on error effect result', async () => {
-    const d = new Dvala()
-    await expect(d.async.run(`
+  it('should return error result on fail()', async () => {
+    const d = createDvala()
+    const result = await d.runAsync(`
       perform(effect(test.fail))
     `, {
-      handlers: {
+      effectHandlers: {
         'test.fail': async ({ fail }) => { fail('deliberate error') },
       },
-    })).rejects.toThrow('deliberate error')
+    })
+    expect(result.type).toBe('error')
+    if (result.type === 'error')
+      expect(result.error.message).toContain('deliberate error')
   })
 
-  it('should throw on unexpected suspension', async () => {
-    const d = new Dvala()
-    await expect(d.async.run(`
+  it('should return suspended result on suspension', async () => {
+    const d = createDvala()
+    const result = await d.runAsync(`
       perform(effect(test.suspend))
     `, {
-      handlers: {
+      effectHandlers: {
         'test.suspend': async ({ suspend }) => { suspend() },
       },
-    })).rejects.toThrow('Unexpected suspension')
+    })
+    expect(result.type).toBe('suspended')
   })
 })
 
@@ -1727,17 +1745,17 @@ describe('dvala.async.run — with effect handlers', () => {
 describe('dvala — assertSerializableBindings', () => {
   it('should throw on non-serializable binding (class instance)', () => {
     class Foo { x = 1 }
-    const d = new Dvala()
+    const d = createDvala()
     expect(() => d.run('x', { bindings: { x: new Foo() } })).toThrow('not serializable')
   })
 
   it('should throw on non-serializable binding (non-finite number)', () => {
-    const d = new Dvala()
+    const d = createDvala()
     expect(() => d.run('x', { bindings: { x: Infinity } })).toThrow('not serializable')
   })
 
   it('should throw on non-serializable binding (symbol)', () => {
-    const d = new Dvala()
+    const d = createDvala()
     expect(() => d.run('x', { bindings: { x: Symbol('test') as unknown as string } })).toThrow('not serializable')
   })
 })
@@ -2109,24 +2127,6 @@ describe('serialization — compound function types in continuations', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Dvala — runBundle async error (line 152-153)
-// ---------------------------------------------------------------------------
-
-describe('dvala — runBundle async error handling', () => {
-  it('should throw on async result in synchronous runBundle', () => {
-    // We can't easily trigger this without a module that returns a promise
-    // from synchronous evaluation, but testing the error path
-    const d = new Dvala()
-    const bundle = {
-      type: 'dvala-bundle' as const,
-      program: '1 + 1',
-      fileModules: [] as [string, string][],
-    }
-    expect(d.run(bundle)).toBe(2)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // initCoreDvala — non-object result (lines 45-46)
 // ---------------------------------------------------------------------------
 
@@ -2135,7 +2135,7 @@ describe('initCoreDvala — coverage', () => {
     // initCoreDvalaSources is called on first Dvala instantiation
     // The continue branch is hit when a source returns a non-object
     // Just verify the system works after initialization
-    const d = new Dvala()
+    const d = createDvala()
     expect(d.run('1 + 2')).toBe(3)
   })
 })
@@ -2732,19 +2732,6 @@ describe('generateDocString — effect with rest argument', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Dvala.ts — runBundle with async program (lines 152-153)
-// ---------------------------------------------------------------------------
-
-describe('dvala.ts — runBundle throws on async result', () => {
-  it('should throw when bundle program returns a promise', () => {
-    const bundle = {
-      program: 'parallel(1, 2)',
-      fileModules: [] as [string, string][],
-    }
-    expect(() => dvala.run(bundle)).toThrow('Unexpected async result in synchronous runBundle()')
-  })
-})
-
 describe('dvala.ts — effect binding in assertSerializable (line 271)', () => {
   it('should accept effect values in bindings', () => {
     const eff = dvala.run('effect(test.effect)')
@@ -2966,8 +2953,10 @@ describe('trampoline.ts — or terminal false (line 1623)', () => {
 describe('trampoline.ts — special expression async fallback (line 159)', () => {
   it('should handle special expression that triggers async', async () => {
     // parallel inside a let expression triggers async fallback for SpecialExpression
-    const result = await dvalaFull.async.run('parallel(1, 2)')
-    expect(result).toEqual([1, 2])
+    const result = await dvalaFull.runAsync('parallel(1, 2)')
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toEqual([1, 2])
   })
 })
 
@@ -3112,8 +3101,10 @@ describe('trampoline.ts — dvala.error with non-string arg (line 2344)', () => 
 describe('trampoline.ts — setupUserDefinedCall async fallbacks (lines 1334-1369)', () => {
   it('should handle async binding value in user-defined function (line 1334)', async () => {
     // defn with destructuring binding that involves async evaluation
-    const result = await dvalaFull.async.run('let f = ([a, b]) -> a + b; f(parallel(1, 2))')
-    expect(result).toBe(3)
+    const result = await dvalaFull.runAsync('let f = ([a, b]) -> a + b; f(parallel(1, 2))')
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(3)
   })
 })
 
@@ -3168,9 +3159,11 @@ describe('trampoline.ts — wrapMaybePromiseAsStep error (line 2980-2989)', () =
   it('should handle error in parallel branch via async.run', async () => {
     // Use async.run with a race where one branch errors
     // This tests the async trampoline error handling path
-    const result = await dvalaFull.async.run('race(perform(effect(dvala.error), "err"), 42)')
+    const result = await dvalaFull.runAsync('race(perform(effect(dvala.error), "err"), 42)')
     // race resolves to first completed branch (42), the errored branch is dropped
-    expect(result).toBe(42)
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(42)
   })
 })
 
