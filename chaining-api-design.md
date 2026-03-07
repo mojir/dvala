@@ -114,7 +114,7 @@ It can optionally accept a `createDvala()` config for consistency.
 
 4. **Migrate internal consumers** — update non-test files that use `Dvala`:
    - `src/AutoCompleter/AutoCompleter.ts`
-   - `src/debug.ts`
+   - `src/debug.ts` — `run()` stays as-is (needs debug tokenization); replace `resumeFromSnapshot` with standalone `resume()` from `effects.ts`
    - `playground-www/src/scripts.ts`, `playground-builder/src/renderExample.ts`
    - `cli/src/cli.ts`, `mcp-server/src/server.ts`
    - `vscode-dvala/src/extension.ts`
