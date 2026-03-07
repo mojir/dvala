@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { resume as resumeContinuation, run } from '../src/effects'
+import { resume as resumeContinuation } from '../src/resume'
+import { createDvala } from '../src/createDvala'
+
+const dvala = createDvala()
 
 describe('suspend through migrated HOFs', () => {
   it('should suspend in simple perform (baseline)', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(my.get), 42)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.get': async ({ args, suspend }) => {
           suspend({ value: args[0] })
         },
@@ -16,10 +19,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should suspend inside a direct for loop', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       for (x in [10]) -> perform(effect(my.get), x)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.get': async ({ args, suspend }) => {
           suspend({ requested: args[0] })
         },
@@ -32,10 +35,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should resume a for loop across multiple elements', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       for (x in [1, 2]) -> perform(effect(my.test), x)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.test': async ({ args, suspend }) => {
           suspend({ value: args[0] })
         },
@@ -70,10 +73,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should suspend inside a user-defined function calling perform', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       ((x) -> perform(effect(my.get), x))(42)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.get': async ({ args, suspend }) => {
           suspend({ requested: args[0] })
         },
@@ -86,10 +89,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should suspend inside for loop calling user function', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       for (x in [10]) -> ((y) -> perform(effect(my.get), y))(x)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.get': async ({ args, suspend }) => {
           suspend({ requested: args[0] })
         },
@@ -102,7 +105,7 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should run map through effects API without perform', async () => {
-    const result = await run('map([1, 2, 3], -> $ * $)')
+    const result = await dvala.runAsync('map([1, 2, 3], -> $ * $)')
     if (result.type === 'error') {
       throw result.error
     }
@@ -114,10 +117,10 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside map callback', async () => {
     // Minimal 2-element test to isolate resume issue
-    const result = await run(`
+    const result = await dvala.runAsync(`
       map([1, 2], (x) -> perform(effect(my.approve), x))
     `, {
-      handlers: {
+      effectHandlers: {
         'my.approve': async ({ args, suspend }) => {
           suspend({ value: args[0] })
         },
@@ -159,10 +162,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should suspend inside reduce callback and resume', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       reduce([1, 2, 3], (acc, x) -> acc + perform(effect(my.transform), x), 0)
     `, {
-      handlers: {
+      effectHandlers: {
         'my.transform': async ({ args, suspend }) => {
           suspend({ transforming: args[0] })
         },
@@ -207,10 +210,10 @@ describe('suspend through migrated HOFs', () => {
   })
 
   it('should suspend inside filter callback and resume', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       filter([1, 2, 3, 4], (x) -> perform(effect(my.check), x))
     `, {
-      handlers: {
+      effectHandlers: {
         'my.check': async ({ args, suspend }) => {
           suspend({ checking: args[0] })
         },

@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { resume, run } from '../src/effects'
+import { resume } from '../src/resume'
+import { createDvala } from '../src/createDvala'
 import { dedupSubTrees, expandPoolRefs } from '../src/evaluator/dedupSubTrees'
+
+const dvala = createDvala()
 
 describe('continuation dedup integration', () => {
   describe('blob size comparison', () => {
     it('should produce a suspension blob with dedup pool when checkpoints are present', async () => {
-      const result = await run(`
+      const result = await dvala.runAsync(`
         let a = perform(effect(my.step), 1);
         let b = perform(effect(my.step), 2);
         let c = perform(effect(my.step), 3);
         perform(effect(my.done));
         a + b + c
       `, {
-        handlers: {
+        effectHandlers: {
           'my.step': async ({ args, checkpoint, resume: r }) => {
             checkpoint()
             r(args[0]!)
@@ -43,12 +46,12 @@ describe('continuation dedup integration', () => {
     it('should correctly round-trip through suspend with checkpoints', async () => {
       let step = 0
 
-      const result = await run(`
+      const result = await dvala.runAsync(`
         let a = perform(effect(my.work), "first");
         let b = perform(effect(my.work), "second");
         a ++ " and " ++ b
       `, {
-        handlers: {
+        effectHandlers: {
           'my.work': async ({ checkpoint, suspend }) => {
             step++
             checkpoint({ step })

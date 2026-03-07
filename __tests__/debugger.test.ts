@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { createDebugger } from '../src/debug'
 import type { StepInfo } from '../src/debug'
-import { run } from '../src/effects'
+import { createDvala } from '../src/createDvala'
 import type { Any } from '../src/interface'
 import { assertModule } from '../src/builtin/modules/assertion'
+
+const dvala = createDvala()
 
 describe('phase 7 — Time-Travel Debugger', () => {
   describe('7a: dvala.debug.step injection', () => {
@@ -43,8 +45,8 @@ describe('phase 7 — Time-Travel Debugger', () => {
     })
 
     it('should not inject debug steps when no handler is registered', async () => {
-      // run() without debug handler — should complete normally
-      const result = await run('1 + 2')
+      // runAsync() without debug handler — should complete normally
+      const result = await dvala.runAsync('1 + 2')
       expect(result.type).toBe('completed')
       if (result.type === 'completed') {
         expect(result.value).toBe(3)

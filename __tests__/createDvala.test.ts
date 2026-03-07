@@ -76,7 +76,8 @@ describe('createDvala', () => {
       const d = createDvala()
       expect(() => d.run('1 + 1', {
         pure: true,
-        effectHandlers: { 'my.effect': ({ resume }) => resume(1) },
+        // @ts-expect-error -- deliberately testing runtime guard for type-prevented combination
+        effectHandlers: { 'my.effect': ({ resume }: { resume: (v: number) => void }) => resume(1) },
       })).toThrow('Cannot use pure mode with effect handlers')
     })
 
@@ -139,7 +140,8 @@ describe('createDvala', () => {
       const d = createDvala()
       await expect(d.runAsync('1 + 1', {
         pure: true,
-        effectHandlers: { 'my.effect': async ({ resume }) => resume(1) },
+        // @ts-expect-error -- deliberately testing runtime guard for type-prevented combination
+        effectHandlers: { 'my.effect': async ({ resume }: { resume: (v: number) => void }) => resume(1) },
       })).rejects.toThrow('pure mode')
     })
   })
