@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 
 describe('serializable bindings', () => {
-  const dvala = new Dvala()
+  const dvala = createDvala()
 
   describe('valid bindings are accepted', () => {
     it('accepts null, booleans, strings, finite numbers', () => {
@@ -55,7 +55,7 @@ describe('serializable bindings', () => {
     })
 
     it('rejects on async.run too', async () => {
-      await expect(dvala.async.run('x', { bindings: { x: () => 1 } }))
+      await expect(dvala.runAsync('x', { bindings: { x: () => 1 } }))
         .rejects.toThrow('bindings["x"] is not serializable (function)')
     })
   })
