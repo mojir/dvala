@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 
 function extractDvalaCodeBlocks(): Array<{ code: string, lineNumber: number, blockIndex: number }> {
@@ -42,7 +42,7 @@ function extractDvalaCodeBlocks(): Array<{ code: string, lineNumber: number, blo
 }
 
 describe('test README.md Dvala code examples', () => {
-  const dvala = new Dvala({ modules: allBuiltinModules })
+  const dvala = createDvala({ modules: allBuiltinModules })
   const codeBlocks = extractDvalaCodeBlocks()
 
   it('should find Dvala code blocks in README.md', () => {

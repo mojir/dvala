@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 import { collectionUtilsModule } from '../../../src/builtin/modules/collection'
 
-const dvala = new Dvala()
+const dvala = createDvala()
 
 describe('collection functions', () => {
   describe('filter', () => {
@@ -282,7 +282,7 @@ describe('collection functions', () => {
 
 describe('collection-Utils module functions', () => {
   const imp = 'let cu = import(collection); '
-  for (const mdvala of [new Dvala({ modules: [collectionUtilsModule] }), new Dvala({ modules: [collectionUtilsModule], debug: true })]) {
+  for (const mdvala of [createDvala({ modules: [collectionUtilsModule] }), createDvala({ modules: [collectionUtilsModule], debug: true })]) {
     describe('filteri', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}cu.filteri([1, "2", 3], -> odd?($2))`)).toEqual(['2'])

@@ -10,13 +10,13 @@
  * 3. Module function coverage — same tests for module expressions
  */
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { normalExpressions } from '../src/builtin/normalExpressions'
 import type { TypedValue } from '../src/builtin/interface'
 import '../src/initReferenceData'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules })
 
 // ---------------------------------------------------------------------------
 // DataType → Dvala predicate name mapping

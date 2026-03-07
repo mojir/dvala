@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 
-const dvala = new Dvala()
+const dvala = createDvala()
 
 describe('dvala Lexical Scoping', () => {
   // Basic lexical scoping

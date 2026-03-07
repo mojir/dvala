@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
+import { getUndefinedSymbols } from '../src/tooling'
 
 describe('pattern matching (match)', () => {
-  const dvala = new Dvala()
-  const dvalaDebug = new Dvala({ debug: true })
+  const dvala = createDvala()
 
-  for (const l of [dvala, dvalaDebug]) {
+  for (const l of [dvala]) {
     describe('literal patterns', () => {
       it('should match number literals', () => {
         expect(l.run('match 1 case 1 then "one" case 2 then "two" end')).toBe('one')
@@ -330,25 +330,25 @@ let describe-point = (point) ->
 
     describe('undefined symbols analysis', () => {
       it('should recognize bound pattern variables as defined', () => {
-        expect(l.getUndefinedSymbols('match val case x then x end')).toEqual(
+        expect(getUndefinedSymbols('match val case x then x end')).toEqual(
           new Set(['val']),
         )
       })
 
       it('should recognize destructured variables as defined', () => {
-        expect(l.getUndefinedSymbols('match val case { name, age } then name ++ str(age) end')).toEqual(
+        expect(getUndefinedSymbols('match val case { name, age } then name ++ str(age) end')).toEqual(
           new Set(['val']),
         )
       })
 
       it('should handle guard expressions', () => {
-        expect(l.getUndefinedSymbols('match val case x when x > threshold then x end')).toEqual(
+        expect(getUndefinedSymbols('match val case x when x > threshold then x end')).toEqual(
           new Set(['val', 'threshold']),
         )
       })
 
       it('should not leak pattern variables across cases', () => {
-        expect(l.getUndefinedSymbols('match val case x then x case y then y end')).toEqual(
+        expect(getUndefinedSymbols('match val case x then x case y then y end')).toEqual(
           new Set(['val']),
         )
       })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 
-const dvala = new Dvala({ debug: true })
+const dvala = createDvala({ debug: true })
 describe('determinant.', () => {
   it('should compile', () => {
     expect(dvala.run(`

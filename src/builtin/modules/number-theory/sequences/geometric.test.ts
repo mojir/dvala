@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../../Dvala/Dvala'
+import { createDvala } from '../../../../createDvala'
 import { numberTheoryModule } from '..'
 
-const dvala = new Dvala({ modules: [numberTheoryModule] })
+const dvala = createDvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
   return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)

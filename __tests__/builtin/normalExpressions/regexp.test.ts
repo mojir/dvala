@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { regexpEquals } from '../../testUtils'
 import { DvalaError } from '../../../src/errors'
 
 describe('regexp functions', () => {
-  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('regexp', () => {
       it('samples', () => {
         expect(regexpEquals(dvala.run('regexp("^abc$")'), /^abc$/)).toBe(true)

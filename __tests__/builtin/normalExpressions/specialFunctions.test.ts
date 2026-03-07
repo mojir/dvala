@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 
 describe('specialFunctions', () => {
-  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('string as function', () => {
       it('samples', () => {
         expect(dvala.run('let person = { firstName: "Albert", lastName: "Mojir" }; "firstName"(person)')).toBe('Albert')

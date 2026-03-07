@@ -6,7 +6,7 @@
  * - Individual module entry points: export the correct module
  */
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/index'
+import { createDvala } from '../src/index'
 import { Dvala as DvalaFull, allBuiltinModules, apiReference } from '../src/full'
 import { assertModule } from '../src/modules/assertion'
 import { gridModule } from '../src/modules/grid'
@@ -24,19 +24,19 @@ import { convertModule } from '../src/modules/convert'
 
 describe('minimal entry point (src/index.ts)', () => {
   it('should evaluate core expressions without modules', () => {
-    const dvala = new Dvala()
+    const dvala = createDvala()
     expect(dvala.run('1 + 2')).toBe(3)
     expect(dvala.run('map([1, 2, 3], inc)')).toEqual([2, 3, 4])
     expect(dvala.run('let x = 10; x * x')).toBe(100)
   })
 
   it('should default to no modules', () => {
-    const dvala = new Dvala()
+    const dvala = createDvala()
     expect(() => dvala.run('import(assertion)')).toThrow()
   })
 
   it('should accept individual modules passed in', () => {
-    const dvala = new Dvala({ modules: [vectorModule] })
+    const dvala = createDvala({ modules: [vectorModule] })
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
   })
 
@@ -79,87 +79,87 @@ describe('full entry point (src/full.ts)', () => {
 describe('individual module entry points', () => {
   it('assertion module', () => {
     expect(assertModule.name).toBe('assertion')
-    const dvala = new Dvala({ modules: [assertModule] })
+    const dvala = createDvala({ modules: [assertModule] })
     expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
     expect(() => dvala.run('import(vector)')).toThrow()
   })
 
   it('grid module', () => {
     expect(gridModule.name).toBe('grid')
-    const dvala = new Dvala({ modules: [gridModule] })
+    const dvala = createDvala({ modules: [gridModule] })
     expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
   })
 
   it('vector module', () => {
     expect(vectorModule.name).toBe('vector')
-    const dvala = new Dvala({ modules: [vectorModule] })
+    const dvala = createDvala({ modules: [vectorModule] })
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
   })
 
   it('linearAlgebra module', () => {
     expect(linearAlgebraModule.name).toBe('linear-algebra')
-    const dvala = new Dvala({ modules: [linearAlgebraModule] })
+    const dvala = createDvala({ modules: [linearAlgebraModule] })
     expect(dvala.run('let la = import(linear-algebra); la.dot([1, 2, 3], [4, 5, 6])')).toBe(32)
   })
 
   it('matrix module', () => {
     expect(matrixModule.name).toBe('matrix')
-    const dvala = new Dvala({ modules: [matrixModule] })
+    const dvala = createDvala({ modules: [matrixModule] })
     expect(dvala.run('let m = import(matrix); m.det([[1, 2], [3, 4]])')).toBe(-2)
   })
 
   it('numberTheory module', () => {
     expect(numberTheoryModule.name).toBe('number-theory')
-    const dvala = new Dvala({ modules: [numberTheoryModule] })
+    const dvala = createDvala({ modules: [numberTheoryModule] })
     expect(dvala.run('let nt = import(number-theory); nt.prime?(7)')).toBe(true)
   })
 
   it('stringUtils module', () => {
     expect(stringUtilsModule.name).toBe('string')
-    const dvala = new Dvala({ modules: [stringUtilsModule] })
+    const dvala = createDvala({ modules: [stringUtilsModule] })
     expect(dvala.run('let { capitalize } = import(string); capitalize("albert")')).toBe('Albert')
   })
 
   it('collectionUtils module', () => {
     expect(collectionUtilsModule.name).toBe('collection')
-    const dvala = new Dvala({ modules: [collectionUtilsModule] })
+    const dvala = createDvala({ modules: [collectionUtilsModule] })
     expect(dvala.run('let cu = import(collection); cu.every?([1, 2, 3], number?)')).toBe(true)
   })
 
   it('sequenceUtils module', () => {
     expect(sequenceUtilsModule.name).toBe('sequence')
-    const dvala = new Dvala({ modules: [sequenceUtilsModule] })
+    const dvala = createDvala({ modules: [sequenceUtilsModule] })
     expect(dvala.run('let su = import(sequence); su.distinct([1, 2, 3, 1, 3, 5])')).toEqual([1, 2, 3, 5])
   })
 
   it('bitwiseUtils module', () => {
     expect(bitwiseUtilsModule.name).toBe('bitwise')
-    const dvala = new Dvala({ modules: [bitwiseUtilsModule] })
+    const dvala = createDvala({ modules: [bitwiseUtilsModule] })
     expect(dvala.run('let b = import(bitwise); b.bit-not(0)')).toBe(-1)
   })
 
   it('functionalUtils module', () => {
     expect(functionalUtilsModule.name).toBe('functional')
-    const dvala = new Dvala({ modules: [functionalUtilsModule] })
+    const dvala = createDvala({ modules: [functionalUtilsModule] })
     expect(dvala.run('let f = import(functional); (f.complement(zero?))(1)')).toBe(true)
   })
 
   it('mathUtils module', () => {
     expect(mathUtilsModule.name).toBe('math')
-    const dvala = new Dvala({ modules: [mathUtilsModule] })
+    const dvala = createDvala({ modules: [mathUtilsModule] })
     expect(dvala.run('let m = import(math); m.sin(0)')).toBe(0)
     expect(() => dvala.run('let m = import(math); m.sin("hello")')).toThrow()
   })
 
   it('convert module', () => {
     expect(convertModule.name).toBe('convert')
-    const dvala = new Dvala({ modules: [convertModule] })
+    const dvala = createDvala({ modules: [convertModule] })
     expect(dvala.run('let c = import(convert); c.c->f(100)')).toBe(212)
     expect(dvala.run('let c = import(convert); c.kg->lb(1)')).toBeCloseTo(2.20462, 4)
   })
 
   it('should allow combining multiple modules', () => {
-    const dvala = new Dvala({ modules: [vectorModule, matrixModule] })
+    const dvala = createDvala({ modules: [vectorModule, matrixModule] })
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     expect(dvala.run('let m = import(matrix); m.det([[1, 2], [3, 4]])')).toBe(-2)
     // Other modules should not be available
