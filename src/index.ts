@@ -25,9 +25,10 @@ export { type DvalaError, isDvalaError } from './errors'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
-// Effects — standalone functions and types
-export { resume } from './effects'
-export type { EffectContext, EffectHandler, Handlers, RunResult, SyncEffectContext, SyncEffectHandler, SyncHandlers, Snapshot } from './effects'
+// Effects — standalone resume function and types
+export { resume } from './resume'
+export type { ResumeOptions } from './resume'
+export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // Factory API
 export { createDvala } from './createDvala'
