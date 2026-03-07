@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import type { RunResult } from '../src/effects'
+import type { RunResult } from '../src/evaluator/effectTypes'
 import type { DvalaFunction } from '../src/parser/types'
 
 function value(result: RunResult): unknown {

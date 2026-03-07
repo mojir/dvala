@@ -31,7 +31,7 @@ import { evaluateWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
-import { resume } from './effects'
+import { resume } from './resume'
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 

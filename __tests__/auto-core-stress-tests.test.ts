@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import type { RunResult } from '../src/effects'
+import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
 

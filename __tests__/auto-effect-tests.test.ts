@@ -17,8 +17,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { resume as resumeContinuation, run, runSync } from '../src/effects'
-import type { Snapshot } from '../src/effects'
+import { resume as resumeContinuation } from '../src/resume'
+import type { Snapshot } from '../src/evaluator/effectTypes'
 import { allStandardEffectDefinitions, standardEffectNames } from '../src/evaluator/standardEffects'
 import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
 import { isDataType } from '../src/builtin/interface'
@@ -645,11 +645,11 @@ describe('auto: suspend/resume round-trip', () => {
 
   for (const { label, value, code } of resumeValues) {
     it(`suspend then resume with ${label}`, async () => {
-      const r1 = await run(`
+      const r1 = await dvala.runAsync(`
         let x = perform(effect(my.wait));
         ${code}
       `, {
-        handlers: {
+        effectHandlers: {
           'my.wait': async ({ suspend }) => { suspend() },
         },
       })
@@ -662,11 +662,11 @@ describe('auto: suspend/resume round-trip', () => {
     })
 
     it(`suspend then resume with ${label} through JSON round-trip`, async () => {
-      const r1 = await run(`
+      const r1 = await dvala.runAsync(`
         let x = perform(effect(my.wait));
         ${code}
       `, {
-        handlers: {
+        effectHandlers: {
           'my.wait': async ({ suspend }) => { suspend() },
         },
       })
@@ -684,13 +684,13 @@ describe('auto: suspend/resume round-trip', () => {
   }
 
   it('resume preserves computation context', async () => {
-    const r1 = await run(`
+    const r1 = await dvala.runAsync(`
       let a = 10;
       let b = perform(effect(my.wait));
       let c = 32;
       a + b
     `, {
-      handlers: {
+      effectHandlers: {
         'my.wait': async ({ suspend }) => { suspend() },
       },
     })
@@ -703,12 +703,12 @@ describe('auto: suspend/resume round-trip', () => {
   })
 
   it('double suspend/resume chain', async () => {
-    const r1 = await run(`
+    const r1 = await dvala.runAsync(`
       let a = perform(effect(my.wait));
       let b = perform(effect(my.wait));
       a ++ " " ++ b
     `, {
-      handlers: {
+      effectHandlers: {
         'my.wait': async ({ suspend }) => { suspend() },
       },
     })
@@ -840,12 +840,12 @@ describe('auto: effect + error propagation', () => {
 describe('auto: host handler patterns', () => {
   it('wildcard handler matches all effects', async () => {
     const captured: string[] = []
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(a.b), 1);
       perform(effect(c.d), 2);
       perform(effect(e), 3)
     `, {
-      handlers: {
+      effectHandlers: {
         '*': async ({ effectName, args, resume: r }) => {
           captured.push(effectName)
           r(args[0]!)
@@ -858,11 +858,11 @@ describe('auto: host handler patterns', () => {
 
   it('prefix wildcard handler matches subtree', async () => {
     const captured: string[] = []
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(dvala.io.println), "msg");
       perform(effect(dvala.random))
     `, {
-      handlers: {
+      effectHandlers: {
         'dvala.*': async ({ effectName, resume: r }) => {
           captured.push(effectName)
           r(null)
@@ -874,24 +874,24 @@ describe('auto: host handler patterns', () => {
   })
 
   it('exact handler takes priority over wildcard (by registration order)', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(my.eff), 5)
     `, {
-      handlers: {
+      effectHandlers: {
         '*': async ({ resume: r }) => { r('wildcard') },
         'my.eff': async ({ resume: r }) => { r('exact') },
       },
     })
     // Registration order: * comes first, so it matches first
-    expect(result).toEqual({ type: 'completed', value: 'wildcard' })
+    expect(result).toMatchObject({ type: 'completed', value: 'wildcard' })
   })
 
   it('next() passes to next matching handler', async () => {
     const log: string[] = []
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(my.eff), "data")
     `, {
-      handlers: {
+      effectHandlers: {
         '*': async ({ next }) => {
           log.push('wildcard')
           next()
@@ -902,19 +902,19 @@ describe('auto: host handler patterns', () => {
         },
       },
     })
-    expect(result).toEqual({ type: 'completed', value: 'data' })
+    expect(result).toMatchObject({ type: 'completed', value: 'data' })
     expect(log).toEqual(['wildcard', 'exact'])
   })
 
   it('fail() produces error result', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       do
         perform(effect(my.eff))
       with
         case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
       end
     `, {
-      handlers: {
+      effectHandlers: {
         'my.eff': async ({ fail }) => { fail('handler failed') },
       },
     })
@@ -925,10 +925,10 @@ describe('auto: host handler patterns', () => {
   })
 
   it('suspend with meta', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       perform(effect(my.wait), "please approve")
     `, {
-      handlers: {
+      effectHandlers: {
         'my.wait': async ({ args, suspend }) => {
           suspend({ payload: args[0] })
         },
@@ -941,24 +941,24 @@ describe('auto: host handler patterns', () => {
   })
 
   it('local handler always takes priority over host handler', async () => {
-    const result = await run(`
+    const result = await dvala.runAsync(`
       do
         perform(effect(my.eff), "data")
       with
         case effect(my.eff) then ([x]) -> "local: " ++ x
       end
     `, {
-      handlers: {
+      effectHandlers: {
         'my.eff': async ({ resume: r }) => { r('host') },
       },
     })
-    expect(result).toEqual({ type: 'completed', value: 'local: data' })
+    expect(result).toMatchObject({ type: 'completed', value: 'local: data' })
   })
 
   it('handler receives AbortSignal', async () => {
     let receivedSignal = false
-    await run('perform(effect(my.check))', {
-      handlers: {
+    await dvala.runAsync('perform(effect(my.check))', {
+      effectHandlers: {
         'my.check': async ({ signal, resume: r }) => {
           receivedSignal = signal instanceof AbortSignal
           r(null)
@@ -974,19 +974,19 @@ describe('auto: host handler patterns', () => {
 // ---------------------------------------------------------------------------
 describe('auto: runSync constraints', () => {
   it('runSync evaluates pure expressions', () => {
-    expect(runSync('1 + 2 + 3')).toBe(6)
+    expect(dvala.run('1 + 2 + 3')).toBe(6)
   })
 
   it('runSync accepts bindings', () => {
-    expect(runSync('x + y', { bindings: { x: 10, y: 32 } })).toBe(42)
+    expect(dvala.run('x + y', { bindings: { x: 10, y: 32 } })).toBe(42)
   })
 
   it('runSync throws on unhandled effect', () => {
-    expect(() => runSync('perform(effect(my.eff))')).toThrow('Unhandled effect')
+    expect(() => dvala.run('perform(effect(my.eff))')).toThrow('Unhandled effect')
   })
 
   it('runSync handles local do/with effects', () => {
-    const result = runSync(`
+    const result = dvala.run(`
       do
         perform(effect(my.eff), 5)
       with
@@ -997,18 +997,18 @@ describe('auto: runSync constraints', () => {
   })
 
   it('runSync handles standard sync effects', () => {
-    const result = runSync('perform(effect(dvala.random))')
+    const result = dvala.run('perform(effect(dvala.random))')
     expect(typeof result).toBe('number')
   })
 
   it('runSync handles dvala.time.now', () => {
-    const result = runSync('perform(effect(dvala.time.now))')
+    const result = dvala.run('perform(effect(dvala.time.now))')
     expect(typeof result).toBe('number')
     expect(result as number).toBeGreaterThan(0)
   })
 
   it('runSync handles dvala.time.zone', () => {
-    const result = runSync('perform(effect(dvala.time.zone))')
+    const result = dvala.run('perform(effect(dvala.time.zone))')
     expect(typeof result).toBe('string')
   })
 })
@@ -1138,7 +1138,7 @@ describe('auto: standard sync effects via runSync', () => {
       const code = args
         ? `perform(effect(${name}), ${args})`
         : `perform(effect(${name}))`
-      const result = runSync(code)
+      const result = dvala.run(code)
       // Should not throw — result can be anything depending on the effect
       expect(result !== undefined || result === undefined).toBe(true)
     })
@@ -1155,7 +1155,7 @@ describe('auto: standard sync effects via runSync', () => {
     it(`${name} callable via runSync (I/O)`, () => {
       const code = `perform(effect(${name}), ${args})`
       // I/O effects return the original value (identity)
-      expect(() => runSync(code)).not.toThrow()
+      expect(() => dvala.run(code)).not.toThrow()
     })
   }
 })
@@ -1165,82 +1165,82 @@ describe('auto: standard sync effects via runSync', () => {
 // ---------------------------------------------------------------------------
 describe('auto: standard effects return value semantics', () => {
   it('dvala.io.print returns the original value', () => {
-    const result = runSync('perform(effect(dvala.io.print), "hello")')
+    const result = dvala.run('perform(effect(dvala.io.print), "hello")')
     expect(result).toBe('hello')
   })
 
   it('dvala.io.println returns the original value', () => {
-    const result = runSync('perform(effect(dvala.io.println), "hello")')
+    const result = dvala.run('perform(effect(dvala.io.println), "hello")')
     expect(result).toBe('hello')
   })
 
   it('dvala.io.error returns the original value', () => {
-    const result = runSync('perform(effect(dvala.io.error), "err")')
+    const result = dvala.run('perform(effect(dvala.io.error), "err")')
     expect(result).toBe('err')
   })
 
   it('dvala.random returns a number in [0, 1)', () => {
-    const result = runSync('perform(effect(dvala.random))') as number
+    const result = dvala.run('perform(effect(dvala.random))') as number
     expect(typeof result).toBe('number')
     expect(result).toBeGreaterThanOrEqual(0)
     expect(result).toBeLessThan(1)
   })
 
   it('dvala.random.uuid returns a UUID-like string', () => {
-    const result = runSync('perform(effect(dvala.random.uuid))') as string
+    const result = dvala.run('perform(effect(dvala.random.uuid))') as string
     expect(typeof result).toBe('string')
     expect(result).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
   it('dvala.random.int returns an integer in range', () => {
-    const result = runSync('perform(effect(dvala.random.int), 1, 10)') as number
+    const result = dvala.run('perform(effect(dvala.random.int), 1, 10)') as number
     expect(Number.isInteger(result)).toBe(true)
     expect(result).toBeGreaterThanOrEqual(1)
     expect(result).toBeLessThan(10)
   })
 
   it('dvala.random.item returns an element from the array', () => {
-    const result = runSync('perform(effect(dvala.random.item), ["a", "b", "c"])')
+    const result = dvala.run('perform(effect(dvala.random.item), ["a", "b", "c"])')
     expect(['a', 'b', 'c']).toContain(result)
   })
 
   it('dvala.random.shuffle returns array of same length', () => {
-    const result = runSync('perform(effect(dvala.random.shuffle), [1, 2, 3, 4, 5])') as number[]
+    const result = dvala.run('perform(effect(dvala.random.shuffle), [1, 2, 3, 4, 5])') as number[]
     expect(result).toHaveLength(5)
     expect(result.sort()).toEqual([1, 2, 3, 4, 5])
   })
 
   it('dvala.time.now returns current-ish timestamp', () => {
     const before = Date.now()
-    const result = runSync('perform(effect(dvala.time.now))') as number
+    const result = dvala.run('perform(effect(dvala.time.now))') as number
     const after = Date.now()
     expect(result).toBeGreaterThanOrEqual(before)
     expect(result).toBeLessThanOrEqual(after)
   })
 
   it('dvala.checkpoint returns null by default', () => {
-    const result = runSync('perform(effect(dvala.checkpoint))')
+    const result = dvala.run('perform(effect(dvala.checkpoint))')
     expect(result).toBe(null)
   })
 
   it('dvala.random.int rejects non-integer min', () => {
-    expect(() => runSync('perform(effect(dvala.random.int), 1.5, 10)')).toThrow()
+    expect(() => dvala.run('perform(effect(dvala.random.int), 1.5, 10)')).toThrow()
   })
 
   it('dvala.random.int rejects max <= min', () => {
-    expect(() => runSync('perform(effect(dvala.random.int), 10, 5)')).toThrow()
+    expect(() => dvala.run('perform(effect(dvala.random.int), 10, 5)')).toThrow()
   })
 
   it('dvala.random.item rejects empty array', () => {
-    expect(() => runSync('perform(effect(dvala.random.item), [])')).toThrow()
+    expect(() => dvala.run('perform(effect(dvala.random.item), [])')).toThrow()
   })
 
   it('dvala.random.item rejects non-array', () => {
-    expect(() => runSync('perform(effect(dvala.random.item), "not array")')).toThrow()
+    expect(() => dvala.run('perform(effect(dvala.random.item), "not array")')).toThrow()
   })
 
   it('dvala.random.shuffle rejects non-array', () => {
-    expect(() => runSync('perform(effect(dvala.random.shuffle), "not array")')).toThrow()
+    expect(() => dvala.run('perform(effect(dvala.random.shuffle), "not array")')).toThrow()
   })
 })
 

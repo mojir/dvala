@@ -25,23 +25,23 @@ export interface CreateDvalaOptions {
   debug?: boolean
 }
 
-export interface DvalaRunOptions {
-  bindings?: Record<string, unknown>
-  effectHandlers?: Handlers
-  pure?: boolean
-  filePath?: string
-}
+/**
+ * Options for `run()`. When `pure` is `true`, `effectHandlers` cannot be provided.
+ */
+export type DvalaRunOptions =
+  | { bindings?: Record<string, unknown>, pure: true, effectHandlers?: never, filePath?: string }
+  | { bindings?: Record<string, unknown>, pure?: false, effectHandlers?: Handlers, filePath?: string }
 
-export interface DvalaRunAsyncOptions {
-  bindings?: Record<string, unknown>
-  effectHandlers?: Handlers
-  pure?: boolean
-  maxSnapshots?: number
-}
+/**
+ * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
+ */
+export type DvalaRunAsyncOptions =
+  | { bindings?: Record<string, unknown>, pure: true, effectHandlers?: never, maxSnapshots?: number }
+  | { bindings?: Record<string, unknown>, pure?: false, effectHandlers?: Handlers, maxSnapshots?: number }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
-  runAsync: (source: string, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+  runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
   getUndefinedSymbols: (source: string) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
 }
@@ -179,7 +179,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       return result
     },
 
-    async runAsync(source: string, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
+    async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
       assertSerializableBindings(runOptions?.bindings)
       const bindings = mergeBindings(runOptions?.bindings)
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
@@ -189,7 +189,20 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)
-        const ast = buildAst(source)
+
+        if (isDvalaBundle(source)) {
+          const savedPure = contextStack.pure
+          contextStack.pure = true
+          for (const [name, fileSource] of source.fileModules) {
+            const fileAst = buildAst(fileSource)
+            const moduleContextStack = contextStack.create({})
+            contextStack.registerValueModule(name, evaluate(fileAst, moduleContextStack))
+          }
+          contextStack.pure = savedPure
+        }
+
+        const programSource = isDvalaBundle(source) ? source.program : source
+        const ast = buildAst(programSource)
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
