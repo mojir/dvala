@@ -178,5 +178,42 @@ export function getPlayground() {
       </div>
     </div>
   </div>
+
+  <div id="effect-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;')}>
+      <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Effect Triggered</div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Effect</span>
+        <code id="effect-modal-name" ${styles('text-color-SkyLavender', 'text-sm')}></code>
+      </div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Arguments</span>
+        <div id="effect-modal-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 10rem;')}></div>
+      </div>
+      <div id="effect-modal-main-buttons" ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 1rem;')}>
+        <button id="effect-modal-btn-ignore" class="button" onclick="Playground.selectEffectAction('ignore')" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Ignore</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+        </button>
+        <div ${styles('flex', 'flex-row', 'gap-2')}>
+          <button id="effect-modal-btn-suspend" class="button" onclick="Playground.selectEffectAction('suspend')" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Suspend</button>
+          <button id="effect-modal-btn-fail" class="button" onclick="Playground.selectEffectAction('fail')" ${styles('bg-gray-700', 'text-color-Rose', 'font-sans')}>Fail</button>
+          <button id="effect-modal-btn-resume" class="button" onclick="Playground.selectEffectAction('resume')" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+            <span>Resume</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+          </button>
+        </div>
+      </div>
+      <div id="effect-modal-input-section" ${styles('flex-col', 'gap-2', 'display: none;')}>
+        <div ${styles('flex', 'flex-col', 'gap-1')}>
+          <span id="effect-modal-input-label" ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;"></span>
+          <textarea id="effect-modal-value" rows="3" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-1', 'text-sm')} spellcheck="false"></textarea>
+          <span id="effect-modal-error" ${styles('text-color-Rose', 'text-xs', 'hidden')}></span>
+        </div>
+        <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end')}>
+          <button class="button" onclick="Playground.cancelEffectAction()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Cancel</button>
+          <button class="button" onclick="Playground.confirmEffectAction()" ${styles('bg-gray-700', 'text-color-gray-200', 'font-sans')}>OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
   `
 }
