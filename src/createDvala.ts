@@ -9,6 +9,7 @@ import type { Ast } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Dvala/Cache'
 import type { Handlers, RunResult, SyncHandlers } from './evaluator/effectTypes'
+import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
   modules?: DvalaModule[]
@@ -35,6 +36,41 @@ export interface DvalaRunAsyncOptions {
 export interface DvalaRunner {
   run: (source: string, options?: DvalaRunOptions) => unknown
   runAsync: (source: string, options?: DvalaRunAsyncOptions) => Promise<RunResult>
+}
+
+function assertSerializableBindings(bindings: Record<string, unknown> | undefined): void {
+  if (!bindings)
+    return
+  for (const [key, val] of Object.entries(bindings))
+    assertSerializable(val, `bindings["${key}"]`)
+}
+
+function assertSerializable(val: unknown, path: string): void {
+  if (val === null || val === undefined)
+    return
+  if (typeof val === 'boolean' || typeof val === 'string')
+    return
+  if (typeof val === 'number') {
+    if (!Number.isFinite(val))
+      throw new TypeError(`${path} is not serializable (${val})`)
+    return
+  }
+  if (typeof val === 'function')
+    throw new TypeError(`${path} is not serializable (function)`)
+  if (typeof val === 'object') {
+    if (FUNCTION_SYMBOL in val || REGEXP_SYMBOL in val || EFFECT_SYMBOL in val)
+      return
+    if (Array.isArray(val)) {
+      val.forEach((item, i) => assertSerializable(item, `${path}[${i}]`))
+      return
+    }
+    if (Object.getPrototypeOf(val) !== Object.prototype)
+      throw new TypeError(`${path} is not serializable (not a plain object)`)
+    for (const [k, v] of Object.entries(val as Record<string, unknown>))
+      assertSerializable(v, `${path}.${k}`)
+    return
+  }
+  throw new TypeError(`${path} is not serializable`)
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -114,6 +150,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
   return {
     run(source: string, runOptions?: DvalaRunOptions): unknown {
+      assertSerializableBindings(runOptions?.bindings)
       const bindings = mergeBindings(runOptions?.bindings)
       const syncHandlers = mergeSyncHandlers(runOptions?.syncHandlers)
       const pure = runOptions?.pure ?? false
@@ -135,6 +172,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     },
 
     async runAsync(source: string, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
+      assertSerializableBindings(runOptions?.bindings)
       const bindings = mergeBindings(runOptions?.bindings)
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
