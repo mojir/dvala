@@ -97,6 +97,29 @@ It can optionally accept a `createDvala()` config for consistency.
 
 ## Next Steps
 
-- [ ] Prototype `createDvala()` and builder types in isolation
-- [ ] Migrate one test file to the new API as proof of concept
-- [ ] Plan backward compatibility / deprecation of `Dvala` class
+### Done
+- [x] Add `SyncEffectHandler` / `SyncHandlers` / `evaluateWithSyncEffects`
+- [x] Implement `createDvala()` in `src/createDvala.ts`
+
+### Remaining (in order)
+
+1. **Export from index** — add `createDvala` and its types to `src/index.ts` and `src/full.ts`
+
+2. **Expose tooling as standalone** — `tokenize`, `parse`, `untokenize`, `getUndefinedSymbols`, `getAutoCompleter` are currently gated behind a `Dvala` instance. Make them standalone exports. The `AutoCompleter` needs refactoring to not require a `Dvala` instance.
+
+3. **Migrate tests** — replace `new Dvala()` with `createDvala()` across all test files:
+   - `new Dvala({ modules })` → `createDvala({ modules })`
+   - `dvala.run(src, params)` → `d.run(src, params)`
+   - `dvala.async.run(src, params)` → `d.runAsync(src, params)`
+
+4. **Migrate internal consumers** — update non-test files that use `Dvala`:
+   - `src/AutoCompleter/AutoCompleter.ts`
+   - `src/debug.ts`
+   - `playground-www/src/scripts.ts`, `playground-builder/src/renderExample.ts`
+   - `cli/src/cli.ts`, `mcp-server/src/server.ts`
+   - `vscode-dvala/src/extension.ts`
+   - `reference/examples.ts`
+
+5. **Remove `Dvala` class** — delete `src/Dvala/Dvala.ts`, move `Cache` into `createDvala.ts`, remove export from `src/index.ts`
+
+### No backward compatibility needed
