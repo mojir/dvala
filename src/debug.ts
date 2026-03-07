@@ -27,11 +27,11 @@ import type { Any, Obj } from './interface'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
-import { evaluateWithEffects, resumeWithEffects } from './evaluator/trampoline'
+import { evaluateWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
-import { deserializeFromObject } from './evaluator/suspension'
+import { resume } from './effects'
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 
@@ -226,28 +226,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
    * Resume from a specific history entry's snapshot with a given value.
    */
   async function resumeFromSnapshot(snapshot: Snapshot, value: Any): Promise<RunResult> {
-    try {
-      const modulesMap = modules
-        ? new Map(modules.map(m => [m.name, m]))
-        : undefined
-      const deserialized = deserializeFromObject(snapshot.continuation, {
-        values: bindings as Record<string, unknown> | undefined,
-        modules: modulesMap,
-      })
-      return await resumeWithEffects(deserialized.k, value, handlers, {
-        snapshots: deserialized.snapshots,
-        nextSnapshotIndex: deserialized.nextSnapshotIndex,
-      }, {
-        values: bindings as Record<string, unknown> | undefined,
-        modules: modulesMap,
-      })
-    }
-    catch (error) {
-      if (error instanceof DvalaError) {
-        return { type: 'error', error }
-      }
-      return { type: 'error', error: new DvalaError(`${error}`, undefined) }
-    }
+    return resume(snapshot, value, { handlers, bindings, modules })
   }
 
   const debugger_: DvalaDebugger = {
