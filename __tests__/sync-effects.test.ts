@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { runSync } from '../src/effects'
-import type { SyncHandlers } from '../src/effects'
 
 describe('runSync with sync effect handlers', () => {
   describe('basic resume', () => {
@@ -16,7 +15,7 @@ describe('runSync with sync effect handlers', () => {
     it('handler receives effect args', () => {
       const result = runSync('perform(effect(my.add), 3, 4)', {
         syncHandlers: {
-          'my.add': ({ args, resume }) => resume((args[0] as number) + (args[1] as number)),
+          'my.add': ({ args, resume }) => resume((args[0] as number) + ((args[1] ?? 0) as number)),
         },
       })
       expect(result).toBe(7)
@@ -54,7 +53,7 @@ describe('runSync with sync effect handlers', () => {
         a + b
       `, {
         syncHandlers: {
-          'my.val': ({ args, resume }) => resume(args[0]),
+          'my.val': ({ args, resume }) => resume(args[0] ?? null),
         },
       })
       expect(result).toBe(3)
@@ -134,7 +133,7 @@ describe('runSync with sync effect handlers', () => {
       expect(() =>
         runSync('perform(effect(my.child))', {
           syncHandlers: {
-            'my': ({ resume }) => resume(1),
+            my: ({ resume }) => resume(1),
           },
         }),
       ).toThrow()

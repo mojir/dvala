@@ -78,8 +78,8 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
-import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import type { EffectHandler, Handlers, RunResult, Snapshot, SnapshotState, SyncEffectContext, SyncEffectHandler, SyncHandlers } from './effectTypes'
+import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, findMatchingSyncHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -2047,6 +2047,7 @@ function tryDispatchDvalaError(
   handlers?: Handlers,
   signal?: AbortSignal,
   snapshotState?: SnapshotState,
+  syncHandlers?: SyncHandlers,
 ): Step | Promise<Step> | null {
   const effect = getEffectRef('dvala.error')
   const args: Arr = [error.shortMessage]
@@ -2067,6 +2068,12 @@ function tryDispatchDvalaError(
   const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
   if (matchingHostHandlers.length > 0) {
     return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo, snapshotState)
+  }
+
+  // Check sync host handlers for 'dvala.error'
+  const matchingSyncHandlers = findMatchingSyncHandlers('dvala.error', syncHandlers)
+  if (matchingSyncHandlers.length > 0) {
+    return dispatchSyncHostHandler('dvala.error', matchingSyncHandlers, args, k, error.sourceCodeInfo)
   }
 
   return null
@@ -2295,7 +2302,7 @@ function invokeMatchedHandler(
   return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
 }
 
-function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, syncHandlers?: SyncHandlers): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
@@ -2330,6 +2337,12 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   const matchingHostHandlers = findMatchingHandlers(effect.name, handlers)
   if (matchingHostHandlers.length > 0) {
     return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo, snapshotState)
+  }
+
+  // No async host handler — check sync host handlers.
+  const matchingSyncHandlers = findMatchingSyncHandlers(effect.name, syncHandlers)
+  if (matchingSyncHandlers.length > 0) {
+    return dispatchSyncHostHandler(effect.name, matchingSyncHandlers, args, k, sourceCodeInfo)
   }
 
   // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
@@ -2505,6 +2518,75 @@ function dispatchHostHandler(
         }
       })
     })
+  }
+
+  return tryHandler(0)
+}
+
+/**
+ * Dispatch an effect to synchronous JavaScript handlers.
+ *
+ * Calls handlers in order, supporting `next()` to advance the chain.
+ * Returns a `Step` synchronously — never a Promise.
+ *
+ * - `resume(value)` — returns a `ValueStep` continuing evaluation.
+ * - `fail(msg?)` — throws a `UserDefinedError` routed through `dvala.error`.
+ * - `next()` — calls the next matching handler in the chain.
+ */
+function dispatchSyncHostHandler(
+  effectName: string,
+  matchingHandlers: Array<[string, SyncEffectHandler]>,
+  args: Arr,
+  k: ContinuationStack,
+  sourceCodeInfo?: SourceCodeInfo,
+): Step {
+  const argsArray = Array.from(args) as Any[]
+
+  function tryHandler(index: number): Step {
+    if (index >= matchingHandlers.length) {
+      if (effectName === 'dvala.error') {
+        const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
+        throw new UserDefinedError(message, sourceCodeInfo)
+      }
+      throw new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
+    }
+
+    const [, handler] = matchingHandlers[index]!
+    let result: Step | undefined
+    let settled = false
+
+    function assertNotSettled(operation: string): void {
+      if (settled) {
+        throw new DvalaError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
+      }
+      settled = true
+    }
+
+    const ctx: SyncEffectContext = {
+      effectName,
+      args: argsArray,
+      resume: (value: Any) => {
+        assertNotSettled('resume')
+        result = { type: 'Value', value, k }
+      },
+      fail: (msg?: string) => {
+        assertNotSettled('fail')
+        const message = msg ?? `Effect '${effectName}' failed`
+        throw new UserDefinedError(message, sourceCodeInfo)
+      },
+      next: () => {
+        assertNotSettled('next')
+        result = tryHandler(index + 1)
+      },
+    }
+
+    handler(ctx)
+
+    if (!settled) {
+      throw new DvalaError(`Sync effect handler for '${effectName}' did not call resume(), fail(), or next()`, sourceCodeInfo)
+    }
+
+    return result!
   }
 
   return tryHandler(0)
@@ -3021,7 +3103,7 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any, is
  * When `handlers` and `signal` are provided (from `run()`), host handlers are
  * available as a fallback for effects not matched by any local `try/with`.
  */
-export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, syncHandlers?: SyncHandlers): Step | Promise<Step> {
   try {
     switch (step.type) {
       case 'Value': {
@@ -3036,7 +3118,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
+        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState, syncHandlers)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -3044,7 +3126,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'Error': {
-        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState)
+        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState, syncHandlers)
         if (effectStep !== null) {
           return effectStep
         }
@@ -3074,7 +3156,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       const kForDispatch = step.type === 'Value'
         ? step.k.slice(1)
         : step.k
-      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState)
+      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState, syncHandlers)
       if (effectStep !== null) {
         return effectStep
       }
@@ -3089,7 +3171,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
  * Throws if any step produces a Promise (i.e., an async operation was
  * encountered in a synchronous context).
  */
-export function runSyncTrampoline(initial: Step): Any {
+export function runSyncTrampoline(initial: Step, syncHandlers?: SyncHandlers): Any {
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
@@ -3098,7 +3180,7 @@ export function runSyncTrampoline(initial: Step): Any {
     if (step.type === 'Value' && step.k.length === 0) {
       return step.value
     }
-    step = tick(step)
+    step = tick(step, undefined, undefined, undefined, syncHandlers)
   }
 }
 
@@ -3225,6 +3307,32 @@ export async function evaluateWithEffects(
   const initial = buildInitialStep(ast.body, contextStack)
 
   return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions)
+}
+
+/**
+ * Evaluate an AST synchronously with sync effect handler support.
+ *
+ * Uses the sync trampoline with `syncHandlers` threaded through `tick`.
+ * Throws if an async operation is encountered (same as plain `evaluate`
+ * in sync mode). Sync handlers may call `resume(value)`, `fail(msg?)`,
+ * or `next()` — but not `suspend()`.
+ */
+export function evaluateWithSyncEffects(
+  ast: Ast,
+  contextStack: ContextStack,
+  syncHandlers?: SyncHandlers,
+): Any {
+  const initial = buildInitialStep(ast.body, contextStack)
+  try {
+    return runSyncTrampoline(initial, syncHandlers)
+  }
+  catch (error) {
+    if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
+      const freshInitial = buildInitialStep(ast.body, contextStack)
+      return runSyncTrampoline(freshInitial, syncHandlers)
+    }
+    throw error
+  }
 }
 
 /**
