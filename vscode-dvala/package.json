@@ -2,7 +2,7 @@
   "publisher": "mojir",
   "name": "dvala",
   "displayName": "Dvala",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Syntax highlighting and run support for the Dvala programming language",
   "license": "MIT",
   "repository": {
@@ -43,7 +43,9 @@
       {
         "scopeName": "markdown.dvala.codeblock",
         "path": "./syntaxes/dvala.markdown.json",
-        "injectTo": ["text.html.markdown"],
+        "injectTo": [
+          "text.html.markdown"
+        ],
         "embeddedLanguages": {
           "meta.embedded.block.dvala": "dvala"
         }
