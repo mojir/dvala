@@ -9,7 +9,7 @@ import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
 import type { Ast } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
-import { Cache } from './Dvala/Cache'
+import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SyncHandlers } from './evaluator/effectTypes'
@@ -37,6 +37,7 @@ export interface DvalaRunAsyncOptions {
   bindings?: Record<string, unknown>
   effectHandlers?: Handlers
   pure?: boolean
+  maxSnapshots?: number
 }
 
 export interface DvalaRunner {
@@ -208,7 +209,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)
         const ast = buildAst(source)
-        const result = await evaluateWithEffects(ast, contextStack, effectHandlers, undefined, {
+        const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
         })

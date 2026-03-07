@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { DvalaError } from '../../../src/errors'
-import { getErrorYaml, runTest } from '../../../src/testFramework'
+import { DvalaError } from '../../src/errors'
+import { getErrorYaml, runTest } from '../../src/testFramework'
 
 describe('testFramework', () => {
   it('expecting .dvala file', () => {

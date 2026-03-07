@@ -1,6 +1,6 @@
-import type { Ast } from '../parser/types'
-import { toNonNegativeInteger } from '../utils'
-import { valueToString } from '../utils/debug/debugTools'
+import type { Ast } from './parser/types'
+import { toNonNegativeInteger } from './utils'
+import { valueToString } from './utils/debug/debugTools'
 
 interface CacheEntry {
   key: string
