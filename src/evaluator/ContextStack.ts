@@ -63,6 +63,15 @@ export class ContextStackImpl {
     return this.values
   }
 
+  /** Get the top-level module scope as plain key→value bindings. */
+  public getModuleScopeBindings(): Record<string, unknown> {
+    const scope = this._contexts[0]!
+    const result: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(scope))
+      result[k] = v.value
+    return result
+  }
+
   /**
    * Find the index of globalContext in the _contexts array.
    * Returns -1 if not found (should not happen in valid state).

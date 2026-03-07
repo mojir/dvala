@@ -2,12 +2,13 @@
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import type { Any, UnknownRecord } from '../../src/interface'
-import { type ContextParams, Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler } from '../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import { Search } from './Search'
 import {
   applyEncodedState,
@@ -27,12 +28,9 @@ import {
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 
-const getDvala: (forceDebug?: 'debug') => Dvala = (() => {
-  const dvala = new Dvala({ debug: true, modules: allBuiltinModules })
-  const dvalaNoDebug = new Dvala({ debug: false, modules: allBuiltinModules })
-
-  return (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvala : dvalaNoDebug
-})()
+const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
+const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
+const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
 
 const elements = {
   wrapper: document.getElementById('wrapper') as HTMLElement,
@@ -779,7 +777,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getDvala().getAutoCompleter(target.value, start, getDvalaParamsFromContext())
+      autoCompleter = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -843,7 +841,7 @@ window.addEventListener('popstate', () => {
 })
 
 function truncateCode(code: string) {
-  const oneLiner = getDvala().tokenize(code, { minify: true }).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
+  const oneLiner = tokenizeSource(code).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
   const count = 100
   if (oneLiner.length <= count)
     return oneLiner
@@ -862,7 +860,10 @@ export async function run() {
 
   const hijacker = hijackConsole()
   try {
-    const result = await getDvala().async.run(code, dvalaParams)
+    const runResult = await getDvala().runAsync(code, { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers })
+    if (runResult.type === 'error')
+      throw runResult.error
+    const result = runResult.type === 'completed' ? runResult.value : null
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
   }
@@ -887,7 +888,7 @@ export function analyze() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const result = getDvala('debug').getUndefinedSymbols(code, dvalaParams)
+    const result = getUndefinedSymbols(code, { bindings: dvalaParams.bindings })
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
@@ -913,8 +914,8 @@ export function parse() {
 
   const hijacker = hijackConsole()
   try {
-    const tokens = getDvala().tokenize(code)
-    const result = getDvala().parse(tokens)
+    const tokens = tokenizeSource(code, getState('debug'))
+    const result = parseTokenStream(tokens)
     const content = JSON.stringify(result, null, 2)
     appendOutput(content, 'parse')
     hijacker.releaseConsole()
@@ -940,7 +941,7 @@ export function tokenize() {
 
   const hijacker = hijackConsole()
   try {
-    const result = getDvala().tokenize(code)
+    const result = tokenizeSource(code, getState('debug'))
     const content = JSON.stringify(result, null, 2)
     appendOutput(content, 'tokenize')
     hijacker.releaseConsole()
@@ -1116,7 +1117,7 @@ export function confirmEffectAction() {
   }
 }
 
-function getDvalaParamsFromContext(): ContextParams {
+function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effectHandlers: Record<string, EffectHandler> } {
   const contextString = getState('context')
   try {
     const parsedContext
@@ -1127,7 +1128,7 @@ function getDvalaParamsFromContext(): ContextParams {
     const parsedHandlers = asUnknownRecord(parsedContext.handlers ?? {})
     const bindings = asUnknownRecord(parsedContext.bindings ?? {})
 
-    const handlers: Record<string, EffectHandler> = Object.entries(parsedHandlers).reduce((acc: Record<string, EffectHandler>, [key, value]) => {
+    const effectHandlers: Record<string, EffectHandler> = Object.entries(parsedHandlers).reduce((acc: Record<string, EffectHandler>, [key, value]) => {
       if (typeof value !== 'string') {
         console.log(key, value)
         throw new TypeError(`Invalid handler value. "${key}" should be a javascript function string`)
@@ -1144,17 +1145,17 @@ function getDvalaParamsFromContext(): ContextParams {
       return acc
     }, {})
 
-    if (!handlers['*'])
-      handlers['*'] = defaultEffectHandler
+    if (!effectHandlers['*'])
+      effectHandlers['*'] = defaultEffectHandler
 
     return {
       bindings,
-      handlers,
+      effectHandlers,
     }
   }
   catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
-    return {}
+    return { bindings: {}, effectHandlers: { '*': defaultEffectHandler } }
   }
 }
 function getSelectedDvalaCode(): {

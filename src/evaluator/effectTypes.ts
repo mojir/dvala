@@ -263,7 +263,7 @@ export function findMatchingSyncHandlers(
  * Errors are captured in the `error` variant.
  */
 export type RunResult =
-  | { type: 'completed', value: Any }
+  | { type: 'completed', value: Any, definedBindings?: Record<string, unknown> }
   | { type: 'suspended', snapshot: Snapshot }
   | { type: 'error', error: DvalaError }
 
