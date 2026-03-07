@@ -47,7 +47,9 @@ export { untokenize }
  * Get all undefined symbols in a Dvala program.
  *
  * @param source - Dvala source code
- * @param options - optional bindings and modules to treat as defined
+ * @param options - optional context to treat as defined
+ * @param options.bindings - host bindings to treat as defined
+ * @param options.modules - modules to treat as available
  */
 export function getUndefinedSymbols(
   source: string,

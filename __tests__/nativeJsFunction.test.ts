@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { DvalaError } from '../src/errors'
 
 describe('nativeJsFunction', () => {
-  const dvala = new Dvala()
+  const dvala = createDvala()
 
   it('dotted binding keys are rejected', () => {
     expect(() => dvala.run('1', { bindings: { 'foo.bar': 5 } })).toThrowError(DvalaError)

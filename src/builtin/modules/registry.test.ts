@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../Dvala/Dvala'
+import { createDvala } from '../../createDvala'
 import type { BuiltinNormalExpressions } from '../../builtin/interface'
 import { allBuiltinModules } from '../../allModules'
 import { assertModule } from './assertion'
@@ -10,7 +10,7 @@ import { vectorModule } from './vector'
 describe('module registration', () => {
   describe('default modules', () => {
     it('should have no modules by default', () => {
-      const dvala = new Dvala()
+      const dvala = createDvala()
       expect(() => dvala.run('import(vector)')).toThrow('Unknown module')
       expect(() => dvala.run('import(grid)')).toThrow('Unknown module')
       expect(() => dvala.run('import(assertion)')).toThrow('Unknown module')
@@ -19,7 +19,7 @@ describe('module registration', () => {
 
   describe('all built-in modules', () => {
     it('should include all modules when allBuiltinModules is passed', () => {
-      const dvala = new Dvala({ modules: allBuiltinModules })
+      const dvala = createDvala({ modules: allBuiltinModules })
       expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
       expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
       expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
@@ -28,20 +28,20 @@ describe('module registration', () => {
 
   describe('custom modules', () => {
     it('should only include specified modules', () => {
-      const dvala = new Dvala({ modules: [vectorModule] })
+      const dvala = createDvala({ modules: [vectorModule] })
       expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
       expect(() => dvala.run('import(grid)')).toThrow('Unknown module')
       expect(() => dvala.run('import(assertion)')).toThrow('Unknown module')
     })
 
     it('should support empty modules list', () => {
-      const dvala = new Dvala({ modules: [] })
+      const dvala = createDvala({ modules: [] })
       expect(() => dvala.run('import(vector)')).toThrow('Unknown module')
       expect(() => dvala.run('import(grid)')).toThrow('Unknown module')
     })
 
     it('should support multiple selected modules', () => {
-      const dvala = new Dvala({ modules: [gridModule, assertModule] })
+      const dvala = createDvala({ modules: [gridModule, assertModule] })
       expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
       expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
     })
@@ -75,7 +75,7 @@ describe('module registration', () => {
     }
 
     it('should register and use a custom module', () => {
-      const dvala = new Dvala({ modules: [temperatureModule] })
+      const dvala = createDvala({ modules: [temperatureModule] })
       expect(dvala.run('let t = import(temperature); t.c-to-f(0)')).toBe(32)
       expect(dvala.run('let t = import(temperature); t.c-to-f(100)')).toBe(212)
       expect(dvala.run('let t = import(temperature); t.f-to-c(32)')).toBe(0)
@@ -83,18 +83,18 @@ describe('module registration', () => {
     })
 
     it('should work with destructuring import', () => {
-      const dvala = new Dvala({ modules: [temperatureModule] })
+      const dvala = createDvala({ modules: [temperatureModule] })
       expect(dvala.run('let { c-to-f, f-to-c } = import(temperature); c-to-f(f-to-c(72))')).toBe(72)
     })
 
     it('should work alongside built-in modules', () => {
-      const dvala = new Dvala({ modules: [temperatureModule, vectorModule] })
+      const dvala = createDvala({ modules: [temperatureModule, vectorModule] })
       expect(dvala.run('let t = import(temperature); t.c-to-f(0)')).toBe(32)
       expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     })
 
     it('should not be available when not registered', () => {
-      const dvala = new Dvala({ modules: [vectorModule] })
+      const dvala = createDvala({ modules: [vectorModule] })
       expect(() => dvala.run('import(temperature)')).toThrow('Unknown module')
     })
   })

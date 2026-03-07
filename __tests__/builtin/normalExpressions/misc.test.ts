@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, vitest } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 
 describe('misc functions', () => {
@@ -17,7 +17,7 @@ describe('misc functions', () => {
   afterEach(() => {
     console.log = oldLog
   })
-  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('epoch->iso-date', () => {
       it('samples', () => {
         expect(dvala.run('epoch->iso-date(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../Dvala/Dvala'
+import { createDvala } from '../../../createDvala'
 import { AssertionError, DvalaError } from '../../../errors'
 import { assertModule } from './'
 
 describe('assert functions', () => {
-  for (const dvala of [new Dvala({ modules: [assertModule] }), new Dvala({ debug: true, modules: [assertModule] })]) {
+  for (const dvala of [createDvala({ modules: [assertModule] }), createDvala({ debug: true, modules: [assertModule] })]) {
     // Helper to run assert module functions with the new import syntax
     const runWithAssert = (code: string): unknown => {
       const modifiedCode = `let a = import(assertion); ${code}`

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../Dvala/Dvala'
+import { createDvala } from '../../../createDvala'
 import { DvalaError } from '../../../errors'
 import { gridModule } from './'
 
@@ -20,7 +20,7 @@ const exampleGrid3 = `[
   [3, 4],
 ]`
 
-const dvala = new Dvala({ modules: [gridModule] })
+const dvala = createDvala({ modules: [gridModule] })
 
 // Helper to run grid module functions with the new import syntax
 function runGrid(code: string): unknown {

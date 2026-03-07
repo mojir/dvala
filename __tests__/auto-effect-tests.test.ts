@@ -15,7 +15,7 @@
  * 11. Effect-related normal expressions consistency
  */
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { resume as resumeContinuation, run, runSync } from '../src/effects'
 import type { Snapshot } from '../src/effects'
@@ -26,7 +26,7 @@ import type { Any } from '../src/interface'
 import { allReference } from '../reference'
 import '../src/initReferenceData'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules })
 
 // ---------------------------------------------------------------------------
 // 1. Standard Effects Docs Metadata Consistency

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { resume as resumeContinuation, run, runSync } from '../src/effects'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { effectNameMatchesPattern, findMatchingHandlers, generateRunId } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 
-const dvala = new Dvala()
+const dvala = createDvala()
 
 describe('phase 2 — Local Effect Handling', () => {
   describe('2a: effect(name) special expression', () => {

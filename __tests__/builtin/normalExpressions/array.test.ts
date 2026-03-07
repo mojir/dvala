@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestData } from '../../testUtils'
 import { checkTestData, createTestData } from '../../testUtils'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { vectorModule } from '../../../src/builtin/modules/vector'
 import { DvalaError } from '../../../src/errors'
 
 let testData: TestData
-const dvala = new Dvala({ modules: [vectorModule] })
+const dvala = createDvala({ modules: [vectorModule] })
 
 beforeEach(() => {
   testData = createTestData()

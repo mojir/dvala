@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../Dvala/Dvala'
+import { createDvala } from '../../../createDvala'
 import { DvalaError } from '../../../errors'
 import { matrixModule } from './'
 
-const dvala = new Dvala({ modules: [matrixModule] })
+const dvala = createDvala({ modules: [matrixModule] })
 
 function runMat(code: string) {
   return dvala.run(`let mat = import(matrix); ${code.replace(/mat:/g, 'mat.')}`)

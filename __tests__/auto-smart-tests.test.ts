@@ -12,7 +12,7 @@
  * 5. Operator form equivalence — f(a, b) same as a f b
  */
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { normalExpressions } from '../src/builtin/normalExpressions'
 import { specialExpressions } from '../src/builtin'
@@ -22,7 +22,7 @@ import { isDataType, isFunctionDocs } from '../src/builtin/interface'
 import { allReference } from '../reference'
 import '../src/initReferenceData'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules })
 
 // ---------------------------------------------------------------------------
 // Helpers

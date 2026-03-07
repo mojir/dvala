@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 import { sequenceUtilsModule } from '../../../src/builtin/modules/sequence'
 
-const dvala = new Dvala()
-const dvalaInstances = [dvala, new Dvala({ debug: true })]
+const dvala = createDvala()
+const dvalaInstances = [dvala, createDvala({ debug: true })]
 describe('sequence functions', () => {
   describe('nth', () => {
     it('array samples', () => {
@@ -476,7 +476,7 @@ describe('sequence functions', () => {
 
 describe('sequence-Utils module functions', () => {
   const imp = 'let su = import(sequence); '
-  for (const mdvala of [new Dvala({ modules: [sequenceUtilsModule] }), new Dvala({ modules: [sequenceUtilsModule], debug: true })]) {
+  for (const mdvala of [createDvala({ modules: [sequenceUtilsModule] }), createDvala({ modules: [sequenceUtilsModule], debug: true })]) {
     describe('position', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}su.position(["1", "2", 3], number?)`)).toEqual(2)

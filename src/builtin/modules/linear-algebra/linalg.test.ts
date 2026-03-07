@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../Dvala/Dvala'
+import { createDvala } from '../../../createDvala'
 import { DvalaError } from '../../../errors'
 import { deepEqual } from '../../../utils'
 import { getUnit } from './helpers/getUnit'
 import { linearAlgebraModule } from './'
 
-const dvala = new Dvala({ modules: [linearAlgebraModule] })
+const dvala = createDvala({ modules: [linearAlgebraModule] })
 
 // Helper to run lin module functions with the new import syntax
 function runLin(code: string): unknown {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../../Dvala/Dvala'
+import { createDvala } from '../../../../createDvala'
 import { vectorModule } from '..'
 import { DvalaError } from '../../../../errors'
 
-const dvala = new Dvala({ modules: [vectorModule] })
+const dvala = createDvala({ modules: [vectorModule] })
 
 describe('max', () => {
   it('should calculate max of a vector', () => {

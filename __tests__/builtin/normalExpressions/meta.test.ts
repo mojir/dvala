@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
 import type { ExecuteFunction } from '../../../src/evaluator/interface'
@@ -7,7 +7,7 @@ import { FUNCTION_SYMBOL } from '../../../src/utils/symbols'
 import '../../../src/initReferenceData'
 
 describe('misc functions', () => {
-  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('doc', () => {
       it('should return the doc for a function', () => {
         expect((dvala.run('doc(>=)') as string).length).toBeGreaterThan(0)

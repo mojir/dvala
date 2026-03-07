@@ -16,6 +16,8 @@ export interface CreateDvalaOptions {
   effectHandlers?: Handlers
   syncHandlers?: SyncHandlers
   cache?: number
+  /** Enable debug tokenization: captures source positions for better error messages. */
+  debug?: boolean
 }
 
 export interface DvalaRunOptions {
@@ -44,6 +46,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryBindings = options?.bindings
   const factoryEffectHandlers = options?.effectHandlers
   const factorySyncHandlers = options?.syncHandlers
+  const debug = options?.debug ?? false
   const cache = options?.cache ? new Cache(options.cache) : null
 
   function buildAst(source: string): Ast {
@@ -52,9 +55,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       if (cached)
         return cached
     }
-    const tokenStream = tokenize(source, false, undefined)
+    const tokenStream = tokenize(source, debug, undefined)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-    const ast: Ast = { body: parse(minified), hasDebugData: false }
+    const ast: Ast = { body: parse(minified), hasDebugData: debug }
     cache?.set(source, ast)
     return ast
   }

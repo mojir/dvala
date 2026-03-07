@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 import { mathUtilsModule } from '../../../src/builtin/modules/math'
 
 describe('math functions', () => {
-  const dvala = new Dvala()
+  const dvala = createDvala()
   describe('inc', () => {
     it('samples', () => {
       expect(dvala.run('inc(2.5)')).toBe(3.5)
@@ -403,7 +403,7 @@ describe('math functions', () => {
   })
 
   describe('ln', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { ln } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}ln(0.1)`)).toBe(Math.log(0.1))
@@ -428,7 +428,7 @@ describe('math functions', () => {
   })
 
   describe('log2', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { log2 } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}log2(0.1)`)).toBe(Math.log2(0.1))
@@ -452,7 +452,7 @@ describe('math functions', () => {
   })
 
   describe('log10', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { log10 } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}log10(0.1)`)).toBe(Math.log10(0.1))
@@ -498,7 +498,7 @@ describe('math functions', () => {
   })
 
   describe('sin', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { sin } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}sin(0)`)).toBe(Math.sin(0))
@@ -519,7 +519,7 @@ describe('math functions', () => {
     })
   })
   describe('cos', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { cos } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}cos(0)`)).toBe(Math.cos(0))
@@ -540,7 +540,7 @@ describe('math functions', () => {
     })
   })
   describe('tan', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { tan } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}tan(0)`)).toBe(Math.tan(0))
@@ -562,7 +562,7 @@ describe('math functions', () => {
   })
 
   describe('sinh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { sinh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}sinh(0)`)).toBe(Math.sinh(0))
@@ -583,7 +583,7 @@ describe('math functions', () => {
     })
   })
   describe('cosh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { cosh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}cosh(0)`)).toBe(Math.cosh(0))
@@ -604,7 +604,7 @@ describe('math functions', () => {
     })
   })
   describe('tanh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { tanh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}tanh(0)`)).toBe(Math.tanh(0))
@@ -626,7 +626,7 @@ describe('math functions', () => {
   })
 
   describe('asin', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { asin } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}asin(0)`)).toBe(Math.asin(0))
@@ -647,7 +647,7 @@ describe('math functions', () => {
     })
   })
   describe('acos', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { acos } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}acos(0)`)).toBe(Math.acos(0))
@@ -668,7 +668,7 @@ describe('math functions', () => {
     })
   })
   describe('atan', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { atan } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}atan(0)`)).toBe(Math.atan(0))
@@ -690,7 +690,7 @@ describe('math functions', () => {
   })
 
   describe('asinh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { asinh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}asinh(0)`)).toBe(Math.asinh(0))
@@ -711,7 +711,7 @@ describe('math functions', () => {
     })
   })
   describe('acosh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { acosh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}acosh(1)`)).toBe(Math.acosh(1))
@@ -732,7 +732,7 @@ describe('math functions', () => {
     })
   })
   describe('atanh', () => {
-    const mdvala = new Dvala({ modules: [mathUtilsModule] })
+    const mdvala = createDvala({ modules: [mathUtilsModule] })
     const m = 'let { atanh } = import(math); '
     it('samples', () => {
       expect(mdvala.run(`${m}atanh(0)`)).toBe(Math.atanh(0))

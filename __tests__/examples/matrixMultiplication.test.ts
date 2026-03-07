@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import { collectionUtilsModule } from '../../src/builtin/modules/collection'
 
-const dvala = new Dvala({ debug: true, modules: [collectionUtilsModule] })
+const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {
   it('should compile', () => {
     expect(dvala.run(`

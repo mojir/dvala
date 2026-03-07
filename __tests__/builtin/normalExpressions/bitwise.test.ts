@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 import { bitwiseUtilsModule } from '../../../src/builtin/modules/bitwise'
 
 describe('bitwise', () => {
-  for (const dvala of [new Dvala(), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('<<', () => {
       it('samples', () => {
         expect(dvala.run('16 << 2')).toBe(64)
@@ -68,7 +68,7 @@ describe('bitwise', () => {
     })
   }
 
-  for (const dvala of [new Dvala({ modules: [bitwiseUtilsModule] }), new Dvala({ modules: [bitwiseUtilsModule], debug: true })]) {
+  for (const dvala of [createDvala({ modules: [bitwiseUtilsModule] }), createDvala({ modules: [bitwiseUtilsModule], debug: true })]) {
     describe('bit-not', () => {
       it('samples', () => {
         expect(dvala.run('let { bit-not } = import(bitwise); bit-not(0)')).toBe(-1)

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../../Dvala/Dvala'
+import { createDvala } from '../../../../createDvala'
 import { vectorModule } from '..'
 
-const dvala = new Dvala({ modules: [vectorModule] })
+const dvala = createDvala({ modules: [vectorModule] })
 
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {

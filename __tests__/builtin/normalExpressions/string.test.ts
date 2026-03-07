@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError } from '../../../src/errors'
 import { stringUtilsModule } from '../../../src/builtin/modules/string'
 
 describe('string functions', () => {
-  for (const dvala of [new Dvala({}), new Dvala({ debug: true })]) {
+  for (const dvala of [createDvala({}), createDvala({ debug: true })]) {
     describe('str', () => {
       it('samples', () => {
         expect(dvala.run('str({})')).toBe('{}')
@@ -95,7 +95,7 @@ describe('string functions', () => {
 
 describe('string-Utils module functions', () => {
   const imp = 'let su = import(string); '
-  for (const dvala of [new Dvala({ modules: [stringUtilsModule] }), new Dvala({ modules: [stringUtilsModule], debug: true })]) {
+  for (const dvala of [createDvala({ modules: [stringUtilsModule] }), createDvala({ modules: [stringUtilsModule], debug: true })]) {
     describe('trim-left', () => {
       it('samples', () => {
         expect(dvala.run(`${imp}su.trim-left("  Albert!  ")`)).toBe('Albert!  ')

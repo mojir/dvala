@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { Dvala } from '../src/Dvala/Dvala'
+import { createDvala } from '../src/createDvala'
 import { gridModule } from '../src/builtin/modules/grid'
 import { DvalaError } from '../src/errors'
 
-const dvala = new Dvala({ modules: [gridModule] })
+const dvala = createDvala({ modules: [gridModule] })
 
 describe('dvala Destructuring', () => {
   // Basic object destructuring

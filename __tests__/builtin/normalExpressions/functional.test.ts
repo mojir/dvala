@@ -1,11 +1,11 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vitest'
-import { Dvala } from '../../../src/Dvala/Dvala'
+import { createDvala } from '../../../src/createDvala'
 import { DvalaError, RecurSignal } from '../../../src/errors'
 import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
 
 describe('functional functions.', () => {
-  for (const dvala of [new Dvala({ modules: [functionalUtilsModule] }), new Dvala({ debug: true, modules: [functionalUtilsModule] })]) {
+  for (const dvala of [createDvala({ modules: [functionalUtilsModule] }), createDvala({ debug: true, modules: [functionalUtilsModule] })]) {
     let oldLog: () => void
     let logSpy: (...args: unknown[]) => void
     beforeEach(() => {
