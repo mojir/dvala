@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createDvala } from '../../src/createDvala'
-import { DvalaError, UndefinedSymbolError } from '../../src/errors'
-import { Cache } from '../../src/Dvala/Cache'
-import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, transformSymbols, untokenize } from '../../src/tooling'
-import type { Ast } from '../../src/parser/types'
-import { NodeTypes } from '../../src/constants/constants'
-import { vectorModule } from '../../src/builtin/modules/vector'
+import { createDvala } from '../src/createDvala'
+import { DvalaError, UndefinedSymbolError } from '../src/errors'
+import { Cache } from '../src/Cache'
+import { getAutoCompleter, getUndefinedSymbols, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
+import type { Ast } from '../src/parser/types'
+import { NodeTypes } from '../src/constants/constants'
+import { vectorModule } from '../src/builtin/modules/vector'
 
 describe('all tests', () => {
   describe('auto completer', () => {

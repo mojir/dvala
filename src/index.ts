@@ -26,8 +26,8 @@ export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone functions and types
-export { run, runSync, resume } from './effects'
-export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, RunSyncOptions, SyncEffectContext, SyncEffectHandler, SyncHandlers, Snapshot, ResumeOptions } from './effects'
+export { resume } from './effects'
+export type { EffectContext, EffectHandler, Handlers, RunResult, SyncEffectContext, SyncEffectHandler, SyncHandlers, Snapshot } from './effects'
 
 // Factory API
 export { createDvala } from './createDvala'

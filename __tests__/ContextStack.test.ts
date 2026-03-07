@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createContextStack } from '../../src/evaluator/ContextStack'
+import { createContextStack } from '../src/evaluator/ContextStack'
 
 describe('contextStack', () => {
   it('should throw if adding duplicate', () => {
