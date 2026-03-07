@@ -150,6 +150,47 @@ export type EffectHandler = (ctx: EffectContext) => Promise<void>
 export type Handlers = Record<string, EffectHandler>
 
 // ---------------------------------------------------------------------------
+// Sync effect handler types
+// ---------------------------------------------------------------------------
+
+/**
+ * Context passed to a synchronous host effect handler.
+ *
+ * Unlike `EffectContext`, there is no `suspend` — suspension requires async.
+ * The handler must call exactly one of `resume`, `fail`, or `next`, exactly once.
+ */
+export interface SyncEffectContext {
+  /** Full dotted name of the performed effect. */
+  effectName: string
+
+  /** Arguments from the Dvala `perform(eff, arg1, arg2, ...)` call. */
+  args: Any[]
+
+  /**
+   * Resume the program with the given value.
+   * The value becomes the result of the `perform(...)` expression in Dvala.
+   */
+  resume: (value: Any) => void
+
+  /**
+   * Propagate as a Dvala-level error.
+   */
+  fail: (msg?: string) => void
+
+  /**
+   * Pass to the next registered handler whose pattern matches this effect.
+   * If no further handler matches, the effect is unhandled.
+   */
+  next: () => void
+}
+
+/** A synchronous function that handles an effect by calling `resume`, `fail`, or `next`. */
+export type SyncEffectHandler = (ctx: SyncEffectContext) => void
+
+/** Map from effect pattern to its synchronous handler. */
+export type SyncHandlers = Record<string, SyncEffectHandler>
+
+// ---------------------------------------------------------------------------
 // Pattern matching utilities for wildcard host handlers
 // ---------------------------------------------------------------------------
 
@@ -174,9 +215,8 @@ export function effectNameMatchesPattern(effectName: string, pattern: string): b
 }
 
 /**
- * Find all matching handlers for an effect name, in registration order.
- * Returns an array of `[pattern, handler]` pairs — the first entry is
- * the "most specific" by registration order, not by pattern specificity.
+ * Find all matching async handlers for an effect name, in registration order.
+ * Returns an array of `[pattern, handler]` pairs.
  */
 export function findMatchingHandlers(
   effectName: string,
@@ -187,6 +227,26 @@ export function findMatchingHandlers(
   }
   const result: Array<[string, EffectHandler]> = []
   for (const [pattern, handler] of Object.entries(handlers)) {
+    if (effectNameMatchesPattern(effectName, pattern)) {
+      result.push([pattern, handler])
+    }
+  }
+  return result
+}
+
+/**
+ * Find all matching sync handlers for an effect name, in registration order.
+ * Returns an array of `[pattern, handler]` pairs.
+ */
+export function findMatchingSyncHandlers(
+  effectName: string,
+  syncHandlers: SyncHandlers | undefined,
+): Array<[string, SyncEffectHandler]> {
+  if (!syncHandlers) {
+    return []
+  }
+  const result: Array<[string, SyncEffectHandler]> = []
+  for (const [pattern, handler] of Object.entries(syncHandlers)) {
     if (effectNameMatchesPattern(effectName, pattern)) {
       result.push([pattern, handler])
     }

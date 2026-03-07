@@ -28,7 +28,7 @@ import type { Any } from './interface'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
-import { evaluate, evaluateWithEffects, resumeWithEffects } from './evaluator/trampoline'
+import { evaluate, evaluateWithEffects, evaluateWithSyncEffects, resumeWithEffects } from './evaluator/trampoline'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parse } from './parser'
@@ -36,10 +36,10 @@ import type { Ast } from './parser/types'
 import { deserializeFromObject } from './evaluator/suspension'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 
-import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
+import type { Handlers, RunResult, Snapshot, SyncHandlers } from './evaluator/effectTypes'
 
 // Re-export all types from effectTypes so consumers import from one place
-export type { EffectContext, EffectHandler, Snapshot } from './evaluator/effectTypes'
+export type { EffectContext, EffectHandler, Snapshot, SyncEffectContext, SyncEffectHandler, SyncHandlers } from './evaluator/effectTypes'
 export { SuspensionSignal, isSuspensionSignal } from './evaluator/effectTypes'
 export type { Handlers, RunResult } from './evaluator/effectTypes'
 
@@ -65,6 +65,7 @@ export interface RunOptions {
 export interface RunSyncOptions {
   bindings?: Record<string, unknown>
   modules?: DvalaModule[]
+  syncHandlers?: SyncHandlers
 }
 
 /**
@@ -120,6 +121,9 @@ export function runSync(source: string, options?: RunSyncOptions): Any {
     modules,
   )
   const ast = buildAst(source)
+  if (options?.syncHandlers) {
+    return evaluateWithSyncEffects(ast, contextStack, options.syncHandlers)
+  }
   const result = evaluate(ast, contextStack)
   if (result instanceof Promise) {
     throw new TypeError('Unexpected async operation in runSync(). Use run() for async operations.')
