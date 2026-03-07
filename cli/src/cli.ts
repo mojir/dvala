@@ -8,18 +8,16 @@ import { version } from '../../package.json'
 import { runTest } from '../../src/testFramework'
 import type { Reference } from '../../reference'
 import { apiReference, isFunctionReference } from '../../reference'
-import { asAny } from '../../src/typeGuards/dvala'
 import type { UnknownRecord } from '../../src/interface'
 import { stringifyValue } from '../../common/utils'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import type { Context } from '../../src/evaluator/interface'
-import { Dvala } from '../../src/Dvala/Dvala'
+import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
-import { isDvalaBundle } from '../../src/bundler/interface'
 import type { DvalaBundle } from '../../src/bundler/interface'
+import { isDvalaBundle } from '../../src/bundler/interface'
 import { Colors, createColorizer } from './colorizer'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
@@ -38,7 +36,7 @@ type Maybe<T> = T | null
 // --- Option types shared across subcommands ---
 
 interface ContextOptions {
-  context: Context
+  context: Record<string, unknown>
 }
 
 interface PrintOptions {
@@ -50,13 +48,13 @@ interface PrintOptions {
 interface ReplConfig {
   subcommand: 'repl'
   loadFilename: Maybe<string>
-  context: Context
+  context: Record<string, unknown>
 }
 
 interface RunConfig {
   subcommand: 'run'
   filename: string
-  context: Context
+  context: Record<string, unknown>
   printResult: boolean
   pure: boolean
 }
@@ -64,7 +62,7 @@ interface RunConfig {
 interface RunBundleConfig {
   subcommand: 'run-bundle'
   filename: string
-  context: Context
+  context: Record<string, unknown>
   printResult: boolean
   pure: boolean
 }
@@ -72,7 +70,7 @@ interface RunBundleConfig {
 interface EvalConfig {
   subcommand: 'eval'
   expression: string
-  context: Context
+  context: Record<string, unknown>
   printResult: boolean
   pure: boolean
 }
@@ -113,21 +111,16 @@ const config = processArguments(process.argv.slice(2))
 
 const cliModules = getCliModules()
 
-function createDvala(context: Context, pure: boolean) {
-  const _dvala = new Dvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
+function makeDvala(bindings: Record<string, unknown>, pure: boolean) {
+  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], bindings })
   return {
-    run: (program: string | DvalaBundle) =>
-      _dvala.run(program, {
-        globalContext: context,
-        globalModuleScope: true,
-        pure,
-      }),
+    run: (program: string | DvalaBundle) => runner.run(program, { pure }),
   }
 }
 
 switch (config.subcommand) {
   case 'run': {
-    const dvala = createDvala(config.context, config.pure)
+    const dvala = makeDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
       const result = dvala.run(content)
@@ -143,7 +136,7 @@ switch (config.subcommand) {
     break
   }
   case 'run-bundle': {
-    const dvala = createDvala(config.context, config.pure)
+    const dvala = makeDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
       let parsed: unknown
@@ -171,7 +164,7 @@ switch (config.subcommand) {
     break
   }
   case 'eval': {
-    const dvala = createDvala(config.context, config.pure)
+    const dvala = makeDvala(config.context, config.pure)
     try {
       const result = dvala.run(config.expression)
       if (config.printResult) {
@@ -211,12 +204,12 @@ switch (config.subcommand) {
   }
   case 'repl': {
     if (config.loadFilename) {
-      const dvala = createDvala(config.context, false)
+      const dvala = makeDvala(config.context, false)
       const content = fs.readFileSync(config.loadFilename, { encoding: 'utf-8' })
       const result = dvala.run(content)
       if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
         for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
-          config.context[key] = { value: asAny(value) }
+          config.context[key] = value
         }
       }
     }
@@ -251,13 +244,12 @@ function runDvalaTest(testPath: string, testNamePattern: Maybe<string>) {
     process.exit(1)
 }
 
-async function execute(expression: string, context: Context, readLine: (msg: string) => Promise<string>): Promise<boolean> {
-  const _dvala = new Dvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
+async function execute(expression: string, bindings: Record<string, unknown>, readLine: (msg: string) => Promise<string>): Promise<Record<string, unknown>> {
+  const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
-    const result = await _dvala.async.run(expression, {
-      globalContext: context,
-      globalModuleScope: true,
-      handlers: {
+    const runResult = await _dvala.runAsync(expression, {
+      bindings,
+      effectHandlers: {
         'dvala.io.read-line': async ({ args, resume }) => {
           const message = typeof args[0] === 'string' ? args[0] : ''
           const answer = await readLine(message)
@@ -265,19 +257,21 @@ async function execute(expression: string, context: Context, readLine: (msg: str
         },
       },
     })
+    if (runResult.type === 'error')
+      throw runResult.error
+    const result = runResult.type === 'completed' ? runResult.value : null
     historyResults.unshift(result)
     if (historyResults.length > 9) {
       historyResults.length = 9
     }
-
-    setReplHistoryVariables(context)
+    const newBindings = { ...bindings, ...(runResult.type === 'completed' ? runResult.definedBindings : {}) }
+    setReplHistoryVariables(newBindings)
     console.log(stringifyValue(result, false))
-    return true
+    return newBindings
   }
   catch (error) {
     printErrorMessage(`${error}`)
-    context['*e*'] = { value: getErrorMessage(error) }
-    return false
+    return { ...bindings, '*e*': getErrorMessage(error) }
   }
 }
 
@@ -288,18 +282,11 @@ function getErrorMessage(error: unknown) {
   return 'Unknown error'
 }
 
-function setReplHistoryVariables(context: Context) {
-  delete context['*1*']
-  delete context['*2*']
-  delete context['*3*']
-  delete context['*4*']
-  delete context['*5*']
-  delete context['*6*']
-  delete context['*7*']
-  delete context['*8*']
-  delete context['*9*']
+function setReplHistoryVariables(bindings: Record<string, unknown>): void {
+  for (let i = 1; i <= 9; i++)
+    delete bindings[`*${i}*`]
   historyResults.forEach((value, i) => {
-    context[`*${i + 1}*`] = { value: asAny(value) }
+    bindings[`*${i + 1}*`] = value
   })
 }
 
@@ -348,7 +335,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
         }
         try {
           Object.entries(JSON.parse(parsed.argument) as UnknownRecord).forEach(([key, value]) => {
-            options.context[key] = { value: asAny(value) }
+            options.context[key] = value
           })
         }
         catch (e) {
@@ -366,7 +353,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
         try {
           const contextString = fs.readFileSync(parsed.argument, { encoding: 'utf-8' })
           Object.entries(JSON.parse(contextString) as UnknownRecord).forEach(([key, value]) => {
-            options.context[key] = { value: asAny(value) }
+            options.context[key] = value
           })
         }
         catch (e) {
@@ -403,8 +390,8 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   return { options, nextIndex: i }
 }
 
-function parseRunEvalOptions(args: string[], startIndex: number): { context: Context, printResult: boolean, pure: boolean, positional: Maybe<string>, nextIndex: number } {
-  let context: Context = {}
+function parseRunEvalOptions(args: string[], startIndex: number): { context: Record<string, unknown>, printResult: boolean, pure: boolean, positional: Maybe<string>, nextIndex: number } {
+  let context: Record<string, unknown> = {}
   let printResult = true
   let pure = false
   let positional: Maybe<string> = null
@@ -563,7 +550,7 @@ function processArguments(args: string[]): Config {
     }
     case 'repl': {
       let loadFilename: Maybe<string> = null
-      let context: Context = {}
+      let context: Record<string, unknown> = {}
       let i = 1
       while (i < args.length) {
         const parsed = parseOption(args, i)
@@ -607,9 +594,11 @@ function processArguments(args: string[]): Config {
   }
 }
 
-function runREPL(context: Context) {
+function runREPL(initialBindings: Record<string, unknown>) {
   console.log(`Welcome to Dvala v${version}.
 Type ${fmt.italic('`help')} for more information.`)
+
+  let bindings = initialBindings
 
   const rl = createReadlineInterface({
     completer,
@@ -641,7 +630,7 @@ Type ${fmt.italic('`help')} for more information.`)
           printHelp()
           break
         case '`context':
-          printContext(context)
+          printContext(bindings)
           break
         case '`quit':
           rl.close()
@@ -651,7 +640,7 @@ Type ${fmt.italic('`help')} for more information.`)
       }
     }
     else if (line) {
-      await execute(line, context, readLine)
+      bindings = await execute(line, bindings, readLine)
     }
     rl.prompt()
   }).on('close', () => {
@@ -725,15 +714,15 @@ With no subcommand, starts an interactive REPL.
 `.trim())
 }
 
-function printContext(context: Context) {
-  const keys = Object.keys(context)
+function printContext(bindings: Record<string, unknown>) {
+  const keys = Object.keys(bindings)
 
   if (keys.length === 0) {
     console.log('[empty]\n')
   }
   else {
     keys.sort().forEach((x) => {
-      console.log(`${x} = ${formatValue(stringifyValue(context[x]!.value, false))}`)
+      console.log(`${x} = ${formatValue(stringifyValue(bindings[x], false))}`)
     })
     console.log()
   }
@@ -753,8 +742,8 @@ function completer(line: string) {
     return [expressions.filter(c => c.startsWith(expressionMatch[2]!)).map(c => `${expressionMatch[1]}${c} `), line]
 
   // TODO, add reserved names
-  const context = (config as ReplConfig).context ?? {}
-  const names = Array.from(new Set([...Object.keys(context)]))
+  const replBindings = (config as ReplConfig).context ?? {}
+  const names = Array.from(new Set([...Object.keys(replBindings)]))
   const nameMatch = nameRegExp.exec(line)
 
   if (nameMatch)

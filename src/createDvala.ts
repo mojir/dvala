@@ -10,6 +10,8 @@ import { parse } from './parser'
 import type { Ast } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Dvala/Cache'
+import type { DvalaBundle } from './bundler/interface'
+import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SyncHandlers } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
@@ -38,7 +40,7 @@ export interface DvalaRunAsyncOptions {
 }
 
 export interface DvalaRunner {
-  run: (source: string, options?: DvalaRunOptions) => unknown
+  run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
   runAsync: (source: string, options?: DvalaRunAsyncOptions) => Promise<RunResult>
   getUndefinedSymbols: (source: string) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
@@ -156,7 +158,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   }
 
   return {
-    run(source: string, runOptions?: DvalaRunOptions): unknown {
+    run(source: string | DvalaBundle, runOptions?: DvalaRunOptions): unknown {
       assertSerializableBindings(runOptions?.bindings)
       const bindings = mergeBindings(runOptions?.bindings)
       const syncHandlers = mergeSyncHandlers(runOptions?.syncHandlers)
@@ -165,6 +167,23 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       assertNotPureWithHandlers(pure, syncHandlers, undefined)
 
       const contextStack = createContextStack({ bindings }, modules, pure)
+
+      if (isDvalaBundle(source)) {
+        const savedPure = contextStack.pure
+        contextStack.pure = true
+        for (const [name, fileSource] of source.fileModules) {
+          const fileAst = buildAst(fileSource)
+          const moduleContextStack = contextStack.create({})
+          contextStack.registerValueModule(name, evaluate(fileAst, moduleContextStack))
+        }
+        contextStack.pure = savedPure
+        const ast = buildAst(source.program)
+        const result = evaluate(ast, contextStack)
+        if (result instanceof Promise)
+          throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
+        return result
+      }
+
       const ast = buildAst(source, runOptions?.filePath)
 
       if (syncHandlers) {
@@ -189,10 +208,14 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)
         const ast = buildAst(source)
-        return await evaluateWithEffects(ast, contextStack, effectHandlers, undefined, {
+        const result = await evaluateWithEffects(ast, contextStack, effectHandlers, undefined, {
           values: bindings,
           modules,
         })
+        if (result.type === 'completed') {
+          return { ...result, definedBindings: contextStack.getModuleScopeBindings() }
+        }
+        return result
       }
       catch (error) {
         if (error instanceof DvalaError) {
