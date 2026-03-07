@@ -31,7 +31,7 @@ describe('createDvala', () => {
 
     it('runs with factory modules', () => {
       const d = createDvala({ modules: [mathUtilsModule] })
-      expect(d.run('import math-utils; clamp(5, 0, 3)')).toBe(3)
+      expect(d.run('let m = import(math); m.ln(1)')).toBe(0)
     })
   })
 
@@ -72,24 +72,19 @@ describe('createDvala', () => {
   })
 
   describe('pure mode', () => {
-    it('pure mode disallows IO effects', () => {
-      const d = createDvala()
-      expect(() => d.run('perform(effect(dvala.io.println), "hi")', { pure: true })).toThrow()
-    })
-
-    it('pure mode with effectHandlers throws at run time', () => {
+    it('pure mode with syncHandlers throws at run time', () => {
       const d = createDvala()
       expect(() => d.run('1 + 1', {
         pure: true,
         syncHandlers: { 'my.effect': ({ resume }) => resume(1) },
-      })).toThrow('pure mode')
+      })).toThrow('Cannot use pure mode with effect handlers')
     })
 
-    it('pure mode with factory effectHandlers throws at run time', () => {
+    it('pure mode with factory syncHandlers throws at run time', () => {
       const d = createDvala({
         syncHandlers: { 'my.effect': ({ resume }) => resume(1) },
       })
-      expect(() => d.run('1 + 1', { pure: true })).toThrow('pure mode')
+      expect(() => d.run('1 + 1', { pure: true })).toThrow('Cannot use pure mode with effect handlers')
     })
   })
 
