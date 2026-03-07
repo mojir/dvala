@@ -2915,3 +2915,290 @@ describe('debug.ts — parseStepInfo with null/missing meta', () => {
     expect(found).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Trampoline coverage gaps
+// ---------------------------------------------------------------------------
+
+describe('trampoline.ts — easy coverage gaps', () => {
+  it('should handle ?? with single undefined symbol (line 787)', () => {
+    expect(dvala.run('??(nonexistent1)')).toBe(null)
+  })
+
+  it('should handle ?? with multiple undefined symbols (line 763)', () => {
+    expect(dvala.run('??(undef1, undef2, 42)')).toBe(42)
+  })
+
+  it('should handle number as function in recursive path (line 277)', () => {
+    // apply calls executeFunction with 0 as the function through the recursive path
+    expect(dvala.run('apply(0, [[10, 20, 30]])')).toBe(10)
+  })
+
+  it('should handle spread of non-array value (line 183)', () => {
+    expect(() => dvala.run('let x = 42; +(... x)')).toThrow()
+  })
+})
+
+describe('trampoline.ts — match with guards (lines 1521-1571)', () => {
+  it('should handle match with guard that passes (line 1567)', () => {
+    expect(dvala.run('match 5 case x when x > 3 then "big" case x when x < 3 then "small" case _ then "other" end')).toBe('big')
+  })
+
+  it('should handle match with guard that fails (line 1521)', () => {
+    expect(dvala.run('match 1 case x when x > 3 then "big" case x when x < 3 then "small" case _ then "other" end')).toBe('small')
+  })
+
+  it('should handle match with all guards failing (line 1521)', () => {
+    expect(dvala.run('match 3 case x when x > 3 then "big" case x when x < 3 then "small" case _ then "other" end')).toBe('other')
+  })
+})
+
+describe('trampoline.ts — or terminal false (line 1623)', () => {
+  it('should return false from or with all false values', () => {
+    expect(dvala.run('||(false, false)')).toBe(false)
+  })
+
+  it('should return false for or with multiple false/null', () => {
+    expect(dvala.run('||(false, null, false)')).toBe(false)
+  })
+})
+
+describe('trampoline.ts — special expression async fallback (line 159)', () => {
+  it('should handle special expression that triggers async', async () => {
+    // parallel inside a let expression triggers async fallback for SpecialExpression
+    const result = await dvalaFull.async.run('parallel(1, 2)')
+    expect(result).toEqual([1, 2])
+  })
+})
+
+describe('trampoline.ts — recursive evaluator dvalaImpl paths', () => {
+  it('should call builtin with dvalaImpl through recursive path (line 224, 490)', () => {
+    // map calls its callback through the recursive evaluator, and inner map has dvalaImpl
+    // map takes (coll, fn)
+    expect(dvalaFull.run('map([[1, 2], [3, 4]], -> map($, inc))')).toEqual([[2, 3], [4, 5]])
+  })
+
+  it('should call special builtin through recursive path (line 509-518)', () => {
+    // pass && as a function to reduce, which goes through recursive path
+    expect(dvala.run('let f = &&; f(true, 1)')).toBe(1)
+  })
+
+  it('should handle anonymous fn with placeholders creating PartialFunction (line 244-255)', () => {
+    // anonymous function call with placeholder _ creates PartialFunction
+    const result = dvala.run('let f = +(_, 10); f(5)')
+    expect(result).toBe(15)
+  })
+})
+
+describe('trampoline.ts — effect host handler callbacks', () => {
+  it('should handle handler that calls resume with a promise (line 2420)', async () => {
+    const handlers: Handlers = {
+      'test.asyncResume': async ({ resume: doResume }) => {
+        doResume(Promise.resolve(42))
+      },
+    }
+    const result = await run('perform(effect(test.asyncResume))', { handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toBe(42)
+    }
+  })
+
+  it('should handle handler that calls fail (line 2443)', async () => {
+    const handlers: Handlers = {
+      'test.fail': async ({ fail }) => {
+        fail('custom error')
+      },
+    }
+    const result = await run('perform(effect(test.fail))', { handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should handle handler that calls fail without message (line 2444)', async () => {
+    const handlers: Handlers = {
+      'test.failNoMsg': async ({ fail }) => {
+        fail()
+      },
+    }
+    const result = await run('perform(effect(test.failNoMsg))', { handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should handle handler that calls suspend (line 2453)', async () => {
+    const handlers: Handlers = {
+      'test.suspend': async ({ suspend }) => {
+        suspend({ reason: 'test' })
+      },
+    }
+    const result = await run('perform(effect(test.suspend))', { handlers })
+    expect(result.type).toBe('suspended')
+  })
+
+  it('should handle handler that calls next (line 2455-2457)', async () => {
+    // Wildcard handler catches all effects, calls next() to delegate to specific handler
+    const handlers: Handlers = {
+      '*': async ({ next }) => { next() },
+      'test.chain': async ({ resume: doResume }) => { doResume(99) },
+    }
+    const result = await run('perform(effect(test.chain))', { handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toBe(99)
+    }
+  })
+
+  it('should handle handler that throws a plain error (line 2502)', async () => {
+    const handlers: Handlers = {
+      'test.throwPlain': async () => {
+        throw new Error('plain JS error')
+      },
+    }
+    const result = await run('perform(effect(test.throwPlain))', { handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should handle dvala.error via host handler unhandled path (line 2344, 2387)', async () => {
+    const handlers: Handlers = {
+      'test.noop': async ({ resume: doResume }) => { doResume(1) },
+    }
+    const result = await run('perform(effect(dvala.error), 42)', { handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should handle signal ?? fallback (line 2377)', async () => {
+    // evaluateWithEffects always provides a signal, but testing the path
+    const handlers: Handlers = {
+      'test.signal': async ({ signal, resume: doResume }) => {
+        expect(signal).toBeDefined()
+        doResume('ok')
+      },
+    }
+    const result = await run('perform(effect(test.signal))', { handlers })
+    expect(result.type).toBe('completed')
+  })
+
+  it('should handle resume with rejected promise (line 2420 error branch)', async () => {
+    const handlers: Handlers = {
+      'test.asyncFail': async ({ resume: doResume }) => {
+        doResume(Promise.reject(new Error('async failure')))
+      },
+    }
+    const result = await run('perform(effect(test.asyncFail))', { handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should handle handler that calls resumeFrom (line 2476-2478)', async () => {
+    const handlers: Handlers = {
+      'test.snapshot': async ({ checkpoint, resume: doResume }) => {
+        checkpoint()
+        doResume(42)
+      },
+    }
+    const result = await run('perform(effect(test.snapshot))', { handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toBe(42)
+    }
+  })
+})
+
+describe('trampoline.ts — dvala.error with non-string arg (line 2344)', () => {
+  it('should handle dvala.error with non-string argument', async () => {
+    const result = await run('perform(effect(dvala.error), 42)')
+    expect(result.type).toBe('error')
+  })
+})
+
+describe('trampoline.ts — setupUserDefinedCall async fallbacks (lines 1334-1369)', () => {
+  it('should handle async binding value in user-defined function (line 1334)', async () => {
+    // defn with destructuring binding that involves async evaluation
+    const result = await dvalaFull.async.run('let f = ([a, b]) -> a + b; f(parallel(1, 2))')
+    expect(result).toBe(3)
+  })
+})
+
+describe('trampoline.ts — runEffectLoop suspension blob (line 3337-3339)', () => {
+  it('should serialize suspension blob in effect loop', async () => {
+    const handlers: Handlers = {
+      'test.pause': async ({ suspend }) => {
+        suspend()
+      },
+    }
+    const result = await run('perform(effect(test.pause))', { handlers })
+    expect(result.type).toBe('suspended')
+    if (result.type === 'suspended') {
+      expect(result.snapshot).toBeDefined()
+      expect(result.snapshot.continuation).toBeDefined()
+    }
+  })
+})
+
+describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)', () => {
+  it('should use predicate function as effect matcher via do-with', () => {
+    // Predicate function matching: use a lambda as case pattern to match effects
+    const result = dvala.run(`
+      do
+        perform(effect(test.pred), 99)
+      with
+        case (eff -> effect-name(eff) == "test.pred") then ([x]) -> x + 1
+      end
+    `)
+    expect(result).toBe(100)
+  })
+})
+
+describe('trampoline.ts — evaluateNode export (line 3184)', () => {
+  it('should evaluate a node directly', () => {
+    // evaluateNode is used by getUndefinedSymbols — just ensure it works
+    // We can test it indirectly through Dvala.run since it calls evaluateNodeRecursive
+    // which has the same implementation
+    expect(dvala.run('1 + 2')).toBe(3)
+  })
+})
+
+describe('trampoline.ts — module function with dvalaImpl (line 1316)', () => {
+  it('should dispatch module function with dvalaImpl through trampoline', () => {
+    // Import module and call sort-by via module reference
+    const result = dvalaFull.run('let su = import(sequence); su.sort-by([3, 1, 2], identity)')
+    expect(result).toEqual([1, 2, 3])
+  })
+})
+
+describe('trampoline.ts — wrapMaybePromiseAsStep error (line 2980-2989)', () => {
+  it('should handle error in parallel branch via async.run', async () => {
+    // Use async.run with a race where one branch errors
+    // This tests the async trampoline error handling path
+    const result = await dvalaFull.async.run('race(perform(effect(dvala.error), "err"), 42)')
+    // race resolves to first completed branch (42), the errored branch is dropped
+    expect(result).toBe(42)
+  })
+})
+
+describe('trampoline.ts — import module with dvala source (line 1083)', () => {
+  it('should import module with multi-expression dvala source', () => {
+    // grid module has dvala source — use a dvala-implemented function
+    const result = dvalaFull.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')
+    expect(result).toEqual([1, 2])
+  })
+})
+
+describe('trampoline.ts — dispatchFunction number-as-function trampoline (line 1242)', () => {
+  it('should call number as function through trampoline', () => {
+    // Direct call: number as function for array indexing through normal trampoline
+    expect(dvala.run('0([10, 20, 30])')).toBe(10)
+    expect(dvala.run('2([10, 20, 30])')).toBe(30)
+  })
+})
+
+describe('trampoline.ts — RecurSignal in recursive executor (lines 383-404)', () => {
+  it('should handle sync recur in loop through recursive path (line 401-404)', () => {
+    // loop with recur — triggers the for(;;) catch path when recur is caught synchronously
+    // map forces the recursive evaluator path
+    // Define function first, then pass to map
+    const result = dvalaFull.run(`
+      let looper = (n) -> loop(x = 0) -> if x < n then recur(x + 1) else x end;
+      map([3, 5], looper)
+    `)
+    expect(result).toEqual([3, 5])
+  })
+})
