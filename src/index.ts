@@ -29,4 +29,8 @@ export type { AutoCompleter } from './AutoCompleter/AutoCompleter'
 
 // Effects — standalone functions and types
 export { run, runSync, resume } from './effects'
-export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, RunSyncOptions, Snapshot, ResumeOptions } from './effects'
+export type { EffectContext, EffectHandler, Handlers, RunResult, RunOptions, RunSyncOptions, SyncEffectContext, SyncEffectHandler, SyncHandlers, Snapshot, ResumeOptions } from './effects'
+
+// Factory API
+export { createDvala } from './createDvala'
+export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
