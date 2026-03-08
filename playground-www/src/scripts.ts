@@ -124,25 +124,37 @@ const expandedApiSections = new Set<string>()
 const chevronRight = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41L13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'
 const chevronDown = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
 
-function expandCollapsible(el: HTMLElement) {
+function expandCollapsible(el: HTMLElement, animate = true) {
+  if (!animate)
+    el.style.transition = 'none'
   el.classList.add('expanded')
   el.style.maxHeight = `${el.scrollHeight}px`
+  if (!animate) {
+    void el.offsetHeight
+    el.style.transition = ''
+  }
 }
 
-function collapseCollapsible(el: HTMLElement) {
+function collapseCollapsible(el: HTMLElement, animate = true) {
+  if (!animate)
+    el.style.transition = 'none'
   // Set max-height to current scrollHeight so the transition starts from actual height
   el.style.maxHeight = `${el.scrollHeight}px`
   // Force reflow, then collapse
   void el.offsetHeight
   el.classList.remove('expanded')
   el.style.maxHeight = '0'
+  if (!animate) {
+    void el.offsetHeight
+    el.style.transition = ''
+  }
 }
 
 export function showTutorialsPage() {
   showPage('tutorials-page', 'smooth')
 }
 
-export function toggleApiSection(sectionId: string) {
+export function toggleApiSection(sectionId: string, animate = true) {
   const chevron = document.getElementById(`api-chevron-${sectionId}`)
   const content = document.getElementById(`api-content-${sectionId}`)
 
@@ -156,7 +168,7 @@ export function toggleApiSection(sectionId: string) {
     const c = document.getElementById(`api-content-${id}`)
     const ch = document.getElementById(`api-chevron-${id}`)
     if (c)
-      collapseCollapsible(c)
+      collapseCollapsible(c, animate)
     if (ch)
       ch.innerHTML = chevronRight
     expandedApiSections.delete(id)
@@ -164,14 +176,14 @@ export function toggleApiSection(sectionId: string) {
 
   if (!isExpanded) {
     expandedApiSections.add(sectionId)
-    expandCollapsible(content)
+    expandCollapsible(content, animate)
     chevron.innerHTML = chevronDown
   }
 }
 
 const expandedModules = new Set<string>()
 
-export function toggleModuleCategory(categoryKey: string) {
+export function toggleModuleCategory(categoryKey: string, animate = true) {
   const sanitizedKey = categoryKey.replace(/\s+/g, '-')
   const chevron = document.getElementById(`ns-chevron-${sanitizedKey}`)
   const content = document.getElementById(`ns-content-${sanitizedKey}`)
@@ -187,7 +199,7 @@ export function toggleModuleCategory(categoryKey: string) {
     const c = document.getElementById(`ns-content-${sk}`)
     const ch = document.getElementById(`ns-chevron-${sk}`)
     if (c)
-      collapseCollapsible(c)
+      collapseCollapsible(c, animate)
     if (ch)
       ch.innerHTML = chevronRight
     expandedModules.delete(key)
@@ -195,7 +207,7 @@ export function toggleModuleCategory(categoryKey: string) {
 
   if (!isExpanded) {
     expandedModules.add(categoryKey)
-    expandCollapsible(content)
+    expandCollapsible(content, animate)
     chevron.innerHTML = chevronDown
   }
 }
@@ -1301,18 +1313,18 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
       const apiContent = link.closest('[id^="api-content-"]')
       if (apiContent && apiContent instanceof HTMLElement && !apiContent.classList.contains('expanded')) {
         const sectionId = apiContent.id.replace('api-content-', '')
-        toggleApiSection(sectionId)
+        toggleApiSection(sectionId, false)
       }
 
       // If the link is inside a collapsed module section, expand it first
       const nsContent = link.closest('[id^="ns-content-"]')
       if (nsContent && nsContent instanceof HTMLElement && !nsContent.classList.contains('expanded')) {
         const categoryKey = nsContent.id.replace('ns-content-', '').replace(/-/g, ' ')
-        toggleModuleCategory(categoryKey)
+        toggleModuleCategory(categoryKey, false)
         // Also expand the parent 'modules' API section if collapsed
         const modulesContent = document.getElementById('api-content-modules')
         if (modulesContent && !modulesContent.classList.contains('expanded')) {
-          toggleApiSection('modules')
+          toggleApiSection('modules', false)
         }
       }
 
