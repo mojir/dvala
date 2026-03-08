@@ -28,7 +28,7 @@ import {
   undoDvalaCode,
   updateState,
 } from './state'
-import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
+import { decodeSnapshot } from './snapshotUtils'
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 
@@ -66,12 +66,11 @@ const elements = {
   dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
   dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
   snapshotModal: document.getElementById('snapshot-modal') as HTMLDivElement,
-  snapshotModalEffectName: document.getElementById('snapshot-modal-effect-name') as HTMLElement,
-  snapshotModalEffectArgs: document.getElementById('snapshot-modal-effect-args') as HTMLDivElement,
-  snapshotModalMeta: document.getElementById('snapshot-modal-meta') as HTMLDivElement,
-  snapshotModalTech: document.getElementById('snapshot-modal-tech') as HTMLDivElement,
-  snapshotModalCheckpoints: document.getElementById('snapshot-modal-checkpoints') as HTMLDivElement,
-  snapshotModalCpCount: document.getElementById('snapshot-modal-cp-count') as HTMLSpanElement,
+  snapshotPanelContainer: document.getElementById('snapshot-panel-container') as HTMLDivElement,
+  snapshotPanelTemplate: document.getElementById('snapshot-panel-template') as HTMLTemplateElement,
+  importSnapshotModal: document.getElementById('import-snapshot-modal') as HTMLDivElement,
+  importSnapshotTextarea: document.getElementById('import-snapshot-textarea') as HTMLTextAreaElement,
+  importSnapshotError: document.getElementById('import-snapshot-error') as HTMLSpanElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
   effectModalNav: document.getElementById('effect-modal-nav') as HTMLDivElement,
   effectModalCounter: document.getElementById('effect-modal-counter') as HTMLSpanElement,
@@ -128,6 +127,7 @@ let currentEffectIndex = 0
 let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 let currentSnapshot: Snapshot | null = null
+const snapshotPanelStack: { panel: HTMLElement, snapshot: Snapshot, label: string }[] = []
 
 function calculateDimensions() {
   return {
@@ -546,15 +546,6 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
-function appendSnapshotLink(snapshot: Snapshot) {
-  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(snapshot)}`
-  const a = document.createElement('a')
-  a.textContent = href
-  a.className = 'share-link'
-  a.href = href
-  addOutputElement(a)
-}
-
 window.onload = function () {
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
@@ -748,8 +739,16 @@ window.onload = function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (currentSnapshot) {
-        closeSnapshotModal()
+      if (elements.importSnapshotModal.style.display !== 'none') {
+        closeImportSnapshotModal()
+      }
+      else if (currentSnapshot) {
+        if (snapshotPanelStack.length > 1) {
+          slideBackSnapshotModal()
+        }
+        else {
+          closeSnapshotModal()
+        }
       }
       else if (pendingEffectAction) {
         cancelEffectAction()
@@ -880,7 +879,6 @@ function getDataFromUrl() {
     if (snapshot) {
       addOutputSeparator()
       appendOutput('Snapshot loaded from link:', 'comment')
-      appendSnapshotLink(snapshot)
       openSnapshotModal(snapshot)
     }
     else {
@@ -995,8 +993,8 @@ export async function run() {
     if (runResult.type === 'error')
       throw runResult.error
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended:', 'comment')
-      appendSnapshotLink(runResult.snapshot)
+      appendOutput('Program suspended', 'comment')
+      openSnapshotModal(runResult.snapshot)
       return
     }
     const content = stringifyValue(runResult.value, false)
@@ -1137,48 +1135,129 @@ export function focusDvalaCode() {
   elements.dvalaTextArea.focus()
 }
 
-function makeArgRow(content: string): HTMLElement {
+function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
   const row = document.createElement('div')
-  row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
+  row.style.cssText = 'display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem; height:1.4rem;'
+  if (index !== undefined) {
+    const num = document.createElement('span')
+    num.textContent = String(index + 1)
+    num.style.cssText = 'font-size:0.65rem; color: rgb(115 115 115); font-family:sans-serif; font-weight:bold; min-width:1rem; flex-shrink:0;'
+    row.appendChild(num)
+  }
   const code = document.createElement('code')
   code.textContent = content
-  code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
-  row.appendChild(code)
+  if (index !== undefined) {
+    code.style.cssText = 'white-space:nowrap; font-size:0.75rem; color: rgb(212 212 212); overflow:hidden; text-overflow:ellipsis; min-width:0; flex: 1 1 0;'
+
+    const textToCopy = copyContent ?? content
+    const copyBtn = document.createElement('span')
+    copyBtn.innerHTML = '&#x2398;'
+    copyBtn.style.cssText = 'font-size:1.6rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:rgb(115 115 115); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void navigator.clipboard.writeText(textToCopy)
+    })
+    copyBtn.addEventListener('mouseenter', () => {
+      copyBtn.style.color = 'rgb(229 229 229)'
+    })
+    copyBtn.addEventListener('mouseleave', () => {
+      copyBtn.style.color = 'rgb(115 115 115)'
+    })
+
+    row.addEventListener('mouseenter', () => {
+      copyBtn.style.opacity = '1'
+    })
+    row.addEventListener('mouseleave', () => {
+      copyBtn.style.opacity = '0'
+    })
+
+    row.appendChild(code)
+    row.appendChild(copyBtn)
+  }
+  else {
+    code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+    row.appendChild(code)
+  }
   return row
 }
 
-export function openSnapshotModal(snapshot: Snapshot) {
-  currentSnapshot = snapshot
+function snapshotLabel(snapshot: Snapshot): string {
+  if (snapshot.meta != null) {
+    return `Checkpoint #${snapshot.index} — ${JSON.stringify(snapshot.meta)}`
+  }
+  return `Checkpoint #${snapshot.index}`
+}
+
+function buildBreadcrumbs(panel: HTMLElement) {
+  const container = panel.querySelector('[data-ref="breadcrumbs"]') as HTMLElement
+  container.innerHTML = ''
+
+  snapshotPanelStack.forEach((entry, i) => {
+    if (i > 0) {
+      const sep = document.createElement('span')
+      sep.textContent = '›'
+      sep.style.cssText = 'color: rgb(115 115 115); margin: 0 0.15rem; font-weight: normal;'
+      container.appendChild(sep)
+    }
+
+    const isLast = i === snapshotPanelStack.length - 1
+    const span = document.createElement('span')
+    span.textContent = entry.label
+    if (isLast) {
+      span.style.cssText = 'color: rgb(229 229 229);'
+    }
+    else {
+      span.style.cssText = 'color: rgb(115 115 115); cursor: pointer; font-weight: normal;'
+      const targetIndex = i
+      span.addEventListener('click', () => popToLevel(targetIndex))
+    }
+    container.appendChild(span)
+  })
+}
+
+function popToLevel(targetIndex: number) {
+  while (snapshotPanelStack.length > targetIndex + 1) {
+    const { panel } = snapshotPanelStack.pop()!
+    panel.remove()
+  }
+  currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
+}
+
+function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
+  const ref = (name: string) => panel.querySelector(`[data-ref="${name}"]`) as HTMLElement
 
   // Effect name
-  elements.snapshotModalEffectName.textContent = snapshot.effectName ?? '(unknown)'
+  ref('effect-name').textContent = snapshot.effectName ?? '(checkpoint — no active effect)'
 
   // Effect args
-  elements.snapshotModalEffectArgs.innerHTML = ''
+  const argsEl = ref('effect-args')
+  argsEl.innerHTML = ''
   if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
     const empty = document.createElement('span')
     empty.textContent = '(no arguments)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    elements.snapshotModalEffectArgs.appendChild(empty)
+    argsEl.appendChild(empty)
   }
   else {
-    snapshot.effectArgs.forEach(arg => elements.snapshotModalEffectArgs.appendChild(makeArgRow(JSON.stringify(arg, null, 2))))
+    snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
   }
 
-  // Meta object (dedicated section)
-  elements.snapshotModalMeta.innerHTML = ''
+  // Meta
+  const metaEl = ref('meta')
+  metaEl.innerHTML = ''
   if (snapshot.meta === undefined) {
     const empty = document.createElement('span')
     empty.textContent = '(no metadata)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    elements.snapshotModalMeta.appendChild(empty)
+    metaEl.appendChild(empty)
   }
   else {
-    elements.snapshotModalMeta.appendChild(makeArgRow(JSON.stringify(snapshot.meta, null, 2)))
+    metaEl.appendChild(makeArgRow(JSON.stringify(snapshot.meta, null, 2)))
   }
 
-  // Technical info (collapsible)
-  elements.snapshotModalTech.innerHTML = ''
+  // Technical info
+  const techEl = ref('tech')
+  techEl.innerHTML = ''
   const techRows: [string, string][] = [
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.runId],
@@ -1194,44 +1273,172 @@ export function openSnapshotModal(snapshot: Snapshot) {
     labelEl.textContent = label
     labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
     row.insertBefore(labelEl, row.firstChild)
-    elements.snapshotModalTech.appendChild(row)
+    techEl.appendChild(row)
   })
 
-  // Checkpoints (from continuation blob)
-  elements.snapshotModalCheckpoints.innerHTML = ''
-  const blobSnapshots = extractCheckpointSnapshots(snapshot.continuation)
-  elements.snapshotModalCpCount.textContent = String(blobSnapshots.length)
-  if (blobSnapshots.length === 0) {
+  // Checkpoints
+  const checkpointsEl = ref('checkpoints')
+  checkpointsEl.innerHTML = ''
+  const cpSnapshots = extractCheckpointSnapshots(snapshot.continuation)
+  ref('cp-count').textContent = String(cpSnapshots.length)
+  if (cpSnapshots.length === 0) {
     const empty = document.createElement('span')
     empty.textContent = '(no checkpoints)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    elements.snapshotModalCheckpoints.appendChild(empty)
+    checkpointsEl.appendChild(empty)
   }
   else {
-    blobSnapshots.forEach((cpSnapshot) => {
-      const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(cpSnapshot)}`
-      const a = document.createElement('a')
-      const label = cpSnapshot.meta != null
-        ? `Checkpoint #${cpSnapshot.index} — ${JSON.stringify(cpSnapshot.meta)}`
-        : `Checkpoint #${cpSnapshot.index}`
-      a.textContent = label
-      a.className = 'share-link'
-      a.href = href
-      a.style.cssText = 'font-size:0.8rem; cursor:pointer;'
-      a.addEventListener('click', (e) => {
-        e.preventDefault()
-        openSnapshotModal(cpSnapshot)
+    cpSnapshots.forEach((cpSnapshot) => {
+      const card = document.createElement('div')
+      card.style.cssText = 'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid rgb(82 82 82); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
+      card.addEventListener('mouseenter', () => {
+        card.style.borderColor = 'rgb(140 140 140)'
+        card.style.background = 'rgba(255,255,255,0.03)'
       })
-      elements.snapshotModalCheckpoints.appendChild(a)
+      card.addEventListener('mouseleave', () => {
+        card.style.borderColor = 'rgb(82 82 82)'
+        card.style.background = 'transparent'
+      })
+      card.addEventListener('click', () => pushCheckpointPanel(cpSnapshot))
+
+      const badge = document.createElement('span')
+      badge.textContent = `#${cpSnapshot.index}`
+      badge.style.cssText = 'font-size:0.7rem; font-weight:bold; font-family:sans-serif; color:rgb(163 163 163); background:rgb(50 50 50); padding:0.1rem 0.35rem; flex-shrink:0;'
+      card.appendChild(badge)
+
+      const info = document.createElement('div')
+      info.style.cssText = 'display:flex; flex-direction:column; gap:1px; overflow:hidden; min-width:0;'
+
+      if (cpSnapshot.meta != null) {
+        const meta = document.createElement('code')
+        meta.textContent = JSON.stringify(cpSnapshot.meta)
+        meta.style.cssText = 'font-size:0.75rem; color:rgb(200 200 200); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+        info.appendChild(meta)
+      }
+
+      const ts = document.createElement('span')
+      const d = new Date(cpSnapshot.timestamp)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      ts.textContent = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      ts.style.cssText = 'font-size:0.65rem; color:rgb(115 115 115); font-family:sans-serif;'
+      info.appendChild(ts)
+
+      card.appendChild(info)
+      checkpointsEl.appendChild(card)
     })
   }
+
+  // Raw JSON
+  const rawJson = JSON.stringify(snapshot, null, 2)
+  ref('raw-json').textContent = rawJson
+  ref('copy-raw-btn').addEventListener('click', () => {
+    void navigator.clipboard.writeText(rawJson)
+  })
+}
+
+function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean): HTMLElement {
+  const clone = elements.snapshotPanelTemplate.content.cloneNode(true) as DocumentFragment
+  const panel = clone.firstElementChild as HTMLElement
+
+  // Show/hide appropriate button
+  if (isRoot) {
+    ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'none'
+  }
+  else {
+    ;(panel.querySelector('[data-ref="close-btn"]') as HTMLElement).style.display = 'none'
+    ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'flex'
+    panel.style.position = 'absolute'
+    panel.style.top = '0'
+    panel.style.left = '0'
+    panel.style.right = '0'
+    panel.style.bottom = '0'
+    panel.style.zIndex = String(snapshotPanelStack.length)
+    panel.style.display = 'none'
+  }
+
+  populateSnapshotPanel(panel, snapshot)
+  return panel
+}
+
+function pushCheckpointPanel(snapshot: Snapshot) {
+  currentSnapshot = snapshot
+  const panel = createSnapshotPanel(snapshot, false)
+  elements.snapshotPanelContainer.appendChild(panel)
+  const label = snapshotLabel(snapshot)
+  snapshotPanelStack.push({ panel, snapshot, label })
+  buildBreadcrumbs(panel)
+
+  panel.style.display = 'flex'
+  panel.animate(
+    [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+    { duration: 250, easing: 'ease', fill: 'forwards' },
+  )
+}
+
+export function openSnapshotModal(snapshot: Snapshot) {
+  currentSnapshot = snapshot
+  elements.snapshotPanelContainer.innerHTML = ''
+  snapshotPanelStack.length = 0
+
+  const panel = createSnapshotPanel(snapshot, true)
+  elements.snapshotPanelContainer.appendChild(panel)
+  snapshotPanelStack.push({ panel, snapshot, label: 'Snapshot' })
+  buildBreadcrumbs(panel)
 
   elements.snapshotModal.style.display = 'flex'
 }
 
+export function slideBackSnapshotModal() {
+  if (snapshotPanelStack.length <= 1)
+    return
+
+  const { panel } = snapshotPanelStack.pop()!
+  panel.animate(
+    [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }],
+    { duration: 250, easing: 'ease' },
+  ).onfinish = () => {
+    panel.remove()
+  }
+
+  currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
+}
+
 export function closeSnapshotModal() {
   elements.snapshotModal.style.display = 'none'
+  elements.snapshotPanelContainer.innerHTML = ''
+  snapshotPanelStack.length = 0
   currentSnapshot = null
+}
+
+export function openImportSnapshotModal() {
+  elements.importSnapshotTextarea.value = ''
+  elements.importSnapshotError.classList.add('hidden')
+  elements.importSnapshotModal.style.display = 'flex'
+  elements.importSnapshotTextarea.focus()
+}
+
+export function closeImportSnapshotModal() {
+  elements.importSnapshotModal.style.display = 'none'
+}
+
+export function importSnapshot() {
+  const text = elements.importSnapshotTextarea.value.trim()
+  if (!text) {
+    elements.importSnapshotError.textContent = 'Please paste a snapshot JSON'
+    elements.importSnapshotError.classList.remove('hidden')
+    return
+  }
+  try {
+    const snapshot = JSON.parse(text) as Snapshot
+    closeImportSnapshotModal()
+    addOutputSeparator()
+    appendOutput('Snapshot imported:', 'comment')
+    openSnapshotModal(snapshot)
+  }
+  catch {
+    elements.importSnapshotError.textContent = 'Invalid JSON'
+    elements.importSnapshotError.classList.remove('hidden')
+  }
 }
 
 export function downloadSnapshot() {
@@ -1270,8 +1477,8 @@ export async function resumeSnapshot() {
     if (runResult.type === 'error')
       throw runResult.error
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended:', 'comment')
-      appendSnapshotLink(runResult.snapshot)
+      appendOutput('Program suspended', 'comment')
+      openSnapshotModal(runResult.snapshot)
       return
     }
     appendOutput(stringifyValue(runResult.value, false), 'result')
@@ -1287,6 +1494,12 @@ export async function resumeSnapshot() {
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>((resolve) => {
+    if (ctx.effectName === 'dvala.checkpoint') {
+      // Don't show checkpoint effects in the modal, as they are implementation details that would just confuse users
+      ctx.next()
+      resolve()
+      return
+    }
     const pending: PendingEffect = { ctx, resolve, handled: false }
     pendingEffects.push(pending)
 
@@ -1379,14 +1592,8 @@ function renderCurrentEffect() {
     elements.effectModalArgs.appendChild(empty)
   }
   else {
-    effect.ctx.args.forEach((arg) => {
-      const row = document.createElement('div')
-      row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
-      const code = document.createElement('code')
-      code.textContent = JSON.stringify(arg, null, 2)
-      code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
-      row.appendChild(code)
-      elements.effectModalArgs.appendChild(row)
+    effect.ctx.args.forEach((arg, i) => {
+      elements.effectModalArgs.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2)))
     })
   }
 

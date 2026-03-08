@@ -124,6 +124,7 @@ export class SyntaxOverlay {
     this.container.appendChild(this.highlight)
     this.container.appendChild(textarea)
 
+    textarea.style.height = ''
     textarea.style.lineHeight = 'normal'
     textarea.style.tabSize = '2'
 
