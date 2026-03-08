@@ -195,7 +195,7 @@ export function getPlayground() {
           <!-- Meta section -->
           <div ${styles('flex', 'flex-col', 'gap-2')}>
             <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Metadata</span>
-            <div data-ref="meta" class="fancy-scroll" ${styles('overflow-y: auto;', 'max-height: 10rem;')}></div>
+            <div data-ref="meta" class="fancy-scroll" ${styles('overflow-y: auto;', 'max-height: 8rem;')}></div>
           </div>
 
           <!-- Suspended effect section (bordered) -->
