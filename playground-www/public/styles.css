@@ -497,7 +497,7 @@ table {
   color: rgb(212 212 212);
   border: 0;
   white-space: pre;
-  overflow: auto;
+  overflow: hidden;
   pointer-events: none;
   box-sizing: border-box;
   line-height: normal;

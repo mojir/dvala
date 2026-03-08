@@ -1,5 +1,6 @@
 import {
   addIcon,
+  copyIcon,
   debugIcon,
   hamburgerIcon,
   labIcon,
@@ -147,6 +148,10 @@ export function getPlayground() {
                       <span ${styles('text-color-Pink', 'items-center', 'flex')}>${linkIcon}</span>
                       <span>Share</span>
                     </a>
+                    <a ${styles('flex', 'gap-2', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.openImportSnapshotModal();">
+                      <span ${styles('text-color-SkyLavender', 'items-center', 'flex')}>${addIcon}</span>
+                      <span>Import Snapshot</span>
+                    </a>
                     <a ${styles('flex', 'gap-2', 'w-full', 'items-center', 'pt-2', 'border-0', 'border-t', 'border-solid', 'border-gray-500')} onclick="Playground.closeMoreMenu(); Playground.resetPlayground();">
                       <span ${styles('text-color-Crimson', 'items-center', 'flex')}>${resetIcon}</span>
                       <span>Reset Playground</span>
@@ -179,39 +184,67 @@ export function getPlayground() {
     </div>
   </div>
 
-  <div id="snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div class="fancy-scroll" ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-4', 'min-width: 36rem;', 'max-width: 64rem;', 'max-height: 85vh;', 'overflow-y: auto;', 'border-width: 1px;')}>
-      <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Snapshot</div>
+  <template id="snapshot-panel-template">
+    <div class="fancy-scroll" ${styles('bg-gray-800', 'p-4', 'flex', 'flex-col', 'gap-4', 'overflow-y: auto;', 'max-height: 85vh;')}>
+      <div data-ref="breadcrumbs" ${styles('text-color-gray-200', 'font-sans', 'flex', 'flex-row', 'items-center', 'gap-1', 'flex-wrap: wrap;')} style="font-size:0.95rem; font-weight:bold;"></div>
 
-      <!-- Effect section -->
-      <div ${styles('flex', 'flex-col', 'gap-2')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Suspended effect</span>
-        <code id="snapshot-modal-effect-name" ${styles('text-color-SkyLavender', 'text-sm')} style="font-size:1rem;"></code>
-        <div id="snapshot-modal-effect-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 12rem;')}></div>
+      <!-- Two-column layout -->
+      <div ${styles('flex', 'flex-row', 'gap-4', 'align-items: stretch;')}>
+        <!-- Left column: Meta, Effect, Technical -->
+        <div ${styles('flex', 'flex-col', 'gap-4', 'flex: 1 1 0;', 'min-width: 0;')}>
+          <!-- Meta section -->
+          <div ${styles('flex', 'flex-col', 'gap-2')}>
+            <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Metadata</span>
+            <div data-ref="meta" class="fancy-scroll" ${styles('overflow-y: auto;', 'max-height: 10rem;')}></div>
+          </div>
+
+          <!-- Suspended effect section (bordered) -->
+          <div ${styles('flex', 'flex-col', 'gap-2')}>
+            <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Suspended effect</span>
+            <div ${styles('flex', 'flex-col', 'gap-2', 'border: 1px solid rgb(82 82 82);', 'padding: 0.75rem;')}>
+              <div ${styles('flex', 'flex-col', 'gap-1', 'margin-bottom: 0.25rem;')}>
+                <span ${styles('text-xs', 'font-sans', 'text-color-gray-400', 'font-weight: bold;')}>Effect name</span>
+                <code data-ref="effect-name" ${styles('text-color-SkyLavender', 'text-sm', 'font-size: 1rem;')}></code>
+              </div>
+              <div ${styles('flex', 'flex-col', 'gap-1')}>
+                <span ${styles('text-xs', 'font-sans', 'text-color-gray-400', 'font-weight: bold;')}>Arguments</span>
+                <div data-ref="effect-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-0.5', 'overflow-y: auto;', 'max-height: 12rem;')}></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technical info (collapsible) -->
+          <details>
+            <summary ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'cursor: pointer;', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Technical Info</summary>
+            <div data-ref="tech" ${styles('flex', 'flex-col', 'gap-2', 'margin-top: 0.5rem;')}></div>
+          </details>
+        </div>
+
+        <!-- Right column: Checkpoints -->
+        <div ${styles('flex', 'flex-col', 'gap-2', 'flex: 1 1 0;', 'min-width: 0;')}>
+          <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Checkpoints (<span data-ref="cp-count">0</span>)</span>
+          <div data-ref="checkpoints" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;')}></div>
+        </div>
       </div>
 
-      <!-- Meta section -->
+      <!-- Raw snapshot JSON -->
       <div ${styles('flex', 'flex-col', 'gap-2')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Metadata</span>
-        <div id="snapshot-modal-meta" class="fancy-scroll" ${styles('overflow-y: auto;', 'max-height: 10rem;')}></div>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Raw Snapshot</span>
+        <div class="example-code" ${styles('position: relative;')}>
+          <pre data-ref="raw-json" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'p-2', 'text-sm', 'font-mono', 'overflow: auto;', 'max-height: 16rem;', 'white-space: pre;', 'border: none;', 'margin: 0;')}></pre>
+          <div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>
+            <div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} data-ref="copy-raw-btn">${copyIcon}</div>
+          </div>
+        </div>
       </div>
-
-      <!-- Technical info (collapsible) -->
-      <details>
-        <summary ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="cursor:pointer; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Technical Info</summary>
-        <div id="snapshot-modal-tech" ${styles('flex', 'flex-col', 'gap-2', 'margin-top: 0.5rem;')}></div>
-      </details>
-
-      <!-- Checkpoints (collapsible) -->
-      <details>
-        <summary ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="cursor:pointer; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Checkpoints (<span id="snapshot-modal-cp-count">0</span>)</summary>
-        <div id="snapshot-modal-checkpoints" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 12rem;', 'margin-top: 0.5rem;')}></div>
-      </details>
 
       <!-- Buttons -->
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
-        <button class="button" onclick="Playground.closeSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+        <button data-ref="close-btn" class="button" onclick="Playground.closeSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
           <span>Close</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+        </button>
+        <button data-ref="back-btn" class="button" onclick="Playground.slideBackSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'gap-2', 'items-center', 'display: none;')}>
+          <span>&#8592; Back</span>
         </button>
         <div ${styles('flex', 'flex-row', 'gap-2')}>
           <button class="button" onclick="Playground.downloadSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Download</button>
@@ -220,6 +253,11 @@ export function getPlayground() {
           </button>
         </div>
       </div>
+    </div>
+  </template>
+
+  <div id="snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div id="snapshot-panel-container" ${styles('bg-gray-800', 'border-0', 'border-solid', 'border-gray-600', 'min-width: 36rem;', 'max-width: 64rem;', 'max-height: 85vh;', 'border-width: 1px;', 'position: relative;', 'clip-path: inset(0);')}>
     </div>
   </div>
 
@@ -234,13 +272,15 @@ export function getPlayground() {
         </div>
       </div>
       <div id="effect-modal-handled-badge" ${styles('text-xs', 'font-sans', 'display: none;')} style="font-weight:bold; align-items:baseline; flex-wrap:wrap; gap:0.2rem;"></div>
-      <div ${styles('flex', 'flex-col', 'gap-1')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Effect</span>
-        <code id="effect-modal-name" ${styles('text-color-SkyLavender', 'text-sm')}></code>
-      </div>
-      <div ${styles('flex', 'flex-col', 'gap-1')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Arguments</span>
-        <div id="effect-modal-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 10rem;')}></div>
+      <div ${styles('flex', 'flex-col', 'gap-2', 'border: 1px solid rgb(82 82 82);', 'padding: 0.75rem;')}>
+        <div ${styles('flex', 'flex-col', 'gap-1', 'margin-bottom: 0.25rem;')}>
+          <span ${styles('text-xs', 'font-sans', 'text-color-gray-400', 'font-weight: bold;')}>Effect name</span>
+          <code id="effect-modal-name" ${styles('text-color-SkyLavender', 'text-sm', 'font-size: 1rem;')}></code>
+        </div>
+        <div ${styles('flex', 'flex-col', 'gap-1')}>
+          <span ${styles('text-xs', 'font-sans', 'text-color-gray-400', 'font-weight: bold;')}>Arguments</span>
+          <div id="effect-modal-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-0.5', 'overflow-y: auto;', 'max-height: 12rem;')}></div>
+        </div>
       </div>
       <div id="effect-modal-main-buttons" ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 1rem;')}>
         <button id="effect-modal-btn-ignore" class="button" onclick="Playground.selectEffectAction('ignore')" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
@@ -264,6 +304,23 @@ export function getPlayground() {
           <button class="button" onclick="Playground.cancelEffectAction()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Cancel</button>
           <button class="button" onclick="Playground.confirmEffectAction()" ${styles('bg-gray-700', 'text-color-gray-200', 'font-sans')}>OK</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="import-snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 36rem;', 'max-width: 64rem;', 'border-width: 1px;')}>
+      <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Import Snapshot</div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Paste snapshot JSON</span>
+        <textarea id="import-snapshot-textarea" rows="12" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono')} spellcheck="false" placeholder='{"effectName": "...", ...}'></textarea>
+        <span id="import-snapshot-error" ${styles('text-color-Rose', 'text-xs', 'hidden')}></span>
+      </div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeImportSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Close</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+        </button>
+        <button class="button" onclick="Playground.importSnapshot()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans')}>Import</button>
       </div>
     </div>
   </div>
