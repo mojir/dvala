@@ -1137,7 +1137,7 @@ export function focusDvalaCode() {
 
 function makeArgRow(content: string, index?: number, copyContent?: string): HTMLElement {
   const row = document.createElement('div')
-  row.style.cssText = 'display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem; height:1.4rem;'
+  row.style.cssText = `display:flex; flex-direction:row; gap:3px; align-items:center; min-width:0; padding-right:0.5rem;${index !== undefined ? ' height:1.4rem;' : ''}`
   if (index !== undefined) {
     const num = document.createElement('span')
     num.textContent = String(index + 1)
