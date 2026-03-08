@@ -117,7 +117,7 @@ race(
 
 ## Requirements
 
-* `parallel` and `race` require **async mode** (`dvala.async.run()`)
+* `parallel` and `race` require **async mode** (`dvala.runAsync()`)
 * Both require at least one branch expression
 * Both are **special expressions** — branches are not evaluated upfront but launched concurrently
 

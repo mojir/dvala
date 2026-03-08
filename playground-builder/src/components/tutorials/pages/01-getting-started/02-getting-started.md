@@ -14,12 +14,12 @@ There are two main entry points: **minimal** and **full**.
 
 ### Minimal Bundle
 
-The minimal bundle gives you the core `Dvala` class, types, and type guards. No modules or reference data are included — this keeps your bundle size small.
+The minimal bundle gives you the `createDvala` factory, types, and type guards. No modules or reference data are included — this keeps your bundle size small.
 
 ```javascript
-import { Dvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala'
 
-const dvala = new Dvala()
+const dvala = createDvala()
 dvala.run('10 + 20') // => 30
 ```
 
@@ -30,9 +30,9 @@ This is the right choice when you want the core language and don't need optional
 The full bundle includes everything from the minimal bundle plus all built-in modules, reference data, and API helpers.
 
 ```javascript
-import { Dvala, allBuiltinModules } from '@mojir/dvala/full'
+import { createDvala, allBuiltinModules } from '@mojir/dvala/full'
 
-const dvala = new Dvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules })
 dvala.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])') // => 32
 ```
 
@@ -41,11 +41,11 @@ dvala.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])') // => 32
 You can also import only the modules you need and pass them to the `Dvala` constructor. This gives you fine-grained control over bundle size:
 
 ```javascript
-import { Dvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala'
 import { vectorModule } from '@mojir/dvala/modules/vector'
 import { matrixModule } from '@mojir/dvala/modules/matrix'
 
-const dvala = new Dvala({ modules: [vectorModule, matrixModule] })
+const dvala = createDvala({ modules: [vectorModule, matrixModule] })
 ```
 
 Available modules: `assertion`, `grid`, `random`, `vector`, `linear-algebra`, `matrix`, `number-theory`, `math`, `functional`, `string`, `collection`, `sequence`, and `bitwise`.
@@ -55,9 +55,9 @@ Available modules: `assertion`, `grid`, `random`, `vector`, `linear-algebra`, `m
 You can expose JavaScript values to Dvala code via `bindings`. Bindings must be serializable — plain objects, arrays, strings, numbers, booleans, or `null`. JavaScript functions are not allowed; use the [effects system](tutorial-effects) to call host-side logic from Dvala.
 
 ```javascript
-import { Dvala } from '@mojir/dvala'
+import { createDvala } from '@mojir/dvala'
 
-const dvala = new Dvala()
+const dvala = createDvala()
 
 // Expose JavaScript values
 dvala.run('name ++ " is " ++ str(age)', {

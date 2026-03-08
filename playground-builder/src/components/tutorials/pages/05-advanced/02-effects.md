@@ -153,17 +153,18 @@ end
 
 ## Host Handlers (JavaScript)
 
-When running Dvala from JavaScript/TypeScript, you register **host handlers** via the `run()` function. Host handlers are async functions that receive a context object with four actions: `resume`, `fail`, `suspend`, and `next`.
+When running Dvala from JavaScript/TypeScript, you register **host handlers** via `runAsync()`. Host handlers are async functions that receive a context object with four actions: `resume`, `fail`, `suspend`, and `next`.
 
 ### Resume
 
 The most common pattern — handle the effect and resume the program with a value:
 
 ```typescript
-import { run } from '@mojir/dvala/full'
+import { createDvala } from '@mojir/dvala/full'
 
-const result = await run('perform(effect(my.greet), "World")', {
-  handlers: {
+const dvala = createDvala()
+const result = await dvala.runAsync('perform(effect(my.greet), "World")', {
+  effectHandlers: {
     'my.greet': async ({ args, resume }) => {
       resume(`Hello, ${args[0]}!`)
     },
@@ -177,14 +178,14 @@ const result = await run('perform(effect(my.greet), "World")', {
 Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error flows through `dvala.error` handlers:
 
 ```typescript
-const result = await run(`
+const result = await dvala.runAsync(`
   do
     perform(effect(my.risky))
   with
     case effect(dvala.error) then ([msg]) -> "recovered: " ++ msg
   end
 `, {
-  handlers: {
+  effectHandlers: {
     'my.risky': async ({ fail }) => {
       fail('something went wrong')
     },
@@ -198,21 +199,21 @@ const result = await run(`
 Call `suspend(meta?)` to pause the entire program. The execution state is captured as a serializable JSON blob that can be stored and resumed later — across processes, machines, or time:
 
 ```typescript
-const result = await run(`
+const result = await dvala.runAsync(`
   let answer = perform(effect(human.approve), "Draft report");
   "Approved: " ++ answer
 `, {
-  handlers: {
+  effectHandlers: {
     'human.approve': async ({ args, suspend }) => {
       suspend({ question: args[0] })
     },
   },
 })
-// result = { type: 'suspended', continuation: '...', meta: { question: 'Draft report' } }
+// result = { type: 'suspended', snapshot: { continuation: ..., meta: { question: 'Draft report' }, ... } }
 
 // Later, resume with the human's response:
 import { resume } from '@mojir/dvala/full'
-const final = await resume(result.continuation, 'Yes')
+const final = await resume(result.snapshot, 'Yes')
 // final = { type: 'completed', value: 'Approved: Yes' }
 ```
 
@@ -222,8 +223,8 @@ Call `next()` to pass the effect to the next matching handler. Combined with wil
 
 ```typescript
 const log: string[] = []
-const result = await run('perform(effect(app.save), "data")', {
-  handlers: {
+const result = await dvala.runAsync('perform(effect(app.save), "data")', {
+  effectHandlers: {
     '*': async ({ effectName, next }) => {
       log.push(`[audit] ${effectName}`)
       next()
@@ -250,8 +251,8 @@ Host handler keys support three matching modes:
 * **Catch-all**: `'*'` — matches everything
 
 ```typescript
-const result = await run('perform(effect(my.sub.action), "go")', {
-  handlers: {
+const result = await dvala.runAsync('perform(effect(my.sub.action), "go")', {
+  effectHandlers: {
     'my.*': async ({ args, resume }) => {
       resume(`handled: ${args[0]}`)
     },
