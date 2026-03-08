@@ -311,7 +311,7 @@ describe('built-in examples', () => {
   }
   const runnableExamples = examples.filter(
     e => !skipIds.has(e.id)
-      && (!e.context?.handlers || Object.keys(e.context.handlers).length === 0),
+      && (!e.context?.effectHandlers || Object.keys(e.context.effectHandlers).length === 0),
   )
 
   for (const example of runnableExamples) {

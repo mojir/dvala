@@ -282,6 +282,22 @@ button:focus {
   color: rgb(245 245 245);
 }
 
+#sidebar .sidebar-collapsible-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-left: 0.75rem;
+  margin-top: 0;
+  transition: max-height 0.25s ease-in-out, opacity 0.2s ease-in-out, margin-top 0.2s ease-in-out;
+}
+
+#sidebar .sidebar-collapsible-content.expanded {
+  opacity: 1;
+  margin-top: 0.5rem;
+}
+
 #sidebar .active-sidebar-entry {
   background-color: rgb(82 82 82);
   color: white;
@@ -297,7 +313,7 @@ div {
 .content {
   display: none;
   padding: 0 0.75rem;
-  max-width: 48rem;
+  max-width: 60rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -431,6 +447,11 @@ table {
   to {
     opacity: 1;
   }
+}
+
+#add-context-menu,
+#more-menu {
+  z-index: 10;
 }
 
 /* Syntax overlay for dvala textarea */
