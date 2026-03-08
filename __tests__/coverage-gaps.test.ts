@@ -1348,6 +1348,21 @@ describe('runEffectLoop — non-DvalaError wrapping', () => {
       expect(result.error.message).toContain('plain JS error')
     }
   })
+
+  it('should wrap a synchronous non-DvalaError thrown by a host handler (lines 3391-3392)', async () => {
+    // A synchronous handler that throws a raw Error (not DvalaError) propagates
+    // through tick() and gets caught in runEffectLoop's outer catch block.
+    const handlers: Handlers = {
+      'test.syncRawError': (_ctx) => {
+        throw new TypeError('sync raw error from handler')
+      },
+    }
+    const result = await dvala.runAsync('perform(effect(test.syncRawError))', { effectHandlers: handlers })
+    expect(result.type).toBe('error')
+    if (result.type === 'error') {
+      expect(result.error.message).toContain('sync raw error from handler')
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
