@@ -6,7 +6,7 @@ import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, Snapshot } from '../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
-import { resume } from '../../src/resume'
+import { retrigger } from '../../src/retrigger'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
@@ -64,6 +64,8 @@ const elements = {
   dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
   dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
   snapshotModal: document.getElementById('snapshot-modal') as HTMLDivElement,
+  snapshotModalEffectName: document.getElementById('snapshot-modal-effect-name') as HTMLElement,
+  snapshotModalEffectArgs: document.getElementById('snapshot-modal-effect-args') as HTMLDivElement,
   snapshotModalMeta: document.getElementById('snapshot-modal-meta') as HTMLDivElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
   effectModalName: document.getElementById('effect-modal-name') as HTMLElement,
@@ -1108,32 +1110,52 @@ export function focusDvalaCode() {
   elements.dvalaTextArea.focus()
 }
 
+function makeArgRow(content: string): HTMLElement {
+  const row = document.createElement('div')
+  row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
+  const code = document.createElement('code')
+  code.textContent = content
+  code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+  row.appendChild(code)
+  return row
+}
+
 export function openSnapshotModal(snapshot: Snapshot) {
   currentSnapshot = snapshot
-  elements.snapshotModalMeta.innerHTML = ''
 
-  const rows: [string, string][] = [
+  // Effect name
+  elements.snapshotModalEffectName.textContent = snapshot.effectName ?? '(unknown)'
+
+  // Effect args
+  elements.snapshotModalEffectArgs.innerHTML = ''
+  if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
+    const empty = document.createElement('span')
+    empty.textContent = '(no arguments)'
+    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    elements.snapshotModalEffectArgs.appendChild(empty)
+  }
+  else {
+    snapshot.effectArgs.forEach(arg => elements.snapshotModalEffectArgs.appendChild(makeArgRow(JSON.stringify(arg, null, 2))))
+  }
+
+  // Metadata
+  elements.snapshotModalMeta.innerHTML = ''
+  const metaRows: [string, string][] = [
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.runId],
     ['Timestamp', new Date(snapshot.timestamp).toLocaleString()],
   ]
   if (snapshot.meta !== undefined) {
-    rows.push(['Meta', JSON.stringify(snapshot.meta, null, 2)])
+    metaRows.push(['Meta', JSON.stringify(snapshot.meta, null, 2)])
   }
-
-  for (const [label, value] of rows) {
-    const row = document.createElement('div')
-    row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
+  metaRows.forEach(([label, value]) => {
+    const row = makeArgRow(value)
     const labelEl = document.createElement('span')
     labelEl.textContent = label
     labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
-    const valueEl = document.createElement('code')
-    valueEl.textContent = value
-    valueEl.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
-    row.appendChild(labelEl)
-    row.appendChild(valueEl)
+    row.insertBefore(labelEl, row.firstChild)
     elements.snapshotModalMeta.appendChild(row)
-  }
+  })
 
   elements.snapshotModal.style.display = 'flex'
 }
@@ -1165,7 +1187,7 @@ export async function resumeSnapshot() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const runResult = await resume(snapshot, null, {
+    const runResult = await retrigger(snapshot, {
       handlers: dvalaParams.effectHandlers,
       bindings: dvalaParams.bindings as Record<string, Any>,
       modules: allBuiltinModules,

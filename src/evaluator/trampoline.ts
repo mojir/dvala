@@ -2448,6 +2448,8 @@ function dispatchHostHandler(
             snapshotState ? snapshotState.snapshots : [],
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
             meta,
+            effectName,
+            argsArray,
           ),
         }
       },
@@ -3302,6 +3304,43 @@ export async function resumeWithEffects(
 }
 
 /**
+ * Re-trigger the effect from a suspended snapshot.
+ *
+ * Deserializes the continuation from `snapshot` and re-dispatches the
+ * original effect (captured in `snapshot.effectName` / `snapshot.effectArgs`)
+ * to the registered host handlers. The handler then calls `resume(value)`,
+ * `fail()`, or `suspend()` as normal.
+ *
+ * Throws if the snapshot has no captured effect (e.g. suspended from a
+ * parallel/race branch rather than an effect handler).
+ */
+export async function retriggerWithEffects(
+  k: ContinuationStack,
+  effectName: string,
+  effectArgs: Any[],
+  handlers?: Handlers,
+  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
+  deserializeOptions?: DeserializeOptions,
+): Promise<RunResult> {
+  const abortController = new AbortController()
+  const signal = abortController.signal
+
+  const snapshotState: SnapshotState = {
+    snapshots: initialSnapshotState?.snapshots ?? [],
+    nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
+    runId: generateRunId(),
+    maxSnapshots: initialSnapshotState?.maxSnapshots,
+  }
+
+  const matchingHandlers = findMatchingHandlers(effectName, handlers)
+  const firstStep = await Promise.resolve(
+    dispatchHostHandler(effectName, matchingHandlers, effectArgs as Arr, k, signal, undefined, snapshotState),
+  )
+
+  return runEffectLoop(firstStep, handlers, signal, snapshotState, snapshotState.maxSnapshots, deserializeOptions)
+}
+
+/**
  * Shared effect trampoline loop used by both `evaluateWithEffects` and
  * `resumeWithEffects`. Runs the trampoline to completion, suspension, or error.
  *
@@ -3382,6 +3421,8 @@ async function runEffectLoop(
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
           meta: error.meta,
+          effectName: error.effectName,
+          effectArgs: error.effectArgs,
         }
         return { type: 'suspended', snapshot }
       }
