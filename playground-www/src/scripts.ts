@@ -84,7 +84,17 @@ const elements = {
   effectModalInputLabel: document.getElementById('effect-modal-input-label') as HTMLSpanElement,
   effectModalValue: document.getElementById('effect-modal-value') as HTMLTextAreaElement,
   effectModalError: document.getElementById('effect-modal-error') as HTMLSpanElement,
+  readlineModal: document.getElementById('readline-modal') as HTMLDivElement,
+  readlinePrompt: document.getElementById('readline-prompt') as HTMLDivElement,
+  readlineInput: document.getElementById('readline-input') as HTMLTextAreaElement,
+  printlnModal: document.getElementById('println-modal') as HTMLDivElement,
+  printlnContent: document.getElementById('println-content') as HTMLPreElement,
+  copyPrintlnBtn: document.getElementById('copy-println-btn') as HTMLDivElement,
 }
+
+elements.copyPrintlnBtn.addEventListener('click', () => {
+  void navigator.clipboard.writeText(elements.printlnContent.textContent ?? '')
+})
 
 type MoveParams = {
   id: 'playground'
@@ -126,6 +136,8 @@ let pendingEffects: PendingEffect[] = []
 let currentEffectIndex = 0
 let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
+let pendingReadline: { resolve: (value: string | null) => void } | null = null
+let pendingPrintln: { resolve: () => void } | null = null
 let currentSnapshot: Snapshot | null = null
 const snapshotPanelStack: { panel: HTMLElement, snapshot: Snapshot, label: string }[] = []
 
@@ -739,7 +751,13 @@ window.onload = function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (elements.importSnapshotModal.style.display !== 'none') {
+      if (elements.readlineModal.style.display !== 'none') {
+        cancelReadline()
+      }
+      else if (elements.printlnModal.style.display !== 'none') {
+        dismissPrintln()
+      }
+      else if (elements.importSnapshotModal.style.display !== 'none') {
         closeImportSnapshotModal()
       }
       else if (currentSnapshot) {
@@ -757,6 +775,10 @@ window.onload = function () {
         selectEffectAction('ignore')
       }
       evt.preventDefault()
+    }
+    if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
+      evt.preventDefault()
+      dismissPrintln()
     }
     if (evt.key === 'Enter' && currentSnapshot) {
       evt.preventDefault()
@@ -1711,6 +1733,85 @@ export function confirmEffectAction() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// dvala.io.read-line handler — shows a simple input modal
+// ---------------------------------------------------------------------------
+
+function readlineHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+    elements.readlinePrompt.textContent = prompt
+    elements.readlinePrompt.style.display = prompt ? 'block' : 'none'
+    elements.readlineInput.value = ''
+    elements.readlineModal.style.display = 'flex'
+    elements.readlineInput.focus()
+    pendingReadline = {
+      resolve: (value: string | null) => {
+        ctx.resume(value)
+        resolve()
+      },
+    }
+  })
+}
+
+export function submitReadline() {
+  if (!pendingReadline)
+    return
+  const value = elements.readlineInput.value
+  elements.readlineModal.style.display = 'none'
+  pendingReadline.resolve(value)
+  pendingReadline = null
+  focusDvalaCode()
+}
+
+export function cancelReadline() {
+  if (!pendingReadline)
+    return
+  elements.readlineModal.style.display = 'none'
+  pendingReadline.resolve(null)
+  pendingReadline = null
+  focusDvalaCode()
+}
+
+// ---------------------------------------------------------------------------
+// dvala.io.println handler — shows output in a modal
+// ---------------------------------------------------------------------------
+
+function printlnHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const value = ctx.args[0]
+    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+    elements.printlnContent.textContent = text
+    elements.printlnModal.style.display = 'flex'
+    pendingPrintln = {
+      resolve: () => {
+        ctx.resume(value as Any)
+        resolve()
+      },
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// dvala.io.print handler — logs to output panel (no modal)
+// ---------------------------------------------------------------------------
+
+async function printHandler(ctx: EffectContext): Promise<void> {
+  const value = ctx.args[0]
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  appendOutput(text, 'output')
+  ctx.resume(value as Any)
+}
+
+export function dismissPrintln() {
+  if (!pendingPrintln)
+    return
+  elements.printlnModal.style.display = 'none'
+  pendingPrintln.resolve()
+  pendingPrintln = null
+  focusDvalaCode()
+}
+
 function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effectHandlers: Record<string, EffectHandler> } {
   const contextString = getState('context')
   try {
@@ -1739,6 +1840,12 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effec
       return acc
     }, {})
 
+    if (!effectHandlers['dvala.io.read-line'])
+      effectHandlers['dvala.io.read-line'] = readlineHandler
+    if (!effectHandlers['dvala.io.println'])
+      effectHandlers['dvala.io.println'] = printlnHandler
+    if (!effectHandlers['dvala.io.print'])
+      effectHandlers['dvala.io.print'] = printHandler
     if (!effectHandlers['*'])
       effectHandlers['*'] = defaultEffectHandler
 
