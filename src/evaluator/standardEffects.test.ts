@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { getStandardEffectHandler, standardEffectNames } from './standardEffects'
 import type { ContinuationStack } from './frames'
 
@@ -112,6 +113,22 @@ describe('standardEffects', () => {
         spy.mockRestore()
       }
     })
+
+    it('should use console.log in non-Node environments', () => {
+      const handler = getStandardEffectHandler('dvala.io.print')!
+      const originalWrite = process.stdout.write.bind(process.stdout)
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      Object.defineProperty(process.stdout, 'write', { value: undefined, configurable: true, writable: true })
+      try {
+        const result = handler(['hello'], emptyK)
+        expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
+        expect(consoleSpy).toHaveBeenCalledWith('hello')
+      }
+      finally {
+        Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   describe('dvala.io.println handler', () => {
@@ -172,6 +189,40 @@ describe('standardEffects', () => {
         spy.mockRestore()
       }
     })
+
+    it('should use globalThis.alert in non-Node browser environments', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const originalWrite = process.stdout.write.bind(process.stdout)
+      const alertSpy = vi.fn()
+      Object.defineProperty(process.stdout, 'write', { value: undefined, configurable: true, writable: true })
+      Object.defineProperty(globalThis, 'alert', { value: alertSpy, configurable: true, writable: true })
+      try {
+        const result = handler(['hello'], emptyK)
+        expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
+        expect(alertSpy).toHaveBeenCalledWith('hello')
+      }
+      finally {
+        Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
+        Object.defineProperty(globalThis, 'alert', { value: undefined, configurable: true, writable: true })
+      }
+    })
+
+    it('should use console.log in non-Node environments without alert', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const originalWrite = process.stdout.write.bind(process.stdout)
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      Object.defineProperty(process.stdout, 'write', { value: undefined, configurable: true, writable: true })
+      Object.defineProperty(globalThis, 'alert', { value: undefined, configurable: true, writable: true })
+      try {
+        const result = handler(['hello'], emptyK)
+        expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
+        expect(consoleSpy).toHaveBeenCalledWith('hello')
+      }
+      finally {
+        Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   describe('dvala.io.error handler', () => {
@@ -203,6 +254,23 @@ describe('standardEffects', () => {
       }
       finally {
         spy.mockRestore()
+      }
+    })
+
+    it('should use console.error in non-Node environments', () => {
+      const handler = getStandardEffectHandler('dvala.io.error')!
+      const originalWrite = process.stdout.write.bind(process.stdout)
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      // Make isNode() return false by removing process.stdout.write
+      Object.defineProperty(process.stdout, 'write', { value: undefined, configurable: true, writable: true })
+      try {
+        const result = handler(['browser-error'], emptyK)
+        expect(result).toEqual({ type: 'Value', value: 'browser-error', k: emptyK })
+        expect(consoleSpy).toHaveBeenCalledWith('browser-error')
+      }
+      finally {
+        Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
+        consoleSpy.mockRestore()
       }
     })
   })
@@ -314,6 +382,17 @@ describe('standardEffects', () => {
         stdinSpy.mockRestore()
       }
     })
+
+    it('should throw when stdin is not available', () => {
+      const handler = getStandardEffectHandler('dvala.io.read-stdin')!
+      const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(null as unknown as typeof process.stdin)
+      try {
+        expect(() => handler([], emptyK)).toThrow('not supported in this environment')
+      }
+      finally {
+        stdinSpy.mockRestore()
+      }
+    })
   })
 
   // ── Random effects ───────────────────────────────────────────────────────
@@ -362,6 +441,16 @@ describe('standardEffects', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
       expect(() => handler([1.5, 10], emptyK)).toThrow('must be an integer')
       expect(() => handler([0, 10.5], emptyK)).toThrow('must be an integer')
+    })
+
+    it('should include type name when min is not a number', () => {
+      const handler = getStandardEffectHandler('dvala.random.int')!
+      expect(() => handler(['foo', 10], emptyK)).toThrow('got string')
+    })
+
+    it('should include type name when max is not a number', () => {
+      const handler = getStandardEffectHandler('dvala.random.int')!
+      expect(() => handler([0, 'bar'], emptyK)).toThrow('got string')
     })
   })
 
@@ -465,6 +554,102 @@ describe('standardEffects', () => {
     it('should throw on non-number argument', () => {
       const handler = getStandardEffectHandler('dvala.sleep')!
       expect(() => handler(['fast'], emptyK)).toThrow('non-negative number')
+    })
+  })
+
+  // ── formatForOutput special-type branches ────────────────────────────────
+
+  describe('formatForOutput special type branches', () => {
+    it('should format a builtin DvalaFunction', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      const builtinFn = { [FUNCTION_SYMBOL]: true, functionType: 'Builtin', normalBuiltinSymbolType: 42 }
+      try {
+        void handler([builtinFn], emptyK)
+        expect(spy).toHaveBeenCalledWith('<builtin function 42>\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should format a native JS RegExp', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      try {
+        void handler([/abc/g], emptyK)
+        expect(spy).toHaveBeenCalledWith('/abc/g\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+  })
+
+  // ── replaceSpecialValues branches (triggered via print on arrays/objects) ──
+
+  describe('formatForOutput / replaceSpecialValues special value branches', () => {
+    it('should format Infinity inside an array as ∞', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      try {
+        void handler([[Number.POSITIVE_INFINITY]], emptyK)
+        expect(spy).toHaveBeenCalledWith('[\n  "∞"\n]\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should format -Infinity inside an array as -∞', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      try {
+        void handler([[Number.NEGATIVE_INFINITY]], emptyK)
+        expect(spy).toHaveBeenCalledWith('[\n  "-∞"\n]\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should format a DvalaFunction inside an array', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      const fn = { [FUNCTION_SYMBOL]: true, functionType: 'UserDefined', n: 'myFn' }
+      try {
+        void handler([[fn]], emptyK)
+        expect(spy).toHaveBeenCalledWith('[\n  "<function myFn>"\n]\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should format an EffectRef inside an array', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      const effectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.print' }
+      try {
+        void handler([[effectRef]], emptyK)
+        expect(spy).toHaveBeenCalledWith('[\n  "<effect dvala.io.print>"\n]\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('should format a RegularExpression inside an array', () => {
+      const handler = getStandardEffectHandler('dvala.io.println')!
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+      const re = { [REGEXP_SYMBOL]: true, s: 'abc', f: 'g' }
+      try {
+        void handler([[re]], emptyK)
+        expect(spy).toHaveBeenCalledWith('[\n  "/abc/g"\n]\n')
+      }
+      finally {
+        spy.mockRestore()
+      }
     })
   })
 })
