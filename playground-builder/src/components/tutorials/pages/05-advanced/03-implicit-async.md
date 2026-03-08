@@ -31,8 +31,8 @@ This is related to [Moggi](https://en.wikipedia.org/wiki/Eugenio_Moggi)'s [monad
 // Synchronous — dvala.run() returns a value directly
 const result = dvala.run('1 + 2')
 
-// Asynchronous — dvala.async.run() returns a Promise
-const result = await dvala.async.run('fetchData()')
+// Asynchronous — dvala.runAsync() returns a Promise
+const result = await dvala.runAsync('fetchData()')
 ```
 
 The Dvala code inside (`1 + 2` or `fetchData()`) is written the same way. The choice between sync and async is made by the **host**, not by the program.

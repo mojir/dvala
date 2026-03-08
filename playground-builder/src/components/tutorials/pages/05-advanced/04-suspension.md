@@ -46,13 +46,14 @@ if decision then "Approved" else "Rejected" end
 The host (JavaScript/TypeScript) registers a handler that calls `suspend()` instead of `resume()`:
 
 ```typescript
-import { run } from '@mojir/dvala/full'
+import { createDvala } from '@mojir/dvala/full'
 
-const result = await run(`
+const dvala = createDvala()
+const result = await dvala.runAsync(`
   let decision = perform(effect(human.approve), "Q4 Report");
   if decision then "Approved" else "Rejected" end
 `, {
-  handlers: {
+  effectHandlers: {
     'human.approve': async ({ args, suspend }) => {
       // Store metadata for the external system
       suspend({ document: args[0], assignee: 'finance-team' })
@@ -102,21 +103,21 @@ The program continues from exactly where it left off. The value passed to `resum
 A program can suspend multiple times. Each resume may hit another `perform` that suspends again:
 
 ```typescript
-const handlers = {
+const effectHandlers = {
   'human.step': async ({ args, suspend }) => {
     suspend({ step: args[0] })
   },
 }
 
-const r1 = await run(`
+const r1 = await dvala.runAsync(`
   let a = perform(effect(human.step), "Step 1: Enter amount");
   let b = perform(effect(human.step), "Step 2: Confirm");
   if b then "Transferred: " ++ str(a) else "Cancelled" end
-`, { handlers })
+`, { effectHandlers })
 
 // r1.type === 'suspended', r1.snapshot.meta.step === 'Step 1: Enter amount'
 
-const r2 = await resume(r1.snapshot, 500, { handlers })
+const r2 = await resume(r1.snapshot, 500, { handlers: effectHandlers })
 // r2.type === 'suspended', r2.snapshot.meta.step === 'Step 2: Confirm'
 
 const r3 = await resume(r2.snapshot, true)
@@ -135,13 +136,13 @@ Everything the program needs to continue:
 * **Partially evaluated expressions** — the exact position within a complex expression
 
 ```typescript
-const r1 = await run(`
+const r1 = await dvala.runAsync(`
   let multiplier = 3;
   let scale = (x) -> x * multiplier;
   let value = perform(effect(my.wait));
   scale(value)
 `, {
-  handlers: {
+  effectHandlers: {
     'my.wait': async ({ suspend }) => { suspend() },
   },
 })
@@ -191,7 +192,7 @@ Each `perform` may complete instantly (LLM call), or suspend for days (human app
 
 ## The RunResult Type
 
-Every call to `run()` or `resume()` returns a `RunResult`:
+Every call to `runAsync()` or `resume()` returns a `RunResult`:
 
 ```typescript
 type RunResult =

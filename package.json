@@ -123,7 +123,7 @@
     "lint": "eslint . --fix",
     "lint:no-fix": "eslint .",
     "typecheck": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "check": "npm install && npm run lint && npm run typecheck && npm run test && npm run build",
     "check:no-fix": "npm run lint:no-fix && npm run typecheck && npm run test",
     "clean": "npm run clean-dvala && npm run clean-playground",
     "clean-dvala": "rm -rf dist build",

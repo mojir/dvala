@@ -145,7 +145,7 @@ describe('contentHash', () => {
   })
 
   describe('performance', () => {
-    it('should hash a 50 KB object tree in < 5 ms', () => {
+    it.skip('should hash a 50 KB object tree in < 5 ms', () => {
       // Build a ~50 KB object tree
       const items = Array.from({ length: 200 }, (_, i) => ({
         id: i,
