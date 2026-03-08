@@ -3333,9 +3333,37 @@ export async function retriggerWithEffects(
   }
 
   const matchingHandlers = findMatchingHandlers(effectName, handlers)
-  const firstStep = await Promise.resolve(
-    dispatchHostHandler(effectName, matchingHandlers, effectArgs as Arr, k, signal, undefined, snapshotState),
-  )
+
+  let firstStep: Step
+  try {
+    firstStep = await Promise.resolve(
+      dispatchHostHandler(effectName, matchingHandlers, effectArgs as Arr, k, signal, undefined, snapshotState),
+    )
+  }
+  catch (error) {
+    // Handler called suspend() — capture continuation and return suspended result
+    if (isSuspensionSignal(error)) {
+      const continuation = serializeSuspensionBlob(
+        error.k,
+        error.snapshots,
+        error.nextSnapshotIndex,
+        error.meta,
+      )
+      const snapshot: Snapshot = {
+        continuation,
+        timestamp: Date.now(),
+        index: snapshotState.nextSnapshotIndex++,
+        runId: snapshotState.runId,
+        meta: error.meta,
+        effectName: error.effectName,
+        effectArgs: error.effectArgs,
+      }
+      return { type: 'suspended', snapshot }
+    }
+    if (error instanceof DvalaError)
+      return { type: 'error', error }
+    return { type: 'error', error: new DvalaError(`${error}`, undefined) }
+  }
 
   return runEffectLoop(firstStep, handlers, signal, snapshotState, snapshotState.maxSnapshots, deserializeOptions)
 }
