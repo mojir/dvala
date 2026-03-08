@@ -121,6 +121,23 @@ export function closeMoreMenu() {
 
 const expandedApiSections = new Set<string>()
 
+const chevronRight = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41L13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'
+const chevronDown = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
+
+function expandCollapsible(el: HTMLElement) {
+  el.classList.add('expanded')
+  el.style.maxHeight = `${el.scrollHeight}px`
+}
+
+function collapseCollapsible(el: HTMLElement) {
+  // Set max-height to current scrollHeight so the transition starts from actual height
+  el.style.maxHeight = `${el.scrollHeight}px`
+  // Force reflow, then collapse
+  void el.offsetHeight
+  el.classList.remove('expanded')
+  el.style.maxHeight = '0'
+}
+
 export function showTutorialsPage() {
   showPage('tutorials-page', 'smooth')
 }
@@ -132,15 +149,23 @@ export function toggleApiSection(sectionId: string) {
   if (!chevron || !content)
     return
 
-  if (expandedApiSections.has(sectionId)) {
-    expandedApiSections.delete(sectionId)
-    content.style.display = 'none'
-    chevron.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41L13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'
+  const isExpanded = expandedApiSections.has(sectionId)
+
+  // Collapse all expanded API sections
+  for (const id of [...expandedApiSections]) {
+    const c = document.getElementById(`api-content-${id}`)
+    const ch = document.getElementById(`api-chevron-${id}`)
+    if (c)
+      collapseCollapsible(c)
+    if (ch)
+      ch.innerHTML = chevronRight
+    expandedApiSections.delete(id)
   }
-  else {
+
+  if (!isExpanded) {
     expandedApiSections.add(sectionId)
-    content.style.display = 'flex'
-    chevron.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
+    expandCollapsible(content)
+    chevron.innerHTML = chevronDown
   }
 }
 
@@ -154,15 +179,24 @@ export function toggleModuleCategory(categoryKey: string) {
   if (!chevron || !content)
     return
 
-  if (expandedModules.has(categoryKey)) {
-    expandedModules.delete(categoryKey)
-    content.style.display = 'none'
-    chevron.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41L13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'
+  const isExpanded = expandedModules.has(categoryKey)
+
+  // Collapse all expanded module categories
+  for (const key of [...expandedModules]) {
+    const sk = key.replace(/\s+/g, '-')
+    const c = document.getElementById(`ns-content-${sk}`)
+    const ch = document.getElementById(`ns-chevron-${sk}`)
+    if (c)
+      collapseCollapsible(c)
+    if (ch)
+      ch.innerHTML = chevronRight
+    expandedModules.delete(key)
   }
-  else {
+
+  if (!isExpanded) {
     expandedModules.add(categoryKey)
-    content.style.display = 'flex'
-    chevron.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
+    expandCollapsible(content)
+    chevron.innerHTML = chevronDown
   }
 }
 
@@ -342,6 +376,24 @@ export function addContextEntry() {
   clearState('new-context-value')
 }
 
+function formatContextJson(context: Record<string, unknown>): string {
+  const parts: string[] = ['{']
+  const entries = Object.entries(context)
+  entries.forEach(([key, value], i) => {
+    const record = value as Record<string, unknown>
+    const subEntries = Object.entries(record)
+    parts.push(`  ${JSON.stringify(key)}: {`)
+    subEntries.forEach(([subKey, subValue], j) => {
+      const comma = j < subEntries.length - 1 ? ',' : ''
+      parts.push(`    ${JSON.stringify(subKey)}: ${JSON.stringify(subValue)}${comma}`)
+    })
+    const comma = i < entries.length - 1 ? ',' : ''
+    parts.push(`  }${comma}`)
+  })
+  parts.push('}')
+  return parts.join('\n')
+}
+
 export function addSampleContext() {
   const context = getParsedContext()
   const sampleBindings = {
@@ -378,11 +430,24 @@ export function addSampleContext() {
 
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
-  setContext(JSON.stringify(context, null, 2), true)
+  const sampleEffectHandlers: Record<string, string> = {
+    // eslint-disable-next-line no-template-curly-in-string
+    'host.greet': 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }',
+    'host.add': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
+    'host.delay': `async ({ args: [ms], resume }) => {
+  await new Promise(resolve => setTimeout(resolve, ms));
+  resume(ms);
+}`,
+  }
+
+  context.effectHandlers = Object.assign(sampleEffectHandlers, context.effectHandlers as Record<string, string> | undefined)
+
+  setContext(formatContextJson(context), true)
 }
 
 export function resetDvalaCode() {
   elements.dvalaTextArea.value = ''
+  syntaxOverlay.update()
   clearState('dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end')
   focusDvalaCode()
 }
@@ -406,13 +471,6 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
     elements.dvalaTextArea.scrollTo(0, 0)
   else if (scroll === 'bottom')
     elements.dvalaTextArea.scrollTo({ top: elements.dvalaTextArea.scrollHeight, behavior: 'smooth' })
-}
-
-function appendDvalaCode(value: string) {
-  const oldContent = getState('dvala-code').trimEnd()
-
-  const newContent = oldContent ? `${oldContent}\n\n${value}` : value.trim()
-  setDvalaCode(newContent, true, 'bottom')
 }
 
 export function resetOutput() {
@@ -1125,7 +1183,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effec
         ? JSON.parse(contextString) as UnknownRecord
         : {}
 
-    const parsedHandlers = asUnknownRecord(parsedContext.handlers ?? {})
+    const parsedHandlers = asUnknownRecord(parsedContext.effectHandlers ?? {})
     const bindings = asUnknownRecord(parsedContext.bindings ?? {})
 
     const effectHandlers: Record<string, EffectHandler> = Object.entries(parsedHandlers).reduce((acc: Record<string, EffectHandler>, [key, value]) => {
@@ -1241,19 +1299,19 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
 
       // If the link is inside a collapsed API section, expand it first
       const apiContent = link.closest('[id^="api-content-"]')
-      if (apiContent && apiContent instanceof HTMLElement && apiContent.style.display === 'none') {
+      if (apiContent && apiContent instanceof HTMLElement && !apiContent.classList.contains('expanded')) {
         const sectionId = apiContent.id.replace('api-content-', '')
         toggleApiSection(sectionId)
       }
 
       // If the link is inside a collapsed module section, expand it first
       const nsContent = link.closest('[id^="ns-content-"]')
-      if (nsContent && nsContent instanceof HTMLElement && nsContent.style.display === 'none') {
+      if (nsContent && nsContent instanceof HTMLElement && !nsContent.classList.contains('expanded')) {
         const categoryKey = nsContent.id.replace('ns-content-', '').replace(/-/g, ' ')
         toggleModuleCategory(categoryKey)
         // Also expand the parent 'modules' API section if collapsed
         const modulesContent = document.getElementById('api-content-modules')
-        if (modulesContent && modulesContent.style.display === 'none') {
+        if (modulesContent && !modulesContent.classList.contains('expanded')) {
           toggleApiSection('modules')
         }
       }
@@ -1285,14 +1343,11 @@ function inactivateAll() {
 
 export function addToPlayground(name: string, encodedExample: string) {
   const example = decodeURIComponent(atob(encodedExample))
-  appendDvalaCode(`// Example - ${name}\n\n${example};\n`)
+  setDvalaCode(`// ${name}\n\n${example}\n`, true, 'top')
   addOutputSeparator()
-  appendOutput('Example added to editor', 'comment')
+  appendOutput('Example loaded in editor', 'comment')
   saveState({ 'focused-panel': 'dvala-code' })
   applyState()
-  setTimeout(() => {
-    elements.dvalaTextArea.scrollTo({ top: elements.dvalaTextArea.scrollHeight, behavior: 'smooth' })
-  }, 10)
 }
 
 export function copyExample(encodedExample: string) {
@@ -1313,8 +1368,7 @@ export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
 
   const context = example.context
-    // eslint-disable-next-line ts/no-unsafe-return
-    ? JSON.stringify(example.context, (_k, v) => (v === undefined ? null : v), 2)
+    ? formatContextJson(example.context as Record<string, unknown>)
     : ''
 
   setContext(context, true, 'top')

@@ -65,7 +65,7 @@ export function getSideBar() {
 
   const renderApiSection = (sectionId: string, label: string, refs: Reference[]) => {
     return `
-      <div ${styles('flex', 'flex-col', 'gap-1')}>
+      <div ${styles('flex', 'flex-col')}>
         <div
           class="sidebar-collapsible-header"
           ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
@@ -76,7 +76,8 @@ export function getSideBar() {
         </div>
         <div 
           id="api-content-${sectionId}" 
-          ${styles('flex-col', 'ml-2', 'text-color-gray-400', 'text-base', 'display: none;')}
+          class="sidebar-collapsible-content"
+          ${styles('text-color-gray-400', 'text-base')}
         >
           ${sortRefs(refs).map(renderRefLink).join('\n')}
         </div>
@@ -85,7 +86,7 @@ export function getSideBar() {
 
   const renderModuleCategory = (categoryKey: string) => {
     return `
-      <div ${styles('flex', 'flex-col', 'gap-1')}>
+      <div ${styles('flex', 'flex-col')}>
         <div
           class="sidebar-collapsible-header"
           ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
@@ -96,7 +97,8 @@ export function getSideBar() {
         </div>
         <div 
           id="ns-content-${categoryKey.replace(/\s+/g, '-')}" 
-          ${styles('flex-col', 'ml-2', 'text-color-gray-400', 'text-base', 'display: none;')}
+          class="sidebar-collapsible-content"
+          ${styles('text-color-gray-400', 'text-base')}
         >
           ${
             moduleCategoryCollections[categoryKey]
@@ -139,7 +141,7 @@ export function getSideBar() {
         ${renderApiSection('shorthands', 'Shorthands', shorthandRefs)}
         ${renderApiSection('datatypes', 'Datatypes', datatypeRefs)}
         <!-- Modules (collapsible with sub-collapsibles) -->
-        <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <div ${styles('flex', 'flex-col')}>
           <div
             class="sidebar-collapsible-header"
             ${styles('flex', 'items-center', 'gap-1', 'cursor-pointer')}
@@ -150,7 +152,8 @@ export function getSideBar() {
           </div>
           <div
             id="api-content-modules"
-            ${styles('flex-col', 'ml-2', 'gap-2', 'display: none;')}
+            class="sidebar-collapsible-content"
+            ${styles('gap-2')}
           >
             ${moduleCategories.map(categoryKey => renderModuleCategory(categoryKey)).join('\n')}
           </div>

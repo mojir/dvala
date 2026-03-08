@@ -5,7 +5,7 @@ export interface Example {
   code: string
   context?: {
     bindings?: Record<string, unknown>
-    handlers?: Record<string, string>
+    effectHandlers?: Record<string, string>
   }
 }
 
@@ -47,7 +47,7 @@ perform(effect(dvala.io.println), [1, 2, 3][2]);
     description: 'Simple example using bindings and a host effect handler.',
     context: {
       bindings: { x: 15, y: 27 },
-      handlers: {
+      effectHandlers: {
         'host.plus': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
       },
     },
@@ -60,7 +60,7 @@ perform(effect(host.plus), x, y)
     name: 'Async host effects',
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     context: {
-      handlers: {
+      effectHandlers: {
         'host.fetch-user': `async ({ args: [id], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
@@ -106,7 +106,7 @@ doseq (post in posts) -> perform(effect(dvala.io.println), "- " ++ post.title);
     name: 'Interactive async',
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     context: {
-      handlers: {
+      effectHandlers: {
         'host.prompt': 'async ({ args: [title], resume }) => { resume(prompt(title)) }',
         'host.fetch-user': `async ({ args: [id], resume, fail }) => {
   try {
