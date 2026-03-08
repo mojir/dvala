@@ -347,3 +347,19 @@ export function deserializeFromObject(
     nextSnapshotIndex: data.nextSnapshotIndex ?? 0,
   }
 }
+
+/**
+ * Extract checkpoint snapshots from a serialized continuation blob,
+ * expanding any pool references so each snapshot is a self-contained blob
+ * that can be passed directly to `resume()`.
+ */
+export function extractCheckpointSnapshots(continuation: unknown): Snapshot[] {
+  const data = continuation as SuspensionBlobData
+  if (!data.snapshots || data.snapshots.length === 0) {
+    return []
+  }
+  const pool = data.pool && Object.keys(data.pool).length > 0 ? data.pool : undefined
+  return data.snapshots.map(s =>
+    pool ? expandPoolRefs(s, pool) as Snapshot : s as Snapshot,
+  )
+}

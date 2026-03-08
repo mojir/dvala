@@ -39,8 +39,8 @@ describe('snapshot captures effectName and effectArgs', () => {
     expect(result.snapshot.effectArgs).toEqual([1, 'hello', true])
   })
 
-  it('effectName is undefined when suspended outside effect handler (parallel branch)', async () => {
-    // parallel() suspends a branch without an effect context
+  it('captures effectName from a suspending parallel branch', async () => {
+    // my.a resumes, my.b suspends — outer snapshot should carry my.b's effectName
     const result = await dvala.runAsync(`
       parallel(
         perform(effect(my.a)),
@@ -55,8 +55,7 @@ describe('snapshot captures effectName and effectArgs', () => {
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
       return
-    // The snapshot from a parallel branch has no effectName
-    expect(result.snapshot.effectName).toBeUndefined()
+    expect(result.snapshot.effectName).toBe('my.b')
   })
 
   it('captures effectName and args across JSON round-trip', async () => {
@@ -231,5 +230,151 @@ describe('retrigger()', () => {
     if (r3.type !== 'completed')
       return
     expect(r3.value).toBe(7)
+  })
+
+  it('preserves effectName/effectArgs when a parallel branch suspends', async () => {
+    // Resume branch A, suspend branch B — snapshot should capture B's effect
+    const r1 = await dvala.runAsync(`
+      parallel(
+        perform(effect(foo.bar), "A"),
+        perform(effect(foo.bar), "B")
+      )
+    `, {
+      effectHandlers: {
+        'foo.bar': async ({ args, resume: r, suspend }) => {
+          if (args[0] === 'A')
+            r('resumed-A')
+          else
+            suspend()
+        },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+    expect(r1.snapshot.effectName).toBe('foo.bar')
+    expect(r1.snapshot.effectArgs).toEqual(['B'])
+  })
+
+  it('can retrigger a snapshot from a parallel branch suspension', async () => {
+    // Resume branch A, suspend branch B — then retrigger B
+    const r1 = await dvala.runAsync(`
+      parallel(
+        perform(effect(foo.bar), "A"),
+        perform(effect(foo.bar), "B")
+      )
+    `, {
+      effectHandlers: {
+        'foo.bar': async ({ args, resume: r, suspend }) => {
+          if (args[0] === 'A')
+            r('got-A')
+          else
+            suspend()
+        },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+
+    const r2 = await retrigger(r1.snapshot, {
+      handlers: {
+        'foo.bar': async ({ resume: r }) => { r('got-B') },
+      },
+    })
+    expect(r2.type).toBe('completed')
+    if (r2.type !== 'completed')
+      return
+    expect(r2.value).toEqual(['got-A', 'got-B'])
+  })
+
+  it('abort signal suspends remaining branches when one branch suspends in parallel', async () => {
+    // A resumes, B suspends → B's suspension aborts the group → C auto-suspends.
+    // When retriggered, B and C are dispatched concurrently (not sequentially).
+    const r1 = await dvala.runAsync(`
+      parallel(
+        perform(effect(foo.bar), "A"),
+        perform(effect(foo.bar), "B"),
+        perform(effect(foo.bar), "C")
+      )
+    `, {
+      effectHandlers: {
+        'foo.bar': async ({ args, resume: r, suspend, signal }) => {
+          if (args[0] === 'A') {
+            r('got-A')
+          }
+          else if (args[0] === 'B') {
+            suspend()
+          }
+          else {
+            // C: auto-suspend when the parallel group aborts
+            await new Promise<void>((resolve) => {
+              signal.addEventListener('abort', () => {
+                suspend()
+                resolve()
+              }, { once: true })
+            })
+          }
+        },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+    expect(r1.snapshot.effectName).toBe('foo.bar')
+    expect(r1.snapshot.effectArgs).toEqual(['B'])
+
+    // Retrigger: B and C are dispatched concurrently — single retrigger completes all
+    const r2 = await retrigger(r1.snapshot, {
+      handlers: {
+        'foo.bar': async ({ args, resume: r }) => {
+          r(args[0] === 'B' ? 'got-B' : 'got-C')
+        },
+      },
+    })
+    expect(r2.type).toBe('completed')
+    if (r2.type !== 'completed')
+      return
+    expect(r2.value).toEqual(['got-A', 'got-B', 'got-C'])
+  })
+
+  it('re-suspends when the re-triggered branch suspends again and other branches abort', async () => {
+    // A suspends → B and C auto-suspend via abort. Retrigger → A suspends again.
+    // Expected: program suspended (B and C should auto-abort via parallelAbort,
+    // NOT shown in the effect modal).
+    const suspendHandler = async ({ args, suspend, signal }: { args: any[], suspend: () => void, signal: AbortSignal }) => {
+      if (args[0] === 'A') {
+        suspend()
+      }
+      else {
+        // B and C: auto-suspend when A suspends (abort signal fires)
+        await new Promise<void>((resolve) => {
+          signal.addEventListener('abort', () => {
+            suspend()
+            resolve()
+          }, { once: true })
+        })
+      }
+    }
+
+    const r1 = await dvala.runAsync(`
+      parallel(
+        perform(effect(foo.bar), "A"),
+        perform(effect(foo.bar), "B"),
+        perform(effect(foo.bar), "C")
+      )
+    `, { effectHandlers: { 'foo.bar': suspendHandler } })
+
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+    expect(r1.snapshot.effectName).toBe('foo.bar')
+    expect(r1.snapshot.effectArgs).toEqual(['A'])
+
+    // Retrigger — A suspends again; B and C must also re-suspend via abort
+    const r2 = await retrigger(r1.snapshot, {
+      handlers: { 'foo.bar': suspendHandler },
+    })
+    expect(r2.type).toBe('suspended')
   })
 })
