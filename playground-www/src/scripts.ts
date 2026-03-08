@@ -4,9 +4,11 @@ import type { Example } from '../../reference/examples'
 import type { Any, UnknownRecord } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, Snapshot } from '../../src/evaluator/effectTypes'
+import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { retrigger } from '../../src/retrigger'
+import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
@@ -67,7 +69,15 @@ const elements = {
   snapshotModalEffectName: document.getElementById('snapshot-modal-effect-name') as HTMLElement,
   snapshotModalEffectArgs: document.getElementById('snapshot-modal-effect-args') as HTMLDivElement,
   snapshotModalMeta: document.getElementById('snapshot-modal-meta') as HTMLDivElement,
+  snapshotModalTech: document.getElementById('snapshot-modal-tech') as HTMLDivElement,
+  snapshotModalCheckpoints: document.getElementById('snapshot-modal-checkpoints') as HTMLDivElement,
+  snapshotModalCpCount: document.getElementById('snapshot-modal-cp-count') as HTMLSpanElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
+  effectModalNav: document.getElementById('effect-modal-nav') as HTMLDivElement,
+  effectModalCounter: document.getElementById('effect-modal-counter') as HTMLSpanElement,
+  effectModalPrev: document.getElementById('effect-modal-prev') as HTMLButtonElement,
+  effectModalNext: document.getElementById('effect-modal-next') as HTMLButtonElement,
+  effectModalHandledBadge: document.getElementById('effect-modal-handled-badge') as HTMLDivElement,
   effectModalName: document.getElementById('effect-modal-name') as HTMLElement,
   effectModalArgs: document.getElementById('effect-modal-args') as HTMLDivElement,
   effectModalMainButtons: document.getElementById('effect-modal-main-buttons') as HTMLDivElement,
@@ -106,8 +116,16 @@ let moveParams: MoveParams | null = null
 let syntaxOverlay: SyntaxOverlay
 let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
-let pendingEffectCtx: EffectContext | null = null
-let pendingEffectResolve: (() => void) | null = null
+interface PendingEffect {
+  ctx: EffectContext
+  resolve: () => void
+  handled: boolean
+  handledAction?: 'resume' | 'fail' | 'suspend' | 'ignore'
+  handledValue?: string
+}
+let pendingEffects: PendingEffect[] = []
+let currentEffectIndex = 0
+let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 let currentSnapshot: Snapshot | null = null
 
@@ -730,13 +748,22 @@ window.onload = function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (pendingEffectAction)
+      if (currentSnapshot) {
+        closeSnapshotModal()
+      }
+      else if (pendingEffectAction) {
         cancelEffectAction()
-      else if (pendingEffectCtx)
+      }
+      else if (pendingEffects.length > 0) {
         selectEffectAction('ignore')
+      }
       evt.preventDefault()
     }
-    if (evt.key === 'Enter' && pendingEffectCtx && !pendingEffectAction) {
+    if (evt.key === 'Enter' && currentSnapshot) {
+      evt.preventDefault()
+      void resumeSnapshot()
+    }
+    if (evt.key === 'Enter' && pendingEffects.length > 0 && !pendingEffectAction) {
       evt.preventDefault()
       selectEffectAction('resume')
     }
@@ -852,7 +879,7 @@ function getDataFromUrl() {
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
     if (snapshot) {
       addOutputSeparator()
-      appendOutput('Program suspended:', 'comment')
+      appendOutput('Snapshot loaded from link:', 'comment')
       appendSnapshotLink(snapshot)
       openSnapshotModal(snapshot)
     }
@@ -1138,24 +1165,66 @@ export function openSnapshotModal(snapshot: Snapshot) {
     snapshot.effectArgs.forEach(arg => elements.snapshotModalEffectArgs.appendChild(makeArgRow(JSON.stringify(arg, null, 2))))
   }
 
-  // Metadata
+  // Meta object (dedicated section)
   elements.snapshotModalMeta.innerHTML = ''
-  const metaRows: [string, string][] = [
+  if (snapshot.meta === undefined) {
+    const empty = document.createElement('span')
+    empty.textContent = '(no metadata)'
+    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    elements.snapshotModalMeta.appendChild(empty)
+  }
+  else {
+    elements.snapshotModalMeta.appendChild(makeArgRow(JSON.stringify(snapshot.meta, null, 2)))
+  }
+
+  // Technical info (collapsible)
+  elements.snapshotModalTech.innerHTML = ''
+  const techRows: [string, string][] = [
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.runId],
-    ['Timestamp', new Date(snapshot.timestamp).toLocaleString()],
+    ['Timestamp', (() => {
+      const d = new Date(snapshot.timestamp)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    })()],
   ]
-  if (snapshot.meta !== undefined) {
-    metaRows.push(['Meta', JSON.stringify(snapshot.meta, null, 2)])
-  }
-  metaRows.forEach(([label, value]) => {
+  techRows.forEach(([label, value]) => {
     const row = makeArgRow(value)
     const labelEl = document.createElement('span')
     labelEl.textContent = label
     labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
     row.insertBefore(labelEl, row.firstChild)
-    elements.snapshotModalMeta.appendChild(row)
+    elements.snapshotModalTech.appendChild(row)
   })
+
+  // Checkpoints (from continuation blob)
+  elements.snapshotModalCheckpoints.innerHTML = ''
+  const blobSnapshots = extractCheckpointSnapshots(snapshot.continuation)
+  elements.snapshotModalCpCount.textContent = String(blobSnapshots.length)
+  if (blobSnapshots.length === 0) {
+    const empty = document.createElement('span')
+    empty.textContent = '(no checkpoints)'
+    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    elements.snapshotModalCheckpoints.appendChild(empty)
+  }
+  else {
+    blobSnapshots.forEach((cpSnapshot) => {
+      const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(cpSnapshot)}`
+      const a = document.createElement('a')
+      const label = cpSnapshot.meta != null
+        ? `Checkpoint #${cpSnapshot.index} — ${JSON.stringify(cpSnapshot.meta)}`
+        : `Checkpoint #${cpSnapshot.index}`
+      a.textContent = label
+      a.className = 'share-link'
+      a.href = href
+      a.style.cssText = 'font-size:0.8rem; cursor:pointer;'
+      a.addEventListener('click', (e) => {
+        e.preventDefault()
+        openSnapshotModal(cpSnapshot)
+      })
+      elements.snapshotModalCheckpoints.appendChild(a)
+    })
+  }
 
   elements.snapshotModal.style.display = 'flex'
 }
@@ -1187,11 +1256,17 @@ export async function resumeSnapshot() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const runResult = await retrigger(snapshot, {
-      handlers: dvalaParams.effectHandlers,
-      bindings: dvalaParams.bindings as Record<string, Any>,
-      modules: allBuiltinModules,
-    })
+    const runResult = snapshot.effectName
+      ? await retrigger(snapshot, {
+        handlers: dvalaParams.effectHandlers,
+        bindings: dvalaParams.bindings as Record<string, Any>,
+        modules: allBuiltinModules,
+      })
+      : await resume(snapshot, null, {
+        handlers: dvalaParams.effectHandlers,
+        bindings: dvalaParams.bindings as Record<string, Any>,
+        modules: allBuiltinModules,
+      })
     if (runResult.type === 'error')
       throw runResult.error
     if (runResult.type === 'suspended') {
@@ -1211,17 +1286,100 @@ export async function resumeSnapshot() {
 }
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
-  pendingEffectCtx = ctx
-  elements.effectModalName.textContent = ctx.effectName
+  return new Promise<void>((resolve) => {
+    const pending: PendingEffect = { ctx, resolve, handled: false }
+    pendingEffects.push(pending)
+
+    // When the parallel group aborts (because another branch suspended),
+    // auto-suspend this effect so executeParallelBranches can collect it.
+    ctx.signal.addEventListener('abort', () => {
+      if (pending.handled)
+        return
+      pending.ctx.suspend()
+      pending.handled = true
+      pending.resolve()
+      // Remove from the visible pending list — the user never interacted with it
+      const idx = pendingEffects.indexOf(pending)
+      if (idx !== -1)
+        pendingEffects.splice(idx, 1)
+      if (currentEffectIndex >= pendingEffects.length)
+        currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+      if (pendingEffects.length === 0 || pendingEffects.every(e => e.handled))
+        closeEffectModal()
+      else
+        renderCurrentEffect()
+    }, { once: true })
+
+    if (!effectBatchScheduled) {
+      effectBatchScheduled = true
+      void Promise.resolve().then(openEffectModal)
+    }
+  })
+}
+
+function openEffectModal() {
+  effectBatchScheduled = false
+  currentEffectIndex = 0
+  renderCurrentEffect()
+  elements.effectModal.style.display = 'flex'
+}
+
+function renderCurrentEffect() {
+  const effect = pendingEffects[currentEffectIndex]
+  if (!effect)
+    return
+
+  // Counter / nav
+  const total = pendingEffects.length
+  if (total > 1) {
+    elements.effectModalNav.style.display = 'flex'
+    elements.effectModalCounter.textContent = `${currentEffectIndex + 1} / ${total}`
+    elements.effectModalPrev.style.opacity = currentEffectIndex > 0 ? '1' : '0.3'
+    elements.effectModalPrev.style.pointerEvents = currentEffectIndex > 0 ? 'auto' : 'none'
+    elements.effectModalNext.style.opacity = currentEffectIndex < total - 1 ? '1' : '0.3'
+    elements.effectModalNext.style.pointerEvents = currentEffectIndex < total - 1 ? 'auto' : 'none'
+  }
+  else {
+    elements.effectModalNav.style.display = 'none'
+  }
+
+  // Handled badge + result
+  elements.effectModalHandledBadge.innerHTML = ''
+  if (effect.handled) {
+    elements.effectModalHandledBadge.style.display = 'flex'
+    const actionLabel = document.createElement('span')
+    const actionColors: Record<string, string> = { resume: 'rgb(110 231 183)', fail: 'rgb(251 113 133)', suspend: 'rgb(148 163 184)', ignore: 'rgb(115 115 115)' }
+    actionLabel.textContent = `✓ ${effect.handledAction ?? 'handled'}`
+    actionLabel.style.cssText = `font-weight:bold; color:${actionColors[effect.handledAction ?? ''] ?? 'rgb(110 231 183)'};`
+    elements.effectModalHandledBadge.appendChild(actionLabel)
+    if (effect.handledValue) {
+      const sep = document.createElement('span')
+      sep.textContent = '→'
+      sep.style.cssText = 'color: rgb(115 115 115); margin: 0 0.3rem;'
+      elements.effectModalHandledBadge.appendChild(sep)
+      const val = document.createElement('code')
+      val.textContent = effect.handledValue
+      val.style.cssText = 'color: rgb(212 212 212); font-size: 0.8rem;'
+      elements.effectModalHandledBadge.appendChild(val)
+    }
+  }
+  else {
+    elements.effectModalHandledBadge.style.display = 'none'
+  }
+
+  // Effect name
+  elements.effectModalName.textContent = effect.ctx.effectName
+
+  // Args
   elements.effectModalArgs.innerHTML = ''
-  if (ctx.args.length === 0) {
+  if (effect.ctx.args.length === 0) {
     const empty = document.createElement('span')
     empty.textContent = '(no arguments)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
     elements.effectModalArgs.appendChild(empty)
   }
   else {
-    ctx.args.forEach((arg) => {
+    effect.ctx.args.forEach((arg) => {
       const row = document.createElement('div')
       row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
       const code = document.createElement('code')
@@ -1231,31 +1389,54 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
       elements.effectModalArgs.appendChild(row)
     })
   }
+
+  // Input section reset
+  pendingEffectAction = null
   elements.effectModalInputSection.style.display = 'none'
-  elements.effectModalMainButtons.style.opacity = '1'
-  elements.effectModalMainButtons.style.pointerEvents = 'auto'
-  elements.effectModal.style.display = 'flex'
-  return new Promise((resolve) => {
-    pendingEffectResolve = resolve
-  })
+  elements.effectModalMainButtons.style.opacity = effect.handled ? '0.4' : '1'
+  elements.effectModalMainButtons.style.pointerEvents = effect.handled ? 'none' : 'auto'
 }
 
 function closeEffectModal() {
   elements.effectModal.style.display = 'none'
-  pendingEffectCtx = null
-  pendingEffectResolve = null
+  pendingEffects = []
+  currentEffectIndex = 0
   pendingEffectAction = null
 }
 
+function advanceAfterHandle() {
+  // Find next unhandled effect after current
+  let next = pendingEffects.findIndex((e, i) => i > currentEffectIndex && !e.handled)
+  if (next === -1)
+    next = pendingEffects.findIndex(e => !e.handled)
+  if (next === -1) {
+    closeEffectModal()
+  }
+  else {
+    currentEffectIndex = next
+    renderCurrentEffect()
+  }
+}
+
+export function navigateEffect(delta: number) {
+  const next = currentEffectIndex + delta
+  if (next < 0 || next >= pendingEffects.length)
+    return
+  currentEffectIndex = next
+  renderCurrentEffect()
+}
+
 export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'ignore') {
-  if (!pendingEffectCtx || !pendingEffectResolve)
+  const effect = pendingEffects[currentEffectIndex]
+  if (!effect || effect.handled)
     return
 
   if (action === 'ignore') {
-    const resolve = pendingEffectResolve
-    pendingEffectCtx.next()
-    closeEffectModal()
-    resolve()
+    effect.ctx.next()
+    effect.handled = true
+    effect.handledAction = 'ignore'
+    effect.resolve()
+    advanceAfterHandle()
     return
   }
 
@@ -1263,10 +1444,10 @@ export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'igno
   const labels: Record<typeof action, string> = {
     resume: 'Resume value (JSON)',
     fail: 'Error message (optional)',
-    suspend: 'Meta (JSON, optional)',
+    suspend: 'Message',
   }
   elements.effectModalInputLabel.textContent = labels[action]
-  elements.effectModalValue.value = action === 'resume' ? 'null' : ''
+  elements.effectModalValue.value = ''
   elements.effectModalError.style.display = 'none'
   elements.effectModalMainButtons.style.opacity = '0.4'
   elements.effectModalMainButtons.style.pointerEvents = 'none'
@@ -1282,18 +1463,21 @@ export function cancelEffectAction() {
 }
 
 export function confirmEffectAction() {
-  if (!pendingEffectCtx || !pendingEffectResolve || !pendingEffectAction)
+  const effect = pendingEffects[currentEffectIndex]
+  if (!effect || effect.handled || !pendingEffectAction)
     return
 
   const valueStr = elements.effectModalValue.value.trim()
-  const resolve = pendingEffectResolve
 
   if (pendingEffectAction === 'resume') {
     try {
-      const value = JSON.parse(valueStr) as Any
-      pendingEffectCtx.resume(value)
-      closeEffectModal()
-      resolve()
+      const value = valueStr === '' ? null : JSON.parse(valueStr) as Any
+      effect.ctx.resume(value)
+      effect.handled = true
+      effect.handledAction = 'resume'
+      effect.handledValue = valueStr || 'null'
+      effect.resolve()
+      advanceAfterHandle()
     }
     catch {
       elements.effectModalError.textContent = 'Invalid JSON'
@@ -1302,26 +1486,21 @@ export function confirmEffectAction() {
     }
   }
   else if (pendingEffectAction === 'fail') {
-    pendingEffectCtx.fail(valueStr || undefined)
-    closeEffectModal()
-    resolve()
+    effect.ctx.fail(valueStr || undefined)
+    effect.handled = true
+    effect.handledAction = 'fail'
+    effect.handledValue = valueStr || undefined
+    effect.resolve()
+    advanceAfterHandle()
   }
   else if (pendingEffectAction === 'suspend') {
-    let meta: Any | undefined
-    if (valueStr) {
-      try {
-        meta = JSON.parse(valueStr) as Any
-      }
-      catch {
-        elements.effectModalError.textContent = 'Invalid JSON'
-        elements.effectModalError.style.display = 'block'
-        elements.effectModalValue.focus()
-        return
-      }
-    }
-    pendingEffectCtx.suspend(meta)
-    closeEffectModal()
-    resolve()
+    const meta: Any | undefined = valueStr ? { message: valueStr } : undefined
+    effect.ctx.suspend(meta)
+    effect.handled = true
+    effect.handledAction = 'suspend'
+    effect.handledValue = valueStr || undefined
+    effect.resolve()
+    advanceAfterHandle()
   }
 }
 

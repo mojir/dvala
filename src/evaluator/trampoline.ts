@@ -2381,6 +2381,13 @@ function dispatchHostHandler(
   const effectSignal = signal ?? new AbortController().signal
   const argsArray = Array.from(args) as Any[]
 
+  // If the abort signal already fired before the handler was called, auto-suspend immediately.
+  // This happens when a parallel group aborts (e.g. another branch suspended) before this
+  // branch's dispatchHostHandler runs.
+  if (effectSignal.aborted) {
+    throwSuspension(k, undefined, effectName, argsArray)
+  }
+
   type HandlerOutcome =
     | { kind: 'step', step: Step }
     | { kind: 'asyncResume', promise: Promise<Any> }
@@ -2405,6 +2412,10 @@ function dispatchHostHandler(
       if (effectName === 'dvala.error') {
         const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
         throw new UserDefinedError(message, sourceCodeInfo)
+      }
+      // dvala.checkpoint resolves to null when all handlers call next() without resuming.
+      if (effectName === 'dvala.checkpoint') {
+        return { type: 'Value', value: null, k }
       }
       throw new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
     }
@@ -2547,9 +2558,21 @@ function dispatchHostHandler(
  * Throw a SuspensionSignal. Factored out to a helper so ESLint's
  * `only-throw-literal` rule can be suppressed in one place.
  */
-function throwSuspension(k: ContinuationStack, meta?: Any): never {
+/** Combine two AbortSignals: aborts when either fires (or already aborted). */
+function combineSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
+  const controller = new AbortController()
+  if (a.aborted || b.aborted) {
+    controller.abort()
+    return controller.signal
+  }
+  a.addEventListener('abort', () => controller.abort(), { once: true })
+  b.addEventListener('abort', () => controller.abort(), { once: true })
+  return controller.signal
+}
+
+function throwSuspension(k: ContinuationStack, meta?: Any, effectName?: string, effectArgs?: Any[]): never {
   // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
-  throw new SuspensionSignal(k, [], 0, meta)
+  throw new SuspensionSignal(k, [], 0, meta, effectName, effectArgs)
 }
 
 /**
@@ -2592,12 +2615,21 @@ async function executeParallelBranches(
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
 ): Promise<Step> {
-  const effectSignal = signal ?? new AbortController().signal
+  // AbortController for this parallel group — aborted when any branch suspends,
+  // which signals remaining effect handlers to auto-suspend via ctx.signal.
+  const parallelAbort = new AbortController()
+  const effectSignal = signal
+    ? combineSignals(signal, parallelAbort.signal)
+    : parallelAbort.signal
 
-  // Run all branches concurrently
-  const branchPromises = branches.map(branch =>
-    runBranch(branch, env, handlers, effectSignal),
-  )
+  // Run all branches concurrently; abort the group when a branch suspends
+  const branchPromises = branches.map(async (branch, i): Promise<{ index: number, result: RunResult }> => {
+    const result = await runBranch(branch, env, handlers, effectSignal)
+    if (result.type === 'suspended') {
+      parallelAbort.abort()
+    }
+    return { index: i, result }
+  })
   const results = await Promise.allSettled(branchPromises)
 
   // Collect outcomes
@@ -2605,23 +2637,22 @@ async function executeParallelBranches(
   const suspendedBranches: Array<{ index: number, snapshot: Snapshot }> = []
   const errors: DvalaError[] = []
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i]!
-    if (result.status === 'rejected') {
-      // runEffectLoop should never reject, but handle defensively
-      errors.push(new DvalaError(`${result.reason}`, undefined))
+  for (const settled of results) {
+    if (settled.status === 'rejected') {
+      // branchPromises should never reject, but handle defensively
+      errors.push(new DvalaError(`${settled.reason}`, undefined))
     }
     else {
-      const r = result.value
-      switch (r.type) {
+      const { index, result } = settled.value
+      switch (result.type) {
         case 'completed':
-          completedBranches.push({ index: i, value: r.value })
+          completedBranches.push({ index, value: result.value })
           break
         case 'suspended':
-          suspendedBranches.push({ index: i, snapshot: r.snapshot })
+          suspendedBranches.push({ index, snapshot: result.snapshot })
           break
         case 'error':
-          errors.push(r.error)
+          errors.push(result.error)
           break
       }
     }
@@ -2643,9 +2674,9 @@ async function executeParallelBranches(
     }
     const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
 
-    // Throw SuspensionSignal with the first suspended branch's meta
+    // Throw SuspensionSignal with the first suspended branch's meta and effect info
     const firstSuspended = suspendedBranches[0]!
-    return throwSuspension(resumeK, firstSuspended.snapshot.meta)
+    return throwSuspension(resumeK, firstSuspended.snapshot.meta, firstSuspended.snapshot.effectName, firstSuspended.snapshot.effectArgs)
   }
 
   // All branches completed — build the result array in original order
@@ -2826,7 +2857,7 @@ function handleParallelResume(
       suspendedBranches: remaining,
     }
     const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
-    return throwSuspension(resumeK, nextSuspended.snapshot.meta)
+    return throwSuspension(resumeK, nextSuspended.snapshot.meta, nextSuspended.snapshot.effectName, nextSuspended.snapshot.effectArgs)
   }
 
   // All branches now completed — build the result array in original order
@@ -3314,6 +3345,160 @@ export async function resumeWithEffects(
  * Throws if the snapshot has no captured effect (e.g. suspended from a
  * parallel/race branch rather than an effect handler).
  */
+/**
+ * Dispatch all parallel-suspended branches concurrently when retriggering.
+ *
+ * Called from `retriggerWithEffects` when the top of the continuation is a
+ * `ParallelResumeFrame`. Instead of exposing branches one at a time, all
+ * remaining suspended branches (plus the current one) are dispatched to
+ * host handlers simultaneously — mirroring the original parallel execution.
+ */
+async function retriggerParallelGroup(
+  frame: ParallelResumeFrame,
+  outerK: ContinuationStack,
+  currentEffectName: string,
+  currentEffectArgs: Any[],
+  handlers: Handlers | undefined,
+  signal: AbortSignal,
+  snapshotState: SnapshotState,
+  deserializeOptions: DeserializeOptions | undefined,
+): Promise<RunResult> {
+  const { branchCount, completedBranches, suspendedBranches } = frame
+
+  // Determine index of the current branch (not in completed or remaining-suspended)
+  const completedIndices = new Set(completedBranches.map(b => b.index))
+  const suspendedIndices = new Set(suspendedBranches.map(b => b.index))
+  let currentBranchIndex = -1
+  for (let i = 0; i < branchCount; i++) {
+    if (!completedIndices.has(i) && !suspendedIndices.has(i)) {
+      currentBranchIndex = i
+      break
+    }
+  }
+
+  const parallelAbort = new AbortController()
+  const effectSignal = combineSignals(signal, parallelAbort.signal)
+
+  type BranchOutcome = { index: number, result: RunResult }
+
+  // Dispatch the current branch with an empty inner continuation —
+  // the resume value IS the branch's completed value.
+  const currentMatchingHandlers = findMatchingHandlers(currentEffectName, handlers)
+  const currentBranchPromise: Promise<BranchOutcome> = (async () => {
+    let firstStep: Step
+    try {
+      firstStep = await Promise.resolve(
+        dispatchHostHandler(currentEffectName, currentMatchingHandlers, currentEffectArgs as Arr, [], effectSignal, undefined, snapshotState),
+      )
+    }
+    catch (error) {
+      if (isSuspensionSignal(error)) {
+        parallelAbort.abort()
+        const continuation = serializeSuspensionBlob(error.k, error.snapshots, error.nextSnapshotIndex, error.meta)
+        const snapshot: Snapshot = {
+          continuation,
+          timestamp: Date.now(),
+          index: snapshotState.nextSnapshotIndex++,
+          runId: snapshotState.runId,
+          meta: error.meta,
+          effectName: error.effectName,
+          effectArgs: error.effectArgs,
+        }
+        return { index: currentBranchIndex, result: { type: 'suspended', snapshot } }
+      }
+      const err = error instanceof DvalaError ? error : new DvalaError(`${error}`, undefined)
+      return { index: currentBranchIndex, result: { type: 'error', error: err } }
+    }
+    const result = await runEffectLoop(firstStep, handlers, effectSignal, snapshotState, undefined, deserializeOptions)
+    if (result.type === 'suspended')
+      parallelAbort.abort()
+    return { index: currentBranchIndex, result }
+  })()
+
+  // Dispatch each remaining suspended branch concurrently via retriggerWithEffects
+  const otherBranchPromises: Promise<BranchOutcome>[] = suspendedBranches.map(async (branch) => {
+    const { effectName: branchEffectName, effectArgs: branchEffectArgs } = branch.snapshot
+    if (!branchEffectName || !branchEffectArgs) {
+      return { index: branch.index, result: { type: 'suspended' as const, snapshot: branch.snapshot } }
+    }
+    const deserialized = deserializeFromObject(branch.snapshot.continuation, deserializeOptions)
+    const result = await retriggerWithEffects(
+      deserialized.k,
+      branchEffectName,
+      branchEffectArgs,
+      handlers,
+      { snapshots: deserialized.snapshots, nextSnapshotIndex: deserialized.nextSnapshotIndex },
+      deserializeOptions,
+      effectSignal,
+    )
+    if (result.type === 'suspended')
+      parallelAbort.abort()
+    return { index: branch.index, result }
+  })
+
+  const settled = await Promise.allSettled([currentBranchPromise, ...otherBranchPromises])
+
+  const newCompleted = [...completedBranches]
+  const newSuspended: Array<{ index: number, snapshot: Snapshot }> = []
+  const errors: DvalaError[] = []
+
+  for (const s of settled) {
+    if (s.status === 'rejected') {
+      errors.push(new DvalaError(`${s.reason}`, undefined))
+    }
+    else {
+      const { index, result } = s.value
+      if (result.type === 'completed')
+        newCompleted.push({ index, value: result.value })
+      else if (result.type === 'suspended')
+        newSuspended.push({ index, snapshot: result.snapshot })
+      else
+        errors.push(result.error)
+    }
+  }
+
+  if (errors.length > 0)
+    return { type: 'error', error: errors[0]! }
+
+  if (newSuspended.length > 0) {
+    // Build a new snapshot exposing the first remaining suspended branch
+    const firstSuspended = newSuspended[0]!
+    const newFrame: ParallelResumeFrame = {
+      type: 'ParallelResume',
+      branchCount,
+      completedBranches: newCompleted,
+      suspendedBranches: newSuspended.slice(1),
+    }
+    const resumeK: ContinuationStack = [newFrame, ...outerK]
+    const continuation = serializeSuspensionBlob(resumeK, snapshotState.snapshots, snapshotState.nextSnapshotIndex, firstSuspended.snapshot.meta)
+    const snapshot: Snapshot = {
+      continuation,
+      timestamp: Date.now(),
+      index: snapshotState.nextSnapshotIndex++,
+      runId: snapshotState.runId,
+      meta: firstSuspended.snapshot.meta,
+      effectName: firstSuspended.snapshot.effectName,
+      effectArgs: firstSuspended.snapshot.effectArgs,
+    }
+    return { type: 'suspended', snapshot }
+  }
+
+  // All branches complete — assemble result and continue with outer continuation
+  const resultArray: Any[] = Array.from({ length: branchCount })
+  for (const { index, value } of newCompleted) {
+    resultArray[index] = value
+  }
+
+  return runEffectLoop(
+    { type: 'Value', value: resultArray, k: outerK },
+    handlers,
+    signal,
+    snapshotState,
+    undefined,
+    deserializeOptions,
+  )
+}
+
 export async function retriggerWithEffects(
   k: ContinuationStack,
   effectName: string,
@@ -3321,15 +3506,33 @@ export async function retriggerWithEffects(
   handlers?: Handlers,
   initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
   deserializeOptions?: DeserializeOptions,
+  outerSignal?: AbortSignal,
 ): Promise<RunResult> {
   const abortController = new AbortController()
-  const signal = abortController.signal
+  const signal = outerSignal
+    ? combineSignals(outerSignal, abortController.signal)
+    : abortController.signal
 
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState?.snapshots ?? [],
     nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
     runId: generateRunId(),
     maxSnapshots: initialSnapshotState?.maxSnapshots,
+  }
+
+  // When the continuation starts with a ParallelResumeFrame, dispatch all
+  // remaining suspended branches concurrently rather than one at a time.
+  if (k.length > 0 && k[0]!.type === 'ParallelResume') {
+    return retriggerParallelGroup(
+      k[0],
+      k.slice(1),
+      effectName,
+      effectArgs,
+      handlers,
+      signal,
+      snapshotState,
+      deserializeOptions,
+    )
   }
 
   const matchingHandlers = findMatchingHandlers(effectName, handlers)
