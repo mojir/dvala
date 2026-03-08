@@ -2420,7 +2420,15 @@ function dispatchHostHandler(
       throw new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
     }
 
-    const [, handler] = matchingHandlers[index]!
+    const [pattern, handler] = matchingHandlers[index]!
+
+    // Before trying a "*" catch-all, fall back to standard effects.
+    if (pattern === '*') {
+      const standardHandler = getStandardEffectHandler(effectName)
+      if (standardHandler) {
+        return standardHandler(args, k, sourceCodeInfo)
+      }
+    }
 
     let outcome: HandlerOutcome | undefined
     let settled = false
