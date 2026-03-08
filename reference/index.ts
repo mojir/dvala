@@ -202,7 +202,7 @@ export interface EffectReference extends CommonReference<'effect'> {
 export type Reference<T extends Category = Category> = FunctionReference<T> | CustomReference<T> | ShorthandReference | DatatypeReference | EffectReference
 
 export function isFunctionReference<T extends Category>(ref: Reference<T>): ref is FunctionReference<T> {
-  return 'returns' in ref && 'args' in ref && 'variants' in ref
+  return 'returns' in ref && 'args' in ref && 'variants' in ref && !('effect' in ref)
 }
 
 export function isCustomReference<T extends Category>(ref: Reference<T>): ref is CustomReference<T> {

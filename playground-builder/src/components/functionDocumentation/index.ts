@@ -42,7 +42,7 @@ async function getDocumentation(reference: Reference) {
           ? getEffectSignatureSection(reference)
           : `<div ${styles('mb-4')}></div>`}
 
-    ${getSection('Description', formatDescription(reference.description, reference), 'mb-3', 'text-base')}
+    ${getSection('Description', formatDescription(reference.description, reference), 'text-base')}
 
     ${isFunctionReference(reference) ? getSection('Arguments', getArgumentInfo(reference)) : ''}
     ${isEffectReference(reference) && Object.keys(reference.args).length > 0 ? getSection('Arguments', getEffectArgumentInfo(reference)) : ''}
