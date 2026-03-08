@@ -3,9 +3,10 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import type { Any, UnknownRecord } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
-import type { EffectContext, EffectHandler } from '../../src/evaluator/effectTypes'
+import type { EffectContext, EffectHandler, Snapshot } from '../../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
+import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
@@ -25,6 +26,7 @@ import {
   undoDvalaCode,
   updateState,
 } from './state'
+import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 
@@ -61,6 +63,8 @@ const elements = {
   contextTitle: document.getElementById('context-title') as HTMLDivElement,
   dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
   dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
+  snapshotModal: document.getElementById('snapshot-modal') as HTMLDivElement,
+  snapshotModalMeta: document.getElementById('snapshot-modal-meta') as HTMLDivElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
   effectModalName: document.getElementById('effect-modal-name') as HTMLElement,
   effectModalArgs: document.getElementById('effect-modal-args') as HTMLDivElement,
@@ -103,6 +107,7 @@ let ignoreSelectionChange = false
 let pendingEffectCtx: EffectContext | null = null
 let pendingEffectResolve: (() => void) | null = null
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
+let currentSnapshot: Snapshot | null = null
 
 function calculateDimensions() {
   return {
@@ -521,6 +526,15 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
+function appendSnapshotLink(snapshot: Snapshot) {
+  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(snapshot)}`
+  const a = document.createElement('a')
+  a.textContent = href
+  a.className = 'share-link'
+  a.href = href
+  addOutputElement(a)
+}
+
 window.onload = function () {
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
@@ -816,6 +830,7 @@ window.onload = function () {
 
 function getDataFromUrl() {
   const urlParams = new URLSearchParams(window.location.search)
+
   const urlState = urlParams.get('state')
   if (urlState) {
     addOutputSeparator()
@@ -826,6 +841,23 @@ function getDataFromUrl() {
 
     urlParams.delete('state')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
+  }
+
+  const urlSnapshot = urlParams.get('snapshot')
+  if (urlSnapshot) {
+    const snapshot = decodeSnapshot(urlSnapshot)
+    urlParams.delete('snapshot')
+    history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
+    if (snapshot) {
+      addOutputSeparator()
+      appendOutput('Program suspended:', 'comment')
+      appendSnapshotLink(snapshot)
+      openSnapshotModal(snapshot)
+    }
+    else {
+      addOutputSeparator()
+      appendOutput(`Invalid url parameter snapshot: ${urlSnapshot}`, 'error')
+    }
   }
 }
 
@@ -933,8 +965,12 @@ export async function run() {
     const runResult = await getDvala().runAsync(code, { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers })
     if (runResult.type === 'error')
       throw runResult.error
-    const result = runResult.type === 'completed' ? runResult.value : null
-    const content = stringifyValue(result, false)
+    if (runResult.type === 'suspended') {
+      appendOutput('Program suspended:', 'comment')
+      appendSnapshotLink(runResult.snapshot)
+      return
+    }
+    const content = stringifyValue(runResult.value, false)
     appendOutput(content, 'result')
   }
   catch (error) {
@@ -1070,6 +1106,86 @@ export function focusContext() {
 
 export function focusDvalaCode() {
   elements.dvalaTextArea.focus()
+}
+
+export function openSnapshotModal(snapshot: Snapshot) {
+  currentSnapshot = snapshot
+  elements.snapshotModalMeta.innerHTML = ''
+
+  const rows: [string, string][] = [
+    ['Index', String(snapshot.index)],
+    ['Run ID', snapshot.runId],
+    ['Timestamp', new Date(snapshot.timestamp).toLocaleString()],
+  ]
+  if (snapshot.meta !== undefined) {
+    rows.push(['Meta', JSON.stringify(snapshot.meta, null, 2)])
+  }
+
+  for (const [label, value] of rows) {
+    const row = document.createElement('div')
+    row.style.cssText = 'display:flex; flex-direction:column; gap:1px; border-left: 2px solid rgb(82 82 82); padding-left: 6px;'
+    const labelEl = document.createElement('span')
+    labelEl.textContent = label
+    labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
+    const valueEl = document.createElement('code')
+    valueEl.textContent = value
+    valueEl.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+    row.appendChild(labelEl)
+    row.appendChild(valueEl)
+    elements.snapshotModalMeta.appendChild(row)
+  }
+
+  elements.snapshotModal.style.display = 'flex'
+}
+
+export function closeSnapshotModal() {
+  elements.snapshotModal.style.display = 'none'
+  currentSnapshot = null
+}
+
+export function downloadSnapshot() {
+  if (!currentSnapshot)
+    return
+  const blob = new Blob([JSON.stringify(currentSnapshot, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `snapshot-${currentSnapshot.index}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function resumeSnapshot() {
+  if (!currentSnapshot)
+    return
+  const snapshot = currentSnapshot
+  closeSnapshotModal()
+  addOutputSeparator()
+  appendOutput(`Resume snapshot ${snapshot.index}:`, 'comment')
+  const dvalaParams = getDvalaParamsFromContext()
+  const hijacker = hijackConsole()
+  try {
+    const runResult = await resume(snapshot, null, {
+      handlers: dvalaParams.effectHandlers,
+      bindings: dvalaParams.bindings as Record<string, Any>,
+      modules: allBuiltinModules,
+    })
+    if (runResult.type === 'error')
+      throw runResult.error
+    if (runResult.type === 'suspended') {
+      appendOutput('Program suspended:', 'comment')
+      appendSnapshotLink(runResult.snapshot)
+      return
+    }
+    appendOutput(stringifyValue(runResult.value, false), 'result')
+  }
+  catch (error) {
+    appendOutput(error, 'error')
+  }
+  finally {
+    hijacker.releaseConsole()
+    focusDvalaCode()
+  }
 }
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
