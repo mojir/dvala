@@ -25,9 +25,11 @@ export { type DvalaError, isDvalaError } from './errors'
 export { isGrid, isMatrix, isVector } from './typeGuards/annotatedCollections'
 export type { AutoCompleter, AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 
-// Effects — standalone resume function and types
+// Effects — standalone resume/retrigger functions and types
 export { resume } from './resume'
 export type { ResumeOptions } from './resume'
+export { retrigger } from './retrigger'
+export type { RetriggerOptions } from './retrigger'
 export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // Factory API

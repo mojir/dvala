@@ -182,7 +182,18 @@ export function getPlayground() {
   <div id="snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;')}>
       <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Snapshot</div>
-      <div id="snapshot-modal-meta" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-1', 'overflow-y: auto;', 'max-height: 12rem;')}></div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Effect</span>
+        <code id="snapshot-modal-effect-name" ${styles('text-color-SkyLavender', 'text-sm')}></code>
+      </div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Arguments</span>
+        <div id="snapshot-modal-effect-args" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 10rem;')}></div>
+      </div>
+      <div ${styles('flex', 'flex-col', 'gap-1')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold;">Metadata</span>
+        <div id="snapshot-modal-meta" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-2', 'overflow-y: auto;', 'max-height: 6rem;')}></div>
+      </div>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 1rem;')}>
         <button class="button" onclick="Playground.closeSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Close</button>
         <div ${styles('flex', 'flex-row', 'gap-2')}>

@@ -33,6 +33,18 @@ export interface Snapshot {
 
   /** Optional domain metadata from the perform call or suspend call. */
   readonly meta?: Any
+
+  /**
+   * The name of the effect that was being handled when the program suspended.
+   * Undefined when suspension occurred outside of an effect handler (e.g. in parallel/race branches).
+   */
+  readonly effectName?: string
+
+  /**
+   * The arguments passed to the suspended effect's perform call.
+   * Undefined when suspension occurred outside of an effect handler.
+   */
+  readonly effectArgs?: Any[]
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +237,10 @@ export class SuspensionSignal {
     public readonly nextSnapshotIndex: number,
     /** Optional domain metadata passed through to RunResult. */
     public readonly meta?: Any,
+    /** The effect name being handled when suspend() was called. */
+    public readonly effectName?: string,
+    /** The effect arguments being handled when suspend() was called. */
+    public readonly effectArgs?: Any[],
   ) {}
 }
 
