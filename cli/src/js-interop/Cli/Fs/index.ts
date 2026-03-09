@@ -28,6 +28,7 @@ function init() {
       try {
         fs.unlinkSync(file)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error(`Failed to delete temporary file ${file}:`, error)
       }
     })
@@ -35,6 +36,7 @@ function init() {
       try {
         fs.rmSync(dir, { recursive: true, force: true })
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error(`Failed to delete temporary directory ${dir}:`, error)
       }
     })

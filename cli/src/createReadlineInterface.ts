@@ -17,6 +17,7 @@ function isHistoryEnabled() {
   try {
     fs.openSync(historyFile, 'w')
   } catch (_e) {
+    // eslint-disable-next-line no-console
     console.error(`No history for you!
 If you would like to enable history persistence, make sure the directory "${path.resolve(
   historyDir,

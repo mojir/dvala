@@ -44,6 +44,7 @@ function checkVariables(reference: FunctionReference, variables: Set<string>) {
       return
 
     if (!isArgumentName(variableName, reference)) {
+      // eslint-disable-next-line no-console
       console.error(`Unknown argument ${variable}`, reference)
       throw new Error(`Unknown argument ${variable}`)
     }
