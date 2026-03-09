@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { mathUtilsModule } from '../src/builtin/modules/math'
+import type { DvalaBundle } from '../src/bundler/interface'
 
 describe('createDvala', () => {
   describe('basic run', () => {
@@ -152,6 +153,94 @@ describe('createDvala', () => {
       expect(d.run('base + 1')).toBe(11)
       expect(d.run('base + 2')).toBe(12)
       expect(d.run('base + 3')).toBe(13)
+    })
+  })
+
+  describe('run with DvalaBundle', () => {
+    it('runs a bundle with no file modules', () => {
+      const d = createDvala()
+      const bundle: DvalaBundle = { program: '1 + 2', fileModules: [] }
+      expect(d.run(bundle)).toBe(3)
+    })
+
+    it('runs a bundle with file modules', () => {
+      const d = createDvala()
+      const bundle: DvalaBundle = {
+        program: 'let m = import(mylib); m.x + 1',
+        fileModules: [['mylib', '{ x: 10 }']],
+      }
+      expect(d.run(bundle)).toBe(11)
+    })
+  })
+
+  describe('runAsync with DvalaBundle', () => {
+    it('runs a bundle with no file modules async', async () => {
+      const d = createDvala()
+      const bundle: DvalaBundle = { program: '1 + 2', fileModules: [] }
+      const result = await d.runAsync(bundle)
+      expect(result).toEqual({ type: 'completed', value: 3, definedBindings: {} })
+    })
+
+    it('runs a bundle with file modules async', async () => {
+      const d = createDvala()
+      const bundle: DvalaBundle = {
+        program: 'let m = import(mylib); m.x * 3',
+        fileModules: [['mylib', '{ x: 5 }']],
+      }
+      const result = await d.runAsync(bundle)
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed') {
+        expect(result.value).toBe(15)
+      }
+    })
+  })
+
+  describe('runAsync catch paths', () => {
+    it('wraps non-DvalaError non-TypeError in DvalaError', async () => {
+      const d = createDvala()
+      const fakeBundle = {
+        fileModules: [],
+        get program(): string { throw new RangeError('boom') },
+      }
+      // eslint-disable-next-line ts/no-unsafe-argument
+      const result = await d.runAsync(fakeBundle as any)
+      expect(result.type).toBe('error')
+    })
+
+    it('rethrows TypeError from try block', async () => {
+      const d = createDvala()
+      // eslint-disable-next-line ts/no-unsafe-argument
+      await expect(d.runAsync(null as any)).rejects.toThrow(TypeError)
+    })
+  })
+
+  describe('getUndefinedSymbols', () => {
+    it('returns undefined symbols in a program', () => {
+      const d = createDvala()
+      const symbols = d.getUndefinedSymbols('x + y')
+      expect(symbols).toContain('x')
+      expect(symbols).toContain('y')
+    })
+
+    it('does not include factory bindings as undefined', () => {
+      const d = createDvala({ bindings: { x: 1 } })
+      const symbols = d.getUndefinedSymbols('x + y')
+      expect(symbols).not.toContain('x')
+      expect(symbols).toContain('y')
+    })
+
+    it('does not include factory module functions as undefined', () => {
+      const d = createDvala({ modules: [mathUtilsModule] })
+      const symbols = d.getUndefinedSymbols('x + 1')
+      expect(symbols).toContain('x')
+    })
+  })
+
+  describe('getAutoCompleter', () => {
+    it('returns an AutoCompleter instance', () => {
+      const d = createDvala()
+      const completer = d.getAutoCompleter('1 + ', 4)
+      expect(completer).toBeDefined()
     })
   })
 })

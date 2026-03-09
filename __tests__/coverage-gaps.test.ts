@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../src/allModules'
 import { createDebugger } from '../src/debug'
 import { createDvala } from '../src/createDvala'
+import { createContextStack } from '../src/evaluator/ContextStack'
+import { evaluateAsync, evaluateNode } from '../src/evaluator/trampoline'
+import { extractCheckpointSnapshots } from '../src/evaluator/suspension'
+import { parse } from '../src/parser'
 import { resume } from '../src/resume'
+import { minifyTokenStream } from '../src/tokenizer/minifyTokenStream'
+import { tokenize } from '../src/tokenizer/tokenize'
 import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
@@ -3203,5 +3209,285 @@ describe('trampoline.ts — RecurSignal in recursive executor (lines 383-404)', 
       map([3, 5], looper)
     `)
     expect(result).toEqual([3, 5])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// suspension.ts — extractCheckpointSnapshots (lines 355-365)
+// ---------------------------------------------------------------------------
+describe('suspension.ts — extractCheckpointSnapshots', () => {
+  it('should return empty array when snapshots is undefined', () => {
+    const result = extractCheckpointSnapshots({ version: 2, contextStacks: [], k: null })
+    expect(result).toEqual([])
+  })
+
+  it('should return empty array when snapshots is empty', () => {
+    const result = extractCheckpointSnapshots({ version: 2, contextStacks: [], k: null, snapshots: [] })
+    expect(result).toEqual([])
+  })
+
+  it('should return snapshots as-is when there is no pool', () => {
+    const snap1 = { continuation: {}, timestamp: 1, index: 0, runId: 'a', message: 'cp1' }
+    const snap2 = { continuation: {}, timestamp: 2, index: 1, runId: 'a', message: 'cp2' }
+    const result = extractCheckpointSnapshots({
+      version: 2,
+      contextStacks: [],
+      k: null,
+      snapshots: [snap1, snap2],
+    })
+    expect(result).toEqual([snap1, snap2])
+  })
+
+  it('should return snapshots as-is when pool is empty', () => {
+    const snap = { continuation: {}, timestamp: 1, index: 0, runId: 'a', message: 'cp' }
+    const result = extractCheckpointSnapshots({
+      version: 2,
+      contextStacks: [],
+      k: null,
+      snapshots: [snap],
+      pool: {},
+    })
+    expect(result).toEqual([snap])
+  })
+
+  it('should expand pool refs in snapshots when pool is present', () => {
+    const snap = { continuation: { __poolRef: 0 }, timestamp: 1, index: 0, runId: 'a', message: 'cp' }
+    const result = extractCheckpointSnapshots({
+      version: 2,
+      contextStacks: [],
+      k: null,
+      snapshots: [snap],
+      pool: { 0: { expanded: true } },
+    })
+    expect(result).toEqual([{ continuation: { expanded: true }, timestamp: 1, index: 0, runId: 'a', message: 'cp' }])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// evaluateAsync — direct call (lines 3256–3259)
+// ---------------------------------------------------------------------------
+
+describe('evaluateAsync — direct call', () => {
+  it('should evaluate a simple program asynchronously', async () => {
+    const program = '1 + 2'
+    const tokens = tokenize(program, true, undefined)
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const ast = { body: parse(minified), hasDebugData: false }
+    const result = await evaluateAsync(ast, createContextStack())
+    expect(result).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// evaluateNode — direct call (lines 3266–3278)
+// ---------------------------------------------------------------------------
+
+describe('evaluateNode — direct call', () => {
+  it('should evaluate a single number node', () => {
+    const program = '42'
+    const tokens = tokenize(program, true, undefined)
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const nodes = parse(minified)
+    const result = evaluateNode(nodes[0]!, createContextStack())
+    expect(result).toBe(42)
+  })
+
+  it('should evaluate a single string node', () => {
+    const program = '"hello"'
+    const tokens = tokenize(program, true, undefined)
+    const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
+    const nodes = parse(minified)
+    const result = evaluateNode(nodes[0]!, createContextStack())
+    expect(result).toBe('hello')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// host handler edge cases — dispatchHostHandler (lines 2415–2564)
+// ---------------------------------------------------------------------------
+
+describe('dispatchHostHandler edge cases', () => {
+  const dvalaHost = createDvala()
+
+  it('should handle sync handler that settles before async return', async () => {
+    // Handler returns a promise but calls resume() synchronously before the promise resolves
+    const handlers: Handlers = {
+      'test.sync-settle': (ctx) => {
+        ctx.resume(99)
+        return Promise.resolve()
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(test.sync-settle))', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(99)
+  })
+
+  it('should handle async handler that does not call resume/fail/next', async () => {
+    const handlers: Handlers = {
+      'test.no-settle': async () => {
+        // Handler does nothing — should error
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(test.no-settle))', { effectHandlers: handlers })
+    expect(result.type).toBe('error')
+    if (result.type === 'error')
+      expect(result.error.message).toContain('did not call')
+  })
+
+  it('should handle async handler that rejects with plain Error after settling', async () => {
+    // Handler calls resume() synchronously, then the async part rejects
+    const handlers: Handlers = {
+      'test.settle-then-reject': (ctx) => {
+        ctx.resume(42)
+        return Promise.reject(new Error('late rejection'))
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(test.settle-then-reject))', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(42)
+  })
+
+  it('should handle async handler that rejects without settling', async () => {
+    const handlers: Handlers = {
+      'test.reject-no-settle': async () => {
+        throw new Error('handler rejected')
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(test.reject-no-settle))', { effectHandlers: handlers })
+    expect(result.type).toBe('error')
+    if (result.type === 'error')
+      expect(result.error.message).toContain('handler rejected')
+  })
+
+  it('should exhaust handler chain for dvala.error when all call next()', async () => {
+    const handlers: Handlers = {
+      'dvala.error': async (ctx) => {
+        ctx.next()
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(dvala.error), "boom")', { effectHandlers: handlers })
+    expect(result.type).toBe('error')
+  })
+
+  it('should exhaust handler chain for dvala.checkpoint when all call next()', async () => {
+    const handlers: Handlers = {
+      'dvala.checkpoint': async (ctx) => {
+        ctx.next()
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(dvala.checkpoint), "cp")', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(null)
+  })
+
+  it('should handle wildcard before standard effect fallback', async () => {
+    const log: string[] = []
+    const handlers: Handlers = {
+      '*': async (ctx) => {
+        log.push('wildcard-checked')
+        ctx.next()
+      },
+    }
+    const result = await dvalaHost.runAsync('perform(effect(dvala.checkpoint), "cp")', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    expect(log).toContain('wildcard-checked')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// runEffectLoop error branches (lines 3591–3594)
+// ---------------------------------------------------------------------------
+
+describe('runEffectLoop error branches', () => {
+  const dvalaLoop = createDvala()
+
+  it('should handle non-DvalaError thrown during effect execution', async () => {
+    // Use a perform for an unhandled effect to trigger the error path
+    const result = await dvalaLoop.runAsync('perform(effect(unhandled.effect))')
+    expect(result.type).toBe('error')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ?? (nullish coalescing) single-arg edge cases (lines 764–765, 788–789)
+// ---------------------------------------------------------------------------
+
+describe('?? single-arg edge cases', () => {
+  it('should return null for single undefined symbol', () => {
+    // Covers line 764-765: nodes.length === 1 with undefined symbol
+    expect(dvala.run('??(nonexistent)')).toBe(null)
+  })
+
+  it('should return value for single defined expression', () => {
+    // Covers line 788-789: nodes.length === 1 with defined value
+    expect(dvala.run('??(42)')).toBe(42)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Wildcard handler with standard effect (lines 2442–2443)
+// ---------------------------------------------------------------------------
+
+describe('wildcard handler with standard effect fallback', () => {
+  it('should fall through wildcard to standard handler for dvala.io.println', async () => {
+    const log: string[] = []
+    const handlers: Handlers = {
+      '*': async (ctx) => {
+        log.push(`wildcard: ${ctx.effectName}`)
+        ctx.next()
+      },
+      'dvala.io.println': async (ctx) => {
+        // Intercept println to avoid console output
+        log.push(`println: ${ctx.args[0]}`)
+        ctx.resume(null)
+      },
+    }
+    const result = await dvala.runAsync('perform(effect(dvala.io.println), "hello")', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+  })
+
+  it('should use standard handler when wildcard is only handler for standard effect', async () => {
+    const handlers: Handlers = {
+      '*': async (ctx) => {
+        ctx.next()
+      },
+    }
+    // dvala.io.println is a standard effect — wildcard next() should fall through to it
+    const result = await dvala.runAsync('perform(effect(dvala.io.println), "test")', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Async handler not-yet-settled (lines 2495–2496)
+// ---------------------------------------------------------------------------
+
+describe('async handler not-yet-settled path', () => {
+  it('should handle truly async handler that resolves after promise settles', async () => {
+    const handlers: Handlers = {
+      'test.delayed': async (ctx) => {
+        // Simulate async work before settling
+        await new Promise(resolve => setTimeout(resolve, 1))
+        ctx.resume(42)
+      },
+    }
+    const result = await dvala.runAsync('perform(effect(test.delayed))', { effectHandlers: handlers })
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed')
+      expect(result.value).toBe(42)
+  })
+
+  it('should handle truly async handler that calls fail()', async () => {
+    const handlers: Handlers = {
+      'test.async-fail': async (ctx) => {
+        await new Promise(resolve => setTimeout(resolve, 1))
+        ctx.fail('async failure')
+      },
+    }
+    const result = await dvala.runAsync('perform(effect(test.async-fail))', { effectHandlers: handlers })
+    expect(result.type).toBe('error')
   })
 })
