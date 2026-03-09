@@ -22,8 +22,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       if (i >= 0 && i < seq.length) {
         const result = toAny(seq[i])
         return result
-      }
-      else {
+      } else {
         return defaultValue
       }
     },
@@ -146,8 +145,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         assertString(value, sourceCodeInfo)
         const index = seq.indexOf(value)
         return index !== -1 ? index : null
-      }
-      else {
+      } else {
         const index = seq.findIndex(item => deepEqual(asAny(item, sourceCodeInfo), value), sourceCodeInfo)
         return index !== -1 ? index : null
       }
@@ -180,8 +178,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       if (typeof seq === 'string') {
         assertCharArray(values, sourceCodeInfo)
         return [seq, ...values].join('')
-      }
-      else {
+      } else {
         return [...seq, ...values]
       }
     },

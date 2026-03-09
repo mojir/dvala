@@ -1,5 +1,4 @@
-/* eslint-disable ts/no-unsafe-assignment */
-/* eslint-disable ts/no-unsafe-member-access */
+
 import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -17,8 +16,7 @@ describe('the cli-fs Integration Tests', () => {
           cwd: path.join(__dirname, '../..'), // Adjust to project root
           stdio: 'pipe',
         })
-      }
-      catch (error: any) {
+      } catch (error: any) {
         throw new Error(`Failed to build CLI: ${error.message}`)
       }
     }
@@ -65,8 +63,7 @@ describe('the cli-fs Integration Tests', () => {
         env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
       })
       return result.trim()
-    }
-    catch (error: any) {
+    } catch (error: any) {
       throw new Error(`Dvala CLI failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`)
     }
   }

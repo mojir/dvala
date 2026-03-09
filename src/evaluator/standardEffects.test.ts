@@ -62,8 +62,7 @@ describe('standardEffects', () => {
         const result = handler(['hello'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
         expect(spy).toHaveBeenCalledWith('hello')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -81,8 +80,7 @@ describe('standardEffects', () => {
         const result = handler([42], emptyK)
         expect(result).toEqual({ type: 'Value', value: 42, k: emptyK })
         expect(spy).toHaveBeenCalledWith('42')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -95,8 +93,7 @@ describe('standardEffects', () => {
         const result = handler([obj], emptyK)
         expect(result).toEqual({ type: 'Value', value: obj, k: emptyK })
         expect(spy).toHaveBeenCalledWith('{\n  "a": 1\n}')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -108,8 +105,7 @@ describe('standardEffects', () => {
         const arr = [1, 2, 3]
         const result = handler([arr], emptyK) as { type: string, value: unknown, k: unknown }
         expect(result.value).toBe(arr) // same reference
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -123,8 +119,7 @@ describe('standardEffects', () => {
         const result = handler(['hello'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
         expect(consoleSpy).toHaveBeenCalledWith('hello')
-      }
-      finally {
+      } finally {
         Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
         consoleSpy.mockRestore()
       }
@@ -139,8 +134,7 @@ describe('standardEffects', () => {
         const result = handler(['hello'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
         expect(spy).toHaveBeenCalledWith('hello\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -158,8 +152,7 @@ describe('standardEffects', () => {
         const result = handler([42], emptyK)
         expect(result).toEqual({ type: 'Value', value: 42, k: emptyK })
         expect(spy).toHaveBeenCalledWith('42\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -171,8 +164,7 @@ describe('standardEffects', () => {
         const result = handler([null], emptyK)
         expect(result).toEqual({ type: 'Value', value: null, k: emptyK })
         expect(spy).toHaveBeenCalledWith('null\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -184,8 +176,7 @@ describe('standardEffects', () => {
         const result = handler([true], emptyK)
         expect(result).toEqual({ type: 'Value', value: true, k: emptyK })
         expect(spy).toHaveBeenCalledWith('true\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -200,8 +191,7 @@ describe('standardEffects', () => {
         const result = handler(['hello'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
         expect(alertSpy).toHaveBeenCalledWith('hello')
-      }
-      finally {
+      } finally {
         Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
         Object.defineProperty(globalThis, 'alert', { value: undefined, configurable: true, writable: true })
       }
@@ -217,8 +207,7 @@ describe('standardEffects', () => {
         const result = handler(['hello'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'hello', k: emptyK })
         expect(consoleSpy).toHaveBeenCalledWith('hello')
-      }
-      finally {
+      } finally {
         Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
         consoleSpy.mockRestore()
       }
@@ -233,8 +222,7 @@ describe('standardEffects', () => {
         const result = handler(['oops'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'oops', k: emptyK })
         expect(spy).toHaveBeenCalledWith('oops\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -251,8 +239,7 @@ describe('standardEffects', () => {
         const result = handler([42], emptyK)
         expect(result).toEqual({ type: 'Value', value: 42, k: emptyK })
         expect(spy).toHaveBeenCalledWith('42\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -267,8 +254,7 @@ describe('standardEffects', () => {
         const result = handler(['browser-error'], emptyK)
         expect(result).toEqual({ type: 'Value', value: 'browser-error', k: emptyK })
         expect(consoleSpy).toHaveBeenCalledWith('browser-error')
-      }
-      finally {
+      } finally {
         Object.defineProperty(process.stdout, 'write', { value: originalWrite, configurable: true, writable: true })
         consoleSpy.mockRestore()
       }
@@ -285,8 +271,7 @@ describe('standardEffects', () => {
         expect(result.type).toBe('Value')
         expect(result.value).toBe('user input')
         expect(globalThis.prompt).toHaveBeenCalledWith('Enter name:')
-      }
-      finally {
+      } finally {
         globalThis.prompt = originalPrompt
       }
     })
@@ -299,8 +284,7 @@ describe('standardEffects', () => {
         const result = handler(['Enter name:'], emptyK) as { type: string, value: unknown, k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBeNull()
-      }
-      finally {
+      } finally {
         globalThis.prompt = originalPrompt
       }
     })
@@ -312,8 +296,7 @@ describe('standardEffects', () => {
         globalThis.prompt = vi.fn(() => 'ok')
         void handler([42], emptyK)
         expect(globalThis.prompt).toHaveBeenCalledWith('')
-      }
-      finally {
+      } finally {
         globalThis.prompt = originalPrompt
       }
     })
@@ -325,8 +308,7 @@ describe('standardEffects', () => {
         // @ts-expect-error -- simulating Node.js environment without prompt
         globalThis.prompt = undefined
         expect(() => handler(['msg'], emptyK)).toThrow('not supported in this environment')
-      }
-      finally {
+      } finally {
         globalThis.prompt = originalPrompt
       }
     })
@@ -356,8 +338,7 @@ describe('standardEffects', () => {
         expect(result.value).toBe('hello world')
         expect(mockStdin.setEncoding).toHaveBeenCalledWith('utf-8')
         expect(mockStdin.resume).toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         stdinSpy.mockRestore()
       }
     })
@@ -377,8 +358,7 @@ describe('standardEffects', () => {
         errorHandler(new Error('read failed'))
 
         await expect(promise).rejects.toThrow('read failed')
-      }
-      finally {
+      } finally {
         stdinSpy.mockRestore()
       }
     })
@@ -388,8 +368,7 @@ describe('standardEffects', () => {
       const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(null as unknown as typeof process.stdin)
       try {
         expect(() => handler([], emptyK)).toThrow('not supported in this environment')
-      }
-      finally {
+      } finally {
         stdinSpy.mockRestore()
       }
     })
@@ -567,8 +546,7 @@ describe('standardEffects', () => {
       try {
         void handler([builtinFn], emptyK)
         expect(spy).toHaveBeenCalledWith('<builtin function 42>\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -579,8 +557,7 @@ describe('standardEffects', () => {
       try {
         void handler([/abc/g], emptyK)
         expect(spy).toHaveBeenCalledWith('/abc/g\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -595,8 +572,7 @@ describe('standardEffects', () => {
       try {
         void handler([[Number.POSITIVE_INFINITY]], emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "∞"\n]\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -607,8 +583,7 @@ describe('standardEffects', () => {
       try {
         void handler([[Number.NEGATIVE_INFINITY]], emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "-∞"\n]\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -620,8 +595,7 @@ describe('standardEffects', () => {
       try {
         void handler([[fn]], emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "<function myFn>"\n]\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -633,8 +607,7 @@ describe('standardEffects', () => {
       try {
         void handler([[effectRef]], emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "<effect dvala.io.print>"\n]\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })
@@ -646,8 +619,7 @@ describe('standardEffects', () => {
       try {
         void handler([[re]], emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "/abc/g"\n]\n')
-      }
-      finally {
+      } finally {
         spy.mockRestore()
       }
     })

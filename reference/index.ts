@@ -1,18 +1,14 @@
 import type { SpecialExpressionName } from '../src/builtin'
-import { specialExpressions } from '../src/builtin'
-import { normalExpressions } from '../src/builtin/normalExpressions'
-import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
-import { isSymbolicOperator } from '../src/tokenizer/operators'
-import { canBeOperator } from '../src/utils/arity'
 import type { BuiltinNormalExpressions, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
-import { isFunctionDocs } from '../src/builtin/interface'
 import type { DvalaModule } from '../src/builtin/modules/interface'
-
+import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName, VectorApiName } from './api'
+import { specialExpressions } from '../src/builtin'
+import { arrayNormalExpression } from '../src/builtin/core/array'
 // Core categories — all derive reference from co-located docs
 import { assertionNormalExpression } from '../src/builtin/core/assertion'
 import { bitwiseNormalExpression } from '../src/builtin/core/bitwise'
-import { arrayNormalExpression } from '../src/builtin/core/array'
 import { collectionNormalExpression } from '../src/builtin/core/collection'
+
 import { functionalNormalExpression } from '../src/builtin/core/functional'
 import { mathNormalExpression } from '../src/builtin/core/math'
 import { getMetaNormalExpression } from '../src/builtin/core/meta'
@@ -23,23 +19,27 @@ import { regexpNormalExpression } from '../src/builtin/core/regexp'
 import { sequenceNormalExpression } from '../src/builtin/core/sequence'
 import { stringNormalExpression } from '../src/builtin/core/string'
 import { vectorNormalExpression } from '../src/builtin/core/vector'
-
+import { isFunctionDocs } from '../src/builtin/interface'
 // Module categories — derive reference from co-located docs
 import { assertModule } from '../src/builtin/modules/assertion'
+import { bitwiseUtilsModule } from '../src/builtin/modules/bitwise'
+import { collectionUtilsModule } from '../src/builtin/modules/collection'
+
+import { convertModule } from '../src/builtin/modules/convert'
+import { functionalUtilsModule } from '../src/builtin/modules/functional'
 import { gridModule } from '../src/builtin/modules/grid'
-import { vectorModule } from '../src/builtin/modules/vector'
 import { linearAlgebraModule } from '../src/builtin/modules/linear-algebra'
+import { mathUtilsModule } from '../src/builtin/modules/math'
 import { matrixModule } from '../src/builtin/modules/matrix'
 import { numberTheoryModule } from '../src/builtin/modules/number-theory'
-import { stringUtilsModule } from '../src/builtin/modules/string'
-import { collectionUtilsModule } from '../src/builtin/modules/collection'
 import { sequenceUtilsModule } from '../src/builtin/modules/sequence'
-import { mathUtilsModule } from '../src/builtin/modules/math'
-import { functionalUtilsModule } from '../src/builtin/modules/functional'
-import { bitwiseUtilsModule } from '../src/builtin/modules/bitwise'
-import { convertModule } from '../src/builtin/modules/convert'
+import { stringUtilsModule } from '../src/builtin/modules/string'
+import { vectorModule } from '../src/builtin/modules/vector'
+import { normalExpressions } from '../src/builtin/normalExpressions'
+import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import { allStandardEffectDefinitions } from '../src/evaluator/standardEffects'
-import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName, VectorApiName } from './api'
+import { isSymbolicOperator } from '../src/tokenizer/operators'
+import { canBeOperator } from '../src/utils/arity'
 import { datatype } from './datatype'
 import { shorthand } from './shorthand'
 
@@ -128,8 +128,7 @@ function specialExpressionDocsToReference(): Record<string, FunctionReference<'s
         ...(docs.seeAlso ? { seeAlso: docs.seeAlso as ApiName[] } : {}),
         ...(docs.hideOperatorForm ? { noOperatorDocumentation: true } : {}),
       }
-    }
-    else {
+    } else {
       result[name] = {
         title: name,
         category: docs.category as 'special-expression',
@@ -240,7 +239,7 @@ export const normalExpressionReference: Record<CoreNormalExpressionName, Functio
 }
 
 // Module functions — all derived from co-located docs
-// eslint-disable-next-line ts/consistent-type-assertions
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 export const moduleReference: Record<ModuleExpressionName, FunctionReference> = {
   ...moduledDocsToReference(assertModule),
   ...moduledDocsToReference(gridModule),
@@ -312,7 +311,7 @@ export const effectReference: Record<string, EffectReference> = deriveEffectRefe
 // All references including modules and effects (for search and full documentation)
 export const allReference: Record<string, Reference> = sortByCategory({ ...apiReference, ...moduleReference, ...effectReference })
 
-Object.values(allReference).forEach((ref) => {
+Object.values(allReference).forEach(ref => {
   ref.title = ref.title.replace(/"/g, '&quot;')
 })
 

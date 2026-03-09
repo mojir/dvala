@@ -22,7 +22,7 @@ export function isPrime(num: number): boolean {
 }
 
 export const primeSequence: SequenceDefinition<'prime'> = {
-  'prime-seq': (length) => {
+  'prime-seq': length => {
     const primes = []
     let num = 2
     while (primes.length < length) {
@@ -34,12 +34,12 @@ export const primeSequence: SequenceDefinition<'prime'> = {
     return primes
   },
   'prime?': n => isPrime(n),
-  'prime-take-while': (takeWhile) => {
+  'prime-take-while': takeWhile => {
     const primes: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!isPrime(i))
         return loop(i + 1)
-      return chain(takeWhile(i, primes.length), (keep) => {
+      return chain(takeWhile(i, primes.length), keep => {
         if (!keep)
           return primes
         primes.push(i)

@@ -102,8 +102,7 @@ function createReductionNormalExpression(
 
       try {
         return reductionFunction(vector)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },
@@ -131,8 +130,7 @@ function createMovingNormalExpression(
           result.push(reductionFunction(vector.slice(i, i + windowSize)))
         }
         return result
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },
@@ -184,8 +182,7 @@ function createCenteredMovingNormalExpression(
         for (let i = start; i < end; i += 1) {
           result.push(reductionFunction(paddedVector.slice(i, i + windowSize) as number[]))
         }
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
 
@@ -219,8 +216,7 @@ function createRunningNormalExpression(
           result.push(reductionFunction(vector.slice(0, i + 1)))
         }
         return result
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },

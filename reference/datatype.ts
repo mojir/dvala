@@ -1,5 +1,5 @@
-import type { DatatypeName } from './api'
 import type { DatatypeReference } from '.'
+import type { DatatypeName } from './api'
 
 export const datatype: Record<DatatypeName, DatatypeReference> = {
   '-type-number': {
@@ -177,7 +177,6 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     description: 'A value that can never be created',
     examples: [`
 // perform(effect(dvala.error), "error") will never return a value
-do perform(effect(dvala.error), "error") with case effect(dvala.error) then (args) -> "never" end`,
-    ],
+do perform(effect(dvala.error), "error") with case effect(dvala.error) then (args) -> "never" end`],
   },
 }

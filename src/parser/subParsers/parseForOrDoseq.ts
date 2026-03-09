@@ -87,8 +87,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
     if (token[1] === 'when') {
       modifiers.push('&when')
       whenNode = ctx.parseExpression()
-    }
-    else {
+    } else {
       modifiers.push('&while')
       whileNode = ctx.parseExpression()
     }

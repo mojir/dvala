@@ -69,8 +69,7 @@ const tokenizeString: Tokenizer<StringToken> = (input, position) => {
     if (escaping) {
       escaping = false
       value += char
-    }
-    else {
+    } else {
       if (char === '\\') {
         escaping = true
       }
@@ -165,9 +164,7 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position) => {
         }
         return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
       }
-    }
-
-    else if (char === '.') {
+    } else if (char === '.') {
       if (i === start) {
         return NO_MATCH
       }
@@ -175,9 +172,7 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position) => {
         return [i - position + 1, ['Error', input.substring(position, i + 1), undefined, `Invalid number format at position ${i + 1}`]]
       }
       hasDecimalPoint = true
-    }
-
-    else if (char === 'e' || char === 'E') {
+    } else if (char === 'e' || char === 'E') {
       if (i === start) {
         return NO_MATCH
       }
@@ -195,9 +190,7 @@ export const tokenizeNumber: Tokenizer<NumberToken> = (input, position) => {
       }
 
       hasExponent = true
-    }
-
-    else if (!decimalNumberRegExp.test(char)) {
+    } else if (!decimalNumberRegExp.test(char)) {
       break
     }
   }
@@ -280,8 +273,7 @@ export const tokenizeSymbol: Tokenizer<SymbolToken> = (input, position) => {
       if (escaping) {
         escaping = false
         value += char
-      }
-      else {
+      } else {
         if (char === '\\') {
           escaping = true
         }

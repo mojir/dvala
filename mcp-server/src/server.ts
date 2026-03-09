@@ -60,7 +60,7 @@ function formatFunctionDoc(ref: FunctionReference): string {
   // Signatures
   lines.push('## Signatures')
   for (const variant of ref.variants) {
-    const argList = variant.argumentNames.map((name) => {
+    const argList = variant.argumentNames.map(name => {
       const arg = ref.args[name]
       return arg?.rest ? `...${name}` : name
     }).join(', ')
@@ -161,7 +161,7 @@ function formatEffectDoc(ref: EffectReference): string {
   lines.push('## Signatures')
   for (const variant of ref.variants) {
     const argList = variant.argumentNames.length > 0
-      ? `, ${variant.argumentNames.map((name) => {
+      ? `, ${variant.argumentNames.map(name => {
         const arg = ref.args[name]
         return arg?.rest ? `...${name}` : name
       }).join(', ')}`
@@ -304,7 +304,7 @@ server.tool(
   'List all available Dvala modules',
   {},
   async () => {
-    const lines = moduleNames.map((name) => {
+    const lines = moduleNames.map(name => {
       const count = getModuleFunctions(name).length
       return `  ${name} (${count} functions)`
     })
@@ -326,7 +326,7 @@ server.tool(
     }
 
     const fns = getModuleFunctions(moduleName)
-    const lines = fns.map((name) => {
+    const lines = fns.map(name => {
       const ref = moduleReference[name as keyof typeof moduleReference]
       const desc = ref?.description.split('\n')[0]?.replace(/`(.+?)`/g, '$1').slice(0, 80) ?? ''
       return `  ${name} - ${desc}`
@@ -357,8 +357,7 @@ server.tool(
       )
       if (matches.length === 1) {
         ref = allReference[matches[0]!]
-      }
-      else if (matches.length > 1) {
+      } else if (matches.length > 1) {
         return {
           content: [{
             type: 'text',
@@ -391,8 +390,7 @@ server.tool(
     try {
       const result = dvala.run(code, bindings ? { bindings } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
-    }
-    catch (error) {
+    } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return {
         content: [{ type: 'text', text: `Error: ${message}` }],
@@ -441,7 +439,7 @@ async function main() {
   await server.connect(transport)
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error('MCP server error:', error)
   process.exit(1)
 })

@@ -51,8 +51,7 @@ function getNextLookAndSayTerm(term: string): string {
     // If the current digit is the same as the next one, increment count
     if (i + 1 < term.length && term[i] === term[i + 1]) {
       count++
-    }
-    else {
+    } else {
       // Otherwise, append count and the digit to the result
       result += count.toString() + term[i]
       count = 1
@@ -64,7 +63,7 @@ function getNextLookAndSayTerm(term: string): string {
 
 export const lookAndSaySequence: SequenceDefinition<'look-and-say', string> = {
   'string': true,
-  'look-and-say-seq': (length) => {
+  'look-and-say-seq': length => {
     const lookAndSay = ['1']
     for (let i = 1; i < length; i += 1) {
       const prev = lookAndSay[i - 1]!
@@ -73,16 +72,16 @@ export const lookAndSaySequence: SequenceDefinition<'look-and-say', string> = {
     }
     return lookAndSay
   },
-  'look-and-say-take-while': (takeWhile) => {
+  'look-and-say-take-while': takeWhile => {
     const lookAndSay: string[] = []
-    return chain(takeWhile('1', 0), (keepFirst) => {
+    return chain(takeWhile('1', 0), keepFirst => {
       if (!keepFirst)
         return lookAndSay
       lookAndSay.push('1')
       function loop(i: number): MaybePromise<string[]> {
         const prev = lookAndSay[i - 1]!
         const next = prev.replace(/(\d)\1*/g, match => `${match.length}${match[0]}`)
-        return chain(takeWhile(next, i), (keep) => {
+        return chain(takeWhile(next, i), keep => {
           if (!keep)
             return lookAndSay
           lookAndSay.push(next)

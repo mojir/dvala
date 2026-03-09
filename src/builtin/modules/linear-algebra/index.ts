@@ -521,8 +521,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
 
       try {
         return pearsonCorr(ranksA, ranksB)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },
@@ -543,8 +542,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
 
       try {
         return pearsonCorr(vectorA, vectorB)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },
@@ -565,8 +563,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
 
       try {
         return kendallTau(vectorA, vectorB)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },

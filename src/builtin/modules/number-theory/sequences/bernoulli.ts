@@ -36,7 +36,7 @@ function generateBernoulli(
 
     const newValue = n > 1 && n % 2 === 1 ? 0 : -sum / (n + 1)
 
-    return chain(predicate(newValue, n), (keep) => {
+    return chain(predicate(newValue, n), keep => {
       if (!keep)
         return bernoulli
       bernoulli.push(newValue)

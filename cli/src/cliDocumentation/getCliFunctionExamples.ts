@@ -1,9 +1,7 @@
-/* eslint-disable no-console */
-
-import { stringifyValue } from '../../../common/utils'
 import type { Reference } from '../../../reference'
-import { createDvala } from '../../../src/createDvala'
 import type { Colorizer } from '../colorizer'
+import { stringifyValue } from '../../../common/utils'
+import { createDvala } from '../../../src/createDvala'
 import { getDvalaFormatter } from '../cliFormatterRules'
 
 const dvala = createDvala({ debug: false })
@@ -12,7 +10,7 @@ export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
   const { examples } = reference
   return examples
     .map(example => example.trim())
-    .map((example) => {
+    .map(example => {
       const oldLog = console.log
       console.log = function () {}
       let result
@@ -24,8 +22,7 @@ export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
 
         return `${formattedExample}
 ${fmt.gray(stringifiedResult)}`
-      }
-      finally {
+      } finally {
         console.log = oldLog
       }
     })

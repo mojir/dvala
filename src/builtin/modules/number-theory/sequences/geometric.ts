@@ -104,7 +104,7 @@ export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> 
       const geometric: number[] = []
       function loop(i: number): MaybePromise<number[]> {
         const value = s * r ** i
-        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), (keep) => {
+        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), keep => {
           if (!keep)
             return geometric
           geometric.push(value)

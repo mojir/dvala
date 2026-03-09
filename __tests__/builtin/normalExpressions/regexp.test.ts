@@ -11,7 +11,7 @@ describe('regexp functions', () => {
         expect(regexpEquals(dvala.run('#"^abc$"'), /^abc$/)).toBe(true)
         expect(regexpEquals(dvala.run('regexp("^abc$", "gi")'), /^abc$/gi)).toBe(true)
         expect(regexpEquals(dvala.run('regexp("^abc$", "ig")'), /^abc$/gi)).toBe(true)
-        // eslint-disable-next-line prefer-regex-literals
+
         expect(regexpEquals(dvala.run('regexp("")'), new RegExp(''))).toBe(true)
         expect(() => dvala.run('regexp("(")')).toThrow(DvalaError)
         expect(() => dvala.run('regexp()')).toThrow(DvalaError)

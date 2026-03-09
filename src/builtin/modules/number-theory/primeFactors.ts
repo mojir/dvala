@@ -27,8 +27,7 @@ export function primeFactors(n: number): number[] {
       factors.push(divisor)
       // Divide n by the found factor
       n /= divisor
-    }
-    else {
+    } else {
       // Move to the next potential divisor
       divisor++
     }

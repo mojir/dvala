@@ -88,14 +88,11 @@ function getRangeString(options: NumberOptions): string {
     return `${typeof options.gt === 'number' ? `${options.gt} < n ` : `${options.gte} <= n `}${
       typeof options.lt === 'number' ? `< ${options.lt}` : `<= ${options.lte}`
     }`
-  }
-  else if (typeof options.gt === 'number' || typeof options.gte === 'number') {
+  } else if (typeof options.gt === 'number' || typeof options.gte === 'number') {
     return `${typeof options.gt === 'number' ? `n > ${options.gt}` : `n >= ${options.gte}`}`
-  }
-  else if (typeof options.lt === 'number' || typeof options.lte === 'number') {
+  } else if (typeof options.lt === 'number' || typeof options.lte === 'number') {
     return `${typeof options.lt === 'number' ? `n < ${options.lt}` : `n <= ${options.lte}`}`
-  }
-  else { return '' }
+  } else { return '' }
 }
 
 function getSignString(options: NumberOptions): string {

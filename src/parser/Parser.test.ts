@@ -1281,7 +1281,7 @@ foo(1, 2)`)).toBe(3)
       ]
 
       for (const expression of expressions) {
-        // eslint-disable-next-line ts/no-unsafe-argument, no-eval
+
         expect(dvala.run(expression)).toBeCloseTo(eval(expression.replace(/\^/g, '**')))
       }
     })

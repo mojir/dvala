@@ -40,7 +40,7 @@ export const css = createCssTag(basicStyles)
 
 export function createStyles<T extends string>(extraStyles: Record<T, string[]>): (...classes: (StylesParam | T)[]) => string {
   return (...classes: (StylesParam | T)[]): string => {
-    return `style="${[...new Set(classes)].flatMap((c) => {
+    return `style="${[...new Set(classes)].flatMap(c => {
       if (c.includes(':'))
         return c
       else
@@ -58,7 +58,7 @@ function createCssTag(dependencies: Record<string, string[]> = {}) {
       .split('\n')
       .map(s => s.trim())
       .filter(s => s.length > 0)
-      .flatMap((expression) => {
+      .flatMap(expression => {
         const applyMatch = expression.match(/^@apply (\S+);$/)
         if (applyMatch) {
           const cssClass = applyMatch[1] as CssClass
@@ -67,8 +67,7 @@ function createCssTag(dependencies: Record<string, string[]> = {}) {
             throw new Error(`Unknown class: ${expression.slice(7)}`)
 
           return cssRules
-        }
-        else { return expression }
+        } else { return expression }
       })
   }
 }

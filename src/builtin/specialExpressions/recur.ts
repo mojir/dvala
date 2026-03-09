@@ -41,7 +41,7 @@ end`,
 export const recurSpecialExpression: BuiltinSpecialExpression<null, RecurNode> = {
   arity: {},
   docs,
-  evaluateAsNormalExpression: (params) => {
+  evaluateAsNormalExpression: params => {
     throw new RecurSignal(params)
   },
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) =>

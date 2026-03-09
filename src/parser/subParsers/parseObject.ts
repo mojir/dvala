@@ -17,27 +17,23 @@ export function parseObject(ctx: ParserContext): ObjectNode {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
-    }
-    else {
+    } else {
       const token = ctx.tryPeek()
       if (isStringToken(token)) {
         const stringNode = parseString(ctx, token)
         params.push(withSourceCodeInfo([NodeTypes.String, stringNode[1]], token[2]))
-      }
-      else if (isSymbolToken(token)) {
+      } else if (isSymbolToken(token)) {
         const value = token[1].startsWith('\'')
           ? stringFromQuotedSymbol(token[1])
           : token[1]
         params.push(withSourceCodeInfo([NodeTypes.String, value], token[2]))
         ctx.advance()
-      }
-      else if (isLBracketToken(token)) {
+      } else if (isLBracketToken(token)) {
         ctx.advance()
         params.push(ctx.parseExpression())
         assertRBracketToken(ctx.tryPeek())
         ctx.advance()
-      }
-      else {
+      } else {
         throw new DvalaError('Expected key to be a symbol or a string', ctx.peekSourceCodeInfo())
       }
 

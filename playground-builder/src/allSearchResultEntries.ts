@@ -20,7 +20,7 @@ const searchables: Reference[] = Object
     return a.title.localeCompare(b.title)
   })
 
-export const allSearchResultEntries: SearchResultEntry[] = searchables.map((reference) => {
+export const allSearchResultEntries: SearchResultEntry[] = searchables.map(reference => {
   const match = shortDescriptionRegExp.exec(reference.description)
   const description = match?.[1] ?? reference.description
 

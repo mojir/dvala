@@ -14,21 +14,19 @@ export function testTypeGuars(
   testData: TypeGuardTestData,
   { is, as, assert }: { is: Function | undefined, as: Function, assert: Function },
 ) {
-  testData.valid.forEach((validData) => {
+  testData.valid.forEach(validData => {
     if (is)
       expect(is(validData)).toBe(true)
 
-    // eslint-disable-next-line ts/no-unsafe-return
     expect(() => assert(validData)).not.toThrow()
     expect(as(validData)).toBe(validData)
   })
-  testData.invalid.forEach((validData) => {
+  testData.invalid.forEach(validData => {
     if (is)
       expect(is(validData)).toBe(false)
 
-    // eslint-disable-next-line ts/no-unsafe-return
     expect(() => assert(validData)).toThrow(DvalaError)
-    // eslint-disable-next-line ts/no-unsafe-return
+
     expect(() => as(validData)).toThrow(DvalaError)
   })
 }
@@ -93,7 +91,7 @@ const privateTestData: TestData = {
 let testData: TestData
 
 export function createTestData(): TestData {
-  // eslint-disable-next-line ts/no-unsafe-assignment
+
   testData = JSON.parse(JSON.stringify(privateTestData))
   return testData
 }

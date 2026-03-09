@@ -12,12 +12,12 @@ function getGolombSeq(n: number): number[] {
 
 function generateGolombSeq(pred: (golombNumber: number, index: number) => MaybePromise<boolean>): MaybePromise<number[]> {
   const golomb = [0, 1]
-  return chain(pred(1, 0), (keepFirst) => {
+  return chain(pred(1, 0), keepFirst => {
     if (!keepFirst)
       return []
     function loop(i: number): MaybePromise<number[]> {
       const golombNumber = 1 + golomb[i - golomb[golomb[i - 1]!]!]!
-      return chain(pred(golombNumber, i - 1), (keep) => {
+      return chain(pred(golombNumber, i - 1), keep => {
         if (!keep)
           return golomb.slice(1)
         golomb.push(golombNumber)

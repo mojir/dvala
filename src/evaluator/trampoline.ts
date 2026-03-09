@@ -140,7 +140,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
       return evaluateReservedSymbol(node as ReservedSymbolNode)
     case NodeTypes.NormalExpression: {
       const result = evaluateNormalExpressionRecursive(node as NormalExpressionNode, contextStack)
-      return chain(result, (resolved) => {
+      return chain(result, resolved => {
         if (typeof resolved === 'number' && Number.isNaN(resolved)) {
           throw new DvalaError('Number is NaN', node[2])
         }
@@ -154,8 +154,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
       const initial: Step = { type: 'Eval', node, env: contextStack, k: [] }
       try {
         return annotate(runSyncTrampoline(initial))
-      }
-      catch (error) {
+      } catch (error) {
         // Async retry in recursive evaluator — SpecialExpressions never produce async results in this context
         /* v8 ignore next 4 */
         if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
@@ -181,21 +180,18 @@ function evaluateParamsRecursive(
     if (isSpreadNode(paramNode)) {
       // Spread in recursive evaluator — only reached from normal expression callbacks
       /* v8 ignore start */
-      return chain(evaluateNodeRecursive(paramNode[1], contextStack), (spreadValue) => {
+      return chain(evaluateNodeRecursive(paramNode[1], contextStack), spreadValue => {
         if (Array.isArray(spreadValue)) {
           params.push(...spreadValue)
-        }
-        else {
+        } else {
           throw new DvalaError(`Spread operator requires an array, got ${valueToString(paramNode)}`, paramNode[2])
         }
       })
       /* v8 ignore stop */
-    }
-    else if (paramNode[0] === NodeTypes.ReservedSymbol && paramNode[1] === '_') {
+    } else if (paramNode[0] === NodeTypes.ReservedSymbol && paramNode[1] === '_') {
       placeholders.push(index)
-    }
-    else {
-      return chain(evaluateNodeRecursive(paramNode, contextStack), (value) => {
+    } else {
+      return chain(evaluateNodeRecursive(paramNode, contextStack), value => {
         params.push(value)
       })
     }
@@ -210,7 +206,7 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
       const nameSymbol = node[1][0]
       if (placeholders.length > 0) {
         const fn = evaluateNodeRecursive(nameSymbol, contextStack)
-        return chain(fn, (resolvedFn) => {
+        return chain(fn, resolvedFn => {
           const partialFunction: PartialFunction = {
             [FUNCTION_SYMBOL]: true,
             function: asFunctionLike(resolvedFn, sourceCodeInfo),
@@ -235,8 +231,7 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
           return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, node[2])
         }
         return normalExpression.evaluate(params, node[2], contextStack, { executeFunction: executeFunctionRecursive })
-      }
-      else {
+      } else {
         const fn = contextStack.getValue(nameSymbol[1])
         if (fn !== undefined) {
           return executeFunctionRecursive(asFunctionLike(fn, sourceCodeInfo), params, contextStack, sourceCodeInfo)
@@ -245,12 +240,11 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         /* v8 ignore next 1 */
         throw new UndefinedSymbolError(nameSymbol[1], node[2])
       }
-    }
-    else {
+    } else {
       const fnNode: AstNode = node[1][0]
       // Anonymous function with placeholders in recursive path — trampoline handles these
       /* v8 ignore start */
-      return chain(evaluateNodeRecursive(fnNode, contextStack), (resolvedFn) => {
+      return chain(evaluateNodeRecursive(fnNode, contextStack), resolvedFn => {
         const fn = asFunctionLike(resolvedFn, sourceCodeInfo)
         if (placeholders.length > 0) {
           const partialFunction: PartialFunction = {
@@ -349,14 +343,13 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
         paramSetup = chain(paramSetup, () => {
           const param = toAny(currentParams[paramIndex])
           return chain(evaluateBindingNodeValues(args[paramIndex]!, param, node =>
-            evaluateNodeRecursive(node, newContextStack.create(newContext))), (valueRecord) => {
+            evaluateNodeRecursive(node, newContextStack.create(newContext))), valueRecord => {
             Object.entries(valueRecord).forEach(([key, value]) => {
               newContext[key] = { value }
             })
           })
         })
-      }
-      else {
+      } else {
         rest.push(toAny(currentParams[i]))
       }
     }
@@ -365,9 +358,9 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
       const argIndex = i
       defaultSetup = chain(defaultSetup, () => {
         const arg = args[argIndex]!
-        return chain(evaluateNodeRecursive(arg[1][1]!, contextStack.create(newContext)), (defaultValue) => {
+        return chain(evaluateNodeRecursive(arg[1][1]!, contextStack.create(newContext)), defaultValue => {
           return chain(evaluateBindingNodeValues(arg, defaultValue, node =>
-            evaluateNodeRecursive(node, contextStack.create(newContext))), (valueRecord) => {
+            evaluateNodeRecursive(node, contextStack.create(newContext))), valueRecord => {
             Object.entries(valueRecord).forEach(([key, value]) => {
               newContext[key] = { value }
             })
@@ -379,11 +372,11 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
       const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
       const restSetup: MaybePromise<void> = restArgument !== undefined
         ? chain(evaluateBindingNodeValues(restArgument, rest, node =>
-            evaluateNodeRecursive(node, contextStack.create(newContext))), (valueRecord) => {
-            Object.entries(valueRecord).forEach(([key, value]) => {
-              newContext[key] = { value }
-            })
+          evaluateNodeRecursive(node, contextStack.create(newContext))), valueRecord => {
+          Object.entries(valueRecord).forEach(([key, value]) => {
+            newContext[key] = { value }
           })
+        })
         : undefined as unknown as void
       return chain(restSetup, () => {
         const newContextStack2 = newContextStack.create(newContext)
@@ -411,8 +404,7 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
     try {
       const result = setupAndExecute(params)
       return result
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof RecurSignal) {
         params = error.params
         continue
@@ -611,13 +603,13 @@ function evaluateFunction(
 ): EvaluatedFunction {
   const functionContext: Context = {}
   const context = fn[0].reduce((ctx: Context, arg) => {
-    Object.keys(getAllBindingTargetNames(arg)).forEach((name) => {
+    Object.keys(getAllBindingTargetNames(arg)).forEach(name => {
       ctx[name] = { value: null }
     })
     return ctx
   }, {})
   const undefinedSymbols = getUndefinedSymbols(fn[1], contextStack.new(context), builtin, evaluateNodeRecursive)
-  undefinedSymbols.forEach((name) => {
+  undefinedSymbols.forEach(name => {
     const value = contextStack.getValue(name)
     if (isAny(value)) {
       functionContext[name] = { value }
@@ -692,8 +684,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
     if (arg[0] === NodeTypes.ReservedSymbol && arg[1] === '_') {
       evalArgsFrame.placeholders.push(evalArgsFrame.params.length)
       startIndex++
-    }
-    else {
+    } else {
       break
     }
   }
@@ -1229,8 +1220,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       return dispatchFunction(asFunctionLike(fn, sourceCodeInfo), params, placeholders, env, sourceCodeInfo, k)
     }
     throw new UndefinedSymbolError(nameSymbol[1], sourceCodeInfo)
-  }
-  else {
+  } else {
     // --- Anonymous function expression ---
     // The function expression is the first payload element; need to evaluate it
     const fnNode: AstNode = node[1][0]
@@ -1360,8 +1350,7 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
       Object.entries(valueRecord).forEach(([key, value]) => {
         newContext[key] = { value }
       })
-    }
-    else {
+    } else {
       rest.push(toAny(params[i]))
     }
   }
@@ -1719,8 +1708,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
       throw new DvalaError('Spread value is not an array', sourceCodeInfo)
     }
     result.push(...value)
-  }
-  else {
+  } else {
     result.push(value)
   }
 
@@ -1775,8 +1763,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     }
     const newFrame: ObjectBuildFrame = { ...frame, currentKey: value }
     return { type: 'Eval', node: valueNode, env, k: [newFrame, ...k] }
-  }
-  else {
+  } else {
     // We just evaluated a value expression
     result[frame.currentKey] = value
     // Advance to next key-value pair
@@ -1801,7 +1788,7 @@ function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): St
 
   // Process the binding using the recursive helper
   const bindingResult = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
-  return chain(bindingResult, (br) => {
+  return chain(bindingResult, br => {
     env.addValues(br, sourceCodeInfo)
     return { type: 'Value' as const, value, k }
   })
@@ -1815,7 +1802,7 @@ function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): 
   const target = bindingNode[1][0]
 
   const valueRecord = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env.create(context)))
-  return chain(valueRecord, (vr) => {
+  return chain(valueRecord, vr => {
     Object.entries(vr).forEach(([name, val]) => {
       context[name] = { value: val }
     })
@@ -1874,7 +1861,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
 
       const elValue = asAny(element, sourceCodeInfo)
       const valueRecord = evaluateBindingNodeValues(targetNode, elValue, n => evaluateNodeRecursive(n, env))
-      return chain(valueRecord, (vr) => {
+      return chain(valueRecord, vr => {
         Object.entries(vr).forEach(([name, val]) => {
           context[name] = { value: val }
         })
@@ -1977,7 +1964,7 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
   const elValue = asAny(element, sourceCodeInfo)
 
   const valueRecord = evaluateBindingNodeValues(targetNode, elValue, n => evaluateNodeRecursive(n, env))
-  return chain(valueRecord, (vr) => {
+  return chain(valueRecord, vr => {
     Object.entries(vr).forEach(([name, val]) => {
       context[name] = { value: val }
     })
@@ -2003,9 +1990,9 @@ function processForLetBindings(frame: ForLoopFrame, levelStates: ForLoopFrame['l
       const bindingNode = letBindings[bindingIndex]!
       const [target, bindingValue] = bindingNode[1]
       const val = evaluateNodeRecursive(bindingValue, env)
-      return chain(val, (v) => {
+      return chain(val, v => {
         const valueRecord = evaluateBindingNodeValues(target, v, n => evaluateNodeRecursive(n, env))
-        return chain(valueRecord, (vr) => {
+        return chain(valueRecord, vr => {
           Object.entries(vr).forEach(([name, value]) => {
             context[name] = { value }
           })
@@ -2154,7 +2141,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
           const param = toAny(params[j])
           return chain(
             evaluateBindingNodeValues(target, param, n => evaluateNodeRecursive(n, env)),
-            (valueRecord) => {
+            valueRecord => {
               Object.entries(valueRecord).forEach(([name, val]) => {
                 bindingContext[name] = { value: val }
               })
@@ -2500,8 +2487,7 @@ function dispatchHostHandler(
         assertNotSettled('resume')
         if (value instanceof Promise) {
           outcome = { kind: 'asyncResume', promise: value }
-        }
-        else {
+        } else {
           outcome = { kind: 'step', step: { type: 'Value', value, k } }
         }
       },
@@ -2589,13 +2575,13 @@ function dispatchHostHandler(
         }
         return resolveOutcome(outcome, index + 1)
       },
-      (e) => {
+      e => {
         if (outcome) {
           // Already settled — return that result, ignore the rejection
           return resolveOutcome(outcome, index + 1)
         }
         if (isSuspensionSignal(e) || isResumeFromSignal(e)) {
-          // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal/ResumeFromSignal is a signaling mechanism
+
           throw e
         }
         const errorStep: Step = {
@@ -2632,7 +2618,7 @@ function combineSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
 }
 
 function throwSuspension(k: ContinuationStack, meta?: Any, effectName?: string, effectArgs?: Any[]): never {
-  // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
+  // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism, not an error
   throw new SuspensionSignal(k, [], 0, meta, effectName, effectArgs)
 }
 
@@ -2702,8 +2688,7 @@ async function executeParallelBranches(
     if (settled.status === 'rejected') {
       // branchPromises should never reject, but handle defensively
       errors.push(new DvalaError(`${settled.reason}`, undefined))
-    }
-    else {
+    } else {
       const { index, result } = settled.value
       switch (result.type) {
         case 'completed':
@@ -2823,8 +2808,7 @@ async function executeRaceBranches(
       const result = results[i]!
       if (result.status === 'rejected') {
         errors.push(new DvalaError(`${result.reason}`, undefined))
-      }
-      else {
+      } else {
         const r = result.value
         switch (r.type) {
           case 'suspended':
@@ -2852,8 +2836,7 @@ async function executeRaceBranches(
     // All branches errored — throw aggregate error
     const messages = errors.map(e => e.message).join('; ')
     throw new DvalaError(`race: all branches failed: ${messages}`, undefined)
-  }
-  finally {
+  } finally {
     parentSignal.removeEventListener('abort', onParentAbort)
   }
 }
@@ -2940,8 +2923,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
       throw new DvalaError(`Spread operator requires an array, got ${valueToString(value)}`, currentArgNode[2])
     }
     params.push(...value)
-  }
-  else {
+  } else {
     params.push(value)
   }
 
@@ -2952,8 +2934,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
     if (nextArg[0] === NodeTypes.ReservedSymbol && nextArg[1] === '_') {
       placeholders.push(params.length)
       nextIndex++
-    }
-    else {
+    } else {
       break
     }
   }
@@ -3173,12 +3154,11 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         throw step.error
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     // SuspensionSignal must propagate out of tick to the effect trampoline loop
     // (runEffectLoop).
     if (isSuspensionSignal(error)) {
-      // eslint-disable-next-line ts/no-throw-literal -- SuspensionSignal is a signaling mechanism, not an error
+
       throw error
     }
     // Route DvalaError through the 'dvala.error' algebraic effect so that
@@ -3273,8 +3253,7 @@ export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any
   // Try synchronous first; if a Promise surfaces, switch to async
   try {
     return runSyncTrampoline(initial)
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       // An async operation was encountered — re-run with the async trampoline.
       // We must rebuild the initial step since the sync attempt may have
@@ -3306,8 +3285,7 @@ export function evaluateNode(node: AstNode, contextStack: ContextStack): MaybePr
   const initial: Step = { type: 'Eval', node, env: contextStack, k: [] }
   try {
     return runSyncTrampoline(initial)
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: [] }
       return runAsyncTrampoline(freshInitial)
@@ -3364,8 +3342,7 @@ export function evaluateWithSyncEffects(
   const initial = buildInitialStep(ast.body, contextStack)
   try {
     return runSyncTrampoline(initial, effectHandlers)
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
       const freshInitial = buildInitialStep(ast.body, contextStack)
       return runSyncTrampoline(freshInitial, effectHandlers)
@@ -3451,8 +3428,7 @@ async function retriggerParallelGroup(
       firstStep = await Promise.resolve(
         dispatchHostHandler(currentEffectName, currentMatchingHandlers, currentEffectArgs as Arr, [], effectSignal, undefined, snapshotState),
       )
-    }
-    catch (error) {
+    } catch (error) {
       if (isSuspensionSignal(error)) {
         parallelAbort.abort()
         const continuation = serializeSuspensionBlob(error.k, error.snapshots, error.nextSnapshotIndex, error.meta)
@@ -3478,7 +3454,7 @@ async function retriggerParallelGroup(
   })()
 
   // Dispatch each remaining suspended branch concurrently via retriggerWithEffects
-  const otherBranchPromises: Promise<BranchOutcome>[] = suspendedBranches.map(async (branch) => {
+  const otherBranchPromises: Promise<BranchOutcome>[] = suspendedBranches.map(async branch => {
     const { effectName: branchEffectName, effectArgs: branchEffectArgs } = branch.snapshot
     if (!branchEffectName || !branchEffectArgs) {
       return { index: branch.index, result: { type: 'suspended' as const, snapshot: branch.snapshot } }
@@ -3507,8 +3483,7 @@ async function retriggerParallelGroup(
   for (const s of settled) {
     if (s.status === 'rejected') {
       errors.push(new DvalaError(`${s.reason}`, undefined))
-    }
-    else {
+    } else {
       const { index, result } = s.value
       if (result.type === 'completed')
         newCompleted.push({ index, value: result.value })
@@ -3605,8 +3580,7 @@ export async function retriggerWithEffects(
     firstStep = await Promise.resolve(
       dispatchHostHandler(effectName, matchingHandlers, effectArgs as Arr, k, signal, undefined, snapshotState),
     )
-  }
-  catch (error) {
+  } catch (error) {
     // Handler called suspend() — capture continuation and return suspended result
     if (isSuspensionSignal(error)) {
       const continuation = serializeSuspensionBlob(
@@ -3690,8 +3664,7 @@ async function runEffectLoop(
 
         step = tick(step, handlers, signal, snapshotState)
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (isResumeFromSignal(error)) {
         const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>, deserializeOptions)
         // Discard all snapshots with index > trimToIndex

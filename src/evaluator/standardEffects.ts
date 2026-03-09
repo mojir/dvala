@@ -24,8 +24,6 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack } from './frames'
 import type { Step } from './step'
 
-/* eslint-disable node/prefer-global/process -- isomorphic module: uses `typeof process` for Node/browser feature detection */
-
 // ---------------------------------------------------------------------------
 // Standard effect definition type
 // ---------------------------------------------------------------------------
@@ -119,8 +117,7 @@ function printHandler(args: Arr, k: ContinuationStack): Step {
   const str = formatForOutput(value)
   if (isNode()) {
     process.stdout.write(str)
-  }
-  else {
+  } else {
     // eslint-disable-next-line no-console
     console.log(str)
   }
@@ -132,12 +129,10 @@ function printlnHandler(args: Arr, k: ContinuationStack): Step {
   const str = formatForOutput(value)
   if (isNode()) {
     process.stdout.write(`${str}\n`)
-  }
-  else if (typeof globalThis.alert === 'function') {
-    // eslint-disable-next-line no-alert
+  } else if (typeof globalThis.alert === 'function') {
+
     globalThis.alert(str)
-  }
-  else {
+  } else {
     // eslint-disable-next-line no-console
     console.log(str)
   }
@@ -145,7 +140,7 @@ function printlnHandler(args: Arr, k: ContinuationStack): Step {
 }
 
 function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
     const random = Math.random() * 16 | 0
     const value = char === 'x' ? random : (random & 0x3 | 0x8)
     return value.toString(16)
@@ -204,8 +199,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       const str = formatForOutput(value)
       if (isNode()) {
         process.stderr.write(`${str}\n`)
-      }
-      else {
+      } else {
         console.error(str)
       }
       return { type: 'Value', value, k }
@@ -232,7 +226,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
 
       // Browser: window.prompt (synchronous)
       if (typeof globalThis.prompt === 'function') {
-        // eslint-disable-next-line no-alert
+
         const result = globalThis.prompt(message)
         return { type: 'Value', value: result ?? null, k }
       }
@@ -489,7 +483,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       if (typeof ms !== 'number' || ms < 0) {
         throw new DvalaError(`dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`, sourceCodeInfo)
       }
-      return new Promise<Step>((resolve) => {
+      return new Promise<Step>(resolve => {
         setTimeout(() => resolve({ type: 'Value', value: null, k }), ms)
       })
     },

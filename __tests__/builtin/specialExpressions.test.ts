@@ -29,8 +29,7 @@ describe('specialExpressions', () => {
     try {
       dvalaNoDebug.run('perform(effect(dvala.error), slice("An error", 3))')
       failed = true
-    }
-    catch (error) {
+    } catch (error) {
       expect((error as UserDefinedError).message).toBe('error')
     }
     if (failed)
@@ -40,8 +39,7 @@ describe('specialExpressions', () => {
       failed = false
       dvalaDebug.run('perform(effect(dvala.error), slice("An error", 3))')
       failed = true
-    }
-    catch (error) {
+    } catch (error) {
       expect((error as UserDefinedError).message).toBe(
         'error\nLocation 1:1\nperform(effect(dvala.error), slice("An error", 3))\n^                                                 ',
       )

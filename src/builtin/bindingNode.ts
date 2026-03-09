@@ -14,14 +14,13 @@ export function walkDefaults(
   onDefault: (Node: AstNode) => void,
 ): void {
   if (bindingTarget[0] === bindingTargetTypes.object) {
-    Object.values(bindingTarget[1][0]).forEach((element) => {
+    Object.values(bindingTarget[1][0]).forEach(element => {
       if (element[1][1]) {
         onDefault(element[1][1])
       }
       walkDefaults(element, onDefault)
     })
-  }
-  else if (bindingTarget[0] === bindingTargetTypes.array) {
+  } else if (bindingTarget[0] === bindingTargetTypes.array) {
     for (let index = 0; index < bindingTarget[1][0].length; index += 1) {
       const element = bindingTarget[1][0][index] ?? null
       if (element === null) {
@@ -72,7 +71,7 @@ function createRecord(
           : element[1][1]
             ? evaluate(element[1][1])
             : null
-        return chain(maybeVal, (resolvedVal) => {
+        return chain(maybeVal, resolvedVal => {
           const val = resolvedVal ?? null
           assertAny(val, sourceCodeInfo)
           return createRecord(element, val, evaluate, sourceCodeInfo, record)
@@ -91,8 +90,7 @@ function createRecord(
         }
       },
     )
-  }
-  else if (bindingTarget[0] === bindingTargetTypes.array) {
+  } else if (bindingTarget[0] === bindingTargetTypes.array) {
     let restIndex: number | null = null
     assertArray(value, sourceCodeInfo)
 
@@ -117,7 +115,7 @@ function createRecord(
           : element[1][1]
             ? evaluate(element[1][1])
             : null
-        return chain(maybeVal, (resolvedVal) => {
+        return chain(maybeVal, resolvedVal => {
           const val = resolvedVal ?? null
           assertAny(val, sourceCodeInfo)
           return createRecord(element, val, evaluate, sourceCodeInfo, record)
@@ -131,11 +129,9 @@ function createRecord(
         }
       },
     )
-  }
-  else if (bindingTarget[0] === bindingTargetTypes.rest) {
+  } else if (bindingTarget[0] === bindingTargetTypes.rest) {
     record[bindingTarget[1][0]] = asAny(value)
-  }
-  else {
+  } else {
     record[(bindingTarget[1][0] as UserDefinedSymbolNode)[1]] = asAny(value)
   }
 }
@@ -154,19 +150,16 @@ function getNamesFromBindingTarget(target: BindingTarget | null, names: Record<s
     for (const element of target[1][0]) {
       getNamesFromBindingTarget(element, names)
     }
-  }
-  else if (target[0] === bindingTargetTypes.object) {
+  } else if (target[0] === bindingTargetTypes.object) {
     for (const element of Object.values(target[1][0])) {
       getNamesFromBindingTarget(element, names)
     }
-  }
-  else if (target[0] === bindingTargetTypes.rest) {
+  } else if (target[0] === bindingTargetTypes.rest) {
     if (names[target[1][0]]) {
       throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, target[2])
     }
     names[target[1][0]] = true
-  }
-  else if (target[0] === bindingTargetTypes.symbol) {
+  } else if (target[0] === bindingTargetTypes.symbol) {
     if (names[target[1][0][1]]) {
       throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, target[2])
     }
@@ -185,7 +178,7 @@ export function tryMatch(
   evaluate: (Node: AstNode) => MaybePromise<Any>,
 ): MaybePromise<Record<string, Any> | null> {
   const record: Record<string, Any> = {}
-  return chain(tryMatchRecord(target, value, evaluate, record), (matched) => {
+  return chain(tryMatchRecord(target, value, evaluate, record), matched => {
     if (!matched)
       return null
     return record
@@ -201,37 +194,30 @@ function tryMatchRecord(
   // Wildcard: always matches, binds nothing
   if (bindingTarget[0] === bindingTargetTypes.wildcard) {
     return true
-  }
-
-  // Literal: compare with deepEqual
-  else if (bindingTarget[0] === bindingTargetTypes.literal) {
+  } else if (bindingTarget[0] === bindingTargetTypes.literal) {
+    // Literal: compare with deepEqual
     const literalNode = bindingTarget[1][0]
-    return chain(evaluate(literalNode), (literalValue) => {
+    return chain(evaluate(literalNode), literalValue => {
       return deepEqual(value, literalValue)
     })
-  }
-
-  // Symbol: always matches, binds value
-  else if (bindingTarget[0] === bindingTargetTypes.symbol) {
+  } else if (bindingTarget[0] === bindingTargetTypes.symbol) {
+    // Symbol: always matches, binds value
     const symbolNode = bindingTarget[1][0] as UserDefinedSymbolNode
     const defaultNode = bindingTarget[1][1]
     if (value === undefined || value === null) {
       if (defaultNode) {
-        return chain(evaluate(defaultNode), (defaultValue) => {
+        return chain(evaluate(defaultNode), defaultValue => {
           record[symbolNode[1]] = asAny(defaultValue)
           return true
         })
       }
       record[symbolNode[1]] = value ?? null
-    }
-    else {
+    } else {
       record[symbolNode[1]] = asAny(value)
     }
     return true
-  }
-
-  // Object pattern
-  else if (bindingTarget[0] === bindingTargetTypes.object) {
+  } else if (bindingTarget[0] === bindingTargetTypes.object) {
+    // Object pattern
     if (!isUnknownRecord(value))
       return false
 
@@ -241,7 +227,7 @@ function tryMatchRecord(
 
     let result: MaybePromise<boolean> = true
     for (const [key, element] of entries) {
-      result = chain(result, (matched) => {
+      result = chain(result, matched => {
         if (!matched)
           return false
 
@@ -255,7 +241,7 @@ function tryMatchRecord(
 
         // For literal sub-patterns, missing key means no match
         if (existingVal === undefined && element[0] === bindingTargetTypes.literal) {
-          return chain(evaluate(element[1][0]), (literalValue) => {
+          return chain(evaluate(element[1][0]), literalValue => {
             return deepEqual(undefined, literalValue)
           })
         }
@@ -266,14 +252,14 @@ function tryMatchRecord(
             ? evaluate(element[1][1])
             : null
 
-        return chain(maybeVal, (resolvedVal) => {
+        return chain(maybeVal, resolvedVal => {
           const val = resolvedVal ?? null
           return tryMatchRecord(element, val, evaluate, record)
         })
       })
     }
 
-    return chain(result, (matched) => {
+    return chain(result, matched => {
       if (!matched)
         return false
       if (restElement) {
@@ -287,10 +273,8 @@ function tryMatchRecord(
       }
       return true
     })
-  }
-
-  // Array pattern
-  else {
+  } else {
+    // Array pattern
     const arrayTarget = bindingTarget as ArrayBindingTarget
     if (!Array.isArray(value))
       return false
@@ -329,7 +313,7 @@ function tryMatchRecord(
       }
 
       const el = element
-      result = chain(result, (matched) => {
+      result = chain(result, matched => {
         if (!matched)
           return false
 

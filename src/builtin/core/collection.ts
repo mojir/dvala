@@ -12,8 +12,7 @@ function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
     if (typeof key === 'string' && collHasKey(coll, key))
       return toAny(coll[key])
-  }
-  else {
+  } else {
     if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length)
       return toAny(coll[key])
   }
@@ -365,14 +364,12 @@ assoc(
           assertArray(arr, sourceCodeInfo)
           return result.concat(arr)
         }, [])
-      }
-      else if (isStringOrNumber(params[0])) {
+      } else if (isStringOrNumber(params[0])) {
         return params.reduce((result: string, s) => {
           assertStringOrNumber(s, sourceCodeInfo)
           return `${result}${s}`
         }, '')
-      }
-      else {
+      } else {
         return params.reduce((result: Obj, obj) => {
           assertObj(obj, sourceCodeInfo)
           return Object.assign(result, obj)

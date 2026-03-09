@@ -40,11 +40,9 @@ export function runTest({ testPath: filePath, testNamePattern }: RunTestParams):
       const testNumber = index + 1
       if (testNamePattern && !testNamePattern.test(testChunkProgram.name)) {
         testResult.tap += `ok ${testNumber} ${testChunkProgram.name} # skip - Not matching testNamePattern ${testNamePattern}\n`
-      }
-      else if (testChunkProgram.directive === 'SKIP') {
+      } else if (testChunkProgram.directive === 'SKIP') {
         testResult.tap += `ok ${testNumber} ${testChunkProgram.name} # skip\n`
-      }
-      else {
+      } else {
         try {
           const dvala = createDvala({ debug: true, modules: allBuiltinModules })
           const bindings = getBindings(includedFilePaths, dvala)
@@ -53,15 +51,13 @@ export function runTest({ testPath: filePath, testNamePattern }: RunTestParams):
             filePath,
           })
           testResult.tap += `ok ${testNumber} ${testChunkProgram.name}\n`
-        }
-        catch (error) {
+        } catch (error) {
           testResult.success = false
           testResult.tap += `not ok ${testNumber} ${testChunkProgram.name}${getErrorYaml(error)}`
         }
       }
     })
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     testResult.tap += `Bail out! ${getErrorMessage(error)}\n`
     testResult.success = false
   }
@@ -103,7 +99,7 @@ function getIncludedFilePaths(absoluteFilePath: string): string[] {
 
   function getIncludesRecursively(filePath: string, includedFilePaths: string[]): void {
     const includeFilePaths = readIncludeDirectives(filePath)
-    includeFilePaths.forEach((includeFilePath) => {
+    includeFilePaths.forEach(includeFilePath => {
       getIncludesRecursively(includeFilePath, includedFilePaths)
       includedFilePaths.push(includeFilePath)
     })
@@ -137,7 +133,6 @@ function getTestChunks(testPath: string): TestChunk[] {
   let setupCode = ''
   return testProgram.split('\n').reduce((result: TestChunk[], line, index) => {
     const currentLineNbr = index + 1
-    // eslint-disable-next-line regexp/no-super-linear-backtracking
     const testNameAnnotationMatch = line.match(/^\s*\/{2}\s*@(?:(skip)-)?test\s*(.*)$/)
     if (testNameAnnotationMatch) {
       const directive = (testNameAnnotationMatch[1] ?? '').toUpperCase()

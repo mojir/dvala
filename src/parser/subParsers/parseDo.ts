@@ -17,8 +17,7 @@ export function parseDo(ctx: ParserContext): DoNode {
     expressions.push(ctx.parseExpression())
     if (isOperatorToken(ctx.tryPeek(), ';')) {
       ctx.advance()
-    }
-    else if (!isReservedSymbolToken(ctx.tryPeek(), 'end') && !isReservedSymbolToken(ctx.tryPeek(), 'with')) {
+    } else if (!isReservedSymbolToken(ctx.tryPeek(), 'end') && !isReservedSymbolToken(ctx.tryPeek(), 'with')) {
       throw new DvalaError('Expected end', ctx.peekSourceCodeInfo())
     }
   }

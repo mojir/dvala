@@ -1,29 +1,27 @@
 #!/usr/bin/env node
-/* eslint-disable node/prefer-global/process */
-/* eslint-disable no-console */
 
+import type { Reference } from '../../reference'
+import type { DvalaBundle } from '../../src/bundler/interface'
+import type { UnknownRecord } from '../../src/interface'
 import fs from 'node:fs'
 import path from 'node:path'
-import { version } from '../../package.json'
-import { runTest } from '../../src/testFramework'
-import type { Reference } from '../../reference'
-import { apiReference, isFunctionReference } from '../../reference'
-import type { UnknownRecord } from '../../src/interface'
 import { stringifyValue } from '../../common/utils'
-import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import { createDvala } from '../../src/createDvala'
+import { version } from '../../package.json'
+import { apiReference, isFunctionReference } from '../../reference'
 import { allBuiltinModules } from '../../src/allModules'
-import '../../src/initReferenceData'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
-import type { DvalaBundle } from '../../src/bundler/interface'
 import { isDvalaBundle } from '../../src/bundler/interface'
-import { Colors, createColorizer } from './colorizer'
-import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
+import { createDvala } from '../../src/createDvala'
+import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
+import { runTest } from '../../src/testFramework'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
+import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getInlineCodeFormatter } from './cliFormatterRules'
+import { Colors, createColorizer } from './colorizer'
 import { createReadlineInterface } from './createReadlineInterface'
 import { getCliModules } from './js-interop/Cli'
+import '../../src/initReferenceData'
 
 const useColor = !process.env.NO_COLOR
 const fmt = createColorizer(useColor)
@@ -128,8 +126,7 @@ switch (config.subcommand) {
         console.log(result)
       }
       process.exit(0)
-    }
-    catch (error) {
+    } catch (error) {
       printErrorMessage(`${error}`)
       process.exit(1)
     }
@@ -142,8 +139,7 @@ switch (config.subcommand) {
       let parsed: unknown
       try {
         parsed = JSON.parse(content)
-      }
-      catch {
+      } catch {
         printErrorMessage(`Invalid bundle: ${config.filename} is not valid JSON`)
         process.exit(1)
       }
@@ -156,8 +152,7 @@ switch (config.subcommand) {
         console.log(result)
       }
       process.exit(0)
-    }
-    catch (error) {
+    } catch (error) {
       printErrorMessage(`${error}`)
       process.exit(1)
     }
@@ -171,8 +166,7 @@ switch (config.subcommand) {
         console.log(result)
       }
       process.exit(0)
-    }
-    catch (error) {
+    } catch (error) {
       printErrorMessage(`${error}`)
       process.exit(1)
     }
@@ -185,13 +179,11 @@ switch (config.subcommand) {
       const json = JSON.stringify(result, null, 2)
       if (config.output) {
         fs.writeFileSync(config.output, json, { encoding: 'utf-8' })
-      }
-      else {
+      } else {
         console.log(json)
       }
       process.exit(0)
-    }
-    catch (error) {
+    } catch (error) {
       printErrorMessage(`${error}`)
       process.exit(1)
     }
@@ -229,7 +221,7 @@ switch (config.subcommand) {
 }
 
 function runDvalaTest(testPath: string, testNamePattern: Maybe<string>) {
-  if (!testPath.match(/\.test\.dvala/)) {
+  if (!/\.test\.dvala/.test(testPath)) {
     printErrorMessage('Test file must end with .test.dvala')
     process.exit(1)
   }
@@ -268,8 +260,7 @@ async function execute(expression: string, bindings: Record<string, unknown>, re
     setReplHistoryVariables(newBindings)
     console.log(stringifyValue(result, false))
     return newBindings
-  }
-  catch (error) {
+  } catch (error) {
     printErrorMessage(`${error}`)
     return { ...bindings, '*e*': getErrorMessage(error) }
   }
@@ -337,8 +328,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
           Object.entries(JSON.parse(parsed.argument) as UnknownRecord).forEach(([key, value]) => {
             options.context[key] = value
           })
-        }
-        catch (e) {
+        } catch (e) {
           printErrorMessage(`Couldn\`t parse context: ${getErrorMessage(e)}`)
           process.exit(1)
         }
@@ -355,8 +345,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
           Object.entries(JSON.parse(contextString) as UnknownRecord).forEach(([key, value]) => {
             options.context[key] = value
           })
-        }
-        catch (e) {
+        } catch (e) {
           printErrorMessage(`Couldn\`t parse context: ${getErrorMessage(e)}`)
           process.exit(1)
         }
@@ -606,22 +595,21 @@ Type ${fmt.italic('`help')} for more information.`)
     prompt: PROMPT,
   })
 
-  function readLine(message: string): Promise<string> {
+  async function readLine(message: string): Promise<string> {
     return new Promise<string>(resolve => rl.question(message, answer => resolve(answer)))
   }
 
   rl.prompt()
 
-  // eslint-disable-next-line ts/no-misused-promises
-  rl.on('line', async (line) => {
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  rl.on('line', async line => {
     line = line.trim()
 
     const helpMatch = helpRegExp.exec(line)
     if (helpMatch) {
       const name = helpMatch[1]!
       console.log(getCliDocumentation(fmt, name))
-    }
-    else if (line.startsWith('`')) {
+    } else if (line.startsWith('`')) {
       switch (line) {
         case '`builtins':
           printBuiltins()
@@ -638,8 +626,7 @@ Type ${fmt.italic('`help')} for more information.`)
         default:
           printErrorMessage(`Unrecognized command ${Colors.Italic}${line}${Colors.ResetItalic}, try ${Colors.Italic}\`help${Colors.ResetItalic}`)
       }
-    }
-    else if (line) {
+    } else if (line) {
       bindings = await execute(line, bindings, readLine)
     }
     rl.prompt()
@@ -653,7 +640,7 @@ function printBuiltins() {
   Object
     .values(apiReference)
     .sort((a, b) => a.title.localeCompare(b.title))
-    .forEach((reference) => {
+    .forEach(reference => {
       console.log(`
 ${fmt.bright.blue(reference.title)} - ${fmt.gray(reference.category)}
 ${getDocString(reference)}`)
@@ -719,9 +706,8 @@ function printContext(bindings: Record<string, unknown>) {
 
   if (keys.length === 0) {
     console.log('[empty]\n')
-  }
-  else {
-    keys.sort().forEach((x) => {
+  } else {
+    keys.sort().forEach(x => {
       console.log(`${x} = ${formatValue(stringifyValue(bindings[x], false))}`)
     })
     console.log()
@@ -743,7 +729,7 @@ function completer(line: string) {
 
   // TODO, add reserved names
   const replBindings = (config as ReplConfig).context ?? {}
-  const names = Array.from(new Set([...Object.keys(replBindings)]))
+  const names = [...new Set([...Object.keys(replBindings)])]
   const nameMatch = nameRegExp.exec(line)
 
   if (nameMatch)

@@ -1,9 +1,10 @@
-import { type FunctionReference, type Reference, isFunctionReference } from '../../../reference'
-import { findAllOccurrences } from '../../../common/utils'
-import { createFormatter } from '../../../common/createFormatter'
-import { createVariableRule, getMdRules } from '../cliFormatterRules'
+import type { FunctionReference, Reference } from '../../../reference'
 import type { Colorizer } from '../colorizer'
+import { createFormatter } from '../../../common/createFormatter'
+import { findAllOccurrences } from '../../../common/utils'
+import { isFunctionReference } from '../../../reference'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../../src/symbolPatterns'
+import { createVariableRule, getMdRules } from '../cliFormatterRules'
 
 const variableRegExp = new RegExp(`\\$${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*`, 'g')
 
@@ -37,7 +38,7 @@ function formatFunctionDescription(fmt: Colorizer, description: string, referenc
 }
 
 function checkVariables(reference: FunctionReference, variables: Set<string>) {
-  variables.forEach((variable) => {
+  variables.forEach(variable => {
     const variableName = variable.slice(1)
     if (variableName === reference.title)
       return

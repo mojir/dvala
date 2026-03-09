@@ -36,11 +36,9 @@ function unaryMathOp(
     const [operation, operand] = getNumberVectorOrMatrixOperation(param, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operand)
-    }
-    else if (operation === 'vector') {
+    } else if (operation === 'vector') {
       return operand.map(val => fn(val))
-    }
-    else {
+    } else {
       return operand.map(row => row.map(val => fn(val)))
     }
   }

@@ -23,7 +23,7 @@ function formatContextJson(context: Record<string, unknown>): string {
 }
 
 function getExamplesIndexPage(): string {
-  const tocEntries = examples.map((example) => {
+  const tocEntries = examples.map(example => {
     return `
       <a class="tutorial-nav-link" ${styles('cursor-pointer', 'py-1', 'flex', 'flex-row', 'items-start', 'gap-2')} onclick="Playground.showPage('example-${example.id}', 'smooth')">
         <span ${styles('text-xl', 'flex', 'items-center', 'line-height: 1.75rem;')}>${lampIcon}</span>
@@ -66,11 +66,11 @@ function renderExamplePage(example: typeof examples[number], index: number): str
 
   const contextBlock = example.context
     ? (() => {
-        const contextJson = formatContextJson(example.context)
-        const escaped = contextJson.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        const chip = `<span ${styles('absolute', 'top-2', 'left-2', 'bg-gray-600', 'text-xs', 'font-mono', 'text-color-gray-400', 'select-none', 'px-2', 'py-0.5', 'border-radius: 4px;')}>JSON</span>`
-        return `<div ${styles('text-sm', 'text-color-gray-400', 'mb-1')}>Context</div><div class="example-code" ${styles('relative', 'bg-gray-700', 'p-4', 'mb-5', 'overflow-x: auto;')}>${chip}<pre ${styles('text-sm', 'font-mono', 'whitespace-pre-wrap', 'margin-top: 1.75rem;')}>${escaped}</pre></div>`
-      })()
+      const contextJson = formatContextJson(example.context)
+      const escaped = contextJson.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const chip = `<span ${styles('absolute', 'top-2', 'left-2', 'bg-gray-600', 'text-xs', 'font-mono', 'text-color-gray-400', 'select-none', 'px-2', 'py-0.5', 'border-radius: 4px;')}>JSON</span>`
+      return `<div ${styles('text-sm', 'text-color-gray-400', 'mb-1')}>Context</div><div class="example-code" ${styles('relative', 'bg-gray-700', 'p-4', 'mb-5', 'overflow-x: auto;')}>${chip}<pre ${styles('text-sm', 'font-mono', 'whitespace-pre-wrap', 'margin-top: 1.75rem;')}>${escaped}</pre></div>`
+    })()
     : ''
 
   const navFooter = `<div ${styles('flex', 'justify-between', 'py-2', 'mt-8', 'border-0', 'border-t', 'border-solid', 'border-gray-600', 'text-sm')}>${

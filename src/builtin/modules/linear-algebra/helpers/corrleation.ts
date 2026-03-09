@@ -43,8 +43,7 @@ export function extractOverlappingSegments(
   if (lag >= 0) {
     segmentA = vectorA.slice(0, overlapLength)
     segmentB = vectorB.slice(lag, lag + overlapLength)
-  }
-  else {
+  } else {
     segmentA = vectorA.slice(absLag)
     segmentB = vectorB.slice(0, overlapLength)
   }

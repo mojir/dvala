@@ -29,7 +29,7 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
       const polygonal: number[] = []
       function loop(i: number): MaybePromise<number[]> {
         const value = (i * i * (s - 2) - i * (s - 4)) / 2
-        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), (keep) => {
+        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), keep => {
           if (!keep)
             return polygonal
           polygonal.push(value)

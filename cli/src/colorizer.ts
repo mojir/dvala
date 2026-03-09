@@ -1,4 +1,3 @@
-/* eslint-disable node/prefer-global/process */
 export type Colorizer = ReturnType<typeof createColorizer>
 
 const useColor = !process.env.NO_COLOR

@@ -288,15 +288,12 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
         if (p === 2) {
           if (k === 1) {
             lambdaValues.push(1) // λ(2) = 1
-          }
-          else if (k === 2) {
+          } else if (k === 2) {
             lambdaValues.push(2) // λ(4) = 2
-          }
-          else {
+          } else {
             lambdaValues.push(2 ** (k - 2)) // λ(2^k) = 2^(k-2) for k >= 3
           }
-        }
-        else {
+        } else {
           // For odd prime powers p^k: λ(p^k) = (p-1)*p^(k-1)
           lambdaValues.push((p - 1) * p ** (k - 1))
         }
@@ -309,14 +306,14 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
   },
   'cartesian-product': {
     evaluate: (params, sourceCodeInfo): Arr[] => {
-      params.forEach((set) => {
+      params.forEach(set => {
         assertArray(set, sourceCodeInfo)
       })
       const sets = params as Arr[]
       return sets.reduce((acc: Arr[], set) => {
         const result: Arr[] = []
-        acc.forEach((arr) => {
-          set.forEach((value) => {
+        acc.forEach(arr => {
+          set.forEach(value => {
             result.push([...arr, value])
           })
         })
@@ -350,8 +347,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
 
       try {
         return modInverse(a, m)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
     },
@@ -375,8 +371,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
       }
       try {
         return chineseRemainder(remainders, moduli)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError((error as Error).message, sourceCodeInfo)
       }
     },

@@ -33,11 +33,11 @@ export function generateRecamanSequence(n: number): number[] {
 
 export const recamanSequence: SequenceDefinition<'recaman'> = {
   'recaman-seq': length => generateRecamanSequence(length),
-  'recaman-take-while': (takeWhile) => {
+  'recaman-take-while': takeWhile => {
     const sequence: number[] = []
     const seen = new Set<number>([0])
 
-    return chain(takeWhile(0, 0), (keepFirst) => {
+    return chain(takeWhile(0, 0), keepFirst => {
       if (!keepFirst)
         return sequence
       sequence.push(0)
@@ -51,7 +51,7 @@ export const recamanSequence: SequenceDefinition<'recaman'> = {
           next = sequence[i - 1]! + i
         }
 
-        return chain(takeWhile(next, i), (keep) => {
+        return chain(takeWhile(next, i), keep => {
           if (!keep)
             return sequence
           sequence.push(next)

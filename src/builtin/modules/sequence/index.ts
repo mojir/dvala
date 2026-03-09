@@ -66,8 +66,7 @@ su.position(
         assertString(value, sourceCodeInfo)
         const index = seq.lastIndexOf(value)
         return index !== -1 ? index : null
-      }
-      else {
+      } else {
         const index = seq.findLastIndex(item => deepEqual(asAny(item, sourceCodeInfo), value), sourceCodeInfo)
         return index !== -1 ? index : null
       }
@@ -574,14 +573,14 @@ l`,
       const isStringSeq = typeof seqs[0] === 'string'
 
       const seqsArr = isStringSeq
-        ? seqs.map((seq) => {
-            assertString(seq, sourceCodeInfo)
-            return seq.split('')
-          })
-        : seqs.map((seq) => {
-            assertArray(seq, sourceCodeInfo)
-            return seq
-          })
+        ? seqs.map(seq => {
+          assertString(seq, sourceCodeInfo)
+          return seq.split('')
+        })
+        : seqs.map(seq => {
+          assertArray(seq, sourceCodeInfo)
+          return seq
+        })
 
       const maxLength = Math.min(...seqsArr.map(seq => seq.length))
       const result: Arr = []
@@ -678,8 +677,7 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
           break
 
         innerArr.push(pad[padIndex])
-      }
-      else {
+      } else {
         innerArr.push(seq[i])
       }
     }

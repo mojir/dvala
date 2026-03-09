@@ -302,13 +302,11 @@ describe('retrigger()', () => {
         'foo.bar': async ({ args, resume: r, suspend, signal }) => {
           if (args[0] === 'A') {
             r('got-A')
-          }
-          else if (args[0] === 'B') {
+          } else if (args[0] === 'B') {
             suspend()
-          }
-          else {
+          } else {
             // C: auto-suspend when the parallel group aborts
-            await new Promise<void>((resolve) => {
+            await new Promise<void>(resolve => {
               signal.addEventListener('abort', () => {
                 suspend()
                 resolve()
@@ -345,10 +343,9 @@ describe('retrigger()', () => {
     const suspendHandler = async ({ args, suspend, signal }: { args: any[], suspend: () => void, signal: AbortSignal }) => {
       if (args[0] === 'A') {
         suspend()
-      }
-      else {
+      } else {
         // B and C: auto-suspend when A suspends (abort signal fires)
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           signal.addEventListener('abort', () => {
             suspend()
             resolve()
@@ -404,13 +401,13 @@ describe('retrigger()', () => {
   })
 
   it('returns error result when deserialization throws a DvalaError', async () => {
-    // eslint-disable-next-line ts/no-unsafe-assignment
+
     const badSnapshot = {
       continuation: 'not-a-valid-continuation',
       effectName: 'my.effect',
       effectArgs: [],
     } as any
-    // eslint-disable-next-line ts/no-unsafe-argument
+
     const result1 = await retrigger(badSnapshot, {
       handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
     })
@@ -419,13 +416,13 @@ describe('retrigger()', () => {
 
   it('wraps non-DvalaError exceptions in a DvalaError', async () => {
     // Pass a continuation that will cause a generic JS error (not DvalaError)
-    // eslint-disable-next-line ts/no-unsafe-assignment
+
     const badSnapshot = {
       continuation: null,
       effectName: 'my.effect',
       effectArgs: [],
     } as any
-    // eslint-disable-next-line ts/no-unsafe-argument
+
     const result2 = await retrigger(badSnapshot, {
       handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
     })

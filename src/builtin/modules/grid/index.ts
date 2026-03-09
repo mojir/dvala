@@ -271,7 +271,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertNumber(rowDeleteCount, sourceCodeInfo, { integer: true, nonNegative: true })
       if (rows.length !== 0) {
         assertGrid(rows, sourceCodeInfo)
-        rows.every((row) => {
+        rows.every(row => {
           assertArray(row, sourceCodeInfo)
           if (grid[0]!.length !== row.length) {
             throw new DvalaError(`All rows must have the same length as the number of columns in grid, but got ${row.length}`, sourceCodeInfo)
@@ -303,7 +303,7 @@ const gridFunctions: BuiltinNormalExpressions = {
 
       if (cols.length !== 0) {
         assertGrid(cols, sourceCodeInfo)
-        cols.every((row) => {
+        cols.every(row => {
           assertArray(row, sourceCodeInfo)
           if (trMatrix[0]!.length !== row.length) {
             throw new DvalaError(`All rows must have the same length as the number of rows in grid, but got ${row.length}`, sourceCodeInfo)
@@ -329,7 +329,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertArray(params, sourceCodeInfo)
       params.every(grid => assertGrid(grid, sourceCodeInfo))
       const cols = (params[0] as Any[][])[0]!.length
-      ;(params as Any[][][]).slice(1).every((grid) => {
+      ;(params as Any[][][]).slice(1).every(grid => {
         if (grid[0]!.length !== cols) {
           throw new DvalaError(`All grids must have the same number of columns, but got ${cols} and ${grid[0]!.length}`, sourceCodeInfo)
         }
@@ -337,8 +337,8 @@ const gridFunctions: BuiltinNormalExpressions = {
       })
 
       const result: Any[][] = []
-      ;(params as Any[][][]).forEach((grid) => {
-        grid.forEach((row) => {
+      ;(params as Any[][][]).forEach(grid => {
+        grid.forEach(row => {
           result.push(row)
         })
       })
@@ -351,7 +351,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertArray(params, sourceCodeInfo)
       params.every(grid => assertGrid(grid, sourceCodeInfo))
       const rows = (params[0] as Any[][]).length
-      ;(params as Any[][][]).slice(1).every((grid) => {
+      ;(params as Any[][][]).slice(1).every(grid => {
         if (grid.length !== rows) {
           throw new DvalaError(`All grids must have the same number of rows, but got ${rows} and ${grid.length}`, sourceCodeInfo)
         }
@@ -361,7 +361,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       const result: Any[][] = []
       for (let i = 0; i < rows; i += 1) {
         const row: Any[] = []
-        ;(params as Any[][][]).forEach((grid) => {
+        ;(params as Any[][][]).forEach(grid => {
           row.push(...grid[i]!)
         })
         result.push(row)
@@ -450,7 +450,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       for (let i = 0; i < grid.length; i += 1) {
         const row: Any[] = []
         row.push(...grid[i]!)
-        cols.forEach((col) => {
+        cols.forEach(col => {
           row.push(col[i]!)
         })
         result.push(row)
@@ -471,7 +471,7 @@ const gridFunctions: BuiltinNormalExpressions = {
 
       for (let i = 0; i < grid.length; i += 1) {
         const row: Any[] = []
-        cols.forEach((col) => {
+        cols.forEach(col => {
           row.push(col[i]!)
         })
         row.push(...grid[i]!)

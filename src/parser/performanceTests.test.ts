@@ -49,7 +49,7 @@ describe.skip('performance comparison', () => {
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        // eslint-disable-next-line no-eval
+
         eval(Array.isArray(expression) ? expression[1]! : expression)
       }
       report.eval = (performance.now() - startTime) * 1000 / iterations
@@ -65,7 +65,7 @@ describe.skip('performance comparison', () => {
       dvala: number
     }
     const entries: ReportEntry[] = []
-    const expressionsWithTokenStreams = expressions.map((expression) => {
+    const expressionsWithTokenStreams = expressions.map(expression => {
       const tokenStream = tokenizeSource(Array.isArray(expression) ? expression[0]! : expression)
 
       return {
@@ -91,7 +91,7 @@ describe.skip('performance comparison', () => {
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        // eslint-disable-next-line no-eval
+
         eval(Array.isArray(expression.expression) ? expression.expression[1]! : expression.expression)
       }
       report.eval = (performance.now() - startTime) * 1000 / iterations
@@ -107,7 +107,7 @@ describe.skip('performance comparison', () => {
       dvala: number
     }
     const entries: ReportEntry[] = []
-    const expressionsWithAsts = expressions.map((expression) => {
+    const expressionsWithAsts = expressions.map(expression => {
       const tokenStream = tokenizeSource(Array.isArray(expression) ? expression[0]! : expression)
       const ast = parseTokenStream(tokenStream)
 
@@ -133,7 +133,7 @@ describe.skip('performance comparison', () => {
 
       startTime = performance.now()
       for (let i = 0; i < iterations; i++) {
-        // eslint-disable-next-line no-eval
+
         eval(Array.isArray(expression.expression) ? expression.expression[1]! : expression.expression)
       }
       report.eval = (performance.now() - startTime) * 1000 / iterations

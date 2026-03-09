@@ -212,7 +212,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
         () => chain(executeFunction(func, [], contextStack, sourceCodeInfo), () => {
           throw new AssertionError(`Expected function to throw "${throwMessage}".${message}`, sourceCodeInfo)
         }),
-        (error) => {
+        error => {
           const errorMessage = (error as DvalaError).shortMessage
           if (errorMessage !== throwMessage) {
             throw new AssertionError(

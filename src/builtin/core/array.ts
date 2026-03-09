@@ -17,14 +17,12 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
         from = 0
         to = first
         step = to >= 0 ? 1 : -1
-      }
-      else if (params.length === 2) {
+      } else if (params.length === 2) {
         assertNumber(second, sourceCodeInfo, { finite: true })
         from = first
         to = second
         step = to >= from ? 1 : -1
-      }
-      else {
+      } else {
         assertNumber(second, sourceCodeInfo, { finite: true })
         assertNumber(third, sourceCodeInfo, { finite: true })
         from = first

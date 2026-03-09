@@ -6,7 +6,7 @@ export const meanReductionFunction: ReductionFunctionDefinition<'mean'> = {
 }
 
 export const geometricMeanReductionFunction: ReductionFunctionDefinition<'geometric-mean'> = {
-  'geometric-mean': (vector) => {
+  'geometric-mean': vector => {
     if (vector.some(val => val < 0)) {
       throw new Error('Geometric mean is not defined for non-positive numbers')
     }

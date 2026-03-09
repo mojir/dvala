@@ -11,7 +11,7 @@ export function isComposite(num: number): boolean {
 }
 
 export const compositeSequence: SequenceDefinition<'composite'> = {
-  'composite-seq': (length) => {
+  'composite-seq': length => {
     const composites = []
     let num = 2
     while (composites.length < length) {
@@ -23,12 +23,12 @@ export const compositeSequence: SequenceDefinition<'composite'> = {
     return composites
   },
   'composite?': n => isComposite(n),
-  'composite-take-while': (takeWhile) => {
+  'composite-take-while': takeWhile => {
     const composites: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!isComposite(i))
         return loop(i + 1)
-      return chain(takeWhile(i, composites.length), (keep) => {
+      return chain(takeWhile(i, composites.length), keep => {
         if (!keep)
           return composites
         composites.push(i)

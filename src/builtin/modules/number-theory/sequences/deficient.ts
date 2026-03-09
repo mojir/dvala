@@ -10,7 +10,7 @@ function isDeficient(num: number): boolean {
 }
 
 export const deficientSequence: SequenceDefinition<'deficient'> = {
-  'deficient-seq': (length) => {
+  'deficient-seq': length => {
     const deficients = []
     let num = 1
     while (deficients.length < length) {
@@ -22,12 +22,12 @@ export const deficientSequence: SequenceDefinition<'deficient'> = {
     return deficients
   },
   'deficient?': n => isDeficient(n),
-  'deficient-take-while': (takeWhile) => {
+  'deficient-take-while': takeWhile => {
     const deficients: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!isDeficient(i))
         return loop(i + 1)
-      return chain(takeWhile(i, deficients.length), (keep) => {
+      return chain(takeWhile(i, deficients.length), keep => {
         if (!keep)
           return deficients
         deficients.push(i)

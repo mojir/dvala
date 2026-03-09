@@ -7,8 +7,7 @@ export function encodeSnapshot(snapshot: Snapshot): string {
 export function decodeSnapshot(encoded: string): Snapshot | null {
   try {
     return JSON.parse(decodeURIComponent(atob(encoded))) as Snapshot
-  }
-  catch {
+  } catch {
     return null
   }
 }

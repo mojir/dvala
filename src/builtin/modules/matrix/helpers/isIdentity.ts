@@ -13,8 +13,7 @@ export function isIdentity(matrix: number[][]): boolean {
         if (!approxEqual(matrix[i]![j]!, 1)) {
           return false
         }
-      }
-      else {
+      } else {
         if (!approxZero(matrix[i]![j]!)) {
           return false
         }

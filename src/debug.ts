@@ -214,8 +214,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
       history.length = currentStep + 1
       history.push(entry)
       currentStep = history.length - 1
-    }
-    else if (result.type === 'completed') {
+    } else if (result.type === 'completed') {
       // Program finished — no more steps to take
       // currentStep stays at the last recorded step
     }
@@ -263,8 +262,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
           modules: modulesMap,
         })
         return processResult(result)
-      }
-      catch (error) {
+      } catch (error) {
         if (error instanceof DvalaError) {
           return { type: 'error', error }
         }

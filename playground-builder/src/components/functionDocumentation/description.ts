@@ -42,7 +42,7 @@ function formatFunctionDescription(description: string, reference: FunctionRefer
 }
 
 function checkVariables(reference: FunctionReference, variables: Set<string>) {
-  variables.forEach((variable) => {
+  variables.forEach(variable => {
     const variableName = variable.slice(1)
     if (variableName === reference.title)
       return

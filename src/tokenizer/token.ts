@@ -79,7 +79,7 @@ export interface SourceCodeInfo {
   filePath?: string
 }
 
-export function isSymbolToken<T extends string>(token: Token | undefined | undefined, symbolName?: T): token is SymbolToken<T> {
+export function isSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): token is SymbolToken<T> {
   if (token?.[0] !== 'Symbol') {
     return false
   }
@@ -89,17 +89,17 @@ export function isSymbolToken<T extends string>(token: Token | undefined | undef
   return true
 }
 
-export function assertSymbolToken<T extends string>(token: Token | undefined | undefined, symbolName?: T): asserts token is SymbolToken<T> {
+export function assertSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): asserts token is SymbolToken<T> {
   if (!isSymbolToken(token, symbolName)) {
     throwUnexpectedToken('Symbol', undefined, token)
   }
 }
-export function asSymbolToken<T extends string>(token: Token | undefined | undefined, symbolName?: T): SymbolToken<T> {
+export function asSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): SymbolToken<T> {
   assertSymbolToken(token, symbolName)
   return token
 }
 
-export function isReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined | undefined, symbolName?: T): token is ReservedSymbolToken<T> {
+export function isReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): token is ReservedSymbolToken<T> {
   if (token?.[0] !== 'ReservedSymbol') {
     return false
   }
@@ -108,12 +108,12 @@ export function isReservedSymbolToken<T extends ReservedSymbol>(token: Token | u
   }
   return true
 }
-export function assertReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined | undefined, symbolName?: T): asserts token is ReservedSymbolToken<T> {
+export function assertReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): asserts token is ReservedSymbolToken<T> {
   if (!isReservedSymbolToken(token, symbolName)) {
     throwUnexpectedToken('ReservedSymbol', symbolName, token)
   }
 }
-export function asReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined | undefined, symbolName?: T): ReservedSymbolToken<T> {
+export function asReservedSymbolToken<T extends ReservedSymbol>(token: Token | undefined, symbolName?: T): ReservedSymbolToken<T> {
   assertReservedSymbolToken(token, symbolName)
   return token
 }
@@ -130,7 +130,7 @@ export function isMultiLineCommentToken(token: Token | undefined): token is Mult
   return token?.[0] === 'MultiLineComment'
 }
 
-export function isOperatorToken<T extends SymbolicOperator>(token: Token | undefined | undefined, operatorName?: T): token is OperatorToken<T> {
+export function isOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): token is OperatorToken<T> {
   if (token?.[0] !== 'Operator') {
     return false
   }
@@ -139,12 +139,12 @@ export function isOperatorToken<T extends SymbolicOperator>(token: Token | undef
   }
   return true
 }
-export function assertOperatorToken<T extends SymbolicOperator>(token: Token | undefined | undefined, operatorName?: T): asserts token is OperatorToken<T> {
+export function assertOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): asserts token is OperatorToken<T> {
   if (!isOperatorToken(token, operatorName)) {
     throwUnexpectedToken('Operator', operatorName, token)
   }
 }
-export function asOperatorToken<T extends SymbolicOperator>(token: Token | undefined | undefined, operatorName?: T): OperatorToken<T> {
+export function asOperatorToken<T extends SymbolicOperator>(token: Token | undefined, operatorName?: T): OperatorToken<T> {
   assertOperatorToken(token, operatorName)
   return token
 }

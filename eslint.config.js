@@ -1,51 +1,104 @@
-const { antfu } = require('@antfu/eslint-config')
+const eslint = require('@eslint/js')
+const tseslint = require('typescript-eslint')
+const stylistic = require('@stylistic/eslint-plugin')
 
-const config = antfu({
-  stylistic: {
-    indent: 2,
+module.exports = tseslint.config(
+  {
+    ignores: [
+      'dist/**',
+      'e2e/**',
+      'playwright.config.ts',
+      'prettier.config.js',
+      'rollup.config.js',
+      'rollup.config.*.js',
+      'coverage/**',
+      'README.md',
+      'CLAUDE.md',
+      'docs/**',
+      'design/**',
+      'playground-builder/src/components/tutorials/**',
+      'playground-builder/build/**',
+      'playground-www/build/**',
+      'rollup.plugins.js',
+      'eslint.config.js',
+      'scripts/**',
+      'vscode-dvala/**',
+    ],
   },
-  test: {
-    overrides: {
-      'test/consistent-test-it': 'off',
+  eslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        project: 'tsconfig.compile.json',
+        tsconfigRootDir: __dirname,
+      },
     },
   },
-  typescript: {
-    tsconfigPath: 'tsconfig.compile.json',
-    overrides: {
-      'ts/restrict-template-expressions': ['off'],
-      'no-labels': ['off'],
-      'no-restricted-syntax': ['off'],
-      'ts/strict-boolean-expressions': ['off'],
-      'quotes': ['error', 'single', { avoidEscape: true }],
-      'ts/no-shadow': 'error',
-      'ts/consistent-type-imports': 'error',
-      'ts/consistent-generic-constructors': ['error', 'constructor'],
-      'ts/consistent-indexed-object-style': 'error',
-      'ts/consistent-type-definitions': 'off',
-      'ts/consistent-type-assertions': [
+  {
+    plugins: {
+      '@stylistic': stylistic,
+    },
+    rules: {
+      // Stylistic
+      '@stylistic/indent': ['error', 2],
+      '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
+      '@stylistic/semi': ['error', 'never'],
+      '@stylistic/comma-dangle': ['error', 'always-multiline'],
+      '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
+      '@stylistic/array-bracket-spacing': ['error', 'never'],
+      '@stylistic/arrow-parens': ['error', 'as-needed'],
+      '@stylistic/eol-last': ['error', 'always'],
+      '@stylistic/no-trailing-spaces': 'error',
+      '@stylistic/comma-spacing': 'error',
+      '@stylistic/key-spacing': 'error',
+      '@stylistic/keyword-spacing': 'error',
+      '@stylistic/space-before-blocks': 'error',
+      '@stylistic/space-infix-ops': 'error',
+      '@stylistic/no-multiple-empty-lines': ['error', { max: 1 }],
+      '@stylistic/no-multi-spaces': 'error',
+
+      // Core
+      'no-labels': 'off',
+      'no-restricted-syntax': 'off',
+      'no-console': 'warn',
+
+      // TypeScript
+      '@typescript-eslint/restrict-template-expressions': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-base-to-string': 'off',
+      '@typescript-eslint/restrict-plus-operands': 'off',
+      '@typescript-eslint/no-shadow': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/consistent-generic-constructors': ['error', 'constructor'],
+      '@typescript-eslint/consistent-indexed-object-style': 'error',
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/consistent-type-assertions': [
         'error',
         {
           assertionStyle: 'as',
           objectLiteralTypeAssertions: 'never',
         },
       ],
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
     },
   },
-  ignores: [
-    'dist/**/*',
-    'e2e/**/*',
-    'playwright.config.ts',
-    'prettier.config.js',
-    'rollup.config.js',
-    'coverage/**/*',
-    'README.md',
-    'CLAUDE.md',
-    'docs/**/*',
-    'design/**/*',
-    'playground-builder/src/components/tutorials/**/*',
-    'scripts/**/*',
-    'vscode-dvala/**/*',
-  ],
-})
-
-module.exports = config
+  // Relax type-checked rules for test files (performance)
+  {
+    files: ['**/*.test.ts', '**/__tests__/**'],
+    ...tseslint.configs.disableTypeChecked,
+  },
+)

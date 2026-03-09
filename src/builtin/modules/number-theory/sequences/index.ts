@@ -123,11 +123,11 @@ function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
 function getFiniteNumberSequence<T extends string>(name: T, sequence: number[]): SequenceNormalExpressions<T> {
   return {
     [`${name}-seq`]: createSeqNormalExpression(length => sequence.slice(0, length), sequence.length),
-    [`${name}-take-while`]: createTakeWhileNormalExpression((takeWhile) => {
+    [`${name}-take-while`]: createTakeWhileNormalExpression(takeWhile => {
       function loop(i: number): MaybePromise<number[]> {
         if (i >= sequence.length)
           return sequence.slice(0, i)
-        return chain(takeWhile(sequence[i]!, i), (keep) => {
+        return chain(takeWhile(sequence[i]!, i), keep => {
           if (!keep)
             return sequence.slice(0, i)
           return loop(i + 1)
@@ -151,15 +151,12 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
       if (!sequence.noNth) {
         sequenceNormalExpressions[key.replace(/seq$/, 'nth')] = createNthNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
       }
-    }
-    else if (key.endsWith('take-while')) {
+    } else if (key.endsWith('take-while')) {
       sequenceNormalExpressions[key] = createTakeWhileNormalExpression(value as TakeWhileFunction<Type>, sequence.maxLength)
-    }
-    else if (key.endsWith('?')) {
+    } else if (key.endsWith('?')) {
       if (sequence.string) {
         sequenceNormalExpressions[key] = createStringPredNormalExpression(value as PredFunction<string>)
-      }
-      else {
+      } else {
         sequenceNormalExpressions[key] = createNumberPredNormalExpression(value as PredFunction<number>)
       }
     }
@@ -199,7 +196,7 @@ function createTakeWhileNormalExpression<Type extends number | string>(
         (value, index) => chain(executeFunction(fn, [value, index], contextStack), val => !!val),
         sourceCodeInfo,
       )
-      return chain(result, (resolved) => {
+      return chain(result, resolved => {
         if (typeof resolved[0] === 'number') {
           /* v8 ignore next 3 */
           if (resolved.some(n => (n as number) > Number.MAX_SAFE_INTEGER)) {

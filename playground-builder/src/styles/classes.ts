@@ -11,7 +11,7 @@ type sizes =
   | '-8'
   | '-16'
 
-  type borderSizes =
+type borderSizes =
     | ''
     | '-0'
     | '-2'
@@ -164,7 +164,7 @@ export type CssClass =
   | 'block'
   | 'inline-block'
   | 'inline'
-  | 'flex'
+
   | 'inline-flex'
   | 'table'
   | 'inline-table'

@@ -38,13 +38,11 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
         // do...with...end: preserve the full DoNode as a single expression so
         // the with-handlers are not lost.
         nodes = [doNode]
-      }
-      else {
+      } else {
         // Plain do...end: unwrap body expressions for multi-statement lambdas.
         nodes = doNode[1][1]
       }
-    }
-    else {
+    } else {
       nodes = [ctx.parseExpression()]
     }
 
@@ -58,8 +56,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
         ],
       ],
     ], firstToken[2]) satisfies LambdaNode
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -121,13 +118,11 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     if (withHandlers && withHandlers.length > 0) {
       // do...with...end: preserve the full DoNode so the with-handlers are not lost.
       nodes = [doNode]
-    }
-    else {
+    } else {
       // Plain do...end: unwrap body expressions.
       nodes = doNode[1][1]
     }
-  }
-  else {
+  } else {
     nodes = [ctx.parseExpression()]
   }
 
@@ -161,8 +156,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   for (let i = 1; i <= arity; i += 1) {
     if (i === 1 && dollar1 === 'NAKED') {
       functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, '$'], undefined]], firstToken[2]))
-    }
-    else {
+    } else {
       functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, `$${i}`], undefined]], firstToken[2]))
     }
   }

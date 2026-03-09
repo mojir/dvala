@@ -10,7 +10,7 @@ function isAbundant(num: number): boolean {
 }
 
 export const abundantSequence: SequenceDefinition<'abundant'> = {
-  'abundant-seq': (length) => {
+  'abundant-seq': length => {
     const abundants = []
     let num = 2
     while (abundants.length < length) {
@@ -22,12 +22,12 @@ export const abundantSequence: SequenceDefinition<'abundant'> = {
     return abundants
   },
   'abundant?': n => isAbundant(n),
-  'abundant-take-while': (takeWhile) => {
+  'abundant-take-while': takeWhile => {
     const abundants: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!isAbundant(i))
         return loop(i + 1)
-      return chain(takeWhile(i, abundants.length), (keep) => {
+      return chain(takeWhile(i, abundants.length), keep => {
         if (!keep)
           return abundants
         abundants.push(i)

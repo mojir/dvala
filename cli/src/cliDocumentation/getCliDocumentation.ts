@@ -1,11 +1,11 @@
-import { apiReference, isFunctionReference } from '../../../reference'
 import type { Colorizer } from '../colorizer'
+import { apiReference, isFunctionReference } from '../../../reference'
 import { isCoreApiName } from '../../../reference/api'
-import { getCliFunctionSignature } from './getCliFunctionSignature'
-import { getCliTitle } from './getCliTitle'
 import { formatCliDescription } from './formatCliDescription'
 import { getArgumentInfo } from './getCliArgumentInfo'
 import { getCliFunctionExamples } from './getCliFunctionExamples'
+import { getCliFunctionSignature } from './getCliFunctionSignature'
+import { getCliTitle } from './getCliTitle'
 
 export function getCliDocumentation(fmt: Colorizer, name: string) {
   if (!isCoreApiName(name))
