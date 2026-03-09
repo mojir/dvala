@@ -14,7 +14,7 @@
   ],
   "main": "./out/extension.js",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.109.0"
   },
   "contributes": {
     "languages": [
@@ -137,8 +137,8 @@
     ]
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/vscode": "^1.75.0",
-    "typescript": "^5.5.0"
+    "@types/node": "^25.3.5",
+    "@types/vscode": "^1.109.0",
+    "typescript": "^5.9.3"
   }
 }
