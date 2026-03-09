@@ -16,7 +16,7 @@ describe('cLI argument parsing', () => {
           stdio: 'pipe',
         })
       } catch (error: any) {
-        throw new Error(`Failed to build CLI: ${error.message}`)
+        throw new Error(`Failed to build CLI: ${error.message}`, { cause: error })
       }
     }
 

@@ -17,7 +17,7 @@ describe('the cli-fs Integration Tests', () => {
           stdio: 'pipe',
         })
       } catch (error: any) {
-        throw new Error(`Failed to build CLI: ${error.message}`)
+        throw new Error(`Failed to build CLI: ${error.message}`, { cause: error })
       }
     }
   })
@@ -64,7 +64,7 @@ describe('the cli-fs Integration Tests', () => {
       })
       return result.trim()
     } catch (error: any) {
-      throw new Error(`Dvala CLI failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`)
+      throw new Error(`Dvala CLI failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, { cause: error })
     }
   }
 
