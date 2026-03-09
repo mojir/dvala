@@ -32,8 +32,11 @@ const config = antfu({
     },
   },
   ignores: [
+    'dist/**/*',
     'e2e/**/*',
     'playwright.config.ts',
+    'prettier.config.js',
+    'rollup.config.js',
     'coverage/**/*',
     'README.md',
     'CLAUDE.md',
