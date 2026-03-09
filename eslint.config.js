@@ -58,11 +58,21 @@ module.exports = tseslint.config(
       '@stylistic/space-infix-ops': 'error',
       '@stylistic/no-multiple-empty-lines': ['error', { max: 1 }],
       '@stylistic/no-multi-spaces': 'error',
+      '@stylistic/spaced-comment': ['error', 'always'],
+      '@stylistic/type-annotation-spacing': 'error',
+      '@stylistic/member-delimiter-style': ['error', { multiline: { delimiter: 'none' }, singleline: { delimiter: 'semi', requireLast: false } }],
+      '@stylistic/block-spacing': 'error',
+      '@stylistic/space-in-parens': 'error',
+      '@stylistic/template-curly-spacing': 'error',
 
       // Core
       'no-labels': 'off',
       'no-restricted-syntax': 'off',
       'no-console': 'warn',
+      'prefer-const': 'error',
+      'object-shorthand': 'error',
+      'prefer-template': 'error',
+      'eqeqeq': 'error',
 
       // TypeScript
       '@typescript-eslint/restrict-template-expressions': 'off',
@@ -79,6 +89,7 @@ module.exports = tseslint.config(
       '@typescript-eslint/restrict-plus-operands': 'off',
       '@typescript-eslint/no-shadow': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/array-type': ['error', { default: 'array' }],
       '@typescript-eslint/consistent-generic-constructors': ['error', 'constructor'],
       '@typescript-eslint/consistent-indexed-object-style': 'error',
       '@typescript-eslint/consistent-type-definitions': 'off',

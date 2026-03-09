@@ -281,7 +281,7 @@ function setReplHistoryVariables(bindings: Record<string, unknown>): void {
   })
 }
 
-function parseOption(args: string[], i: number): { option: string, argument: Maybe<string>, count: number } | null {
+function parseOption(args: string[], i: number): { option: string; argument: Maybe<string>; count: number } | null {
   const option = args[i]!
 
   // Short option: -x
@@ -309,7 +309,7 @@ function parseOption(args: string[], i: number): { option: string, argument: May
   return null
 }
 
-function parseContextOptions(args: string[], startIndex: number): { options: ContextOptions, nextIndex: number } {
+function parseContextOptions(args: string[], startIndex: number): { options: ContextOptions; nextIndex: number } {
   const options: ContextOptions = { context: {} }
   let i = startIndex
   while (i < args.length) {
@@ -358,7 +358,7 @@ function parseContextOptions(args: string[], startIndex: number): { options: Con
   return { options, nextIndex: i }
 }
 
-function parsePrintOptions(args: string[], startIndex: number): { options: PrintOptions, nextIndex: number } {
+function parsePrintOptions(args: string[], startIndex: number): { options: PrintOptions; nextIndex: number } {
   const options: PrintOptions = { printResult: true }
   let i = startIndex
   while (i < args.length) {
@@ -379,7 +379,7 @@ function parsePrintOptions(args: string[], startIndex: number): { options: Print
   return { options, nextIndex: i }
 }
 
-function parseRunEvalOptions(args: string[], startIndex: number): { context: Record<string, unknown>, printResult: boolean, pure: boolean, positional: Maybe<string>, nextIndex: number } {
+function parseRunEvalOptions(args: string[], startIndex: number): { context: Record<string, unknown>; printResult: boolean; pure: boolean; positional: Maybe<string>; nextIndex: number } {
   let context: Record<string, unknown> = {}
   let printResult = true
   let pure = false

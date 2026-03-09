@@ -12,7 +12,7 @@ export interface TypeGuardTestData {
 
 export function testTypeGuars(
   testData: TypeGuardTestData,
-  { is, as, assert }: { is: Function | undefined, as: Function, assert: Function },
+  { is, as, assert }: { is: Function | undefined; as: Function; assert: Function },
 ) {
   testData.valid.forEach(validData => {
     if (is)

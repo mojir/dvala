@@ -206,7 +206,7 @@ describe('auto: effectNameMatchesPattern exhaustive', () => {
   ]
 
   // Pattern types with expected behavior
-  const patterns: Array<{ pattern: string, expected: (name: string) => boolean }> = [
+  const patterns: { pattern: string; expected: (name: string) => boolean }[] = [
     // Exact match patterns
     { pattern: 'dvala.error', expected: n => n === 'dvala.error' },
     { pattern: 'llm.complete', expected: n => n === 'llm.complete' },
@@ -627,7 +627,7 @@ describe('auto: effect identity semantics', () => {
 // 11. Suspend/Resume Round-Trip with Various Value Types
 // ---------------------------------------------------------------------------
 describe('auto: suspend/resume round-trip', () => {
-  const resumeValues: Array<{ label: string, value: Any, code: string }> = [
+  const resumeValues: { label: string; value: Any; code: string }[] = [
     { label: 'number', value: 42, code: 'x + 1' },
     { label: 'zero', value: 0, code: 'x + 1' },
     { label: 'negative', value: -7, code: 'x + 1' },
@@ -1017,7 +1017,7 @@ describe('auto: runSync constraints', () => {
 // 15. effect-matcher Wildcard Patterns
 // ---------------------------------------------------------------------------
 describe('auto: effect-matcher wildcard patterns', () => {
-  const patterns: Array<{ pattern: string, matches: string[], nonMatches: string[] }> = [
+  const patterns: { pattern: string; matches: string[]; nonMatches: string[] }[] = [
     {
       pattern: 'dvala.*',
       matches: ['dvala.error', 'dvala.io.println', 'dvala.random', 'dvala.checkpoint'],
@@ -1122,7 +1122,7 @@ describe('auto: predicate-based handler matching', () => {
 // 17. Standard Effects: Sync effects callable via runSync
 // ---------------------------------------------------------------------------
 describe('auto: standard sync effects via runSync', () => {
-  const syncEffects: Array<{ name: string, args: string }> = [
+  const syncEffects: { name: string; args: string }[] = [
     { name: 'dvala.random', args: '' },
     { name: 'dvala.random.uuid', args: '' },
     { name: 'dvala.random.int', args: '1, 100' },
@@ -1145,7 +1145,7 @@ describe('auto: standard sync effects via runSync', () => {
   }
 
   // I/O effects should work synchronously via runSync (they write to stdout/stderr)
-  const ioEffects: Array<{ name: string, args: string }> = [
+  const ioEffects: { name: string; args: string }[] = [
     { name: 'dvala.io.print', args: '"test"' },
     { name: 'dvala.io.println', args: '"test"' },
     { name: 'dvala.io.error', args: '"test"' },

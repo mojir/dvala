@@ -117,7 +117,7 @@ interface SubTreeInfo {
   value: unknown
   size: number
   /** Locations where this sub-tree appears (for replacement) */
-  locations: Array<{ parent: unknown[] | Record<string, unknown>, key: number | string }>
+  locations: { parent: unknown[] | Record<string, unknown>; key: number | string }[]
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ interface SubTreeInfo {
 export function dedupSubTrees(
   roots: unknown[],
   threshold: number = 200,
-): { roots: unknown[], pool: Record<number, unknown> } {
+): { roots: unknown[]; pool: Record<number, unknown> } {
   // Phase 1: Deep-clone roots so we can mutate them in-place
   const clonedRoots = roots.map(r => deepClone(r))
 
@@ -189,7 +189,7 @@ export function dedupSubTrees(
 function walkAndCollect(
   value: unknown,
   hashGroups: Map<number, SubTreeInfo[]>,
-  parentInfo: { parent: unknown[] | Record<string, unknown>, key: number | string } | null,
+  parentInfo: { parent: unknown[] | Record<string, unknown>; key: number | string } | null,
   _rootIdx: number,
 ): number {
   if (value === null || typeof value !== 'object') {

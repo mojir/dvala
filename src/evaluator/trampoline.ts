@@ -173,7 +173,7 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
 function evaluateParamsRecursive(
   paramNodes: AstNode[],
   contextStack: ContextStack,
-): MaybePromise<{ params: Arr, placeholders: number[] }> {
+): MaybePromise<{ params: Arr; placeholders: number[] }> {
   const params: Arr = []
   const placeholders: number[] = []
   const result = forEachSequential(paramNodes, (paramNode, index) => {
@@ -450,7 +450,7 @@ function executeJuxtRecursive(fn: JuxtFunction, params: Arr, contextStack: Conte
 }
 
 function executeEveryPredRecursive(fn: EveryPredFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const checks: Array<() => MaybePromise<Any>> = []
+  const checks: (() => MaybePromise<Any>)[] = []
   for (const f of fn.params) {
     for (const param of params) {
       checks.push(() => executeFunctionRecursive(asFunctionLike(f, sourceCodeInfo), [param], contextStack, sourceCodeInfo))
@@ -464,7 +464,7 @@ function executeEveryPredRecursive(fn: EveryPredFunction, params: Arr, contextSt
 }
 
 function executeSomePredRecursive(fn: SomePredFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const checks: Array<() => MaybePromise<Any>> = []
+  const checks: (() => MaybePromise<Any>)[] = []
   for (const f of fn.params) {
     for (const param of params) {
       checks.push(() => executeFunctionRecursive(asFunctionLike(f, sourceCodeInfo), [param], contextStack, sourceCodeInfo))
@@ -2410,7 +2410,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
  */
 function dispatchHostHandler(
   effectName: string,
-  matchingHandlers: Array<[string, EffectHandler]>,
+  matchingHandlers: [string, EffectHandler][],
   args: Arr,
   k: ContinuationStack,
   signal: AbortSignal | undefined,
@@ -2428,9 +2428,9 @@ function dispatchHostHandler(
   }
 
   type HandlerOutcome =
-    | { kind: 'step', step: Step }
-    | { kind: 'asyncResume', promise: Promise<Any> }
-    | { kind: 'throw', error: unknown }
+    | { kind: 'step'; step: Step }
+    | { kind: 'asyncResume'; promise: Promise<Any> }
+    | { kind: 'throw'; error: unknown }
     | { kind: 'next' }
 
   function resolveOutcome(o: HandlerOutcome, nextIndex: number): Step | Promise<Step> {
@@ -2670,7 +2670,7 @@ async function executeParallelBranches(
     : parallelAbort.signal
 
   // Run all branches concurrently; abort the group when a branch suspends
-  const branchPromises = branches.map(async (branch, i): Promise<{ index: number, result: RunResult }> => {
+  const branchPromises = branches.map(async (branch, i): Promise<{ index: number; result: RunResult }> => {
     const result = await runBranch(branch, env, handlers, effectSignal)
     if (result.type === 'suspended') {
       parallelAbort.abort()
@@ -2680,8 +2680,8 @@ async function executeParallelBranches(
   const results = await Promise.allSettled(branchPromises)
 
   // Collect outcomes
-  const completedBranches: Array<{ index: number, value: Any }> = []
-  const suspendedBranches: Array<{ index: number, snapshot: Snapshot }> = []
+  const completedBranches: { index: number; value: Any }[] = []
+  const suspendedBranches: { index: number; snapshot: Snapshot }[] = []
   const errors: DvalaError[] = []
 
   for (const settled of results) {
@@ -3093,7 +3093,7 @@ function wrapMaybePromiseAsStep(result: MaybePromise<Any>, k: ContinuationStack)
 }
 
 /** Lazy-load collection utilities to avoid circular imports. */
-function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any, isSeq: (v: Any) => boolean } {
+function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any; isSeq: (v: Any) => boolean } {
   return {
     asColl: (v: Any, s?: SourceCodeInfo) => {
       if (typeof v === 'string' || Array.isArray(v) || isObj(v)) {
@@ -3362,7 +3362,7 @@ export async function resumeWithEffects(
   k: ContinuationStack,
   value: Any,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number },
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const abortController = new AbortController()
@@ -3417,7 +3417,7 @@ async function retriggerParallelGroup(
   const parallelAbort = new AbortController()
   const effectSignal = combineSignals(signal, parallelAbort.signal)
 
-  type BranchOutcome = { index: number, result: RunResult }
+  type BranchOutcome = { index: number; result: RunResult }
 
   // Dispatch the current branch with an empty inner continuation —
   // the resume value IS the branch's completed value.
@@ -3477,7 +3477,7 @@ async function retriggerParallelGroup(
   const settled = await Promise.allSettled([currentBranchPromise, ...otherBranchPromises])
 
   const newCompleted = [...completedBranches]
-  const newSuspended: Array<{ index: number, snapshot: Snapshot }> = []
+  const newSuspended: { index: number; snapshot: Snapshot }[] = []
   const errors: DvalaError[] = []
 
   for (const s of settled) {
@@ -3542,7 +3542,7 @@ export async function retriggerWithEffects(
   effectName: string,
   effectArgs: Any[],
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number, maxSnapshots?: number },
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number },
   deserializeOptions?: DeserializeOptions,
   outerSignal?: AbortSignal,
 ): Promise<RunResult> {
@@ -3624,11 +3624,11 @@ async function runEffectLoop(
   initial: Step,
   handlers: Handlers | undefined,
   signal: AbortSignal,
-  initialSnapshotState?: { snapshots: Snapshot[], nextSnapshotIndex: number },
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number },
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
-  const debugMode = handlers != null && 'dvala.debug.step' in handlers
+  const debugMode = handlers !== null && handlers !== undefined && 'dvala.debug.step' in handlers
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,

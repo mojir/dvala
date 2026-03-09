@@ -53,7 +53,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
   const bindingNode = parseBinding(ctx)
 
-  const modifiers: Array<'&let' | '&when' | '&while'> = []
+  const modifiers: ('&let' | '&when' | '&while')[] = []
   let token = ctx.peek()
 
   assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'])

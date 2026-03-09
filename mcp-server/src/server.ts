@@ -32,7 +32,7 @@ const dvala = createDvala({ modules: allBuiltinModules })
 // Helpers
 // ---------------------------------------------------------------------------
 
-function typeToString(typed: { type: string | string[], rest?: boolean, array?: boolean }): string {
+function typeToString(typed: { type: string | string[]; rest?: boolean; array?: boolean }): string {
   const types = Array.isArray(typed.type) ? typed.type : [typed.type]
   const typeStr = types.join(' | ')
   return typed.array || typed.rest ? `${typeStr}[]` : typeStr

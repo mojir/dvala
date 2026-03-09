@@ -232,7 +232,7 @@ function updateSearchResult(searchString: string) {
   noSearchResult.style.display = 'none'
   searchResult.innerHTML = ''
 
-  const searchResults = ((window as any).Playground.allSearchResultEntries as { search: string, html: HTMLElement }[]).filter(
+  const searchResults = ((window as any).Playground.allSearchResultEntries as { search: string; html: HTMLElement }[]).filter(
     entry => entry.search.toLowerCase().includes(searchString.toLowerCase()),
   )
 

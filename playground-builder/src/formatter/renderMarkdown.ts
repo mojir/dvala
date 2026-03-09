@@ -254,7 +254,7 @@ export function extractCodeBlocks(markdown: string): string[][] {
 
 // --- Tutorial markdown parsing ---
 
-export function parseTutorialMarkdown(markdown: string): { title: string, body: string } {
+export function parseTutorialMarkdown(markdown: string): { title: string; body: string } {
   const lines = markdown.split('\n')
   const titleLineIndex = lines.findIndex(line => /^# .+$/.test(line))
   if (titleLineIndex === -1) {

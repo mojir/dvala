@@ -61,7 +61,7 @@ export function transformSymbols(tokenStream: TokenStream, transformer: (symbol:
  */
 export function getUndefinedSymbols(
   source: string,
-  options?: { bindings?: Record<string, unknown>, modules?: DvalaModule[] },
+  options?: { bindings?: Record<string, unknown>; modules?: DvalaModule[] },
 ): Set<string> {
   const modulesMap = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))

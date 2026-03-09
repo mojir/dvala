@@ -255,7 +255,7 @@ export interface DeserializeOptions {
 export function deserializeFromObject(
   blobData: unknown,
   options?: DeserializeOptions,
-): { k: ContinuationStack, meta?: Any, snapshots: Snapshot[], nextSnapshotIndex: number } {
+): { k: ContinuationStack; meta?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number } {
   let data = blobData as SuspensionBlobData
 
   if (data.version !== SUSPENSION_VERSION) {
