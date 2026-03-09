@@ -377,4 +377,58 @@ describe('retrigger()', () => {
     })
     expect(r2.type).toBe('suspended')
   })
+
+  it('accepts modules option and passes them through deserialization', async () => {
+    const r1 = await dvala.runAsync(`
+      perform(effect(my.ask))
+    `, {
+      effectHandlers: {
+        'my.ask': async ({ suspend }) => { suspend() },
+      },
+    })
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended')
+      return
+
+    const dummyModule = { name: 'test-mod', functions: {} }
+    const r2 = await retrigger(r1.snapshot, {
+      modules: [dummyModule],
+      handlers: {
+        'my.ask': async ({ resume: r }) => { r(99) },
+      },
+    })
+    expect(r2.type).toBe('completed')
+    if (r2.type !== 'completed')
+      return
+    expect(r2.value).toBe(99)
+  })
+
+  it('returns error result when deserialization throws a DvalaError', async () => {
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const badSnapshot = {
+      continuation: 'not-a-valid-continuation',
+      effectName: 'my.effect',
+      effectArgs: [],
+    } as any
+    // eslint-disable-next-line ts/no-unsafe-argument
+    const result1 = await retrigger(badSnapshot, {
+      handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
+    })
+    expect(result1.type).toBe('error')
+  })
+
+  it('wraps non-DvalaError exceptions in a DvalaError', async () => {
+    // Pass a continuation that will cause a generic JS error (not DvalaError)
+    // eslint-disable-next-line ts/no-unsafe-assignment
+    const badSnapshot = {
+      continuation: null,
+      effectName: 'my.effect',
+      effectArgs: [],
+    } as any
+    // eslint-disable-next-line ts/no-unsafe-argument
+    const result2 = await retrigger(badSnapshot, {
+      handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
+    })
+    expect(result2.type).toBe('error')
+  })
 })

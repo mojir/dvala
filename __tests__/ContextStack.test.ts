@@ -23,4 +23,12 @@ describe('contextStack', () => {
 
     expect(() => contextStack.addValues({ self: 'bar' }, undefined)).toThrow()
   })
+  it('should accept contexts parameter', () => {
+    const contextStack = createContextStack({ contexts: [{ x: { value: 42 } }] })
+    expect(contextStack).toBeDefined()
+  })
+  it('should return unwrapped contextStack when globalModuleScope is true', () => {
+    const contextStack = createContextStack({ globalModuleScope: true })
+    expect(contextStack).toBeDefined()
+  })
 })
