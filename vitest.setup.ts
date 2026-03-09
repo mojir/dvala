@@ -5,3 +5,7 @@ import { vi } from 'vitest'
 vi.spyOn(console, 'log').mockImplementation(() => {})
 vi.spyOn(console, 'warn').mockImplementation(() => {})
 vi.spyOn(console, 'error').mockImplementation(() => {})
+
+// Suppress process.stdout/stderr.write — used by Dvala I/O effects (print, println, error)
+vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
