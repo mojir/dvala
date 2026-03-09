@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 
-function extractDvalaCodeBlocks(): Array<{ code: string, lineNumber: number, blockIndex: number }> {
+function extractDvalaCodeBlocks(): { code: string; lineNumber: number; blockIndex: number }[] {
   const readmeContent = readFileSync(join(process.cwd(), 'README.md'), 'utf-8')
-  const blocks: Array<{ code: string, lineNumber: number, blockIndex: number }> = []
+  const blocks: { code: string; lineNumber: number; blockIndex: number }[] = []
   const lines = readmeContent.split('\n')
 
   let inDvalaBlock = false

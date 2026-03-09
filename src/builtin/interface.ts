@@ -10,7 +10,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import type { MaybePromise } from '../utils/maybePromise'
 import type { SpecialExpressions } from '.'
 
-export type Arity = { min?: number, max?: number }
+export type Arity = { min?: number; max?: number }
 
 // --- Data types used in documentation ---
 
@@ -154,7 +154,7 @@ export interface BuiltinSpecialExpression<T, N extends SpecialExpressionNode> {
   getUndefinedSymbols: (
     node: N,
     contextStack: ContextStack,
-    params: { getUndefinedSymbols: GetUndefinedSymbols, builtin: Builtin, evaluateNode: EvaluateNode },
+    params: { getUndefinedSymbols: GetUndefinedSymbols; builtin: Builtin; evaluateNode: EvaluateNode },
   ) => UndefinedSymbols
 }
 

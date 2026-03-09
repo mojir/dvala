@@ -340,7 +340,7 @@ describe('retrigger()', () => {
     // A suspends → B and C auto-suspend via abort. Retrigger → A suspends again.
     // Expected: program suspended (B and C should auto-abort via parallelAbort,
     // NOT shown in the effect modal).
-    const suspendHandler = async ({ args, suspend, signal }: { args: any[], suspend: () => void, signal: AbortSignal }) => {
+    const suspendHandler = async ({ args, suspend, signal }: { args: any[]; suspend: () => void; signal: AbortSignal }) => {
       if (args[0] === 'A') {
         suspend()
       } else {

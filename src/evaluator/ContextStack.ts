@@ -120,7 +120,7 @@ export class ContextStackImpl {
     return this.modules.get(name)
   }
 
-  public getValueModule(name: string): { value: unknown, found: boolean } {
+  public getValueModule(name: string): { value: unknown; found: boolean } {
     if (this.valueModules.has(name)) {
       return { value: this.valueModules.get(name), found: true }
     }

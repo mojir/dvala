@@ -54,7 +54,7 @@ function cloneAndGetMeta(
   originalColl: Coll,
   keys: Arr,
   sourceCodeInfo?: SourceCodeInfo,
-): { coll: Coll, innerCollMeta: CollMeta } {
+): { coll: Coll; innerCollMeta: CollMeta } {
   const coll = cloneColl(originalColl)
 
   const butLastKeys = keys.slice(0, keys.length - 1)

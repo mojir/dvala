@@ -195,11 +195,11 @@ export function effectNameMatchesPattern(effectName: string, pattern: string): b
 export function findMatchingHandlers(
   effectName: string,
   handlers: Handlers | undefined,
-): Array<[string, EffectHandler]> {
+): [string, EffectHandler][] {
   if (!handlers) {
     return []
   }
-  const result: Array<[string, EffectHandler]> = []
+  const result: [string, EffectHandler][] = []
   for (const [pattern, handler] of Object.entries(handlers)) {
     if (effectNameMatchesPattern(effectName, pattern)) {
       result.push([pattern, handler])
@@ -217,9 +217,9 @@ export function findMatchingHandlers(
  * Errors are captured in the `error` variant.
  */
 export type RunResult =
-  | { type: 'completed', value: Any, definedBindings?: Record<string, unknown> }
-  | { type: 'suspended', snapshot: Snapshot }
-  | { type: 'error', error: DvalaError }
+  | { type: 'completed'; value: Any; definedBindings?: Record<string, unknown> }
+  | { type: 'suspended'; snapshot: Snapshot }
+  | { type: 'error'; error: DvalaError }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline

@@ -143,6 +143,6 @@ describe.skip('performance comparison', () => {
   })
 })
 
-function calculateFactor(entries: { eval: number, dvala: number }[]) {
+function calculateFactor(entries: { eval: number; dvala: number }[]) {
   return Math.round(100 * entries.reduce((acc, { eval: evalTime, dvala: dvalaTime }) => acc + dvalaTime / evalTime, 0) / entries.length) / 100
 }

@@ -841,7 +841,7 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        const blobData = result.snapshot.continuation as { version: number, k: unknown[], contextStacks: unknown[] }
+        const blobData = result.snapshot.continuation as { version: number; k: unknown[]; contextStacks: unknown[] }
         expect(blobData.version).toBe(2)
         expect(blobData.k).toBeDefined()
         expect(blobData.contextStacks).toBeDefined()
@@ -1020,7 +1020,7 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result).toMatchObject({ type: 'completed', value: 42 })
       expect(capturedSnapshot).not.toBeNull()
-      const snap = capturedSnapshot as { timestamp: number, index: number, runId: string, meta: unknown, continuation: unknown }
+      const snap = capturedSnapshot as { timestamp: number; index: number; runId: string; meta: unknown; continuation: unknown }
       expect(snap.index).toBe(0)
       expect(typeof snap.runId).toBe('string')
       expect(typeof snap.timestamp).toBe('number')
@@ -1048,8 +1048,8 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result).toMatchObject({ type: 'completed', value: 'done' })
       expect(capturedSnapshots).toHaveLength(2)
-      const s0 = capturedSnapshots[0] as { index: number, meta: unknown }
-      const s1 = capturedSnapshots[1] as { index: number, meta: unknown }
+      const s0 = capturedSnapshots[0] as { index: number; meta: unknown }
+      const s1 = capturedSnapshots[1] as { index: number; meta: unknown }
       expect(s0.index).toBe(0)
       expect(s0.meta).toEqual({ step: 1 })
       expect(s1.index).toBe(1)
@@ -1248,7 +1248,7 @@ describe('phase 4 — Suspension & Resume', () => {
         },
       })
       expect(capturedSnapshots).toHaveLength(3)
-      expect((capturedSnapshots[0] as { index: number, meta: unknown }).index).toBe(0)
+      expect((capturedSnapshots[0] as { index: number; meta: unknown }).index).toBe(0)
       expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 1 })
       expect((capturedSnapshots[1] as { index: number }).index).toBe(1)
       expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 2 })
@@ -1663,8 +1663,8 @@ describe('phase 4 — Suspension & Resume', () => {
       // Pre-suspension checkpoint (index 0) + the suspension itself consumed an index
       // + new checkpoint after resume
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { index: number, meta: unknown }).meta).toEqual({ step: 1 })
-      const newSnap = capturedSnapshots[1] as { index: number, meta: unknown }
+      expect((capturedSnapshots[0] as { index: number; meta: unknown }).meta).toEqual({ step: 1 })
+      const newSnap = capturedSnapshots[1] as { index: number; meta: unknown }
       expect(newSnap.meta).toEqual({ step: 'after-resume' })
       // New snapshot index should be > the suspension index
       expect(newSnap.index).toBeGreaterThan((capturedSnapshots[0] as { index: number }).index)

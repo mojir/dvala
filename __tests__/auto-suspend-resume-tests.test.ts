@@ -972,7 +972,7 @@ describe('auto: ctx.checkpoint return value', () => {
 // ---------------------------------------------------------------------------
 
 describe('auto: checkpoint metadata through JSON round-trip', () => {
-  const metaVariants: Array<{ label: string, meta: Any }> = [
+  const metaVariants: { label: string; meta: Any }[] = [
     { label: 'null', meta: null },
     { label: 'string', meta: 'hello world' },
     { label: 'number', meta: 42 },

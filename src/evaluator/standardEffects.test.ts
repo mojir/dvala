@@ -103,7 +103,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
         const arr = [1, 2, 3]
-        const result = handler([arr], emptyK) as { type: string, value: unknown, k: unknown }
+        const result = handler([arr], emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.value).toBe(arr) // same reference
       } finally {
         spy.mockRestore()
@@ -267,7 +267,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => 'user input')
-        const result = handler(['Enter name:'], emptyK) as { type: string, value: unknown, k: unknown }
+        const result = handler(['Enter name:'], emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe('user input')
         expect(globalThis.prompt).toHaveBeenCalledWith('Enter name:')
@@ -281,7 +281,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => null)
-        const result = handler(['Enter name:'], emptyK) as { type: string, value: unknown, k: unknown }
+        const result = handler(['Enter name:'], emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBeNull()
       } finally {
@@ -333,7 +333,7 @@ describe('standardEffects', () => {
         dataHandler('world')
         endHandler()
 
-        const result = await promise as { type: string, value: unknown, k: unknown }
+        const result = await promise as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe('hello world')
         expect(mockStdin.setEncoding).toHaveBeenCalledWith('utf-8')
@@ -379,7 +379,7 @@ describe('standardEffects', () => {
   describe('dvala.random handler', () => {
     it('should return a ValueStep with a number in [0, 1)', () => {
       const handler = getStandardEffectHandler('dvala.random')!
-      const result = handler([], emptyK) as { type: string, value: number, k: unknown }
+      const result = handler([], emptyK) as { type: string; value: number; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toBeGreaterThanOrEqual(0)
       expect(result.value).toBeLessThan(1)
@@ -389,7 +389,7 @@ describe('standardEffects', () => {
   describe('dvala.random.uuid handler', () => {
     it('should return a valid UUID v4 string', () => {
       const handler = getStandardEffectHandler('dvala.random.uuid')!
-      const result = handler([], emptyK) as { type: string, value: string, k: unknown }
+      const result = handler([], emptyK) as { type: string; value: string; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/)
     })
@@ -398,7 +398,7 @@ describe('standardEffects', () => {
   describe('dvala.random.int handler', () => {
     it('should return an integer in [min, max)', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      const result = handler([0, 10], emptyK) as { type: string, value: number, k: unknown }
+      const result = handler([0, 10], emptyK) as { type: string; value: number; k: unknown }
       expect(result.type).toBe('Value')
       expect(Number.isInteger(result.value)).toBe(true)
       expect(result.value).toBeGreaterThanOrEqual(0)
@@ -437,7 +437,7 @@ describe('standardEffects', () => {
     it('should return an element from the array', () => {
       const handler = getStandardEffectHandler('dvala.random.item')!
       const arr = [10, 20, 30]
-      const result = handler([arr], emptyK) as { type: string, value: number, k: unknown }
+      const result = handler([arr], emptyK) as { type: string; value: number; k: unknown }
       expect(result.type).toBe('Value')
       expect(arr).toContain(result.value)
     })
@@ -457,7 +457,7 @@ describe('standardEffects', () => {
     it('should return a new array with the same elements', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
       const arr = [1, 2, 3, 4, 5]
-      const result = handler([arr], emptyK) as { type: string, value: number[], k: unknown }
+      const result = handler([arr], emptyK) as { type: string; value: number[]; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toHaveLength(arr.length)
       expect([...result.value].sort()).toEqual([...arr].sort())
@@ -473,7 +473,7 @@ describe('standardEffects', () => {
 
     it('should return an empty array when given an empty array', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
-      const result = handler([[]], emptyK) as { type: string, value: unknown[], k: unknown }
+      const result = handler([[]], emptyK) as { type: string; value: unknown[]; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toEqual([])
     })
@@ -496,7 +496,7 @@ describe('standardEffects', () => {
     it('should return a ValueStep with a number', () => {
       const handler = getStandardEffectHandler('dvala.time.now')!
       const before = Date.now()
-      const result = handler([], emptyK) as { type: string, value: number, k: unknown }
+      const result = handler([], emptyK) as { type: string; value: number; k: unknown }
       const after = Date.now()
       expect(result.type).toBe('Value')
       expect(result.value).toBeGreaterThanOrEqual(before)
@@ -507,7 +507,7 @@ describe('standardEffects', () => {
   describe('dvala.time.zone handler', () => {
     it('should return a non-empty string', () => {
       const handler = getStandardEffectHandler('dvala.time.zone')!
-      const result = handler([], emptyK) as { type: string, value: string, k: unknown }
+      const result = handler([], emptyK) as { type: string; value: string; k: unknown }
       expect(result.type).toBe('Value')
       expect(typeof result.value).toBe('string')
       expect(result.value.length).toBeGreaterThan(0)

@@ -29,15 +29,15 @@ export interface CreateDvalaOptions {
  * Options for `run()`. When `pure` is `true`, `effectHandlers` cannot be provided.
  */
 export type DvalaRunOptions =
-  | { bindings?: Record<string, unknown>, pure: true, effectHandlers?: never, filePath?: string }
-  | { bindings?: Record<string, unknown>, pure?: false, effectHandlers?: Handlers, filePath?: string }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; filePath?: string }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; filePath?: string }
 
 /**
  * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>, pure: true, effectHandlers?: never, maxSnapshots?: number }
-  | { bindings?: Record<string, unknown>, pure?: false, effectHandlers?: Handlers, maxSnapshots?: number }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown

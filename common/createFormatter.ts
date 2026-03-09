@@ -2,7 +2,7 @@ import type { FormatterRule } from '../cli/src/cliFormatterRules'
 
 export type TextFormatter = (text: string) => string
 
-export function createFormatter(rules: FormatterRule[], options?: { prefix?: string, suffix?: string }): TextFormatter {
+export function createFormatter(rules: FormatterRule[], options?: { prefix?: string; suffix?: string }): TextFormatter {
   const prefix = options?.prefix ?? ''
   const suffix = options?.suffix ?? ''
   function format(text: string): string {

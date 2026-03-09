@@ -50,7 +50,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
   },
 
   'entries': {
-    evaluate: ([obj], sourceCodeInfo): Array<[string, unknown]> => {
+    evaluate: ([obj], sourceCodeInfo): [string, unknown][] => {
       assertObj(obj, sourceCodeInfo)
       return Object.entries(obj)
     },

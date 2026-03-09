@@ -255,12 +255,12 @@ describe('playground workflows', () => {
 describe('state encoding', () => {
   // Mirror the playground's encodeState / applyEncodedState logic
   function encodeState(dvalaCode: string, context: string): string {
-    const sharedState = { 'dvala-code': dvalaCode, 'context': context }
+    const sharedState = { 'dvala-code': dvalaCode, context }
     return btoa(encodeURIComponent(JSON.stringify(sharedState)))
   }
 
-  function decodeState(encoded: string): { 'dvala-code': string, 'context': string } {
-    return JSON.parse(decodeURIComponent(atob(encoded))) as { 'dvala-code': string, 'context': string }
+  function decodeState(encoded: string): { 'dvala-code': string; 'context': string } {
+    return JSON.parse(decodeURIComponent(atob(encoded))) as { 'dvala-code': string; 'context': string }
   }
 
   it('round-trips code and context', () => {

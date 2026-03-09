@@ -143,7 +143,7 @@ let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 let pendingReadline: { resolve: (value: string | null) => void } | null = null
 let pendingPrintln: { resolve: () => void } | null = null
 let currentSnapshot: Snapshot | null = null
-const snapshotPanelStack: { panel: HTMLElement, snapshot: Snapshot, label: string }[] = []
+const snapshotPanelStack: { panel: HTMLElement; snapshot: Snapshot; label: string }[] = []
 
 function calculateDimensions() {
   return {
@@ -1316,7 +1316,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
       const info = document.createElement('div')
       info.style.cssText = 'display:flex; flex-direction:column; gap:1px; overflow:hidden; min-width:0;'
 
-      if (cpSnapshot.meta != null) {
+      if (cpSnapshot.meta !== null && cpSnapshot.meta !== undefined) {
         const meta = document.createElement('code')
         meta.textContent = JSON.stringify(cpSnapshot.meta)
         meta.style.cssText = 'font-size:0.75rem; color:rgb(200 200 200); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
@@ -1847,7 +1847,7 @@ export function dismissPrintln() {
   focusDvalaCode()
 }
 
-function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effectHandlers: Record<string, EffectHandler> } {
+function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: Record<string, EffectHandler> } {
   const contextString = getState('context')
   try {
     const parsedContext

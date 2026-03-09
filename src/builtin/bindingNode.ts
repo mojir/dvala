@@ -94,7 +94,7 @@ function createRecord(
     let restIndex: number | null = null
     assertArray(value, sourceCodeInfo)
 
-    const elements: Array<{ element: BindingTarget, index: number }> = []
+    const elements: { element: BindingTarget; index: number }[] = []
     for (let index = 0; index < bindingTarget[1][0].length; index += 1) {
       const element = bindingTarget[1][0][index] ?? null
       if (element === null) {

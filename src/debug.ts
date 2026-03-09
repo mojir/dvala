@@ -49,7 +49,7 @@ export interface StepInfo {
   /** The value produced by evaluating this expression. */
   value: Any
   /** Source location of the expression. */
-  location: { line: number, column: number }
+  location: { line: number; column: number }
   /** All in-scope bindings at this point in execution. */
   env: Record<string, Any>
 }
@@ -187,7 +187,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   // The debug handler always suspends with the step info as meta.
   // This pauses execution at each compound expression, capturing the
   // continuation as a serializable blob.
-  const debugHandler = async (ctx: { args: Any[], suspend: (meta?: Any) => void }) => {
+  const debugHandler = async (ctx: { args: Any[]; suspend: (meta?: Any) => void }) => {
     ctx.suspend(ctx.args[0])
   }
 

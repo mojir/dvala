@@ -405,8 +405,8 @@ export interface EffectResumeFrame {
 export interface ParallelResumeFrame {
   type: 'ParallelResume'
   branchCount: number
-  completedBranches: Array<{ index: number, value: Any }>
-  suspendedBranches: Array<{ index: number, snapshot: Snapshot }>
+  completedBranches: { index: number; value: Any }[]
+  suspendedBranches: { index: number; snapshot: Snapshot }[]
 }
 
 // ---------------------------------------------------------------------------
