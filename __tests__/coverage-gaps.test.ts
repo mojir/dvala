@@ -3488,3 +3488,44 @@ describe('async handler not-yet-settled path', () => {
     expect(result.type).toBe('error')
   })
 })
+
+// ---------------------------------------------------------------------------
+// or — evaluateAsNormalExpression branch coverage (or.ts)
+// ---------------------------------------------------------------------------
+
+describe('or evaluateAsNormalExpression', () => {
+  it('should return last falsy value when all params are falsy', () => {
+    expect(dvala.run('apply(||, [false, null, 0])')).toBe(0)
+  })
+  it('should short-circuit on first truthy value', () => {
+    expect(dvala.run('apply(||, [false, 42, 99])')).toBe(42)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// match null literal in binding target (parseBindingTarget.ts)
+// ---------------------------------------------------------------------------
+
+describe('match null literal in binding target', () => {
+  it('should match null binding target', () => {
+    expect(dvala.run('match null case null then "yes" case _ then "no" end')).toBe('yes')
+  })
+  it('should fall through when null does not match', () => {
+    expect(dvala.run('match 42 case null then "yes" case _ then "no" end')).toBe('no')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// getUndefinedSymbols — for loop without :let bindings (loops.ts)
+// ---------------------------------------------------------------------------
+
+describe('getUndefinedSymbols for loop without let', () => {
+  it('should detect undefined symbols in for body without let bindings', () => {
+    const result = getUndefinedSymbols('for (x in [1, 2]) -> x + unknown')
+    expect(result).toEqual(new Set(['unknown']))
+  })
+  it('should not report bound variable as undefined', () => {
+    const result = getUndefinedSymbols('for (x in [1, 2]) -> x * 2')
+    expect(result).toEqual(new Set())
+  })
+})

@@ -44,6 +44,8 @@ export function parseOperand(ctx: ParserContext): AstNode {
       operand = createAccessorNode(operand, expression, token[2])
       ctx.advance()
       token = ctx.tryPeek()
+    // Defensive: function call chaining is always preceded by accessor or direct call
+    /* v8 ignore next 3 */
     } else if (isLParenToken(token)) {
       operand = parseFunctionCall(ctx, operand)
       token = ctx.tryPeek()

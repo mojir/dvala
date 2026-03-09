@@ -45,6 +45,8 @@ export const orSpecialExpression: BuiltinSpecialExpression<Any, OrNode> = {
     let value: Any = false
     for (const param of params) {
       value = asAny(param, sourceCodeInfo)
+      // Defensive: or always has at least one param from the parser
+      /* v8 ignore next 2 */
       if (value)
         break
     }

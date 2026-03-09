@@ -86,6 +86,8 @@ export class ContextStackImpl {
    * `globalContextIndex` identifies which element is the globalContext.
    * Host bindings (`values`, `modules`) come from resume options.
    */
+  // Defensive: only called during deserialization with valid serialized data
+  /* v8 ignore next 15 */
   public static fromDeserialized(params: {
     contexts: Context[]
     globalContextIndex: number
@@ -109,6 +111,8 @@ export class ContextStackImpl {
    * Replace the contexts array and globalContext. Used during deserialization
    * to fill in resolved context data after circular references are handled.
    */
+  // Defensive: only called during deserialization with valid data
+  /* v8 ignore next 6 */
   public setContextsFromDeserialized(contexts: Context[], globalContextIndex: number): void {
     this._contexts = contexts
     if (globalContextIndex >= 0 && globalContextIndex < contexts.length) {

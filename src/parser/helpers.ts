@@ -147,6 +147,8 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '...':
     case '?':
       throw new DvalaError(`Unknown binary operator: ${operatorName}`, sourceCodeInfo)
+    // Exhaustive check: all operator cases are handled above
+    /* v8 ignore next 2 */
     default:
       throw new DvalaError(`Unknown binary operator: ${operatorName satisfies never}`, sourceCodeInfo)
   }

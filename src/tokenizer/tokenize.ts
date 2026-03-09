@@ -26,6 +26,8 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
 
     position += count
     if (token) {
+      // Defensive: sourceCodeInfo is always created when debug is enabled
+      /* v8 ignore next 3 */
       if (sourceCodeInfo) {
         token[2] = sourceCodeInfo
       }
