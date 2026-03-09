@@ -12,8 +12,26 @@ const basePlugins = [
   jsonPlugin(),
 ]
 
+// Plugins for sub-bundles (modules, testFramework, bundler, debug)
+// Declarations are already emitted by the main bundle build, so skip them here
+// to avoid @rollup/plugin-typescript v12 declarationDir path conflicts.
+const subBundleBasePlugins = [
+  dvalaSourcePlugin(),
+  typescript({
+    tsconfig: 'tsconfig.json',
+    declaration: false,
+    declarationDir: undefined,
+  }),
+  jsonPlugin(),
+]
+
 const plugins = [
   ...basePlugins,
+  terser(),
+]
+
+const subBundlePlugins = [
+  ...subBundleBasePlugins,
   terser(),
 ]
 
@@ -155,7 +173,7 @@ module.exports = [
         sourcemap: true,
       },
     ],
-    plugins,
+    plugins: subBundlePlugins,
   })),
   // Test framework bundle
   {
@@ -173,7 +191,7 @@ module.exports = [
         sourcemap: true,
       },
     ],
-    plugins,
+    plugins: subBundlePlugins,
   },
   // Bundler (file module bundler, requires Node.js fs)
   {
@@ -191,7 +209,7 @@ module.exports = [
         sourcemap: true,
       },
     ],
-    plugins,
+    plugins: subBundlePlugins,
   },
   // Debug bundle (time-travel debugger)
   {
@@ -208,6 +226,6 @@ module.exports = [
         sourcemap: true,
       },
     ],
-    plugins,
+    plugins: subBundlePlugins,
   },
 ]
