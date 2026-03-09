@@ -15,15 +15,16 @@ describe('continuation dedup integration', () => {
         perform(effect(my.done));
         a + b + c
       `, {
-        effectHandlers: {
-          'my.step': async ({ args, checkpoint, resume: r }) => {
+        effectHandlers: [
+          { pattern: 'my.step', handler: async ({ args, checkpoint, resume: r }) => {
             checkpoint('checkpoint')
             r(args[0]!)
-          },
-          'my.done': async ({ suspend }) => {
+          } },
+
+          { pattern: 'my.done', handler: async ({ suspend }) => {
             suspend()
-          },
-        },
+          } },
+        ],
       })
 
       expect(result.type).toBe('suspended')
@@ -51,13 +52,13 @@ describe('continuation dedup integration', () => {
         let b = perform(effect(my.work), "second");
         a ++ " and " ++ b
       `, {
-        effectHandlers: {
-          'my.work': async ({ checkpoint, suspend }) => {
+        effectHandlers: [
+          { pattern: 'my.work', handler: async ({ checkpoint, suspend }) => {
             step++
             checkpoint(`step ${step}`, { step })
             suspend({ step })
-          },
-        },
+          } },
+        ],
       })
 
       expect(result.type).toBe('suspended')
@@ -73,13 +74,13 @@ describe('continuation dedup integration', () => {
 
       // Resume with a value
       const result2 = await resume(result.snapshot, 'hello', {
-        handlers: {
-          'my.work': async ({ checkpoint, suspend }) => {
+        handlers: [
+          { pattern: 'my.work', handler: async ({ checkpoint, suspend }) => {
             step++
             checkpoint(`step ${step}`, { step })
             suspend({ step })
-          },
-        },
+          } },
+        ],
       })
 
       expect(result2.type).toBe('suspended')
@@ -88,11 +89,11 @@ describe('continuation dedup integration', () => {
 
       // Resume again to complete
       const result3 = await resume(result2.snapshot, 'world', {
-        handlers: {
-          'my.work': async ({ resume: r }) => {
+        handlers: [
+          { pattern: 'my.work', handler: async ({ resume: r }) => {
             r('final')
-          },
-        },
+          } },
+        ],
       })
 
       expect(result3.type).toBe('completed')

@@ -361,6 +361,21 @@ export function getPlayground() {
     </div>
   </div>
 
+  <div id="confirm-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 30rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div id="confirm-modal-title" ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;"></div>
+      <div id="confirm-modal-message" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeConfirmModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Cancel</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+        </button>
+        <button class="button" id="confirm-modal-ok" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Confirm</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="println-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
       <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Output</div>

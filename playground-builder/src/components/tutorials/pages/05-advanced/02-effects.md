@@ -164,11 +164,11 @@ import { createDvala } from '@mojir/dvala/full'
 
 const dvala = createDvala()
 const result = await dvala.runAsync('perform(effect(my.greet), "World")', {
-  effectHandlers: {
-    'my.greet': async ({ args, resume }) => {
+  effectHandlers: [
+    { pattern: 'my.greet', handler: async ({ args, resume }) => {
       resume(`Hello, ${args[0]}!`)
-    },
-  },
+    } },
+  ],
 })
 // result = { type: 'completed', value: 'Hello, World!' }
 ```
@@ -185,11 +185,11 @@ const result = await dvala.runAsync(`
     case effect(dvala.error) then ([msg]) -> "recovered: " ++ msg
   end
 `, {
-  effectHandlers: {
-    'my.risky': async ({ fail }) => {
+  effectHandlers: [
+    { pattern: 'my.risky', handler: async ({ fail }) => {
       fail('something went wrong')
-    },
-  },
+    } },
+  ],
 })
 // result = { type: 'completed', value: 'recovered: something went wrong' }
 ```
@@ -203,11 +203,11 @@ const result = await dvala.runAsync(`
   let answer = perform(effect(human.approve), "Draft report");
   "Approved: " ++ answer
 `, {
-  effectHandlers: {
-    'human.approve': async ({ args, suspend }) => {
+  effectHandlers: [
+    { pattern: 'human.approve', handler: async ({ args, suspend }) => {
       suspend({ question: args[0] })
-    },
-  },
+    } },
+  ],
 })
 // result = { type: 'suspended', snapshot: { continuation: ..., meta: { question: 'Draft report' }, ... } }
 
@@ -224,19 +224,19 @@ Call `next()` to pass the effect to the next matching handler. Combined with wil
 ```typescript
 const log: string[] = []
 const result = await dvala.runAsync('perform(effect(app.save), "data")', {
-  effectHandlers: {
-    '*': async ({ effectName, next }) => {
+  effectHandlers: [
+    { pattern: '*', handler: async ({ effectName, next }) => {
       log.push(`[audit] ${effectName}`)
       next()
-    },
-    'app.*': async ({ effectName, next }) => {
+    } },
+    { pattern: 'app.*', handler: async ({ effectName, next }) => {
       log.push(`[app] ${effectName}`)
       next()
-    },
-    'app.save': async ({ args, resume }) => {
+    } },
+    { pattern: 'app.save', handler: async ({ args, resume }) => {
       resume(`saved: ${args[0]}`)
-    },
-  },
+    } },
+  ],
 })
 // result = { type: 'completed', value: 'saved: data' }
 // log = ['[audit] app.save', '[app] app.save']
@@ -252,11 +252,11 @@ Host handler keys support three matching modes:
 
 ```typescript
 const result = await dvala.runAsync('perform(effect(my.sub.action), "go")', {
-  effectHandlers: {
-    'my.*': async ({ args, resume }) => {
+  effectHandlers: [
+    { pattern: 'my.*', handler: async ({ args, resume }) => {
       resume(`handled: ${args[0]}`)
-    },
-  },
+    } },
+  ],
 })
 // result = { type: 'completed', value: 'handled: go' }
 ```

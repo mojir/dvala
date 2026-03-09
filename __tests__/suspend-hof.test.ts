@@ -9,11 +9,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       perform(effect(my.get), 42)
     `, {
-      effectHandlers: {
-        'my.get': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.get', handler: async ({ args, suspend }) => {
           suspend({ value: args[0] })
-        },
-      },
+        } },
+      ],
     })
     expect(result.type).toBe('suspended')
   })
@@ -22,11 +22,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       for (x in [10]) -> perform(effect(my.get), x)
     `, {
-      effectHandlers: {
-        'my.get': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.get', handler: async ({ args, suspend }) => {
           suspend({ requested: args[0] })
-        },
-      },
+        } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type === 'suspended') {
@@ -38,11 +38,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       for (x in [1, 2]) -> perform(effect(my.test), x)
     `, {
-      effectHandlers: {
-        'my.test': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.test', handler: async ({ args, suspend }) => {
           suspend({ value: args[0] })
-        },
-      },
+        } },
+      ],
     })
     if (result.type === 'error')
       throw result.error
@@ -50,18 +50,18 @@ describe('suspend through migrated HOFs', () => {
     if (result.type === 'suspended') {
       expect(result.snapshot.meta).toEqual({ value: 1 })
       const result2 = await resumeContinuation(result.snapshot, 10, {
-        handlers: {
-          'my.test': async ({ args, suspend }) => {
+        handlers: [
+          { pattern: 'my.test', handler: async ({ args, suspend }) => {
             suspend({ value: args[0] })
-          },
-        },
+          } },
+        ],
       })
       if (result2.type === 'error')
         throw result2.error
       expect(result2.type).toBe('suspended')
       if (result2.type === 'suspended') {
         expect(result2.snapshot.meta).toEqual({ value: 2 })
-        const result3 = await resumeContinuation(result2.snapshot, 20, { handlers: {} })
+        const result3 = await resumeContinuation(result2.snapshot, 20, { handlers: [] })
         if (result3.type === 'error')
           throw result3.error
         expect(result3.type).toBe('completed')
@@ -76,11 +76,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       ((x) -> perform(effect(my.get), x))(42)
     `, {
-      effectHandlers: {
-        'my.get': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.get', handler: async ({ args, suspend }) => {
           suspend({ requested: args[0] })
-        },
-      },
+        } },
+      ],
     })
     if (result.type === 'error') {
       throw result.error
@@ -92,11 +92,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       for (x in [10]) -> ((y) -> perform(effect(my.get), y))(x)
     `, {
-      effectHandlers: {
-        'my.get': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.get', handler: async ({ args, suspend }) => {
           suspend({ requested: args[0] })
-        },
-      },
+        } },
+      ],
     })
     if (result.type === 'error') {
       throw result.error
@@ -120,11 +120,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       map([1, 2], (x) -> perform(effect(my.approve), x))
     `, {
-      effectHandlers: {
-        'my.approve': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.approve', handler: async ({ args, suspend }) => {
           suspend({ value: args[0] })
-        },
-      },
+        } },
+      ],
     })
     if (result.type === 'error') {
       throw result.error
@@ -134,11 +134,11 @@ describe('suspend through migrated HOFs', () => {
       expect(result.snapshot.meta).toEqual({ value: 1 })
 
       const result2 = await resumeContinuation(result.snapshot, 10, {
-        handlers: {
-          'my.approve': async ({ args, suspend }) => {
+        handlers: [
+          { pattern: 'my.approve', handler: async ({ args, suspend }) => {
             suspend({ value: args[0] })
-          },
-        },
+          } },
+        ],
       })
       if (result2.type === 'error') {
         throw result2.error
@@ -148,7 +148,7 @@ describe('suspend through migrated HOFs', () => {
         expect(result2.snapshot.meta).toEqual({ value: 2 })
 
         const result3 = await resumeContinuation(result2.snapshot, 20, {
-          handlers: {},
+          handlers: [],
         })
         if (result3.type === 'error') {
           throw result3.error
@@ -165,11 +165,11 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       reduce([1, 2, 3], (acc, x) -> acc + perform(effect(my.transform), x), 0)
     `, {
-      effectHandlers: {
-        'my.transform': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.transform', handler: async ({ args, suspend }) => {
           suspend({ transforming: args[0] })
-        },
-      },
+        } },
+      ],
     })
     if (result.type === 'error') {
       throw result.error
@@ -178,27 +178,27 @@ describe('suspend through migrated HOFs', () => {
     if (result.type === 'suspended') {
       expect(result.snapshot.meta).toEqual({ transforming: 1 })
       const result2 = await resumeContinuation(result.snapshot, 10, {
-        handlers: {
-          'my.transform': async ({ args, suspend }) => {
+        handlers: [
+          { pattern: 'my.transform', handler: async ({ args, suspend }) => {
             suspend({ transforming: args[0] })
-          },
-        },
+          } },
+        ],
       })
       expect(result2.type).toBe('suspended')
       if (result2.type === 'suspended') {
         expect(result2.snapshot.meta).toEqual({ transforming: 2 })
         const result3 = await resumeContinuation(result2.snapshot, 20, {
-          handlers: {
-            'my.transform': async ({ args, suspend }) => {
+          handlers: [
+            { pattern: 'my.transform', handler: async ({ args, suspend }) => {
               suspend({ transforming: args[0] })
-            },
-          },
+            } },
+          ],
         })
         expect(result3.type).toBe('suspended')
         if (result3.type === 'suspended') {
           expect(result3.snapshot.meta).toEqual({ transforming: 3 })
           const result4 = await resumeContinuation(result3.snapshot, 30, {
-            handlers: {},
+            handlers: [],
           })
           expect(result4.type).toBe('completed')
           if (result4.type === 'completed') {
@@ -213,47 +213,47 @@ describe('suspend through migrated HOFs', () => {
     const result = await dvala.runAsync(`
       filter([1, 2, 3, 4], (x) -> perform(effect(my.check), x))
     `, {
-      effectHandlers: {
-        'my.check': async ({ args, suspend }) => {
+      effectHandlers: [
+        { pattern: 'my.check', handler: async ({ args, suspend }) => {
           suspend({ checking: args[0] })
-        },
-      },
+        } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type === 'suspended') {
       expect(result.snapshot.meta).toEqual({ checking: 1 })
       const result2 = await resumeContinuation(result.snapshot, true, {
-        handlers: {
-          'my.check': async ({ args, suspend }) => {
+        handlers: [
+          { pattern: 'my.check', handler: async ({ args, suspend }) => {
             suspend({ checking: args[0] })
-          },
-        },
+          } },
+        ],
       })
       expect(result2.type).toBe('suspended')
       if (result2.type === 'suspended') {
         expect(result2.snapshot.meta).toEqual({ checking: 2 })
         const result3 = await resumeContinuation(result2.snapshot, false, {
-          handlers: {
-            'my.check': async ({ args, suspend }) => {
+          handlers: [
+            { pattern: 'my.check', handler: async ({ args, suspend }) => {
               suspend({ checking: args[0] })
-            },
-          },
+            } },
+          ],
         })
         expect(result3.type).toBe('suspended')
         if (result3.type === 'suspended') {
           expect(result3.snapshot.meta).toEqual({ checking: 3 })
           const result4 = await resumeContinuation(result3.snapshot, true, {
-            handlers: {
-              'my.check': async ({ args, suspend }) => {
+            handlers: [
+              { pattern: 'my.check', handler: async ({ args, suspend }) => {
                 suspend({ checking: args[0] })
-              },
-            },
+              } },
+            ],
           })
           expect(result4.type).toBe('suspended')
           if (result4.type === 'suspended') {
             expect(result4.snapshot.meta).toEqual({ checking: 4 })
             const result5 = await resumeContinuation(result4.snapshot, false, {
-              handlers: {},
+              handlers: [],
             })
             expect(result5.type).toBe('completed')
             if (result5.type === 'completed') {

@@ -53,12 +53,12 @@ const result = await dvala.runAsync(`
   let decision = perform(effect(human.approve), "Q4 Report");
   if decision then "Approved" else "Rejected" end
 `, {
-  effectHandlers: {
-    'human.approve': async ({ args, suspend }) => {
+  effectHandlers: [
+    { pattern: 'human.approve', handler: async ({ args, suspend }) => {
       // Store metadata for the external system
       suspend({ document: args[0], assignee: 'finance-team' })
-    },
-  },
+    } },
+  ],
 })
 
 // result.type === 'suspended'
@@ -103,11 +103,11 @@ The program continues from exactly where it left off. The value passed to `resum
 A program can suspend multiple times. Each resume may hit another `perform` that suspends again:
 
 ```typescript
-const effectHandlers = {
-  'human.step': async ({ args, suspend }) => {
+const effectHandlers = [
+  { pattern: 'human.step', handler: async ({ args, suspend }) => {
     suspend({ step: args[0] })
-  },
-}
+  } },
+]
 
 const r1 = await dvala.runAsync(`
   let a = perform(effect(human.step), "Step 1: Enter amount");
@@ -142,9 +142,9 @@ const r1 = await dvala.runAsync(`
   let value = perform(effect(my.wait));
   scale(value)
 `, {
-  effectHandlers: {
-    'my.wait': async ({ suspend }) => { suspend() },
-  },
+  effectHandlers: [
+    { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
+  ],
 })
 
 const r2 = await resume(r1.snapshot, 14)

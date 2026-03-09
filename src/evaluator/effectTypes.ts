@@ -161,8 +161,14 @@ export interface EffectContext {
 /** A function that handles an effect by calling `resume`, `suspend`, `fail`, or `next`. */
 export type EffectHandler = (ctx: EffectContext) => void | Promise<void>
 
-/** Map from effect pattern (e.g. `'llm.complete'`, `'dvala.*'`, `'*'`) to its handler. */
-export type Handlers = Record<string, EffectHandler>
+/** A single handler registration: a pattern (e.g. `'llm.complete'`, `'dvala.*'`, `'*'`) paired with its handler. */
+export interface HandlerRegistration {
+  pattern: string
+  handler: EffectHandler
+}
+
+/** An ordered list of effect handler registrations. Earlier entries are checked first. */
+export type Handlers = HandlerRegistration[]
 
 // ---------------------------------------------------------------------------
 // Pattern matching utilities for wildcard host handlers
@@ -196,11 +202,11 @@ export function findMatchingHandlers(
   effectName: string,
   handlers: Handlers | undefined,
 ): [string, EffectHandler][] {
-  if (!handlers) {
+  if (!handlers || handlers.length === 0) {
     return []
   }
   const result: [string, EffectHandler][] = []
-  for (const [pattern, handler] of Object.entries(handlers)) {
+  for (const { pattern, handler } of handlers) {
     if (effectNameMatchesPattern(effectName, pattern)) {
       result.push([pattern, handler])
     }
