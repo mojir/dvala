@@ -200,6 +200,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       if (isNode()) {
         process.stderr.write(`${str}\n`)
       } else {
+        // eslint-disable-next-line no-console
         console.error(str)
       }
       return { type: 'Value', value, k }

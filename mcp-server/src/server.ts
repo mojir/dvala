@@ -440,6 +440,7 @@ async function main() {
 }
 
 main().catch(error => {
+  // eslint-disable-next-line no-console
   console.error('MCP server error:', error)
   process.exit(1)
 })

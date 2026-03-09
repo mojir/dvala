@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 import type { Reference } from '../../reference'
 import type { DvalaBundle } from '../../src/bundler/interface'

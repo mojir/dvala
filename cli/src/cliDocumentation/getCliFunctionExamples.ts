@@ -11,7 +11,9 @@ export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
   return examples
     .map(example => example.trim())
     .map(example => {
+      // eslint-disable-next-line no-console
       const oldLog = console.log
+      // eslint-disable-next-line no-console
       console.log = function () {}
       let result
       try {
@@ -23,6 +25,7 @@ export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
         return `${formattedExample}
 ${fmt.gray(stringifiedResult)}`
       } finally {
+        // eslint-disable-next-line no-console
         console.log = oldLog
       }
     })
