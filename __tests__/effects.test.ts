@@ -1013,7 +1013,7 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         effectHandlers: {
           'my.save': async ({ checkpoint, resume: r }) => {
-            capturedSnapshot = checkpoint({ label: 'test' })
+            capturedSnapshot = checkpoint('test', { label: 'test' })
             r(41)
           },
         },
@@ -1036,11 +1036,11 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         effectHandlers: {
           'my.first': async ({ checkpoint, resume: r }) => {
-            checkpoint({ step: 1 })
+            checkpoint('step 1', { step: 1 })
             r(null)
           },
           'my.second': async (ctx) => {
-            ctx.checkpoint({ step: 2 })
+            ctx.checkpoint('step 2', { step: 2 })
             capturedSnapshots = ctx.snapshots
             ctx.resume('done')
           },
@@ -1065,7 +1065,7 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         effectHandlers: {
           'my.*': async ({ checkpoint, resume: r }) => {
-            const snap = checkpoint()
+            const snap = checkpoint('cp')
             indices.push((snap as { index: number }).index)
             r(null)
           },
@@ -1077,7 +1077,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should not let host mutation of ctx.snapshots corrupt internal state', async () => {
       let snapshotsAfterMutation: readonly unknown[] = []
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.mutate));
         perform(effect(my.check))
       `, {
@@ -1105,7 +1105,7 @@ describe('phase 4 — Suspension & Resume', () => {
   describe('4a-checkpoint: dvala.checkpoint effect', () => {
     it('should resume with null when no handler intercepts', async () => {
       const result = await dvala.runAsync(`
-        let x = perform(effect(dvala.checkpoint));
+        let x = perform(effect(dvala.checkpoint), "cp");
         x
       `)
       expect(result).toMatchObject({ type: 'completed', value: null })
@@ -1114,7 +1114,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should always capture a snapshot even when no handler intercepts', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1130,7 +1130,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should always capture a snapshot even when a host handler intercepts', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1147,7 +1147,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
     it('should allow host handler to override resume value', async () => {
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint))
+        perform(effect(dvala.checkpoint), "cp")
       `, {
         effectHandlers: {
           'dvala.checkpoint': async ({ resume: r }) => { r(42) },
@@ -1160,9 +1160,9 @@ describe('phase 4 — Suspension & Resume', () => {
       let capturedSnapshots: readonly unknown[] = []
       const result = await dvala.runAsync(`
         let x = do
-          perform(effect(dvala.checkpoint))
+          perform(effect(dvala.checkpoint), "cp")
         with
-          case effect(dvala.checkpoint) then ([]) -> "from-local"
+          case effect(dvala.checkpoint) then ([msg]) -> "from-local"
         end;
         perform(effect(my.check));
         x
@@ -1181,7 +1181,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should capture snapshot even with a dvala.* wildcard handler', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1201,7 +1201,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should include metadata in snapshot from perform args', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: "analysis-done" });
+        perform(effect(dvala.checkpoint), "analysis", { step: "analysis-done" });
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1215,10 +1215,10 @@ describe('phase 4 — Suspension & Resume', () => {
       expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 'analysis-done' })
     })
 
-    it('should have no meta when called without args', async () => {
+    it('should have no meta when called with only message', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1235,9 +1235,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should accumulate multiple checkpoint snapshots in order', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1259,13 +1259,13 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should work alongside ctx.checkpoint in host handler', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { from: "program" });
+        perform(effect(dvala.checkpoint), "from program", { from: "program" });
         perform(effect(my.save));
         perform(effect(my.check))
       `, {
         effectHandlers: {
           'my.save': async ({ checkpoint, resume: r }) => {
-            checkpoint({ from: 'host' })
+            checkpoint('from host', { from: 'host' })
             r(null)
           },
           'my.check': async ({ snapshots, resume: r }) => {
@@ -1285,7 +1285,7 @@ describe('phase 4 — Suspension & Resume', () => {
       let callCount = 0
       const result = await dvala.runAsync(`
         let x = 10;
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         let y = perform(effect(my.action));
         x + y
       `, {
@@ -1314,7 +1314,7 @@ describe('phase 4 — Suspension & Resume', () => {
       let callCount = 0
       const result = await dvala.runAsync(`
         let x = 10;
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         let y = perform(effect(my.get_value));
         x + y
       `, {
@@ -1343,9 +1343,9 @@ describe('phase 4 — Suspension & Resume', () => {
       let capturedSnapshots: readonly unknown[] = []
       let callCount = 0
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
         perform(effect(my.action))
       `, {
         effectHandlers: {
@@ -1374,8 +1374,8 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should resume from the most recent snapshot', async () => {
       let callCount = 0
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
         let x = perform(effect(my.get_value));
         x
       `, {
@@ -1410,6 +1410,7 @@ describe('phase 4 — Suspension & Resume', () => {
               timestamp: Date.now(),
               index: 999,
               runId: 'fake-run-id',
+              message: 'fake',
             }
             resumeFrom(fakeSnapshot, null)
           },
@@ -1420,7 +1421,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
     it('should not allow resumeFrom and resume on same context', async () => {
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.action))
       `, {
         effectHandlers: {
@@ -1448,14 +1449,14 @@ describe('phase 4 — Suspension & Resume', () => {
       // This verifies assertNotSettled runs before snapshot validation.
       let caughtMessage = ''
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         perform(effect(my.action))
       `, {
         effectHandlers: {
           'my.action': async ({ resume: r, resumeFrom }) => {
             r(42)
             try {
-              const fakeSnapshot = { continuation: {}, timestamp: 0, index: 999, runId: 'bogus' }
+              const fakeSnapshot = { continuation: {}, timestamp: 0, index: 999, runId: 'bogus', message: 'fake' }
               resumeFrom(fakeSnapshot, 0)
             }
             catch (e: unknown) {
@@ -1473,8 +1474,8 @@ describe('phase 4 — Suspension & Resume', () => {
       let capturedSnapshots: readonly unknown[] = []
       let callCount = 0
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
         perform(effect(my.action))
       `, {
         effectHandlers: {
@@ -1501,7 +1502,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should preserve host bindings after resumeFrom', async () => {
       let callCount = 0
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         let y = perform(effect(my.action));
         x + y
       `, {
@@ -1533,7 +1534,7 @@ describe('phase 4 — Suspension & Resume', () => {
       const dvalaWithMath = createDvala({ modules: [mathUtilsModule] })
       const result = await dvalaWithMath.runAsync(`
         let m = import(math);
-        perform(effect(dvala.checkpoint));
+        perform(effect(dvala.checkpoint), "cp");
         let y = perform(effect(my.action));
         m.ln(y)
       `, {
@@ -1572,7 +1573,7 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         effectHandlers: {
           'llm.complete': async ({ args, resume: r, checkpoint }) => {
-            const snap = checkpoint({ prompt: args[0] })
+            const snap = checkpoint('prompt', { prompt: args[0] })
             checkpoints.push(snap)
             r(`result-of-${args[0]}`)
           },
@@ -1594,7 +1595,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take a checkpoint, then suspend
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
         let x = perform(effect(my.step));
         x
       `, { effectHandlers: handlers })
@@ -1616,8 +1617,8 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take two checkpoints, then suspend
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
         let x = perform(effect(my.step));
         perform(effect(my.check));
         x
@@ -1649,9 +1650,9 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take one checkpoint (index 0), then suspend
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
         let x = perform(effect(my.step));
-        perform(effect(dvala.checkpoint), { step: "after-resume" });
+        perform(effect(dvala.checkpoint), "after resume", { step: "after-resume" });
         perform(effect(my.check));
         x
       `, { effectHandlers: handlers })
@@ -1686,7 +1687,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take a checkpoint, then suspend
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
         let x = perform(effect(my.step));
         let y = perform(effect(my.action));
         x + y
@@ -1722,7 +1723,7 @@ describe('phase 4 — Suspension & Resume', () => {
       }
 
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
         let x = perform(effect(my.step));
         x + 1
       `, { effectHandlers: handlers })
@@ -1743,11 +1744,11 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should retain unlimited snapshots by default', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
-        perform(effect(dvala.checkpoint), { step: 4 });
-        perform(effect(dvala.checkpoint), { step: 5 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
+        perform(effect(dvala.checkpoint), "step 4", { step: 4 });
+        perform(effect(dvala.checkpoint), "step 5", { step: 5 });
         perform(effect(my.check))
       `, {
         effectHandlers: {
@@ -1763,10 +1764,10 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should evict oldest snapshot when maxSnapshots is exceeded', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
-        perform(effect(dvala.checkpoint), { step: 4 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
+        perform(effect(dvala.checkpoint), "step 4", { step: 4 });
         perform(effect(my.check))
       `, {
         maxSnapshots: 3,
@@ -1787,15 +1788,15 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should evict from host checkpoint when maxSnapshots is exceeded', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
         perform(effect(my.save));
         perform(effect(my.check))
       `, {
         maxSnapshots: 2,
         effectHandlers: {
           'my.save': async ({ checkpoint, resume: r }) => {
-            checkpoint({ step: 'host' })
+            checkpoint('host', { step: 'host' })
             r(null)
           },
           'my.check': async ({ snapshots, resume: r }) => {
@@ -1813,9 +1814,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should fail gracefully when resumeFrom targets an evicted snapshot', async () => {
       let callCount = 0
       const result = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
         perform(effect(my.action))
       `, {
         maxSnapshots: 2,
@@ -1829,6 +1830,7 @@ describe('phase 4 — Suspension & Resume', () => {
                 timestamp: Date.now(),
                 index: 0,
                 runId: 'will-not-match',
+                message: 'evicted',
               }
               try {
                 resumeFrom(evictedSnapshot, null)
@@ -1853,9 +1855,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should work with maxSnapshots: 1', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), { step: 1 });
-        perform(effect(dvala.checkpoint), { step: 2 });
-        perform(effect(dvala.checkpoint), { step: 3 });
+        perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+        perform(effect(dvala.checkpoint), "step 2", { step: 2 });
+        perform(effect(dvala.checkpoint), "step 3", { step: 3 });
         perform(effect(my.check))
       `, {
         maxSnapshots: 1,
@@ -2075,12 +2077,12 @@ describe('phase 4 — Suspension & Resume', () => {
     })
 
     it('should return error for invalid continuation object', async () => {
-      const result = await resumeContinuation({ continuation: { version: 1, k: 'bad', contextStacks: [] }, timestamp: 0, index: 0, runId: 'test' }, 42)
+      const result = await resumeContinuation({ continuation: { version: 1, k: 'bad', contextStacks: [] }, timestamp: 0, index: 0, runId: 'test', message: 'test' }, 42)
       expect(result.type).toBe('error')
     })
 
     it('should return error for wrong version', async () => {
-      const result = await resumeContinuation({ continuation: { version: 999, k: [], contextStacks: [] }, timestamp: 0, index: 0, runId: 'test' }, 42)
+      const result = await resumeContinuation({ continuation: { version: 999, k: [], contextStacks: [] }, timestamp: 0, index: 0, runId: 'test', message: 'test' }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Unsupported suspension blob version')
@@ -2098,6 +2100,7 @@ describe('phase 4 — Suspension & Resume', () => {
         timestamp: 0,
         index: 0,
         runId: 'test',
+        message: 'test',
       }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {

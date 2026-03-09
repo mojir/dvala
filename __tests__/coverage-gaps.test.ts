@@ -870,7 +870,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
     let savedSnapshot: unknown = null
     const handlers: Handlers = {
       'test.checkpoint': async (ctx) => {
-        savedSnapshot = ctx.checkpoint({ label: 'snap1' })
+        savedSnapshot = ctx.checkpoint('label snap1', { label: 'snap1' })
         ctx.resume(1)
       },
     }
@@ -885,7 +885,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
       'test.snap': async (ctx) => {
         callCount++
         if (callCount === 1) {
-          ctx.checkpoint({ label: 'first' })
+          ctx.checkpoint('label first', { label: 'first' })
           ctx.resume(10)
         }
         else {
@@ -1975,7 +1975,7 @@ describe('trampoline — race expression', () => {
 describe('trampoline — checkpoint and resumeFrom', () => {
   it('should capture checkpoint and resume', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), {step: "init"});
+      perform(effect(dvala.checkpoint), "step init", {step: "init"});
       42
     `)
     expect(result.type).toBe('completed')
@@ -3089,7 +3089,7 @@ describe('trampoline.ts — effect host handler callbacks', () => {
   it('should handle handler that calls resumeFrom (line 2476-2478)', async () => {
     const handlers: Handlers = {
       'test.snapshot': async ({ checkpoint, resume: doResume }) => {
-        checkpoint()
+        checkpoint('checkpoint')
         doResume(42)
       },
     }

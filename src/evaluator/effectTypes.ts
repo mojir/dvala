@@ -31,6 +31,9 @@ export interface Snapshot {
   /** UUID identifying the run() or resume() call that created this snapshot. */
   readonly runId: string
 
+  /** Human-readable label from the checkpoint perform call. */
+  readonly message: string
+
   /** Optional domain metadata from the perform call or suspend call. */
   readonly meta?: Any
 
@@ -146,7 +149,7 @@ export interface EffectContext {
    * Returns the new Snapshot. This is the host-side equivalent of
    * `perform(effect(dvala.checkpoint))`.
    */
-  checkpoint: (meta?: Any) => Snapshot
+  checkpoint: (message: string, meta?: Any) => Snapshot
 
   /**
    * Abandon current execution and resume from a previous snapshot.

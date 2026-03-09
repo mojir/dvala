@@ -28,7 +28,7 @@ import {
   undoDvalaCode,
   updateState,
 } from './state'
-import { decodeSnapshot } from './snapshotUtils'
+import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
 
@@ -69,8 +69,12 @@ const elements = {
   snapshotPanelContainer: document.getElementById('snapshot-panel-container') as HTMLDivElement,
   snapshotPanelTemplate: document.getElementById('snapshot-panel-template') as HTMLTemplateElement,
   importSnapshotModal: document.getElementById('import-snapshot-modal') as HTMLDivElement,
+  infoModal: document.getElementById('info-modal') as HTMLDivElement,
+  infoModalTitle: document.getElementById('info-modal-title') as HTMLDivElement,
+  infoModalMessage: document.getElementById('info-modal-message') as HTMLDivElement,
   importSnapshotTextarea: document.getElementById('import-snapshot-textarea') as HTMLTextAreaElement,
   importSnapshotError: document.getElementById('import-snapshot-error') as HTMLSpanElement,
+  toastContainer: document.getElementById('toast-container') as HTMLDivElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
   effectModalNav: document.getElementById('effect-modal-nav') as HTMLDivElement,
   effectModalCounter: document.getElementById('effect-modal-counter') as HTMLSpanElement,
@@ -757,6 +761,9 @@ window.onload = function () {
       else if (elements.printlnModal.style.display !== 'none') {
         dismissPrintln()
       }
+      else if (elements.infoModal.style.display !== 'none') {
+        closeInfoModal()
+      }
       else if (elements.importSnapshotModal.style.display !== 'none') {
         closeImportSnapshotModal()
       }
@@ -775,6 +782,10 @@ window.onload = function () {
         selectEffectAction('ignore')
       }
       evt.preventDefault()
+    }
+    if (evt.key === 'Enter' && elements.infoModal.style.display !== 'none') {
+      evt.preventDefault()
+      closeInfoModal()
     }
     if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
       evt.preventDefault()
@@ -883,11 +894,10 @@ function getDataFromUrl() {
 
   const urlState = urlParams.get('state')
   if (urlState) {
-    addOutputSeparator()
     if (applyEncodedState(urlState))
-      appendOutput(`Data parsed from url parameter state: ${urlState}`, 'comment')
+      showToast('State loaded from URL')
     else
-      appendOutput(`Invalid url parameter state: ${urlState}`, 'error')
+      showToast('Invalid state URL parameter', { severity: 'error' })
 
     urlParams.delete('state')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
@@ -899,13 +909,11 @@ function getDataFromUrl() {
     urlParams.delete('snapshot')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
     if (snapshot) {
-      addOutputSeparator()
-      appendOutput('Snapshot loaded from link:', 'comment')
+      showToast('Snapshot loaded from link')
       openSnapshotModal(snapshot)
     }
     else {
-      addOutputSeparator()
-      appendOutput(`Invalid url parameter snapshot: ${urlSnapshot}`, 'error')
+      showToast('Invalid snapshot link', { severity: 'error' })
     }
   }
 }
@@ -1144,8 +1152,7 @@ export function toggleDebug() {
   const debug = !getState('debug')
   saveState({ debug })
   updateCSS()
-  addOutputSeparator()
-  appendOutput(`Debug mode toggled ${debug ? 'ON' : 'OFF'}`, 'comment')
+  showToast(`Debug mode ${debug ? 'ON' : 'OFF'}`)
   focusDvalaCode()
 }
 
@@ -1204,10 +1211,7 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
 }
 
 function snapshotLabel(snapshot: Snapshot): string {
-  if (snapshot.meta != null) {
-    return `Checkpoint #${snapshot.index} — ${JSON.stringify(snapshot.meta)}`
-  }
-  return `Checkpoint #${snapshot.index}`
+  return `Checkpoint #${snapshot.index} — ${snapshot.message}`
 }
 
 function buildBreadcrumbs(panel: HTMLElement) {
@@ -1245,11 +1249,22 @@ function popToLevel(targetIndex: number) {
   currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
 }
 
+const MAX_URL_LENGTH = 32_767
+
 function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
   const ref = (name: string) => panel.querySelector(`[data-ref="${name}"]`) as HTMLElement
 
   // Effect name
   ref('effect-name').textContent = snapshot.effectName ?? '(checkpoint — no active effect)'
+
+  // Share button — mark if snapshot URL would be too long
+  const shareBtn = ref('share-btn') as HTMLButtonElement
+  const encodedLength = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(snapshot)}`.length
+  if (encodedLength > MAX_URL_LENGTH) {
+    shareBtn.style.opacity = '0.4'
+    shareBtn.textContent = 'Share ⚠'
+    shareBtn.title = 'Snapshot is too large to share as a URL'
+  }
 
   // Effect args
   const argsEl = ref('effect-args')
@@ -1265,16 +1280,20 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
   }
 
   // Meta
-  const metaEl = ref('meta')
-  metaEl.innerHTML = ''
+  const metaContainer = ref('meta-container')
   if (snapshot.meta === undefined) {
+    metaContainer.innerHTML = ''
     const empty = document.createElement('span')
     empty.textContent = '(no metadata)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    metaEl.appendChild(empty)
+    metaContainer.appendChild(empty)
   }
   else {
-    metaEl.appendChild(makeArgRow(JSON.stringify(snapshot.meta, null, 2)))
+    const metaJson = JSON.stringify(snapshot.meta, null, 2)
+    ref('meta-json').textContent = metaJson
+    ref('copy-meta-btn').addEventListener('click', () => {
+      void navigator.clipboard.writeText(metaJson)
+    })
   }
 
   // Technical info
@@ -1337,6 +1356,11 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
         meta.style.cssText = 'font-size:0.75rem; color:rgb(200 200 200); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
         info.appendChild(meta)
       }
+
+      const msg = document.createElement('span')
+      msg.textContent = cpSnapshot.message
+      msg.style.cssText = 'font-size:0.75rem; color:rgb(229 229 229); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+      info.appendChild(msg)
 
       const ts = document.createElement('span')
       const d = new Date(cpSnapshot.timestamp)
@@ -1453,14 +1477,71 @@ export function importSnapshot() {
   try {
     const snapshot = JSON.parse(text) as Snapshot
     closeImportSnapshotModal()
-    addOutputSeparator()
-    appendOutput('Snapshot imported:', 'comment')
+    showToast('Snapshot imported')
     openSnapshotModal(snapshot)
   }
   catch {
     elements.importSnapshotError.textContent = 'Invalid JSON'
     elements.importSnapshotError.classList.remove('hidden')
   }
+}
+
+const TOAST_DURATION = 4_000
+
+export function showToast(message: string, options?: { severity?: 'info' | 'error' }) {
+  const severity = options?.severity ?? 'info'
+  const toast = document.createElement('div')
+  toast.className = `toast toast-${severity}`
+
+  const text = document.createElement('span')
+  text.textContent = message
+  toast.appendChild(text)
+
+  const closeBtn = document.createElement('button')
+  closeBtn.className = 'toast-close'
+  closeBtn.textContent = '\u00D7'
+  closeBtn.addEventListener('click', () => dismissToast(toast))
+  toast.appendChild(closeBtn)
+
+  elements.toastContainer.appendChild(toast)
+
+  setTimeout(() => dismissToast(toast), TOAST_DURATION)
+}
+
+function dismissToast(toast: HTMLElement) {
+  if (!toast.parentElement)
+    return
+  toast.style.animation = 'toast-out 0.2s ease forwards'
+  toast.addEventListener('animationend', () => toast.remove())
+}
+
+export function showInfoModal(title: string, message: string) {
+  elements.infoModalTitle.textContent = title
+  elements.infoModalMessage.textContent = message
+  elements.infoModal.style.display = 'flex'
+}
+
+export function closeInfoModal() {
+  elements.infoModal.style.display = 'none'
+}
+
+export function shareSnapshot() {
+  if (!currentSnapshot)
+    return
+  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentSnapshot)}`
+  if (href.length > MAX_URL_LENGTH) {
+    showToast('Snapshot is too large to share as a URL. Use Download instead.', { severity: 'error' })
+    return
+  }
+  addOutputSeparator()
+  appendOutput('Sharable snapshot link:', 'comment')
+  const a = document.createElement('a')
+  a.textContent = href
+  a.className = 'share-link'
+  a.href = href
+  addOutputElement(a)
+  void navigator.clipboard.writeText(href)
+  showToast('Link copied to clipboard')
 }
 
 export function downloadSnapshot() {
@@ -1515,13 +1596,12 @@ export async function resumeSnapshot() {
 }
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
+  if (ctx.effectName === 'dvala.checkpoint') {
+    showToast(`Checkpoint: ${ctx.args[0]}`)
+    ctx.next()
+    return
+  }
   return new Promise<void>((resolve) => {
-    if (ctx.effectName === 'dvala.checkpoint') {
-      // Don't show checkpoint effects in the modal, as they are implementation details that would just confuse users
-      ctx.next()
-      resolve()
-      return
-    }
     const pending: PendingEffect = { ctx, resolve, handled: false }
     pendingEffects.push(pending)
 
@@ -1671,9 +1751,9 @@ export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'igno
 
   pendingEffectAction = action
   const labels: Record<typeof action, string> = {
-    resume: 'Resume value (JSON)',
+    resume: 'Resume message',
     fail: 'Error message (optional)',
-    suspend: 'Message',
+    suspend: 'Suspend message',
   }
   elements.effectModalInputLabel.textContent = labels[action]
   elements.effectModalValue.value = ''
@@ -1987,8 +2067,7 @@ function inactivateAll() {
 export function addToPlayground(name: string, encodedExample: string) {
   const example = decodeURIComponent(atob(encodedExample))
   setDvalaCode(`// ${name}\n\n${example}\n`, true, 'top')
-  addOutputSeparator()
-  appendOutput('Example loaded in editor', 'comment')
+  showToast('Example loaded in editor')
   saveState({ 'focused-panel': 'dvala-code' })
   applyState()
 }
@@ -1996,15 +2075,13 @@ export function addToPlayground(name: string, encodedExample: string) {
 export function copyExample(encodedExample: string) {
   const code = decodeURIComponent(atob(encodedExample))
   void navigator.clipboard.writeText(code)
-  addOutputSeparator()
-  appendOutput('Example copied to clipboard', 'comment')
+  showToast('Example copied to clipboard')
 }
 
 export function copyCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
   void navigator.clipboard.writeText(code)
-  addOutputSeparator()
-  appendOutput('Code copied to clipboard', 'comment')
+  showToast('Code copied to clipboard')
 }
 
 export function setPlayground(name: string, encodedExample: string) {
@@ -2029,8 +2106,7 @@ ${code}
 `.trimStart(), true, 'top')
   saveState({ 'focused-panel': 'dvala-code' })
   applyState()
-  addOutputSeparator()
-  appendOutput(`Example loaded: ${name}`, 'comment')
+  showToast(`Example loaded: ${name}`)
 }
 
 function hijackConsole() {

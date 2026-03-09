@@ -38,7 +38,7 @@ describe('stress: parallel + checkpoints', () => {
     // Branches run via independent runEffectLoop calls without shared snapshotState
     let outerSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { loc: "outer" });
+      perform(effect(dvala.checkpoint), "loc outer", { loc: "outer" });
       let results = parallel(
         perform(effect(my.op), "a"),
         perform(effect(my.op), "b")
@@ -131,12 +131,12 @@ describe('stress: parallel + checkpoints', () => {
   it('parallel + checkpoint before and after', async () => {
     let capturedSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { pos: "before-parallel" });
+      perform(effect(dvala.checkpoint), "pos before-parallel", { pos: "before-parallel" });
       let results = parallel(
         perform(effect(my.op), 1),
         perform(effect(my.op), 2)
       );
-      perform(effect(dvala.checkpoint), { pos: "after-parallel" });
+      perform(effect(dvala.checkpoint), "pos after-parallel", { pos: "after-parallel" });
       perform(effect(my.check));
       results
     `, {
@@ -958,16 +958,16 @@ describe('stress: dedup pool with many checkpoints', () => {
 
     // Take 10 checkpoints, then suspend — should share AST sub-trees
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { n: 1 });
-      perform(effect(dvala.checkpoint), { n: 2 });
-      perform(effect(dvala.checkpoint), { n: 3 });
-      perform(effect(dvala.checkpoint), { n: 4 });
-      perform(effect(dvala.checkpoint), { n: 5 });
-      perform(effect(dvala.checkpoint), { n: 6 });
-      perform(effect(dvala.checkpoint), { n: 7 });
-      perform(effect(dvala.checkpoint), { n: 8 });
-      perform(effect(dvala.checkpoint), { n: 9 });
-      perform(effect(dvala.checkpoint), { n: 10 });
+      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
+      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
+      perform(effect(dvala.checkpoint), "n 3", { n: 3 });
+      perform(effect(dvala.checkpoint), "n 4", { n: 4 });
+      perform(effect(dvala.checkpoint), "n 5", { n: 5 });
+      perform(effect(dvala.checkpoint), "n 6", { n: 6 });
+      perform(effect(dvala.checkpoint), "n 7", { n: 7 });
+      perform(effect(dvala.checkpoint), "n 8", { n: 8 });
+      perform(effect(dvala.checkpoint), "n 9", { n: 9 });
+      perform(effect(dvala.checkpoint), "n 10", { n: 10 });
       let x = perform(effect(my.wait));
       x
     `, { effectHandlers: handlers })
@@ -992,8 +992,8 @@ describe('stress: dedup pool with many checkpoints', () => {
       let make-fn = (n) -> (x) -> n + x;
       let f1 = make-fn(1);
       let f2 = make-fn(2);
-      perform(effect(dvala.checkpoint), { fn: "f1" });
-      perform(effect(dvala.checkpoint), { fn: "f2" });
+      perform(effect(dvala.checkpoint), "fn f1", { fn: "f1" });
+      perform(effect(dvala.checkpoint), "fn f2", { fn: "f2" });
       let input = perform(effect(my.wait));
       [f1(input), f2(input)]
     `, { effectHandlers: handlers })
@@ -1015,14 +1015,14 @@ describe('stress: dedup pool with many checkpoints', () => {
     let capturedSnapshots: readonly Snapshot[] = []
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { n: 1 });
-      perform(effect(dvala.checkpoint), { n: 2 });
-      perform(effect(dvala.checkpoint), { n: 3 });
-      perform(effect(dvala.checkpoint), { n: 4 });
-      perform(effect(dvala.checkpoint), { n: 5 });
-      perform(effect(dvala.checkpoint), { n: 6 });
-      perform(effect(dvala.checkpoint), { n: 7 });
-      perform(effect(dvala.checkpoint), { n: 8 });
+      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
+      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
+      perform(effect(dvala.checkpoint), "n 3", { n: 3 });
+      perform(effect(dvala.checkpoint), "n 4", { n: 4 });
+      perform(effect(dvala.checkpoint), "n 5", { n: 5 });
+      perform(effect(dvala.checkpoint), "n 6", { n: 6 });
+      perform(effect(dvala.checkpoint), "n 7", { n: 7 });
+      perform(effect(dvala.checkpoint), "n 8", { n: 8 });
       perform(effect(my.check))
     `, {
       maxSnapshots: 3,
@@ -1485,7 +1485,7 @@ describe('stress: complex end-to-end patterns', () => {
     const source = `
       let raw = perform(effect(my.fetch), "report");
       let processed = perform(effect(my.transform), raw);
-      perform(effect(dvala.checkpoint), { stage: "ready-for-approval" });
+      perform(effect(dvala.checkpoint), "stage ready-for-approval", { stage: "ready-for-approval" });
       let approval = perform(effect(my.approve), processed);
       if approval then "finalized: " ++ processed
       else "rejected"
@@ -1507,7 +1507,7 @@ describe('stress: complex end-to-end patterns', () => {
     let attempt = 0
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { stage: "start" });
+      perform(effect(dvala.checkpoint), "stage start", { stage: "start" });
       let x = perform(effect(my.risky));
       x * 2
     `, {
@@ -1569,11 +1569,11 @@ describe('stress: complex end-to-end patterns', () => {
     let snapshotsAtEnd: readonly Snapshot[] = []
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), { phase: 1 });
+      perform(effect(dvala.checkpoint), "phase 1", { phase: 1 });
       let a = perform(effect(my.compute), 1);
-      perform(effect(dvala.checkpoint), { phase: 2 });
+      perform(effect(dvala.checkpoint), "phase 2", { phase: 2 });
       let b = perform(effect(my.compute), 2);
-      perform(effect(dvala.checkpoint), { phase: 3 });
+      perform(effect(dvala.checkpoint), "phase 3", { phase: 3 });
       let c = perform(effect(my.compute), 3);
       perform(effect(my.report));
       [a, b, c]
