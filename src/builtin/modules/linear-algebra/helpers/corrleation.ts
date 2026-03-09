@@ -37,16 +37,9 @@ export function extractOverlappingSegments(
   const absLag = Math.abs(lag)
   const overlapLength = vectorA.length - absLag
 
-  let segmentA = []
-  let segmentB = []
-
   if (lag >= 0) {
-    segmentA = vectorA.slice(0, overlapLength)
-    segmentB = vectorB.slice(lag, lag + overlapLength)
+    return [vectorA.slice(0, overlapLength), vectorB.slice(lag, lag + overlapLength)]
   } else {
-    segmentA = vectorA.slice(absLag)
-    segmentB = vectorB.slice(0, overlapLength)
+    return [vectorA.slice(absLag), vectorB.slice(0, overlapLength)]
   }
-
-  return [segmentA, segmentB]
 }

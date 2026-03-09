@@ -65,7 +65,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
 
       const mask = 1 << index
-      return (num ^= mask)
+      return num ^ mask
     },
     arity: toFixedArity(2),
     docs: {
@@ -88,7 +88,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
 
       const mask = 1 << index
-      return (num |= mask)
+      return num | mask
     },
     arity: toFixedArity(2),
     docs: {
@@ -111,7 +111,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
 
       const mask = 1 << index
-      return (num &= ~mask)
+      return num & ~mask
     },
     arity: toFixedArity(2),
     docs: {

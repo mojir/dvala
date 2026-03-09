@@ -16,7 +16,7 @@ describe('proc Integration Tests', () => {
       })
       return result.trim()
     } catch (error: any) {
-      throw new Error(`Dvala Proc failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`)
+      throw new Error(`Dvala Proc failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`, { cause: error })
     }
   }
 

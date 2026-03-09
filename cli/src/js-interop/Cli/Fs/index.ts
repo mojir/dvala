@@ -77,7 +77,7 @@ const readJson: JsFunction = {
     try {
       return JSON.parse(content) as unknown
     } catch (error: any) {
-      throw new Error(`Failed to parse JSON from file ${filePath}: ${error.message}`)
+      throw new Error(`Failed to parse JSON from file ${filePath}: ${error.message}`, { cause: error })
     }
   },
   docString: `
