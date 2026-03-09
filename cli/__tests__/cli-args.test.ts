@@ -11,7 +11,7 @@ describe('cLI argument parsing', () => {
   beforeAll(() => {
     if (!fs.existsSync(dvalaCliPath)) {
       try {
-        execSync('npm run build', {
+        execSync('npm run build-cli', {
           cwd: path.join(__dirname, '../..'),
           stdio: 'pipe',
         })

@@ -1,10 +1,24 @@
 
 import { execSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 
 describe('proc Integration Tests', () => {
   const dvalaCliPath = path.join(__dirname, '../../dist/cli/cli.js') // Adjust path as needed
+
+  beforeAll(() => {
+    if (!fs.existsSync(dvalaCliPath)) {
+      try {
+        execSync('npm run build-cli', {
+          cwd: path.join(__dirname, '../..'),
+          stdio: 'pipe',
+        })
+      } catch (error: any) {
+        throw new Error(`Failed to build CLI: ${error.message}`, { cause: error })
+      }
+    }
+  })
 
   function runDvala(expression: string): string {
     try {
