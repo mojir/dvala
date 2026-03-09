@@ -1,22 +1,7 @@
-const jsonPlugin = require('@rollup/plugin-json')
-const resolve = require('@rollup/plugin-node-resolve')
-const typescript = require('@rollup/plugin-typescript')
-const { dvalaSourcePlugin } = require('./rollup.plugins')
+import { defineConfig } from 'rolldown'
+import { dvalaSourcePlugin } from './rolldown.plugins.mjs'
 
-const plugins = [
-  dvalaSourcePlugin(),
-  typescript({
-    tsconfig: 'tsconfig.mcp-server.json',
-    declaration: false,
-    declarationDir: undefined,
-  }),
-  jsonPlugin(),
-  resolve({
-    extensions: ['.js', '.ts'],
-  }),
-]
-
-module.exports = [
+export default defineConfig([
   {
     input: 'mcp-server/src/server.ts',
     external: [
@@ -49,6 +34,6 @@ module.exports = [
         banner: '#!/usr/bin/env node',
       },
     ],
-    plugins,
+    plugins: [dvalaSourcePlugin()],
   },
-]
+])
