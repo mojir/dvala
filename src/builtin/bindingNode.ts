@@ -23,6 +23,8 @@ export function walkDefaults(
   } else if (bindingTarget[0] === bindingTargetTypes.array) {
     for (let index = 0; index < bindingTarget[1][0].length; index += 1) {
       const element = bindingTarget[1][0][index] ?? null
+      // Defensive: sparse array elements are filtered during parsing
+      /* v8 ignore next 3 */
       if (element === null) {
         continue
       }

@@ -24,9 +24,10 @@ export class ParserContext {
 
   public peek(): Token {
     const token = this.tokens[this.position]
+    // Defensive: peek is only called when tokens remain
+    /* v8 ignore next 4 */
     if (!token) {
       const lastToken = this.tokens.at(-1)
-      /* v8 ignore next */
       const sourceCodeInfo = lastToken ? lastToken[2] : undefined
       throw new DvalaError('Unexpected end of input', sourceCodeInfo)
     }

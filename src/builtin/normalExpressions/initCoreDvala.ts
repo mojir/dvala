@@ -48,6 +48,8 @@ export function initCoreDvalaSources(): void {
     const obj = result
     for (const [name, fn] of Object.entries(obj)) {
       const expression = normalExpressions[name]
+      // Defensive: all core dvala modules produce UserDefined functions
+      /* v8 ignore next */
       if (expression && isDvalaFunction(fn) && (fn as { functionType: string }).functionType === 'UserDefined') {
         expression.dvalaImpl = fn as UserDefinedFunction
       }

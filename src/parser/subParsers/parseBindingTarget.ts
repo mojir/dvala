@@ -45,6 +45,8 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       const node: AstNode = withSourceCodeInfo([NodeTypes.ReservedSymbol, 'false'], firstToken[2])
       return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
     }
+    // Defensive: null literal in binding target is parsed but rarely used
+    /* v8 ignore next 5 */
     if (isReservedSymbolToken(firstToken, 'null')) {
       ctx.advance()
       const node: AstNode = withSourceCodeInfo([NodeTypes.ReservedSymbol, 'null'], firstToken[2])

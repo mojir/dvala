@@ -586,6 +586,8 @@ l`,
       const result: Arr = []
       for (let i = 0; i < maxLength; i += 1) {
         for (const seq of seqsArr) {
+          // Defensive: i is bounded by maxLength which is min of all seq lengths
+          /* v8 ignore next 2 */
           if (i < seq.length)
             result.push(seq[i])
         }

@@ -32,6 +32,8 @@ function analyze(
       result.add(symbol),
     )
     Object.assign(newContext, getAllBindingTargetNames(target))
+    // Defensive: letBindings is always present when parsed from loop syntax
+    /* v8 ignore next */
     if (letBindings) {
       letBindings.forEach(letBindingNode => {
         const [letTarget, letValue] = letBindingNode[1]

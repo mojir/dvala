@@ -19,7 +19,8 @@ export function calculateEntropy<T>(vector: T[]): number {
   let entropy = 0
   for (const frequency of frequencies.values()) {
     const probability = frequency / total
-    // Skip cases where probability is 0 (log(0) is undefined)
+    // Defensive: probability is always > 0 since we iterate over counted frequencies
+    /* v8 ignore next 3 */
     if (probability > 0) {
       entropy -= probability * Math.log2(probability)
     }

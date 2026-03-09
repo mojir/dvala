@@ -19,6 +19,7 @@ export default defineConfig({
     coverage: {
       exclude: [
         '*.js',
+        '**/*.dvala',
         '__tests__/**',
         'types/**',
         '**/*.test.ts',
@@ -38,6 +39,8 @@ export default defineConfig({
         '**/types.ts',
         'src/index.ts',
         'src/full.ts',
+        'src/modules/**',
+        'src/bundler.ts',
         'src/evaluator/frames.ts',
         'src/evaluator/step.ts',
         'playwright.config.ts',

@@ -459,6 +459,8 @@ function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
 }
 
 for (const [key, docs] of Object.entries(moduleDocs)) {
+  // Defensive: all doc keys correspond to existing expressions
+  /* v8 ignore next 2 */
   if (combinatoricalNormalExpression[key])
     combinatoricalNormalExpression[key].docs = docs
 }

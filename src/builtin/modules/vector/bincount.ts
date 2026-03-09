@@ -24,6 +24,8 @@ export function bincount(
   for (let i = 0; i < array.length; i++) {
     const value = Math.floor(array[i]!)
 
+    // Defensive: value is always < outputLength since outputLength >= maxValue + 1
+    /* v8 ignore next 4 */
     if (value < outputLength) {
       // If weights provided, add weight; otherwise add 1
       counts[value]! += weights ? weights[i]! : 1

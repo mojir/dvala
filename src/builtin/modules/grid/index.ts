@@ -518,6 +518,8 @@ const gridFunctions: BuiltinNormalExpressions = {
  * The grid module containing 2D array manipulation functions.
  */
 for (const [key, docs] of Object.entries(moduleDocs)) {
+  // Defensive: all doc keys correspond to existing expressions
+  /* v8 ignore next 2 */
   if (gridFunctions[key])
     gridFunctions[key].docs = docs
 }
