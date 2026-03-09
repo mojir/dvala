@@ -89,6 +89,9 @@ export interface SnapshotState {
 
   /** Maximum number of snapshots to retain. Oldest are evicted when exceeded. */
   readonly maxSnapshots?: number
+
+  /** When true, automatically capture a checkpoint before every non-checkpoint effect. */
+  readonly autoCheckpoint?: boolean
 }
 
 // ---------------------------------------------------------------------------

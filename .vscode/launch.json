@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Playground (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:9901",
+      "webRoot": "${workspaceFolder}/docs",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "../playground-www/*": "${workspaceFolder}/playground-www/*",
+        "../src/*": "${workspaceFolder}/src/*",
+        "../common/*": "${workspaceFolder}/common/*",
+        "../reference/*": "${workspaceFolder}/reference/*"
+      }
+    }
+  ]
+}

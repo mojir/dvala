@@ -27,6 +27,7 @@ export interface ResumeOptions {
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
+  autoCheckpoint?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +75,7 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
       snapshots: deserialized.snapshots,
       nextSnapshotIndex: deserialized.nextSnapshotIndex,
       maxSnapshots: options?.maxSnapshots,
+      autoCheckpoint: options?.autoCheckpoint,
     }, deserializeOptions)
   } catch (error) {
     if (error instanceof DvalaError) {

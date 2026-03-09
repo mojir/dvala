@@ -88,6 +88,7 @@ import { getStandardEffectDefinition, getStandardEffectHandler } from './standar
 import type {
   AndFrame,
   ArrayBuildFrame,
+  AutoCheckpointFrame,
   BindingDefaultFrame,
   CallFnFrame,
   CondFrame,
@@ -1492,6 +1493,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       frame.env.registerValueModule(frame.moduleName, merged)
       return { type: 'Value', value: merged, k }
     }
+    case 'AutoCheckpoint':
+      return applyAutoCheckpoint(frame, k)
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame
@@ -2348,6 +2351,25 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
     }
   }
 
+  // Auto-checkpoint: dispatch a real dvala.checkpoint effect before the original effect.
+  if (snapshotState?.autoCheckpoint && effect.name !== 'dvala.checkpoint') {
+    // Skip if we're already inside an auto-checkpoint dispatch (phase: 'awaitEffect').
+    const topFrame = k[0]
+    if (topFrame?.type === 'AutoCheckpoint' && topFrame.phase === 'awaitEffect') {
+      // Pop the marker frame and dispatch the original effect normally.
+      k = k.slice(1)
+    } else {
+      const autoCheckpointFrame: AutoCheckpointFrame = {
+        type: 'AutoCheckpoint',
+        phase: 'awaitCheckpoint',
+        effect,
+        args,
+        sourceCodeInfo,
+      }
+      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), args: [effect.name], k: [autoCheckpointFrame, ...k], sourceCodeInfo }
+    }
+  }
+
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
@@ -3067,6 +3089,19 @@ function applyDebugStep(frame: DebugStepFrame, value: Any, k: ContinuationStack)
   return { type: 'Value', value, k }
 }
 
+function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): Step {
+  // Checkpoint resolved — now dispatch the original effect with a marker frame
+  // so dispatchPerform knows to skip auto-checkpoint for this re-dispatch.
+  const markerFrame: AutoCheckpointFrame = {
+    type: 'AutoCheckpoint',
+    phase: 'awaitEffect',
+    effect: frame.effect,
+    args: frame.args,
+    sourceCodeInfo: frame.sourceCodeInfo,
+  }
+  return { type: 'Perform', effect: frame.effect, args: frame.args, k: [markerFrame, ...k], sourceCodeInfo: frame.sourceCodeInfo }
+}
+
 // ---------------------------------------------------------------------------
 // Utility functions
 // ---------------------------------------------------------------------------
@@ -3318,12 +3353,13 @@ export async function evaluateWithEffects(
   handlers?: Handlers,
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
+  autoCheckpoint?: boolean,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions)
+  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint)
 }
 
 /**
@@ -3362,14 +3398,14 @@ export async function resumeWithEffects(
   k: ContinuationStack,
   value: Any,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number },
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial: Step = { type: 'Value', value, k }
 
-  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions)
+  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions, initialSnapshotState?.autoCheckpoint)
 }
 
 /**
@@ -3542,7 +3578,7 @@ export async function retriggerWithEffects(
   effectName: string,
   effectArgs: Any[],
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number },
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
   outerSignal?: AbortSignal,
 ): Promise<RunResult> {
@@ -3556,6 +3592,7 @@ export async function retriggerWithEffects(
     nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
     runId: generateRunId(),
     maxSnapshots: initialSnapshotState?.maxSnapshots,
+    autoCheckpoint: initialSnapshotState?.autoCheckpoint,
   }
 
   // When the continuation starts with a ParallelResumeFrame, dispatch all
@@ -3627,6 +3664,7 @@ async function runEffectLoop(
   initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number },
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
+  autoCheckpoint?: boolean,
 ): Promise<RunResult> {
   const debugMode = Array.isArray(handlers) && handlers.some(h => h.pattern === 'dvala.debug.step')
   const snapshotState: SnapshotState = {
@@ -3634,6 +3672,7 @@ async function runEffectLoop(
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
     runId: generateRunId(),
     ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
+    ...(autoCheckpoint ? { autoCheckpoint } : {}),
   }
 
   let step: Step | Promise<Step> = initial

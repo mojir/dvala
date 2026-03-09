@@ -1,6 +1,8 @@
 import { defineConfig } from 'rolldown'
 import { dvalaSourcePlugin } from './rolldown.plugins.mjs'
 
+const isCI = !!process.env.CI
+
 export default defineConfig([
   {
     onwarn(warning, warn) {
@@ -16,7 +18,8 @@ export default defineConfig([
         file: 'playground-www/build/playground.js',
         format: 'iife',
         name: 'Playground',
-        minify: true,
+        minify: isCI,
+        sourcemap: !isCI,
       },
     ],
     plugins: [dvalaSourcePlugin()],

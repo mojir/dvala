@@ -80,6 +80,19 @@ function setupDocDir() {
 function copyAssets() {
   fs.cpSync(path.join(__dirname, '../../playground-www/public/'), path.join(DOC_DIR), { recursive: true })
   fs.copyFileSync(path.join(__dirname, '../../playground-www/build/playground.js'), path.join(DOC_DIR, 'playground.js'))
+  const mapFile = path.join(__dirname, '../../playground-www/build/playground.js.map')
+  if (fs.existsSync(mapFile)) {
+    // Rewrite source paths: the map was generated relative to playground-www/build/
+    // but is served from docs/, so adjust paths accordingly.
+    const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
+    const buildDir = path.resolve(__dirname, '../../playground-www/build')
+    const docsDir = path.resolve(__dirname, '../../docs')
+    map.sources = map.sources.map((source: string) => {
+      const abs = path.resolve(buildDir, source)
+      return path.relative(docsDir, abs)
+    })
+    fs.writeFileSync(path.join(DOC_DIR, 'playground.js.map'), JSON.stringify(map))
+  }
 }
 
 function setupPredictability() {

@@ -1870,6 +1870,150 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
+  describe('9: autoCheckpoint option', () => {
+    it('should capture a snapshot before each non-checkpoint effect', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await dvala.runAsync(`
+        perform(effect(my.a));
+        perform(effect(my.b));
+        perform(effect(my.check))
+      `, {
+        autoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.b', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          } },
+        ],
+      })
+      // 3 auto-checkpoints: before my.a, before my.b, before my.check
+      expect(capturedSnapshots).toHaveLength(3)
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('my.a')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('my.b')
+      expect((capturedSnapshots[2] as { message: string }).message).toBe('my.check')
+    })
+
+    it('should not capture auto-checkpoints when disabled', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await dvala.runAsync(`
+        perform(effect(my.a));
+        perform(effect(my.check))
+      `, {
+        autoCheckpoint: false,
+        effectHandlers: [
+          { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          } },
+        ],
+      })
+      expect(capturedSnapshots).toHaveLength(0)
+    })
+
+    it('should dispatch dvala.checkpoint effect to host handlers', async () => {
+      const checkpointMessages: string[] = []
+      await dvala.runAsync(`
+        perform(effect(my.action));
+        42
+      `, {
+        autoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
+            checkpointMessages.push(args[0] as string)
+            r(null)
+          } },
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      expect(checkpointMessages).toEqual(['my.action'])
+    })
+
+    it('should not auto-checkpoint for explicit dvala.checkpoint effects', async () => {
+      const checkpointMessages: string[] = []
+      await dvala.runAsync(`
+        perform(effect(dvala.checkpoint), "manual");
+        perform(effect(my.action))
+      `, {
+        autoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
+            checkpointMessages.push(args[0] as string)
+            r(null)
+          } },
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      // "manual" from explicit checkpoint, "my.action" from auto-checkpoint before my.action
+      expect(checkpointMessages).toEqual(['manual', 'my.action'])
+    })
+
+    it('should work with maxSnapshots', async () => {
+      let capturedSnapshots: readonly unknown[] = []
+      await dvala.runAsync(`
+        perform(effect(my.a));
+        perform(effect(my.b));
+        perform(effect(my.c));
+        perform(effect(my.check))
+      `, {
+        autoCheckpoint: true,
+        maxSnapshots: 2,
+        effectHandlers: [
+          { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.b', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.c', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
+            capturedSnapshots = [...snapshots]
+            r(null)
+          } },
+        ],
+      })
+      // 4 auto-checkpoints total, limit 2 — only last 2 retained
+      expect(capturedSnapshots).toHaveLength(2)
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('my.c')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('my.check')
+    })
+
+    it('should allow host handler to suspend on auto-checkpoint', async () => {
+      const result = await dvala.runAsync(`
+        perform(effect(my.action));
+        42
+      `, {
+        autoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ suspend }) => {
+            suspend({ reason: 'auto-checkpoint intercepted' })
+          } },
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      expect(result.type).toBe('suspended')
+      if (result.type === 'suspended') {
+        expect(result.snapshot.meta).toEqual({ reason: 'auto-checkpoint intercepted' })
+      }
+    })
+
+    it('should resume correctly after auto-checkpoint suspend', async () => {
+      const r1 = await dvala.runAsync(`
+        let x = perform(effect(my.action));
+        x * 2
+      `, {
+        autoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.action', handler: async ({ suspend }) => { suspend() } },
+        ],
+      })
+      expect(r1.type).toBe('suspended')
+      if (r1.type !== 'suspended') return
+
+      const r2 = await resumeContinuation(r1.snapshot, 21)
+      expect(r2).toMatchObject({ type: 'completed', value: 42 })
+    })
+  })
+
   describe('4b: resume() API', () => {
     it('should resume a simple suspended program', async () => {
       const r1 = await dvala.runAsync(`
