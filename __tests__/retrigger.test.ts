@@ -15,9 +15,9 @@ describe('snapshot captures effectName and effectArgs', () => {
     const result = await dvala.runAsync(`
       perform(effect(my.task), 42)
     `, {
-      effectHandlers: {
-        'my.task': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
@@ -29,9 +29,9 @@ describe('snapshot captures effectName and effectArgs', () => {
     const result = await dvala.runAsync(`
       perform(effect(my.task), 1, "hello", true)
     `, {
-      effectHandlers: {
-        'my.task': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
@@ -47,10 +47,11 @@ describe('snapshot captures effectName and effectArgs', () => {
         perform(effect(my.b))
       )
     `, {
-      effectHandlers: {
-        'my.a': async ({ resume: r }) => { r(1) },
-        'my.b': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.a', handler: async ({ resume: r }) => { r(1) } },
+
+        { pattern: 'my.b', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
@@ -62,9 +63,9 @@ describe('snapshot captures effectName and effectArgs', () => {
     const result = await dvala.runAsync(`
       perform(effect(my.save), { id: 99 })
     `, {
-      effectHandlers: {
-        'my.save': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.save', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
@@ -86,18 +87,18 @@ describe('retrigger()', () => {
       let x = perform(effect(my.ask));
       x + 1
     `, {
-      effectHandlers: {
-        'my.ask': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.ask', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
 
     const r2 = await retrigger(r1.snapshot, {
-      handlers: {
-        'my.ask': async ({ resume: r }) => { r(10) },
-      },
+      handlers: [
+        { pattern: 'my.ask', handler: async ({ resume: r }) => { r(10) } },
+      ],
     })
     expect(r2.type).toBe('completed')
     if (r2.type !== 'completed')
@@ -110,21 +111,21 @@ describe('retrigger()', () => {
     const r1 = await dvala.runAsync(`
       perform(effect(my.task), "foo", 42)
     `, {
-      effectHandlers: {
-        'my.task': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
 
     await retrigger(r1.snapshot, {
-      handlers: {
-        'my.task': async ({ args, resume: r }) => {
+      handlers: [
+        { pattern: 'my.task', handler: async ({ args, resume: r }) => {
           capturedArgs = args
           r(null)
-        },
-      },
+        } },
+      ],
     })
     expect(capturedArgs).toEqual(['foo', 42])
   })
@@ -134,9 +135,9 @@ describe('retrigger()', () => {
     const r1 = await dvala.runAsync(`
       perform(effect(my.thing))
     `, {
-      effectHandlers: {
-        'my.thing': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.thing', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -145,7 +146,9 @@ describe('retrigger()', () => {
     // Strip effectName to simulate a non-effect suspension
     const strippedSnapshot = { ...r1.snapshot, effectName: undefined, effectArgs: undefined }
     const r2 = await retrigger(strippedSnapshot, {
-      handlers: { 'my.thing': async ({ resume: r }) => { r(null) } },
+      handlers: [
+        { pattern: 'my.thing', handler: async ({ resume: r }) => { r(null) } },
+      ],
     })
     expect(r2.type).toBe('error')
   })
@@ -154,9 +157,9 @@ describe('retrigger()', () => {
     const r1 = await dvala.runAsync(`
       perform(effect(my.step))
     `, {
-      effectHandlers: {
-        'my.step': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -164,9 +167,9 @@ describe('retrigger()', () => {
 
     // Retrigger but the handler suspends again
     const r2 = await retrigger(r1.snapshot, {
-      handlers: {
-        'my.step': async ({ suspend }) => { suspend() },
-      },
+      handlers: [
+        { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r2.type).toBe('suspended')
   })
@@ -176,9 +179,9 @@ describe('retrigger()', () => {
       let x = perform(effect(my.get));
       x * 2
     `, {
-      effectHandlers: {
-        'my.get': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.get', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -186,9 +189,9 @@ describe('retrigger()', () => {
 
     const roundTripped = JSON.parse(JSON.stringify(r1.snapshot)) as Snapshot
     const r2 = await retrigger(roundTripped, {
-      handlers: {
-        'my.get': async ({ resume: r }) => { r(7) },
-      },
+      handlers: [
+        { pattern: 'my.get', handler: async ({ resume: r }) => { r(7) } },
+      ],
     })
     expect(r2.type).toBe('completed')
     if (r2.type !== 'completed')
@@ -202,10 +205,11 @@ describe('retrigger()', () => {
       let b = perform(effect(my.second));
       a + b
     `, {
-      effectHandlers: {
-        'my.first': async ({ suspend }) => { suspend() },
-        'my.second': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.first', handler: async ({ suspend }) => { suspend() } },
+
+        { pattern: 'my.second', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -214,10 +218,11 @@ describe('retrigger()', () => {
 
     // Retrigger first effect, handler resumes with 3
     const r2 = await retrigger(r1.snapshot, {
-      handlers: {
-        'my.first': async ({ resume: r }) => { r(3) },
-        'my.second': async ({ suspend }) => { suspend() },
-      },
+      handlers: [
+        { pattern: 'my.first', handler: async ({ resume: r }) => { r(3) } },
+
+        { pattern: 'my.second', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r2.type).toBe('suspended')
     if (r2.type !== 'suspended')
@@ -240,14 +245,14 @@ describe('retrigger()', () => {
         perform(effect(foo.bar), "B")
       )
     `, {
-      effectHandlers: {
-        'foo.bar': async ({ args, resume: r, suspend }) => {
+      effectHandlers: [
+        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend }) => {
           if (args[0] === 'A')
             r('resumed-A')
           else
             suspend()
-        },
-      },
+        } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -264,23 +269,23 @@ describe('retrigger()', () => {
         perform(effect(foo.bar), "B")
       )
     `, {
-      effectHandlers: {
-        'foo.bar': async ({ args, resume: r, suspend }) => {
+      effectHandlers: [
+        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend }) => {
           if (args[0] === 'A')
             r('got-A')
           else
             suspend()
-        },
-      },
+        } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
 
     const r2 = await retrigger(r1.snapshot, {
-      handlers: {
-        'foo.bar': async ({ resume: r }) => { r('got-B') },
-      },
+      handlers: [
+        { pattern: 'foo.bar', handler: async ({ resume: r }) => { r('got-B') } },
+      ],
     })
     expect(r2.type).toBe('completed')
     if (r2.type !== 'completed')
@@ -298,8 +303,8 @@ describe('retrigger()', () => {
         perform(effect(foo.bar), "C")
       )
     `, {
-      effectHandlers: {
-        'foo.bar': async ({ args, resume: r, suspend, signal }) => {
+      effectHandlers: [
+        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend, signal }) => {
           if (args[0] === 'A') {
             r('got-A')
           } else if (args[0] === 'B') {
@@ -313,8 +318,8 @@ describe('retrigger()', () => {
               }, { once: true })
             })
           }
-        },
-      },
+        } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -324,11 +329,11 @@ describe('retrigger()', () => {
 
     // Retrigger: B and C are dispatched concurrently — single retrigger completes all
     const r2 = await retrigger(r1.snapshot, {
-      handlers: {
-        'foo.bar': async ({ args, resume: r }) => {
+      handlers: [
+        { pattern: 'foo.bar', handler: async ({ args, resume: r }) => {
           r(args[0] === 'B' ? 'got-B' : 'got-C')
-        },
-      },
+        } },
+      ],
     })
     expect(r2.type).toBe('completed')
     if (r2.type !== 'completed')
@@ -360,7 +365,9 @@ describe('retrigger()', () => {
         perform(effect(foo.bar), "B"),
         perform(effect(foo.bar), "C")
       )
-    `, { effectHandlers: { 'foo.bar': suspendHandler } })
+    `, { effectHandlers: [
+      { pattern: 'foo.bar', handler: suspendHandler },
+    ] })
 
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -370,7 +377,9 @@ describe('retrigger()', () => {
 
     // Retrigger — A suspends again; B and C must also re-suspend via abort
     const r2 = await retrigger(r1.snapshot, {
-      handlers: { 'foo.bar': suspendHandler },
+      handlers: [
+        { pattern: 'foo.bar', handler: suspendHandler },
+      ],
     })
     expect(r2.type).toBe('suspended')
   })
@@ -379,9 +388,9 @@ describe('retrigger()', () => {
     const r1 = await dvala.runAsync(`
       perform(effect(my.ask))
     `, {
-      effectHandlers: {
-        'my.ask': async ({ suspend }) => { suspend() },
-      },
+      effectHandlers: [
+        { pattern: 'my.ask', handler: async ({ suspend }) => { suspend() } },
+      ],
     })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -390,9 +399,9 @@ describe('retrigger()', () => {
     const dummyModule = { name: 'test-mod', functions: {} }
     const r2 = await retrigger(r1.snapshot, {
       modules: [dummyModule],
-      handlers: {
-        'my.ask': async ({ resume: r }) => { r(99) },
-      },
+      handlers: [
+        { pattern: 'my.ask', handler: async ({ resume: r }) => { r(99) } },
+      ],
     })
     expect(r2.type).toBe('completed')
     if (r2.type !== 'completed')
@@ -409,7 +418,9 @@ describe('retrigger()', () => {
     } as any
 
     const result1 = await retrigger(badSnapshot, {
-      handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
+      handlers: [
+        { pattern: 'my.effect', handler: async ({ resume: res }) => { res(1) } },
+      ],
     })
     expect(result1.type).toBe('error')
   })
@@ -424,7 +435,9 @@ describe('retrigger()', () => {
     } as any
 
     const result2 = await retrigger(badSnapshot, {
-      handlers: { 'my.effect': async ({ resume: res }) => { res(1) } },
+      handlers: [
+        { pattern: 'my.effect', handler: async ({ resume: res }) => { res(1) } },
+      ],
     })
     expect(result2.type).toBe('error')
   })

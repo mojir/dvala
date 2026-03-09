@@ -3,7 +3,7 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import type { Any, UnknownRecord } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
-import type { EffectContext, EffectHandler, Snapshot } from '../../src/evaluator/effectTypes'
+import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
@@ -72,6 +72,10 @@ const elements = {
   infoModal: document.getElementById('info-modal') as HTMLDivElement,
   infoModalTitle: document.getElementById('info-modal-title') as HTMLDivElement,
   infoModalMessage: document.getElementById('info-modal-message') as HTMLDivElement,
+  confirmModal: document.getElementById('confirm-modal') as HTMLDivElement,
+  confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
+  confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
+  confirmModalOk: document.getElementById('confirm-modal-ok') as HTMLButtonElement,
   importSnapshotTextarea: document.getElementById('import-snapshot-textarea') as HTMLTextAreaElement,
   importSnapshotError: document.getElementById('import-snapshot-error') as HTMLSpanElement,
   toastContainer: document.getElementById('toast-container') as HTMLDivElement,
@@ -430,15 +434,35 @@ function formatContextJson(context: Record<string, unknown>): string {
   const parts: string[] = ['{']
   const entries = Object.entries(context)
   entries.forEach(([key, value], i) => {
-    const record = value as Record<string, unknown>
-    const subEntries = Object.entries(record)
-    parts.push(`  ${JSON.stringify(key)}: {`)
-    subEntries.forEach(([subKey, subValue], j) => {
-      const comma = j < subEntries.length - 1 ? ',' : ''
-      parts.push(`    ${JSON.stringify(subKey)}: ${JSON.stringify(subValue)}${comma}`)
-    })
     const comma = i < entries.length - 1 ? ',' : ''
-    parts.push(`  }${comma}`)
+    if (Array.isArray(value)) {
+      const items = value as Record<string, unknown>[]
+      if (items.length === 0) {
+        parts.push(`  ${JSON.stringify(key)}: []${comma}`)
+      } else {
+        parts.push(`  ${JSON.stringify(key)}: [`)
+        items.forEach((item, j) => {
+          const itemComma = j < items.length - 1 ? ',' : ''
+          const itemEntries = Object.entries(item)
+          parts.push('    {')
+          itemEntries.forEach(([itemKey, itemValue], k) => {
+            const fieldComma = k < itemEntries.length - 1 ? ',' : ''
+            parts.push(`      ${JSON.stringify(itemKey)}: ${JSON.stringify(itemValue)}${fieldComma}`)
+          })
+          parts.push(`    }${itemComma}`)
+        })
+        parts.push(`  ]${comma}`)
+      }
+    } else {
+      const record = value as Record<string, unknown>
+      const subEntries = Object.entries(record)
+      parts.push(`  ${JSON.stringify(key)}: {`)
+      subEntries.forEach(([subKey, subValue], j) => {
+        const subComma = j < subEntries.length - 1 ? ',' : ''
+        parts.push(`    ${JSON.stringify(subKey)}: ${JSON.stringify(subValue)}${subComma}`)
+      })
+      parts.push(`  }${comma}`)
+    }
   })
   parts.push('}')
   return parts.join('\n')
@@ -480,17 +504,18 @@ export function addSampleContext() {
 
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
-  const sampleEffectHandlers: Record<string, string> = {
-
-    'host.greet': 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }',
-    'host.add': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
-    'host.delay': `async ({ args: [ms], resume }) => {
+  const sampleEffectHandlers: { pattern: string; handler: string }[] = [
+    { pattern: 'host.greet', handler: 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }' },
+    { pattern: 'host.add', handler: 'async ({ args: [a, b], resume }) => { resume(a + b) }' },
+    { pattern: 'host.delay', handler: `async ({ args: [ms], resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
-}`,
-  }
+}` },
+  ]
 
-  context.effectHandlers = Object.assign(sampleEffectHandlers, context.effectHandlers as Record<string, string> | undefined)
+  const existing = (context.effectHandlers ?? []) as { pattern: string; handler: string }[]
+  const existingPatterns = new Set(existing.map(h => h.pattern))
+  context.effectHandlers = [...existing, ...sampleEffectHandlers.filter(h => !existingPatterns.has(h.pattern))]
 
   setContext(formatContextJson(context), true)
 }
@@ -750,6 +775,8 @@ window.onload = function () {
         dismissPrintln()
       } else if (elements.infoModal.style.display !== 'none') {
         closeInfoModal()
+      } else if (elements.confirmModal.style.display !== 'none') {
+        closeConfirmModal()
       } else if (elements.importSnapshotModal.style.display !== 'none') {
         closeImportSnapshotModal()
       } else if (currentSnapshot) {
@@ -768,6 +795,10 @@ window.onload = function () {
     if (evt.key === 'Enter' && elements.infoModal.style.display !== 'none') {
       evt.preventDefault()
       closeInfoModal()
+    }
+    if (evt.key === 'Enter' && elements.confirmModal.style.display !== 'none') {
+      evt.preventDefault()
+      elements.confirmModalOk.click()
     }
     if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
       evt.preventDefault()
@@ -1125,6 +1156,20 @@ export function toggleDebug() {
   updateCSS()
   showToast(`Debug mode ${debug ? 'ON' : 'OFF'}`)
   focusDvalaCode()
+}
+
+export function toggleInterceptCheckpoint() {
+  const intercept = !getState('intercept-checkpoint')
+  saveState({ 'intercept-checkpoint': intercept })
+  updateCSS()
+  showToast(`Checkpoint interception ${intercept ? 'ON' : 'OFF'}`)
+}
+
+export function toggleAutoCheckpoint() {
+  const auto = !getState('auto-checkpoint')
+  saveState({ 'auto-checkpoint': auto })
+  updateCSS()
+  showToast(`Auto-checkpoint ${auto ? 'ON' : 'OFF'}`)
 }
 
 export function focusContext() {
@@ -1489,6 +1534,20 @@ export function closeInfoModal() {
   elements.infoModal.style.display = 'none'
 }
 
+export function showConfirmModal(title: string, message: string, onConfirm: () => void) {
+  elements.confirmModalTitle.textContent = title
+  elements.confirmModalMessage.textContent = message
+  elements.confirmModalOk.onclick = () => {
+    closeConfirmModal()
+    onConfirm()
+  }
+  elements.confirmModal.style.display = 'flex'
+}
+
+export function closeConfirmModal() {
+  elements.confirmModal.style.display = 'none'
+}
+
 export function shareSnapshot() {
   if (!currentSnapshot)
     return
@@ -1559,11 +1618,16 @@ export async function resumeSnapshot() {
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
   if (ctx.effectName === 'dvala.checkpoint') {
-    showToast(`Checkpoint: ${ctx.args[0]}`)
+    if (getState('intercept-checkpoint')) {
+      showToast(`Checkpoint: ${ctx.args[0]}`)
+    }
     ctx.next()
     return
   }
   return new Promise<void>(resolve => {
+    if (getState('auto-checkpoint')) {
+      ctx.checkpoint(`Before ${ctx.effectName}`)
+    }
     const pending: PendingEffect = { ctx, resolve, handled: false }
     pendingEffects.push(pending)
 
@@ -1847,7 +1911,7 @@ export function dismissPrintln() {
   focusDvalaCode()
 }
 
-function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: Record<string, EffectHandler> } {
+function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
     const parsedContext
@@ -1855,33 +1919,34 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
         ? JSON.parse(contextString) as UnknownRecord
         : {}
 
-    const parsedHandlers = asUnknownRecord(parsedContext.effectHandlers ?? {})
+    const parsedHandlers = (parsedContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
     const bindings = asUnknownRecord(parsedContext.bindings ?? {})
 
-    const effectHandlers: Record<string, EffectHandler> = Object.entries(parsedHandlers).reduce((acc: Record<string, EffectHandler>, [key, value]) => {
+    const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
-        console.log(key, value)
-        throw new TypeError(`Invalid handler value. "${key}" should be a javascript function string`)
+        console.log(pattern, value)
+        throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function string`)
       }
 
       const fn = eval(value) as EffectHandler
 
       if (typeof fn !== 'function') {
-        throw new TypeError(`Invalid handler value. "${key}" should be a javascript function`)
+        throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function`)
       }
 
-      acc[key] = fn
-      return acc
-    }, {})
+      return { pattern, handler: fn }
+    })
 
-    if (!effectHandlers['dvala.io.read-line'])
-      effectHandlers['dvala.io.read-line'] = readlineHandler
-    if (!effectHandlers['dvala.io.println'])
-      effectHandlers['dvala.io.println'] = printlnHandler
-    if (!effectHandlers['dvala.io.print'])
-      effectHandlers['dvala.io.print'] = printHandler
-    if (!effectHandlers['*'])
-      effectHandlers['*'] = defaultEffectHandler
+    const hasPattern = (p: string) => effectHandlers.some(h => h.pattern === p)
+
+    if (!hasPattern('dvala.io.read-line'))
+      effectHandlers.push({ pattern: 'dvala.io.read-line', handler: readlineHandler })
+    if (!hasPattern('dvala.io.println'))
+      effectHandlers.push({ pattern: 'dvala.io.println', handler: printlnHandler })
+    if (!hasPattern('dvala.io.print'))
+      effectHandlers.push({ pattern: 'dvala.io.print', handler: printHandler })
+    if (!hasPattern('*'))
+      effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
 
     return {
       bindings,
@@ -1889,7 +1954,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     }
   } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
-    return { bindings: {}, effectHandlers: { '*': defaultEffectHandler } }
+    return { bindings: {}, effectHandlers: [{ pattern: '*', handler: defaultEffectHandler }] }
   }
 }
 function getSelectedDvalaCode(): {
@@ -1947,6 +2012,16 @@ function updateCSS() {
   const debug = getState('debug')
   elements.toggleDebugMenuLabel.textContent = debug ? 'Debug: ON' : 'Debug: OFF'
   elements.dvalaPanelDebugInfo.style.display = debug ? 'flex' : 'none'
+
+  const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
+  if (debugToggle)
+    debugToggle.checked = debug
+  const checkpointToggle = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
+  if (checkpointToggle)
+    checkpointToggle.checked = getState('intercept-checkpoint')
+  const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
+  if (autoCheckpointToggle)
+    autoCheckpointToggle.checked = getState('auto-checkpoint')
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   elements.dvalaCodeTitleString.textContent = 'Dvala Code'

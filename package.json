@@ -305,9 +305,7 @@
       "output": [
         "playground-builder/build/**",
         "playground-www/build/**",
-        "docs/playground.js",
-        "docs/index.html",
-        "docs/styles.css"
+        "docs/**"
       ],
       "clean": "if-file-deleted"
     },

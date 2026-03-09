@@ -5,7 +5,7 @@ export interface Example {
   code: string
   context?: {
     bindings?: Record<string, unknown>
-    effectHandlers?: Record<string, string>
+    effectHandlers?: { pattern: string; handler: string }[]
   }
 }
 
@@ -47,9 +47,9 @@ perform(effect(dvala.io.print), [1, 2, 3][2]);
     description: 'Simple example using bindings and a host effect handler.',
     context: {
       bindings: { x: 15, y: 27 },
-      effectHandlers: {
-        'host.plus': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
-      },
+      effectHandlers: [
+        { pattern: 'host.plus', handler: 'async ({ args: [a, b], resume }) => { resume(a + b) }' },
+      ],
     },
     code: `
 perform(effect(host.plus), x, y)
@@ -60,26 +60,26 @@ perform(effect(host.plus), x, y)
     name: 'Async host effects',
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     context: {
-      effectHandlers: {
-        'host.fetch-user': `async ({ args: [id], resume, fail }) => {
+      effectHandlers: [
+        { pattern: 'host.fetch-user', handler: `async ({ args: [id], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     const user = await response.json();
     resume({ name: user.name, email: user.email, city: user.address.city });
   } catch(e) { fail(e.message) }
-}`,
-        'host.fetch-posts': `async ({ args: [userId], resume, fail }) => {
+}` },
+        { pattern: 'host.fetch-posts', handler: `async ({ args: [userId], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
     const posts = await response.json();
     resume(posts.slice(0, 3).map(p => ({ title: p.title, body: p.body })));
   } catch(e) { fail(e.message) }
-}`,
-        'host.delay': `async ({ args: [ms], resume }) => {
+}` },
+        { pattern: 'host.delay', handler: `async ({ args: [ms], resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
-}`,
-      },
+}` },
+      ],
     },
     code: `
 // Call async host effects with perform(effect(...), args...)
@@ -106,23 +106,23 @@ doseq (post in posts) -> perform(effect(dvala.io.print), "- " ++ post.title);
     name: 'Interactive async',
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     context: {
-      effectHandlers: {
-        'host.fetch-user': `async ({ args: [id], resume, fail }) => {
+      effectHandlers: [
+        { pattern: 'host.fetch-user', handler: `async ({ args: [id], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     if (!response.ok) { resume(null); return; }
     const user = await response.json();
     resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
   } catch(e) { fail(e.message) }
-}`,
-        'host.fetch-todos': `async ({ args: [userId], resume, fail }) => {
+}` },
+        { pattern: 'host.fetch-todos', handler: `async ({ args: [userId], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
     const todos = await response.json();
     resume(todos.map(t => ({ title: t.title, completed: t.completed })));
   } catch(e) { fail(e.message) }
-}`,
-      },
+}` },
+      ],
     },
     code: `
 // Interactive async example

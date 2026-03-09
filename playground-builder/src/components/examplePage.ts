@@ -7,16 +7,37 @@ function formatContextJson(context: Record<string, unknown>): string {
   const parts: string[] = ['{']
   const entries = Object.entries(context)
   entries.forEach(([key, value], i) => {
-    const record = value as Record<string, unknown>
-    const subEntries = Object.entries(record)
-    parts.push(`  ${JSON.stringify(key)}: {`)
-    subEntries.forEach(([subKey, subValue], j) => {
-      const comma = j < subEntries.length - 1 ? ',' : ''
-      const val = typeof subValue === 'string' ? JSON.stringify(subValue).replace(/\\n/g, '\n').replace(/\\t/g, '\t') : JSON.stringify(subValue)
-      parts.push(`    ${JSON.stringify(subKey)}: ${val}${comma}`)
-    })
     const comma = i < entries.length - 1 ? ',' : ''
-    parts.push(`  }${comma}`)
+    if (Array.isArray(value)) {
+      const items = value as Record<string, unknown>[]
+      if (items.length === 0) {
+        parts.push(`  ${JSON.stringify(key)}: []${comma}`)
+      } else {
+        parts.push(`  ${JSON.stringify(key)}: [`)
+        items.forEach((item, j) => {
+          const itemComma = j < items.length - 1 ? ',' : ''
+          const itemEntries = Object.entries(item)
+          parts.push('    {')
+          itemEntries.forEach(([itemKey, itemValue], k) => {
+            const fieldComma = k < itemEntries.length - 1 ? ',' : ''
+            const val = typeof itemValue === 'string' ? JSON.stringify(itemValue).replace(/\\n/g, '\n').replace(/\\t/g, '\t') : JSON.stringify(itemValue)
+            parts.push(`      ${JSON.stringify(itemKey)}: ${val}${fieldComma}`)
+          })
+          parts.push(`    }${itemComma}`)
+        })
+        parts.push(`  ]${comma}`)
+      }
+    } else {
+      const record = value as Record<string, unknown>
+      const subEntries = Object.entries(record)
+      parts.push(`  ${JSON.stringify(key)}: {`)
+      subEntries.forEach(([subKey, subValue], j) => {
+        const subComma = j < subEntries.length - 1 ? ',' : ''
+        const val = typeof subValue === 'string' ? JSON.stringify(subValue).replace(/\\n/g, '\n').replace(/\\t/g, '\t') : JSON.stringify(subValue)
+        parts.push(`    ${JSON.stringify(subKey)}: ${val}${subComma}`)
+      })
+      parts.push(`  }${comma}`)
+    }
   })
   parts.push('}')
   return parts.join('\n')

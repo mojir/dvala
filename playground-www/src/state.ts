@@ -20,6 +20,8 @@ export const defaultState = {
   'new-context-name': '' as string,
   'new-context-value': '' as string,
   'debug': false as boolean,
+  'intercept-checkpoint': false as boolean,
+  'auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
 } as const
 

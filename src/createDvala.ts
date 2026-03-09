@@ -115,16 +115,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
     if (!factoryEffectHandlers && !runEffectHandlers)
       return undefined
-    // Run handlers first (checked first), factory handlers fill in the rest.
-    // For same key, run overrides factory.
-    const result: Handlers = { ...runEffectHandlers }
-    if (factoryEffectHandlers) {
-      for (const [k, v] of Object.entries(factoryEffectHandlers)) {
-        if (!(k in result))
-          result[k] = v
-      }
-    }
-    return result
+    // Run handlers first (checked first), then factory handlers.
+    return [...(runEffectHandlers ?? []), ...(factoryEffectHandlers ?? [])]
   }
 
   function assertNotPureWithHandlers(
@@ -133,7 +125,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   ): void {
     if (!pure)
       return
-    const hasEffectHandlers = effectHandlers && Object.keys(effectHandlers).length > 0
+    const hasEffectHandlers = effectHandlers && effectHandlers.length > 0
     if (hasEffectHandlers) {
       throw new TypeError('Cannot use pure mode with effect handlers')
     }

@@ -48,9 +48,9 @@ describe('createDvala', () => {
   describe('sync effect handlers', () => {
     it('run uses effectHandlers from factory', () => {
       const d = createDvala({
-        effectHandlers: {
-          'my.val': ({ resume }) => resume(42),
-        },
+        effectHandlers: [
+          { pattern: 'my.val', handler: ({ resume }) => resume(42) },
+        ],
       })
       expect(d.run('perform(effect(my.val))')).toBe(42)
     })
@@ -58,16 +58,22 @@ describe('createDvala', () => {
     it('run uses effectHandlers from per-run options', () => {
       const d = createDvala()
       expect(d.run('perform(effect(my.val))', {
-        effectHandlers: { 'my.val': ({ resume }) => resume(99) },
+        effectHandlers: [
+          { pattern: 'my.val', handler: ({ resume }) => resume(99) },
+        ],
       })).toBe(99)
     })
 
     it('per-run effectHandlers are stacked on top of factory effectHandlers', () => {
       const d = createDvala({
-        effectHandlers: { 'my.*': ({ resume }) => resume('factory') },
+        effectHandlers: [
+          { pattern: 'my.*', handler: ({ resume }) => resume('factory') },
+        ],
       })
       expect(d.run('perform(effect(my.specific))', {
-        effectHandlers: { 'my.specific': ({ resume }) => resume('run') },
+        effectHandlers: [
+          { pattern: 'my.specific', handler: ({ resume }) => resume('run') },
+        ],
       })).toBe('run')
     })
   })
@@ -78,13 +84,17 @@ describe('createDvala', () => {
       expect(() => d.run('1 + 1', {
         pure: true,
         // @ts-expect-error -- deliberately testing runtime guard for type-prevented combination
-        effectHandlers: { 'my.effect': ({ resume }: { resume: (v: number) => void }) => resume(1) },
+        effectHandlers: [
+          { pattern: 'my.effect', handler: ({ resume }: { resume: (v: number) => void }) => resume(1) },
+        ],
       })).toThrow('Cannot use pure mode with effect handlers')
     })
 
     it('pure mode with factory effectHandlers throws at run time', () => {
       const d = createDvala({
-        effectHandlers: { 'my.effect': ({ resume }) => resume(1) },
+        effectHandlers: [
+          { pattern: 'my.effect', handler: ({ resume }) => resume(1) },
+        ],
       })
       expect(() => d.run('1 + 1', { pure: true })).toThrow('Cannot use pure mode with effect handlers')
     })
@@ -105,9 +115,9 @@ describe('createDvala', () => {
 
     it('runs with effectHandlers from factory', async () => {
       const d = createDvala({
-        effectHandlers: {
-          'my.ask': async ({ resume }) => resume(42),
-        },
+        effectHandlers: [
+          { pattern: 'my.ask', handler: async ({ resume }) => resume(42) },
+        ],
       })
       const result = await d.runAsync('perform(effect(my.ask))')
       expect(result).toEqual({ type: 'completed', value: 42, definedBindings: {} })
@@ -116,17 +126,23 @@ describe('createDvala', () => {
     it('runs with effectHandlers from per-run options', async () => {
       const d = createDvala()
       const result = await d.runAsync('perform(effect(my.ask))', {
-        effectHandlers: { 'my.ask': async ({ resume }) => resume(7) },
+        effectHandlers: [
+          { pattern: 'my.ask', handler: async ({ resume }) => resume(7) },
+        ],
       })
       expect(result).toEqual({ type: 'completed', value: 7, definedBindings: {} })
     })
 
     it('per-run effectHandlers are stacked on top of factory effectHandlers', async () => {
       const d = createDvala({
-        effectHandlers: { 'my.*': async ({ resume }) => resume('factory') },
+        effectHandlers: [
+          { pattern: 'my.*', handler: async ({ resume }) => resume('factory') },
+        ],
       })
       const result = await d.runAsync('perform(effect(my.specific))', {
-        effectHandlers: { 'my.specific': async ({ resume }) => resume('run') },
+        effectHandlers: [
+          { pattern: 'my.specific', handler: async ({ resume }) => resume('run') },
+        ],
       })
       expect(result).toEqual({ type: 'completed', value: 'run', definedBindings: {} })
     })
@@ -142,7 +158,9 @@ describe('createDvala', () => {
       await expect(d.runAsync('1 + 1', {
         pure: true,
         // @ts-expect-error -- deliberately testing runtime guard for type-prevented combination
-        effectHandlers: { 'my.effect': async ({ resume }: { resume: (v: number) => void }) => resume(1) },
+        effectHandlers: [
+          { pattern: 'my.effect', handler: async ({ resume }: { resume: (v: number) => void }) => resume(1) },
+        ],
       })).rejects.toThrow('pure mode')
     })
   })

@@ -232,11 +232,11 @@ describe('phase 7 — Time-Travel Debugger', () => {
   describe('7b: Debugger API — with effect handlers', () => {
     it('should work with host effect handlers', async () => {
       const dbg = createDebugger({
-        handlers: {
-          'test.echo': async ({ args, resume }) => {
+        handlers: [
+          { pattern: 'test.echo', handler: async ({ args, resume }) => {
             resume(`echo: ${args[0]}`)
-          },
-        },
+          } },
+        ],
       })
 
       const result = await dbg.run(`
@@ -259,11 +259,11 @@ describe('phase 7 — Time-Travel Debugger', () => {
 
     it('should work with standard effects', async () => {
       const dbg = createDebugger({
-        handlers: {
-          'dvala.now': async ({ resume }) => {
+        handlers: [
+          { pattern: 'dvala.now', handler: async ({ resume }) => {
             resume(1234567890)
-          },
-        },
+          } },
+        ],
       })
 
       let r = await dbg.run('perform(effect(dvala.now))')
@@ -420,12 +420,12 @@ describe('phase 7 — Time-Travel Debugger', () => {
     it('should support deterministic replay with handlers', async () => {
       let _callCount = 0
       const dbg = createDebugger({
-        handlers: {
-          'dvala.random': async ({ resume }) => {
+        handlers: [
+          { pattern: 'dvala.random', handler: async ({ resume }) => {
             _callCount++
             resume(0.42)
-          },
-        },
+          } },
+        ],
       })
 
       let r = await dbg.run('perform(effect(dvala.random))')
@@ -556,11 +556,11 @@ describe('phase 7 — Time-Travel Debugger', () => {
       // Use an invalid source that triggers a non-DvalaError
       // We mock by providing a handler that throws a native error
       const dbg = createDebugger({
-        handlers: {
-          'test.throw': async () => {
+        handlers: [
+          { pattern: 'test.throw', handler: async () => {
             throw new TypeError('native error')
-          },
-        },
+          } },
+        ],
       })
       const r = await dbg.run('perform(effect(test.throw))')
       // Step through until the effect is reached

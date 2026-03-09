@@ -130,23 +130,23 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
 
   const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
-  const handlers: Handlers = {
-    'dvala.io.print': async (ctx) => {
+  const handlers: Handlers = [
+    { pattern: 'dvala.io.print', handler: async (ctx) => {
       const str = stringifyValue(ctx.args[0], false)
       channel.append(str)
       ctx.resume(ctx.args[0])
-    },
-    'dvala.io.println': async (ctx) => {
+    } },
+    { pattern: 'dvala.io.println', handler: async (ctx) => {
       const str = stringifyValue(ctx.args[0], false)
       channel.appendLine(str)
       ctx.resume(ctx.args[0])
-    },
-    'dvala.io.error': async (ctx) => {
+    } },
+    { pattern: 'dvala.io.error', handler: async (ctx) => {
       const str = stringifyValue(ctx.args[0], false)
       channel.appendLine(`[stderr] ${str}`)
       ctx.resume(ctx.args[0])
-    },
-    'dvala.io.read-line': async (ctx) => {
+    } },
+    { pattern: 'dvala.io.read-line', handler: async (ctx) => {
       const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : undefined
       const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
       if (result === undefined) {
@@ -156,8 +156,8 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       else {
         ctx.resume(result)
       }
-    },
-        '*': async (ctx) => {
+    } },
+    { pattern: '*', handler: async (ctx) => {
       if (ctx.effectName.startsWith('dvala.error')) {
         ctx.next()
         return
@@ -179,8 +179,8 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       catch {
         ctx.fail(`Invalid JSON for effect "${ctx.effectName}": ${input}`)
       }
-    },
-  }
+    } },
+  ]
 
   const status = getStatusBarItem()
   status.text = '$(sync~spin) Dvala: Running...'

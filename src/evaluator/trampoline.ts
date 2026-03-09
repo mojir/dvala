@@ -3628,7 +3628,7 @@ async function runEffectLoop(
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
-  const debugMode = handlers !== null && handlers !== undefined && 'dvala.debug.step' in handlers
+  const debugMode = Array.isArray(handlers) && handlers.some(h => h.pattern === 'dvala.debug.step')
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,

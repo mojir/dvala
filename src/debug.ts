@@ -180,7 +180,7 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   initCoreDvalaSources()
   const history: HistoryEntry[] = []
   let currentStep = -1
-  const userHandlers = options?.handlers ?? {}
+  const userHandlers = options?.handlers ?? []
   const bindings = options?.bindings
   const modules = options?.modules
 
@@ -192,10 +192,10 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   }
 
   // Merge user handlers with the debug step handler
-  const handlers: Handlers = {
+  const handlers: Handlers = [
     ...userHandlers,
-    'dvala.debug.step': debugHandler,
-  }
+    { pattern: 'dvala.debug.step', handler: debugHandler },
+  ]
 
   /**
    * Process a RunResult from the trampoline.

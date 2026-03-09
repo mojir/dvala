@@ -6,6 +6,7 @@ import { randomNumbers } from './randomNumbers'
 import { getStartPage } from './components/startPage'
 import { getExamplePage } from './components/examplePage'
 import { getModulesPage } from './components/modulesPage'
+import { getSettingsPage } from './components/settingsPage'
 import { getCorePage } from './components/corePage'
 import { getAllTutorialPages } from './components/tutorials'
 import { getPlayground } from './components/playground'
@@ -52,6 +53,7 @@ async function writeIndexPage() {
         ${corePage}
         ${modulesPage}
         ${docItems}
+        ${getSettingsPage()}
       </main>
       <div id="resize-sidebar" style="position: fixed; width: 5px; cursor: col-resize; background-color: rgb(82 82 82); top: 0; z-index: 10;"></div>
       ${getSideBar()}
