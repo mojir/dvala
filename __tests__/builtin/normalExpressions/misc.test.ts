@@ -6,13 +6,11 @@ import { DvalaError } from '../../../src/errors'
 describe('misc functions', () => {
   let oldLog: () => void
 
-  let logSpy: (...args: unknown[]) => void
+  let logSpy: typeof console.log
   beforeEach(() => {
     oldLog = console.log
     logSpy = vitest.fn()
-    console.log = (...args) => {
-      logSpy(...args)
-    }
+    console.log = logSpy
   })
   afterEach(() => {
     console.log = oldLog

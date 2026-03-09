@@ -7,13 +7,11 @@ import { functionalUtilsModule } from '../../../src/builtin/modules/functional'
 describe('functional functions.', () => {
   for (const dvala of [createDvala({ modules: [functionalUtilsModule] }), createDvala({ debug: true, modules: [functionalUtilsModule] })]) {
     let oldLog: () => void
-    let logSpy: (...args: unknown[]) => void
+    let logSpy: typeof console.log
     beforeEach(() => {
       oldLog = console.log
       logSpy = vitest.fn()
-      console.log = (...args) => {
-        logSpy(...args)
-      }
+      console.log = logSpy
     })
     afterEach(() => {
       console.log = oldLog
