@@ -1,6 +1,7 @@
 dist
 build
 coverage
+docs
 .wireit
 node_modules
 test-report.xml
