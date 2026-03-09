@@ -10,7 +10,7 @@ const dvala = createDvala()
 const dvalaDebug = createDvala({ debug: true })
 
 describe('specialExpressions', () => {
-  let logSpy: Mock<any>
+  let logSpy: Mock
 
   let stdoutSpy: { mockRestore: () => void }
   beforeEach(() => {
