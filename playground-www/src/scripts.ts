@@ -76,6 +76,10 @@ const elements = {
   confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
   confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
   confirmModalOk: document.getElementById('confirm-modal-ok') as HTMLButtonElement,
+  checkpointModal: document.getElementById('checkpoint-modal') as HTMLDivElement,
+  checkpointModalMessage: document.getElementById('checkpoint-modal-message') as HTMLElement,
+  checkpointModalMeta: document.getElementById('checkpoint-modal-meta') as HTMLDivElement,
+  checkpointModalTech: document.getElementById('checkpoint-modal-tech') as HTMLDivElement,
   importSnapshotTextarea: document.getElementById('import-snapshot-textarea') as HTMLTextAreaElement,
   importSnapshotError: document.getElementById('import-snapshot-error') as HTMLSpanElement,
   toastContainer: document.getElementById('toast-container') as HTMLDivElement,
@@ -777,6 +781,8 @@ window.onload = function () {
         closeInfoModal()
       } else if (elements.confirmModal.style.display !== 'none') {
         closeConfirmModal()
+      } else if (elements.checkpointModal.style.display !== 'none') {
+        closeCheckpointModal()
       } else if (elements.importSnapshotModal.style.display !== 'none') {
         closeImportSnapshotModal()
       } else if (currentSnapshot) {
@@ -799,6 +805,10 @@ window.onload = function () {
     if (evt.key === 'Enter' && elements.confirmModal.style.display !== 'none') {
       evt.preventDefault()
       elements.confirmModalOk.click()
+    }
+    if (evt.key === 'Enter' && elements.checkpointModal.style.display !== 'none') {
+      evt.preventDefault()
+      saveCheckpoint()
     }
     if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
       evt.preventDefault()
@@ -923,7 +933,7 @@ function getDataFromUrl() {
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
     if (snapshot) {
       showToast('Snapshot loaded from link')
-      openSnapshotModal(snapshot)
+      void openSnapshotModal(snapshot)
     } else {
       showToast('Invalid snapshot link', { severity: 'error' })
     }
@@ -1030,12 +1040,12 @@ export async function run() {
 
   const hijacker = hijackConsole()
   try {
-    const runResult = await getDvala().runAsync(code, { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers })
+    const runResult = await getDvala().runAsync(code, { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, autoCheckpoint: getState('auto-checkpoint') })
     if (runResult.type === 'error')
       throw runResult.error
     if (runResult.type === 'suspended') {
       appendOutput('Program suspended', 'comment')
-      openSnapshotModal(runResult.snapshot)
+      void openSnapshotModal(runResult.snapshot)
       return
     }
     const content = stringifyValue(runResult.value, false)
@@ -1431,7 +1441,9 @@ function pushCheckpointPanel(snapshot: Snapshot) {
   )
 }
 
-export function openSnapshotModal(snapshot: Snapshot) {
+let resolveSnapshotModal: (() => void) | null = null
+
+export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   currentSnapshot = snapshot
   elements.snapshotPanelContainer.innerHTML = ''
   snapshotPanelStack.length = 0
@@ -1442,6 +1454,10 @@ export function openSnapshotModal(snapshot: Snapshot) {
   buildBreadcrumbs(panel)
 
   elements.snapshotModal.style.display = 'flex'
+
+  return new Promise<void>(resolve => {
+    resolveSnapshotModal = resolve
+  })
 }
 
 export function slideBackSnapshotModal() {
@@ -1464,17 +1480,27 @@ export function closeSnapshotModal() {
   elements.snapshotPanelContainer.innerHTML = ''
   snapshotPanelStack.length = 0
   currentSnapshot = null
+  resolveSnapshotModal?.()
+  resolveSnapshotModal = null
 }
 
-export function openImportSnapshotModal() {
+let resolveImportSnapshotModal: (() => void) | null = null
+
+export function openImportSnapshotModal(): Promise<void> {
   elements.importSnapshotTextarea.value = ''
   elements.importSnapshotError.classList.add('hidden')
   elements.importSnapshotModal.style.display = 'flex'
   elements.importSnapshotTextarea.focus()
+
+  return new Promise<void>(resolve => {
+    resolveImportSnapshotModal = resolve
+  })
 }
 
 export function closeImportSnapshotModal() {
   elements.importSnapshotModal.style.display = 'none'
+  resolveImportSnapshotModal?.()
+  resolveImportSnapshotModal = null
 }
 
 export function importSnapshot() {
@@ -1488,7 +1514,7 @@ export function importSnapshot() {
     const snapshot = JSON.parse(text) as Snapshot
     closeImportSnapshotModal()
     showToast('Snapshot imported')
-    openSnapshotModal(snapshot)
+    void openSnapshotModal(snapshot)
   } catch {
     elements.importSnapshotError.textContent = 'Invalid JSON'
     elements.importSnapshotError.classList.remove('hidden')
@@ -1524,17 +1550,27 @@ function dismissToast(toast: HTMLElement) {
   toast.addEventListener('animationend', () => toast.remove())
 }
 
-export function showInfoModal(title: string, message: string) {
+let resolveInfoModal: (() => void) | null = null
+
+export function showInfoModal(title: string, message: string): Promise<void> {
   elements.infoModalTitle.textContent = title
   elements.infoModalMessage.textContent = message
   elements.infoModal.style.display = 'flex'
+
+  return new Promise<void>(resolve => {
+    resolveInfoModal = resolve
+  })
 }
 
 export function closeInfoModal() {
   elements.infoModal.style.display = 'none'
+  resolveInfoModal?.()
+  resolveInfoModal = null
 }
 
-export function showConfirmModal(title: string, message: string, onConfirm: () => void) {
+let resolveConfirmModal: (() => void) | null = null
+
+export function showConfirmModal(title: string, message: string, onConfirm: () => void): Promise<void> {
   elements.confirmModalTitle.textContent = title
   elements.confirmModalMessage.textContent = message
   elements.confirmModalOk.onclick = () => {
@@ -1542,10 +1578,114 @@ export function showConfirmModal(title: string, message: string, onConfirm: () =
     onConfirm()
   }
   elements.confirmModal.style.display = 'flex'
+
+  return new Promise<void>(resolve => {
+    resolveConfirmModal = resolve
+  })
 }
 
 export function closeConfirmModal() {
   elements.confirmModal.style.display = 'none'
+  resolveConfirmModal?.()
+  resolveConfirmModal = null
+}
+
+let currentCheckpointSnapshot: Snapshot | null = null
+let resolveCheckpointModal: (() => void) | null = null
+
+export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
+  currentCheckpointSnapshot = snapshot
+
+  // Message
+  elements.checkpointModalMessage.textContent = snapshot.message || '(no message)'
+
+  // Meta
+  elements.checkpointModalMeta.innerHTML = ''
+  if (snapshot.meta === undefined || snapshot.meta === null) {
+    const empty = document.createElement('span')
+    empty.textContent = '(no metadata)'
+    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    elements.checkpointModalMeta.appendChild(empty)
+  } else {
+    const code = document.createElement('code')
+    code.textContent = JSON.stringify(snapshot.meta, null, 2)
+    code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+    elements.checkpointModalMeta.appendChild(code)
+  }
+
+  // Technical info
+  elements.checkpointModalTech.innerHTML = ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const d = new Date(snapshot.timestamp)
+  const techRows: [string, string][] = [
+    ['Index', String(snapshot.index)],
+    ['Run ID', snapshot.runId],
+    ['Timestamp', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`],
+  ]
+  techRows.forEach(([label, value]) => {
+    const row = makeArgRow(value)
+    const labelEl = document.createElement('span')
+    labelEl.textContent = label
+    labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
+    row.insertBefore(labelEl, row.firstChild)
+    elements.checkpointModalTech.appendChild(row)
+  })
+
+  elements.checkpointModal.style.display = 'flex'
+
+  return new Promise<void>(resolve => {
+    resolveCheckpointModal = resolve
+  })
+}
+
+export function closeCheckpointModal() {
+  elements.checkpointModal.style.display = 'none'
+  currentCheckpointSnapshot = null
+  resolveCheckpointModal?.()
+  resolveCheckpointModal = null
+}
+
+const SAVED_CHECKPOINTS_KEY = 'playground-saved-checkpoints'
+
+export function saveCheckpoint() {
+  if (!currentCheckpointSnapshot)
+    return
+  const existing = JSON.parse(localStorage.getItem(SAVED_CHECKPOINTS_KEY) ?? '[]') as Snapshot[]
+  existing.push(currentCheckpointSnapshot)
+  localStorage.setItem(SAVED_CHECKPOINTS_KEY, JSON.stringify(existing))
+  showToast(`Checkpoint saved (${existing.length} total)`)
+  closeCheckpointModal()
+}
+
+export function downloadCheckpoint() {
+  if (!currentCheckpointSnapshot)
+    return
+  const blob = new Blob([JSON.stringify(currentCheckpointSnapshot, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `checkpoint-${currentCheckpointSnapshot.index}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function shareCheckpoint() {
+  if (!currentCheckpointSnapshot)
+    return
+  const href = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(currentCheckpointSnapshot)}`
+  if (href.length > MAX_URL_LENGTH) {
+    showToast('Checkpoint is too large to share as a URL. Use Download instead.', { severity: 'error' })
+    return
+  }
+  addOutputSeparator()
+  appendOutput('Sharable checkpoint link:', 'comment')
+  const a = document.createElement('a')
+  a.textContent = href
+  a.className = 'share-link'
+  a.href = href
+  addOutputElement(a)
+  void navigator.clipboard.writeText(href)
+  showToast('Link copied to clipboard')
 }
 
 export function shareSnapshot() {
@@ -1594,17 +1734,19 @@ export async function resumeSnapshot() {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
+        autoCheckpoint: getState('auto-checkpoint'),
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
+        autoCheckpoint: getState('auto-checkpoint'),
       })
     if (runResult.type === 'error')
       throw runResult.error
     if (runResult.type === 'suspended') {
       appendOutput('Program suspended', 'comment')
-      openSnapshotModal(runResult.snapshot)
+      void openSnapshotModal(runResult.snapshot)
       return
     }
     appendOutput(stringifyValue(runResult.value, false), 'result')
@@ -1618,16 +1760,16 @@ export async function resumeSnapshot() {
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
   if (ctx.effectName === 'dvala.checkpoint') {
+    const message = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+    const meta = ctx.args[1]
+    const snapshot = ctx.checkpoint(message, meta)
     if (getState('intercept-checkpoint')) {
-      showToast(`Checkpoint: ${ctx.args[0]}`)
+      await openCheckpointModal(snapshot)
     }
     ctx.next()
     return
   }
   return new Promise<void>(resolve => {
-    if (getState('auto-checkpoint')) {
-      ctx.checkpoint(`Before ${ctx.effectName}`)
-    }
     const pending: PendingEffect = { ctx, resolve, handled: false }
     pendingEffects.push(pending)
 

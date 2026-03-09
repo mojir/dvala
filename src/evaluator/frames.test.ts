@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type {
   AndFrame,
   ArrayBuildFrame,
+  AutoCheckpointFrame,
   BindingDefaultFrame,
   CallFnFrame,
   CondFrame,
@@ -64,8 +65,9 @@ describe('frame types', () => {
       NanCheck: true,
       DebugStep: true,
       ImportMerge: true,
+      AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(25)
+    expect(Object.keys(frameTypes)).toHaveLength(26)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -104,6 +106,7 @@ describe('frame types', () => {
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
+        case 'AutoCheckpoint': return 'checkpoint'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame
@@ -184,6 +187,7 @@ describe('frame types', () => {
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
     const _bindingDefault: BindingDefaultFrame['type'] = 'BindingDefault'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
+    const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
 
     // All type assignments above are verified by TypeScript at compile time.
     // If any type field doesn't match, compilation fails.
@@ -210,5 +214,6 @@ describe('frame types', () => {
     expect(_fnBody).toBe('FnBody')
     expect(_bindingDefault).toBe('BindingDefault')
     expect(_nanCheck).toBe('NanCheck')
+    expect(_autoCheckpoint).toBe('AutoCheckpoint')
   })
 })

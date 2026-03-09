@@ -36,8 +36,8 @@ export type DvalaRunOptions =
  * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; autoCheckpoint?: boolean }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; autoCheckpoint?: boolean }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -201,7 +201,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
-        })
+        }, runOptions?.autoCheckpoint)
         if (result.type === 'completed') {
           return { ...result, definedBindings: contextStack.getModuleScopeBindings() }
         }
