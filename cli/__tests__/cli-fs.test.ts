@@ -12,7 +12,7 @@ describe('the cli-fs Integration Tests', () => {
     // Build the CLI first
     if (!fs.existsSync(dvalaCliPath)) {
       try {
-        execSync('npm run build', {
+        execSync('npm run build-cli', {
           cwd: path.join(__dirname, '../..'), // Adjust to project root
           stdio: 'pipe',
         })

@@ -155,6 +155,7 @@
     "@types/vscode": "^1.109.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vscode/vsce": "^3.7.1",
+    "concurrently": "^9.2.1",
     "esbuild": "^0.27.3",
     "eslint": "^10.0.3",
     "open-cli": "8.0.0",
