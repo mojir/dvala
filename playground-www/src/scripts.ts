@@ -205,7 +205,7 @@ export function toggleApiSection(sectionId: string, animate = true) {
   const isExpanded = expandedApiSections.has(sectionId)
 
   // Collapse all expanded API sections
-  for (const id of [...expandedApiSections]) {
+  for (const id of Array.from(expandedApiSections)) {
     const c = document.getElementById(`api-content-${id}`)
     const ch = document.getElementById(`api-chevron-${id}`)
     if (c)
@@ -235,7 +235,7 @@ export function toggleModuleCategory(categoryKey: string, animate = true) {
   const isExpanded = expandedModules.has(categoryKey)
 
   // Collapse all expanded module categories
-  for (const key of [...expandedModules]) {
+  for (const key of Array.from(expandedModules)) {
     const sk = key.replace(/\s+/g, '-')
     const c = document.getElementById(`ns-content-${sk}`)
     const ch = document.getElementById(`ns-chevron-${sk}`)

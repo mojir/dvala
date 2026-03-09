@@ -140,13 +140,10 @@
     "lcov": "open-cli ./coverage/index.html",
     "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "zod": "^4.3.6"
-  },
   "devDependencies": {
     "@antfu/eslint-config": "2.21.1",
     "@mermaid-js/mermaid-cli": "^11.12.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@playwright/test": "^1.58.2",
     "@rollup/plugin-json": "6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -162,6 +159,7 @@
     "serve": "^14.2.4",
     "tslib": "2.6.3",
     "typescript": "5.5.2",
-    "vitest": "1.6.0"
+    "vitest": "1.6.0",
+    "zod": "^4.3.6"
   }
 }
