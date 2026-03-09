@@ -8,6 +8,8 @@ const plugins = [
   dvalaSourcePlugin(),
   typescript({
     tsconfig: 'tsconfig.playground-www.json',
+    declaration: false,
+    declarationDir: undefined,
   }),
   jsonPlugin(),
   resolve({

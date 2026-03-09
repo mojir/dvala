@@ -7,6 +7,8 @@ const plugins = [
   dvalaSourcePlugin(),
   typescript({
     tsconfig: 'tsconfig.mcp-server.json',
+    declaration: false,
+    declarationDir: undefined,
   }),
   jsonPlugin(),
   resolve({
