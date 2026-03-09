@@ -5,6 +5,7 @@ const stylistic = require('@stylistic/eslint-plugin')
 module.exports = tseslint.config(
   {
     ignores: [
+      '.wireit/**',
       'dist/**',
       'e2e/**',
       'playwright.config.ts',

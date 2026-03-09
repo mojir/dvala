@@ -118,22 +118,23 @@
     "dist"
   ],
   "scripts": {
-    "test": "vitest run --coverage",
+    "test": "wireit",
     "vitest": "vitest",
-    "lint": "eslint . --fix",
-    "lint:no-fix": "eslint .",
-    "typecheck": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+    "lint": "wireit",
+    "lint:no-fix": "wireit",
+    "typecheck": "wireit",
+    "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
     "check": "npm install && npm run lint && npm run typecheck && npm run test && npm run build",
     "check:no-fix": "npm run lint:no-fix && npm run typecheck && npm run test",
-    "clean": "npm run clean-dvala && npm run clean-playground",
+    "clean": "npm run clean-dvala && npm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out",
     "clean-dvala": "rm -rf dist build",
     "clean-playground": "rm -rf playground-builder/build playground-www/build",
-    "build": "npm run build-dvala && npm run build-cli && npm run build-mcp && npm run build-playground && npm run build-vscode-ext",
-    "build-vscode-ext": "node vscode-dvala/build.mjs",
-    "build-dvala": "npm run clean-dvala && rollup -c",
-    "build-playground": "npm run clean-playground && rollup -c rollup.config.playground-builder.js && rollup -c rollup.config.playground-www.js && node ./playground-builder/build/buildPlaygroundSite.js",
-    "build-cli": "rollup -c rollup.config.cli.js",
-    "build-mcp": "rollup -c rollup.config.mcp-server.js",
+    "build": "wireit",
+    "build-dvala": "wireit",
+    "build-cli": "wireit",
+    "build-mcp": "wireit",
+    "build-playground": "wireit",
+    "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
     "dev": "npx serve docs -p 9901",
     "test:e2e": "npx playwright test",
@@ -164,6 +165,169 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18",
+    "wireit": "^0.14.12",
     "zod": "^4.3.6"
+  },
+  "wireit": {
+    "lint": {
+      "command": "eslint . --fix",
+      "files": [
+        "src/**/*.ts",
+        "common/**/*.ts",
+        "cli/src/**/*.ts",
+        "mcp-server/src/**/*.ts",
+        "playground-builder/src/**/*.ts",
+        "playground-www/src/**/*.ts",
+        "reference/**/*.ts",
+        "__tests__/**/*.ts",
+        "vscode-dvala/src/**/*.ts",
+        "eslint.config.js"
+      ],
+      "output": []
+    },
+    "lint:no-fix": {
+      "command": "eslint .",
+      "files": [
+        "src/**/*.ts",
+        "common/**/*.ts",
+        "cli/src/**/*.ts",
+        "mcp-server/src/**/*.ts",
+        "playground-builder/src/**/*.ts",
+        "playground-www/src/**/*.ts",
+        "reference/**/*.ts",
+        "__tests__/**/*.ts",
+        "vscode-dvala/src/**/*.ts",
+        "eslint.config.js"
+      ],
+      "output": []
+    },
+    "typecheck": {
+      "command": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+      "files": [
+        "src/**/*.ts",
+        "common/**/*.ts",
+        "cli/src/**/*.ts",
+        "mcp-server/src/**/*.ts",
+        "playground-builder/src/**/*.ts",
+        "playground-www/src/**/*.ts",
+        "reference/**/*.ts",
+        "types/**/*.ts",
+        "vscode-dvala/src/**/*.ts",
+        "tsconfig*.json",
+        "vscode-dvala/tsconfig.json"
+      ],
+      "output": []
+    },
+    "test": {
+      "command": "vitest run --coverage",
+      "files": [
+        "src/**",
+        "common/**",
+        "__tests__/**",
+        "reference/**",
+        "vitest.setup.ts",
+        "vite.config.mts",
+        "tsconfig.json"
+      ],
+      "output": [
+        "coverage/**"
+      ]
+    },
+    "build": {
+      "dependencies": [
+        "build-dvala",
+        "build-cli",
+        "build-mcp",
+        "build-playground",
+        "build-vscode-ext"
+      ]
+    },
+    "build-dvala": {
+      "command": "rollup -c",
+      "files": [
+        "src/**",
+        "common/**",
+        "reference/**/*.ts",
+        "rollup.config.js",
+        "rollup.plugins.js",
+        "tsconfig.json",
+        "package.json"
+      ],
+      "output": [
+        "dist/**",
+        "!dist/cli/**",
+        "!dist/mcp-server/**"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-cli": {
+      "command": "rollup -c rollup.config.cli.js",
+      "files": [
+        "cli/src/**",
+        "src/**",
+        "common/**",
+        "rollup.config.cli.js",
+        "rollup.plugins.js",
+        "tsconfig.cli.json"
+      ],
+      "output": [
+        "dist/cli/**"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-mcp": {
+      "command": "rollup -c rollup.config.mcp-server.js",
+      "files": [
+        "mcp-server/src/**",
+        "src/**",
+        "common/**",
+        "rollup.config.mcp-server.js",
+        "rollup.plugins.js",
+        "tsconfig.mcp-server.json"
+      ],
+      "output": [
+        "dist/mcp-server/**"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-playground": {
+      "command": "rollup -c rollup.config.playground-builder.js && rollup -c rollup.config.playground-www.js && node ./playground-builder/build/buildPlaygroundSite.js",
+      "files": [
+        "playground-builder/src/**",
+        "playground-www/src/**",
+        "playground-www/public/**",
+        "src/**",
+        "common/**",
+        "reference/**/*.ts",
+        "rollup.config.playground-builder.js",
+        "rollup.config.playground-www.js",
+        "rollup.plugins.js",
+        "tsconfig.playground-builder.json",
+        "tsconfig.playground-www.json"
+      ],
+      "output": [
+        "playground-builder/build/**",
+        "playground-www/build/**",
+        "docs/playground.js",
+        "docs/index.html",
+        "docs/styles.css"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-vscode-ext": {
+      "command": "node vscode-dvala/build.mjs",
+      "files": [
+        "vscode-dvala/src/**",
+        "vscode-dvala/package.json",
+        "vscode-dvala/build.mjs",
+        "src/**",
+        "common/**",
+        "package.json"
+      ],
+      "output": [
+        "vscode-dvala/out/**"
+      ],
+      "clean": "if-file-deleted"
+    }
   }
 }
