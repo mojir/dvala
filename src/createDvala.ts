@@ -161,6 +161,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         contextStack.pure = savedPure
         const ast = buildAst(source.program)
         const result = evaluate(ast, contextStack)
+        // Defensive guard: evaluate() currently never returns a Promise for bundle programs
+        // because bundles are pure. Kept as a safety net if that invariant ever changes.
+        /* v8 ignore next 2 */
         if (result instanceof Promise)
           throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
         return result

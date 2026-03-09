@@ -30,6 +30,10 @@ export function isPoolRef(value: unknown): value is PoolRef {
 // Deep structural equality
 // ---------------------------------------------------------------------------
 
+// deepEqual is only called when two sub-trees produce the same contentHash.
+// Most branches below guard against hash collisions and cannot be reached
+// in practice, so they are excluded from coverage.
+/* v8 ignore start */
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b)
     return true
@@ -67,6 +71,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   }
   return true
 }
+/* v8 ignore stop */
 
 // ---------------------------------------------------------------------------
 // Size estimation
@@ -155,6 +160,8 @@ export function dedupSubTrees(
   const alreadyPooled = new Map<SubTreeInfo, number>()
 
   for (const info of groups) {
+    // A SubTreeInfo appears exactly once in groups; this guard is defensive.
+    /* v8 ignore next 2 */
     if (alreadyPooled.has(info))
       continue
 
