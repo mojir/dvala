@@ -1,6 +1,7 @@
 dist
 build
 coverage
+.wireit
 node_modules
 test-report.xml
 .DS_Store
