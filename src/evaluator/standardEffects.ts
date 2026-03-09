@@ -41,7 +41,7 @@ type StandardEffectHandlerFn = (args: Arr, k: ContinuationStack, sourceCodeInfo?
  * Each effect has a handler function, arity for validation, and co-located docs.
  */
 export interface StandardEffectDefinition {
-  handler: StandardEffectHandlerFn
+  handler?: StandardEffectHandlerFn
   arity: Arity
   docs: FunctionDocs
 }
@@ -457,26 +457,25 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
 
   'dvala.checkpoint': {
     // The actual snapshot capture is handled as a special case in dispatchPerform
-    // (unconditional capture before normal dispatch). This handler is the standard
-    // fallback when no local do...with or host handler intercepts the effect.
-    handler: (_args: Arr, k: ContinuationStack): Step => {
-      return { type: 'Value', value: null, k }
-    },
-    arity: { min: 0, max: 1 },
+    // (unconditional capture before normal dispatch). No handler here — checkpoint
+    // propagates through the normal handler chain (local, host, wildcard).
+    // If completely unhandled, dispatchPerform resolves it to null.
+    arity: { min: 1, max: 2 },
     docs: {
       category: 'effect',
-      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Optionally accepts a metadata value for domain context (e.g., step labels, timestamps). The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
+      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Takes a mandatory message string and an optional metadata value for domain context (e.g., step labels, timestamps). The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
       returns: { type: 'null' },
       args: {
+        message: { type: 'string', description: 'A human-readable label for the checkpoint.' },
         meta: { type: 'any', description: 'Optional metadata to attach to the snapshot.' },
       },
       variants: [
-        { argumentNames: [] },
-        { argumentNames: ['meta'] },
+        { argumentNames: ['message'] },
+        { argumentNames: ['message', 'meta'] },
       ],
       examples: [
-        'perform(effect(dvala.checkpoint))',
-        'perform(effect(dvala.checkpoint), { step: "analysis-done" })',
+        'perform(effect(dvala.checkpoint), "init")',
+        'perform(effect(dvala.checkpoint), "analysis-done", { step: 1 })',
       ],
       seeAlso: ['perform', 'effect'],
     },
@@ -537,11 +536,12 @@ export function getStandardEffectDefinition(effectName: string): StandardEffectD
  */
 export function getStandardEffectHandler(effectName: string): ((args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>) | undefined {
   const def = standardEffects[effectName]
-  if (!def)
+  const handler = def?.handler
+  if (!handler)
     return undefined
 
   return (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => {
     assertNumberOfParams(def.arity, args.length, sourceCodeInfo)
-    return def.handler(args, k, sourceCodeInfo)
+    return handler(args, k, sourceCodeInfo)
   }
 }

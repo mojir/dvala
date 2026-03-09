@@ -195,7 +195,14 @@ export function getPlayground() {
           <!-- Meta section -->
           <div ${styles('flex', 'flex-col', 'gap-2')}>
             <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Metadata</span>
-            <div data-ref="meta" class="fancy-scroll" ${styles('overflow-y: auto;', 'max-height: 8rem;')}></div>
+            <div data-ref="meta-container">
+              <div class="example-code" ${styles('position: relative;')}>
+                <pre data-ref="meta-json" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'p-2', 'text-sm', 'font-mono', 'overflow: auto;', 'max-height: 8rem;', 'white-space: pre;', 'border: none;', 'margin: 0;')}></pre>
+                <div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>
+                  <div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} data-ref="copy-meta-btn">${copyIcon}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Suspended effect section (bordered) -->
@@ -247,6 +254,7 @@ export function getPlayground() {
           <span>&#8592; Back</span>
         </button>
         <div ${styles('flex', 'flex-row', 'gap-2')}>
+          <button data-ref="share-btn" class="button" onclick="Playground.shareSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Share</button>
           <button class="button" onclick="Playground.downloadSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Download</button>
           <button class="button" onclick="Playground.resumeSnapshot()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
             <span>Run</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
@@ -341,6 +349,18 @@ export function getPlayground() {
     </div>
   </div>
 
+  <div id="info-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div id="info-modal-title" ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;"></div>
+      <div id="info-modal-message" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeInfoModal()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>OK</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="println-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
       <div ${styles('text-color-gray-200', 'font-sans')} style="font-size:1.1rem; font-weight:bold;">Output</div>
@@ -357,5 +377,6 @@ export function getPlayground() {
       </div>
     </div>
   </div>
+
   `
 }

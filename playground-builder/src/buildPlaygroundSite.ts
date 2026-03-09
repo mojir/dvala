@@ -58,6 +58,7 @@ async function writeIndexPage() {
       ${getPlayground()}
     </div>
     ${getSearchDialog()}
+    <div id="toast-container" style="position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:300; display:flex; flex-direction:column; gap:0.5rem; pointer-events:none;"></div>
 
     <script src='playground.js'></script>
     <script>

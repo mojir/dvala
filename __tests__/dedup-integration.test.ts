@@ -17,7 +17,7 @@ describe('continuation dedup integration', () => {
       `, {
         effectHandlers: {
           'my.step': async ({ args, checkpoint, resume: r }) => {
-            checkpoint()
+            checkpoint('checkpoint')
             r(args[0]!)
           },
           'my.done': async ({ suspend }) => {
@@ -54,7 +54,7 @@ describe('continuation dedup integration', () => {
         effectHandlers: {
           'my.work': async ({ checkpoint, suspend }) => {
             step++
-            checkpoint({ step })
+            checkpoint(`step ${step}`, { step })
             suspend({ step })
           },
         },
@@ -76,7 +76,7 @@ describe('continuation dedup integration', () => {
         handlers: {
           'my.work': async ({ checkpoint, suspend }) => {
             step++
-            checkpoint({ step })
+            checkpoint(`step ${step}`, { step })
             suspend({ step })
           },
         },

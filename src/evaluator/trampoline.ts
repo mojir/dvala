@@ -84,7 +84,7 @@ import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
 import { deserializeFromObject, serializeSuspensionBlob, serializeToObject } from './suspension'
-import { getStandardEffectHandler } from './standardEffects'
+import { getStandardEffectDefinition, getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
   ArrayBuildFrame,
@@ -2296,16 +2296,24 @@ function invokeMatchedHandler(
 }
 
 function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+  // Validate arity for standard effects (even those without a built-in handler).
+  const standardDef = getStandardEffectDefinition(effect.name)
+  if (standardDef) {
+    assertNumberOfParams(standardDef.arity, args.length, sourceCodeInfo)
+  }
+
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
-    const meta = args[0] as Any | undefined
+    const message = args[0] as string
+    const meta = args[1] as Any | undefined
     const continuation = serializeToObject(k)
     const snapshot: Snapshot = {
       continuation,
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex++,
       runId: snapshotState.runId,
+      message,
       ...(meta !== undefined ? { meta } : {}),
     }
     snapshotState.snapshots.push(snapshot)
@@ -2336,6 +2344,11 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(args, k, sourceCodeInfo)
+  }
+
+  // dvala.checkpoint resolves to null when completely unhandled.
+  if (effect.name === 'dvala.checkpoint') {
+    return { type: 'Value', value: null, k }
   }
 
   // dvala.error is special — when unhandled, throw UserDefinedError
@@ -2413,7 +2426,7 @@ function dispatchHostHandler(
         const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
         throw new UserDefinedError(message, sourceCodeInfo)
       }
-      // dvala.checkpoint resolves to null when all handlers call next() without resuming.
+      // dvala.checkpoint resolves to null when all handlers call next().
       if (effectName === 'dvala.checkpoint') {
         return { type: 'Value', value: null, k }
       }
@@ -2477,7 +2490,7 @@ function dispatchHostHandler(
         outcome = { kind: 'next' }
       },
       get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
-      checkpoint: (meta?: Any): Snapshot => {
+      checkpoint: (message: string, meta?: Any): Snapshot => {
         if (!snapshotState) {
           throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
@@ -2487,6 +2500,7 @@ function dispatchHostHandler(
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
+          message,
           ...(meta !== undefined ? { meta } : {}),
         }
         snapshotState.snapshots.push(snapshot)
@@ -3408,6 +3422,7 @@ async function retriggerParallelGroup(
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
+          message: 'suspended',
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,
@@ -3484,6 +3499,7 @@ async function retriggerParallelGroup(
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex++,
       runId: snapshotState.runId,
+      message: 'suspended',
       meta: firstSuspended.snapshot.meta,
       effectName: firstSuspended.snapshot.effectName,
       effectArgs: firstSuspended.snapshot.effectArgs,
@@ -3565,6 +3581,7 @@ export async function retriggerWithEffects(
         timestamp: Date.now(),
         index: snapshotState.nextSnapshotIndex++,
         runId: snapshotState.runId,
+        message: 'suspended',
         meta: error.meta,
         effectName: error.effectName,
         effectArgs: error.effectArgs,
@@ -3659,6 +3676,7 @@ async function runEffectLoop(
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
+          message: 'suspended',
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,

@@ -145,6 +145,56 @@ a.disabled {
   color: white;
 }
 
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgb(50 50 50);
+  border: 1px solid rgb(82 82 82);
+  border-left: 3px solid #e6c07b;
+  color: rgb(200 200 200);
+  font-family: sans-serif;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.25s ease;
+  min-width: 16rem;
+}
+
+.toast.toast-error {
+  border-left-color: #e06c75;
+}
+
+.toast.toast-info {
+  border-left-color: #e6c07b;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgb(130 130 130);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.toast-close:hover {
+  color: rgb(220 220 220);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-1rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-1rem); }
+}
+
 #output-result .separator {
   font-size: 0.875rem;
   border-bottom: solid 1px rgb(82 82 82);

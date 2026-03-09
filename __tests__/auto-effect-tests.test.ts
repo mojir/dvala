@@ -1130,7 +1130,7 @@ describe('auto: standard sync effects via runSync', () => {
     { name: 'dvala.random.shuffle', args: '[1, 2, 3]' },
     { name: 'dvala.time.now', args: '' },
     { name: 'dvala.time.zone', args: '' },
-    { name: 'dvala.checkpoint', args: '' },
+    { name: 'dvala.checkpoint', args: '"cp"' },
   ]
 
   for (const { name, args } of syncEffects) {
@@ -1219,7 +1219,7 @@ describe('auto: standard effects return value semantics', () => {
   })
 
   it('dvala.checkpoint returns null by default', () => {
-    const result = dvala.run('perform(effect(dvala.checkpoint))')
+    const result = dvala.run('perform(effect(dvala.checkpoint), "cp")')
     expect(result).toBe(null)
   })
 
