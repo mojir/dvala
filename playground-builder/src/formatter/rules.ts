@@ -96,8 +96,7 @@ export function formatDvalaExpression(program: string, styleOverride?: StyleOver
     return `<span ${styles('text-color-gray-200', 'font-mono')}>${
       spans.join('')
     }</span>`
-  }
-  catch (error) {
+  } catch (_error) {
     return `<span ${styles('text-color-Crimson')}>${program}</span>`
   }
 }
@@ -216,8 +215,7 @@ const internalLinkRule: FormatterRule = (text, index) => {
       const label = displayText ?? target
       const formattedText = `<a onclick="Playground.showPage('${linkName}', 'smooth')">${label}</a>`
       return { count: match[0].length, formattedText }
-    }
-    else {
+    } else {
       // Treat target as a raw page ID (e.g. tutorial-getting-started, example-page, index)
       const label = displayText ?? target
       const formattedText = `<a onclick="Playground.showPage('${target}', 'smooth')">${label}</a>`

@@ -194,8 +194,7 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
           if (actionCallCount === 1) {
             // Rollback to pre-suspension checkpoint
             resumeFrom(snapshots[0]!, 0)
-          }
-          else {
+          } else {
             r(32)
           }
         },
@@ -235,8 +234,7 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
             const lastSnap = snapshots[snapshots.length - 1]!
             expect(lastSnap.meta).toEqual({ step: 'after-resume' })
             resumeFrom(lastSnap, 0)
-          }
-          else {
+          } else {
             r(32)
           }
         },
@@ -652,8 +650,7 @@ describe('auto: resumeFrom during resumed execution', () => {
             const postResumeSnap = snapshots.find(s => (s.meta as Record<string, unknown>)?.label === 'post-resume')
             expect(postResumeSnap).toBeDefined()
             resumeFrom(postResumeSnap!, 0)
-          }
-          else {
+          } else {
             r(32)
           }
         },
@@ -684,8 +681,7 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
           if (callCount <= 3) {
             // Rollback to the same checkpoint three times
             resumeFrom(snapshots[0]!, callCount * 10)
-          }
-          else {
+          } else {
             r(999)
           }
         },
@@ -713,8 +709,7 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
           callCount++
           if (callCount <= 3) {
             resumeFrom(snapshots[0]!, callCount)
-          }
-          else {
+          } else {
             r(callCount)
           }
         },
@@ -748,8 +743,7 @@ describe('auto: suspend inside resumeFrom replay', () => {
           actionCallCount++
           if (actionCallCount === 1) {
             resumeFrom(snapshots[0]!, 'rollback')
-          }
-          else {
+          } else {
             r('done')
           }
         },
@@ -774,8 +768,7 @@ describe('auto: suspend inside resumeFrom replay', () => {
           actionCallCount++
           if (actionCallCount === 1) {
             resumeFrom(snapshots[0]!, 0)
-          }
-          else {
+          } else {
             suspend({ reason: 'needs-input' })
           }
         },
@@ -812,8 +805,7 @@ describe('auto: snapshot trimming on resumeFrom', () => {
           if (callCount === 1) {
             // Rollback to step 1 — should trim step 2 and step 3
             resumeFrom(snapshots[0]!, 'retry')
-          }
-          else {
+          } else {
             r('done')
           }
         },
@@ -854,8 +846,7 @@ describe('auto: snapshot trimming on resumeFrom', () => {
           if (callCount === 1) {
             // Rollback to step 2 — should trim step 3 only
             resumeFrom(snapshots[1]!, 'retry')
-          }
-          else {
+          } else {
             r('done')
           }
         },
@@ -896,8 +887,7 @@ describe('auto: nextSnapshotIndex monotonicity', () => {
           callCount++
           if (callCount === 1) {
             resumeFrom(snapshots[0]!, 'first')
-          }
-          else {
+          } else {
             r('done')
           }
         },
@@ -1431,8 +1421,7 @@ describe('auto: complex workflow patterns', () => {
             expect(afterName).toBeDefined()
             // Resume from after-name checkpoint, re-entering at email step with name='Alice' preserved
             resumeFrom(afterName!, 0) // value doesn't matter, checkpoint is at the perform return
-          }
-          else {
+          } else {
             suspend({ step: args[0] })
           }
         },
@@ -1472,8 +1461,7 @@ describe('auto: complex workflow patterns', () => {
           if (riskyCallCount === 1) {
             // Simulate crash — rollback to checkpoint
             resumeFrom(snapshots[0]!, 0)
-          }
-          else {
+          } else {
             // Retry succeeds
             r(21)
           }

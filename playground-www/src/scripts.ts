@@ -378,8 +378,7 @@ function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bot
       'context-selection-start': elements.contextTextArea.selectionStart,
       'context-selection-end': elements.contextTextArea.selectionEnd,
     }, true)
-  }
-  else {
+  } else {
     saveState({ context: value }, false)
   }
 
@@ -392,8 +391,7 @@ function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bot
 function getParsedContext(): Record<string, unknown> {
   try {
     return asUnknownRecord(JSON.parse(getState('context')))
-  }
-  catch (e) {
+  } catch (_e) {
     return {}
   }
 }
@@ -418,8 +416,7 @@ export function addContextEntry() {
     setContext(JSON.stringify(context, null, 2), true)
 
     closeAddContextMenu()
-  }
-  catch (e) {
+  } catch (_e) {
     elements.newContextError.textContent = 'Invalid JSON'
     elements.newContextError.style.display = 'block'
     elements.newContextValue.focus()
@@ -484,7 +481,7 @@ export function addSampleContext() {
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
   const sampleEffectHandlers: Record<string, string> = {
-    // eslint-disable-next-line no-template-curly-in-string
+
     'host.greet': 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }',
     'host.add': 'async ({ args: [a, b], resume }) => { resume(a + b) }',
     'host.delay': `async ({ args: [ms], resume }) => {
@@ -515,8 +512,7 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
       'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
       'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
     }, true)
-  }
-  else {
+  } else {
     saveState({ 'dvala-code': value }, false)
   }
 
@@ -569,41 +565,37 @@ window.onload = function () {
   elements.contextRedoButton.classList.add('disabled')
   elements.dvalaCodeUndoButton.classList.add('disabled')
   elements.dvalaCodeRedoButton.classList.add('disabled')
-  setContextHistoryListener((status) => {
+  setContextHistoryListener(status => {
     if (status.canUndo) {
       elements.contextUndoButton.classList.remove('disabled')
-    }
-    else {
+    } else {
       elements.contextUndoButton.classList.add('disabled')
     }
 
     if (status.canRedo) {
       elements.contextRedoButton.classList.remove('disabled')
-    }
-    else {
+    } else {
       elements.contextRedoButton.classList.add('disabled')
     }
   })
 
-  setDvalaCodeHistoryListener((status) => {
+  setDvalaCodeHistoryListener(status => {
     if (status.canUndo) {
       elements.dvalaCodeUndoButton.classList.remove('disabled')
-    }
-    else {
+    } else {
       elements.dvalaCodeUndoButton.classList.add('disabled')
     }
 
     if (status.canRedo) {
       elements.dvalaCodeRedoButton.classList.remove('disabled')
-    }
-    else {
+    } else {
       elements.dvalaCodeRedoButton.classList.add('disabled')
     }
   })
 
   document.addEventListener('click', onDocumentClick, true)
 
-  elements.resizePlayground.onmousedown = (event) => {
+  elements.resizePlayground.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
     moveParams = {
@@ -613,7 +605,7 @@ window.onload = function () {
     }
   }
 
-  elements.resizeDevider1.onmousedown = (event) => {
+  elements.resizeDevider1.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
     moveParams = {
@@ -623,7 +615,7 @@ window.onload = function () {
     }
   }
 
-  elements.resizeDevider2.onmousedown = (event) => {
+  elements.resizeDevider2.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
     moveParams = {
@@ -633,7 +625,7 @@ window.onload = function () {
     }
   }
 
-  elements.resizeSidebar.onmousedown = (event) => {
+  elements.resizeSidebar.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
     moveParams = {
@@ -674,8 +666,7 @@ window.onload = function () {
 
       updateState({ 'playground-height': playgroundHeight })
       applyLayout()
-    }
-    else if (moveParams.id === 'resize-divider-1') {
+    } else if (moveParams.id === 'resize-divider-1') {
       let resizeDivider1XPercent
         = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
       if (resizeDivider1XPercent < 10)
@@ -686,8 +677,7 @@ window.onload = function () {
 
       updateState({ 'resize-divider-1-percent': resizeDivider1XPercent })
       applyLayout()
-    }
-    else if (moveParams.id === 'resize-divider-2') {
+    } else if (moveParams.id === 'resize-divider-2') {
       let resizeDivider2XPercent
         = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
       if (resizeDivider2XPercent < getState('resize-divider-1-percent') + 10)
@@ -698,8 +688,7 @@ window.onload = function () {
 
       updateState({ 'resize-divider-2-percent': resizeDivider2XPercent })
       applyLayout()
-    }
-    else if (moveParams.id === 'resize-sidebar') {
+    } else if (moveParams.id === 'resize-sidebar') {
       let sidebarWidth = moveParams.widthBeforeMove + (event.clientX - moveParams.startMoveX)
       if (sidebarWidth < 150)
         sidebarWidth = 150
@@ -712,7 +701,7 @@ window.onload = function () {
     }
   }
 
-  window.addEventListener('keydown', (evt) => {
+  window.addEventListener('keydown', evt => {
     if (Search.handleKeyDown(evt))
       return
 
@@ -757,28 +746,21 @@ window.onload = function () {
       closeAddContextMenu()
       if (elements.readlineModal.style.display !== 'none') {
         cancelReadline()
-      }
-      else if (elements.printlnModal.style.display !== 'none') {
+      } else if (elements.printlnModal.style.display !== 'none') {
         dismissPrintln()
-      }
-      else if (elements.infoModal.style.display !== 'none') {
+      } else if (elements.infoModal.style.display !== 'none') {
         closeInfoModal()
-      }
-      else if (elements.importSnapshotModal.style.display !== 'none') {
+      } else if (elements.importSnapshotModal.style.display !== 'none') {
         closeImportSnapshotModal()
-      }
-      else if (currentSnapshot) {
+      } else if (currentSnapshot) {
         if (snapshotPanelStack.length > 1) {
           slideBackSnapshotModal()
-        }
-        else {
+        } else {
           closeSnapshotModal()
         }
-      }
-      else if (pendingEffectAction) {
+      } else if (pendingEffectAction) {
         cancelEffectAction()
-      }
-      else if (pendingEffects.length > 0) {
+      } else if (pendingEffects.length > 0) {
         selectEffectAction('ignore')
       }
       evt.preventDefault()
@@ -814,7 +796,7 @@ window.onload = function () {
         redoDvalaCodeHistory()
     }
   })
-  elements.contextTextArea.addEventListener('keydown', (evt) => {
+  elements.contextTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => setContext(elements.contextTextArea.value, true))
   })
   elements.contextTextArea.addEventListener('input', () => {
@@ -840,7 +822,7 @@ window.onload = function () {
     updateCSS()
   })
 
-  elements.dvalaTextArea.addEventListener('keydown', (evt) => {
+  elements.dvalaTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => setDvalaCode(elements.dvalaTextArea.value, true))
   })
   elements.dvalaTextArea.addEventListener('input', () => {
@@ -911,8 +893,7 @@ function getDataFromUrl() {
     if (snapshot) {
       showToast('Snapshot loaded from link')
       openSnapshotModal(snapshot)
-    }
-    else {
+    } else {
       showToast('Invalid snapshot link', { severity: 'error' })
     }
   }
@@ -975,7 +956,6 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
       break
     case 'Enter': {
       evt.preventDefault()
-      // eslint-disable-next-line regexp/optimal-quantifier-concatenation
       const spaceCount = target.value.substring(indexOfReturn + 1, start).replace(/^( *).*/, '$1').length
       target.value = `${target.value.substring(0, start)}\n${' '.repeat(spaceCount)}${target.value.substring(end)}`
       target.selectionStart = target.selectionEnd = start + 1 + spaceCount
@@ -1029,11 +1009,9 @@ export async function run() {
     }
     const content = stringifyValue(runResult.value, false)
     appendOutput(content, 'result')
-  }
-  catch (error) {
+  } catch (error) {
     appendOutput(error, 'error')
-  }
-  finally {
+  } finally {
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -1055,12 +1033,10 @@ export function analyze() {
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
-    appendOutput(`${unresolvedSymbolsOutput}`, 'analyze')
-  }
-  catch (error) {
+    appendOutput(unresolvedSymbolsOutput, 'analyze')
+  } catch (error) {
     appendOutput(error, 'error')
-  }
-  finally {
+  } finally {
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -1083,12 +1059,10 @@ export function parse() {
     appendOutput(content, 'parse')
     hijacker.releaseConsole()
     console.log(result)
-  }
-  catch (error) {
+  } catch (error) {
     appendOutput(error, 'error')
     hijacker.releaseConsole()
-  }
-  finally {
+  } finally {
     focusDvalaCode()
   }
 }
@@ -1109,13 +1083,11 @@ export function tokenize() {
     appendOutput(content, 'tokenize')
     hijacker.releaseConsole()
     console.log(result)
-  }
-  catch (error) {
+  } catch (error) {
     appendOutput(error, 'error')
     hijacker.releaseConsole()
     return
-  }
-  finally {
+  } finally {
     focusDvalaCode()
   }
 }
@@ -1137,8 +1109,7 @@ export function format() {
       'dvala-code-selection-start': selectedCode.selectionStart,
       'dvala-code-selection-end': selectedCode.selectionStart + code.length,
     })
-  }
-  else {
+  } else {
     saveState({
       'focused-panel': 'dvala-code',
       'dvala-code-selection-start': selectedCode.selectionStart,
@@ -1182,7 +1153,7 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
     const copyBtn = document.createElement('span')
     copyBtn.innerHTML = '&#x2398;'
     copyBtn.style.cssText = 'font-size:1.6rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:rgb(115 115 115); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
-    copyBtn.addEventListener('click', (e) => {
+    copyBtn.addEventListener('click', e => {
       e.stopPropagation()
       void navigator.clipboard.writeText(textToCopy)
     })
@@ -1202,8 +1173,7 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
 
     row.appendChild(code)
     row.appendChild(copyBtn)
-  }
-  else {
+  } else {
     code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
     row.appendChild(code)
   }
@@ -1231,8 +1201,7 @@ function buildBreadcrumbs(panel: HTMLElement) {
     span.textContent = entry.label
     if (isLast) {
       span.style.cssText = 'color: rgb(229 229 229);'
-    }
-    else {
+    } else {
       span.style.cssText = 'color: rgb(115 115 115); cursor: pointer; font-weight: normal;'
       const targetIndex = i
       span.addEventListener('click', () => popToLevel(targetIndex))
@@ -1274,8 +1243,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
     empty.textContent = '(no arguments)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
     argsEl.appendChild(empty)
-  }
-  else {
+  } else {
     snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
   }
 
@@ -1287,8 +1255,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
     empty.textContent = '(no metadata)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
     metaContainer.appendChild(empty)
-  }
-  else {
+  } else {
     const metaJson = JSON.stringify(snapshot.meta, null, 2)
     ref('meta-json').textContent = metaJson
     ref('copy-meta-btn').addEventListener('click', () => {
@@ -1327,9 +1294,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
     empty.textContent = '(no checkpoints)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
     checkpointsEl.appendChild(empty)
-  }
-  else {
-    cpSnapshots.forEach((cpSnapshot) => {
+  } else {
+    cpSnapshots.forEach(cpSnapshot => {
       const card = document.createElement('div')
       card.style.cssText = 'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid rgb(82 82 82); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
       card.addEventListener('mouseenter', () => {
@@ -1389,8 +1355,7 @@ function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean): HTMLElement {
   // Show/hide appropriate button
   if (isRoot) {
     ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'none'
-  }
-  else {
+  } else {
     ;(panel.querySelector('[data-ref="close-btn"]') as HTMLElement).style.display = 'none'
     ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'flex'
     panel.style.position = 'absolute'
@@ -1479,8 +1444,7 @@ export function importSnapshot() {
     closeImportSnapshotModal()
     showToast('Snapshot imported')
     openSnapshotModal(snapshot)
-  }
-  catch {
+  } catch {
     elements.importSnapshotError.textContent = 'Invalid JSON'
     elements.importSnapshotError.classList.remove('hidden')
   }
@@ -1585,11 +1549,9 @@ export async function resumeSnapshot() {
       return
     }
     appendOutput(stringifyValue(runResult.value, false), 'result')
-  }
-  catch (error) {
+  } catch (error) {
     appendOutput(error, 'error')
-  }
-  finally {
+  } finally {
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -1601,7 +1563,7 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
     ctx.next()
     return
   }
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     const pending: PendingEffect = { ctx, resolve, handled: false }
     pendingEffects.push(pending)
 
@@ -1653,8 +1615,7 @@ function renderCurrentEffect() {
     elements.effectModalPrev.style.pointerEvents = currentEffectIndex > 0 ? 'auto' : 'none'
     elements.effectModalNext.style.opacity = currentEffectIndex < total - 1 ? '1' : '0.3'
     elements.effectModalNext.style.pointerEvents = currentEffectIndex < total - 1 ? 'auto' : 'none'
-  }
-  else {
+  } else {
     elements.effectModalNav.style.display = 'none'
   }
 
@@ -1677,8 +1638,7 @@ function renderCurrentEffect() {
       val.style.cssText = 'color: rgb(212 212 212); font-size: 0.8rem;'
       elements.effectModalHandledBadge.appendChild(val)
     }
-  }
-  else {
+  } else {
     elements.effectModalHandledBadge.style.display = 'none'
   }
 
@@ -1692,8 +1652,7 @@ function renderCurrentEffect() {
     empty.textContent = '(no arguments)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
     elements.effectModalArgs.appendChild(empty)
-  }
-  else {
+  } else {
     effect.ctx.args.forEach((arg, i) => {
       elements.effectModalArgs.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2)))
     })
@@ -1720,8 +1679,7 @@ function advanceAfterHandle() {
     next = pendingEffects.findIndex(e => !e.handled)
   if (next === -1) {
     closeEffectModal()
-  }
-  else {
+  } else {
     currentEffectIndex = next
     renderCurrentEffect()
   }
@@ -1787,22 +1745,19 @@ export function confirmEffectAction() {
       effect.handledValue = valueStr || 'null'
       effect.resolve()
       advanceAfterHandle()
-    }
-    catch {
+    } catch {
       elements.effectModalError.textContent = 'Invalid JSON'
       elements.effectModalError.style.display = 'block'
       elements.effectModalValue.focus()
     }
-  }
-  else if (pendingEffectAction === 'fail') {
+  } else if (pendingEffectAction === 'fail') {
     effect.ctx.fail(valueStr || undefined)
     effect.handled = true
     effect.handledAction = 'fail'
     effect.handledValue = valueStr || undefined
     effect.resolve()
     advanceAfterHandle()
-  }
-  else if (pendingEffectAction === 'suspend') {
+  } else if (pendingEffectAction === 'suspend') {
     const meta: Any | undefined = valueStr ? { message: valueStr } : undefined
     effect.ctx.suspend(meta)
     effect.handled = true
@@ -1818,7 +1773,7 @@ export function confirmEffectAction() {
 // ---------------------------------------------------------------------------
 
 function readlineHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
     elements.readlinePrompt.textContent = prompt
     elements.readlinePrompt.style.display = prompt ? 'block' : 'none'
@@ -1858,7 +1813,7 @@ export function cancelReadline() {
 // ---------------------------------------------------------------------------
 
 function printlnHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     const value = ctx.args[0]
     const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
     elements.printlnContent.textContent = text
@@ -1909,7 +1864,6 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effec
         throw new TypeError(`Invalid handler value. "${key}" should be a javascript function string`)
       }
 
-      // eslint-disable-next-line no-eval
       const fn = eval(value) as EffectHandler
 
       if (typeof fn !== 'function') {
@@ -1933,8 +1887,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>, effec
       bindings,
       effectHandlers,
     }
-  }
-  catch (err) {
+  } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
     return { bindings: {}, effectHandlers: { '*': defaultEffectHandler } }
   }
@@ -2098,9 +2051,9 @@ export function setPlayground(name: string, encodedExample: string) {
   const paddingLeft = Math.floor((size - name.length) / 2)
   const paddingRight = Math.ceil((size - name.length) / 2)
   setDvalaCode(`
-${`/*${'*'.repeat(size)}**`}
-${` *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *`}
-${` *${'*'.repeat(size)}**/`}
+/*${'*'.repeat(size)}**
+ *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
+ *${'*'.repeat(size)}**/
 
 ${code}
 `.trimStart(), true, 'top')

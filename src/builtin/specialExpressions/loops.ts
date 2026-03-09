@@ -25,7 +25,7 @@ function analyze(
   const result = new Set<string>()
   const newContext: Context = {}
   const [, loopBindings, body] = loopNode[1]
-  loopBindings.forEach((loopBindingNode) => {
+  loopBindings.forEach(loopBindingNode => {
     const [bindingNode, letBindings, whenNode, whileNode] = loopBindingNode
     const [target, value] = bindingNode[1]
     getUndefinedSymbols([value], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
@@ -33,7 +33,7 @@ function analyze(
     )
     Object.assign(newContext, getAllBindingTargetNames(target))
     if (letBindings) {
-      letBindings.forEach((letBindingNode) => {
+      letBindings.forEach(letBindingNode => {
         const [letTarget, letValue] = letBindingNode[1]
 
         getUndefinedSymbols([letValue], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>

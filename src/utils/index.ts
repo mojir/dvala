@@ -85,7 +85,7 @@ function clone<T>(value: T): T {
     }, {}) as T
   }
   if (Array.isArray(value))
-    // eslint-disable-next-line ts/no-unsafe-return
+
     return value.map(item => clone(item)) as unknown as T
 
   return value

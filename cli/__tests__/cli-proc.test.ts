@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-unsafe-member-access */
+
 import { execSync } from 'node:child_process'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -15,8 +15,7 @@ describe('proc Integration Tests', () => {
         env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
       })
       return result.trim()
-    }
-    catch (error: any) {
+    } catch (error: any) {
       throw new Error(`Dvala Proc failed: ${error.message}\nStdout: ${error.stdout}\nStderr: ${error.stderr}`)
     }
   }

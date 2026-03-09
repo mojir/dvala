@@ -357,7 +357,7 @@ describe('async trampoline operations', () => {
 describe('effects API — host handler edge cases', () => {
   it('should handle host handler with fail()', async () => {
     const handlers: Handlers = {
-      'test.fail': async (ctx) => {
+      'test.fail': async ctx => {
         ctx.fail('deliberately failed')
       },
     }
@@ -371,11 +371,11 @@ describe('effects API — host handler edge cases', () => {
   it('should handle host handler with next()', async () => {
     const log: string[] = []
     const handlers: Handlers = {
-      'test.next': async (ctx) => {
+      'test.next': async ctx => {
         log.push('specific')
         ctx.next()
       },
-      '*': async (ctx) => {
+      '*': async ctx => {
         log.push('wildcard')
         ctx.resume(42)
       },
@@ -390,7 +390,7 @@ describe('effects API — host handler edge cases', () => {
 
   it('should handle host handler with suspend()', async () => {
     const handlers: Handlers = {
-      'test.suspend': async (ctx) => {
+      'test.suspend': async ctx => {
         ctx.suspend({ reason: 'waiting' })
       },
     }
@@ -405,7 +405,7 @@ describe('effects API — host handler edge cases', () => {
 
   it('should handle host handler resuming with a promise value', async () => {
     const handlers: Handlers = {
-      'test.async-resume': async (ctx) => {
+      'test.async-resume': async ctx => {
         ctx.resume(Promise.resolve(99))
       },
     }
@@ -418,7 +418,7 @@ describe('effects API — host handler edge cases', () => {
 
   it('should handle host handler resuming with a rejected promise', async () => {
     const handlers: Handlers = {
-      'test.async-fail': async (ctx) => {
+      'test.async-fail': async ctx => {
         ctx.resume(Promise.reject(new Error('async fail')))
       },
     }
@@ -470,7 +470,7 @@ describe('import with Dvala source', () => {
 describe('async error wrapping', () => {
   it('should handle async operations that produce errors', async () => {
     const handlers: Handlers = {
-      'test.error': async (ctx) => {
+      'test.error': async ctx => {
         ctx.resume(Promise.reject(new Error('plain JS error')))
       },
     }
@@ -487,7 +487,7 @@ describe('debug step', () => {
   it('should work when debug handler is provided', async () => {
     const steps: unknown[] = []
     const handlers: Handlers = {
-      'dvala.debug.step': async (ctx) => {
+      'dvala.debug.step': async ctx => {
         steps.push(ctx.args[0])
         ctx.resume(ctx.args[0]!)
       },
@@ -832,7 +832,7 @@ describe('effect matching — dvala function handler predicate', () => {
 describe('host handler — exhausting all handlers via next()', () => {
   it('should handle unhandled effect when all handlers call next()', async () => {
     const handlers: Handlers = {
-      'test.exhaust': async (ctx) => {
+      'test.exhaust': async ctx => {
         ctx.next()
       },
     }
@@ -842,7 +842,7 @@ describe('host handler — exhausting all handlers via next()', () => {
 
   it('should handle dvala.error when all handlers call next()', async () => {
     const handlers: Handlers = {
-      'dvala.error': async (ctx) => {
+      'dvala.error': async ctx => {
         ctx.next()
       },
     }
@@ -875,7 +875,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
   it('should create a checkpoint and resume from it', async () => {
     let savedSnapshot: unknown = null
     const handlers: Handlers = {
-      'test.checkpoint': async (ctx) => {
+      'test.checkpoint': async ctx => {
         savedSnapshot = ctx.checkpoint('label snap1', { label: 'snap1' })
         ctx.resume(1)
       },
@@ -888,13 +888,12 @@ describe('host handler — checkpoint and resumeFrom', () => {
   it('should resume from a saved snapshot', async () => {
     let callCount = 0
     const handlers: Handlers = {
-      'test.snap': async (ctx) => {
+      'test.snap': async ctx => {
         callCount++
         if (callCount === 1) {
           ctx.checkpoint('label first', { label: 'first' })
           ctx.resume(10)
-        }
-        else {
+        } else {
           ctx.resume(99)
         }
       },
@@ -1005,7 +1004,7 @@ describe('evaluateNode — exported function', () => {
 describe('runEffectLoop — non-DvalaError propagation', () => {
   it('should wrap non-DvalaError in RunResult', async () => {
     const handlers: Handlers = {
-      'test.native-error': async (ctx) => {
+      'test.native-error': async ctx => {
         ctx.resume(Promise.reject(new Error('plain string error')) as never)
       },
     }
@@ -1021,7 +1020,7 @@ describe('runEffectLoop — non-DvalaError propagation', () => {
 describe('debug step — error during evaluation', () => {
   it('should handle debug step by resuming with value', async () => {
     const handlers: Handlers = {
-      'dvala.debug.step': async (ctx) => {
+      'dvala.debug.step': async ctx => {
         const stepInfo = ctx.args[0] as { value: unknown }
         ctx.resume(stepInfo.value as never)
       },
@@ -1359,7 +1358,7 @@ describe('runEffectLoop — non-DvalaError wrapping', () => {
     // A synchronous handler that throws a raw Error (not DvalaError) propagates
     // through tick() and gets caught in runEffectLoop's outer catch block.
     const handlers: Handlers = {
-      'test.syncRawError': (_ctx) => {
+      'test.syncRawError': _ctx => {
         throw new TypeError('sync raw error from handler')
       },
     }
@@ -2841,8 +2840,7 @@ describe('debug.ts — catch paths in resumeFromSnapshot', () => {
     if (r2.type === 'suspended') {
       const r3 = await dbg.stepForward()
       expect(r3.type).toBe('error')
-    }
-    else {
+    } else {
       expect(r2.type).toBe('error')
     }
   })
@@ -2861,8 +2859,7 @@ describe('debug.ts — catch paths in resumeFromSnapshot', () => {
     if (r2.type === 'suspended') {
       const r3 = await dbg.stepForward()
       expect(r3.type).toBe('error')
-    }
-    else {
+    } else {
       expect(r2.type).toBe('error')
     }
   })
@@ -3312,7 +3309,7 @@ describe('dispatchHostHandler edge cases', () => {
   it('should handle sync handler that settles before async return', async () => {
     // Handler returns a promise but calls resume() synchronously before the promise resolves
     const handlers: Handlers = {
-      'test.sync-settle': (ctx) => {
+      'test.sync-settle': ctx => {
         ctx.resume(99)
         return Promise.resolve()
       },
@@ -3338,7 +3335,7 @@ describe('dispatchHostHandler edge cases', () => {
   it('should handle async handler that rejects with plain Error after settling', async () => {
     // Handler calls resume() synchronously, then the async part rejects
     const handlers: Handlers = {
-      'test.settle-then-reject': (ctx) => {
+      'test.settle-then-reject': ctx => {
         ctx.resume(42)
         return Promise.reject(new Error('late rejection'))
       },
@@ -3363,7 +3360,7 @@ describe('dispatchHostHandler edge cases', () => {
 
   it('should exhaust handler chain for dvala.error when all call next()', async () => {
     const handlers: Handlers = {
-      'dvala.error': async (ctx) => {
+      'dvala.error': async ctx => {
         ctx.next()
       },
     }
@@ -3373,7 +3370,7 @@ describe('dispatchHostHandler edge cases', () => {
 
   it('should exhaust handler chain for dvala.checkpoint when all call next()', async () => {
     const handlers: Handlers = {
-      'dvala.checkpoint': async (ctx) => {
+      'dvala.checkpoint': async ctx => {
         ctx.next()
       },
     }
@@ -3386,7 +3383,7 @@ describe('dispatchHostHandler edge cases', () => {
   it('should handle wildcard before standard effect fallback', async () => {
     const log: string[] = []
     const handlers: Handlers = {
-      '*': async (ctx) => {
+      '*': async ctx => {
         log.push('wildcard-checked')
         ctx.next()
       },
@@ -3435,11 +3432,11 @@ describe('wildcard handler with standard effect fallback', () => {
   it('should fall through wildcard to standard handler for dvala.io.println', async () => {
     const log: string[] = []
     const handlers: Handlers = {
-      '*': async (ctx) => {
+      '*': async ctx => {
         log.push(`wildcard: ${ctx.effectName}`)
         ctx.next()
       },
-      'dvala.io.println': async (ctx) => {
+      'dvala.io.println': async ctx => {
         // Intercept println to avoid console output
         log.push(`println: ${ctx.args[0]}`)
         ctx.resume(null)
@@ -3451,7 +3448,7 @@ describe('wildcard handler with standard effect fallback', () => {
 
   it('should use standard handler when wildcard is only handler for standard effect', async () => {
     const handlers: Handlers = {
-      '*': async (ctx) => {
+      '*': async ctx => {
         ctx.next()
       },
     }
@@ -3468,7 +3465,7 @@ describe('wildcard handler with standard effect fallback', () => {
 describe('async handler not-yet-settled path', () => {
   it('should handle truly async handler that resolves after promise settles', async () => {
     const handlers: Handlers = {
-      'test.delayed': async (ctx) => {
+      'test.delayed': async ctx => {
         // Simulate async work before settling
         await new Promise(resolve => setTimeout(resolve, 1))
         ctx.resume(42)
@@ -3482,7 +3479,7 @@ describe('async handler not-yet-settled path', () => {
 
   it('should handle truly async handler that calls fail()', async () => {
     const handlers: Handlers = {
-      'test.async-fail': async (ctx) => {
+      'test.async-fail': async ctx => {
         await new Promise(resolve => setTimeout(resolve, 1))
         ctx.fail('async failure')
       },

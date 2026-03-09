@@ -65,7 +65,7 @@ export const arithmeticNormalExpressions: SequenceNormalExpressions<'arithmetic'
       const arithmetic: number[] = []
       function loop(i: number): MaybePromise<number[]> {
         const value = s + i * d
-        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), (keep) => {
+        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), keep => {
           if (!keep)
             return arithmetic
           arithmetic.push(value)

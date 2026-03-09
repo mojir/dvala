@@ -173,8 +173,7 @@ export function dedupSubTrees(
     for (const loc of info.locations) {
       if (Array.isArray(loc.parent)) {
         loc.parent[loc.key as number] = { __poolRef: id }
-      }
-      else {
+      } else {
         (loc.parent)[loc.key as string] = { __poolRef: id }
       }
     }
@@ -202,8 +201,7 @@ function walkAndCollect(
     for (let i = 0; i < value.length; i++) {
       walkAndCollect(value[i], hashGroups, { parent: value, key: i }, _rootIdx)
     }
-  }
-  else {
+  } else {
     const obj = value as Record<string, unknown>
     for (const key of Object.keys(obj)) {
       walkAndCollect(obj[key], hashGroups, { parent: obj, key }, _rootIdx)
@@ -233,8 +231,7 @@ function walkAndCollect(
 
     if (found) {
       found.locations.push(parentInfo)
-    }
-    else {
+    } else {
       group.push({
         hash,
         value: deepClone(value),

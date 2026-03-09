@@ -30,7 +30,7 @@ function generateLuckyNumbers(
   let count = 1
 
   // Check if we should continue after the first number
-  return chain(predicate(1, 0), (keepFirst) => {
+  return chain(predicate(1, 0), keepFirst => {
     if (!keepFirst)
       return []
 
@@ -42,7 +42,7 @@ function generateLuckyNumbers(
       const luckyNumber = filteredNumbers[index]!
 
       // Check if we should continue
-      return chain(predicate(luckyNumber, count), (keep) => {
+      return chain(predicate(luckyNumber, count), keep => {
         if (!keep)
           return luckyNumbers
 

@@ -18,18 +18,15 @@ export function renderMermaidToSvg(code: string): string {
       timeout: 30000,
     })
     return fs.readFileSync(outputFile, 'utf-8')
-  }
-  finally {
+  } finally {
     try {
       fs.unlinkSync(inputFile)
-    }
-    catch {
+    } catch {
       /* ignore */
     }
     try {
       fs.unlinkSync(outputFile)
-    }
-    catch {
+    } catch {
       /* ignore */
     }
   }

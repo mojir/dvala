@@ -38,8 +38,7 @@ export class StateHistory {
       this.history.push(entry)
       this.index = this.history.length - 1
       this.notify()
-    }
-    else {
+    } else {
       this.replace(entry)
     }
   }

@@ -1,11 +1,10 @@
-/* eslint-disable ts/no-unsafe-member-access */
+import type { Arity, BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
+import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
+import type { Any } from '../../../../../src/interface'
 import fs from 'node:fs'
-import process from 'node:process'
 import os from 'node:os'
 import path from 'node:path'
-import type { Arity, BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
-import type { Any } from '../../../../../src/interface'
-import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
+import process from 'node:process'
 
 interface JsFunction {
   fn: (...args: any[]) => unknown
@@ -25,19 +24,17 @@ function init() {
 
   process.on('exit', () => {
     // Clean up temporary files and directories on process exit
-    tempFiles.forEach((file) => {
+    tempFiles.forEach(file => {
       try {
         fs.unlinkSync(file)
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`Failed to delete temporary file ${file}:`, error)
       }
     })
-    tempDirs.forEach((dir) => {
+    tempDirs.forEach(dir => {
       try {
         fs.rmSync(dir, { recursive: true, force: true })
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`Failed to delete temporary directory ${dir}:`, error)
       }
     })
@@ -79,8 +76,7 @@ const readJson: JsFunction = {
     const content = fs.readFileSync(filePath, { encoding: 'utf8' })
     try {
       return JSON.parse(content) as unknown
-    }
-    catch (error: any) {
+    } catch (error: any) {
       throw new Error(`Failed to parse JSON from file ${filePath}: ${error.message}`)
     }
   },

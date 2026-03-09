@@ -97,8 +97,7 @@ function tokenizeToHtml(code: string): string {
       const italic = isCommentToken(token) ? 'font-style:italic;' : ''
       return `<span style="color:${color};${italic}">${escaped}</span>`
     }).join('')
-  }
-  catch {
+  } catch {
     return escapeHtml(code)
   }
 }

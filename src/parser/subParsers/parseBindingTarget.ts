@@ -151,8 +151,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
           throw new DvalaError(`Duplicate binding name: ${name}`, token[2])
         }
         elements[keyName] = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)]], firstToken[2])
-      }
-      else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
+      } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
         // Without 'as' alias, the key becomes the binding name - must be user-defined symbol
         const key = asUserDefinedSymbolNode(keySymbol, keySymbol[2])
         if (elements[key[1]]) {
@@ -165,8 +164,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         elements[key[1]] = rest
           ? withSourceCodeInfo([bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)]], firstToken[2])
           : withSourceCodeInfo([bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)]], firstToken[2])
-      }
-      else if (isOperatorToken(token, ':')) {
+      } else if (isOperatorToken(token, ':')) {
         ctx.advance()
         token = ctx.peek()
         if (allowLiteralPatterns) {
@@ -174,8 +172,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
           if (!isLBraceToken(token) && !isLBracketToken(token) && !isLiteralToken(token)) {
             throw new DvalaError('Expected literal, object or array pattern', token[2])
           }
-        }
-        else {
+        } else {
           if (!isLBraceToken(token) && !isLBracketToken(token)) {
             throw new DvalaError('Expected object or array', token[2])
           }

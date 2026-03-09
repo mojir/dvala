@@ -1,5 +1,5 @@
-import type { ShorthandName } from './api'
 import type { ShorthandReference } from '.'
+import type { ShorthandName } from './api'
 
 export const shorthand: Record<ShorthandName, ShorthandReference> = {
   '-short-regexp': {

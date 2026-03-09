@@ -64,7 +64,7 @@ describe('reduceSequential', () => {
 describe('forEachSequential', () => {
   it('should handle sync callbacks', () => {
     const results: number[] = []
-    void forEachSequential([1, 2, 3], (x) => {
+    void forEachSequential([1, 2, 3], x => {
       results.push(x)
     })
     expect(results).toEqual([1, 2, 3])
@@ -72,7 +72,7 @@ describe('forEachSequential', () => {
 
   it('should handle async callback on first element', async () => {
     const results: number[] = []
-    await forEachSequential([1, 2, 3], (x) => {
+    await forEachSequential([1, 2, 3], x => {
       results.push(x)
       return Promise.resolve()
     })

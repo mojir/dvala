@@ -1517,8 +1517,7 @@ describe('stress: complex end-to-end patterns', () => {
           if (attempt < 3) {
             // Simulate failure — rollback
             resumeFrom(snapshots[0]!, 0)
-          }
-          else {
+          } else {
             r(21)
           }
         },

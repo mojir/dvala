@@ -17,7 +17,7 @@ function isNode(value: unknown): value is AstNode {
 
 export function valueToString(value: unknown): string {
   if (isDvalaFunction(value))
-    // eslint-disable-next-line ts/no-unsafe-member-access
+
     return `<function ${(value as any).name || '\u03BB'}>`
 
   if (isNode(value))

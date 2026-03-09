@@ -32,11 +32,11 @@ function signature(reference: DocStringSource): string[] {
   const { title, variants, args, returns } = reference
   const isOperator = !isEffectRef(reference) && reference._isOperator
 
-  const functionForms = variants.map((variant) => {
+  const functionForms = variants.map(variant => {
     if (isEffectRef(reference)) {
       // Effect form: perform(effect(name), arg1, arg2)
       const argsStr = variant.argumentNames.length > 0
-        ? `, ${variant.argumentNames.map((argName) => {
+        ? `, ${variant.argumentNames.map(argName => {
           let result = ''
           const arg = args[argName]!
           if (arg.rest) {
@@ -49,7 +49,7 @@ function signature(reference: DocStringSource): string[] {
       return `  perform(effect(${title})${argsStr}) -> ${type(returns)}`
     }
 
-    const form = `  ${title}(${variant.argumentNames.map((argName) => {
+    const form = `  ${title}(${variant.argumentNames.map(argName => {
       let result = ''
       const arg = args[argName]!
       if (arg.rest) {

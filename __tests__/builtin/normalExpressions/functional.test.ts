@@ -106,7 +106,7 @@ let foo = comp(not, odd?);
         expect(dvala.run('let { juxt } = import(functional); juxt("a", "b")({ a: 1, b: 2, c: 3, d: 4})')).toEqual([1, 2])
         expect(dvala.run('let { juxt } = import(functional); apply(juxt(+, *, min, max), range(1, 5))')).toEqual([10, 24, 1, 4])
         expect(() => dvala.run('let { juxt } = import(functional); juxt(-> $, -> $2)')).toThrow() // Must accept same number of params
-        // eslint-disable-next-line ts/no-unsafe-member-access
+
         expect((dvala.run('let { juxt } = import(functional); juxt((x) -> x, (x, y = 1) -> x + y, (...c) -> 0)') as any).arity).toEqual({ min: 1, max: 1 })
         expect(() => dvala.run('let { juxt } = import(functional); juxt()')).toThrow(DvalaError)
       })

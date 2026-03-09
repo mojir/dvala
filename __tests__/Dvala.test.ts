@@ -162,8 +162,7 @@ describe('all tests', () => {
     it('sourceCodeInfo', () => {
       try {
         dvala.run('let n = 3; n + m') // m is undefined
-      }
-      catch (error) {
+      } catch (error) {
         expect((error as DvalaError).sourceCodeInfo?.position.line).toBe(1)
 
         expect((error as DvalaError).sourceCodeInfo?.position.column).toBe(16)
@@ -177,13 +176,12 @@ describe('all tests', () => {
     it('unexpected argument', () => {
       try {
         dvala.run('1 + + 2')
-      }
-      catch (error) {
-      // eslint-disable-next-line ts/no-unsafe-assignment
+      } catch (error) {
+
         const anyError = error as any
-        // eslint-disable-next-line ts/no-unsafe-member-access
+
         expect(anyError.sourceCodeInfo.position.line).toBe(1)
-        // eslint-disable-next-line ts/no-unsafe-member-access
+
         expect(anyError.sourceCodeInfo.position.column).toBe(7)
       }
     })

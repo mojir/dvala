@@ -1,10 +1,10 @@
-import type { Colorizer } from '../colorizer'
 import type { Argument, TypedValue } from '../../../reference'
+import type { Colorizer } from '../colorizer'
 
 export function getCliType(fmt: Colorizer, arg: Argument | TypedValue) {
   const argType = arg.type
   const types = Array.isArray(argType) ? argType : [argType]
-  const typeString = types.map((type) => {
+  const typeString = types.map(type => {
     return fmt.dim.red(type)
   }).join(' | ')
   return arg.array || arg.rest

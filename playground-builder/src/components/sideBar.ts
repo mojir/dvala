@@ -59,7 +59,7 @@ export function getSideBar() {
 
   const renderRefLink = (obj: Reference) => {
     const linkName = getLinkName(obj)
-    const name = `${escape(obj.title)}`
+    const name = escape(obj.title)
     return `<a id="${linkName}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${linkName}', 'smooth')">${name}</a>`
   }
 
@@ -103,15 +103,15 @@ export function getSideBar() {
           ${
             moduleCategoryCollections[categoryKey]
               ? sortRefs(moduleCategoryCollections[categoryKey])
-                  .map((obj) => {
-                    const linkName = getLinkName(obj)
-                    // Strip module prefix (e.g., "vector." from "vector.sum")
-                    const stripPrefix = (n: string) => n.includes('.') ? n.split('.').slice(1).join('.') : n
-                    const displayName = stripPrefix(obj.title)
-                    const name = `${escape(displayName)}`
-                    return `<a id="${linkName}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${linkName}', 'smooth')">${name}</a>`
-                  })
-                  .join('\n')
+                .map(obj => {
+                  const linkName = getLinkName(obj)
+                  // Strip module prefix (e.g., "vector." from "vector.sum")
+                  const stripPrefix = (n: string) => n.includes('.') ? n.split('.').slice(1).join('.') : n
+                  const displayName = stripPrefix(obj.title)
+                  const name = escape(displayName)
+                  return `<a id="${linkName}_link" ${styles('scroll-my-2', 'pl-2')} onclick="Playground.showPage('${linkName}', 'smooth')">${name}</a>`
+                })
+                .join('\n')
               : ''
           }
         </div>

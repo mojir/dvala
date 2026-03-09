@@ -253,8 +253,7 @@ describe('auto: docs metadata consistency (core)', () => {
                 `${name}: variant has ${argCount} args but arity.max is ${arity.max}`,
               ).toBe(true)
             }
-          }
-          else {
+          } else {
             // Variadic variant: non-rest args must be >= arity.min
             const nonRestCount = variant.argumentNames.filter(n => !docs.args[n]?.rest).length
             if (arity.min !== undefined) {
@@ -497,7 +496,7 @@ describe('auto: wrong-type rejection (core)', () => {
         continue
 
       // Build args: correct types for all except the target arg
-      const argValues = variant.argumentNames.map((n) => {
+      const argValues = variant.argumentNames.map(n => {
         if (n === argName)
           return wrongValue
         const a = docs.args[n]
@@ -535,7 +534,7 @@ describe('auto: wrong-type rejection (modules)', () => {
         const variant = docs.variants[0]
         if (!variant)
           return false
-        return variant.argumentNames.some((argName) => {
+        return variant.argumentNames.some(argName => {
           const arg = docs.args[argName]
           return arg && !arg.rest && getWrongValue(arg.type) !== null
         })
@@ -564,7 +563,7 @@ describe('auto: wrong-type rejection (modules)', () => {
           if (!wrongValue)
             continue
 
-          const argValues = variant.argumentNames.map((n) => {
+          const argValues = variant.argumentNames.map(n => {
             if (n === argName)
               return wrongValue
             const a = docs.args[n]
@@ -606,14 +605,12 @@ describe('auto: example determinism (core)', () => {
         let threw2 = false
         try {
           result1 = dvala.run(example)
-        }
-        catch {
+        } catch {
           threw1 = true
         }
         try {
           result2 = dvala.run(example)
-        }
-        catch {
+        } catch {
           threw2 = true
         }
 
@@ -646,14 +643,12 @@ describe('auto: example determinism (modules)', () => {
             let threw2 = false
             try {
               result1 = dvala.run(example)
-            }
-            catch {
+            } catch {
               threw1 = true
             }
             try {
               result2 = dvala.run(example)
-            }
-            catch {
+            } catch {
               threw2 = true
             }
 

@@ -14,10 +14,9 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
       const flags = typeof flagsArg === 'string' ? flagsArg : ''
 
       try {
-        // eslint-disable-next-line no-new
+
         new RegExp(source, flags) // Throws if invalid regexp
-      }
-      catch (e) {
+      } catch (_e) {
         throw new DvalaError(`Invalid regular expression: ${source} ${flags}`, sourceCodeInfo)
       }
       return {

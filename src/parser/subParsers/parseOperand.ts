@@ -35,8 +35,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       operand = createAccessorNode(operand, stringNode, token[2])
       ctx.advance()
       token = ctx.tryPeek()
-    }
-    else if (isLBracketToken(token)) {
+    } else if (isLBracketToken(token)) {
       ctx.advance()
       const expression = ctx.parseExpression()
       if (!isRBracketToken(ctx.tryPeek())) {
@@ -45,8 +44,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       operand = createAccessorNode(operand, expression, token[2])
       ctx.advance()
       token = ctx.tryPeek()
-    }
-    else if (isLParenToken(token)) {
+    } else if (isLParenToken(token)) {
       operand = parseFunctionCall(ctx, operand)
       token = ctx.tryPeek()
     }
@@ -72,9 +70,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     }
     ctx.advance()
     return expression
-  }
-
-  else if (isOperatorToken(token)) {
+  } else if (isOperatorToken(token)) {
     const operatorName = token[1]
     if (isBinaryOperator(operatorName)) {
       ctx.advance()
@@ -86,8 +82,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 
     if (operatorName === '->') {
       return parseShorthandLambdaFunction(ctx)
-    }
-    else {
+    } else {
       throw new DvalaError(`Illegal operator: ${operatorName}`, token[2])
     }
   }

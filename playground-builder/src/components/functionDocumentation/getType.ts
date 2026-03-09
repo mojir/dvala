@@ -4,7 +4,7 @@ import { styles } from '../../styles'
 
 export function getType(arg: Argument | TypedValue) {
   const types = Array.isArray(arg.type) ? arg.type : [arg.type]
-  const typeString = types.map((type) => {
+  const typeString = types.map(type => {
     return isDataType(type)
       ? `<span ${styles('text-color-Rose')}><a onclick="Playground.showPage('datatype-${type}', 'smooth')">${type}</a></span>`
       : `<span ${styles('text-color-Rose')}>${type}</span>`

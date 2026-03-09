@@ -1,7 +1,7 @@
-const resolve = require('@rollup/plugin-node-resolve')
-const typescript = require('@rollup/plugin-typescript')
 const jsonPlugin = require('@rollup/plugin-json')
+const resolve = require('@rollup/plugin-node-resolve')
 const terser = require('@rollup/plugin-terser')
+const typescript = require('@rollup/plugin-typescript')
 const { dvalaSourcePlugin } = require('./rollup.plugins')
 
 const plugins = [

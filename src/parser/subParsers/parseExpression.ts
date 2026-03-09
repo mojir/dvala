@@ -55,8 +55,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         left = parseLoop(ctx, token)
         break
     }
-  }
-  else if (isReservedSymbolToken(token, 'do')) {
+  } else if (isReservedSymbolToken(token, 'do')) {
     left = parseDo(ctx)
   }
 
@@ -79,8 +78,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
       left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2])
-    }
-    else if (isSymbolToken(operator)) {
+    } else if (isSymbolToken(operator)) {
       if (!isFunctionOperator(operator[1])) {
         break
       }
@@ -94,8 +92,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         throw new DvalaError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2])
-    }
-    else if (operator?.[1] === '?') {
+    } else if (operator?.[1] === '?') {
       if (conditionalOperatorPrecedence <= precedence) {
         break
       }
@@ -107,8 +104,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       ctx.advance()
       const falseNode = parseExpression(ctx)
       left = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [left, trueNode, falseNode]]], left[2]) satisfies IfNode
-    }
-    else {
+    } else {
       break
     }
 

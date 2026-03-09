@@ -1,4 +1,4 @@
-/* eslint-disable no-console, node/prefer-global/process */
+/* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
 import { createDvala } from '../../src/createDvala'
@@ -54,12 +54,10 @@ export async function renderExample(example: string | string[], name: string, op
       </div>`
 
     return `<div class="example-code" ${styles('relative', 'flex', 'flex-col', 'mb-5')} style="overflow-x: auto;">${actionBar}${codeSection}${resultSection}</div>`
-  }
-  catch (e) {
+  } catch (e) {
     console.error(`Error in example: ${name}`, example)
     throw e
-  }
-  finally {
+  } finally {
     console.log = oldLog
     console.warn = oldWarn
     console.error = oldError

@@ -14,8 +14,7 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
   while (!ctx.isAtEnd() && !isImplicitBlockEnd(ctx, ends)) {
     if (isOperatorToken(ctx.tryPeek(), ';')) {
       ctx.advance()
-    }
-    else {
+    } else {
       nodes.push(ctx.parseExpression())
     }
   }

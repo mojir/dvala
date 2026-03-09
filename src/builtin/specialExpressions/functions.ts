@@ -32,10 +32,10 @@ function getFunctionUnresolvedSymbols(
   const result = new Set<string>()
   const newContext: Context = { self: { value: null } }
 
-  fn[0].forEach((arg) => {
+  fn[0].forEach(arg => {
     Object.assign(newContext, getAllBindingTargetNames(arg))
 
-    walkDefaults(arg, (defaultNode) => {
+    walkDefaults(arg, defaultNode => {
       addToSet(result, getUndefinedSymbols([defaultNode], contextStack, builtin, evaluateNode))
     })
   })

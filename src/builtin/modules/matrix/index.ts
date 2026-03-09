@@ -32,8 +32,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
       assertMatrix(matrix2, sourceCodeInfo)
       try {
         return matrixMultiply(matrix1, matrix2)
-      }
-      catch (error) {
+      } catch (_error) {
         throw new DvalaError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
       }
     },

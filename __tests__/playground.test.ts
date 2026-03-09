@@ -57,7 +57,7 @@ describe('stateHistory', () => {
 
   function createHistory(initial: HistoryEntry) {
     let lastStatus: HistoryStatus = { canUndo: false, canRedo: false }
-    const history = new StateHistory(initial, (s) => {
+    const history = new StateHistory(initial, s => {
       lastStatus = s
     })
     return { history, getStatus: () => lastStatus }

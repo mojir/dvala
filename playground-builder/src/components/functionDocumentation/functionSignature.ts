@@ -28,8 +28,8 @@ export function getFunctionSignature({ title: name, variants, args, returns, _is
 
   return `<table>
   ${getOperatorSignature({ title: name, returns, _isOperator }, styleOverride)}
-  ${variants.map((variant) => {
-    const expression = `${_isOperator ? `${name}` : name}(${variant.argumentNames.map((argName) => {
+  ${variants.map(variant => {
+    const expression = `${_isOperator ? name : name}(${variant.argumentNames.map(argName => {
       let result = ''
       const arg = args[argName]
       if (arg) {

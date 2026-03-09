@@ -214,8 +214,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
           return { ...result, definedBindings: contextStack.getModuleScopeBindings() }
         }
         return result
-      }
-      catch (error) {
+      } catch (error) {
         if (error instanceof DvalaError) {
           return { type: 'error', error }
         }

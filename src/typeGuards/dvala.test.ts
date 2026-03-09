@@ -58,7 +58,7 @@ describe('dvala type guards', () => {
       s: '^ab',
       f: '',
     }
-    // eslint-disable-next-line prefer-regex-literals
+
     const invalid = [/a/, new RegExp('a'), 0, '0', null, undefined, false, true, [], {}]
     testTypeGuars(
       {

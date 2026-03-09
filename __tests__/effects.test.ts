@@ -1039,7 +1039,7 @@ describe('phase 4 — Suspension & Resume', () => {
             checkpoint('step 1', { step: 1 })
             r(null)
           },
-          'my.second': async (ctx) => {
+          'my.second': async ctx => {
             ctx.checkpoint('step 2', { step: 2 })
             capturedSnapshots = ctx.snapshots
             ctx.resume('done')
@@ -1295,8 +1295,7 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // First call: resume from the checkpoint
               resumeFrom(snapshots[0]!, 0)
-            }
-            else {
+            } else {
               // Second call: resume normally
               r(5)
             }
@@ -1324,8 +1323,7 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // First call: resume from checkpoint to replay
               resumeFrom(snapshots[0]!, 0)
-            }
-            else {
+            } else {
               // Second call: resume normally
               r(32)
             }
@@ -1354,8 +1352,7 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // Resume from first checkpoint — should discard checkpoints 2 and 3
               resumeFrom(snapshots[0]!, null)
-            }
-            else {
+            } else {
               // Second call: capture remaining snapshots
               capturedSnapshots = [...snapshots]
               r(null)
@@ -1386,8 +1383,7 @@ describe('phase 4 — Suspension & Resume', () => {
               // Resume from the most recent snapshot (step 2)
               const lastSnapshot = snapshots[snapshots.length - 1]!
               resumeFrom(lastSnapshot, 0)
-            }
-            else {
+            } else {
               r(99)
             }
           },
@@ -1430,8 +1426,7 @@ describe('phase 4 — Suspension & Resume', () => {
             // Second operation should throw (assertNotSettled)
             try {
               resumeFrom(snapshots[0]!, 0)
-            }
-            catch {
+            } catch {
               // Expected — already settled
             }
           },
@@ -1458,8 +1453,7 @@ describe('phase 4 — Suspension & Resume', () => {
             try {
               const fakeSnapshot = { continuation: {}, timestamp: 0, index: 999, runId: 'bogus', message: 'fake' }
               resumeFrom(fakeSnapshot, 0)
-            }
-            catch (e: unknown) {
+            } catch (e: unknown) {
               caughtMessage = (e as Error).message
             }
           },
@@ -1485,8 +1479,7 @@ describe('phase 4 — Suspension & Resume', () => {
               // snapshots[0] has index 0, snapshots[1] has index 1
               // Resume from first checkpoint
               resumeFrom(snapshots[0]!, null)
-            }
-            else {
+            } else {
               capturedSnapshots = [...snapshots]
               r(null)
             }
@@ -1513,8 +1506,7 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // First call: rollback to checkpoint
               resumeFrom(snapshots[0]!, 0)
-            }
-            else {
+            } else {
               // Second call: resume normally
               r(5)
             }
@@ -1543,8 +1535,7 @@ describe('phase 4 — Suspension & Resume', () => {
             callCount++
             if (callCount === 1) {
               resumeFrom(snapshots[0]!, 0)
-            }
-            else {
+            } else {
               r(1)
             }
           },
@@ -1703,8 +1694,7 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // Resume from the pre-suspension checkpoint
               resumeFrom(snapshots[0]!, 0)
-            }
-            else {
+            } else {
               r(32)
             }
           },
@@ -1834,13 +1824,11 @@ describe('phase 4 — Suspension & Resume', () => {
               }
               try {
                 resumeFrom(evictedSnapshot, null)
-              }
-              catch {
+              } catch {
                 // Expected — snapshot not found. Resume normally.
                 r('recovered')
               }
-            }
-            else {
+            } else {
               r('done')
             }
           },
@@ -2359,8 +2347,7 @@ describe('phase 5 — Standard Effects', () => {
         const result = dvala.run('perform(effect(dvala.io.println), "test")')
         expect(result).toBe('test')
         expect(stdoutSpy).toHaveBeenCalledWith('test\n')
-      }
-      finally {
+      } finally {
         stdoutSpy.mockRestore()
       }
     })
@@ -2372,8 +2359,7 @@ describe('phase 5 — Standard Effects', () => {
 
         expect(result.type).toBe('error')
         expect(consoleSpy).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         consoleSpy.mockRestore()
       }
     })
@@ -2539,8 +2525,7 @@ describe('phase 5 — Standard Effects', () => {
           expect(value.random).toBe(true)
         }
         expect(stdoutSpy).toHaveBeenCalledTimes(2)
-      }
-      finally {
+      } finally {
         stdoutSpy.mockRestore()
       }
     })
@@ -2572,8 +2557,7 @@ describe('phase 5 — Standard Effects', () => {
         expect(r2).toEqual({ type: 'completed', value: 'hello' })
         expect(stdoutSpy).toHaveBeenCalledTimes(1)
         expect(stdoutSpy).toHaveBeenCalledWith('After resume: hello\n')
-      }
-      finally {
+      } finally {
         stdoutSpy.mockRestore()
       }
     })
@@ -2607,8 +2591,7 @@ describe('phase 5 — Standard Effects', () => {
         `)
         expect(result).toBe(true)
         expect(stdoutSpy).toHaveBeenCalledWith('sync log\n')
-      }
-      finally {
+      } finally {
         stdoutSpy.mockRestore()
       }
     })
@@ -4004,8 +3987,7 @@ describe('generateRunId', () => {
       const id = generateRunId()
       expect(typeof id).toBe('string')
       expect(id).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/)
-    }
-    finally {
+    } finally {
       Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, writable: true, configurable: true })
     }
   })

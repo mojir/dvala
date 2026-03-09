@@ -75,8 +75,7 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
       nextSnapshotIndex: deserialized.nextSnapshotIndex,
       maxSnapshots: options?.maxSnapshots,
     }, deserializeOptions)
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof DvalaError) {
       return { type: 'error', error }
     }

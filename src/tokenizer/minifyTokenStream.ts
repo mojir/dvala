@@ -3,7 +3,7 @@ import { isMultiLineCommentToken, isShebangToken, isSingleLineCommentToken, isWh
 
 export function minifyTokenStream(tokenStream: TokenStream, { removeWhiteSpace }: { removeWhiteSpace: boolean }): TokenStream {
   const tokens = tokenStream.tokens
-    .filter((token) => {
+    .filter(token => {
       if (isSingleLineCommentToken(token)
         || isMultiLineCommentToken(token)
         || isShebangToken(token)

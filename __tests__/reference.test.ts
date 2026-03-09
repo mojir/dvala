@@ -65,9 +65,9 @@ describe('apiReference', () => {
         return
       test(key, () => {
         const variants = obj.variants
-        variants.forEach((variant) => {
+        variants.forEach(variant => {
           const argumentNames = variant.argumentNames
-          argumentNames.forEach((argName) => {
+          argumentNames.forEach(argName => {
             expect(isReservedSymbol(argName) || allBuiltins.includes(argName), `${key} in ${obj.category} has invalid argument name ${argName}`).toBe(false)
           })
         })
@@ -278,7 +278,7 @@ describe('modulePageExamples', () => {
 })
 
 describe('tutorialExamples', () => {
-  tutorials.forEach((tutorial) => {
+  tutorials.forEach(tutorial => {
     describe(tutorial.title, () => {
       getExamples(tutorial).forEach((codeLines, index) => {
         const example = codeLines.join('\n')

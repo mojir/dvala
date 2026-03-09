@@ -15,8 +15,7 @@ export function parseArray(ctx: ParserContext): ArrayNode {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
-    }
-    else {
+    } else {
       params.push(ctx.parseExpression())
     }
     const nextToken = ctx.tryPeek()

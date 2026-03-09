@@ -37,7 +37,7 @@ export function perfectPower(n: number): [number, number] | null {
 }
 
 export const perfectPowerSequence: SequenceDefinition<'perfect-power'> = {
-  'perfect-power-seq': (length) => {
+  'perfect-power-seq': length => {
     const perfectPowers: number[] = []
     for (let i = 1; perfectPowers.length < length; i++) {
       if (perfectPower(i)) {
@@ -47,12 +47,12 @@ export const perfectPowerSequence: SequenceDefinition<'perfect-power'> = {
     return perfectPowers
   },
   'perfect-power?': n => perfectPower(n) !== null,
-  'perfect-power-take-while': (takeWhile) => {
+  'perfect-power-take-while': takeWhile => {
     const perfectPowers: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!perfectPower(i))
         return loop(i + 1)
-      return chain(takeWhile(i, perfectPowers.length), (keep) => {
+      return chain(takeWhile(i, perfectPowers.length), keep => {
         if (!keep)
           return perfectPowers
         perfectPowers.push(i)

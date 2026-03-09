@@ -27,20 +27,16 @@ export function kendallTau(vectorA: number[], vectorB: number[], epsilon: number
       if (isTieA && isTieB) {
         // Tied in both vectors
         continue
-      }
-      else if (isTieA) {
+      } else if (isTieA) {
         // Tied in vector A only
         tiesInA += 1
-      }
-      else if (isTieB) {
+      } else if (isTieB) {
         // Tied in vector B only
         tiesInB += 1
-      }
-      else if (diffA * diffB > 0) {
+      } else if (diffA * diffB > 0) {
         // Concordant pair
         concordant += 1
-      }
-      else {
+      } else {
         // Discordant pair
         discordant += 1
       }

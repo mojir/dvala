@@ -34,7 +34,7 @@ export async function getModulesPage(): Promise<string> {
       </p>
       ${renderedExample1}
       <p ${styles('text-color-gray-400')}>
-        Available modules: ${moduleCategories.map((c) => {
+        Available modules: ${moduleCategories.map(c => {
           const ns = c
           return `<code ${styles('bg-gray-700', 'px-1')}>${ns}</code>`
         }).join(', ')}

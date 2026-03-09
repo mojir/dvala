@@ -1,2 +1,2 @@
-export const polishSymbolCharacterClass = '[\\w@%^?=!$<>+*/:&\|~-]'
-export const polishSymbolFirstCharacterClass = '[a-zA-Z_@%^?=!$<>+*/&\|~-]'
+export const polishSymbolCharacterClass = '[\\w@%^?=!$<>+*/:&|~-]'
+export const polishSymbolFirstCharacterClass = '[a-zA-Z_@%^?=!$<>+*/&|~-]'

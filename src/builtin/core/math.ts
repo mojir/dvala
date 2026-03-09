@@ -19,11 +19,9 @@ function getNumberVectorOrMatrixOperation(
   for (const param of params) {
     if (isVector(param)) {
       hasVector = true
-    }
-    else if (isMatrix(param)) {
+    } else if (isMatrix(param)) {
       hasMatrix = true
-    }
-    else if (!isNumber(param)) {
+    } else if (!isNumber(param)) {
       throw new DvalaError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
     }
   }
@@ -38,15 +36,14 @@ function getNumberVectorOrMatrixOperation(
         if (rows === null) {
           rows = param.length
           cold = param[0]!.length
-        }
-        else {
+        } else {
           if (param.length !== rows || param[0]!.length !== cold) {
             throw new DvalaError('Matrix dimensions do not match', sourceCodeInfo)
           }
         }
       }
     }
-    const matrices = params.map((param) => {
+    const matrices = params.map(param => {
       if (isMatrix(param)) {
         return param
       }
@@ -60,15 +57,14 @@ function getNumberVectorOrMatrixOperation(
       if (isVector(param)) {
         if (length === null) {
           length = param.length
-        }
-        else {
+        } else {
           if (param.length !== length) {
             throw new DvalaError('Vector lengths do not match', sourceCodeInfo)
           }
         }
       }
     }
-    const vectors = params.map((param) => {
+    const vectors = params.map(param => {
       if (isVector(param)) {
         return param
       }
@@ -87,11 +83,9 @@ function unaryMathOp(
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operands[0]!)
-    }
-    else if (operation === 'vector') {
+    } else if (operation === 'vector') {
       return operands[0]!.map(val => fn(val))
-    }
-    else {
+    } else {
       return operands[0]!.map(row => row.map(val => fn(val)))
     }
   }
@@ -104,11 +98,9 @@ function binaryMathOp(
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operands[0]!, operands[1]!)
-    }
-    else if (operation === 'vector') {
+    } else if (operation === 'vector') {
       return operands[0]!.map((val, i) => fn(val, operands[1]![i]!))
-    }
-    else {
+    } else {
       return operands[0]!.map((row, i) => row.map((val, j) => fn(val, operands[1]![i]![j]!)))
     }
   }
@@ -124,12 +116,10 @@ function reduceMathOp(
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return operands.reduce((a, b) => fn(a, b), identity)
-    }
-    else if (operation === 'vector') {
+    } else if (operation === 'vector') {
       const [first, ...rest] = operands
       return rest.reduce((acc, v) => acc.map((val, i) => fn(val, v[i]!)), first!)
-    }
-    else {
+    } else {
       const [first, ...rest] = operands
       return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => fn(val, m[i]![j]!))), first!)
     }
@@ -250,13 +240,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         return rest.reduce((result, param) => {
           return result / param
         }, first!)
-      }
-      else if (operation === 'vector') {
+      } else if (operation === 'vector') {
         const firstVector = operands[0]!
         const restVectors = operands.slice(1)
         return restVectors.reduce((acc, vector) => acc.map((val, i) => val / vector[i]!), firstVector)
-      }
-      else {
+      } else {
         const firstMatrix = operands[0]!
         const restMatrices = operands.slice(1)
         return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val / matrix[i]![j]!)), firstMatrix)
@@ -304,13 +292,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         return rest.reduce((result, param) => {
           return result - param
         }, first!)
-      }
-      else if (operation === 'vector') {
+      } else if (operation === 'vector') {
         const firstVector = operands[0]!
         const restVectors = operands.slice(1)
         return restVectors.reduce((acc, vector) => acc.map((val, i) => val - vector[i]!), firstVector)
-      }
-      else {
+      } else {
         const firstMatrix = operands[0]!
         const restMatrices = operands.slice(1)
         return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val - matrix[i]![j]!)), firstMatrix)
@@ -508,30 +494,25 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       if (operation === 'number') {
         if (decimals === undefined || decimals === 0) {
           return Math.round(operands[0]!)
-        }
-        else {
+        } else {
           assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
           const factor = 10 ** decimals
           return Math.round(operands[0]! * factor) / factor
         }
-      }
-      else if (operation === 'vector') {
+      } else if (operation === 'vector') {
         const vector = operands[0]!
         if (decimals === undefined || decimals === 0) {
           return vector.map(val => Math.round(val))
-        }
-        else {
+        } else {
           assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
           const factor = 10 ** decimals
           return vector.map(val => Math.round(val * factor) / factor)
         }
-      }
-      else {
+      } else {
         const matrix = operands[0]!
         if (decimals === undefined || decimals === 0) {
           return matrix.map(row => row.map(val => Math.round(val)))
-        }
-        else {
+        } else {
           assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
           const factor = 10 ** decimals
           return matrix.map(row => row.map(val => Math.round(val * factor) / factor))

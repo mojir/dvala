@@ -106,7 +106,7 @@ function isPadovan(num: number): boolean {
 }
 
 export const padovanSequence: SequenceDefinition<'padovan'> = {
-  'padovan-seq': (length) => {
+  'padovan-seq': length => {
     const padovan = [1, 1, 1]
     for (let i = 3; i < length; i += 1) {
       padovan[i] = padovan[i - 2]! + padovan[i - 3]!
@@ -114,17 +114,17 @@ export const padovanSequence: SequenceDefinition<'padovan'> = {
     return padovan.slice(0, length)
   },
   'padovan?': n => isPadovan(n),
-  'padovan-take-while': (takeWhile) => {
+  'padovan-take-while': takeWhile => {
     const padovan: number[] = []
-    return chain(takeWhile(1, 0), (keep0) => {
+    return chain(takeWhile(1, 0), keep0 => {
       if (!keep0)
         return padovan
       padovan.push(1)
-      return chain(takeWhile(1, 1), (keep1) => {
+      return chain(takeWhile(1, 1), keep1 => {
         if (!keep1)
           return padovan
         padovan.push(1)
-        return chain(takeWhile(1, 2), (keep2) => {
+        return chain(takeWhile(1, 2), keep2 => {
           if (!keep2)
             return padovan
           padovan.push(1)
@@ -136,7 +136,7 @@ export const padovanSequence: SequenceDefinition<'padovan'> = {
             a = b
             b = c
             c = temp
-            return chain(takeWhile(c, i), (keep) => {
+            return chain(takeWhile(c, i), keep => {
               if (!keep)
                 return padovan
               padovan.push(c)

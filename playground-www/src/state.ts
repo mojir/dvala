@@ -43,11 +43,11 @@ const state: State = {
   ;(state as UnknownRecord)[key] = typeof value === 'string' ? JSON.parse(value) : defaultState[key]
 })
 
-const contextHistory = new StateHistory(createContextHistoryEntry(), (status) => {
+const contextHistory = new StateHistory(createContextHistoryEntry(), status => {
   contextHistoryListener?.(status)
 })
 
-const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntry(), (status) => {
+const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntry(), status => {
   dvalaCodeHistoryListener?.(status)
 })
 
@@ -81,14 +81,14 @@ export function setDvalaCodeHistoryListener(listener: (status: HistoryStatus) =>
 }
 
 export function updateState(newState: Partial<State>) {
-  Object.entries(newState).forEach((entry) => {
+  Object.entries(newState).forEach(entry => {
     const key = entry[0] as keyof State
     setState(key, entry[1])
   })
 }
 
 export function saveState(newState: Partial<State>, pushToHistory = true) {
-  Object.entries(newState).forEach((entry) => {
+  Object.entries(newState).forEach(entry => {
     const key = entry[0] as keyof State
     const value = entry[1]
     setState(key, value)
@@ -111,7 +111,7 @@ export function clearAllStates() {
 }
 
 export function clearState(...keys: Key[]) {
-  keys.forEach((key) => {
+  keys.forEach(key => {
     localStorage.removeItem(getStorageKey(key))
     ;(state as UnknownRecord)[key] = defaultState[key]
   })
@@ -134,8 +134,7 @@ export function applyEncodedState(encodedState: string): boolean {
   try {
     saveState(JSON.parse(decodeURIComponent(atob(encodedState))) as Partial<State>, true)
     return true
-  }
-  catch (error) {
+  } catch (_error) {
     return false
   }
 }
@@ -149,8 +148,7 @@ export function undoContext() {
       'context-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -164,8 +162,7 @@ export function redoContext() {
       'context-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -179,8 +176,7 @@ export function undoDvalaCode() {
       'dvala-code-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -194,8 +190,7 @@ export function redoDvalaCode() {
       'dvala-code-selection-end': historyEntry.selectionEnd,
     }, false)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }

@@ -379,7 +379,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
   'json-parse': {
     evaluate: ([first], sourceCodeInfo): Any => {
       assertString(first, sourceCodeInfo)
-      // eslint-disable-next-line ts/no-unsafe-return
+
       return JSON.parse(first)
     },
     arity: toFixedArity(1),

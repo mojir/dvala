@@ -86,8 +86,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
       },
       deserializeOptions,
     )
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof DvalaError) {
       return { type: 'error', error }
     }

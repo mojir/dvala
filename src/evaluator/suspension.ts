@@ -323,7 +323,7 @@ export function deserializeFromObject(
   // Fill in contexts on each ContextStack
   for (const scs of data.contextStacks) {
     const cs = csMap.get(scs.id)!
-    const resolvedContexts: Context[] = scs.contexts.map((serializedCtx) => {
+    const resolvedContexts: Context[] = scs.contexts.map(serializedCtx => {
       const ctx = serializedCtx as Record<string, { value: unknown }>
       const resolved: Context = {}
       for (const [name, entry] of Object.entries(ctx)) {

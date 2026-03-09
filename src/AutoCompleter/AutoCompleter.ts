@@ -67,8 +67,7 @@ export class AutoCompleter {
 
     if (this.suggestionIndex === null) {
       this.suggestionIndex = 0
-    }
-    else {
+    } else {
       this.suggestionIndex += 1
       if (this.suggestionIndex >= this.suggestions.length) {
         this.suggestionIndex = 0
@@ -85,8 +84,7 @@ export class AutoCompleter {
 
     if (this.suggestionIndex === null) {
       this.suggestionIndex = this.suggestions.length - 1
-    }
-    else {
+    } else {
       this.suggestionIndex -= 1
       if (this.suggestionIndex < 0) {
         this.suggestionIndex = this.suggestions.length - 1
@@ -129,7 +127,7 @@ export class AutoCompleter {
   private generateWithPredicate(params: AutoCompleterParams, shouldInclude: (suggestion: string) => boolean): string[] {
     const suggestions = new Set<string>()
 
-    dvalaCommands.forEach((suggestion) => {
+    dvalaCommands.forEach(suggestion => {
       if (shouldInclude(suggestion)) {
         suggestions.add(suggestion)
       }

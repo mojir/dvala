@@ -1,4 +1,3 @@
-/* eslint-disable node/prefer-global/process */
 import path from 'node:path'
 import fs from 'node:fs'
 import { getAllDocumentationItems } from './components/functionDocumentation'
@@ -18,7 +17,7 @@ const DOC_DIR = path.resolve(__dirname, '../../docs')
 setupPredictability()
 setupDocDir()
 copyAssets()
-writeIndexPage().catch((err) => {
+writeIndexPage().catch(err => {
   console.error(err)
   process.exit(1)
 })

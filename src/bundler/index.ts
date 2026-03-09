@@ -51,7 +51,7 @@ export function bundle(entryPath: string): DvalaBundle {
   const sorted = topologicalSort(absoluteEntryPath)
 
   // Phase 4: Rewrite imports and build bundle
-  const fileModules: [string, string][] = sorted.map((filePath) => {
+  const fileModules: [string, string][] = sorted.map(filePath => {
     const source = fileSources.get(filePath)!
     const rewritten = rewriteImports(source, filePath)
     return [canonicalNames.get(filePath)!, rewritten]

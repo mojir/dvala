@@ -49,8 +49,7 @@ string-repeat("***", 0)`,
       const int = toNonNegativeInteger(num)
       try {
         return String.fromCodePoint(int)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },
@@ -258,8 +257,7 @@ pad-right("Albert", -1)`,
       const templateStrings = templateString.split('||||')
       if (templateStrings.length <= 1) {
         return applyPlaceholders(templateStrings[0] as string, placeholders, sourceCodeInfo)
-      }
-      else {
+      } else {
         // Pluralisation
         const count = placeholders[0]
         assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -270,8 +268,7 @@ pad-right("Albert", -1)`,
 
           const placehoder = templateStrings[count === 1 ? 0 : 1] as string
           return applyPlaceholders(placehoder, stringPlaceholders, sourceCodeInfo)
-        }
-        else {
+        } else {
           // More than two variant:
           // Use count as index
           // If count >= number of variants, use last variant
@@ -329,7 +326,7 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
       assertString(value, sourceCodeInfo)
       return btoa(
         encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_match, p1) => {
-          // eslint-disable-next-line ts/no-unsafe-argument
+
           return String.fromCharCode(Number.parseInt(p1, 16))
         }),
       )
@@ -355,14 +352,13 @@ encode-base64("Albert")`,
       try {
         return decodeURIComponent(
           Array.prototype.map
-            .call(atob(value), (c) => {
-              // eslint-disable-next-line ts/no-unsafe-call, ts/no-unsafe-member-access
+            .call(atob(value), c => {
+
               return `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`
             })
             .join(''),
         )
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },
@@ -406,8 +402,7 @@ encode-uri-component("Hi everyone!?")`,
       assertString(value, sourceCodeInfo)
       try {
         return decodeURIComponent(value)
-      }
-      catch (error) {
+      } catch (error) {
         throw new DvalaError(error as Error, sourceCodeInfo)
       }
     },

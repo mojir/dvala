@@ -35,8 +35,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
-    }
-    else {
+    } else {
       params.push(ctx.parseExpression())
     }
     const nextToken = ctx.tryPeek()
@@ -115,12 +114,9 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       default:
         throw new DvalaError(`Unknown special expression: ${type satisfies never}`, symbol[2])
     }
-  }
-  else if (isNormalBuiltinSymbolNode(symbol) || isUserDefinedSymbolNode(symbol)) {
+  } else if (isNormalBuiltinSymbolNode(symbol) || isUserDefinedSymbolNode(symbol)) {
     return createNamedNormalExpressionNode(symbol, params, symbol[2])
-  }
-
-  else {
+  } else {
     return withSourceCodeInfo([NodeTypes.NormalExpression, [symbol, params]], symbol[2]) satisfies NormalExpressionNodeExpression
   }
 }

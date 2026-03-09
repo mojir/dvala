@@ -22,8 +22,7 @@ function extractDvalaCodeBlocks(): Array<{ code: string, lineNumber: number, blo
       inDvalaBlock = true
       currentBlock = []
       blockStartLine = i + 1
-    }
-    else if (line.trim() === '```' && inDvalaBlock) {
+    } else if (line.trim() === '```' && inDvalaBlock) {
       inDvalaBlock = false
       if (currentBlock.length > 0) {
         blocks.push({
@@ -32,8 +31,7 @@ function extractDvalaCodeBlocks(): Array<{ code: string, lineNumber: number, blo
           blockIndex: blockIndex++,
         })
       }
-    }
-    else if (inDvalaBlock) {
+    } else if (inDvalaBlock) {
       currentBlock.push(line)
     }
   }
@@ -56,8 +54,7 @@ describe('test README.md Dvala code examples', () => {
         dvala.run(block.code)
         // Test passes if no error is thrown
         expect(true).toBe(true)
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`\nCode block ${block.blockIndex + 1} at line ${block.lineNumber} failed:`)
         console.error('Code:')
         console.error(block.code)

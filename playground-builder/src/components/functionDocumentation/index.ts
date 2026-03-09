@@ -19,7 +19,7 @@ export async function getAllDocumentationItems() {
 }
 
 async function getDocumentation(reference: Reference) {
-  const docTitle = `${escapeTitle(reference.title)}`
+  const docTitle = escapeTitle(reference.title)
 
   // Get all references for seeAlso (including module references)
   const functionReferences = reference.seeAlso
@@ -50,11 +50,11 @@ async function getDocumentation(reference: Reference) {
 
     ${functionReferences
       ? getSection(
-          'See also',
-          getSeeAlsoLinks(functionReferences),
-          'text-base',
-          'text-color-gray-400',
-        )
+        'See also',
+        getSeeAlsoLinks(functionReferences),
+        'text-base',
+        'text-color-gray-400',
+      )
       : ''}
 
     ${getSection('Examples', await getFunctionExamples(reference))}
@@ -94,9 +94,9 @@ function getEffectSignatureSection(reference: EffectReference) {
 
 function getEffectSignature(reference: EffectReference) {
   return `<table>
-  ${reference.variants.map((variant) => {
+  ${reference.variants.map(variant => {
     const argsStr = variant.argumentNames.length > 0
-      ? `, ${variant.argumentNames.map((argName) => {
+      ? `, ${variant.argumentNames.map(argName => {
         let result = ''
         const arg = reference.args[argName]
         if (arg?.rest)
@@ -131,7 +131,7 @@ function getEffectArgumentInfo(reference: EffectReference) {
 
 function getSeeAlsoLinks(references: Reference[]) {
   return `<div ${styles('flex', 'flex-row', 'flex-wrap', 'gap-2')}>
-    ${references.map((reference) => {
+    ${references.map(reference => {
       return `<a ${styles('whitespace-nowrap')} onclick="Playground.showPage('${getLinkName(reference)}', 'smooth')"><span>${escapeTitle(reference.title)}</span></a>`
     }).join('')}
   </div>`

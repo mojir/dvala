@@ -128,8 +128,7 @@ export function tryCatch<T>(
       return result.catch(catchFn)
     }
     return result
-  }
-  catch (error) {
+  } catch (error) {
     return catchFn(error)
   }
 }

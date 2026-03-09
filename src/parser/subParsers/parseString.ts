@@ -23,24 +23,18 @@ export function parseString(ctx: ParserContext, token: StringToken): StringNode 
         // If it's a double escape (\\x), return \x
         if (backslash) {
           return '\\'
-        }
-        // If it's a special character (\n, \t, \r, \b, \f), return the special character
-        else if (newline) {
+        } else if (newline) {
+          // If it's a special character (\n, \t, \r, \b, \f), return the special character
           return '\n'
-        }
-        else if (tab) {
+        } else if (tab) {
           return '\t'
-        }
-        else if (carriageReturn) {
+        } else if (carriageReturn) {
           return '\r'
-        }
-        else if (backspace) {
+        } else if (backspace) {
           return '\b'
-        }
-        else if (formFeed) {
+        } else if (formFeed) {
           return '\f'
-        }
-        else if (doubleQuote) {
+        } else if (doubleQuote) {
           return '"'
         }
         return normalChar

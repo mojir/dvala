@@ -105,11 +105,9 @@ export function parseMarkdownBlocks(markdown: string): Block[] {
         i++ // skip closing ```
       if (isMermaid) {
         blocks.push({ type: 'mermaid', code: codeLines.join('\n') })
-      }
-      else if (isForeignCode) {
+      } else if (isForeignCode) {
         blocks.push({ type: 'foreignCode', language: infoStr, code: codeLines.join('\n') })
-      }
-      else {
+      } else {
         blocks.push({ type: 'code', code: codeLines.join('\n'), options })
       }
       continue
@@ -200,7 +198,7 @@ export async function renderMarkdown(markdown: string, namePrefix: string): Prom
   const blocks = parseMarkdownBlocks(markdown)
   let codeBlockIndex = 0
 
-  const rendered = await Promise.all(blocks.map(async (block) => {
+  const rendered = await Promise.all(blocks.map(async block => {
     switch (block.type) {
       case 'header':
         return block.level === 3

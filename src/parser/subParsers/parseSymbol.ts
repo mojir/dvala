@@ -12,8 +12,7 @@ export function parseSymbol(ctx: ParserContext): SymbolNode | NormalBuiltinSymbo
   }
   if (token[1][0] === '\'') {
     return stringToSymbolNode(stringFromQuotedSymbol(token[1]), token[2])
-  }
-  else {
+  } else {
     return stringToSymbolNode(token[1], token[2])
   }
 }

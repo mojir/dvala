@@ -38,7 +38,7 @@ function getSumOfSquaredDigits(n: number): number {
 }
 
 export const happySequence: SequenceDefinition<'happy'> = {
-  'happy-seq': (length) => {
+  'happy-seq': length => {
     const happyNumbers: number[] = []
     for (let i = 1; happyNumbers.length < length; i++) {
       let n = i
@@ -55,12 +55,12 @@ export const happySequence: SequenceDefinition<'happy'> = {
     return happyNumbers
   },
   'happy?': n => isHappyNumber(n),
-  'happy-take-while': (takeWhile) => {
+  'happy-take-while': takeWhile => {
     const happyNumbers: number[] = []
     function loop(i: number): MaybePromise<number[]> {
       if (!isHappyNumber(i))
         return loop(i + 1)
-      return chain(takeWhile(i, happyNumbers.length), (keep) => {
+      return chain(takeWhile(i, happyNumbers.length), keep => {
         if (!keep)
           return happyNumbers
         happyNumbers.push(i)

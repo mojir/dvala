@@ -17,7 +17,7 @@ const searchDialog = asNotNull(document.getElementById('search-dialog')) as HTML
 
 searchInput.addEventListener('input', onSearch)
 searchOverlay.addEventListener('click', closeSearch)
-searchDialog.addEventListener('click', (event) => {
+searchDialog.addEventListener('click', event => {
   searchInput.focus()
   event.stopPropagation()
 })
@@ -87,8 +87,7 @@ function handleKeyDown(event: KeyboardEvent): 'stop' | void {
     }
 
     return 'stop'
-  }
-  else {
+  } else {
     switch (event.key) {
       case 'k':
       case 'K':
@@ -111,8 +110,7 @@ function handleCtrlKey() {
     ctrlKeyStarted = Date.now()
 
     ctrlKeyTimer = window.setTimeout(resetCtrlKey, 400)
-  }
-  else {
+  } else {
     resetCtrlKey()
     if (isOpen())
       closeSearch()
@@ -175,8 +173,7 @@ function updateSelection() {
       const element = searchResult.children[selectedIndex]!
       element.classList.add('selected')
       element.scrollIntoView({ block: 'center' })
-    }
-    else {
+    } else {
       selectedIndex = null
     }
   }
@@ -235,15 +232,13 @@ function updateSearchResult(searchString: string) {
   noSearchResult.style.display = 'none'
   searchResult.innerHTML = ''
 
-  // eslint-disable-next-line ts/no-unsafe-member-access
   const searchResults = ((window as any).Playground.allSearchResultEntries as { search: string, html: HTMLElement }[]).filter(
     entry => entry.search.toLowerCase().includes(searchString.toLowerCase()),
   )
 
   if (searchResults.length === 0) {
     noSearchResult.style.display = 'flex'
-  }
-  else {
+  } else {
     searchResult.style.display = 'flex'
     searchResult.innerHTML = searchResults.map(entry => entry.html).join('')
   }

@@ -1,6 +1,8 @@
-import { type TextFormatter, createFormatter } from '../../common/createFormatter'
+import type { TextFormatter } from '../../common/createFormatter'
+import type { Colorizer } from './colorizer'
+import { createFormatter } from '../../common/createFormatter'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import { type Colorizer, Colors } from './colorizer'
+import { Colors } from './colorizer'
 
 export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
   count: number

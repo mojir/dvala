@@ -7,7 +7,7 @@ import { createParserContext, parseExpression } from './subParsers/parseExpressi
 export { createParserContext, parseExpression }
 
 export function parse(tokenStream: TokenStream): AstNode[] {
-  tokenStream.tokens.forEach((token) => {
+  tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
       throw new DvalaError(token[3], token[2])
     }
@@ -21,8 +21,7 @@ export function parse(tokenStream: TokenStream): AstNode[] {
     nodes.push(parseExpression(ctx, 0))
     if (isOperatorToken(ctx.tryPeek(), ';')) {
       ctx.advance()
-    }
-    else {
+    } else {
       if (!ctx.isAtEnd()) {
         throw new DvalaError('Expected ;', ctx.peekSourceCodeInfo())
       }

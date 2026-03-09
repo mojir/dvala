@@ -46,7 +46,7 @@ export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
       .reduce((context: Context, bindingNode) => {
         const names = getAllBindingTargetNames(bindingNode[1][0])
 
-        Object.keys(names).forEach((name) => {
+        Object.keys(names).forEach(name => {
           context[name] = { value: true }
         })
         return context

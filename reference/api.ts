@@ -1115,44 +1115,45 @@ export type FunctionalUtilsApiName = typeof api.functionalUtils[number]
 export type ConvertApiName = typeof api.convert[number]
 
 // Core functions - always available without import
-export type CoreNormalExpressionName =
-  | CollectionApiName
-  | ArrayApiName
-  | SequenceApiName
-  | MathApiName
-  | FunctionalApiName
-  | MetaApiName
-  | MiscApiName
-  | ObjectApiName
-  | PredicateApiName
-  | RegularExpressionApiName
-  | StringApiName
-  | BitwiseApiName
-  | VectorApiName
-  | AssertionApiName
+export type CoreNormalExpressionName
+  = | CollectionApiName
+    | ArrayApiName
+    | SequenceApiName
+    | MathApiName
+    | FunctionalApiName
+    | MetaApiName
+    | MiscApiName
+    | ObjectApiName
+    | PredicateApiName
+    | RegularExpressionApiName
+    | StringApiName
+    | BitwiseApiName
+    | VectorApiName
+    | AssertionApiName
 
 // Module functions - require import()
-export type ModuleExpressionName =
-  | MatrixApiName
-  | VectorUtilsApiName
-  | LinAlgApiName
-  | GridApiName
-  | NumberTheoryApiName
-  | MathUtilsApiName
-  | FunctionalUtilsApiName
-  | AssertionUtilsApiName
-  | StringUtilsApiName
-  | CollectionUtilsApiName
-  | SequenceUtilsApiName
-  | BitwiseUtilsApiName
-  | ConvertApiName
-export type NormalExpressionName =
-  | CoreNormalExpressionName
-  | ModuleExpressionName
+export type ModuleExpressionName
+  = | MatrixApiName
+    | VectorUtilsApiName
+    | LinAlgApiName
+    | GridApiName
+    | NumberTheoryApiName
+    | MathUtilsApiName
+    | FunctionalUtilsApiName
+    | AssertionUtilsApiName
+    | StringUtilsApiName
+    | CollectionUtilsApiName
+    | SequenceUtilsApiName
+    | BitwiseUtilsApiName
+    | ConvertApiName
+export type NormalExpressionName
+  = | CoreNormalExpressionName
+    | ModuleExpressionName
 
-export type FunctionName =
-  | NormalExpressionName
-  | SpecialExpressionsApiName
+export type FunctionName
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  = | NormalExpressionName
+    | SpecialExpressionsApiName
 
 export type ShorthandName = typeof api.shorthand[number]
 

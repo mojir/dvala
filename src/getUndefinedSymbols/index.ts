@@ -54,8 +54,7 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
           if (lookUpResult === null)
             unresolvedSymbols.add(symbolNode[1])
         }
-      }
-      else {
+      } else {
         const [, [expressionNode]] = normalExpressionNode
         findUnresolvedSymbolsInNode(expressionNode, contextStack, builtin, evaluateNode)?.forEach(symbol => unresolvedSymbols.add(symbol))
       }

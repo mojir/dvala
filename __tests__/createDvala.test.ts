@@ -202,14 +202,14 @@ describe('createDvala', () => {
         fileModules: [],
         get program(): string { throw new RangeError('boom') },
       }
-      // eslint-disable-next-line ts/no-unsafe-argument
+
       const result = await d.runAsync(fakeBundle as any)
       expect(result.type).toBe('error')
     })
 
     it('rethrows TypeError from try block', async () => {
       const d = createDvala()
-      // eslint-disable-next-line ts/no-unsafe-argument
+
       await expect(d.runAsync(null as any)).rejects.toThrow(TypeError)
     })
   })

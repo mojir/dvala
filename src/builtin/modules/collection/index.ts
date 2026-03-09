@@ -16,8 +16,7 @@ function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
     if (typeof key === 'string' && collHasKey(coll, key))
       return toAny(coll[key])
-  }
-  else {
+  } else {
     if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length)
       return toAny(coll[key])
   }
@@ -68,8 +67,7 @@ function cloneAndGetMeta(
       if (Array.isArray(resultColl)) {
         assertNumber(key, sourceCodeInfo)
         newResultColl = asColl(resultColl[key], sourceCodeInfo)
-      }
-      else {
+      } else {
         assertObj(resultColl, sourceCodeInfo)
         assertString(key, sourceCodeInfo)
         if (!collHasKey(result.coll, key))
@@ -100,8 +98,7 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
             coll = nextValue
           else
             return defaultValue
-        }
-        else {
+        } else {
           return defaultValue
         }
       }
@@ -164,8 +161,7 @@ cu.get-in(
       if (Array.isArray(innerCollMeta.parent)) {
         assertNumber(parentKey, sourceCodeInfo)
         innerCollMeta.parent[parentKey] = assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
-      }
-      else {
+      } else {
         assertString(parentKey, sourceCodeInfo)
         innerCollMeta.parent[parentKey] = assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
       }
