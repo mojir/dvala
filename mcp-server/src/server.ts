@@ -26,7 +26,7 @@ import {
 import { specialExpressionTypes } from '../../src/builtin/specialExpressionTypes'
 import { examples } from '../../reference/examples'
 
-const dvala = createDvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules, debug: true })
 
 // ---------------------------------------------------------------------------
 // Helpers

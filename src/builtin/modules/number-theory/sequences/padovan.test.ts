@@ -30,7 +30,7 @@ describe('padovan', () => {
 
   it('should return the correct takeWhile sequence', () => {
     expect(runNth('nth:padovan-take-while(-> $ < 8)')).toEqual([1, 1, 1, 2, 2, 3, 4, 5, 7])
-    expect(runNth('nth:padovan-take-while(-> $2 < 10)')).toEqual([1, 1, 1, 2, 2, 3, 4, 5, 7])
+    expect(runNth('nth:padovan-take-while(-> $2 < 10)')).toEqual([1, 1, 1, 2, 2, 3, 4, 5, 7, 9])
     expect(runNth('nth:padovan-take-while(-> $2 < 0)')).toEqual([])
     expect(runNth('nth:padovan-take-while(-> $2 < 1)')).toEqual([1])
     expect(runNth('nth:padovan-take-while(-> $2 < 2)')).toEqual([1, 1])
