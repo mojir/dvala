@@ -17,6 +17,7 @@
 
 import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
+import type { BindingSlot } from '../builtin/bindingSlot'
 import type { AstNode, BindingNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
@@ -202,6 +203,20 @@ export interface ObjectBuildFrame {
 export interface LetBindFrame {
   type: 'LetBind'
   target: BindingTarget
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * `let` binding completion — receive destructured record and add to env.
+ *
+ * After `BindingSlotFrame` completes processing all slots, this frame
+ * receives the resulting record, adds it to the environment, and returns
+ * the original value (the RHS of the let expression).
+ */
+export interface LetBindCompleteFrame {
+  type: 'LetBindComplete'
+  originalValue: Any // The RHS value to return
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
@@ -532,6 +547,42 @@ export interface FnArgBindFrame {
 }
 
 /**
+ * Linearized binding slot processing frame.
+ *
+ * Used for frame-based destructuring without callbacks. The binding pattern
+ * is pre-flattened into a linear list of slots, and this frame tracks
+ * sequential processing through those slots.
+ *
+ * When a slot has a default that needs evaluation:
+ * 1. Push this frame with current state
+ * 2. Evaluate the default expression
+ * 3. Resume: store evaluated value, continue to next slot
+ *
+ * Nested bindings with intermediate defaults (e.g., `{ a: { b } = default }`)
+ * are handled via the `contexts` stack. When encountering such a slot:
+ * 1. Resolve the intermediate value (from extraction or default)
+ * 2. Push a new context for the nested structure
+ * 3. Process nested slots, then pop and continue with parent
+ *
+ * Fields:
+ * - `contexts`: Stack of binding contexts (last is current)
+ * - `record`: Accumulated name→value bindings (shared across all contexts)
+ */
+export interface BindingSlotContext {
+  slots: BindingSlot[]
+  index: number
+  rootValue: Any
+}
+
+export interface BindingSlotFrame {
+  type: 'BindingSlot'
+  contexts: BindingSlotContext[]
+  record: Record<string, Any>
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
  * Evaluate effect reference expressions in `do...with...end` blocks.
  *
  * When a block has multiple `with` handlers, the effect expressions need to
@@ -764,6 +815,7 @@ export type Frame =
   | ObjectBuildFrame
   // Binding
   | LetBindFrame
+  | LetBindCompleteFrame
   | LoopBindFrame
   | LoopIterateFrame
   | ForLoopFrame
@@ -791,6 +843,7 @@ export type Frame =
   // Destructuring
   | BindingDefaultFrame
   | FnArgBindFrame
+  | BindingSlotFrame
   // Post-processing
   | NanCheckFrame
   // Debug
