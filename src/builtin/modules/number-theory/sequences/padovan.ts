@@ -1,5 +1,3 @@
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceDefinition } from '.'
 
 /**
@@ -114,38 +112,4 @@ export const padovanSequence: SequenceDefinition<'padovan'> = {
     return padovan.slice(0, length)
   },
   'padovan?': n => isPadovan(n),
-  'padovan-take-while': takeWhile => {
-    const padovan: number[] = []
-    return chain(takeWhile(1, 0), keep0 => {
-      if (!keep0)
-        return padovan
-      padovan.push(1)
-      return chain(takeWhile(1, 1), keep1 => {
-        if (!keep1)
-          return padovan
-        padovan.push(1)
-        return chain(takeWhile(1, 2), keep2 => {
-          if (!keep2)
-            return padovan
-          padovan.push(1)
-          let a = 1
-          let b = 1
-          let c = 1
-          function loop(i: number): MaybePromise<number[]> {
-            const temp = a + b
-            a = b
-            b = c
-            c = temp
-            return chain(takeWhile(c, i), keep => {
-              if (!keep)
-                return padovan
-              padovan.push(c)
-              return loop(i + 1)
-            })
-          }
-          return loop(3)
-        })
-      })
-    })
-  },
 }

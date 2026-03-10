@@ -1,6 +1,4 @@
 import { approxEqual } from '../../../../utils'
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceDefinition } from '.'
 
 /**
@@ -47,18 +45,4 @@ export const perfectPowerSequence: SequenceDefinition<'perfect-power'> = {
     return perfectPowers
   },
   'perfect-power?': n => perfectPower(n) !== null,
-  'perfect-power-take-while': takeWhile => {
-    const perfectPowers: number[] = []
-    function loop(i: number): MaybePromise<number[]> {
-      if (!perfectPower(i))
-        return loop(i + 1)
-      return chain(takeWhile(i, perfectPowers.length), keep => {
-        if (!keep)
-          return perfectPowers
-        perfectPowers.push(i)
-        return loop(i + 1)
-      })
-    }
-    return loop(1)
-  },
 }

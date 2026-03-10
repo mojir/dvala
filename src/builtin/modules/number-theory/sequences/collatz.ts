@@ -1,6 +1,6 @@
 import type { SequenceDefinition } from '.'
 
-export const collatzSequence: Omit<SequenceDefinition<'collatz'>, 'collatz-nth' | 'collatz-take-while' | 'collatz?'> = {
+export const collatzSequence: Omit<SequenceDefinition<'collatz'>, 'collatz?'> = {
   'collatz-seq': start => {
     let x = start
     const collatz = [x]
@@ -15,4 +15,5 @@ export const collatzSequence: Omit<SequenceDefinition<'collatz'>, 'collatz-nth' 
     return collatz
   },
   'noNth': true,
+  'noTakeWhile': true,
 }

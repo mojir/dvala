@@ -3,8 +3,6 @@ import type { SourceCodeInfo } from '../../../../tokenizer/token'
 import { assertNumber } from '../../../../typeGuards/number'
 import { assertString } from '../../../../typeGuards/string'
 import { toFixedArity } from '../../../../utils/arity'
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../../../../builtin/interface'
 import { abundantSequence } from './abundant'
 import { arithmeticNormalExpressions } from './arithmetic'
@@ -44,19 +42,17 @@ type NthKey<T extends string> = `${T}-nth`
 type PredKey<T extends string> = `${T}?`
 
 type SeqFunction<Type extends number | string> = (length: number, sourceCodeInfo: SourceCodeInfo | undefined) => Type[]
-type TakeWhileFunction<Type extends number | string> = (pred: (value: Type, index: number) => MaybePromise<boolean>, sourceCodeInfo: SourceCodeInfo | undefined) => MaybePromise<Type[]>
 type PredFunction<Type extends number | string> = (n: Type, sourceCodeInfo: SourceCodeInfo | undefined) => boolean
 
 export type SequenceKeys<T extends string> = SeqKey<T> | TakeWhileKey<T> | NthKey<T> | PredKey<T>
 
 export type SequenceDefinition<T extends string, Type extends number | string = number> = {
-  [key in Exclude<SequenceKeys<T>, NthKey<T>>]: key extends SeqKey<T>
+  [key in Exclude<SequenceKeys<T>, NthKey<T> | TakeWhileKey<T>>]: key extends SeqKey<T>
     ? SeqFunction<Type>
-    : key extends TakeWhileKey<T>
-      ? TakeWhileFunction<Type>
-      : PredFunction<Type>
+    : PredFunction<Type>
 } & {
   maxLength?: number
+  noTakeWhile?: true
 } & (Type extends string ? {
   string: true
 } : {
@@ -122,18 +118,7 @@ function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
 function getFiniteNumberSequence<T extends string>(name: T, sequence: number[]): SequenceNormalExpressions<T> {
   return {
     [`${name}-seq`]: createSeqNormalExpression(length => sequence.slice(0, length), sequence.length),
-    [`${name}-take-while`]: createTakeWhileNormalExpression(takeWhile => {
-      function loop(i: number): MaybePromise<number[]> {
-        if (i >= sequence.length)
-          return sequence.slice(0, i)
-        return chain(takeWhile(sequence[i]!, i), keep => {
-          if (!keep)
-            return sequence.slice(0, i)
-          return loop(i + 1)
-        })
-      }
-      return loop(0)
-    }, sequence.length),
+    [`${name}-take-while`]: createTakeWhileNormalExpression(sequence.length),
     [`${name}-nth`]: createNthNormalExpression(() => sequence, sequence.length),
     [`${name}?`]: createNumberPredNormalExpression(n => sequence.includes(n)),
   } as unknown as SequenceNormalExpressions<T>
@@ -150,8 +135,9 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
       if (!sequence.noNth) {
         sequenceNormalExpressions[key.replace(/seq$/, 'nth')] = createNthNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
       }
-    } else if (key.endsWith('take-while')) {
-      sequenceNormalExpressions[key] = createTakeWhileNormalExpression(value as TakeWhileFunction<Type>, sequence.maxLength)
+      if (!sequence.noTakeWhile) {
+        sequenceNormalExpressions[key.replace(/seq$/, 'take-while')] = createTakeWhileNormalExpression(sequence.maxLength)
+      }
     } else if (key.endsWith('?')) {
       if (sequence.string) {
         sequenceNormalExpressions[key] = createStringPredNormalExpression(value as PredFunction<string>)
@@ -183,10 +169,9 @@ function createSeqNormalExpression<Type extends number | string>(
   }
 }
 
-function createTakeWhileNormalExpression<Type extends number | string>(
-  _takeWhileFunction: TakeWhileFunction<Type>,
+function createTakeWhileNormalExpression(
   maxLength: number | undefined,
-): BuiltinNormalExpression<Type[]> {
+): BuiltinNormalExpression<number[]> {
   return {
     /* v8 ignore next 1 */
     evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },

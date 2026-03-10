@@ -1,5 +1,3 @@
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceDefinition } from '.'
 
 function isHappyNumber(n: number): boolean {
@@ -55,18 +53,4 @@ export const happySequence: SequenceDefinition<'happy'> = {
     return happyNumbers
   },
   'happy?': n => isHappyNumber(n),
-  'happy-take-while': takeWhile => {
-    const happyNumbers: number[] = []
-    function loop(i: number): MaybePromise<number[]> {
-      if (!isHappyNumber(i))
-        return loop(i + 1)
-      return chain(takeWhile(i, happyNumbers.length), keep => {
-        if (!keep)
-          return happyNumbers
-        happyNumbers.push(i)
-        return loop(i + 1)
-      })
-    }
-    return loop(1)
-  },
 }

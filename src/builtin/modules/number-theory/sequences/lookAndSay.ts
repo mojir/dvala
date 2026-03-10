@@ -1,5 +1,3 @@
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceDefinition } from '.'
 
 /**
@@ -71,25 +69,6 @@ export const lookAndSaySequence: SequenceDefinition<'look-and-say', string> = {
       lookAndSay[i] = next
     }
     return lookAndSay
-  },
-  'look-and-say-take-while': takeWhile => {
-    const lookAndSay: string[] = []
-    return chain(takeWhile('1', 0), keepFirst => {
-      if (!keepFirst)
-        return lookAndSay
-      lookAndSay.push('1')
-      function loop(i: number): MaybePromise<string[]> {
-        const prev = lookAndSay[i - 1]!
-        const next = prev.replace(/(\d)\1*/g, match => `${match.length}${match[0]}`)
-        return chain(takeWhile(next, i), keep => {
-          if (!keep)
-            return lookAndSay
-          lookAndSay.push(next)
-          return loop(i + 1)
-        })
-      }
-      return loop(1)
-    })
   },
   'look-and-say?': n => isLookAndSay(n),
 }

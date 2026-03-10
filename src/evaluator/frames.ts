@@ -296,8 +296,6 @@ export interface ForBindingLevelState {
  *
  * Phase describes what sub-expression is currently being evaluated:
  * - `'evalCollection'`: evaluating the collection expression for a level
- * - `'evalElement'`: processing destructuring for the current element
- * - `'evalLet'`: evaluating let-bindings at the current level
  * - `'evalWhen'`: evaluating the when-guard
  * - `'evalWhile'`: evaluating the while-guard
  * - `'evalBody'`: evaluating the loop body
@@ -308,7 +306,7 @@ export interface ForLoopFrame {
   bindingNodes: LoopBindingNode[]
   body: AstNode
   result: Arr // accumulated results (for `for`)
-  phase: 'evalCollection' | 'evalElement' | 'evalLet' | 'evalWhen' | 'evalWhile' | 'evalBody'
+  phase: 'evalCollection' | 'evalWhen' | 'evalWhile' | 'evalBody'
   bindingLevel: number // which binding level is being processed (0-based)
   levelStates: ForBindingLevelState[] // resolved states for levels 0..bindingLevel
   context: Context // aggregated bindings from all resolved levels

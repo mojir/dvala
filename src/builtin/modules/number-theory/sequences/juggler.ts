@@ -1,6 +1,6 @@
 import type { SequenceDefinition } from '.'
 
-export const jugglerSequence: Omit<SequenceDefinition<'juggler'>, 'juggler-nth' | 'juggler-take-while' | 'juggler?'> = {
+export const jugglerSequence: Omit<SequenceDefinition<'juggler'>, 'juggler?'> = {
   'juggler-seq': start => {
     let next = start
     const juggler = [next]
@@ -14,4 +14,5 @@ export const jugglerSequence: Omit<SequenceDefinition<'juggler'>, 'juggler-nth' 
     return juggler
   },
   'noNth': true,
+  'noTakeWhile': true,
 }
