@@ -24,9 +24,18 @@
  */
 
 import { builtin } from '../builtin'
-import { evaluateBindingNodeValues, getAllBindingTargetNames, tryMatch } from '../builtin/bindingNode'
+import { evaluateBindingNodeValues, getAllBindingTargetNames } from '../builtin/bindingNode'
 import { extractArrayRest, extractObjectRest, extractValueByPath, flattenBindingPattern, validateBindingRootType } from '../builtin/bindingSlot'
 import type { BindingSlot } from '../builtin/bindingSlot'
+import {
+  checkArrayLengthConstraint,
+  checkObjectTypeConstraint,
+  checkTypeAtPath,
+  extractMatchArrayRest,
+  extractMatchObjectRest,
+  extractMatchValueByPath,
+  flattenMatchPattern,
+} from '../builtin/matchSlot'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
@@ -74,7 +83,7 @@ import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj 
 import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
-import { toAny } from '../utils'
+import { deepEqual, toAny } from '../utils'
 import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
 import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
@@ -91,7 +100,6 @@ import type {
   AndFrame,
   ArrayBuildFrame,
   AutoCheckpointFrame,
-  BindingDefaultFrame,
   BindingSlotContext,
   BindingSlotFrame,
   CallFnFrame,
@@ -123,6 +131,8 @@ import type {
   LoopBindFrame,
   LoopIterateFrame,
   MatchFrame,
+  MatchSlotContext,
+  MatchSlotFrame,
   NanCheckFrame,
   ObjectBuildFrame,
   OrFrame,
@@ -1559,8 +1569,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyCallFn(frame, value, k)
     case 'FnBody':
       return applyFnBody(frame, value, k)
-    case 'BindingDefault':
-      return applyBindingDefault(frame, value, k)
     case 'FnArgBind':
       return applyFnArgBind(frame, value, k)
     case 'FnArgSlotComplete':
@@ -1569,6 +1577,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyFnRestArgComplete(frame, value, k)
     case 'BindingSlot':
       return applyBindingSlot(frame, value, k)
+    case 'MatchSlot':
+      return applyMatchSlot(frame, value, k)
     case 'EffectRef':
       return applyEffectRef(frame, value, k)
     case 'HandlerInvoke':
@@ -1703,48 +1713,18 @@ function applyMatch(frame: MatchFrame, value: Any, k: ContinuationStack): Step {
 
 /**
  * Process match cases starting from `frame.index`.
- * Uses recursive tryMatch with evaluateNodeRecursive for pattern matching.
+ * Uses frame-based slot processing for pattern matching.
  */
 function processMatchCase(frame: MatchFrame, k: ContinuationStack): Step {
   const { matchValue, cases, index, env, sourceCodeInfo } = frame
 
-  for (let i = index; i < cases.length; i++) {
-    const [pattern, body, guard] = cases[i]!
-    const bindings = tryMatch(pattern, matchValue, n => evaluateNodeRecursive(n, env))
-
-    if (bindings instanceof Promise) {
-      // Async tryMatch — fall back to recursive evaluation
-      // This handles the case where pattern matching involves async operations
-      throw new DvalaError('Async pattern matching not supported in trampoline yet', sourceCodeInfo)
-    }
-
-    if (bindings === null) {
-      continue // Pattern didn't match — try next case
-    }
-
-    // Pattern matched
-    if (guard) {
-      // Need to evaluate guard with bindings in scope
-      const context: Context = {}
-      for (const [name, val] of Object.entries(bindings)) {
-        context[name] = { value: val }
-      }
-      const guardEnv = env.create(context)
-      const guardFrame: MatchFrame = { ...frame, phase: 'guard', index: i, bindings }
-      return { type: 'Eval', node: guard, env: guardEnv, k: [guardFrame, ...k] }
-    }
-
-    // No guard — evaluate body directly
-    const context: Context = {}
-    for (const [name, val] of Object.entries(bindings)) {
-      context[name] = { value: val }
-    }
-    const bodyEnv = env.create(context)
-    return { type: 'Eval', node: body, env: bodyEnv, k }
+  if (index >= cases.length) {
+    // No more cases — match failed
+    return { type: 'Value', value: null, k }
   }
 
-  // No case matched
-  return { type: 'Value', value: null, k }
+  const [pattern] = cases[index]!
+  return startMatchSlots(pattern, matchValue, frame, env, sourceCodeInfo, k)
 }
 
 function applyAnd(frame: AndFrame, value: Any, k: ContinuationStack): Step {
@@ -3355,19 +3335,6 @@ function continueBindingArgs(
   return handleRestArgAndBody(fn, params, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
 }
 
-function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: ContinuationStack): Step {
-  // Default value has been evaluated — continue binding processing
-  // For Phase 1, this is handled by the recursive evaluateBindingNodeValues
-  // This frame type will be fully utilized in later phases.
-  const { target, record, env, sourceCodeInfo } = frame
-  const valueRecord = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
-  if (valueRecord instanceof Promise) {
-    throw new DvalaError('Async binding default evaluation not supported in trampoline yet', sourceCodeInfo)
-  }
-  Object.assign(record, valueRecord)
-  return { type: 'Value', value, k }
-}
-
 /**
  * Start processing a binding pattern using linearized slots.
  * This is the entry point for frame-based destructuring.
@@ -3513,6 +3480,211 @@ function applyBindingSlot(frame: BindingSlotFrame, value: Any, k: ContinuationSt
 
   // Continue with remaining slots
   return continueBindingSlots(contexts, record, env, sourceCodeInfo, k)
+}
+
+// ---------------------------------------------------------------------------
+// Frame-based pattern matching
+// ---------------------------------------------------------------------------
+
+/**
+ * Start pattern matching with slot-based processing.
+ * Returns Step to continue matching, or moves to next case on failure.
+ */
+function startMatchSlots(
+  pattern: BindingTarget,
+  matchValue: Any,
+  matchFrame: MatchFrame,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  // Check root type constraints first
+  if (!checkObjectTypeConstraint(pattern, matchValue)) {
+    return tryNextMatchCase(matchFrame, k)
+  }
+  if (!checkArrayLengthConstraint(pattern, matchValue)) {
+    return tryNextMatchCase(matchFrame, k)
+  }
+
+  // Flatten pattern to slots
+  const slots = flattenMatchPattern(pattern)
+  if (slots.length === 0) {
+    // Empty pattern (e.g., wildcard) - match succeeded with no bindings
+    return matchSucceeded({}, matchFrame, k)
+  }
+
+  // Start processing slots
+  const contexts: MatchSlotContext[] = [{ slots, index: 0, rootValue: matchValue }]
+  const record: Record<string, Any> = {}
+  return continueMatchSlots(contexts, record, matchFrame, env, sourceCodeInfo, k)
+}
+
+/**
+ * Continue processing match slots.
+ * Returns Step for next action (eval, success, or try next case).
+ */
+function continueMatchSlots(
+  contexts: MatchSlotContext[],
+  record: Record<string, Any>,
+  matchFrame: MatchFrame,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  while (contexts.length > 0) {
+    const ctx = contexts[contexts.length - 1]!
+
+    if (ctx.index >= ctx.slots.length) {
+      // All slots in this context done — pop and continue
+      contexts.pop()
+      continue
+    }
+
+    const slot = ctx.slots[ctx.index]!
+
+    switch (slot.kind) {
+      case 'wildcard':
+        // Always matches, binds nothing
+        ctx.index++
+        continue
+
+      case 'typeCheck': {
+        // Check type at path
+        if (!checkTypeAtPath(ctx.rootValue, slot.path, slot.requiredType!)) {
+          return tryNextMatchCase(matchFrame, k)
+        }
+        ctx.index++
+        continue
+      }
+
+      case 'literal': {
+        // Need to evaluate literal node for comparison
+        const frame: MatchSlotFrame = {
+          type: 'MatchSlot',
+          contexts: contexts.map(c => ({ ...c })),
+          record: { ...record },
+          matchFrame,
+          phase: 'literal',
+          currentSlot: slot,
+          env,
+          sourceCodeInfo,
+        }
+        return { type: 'Eval', node: slot.literalNode!, env, k: [frame, ...k] }
+      }
+
+      case 'rest': {
+        // Collect rest values
+        if (slot.restKeys !== undefined) {
+          // Object rest
+          record[slot.name!] = extractMatchObjectRest(ctx.rootValue, slot.path, slot.restKeys)
+        } else if (slot.restIndex !== undefined) {
+          // Array rest
+          record[slot.name!] = extractMatchArrayRest(ctx.rootValue, slot.path, slot.restIndex)
+        } else {
+          // Simple rest (e.g., ...args at function level) - shouldn't occur in patterns
+          const value = slot.path.length > 0
+            ? extractMatchValueByPath(ctx.rootValue, slot.path) ?? null
+            : ctx.rootValue
+          record[slot.name!] = value
+        }
+        ctx.index++
+        continue
+      }
+
+      case 'bind': {
+        // Extract value by path
+        const value = extractMatchValueByPath(ctx.rootValue, slot.path)
+
+        if (value === undefined || value === null) {
+          if (slot.defaultNode) {
+            // Need to evaluate default
+            const frame: MatchSlotFrame = {
+              type: 'MatchSlot',
+              contexts: contexts.map(c => ({ ...c })),
+              record: { ...record },
+              matchFrame,
+              phase: 'default',
+              currentSlot: slot,
+              env,
+              sourceCodeInfo,
+            }
+            return { type: 'Eval', node: slot.defaultNode, env, k: [frame, ...k] }
+          }
+          // No default, bind null
+          record[slot.name!] = value ?? null
+        } else {
+          record[slot.name!] = value
+        }
+        ctx.index++
+        continue
+      }
+    }
+  }
+
+  // All contexts done — match succeeded
+  return matchSucceeded(record, matchFrame, k)
+}
+
+/**
+ * Handle continuation after evaluating a match slot value.
+ */
+function applyMatchSlot(frame: MatchSlotFrame, value: Any, k: ContinuationStack): Step {
+  const { contexts, record, matchFrame, phase, currentSlot, env, sourceCodeInfo } = frame
+  const ctx = contexts[contexts.length - 1]!
+
+  if (phase === 'literal') {
+    // Compare evaluated literal with actual value
+    const actualValue = extractMatchValueByPath(ctx.rootValue, currentSlot.path)
+    if (!deepEqual(actualValue, value)) {
+      // Literal doesn't match — try next case
+      return tryNextMatchCase(matchFrame, k)
+    }
+    // Literal matched — continue with next slot
+    ctx.index++
+  } else {
+    // Default value evaluated — bind it
+    record[currentSlot.name!] = value ?? null
+    ctx.index++
+  }
+
+  return continueMatchSlots(contexts, record, matchFrame, env, sourceCodeInfo, k)
+}
+
+/**
+ * Pattern matching succeeded — proceed to guard or body.
+ */
+function matchSucceeded(
+  bindings: Record<string, Any>,
+  matchFrame: MatchFrame,
+  k: ContinuationStack,
+): Step {
+  const { cases, index, env } = matchFrame
+  const [, body, guard] = cases[index]!
+
+  // Create environment with bindings
+  const context: Context = {}
+  for (const [name, val] of Object.entries(bindings)) {
+    context[name] = { value: val }
+  }
+
+  if (guard) {
+    // Need to evaluate guard with bindings in scope
+    const guardEnv = env.create(context)
+    const guardFrame: MatchFrame = { ...matchFrame, phase: 'guard', bindings }
+    return { type: 'Eval', node: guard, env: guardEnv, k: [guardFrame, ...k] }
+  }
+
+  // No guard — evaluate body directly
+  const bodyEnv = env.create(context)
+  return { type: 'Eval', node: body, env: bodyEnv, k }
+}
+
+/**
+ * Current pattern didn't match — try next case.
+ */
+function tryNextMatchCase(matchFrame: MatchFrame, k: ContinuationStack): Step {
+  const nextFrame: MatchFrame = { ...matchFrame, index: matchFrame.index + 1 }
+  return processMatchCase(nextFrame, k)
 }
 
 /**

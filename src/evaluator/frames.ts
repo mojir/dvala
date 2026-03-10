@@ -18,6 +18,7 @@
 import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
+import type { MatchSlot } from '../builtin/matchSlot'
 import type { AstNode, BindingNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
@@ -568,27 +569,6 @@ export interface FnBodyFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * Evaluate default values during binding destructuring.
- *
- * `evaluateBindingNodeValues` processes destructuring patterns and may need
- * to evaluate default value expressions (e.g., `let [a (= 10) b] [1]` —
- * the default `10` for `b` needs evaluation). This frame captures the
- * state needed to resume destructuring after a default is evaluated.
- *
- * `target` is the overall binding target being destructured.
- * `value` is the value being destructured against the target.
- * `record` accumulates the name→value mappings produced so far.
- */
-export interface BindingDefaultFrame {
-  type: 'BindingDefault'
-  target: BindingTarget
-  value: Any
-  record: Record<string, Any>
-  env: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
  * Function argument binding — incrementally bind parameters with defaults.
  *
  * When calling a user-defined function, parameters are bound to arguments.
@@ -690,6 +670,49 @@ export interface BindingSlotFrame {
   type: 'BindingSlot'
   contexts: BindingSlotContext[]
   record: Record<string, Any>
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Context for pattern matching slot processing.
+ * Tracks position within a flattened match pattern.
+ */
+export interface MatchSlotContext {
+  slots: MatchSlot[]
+  index: number
+  rootValue: Any
+}
+
+/**
+ * Frame for evaluating pattern match slots.
+ *
+ * Similar to BindingSlotFrame but supports:
+ * - Match failure (pattern doesn't match)
+ * - Literal evaluation and comparison
+ * - Type checking at each path
+ *
+ * When a slot needs evaluation (literal or default), this frame is pushed
+ * and the node is evaluated. On resume:
+ * - For literals: compare result with value; if mismatch, fail
+ * - For defaults: bind the evaluated value and continue
+ *
+ * Fields:
+ * - `contexts`: Stack of match contexts for nested patterns
+ * - `record`: Accumulated bindings so far
+ * - `matchFrame`: The parent MatchFrame to resume on failure or success
+ * - `phase`: 'literal' when evaluating a literal for comparison,
+ *            'default' when evaluating a default value
+ * - `currentSlot`: The slot being processed (for reference after eval)
+ * - `env`: Environment for evaluation
+ */
+export interface MatchSlotFrame {
+  type: 'MatchSlot'
+  contexts: MatchSlotContext[]
+  record: Record<string, Any>
+  matchFrame: MatchFrame
+  phase: 'literal' | 'default'
+  currentSlot: MatchSlot
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
@@ -874,7 +897,7 @@ export interface DebugStepFrame {
  * - **Control flow**: RecurFrame
  * - **Exception & effect handling**: TryWithFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
- * - **Destructuring**: BindingDefaultFrame
+ * - **Destructuring**: FnArgBindFrame, BindingSlotFrame, MatchSlotFrame
  * - **Post-processing**: NanCheckFrame
  * - **Debug**: DebugStepFrame
  */
@@ -957,11 +980,11 @@ export type Frame =
   | CallFnFrame
   | FnBodyFrame
   // Destructuring
-  | BindingDefaultFrame
   | FnArgBindFrame
   | FnArgSlotCompleteFrame
   | FnRestArgCompleteFrame
   | BindingSlotFrame
+  | MatchSlotFrame
   // Post-processing
   | NanCheckFrame
   // Debug
