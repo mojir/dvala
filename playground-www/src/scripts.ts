@@ -203,6 +203,118 @@ export function showTutorialsPage() {
   showPage('tutorials-page', 'smooth')
 }
 
+export function showSnapshotsPage() {
+  populateSnapshotsList()
+  showPage('snapshots-page', 'smooth')
+}
+
+interface SavedSnapshot {
+  snapshot: Snapshot
+  savedAt: number
+  locked: boolean
+  name?: string
+}
+
+function getSavedSnapshots(): SavedSnapshot[] {
+  const raw = JSON.parse(localStorage.getItem(SAVED_CHECKPOINTS_KEY) ?? '[]') as unknown[]
+  return raw.map(entry => {
+    if (typeof entry === 'object' && entry !== null && 'snapshot' in entry && 'savedAt' in entry) {
+      return entry as SavedSnapshot
+    }
+    return { snapshot: entry as Snapshot, savedAt: (entry as Snapshot).timestamp, locked: false }
+  })
+}
+
+function setSavedSnapshots(entries: SavedSnapshot[]) {
+  localStorage.setItem(SAVED_CHECKPOINTS_KEY, JSON.stringify(entries))
+}
+
+function populateSnapshotsList() {
+  const list = document.getElementById('snapshots-list')
+  const empty = document.getElementById('snapshots-empty')
+  const clearBtn = document.getElementById('snapshots-clear-all')
+  if (!list || !empty) return
+
+  const entries = getSavedSnapshots()
+
+  if (entries.length === 0) {
+    list.innerHTML = ''
+    empty.style.display = 'block'
+    if (clearBtn) clearBtn.style.visibility = 'hidden'
+    return
+  }
+
+  empty.style.display = 'none'
+  if (clearBtn) clearBtn.style.visibility = entries.some(e => !e.locked) ? 'visible' : 'hidden'
+  list.innerHTML = entries.map((entry, index) => {
+    const { snapshot, savedAt, locked, name } = entry
+    const title = name || `Snapshot #${index + 1}`
+    const rawMessage = snapshot.message
+    const message = rawMessage || (snapshot.effectName ? `Effect: ${snapshot.effectName}` : 'Checkpoint')
+    const d = new Date(savedAt)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const savedTime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    const lockIcon = locked
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(180 180 180)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(100 100 100)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>'
+    const lockTitle = locked ? 'Unlock snapshot' : 'Lock snapshot'
+    const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(180 180 180)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>'
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${locked ? 'rgb(234 179 8)' : 'rgb(107 114 128)'};">
+        <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
+          <div style="font-size: 1rem; color: rgb(209 213 219);">${escapeHtml(title)}</div>
+          <div style="font-size: 0.8rem; color: rgb(140 140 140);">${escapeHtml(message)}</div>
+          <div style="font-size: 0.75rem; color: rgb(100 100 100);">${savedTime}</div>
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.openSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px;" title="Open snapshot">${playIcon}</button>
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleSnapshotLock(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px;" title="${lockTitle}">${lockIcon}</button>
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.deleteSavedSnapshot(${index})" style="background: rgb(60 60 60); color: rgb(160 160 160); border: none; padding: 6px 8px; border-radius: 4px; font-size: 1.1em; display: flex; align-items: center; cursor: pointer;" title="Delete snapshot">✕</button>
+        </div>
+      </div>
+    `
+  }).join('')
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+export function openSavedSnapshot(index: number) {
+  const entries = getSavedSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  void openSnapshotModal(entry.snapshot)
+}
+
+export function deleteSavedSnapshot(index: number) {
+  void showConfirmModal('Delete snapshot', 'Are you sure you want to delete this snapshot?', () => {
+    const entries = getSavedSnapshots()
+    entries.splice(index, 1)
+    setSavedSnapshots(entries)
+    populateSnapshotsList()
+    showToast('Snapshot deleted')
+  })
+}
+
+export function toggleSnapshotLock(index: number) {
+  const entries = getSavedSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  entry.locked = !entry.locked
+  setSavedSnapshots(entries)
+  populateSnapshotsList()
+}
+
+export function clearUnlockedSnapshots() {
+  void showConfirmModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', () => {
+    const entries = getSavedSnapshots().filter(e => e.locked)
+    setSavedSnapshots(entries)
+    populateSnapshotsList()
+    showToast('Unlocked snapshots cleared')
+  })
+}
+
 export function toggleApiSection(sectionId: string, animate = true) {
   const chevron = document.getElementById(`api-chevron-${sectionId}`)
   const content = document.getElementById(`api-content-${sectionId}`)
@@ -359,7 +471,11 @@ export const redoDvalaCodeHistory = throttle(() => {
 })
 
 export function resetPlayground() {
+  const lockedSnapshots = getSavedSnapshots().filter(e => e.locked)
   clearAllStates()
+  if (lockedSnapshots.length > 0) {
+    setSavedSnapshots(lockedSnapshots)
+  }
 
   resetContext()
   resetDvalaCode()
@@ -808,7 +924,7 @@ window.onload = function () {
     }
     if (evt.key === 'Enter' && elements.checkpointModal.style.display !== 'none') {
       evt.preventDefault()
-      saveCheckpoint()
+      closeCheckpointModal()
     }
     if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
       evt.preventDefault()
@@ -1040,16 +1156,30 @@ export async function run() {
 
   const hijacker = hijackConsole()
   try {
-    const runResult = await getDvala().runAsync(code, { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, autoCheckpoint: getState('auto-checkpoint') })
-    if (runResult.type === 'error')
-      throw runResult.error
-    if (runResult.type === 'suspended') {
-      appendOutput('Program suspended', 'comment')
-      void openSnapshotModal(runResult.snapshot)
-      return
+    const pure = getState('pure')
+    const sync = getState('sync')
+    if (sync) {
+      const result = getDvala().run(code, pure
+        ? { bindings: dvalaParams.bindings, pure: true }
+        : { bindings: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
+      )
+      const content = stringifyValue(result, false)
+      appendOutput(content, 'result')
+    } else {
+      const runResult = await getDvala().runAsync(code, pure
+        ? { bindings: dvalaParams.bindings, pure: true, autoCheckpoint: getState('auto-checkpoint') }
+        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, autoCheckpoint: getState('auto-checkpoint') },
+      )
+      if (runResult.type === 'error')
+        throw runResult.error
+      if (runResult.type === 'suspended') {
+        appendOutput('Program suspended', 'comment')
+        void openSnapshotModal(runResult.snapshot)
+        return
+      }
+      const content = stringifyValue(runResult.value, false)
+      appendOutput(content, 'result')
     }
-    const content = stringifyValue(runResult.value, false)
-    appendOutput(content, 'result')
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
@@ -1165,6 +1295,22 @@ export function toggleDebug() {
   saveState({ debug })
   updateCSS()
   showToast(`Debug mode ${debug ? 'ON' : 'OFF'}`)
+  focusDvalaCode()
+}
+
+export function togglePure() {
+  const pure = !getState('pure')
+  saveState({ pure })
+  updateCSS()
+  showToast(`Pure mode ${pure ? 'ON' : 'OFF'}`)
+  focusDvalaCode()
+}
+
+export function toggleSync() {
+  const sync = !getState('sync')
+  saveState({ sync })
+  updateCSS()
+  showToast(`Synchronous mode ${sync ? 'ON' : 'OFF'}`)
   focusDvalaCode()
 }
 
@@ -1647,14 +1793,32 @@ export function closeCheckpointModal() {
 
 const SAVED_CHECKPOINTS_KEY = 'playground-saved-checkpoints'
 
+function promptSnapshotName(onSave: (name: string) => void) {
+  elements.readlinePrompt.textContent = 'Enter a name for this snapshot'
+  elements.readlinePrompt.style.display = 'block'
+  elements.readlineInput.value = ''
+  elements.readlineModal.style.display = 'flex'
+  elements.readlineInput.focus()
+  pendingReadline = {
+    resolve: (value: string | null) => {
+      if (value !== null) {
+        onSave(value)
+      }
+    },
+  }
+}
+
 export function saveCheckpoint() {
   if (!currentCheckpointSnapshot)
     return
-  const existing = JSON.parse(localStorage.getItem(SAVED_CHECKPOINTS_KEY) ?? '[]') as Snapshot[]
-  existing.push(currentCheckpointSnapshot)
-  localStorage.setItem(SAVED_CHECKPOINTS_KEY, JSON.stringify(existing))
-  showToast(`Checkpoint saved (${existing.length} total)`)
-  closeCheckpointModal()
+  const snapshot = currentCheckpointSnapshot
+  promptSnapshotName(name => {
+    const existing = getSavedSnapshots()
+    existing.push({ snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    setSavedSnapshots(existing)
+    populateSnapshotsList()
+    showToast(`Checkpoint saved (${existing.length} total)`)
+  })
 }
 
 export function downloadCheckpoint() {
@@ -1717,6 +1881,19 @@ export function downloadSnapshot() {
   a.download = `snapshot-${currentSnapshot.index}.json`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+export function saveSnapshot() {
+  if (!currentSnapshot)
+    return
+  const snapshot = currentSnapshot
+  promptSnapshotName(name => {
+    const existing = getSavedSnapshots()
+    existing.push({ snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    setSavedSnapshots(existing)
+    populateSnapshotsList()
+    showToast(`Snapshot saved (${existing.length} total)`)
+  })
 }
 
 export async function resumeSnapshot() {
@@ -2053,6 +2230,47 @@ export function dismissPrintln() {
   focusDvalaCode()
 }
 
+// ---------------------------------------------------------------------------
+// Synchronous effect handlers (used in sync mode)
+// ---------------------------------------------------------------------------
+
+function syncReadlineHandler(ctx: EffectContext): void {
+  const promptText = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+  const value = window.prompt(promptText)
+  ctx.resume(value)
+}
+
+function syncPrintlnHandler(ctx: EffectContext): void {
+  const value = ctx.args[0]
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  window.alert(text)
+  ctx.resume(value as Any)
+}
+
+function syncPrintHandler(ctx: EffectContext): void {
+  const value = ctx.args[0]
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  appendOutput(text, 'output')
+  ctx.resume(value as Any)
+}
+
+function syncDefaultEffectHandler(ctx: EffectContext): void {
+  if (ctx.effectName === 'dvala.checkpoint') {
+    ctx.next()
+    return
+  }
+  throw new Error(`Unhandled effect: ${ctx.effectName}`)
+}
+
+function getSyncEffectHandlers(): HandlerRegistration[] {
+  return [
+    { pattern: 'dvala.io.read-line', handler: syncReadlineHandler },
+    { pattern: 'dvala.io.println', handler: syncPrintlnHandler },
+    { pattern: 'dvala.io.print', handler: syncPrintHandler },
+    { pattern: '*', handler: syncDefaultEffectHandler },
+  ]
+}
+
 function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
@@ -2158,12 +2376,29 @@ function updateCSS() {
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
   if (debugToggle)
     debugToggle.checked = debug
+  const pureToggle = document.getElementById('settings-pure-toggle') as HTMLInputElement | null
+  if (pureToggle)
+    pureToggle.checked = getState('pure')
+  const syncToggle = document.getElementById('settings-sync-toggle') as HTMLInputElement | null
+  if (syncToggle)
+    syncToggle.checked = getState('sync')
+  const sync = getState('sync')
+  const pure = getState('pure')
+  const disabled = sync || pure
   const checkpointToggle = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
-  if (checkpointToggle)
-    checkpointToggle.checked = getState('intercept-checkpoint')
+  if (checkpointToggle) {
+    checkpointToggle.checked = !disabled && getState('intercept-checkpoint')
+    checkpointToggle.disabled = disabled
+    checkpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
+    checkpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  }
   const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
-  if (autoCheckpointToggle)
-    autoCheckpointToggle.checked = getState('auto-checkpoint')
+  if (autoCheckpointToggle) {
+    autoCheckpointToggle.checked = !disabled && getState('auto-checkpoint')
+    autoCheckpointToggle.disabled = disabled
+    autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
+    autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  }
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   elements.dvalaCodeTitleString.textContent = 'Dvala Code'
@@ -2187,6 +2422,8 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
 
     page.classList.add('active-content')
+    if (id === 'snapshots-page')
+      populateSnapshotsList()
     if (link) {
       link.classList.add('active-sidebar-entry')
 

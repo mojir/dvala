@@ -1,7 +1,7 @@
 import type { Reference } from '../../../reference'
 import { apiReference, effectReference, getLinkName, moduleReference } from '../../../reference'
 import { moduleCategories } from '../../../reference/api'
-import { chevronRightIcon, gearIcon, homeIcon, labIcon, lampIcon, searchIcon } from '../icons'
+import { chevronRightIcon, cameraIcon, gearIcon, homeIcon, labIcon, lampIcon, searchIcon } from '../icons'
 import { styles } from '../styles'
 
 function menuLink(icon: string, title: string, onclick: string) {
@@ -130,6 +130,7 @@ export function getSideBar() {
     ${menuLink(homeIcon, 'Home', 'Playground.showPage(\'index\', \'smooth\')')}
     ${menuLink(lampIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
     ${menuLink(labIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
+    ${menuLink(cameraIcon, 'Snapshots', 'Playground.showSnapshotsPage()')}
     ${menuLink(gearIcon, 'Settings', 'Playground.showPage(\'settings-page\', \'smooth\')')}
 
     <!-- API Reference -->

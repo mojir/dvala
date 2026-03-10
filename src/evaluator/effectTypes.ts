@@ -14,6 +14,8 @@ import type { ContinuationStack } from './frames'
 // Snapshot — captured continuation point
 // ---------------------------------------------------------------------------
 
+export const SUSPENDED_MESSAGE = 'Program suspended'
+
 /**
  * A captured continuation point. Created by `suspend()` or `checkpoint()`.
  * The `continuation` field is opaque — hosts should not inspect or modify it.
