@@ -5,6 +5,7 @@ import type {
   AutoCheckpointFrame,
   BindingDefaultFrame,
   CallFnFrame,
+  ComplementFrame,
   CondFrame,
   ContinuationStack,
   EffectRefFrame,
@@ -15,6 +16,7 @@ import type {
   ForBindingLevelState,
   ForLoopFrame,
   Frame,
+  HandlerInvokeFrame,
   IfBranchFrame,
   LetBindFrame,
   LoopBindFrame,
@@ -59,6 +61,8 @@ describe('frame types', () => {
       PerformArgs: true,
       TryWith: true,
       EffectRef: true,
+      HandlerInvoke: true,
+      Complement: true,
       EffectResume: true,
       ParallelResume: true,
       EvalArgs: true,
@@ -71,7 +75,7 @@ describe('frame types', () => {
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(28)
+    expect(Object.keys(frameTypes)).toHaveLength(30)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -102,6 +106,8 @@ describe('frame types', () => {
         case 'PerformArgs': return 'control'
         case 'TryWith': return 'effect'
         case 'EffectRef': return 'effect'
+        case 'HandlerInvoke': return 'effect'
+        case 'Complement': return 'compound'
         case 'EffectResume': return 'effect'
         case 'ParallelResume': return 'parallel'
         case 'EvalArgs': return 'call'
@@ -155,6 +161,8 @@ describe('frame types', () => {
       'PerformArgs',
       'TryWith',
       'EffectRef',
+      'HandlerInvoke',
+      'Complement',
       'EffectResume',
       'ParallelResume',
       'EvalArgs',
@@ -166,7 +174,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(25)
+    expect(uniqueTypes.size).toBe(27)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -189,6 +197,8 @@ describe('frame types', () => {
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
     const _tryWith: TryWithFrame['type'] = 'TryWith'
     const _effectRef: EffectRefFrame['type'] = 'EffectRef'
+    const _handlerInvoke: HandlerInvokeFrame['type'] = 'HandlerInvoke'
+    const _complement: ComplementFrame['type'] = 'Complement'
     const _effectResume: EffectResumeFrame['type'] = 'EffectResume'
     const _parallelResume: ParallelResumeFrame['type'] = 'ParallelResume'
     const _evalArgs: EvalArgsFrame['type'] = 'EvalArgs'
@@ -218,6 +228,8 @@ describe('frame types', () => {
     expect(_performArgs).toBe('PerformArgs')
     expect(_tryWith).toBe('TryWith')
     expect(_effectRef).toBe('EffectRef')
+    expect(_handlerInvoke).toBe('HandlerInvoke')
+    expect(_complement).toBe('Complement')
     expect(_effectResume).toBe('EffectResume')
     expect(_parallelResume).toBe('ParallelResume')
     expect(_evalArgs).toBe('EvalArgs')

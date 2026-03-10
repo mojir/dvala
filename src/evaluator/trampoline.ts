@@ -91,6 +91,7 @@ import type {
   AutoCheckpointFrame,
   BindingDefaultFrame,
   CallFnFrame,
+  ComplementFrame,
   CondFrame,
   ContinuationStack,
   DebugStepFrame,
@@ -1229,24 +1230,57 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
 
 /**
  * Dispatch a DvalaFunction. User-defined functions are set up with frames;
- * compound function types (Comp, Juxt, etc.) use the recursive executor.
+ * some compound function types still use the recursive executor for iteration.
  */
 function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
   switch (fn.functionType) {
     case 'UserDefined': {
       return setupUserDefinedCall(fn, params, env, sourceCodeInfo, k)
     }
-    // Compound function types: use recursive execution for now
-    // (they involve internal iteration that would need its own frame types)
-    case 'Partial':
+    // Simple compound types: no recursion needed
+    case 'Constantly': {
+      // (constantly value) returns value regardless of params
+      return { type: 'Value', value: fn.value, k }
+    }
+    case 'EffectMatcher': {
+      // Pure regex/string matching - no evaluation needed
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const effectRef = params[0]
+      assertEffect(effectRef, sourceCodeInfo)
+      const effectName = effectRef.name
+      if (fn.matchType === 'string') {
+        return { type: 'Value', value: effectNameMatchesPattern(effectName, fn.pattern), k }
+      }
+      const regexp = new RegExp(fn.pattern, fn.flags)
+      return { type: 'Value', value: regexp.test(effectName), k }
+    }
+    // Param-transforming compound types: transform and re-dispatch
+    case 'Partial': {
+      const actualParams = [...fn.params]
+      if (params.length !== fn.placeholders.length) {
+        throw new DvalaError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
+      }
+      const paramsCopy = [...params]
+      for (const placeholderIndex of fn.placeholders) {
+        actualParams.splice(placeholderIndex, 0, paramsCopy.shift())
+      }
+      return dispatchFunction(fn.function, actualParams, [], env, sourceCodeInfo, k)
+    }
+    case 'Fnull': {
+      const fnulledParams = params.map((param, index) => (param === null ? toAny(fn.params[index]) : param))
+      return dispatchFunction(fn.function, fnulledParams, [], env, sourceCodeInfo, k)
+    }
+    // Complement: call wrapped function, then negate result
+    case 'Complement': {
+      const frame: ComplementFrame = { type: 'Complement', sourceCodeInfo }
+      return dispatchFunction(fn.function, params, [], env, sourceCodeInfo, [frame, ...k])
+    }
+    // Iterative compound types: use recursive execution for now
+    // (they involve internal iteration that would need more complex frame types)
     case 'Comp':
-    case 'Constantly':
     case 'Juxt':
-    case 'Complement':
     case 'EveryPred':
     case 'SomePred':
-    case 'Fnull':
-    case 'EffectMatcher':
     case 'SpecialBuiltin': {
       const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
@@ -1399,6 +1433,11 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyFnArgBind(frame, value, k)
     case 'EffectRef':
       return applyEffectRef(frame, value, k)
+    case 'HandlerInvoke':
+      return applyHandlerInvoke(frame, value, k)
+    case 'Complement':
+      // Negate the result of the wrapped function
+      return { type: 'Value', value: !value, k }
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
     case 'DebugStep':
@@ -2248,12 +2287,16 @@ function invokeMatchedHandler(
   }
   const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
 
-  // Evaluate the handler fn expression using recursive evaluator.
-  // Handler expressions are always simple (lambda or variable refs).
-  const handlerFn = evaluateNodeRecursive(handler.handlerNode, frame.env) as Any
-  const fnLike = asFunctionLike(handlerFn, frame.sourceCodeInfo)
-  // Call the handler — return value is the resume value
-  return dispatchFunction(fnLike, [args], [], frame.env, sourceCodeInfo, handlerK)
+  // Evaluate the handler fn expression via trampoline (frame-based).
+  // Push HandlerInvokeFrame to dispatch the handler after evaluation.
+  const handlerInvokeFrame: HandlerInvokeFrame = {
+    type: 'HandlerInvoke',
+    args,
+    handlerK,
+    handlerEnv: frame.env,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: handler.handlerNode, env: frame.env, k: [handlerInvokeFrame, ...outerK] }
 }
 
 function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
@@ -3102,6 +3145,14 @@ function applyEffectRef(frame: EffectRefFrame, value: Any, k: ContinuationStack)
     sourceCodeInfo,
   }
   return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [sequenceFrame, ...bodyK] }
+}
+
+/**
+ * Handler expression has been evaluated — dispatch the handler function.
+ */
+function applyHandlerInvoke(frame: HandlerInvokeFrame, value: Any, _k: ContinuationStack): Step | Promise<Step> {
+  const fnLike = asFunctionLike(value, frame.sourceCodeInfo)
+  return dispatchFunction(fnLike, [frame.args], [], frame.handlerEnv, frame.sourceCodeInfo, frame.handlerK)
 }
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {

@@ -577,6 +577,21 @@ export interface HandlerInvokeFrame {
 }
 
 // ---------------------------------------------------------------------------
+// Compound function wrappers
+// ---------------------------------------------------------------------------
+
+/**
+ * Complement function wrapper — negates the result of the wrapped function.
+ *
+ * Created by `(complement fn)`. When the wrapped function returns,
+ * this frame applies `!` to the result.
+ */
+export interface ComplementFrame {
+  type: 'Complement'
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+// ---------------------------------------------------------------------------
 // Post-processing
 // ---------------------------------------------------------------------------
 
@@ -700,6 +715,8 @@ export type Frame =
   | EffectRefFrame
   // Handler invocation
   | HandlerInvokeFrame
+  // Compound function wrappers
+  | ComplementFrame
   // Parallel resume
   | ParallelResumeFrame
   // Function calls

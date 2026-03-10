@@ -231,20 +231,36 @@ Converted async fallbacks in `setupUserDefinedCall` from falling back to recursi
 - Line 1297: Async destructuring default in function argument
 - Line 1316: Async destructuring default in rest argument
 
-#### 5.2 Handler Invocation — IN PROGRESS
+#### 5.2 Handler Invocation ✅ COMPLETED
 
 Added `HandlerInvokeFrame` to evaluate handler expressions via trampoline instead of `evaluateNodeRecursive`.
 
-**Still needed:**
-- Wire up `case 'HandlerInvoke':` in `applyFrame`
-- Implement `applyHandlerInvoke`
-- Update `invokeMatchedHandler` to push frame instead of calling `evaluateNodeRecursive`
+**Changes:**
+- Created `HandlerInvokeFrame` interface in `frames.ts`
+- Added `case 'HandlerInvoke':` in `applyFrame`
+- Implemented `applyHandlerInvoke` to dispatch handler function after evaluation
+- Updated `invokeMatchedHandler` to push frame instead of calling `evaluateNodeRecursive`
 
-#### 5.3 Compound Functions — NOT STARTED
+**Validation:** All 31,899 tests passing.
 
-Convert `executePartialRecursive`, `executeCompRecursive`, `executeJuxtRecursive`, `executeEveryPredRecursive`, `executeSomePredRecursive`, `executeFnullRecursive`, `executeComplementRecursive` to frame-based.
+#### 5.3 Compound Functions — IN PROGRESS
 
-Each requires a new frame type to track iteration state.
+Convert compound function execution from recursive to frame-based.
+
+**Analysis:** Compound functions are currently dispatched via `executeDvalaFunctionRecursive`:
+- `Constantly` - Returns stored value (trivial, no recursion)
+- `Complement` - Wraps result with `!` 
+- `Partial` - Merges params and calls wrapped function
+- `Fnull` - Replaces nulls with defaults and calls
+- `Comp` - Chains function calls (needs iteration state)
+- `Juxt` - Maps over functions (needs iteration state)
+- `EveryPred` / `SomePred` - Reduces with early exit (needs iteration state)
+- `EffectMatcher` - Pure string/regex matching (no recursion)
+
+**Approach:** Handle each in `dispatchDvalaFunction` directly:
+1. Trivial cases: Constantly, EffectMatcher can be handled inline
+2. Single-call wrappers: Partial, Fnull, Complement just transform params/result
+3. Iterative cases: Comp, Juxt, EveryPred, SomePred need frames
 
 #### 5.4 Binding Defaults — NOT STARTED
 
