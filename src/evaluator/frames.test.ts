@@ -15,8 +15,12 @@ import type {
   EvalArgsFrame,
   EveryPredFrame,
   FnArgBindFrame,
+  FnArgSlotCompleteFrame,
   FnBodyFrame,
+  FnRestArgCompleteFrame,
   ForBindingLevelState,
+  ForElementBindCompleteFrame,
+  ForLetBindFrame,
   ForLoopFrame,
   Frame,
   HandlerInvokeFrame,
@@ -24,6 +28,7 @@ import type {
   JuxtFrame,
   LetBindCompleteFrame,
   LetBindFrame,
+  LoopBindCompleteFrame,
   LoopBindFrame,
   LoopIterateFrame,
   MatchFrame,
@@ -34,6 +39,7 @@ import type {
   PerformArgsFrame,
   QqFrame,
   RecurFrame,
+  RecurLoopRebindFrame,
   SequenceFrame,
   SomePredFrame,
   TryWithFrame,
@@ -62,9 +68,13 @@ describe('frame types', () => {
       LetBind: true,
       LetBindComplete: true,
       LoopBind: true,
+      LoopBindComplete: true,
       LoopIterate: true,
       ForLoop: true,
+      ForElementBindComplete: true,
+      ForLetBind: true,
       Recur: true,
+      RecurLoopRebind: true,
       PerformArgs: true,
       TryWith: true,
       EffectRef: true,
@@ -81,13 +91,15 @@ describe('frame types', () => {
       FnBody: true,
       BindingDefault: true,
       FnArgBind: true,
+      FnArgSlotComplete: true,
+      FnRestArgComplete: true,
       BindingSlot: true,
       NanCheck: true,
       DebugStep: true,
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(36)
+    expect(Object.keys(frameTypes)).toHaveLength(42)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -113,9 +125,13 @@ describe('frame types', () => {
         case 'LetBind': return 'binding'
         case 'LetBindComplete': return 'binding'
         case 'LoopBind': return 'binding'
+        case 'LoopBindComplete': return 'binding'
         case 'LoopIterate': return 'binding'
         case 'ForLoop': return 'binding'
+        case 'ForElementBindComplete': return 'binding'
+        case 'ForLetBind': return 'binding'
         case 'Recur': return 'control'
+        case 'RecurLoopRebind': return 'control'
         case 'PerformArgs': return 'control'
         case 'TryWith': return 'effect'
         case 'EffectRef': return 'effect'
@@ -132,6 +148,8 @@ describe('frame types', () => {
         case 'FnBody': return 'call'
         case 'BindingDefault': return 'destructure'
         case 'FnArgBind': return 'destructure'
+        case 'FnArgSlotComplete': return 'destructure'
+        case 'FnRestArgComplete': return 'destructure'
         case 'BindingSlot': return 'destructure'
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
@@ -174,31 +192,39 @@ describe('frame types', () => {
       'LetBind',
       'LetBindComplete',
       'LoopBind',
+      'LoopBindComplete',
       'LoopIterate',
       'ForLoop',
+      'ForElementBindComplete',
+      'ForLetBind',
       'Recur',
+      'RecurLoopRebind',
       'PerformArgs',
       'TryWith',
       'EffectRef',
+      'EffectResume',
       'HandlerInvoke',
       'Complement',
       'Comp',
       'Juxt',
       'EveryPred',
       'SomePred',
-      'EffectResume',
       'ParallelResume',
       'EvalArgs',
       'CallFn',
       'FnBody',
       'BindingDefault',
       'FnArgBind',
+      'FnArgSlotComplete',
+      'FnRestArgComplete',
       'BindingSlot',
       'NanCheck',
+      'DebugStep',
+      'ImportMerge',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(33)
+    expect(uniqueTypes.size).toBe(41)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -216,9 +242,13 @@ describe('frame types', () => {
     const _letBind: LetBindFrame['type'] = 'LetBind'
     const _letBindComplete: LetBindCompleteFrame['type'] = 'LetBindComplete'
     const _loopBind: LoopBindFrame['type'] = 'LoopBind'
+    const _loopBindComplete: LoopBindCompleteFrame['type'] = 'LoopBindComplete'
     const _loopIterate: LoopIterateFrame['type'] = 'LoopIterate'
     const _forLoop: ForLoopFrame['type'] = 'ForLoop'
+    const _forElementBindComplete: ForElementBindCompleteFrame['type'] = 'ForElementBindComplete'
+    const _forLetBind: ForLetBindFrame['type'] = 'ForLetBind'
     const _recur: RecurFrame['type'] = 'Recur'
+    const _recurLoopRebind: RecurLoopRebindFrame['type'] = 'RecurLoopRebind'
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
     const _tryWith: TryWithFrame['type'] = 'TryWith'
     const _effectRef: EffectRefFrame['type'] = 'EffectRef'
@@ -235,6 +265,8 @@ describe('frame types', () => {
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
     const _bindingDefault: BindingDefaultFrame['type'] = 'BindingDefault'
     const _fnArgBind: FnArgBindFrame['type'] = 'FnArgBind'
+    const _fnArgSlotComplete: FnArgSlotCompleteFrame['type'] = 'FnArgSlotComplete'
+    const _fnRestArgComplete: FnRestArgCompleteFrame['type'] = 'FnRestArgComplete'
     const _bindingSlot: BindingSlotFrame['type'] = 'BindingSlot'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
     const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
@@ -253,9 +285,13 @@ describe('frame types', () => {
     expect(_letBind).toBe('LetBind')
     expect(_letBindComplete).toBe('LetBindComplete')
     expect(_loopBind).toBe('LoopBind')
+    expect(_loopBindComplete).toBe('LoopBindComplete')
     expect(_loopIterate).toBe('LoopIterate')
     expect(_forLoop).toBe('ForLoop')
+    expect(_forElementBindComplete).toBe('ForElementBindComplete')
+    expect(_forLetBind).toBe('ForLetBind')
     expect(_recur).toBe('Recur')
+    expect(_recurLoopRebind).toBe('RecurLoopRebind')
     expect(_performArgs).toBe('PerformArgs')
     expect(_tryWith).toBe('TryWith')
     expect(_effectRef).toBe('EffectRef')
@@ -272,6 +308,8 @@ describe('frame types', () => {
     expect(_fnBody).toBe('FnBody')
     expect(_bindingDefault).toBe('BindingDefault')
     expect(_fnArgBind).toBe('FnArgBind')
+    expect(_fnArgSlotComplete).toBe('FnArgSlotComplete')
+    expect(_fnRestArgComplete).toBe('FnRestArgComplete')
     expect(_bindingSlot).toBe('BindingSlot')
     expect(_nanCheck).toBe('NanCheck')
     expect(_autoCheckpoint).toBe('AutoCheckpoint')

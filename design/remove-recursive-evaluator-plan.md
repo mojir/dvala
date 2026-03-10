@@ -323,17 +323,20 @@ interface BindingSlotFrame {
 - `applyBindingSlot()` continuation handler
 - Support for nested binding targets via `nestedTarget` field
 
-✅ **Call site converted:**
-- `applyLetBind` - now uses `startBindingSlots` with `LetBindCompleteFrame` for completion
+✅ **Call sites converted:**
+- `applyLetBind` - uses `startBindingSlots` with `LetBindCompleteFrame` for completion
+- `applyLoopBind` - uses `startBindingSlots` with `LoopBindCompleteFrame` for completion
+- `handleForBodyStep` / `handleForElementBind` - uses `ForElementBindCompleteFrame`, `ForLetBindFrame`
+- `setupUserDefinedCall` / `continueArgSlotBinding` - function arg binding via `FnArgSlotCompleteFrame`
+- `handleRestArgAndBody` - rest argument binding via `FnRestArgCompleteFrame`
+- `handleRecur` - loop rebinding via `RecurLoopRebindFrame`
+
+**Bug fixed:**
+- Simple rest bindings (`...args` at function level) were silently skipped because `continueBindingSlots` only handled object rest (`restKeys`) and array rest (`restIndex`), not simple rest where `isRest=true` without either. Fixed by adding an `else` branch to bind the root value directly.
 
 **Remaining call sites:**
-- `applyFnArgBind` - function arg defaults
-- `continueBindingArgs` - rest argument handling
-- `applyBindingDefault` - legacy frame (may be removed)
-- `applyLoopBind` - loop binding
-- `handleForBodyStep` - for loop element binding
-- `handleForElementBind` - for loop destructuring
-- Multiple places in `executeUserDefinedRecursive`
+- `handleMatchCaseFallback` - pattern matching (Phase 5.5)
+- `applyBindingDefault` - legacy frame (may be dead code now)
 
 **Validation:** All 31,899 tests passing.
 

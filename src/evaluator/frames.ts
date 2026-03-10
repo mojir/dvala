@@ -259,6 +259,23 @@ export interface LoopIterateFrame {
 }
 
 /**
+ * `loop` binding completion — receive destructured record and add to context.
+ *
+ * After `BindingSlotFrame` completes processing all slots, this frame
+ * receives the resulting record, adds it to the loop context, and either
+ * continues to the next binding or starts the loop body.
+ */
+export interface LoopBindCompleteFrame {
+  type: 'LoopBindComplete'
+  bindingNodes: BindingNode[]
+  index: number // current binding (0-based)
+  context: Context // accumulated bindings so far
+  body: AstNode
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
  * State for a single binding level in a `for`/`doseq` loop.
  *
  * Each level iterates over a `collection`. Inner-level collections are
@@ -298,6 +315,39 @@ export interface ForLoopFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * `for`/`doseq` element binding completion.
+ *
+ * After `BindingSlotFrame` completes processing element destructuring,
+ * this frame receives the resulting record, adds it to the context,
+ * and continues with let-bindings or guards.
+ */
+export interface ForElementBindCompleteFrame {
+  type: 'ForElementBindComplete'
+  forFrame: ForLoopFrame // parent for frame state
+  levelStates: ForBindingLevelState[]
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * `for`/`doseq` let-binding evaluation.
+ *
+ * Evaluates let-bindings at the current level sequentially.
+ * Each let-binding's value is evaluated, then destructured.
+ */
+export interface ForLetBindFrame {
+  type: 'ForLetBind'
+  phase: 'evalValue' | 'destructure' // which part of the binding
+  forFrame: ForLoopFrame // parent for frame state
+  levelStates: ForBindingLevelState[]
+  letBindings: BindingNode[]
+  letIndex: number // current let-binding (0-based)
+  currentValue?: Any // value being destructured (set after evalValue)
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Special expressions — perform (effect arguments)
 // ---------------------------------------------------------------------------
@@ -333,6 +383,28 @@ export interface RecurFrame {
   index: number // next param to evaluate
   params: Arr // accumulated evaluated params
   env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Handle recur's loop rebinding using slot-based binding.
+ *
+ * When recur is called inside a loop, each binding node needs to be
+ * rebound to the new param value. This frame tracks progress through
+ * the binding nodes.
+ *
+ * After binding completes for one node, the record is merged into
+ * bindingContext and we move to the next node.
+ */
+export interface RecurLoopRebindFrame {
+  type: 'RecurLoopRebind'
+  bindingNodes: BindingNode[]
+  bindingIndex: number // current binding being processed
+  params: Arr // recur params
+  bindingContext: Context // shared context to update
+  body: AstNode // loop body to re-evaluate
+  env: ContextStack
+  remainingK: ContinuationStack // continuation after loop frame
   sourceCodeInfo?: SourceCodeInfo
 }
 
@@ -543,6 +615,46 @@ export interface FnArgBindFrame {
   argIndex: number // current argument index being bound
   context: Context // accumulated bindings
   outerEnv: ContextStack // calling environment
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Frame for completing one function argument's slot-based binding.
+ *
+ * After `startBindingSlots` finishes binding one argument, this frame
+ * merges the result into the accumulated context and continues with
+ * the next argument (or body if all args are bound).
+ *
+ * Fields:
+ * - `fn`: The user-defined function being called
+ * - `params`: Original call params (for calculating rest)
+ * - `argIndex`: Which argument just completed binding
+ * - `nbrOfNonRestArgs`: Total non-rest args count
+ * - `context`: Accumulated bindings (will be mutated)
+ * - `outerEnv`: Calling environment
+ */
+export interface FnArgSlotCompleteFrame {
+  type: 'FnArgSlotComplete'
+  fn: UserDefinedFunction
+  params: Arr
+  argIndex: number
+  nbrOfNonRestArgs: number
+  context: Context
+  outerEnv: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Frame for completing rest argument slot-based binding.
+ *
+ * After `startBindingSlots` finishes binding the rest argument, this frame
+ * merges the bindings into the context and proceeds to evaluate the body.
+ */
+export interface FnRestArgCompleteFrame {
+  type: 'FnRestArgComplete'
+  fn: UserDefinedFunction
+  context: Context
+  outerEnv: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
 
@@ -817,10 +929,14 @@ export type Frame =
   | LetBindFrame
   | LetBindCompleteFrame
   | LoopBindFrame
+  | LoopBindCompleteFrame
   | LoopIterateFrame
   | ForLoopFrame
+  | ForElementBindCompleteFrame
+  | ForLetBindFrame
   // Control flow
   | RecurFrame
+  | RecurLoopRebindFrame
   | PerformArgsFrame
   // Exception & effect handling
   | TryWithFrame
@@ -843,6 +959,8 @@ export type Frame =
   // Destructuring
   | BindingDefaultFrame
   | FnArgBindFrame
+  | FnArgSlotCompleteFrame
+  | FnRestArgCompleteFrame
   | BindingSlotFrame
   // Post-processing
   | NanCheckFrame

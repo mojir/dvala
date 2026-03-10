@@ -106,7 +106,11 @@ import type {
   EvaluatedWithHandler,
   EveryPredFrame,
   FnArgBindFrame,
+  FnArgSlotCompleteFrame,
   FnBodyFrame,
+  FnRestArgCompleteFrame,
+  ForElementBindCompleteFrame,
+  ForLetBindFrame,
   ForLoopFrame,
   Frame,
   HandlerInvokeFrame,
@@ -115,6 +119,7 @@ import type {
   JuxtFrame,
   LetBindCompleteFrame,
   LetBindFrame,
+  LoopBindCompleteFrame,
   LoopBindFrame,
   LoopIterateFrame,
   MatchFrame,
@@ -125,6 +130,7 @@ import type {
   PerformArgsFrame,
   QqFrame,
   RecurFrame,
+  RecurLoopRebindFrame,
   SequenceFrame,
   SomePredFrame,
   TryWithFrame,
@@ -1364,56 +1370,117 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
 /**
  * Set up a user-defined function call: bind params, push FnBodyFrame.
  *
- * For Phase 1, parameter binding (including destructuring defaults) is done
- * synchronously via evaluateBindingNodeValues with the recursive evaluator.
- * This will be converted to use frames in a later phase.
+ * Uses frame-based binding slots for all argument binding, enabling
+ * suspension/serialization at any point during destructuring.
  */
-function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
+function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
   if (!arityAcceptsMin(fn.arity, params.length)) {
     throw new DvalaError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
   }
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
   const nbrOfNonRestArgs = args.filter(arg => arg[0] !== bindingTargetTypes.rest).length
-  const newContextStack = env.create(fn.evaluatedfunction[2])
-  const newContext: Context = { self: { value: fn } }
+  const context: Context = { self: { value: fn } }
 
-  // Bind params that were provided (not needing defaults)
-  for (let i = 0; i < params.length && i < nbrOfNonRestArgs; i += 1) {
-    const param = toAny(params[i])
-    const valueRecord = evaluateBindingNodeValues(args[i]!, param, n =>
-      evaluateNodeRecursive(n, newContextStack.create(newContext)))
-    if (valueRecord instanceof Promise) {
-      throw new DvalaError('Async destructuring default in function argument not supported yet', sourceCodeInfo)
+  // Start binding the first provided argument using slots
+  return continueArgSlotBinding(fn, params, 0, nbrOfNonRestArgs, context, env, sourceCodeInfo, k)
+}
+
+/**
+ * Continue binding function arguments using slot-based binding.
+ * Handles provided args, defaults, rest, then proceeds to body.
+ */
+function continueArgSlotBinding(
+  fn: UserDefinedFunction,
+  params: Arr,
+  argIndex: number,
+  nbrOfNonRestArgs: number,
+  context: Context,
+  outerEnv: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  const evaluatedFunc = fn.evaluatedfunction
+  const args = evaluatedFunc[0]
+  const closureContext = evaluatedFunc[2]
+  const bindingEnv = outerEnv.create(closureContext).create(context)
+
+  // Phase 1: Bind provided args (not needing defaults)
+  if (argIndex < params.length && argIndex < nbrOfNonRestArgs) {
+    const param = toAny(params[argIndex])
+    const argTarget = args[argIndex]!
+    const completeFrame: FnArgSlotCompleteFrame = {
+      type: 'FnArgSlotComplete',
+      fn,
+      params,
+      argIndex,
+      nbrOfNonRestArgs,
+      context,
+      outerEnv,
+      sourceCodeInfo,
     }
-    Object.entries(valueRecord).forEach(([key, value]) => {
-      newContext[key] = { value }
-    })
+    return startBindingSlots(argTarget, param, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
   }
 
-  // If we need defaults, use frame-based evaluation
-  if (params.length < nbrOfNonRestArgs) {
-    return continueBindingArgs(fn, params, params.length, nbrOfNonRestArgs, newContext, env, sourceCodeInfo, k)
+  // Phase 2: Bind args needing defaults
+  if (argIndex < nbrOfNonRestArgs) {
+    return continueBindingArgs(fn, params, argIndex, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
   }
 
-  // All non-rest params provided, handle rest argument
+  // Phase 3: Handle rest argument
+  return handleRestArgAndBody(fn, params, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
+}
+
+/**
+ * Handle rest argument binding and proceed to body evaluation.
+ */
+function handleRestArgAndBody(
+  fn: UserDefinedFunction,
+  params: Arr,
+  nbrOfNonRestArgs: number,
+  context: Context,
+  outerEnv: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  const evaluatedFunc = fn.evaluatedfunction
+  const args = evaluatedFunc[0]
+  const closureContext = evaluatedFunc[2]
+  const bindingEnv = outerEnv.create(closureContext).create(context)
+
+  // Handle rest argument
   const rest: Arr = params.slice(nbrOfNonRestArgs).map(toAny)
   const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
   if (restArgument) {
-    const valueRecord = evaluateBindingNodeValues(restArgument, rest, n =>
-      evaluateNodeRecursive(n, newContextStack.create(newContext)))
-    if (valueRecord instanceof Promise) {
-      throw new DvalaError('Async destructuring default in rest argument not supported yet', sourceCodeInfo)
+    // Use startBindingSlots for rest arg with completion frame
+    const completeFrame: FnRestArgCompleteFrame = {
+      type: 'FnRestArgComplete',
+      fn,
+      context,
+      outerEnv,
+      sourceCodeInfo,
     }
-    Object.entries(valueRecord).forEach(([key, value]) => {
-      newContext[key] = { value }
-    })
+    return startBindingSlots(restArgument, rest, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
   }
 
-  // Evaluate the body as a sequence
-  const bodyNodes = evaluatedFunc[1]
-  const bodyEnv = newContextStack.create(newContext)
+  // No rest arg - proceed directly to body
+  return proceedToFnBody(fn, context, outerEnv, sourceCodeInfo, k)
+}
 
+/**
+ * Start evaluating function body.
+ */
+function proceedToFnBody(
+  fn: UserDefinedFunction,
+  context: Context,
+  outerEnv: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  const evaluatedFunc = fn.evaluatedfunction
+  const closureContext = evaluatedFunc[2]
+  const bodyEnv = outerEnv.create(closureContext).create(context)
+  const bodyNodes = fn.evaluatedfunction[1]
   if (bodyNodes.length === 0) {
     return { type: 'Value', value: null, k }
   }
@@ -1423,7 +1490,7 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
     fn,
     bodyIndex: 1,
     env: bodyEnv,
-    outerEnv: env,
+    outerEnv,
     sourceCodeInfo,
   }
 
@@ -1464,12 +1531,20 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyLetBindComplete(frame, value, k)
     case 'LoopBind':
       return applyLoopBind(frame, value, k)
+    case 'LoopBindComplete':
+      return applyLoopBindComplete(frame, value, k)
     case 'LoopIterate':
       return applyLoopIterate(frame, value, k)
     case 'ForLoop':
       return applyForLoop(frame, value, k)
+    case 'ForElementBindComplete':
+      return applyForElementBindComplete(frame, value, k)
+    case 'ForLetBind':
+      return applyForLetBind(frame, value, k)
     case 'Recur':
       return applyRecur(frame, value, k)
+    case 'RecurLoopRebind':
+      return applyRecurLoopRebind(frame, value, k)
     case 'PerformArgs':
       return applyPerformArgs(frame, value, k)
     case 'TryWith':
@@ -1488,6 +1563,10 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyBindingDefault(frame, value, k)
     case 'FnArgBind':
       return applyFnArgBind(frame, value, k)
+    case 'FnArgSlotComplete':
+      return applyFnArgSlotComplete(frame, value, k)
+    case 'FnRestArgComplete':
+      return applyFnRestArgComplete(frame, value, k)
     case 'BindingSlot':
       return applyBindingSlot(frame, value, k)
     case 'EffectRef':
@@ -1849,39 +1928,64 @@ function applyLetBindComplete(frame: LetBindCompleteFrame, record: Any, k: Conti
   return { type: 'Value', value: originalValue, k }
 }
 
-function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): Step {
   const { bindingNodes, index, context, body, env, sourceCodeInfo } = frame
 
   // Value for the current binding has been evaluated
   const bindingNode = bindingNodes[index]!
   const target = bindingNode[1][0]
 
-  const valueRecord = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env.create(context)))
-  return chain(valueRecord, vr => {
-    Object.entries(vr).forEach(([name, val]) => {
-      context[name] = { value: val }
-    })
+  // Push completion frame to receive the binding record
+  const completeFrame: LoopBindCompleteFrame = {
+    type: 'LoopBindComplete',
+    bindingNodes,
+    index,
+    context,
+    body,
+    env,
+    sourceCodeInfo,
+  }
 
-    // Move to next binding
-    const nextIndex = index + 1
-    if (nextIndex >= bindingNodes.length) {
-      // All bindings done — set up the loop iteration
-      const loopEnv = env.create(context)
-      const iterateFrame: LoopIterateFrame = {
-        type: 'LoopIterate',
-        bindingNodes,
-        bindingContext: context,
-        body,
-        env: loopEnv,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval' as const, node: body, env: loopEnv, k: [iterateFrame, ...k] }
-    }
+  // Start processing binding slots with linearized approach
+  return startBindingSlots(target, value, env.create(context), sourceCodeInfo, [completeFrame, ...k])
+}
 
-    // Evaluate next binding's value expression (in context with previous bindings)
-    const newFrame: LoopBindFrame = { ...frame, index: nextIndex }
-    return { type: 'Eval' as const, node: bindingNodes[nextIndex]![1][1], env: env.create(context), k: [newFrame, ...k] }
+function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: ContinuationStack): Step {
+  const { bindingNodes, index, context, body, env, sourceCodeInfo } = frame
+
+  // Add the binding record to the loop context
+  Object.entries(record as Record<string, Any>).forEach(([name, val]) => {
+    context[name] = { value: val }
   })
+
+  // Move to next binding
+  const nextIndex = index + 1
+  if (nextIndex >= bindingNodes.length) {
+    // All bindings done — set up the loop iteration
+    const loopEnv = env.create(context)
+    const iterateFrame: LoopIterateFrame = {
+      type: 'LoopIterate',
+      bindingNodes,
+      bindingContext: context,
+      body,
+      env: loopEnv,
+      sourceCodeInfo,
+    }
+    return { type: 'Eval', node: body, env: loopEnv, k: [iterateFrame, ...k] }
+  }
+
+  // Evaluate next binding's value expression (in context with previous bindings)
+  const newFrame: LoopBindFrame = {
+    type: 'LoopBind',
+    phase: 'value',
+    bindingNodes,
+    index: nextIndex,
+    context,
+    body,
+    env,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: bindingNodes[nextIndex]![1][1], env: env.create(context), k: [newFrame, ...k] }
 }
 
 function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationStack): Step {
@@ -1891,7 +1995,7 @@ function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationS
 }
 
 function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { returnResult, bindingNodes, result, env, sourceCodeInfo, context } = frame
+  const { returnResult, bindingNodes, result, env, sourceCodeInfo } = frame
   const { asColl, isSeq } = getCollectionUtils()
 
   switch (frame.phase) {
@@ -1915,21 +2019,16 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       const element = (seq as Arr)[0]
 
       const elValue = asAny(element, sourceCodeInfo)
-      const valueRecord = evaluateBindingNodeValues(targetNode, elValue, n => evaluateNodeRecursive(n, env))
-      return chain(valueRecord, vr => {
-        Object.entries(vr).forEach(([name, val]) => {
-          context[name] = { value: val }
-        })
 
-        // Process let-bindings if any
-        const letBindings = binding[1]
-        if (letBindings.length > 0) {
-          return processForLetBindings(frame, levelStates, letBindings, 0, k)
-        }
-
-        // Process when-guard if any
-        return processForGuards(frame, levelStates, k)
-      })
+      // Push completion frame and use frame-based binding
+      const completeFrame: ForElementBindCompleteFrame = {
+        type: 'ForElementBindComplete',
+        forFrame: { ...frame, levelStates, phase: 'evalElement' },
+        levelStates,
+        env,
+        sourceCodeInfo,
+      }
+      return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, [completeFrame, ...k])
     }
 
     case 'evalLet': {
@@ -1993,7 +2092,7 @@ function handleForAbort(frame: ForLoopFrame, k: ContinuationStack): Step {
 
 /** Advance to the next element at the current binding level. */
 function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Promise<Step> {
-  const { bindingNodes, env, sourceCodeInfo, context } = frame
+  const { bindingNodes, env, sourceCodeInfo } = frame
   const levelStates = [...frame.levelStates]
   const bindingLevel = frame.bindingLevel
 
@@ -2018,45 +2117,101 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
   const element = currentState.collection[nextElementIndex]
   const elValue = asAny(element, sourceCodeInfo)
 
-  const valueRecord = evaluateBindingNodeValues(targetNode, elValue, n => evaluateNodeRecursive(n, env))
-  return chain(valueRecord, vr => {
-    Object.entries(vr).forEach(([name, val]) => {
-      context[name] = { value: val }
-    })
-
-    // Process let-bindings
-    const letBindings = binding[1]
-    if (letBindings.length > 0) {
-      return processForLetBindings({ ...frame, levelStates, bindingLevel: currentLevel }, levelStates, letBindings, 0, k)
-    }
-
-    return processForGuards({ ...frame, levelStates, bindingLevel: currentLevel }, levelStates, k)
-  })
+  const completeFrame: ForElementBindCompleteFrame = {
+    type: 'ForElementBindComplete',
+    forFrame: { ...frame, levelStates, bindingLevel: currentLevel },
+    levelStates,
+    env,
+    sourceCodeInfo,
+  }
+  return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, [completeFrame, ...k])
 }
 
-/** Process let-bindings at the current for-loop level. */
-function processForLetBindings(frame: ForLoopFrame, levelStates: ForLoopFrame['levelStates'], letBindings: BindingNode[], letIndex: number, k: ContinuationStack): Step | Promise<Step> {
-  const { env, context } = frame
+/** Handle completion of for-loop element binding. */
+function applyForElementBindComplete(frame: ForElementBindCompleteFrame, record: Any, k: ContinuationStack): Step {
+  const { forFrame, levelStates, env, sourceCodeInfo } = frame
 
-  let result: MaybePromise<void> = undefined as unknown as void
-  for (let i = letIndex; i < letBindings.length; i++) {
-    const bindingIndex = i
-    result = chain(result, () => {
-      const bindingNode = letBindings[bindingIndex]!
-      const [target, bindingValue] = bindingNode[1]
-      const val = evaluateNodeRecursive(bindingValue, env)
-      return chain(val, v => {
-        const valueRecord = evaluateBindingNodeValues(target, v, n => evaluateNodeRecursive(n, env))
-        return chain(valueRecord, vr => {
-          Object.entries(vr).forEach(([name, value]) => {
-            context[name] = { value }
-          })
-        })
-      })
-    })
+  // Add the binding record to the context
+  Object.entries(record as Record<string, Any>).forEach(([name, val]) => {
+    forFrame.context[name] = { value: val }
+  })
+
+  // Process let-bindings if any
+  const binding = forFrame.bindingNodes[forFrame.bindingLevel]!
+  const letBindings = binding[1]
+  if (letBindings.length > 0) {
+    return startForLetBindings(forFrame, levelStates, letBindings, 0, env, sourceCodeInfo, k)
   }
 
-  return chain(result, () => processForGuards({ ...frame, levelStates }, levelStates, k))
+  // Process when-guard if any
+  return processForGuards(forFrame, levelStates, k)
+}
+
+/** Start processing let-bindings at the current for-loop level. */
+function startForLetBindings(
+  forFrame: ForLoopFrame,
+  levelStates: ForLoopFrame['levelStates'],
+  letBindings: BindingNode[],
+  letIndex: number,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  const bindingNode = letBindings[letIndex]!
+  const bindingValue = bindingNode[1][1]
+
+  // Push frame to process the binding after value is evaluated
+  const letBindFrame: ForLetBindFrame = {
+    type: 'ForLetBind',
+    phase: 'evalValue',
+    forFrame,
+    levelStates,
+    letBindings,
+    letIndex,
+    env,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: bindingValue, env, k: [letBindFrame, ...k] }
+}
+
+/** Handle continuation after evaluating a for-loop let-binding value or destructuring. */
+function applyForLetBind(frame: ForLetBindFrame, value: Any, k: ContinuationStack): Step {
+  const { phase, forFrame, levelStates, letBindings, letIndex, env, sourceCodeInfo } = frame
+
+  if (phase === 'evalValue') {
+    // Value evaluated — now destructure
+    const bindingNode = letBindings[letIndex]!
+    const target = bindingNode[1][0]
+
+    // Push frame for destructuring completion
+    const destructureFrame: ForLetBindFrame = {
+      type: 'ForLetBind',
+      phase: 'destructure',
+      forFrame,
+      levelStates,
+      letBindings,
+      letIndex,
+      currentValue: value,
+      env,
+      sourceCodeInfo,
+    }
+    return startBindingSlots(target, value, env, sourceCodeInfo, [destructureFrame, ...k])
+  }
+
+  // phase === 'destructure' — binding record received
+  Object.entries(value as Record<string, Any>).forEach(([name, val]) => {
+    forFrame.context[name] = { value: val }
+  })
+
+  // Move to next let-binding
+  const nextIndex = letIndex + 1
+  if (nextIndex >= letBindings.length) {
+    // All let-bindings done — process guards
+    return processForGuards(forFrame, levelStates, k)
+  }
+
+  // Evaluate next let-binding
+  return startForLetBindings(forFrame, levelStates, letBindings, nextIndex, env, sourceCodeInfo, k)
 }
 
 /** Process when/while guards at the current level. */
@@ -2170,15 +2325,14 @@ function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step |
 /**
  * Handle recur by searching the continuation stack for the nearest
  * LoopIterateFrame or FnBodyFrame, rebinding parameters, and restarting.
- * This replaces the exception-based RecurSignal approach from the recursive
- * evaluator with proper continuation-based control flow.
+ * Uses frame-based slot binding for proper suspension support.
  */
-function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCodeInfo | undefined): Step | Promise<Step> {
+function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCodeInfo | undefined): Step {
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
 
     if (frame.type === 'LoopIterate') {
-      // Found loop frame — rebind variables and re-evaluate body
+      // Found loop frame — start rebinding using slots
       const { bindingNodes, bindingContext, body, env } = frame
       const remainingK = k.slice(i + 1)
 
@@ -2189,45 +2343,8 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
         )
       }
 
-      const rebindAll: MaybePromise<void> = forEachSequential(
-        bindingNodes,
-        (bindingNode, j) => {
-          const target = bindingNode[1][0]
-          const param = toAny(params[j])
-          return chain(
-            evaluateBindingNodeValues(target, param, n => evaluateNodeRecursive(n, env)),
-            valueRecord => {
-              Object.entries(valueRecord).forEach(([name, val]) => {
-                bindingContext[name] = { value: val }
-              })
-            },
-          )
-        },
-      )
-
-      return chain(rebindAll, () => {
-        // After serialization/deserialization, env's innermost context and
-        // bindingContext may be separate copies. Sync them by copying the
-        // updated bindings into the env's innermost context.
-        const envContexts = env.getContextsRaw()
-        const innermostContext = envContexts[0]!
-        if (innermostContext !== bindingContext) {
-          for (const [name, entry] of Object.entries(bindingContext)) {
-            innermostContext[name] = entry
-          }
-        }
-
-        // Push fresh LoopIterateFrame and re-evaluate body
-        const newIterateFrame: LoopIterateFrame = {
-          type: 'LoopIterate',
-          bindingNodes,
-          bindingContext,
-          body,
-          env,
-          sourceCodeInfo: frame.sourceCodeInfo,
-        }
-        return { type: 'Eval' as const, node: body, env, k: [newIterateFrame, ...remainingK] }
-      })
+      // Start the frame-based rebinding process
+      return startRecurLoopRebind(bindingNodes, 0, params, bindingContext, body, env, remainingK, sourceCodeInfo)
     }
 
     if (frame.type === 'FnBody') {
@@ -2239,6 +2356,77 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
   }
 
   throw new DvalaError('recur called outside of loop or function body', sourceCodeInfo)
+}
+
+/**
+ * Start rebinding loop variables during recur using slot-based binding.
+ */
+function startRecurLoopRebind(
+  bindingNodes: BindingNode[],
+  bindingIndex: number,
+  params: Arr,
+  bindingContext: Context,
+  body: AstNode,
+  env: ContextStack,
+  remainingK: ContinuationStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+): Step {
+  if (bindingIndex >= bindingNodes.length) {
+    // All bindings complete — sync context and restart loop body
+    const envContexts = env.getContextsRaw()
+    const innermostContext = envContexts[0]!
+    if (innermostContext !== bindingContext) {
+      for (const [name, entry] of Object.entries(bindingContext)) {
+        innermostContext[name] = entry
+      }
+    }
+
+    // Push fresh LoopIterateFrame and re-evaluate body
+    const newIterateFrame: LoopIterateFrame = {
+      type: 'LoopIterate',
+      bindingNodes,
+      bindingContext,
+      body,
+      env,
+      sourceCodeInfo,
+    }
+    return { type: 'Eval', node: body, env, k: [newIterateFrame, ...remainingK] }
+  }
+
+  // Bind current node using slots
+  const bindingNode = bindingNodes[bindingIndex]!
+  const target = bindingNode[1][0]
+  const param = toAny(params[bindingIndex])
+
+  const rebindFrame: RecurLoopRebindFrame = {
+    type: 'RecurLoopRebind',
+    bindingNodes,
+    bindingIndex,
+    params,
+    bindingContext,
+    body,
+    env,
+    remainingK,
+    sourceCodeInfo,
+  }
+
+  return startBindingSlots(target, param, env, sourceCodeInfo, [rebindFrame, ...remainingK])
+}
+
+/**
+ * Handle completion of one loop binding during recur rebinding.
+ */
+function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: ContinuationStack): Step {
+  const { bindingNodes, bindingIndex, params, bindingContext, body, env, remainingK, sourceCodeInfo } = frame
+
+  // value is the binding record from startBindingSlots
+  const record = value as Record<string, Any>
+  Object.entries(record).forEach(([name, val]) => {
+    bindingContext[name] = { value: val }
+  })
+
+  // Continue with next binding
+  return startRecurLoopRebind(bindingNodes, bindingIndex + 1, params, bindingContext, body, env, remainingK, sourceCodeInfo)
 }
 
 function applyTryWith(_value: Any, k: ContinuationStack): Step {
@@ -3060,33 +3248,71 @@ function applyFnBody(frame: FnBodyFrame, value: Any, k: ContinuationStack): Step
 
 /**
  * Handle function argument binding after a default value is evaluated.
- * Binds the value to the current argument, then continues with remaining args.
+ * Binds the value to the current argument using slots, then continues with remaining args.
  */
 function applyFnArgBind(frame: FnArgBindFrame, value: Any, k: ContinuationStack): Step {
   const { fn, params, argIndex, context, outerEnv, sourceCodeInfo } = frame
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
   const nbrOfNonRestArgs = args.filter(arg => arg[0] !== bindingTargetTypes.rest).length
-  const newContextStack = outerEnv.create(evaluatedFunc[2])
 
-  // Bind the evaluated default value to the current argument
+  // Use startBindingSlots to bind the evaluated default value
   const arg = args[argIndex]!
-  const valueRecord = evaluateBindingNodeValues(arg, value, n =>
-    evaluateNodeRecursive(n, newContextStack.create(context)))
-  if (valueRecord instanceof Promise) {
-    throw new DvalaError('Async destructuring default in function arg not supported yet', sourceCodeInfo)
+  const closureContext = evaluatedFunc[2]
+  const bindingEnv = outerEnv.create(closureContext).create(context)
+
+  // Create completion frame to continue after binding
+  const completeFrame: FnArgSlotCompleteFrame = {
+    type: 'FnArgSlotComplete',
+    fn,
+    params,
+    argIndex,
+    nbrOfNonRestArgs,
+    context,
+    outerEnv,
+    sourceCodeInfo,
   }
-  Object.entries(valueRecord).forEach(([key, val]) => {
+
+  return startBindingSlots(arg, value, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
+}
+
+/**
+ * Handle completion of slot-based binding for a function argument.
+ * Merges the binding record into context and continues with next arg.
+ */
+function applyFnArgSlotComplete(frame: FnArgSlotCompleteFrame, value: Any, k: ContinuationStack): Step {
+  const { fn, params, argIndex, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo } = frame
+
+  // value is the binding record from startBindingSlots
+  const record = value as Record<string, Any>
+  Object.entries(record).forEach(([key, val]) => {
     context[key] = { value: val }
   })
 
   // Continue with remaining arguments
-  return continueBindingArgs(fn, params, argIndex + 1, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
+  return continueArgSlotBinding(fn, params, argIndex + 1, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
+}
+
+/**
+ * Handle completion of rest argument slot-based binding.
+ * Merges bindings into context and proceeds to body evaluation.
+ */
+function applyFnRestArgComplete(frame: FnRestArgCompleteFrame, value: Any, k: ContinuationStack): Step {
+  const { fn, context, outerEnv, sourceCodeInfo } = frame
+
+  // value is the binding record from startBindingSlots
+  const record = value as Record<string, Any>
+  Object.entries(record).forEach(([key, val]) => {
+    context[key] = { value: val }
+  })
+
+  // Proceed to body evaluation
+  return proceedToFnBody(fn, context, outerEnv, sourceCodeInfo, k)
 }
 
 /**
  * Continue binding function arguments starting from argIndex.
- * Used by both setupUserDefinedCall and applyFnArgBind.
+ * Handles only the default evaluation phase - rest handling moved to handleRestArgAndBody.
  */
 function continueBindingArgs(
   fn: UserDefinedFunction,
@@ -3100,7 +3326,8 @@ function continueBindingArgs(
 ): Step {
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
-  const newContextStack = outerEnv.create(evaluatedFunc[2])
+  const closureContext = evaluatedFunc[2]
+  const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Continue binding optional params that need defaults
   for (let i = argIndex; i < nbrOfNonRestArgs; i++) {
@@ -3121,41 +3348,11 @@ function continueBindingArgs(
       outerEnv,
       sourceCodeInfo,
     }
-    return { type: 'Eval', node: defaultNode, env: newContextStack.create(context), k: [frame, ...k] }
+    return { type: 'Eval', node: defaultNode, env: bindingEnv, k: [frame, ...k] }
   }
 
-  // All non-rest args bound, handle rest argument
-  const rest: Arr = params.slice(nbrOfNonRestArgs).map(toAny)
-  const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
-  if (restArgument) {
-    const valueRecord = evaluateBindingNodeValues(restArgument, rest, n =>
-      evaluateNodeRecursive(n, newContextStack.create(context)))
-    if (valueRecord instanceof Promise) {
-      throw new DvalaError('Async rest argument destructuring not supported yet', sourceCodeInfo)
-    }
-    Object.entries(valueRecord).forEach(([key, val]) => {
-      context[key] = { value: val }
-    })
-  }
-
-  // Proceed to body evaluation
-  const bodyNodes = evaluatedFunc[1]
-  const bodyEnv = newContextStack.create(context)
-
-  if (bodyNodes.length === 0) {
-    return { type: 'Value', value: null, k }
-  }
-
-  const fnBodyFrame: FnBodyFrame = {
-    type: 'FnBody',
-    fn,
-    bodyIndex: 1,
-    env: bodyEnv,
-    outerEnv,
-    sourceCodeInfo,
-  }
-
-  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [fnBodyFrame, ...k] }
+  // All non-rest args bound, handle rest argument and proceed to body
+  return handleRestArgAndBody(fn, params, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
 }
 
 function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: ContinuationStack): Step {
@@ -3228,6 +3425,13 @@ function continueBindingSlots(
           ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
           : ctx.rootValue
         record[slot.name] = extractArrayRest(parentValue, slot.restIndex, sourceCodeInfo)
+      } else {
+        // Simple rest binding (e.g., ...args at function level)
+        // The value is the root value at the current path
+        const value = slot.path.length > 0
+          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
+          : ctx.rootValue
+        record[slot.name] = value
       }
       ctx.index++
       continue
