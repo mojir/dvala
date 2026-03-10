@@ -3,7 +3,6 @@ import type {
   AndFrame,
   ArrayBuildFrame,
   AutoCheckpointFrame,
-  BindingDefaultFrame,
   BindingSlotFrame,
   CallFnFrame,
   ComplementFrame,
@@ -89,11 +88,11 @@ describe('frame types', () => {
       EvalArgs: true,
       CallFn: true,
       FnBody: true,
-      BindingDefault: true,
       FnArgBind: true,
       FnArgSlotComplete: true,
       FnRestArgComplete: true,
       BindingSlot: true,
+      MatchSlot: true,
       NanCheck: true,
       DebugStep: true,
       ImportMerge: true,
@@ -146,11 +145,11 @@ describe('frame types', () => {
         case 'EvalArgs': return 'call'
         case 'CallFn': return 'call'
         case 'FnBody': return 'call'
-        case 'BindingDefault': return 'destructure'
         case 'FnArgBind': return 'destructure'
         case 'FnArgSlotComplete': return 'destructure'
         case 'FnRestArgComplete': return 'destructure'
         case 'BindingSlot': return 'destructure'
+        case 'MatchSlot': return 'destructure'
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
@@ -213,11 +212,11 @@ describe('frame types', () => {
       'EvalArgs',
       'CallFn',
       'FnBody',
-      'BindingDefault',
       'FnArgBind',
       'FnArgSlotComplete',
       'FnRestArgComplete',
       'BindingSlot',
+      'MatchSlot',
       'NanCheck',
       'DebugStep',
       'ImportMerge',
@@ -263,7 +262,6 @@ describe('frame types', () => {
     const _evalArgs: EvalArgsFrame['type'] = 'EvalArgs'
     const _callFn: CallFnFrame['type'] = 'CallFn'
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
-    const _bindingDefault: BindingDefaultFrame['type'] = 'BindingDefault'
     const _fnArgBind: FnArgBindFrame['type'] = 'FnArgBind'
     const _fnArgSlotComplete: FnArgSlotCompleteFrame['type'] = 'FnArgSlotComplete'
     const _fnRestArgComplete: FnRestArgCompleteFrame['type'] = 'FnRestArgComplete'
@@ -306,7 +304,6 @@ describe('frame types', () => {
     expect(_evalArgs).toBe('EvalArgs')
     expect(_callFn).toBe('CallFn')
     expect(_fnBody).toBe('FnBody')
-    expect(_bindingDefault).toBe('BindingDefault')
     expect(_fnArgBind).toBe('FnArgBind')
     expect(_fnArgSlotComplete).toBe('FnArgSlotComplete')
     expect(_fnRestArgComplete).toBe('FnRestArgComplete')

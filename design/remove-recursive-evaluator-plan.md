@@ -335,32 +335,61 @@ interface BindingSlotFrame {
 - Simple rest bindings (`...args` at function level) were silently skipped because `continueBindingSlots` only handled object rest (`restKeys`) and array rest (`restIndex`), not simple rest where `isRest=true` without either. Fixed by adding an `else` branch to bind the root value directly.
 
 **Remaining call sites:**
-- `handleMatchCaseFallback` - pattern matching (Phase 5.5)
-- `applyBindingDefault` - legacy frame (may be dead code now)
+- `executeUserDefinedRecursive` - still used by recursive evaluator paths (will be removed in Phase 6)
 
 **Validation:** All 31,899 tests passing.
 
-#### 5.5 Pattern Matching — NOT STARTED
+#### 5.5 Pattern Matching ✅ COMPLETED
 
-Convert `tryMatch` callback-based API to frame-based.
+Converted `tryMatch` callback-based API to frame-based using slot linearization.
 
-Same linearization approach as 5.4:
-- Flatten pattern to list of "match slots"
-- Process sequentially with frame for guard/default evaluation
-- Guards that need evaluation push frames and resume
+**Infrastructure created:**
+- `flattenMatchPattern()` utility in `matchSlot.ts`
+- `extractMatchValueByPath()`, `extractMatchObjectRest()`, `extractMatchArrayRest()` utilities
+- `checkTypeAtPath()`, `checkArrayLengthConstraint()`, `checkObjectTypeConstraint()` validators
+- `MatchSlotFrame` and `MatchSlotContext` interfaces in `frames.ts`
+- `startMatchSlots()` entry point in `trampoline.ts`
+- `continueMatchSlots()` with context stack processing
+- `applyMatchSlot()` continuation handler
 
-### Phase 6: Final Cleanup
+**Match slot kinds:**
+- `wildcard` - always matches, binds nothing
+- `typeCheck` - validates object/array type at path
+- `literal` - evaluates literal node and compares
+- `bind` - binds value to name, handles defaults
+- `rest` - collects remaining object keys or array elements
 
-Once Phase 5 is complete:
-1. Remove `evaluateNodeRecursive` function
-2. Remove `evaluateParamsRecursive` function
-3. Remove `evaluateNormalExpressionRecursive` function
-4. Remove `executeFunctionRecursive` function
-5. Remove `executeDvalaFunctionRecursive` function
+**Changes to `processMatchCase`:**
+- Now calls `startMatchSlots()` instead of `tryMatch()` with callback
+- Pattern matching failures handled via `tryNextMatchCase()`
+- Match success continues to guard or body via `matchSucceeded()`
+
+**Dead code removed:**
+- `BindingDefaultFrame` - removed from frames.ts and trampoline.ts (was unused)
+- `tryMatch` import removed from trampoline.ts
+
+**Validation:** All 31,899 tests passing, `npm run check` passes.
+
+### Phase 6: Final Cleanup — READY TO START
+
+Phase 5 is complete. The recursive evaluator is only used by:
+- `executeUserDefinedRecursive` - called from `evaluateNormalExpressionRecursive` for Dvala-implemented functions
+- `executeFunctionRecursive` - compound function helpers (complement, comp, juxt, every-pred, some-pred, fnull, partial)
+- `handlerMatchesEffect` - effect handler predicate function evaluation
+
+These paths are used when evaluating binding defaults via the old `evaluateBindingNodeValues` callback pattern. Since all binding sites now use frame-based slot processing, these recursive paths may be dead code.
+
+**Steps to complete:**
+1. ✅ Remove `BindingDefaultFrame` (done)
+2. Remove `evaluateNodeRecursive` function
+3. Remove `evaluateParamsRecursive` function
+4. Remove `evaluateNormalExpressionRecursive` function
+5. Remove `executeFunctionRecursive` function
 6. Remove `executeUserDefinedRecursive` function
-7. Remove all `execute*Recursive` helper functions
-8. Remove imports only used by recursive path
-9. Update comments referencing "recursive evaluator"
+7. Remove `evaluateBindingNodeValues` import (no longer used)
+8. Update `handlerMatchesEffect` to use trampoline dispatch
+9. Remove imports only used by recursive path
+10. Update comments referencing "recursive evaluator"
 
 ## Migration Strategy
 
