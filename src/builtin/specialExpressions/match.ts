@@ -50,11 +50,11 @@ end`,
 export const matchSpecialExpression: BuiltinSpecialExpression<Any, MatchNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const result = new Set<string>()
 
     // The match value expression
-    getUndefinedSymbols([node[1][1]], contextStack, builtin, evaluateNode).forEach(s => result.add(s))
+    getUndefinedSymbols([node[1][1]], contextStack, builtin).forEach(s => result.add(s))
 
     // Each case
     for (const [pattern, body, guard] of node[1][2]) {
@@ -63,9 +63,9 @@ export const matchSpecialExpression: BuiltinSpecialExpression<Any, MatchNode> = 
       const caseContextStack = contextStack.create(newContext)
 
       if (guard) {
-        getUndefinedSymbols([guard], caseContextStack, builtin, evaluateNode).forEach(s => result.add(s))
+        getUndefinedSymbols([guard], caseContextStack, builtin).forEach(s => result.add(s))
       }
-      getUndefinedSymbols([body], caseContextStack, builtin, evaluateNode).forEach(s => result.add(s))
+      getUndefinedSymbols([body], caseContextStack, builtin).forEach(s => result.add(s))
     }
 
     return result

@@ -54,5 +54,5 @@ export const qqSpecialExpression: BuiltinSpecialExpression<Any, QqNode> = {
     }
     return null
   },
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => getUndefinedSymbols(node[1][1], contextStack, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1][1], contextStack, builtin),
 }

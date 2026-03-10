@@ -36,10 +36,10 @@ end
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {
   arity: { min: 1 },
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const [, effectExpr, argExprs] = node[1]
-    const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin, evaluateNode)
-    const argsResult = getUndefinedSymbols(argExprs, contextStack, builtin, evaluateNode)
+    const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin)
+    const argsResult = getUndefinedSymbols(argExprs, contextStack, builtin)
     return joinSets(effectResult, argsResult)
   },
 }

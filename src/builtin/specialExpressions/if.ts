@@ -30,6 +30,6 @@ end`,
 export const ifSpecialExpression: BuiltinSpecialExpression<Any, IfNode> = {
   arity: { min: 2, max: 3 },
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) =>
-    getUndefinedSymbols(node[1][1].filter(n => !!n), contextStack, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) =>
+    getUndefinedSymbols(node[1][1].filter(n => !!n), contextStack, builtin),
 }

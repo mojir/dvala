@@ -37,16 +37,16 @@ end`,
 export const doSpecialExpression: BuiltinSpecialExpression<Any, DoNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
-    const bodyResult = getUndefinedSymbols(node[1][1], contextStack.create({}), builtin, evaluateNode)
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
+    const bodyResult = getUndefinedSymbols(node[1][1], contextStack.create({}), builtin)
     const withHandlers = node[1][2]
     if (!withHandlers || withHandlers.length === 0) {
       return bodyResult
     }
     let withResult = new Set<string>()
     for (const [effectExpr, handlerFn] of withHandlers) {
-      const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin, evaluateNode)
-      const handlerResult = getUndefinedSymbols([handlerFn], contextStack, builtin, evaluateNode)
+      const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin)
+      const handlerResult = getUndefinedSymbols([handlerFn], contextStack, builtin)
       withResult = joinSets(withResult, effectResult, handlerResult)
     }
     return joinSets(bodyResult, withResult)

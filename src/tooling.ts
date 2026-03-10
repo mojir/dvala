@@ -9,7 +9,6 @@ import { builtin } from './builtin'
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 import { createContextStack } from './evaluator/ContextStack'
-import { evaluateNode } from './evaluator/trampoline'
 import { getUndefinedSymbols as getUndefinedSymbolsInternal } from './getUndefinedSymbols'
 import type { DvalaModule } from './builtin/modules/interface'
 import { tokenize } from './tokenizer/tokenize'
@@ -70,7 +69,7 @@ export function getUndefinedSymbols(
   const tokenStream = tokenize(source, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
   const ast: Ast = { body: parse(minified), hasDebugData: false }
-  return getUndefinedSymbolsInternal(ast, contextStack, builtin, evaluateNode)
+  return getUndefinedSymbolsInternal(ast, contextStack, builtin)
 }
 
 /**

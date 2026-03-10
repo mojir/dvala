@@ -39,7 +39,7 @@ end`,
 export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const bindingNodes = node[1][1]
 
     const newContext = bindingNodes
@@ -53,8 +53,8 @@ export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
       }, {})
 
     const bindingValueNodes = bindingNodes.map(bindingNode => bindingNode[1][1])
-    const bindingsResult = getUndefinedSymbols(bindingValueNodes, contextStack, builtin, evaluateNode)
-    const paramsResult = getUndefinedSymbols([node[1][2]], contextStack.create(newContext), builtin, evaluateNode)
+    const bindingsResult = getUndefinedSymbols(bindingValueNodes, contextStack, builtin)
+    const paramsResult = getUndefinedSymbols([node[1][2]], contextStack.create(newContext), builtin)
     return joinSets(bindingsResult, paramsResult)
   },
 }

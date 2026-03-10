@@ -153,7 +153,7 @@ export interface BuiltinSpecialExpression<T, N extends SpecialExpressionNode> {
   getUndefinedSymbols: (
     node: N,
     contextStack: ContextStack,
-    params: { getUndefinedSymbols: GetUndefinedSymbols; builtin: Builtin; evaluateNode: EvaluateNode },
+    params: { getUndefinedSymbols: GetUndefinedSymbols; builtin: Builtin },
   ) => UndefinedSymbols
 }
 

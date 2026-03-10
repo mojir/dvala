@@ -30,6 +30,6 @@ end`,
 export const unlessSpecialExpression: BuiltinSpecialExpression<Any, UnlessNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) =>
-    getUndefinedSymbols(node[1][1].filter(n => !!n), contextStack, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) =>
+    getUndefinedSymbols(node[1][1].filter(n => !!n), contextStack, builtin),
 }
