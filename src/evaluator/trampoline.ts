@@ -92,6 +92,7 @@ import type {
   BindingDefaultFrame,
   CallFnFrame,
   ComplementFrame,
+  CompFrame,
   CondFrame,
   ContinuationStack,
   DebugStepFrame,
@@ -99,6 +100,7 @@ import type {
   EffectRefFrame,
   EvalArgsFrame,
   EvaluatedWithHandler,
+  EveryPredFrame,
   FnArgBindFrame,
   FnBodyFrame,
   ForLoopFrame,
@@ -106,6 +108,7 @@ import type {
   HandlerInvokeFrame,
   IfBranchFrame,
   ImportMergeFrame,
+  JuxtFrame,
   LetBindFrame,
   LoopBindFrame,
   LoopIterateFrame,
@@ -118,6 +121,7 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
+  SomePredFrame,
   TryWithFrame,
 } from './frames'
 import type { Context } from './interface'
@@ -1275,12 +1279,58 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       const frame: ComplementFrame = { type: 'Complement', sourceCodeInfo }
       return dispatchFunction(fn.function, params, [], env, sourceCodeInfo, [frame, ...k])
     }
-    // Iterative compound types: use recursive execution for now
-    // (they involve internal iteration that would need more complex frame types)
-    case 'Comp':
-    case 'Juxt':
-    case 'EveryPred':
-    case 'SomePred':
+    // Comp: chain function calls right-to-left
+    case 'Comp': {
+      const fns = fn.params
+      if (fns.length === 0) {
+        if (params.length !== 1)
+          throw new DvalaError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
+        return { type: 'Value', value: asAny(params[0], sourceCodeInfo), k }
+      }
+      // Start with the last function
+      const startIndex = fns.length - 1
+      const frame: CompFrame = { type: 'Comp', fns, index: startIndex - 1, env, sourceCodeInfo }
+      return dispatchFunction(asFunctionLike(fns[startIndex], sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+    }
+    // Juxt: call each function with same params, collect results
+    case 'Juxt': {
+      const fns = fn.params
+      if (fns.length === 0) {
+        return { type: 'Value', value: [] as Arr, k }
+      }
+      const frame: JuxtFrame = { type: 'Juxt', fns, params, index: 1, results: [], env, sourceCodeInfo }
+      return dispatchFunction(asFunctionLike(fns[0], sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+    }
+    // EveryPred: short-circuit AND across all (predicate, param) pairs
+    case 'EveryPred': {
+      const checks: { fn: FunctionLike; param: Any }[] = []
+      for (const f of fn.params) {
+        for (const p of params) {
+          checks.push({ fn: asFunctionLike(f, sourceCodeInfo), param: p as Any })
+        }
+      }
+      if (checks.length === 0) {
+        return { type: 'Value', value: true, k }
+      }
+      const frame: EveryPredFrame = { type: 'EveryPred', checks, index: 1, env, sourceCodeInfo }
+      const firstCheck = checks[0]!
+      return dispatchFunction(firstCheck.fn, [firstCheck.param], [], env, sourceCodeInfo, [frame, ...k])
+    }
+    // SomePred: short-circuit OR across all (predicate, param) pairs
+    case 'SomePred': {
+      const checks: { fn: FunctionLike; param: Any }[] = []
+      for (const f of fn.params) {
+        for (const p of params) {
+          checks.push({ fn: asFunctionLike(f, sourceCodeInfo), param: p as Any })
+        }
+      }
+      if (checks.length === 0) {
+        return { type: 'Value', value: false, k }
+      }
+      const frame: SomePredFrame = { type: 'SomePred', checks, index: 1, env, sourceCodeInfo }
+      const firstCheck = checks[0]!
+      return dispatchFunction(firstCheck.fn, [firstCheck.param], [], env, sourceCodeInfo, [frame, ...k])
+    }
     case 'SpecialBuiltin': {
       const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
@@ -1438,6 +1488,14 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     case 'Complement':
       // Negate the result of the wrapped function
       return { type: 'Value', value: !value, k }
+    case 'Comp':
+      return applyComp(frame, value, k)
+    case 'Juxt':
+      return applyJuxt(frame, value, k)
+    case 'EveryPred':
+      return applyEveryPred(frame, value, k)
+    case 'SomePred':
+      return applySomePred(frame, value, k)
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
     case 'DebugStep':
@@ -3153,6 +3211,87 @@ function applyEffectRef(frame: EffectRefFrame, value: Any, k: ContinuationStack)
 function applyHandlerInvoke(frame: HandlerInvokeFrame, value: Any, _k: ContinuationStack): Step | Promise<Step> {
   const fnLike = asFunctionLike(value, frame.sourceCodeInfo)
   return dispatchFunction(fnLike, [frame.args], [], frame.handlerEnv, frame.sourceCodeInfo, frame.handlerK)
+}
+
+/**
+ * Comp iteration — chain to the next function in the composition.
+ * Result from previous function is wrapped in array and passed to next.
+ */
+function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+  const { fns, index, env, sourceCodeInfo } = frame
+  // Wrap result in array for next function call
+  const nextParams: Arr = [value]
+
+  if (index < 0) {
+    // All functions called, return final result
+    return { type: 'Value', value: asAny(value, sourceCodeInfo), k }
+  }
+
+  // Call the next function in the chain
+  const nextFrame: CompFrame = { type: 'Comp', fns, index: index - 1, env, sourceCodeInfo }
+  return dispatchFunction(asFunctionLike(fns[index], sourceCodeInfo), nextParams, [], env, sourceCodeInfo, [nextFrame, ...k])
+}
+
+/**
+ * Juxt iteration — collect result and call next function.
+ */
+function applyJuxt(frame: JuxtFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+  const { fns, params, index, results, env, sourceCodeInfo } = frame
+  // Add result to accumulated array
+  const newResults = [...results, value]
+
+  if (index >= fns.length) {
+    // All functions called, return collected results
+    return { type: 'Value', value: newResults, k }
+  }
+
+  // Call the next function
+  const nextFrame: JuxtFrame = { type: 'Juxt', fns, params, index: index + 1, results: newResults, env, sourceCodeInfo }
+  return dispatchFunction(asFunctionLike(fns[index], sourceCodeInfo), params, [], env, sourceCodeInfo, [nextFrame, ...k])
+}
+
+/**
+ * EveryPred iteration — short-circuit on falsy, continue on truthy.
+ */
+function applyEveryPred(frame: EveryPredFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+  const { checks, index, env, sourceCodeInfo } = frame
+
+  // Short-circuit: if result is falsy, return false
+  if (!value) {
+    return { type: 'Value', value: false, k }
+  }
+
+  if (index >= checks.length) {
+    // All checks passed, return true
+    return { type: 'Value', value: true, k }
+  }
+
+  // Continue to next check
+  const nextFrame: EveryPredFrame = { type: 'EveryPred', checks, index: index + 1, env, sourceCodeInfo }
+  const check = checks[index]!
+  return dispatchFunction(check.fn, [check.param], [], env, sourceCodeInfo, [nextFrame, ...k])
+}
+
+/**
+ * SomePred iteration — short-circuit on truthy, continue on falsy.
+ */
+function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+  const { checks, index, env, sourceCodeInfo } = frame
+
+  // Short-circuit: if result is truthy, return true
+  if (value) {
+    return { type: 'Value', value: true, k }
+  }
+
+  if (index >= checks.length) {
+    // All checks failed, return false
+    return { type: 'Value', value: false, k }
+  }
+
+  // Continue to next check
+  const nextFrame: SomePredFrame = { type: 'SomePred', checks, index: index + 1, env, sourceCodeInfo }
+  const check = checks[index]!
+  return dispatchFunction(check.fn, [check.param], [], env, sourceCodeInfo, [nextFrame, ...k])
 }
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
