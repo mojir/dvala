@@ -231,7 +231,7 @@ All 3 assertion HOF functions migrated to `assertion.dvala`:
 
 All follow the same "generate values while predicate holds" pattern.
 
-**Implemented in `number-theory.dvala` (17):** ✅
+**Implemented in `number-theory.dvala` (29):** ✅
 
 | Function | Notes |
 |----------|-------|
@@ -252,25 +252,25 @@ All follow the same "generate values while predicate holds" pattern.
 | `perfect-cube-take-while` | Direct: `i * i * i` |
 | `happy-take-while` | Uses `is-happy` helper |
 | `look-and-say-take-while` | Full Dvala implementation with `next-term` helper |
+| `bell-take-while` | Precomputed `bell-numbers` constant (50 values) |
+| `catalan-take-while` | Precomputed `catalan-numbers` constant (50 values) |
+| `mersenne-take-while` | Precomputed `mersenne-numbers` constant |
+| `partition-take-while` | Precomputed `partition-numbers` constant (100 values) |
+| `perfect-take-while` | Precomputed `perfect-numbers` constant |
+| `sylvester-take-while` | Precomputed `sylvester-numbers` constant |
+| `lucky-take-while` | Precomputed `lucky-numbers` constant (3100 values); limit ~31,429 |
+| `bernoulli-take-while` | Inline rational recurrence using `binom` helper |
+| `golomb-take-while` | Self-referential, fully in Dvala |
+| `perfect-power-take-while` | Uses `is-perfect-power` helper (loop-based, no `log2`) |
+| `recaman-take-while` | Self-referential, fully in Dvala |
+| `thue-morse-take-while` | Uses `count-bits` helper |
 
-**Kept in TypeScript (14):**
+**Kept in TypeScript (2):**
 
 | Function | Reason |
 |----------|--------|
-| `bell-take-while` | Finite precomputed list |
-| `bernoulli-take-while` | Complex rational arithmetic |
-| `catalan-take-while` | Finite precomputed list |
-| `collatz-take-while` | Single-value sequence (start n) |
-| `golomb-take-while` | Complex self-referential |
-| `juggler-take-while` | Single-value sequence (start n) |
-| `lucky-take-while` | Complex sieve algorithm |
-| `mersenne-take-while` | Finite precomputed Mersenne primes |
-| `partition-take-while` | Finite precomputed list |
-| `perfect-take-while` | Finite precomputed perfect numbers |
-| `perfect-power-take-while` | Complex check algorithm |
-| `recaman-take-while` | Complex self-referential |
-| `sylvester-take-while` | Finite precomputed list |
-| `thue-morse-take-while` | Binary digit-sum based |
+| `collatz-take-while` | Single-value sequence (parameterised start n) |
+| `juggler-take-while` | Single-value sequence (parameterised start n) |
 
 ### Summary
 
@@ -281,8 +281,8 @@ All follow the same "generate values while predicate holds" pattern.
 | Module `sequence` | 6 HOF functions | 6 | ✅ |
 | Module `grid` | 11 HOF functions | 11 | ✅ |
 | Module `assertion` | `assert-fails`, `assert-fails-with`, `assert-succeeds` | 3 | ✅ |
-| Module `number-theory` | 17 in Dvala + 14 kept in TS | 31 | ✅ (17 migrated) |
-| **Total** | | **66** | **52 migrated to Dvala** |
+| Module `number-theory` | 29 in Dvala + 2 kept in TS | 31 | ✅ (29 migrated) |
+| **Total** | | **66** | **64 migrated to Dvala** |
 
 ### Phase 6: Final Cleanup — Remove `executeFunction`
 
