@@ -137,7 +137,6 @@
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
     "dev": "npx serve docs -p 9901",
-    "release": "npm version",
     "test:e2e": "npx playwright test",
     "lcov": "open-cli ./coverage/index.html",
     "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js"
