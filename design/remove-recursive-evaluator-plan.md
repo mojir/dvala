@@ -221,12 +221,47 @@ Removed unused `evaluateNode` parameter from `getUndefinedSymbols`.
 
 **Validation:** All 31,899 tests passing, `npm run check` passes.
 
-### Phase 5: Remove Async Fallback Paths
+### Phase 5: Frame-Based Remaining Paths — IN PROGRESS
 
-Once Phases 1-3 are complete, the async fallback paths (L1347-L1349, etc.) become unreachable. Remove them.
+Goal: Convert ALL remaining recursive evaluator usages to frame-based so suspension/serialization works everywhere.
+
+#### 5.1 Async Fallback Conversion ✅
+
+Converted async fallbacks in `setupUserDefinedCall` from falling back to recursive evaluator to throwing explicit errors:
+- Line 1297: Async destructuring default in function argument
+- Line 1316: Async destructuring default in rest argument
+
+#### 5.2 Handler Invocation — IN PROGRESS
+
+Added `HandlerInvokeFrame` to evaluate handler expressions via trampoline instead of `evaluateNodeRecursive`.
+
+**Still needed:**
+- Wire up `case 'HandlerInvoke':` in `applyFrame`
+- Implement `applyHandlerInvoke`
+- Update `invokeMatchedHandler` to push frame instead of calling `evaluateNodeRecursive`
+
+#### 5.3 Compound Functions — NOT STARTED
+
+Convert `executePartialRecursive`, `executeCompRecursive`, `executeJuxtRecursive`, `executeEveryPredRecursive`, `executeSomePredRecursive`, `executeFnullRecursive`, `executeComplementRecursive` to frame-based.
+
+Each requires a new frame type to track iteration state.
+
+#### 5.4 Binding Defaults — NOT STARTED
+
+Convert `evaluateBindingNodeValues` callback-based API to frame-based.
+
+This is complex because:
+- Binding patterns can be arbitrarily nested
+- Current API uses callback for default evaluation
+- Need to redesign as resumable state machine
+
+#### 5.5 Pattern Matching — NOT STARTED
+
+Convert `tryMatch` callback-based API to frame-based for pattern defaults.
 
 ### Phase 6: Final Cleanup
 
+Once Phase 5 is complete:
 1. Remove `evaluateNodeRecursive` function
 2. Remove `evaluateParamsRecursive` function
 3. Remove `evaluateNormalExpressionRecursive` function
