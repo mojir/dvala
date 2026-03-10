@@ -143,7 +143,7 @@ export const padovanSequence: SequenceDefinition<'padovan'> = {
               return loop(i + 1)
             })
           }
-          return loop(4)
+          return loop(3)
         })
       })
     })
