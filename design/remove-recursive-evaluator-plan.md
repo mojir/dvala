@@ -243,37 +243,102 @@ Added `HandlerInvokeFrame` to evaluate handler expressions via trampoline instea
 
 **Validation:** All 31,899 tests passing.
 
-#### 5.3 Compound Functions — IN PROGRESS
+#### 5.3 Compound Functions ✅ COMPLETED
 
-Convert compound function execution from recursive to frame-based.
+Converted all compound function execution from recursive to frame-based.
 
-**Analysis:** Compound functions are currently dispatched via `executeDvalaFunctionRecursive`:
-- `Constantly` - Returns stored value (trivial, no recursion)
-- `Complement` - Wraps result with `!` 
-- `Partial` - Merges params and calls wrapped function
-- `Fnull` - Replaces nulls with defaults and calls
-- `Comp` - Chains function calls (needs iteration state)
-- `Juxt` - Maps over functions (needs iteration state)
-- `EveryPred` / `SomePred` - Reduces with early exit (needs iteration state)
-- `EffectMatcher` - Pure string/regex matching (no recursion)
+**Simple cases (inline in dispatchDvalaFunction):**
+- `Constantly` - Returns stored value directly
+- `EffectMatcher` - Pure string/regex matching inline
+- `Partial` - Transforms params and re-dispatches via `dispatchFunction`
+- `Fnull` - Replaces nulls with defaults and re-dispatches
+- `Complement` - Pushes `ComplementFrame` to negate result
 
-**Approach:** Handle each in `dispatchDvalaFunction` directly:
-1. Trivial cases: Constantly, EffectMatcher can be handled inline
-2. Single-call wrappers: Partial, Fnull, Complement just transform params/result
-3. Iterative cases: Comp, Juxt, EveryPred, SomePred need frames
+**Iterative cases (new frame types):**
+- `CompFrame` - Chains function calls right-to-left
+- `JuxtFrame` - Calls each function with same params, collects results
+- `EveryPredFrame` - Short-circuit AND across all (predicate, param) pairs
+- `SomePredFrame` - Short-circuit OR across all (predicate, param) pairs
 
-#### 5.4 Binding Defaults — NOT STARTED
+**Validation:** All 31,899 tests passing.
+
+#### 5.4 Binding Defaults — IN PROGRESS
 
 Convert `evaluateBindingNodeValues` callback-based API to frame-based.
 
-This is complex because:
-- Binding patterns can be arbitrarily nested
-- Current API uses callback for default evaluation
-- Need to redesign as resumable state machine
+**Problem:** The current API uses a callback for default evaluation:
+```typescript
+evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
+```
+
+When a nested destructuring default needs evaluation, it calls the callback synchronously. This prevents suspension at arbitrary points.
+
+**Solution: Linearization**
+
+Pre-flatten the binding pattern to a linear list of "slots", then process sequentially:
+
+```typescript
+interface BindingSlot {
+  name: string           // variable name to bind
+  path: BindingPathStep[] // how to extract value from source: {key: 'a'} or {index: 0}
+  defaultNode?: AstNode   // default expression, if value is undefined
+  isRest?: boolean        // for rest patterns (...x)
+}
+
+// Example: {a = 1, b: {c = 2}} with value {b: {}}
+// Slots: [
+//   {name: 'a', path: [{key: 'a'}], defaultNode: <1>},
+//   {name: 'c', path: [{key: 'b'}, {key: 'c'}], defaultNode: <2>}
+// ]
+```
+
+**New frame type:**
+```typescript
+interface BindingSlotFrame {
+  type: 'BindingSlot'
+  slots: BindingSlot[]     // precomputed slot list
+  index: number            // current slot being processed
+  rootValue: Any           // original destructuring source value
+  record: Record<string, Any>  // accumulated bindings
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+```
+
+**Processing flow:**
+1. Statically compute `slots` from binding pattern (no evaluation needed)
+2. For each slot at `index`:
+   - Extract value by following `path` from `rootValue`
+   - If value is `undefined` and `defaultNode` exists → push frame, evaluate default
+   - Otherwise bind directly, increment index
+3. When all slots done, return `record`
+
+**Implementation steps:**
+1. Create `flattenBindingPattern(target: BindingTarget): BindingSlot[]` utility
+2. Create `BindingSlotFrame` interface
+3. Create `extractValueByPath(value: Any, path: BindingPathStep[]): Any` utility
+4. Add `case 'BindingSlot':` in `applyFrame`
+5. Update all `evaluateBindingNodeValues` call sites to use new approach
+6. Keep old API for backward compatibility during transition
+
+**Call sites to update:**
+- `applyFnArgBind` - function arg defaults
+- `continueBindingArgs` - rest argument handling
+- `applyBindingDefault` - let/loop binding defaults
+- `applyLetBind` - let expression
+- `applyLoopBind` - loop binding
+- `handleForBodyStep` - for loop element binding
+- `handleForElementBind` - for loop destructuring
+- Multiple places in `executeUserDefinedRecursive`
 
 #### 5.5 Pattern Matching — NOT STARTED
 
-Convert `tryMatch` callback-based API to frame-based for pattern defaults.
+Convert `tryMatch` callback-based API to frame-based.
+
+Same linearization approach as 5.4:
+- Flatten pattern to list of "match slots"
+- Process sequentially with frame for guard/default evaluation
+- Guards that need evaluation push frames and resume
 
 ### Phase 6: Final Cleanup
 
