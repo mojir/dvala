@@ -556,6 +556,26 @@ export interface EffectRefFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * Frame for invoking a matched effect handler.
+ *
+ * When a `perform` matches a handler, we need to evaluate the handler
+ * expression (a lambda or variable) and then dispatch the call.
+ * This frame captures the context needed to dispatch after evaluation.
+ *
+ * Fields:
+ * - `args`: The effect arguments to pass to the handler
+ * - `handlerK`: The continuation stack for the handler invocation
+ * - `handlerEnv`: Environment for dispatching the handler
+ */
+export interface HandlerInvokeFrame {
+  type: 'HandlerInvoke'
+  args: Arr
+  handlerK: ContinuationStack
+  handlerEnv: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Post-processing
 // ---------------------------------------------------------------------------
@@ -678,6 +698,8 @@ export type Frame =
   | TryWithFrame
   | EffectResumeFrame
   | EffectRefFrame
+  // Handler invocation
+  | HandlerInvokeFrame
   // Parallel resume
   | ParallelResumeFrame
   // Function calls
