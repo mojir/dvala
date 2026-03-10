@@ -97,6 +97,7 @@ import type {
   EffectResumeFrame,
   EvalArgsFrame,
   EvaluatedWithHandler,
+  FnArgBindFrame,
   FnBodyFrame,
   ForLoopFrame,
   Frame,
@@ -151,19 +152,8 @@ function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): Maybe
     case NodeTypes.SpecialExpression: {
       // Route through the trampoline — special expressions are fully handled
       // by stepSpecialExpression and their corresponding frame types.
-      // This replaces the old `.evaluate()` call on special expression objects.
       const initial: Step = { type: 'Eval', node, env: contextStack, k: [] }
-      try {
-        return annotate(runSyncTrampoline(initial))
-      } catch (error) {
-        // Async retry in recursive evaluator — SpecialExpressions never produce async results in this context
-        /* v8 ignore next 4 */
-        if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
-          const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: [] }
-          return runAsyncTrampoline(freshInitial).then(r => annotate(r))
-        }
-        throw error
-      }
+      return annotate(runSyncTrampoline(initial))
     }
     /* v8 ignore next 2 */
     default:
@@ -179,16 +169,8 @@ function evaluateParamsRecursive(
   const placeholders: number[] = []
   const result = forEachSequential(paramNodes, (paramNode, index) => {
     if (isSpreadNode(paramNode)) {
-      // Spread in recursive evaluator — only reached from normal expression callbacks
-      /* v8 ignore start */
-      return chain(evaluateNodeRecursive(paramNode[1], contextStack), spreadValue => {
-        if (Array.isArray(spreadValue)) {
-          params.push(...spreadValue)
-        } else {
-          throw new DvalaError(`Spread operator requires an array, got ${valueToString(paramNode)}`, paramNode[2])
-        }
-      })
-      /* v8 ignore stop */
+      // Spread in binding defaults would be unusual; throw for safety
+      throw new DvalaError('Spread in binding default not supported', paramNode[2])
     } else if (paramNode[0] === NodeTypes.ReservedSymbol && paramNode[1] === '_') {
       placeholders.push(index)
     } else {
@@ -226,8 +208,7 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         if (contextStack.pure && normalExpression.pure === false) {
           throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, node[2])
         }
-        // dvalaImpl in recursive path — trampoline handles all dvalaImpl dispatch
-        /* v8 ignore next 3 */
+        // dvalaImpl needs to be checked here — binding defaults can call Dvala-implemented functions
         if (normalExpression.dvalaImpl) {
           return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, node[2])
         }
@@ -237,31 +218,12 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         if (fn !== undefined) {
           return executeFunctionRecursive(asFunctionLike(fn, sourceCodeInfo), params, contextStack, sourceCodeInfo)
         }
-        // Recursive evaluator — trampoline throws UndefinedSymbolError before reaching this
-        /* v8 ignore next 1 */
+        // Symbol resolution happens before recursive eval
         throw new UndefinedSymbolError(nameSymbol[1], node[2])
       }
     } else {
-      const fnNode: AstNode = node[1][0]
-      // Anonymous function with placeholders in recursive path — trampoline handles these
-      /* v8 ignore start */
-      return chain(evaluateNodeRecursive(fnNode, contextStack), resolvedFn => {
-        const fn = asFunctionLike(resolvedFn, sourceCodeInfo)
-        if (placeholders.length > 0) {
-          const partialFunction: PartialFunction = {
-            [FUNCTION_SYMBOL]: true,
-            function: fn,
-            functionType: 'Partial',
-            params,
-            placeholders,
-            sourceCodeInfo,
-            arity: toFixedArity(placeholders.length),
-          }
-          return partialFunction
-        }
-        return executeFunctionRecursive(fn, params, contextStack, sourceCodeInfo)
-      })
-      /* v8 ignore stop */
+      // Anonymous function calls in binding defaults go through trampoline
+      throw new DvalaError('Anonymous function call in recursive evaluator not supported', sourceCodeInfo)
     }
   })
 }
@@ -386,17 +348,7 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
           (_acc, node) => evaluateNodeRecursive(node, newContextStack2),
           null as Any,
         )
-        // Async recur in recursive evaluator — body returning a Promise with RecurSignal is not reachable from pure Dvala
-        /* v8 ignore start */
-        if (bodyResult instanceof Promise) {
-          return bodyResult.catch((error: unknown) => {
-            if (error instanceof RecurSignal) {
-              return setupAndExecute(error.params)
-            }
-            throw error
-          })
-        }
-        /* v8 ignore stop */
+        // Async results in recursive evaluator body go through synchronous recur handling below
         return bodyResult
       })
     }))
@@ -417,8 +369,7 @@ function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, conte
 
 function executePartialRecursive(fn: PartialFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   const actualParams = [...fn.params]
-  // Arity checked at call site before reaching recursive executor
-  /* v8 ignore next 3 */
+  // Arity is checked by callers -- keep defensive check
   if (params.length !== fn.placeholders.length) {
     throw new DvalaError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
   }
@@ -1334,38 +1285,14 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
   const nbrOfNonRestArgs = args.filter(arg => arg[0] !== bindingTargetTypes.rest).length
   const newContextStack = env.create(fn.evaluatedfunction[2])
   const newContext: Context = { self: { value: fn } }
-  const rest: Arr = []
 
-  // Bind non-rest params synchronously
-  for (let i = 0; i < params.length; i += 1) {
-    if (i < nbrOfNonRestArgs) {
-      const param = toAny(params[i])
-      const valueRecord = evaluateBindingNodeValues(args[i]!, param, n =>
-        evaluateNodeRecursive(n, newContextStack.create(newContext)))
-      if (valueRecord instanceof Promise) {
-        // Fall back to recursive execution for async binding
-        const result = executeUserDefinedRecursive(fn, params, env, sourceCodeInfo)
-        return wrapMaybePromiseAsStep(result, k)
-      }
-      Object.entries(valueRecord).forEach(([key, value]) => {
-        newContext[key] = { value }
-      })
-    } else {
-      rest.push(toAny(params[i]))
-    }
-  }
-
-  // Handle default values for optional params
-  for (let i = params.length; i < nbrOfNonRestArgs; i++) {
-    const arg = args[i]!
-    const defaultValue = evaluateNodeRecursive(arg[1][1]!, newContextStack.create(newContext))
-    if (defaultValue instanceof Promise) {
-      const result = executeUserDefinedRecursive(fn, params, env, sourceCodeInfo)
-      return wrapMaybePromiseAsStep(result, k)
-    }
-    const valueRecord = evaluateBindingNodeValues(arg, defaultValue, n =>
+  // Bind params that were provided (not needing defaults)
+  for (let i = 0; i < params.length && i < nbrOfNonRestArgs; i += 1) {
+    const param = toAny(params[i])
+    const valueRecord = evaluateBindingNodeValues(args[i]!, param, n =>
       evaluateNodeRecursive(n, newContextStack.create(newContext)))
     if (valueRecord instanceof Promise) {
+      // Async destructuring in provided params - fall back to recursive
       const result = executeUserDefinedRecursive(fn, params, env, sourceCodeInfo)
       return wrapMaybePromiseAsStep(result, k)
     }
@@ -1374,7 +1301,13 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
     })
   }
 
-  // Handle rest argument
+  // If we need defaults, use frame-based evaluation
+  if (params.length < nbrOfNonRestArgs) {
+    return continueBindingArgs(fn, params, params.length, nbrOfNonRestArgs, newContext, env, sourceCodeInfo, k)
+  }
+
+  // All non-rest params provided, handle rest argument
+  const rest: Arr = params.slice(nbrOfNonRestArgs).map(toAny)
   const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
   if (restArgument) {
     const valueRecord = evaluateBindingNodeValues(restArgument, rest, n =>
@@ -1403,10 +1336,6 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
     env: bodyEnv,
     outerEnv: env,
     sourceCodeInfo,
-  }
-
-  if (bodyNodes.length === 1) {
-    return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [fnBodyFrame, ...k] }
   }
 
   return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [fnBodyFrame, ...k] }
@@ -1466,6 +1395,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyFnBody(frame, value, k)
     case 'BindingDefault':
       return applyBindingDefault(frame, value, k)
+    case 'FnArgBind':
+      return applyFnArgBind(frame, value, k)
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
     case 'DebugStep':
@@ -2999,6 +2930,106 @@ function applyFnBody(frame: FnBodyFrame, value: Any, k: ContinuationStack): Step
   // proper tail call elimination.
   const newFrame: FnBodyFrame = { ...frame, bodyIndex: bodyIndex + 1 }
   return { type: 'Eval', node: bodyNodes[bodyIndex]!, env, k: [newFrame, ...k] }
+}
+
+/**
+ * Handle function argument binding after a default value is evaluated.
+ * Binds the value to the current argument, then continues with remaining args.
+ */
+function applyFnArgBind(frame: FnArgBindFrame, value: Any, k: ContinuationStack): Step {
+  const { fn, params, argIndex, context, outerEnv, sourceCodeInfo } = frame
+  const evaluatedFunc = fn.evaluatedfunction
+  const args = evaluatedFunc[0]
+  const nbrOfNonRestArgs = args.filter(arg => arg[0] !== bindingTargetTypes.rest).length
+  const newContextStack = outerEnv.create(evaluatedFunc[2])
+
+  // Bind the evaluated default value to the current argument
+  const arg = args[argIndex]!
+  const valueRecord = evaluateBindingNodeValues(arg, value, n =>
+    evaluateNodeRecursive(n, newContextStack.create(context)))
+  if (valueRecord instanceof Promise) {
+    throw new DvalaError('Async destructuring default in function arg not supported yet', sourceCodeInfo)
+  }
+  Object.entries(valueRecord).forEach(([key, val]) => {
+    context[key] = { value: val }
+  })
+
+  // Continue with remaining arguments
+  return continueBindingArgs(fn, params, argIndex + 1, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo, k)
+}
+
+/**
+ * Continue binding function arguments starting from argIndex.
+ * Used by both setupUserDefinedCall and applyFnArgBind.
+ */
+function continueBindingArgs(
+  fn: UserDefinedFunction,
+  params: Arr,
+  argIndex: number,
+  nbrOfNonRestArgs: number,
+  context: Context,
+  outerEnv: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  const evaluatedFunc = fn.evaluatedfunction
+  const args = evaluatedFunc[0]
+  const newContextStack = outerEnv.create(evaluatedFunc[2])
+
+  // Continue binding optional params that need defaults
+  for (let i = argIndex; i < nbrOfNonRestArgs; i++) {
+    const arg = args[i]!
+    const defaultNode = arg[1][1]
+    if (!defaultNode) {
+      throw new DvalaError(`Missing required argument ${i}`, sourceCodeInfo)
+    }
+
+    // Push frame to continue after default evaluation
+    const frame: FnArgBindFrame = {
+      type: 'FnArgBind',
+      phase: 'default',
+      fn,
+      params,
+      argIndex: i,
+      context,
+      outerEnv,
+      sourceCodeInfo,
+    }
+    return { type: 'Eval', node: defaultNode, env: newContextStack.create(context), k: [frame, ...k] }
+  }
+
+  // All non-rest args bound, handle rest argument
+  const rest: Arr = params.slice(nbrOfNonRestArgs).map(toAny)
+  const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
+  if (restArgument) {
+    const valueRecord = evaluateBindingNodeValues(restArgument, rest, n =>
+      evaluateNodeRecursive(n, newContextStack.create(context)))
+    if (valueRecord instanceof Promise) {
+      throw new DvalaError('Async rest argument destructuring not supported yet', sourceCodeInfo)
+    }
+    Object.entries(valueRecord).forEach(([key, val]) => {
+      context[key] = { value: val }
+    })
+  }
+
+  // Proceed to body evaluation
+  const bodyNodes = evaluatedFunc[1]
+  const bodyEnv = newContextStack.create(context)
+
+  if (bodyNodes.length === 0) {
+    return { type: 'Value', value: null, k }
+  }
+
+  const fnBodyFrame: FnBodyFrame = {
+    type: 'FnBody',
+    fn,
+    bodyIndex: 1,
+    env: bodyEnv,
+    outerEnv,
+    sourceCodeInfo,
+  }
+
+  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [fnBodyFrame, ...k] }
 }
 
 function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: ContinuationStack): Step {
