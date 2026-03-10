@@ -102,6 +102,7 @@ import type {
   FnBodyFrame,
   ForLoopFrame,
   Frame,
+  HandlerInvokeFrame,
   IfBranchFrame,
   ImportMergeFrame,
   LetBindFrame,
@@ -1294,9 +1295,7 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
     const valueRecord = evaluateBindingNodeValues(args[i]!, param, n =>
       evaluateNodeRecursive(n, newContextStack.create(newContext)))
     if (valueRecord instanceof Promise) {
-      // Async destructuring in provided params - fall back to recursive
-      const result = executeUserDefinedRecursive(fn, params, env, sourceCodeInfo)
-      return wrapMaybePromiseAsStep(result, k)
+      throw new DvalaError('Async destructuring default in function argument not supported yet', sourceCodeInfo)
     }
     Object.entries(valueRecord).forEach(([key, value]) => {
       newContext[key] = { value }
@@ -1315,8 +1314,7 @@ function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: Context
     const valueRecord = evaluateBindingNodeValues(restArgument, rest, n =>
       evaluateNodeRecursive(n, newContextStack.create(newContext)))
     if (valueRecord instanceof Promise) {
-      const result = executeUserDefinedRecursive(fn, params, env, sourceCodeInfo)
-      return wrapMaybePromiseAsStep(result, k)
+      throw new DvalaError('Async destructuring default in rest argument not supported yet', sourceCodeInfo)
     }
     Object.entries(valueRecord).forEach(([key, value]) => {
       newContext[key] = { value }
