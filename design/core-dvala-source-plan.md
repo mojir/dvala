@@ -231,46 +231,46 @@ All 11 functions migrated to `grid.dvala`:
 
 All follow the same "generate values while predicate holds" pattern.
 
-**Direct implementations (4):**
+**Implemented in `number-theory.dvala` (17):** ✅
 
 | Function | Notes |
 |----------|-------|
-| `arithmetic-take-while` | `(start, step, fn)` — arithmetic progression while fn holds |
-| `geometric-take-while` | `(start, ratio, fn)` — geometric progression while fn holds |
-| `polygonal-take-while` | `(sides, fn)` — polygonal numbers while fn holds |
-| `bernoulli-take-while` | `(fn)` — Bernoulli numbers while fn holds |
+| `arithmetic-take-while` | `(start, step, fn)` — arithmetic progression |
+| `geometric-take-while` | `(start, ratio, fn)` — geometric progression |
+| `polygonal-take-while` | `(sides, fn)` — polygonal numbers |
+| `fibonacci-take-while` | Inline recurrence: a=0, b=1 |
+| `tribonacci-take-while` | Inline recurrence: a=0, b=1, c=1 |
+| `lucas-take-while` | Inline recurrence: a=2, b=1 |
+| `pell-take-while` | Inline recurrence: a=1, b=2 |
+| `padovan-take-while` | Inline recurrence: a=1, b=1, c=1 |
+| `factorial-take-while` | Inline: fact *= (i+1) |
+| `prime-take-while` | Uses `is-prime` helper |
+| `composite-take-while` | Uses `is-composite` helper |
+| `abundant-take-while` | Uses `is-abundant` helper |
+| `deficient-take-while` | Uses `is-deficient` helper |
+| `perfect-square-take-while` | Direct: `i * i` |
+| `perfect-cube-take-while` | Direct: `i * i * i` |
+| `happy-take-while` | Uses `is-happy` helper |
+| `look-and-say-take-while` | Full Dvala implementation with `next-term` helper |
 
-**Factory-generated via `createTakeWhileNormalExpression` (27):**
+**Kept in TypeScript (14):**
 
-| Function | Source |
+| Function | Reason |
 |----------|--------|
-| `abundant-take-while` | `addSequence(abundantSequence)` |
-| `bell-take-while` | `getFiniteNumberSequence('bell', ...)` |
-| `catalan-take-while` | `getFiniteNumberSequence('catalan', ...)` |
-| `collatz-take-while` | `addSequence(collatzSequence)` |
-| `composite-take-while` | `addSequence(compositeSequence)` |
-| `deficient-take-while` | `addSequence(deficientSequence)` |
-| `factorial-take-while` | `getFiniteNumberSequence('factorial', ...)` |
-| `fibonacci-take-while` | `getFiniteNumberSequence('fibonacci', ...)` |
-| `golomb-take-while` | `addSequence(golombSequence)` |
-| `happy-take-while` | `addSequence(happySequence)` |
-| `juggler-take-while` | `addSequence(jugglerSequence)` |
-| `look-and-say-take-while` | `addSequence(lookAndSaySequence)` |
-| `lucas-take-while` | `getFiniteNumberSequence('lucas', ...)` |
-| `lucky-take-while` | `addSequence(luckySequence)` |
-| `mersenne-take-while` | `getFiniteNumberSequence('mersenne', ...)` |
-| `padovan-take-while` | `addSequence(padovanSequence)` |
-| `partition-take-while` | `getFiniteNumberSequence('partition', ...)` |
-| `pell-take-while` | `getFiniteNumberSequence('pell', ...)` |
-| `perfect-take-while` | `getFiniteNumberSequence('perfect', ...)` |
-| `perfect-cube-take-while` | `addSequence(perfectCubeSequence)` |
-| `perfect-power-take-while` | `addSequence(perfectPowerSequence)` |
-| `perfect-square-take-while` | `addSequence(perfectSquareSequence)` |
-| `prime-take-while` | `addSequence(primeSequence)` |
-| `recaman-take-while` | `addSequence(recamanSequence)` |
-| `sylvester-take-while` | `getFiniteNumberSequence('sylvester', ...)` |
-| `thue-morse-take-while` | `addSequence(thueMorseSequence)` |
-| `tribonacci-take-while` | `getFiniteNumberSequence('tribonacci', ...)` |
+| `bell-take-while` | Finite precomputed list |
+| `bernoulli-take-while` | Complex rational arithmetic |
+| `catalan-take-while` | Finite precomputed list |
+| `collatz-take-while` | Single-value sequence (start n) |
+| `golomb-take-while` | Complex self-referential |
+| `juggler-take-while` | Single-value sequence (start n) |
+| `lucky-take-while` | Complex sieve algorithm |
+| `mersenne-take-while` | Finite precomputed Mersenne primes |
+| `partition-take-while` | Finite precomputed list |
+| `perfect-take-while` | Finite precomputed perfect numbers |
+| `perfect-power-take-while` | Complex check algorithm |
+| `recaman-take-while` | Complex self-referential |
+| `sylvester-take-while` | Finite precomputed list |
+| `thue-morse-take-while` | Binary digit-sum based |
 
 ### Summary
 
@@ -281,8 +281,8 @@ All follow the same "generate values while predicate holds" pattern.
 | Module `sequence` | 6 HOF functions | 6 | ✅ |
 | Module `grid` | 11 HOF functions | 11 | ✅ |
 | Module `assertion` | `assert-throws`, `assert-throws-error`, `assert-not-throws` | 3 | ⏳ |
-| Module `number-theory` | 4 direct + 27 factory `*-take-while` | 31 | ⏳ |
-| **Total** | | **65** | **30 done, 35 remaining** |
+| Module `number-theory` | 17 in Dvala + 14 kept in TS | 31 | ✅ (17 migrated) |
+| **Total** | | **65** | **47 done, 18 remaining** |
 
 ### Phase 6: Final Cleanup — Remove `executeFunction`
 
