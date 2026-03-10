@@ -436,9 +436,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     seeAlso: ['assertion.assert-truthy', 'assertion.assert-falsy'],
     hideOperatorForm: true,
   },
-  'assert-throws': {
+  'assert-fails': {
     category: 'assertion',
-    description: 'If $fun does not throw, it throws `AssertionError`.',
+    description: 'If $fun does not fail (perform `dvala.error`), it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -464,15 +464,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert-throws } = import(assertion);\nassert-throws(-> perform(effect(dvala.error), "Error"))',
-      'let { assert-throws } = import(assertion);\ndo assert-throws(-> identity("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-fails } = import(assertion);\nassert-fails(-> perform(effect(dvala.error), "Error"))',
+      'let { assert-fails } = import(assertion);\ndo assert-fails(-> identity("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
     ],
-    seeAlso: ['assertion.assert-throws-error', 'assertion.assert-not-throws'],
+    seeAlso: ['assertion.assert-fails-with', 'assertion.assert-succeeds'],
     hideOperatorForm: true,
   },
-  'assert-throws-error': {
+  'assert-fails-with': {
     category: 'assertion',
-    description: 'If $fun does not throw $error-message, it throws `AssertionError`.',
+    description: 'If $fun does not fail with $error-message, it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -503,15 +503,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert-throws-error } = import(assertion);\ndo assert-throws-error(-> perform(effect(dvala.error), "Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
-      'let { assert-throws-error } = import(assertion);\ndo assert-throws-error(-> identity("Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-fails-with } = import(assertion);\ndo assert-fails-with(-> perform(effect(dvala.error), "Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-fails-with } = import(assertion);\ndo assert-fails-with(-> identity("Error"), "Error") with case effect(dvala.error) then ([msg]) -> msg end',
     ],
-    seeAlso: ['assertion.assert-throws', 'assertion.assert-not-throws'],
+    seeAlso: ['assertion.assert-fails', 'assertion.assert-succeeds'],
     hideOperatorForm: true,
   },
-  'assert-not-throws': {
+  'assert-succeeds': {
     category: 'assertion',
-    description: 'If $fun throws, it throws `AssertionError`.',
+    description: 'If $fun fails (performs `dvala.error`), it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -537,10 +537,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert-not-throws } = import(assertion);\ndo assert-not-throws(-> identity("Error")) with case effect(dvala.error) then ([msg]) -> msg end',
-      'let { assert-not-throws } = import(assertion);\ndo assert-not-throws(-> perform(effect(dvala.error), "Error")) with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-succeeds } = import(assertion);\ndo assert-succeeds(-> identity("OK")) with case effect(dvala.error) then ([msg]) -> msg end',
+      'let { assert-succeeds } = import(assertion);\ndo assert-succeeds(-> perform(effect(dvala.error), "Error")) with case effect(dvala.error) then ([msg]) -> msg end',
     ],
-    seeAlso: ['assertion.assert-throws', 'assertion.assert-throws-error'],
+    seeAlso: ['assertion.assert-fails', 'assertion.assert-fails-with'],
     hideOperatorForm: true,
   },
   'assert-array': {

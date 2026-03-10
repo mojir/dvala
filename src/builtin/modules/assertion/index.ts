@@ -1,14 +1,11 @@
-import type { DvalaError } from '../../../errors'
 import { AssertionError } from '../../../errors'
 import { compare, deepEqual } from '../../../utils'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
-import { asAny, assertFunctionLike, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/dvala'
+import { asAny, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/dvala'
 import { isDvalaFunction } from '../../../typeGuards/dvalaFunction'
 import { isNumber } from '../../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
 import { isGrid, isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
-import { chain, tryCatch } from '../../../utils/maybePromise'
-import type { MaybePromise } from '../../../utils/maybePromise'
 import type { DvalaModule } from '../interface'
 import assertionModuleSource from './assertion.dvala'
 import { moduleDocs } from './docs'
@@ -182,65 +179,18 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-throws': {
-    evaluate: ([func, message], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<null> => {
-      if (message !== undefined) {
-        assertString(message, sourceCodeInfo)
-        message = ` ${message}`
-      }
-      message ??= ''
-      assertFunctionLike(func, sourceCodeInfo)
-      return tryCatch(
-        () => chain(executeFunction(func, [], contextStack, sourceCodeInfo), () => {
-          throw new AssertionError(`Expected function to throw.${message}`, sourceCodeInfo)
-        }),
-        () => null,
-      )
-    },
+  // Implemented in assertion.dvala - these stubs provide arity checking
+  // The evaluate functions are placeholders; actual execution uses dvalaImpl
+  'assert-fails': {
+    evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
-  'assert-throws-error': {
-    evaluate: ([func, throwMessage, message], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<null> => {
-      if (message !== undefined) {
-        assertString(message, sourceCodeInfo)
-        message = ` ${message}`
-      }
-      message ??= ''
-      assertString(throwMessage, sourceCodeInfo)
-      assertFunctionLike(func, sourceCodeInfo)
-      return tryCatch(
-        () => chain(executeFunction(func, [], contextStack, sourceCodeInfo), () => {
-          throw new AssertionError(`Expected function to throw "${throwMessage}".${message}`, sourceCodeInfo)
-        }),
-        error => {
-          const errorMessage = (error as DvalaError).shortMessage
-          if (errorMessage !== throwMessage) {
-            throw new AssertionError(
-              `Expected function to throw "${throwMessage}", but thrown "${errorMessage}".${message}`,
-              sourceCodeInfo,
-            )
-          }
-          return null
-        },
-      )
-    },
+  'assert-fails-with': {
+    evaluate: () => null,
     arity: { min: 2, max: 3 },
   },
-  'assert-not-throws': {
-    evaluate: ([func, message], sourceCodeInfo, contextStack, { executeFunction }): MaybePromise<null> => {
-      if (message !== undefined) {
-        assertString(message, sourceCodeInfo)
-        message = ` ${message}`
-      }
-      message ??= ''
-      assertFunctionLike(func, sourceCodeInfo)
-      return tryCatch(
-        () => chain(executeFunction(func, [], contextStack, sourceCodeInfo), () => null),
-        () => {
-          throw new AssertionError(`Expected function not to throw.${message}`, sourceCodeInfo)
-        },
-      )
-    },
+  'assert-succeeds': {
+    evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
   'assert-array': {

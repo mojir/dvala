@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "dvala": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/dist/mcp-server/server.js"
+      ]
+    }
+  }
+}
