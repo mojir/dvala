@@ -8,7 +8,7 @@
 import type { Any } from './interface'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
-import { retriggerWithEffects } from './evaluator/trampoline'
+import { retriggerWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
