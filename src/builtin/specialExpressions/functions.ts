@@ -1,5 +1,5 @@
 import type { ContextStack } from '../../evaluator/ContextStack'
-import type { Context, EvaluateNode } from '../../evaluator/interface'
+import type { Context } from '../../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSymbols'
 import type {
   DvalaFunction,
@@ -15,9 +15,9 @@ export type LambdaNode = SpecialExpressionNode<[typeof specialExpressionTypes['0
 
 export const lambdaSpecialExpression: BuiltinSpecialExpression<DvalaFunction, LambdaNode> = {
   arity: {},
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const fn = node[1][1]
-    return getFunctionUnresolvedSymbols(fn, contextStack, getUndefinedSymbols, builtin, evaluateNode)
+    return getFunctionUnresolvedSymbols(fn, contextStack, getUndefinedSymbols, builtin)
   },
 
 }
@@ -27,7 +27,6 @@ function getFunctionUnresolvedSymbols(
   contextStack: ContextStack,
   getUndefinedSymbols: GetUndefinedSymbols,
   builtin: Builtin,
-  evaluateNode: EvaluateNode,
 ): UndefinedSymbols {
   const result = new Set<string>()
   const newContext: Context = { self: { value: null } }
@@ -36,12 +35,12 @@ function getFunctionUnresolvedSymbols(
     Object.assign(newContext, getAllBindingTargetNames(arg))
 
     walkDefaults(arg, defaultNode => {
-      addToSet(result, getUndefinedSymbols([defaultNode], contextStack, builtin, evaluateNode))
+      addToSet(result, getUndefinedSymbols([defaultNode], contextStack, builtin))
     })
   })
 
   const newContextStack = contextStack.create(newContext)
-  const overloadResult = getUndefinedSymbols(fn[1], newContextStack, builtin, evaluateNode)
+  const overloadResult = getUndefinedSymbols(fn[1], newContextStack, builtin)
   addToSet(result, overloadResult)
   return result
 }

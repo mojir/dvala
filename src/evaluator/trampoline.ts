@@ -561,7 +561,7 @@ function evaluateFunction(
     })
     return ctx
   }, {})
-  const undefinedSymbols = getUndefinedSymbols(fn[1], contextStack.new(context), builtin, evaluateNodeRecursive)
+  const undefinedSymbols = getUndefinedSymbols(fn[1], contextStack.new(context), builtin)
   undefinedSymbols.forEach(name => {
     const value = contextStack.getValue(name)
     if (isAny(value)) {

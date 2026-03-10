@@ -1,6 +1,6 @@
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSymbols'
 import type { ContextStack } from '../../evaluator/ContextStack'
-import type { Context, EvaluateNode } from '../../evaluator/interface'
+import type { Context } from '../../evaluator/interface'
 import type { Any } from '../../interface'
 import type { AstNode, BindingNode, SpecialExpressionNode } from '../../parser/types'
 import type { Builtin, BuiltinSpecialExpression, CustomDocs } from '../interface'
@@ -20,7 +20,6 @@ function analyze(
   contextStack: ContextStack,
   getUndefinedSymbols: GetUndefinedSymbols,
   builtin: Builtin,
-  evaluateNode: EvaluateNode,
 ): UndefinedSymbols {
   const result = new Set<string>()
   const newContext: Context = {}
@@ -28,7 +27,7 @@ function analyze(
   loopBindings.forEach(loopBindingNode => {
     const [bindingNode, letBindings, whenNode, whileNode] = loopBindingNode
     const [target, value] = bindingNode[1]
-    getUndefinedSymbols([value], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
+    getUndefinedSymbols([value], contextStack.create(newContext), builtin).forEach(symbol =>
       result.add(symbol),
     )
     Object.assign(newContext, getAllBindingTargetNames(target))
@@ -38,24 +37,24 @@ function analyze(
       letBindings.forEach(letBindingNode => {
         const [letTarget, letValue] = letBindingNode[1]
 
-        getUndefinedSymbols([letValue], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
+        getUndefinedSymbols([letValue], contextStack.create(newContext), builtin).forEach(symbol =>
           result.add(symbol),
         )
         Object.assign(newContext, getAllBindingTargetNames(letTarget))
       })
     }
     if (whenNode) {
-      getUndefinedSymbols([whenNode], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
+      getUndefinedSymbols([whenNode], contextStack.create(newContext), builtin).forEach(symbol =>
         result.add(symbol),
       )
     }
     if (whileNode) {
-      getUndefinedSymbols([whileNode], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
+      getUndefinedSymbols([whileNode], contextStack.create(newContext), builtin).forEach(symbol =>
         result.add(symbol),
       )
     }
   })
-  getUndefinedSymbols([body], contextStack.create(newContext), builtin, evaluateNode).forEach(symbol =>
+  getUndefinedSymbols([body], contextStack.create(newContext), builtin).forEach(symbol =>
     result.add(symbol),
   )
   return result
@@ -94,7 +93,7 @@ for (
 export const forSpecialExpression: BuiltinSpecialExpression<Any, ForNode> = {
   arity: toFixedArity(1),
   docs: forDocs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => analyze(node, contextStack, getUndefinedSymbols, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => analyze(node, contextStack, getUndefinedSymbols, builtin),
 }
 
 const doseqDocs: CustomDocs = {
@@ -123,5 +122,5 @@ doseq (i in [1, 2, 3]) -> perform(effect(dvala.io.println), i * 2)
 export const doseqSpecialExpression: BuiltinSpecialExpression<null, DoSeqNode> = {
   arity: toFixedArity(1),
   docs: doseqDocs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => analyze(node, contextStack, getUndefinedSymbols, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => analyze(node, contextStack, getUndefinedSymbols, builtin),
 }

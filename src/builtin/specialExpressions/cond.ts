@@ -36,5 +36,5 @@ end ?? "TRUE"`,
 export const condSpecialExpression: BuiltinSpecialExpression<Any, CondNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => getUndefinedSymbols(node[1][1].flat(), contextStack, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1][1].flat(), contextStack, builtin),
 }

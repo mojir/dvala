@@ -26,13 +26,13 @@ b(a)`],
 export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {
   arity: toFixedArity(0),
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const bindingNode = node[1][1]
     const target = bindingNode[1][0]
     const value = bindingNode[1][1]
-    const bindingResult = getUndefinedSymbols([value], contextStack, builtin, evaluateNode)
+    const bindingResult = getUndefinedSymbols([value], contextStack, builtin)
     walkDefaults(target, defaultNode => {
-      addToSet(bindingResult, getUndefinedSymbols([defaultNode], contextStack, builtin, evaluateNode))
+      addToSet(bindingResult, getUndefinedSymbols([defaultNode], contextStack, builtin))
     })
     contextStack.addValues(getAllBindingTargetNames(target), target[2])
     return bindingResult

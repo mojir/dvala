@@ -29,5 +29,5 @@ Built-in symbols are always considered defined. For user-defined symbols, checks
 export const definedSpecialExpression: BuiltinSpecialExpression<boolean, DefinedNode> = {
   arity: toFixedArity(1),
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => getUndefinedSymbols([node[1][1]], contextStack, builtin, evaluateNode),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols([node[1][1]], contextStack, builtin),
 }

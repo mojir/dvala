@@ -24,9 +24,9 @@ const docs: CustomDocs = {
 export const parallelSpecialExpression: BuiltinSpecialExpression<Arr, ParallelNode> = {
   arity: { min: 1 },
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin, evaluateNode }) => {
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
     const branches = node[1][1] as AstNode[]
-    const sets = branches.map(branch => getUndefinedSymbols([branch], contextStack, builtin, evaluateNode))
+    const sets = branches.map(branch => getUndefinedSymbols([branch], contextStack, builtin))
     return joinSets(...sets)
   },
 }

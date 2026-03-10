@@ -205,21 +205,21 @@ When an effect ref is evaluated:
 
 **Validation:** All 31,899 tests passing.
 
-### Phase 4: Closure Capture Without Recursive Eval
+### Phase 4: Static Closure Capture ✅ COMPLETED
 
-`getUndefinedSymbols` currently uses the recursive evaluator. Options:
+Removed unused `evaluateNode` parameter from `getUndefinedSymbols`.
 
-**Option A: Static analysis only**
-- Remove the `evaluate` parameter from `getUndefinedSymbols`
-- Use pure AST walking without evaluation
-- This is likely sufficient since closure capture is about names, not values
+**Analysis:** The `evaluateNode` callback was passed through the entire `getUndefinedSymbols` chain but NEVER actually called. It was designed for potential future use but turned out to be unnecessary — closure capture is purely static analysis.
 
-**Option B: Lazy capture**
-- Don't pre-compute undefined symbols
-- Capture on first access during trampoline execution
-- Requires changes to `ContextStack`
+**Changes:**
+1. Removed `evaluateNode` param from `GetUndefinedSymbols` type in `getUndefinedSymbols/index.ts`
+2. Removed `evaluateNode` param from `getUndefinedSymbols` function
+3. Removed `evaluateNode` from `BuiltinSpecialExpression.getUndefinedSymbols` interface
+4. Updated all special expression `getUndefinedSymbols` implementations (20+ files)
+5. Updated `trampoline.ts` `evaluateFunction` to not pass `evaluateNodeRecursive`
+6. Updated `tooling.ts` to not import or pass `evaluateNode`
 
-**Recommendation:** Option A — the evaluator param in `getUndefinedSymbols` appears to be unused or only used for edge cases. Verify and remove.
+**Validation:** All 31,899 tests passing, `npm run check` passes.
 
 ### Phase 5: Remove Async Fallback Paths
 
