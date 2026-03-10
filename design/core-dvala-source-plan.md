@@ -201,50 +201,23 @@ Every module function that currently receives `{ executeFunction }` must be reim
 |----------|------|-------|
 | `apply` | `functional.ts` | Spreads last arg into call. Could become `(fn, ...args) -> fn(...(++ (butlast(args)) (last(args))))` |
 
-### 5.2 Module: `collection` (13 functions)
+### 5.2 Module: `collection` ✅ (13 functions)
 
-| Function | Notes |
-|----------|-------|
-| `update` | Applies fn to element at key. Uses `update()` helper |
-| `update-in` | Nested update via key path. Uses `update()` helper + `cloneAndGetMeta()` |
-| `filteri` | Filter with index — `(coll, fn)` where fn receives `(elem, index)` |
-| `mapi` | Map with index — `(coll, fn)` where fn receives `(elem, index)` |
-| `reducei` | Reduce with index — `(coll, fn, init)` where fn receives `(acc, elem, index)` |
-| `reduce-right` | Reduce from end — reverse + reduce |
-| `reducei-right` | Reduce from end with index |
-| `reductions` | Intermediate reduce values (scan) |
-| `reductionsi` | Indexed scan |
-| `every?` | Test all elements — `every(coll, fn)` |
-| `any?` | Test any element — `some(coll, fn)` on entries |
-| `not-any?` | `not(any?(coll, fn))` |
-| `not-every?` | `not(every?(coll, fn))` |
+All 13 functions migrated to `collection.dvala`:
+- `update`, `update-in`, `filteri`, `mapi`, `reducei`
+- `reduce-right`, `reducei-right`, `reductions`, `reductionsi`
+- `every?`, `any?`, `not-any?`, `not-every?`
 
-### 5.3 Module: `sequence` (6 functions)
+### 5.3 Module: `sequence` ✅ (6 functions)
 
-| Function | Notes |
-|----------|-------|
-| `position` | Find index of first match by predicate |
-| `sort-by` | Sort by key function, optional custom comparator |
-| `remove` | Inverse filter: keep elements where `fn` is falsy |
-| `split-with` | `[take-while(seq, fn), drop-while(seq, fn)]` |
-| `group-by` | Group elements by key function result |
-| `partition-by` | Partition when fn return value changes |
+All 6 functions migrated to `sequence.dvala`:
+- `position`, `sort-by`, `remove`, `split-with`, `group-by`, `partition-by`
 
-### 5.4 Module: `grid` (11 functions)
+### 5.4 Module: `grid` ✅ (11 functions)
 
-| Function | Notes |
-|----------|-------|
-| `cell-every?` | Test all cells |
-| `some?` | Test any cell |
-| `every-row?` | Test all rows |
-| `some-row?` | Test any row |
-| `every-col?` | Transpose + test all rows |
-| `some-col?` | Transpose + test any row |
-| `generate` | Build grid from `(i, j) -> value` generator |
-| `cell-map` | Map over cells (multi-grid) |
-| `cell-mapi` | Map over cells with `(cell, i, j)` |
-| `cell-reduce` | Reduce over all cells |
-| `cell-reducei` | Reduce over cells with `(acc, cell, i, j)` |
+All 11 functions migrated to `grid.dvala`:
+- `cell-every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`
+- `generate`, `cell-map`, `cell-mapi`, `cell-reduce`, `cell-reducei`
 
 ### 5.5 Module: `assertion` (3 functions)
 
@@ -301,15 +274,15 @@ All follow the same "generate values while predicate holds" pattern.
 
 ### Summary
 
-| Category | Functions | Count |
-|----------|-----------|-------|
-| Core `functional` | `apply` | 1 |
-| Module `collection` | `update`, `update-in`, `filteri`, `mapi`, `reducei`, `reduce-right`, `reducei-right`, `reductions`, `reductionsi`, `every?`, `any?`, `not-any?`, `not-every?` | 13 |
-| Module `sequence` | `position`, `sort-by`, `remove`, `split-with`, `group-by`, `partition-by` | 6 |
-| Module `grid` | `cell-every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`, `generate`, `cell-map`, `cell-mapi`, `cell-reduce`, `cell-reducei` | 11 |
-| Module `assertion` | `assert-throws`, `assert-throws-error`, `assert-not-throws` | 3 |
-| Module `number-theory` | 4 direct + 27 factory `*-take-while` | 31 |
-| **Total** | | **65** |
+| Category | Functions | Count | Status |
+|----------|-----------|-------|--------|
+| Core `functional` | `apply` | 1 | ⏳ |
+| Module `collection` | 13 HOF functions | 13 | ✅ |
+| Module `sequence` | 6 HOF functions | 6 | ✅ |
+| Module `grid` | 11 HOF functions | 11 | ✅ |
+| Module `assertion` | `assert-throws`, `assert-throws-error`, `assert-not-throws` | 3 | ⏳ |
+| Module `number-theory` | 4 direct + 27 factory `*-take-while` | 31 | ⏳ |
+| **Total** | | **65** | **30 done, 35 remaining** |
 
 ### Phase 6: Final Cleanup — Remove `executeFunction`
 
