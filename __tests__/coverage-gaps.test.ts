@@ -567,23 +567,23 @@ describe('recursive evaluator via module functions', () => {
     it('should trigger module recursive path via assertion module', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-throws(() -> throw("test error"))
+        a.assert-fails(() -> throw("test error"))
       `)
       expect(result).toBe(null)
     })
 
-    it('should trigger assert-throws-error recursive path', () => {
+    it('should trigger assert-fails-with recursive path', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-throws-error(() -> assert(false, "test error"), "test error")
+        a.assert-fails-with(() -> assert(false, "test error"), "test error")
       `)
       expect(result).toBe(null)
     })
 
-    it('should trigger assert-not-throws recursive path', () => {
+    it('should trigger assert-succeeds recursive path', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> 42)
+        a.assert-succeeds(() -> 42)
       `)
       expect(result).toBe(null)
     })
@@ -606,10 +606,10 @@ describe('recursive evaluator via module functions', () => {
 
   describe('executeFunctionRecursive non-DvalaFunction branches', () => {
     it('should handle array-as-function in module callback context', () => {
-      // Use assert-throws to call a function that uses array-as-function
+      // Use assert-fails to call a function that uses array-as-function
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> do
+        a.assert-succeeds(() -> do
           let arr = [10, 20, 30];
           arr(1)
         end)
@@ -620,7 +620,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle object-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> do
+        a.assert-succeeds(() -> do
           let obj = { a: 1, b: 2 };
           obj("a")
         end)
@@ -631,7 +631,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle string-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> do
+        a.assert-succeeds(() -> do
           let s = "hello";
           s(1)
         end)
@@ -642,7 +642,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle number-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> do
+        a.assert-succeeds(() -> do
           let n = 0;
           n([10, 20, 30])
         end)
@@ -655,7 +655,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle special builtin in recursive context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-not-throws(() -> do
+        a.assert-succeeds(() -> do
           let f = &&;
           f(true, 42)
         end)
@@ -1150,66 +1150,66 @@ describe('?? — skipUndefinedQq and advanceQq with undefined symbols', () => {
 describe('recursive evaluator — specific code paths via assertion module', () => {
   it('should hit NaN check in recursive evaluator (lines 145-146)', () => {
     // 0 / 0 produces NaN → evaluateNodeRecursive NaN check throws
-    // assert-throws catches the error
+    // assert-fails catches the error
     expect(dvalaFull.run(`
-      let { assert-throws } = import(assertion);
-      assert-throws(() -> 0 / 0)
+      let { assert-fails } = import(assertion);
+      assert-fails(() -> 0 / 0)
     `)).toBe(null)
   })
 
   it('should hit evaluateParamsRecursive spread handling (lines 180-183)', () => {
     // Spread args in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> do let arr = [1, 2]; +(...arr) end)
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> do let arr = [1, 2]; +(...arr) end)
     `)).toBe(null)
   })
 
   it('should hit evaluateParamsRecursive placeholder handling (line 190)', () => {
     // Placeholder in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> do let f = +(_, 1); f(5) end)
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> do let f = +(_, 1); f(5) end)
     `)).toBe(null)
   })
 
   it('should hit evaluateNormalExpressionRecursive partial (lines 207-220)', () => {
     // Partial application (named function with placeholder) in recursive path
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> do let f = *(_, 2); f(5) end)
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> do let f = *(_, 2); f(5) end)
     `)).toBe(null)
   })
 
   it('should hit anonymous function expression in recursive path (lines 240-258)', () => {
     // Anonymous function call in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> ((x) -> x + 1)(5))
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> ((x) -> x + 1)(5))
     `)).toBe(null)
   })
 
   it('should hit arity error in recursive path (lines 325-326)', () => {
     // Wrong arity in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-throws } = import(assertion);
-      assert-throws(() -> do let f = (x, y) -> x + y; f(1) end)
+      let { assert-fails } = import(assertion);
+      assert-fails(() -> do let f = (x, y) -> x + y; f(1) end)
     `)).toBe(null)
   })
 
   it('should hit default values in recursive path (lines 353-366)', () => {
     // Function with default parameter value in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> do let f = (x, y = 10) -> x + y; f(5) end)
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> do let f = (x, y = 10) -> x + y; f(5) end)
     `)).toBe(null)
   })
 
   it('should hit anonymous function with partial in recursive path (lines 244-254)', () => {
     // Anonymous function expression with placeholders in recursive path
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> do let add = (a, b) -> a + b; add(_, 10)(5) end)
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> do let add = (a, b) -> a + b; add(_, 10)(5) end)
     `)).toBe(null)
   })
 })
@@ -1224,10 +1224,10 @@ describe('recursive evaluator — specific code paths via assertion module', () 
 describe('recursive evaluator — builtin and module dispatch', () => {
   it('should hit executeBuiltinRecursive dvalaImpl path (line 494-495)', () => {
     // When a builtin with dvalaImpl is called inside a recursive evaluator path,
-    // e.g., calling map inside an assert-not-throws callback
+    // e.g., calling map inside an assert-succeeds callback
     expect(dvalaFull.run(`
-      let { assert-not-throws } = import(assertion);
-      assert-not-throws(() -> map([1, 2, 3], inc))
+      let { assert-succeeds } = import(assertion);
+      assert-succeeds(() -> map([1, 2, 3], inc))
     `)).toBe(null)
   })
 

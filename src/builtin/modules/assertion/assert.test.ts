@@ -148,27 +148,27 @@ describe('assert functions', () => {
       })
     })
 
-    describe('assert-throws', () => {
+    describe('assert-fails', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-throws(-> identity("X")) "Should throw")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-throws(-> perform(effect(dvala.error), "X"))')).not.toThrow()
-        expect(() => runWithAssert('a.assert-throws(-> perform(effect(dvala.error), "X"), "I knew it")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-throws(-> perform(effect(dvala.error), "X"), 10)')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-fails(-> identity("X"), "Should fail")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-fails(-> perform(effect(dvala.error), "X"))')).not.toThrow()
+        expect(() => runWithAssert('a.assert-fails(-> perform(effect(dvala.error), "X"), "I knew it")')).not.toThrow()
+        expect(() => runWithAssert('a.assert-fails(-> perform(effect(dvala.error), "X"), 10)')).toThrow(DvalaError)
       })
     })
 
-    describe('assert-not-throws', () => {
+    describe('assert-succeeds', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-not-throws(-> identity("X"), "Should not throw")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-not-throws(-> perform(effect(dvala.error), "X"))')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-succeeds(-> identity("X"), "Should succeed")')).not.toThrow()
+        expect(() => runWithAssert('a.assert-succeeds(-> perform(effect(dvala.error), "X"))')).toThrow(DvalaError)
       })
     })
 
-    describe('assert-throws-error', () => {
+    describe('assert-fails-with', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-throws-error(-> identity("X"), "X", "Should throw X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-throws-error(-> perform(effect(dvala.error), "Y"), "X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-throws-error(-> perform(effect(dvala.error), "X"), "X")')).not.toThrow()
+        expect(() => runWithAssert('a.assert-fails-with(-> identity("X"), "X", "Should fail with X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-fails-with(-> perform(effect(dvala.error), "Y"), "X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assert-fails-with(-> perform(effect(dvala.error), "X"), "X")')).not.toThrow()
       })
     })
 
