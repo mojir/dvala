@@ -1,9 +1,6 @@
-import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { approxEqual } from '../../../../utils'
 import { toFixedArity } from '../../../../utils/arity'
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceNormalExpressions } from '.'
 
 /**
@@ -54,26 +51,8 @@ export const arithmeticNormalExpressions: SequenceNormalExpressions<'arithmetic'
     arity: toFixedArity(3),
   },
   'arithmetic-take-while': {
-    evaluate: ([start, step, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
-      assertNumber(start, sourceCodeInfo, { finite: true })
-      assertNumber(step, sourceCodeInfo, { finite: true })
-      assertFunctionLike(fn, sourceCodeInfo)
-      const s = start
-      const d = step
-      const f = fn
-
-      const arithmetic: number[] = []
-      function loop(i: number): MaybePromise<number[]> {
-        const value = s + i * d
-        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), keep => {
-          if (!keep)
-            return arithmetic
-          arithmetic.push(value)
-          return loop(i + 1)
-        })
-      }
-      return loop(0)
-    },
+    /* v8 ignore next 1 */
+    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: toFixedArity(3),
   },
   'arithmetic-nth': {

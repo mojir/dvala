@@ -284,18 +284,19 @@ All follow the same "generate values while predicate holds" pattern.
 | Module `number-theory` | 29 in Dvala + 2 kept in TS | 31 | ✅ (29 migrated) |
 | **Total** | | **66** | **64 migrated to Dvala** |
 
-### Phase 6: Final Cleanup — Remove `executeFunction`
+### Phase 6: Final Cleanup — Remove `executeFunction` ✅
 
-All HOF functions that required `executeFunction` have been migrated to Dvala. The remaining TypeScript implementations in number-theory (14 functions) use finite precomputed lists or complex algorithms that don't require `executeFunction`.
+All HOF functions that required `executeFunction` have been migrated to Dvala.
 
-**Status:** Ready to proceed with Phase 6 — removing `executeFunction` from the evaluator signature.
+**Completed:**
 
-1. Remove `executeFunction` parameter from `NormalExpressionEvaluator` type in `interface.ts`
-2. Remove `ExecuteFunction` type from `evaluator/interface.ts`
-3. Stop passing `{ executeFunction: executeFunctionRecursive }` in trampoline dispatch
-4. Clean up all stub `evaluate` implementations that reference `executeFunction`
-5. Remove `executeFunction` from all module evaluate signatures
-6. Verify all tests pass
+1. ✅ Removed `executeFunction` parameter from `NormalExpressionEvaluator` type in `src/builtin/interface.ts`
+2. ✅ Removed `ExecuteFunction` type from `src/evaluator/interface.ts`
+3. ✅ Removed `{ executeFunction: executeFunctionRecursive }` from 5 trampoline call sites
+4. ✅ Stubbed take-while `evaluate` bodies in arithmetic, geometric, bernoulli, polygonal TS files
+5. ✅ Stubbed `createTakeWhileNormalExpression` factory evaluate body
+6. ✅ Updated coverage-gaps test and meta test to match new 3-arg signature
+7. ✅ All tests pass
 
 ## DX Checklist
 

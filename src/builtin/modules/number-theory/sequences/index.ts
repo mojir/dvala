@@ -1,6 +1,5 @@
 import { DvalaError } from '../../../../errors'
 import type { SourceCodeInfo } from '../../../../tokenizer/token'
-import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { assertString } from '../../../../typeGuards/string'
 import { toFixedArity } from '../../../../utils/arity'
@@ -185,27 +184,12 @@ function createSeqNormalExpression<Type extends number | string>(
 }
 
 function createTakeWhileNormalExpression<Type extends number | string>(
-  takeWhileFunction: TakeWhileFunction<Type>,
+  _takeWhileFunction: TakeWhileFunction<Type>,
   maxLength: number | undefined,
 ): BuiltinNormalExpression<Type[]> {
   return {
-    evaluate: (params, sourceCodeInfo, contextStack, { executeFunction }) => {
-      const fn = params[0]
-      assertFunctionLike(fn, sourceCodeInfo)
-      const result = takeWhileFunction(
-        (value, index) => chain(executeFunction(fn, [value, index], contextStack), val => !!val),
-        sourceCodeInfo,
-      )
-      return chain(result, resolved => {
-        if (typeof resolved[0] === 'number') {
-          /* v8 ignore next 3 */
-          if (resolved.some(n => (n as number) > Number.MAX_SAFE_INTEGER)) {
-            throw new DvalaError('Result exceeds maximum safe integer', sourceCodeInfo)
-          }
-        }
-        return resolved
-      })
-    },
+    /* v8 ignore next 1 */
+    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: typeof maxLength === 'number' ? { max: 1 } : toFixedArity(1),
   }
 }
