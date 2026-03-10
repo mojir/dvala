@@ -182,14 +182,17 @@ const assertNormalExpression: BuiltinNormalExpressions = {
   // Implemented in assertion.dvala - these stubs provide arity checking
   // The evaluate functions are placeholders; actual execution uses dvalaImpl
   'assert-fails': {
+    /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
   'assert-fails-with': {
+    /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 2, max: 3 },
   },
   'assert-succeeds': {
+    /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },

@@ -1,6 +1,4 @@
 import { getProperDivisors } from '../divisors'
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceDefinition } from '.'
 
 function isDeficient(num: number): boolean {
@@ -22,18 +20,4 @@ export const deficientSequence: SequenceDefinition<'deficient'> = {
     return deficients
   },
   'deficient?': n => isDeficient(n),
-  'deficient-take-while': takeWhile => {
-    const deficients: number[] = []
-    function loop(i: number): MaybePromise<number[]> {
-      if (!isDeficient(i))
-        return loop(i + 1)
-      return chain(takeWhile(i, deficients.length), keep => {
-        if (!keep)
-          return deficients
-        deficients.push(i)
-        return loop(i + 1)
-      })
-    }
-    return loop(1)
-  },
 }

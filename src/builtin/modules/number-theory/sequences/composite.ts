@@ -1,5 +1,3 @@
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import { isPrime } from './prime'
 import type { SequenceDefinition } from '.'
 
@@ -23,18 +21,4 @@ export const compositeSequence: SequenceDefinition<'composite'> = {
     return composites
   },
   'composite?': n => isComposite(n),
-  'composite-take-while': takeWhile => {
-    const composites: number[] = []
-    function loop(i: number): MaybePromise<number[]> {
-      if (!isComposite(i))
-        return loop(i + 1)
-      return chain(takeWhile(i, composites.length), keep => {
-        if (!keep)
-          return composites
-        composites.push(i)
-        return loop(i + 1)
-      })
-    }
-    return loop(4)
-  },
 }

@@ -15,16 +15,13 @@
  * - `stepNode` is always synchronous and returns `Step`.
  * - `applyFrame` may return `Step | Promise<Step>` when normal expressions
  *   or compound function types produce async results.
- * - Normal built-in expressions are called directly with pre-evaluated args
- *   (they may still use the old recursive `evaluateNode` internally for
- *   higher-order callbacks — suspension through them is deferred).
- * - Binding utilities (`evaluateBindingNodeValues`, `tryMatch`) are called
- *   with a recursive `evaluateNode` helper. This is acceptable for Phase 1.
+ * - Normal built-in expressions are called directly with pre-evaluated args.
+ * - All binding and pattern matching use frame-based slot processing.
  * - All state lives in frames (no JS closures) — enabling serialization later.
  */
 
 import { builtin } from '../builtin'
-import { evaluateBindingNodeValues, getAllBindingTargetNames } from '../builtin/bindingNode'
+import { getAllBindingTargetNames } from '../builtin/bindingNode'
 import { extractArrayRest, extractObjectRest, extractValueByPath, flattenBindingPattern, validateBindingRootType } from '../builtin/bindingSlot'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import {
@@ -40,7 +37,7 @@ import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes, getNodeTypeName } from '../constants/constants'
-import { DvalaError, RecurSignal, UndefinedSymbolError, UserDefinedError } from '../errors'
+import { DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import { parse } from '../parser'
@@ -49,23 +46,14 @@ import type {
   AstNode,
   BindingNode,
   BindingTarget,
-  CompFunction,
   DvalaFunction,
-  EffectMatcherFunction,
   EffectRef,
   EvaluatedFunction,
-  EveryPredFunction,
-  FNullFunction,
   FunctionLike,
-  JuxtFunction,
-  ModuleFunction,
-  NormalBuiltinFunction,
   NormalExpressionNode,
   NumberNode,
   PartialFunction,
   ReservedSymbolNode,
-  SomePredFunction,
-  SpecialBuiltinFunction,
   SpecialExpressionNode,
   StringNode,
   SymbolNode,
@@ -87,7 +75,6 @@ import { deepEqual, toAny } from '../utils'
 import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
 import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
-import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
 import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
@@ -152,373 +139,7 @@ import type { Step } from './step'
 export type { Step }
 
 // ---------------------------------------------------------------------------
-// Recursive evaluateNode — used as a helper for normal expressions and
-// binding utilities until the full trampoline migration is complete.
-// ---------------------------------------------------------------------------
-
-function evaluateNodeRecursive(node: AstNode, contextStack: ContextStack): MaybePromise<Any> {
-  switch (node[0]) {
-    case NodeTypes.Number:
-      return (node as NumberNode)[1]
-    case NodeTypes.String:
-      return (node as StringNode)[1]
-    case NodeTypes.NormalBuiltinSymbol:
-    case NodeTypes.SpecialBuiltinSymbol:
-    case NodeTypes.UserDefinedSymbol:
-      return contextStack.evaluateSymbol(node as SymbolNode)
-    case NodeTypes.ReservedSymbol:
-      return evaluateReservedSymbol(node as ReservedSymbolNode)
-    case NodeTypes.NormalExpression: {
-      const result = evaluateNormalExpressionRecursive(node as NormalExpressionNode, contextStack)
-      return chain(result, resolved => {
-        if (typeof resolved === 'number' && Number.isNaN(resolved)) {
-          throw new DvalaError('Number is NaN', node[2])
-        }
-        return annotate(resolved)
-      })
-    }
-    case NodeTypes.SpecialExpression: {
-      // Route through the trampoline — special expressions are fully handled
-      // by stepSpecialExpression and their corresponding frame types.
-      const initial: Step = { type: 'Eval', node, env: contextStack, k: [] }
-      return annotate(runSyncTrampoline(initial))
-    }
-    /* v8 ignore next 2 */
-    default:
-      throw new DvalaError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
-  }
-}
-
-function evaluateParamsRecursive(
-  paramNodes: AstNode[],
-  contextStack: ContextStack,
-): MaybePromise<{ params: Arr; placeholders: number[] }> {
-  const params: Arr = []
-  const placeholders: number[] = []
-  const result = forEachSequential(paramNodes, (paramNode, index) => {
-    if (isSpreadNode(paramNode)) {
-      // Spread in binding defaults would be unusual; throw for safety
-      throw new DvalaError('Spread in binding default not supported', paramNode[2])
-    } else if (paramNode[0] === NodeTypes.ReservedSymbol && paramNode[1] === '_') {
-      placeholders.push(index)
-    } else {
-      return chain(evaluateNodeRecursive(paramNode, contextStack), value => {
-        params.push(value)
-      })
-    }
-  })
-  return chain(result, () => ({ params, placeholders }))
-}
-
-function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextStack: ContextStack): MaybePromise<Any> {
-  const sourceCodeInfo = node[2]
-  return chain(evaluateParamsRecursive(node[1][1], contextStack), ({ params, placeholders }) => {
-    if (isNormalExpressionNodeWithName(node)) {
-      const nameSymbol = node[1][0]
-      if (placeholders.length > 0) {
-        const fn = evaluateNodeRecursive(nameSymbol, contextStack)
-        return chain(fn, resolvedFn => {
-          const partialFunction: PartialFunction = {
-            [FUNCTION_SYMBOL]: true,
-            function: asFunctionLike(resolvedFn, sourceCodeInfo),
-            functionType: 'Partial',
-            params,
-            placeholders,
-            sourceCodeInfo,
-            arity: toFixedArity(placeholders.length),
-          }
-          return partialFunction
-        })
-      }
-      if (isNormalBuiltinSymbolNode(nameSymbol)) {
-        const type = nameSymbol[1]
-        const normalExpression = builtin.allNormalExpressions[type]!
-        if (contextStack.pure && normalExpression.pure === false) {
-          throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, node[2])
-        }
-        // dvalaImpl needs to be checked here — binding defaults can call Dvala-implemented functions
-        if (normalExpression.dvalaImpl) {
-          return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, node[2])
-        }
-        return normalExpression.evaluate(params, node[2], contextStack)
-      } else {
-        const fn = contextStack.getValue(nameSymbol[1])
-        if (fn !== undefined) {
-          return executeFunctionRecursive(asFunctionLike(fn, sourceCodeInfo), params, contextStack, sourceCodeInfo)
-        }
-        // Symbol resolution happens before recursive eval
-        throw new UndefinedSymbolError(nameSymbol[1], node[2])
-      }
-    } else {
-      // Anonymous function calls in binding defaults go through trampoline
-      throw new DvalaError('Anonymous function call in recursive evaluator not supported', sourceCodeInfo)
-    }
-  })
-}
-
-function executeFunctionRecursive(fn: FunctionLike, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  if (isDvalaFunction(fn)) {
-    return executeDvalaFunctionRecursive(fn, params, contextStack, sourceCodeInfo)
-  }
-  if (Array.isArray(fn)) {
-    return evaluateArrayAsFunction(fn, params, sourceCodeInfo)
-  }
-  if (isObj(fn)) {
-    return evaluateObjectAsFunction(fn, params, sourceCodeInfo)
-  }
-  if (typeof fn === 'string') {
-    return evaluateStringAsFunction(fn, params, sourceCodeInfo)
-  }
-  if (isNumber(fn)) {
-    return evaluateNumberAsFunction(fn, params, sourceCodeInfo)
-  }
-  /* v8 ignore next 1 */
-  throw new DvalaError('Unexpected function type', sourceCodeInfo)
-}
-
-/**
- * Execute a DvalaFunction recursively. This is the old-style executor
- * used as a fallback for normal expression callbacks.
- */
-function executeDvalaFunctionRecursive(fn: DvalaFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  switch (fn.functionType) {
-    case 'UserDefined':
-      return executeUserDefinedRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Partial':
-      return executePartialRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Comp':
-      return executeCompRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Constantly':
-      return fn.value
-    case 'Juxt':
-      return executeJuxtRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Complement':
-      return chain(executeFunctionRecursive(fn.function, params, contextStack, sourceCodeInfo), result => !result)
-    case 'EveryPred':
-      return executeEveryPredRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'SomePred':
-      return executeSomePredRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Fnull':
-      return executeFnullRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'EffectMatcher':
-      return executeEffectMatcherRecursive(fn, params, sourceCodeInfo)
-    case 'Builtin': {
-      const normalExpression = builtin.allNormalExpressions[fn.normalBuiltinSymbolType]!
-      if (normalExpression.dvalaImpl) {
-        return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, sourceCodeInfo)
-      }
-      return executeBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
-    }
-    case 'SpecialBuiltin':
-      return executeSpecialBuiltinRecursive(fn, params, contextStack, sourceCodeInfo)
-    case 'Module':
-      return executeModuleRecursive(fn, params, contextStack, sourceCodeInfo)
-  }
-}
-
-function executeUserDefinedRecursive(fn: UserDefinedFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  function setupAndExecute(currentParams: Arr): MaybePromise<Any> {
-    if (!arityAcceptsMin(fn.arity, currentParams.length)) {
-      throw new DvalaError(`Expected ${fn.arity} arguments, got ${currentParams.length}.`, sourceCodeInfo)
-    }
-    const evaluatedFunction = fn.evaluatedfunction
-    const args = evaluatedFunction[0]
-    const nbrOfNonRestArgs = args.filter(arg => arg[0] !== bindingTargetTypes.rest).length
-    const newContextStack = contextStack.create(fn.evaluatedfunction[2])
-    const newContext: Context = { self: { value: fn } }
-    const rest: Arr = []
-    let paramSetup: MaybePromise<void> = undefined as unknown as void
-    for (let i = 0; i < currentParams.length; i += 1) {
-      if (i < nbrOfNonRestArgs) {
-        const paramIndex = i
-        paramSetup = chain(paramSetup, () => {
-          const param = toAny(currentParams[paramIndex])
-          return chain(evaluateBindingNodeValues(args[paramIndex]!, param, node =>
-            evaluateNodeRecursive(node, newContextStack.create(newContext))), valueRecord => {
-            Object.entries(valueRecord).forEach(([key, value]) => {
-              newContext[key] = { value }
-            })
-          })
-        })
-      } else {
-        rest.push(toAny(currentParams[i]))
-      }
-    }
-    let defaultSetup: MaybePromise<void> = undefined as unknown as void
-    for (let i = currentParams.length; i < nbrOfNonRestArgs; i++) {
-      const argIndex = i
-      defaultSetup = chain(defaultSetup, () => {
-        const arg = args[argIndex]!
-        return chain(evaluateNodeRecursive(arg[1][1]!, contextStack.create(newContext)), defaultValue => {
-          return chain(evaluateBindingNodeValues(arg, defaultValue, node =>
-            evaluateNodeRecursive(node, contextStack.create(newContext))), valueRecord => {
-            Object.entries(valueRecord).forEach(([key, value]) => {
-              newContext[key] = { value }
-            })
-          })
-        })
-      })
-    }
-    return chain(paramSetup, () => chain(defaultSetup, () => {
-      const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
-      const restSetup: MaybePromise<void> = restArgument !== undefined
-        ? chain(evaluateBindingNodeValues(restArgument, rest, node =>
-          evaluateNodeRecursive(node, contextStack.create(newContext))), valueRecord => {
-          Object.entries(valueRecord).forEach(([key, value]) => {
-            newContext[key] = { value }
-          })
-        })
-        : undefined as unknown as void
-      return chain(restSetup, () => {
-        const newContextStack2 = newContextStack.create(newContext)
-        const bodyResult = reduceSequential(
-          evaluatedFunction[1],
-          (_acc, node) => evaluateNodeRecursive(node, newContextStack2),
-          null as Any,
-        )
-        // Async results in recursive evaluator body go through synchronous recur handling below
-        return bodyResult
-      })
-    }))
-  }
-  for (;;) {
-    try {
-      const result = setupAndExecute(params)
-      return result
-    } catch (error) {
-      if (error instanceof RecurSignal) {
-        params = error.params
-        continue
-      }
-      throw error
-    }
-  }
-}
-
-function executePartialRecursive(fn: PartialFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const actualParams = [...fn.params]
-  // Arity is checked by callers -- keep defensive check
-  if (params.length !== fn.placeholders.length) {
-    throw new DvalaError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
-  }
-  const paramsCopy = [...params]
-  for (const placeholderIndex of fn.placeholders) {
-    actualParams.splice(placeholderIndex, 0, paramsCopy.shift())
-  }
-  return executeFunctionRecursive(fn.function, actualParams, contextStack, sourceCodeInfo)
-}
-
-function executeCompRecursive(fn: CompFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const { params: f } = fn
-  if (f.length === 0) {
-    if (params.length !== 1)
-      throw new DvalaError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
-    return asAny(params[0], sourceCodeInfo)
-  }
-  let result: MaybePromise<Arr> = params
-  for (let i = f.length - 1; i >= 0; i--) {
-    const fun = f[i]!
-    result = chain(result, currentParams =>
-      chain(executeFunctionRecursive(asFunctionLike(fun, sourceCodeInfo), currentParams, contextStack, sourceCodeInfo), r => [r]))
-  }
-  return chain(result, finalArr => asAny(finalArr[0], sourceCodeInfo))
-}
-
-function executeJuxtRecursive(fn: JuxtFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  return mapSequential(fn.params, fun =>
-    executeFunctionRecursive(asFunctionLike(fun, sourceCodeInfo), params, contextStack, sourceCodeInfo))
-}
-
-function executeEveryPredRecursive(fn: EveryPredFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const checks: (() => MaybePromise<Any>)[] = []
-  for (const f of fn.params) {
-    for (const param of params) {
-      checks.push(() => executeFunctionRecursive(asFunctionLike(f, sourceCodeInfo), [param], contextStack, sourceCodeInfo))
-    }
-  }
-  return reduceSequential(checks, (acc, check) => {
-    if (!acc)
-      return false
-    return chain(check(), result => !!result)
-  }, true as Any)
-}
-
-function executeSomePredRecursive(fn: SomePredFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const checks: (() => MaybePromise<Any>)[] = []
-  for (const f of fn.params) {
-    for (const param of params) {
-      checks.push(() => executeFunctionRecursive(asFunctionLike(f, sourceCodeInfo), [param], contextStack, sourceCodeInfo))
-    }
-  }
-  return reduceSequential(checks, (acc, check) => {
-    if (acc)
-      return true
-    return chain(check(), result => !!result)
-  }, false as Any)
-}
-
-function executeFnullRecursive(fn: FNullFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const fnulledParams = params.map((param, index) => (param === null ? toAny(fn.params[index]) : param))
-  return executeFunctionRecursive(asFunctionLike(fn.function, sourceCodeInfo), fnulledParams, contextStack, sourceCodeInfo)
-}
-
-function executeEffectMatcherRecursive(fn: EffectMatcherFunction, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
-  const effectRef = params[0]
-  assertEffect(effectRef, sourceCodeInfo)
-  const effectName = effectRef.name
-  if (fn.matchType === 'string') {
-    return effectNameMatchesPattern(effectName, fn.pattern)
-  }
-  const regexp = new RegExp(fn.pattern, fn.flags)
-  return regexp.test(effectName)
-}
-
-function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const normalExpression = asNonUndefined(builtin.allNormalExpressions[fn.normalBuiltinSymbolType], sourceCodeInfo)
-  // Pure mode + dvalaImpl in recursive builtin path — trampoline handles these checks
-  /* v8 ignore next 6 */
-  if (contextStack.pure && normalExpression.pure === false) {
-    throw new DvalaError(`Cannot call impure function '${fn.name}' in pure mode`, sourceCodeInfo)
-  }
-  if (normalExpression.dvalaImpl) {
-    return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, sourceCodeInfo)
-  }
-  return normalExpression.evaluate(params, sourceCodeInfo, contextStack)
-}
-
-// Special builtin + module dispatch in recursive path — not reached from normal expression callbacks
-/* v8 ignore start */
-function executeSpecialBuiltinRecursive(fn: SpecialBuiltinFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
-  if (specialExpression.evaluateAsNormalExpression) {
-    return specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, contextStack)
-  }
-  throw new DvalaError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
-}
-
-function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
-  const dvalaModule = contextStack.getModule(fn.moduleName)
-  if (!dvalaModule) {
-    throw new DvalaError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
-  }
-  const expression = dvalaModule.functions[fn.functionName]
-  if (!expression) {
-    throw new DvalaError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
-  }
-  if (contextStack.pure && expression.pure === false) {
-    throw new DvalaError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
-  }
-  assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
-  if (expression.dvalaImpl) {
-    return executeUserDefinedRecursive(expression.dvalaImpl, params, contextStack, sourceCodeInfo)
-  }
-  return expression.evaluate(params, sourceCodeInfo, contextStack)
-}
-/* v8 ignore stop */
-
-// ---------------------------------------------------------------------------
-// Value-as-function helpers (shared between trampoline and recursive paths)
+// Value-as-function helpers
 // ---------------------------------------------------------------------------
 
 function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
@@ -1353,25 +974,41 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       return dispatchFunction(firstCheck.fn, [firstCheck.param], [], env, sourceCodeInfo, [frame, ...k])
     }
     case 'SpecialBuiltin': {
-      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
-      return wrapMaybePromiseAsStep(result, k)
+      const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
+      if (specialExpression.evaluateAsNormalExpression) {
+        const result = specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, env)
+        return wrapMaybePromiseAsStep(result, k)
+      }
+      throw new DvalaError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
     }
     case 'Module': {
       const dvalaModule = env.getModule(fn.moduleName)
-      const expression = dvalaModule?.functions[fn.functionName]
-      if (expression?.dvalaImpl) {
-        assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
+      if (!dvalaModule) {
+        throw new DvalaError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
+      }
+      const expression = dvalaModule.functions[fn.functionName]
+      if (!expression) {
+        throw new DvalaError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
+      }
+      if (env.pure && expression.pure === false) {
+        throw new DvalaError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
+      }
+      assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
+      if (expression.dvalaImpl) {
         return setupUserDefinedCall(expression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
-      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
+      const result = expression.evaluate(params, sourceCodeInfo, env)
       return wrapMaybePromiseAsStep(result, k)
     }
     case 'Builtin': {
       const normalExpression = builtin.allNormalExpressions[fn.normalBuiltinSymbolType]!
+      if (env.pure && normalExpression.pure === false) {
+        throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
+      }
       if (normalExpression.dvalaImpl) {
         return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
-      const result = executeDvalaFunctionRecursive(fn, params, env, sourceCodeInfo)
+      const result = normalExpression.evaluate(params, sourceCodeInfo, env)
       return wrapMaybePromiseAsStep(result, k)
     }
   }
@@ -2003,19 +1640,12 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       // Push completion frame and use frame-based binding
       const completeFrame: ForElementBindCompleteFrame = {
         type: 'ForElementBindComplete',
-        forFrame: { ...frame, levelStates, phase: 'evalElement' },
+        forFrame: { ...frame, levelStates },
         levelStates,
         env,
         sourceCodeInfo,
       }
       return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, [completeFrame, ...k])
-    }
-
-    case 'evalLet': {
-      // A let-binding value has been evaluated; handled via recursive fallback
-      // (processForLetBindings handles this inline)
-      /* v8 ignore next 1 */
-      throw new DvalaError('ForLoop evalLet should not reach applyFrame', sourceCodeInfo)
     }
 
     case 'evalWhen': {
@@ -2056,13 +1686,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       return advanceForElement(frame, k)
     }
 
-    /* v8 ignore next 2 */
-    case 'evalElement':
-      throw new DvalaError(`Unexpected ForLoop phase: ${frame.phase}`, sourceCodeInfo)
   }
-
-  /* v8 ignore next 1 */
-  return { type: 'Value', value: null, k }
 }
 
 /** Handle for-loop abort: no more elements at the outermost level. */
@@ -2499,11 +2123,11 @@ function handlerMatchesEffect(
     return handler.effectRef.name === effect.name
   }
   if (isDvalaFunction(handler.effectRef)) {
-    const result = executeFunctionRecursive(handler.effectRef, [effect], env, sourceCodeInfo)
-    if (result instanceof Promise) {
+    const step = dispatchFunction(handler.effectRef, [effect], [], env, sourceCodeInfo, [])
+    if (step instanceof Promise) {
       throw new DvalaError('Effect handler predicates must be synchronous', sourceCodeInfo)
     }
-    return !!result
+    return !!runSyncTrampoline(step)
   }
   return false
 }
@@ -3550,7 +3174,7 @@ function continueMatchSlots(
 
       case 'typeCheck': {
         // Check type at path
-        if (!checkTypeAtPath(ctx.rootValue, slot.path, slot.requiredType!)) {
+        if (!slot.requiredType || !checkTypeAtPath(ctx.rootValue, slot.path, slot.requiredType)) {
           return tryNextMatchCase(matchFrame, k)
         }
         ctx.index++
