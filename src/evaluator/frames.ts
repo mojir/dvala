@@ -17,7 +17,7 @@
 
 import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
-import type { AstNode, BindingNode, BindingTarget, EffectRef, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
+import type { AstNode, BindingNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -591,6 +591,67 @@ export interface ComplementFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * Comp function iteration — chains function calls right-to-left.
+ *
+ * `(comp f g h)` called with `x` evaluates as `f(g(h(x)))`.
+ * We iterate from right to left (index starts at len-1, decrements).
+ * Each step wraps the result in an array for the next function call.
+ */
+export interface CompFrame {
+  type: 'Comp'
+  fns: Arr // array of functions to compose
+  index: number // current function index (decrements from len-1 to 0)
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Juxt function iteration — calls each function with same params, collects results.
+ *
+ * `(juxt f g h)` called with `x` returns `[f(x), g(x), h(x)]`.
+ * Each step adds the result to the accumulated array.
+ */
+export interface JuxtFrame {
+  type: 'Juxt'
+  fns: Arr // array of functions
+  params: Arr // original params (same for all calls)
+  index: number // current function index
+  results: Arr // accumulated results
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * EveryPred function iteration — short-circuit AND across predicates.
+ *
+ * `(every-pred p1 p2)` returns a function that returns true iff all
+ * predicates return truthy for all arguments.
+ * Precomputes all (fn, param) pairs and iterates with early exit on falsy.
+ */
+export interface EveryPredFrame {
+  type: 'EveryPred'
+  checks: { fn: FunctionLike; param: Any }[] // all (fn, param) pairs
+  index: number // current check index
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * SomePred function iteration — short-circuit OR across predicates.
+ *
+ * `(some-pred p1 p2)` returns a function that returns true if any
+ * predicate returns truthy for any argument.
+ * Precomputes all (fn, param) pairs and iterates with early exit on truthy.
+ */
+export interface SomePredFrame {
+  type: 'SomePred'
+  checks: { fn: FunctionLike; param: Any }[]
+  index: number
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Post-processing
 // ---------------------------------------------------------------------------
@@ -717,6 +778,10 @@ export type Frame =
   | HandlerInvokeFrame
   // Compound function wrappers
   | ComplementFrame
+  | CompFrame
+  | JuxtFrame
+  | EveryPredFrame
+  | SomePredFrame
   // Parallel resume
   | ParallelResumeFrame
   // Function calls

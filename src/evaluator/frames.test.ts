@@ -6,11 +6,13 @@ import type {
   BindingDefaultFrame,
   CallFnFrame,
   ComplementFrame,
+  CompFrame,
   CondFrame,
   ContinuationStack,
   EffectRefFrame,
   EffectResumeFrame,
   EvalArgsFrame,
+  EveryPredFrame,
   FnArgBindFrame,
   FnBodyFrame,
   ForBindingLevelState,
@@ -18,6 +20,7 @@ import type {
   Frame,
   HandlerInvokeFrame,
   IfBranchFrame,
+  JuxtFrame,
   LetBindFrame,
   LoopBindFrame,
   LoopIterateFrame,
@@ -30,6 +33,7 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
+  SomePredFrame,
   TryWithFrame,
 } from './frames'
 
@@ -63,6 +67,10 @@ describe('frame types', () => {
       EffectRef: true,
       HandlerInvoke: true,
       Complement: true,
+      Comp: true,
+      Juxt: true,
+      EveryPred: true,
+      SomePred: true,
       EffectResume: true,
       ParallelResume: true,
       EvalArgs: true,
@@ -75,7 +83,7 @@ describe('frame types', () => {
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(30)
+    expect(Object.keys(frameTypes)).toHaveLength(34)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -108,6 +116,10 @@ describe('frame types', () => {
         case 'EffectRef': return 'effect'
         case 'HandlerInvoke': return 'effect'
         case 'Complement': return 'compound'
+        case 'Comp': return 'compound'
+        case 'Juxt': return 'compound'
+        case 'EveryPred': return 'compound'
+        case 'SomePred': return 'compound'
         case 'EffectResume': return 'effect'
         case 'ParallelResume': return 'parallel'
         case 'EvalArgs': return 'call'
@@ -163,6 +175,10 @@ describe('frame types', () => {
       'EffectRef',
       'HandlerInvoke',
       'Complement',
+      'Comp',
+      'Juxt',
+      'EveryPred',
+      'SomePred',
       'EffectResume',
       'ParallelResume',
       'EvalArgs',
@@ -174,7 +190,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(27)
+    expect(uniqueTypes.size).toBe(31)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -199,6 +215,10 @@ describe('frame types', () => {
     const _effectRef: EffectRefFrame['type'] = 'EffectRef'
     const _handlerInvoke: HandlerInvokeFrame['type'] = 'HandlerInvoke'
     const _complement: ComplementFrame['type'] = 'Complement'
+    const _comp: CompFrame['type'] = 'Comp'
+    const _juxt: JuxtFrame['type'] = 'Juxt'
+    const _everyPred: EveryPredFrame['type'] = 'EveryPred'
+    const _somePred: SomePredFrame['type'] = 'SomePred'
     const _effectResume: EffectResumeFrame['type'] = 'EffectResume'
     const _parallelResume: ParallelResumeFrame['type'] = 'ParallelResume'
     const _evalArgs: EvalArgsFrame['type'] = 'EvalArgs'
@@ -230,6 +250,10 @@ describe('frame types', () => {
     expect(_effectRef).toBe('EffectRef')
     expect(_handlerInvoke).toBe('HandlerInvoke')
     expect(_complement).toBe('Complement')
+    expect(_comp).toBe('Comp')
+    expect(_juxt).toBe('Juxt')
+    expect(_everyPred).toBe('EveryPred')
+    expect(_somePred).toBe('SomePred')
     expect(_effectResume).toBe('EffectResume')
     expect(_parallelResume).toBe('ParallelResume')
     expect(_evalArgs).toBe('EvalArgs')
