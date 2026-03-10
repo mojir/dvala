@@ -7,6 +7,7 @@ import type {
   CallFnFrame,
   CondFrame,
   ContinuationStack,
+  EffectRefFrame,
   EffectResumeFrame,
   EvalArgsFrame,
   FnArgBindFrame,
@@ -57,6 +58,7 @@ describe('frame types', () => {
       Recur: true,
       PerformArgs: true,
       TryWith: true,
+      EffectRef: true,
       EffectResume: true,
       ParallelResume: true,
       EvalArgs: true,
@@ -69,7 +71,7 @@ describe('frame types', () => {
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(27)
+    expect(Object.keys(frameTypes)).toHaveLength(28)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -99,6 +101,7 @@ describe('frame types', () => {
         case 'Recur': return 'control'
         case 'PerformArgs': return 'control'
         case 'TryWith': return 'effect'
+        case 'EffectRef': return 'effect'
         case 'EffectResume': return 'effect'
         case 'ParallelResume': return 'parallel'
         case 'EvalArgs': return 'call'
@@ -151,6 +154,7 @@ describe('frame types', () => {
       'Recur',
       'PerformArgs',
       'TryWith',
+      'EffectRef',
       'EffectResume',
       'ParallelResume',
       'EvalArgs',
@@ -162,7 +166,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(24)
+    expect(uniqueTypes.size).toBe(25)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -184,6 +188,7 @@ describe('frame types', () => {
     const _recur: RecurFrame['type'] = 'Recur'
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
     const _tryWith: TryWithFrame['type'] = 'TryWith'
+    const _effectRef: EffectRefFrame['type'] = 'EffectRef'
     const _effectResume: EffectResumeFrame['type'] = 'EffectResume'
     const _parallelResume: ParallelResumeFrame['type'] = 'ParallelResume'
     const _evalArgs: EvalArgsFrame['type'] = 'EvalArgs'
@@ -212,6 +217,7 @@ describe('frame types', () => {
     expect(_recur).toBe('Recur')
     expect(_performArgs).toBe('PerformArgs')
     expect(_tryWith).toBe('TryWith')
+    expect(_effectRef).toBe('EffectRef')
     expect(_effectResume).toBe('EffectResume')
     expect(_parallelResume).toBe('ParallelResume')
     expect(_evalArgs).toBe('EvalArgs')

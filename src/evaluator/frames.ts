@@ -531,6 +531,31 @@ export interface FnArgBindFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * Evaluate effect reference expressions in `do...with...end` blocks.
+ *
+ * When a block has multiple `with` handlers, the effect expressions need to
+ * be evaluated sequentially before the body runs. This frame tracks the
+ * evaluation progress.
+ *
+ * Fields:
+ * - `handlerNodes`: All [effectExpr, handlerNode] pairs from the `with` clause
+ * - `evaluatedHandlers`: Effect refs evaluated so far
+ * - `index`: Current handler being evaluated
+ * - `bodyNodes`: The block body to evaluate after all handlers are set up
+ * - `bodyEnv`: The environment for body evaluation
+ */
+export interface EffectRefFrame {
+  type: 'EffectRef'
+  handlerNodes: [AstNode, AstNode][]
+  evaluatedHandlers: EvaluatedWithHandler[]
+  index: number
+  bodyNodes: AstNode[]
+  bodyEnv: ContextStack
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Post-processing
 // ---------------------------------------------------------------------------
@@ -652,6 +677,7 @@ export type Frame =
   // Exception & effect handling
   | TryWithFrame
   | EffectResumeFrame
+  | EffectRefFrame
   // Parallel resume
   | ParallelResumeFrame
   // Function calls

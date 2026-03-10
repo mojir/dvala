@@ -95,6 +95,7 @@ import type {
   ContinuationStack,
   DebugStepFrame,
   EffectResumeFrame,
+  EffectRefFrame,
   EvalArgsFrame,
   EvaluatedWithHandler,
   FnArgBindFrame,
@@ -810,27 +811,28 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       const newContext: Context = {}
       const newEnv = env.create(newContext)
 
-      // Build the continuation for the body
-      let bodyK = k
+      // If there are effect handlers, evaluate effect refs via frames
       if (withHandlerNodes && withHandlerNodes.length > 0) {
-        const evaluatedHandlers: EvaluatedWithHandler[] = withHandlerNodes.map(([effectExpr, handlerNode]) => ({
-          effectRef: evaluateNodeRecursive(effectExpr, env) as Any,
-          handlerNode,
-        }))
-        const withFrame: TryWithFrame = {
-          type: 'TryWith',
-          handlers: evaluatedHandlers,
+        const effectRefFrame: EffectRefFrame = {
+          type: 'EffectRef',
+          handlerNodes: withHandlerNodes,
+          evaluatedHandlers: [],
+          index: 0,
+          bodyNodes: nodes,
+          bodyEnv: newEnv,
           env,
           sourceCodeInfo,
         }
-        bodyK = [withFrame, ...k]
+        const firstEffectExpr = withHandlerNodes[0]![0]
+        return { type: 'Eval', node: firstEffectExpr, env, k: [effectRefFrame, ...k] }
       }
 
+      // No effect handlers — evaluate body directly
       if (nodes.length === 0) {
-        return { type: 'Value', value: null, k: bodyK }
+        return { type: 'Value', value: null, k }
       }
       if (nodes.length === 1) {
-        return { type: 'Eval', node: nodes[0]!, env: newEnv, k: bodyK }
+        return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
       }
       const frame: SequenceFrame = {
         type: 'Sequence',
@@ -839,7 +841,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         env: newEnv,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...bodyK] }
+      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...k] }
     }
 
     // --- let ---
@@ -1397,6 +1399,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyBindingDefault(frame, value, k)
     case 'FnArgBind':
       return applyFnArgBind(frame, value, k)
+    case 'EffectRef':
+      return applyEffectRef(frame, value, k)
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
     case 'DebugStep':
@@ -3043,6 +3047,63 @@ function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: Continua
   }
   Object.assign(record, valueRecord)
   return { type: 'Value', value, k }
+}
+
+/**
+ * Handles continuation after evaluating an effect reference expression.
+ * Stores the evaluated ref, then either evaluates the next ref or starts the body.
+ */
+function applyEffectRef(frame: EffectRefFrame, value: Any, k: ContinuationStack): Step {
+  const { handlerNodes, evaluatedHandlers, index, bodyNodes, bodyEnv, env, sourceCodeInfo } = frame
+
+  // Store the evaluated effect reference
+  const currentHandler = handlerNodes[index]!
+  evaluatedHandlers.push({
+    effectRef: value,
+    handlerNode: currentHandler[1],
+  })
+
+  const nextIndex = index + 1
+
+  // If more handlers to evaluate, continue with next effect expression
+  if (nextIndex < handlerNodes.length) {
+    const nextFrame: EffectRefFrame = {
+      type: 'EffectRef',
+      handlerNodes,
+      evaluatedHandlers,
+      index: nextIndex,
+      bodyNodes,
+      bodyEnv,
+      env,
+      sourceCodeInfo,
+    }
+    const nextEffectExpr = handlerNodes[nextIndex]![0]
+    return { type: 'Eval', node: nextEffectExpr, env, k: [nextFrame, ...k] }
+  }
+
+  // All handlers evaluated — build TryWithFrame and evaluate body
+  const withFrame: TryWithFrame = {
+    type: 'TryWith',
+    handlers: evaluatedHandlers,
+    env,
+    sourceCodeInfo,
+  }
+  const bodyK: ContinuationStack = [withFrame, ...k]
+
+  if (bodyNodes.length === 0) {
+    return { type: 'Value', value: null, k: bodyK }
+  }
+  if (bodyNodes.length === 1) {
+    return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: bodyK }
+  }
+  const sequenceFrame: SequenceFrame = {
+    type: 'Sequence',
+    nodes: bodyNodes,
+    index: 1,
+    env: bodyEnv,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [sequenceFrame, ...bodyK] }
 }
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {

@@ -132,18 +132,29 @@ The `applyFnArgBind` function handles the continuation after a default is evalua
 - Nested destructuring defaults (`fn ({a = 10}) -> ...`) still use `evaluateBindingNodeValues` callback
 - Rest argument destructuring defaults
 
-#### 1.3 Next Steps (remaining for Phase 1)
+#### 1.3 Next Steps (remaining for Phase 1) — DEFERRED
 
-1. **Convert `evaluateBindingNodeValues` to frame-based** — This requires a more complex approach:
-   - Create `DestructuringFrame` to track nested pattern matching state
-   - When a nested default is encountered, push frame and evaluate
-   - Resume from where we left off after value returns
+Converting `evaluateBindingNodeValues` to frame-based requires rewriting it to be resumable (similar to CPS transformation). This is complex because:
+- Binding patterns can be arbitrarily nested (`{ a = { b = 10 } }`)
+- The current callback-based design (`evaluate: (Node) => MaybePromise<Any>`) requires full transformation
+- Usage of destructuring defaults is rare in practice (no real occurrences in test suite)
 
-2. **Handle rest argument destructuring** — Similar to above
+**Decision**: Defer Phase 1.3. Keep the recursive fallback for nested destructuring defaults.
+The key path (top-level function argument defaults) is now frame-based via `FnArgBindFrame`.
 
-3. **Remove async fallbacks** — Once all binding is frame-based, remove the `executeUserDefinedRecursive` fallback paths
+### Phase 2: Frame-Based Pattern Matching — MOSTLY COMPLETE
 
-### Phase 2: Frame-Based Pattern Matching
+**Analysis:** Upon review, pattern matching guards are ALREADY frame-based:
+- Guard expressions are evaluated via `{ type: 'Eval', node: guard, env: guardEnv, k: [guardFrame, ...k] }`
+- The `MatchFrame` with `phase: 'guard'` handles continuation after guard evaluation
+
+**What uses recursive eval:**
+- Literal pattern comparison (`case 1 then ...`) — BUT literals are always simple nodes (numbers, strings, booleans, null) that evaluate synchronously, so this is not a real concern
+- Default values in patterns (`case { x = 10 } then ...`) — Same problem as Phase 1.3
+
+**Decision:** Phase 2 is effectively complete. The remaining recursive eval usage (defaults in patterns) is the same complexity as Phase 1.3 and can be deferred.
+
+### Phase 3: Frame-Based Effect Ref Evaluation
 
 Convert `tryMatch` guard evaluation to frame-based.
 
@@ -168,50 +179,31 @@ return { type: 'Eval', node: guardExpr, env: bindingsEnv, k: [frame, ...k] }
 
 The existing `MatchFrame` continues to orchestrate, but defers to `MatchGuardFrame` when guards are present.
 
-### Phase 3: Frame-Based Effect Ref Evaluation
+### Phase 3: Frame-Based Effect Ref Evaluation ✅ COMPLETED
 
-Convert `do...with` effect ref evaluation to frame-based.
+Converted `do...with` effect ref evaluation to frame-based.
 
-#### 3.1 Create `EffectRefFrame`
+#### 3.1 Create `EffectRefFrame` ✅
 
-```typescript
-// In stepSpecialExpression for block:
-if (withHandlerNodes && withHandlerNodes.length > 0) {
-  const frame: EffectRefFrame = {
-    type: 'EffectRef',
-    handlerNodes: withHandlerNodes,
-    evaluatedHandlers: [],
-    index: 0,
-    bodyNodes: nodes,
-    env,
-    sourceCodeInfo,
-  }
-  return { type: 'Eval', node: withHandlerNodes[0][0], env, k: [frame, ...k] }
-}
-```
+Added the `EffectRefFrame` interface to `frames.ts`:
+- `handlerNodes`: The original handler AST nodes
+- `evaluatedHandlers`: Accumulated evaluated handlers
+- `index`: Current handler being evaluated
+- `bodyNodes`: The block body to evaluate after handlers are set up
+- `bodyEnv`: Environment for body evaluation
 
-#### 3.2 Update `applyFrame` for `EffectRefFrame`
+#### 3.2 Update block special expression ✅
 
-```typescript
-case 'EffectRef': {
-  const { handlerNodes, evaluatedHandlers, index, bodyNodes, env } = frame
-  // value is the evaluated effect ref
-  evaluatedHandlers.push({
-    effectRef: value,
-    handlerNode: handlerNodes[index][1],
-  })
-  
-  if (index + 1 < handlerNodes.length) {
-    // More effect refs to evaluate
-    const nextFrame: EffectRefFrame = { ...frame, evaluatedHandlers, index: index + 1 }
-    return { type: 'Eval', node: handlerNodes[index + 1][0], env, k: [nextFrame, ...k] }
-  }
-  
-  // All refs evaluated, set up TryWithFrame and body
-  const withFrame: TryWithFrame = { type: 'TryWith', handlers: evaluatedHandlers, env, sourceCodeInfo }
-  return evaluateBodySequence(bodyNodes, env, [withFrame, ...k])
-}
-```
+Changed the block case to push an `EffectRefFrame` and evaluate the first effect expression via trampoline, instead of inline `evaluateNodeRecursive` calls.
+
+#### 3.3 Implement `applyEffectRef` ✅
+
+When an effect ref is evaluated:
+1. Store the result in `evaluatedHandlers`
+2. If more handlers, continue to next effect expression
+3. If all done, build `TryWithFrame` and start evaluating body
+
+**Validation:** All 31,899 tests passing.
 
 ### Phase 4: Closure Capture Without Recursive Eval
 
