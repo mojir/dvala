@@ -2,7 +2,7 @@
 import { describe, it } from 'vitest'
 import { createDvala } from '../createDvala'
 import { parseTokenStream, tokenizeSource } from '../tooling'
-import { evaluate } from '../evaluator/trampoline'
+import { evaluate } from '../evaluator/trampoline-evaluator'
 import { createContextStack } from '../evaluator/ContextStack'
 
 const dvala = createDvala()

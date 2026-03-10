@@ -27,7 +27,7 @@ import type {
   TryWithFrame,
 } from './frames'
 import type { Step } from './step'
-import { applyFrame, runAsyncTrampoline, runSyncTrampoline, stepNode, tick } from './trampoline'
+import { applyFrame, runAsyncTrampoline, runSyncTrampoline, stepNode, tick } from './trampoline-evaluator'
 
 // Helper: parse a Dvala program and return its first AST node
 function parseFirst(program: string) {

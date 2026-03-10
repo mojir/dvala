@@ -1,5 +1,5 @@
 import { createContextStack } from '../../evaluator/ContextStack'
-import { evaluate } from '../../evaluator/trampoline'
+import { evaluate } from '../../evaluator/trampoline-evaluator'
 import type { Any } from '../../interface'
 import { parse } from '../../parser'
 import type { UserDefinedFunction } from '../../parser/types'
