@@ -273,63 +273,69 @@ evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
 
 When a nested destructuring default needs evaluation, it calls the callback synchronously. This prevents suspension at arbitrary points.
 
-**Solution: Linearization**
+**Solution: Linearization with Context Stack**
 
-Pre-flatten the binding pattern to a linear list of "slots", then process sequentially:
+Pre-flatten the binding pattern to a linear list of "slots", then process sequentially with a context stack to support nested binding targets with intermediate defaults:
 
 ```typescript
 interface BindingSlot {
   name: string           // variable name to bind
-  path: BindingPathStep[] // how to extract value from source: {key: 'a'} or {index: 0}
+  path: BindingPathStep[] // how to extract value from source
   defaultNode?: AstNode   // default expression, if value is undefined
   isRest?: boolean        // for rest patterns (...x)
+  nestedTarget?: BindingTarget // for intermediate defaults (e.g., {user: {name} = default})
 }
 
-// Example: {a = 1, b: {c = 2}} with value {b: {}}
-// Slots: [
-//   {name: 'a', path: [{key: 'a'}], defaultNode: <1>},
-//   {name: 'c', path: [{key: 'b'}, {key: 'c'}], defaultNode: <2>}
-// ]
-```
+interface BindingSlotContext {
+  slots: BindingSlot[]
+  index: number
+  rootValue: Any
+}
 
-**New frame type:**
-```typescript
 interface BindingSlotFrame {
   type: 'BindingSlot'
-  slots: BindingSlot[]     // precomputed slot list
-  index: number            // current slot being processed
-  rootValue: Any           // original destructuring source value
-  record: Record<string, Any>  // accumulated bindings
+  contexts: BindingSlotContext[]  // stack for nested binding
+  record: Record<string, Any>     // accumulated bindings
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
 ```
 
 **Processing flow:**
-1. Statically compute `slots` from binding pattern (no evaluation needed)
-2. For each slot at `index`:
-   - Extract value by following `path` from `rootValue`
-   - If value is `undefined` and `defaultNode` exists → push frame, evaluate default
-   - Otherwise bind directly, increment index
-3. When all slots done, return `record`
+1. Create initial context with flattened slots from binding pattern
+2. Process current context's slots sequentially:
+   - Extract value by path from context's rootValue
+   - If value is undefined and has default → push frame, evaluate default
+   - If slot has nestedTarget → push new context for nested structure
+   - Otherwise bind directly
+3. When context's slots done, pop and continue with parent
+4. When all contexts done, return accumulated record
 
-**Implementation steps:**
-1. Create `flattenBindingPattern(target: BindingTarget): BindingSlot[]` utility
-2. Create `BindingSlotFrame` interface
-3. Create `extractValueByPath(value: Any, path: BindingPathStep[]): Any` utility
-4. Add `case 'BindingSlot':` in `applyFrame`
-5. Update all `evaluateBindingNodeValues` call sites to use new approach
-6. Keep old API for backward compatibility during transition
+**Implementation status:**
 
-**Call sites to update:**
+✅ **Infrastructure created:**
+- `flattenBindingPattern()` utility in `bindingSlot.ts`
+- `extractValueByPath()`, `extractObjectRest()`, `extractArrayRest()` utilities
+- `validateBindingRootType()` for type checking (e.g., array binding requires array value)
+- `BindingSlotFrame` and `BindingSlotContext` interfaces in `frames.ts`
+- `startBindingSlots()` entry point in `trampoline.ts`
+- `continueBindingSlots()` with context stack processing
+- `applyBindingSlot()` continuation handler
+- Support for nested binding targets via `nestedTarget` field
+
+✅ **Call site converted:**
+- `applyLetBind` - now uses `startBindingSlots` with `LetBindCompleteFrame` for completion
+
+**Remaining call sites:**
 - `applyFnArgBind` - function arg defaults
 - `continueBindingArgs` - rest argument handling
-- `applyBindingDefault` - let/loop binding defaults
-- `applyLetBind` - let expression
+- `applyBindingDefault` - legacy frame (may be removed)
 - `applyLoopBind` - loop binding
 - `handleForBodyStep` - for loop element binding
 - `handleForElementBind` - for loop destructuring
 - Multiple places in `executeUserDefinedRecursive`
+
+**Validation:** All 31,899 tests passing.
 
 #### 5.5 Pattern Matching — NOT STARTED
 

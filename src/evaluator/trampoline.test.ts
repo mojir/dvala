@@ -911,11 +911,13 @@ describe('applyFrame', () => {
         target: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x'], undefined]],
         env,
       }
+      // applyLetBind now returns a step with LetBindCompleteFrame on the stack
+      // Run the full trampoline to get the final value
       const step = applyFrameSync(frame, 42, [])
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(42)
-      }
+      const finalValue = runTrampoline(step)
+      expect(finalValue).toBe(42)
+      // Also verify the binding was added to the environment
+      expect(env.getValue('x')).toBe(42)
     })
   })
 })

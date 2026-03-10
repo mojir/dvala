@@ -4,6 +4,7 @@ import type {
   ArrayBuildFrame,
   AutoCheckpointFrame,
   BindingDefaultFrame,
+  BindingSlotFrame,
   CallFnFrame,
   ComplementFrame,
   CompFrame,
@@ -21,6 +22,7 @@ import type {
   HandlerInvokeFrame,
   IfBranchFrame,
   JuxtFrame,
+  LetBindCompleteFrame,
   LetBindFrame,
   LoopBindFrame,
   LoopIterateFrame,
@@ -58,6 +60,7 @@ describe('frame types', () => {
       ArrayBuild: true,
       ObjectBuild: true,
       LetBind: true,
+      LetBindComplete: true,
       LoopBind: true,
       LoopIterate: true,
       ForLoop: true,
@@ -78,12 +81,13 @@ describe('frame types', () => {
       FnBody: true,
       BindingDefault: true,
       FnArgBind: true,
+      BindingSlot: true,
       NanCheck: true,
       DebugStep: true,
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(34)
+    expect(Object.keys(frameTypes)).toHaveLength(36)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -107,6 +111,7 @@ describe('frame types', () => {
         case 'ArrayBuild': return 'collection'
         case 'ObjectBuild': return 'collection'
         case 'LetBind': return 'binding'
+        case 'LetBindComplete': return 'binding'
         case 'LoopBind': return 'binding'
         case 'LoopIterate': return 'binding'
         case 'ForLoop': return 'binding'
@@ -127,6 +132,7 @@ describe('frame types', () => {
         case 'FnBody': return 'call'
         case 'BindingDefault': return 'destructure'
         case 'FnArgBind': return 'destructure'
+        case 'BindingSlot': return 'destructure'
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
@@ -166,6 +172,7 @@ describe('frame types', () => {
       'ArrayBuild',
       'ObjectBuild',
       'LetBind',
+      'LetBindComplete',
       'LoopBind',
       'LoopIterate',
       'ForLoop',
@@ -186,11 +193,12 @@ describe('frame types', () => {
       'FnBody',
       'BindingDefault',
       'FnArgBind',
+      'BindingSlot',
       'NanCheck',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(31)
+    expect(uniqueTypes.size).toBe(33)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -206,6 +214,7 @@ describe('frame types', () => {
     const _arrayBuild: ArrayBuildFrame['type'] = 'ArrayBuild'
     const _objectBuild: ObjectBuildFrame['type'] = 'ObjectBuild'
     const _letBind: LetBindFrame['type'] = 'LetBind'
+    const _letBindComplete: LetBindCompleteFrame['type'] = 'LetBindComplete'
     const _loopBind: LoopBindFrame['type'] = 'LoopBind'
     const _loopIterate: LoopIterateFrame['type'] = 'LoopIterate'
     const _forLoop: ForLoopFrame['type'] = 'ForLoop'
@@ -226,6 +235,7 @@ describe('frame types', () => {
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
     const _bindingDefault: BindingDefaultFrame['type'] = 'BindingDefault'
     const _fnArgBind: FnArgBindFrame['type'] = 'FnArgBind'
+    const _bindingSlot: BindingSlotFrame['type'] = 'BindingSlot'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
     const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
 
@@ -241,6 +251,7 @@ describe('frame types', () => {
     expect(_arrayBuild).toBe('ArrayBuild')
     expect(_objectBuild).toBe('ObjectBuild')
     expect(_letBind).toBe('LetBind')
+    expect(_letBindComplete).toBe('LetBindComplete')
     expect(_loopBind).toBe('LoopBind')
     expect(_loopIterate).toBe('LoopIterate')
     expect(_forLoop).toBe('ForLoop')
@@ -261,6 +272,7 @@ describe('frame types', () => {
     expect(_fnBody).toBe('FnBody')
     expect(_bindingDefault).toBe('BindingDefault')
     expect(_fnArgBind).toBe('FnArgBind')
+    expect(_bindingSlot).toBe('BindingSlot')
     expect(_nanCheck).toBe('NanCheck')
     expect(_autoCheckpoint).toBe('AutoCheckpoint')
   })

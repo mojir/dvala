@@ -25,6 +25,8 @@
 
 import { builtin } from '../builtin'
 import { evaluateBindingNodeValues, getAllBindingTargetNames, tryMatch } from '../builtin/bindingNode'
+import { extractArrayRest, extractObjectRest, extractValueByPath, flattenBindingPattern, validateBindingRootType } from '../builtin/bindingSlot'
+import type { BindingSlot } from '../builtin/bindingSlot'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
@@ -90,6 +92,8 @@ import type {
   ArrayBuildFrame,
   AutoCheckpointFrame,
   BindingDefaultFrame,
+  BindingSlotContext,
+  BindingSlotFrame,
   CallFnFrame,
   ComplementFrame,
   CompFrame,
@@ -109,6 +113,7 @@ import type {
   IfBranchFrame,
   ImportMergeFrame,
   JuxtFrame,
+  LetBindCompleteFrame,
   LetBindFrame,
   LoopBindFrame,
   LoopIterateFrame,
@@ -1455,6 +1460,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyObjectBuild(frame, value, k)
     case 'LetBind':
       return applyLetBind(frame, value, k)
+    case 'LetBindComplete':
+      return applyLetBindComplete(frame, value, k)
     case 'LoopBind':
       return applyLoopBind(frame, value, k)
     case 'LoopIterate':
@@ -1481,6 +1488,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyBindingDefault(frame, value, k)
     case 'FnArgBind':
       return applyFnArgBind(frame, value, k)
+    case 'BindingSlot':
+      return applyBindingSlot(frame, value, k)
     case 'EffectRef':
       return applyEffectRef(frame, value, k)
     case 'HandlerInvoke':
@@ -1815,15 +1824,29 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
   }
 }
 
-function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
+function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): Step {
   const { target, env, sourceCodeInfo } = frame
 
-  // Process the binding using the recursive helper
-  const bindingResult = evaluateBindingNodeValues(target, value, n => evaluateNodeRecursive(n, env))
-  return chain(bindingResult, br => {
-    env.addValues(br, sourceCodeInfo)
-    return { type: 'Value' as const, value, k }
-  })
+  // Push completion frame to receive the binding record
+  const completeFrame: LetBindCompleteFrame = {
+    type: 'LetBindComplete',
+    originalValue: value,
+    env,
+    sourceCodeInfo,
+  }
+
+  // Start processing binding slots with linearized approach
+  return startBindingSlots(target, value, env, sourceCodeInfo, [completeFrame, ...k])
+}
+
+function applyLetBindComplete(frame: LetBindCompleteFrame, record: Any, k: ContinuationStack): Step {
+  const { originalValue, env, sourceCodeInfo } = frame
+
+  // Add the binding record to the environment
+  env.addValues(record as Record<string, Any>, sourceCodeInfo)
+
+  // Return the original RHS value (which is what `let x = expr` evaluates to)
+  return { type: 'Value', value: originalValue, k }
 }
 
 function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
@@ -3146,6 +3169,146 @@ function applyBindingDefault(frame: BindingDefaultFrame, value: Any, k: Continua
   }
   Object.assign(record, valueRecord)
   return { type: 'Value', value, k }
+}
+
+/**
+ * Start processing a binding pattern using linearized slots.
+ * This is the entry point for frame-based destructuring.
+ * @internal Exported for testing/incremental migration
+ */
+export function startBindingSlots(
+  target: BindingTarget,
+  rootValue: Any,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  // Validate root structure type (e.g., array binding requires array value)
+  validateBindingRootType(target, rootValue, sourceCodeInfo)
+
+  const slots = flattenBindingPattern(target)
+  const record: Record<string, Any> = {}
+  const contexts: BindingSlotContext[] = [{ slots, index: 0, rootValue }]
+  return continueBindingSlots(contexts, record, env, sourceCodeInfo, k)
+}
+
+/**
+ * Continue processing binding slots using the context stack.
+ * Handles extracting values, evaluating defaults, and nested binding targets.
+ */
+function continueBindingSlots(
+  contexts: BindingSlotContext[],
+  record: Record<string, Any>,
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  while (contexts.length > 0) {
+    const ctx = contexts[contexts.length - 1]!
+
+    if (ctx.index >= ctx.slots.length) {
+      // All slots in this context done — pop and continue with parent
+      contexts.pop()
+      continue
+    }
+
+    const slot = ctx.slots[ctx.index]!
+
+    if (slot.isRest) {
+      // Rest binding — extract rest values
+      if (slot.restKeys !== undefined) {
+        // Object rest
+        const parentValue = slot.path.length > 0
+          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
+          : ctx.rootValue
+        record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo)
+      } else if (slot.restIndex !== undefined) {
+        // Array rest
+        const parentValue = slot.path.length > 0
+          ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
+          : ctx.rootValue
+        record[slot.name] = extractArrayRest(parentValue, slot.restIndex, sourceCodeInfo)
+      }
+      ctx.index++
+      continue
+    }
+
+    // Extract value by following the path
+    const value = extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo)
+
+    if (value === undefined && slot.defaultNode) {
+      // Need to evaluate default — push frame and evaluate
+      const frame: BindingSlotFrame = {
+        type: 'BindingSlot',
+        contexts: contexts.map(c => ({ ...c })), // snapshot context stack
+        record,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: slot.defaultNode, env, k: [frame, ...k] }
+    }
+
+    const resolvedValue = value ?? null
+
+    // Check if this slot has a nested binding target
+    if (slot.nestedTarget) {
+      // Push a new context for the nested structure
+      // The nested target is already stripped of its default (we used the resolved value)
+      const nestedSlots = flattenBindingPatternWithoutDefault(slot.nestedTarget)
+      validateBindingRootType(slot.nestedTarget, resolvedValue, slot.sourceCodeInfo)
+      contexts.push({ slots: nestedSlots, index: 0, rootValue: resolvedValue })
+      ctx.index++ // advance parent context past this slot
+      continue
+    }
+
+    // Simple binding — store the value
+    record[slot.name] = resolvedValue
+    ctx.index++
+  }
+
+  // All contexts done — return the record
+  return { type: 'Value', value: record, k }
+}
+
+/**
+ * Flatten a binding pattern without using its top-level default.
+ * Used when we've already resolved the default and need to process the nested structure.
+ */
+function flattenBindingPatternWithoutDefault(target: BindingTarget): BindingSlot[] {
+  // The target may have form [type, [content, defaultNode], sourceCodeInfo]
+  // We create a version without the default for flattening
+  const targetWithoutDefault: BindingTarget = [
+    target[0],
+    [target[1][0], undefined] as [typeof target[1][0], undefined],
+    target[2],
+  ] as BindingTarget
+  return flattenBindingPattern(targetWithoutDefault)
+}
+
+/**
+ * Handle continuation after evaluating a binding slot's default value.
+ */
+function applyBindingSlot(frame: BindingSlotFrame, value: Any, k: ContinuationStack): Step {
+  const { contexts, record, env, sourceCodeInfo } = frame
+  const ctx = contexts[contexts.length - 1]!
+  const slot = ctx.slots[ctx.index]!
+  const resolvedValue = value ?? null
+
+  // Check if this slot has a nested binding target
+  if (slot.nestedTarget) {
+    // Push a new context for the nested structure
+    const nestedSlots = flattenBindingPatternWithoutDefault(slot.nestedTarget)
+    validateBindingRootType(slot.nestedTarget, resolvedValue, slot.sourceCodeInfo)
+    contexts.push({ slots: nestedSlots, index: 0, rootValue: resolvedValue })
+    ctx.index++ // advance parent context past this slot
+  } else {
+    // Simple binding — store the value
+    record[slot.name] = resolvedValue
+    ctx.index++
+  }
+
+  // Continue with remaining slots
+  return continueBindingSlots(contexts, record, env, sourceCodeInfo, k)
 }
 
 /**
