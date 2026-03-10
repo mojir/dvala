@@ -2439,55 +2439,55 @@ describe('grid module — dvala-implemented functions', () => {
 
 describe('stub evaluate — core/functional.ts', () => {
   it('|> evaluate throws', () => {
-    expect(() => functionalNormalExpression['|>']!.evaluate([], undefined, undefined!, undefined!)).toThrow('|> is implemented in Dvala')
+    expect(() => functionalNormalExpression['|>']!.evaluate([], undefined, undefined!)).toThrow('|> is implemented in Dvala')
   })
   it('apply evaluate throws', () => {
-    expect(() => functionalNormalExpression.apply!.evaluate([], undefined, undefined!, undefined!)).toThrow('apply is implemented in Dvala')
+    expect(() => functionalNormalExpression.apply!.evaluate([], undefined, undefined!)).toThrow('apply is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/array.ts', () => {
   it('mapcat evaluate throws', () => {
-    expect(() => arrayNormalExpression.mapcat!.evaluate([], undefined, undefined!, undefined!)).toThrow('mapcat is implemented in Dvala')
+    expect(() => arrayNormalExpression.mapcat!.evaluate([], undefined, undefined!)).toThrow('mapcat is implemented in Dvala')
   })
   it('moving-fn evaluate throws', () => {
-    expect(() => arrayNormalExpression['moving-fn']!.evaluate([], undefined, undefined!, undefined!)).toThrow('moving-fn is implemented in Dvala')
+    expect(() => arrayNormalExpression['moving-fn']!.evaluate([], undefined, undefined!)).toThrow('moving-fn is implemented in Dvala')
   })
   it('running-fn evaluate throws', () => {
-    expect(() => arrayNormalExpression['running-fn']!.evaluate([], undefined, undefined!, undefined!)).toThrow('running-fn is implemented in Dvala')
+    expect(() => arrayNormalExpression['running-fn']!.evaluate([], undefined, undefined!)).toThrow('running-fn is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/object.ts', () => {
   it('merge-with evaluate throws', () => {
-    expect(() => objectNormalExpression['merge-with']!.evaluate([], undefined, undefined!, undefined!)).toThrow('merge-with is implemented in Dvala')
+    expect(() => objectNormalExpression['merge-with']!.evaluate([], undefined, undefined!)).toThrow('merge-with is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/collection.ts', () => {
   it('filter evaluate throws', () => {
-    expect(() => collectionNormalExpression.filter!.evaluate([], undefined, undefined!, undefined!)).toThrow('filter is implemented in Dvala')
+    expect(() => collectionNormalExpression.filter!.evaluate([], undefined, undefined!)).toThrow('filter is implemented in Dvala')
   })
   it('map evaluate throws', () => {
-    expect(() => collectionNormalExpression.map!.evaluate([], undefined, undefined!, undefined!)).toThrow('map is implemented in Dvala')
+    expect(() => collectionNormalExpression.map!.evaluate([], undefined, undefined!)).toThrow('map is implemented in Dvala')
   })
   it('reduce evaluate throws', () => {
-    expect(() => collectionNormalExpression.reduce!.evaluate([], undefined, undefined!, undefined!)).toThrow('reduce is implemented in Dvala')
+    expect(() => collectionNormalExpression.reduce!.evaluate([], undefined, undefined!)).toThrow('reduce is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/sequence.ts', () => {
   it('some evaluate throws', () => {
-    expect(() => sequenceNormalExpression.some!.evaluate([], undefined, undefined!, undefined!)).toThrow('some is implemented in Dvala')
+    expect(() => sequenceNormalExpression.some!.evaluate([], undefined, undefined!)).toThrow('some is implemented in Dvala')
   })
   it('sort evaluate throws', () => {
-    expect(() => sequenceNormalExpression.sort!.evaluate([], undefined, undefined!, undefined!)).toThrow('sort is implemented in Dvala')
+    expect(() => sequenceNormalExpression.sort!.evaluate([], undefined, undefined!)).toThrow('sort is implemented in Dvala')
   })
   it('take-while evaluate throws', () => {
-    expect(() => sequenceNormalExpression['take-while']!.evaluate([], undefined, undefined!, undefined!)).toThrow('take-while is implemented in Dvala')
+    expect(() => sequenceNormalExpression['take-while']!.evaluate([], undefined, undefined!)).toThrow('take-while is implemented in Dvala')
   })
   it('drop-while evaluate throws', () => {
-    expect(() => sequenceNormalExpression['drop-while']!.evaluate([], undefined, undefined!, undefined!)).toThrow('drop-while is implemented in Dvala')
+    expect(() => sequenceNormalExpression['drop-while']!.evaluate([], undefined, undefined!)).toThrow('drop-while is implemented in Dvala')
   })
 })
 
@@ -2498,65 +2498,65 @@ describe('stub evaluate — core/sequence.ts', () => {
 describe('stub evaluate — modules/sequence/index.ts', () => {
   const fns = sequenceUtilsModule.functions
   it('position evaluate throws', () => {
-    expect(() => fns.position!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.position!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('sort-by evaluate throws', () => {
-    expect(() => fns['sort-by']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['sort-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('remove evaluate throws', () => {
-    expect(() => fns.remove!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.remove!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('split-with evaluate throws', () => {
-    expect(() => fns['split-with']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['split-with']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('group-by evaluate throws', () => {
-    expect(() => fns['group-by']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['group-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('partition-by evaluate throws', () => {
-    expect(() => fns['partition-by']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['partition-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
 describe('stub evaluate — modules/collection/index.ts', () => {
   const fns = collectionUtilsModule.functions
   it('update evaluate throws', () => {
-    expect(() => fns.update!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.update!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('update-in evaluate throws', () => {
-    expect(() => fns['update-in']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['update-in']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('filteri evaluate throws', () => {
-    expect(() => fns.filteri!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.filteri!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('mapi evaluate throws', () => {
-    expect(() => fns.mapi!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.mapi!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reducei evaluate throws', () => {
-    expect(() => fns.reducei!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reducei!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reduce-right evaluate throws', () => {
-    expect(() => fns['reduce-right']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['reduce-right']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reducei-right evaluate throws', () => {
-    expect(() => fns['reducei-right']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['reducei-right']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reductions evaluate throws', () => {
-    expect(() => fns.reductions!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reductions!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reductionsi evaluate throws', () => {
-    expect(() => fns.reductionsi!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reductionsi!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('every? evaluate throws', () => {
-    expect(() => fns['every?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('any? evaluate throws', () => {
-    expect(() => fns['any?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['any?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('not-any? evaluate throws', () => {
-    expect(() => fns['not-any?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['not-any?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('not-every? evaluate throws', () => {
-    expect(() => fns['not-every?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['not-every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2567,37 +2567,37 @@ describe('stub evaluate — modules/collection/index.ts', () => {
 describe('stub evaluate — modules/grid/index.ts', () => {
   const fns = gridModule.functions
   it('cell-every? evaluate throws', () => {
-    expect(() => fns['cell-every?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cell-every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('some? evaluate throws', () => {
-    expect(() => fns['some?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['some?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('every-row? evaluate throws', () => {
-    expect(() => fns['every-row?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['every-row?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('some-row? evaluate throws', () => {
-    expect(() => fns['some-row?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['some-row?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('every-col? evaluate throws', () => {
-    expect(() => fns['every-col?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['every-col?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('some-col? evaluate throws', () => {
-    expect(() => fns['some-col?']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['some-col?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('generate evaluate throws', () => {
-    expect(() => fns.generate!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.generate!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cell-map evaluate throws', () => {
-    expect(() => fns['cell-map']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cell-map']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cell-mapi evaluate throws', () => {
-    expect(() => fns['cell-mapi']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cell-mapi']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cell-reduce evaluate throws', () => {
-    expect(() => fns['cell-reduce']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cell-reduce']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cell-reducei evaluate throws', () => {
-    expect(() => fns['cell-reducei']!.evaluate([], undefined, undefined!, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cell-reducei']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 

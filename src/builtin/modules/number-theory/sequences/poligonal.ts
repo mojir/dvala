@@ -1,8 +1,5 @@
-import { assertFunctionLike } from '../../../../typeGuards/dvala'
 import { assertNumber } from '../../../../typeGuards/number'
 import { toFixedArity } from '../../../../utils/arity'
-import type { MaybePromise } from '../../../../utils/maybePromise'
-import { chain } from '../../../../utils/maybePromise'
 import type { SequenceNormalExpressions } from '.'
 
 export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> = {
@@ -20,24 +17,8 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
     arity: toFixedArity(2),
   },
   'polygonal-take-while': {
-    evaluate: ([sides, fn], sourceCodeInfo, contextStack, { executeFunction }) => {
-      assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
-      assertFunctionLike(fn, sourceCodeInfo)
-      const s = sides
-      const f = fn
-
-      const polygonal: number[] = []
-      function loop(i: number): MaybePromise<number[]> {
-        const value = (i * i * (s - 2) - i * (s - 4)) / 2
-        return chain(executeFunction(f, [value, i], contextStack, sourceCodeInfo), keep => {
-          if (!keep)
-            return polygonal
-          polygonal.push(value)
-          return loop(i + 1)
-        })
-      }
-      return loop(1)
-    },
+    /* v8 ignore next 1 */
+    evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: toFixedArity(2),
   },
   'polygonal-nth': {

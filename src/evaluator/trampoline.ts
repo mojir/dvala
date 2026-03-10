@@ -231,7 +231,7 @@ function evaluateNormalExpressionRecursive(node: NormalExpressionNode, contextSt
         if (normalExpression.dvalaImpl) {
           return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, node[2])
         }
-        return normalExpression.evaluate(params, node[2], contextStack, { executeFunction: executeFunctionRecursive })
+        return normalExpression.evaluate(params, node[2], contextStack)
       } else {
         const fn = contextStack.getValue(nameSymbol[1])
         if (fn !== undefined) {
@@ -505,7 +505,7 @@ function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, context
   if (normalExpression.dvalaImpl) {
     return executeUserDefinedRecursive(normalExpression.dvalaImpl, params, contextStack, sourceCodeInfo)
   }
-  return normalExpression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
+  return normalExpression.evaluate(params, sourceCodeInfo, contextStack)
 }
 
 // Special builtin + module dispatch in recursive path — not reached from normal expression callbacks
@@ -513,7 +513,7 @@ function executeBuiltinRecursive(fn: NormalBuiltinFunction, params: Arr, context
 function executeSpecialBuiltinRecursive(fn: SpecialBuiltinFunction, params: Arr, contextStack: ContextStack, sourceCodeInfo?: SourceCodeInfo): MaybePromise<Any> {
   const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
   if (specialExpression.evaluateAsNormalExpression) {
-    return specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
+    return specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, contextStack)
   }
   throw new DvalaError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
 }
@@ -534,7 +534,7 @@ function executeModuleRecursive(fn: ModuleFunction, params: Arr, contextStack: C
   if (expression.dvalaImpl) {
     return executeUserDefinedRecursive(expression.dvalaImpl, params, contextStack, sourceCodeInfo)
   }
-  return expression.evaluate(params, sourceCodeInfo, contextStack, { executeFunction: executeFunctionRecursive })
+  return expression.evaluate(params, sourceCodeInfo, contextStack)
 }
 /* v8 ignore stop */
 
@@ -1210,8 +1210,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       if (normalExpression.dvalaImpl) {
         return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
-      // Call the normal expression directly — it may use executeFunction internally
-      const result = normalExpression.evaluate(params, sourceCodeInfo, env, { executeFunction: executeFunctionRecursive })
+      const result = normalExpression.evaluate(params, sourceCodeInfo, env)
       return wrapMaybePromiseAsStep(result, k)
     }
 

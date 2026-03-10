@@ -1,5 +1,5 @@
 import type { ContextStack } from '../evaluator/ContextStack'
-import type { EvaluateNode, ExecuteFunction } from '../evaluator/interface'
+import type { EvaluateNode } from '../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr } from '../interface'
 import type {
@@ -126,7 +126,6 @@ type NormalExpressionEvaluator<T> = (
   params: Arr,
   sourceCodeInfo: SourceCodeInfo | undefined,
   contextStack: ContextStack,
-  { executeFunction }: { executeFunction: ExecuteFunction },
 ) => MaybePromise<T>
 
 export interface BuiltinNormalExpression<T> {
