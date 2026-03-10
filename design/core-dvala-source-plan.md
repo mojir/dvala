@@ -195,11 +195,12 @@ Migrated core looping HOFs:
 
 Every module function that currently receives `{ executeFunction }` must be reimplemented in Dvala. Once all are migrated, `executeFunction` can be removed from `BuiltinNormalExpression.evaluate` and from the evaluator's call-dispatch logic.
 
-### 5.1 Core — `functional`
+### 5.1 Core — `functional` ✅
 
 | Function | File | Notes |
 |----------|------|-------|
-| `apply` | `functional.ts` | Spreads last arg into call. Could become `(fn, ...args) -> fn(...(++ (butlast(args)) (last(args))))` |
+| `apply` | `functional.dvala` | `(fn, ...args) -> fn(...leading, ...last(args))` |
+| `\|>` | `functional.dvala` | `(a, b) -> b(a)` |
 
 ### 5.2 Module: `collection` ✅ (13 functions)
 
@@ -219,13 +220,12 @@ All 11 functions migrated to `grid.dvala`:
 - `cell-every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`
 - `generate`, `cell-map`, `cell-mapi`, `cell-reduce`, `cell-reducei`
 
-### 5.5 Module: `assertion` (3 functions)
+### 5.5 Module: `assertion` ✅ (3 functions)
 
-| Function | Notes |
-|----------|-------|
-| `assert-throws` | Call fn, expect error. Use `try...with case effect(dvala.error)` |
-| `assert-throws-error` | Call fn, expect specific error message |
-| `assert-not-throws` | Call fn, expect no error |
+All 3 assertion HOF functions migrated to `assertion.dvala`:
+- `assert-fails` — Call fn, expect error. Uses `try...with case effect(dvala.error)`
+- `assert-fails-with` — Call fn, expect specific error message
+- `assert-succeeds` — Call fn, expect no error
 
 ### 5.6 Module: `number-theory` (31 `*-take-while` functions)
 
@@ -276,17 +276,19 @@ All follow the same "generate values while predicate holds" pattern.
 
 | Category | Functions | Count | Status |
 |----------|-----------|-------|--------|
-| Core `functional` | `apply` | 1 | ⏳ |
+| Core `functional` | `apply`, `\|>` | 2 | ✅ |
 | Module `collection` | 13 HOF functions | 13 | ✅ |
 | Module `sequence` | 6 HOF functions | 6 | ✅ |
 | Module `grid` | 11 HOF functions | 11 | ✅ |
-| Module `assertion` | `assert-throws`, `assert-throws-error`, `assert-not-throws` | 3 | ⏳ |
+| Module `assertion` | `assert-fails`, `assert-fails-with`, `assert-succeeds` | 3 | ✅ |
 | Module `number-theory` | 17 in Dvala + 14 kept in TS | 31 | ✅ (17 migrated) |
-| **Total** | | **65** | **47 done, 18 remaining** |
+| **Total** | | **66** | **52 migrated to Dvala** |
 
 ### Phase 6: Final Cleanup — Remove `executeFunction`
 
-Once all 65 functions are migrated:
+All HOF functions that required `executeFunction` have been migrated to Dvala. The remaining TypeScript implementations in number-theory (14 functions) use finite precomputed lists or complex algorithms that don't require `executeFunction`.
+
+**Status:** Ready to proceed with Phase 6 — removing `executeFunction` from the evaluator signature.
 
 1. Remove `executeFunction` parameter from `NormalExpressionEvaluator` type in `interface.ts`
 2. Remove `ExecuteFunction` type from `evaluator/interface.ts`
