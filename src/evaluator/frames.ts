@@ -501,6 +501,36 @@ export interface BindingDefaultFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * Function argument binding — incrementally bind parameters with defaults.
+ *
+ * When calling a user-defined function, parameters are bound to arguments.
+ * If an argument has a default value that needs evaluation, this frame
+ * captures the binding state so it can resume after the default is evaluated.
+ *
+ * Phases:
+ * - `'default'`: Evaluating a default value expression. When complete,
+ *   `applyFrame` continues binding with the evaluated value.
+ * - `'rest-default'`: Evaluating a default in rest argument destructuring.
+ *
+ * The frame stores:
+ * - `fn`: The function being called (for its parameter definitions)
+ * - `params`: Original call arguments (needed for rest calculation)
+ * - `argIndex`: Which argument we're currently binding (0-based)
+ * - `context`: Accumulated bindings so far
+ * - `outerEnv`: The calling environment (for body evaluation later)
+ */
+export interface FnArgBindFrame {
+  type: 'FnArgBind'
+  phase: 'default' | 'rest-default'
+  fn: UserDefinedFunction
+  params: Arr // original call params
+  argIndex: number // current argument index being bound
+  context: Context // accumulated bindings
+  outerEnv: ContextStack // calling environment
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Post-processing
 // ---------------------------------------------------------------------------
@@ -630,6 +660,7 @@ export type Frame =
   | FnBodyFrame
   // Destructuring
   | BindingDefaultFrame
+  | FnArgBindFrame
   // Post-processing
   | NanCheckFrame
   // Debug

@@ -9,6 +9,7 @@ import type {
   ContinuationStack,
   EffectResumeFrame,
   EvalArgsFrame,
+  FnArgBindFrame,
   FnBodyFrame,
   ForBindingLevelState,
   ForLoopFrame,
@@ -62,12 +63,13 @@ describe('frame types', () => {
       CallFn: true,
       FnBody: true,
       BindingDefault: true,
+      FnArgBind: true,
       NanCheck: true,
       DebugStep: true,
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(26)
+    expect(Object.keys(frameTypes)).toHaveLength(27)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -103,6 +105,7 @@ describe('frame types', () => {
         case 'CallFn': return 'call'
         case 'FnBody': return 'call'
         case 'BindingDefault': return 'destructure'
+        case 'FnArgBind': return 'destructure'
         case 'NanCheck': return 'post'
         case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
@@ -154,11 +157,12 @@ describe('frame types', () => {
       'CallFn',
       'FnBody',
       'BindingDefault',
+      'FnArgBind',
       'NanCheck',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(23)
+    expect(uniqueTypes.size).toBe(24)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -186,6 +190,7 @@ describe('frame types', () => {
     const _callFn: CallFnFrame['type'] = 'CallFn'
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
     const _bindingDefault: BindingDefaultFrame['type'] = 'BindingDefault'
+    const _fnArgBind: FnArgBindFrame['type'] = 'FnArgBind'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
     const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
 
@@ -213,6 +218,7 @@ describe('frame types', () => {
     expect(_callFn).toBe('CallFn')
     expect(_fnBody).toBe('FnBody')
     expect(_bindingDefault).toBe('BindingDefault')
+    expect(_fnArgBind).toBe('FnArgBind')
     expect(_nanCheck).toBe('NanCheck')
     expect(_autoCheckpoint).toBe('AutoCheckpoint')
   })
