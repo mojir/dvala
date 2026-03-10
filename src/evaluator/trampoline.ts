@@ -79,7 +79,7 @@ import type { MaybePromise } from '../utils/maybePromise'
 import { chain, forEachSequential, mapSequential, reduceSequential } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { ResumeFromSignal, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -2366,7 +2366,8 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
         args,
         sourceCodeInfo,
       }
-      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), args: [effect.name], k: [autoCheckpointFrame, ...k], sourceCodeInfo }
+      const checkpointMessage = `Auto checkpoint before ${effect.name}`
+      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), args: [checkpointMessage], k: [autoCheckpointFrame, ...k], sourceCodeInfo }
     }
   }
 
@@ -3473,7 +3474,7 @@ async function retriggerParallelGroup(
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
-          message: 'suspended',
+          message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,
@@ -3549,7 +3550,7 @@ async function retriggerParallelGroup(
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex++,
       runId: snapshotState.runId,
-      message: 'suspended',
+      message: SUSPENDED_MESSAGE,
       meta: firstSuspended.snapshot.meta,
       effectName: firstSuspended.snapshot.effectName,
       effectArgs: firstSuspended.snapshot.effectArgs,
@@ -3631,7 +3632,7 @@ export async function retriggerWithEffects(
         timestamp: Date.now(),
         index: snapshotState.nextSnapshotIndex++,
         runId: snapshotState.runId,
-        message: 'suspended',
+        message: SUSPENDED_MESSAGE,
         meta: error.meta,
         effectName: error.effectName,
         effectArgs: error.effectArgs,
@@ -3727,7 +3728,7 @@ async function runEffectLoop(
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
           runId: snapshotState.runId,
-          message: 'suspended',
+          message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,

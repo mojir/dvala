@@ -1890,9 +1890,9 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       // 3 auto-checkpoints: before my.a, before my.b, before my.check
       expect(capturedSnapshots).toHaveLength(3)
-      expect((capturedSnapshots[0] as { message: string }).message).toBe('my.a')
-      expect((capturedSnapshots[1] as { message: string }).message).toBe('my.b')
-      expect((capturedSnapshots[2] as { message: string }).message).toBe('my.check')
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('Auto checkpoint before my.a')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('Auto checkpoint before my.b')
+      expect((capturedSnapshots[2] as { message: string }).message).toBe('Auto checkpoint before my.check')
     })
 
     it('should not capture auto-checkpoints when disabled', async () => {
@@ -1928,7 +1928,7 @@ describe('phase 4 — Suspension & Resume', () => {
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
         ],
       })
-      expect(checkpointMessages).toEqual(['my.action'])
+      expect(checkpointMessages).toEqual(['Auto checkpoint before my.action'])
     })
 
     it('should not auto-checkpoint for explicit dvala.checkpoint effects', async () => {
@@ -1947,7 +1947,7 @@ describe('phase 4 — Suspension & Resume', () => {
         ],
       })
       // "manual" from explicit checkpoint, "my.action" from auto-checkpoint before my.action
-      expect(checkpointMessages).toEqual(['manual', 'my.action'])
+      expect(checkpointMessages).toEqual(['manual', 'Auto checkpoint before my.action'])
     })
 
     it('should work with maxSnapshots', async () => {
@@ -1972,8 +1972,8 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       // 4 auto-checkpoints total, limit 2 — only last 2 retained
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { message: string }).message).toBe('my.c')
-      expect((capturedSnapshots[1] as { message: string }).message).toBe('my.check')
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('Auto checkpoint before my.c')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('Auto checkpoint before my.check')
     })
 
     it('should allow host handler to suspend on auto-checkpoint', async () => {

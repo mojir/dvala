@@ -247,6 +247,19 @@ button:focus {
 .settings-toggle input:checked + .settings-toggle-slider::before {
   transform: translateX(20px);
 }
+.settings-toggle-disabled .settings-toggle-slider {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.settings-toggle-row-disabled {
+  opacity: 0.5;
+}
+.snapshot-btn {
+  transition: background-color 0.15s ease;
+}
+.snapshot-btn:hover {
+  background-color: rgb(75 75 75) !important;
+}
 
 .fancy-scroll-background::-webkit-scrollbar-track {
   background-color: rgb(30 30 30);
