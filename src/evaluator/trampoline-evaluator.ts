@@ -81,7 +81,7 @@ import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, effectNameMatche
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
-import { deserializeFromObject, serializeSuspensionBlob, serializeToObject } from './suspension'
+import { deserializeFromObject, serializeSuspensionBlob, serializeTerminalSnapshot, serializeToObject } from './suspension'
 import { getStandardEffectDefinition, getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
@@ -2074,6 +2074,10 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
     // All values collected — first is the effect ref, rest are args
     const effectRef = params[0]!
     assertEffect(effectRef, frame.sourceCodeInfo)
+    // Pure mode check — effects are not allowed in pure mode
+    if (env.pure) {
+      throw new DvalaError(`Cannot perform effect '${effectRef.name}' in pure mode`, frame.sourceCodeInfo)
+    }
     const args = params.slice(1)
     // Produce a PerformStep — let the trampoline dispatch it
     return { type: 'Perform', effect: effectRef, args, k, sourceCodeInfo: frame.sourceCodeInfo }
@@ -3672,7 +3676,7 @@ export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
-      throw new DvalaError('Unexpected async operation in synchronous context. Use async.run() for async operations.', undefined)
+      throw new DvalaError('Unexpected async operation in synchronous context.', undefined)
     }
     if (step.type === 'Value' && step.k.length === 0) {
       return step.value
@@ -4120,6 +4124,34 @@ async function runEffectLoop(
 
   let step: Step | Promise<Step> = initial
 
+  // Helper to create a terminal snapshot for completed/error states
+  function createTerminalSnapshot(options?: { error?: DvalaError; result?: Any }): Snapshot | undefined {
+    if (!snapshotState.autoCheckpoint) {
+      return undefined
+    }
+    const continuation = serializeTerminalSnapshot(
+      snapshotState.snapshots,
+      snapshotState.nextSnapshotIndex,
+    )
+    const meta: Record<string, unknown> = {}
+    if (options?.error) {
+      meta.error = options.error.toJSON()
+    }
+    if (options?.result !== undefined) {
+      meta.result = options.result
+    }
+    const message = options?.error ? 'Run failed with error' : 'Run completed successfully'
+    return {
+      continuation,
+      timestamp: Date.now(),
+      index: snapshotState.nextSnapshotIndex,
+      runId: snapshotState.runId,
+      message,
+      terminal: true,
+      ...(Object.keys(meta).length > 0 ? { meta } : {}),
+    }
+  }
+
   for (;;) {
     try {
       for (;;) {
@@ -4127,7 +4159,10 @@ async function runEffectLoop(
           step = await step
         }
         if (step.type === 'Value' && step.k.length === 0) {
-          return { type: 'completed', value: step.value }
+          const snapshot = createTerminalSnapshot({ result: step.value })
+          return snapshot
+            ? { type: 'completed', value: step.value, snapshot }
+            : { type: 'completed', value: step.value }
         }
 
         // Debug mode: inject DebugStepFrame for compound nodes with source info
@@ -4178,9 +4213,16 @@ async function runEffectLoop(
         return { type: 'suspended', snapshot }
       }
       if (error instanceof DvalaError) {
-        return { type: 'error', error }
+        const snapshot = createTerminalSnapshot({ error })
+        return snapshot
+          ? { type: 'error', error, snapshot }
+          : { type: 'error', error }
       }
-      return { type: 'error', error: new DvalaError(`${error}`, undefined) }
+      const snapshot = createTerminalSnapshot()
+      const dvalaError = new DvalaError(`${error}`, undefined)
+      return snapshot
+        ? { type: 'error', error: dvalaError, snapshot }
+        : { type: 'error', error: dvalaError }
     }
   }
 }
