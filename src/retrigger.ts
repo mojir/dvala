@@ -20,7 +20,7 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 /**
  * Options for `retrigger()` — resume a suspended continuation by re-firing
  * the original effect to the host handlers.
- * Auto-checkpointing is enabled by default. Set `disableAutoCheckpoint: true` to opt out.
+ * Time travel (auto-checkpointing) is enabled by default. Set `disableAutoCheckpoint: true` to opt out.
  */
 export interface RetriggerOptions {
   bindings?: Record<string, Any>

@@ -209,6 +209,10 @@ button:focus {
   outline-color: rgb(82 82 82);
 }
 
+.snapshot-btn:focus {
+  outline: none;
+}
+
 /* Settings toggle switch */
 .settings-toggle {
   position: relative;
@@ -259,6 +263,23 @@ button:focus {
 }
 .snapshot-btn:hover {
   color: rgb(245 245 245) !important;
+}
+.toolbar-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  color: rgb(163 163 163);
+  transition: color 0.15s ease;
+  font-family: inherit;
+}
+.toolbar-btn:hover {
+  color: rgb(245 245 245);
 }
 
 .fancy-scroll-background::-webkit-scrollbar-track {

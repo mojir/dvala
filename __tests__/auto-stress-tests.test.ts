@@ -24,8 +24,14 @@
 
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { resume as resumeContinuation } from '../src/resume'
+import { resume as baseResume } from '../src/resume'
+import type { ResumeOptions } from '../src/resume'
+import type { Any } from '../src/interface'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
+// Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
+function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
+  return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })
+}
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 

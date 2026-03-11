@@ -23,6 +23,8 @@ export const defaultState = {
   'pure': false as boolean,
   'sync': false as boolean,
   'intercept-checkpoint': false as boolean,
+  'intercept-error': false as boolean,
+  'disable-playground-handlers': false as boolean,
   'disable-auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
 } as const
@@ -130,6 +132,13 @@ export function encodeState() {
   const sharedState: Partial<State> = {
     'dvala-code': state['dvala-code'],
     'context': state.context,
+    'debug': state.debug,
+    'pure': state.pure,
+    'sync': state.sync,
+    'intercept-checkpoint': state['intercept-checkpoint'],
+    'intercept-error': state['intercept-error'],
+    'disable-playground-handlers': state['disable-playground-handlers'],
+    'disable-auto-checkpoint': state['disable-auto-checkpoint'],
   }
   return btoa(encodeURIComponent(JSON.stringify(sharedState)))
 }

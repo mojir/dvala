@@ -3,7 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
-import { effectNameMatchesPattern, findMatchingHandlers, generateRunId } from '../src/evaluator/effectTypes'
+import { effectNameMatchesPattern, findMatchingHandlers, generateUUID } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { Any } from '../src/interface'
 
@@ -874,8 +874,8 @@ describe('phase 4 — Suspension & Resume', () => {
         expect(snapshot.timestamp).toBeGreaterThan(0)
         expect(typeof snapshot.index).toBe('number')
         expect(snapshot.index).toBe(0)
-        expect(typeof snapshot.runId).toBe('string')
-        expect(snapshot.runId.length).toBeGreaterThan(0)
+        expect(typeof snapshot.executionId).toBe('string')
+        expect(snapshot.executionId.length).toBeGreaterThan(0)
         expect(snapshot.meta).toEqual({ info: 'test' })
       }
     })
@@ -1029,9 +1029,9 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       expect(result).toMatchObject({ type: 'completed', value: 42 })
       expect(capturedSnapshot).not.toBeNull()
-      const snap = capturedSnapshot as { timestamp: number; index: number; runId: string; meta: unknown; continuation: unknown }
+      const snap = capturedSnapshot as { timestamp: number; index: number; executionId: string; meta: unknown; continuation: unknown }
       expect(snap.index).toBe(0)
-      expect(typeof snap.runId).toBe('string')
+      expect(typeof snap.executionId).toBe('string')
       expect(typeof snap.timestamp).toBe('number')
       expect(snap.meta).toEqual({ label: 'test' })
       expect(snap.continuation).toBeDefined()
@@ -1416,10 +1416,11 @@ describe('phase 4 — Suspension & Resume', () => {
         effectHandlers: [
           { pattern: 'my.action', handler: async ({ resumeFrom }) => {
             const fakeSnapshot = {
+              id: 'fake-id',
               continuation: {},
               timestamp: Date.now(),
               index: 999,
-              runId: 'fake-run-id',
+              executionId: 'fake-run-id',
               message: 'fake',
             }
             resumeFrom(fakeSnapshot, null)
@@ -1465,7 +1466,7 @@ describe('phase 4 — Suspension & Resume', () => {
           { pattern: 'my.action', handler: async ({ resume: r, resumeFrom }) => {
             r(42)
             try {
-              const fakeSnapshot = { continuation: {}, timestamp: 0, index: 999, runId: 'bogus', message: 'fake' }
+              const fakeSnapshot = { id: 'fake-id', continuation: {}, timestamp: 0, index: 999, executionId: 'bogus', message: 'fake' }
               resumeFrom(fakeSnapshot, 0)
             } catch (e: unknown) {
               caughtMessage = (e as Error).message
@@ -1832,10 +1833,11 @@ describe('phase 4 — Suspension & Resume', () => {
             if (callCount === 1) {
               // Try to resumeFrom a snapshot that was evicted (step 1, index 0)
               const evictedSnapshot = {
+                id: 'evicted-id',
                 continuation: {},
                 timestamp: Date.now(),
                 index: 0,
-                runId: 'will-not-match',
+                executionId: 'will-not-match',
                 message: 'evicted',
               }
               try {
@@ -2018,6 +2020,83 @@ describe('phase 4 — Suspension & Resume', () => {
 
       const r2 = await resumeContinuation(r1.snapshot, 21, { disableAutoCheckpoint: false })
       expect(r2).toMatchObject({ type: 'completed', value: 42 })
+    })
+  })
+
+  describe('10: terminal snapshots', () => {
+    it('should include terminal snapshot in completed result when time travel enabled', async () => {
+      const result = await dvala.runAsync(`
+        perform(effect(my.action));
+        42
+      `, {
+        disableAutoCheckpoint: false,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      expect(result.type).toBe('completed')
+      if (result.type !== 'completed') return
+
+      expect(result.snapshot).toBeDefined()
+      expect(result.snapshot?.message).toBe('Run completed successfully')
+      expect(result.snapshot?.continuation).toBeDefined()
+      // Terminal snapshots have empty continuation (k: [])
+      const continuation = result.snapshot?.continuation as { k: unknown[] }
+      expect(continuation.k).toEqual([])
+      // Should contain the checkpoint history
+      const snapshots = (result.snapshot?.continuation as { snapshots?: unknown[] })?.snapshots
+      expect(snapshots).toBeDefined()
+      expect(snapshots?.length).toBeGreaterThan(0)
+    })
+
+    it('should NOT include terminal snapshot when time travel disabled', async () => {
+      const result = await dvala.runAsync(`
+        perform(effect(my.action));
+        42
+      `, {
+        disableAutoCheckpoint: true,
+        effectHandlers: [
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      expect(result.type).toBe('completed')
+      if (result.type !== 'completed') return
+
+      expect(result.snapshot).toBeUndefined()
+    })
+
+    it('should include terminal snapshot even when no checkpoints collected', async () => {
+      // Pure program with no effects - now includes terminal snapshot with result
+      const result = await dvala.runAsync('1 + 2 + 3', {
+        disableAutoCheckpoint: false,
+      })
+      expect(result.type).toBe('completed')
+      if (result.type !== 'completed') return
+
+      // Terminal snapshot is now always included with result metadata
+      expect(result.snapshot).toBeDefined()
+      expect(result.snapshot?.message).toBe('Run completed successfully')
+      const meta = result.snapshot?.meta as { result?: number } | undefined
+      expect(meta?.result).toBe(6)
+    })
+
+    it('should include terminal snapshot in error result when time travel enabled', async () => {
+      const result = await dvala.runAsync(`
+        perform(effect(my.action));
+        throw("boom")
+      `, {
+        disableAutoCheckpoint: false,
+        effectHandlers: [
+          { pattern: 'dvala.checkpoint', handler: async ({ resume: r }) => { r(null) } },
+          { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
+        ],
+      })
+      expect(result.type).toBe('error')
+      if (result.type !== 'error') return
+
+      expect(result.snapshot).toBeDefined()
+      expect(result.snapshot?.message).toBe('Run failed with error')
     })
   })
 
@@ -2226,12 +2305,12 @@ describe('phase 4 — Suspension & Resume', () => {
     })
 
     it('should return error for invalid continuation object', async () => {
-      const result = await resumeContinuation({ continuation: { version: 1, k: 'bad', contextStacks: [] }, timestamp: 0, index: 0, runId: 'test', message: 'test' }, 42)
+      const result = await resumeContinuation({ id: 'test-id', continuation: { version: 1, k: 'bad', contextStacks: [] }, timestamp: 0, index: 0, executionId: 'test', message: 'test' }, 42)
       expect(result.type).toBe('error')
     })
 
     it('should return error for wrong version', async () => {
-      const result = await resumeContinuation({ continuation: { version: 999, k: [], contextStacks: [] }, timestamp: 0, index: 0, runId: 'test', message: 'test' }, 42)
+      const result = await resumeContinuation({ id: 'test-id', continuation: { version: 999, k: [], contextStacks: [] }, timestamp: 0, index: 0, executionId: 'test', message: 'test' }, 42)
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('Unsupported suspension blob version')
@@ -2241,6 +2320,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should return error for unknown context stack ref in continuation', async () => {
       // A continuation with a __csRef pointing to a non-existent context stack
       const result = await resumeContinuation({
+        id: 'test-id',
         continuation: {
           version: 2,
           k: [{ env: { __csRef: 999 } }],
@@ -2248,7 +2328,7 @@ describe('phase 4 — Suspension & Resume', () => {
         },
         timestamp: 0,
         index: 0,
-        runId: 'test',
+        executionId: 'test',
         message: 'test',
       }, 42)
       expect(result.type).toBe('error')
@@ -4149,17 +4229,17 @@ describe('host handler wildcard patterns', () => {
 })
 
 // =========================================================================
-// Unit tests for generateRunId
+// Unit tests for generateUUID
 // =========================================================================
-describe('generateRunId', () => {
+describe('generateUUID', () => {
   it('should return a UUID string', () => {
-    const id = generateRunId()
+    const id = generateUUID()
     expect(typeof id).toBe('string')
     expect(id.length).toBeGreaterThan(0)
   })
 
   it('should return unique values on each call', () => {
-    const ids = new Set(Array.from({ length: 10 }, () => generateRunId()))
+    const ids = new Set(Array.from({ length: 10 }, () => generateUUID()))
     expect(ids.size).toBe(10)
   })
 
@@ -4167,7 +4247,7 @@ describe('generateRunId', () => {
     const originalCrypto = globalThis.crypto
     try {
       Object.defineProperty(globalThis, 'crypto', { value: undefined, writable: true, configurable: true })
-      const id = generateRunId()
+      const id = generateUUID()
       expect(typeof id).toBe('string')
       expect(id).toMatch(/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/)
     } finally {

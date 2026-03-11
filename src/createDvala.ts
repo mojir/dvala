@@ -23,7 +23,7 @@ export interface CreateDvalaOptions {
   cache?: number
   /** Enable debug tokenization: captures source positions for better error messages. */
   debug?: boolean
-  /** Disable auto-checkpointing for runAsync. By default, auto-checkpoint is enabled. */
+  /** Disable time travel features (auto-checkpointing and terminal snapshots). Enabled by default. */
   disableAutoCheckpoint?: boolean
 }
 
@@ -36,8 +36,8 @@ export type DvalaRunOptions =
 
 /**
  * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
- * Auto-checkpointing is enabled by default, creating a checkpoint before every effect
- * for crash recovery and time travel. Set `disableAutoCheckpoint: true` to opt out.
+ * Time travel (auto-checkpointing and terminal snapshots) is enabled by default.
+ * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
   | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean }
@@ -93,7 +93,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     : undefined
   const factoryBindings = options?.bindings
   const factoryEffectHandlers = options?.effectHandlers
-  const factoryDisableAutoCheckpoint = options?.disableAutoCheckpoint ?? false
+  const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
   const debug = options?.debug ?? false
   const cache = options?.cache ? new Cache(options.cache) : null
 
@@ -203,7 +203,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
         const programSource = isDvalaBundle(source) ? source.program : source
         const ast = buildAst(programSource)
-        const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableAutoCheckpoint
+        const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,

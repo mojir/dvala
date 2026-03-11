@@ -3228,8 +3228,8 @@ describe('suspension.ts — extractCheckpointSnapshots', () => {
   })
 
   it('should return snapshots as-is when there is no pool', () => {
-    const snap1 = { continuation: {}, timestamp: 1, index: 0, runId: 'a', message: 'cp1' }
-    const snap2 = { continuation: {}, timestamp: 2, index: 1, runId: 'a', message: 'cp2' }
+    const snap1 = { continuation: {}, timestamp: 1, index: 0, executionId: 'a', message: 'cp1' }
+    const snap2 = { continuation: {}, timestamp: 2, index: 1, executionId: 'a', message: 'cp2' }
     const result = extractCheckpointSnapshots({
       version: 2,
       contextStacks: [],
@@ -3240,7 +3240,7 @@ describe('suspension.ts — extractCheckpointSnapshots', () => {
   })
 
   it('should return snapshots as-is when pool is empty', () => {
-    const snap = { continuation: {}, timestamp: 1, index: 0, runId: 'a', message: 'cp' }
+    const snap = { continuation: {}, timestamp: 1, index: 0, executionId: 'a', message: 'cp' }
     const result = extractCheckpointSnapshots({
       version: 2,
       contextStacks: [],
@@ -3252,7 +3252,7 @@ describe('suspension.ts — extractCheckpointSnapshots', () => {
   })
 
   it('should expand pool refs in snapshots when pool is present', () => {
-    const snap = { continuation: { __poolRef: 0 }, timestamp: 1, index: 0, runId: 'a', message: 'cp' }
+    const snap = { continuation: { __poolRef: 0 }, timestamp: 1, index: 0, executionId: 'a', message: 'cp' }
     const result = extractCheckpointSnapshots({
       version: 2,
       contextStacks: [],
@@ -3260,7 +3260,7 @@ describe('suspension.ts — extractCheckpointSnapshots', () => {
       snapshots: [snap],
       pool: { 0: { expanded: true } },
     })
-    expect(result).toEqual([{ continuation: { expanded: true }, timestamp: 1, index: 0, runId: 'a', message: 'cp' }])
+    expect(result).toEqual([{ continuation: { expanded: true }, timestamp: 1, index: 0, executionId: 'a', message: 'cp' }])
   })
 })
 

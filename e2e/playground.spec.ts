@@ -19,7 +19,7 @@ async function waitForInit(page: Page) {
   await page.waitForFunction(() => {
     const wrapper = document.getElementById('wrapper')
     return wrapper && wrapper.style.display === 'block'
-  }, { timeout: 10_000 })
+  }, { timeout: 4_500 })
 }
 
 /** Clear the playground and type code into the Dvala textarea. */
@@ -216,25 +216,25 @@ test.describe('search', () => {
 
 test.describe('examples', () => {
   test('loading an example populates code and context', async ({ page }) => {
+    test.setTimeout(10_000)
     await page.goto('/')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
-    // Navigate to examples page
-    await page.locator('#sidebar').getByText('Examples').click()
-    await expect(page.locator('#example-page')).toHaveClass(/active-content/)
+    // Navigate directly to the first example's detail page (the index only shows nav links,
+    // and the play button is inside .example-action-bar which is display:none by default)
+    await page.evaluate(() => (window as any).Playground.showPage('example-default', 'smooth'))
+    await expect(page.locator('#example-default')).toHaveClass(/active-content/)
 
-    // Click the first "Load" button (setPlayground)
-    const loadButton = page.locator('[onclick*="Playground.setPlayground"]').first()
+    // Hover over the code block to reveal the action bar, then click the play button
+    const codeBlock = page.locator('#example-default .example-code').first()
+    await codeBlock.hover()
+    const loadButton = page.locator('#example-default [onclick*="Playground.setPlayground"]').first()
     await loadButton.click()
 
-    // Code should be populated
+    // Code should be populated in the editor
     const dvalaValue = await page.locator('#dvala-textarea').inputValue()
     expect(dvalaValue.length).toBeGreaterThan(0)
-
-    // Output should show "Example loaded" message
-    const output = await getOutputText(page)
-    expect(output).toContain('Example loaded')
   })
 })
 
@@ -263,14 +263,270 @@ test.describe('share', () => {
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
     await setDvalaCode(page, '1 + 1')
-    await page.evaluate(() => (window as any).Playground.share())
+
+    // share() writes the URL to clipboard — intercept clipboard.writeText to capture it
+    const shareUrl = await page.evaluate(async () => {
+      let captured = ''
+      navigator.clipboard.writeText = async (text: string) => { captured = text }
+      ;(window as any).Playground.share()
+      // Allow the async clipboard promise to resolve
+      await new Promise(r => setTimeout(r, 50))
+      return captured
+    })
+
+    expect(shareUrl).toContain('?state=')
+
+    // Verify the encoded state round-trips back to the original code
+    const stateParam = new URL(shareUrl).searchParams.get('state')
+    expect(stateParam).toBeTruthy()
+    const decoded = JSON.parse(decodeURIComponent(atob(stateParam!))) as { 'dvala-code': string }
+    expect(decoded['dvala-code']).toBe('1 + 1')
+  })
+
+  test('opening a ?state= URL restores code and context', async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+
+    // Build an encoded state URL the same way the playground does
+    const code = '99 + 1'
+    const context = '{"bindings":{"z":7}}'
+    const encodedState = await page.evaluate(({ c, ctx }) => {
+      return btoa(encodeURIComponent(JSON.stringify({ 'dvala-code': c, 'context': ctx })))
+    }, { c: code, ctx: context })
+
+    await page.goto(`/?state=${encodedState}`)
+    await waitForInit(page)
+
+    const dvalaValue = await page.locator('#dvala-textarea').inputValue()
+    const contextValue = await page.locator('#context-textarea').inputValue()
+    expect(dvalaValue).toBe(code)
+    expect(contextValue).toBe(context)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Snapshots
+// ---------------------------------------------------------------------------
+
+test.describe('snapshots', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('running code creates a terminal snapshot', async ({ page }) => {
+    await setDvalaCode(page, '1 + 1')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
+    await expect(page.locator('#snapshots-page')).toHaveClass(/active-content/)
+
+    // At least one snapshot card should exist
+    await expect(page.locator('#snapshots-list .snapshot-card').first()).toBeVisible()
+  })
+
+  test('sidebar indicator appears after run and clears when snapshots page opens', async ({ page }) => {
+    const indicator = page.locator('#snapshots-nav-indicator')
+
+    // Indicator hidden initially
+    await expect(indicator).toBeHidden()
+
+    await setDvalaCode(page, '2 + 2')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    // Indicator should be visible now
+    await expect(indicator).toBeVisible()
+
+    // Navigate to snapshots page — indicator should clear
+    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
+    await expect(indicator).toBeHidden()
+  })
+
+  test('saving a terminal snapshot moves it to saved section', async ({ page }) => {
+    await setDvalaCode(page, '3 + 3')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
+
+    // Save the first terminal snapshot
+    await page.evaluate(() => (window as any).Playground.saveTerminalSnapshotToSaved(0))
+
+    // A saved snapshot card should now exist
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('#snapshots-list .snapshot-card')
+      return cards.length > 0
+    })
+    await expect(page.locator('#snapshots-list .snapshot-card').first()).toBeVisible()
+  })
+
+  test('import snapshot modal opens and shows error on invalid JSON', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
+    // openImportSnapshotModal is async — fire-and-forget to avoid hanging
+    await page.evaluate(() => { void (window as any).Playground.openImportSnapshotModal() })
+
+    const modal = page.locator('#import-snapshot-modal')
+    await expect(modal).toBeVisible()
+
+    // Type invalid JSON and try to import
+    await page.locator('#import-snapshot-textarea').fill('not valid json')
+    await page.evaluate(() => (window as any).Playground.importSnapshot())
+
+    // Error message should appear
+    const error = page.locator('#import-snapshot-error')
+    await expect(error).toBeVisible()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+test.describe('settings', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('disable auto checkpoint toggle persists across reload', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.showPage('settings-page', 'smooth'))
+    await expect(page.locator('#settings-page')).toHaveClass(/active-content/)
+
+    const toggle = page.locator('#settings-auto-checkpoint-toggle')
+    await toggle.scrollIntoViewIfNeeded()
+    const wasChecked = await toggle.isChecked()
+
+    // The checkbox is visually hidden — use the JS function to toggle
+    await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
+    expect(await toggle.isChecked()).toBe(!wasChecked)
+
+    // Reload and verify it persisted
+    await page.reload()
+    await waitForInit(page)
+    const toggleAfter = page.locator('#settings-auto-checkpoint-toggle')
+    expect(await toggleAfter.isChecked()).toBe(!wasChecked)
+
+    // Restore original state
+    await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
+  })
+
+  test('intercept checkpoint opens checkpoint modal when program performs checkpoint', async ({ page }) => {
+    // Enable intercept checkpoint via JS to avoid visibility issues with custom toggle styling
+    const isChecked = await page.evaluate(() => {
+      const el = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
+      return el?.checked ?? false
+    })
+    if (!isChecked) {
+      await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
+    }
+
+    await setDvalaCode(page, 'perform(effect(dvala.checkpoint), "test point")')
+    await clickRun(page)
+
+    // Checkpoint modal should open
+    await expect(page.locator('#checkpoint-modal')).toBeVisible({ timeout: 5000 })
+
+    // Clean up — close modal and disable intercept checkpoint
+    await page.evaluate(() => (window as any).Playground.closeCheckpointModal())
+    if (!isChecked) {
+      await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Output panel
+// ---------------------------------------------------------------------------
+
+test.describe('output panel', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('clearing output empties the panel', async ({ page }) => {
+    await setDvalaCode(page, '42')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    expect((await getOutputText(page)).length).toBeGreaterThan(0)
+
+    await page.evaluate(() => (window as any).Playground.resetOutput())
+    const html = await page.locator('#output-result').innerHTML()
+    expect(html).toBe('')
+  })
+
+  test('multiple runs append to output', async ({ page }) => {
+    await setDvalaCode(page, '1')
+    await clickRun(page)
+    await waitForOutput(page)
+
+    await setDvalaCode(page, '2')
+    await clickRun(page)
+
+    // Wait for two result spans
+    await page.waitForFunction(() => {
+      const spans = document.querySelectorAll('#output-result span.result')
+      return spans.length >= 2
+    }, { timeout: 5000 })
 
     const output = await getOutputText(page)
-    expect(output).toContain('Sharable link')
+    expect(output).toContain('1')
+    expect(output).toContain('2')
+  })
+})
 
-    // A link with ?state= should be in the output
-    const link = page.locator('#output-result a.share-link')
-    const href = await link.getAttribute('href')
-    expect(href).toContain('?state=')
+// ---------------------------------------------------------------------------
+// API reference navigation
+// ---------------------------------------------------------------------------
+
+test.describe('api reference navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+  })
+
+  test('clicking a sidebar API section expands it', async ({ page }) => {
+    // Expand "Core functions" section
+    await page.evaluate(() => (window as any).Playground.toggleApiSection('core-functions'))
+
+    const content = page.locator('#api-content-core-functions')
+    await expect(content).toHaveClass(/expanded/)
+  })
+
+  test('clicking an expanded section collapses it', async ({ page }) => {
+    // First expand
+    await page.evaluate(() => (window as any).Playground.toggleApiSection('special-expressions', false))
+    await expect(page.locator('#api-content-special-expressions')).toHaveClass(/expanded/)
+
+    // Then collapse
+    await page.evaluate(() => (window as any).Playground.toggleApiSection('special-expressions', false))
+    await expect(page.locator('#api-content-special-expressions')).not.toHaveClass(/expanded/)
+  })
+
+  test('search result navigates to correct doc page', async ({ page }) => {
+    // Open search and type 'map'
+    await page.keyboard.press('Control+k')
+    await page.locator('#search-input').fill('map')
+
+    // Click first result
+    const firstResult = page.locator('#search-result a').first()
+    await firstResult.waitFor({ timeout: 3000 })
+    const resultText = await firstResult.textContent()
+    await firstResult.click()
+
+    // A doc page should become active
+    await page.waitForFunction(() => {
+      return document.querySelector('.active-content') !== null
+    })
+    const activeContent = page.locator('.active-content').first()
+    await expect(activeContent).toBeVisible()
+    expect(resultText?.length).toBeGreaterThan(0)
   })
 })
