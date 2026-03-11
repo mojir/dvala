@@ -12,6 +12,7 @@ import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
+import type { DvalaErrorJSON } from '../../src/errors'
 import { Search } from './Search'
 import {
   applyEncodedState,
@@ -35,6 +36,43 @@ import { isMac, throttle } from './utils'
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
 const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
+
+// Inject CSS for list animations
+const animationStyles = document.createElement('style')
+animationStyles.textContent = `
+  @keyframes snapshotSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes snapshotSlideOut {
+    from {
+      opacity: 1;
+      max-height: 100px;
+      margin-bottom: 0.5rem;
+    }
+    to {
+      opacity: 0;
+      max-height: 0;
+      margin-bottom: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+  .snapshot-card.animate-in {
+    animation: snapshotSlideIn 0.25s ease-out;
+  }
+  .snapshot-card.removing {
+    animation: snapshotSlideOut 0.2s ease-out forwards;
+    overflow: hidden;
+  }
+`
+document.head.appendChild(animationStyles)
 
 const elements = {
   wrapper: document.getElementById('wrapper') as HTMLElement,
@@ -209,6 +247,7 @@ export function showSnapshotsPage() {
 }
 
 interface SavedSnapshot {
+  kind: 'saved'
   snapshot: Snapshot
   savedAt: number
   locked: boolean
@@ -221,7 +260,7 @@ function getSavedSnapshots(): SavedSnapshot[] {
     if (typeof entry === 'object' && entry !== null && 'snapshot' in entry && 'savedAt' in entry) {
       return entry as SavedSnapshot
     }
-    return { snapshot: entry as Snapshot, savedAt: (entry as Snapshot).timestamp, locked: false }
+    return { kind: 'saved' as const, snapshot: entry as Snapshot, savedAt: (entry as Snapshot).timestamp, locked: false }
   })
 }
 
@@ -229,52 +268,221 @@ function setSavedSnapshots(entries: SavedSnapshot[]) {
   localStorage.setItem(SAVED_CHECKPOINTS_KEY, JSON.stringify(entries))
 }
 
-function populateSnapshotsList() {
+function formatTime(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+const ICONS = {
+  play: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>',
+  trash: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 256 256"><path fill="currentColor" d="M216 48h-36V36a28 28 0 0 0-28-28h-48a28 28 0 0 0-28 28v12H40a12 12 0 0 0 0 24h4v136a20 20 0 0 0 20 20h128a20 20 0 0 0 20-20V72h4a12 12 0 0 0 0-24M100 36a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v12h-56Zm88 168H68V72h120Zm-72-100v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0m48 0v64a12 12 0 0 1-24 0v-64a12 12 0 0 1 24 0"/></svg>',
+  menu: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2s-2 .9-2 2s.9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2s2-.9 2-2s-.9-2-2-2"/></svg>',
+  lock: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>',
+  unlock: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>',
+  eye: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8s11 8 11 8s-4 8-11 8s-11-8-11-8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  download: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
+  save: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2M17 21v-8H7v8M7 3v5h8"/></svg>',
+}
+
+interface ContextMenuItem {
+  label: string
+  icon: string
+  action: string
+}
+
+function renderContextMenu(items: ContextMenuItem[], menuId: string): string {
+  const menuItems = items.map(item => `
+    <button onclick="event.stopPropagation(); Playground.closeContextMenu(); ${item.action}" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; background: none; border: none; color: rgb(209 213 219); font-size: 0.875rem; cursor: pointer; text-align: left;" onmouseover="this.style.background='rgb(60 60 60)'" onmouseout="this.style.background='none'">
+      <span style="display: flex; align-items: center;">${item.icon}</span>
+      <span>${escapeHtml(item.label)}</span>
+    </button>
+  `).join('')
+
+  return `
+    <div style="position: relative;">
+      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}')" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="More actions">${ICONS.menu}</button>
+      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: absolute; right: 0; top: 100%; min-width: 150px; background: rgb(40 40 40); border: 1px solid rgb(60 60 60); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; overflow: hidden;">
+        ${menuItems}
+      </div>
+    </div>
+  `
+}
+
+export function toggleContextMenu(menuId: string): void {
+  const menu = document.getElementById(menuId)
+  if (!menu) return
+
+  // Close all other context menus first
+  document.querySelectorAll('.snapshot-context-menu').forEach(m => {
+    if (m.id !== menuId) (m as HTMLElement).style.display = 'none'
+  })
+
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none'
+}
+
+export function closeContextMenu(): void {
+  document.querySelectorAll('.snapshot-context-menu').forEach(m => {
+    (m as HTMLElement).style.display = 'none'
+  })
+}
+
+function isAnyContextMenuOpen(): boolean {
+  return Array.from(document.querySelectorAll('.snapshot-context-menu')).some(
+    m => (m as HTMLElement).style.display !== 'none',
+  )
+}
+
+// Close context menu when clicking outside
+document.addEventListener('click', e => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.snapshot-context-menu') && !target.closest('[onclick*="toggleContextMenu"]')) {
+    if (isAnyContextMenuOpen()) {
+      closeContextMenu()
+      e.stopPropagation()
+      e.preventDefault()
+    }
+  }
+}, true)
+
+function buildTerminalDetailLine(snapshot: Snapshot): string {
+  const meta = snapshot.meta as { result?: unknown; error?: { message?: string } } | undefined
+  if (meta?.error?.message) {
+    return `<div style="font-size: 0.8rem; color: rgb(140 140 140); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: rgb(100 100 100);">error:</span> ${escapeHtml(String(meta.error.message))}</div>`
+  }
+  if (meta?.result !== undefined) {
+    return `<div style="font-size: 0.8rem; color: rgb(140 140 140); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: rgb(100 100 100);">result:</span> ${escapeHtml(String(meta.result))}</div>`
+  }
+  return ''
+}
+
+function getSnapshotDisplayMessage(snapshot: Snapshot): string {
+  return snapshot.message || (snapshot.effectName ? `Effect: ${snapshot.effectName}` : 'Checkpoint')
+}
+
+function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index: number, animateIn = false): string {
+  const { snapshot, savedAt } = entry
+  const animateClass = animateIn ? 'animate-in' : ''
+  const timestamp = `<div style="font-size: 0.75rem; color: rgb(100 100 100);">${formatTime(new Date(savedAt))}</div>`
+
+  let type: 'terminal' | 'saved'
+  let title: string
+  let titlePrefix: string
+  let message: string
+  let detailLine: string
+  let borderColor: string
+  let menuItems: ContextMenuItem[]
+  let actionButtons: string
+  let onclick: string
+
+  if (entry.kind === 'terminal') {
+    const ordinals = ['Last', '2nd Last', '3rd Last']
+    type = 'terminal'
+    title = `${ordinals[index] ?? `${index + 1}th Last`} Run`
+    titlePrefix = ''
+    message = snapshot.message
+    detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
+    borderColor = entry.resultType === 'error' ? '#d16969' : '#4ec9b0'
+    menuItems = [
+      { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
+      { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
+      { label: 'Download', icon: ICONS.download, action: `Playground.downloadTerminalSnapshotByIndex(${index})` },
+      { label: 'Delete', icon: ICONS.trash, action: `Playground.clearTerminalSnapshot(${index})` },
+    ]
+    actionButtons = ''
+    onclick = `Playground.openTerminalSnapshot(${index})`
+  } else {
+    const isCompleted = snapshot.terminal === true
+    type = 'saved'
+    title = entry.name || `Snapshot #${index + 1}`
+    titlePrefix = entry.locked ? `<span style="color: rgb(234 179 8); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
+    message = getSnapshotDisplayMessage(snapshot)
+    detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
+    borderColor = 'rgb(107 114 128)'
+    menuItems = [
+      { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
+      { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
+      { label: 'Download', icon: ICONS.download, action: `Playground.downloadSavedSnapshotByIndex(${index})` },
+      { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedSnapshot(${index})` },
+    ]
+    actionButtons = isCompleted ? '' : `<button class="snapshot-btn" onclick="event.stopPropagation(); Playground.runSavedSnapshot(${index})" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Run snapshot">${ICONS.play}</button>`
+    onclick = `Playground.openSavedSnapshot(${index})`
+  }
+
+  return `
+    <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='rgb(52 52 52)'" onmouseout="this.style.background='rgb(46 46 46)'">
+      <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
+        <div style="font-size: 1rem; color: rgb(209 213 219); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}</div>
+        <div style="font-size: 0.8rem; color: rgb(140 140 140);">${escapeHtml(message)}</div>
+        ${detailLine}
+      </div>
+      <div style="display: flex; gap: 2px; align-items: flex-start;" onclick="event.stopPropagation()">
+        ${actionButtons}
+        ${renderContextMenu(menuItems, `${type}-menu-${index}`)}
+      </div>
+    </div>
+  `
+}
+
+function renderGroupLabel(label: string): string {
+  return `<div style="font-size: 0.75rem; font-weight: 600; color: rgb(140 140 140); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
+}
+
+function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
+  const card = document.querySelector(`.snapshot-card[data-type="${type}"][data-index="${index}"]`)
+  if (!card) return Promise.resolve()
+
+  return new Promise(resolve => {
+    card.classList.add('removing')
+    card.addEventListener('animationend', () => resolve(), { once: true })
+    // Fallback in case animation doesn't fire
+    setTimeout(resolve, 300)
+  })
+}
+
+function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateNewSaved?: boolean } = {}) {
+  const { animateNewTerminal = false, animateNewSaved = false } = options
   const list = document.getElementById('snapshots-list')
   const empty = document.getElementById('snapshots-empty')
+  const content = document.getElementById('snapshots-content')
   const clearBtn = document.getElementById('snapshots-clear-all')
   if (!list || !empty) return
 
-  const entries = getSavedSnapshots()
+  const terminalEntries = getTerminalSnapshots()
+  const savedEntries = getSavedSnapshots()
+  const hasContent = terminalEntries.length > 0 || savedEntries.length > 0
 
-  if (entries.length === 0) {
+  if (!hasContent) {
     list.innerHTML = ''
     empty.style.display = 'block'
-    if (clearBtn) clearBtn.style.visibility = 'hidden'
+    if (content) content.style.display = 'none'
     return
   }
 
   empty.style.display = 'none'
-  if (clearBtn) clearBtn.style.visibility = entries.some(e => !e.locked) ? 'visible' : 'hidden'
-  list.innerHTML = entries.map((entry, index) => {
-    const { snapshot, savedAt, locked, name } = entry
-    const title = name || `Snapshot #${index + 1}`
-    const rawMessage = snapshot.message
-    const message = rawMessage || (snapshot.effectName ? `Effect: ${snapshot.effectName}` : 'Checkpoint')
-    const d = new Date(savedAt)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const savedTime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    const lockIcon = locked
-      ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>'
-      : '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>'
-    const lockTitle = locked ? 'Unlock snapshot' : 'Lock snapshot'
-    const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>'
-    const closeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>'
-    return `
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${locked ? 'rgb(234 179 8)' : 'rgb(107 114 128)'};">
-        <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
-          <div style="font-size: 1rem; color: rgb(209 213 219);">${escapeHtml(title)}</div>
-          <div style="font-size: 0.8rem; color: rgb(140 140 140);">${escapeHtml(message)}</div>
-          <div style="font-size: 0.75rem; color: rgb(100 100 100);">${savedTime}</div>
-        </div>
-        <div style="display: flex; gap: 4px; align-items: center;">
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.openSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Open snapshot">${playIcon}</button>
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleSnapshotLock(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="${lockTitle}">${lockIcon}</button>
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.deleteSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Delete snapshot">${closeIcon}</button>
-        </div>
-      </div>
-    `
-  }).join('')
+  if (content) content.style.display = 'flex'
+  if (clearBtn) clearBtn.style.visibility = terminalEntries.length > 0 || savedEntries.some(e => !e.locked) ? 'visible' : 'hidden'
+
+  const cards: string[] = []
+
+  // Terminal snapshots with group label
+  if (terminalEntries.length > 0) {
+    cards.push(renderGroupLabel('Completed Runs'))
+    terminalEntries.forEach((entry, index) => {
+      // Only animate the first (newest) terminal entry if animateNewTerminal is true
+      cards.push(renderSnapshotCard(entry, index, animateNewTerminal && index === 0))
+    })
+  }
+
+  // Saved snapshots with group label
+  if (savedEntries.length > 0) {
+    cards.push(renderGroupLabel('Saved Snapshots'))
+    savedEntries.forEach((entry, index) => {
+      // Only animate the first (newest) saved entry if animateNewSaved is true
+      cards.push(renderSnapshotCard(entry, index, animateNewSaved && index === 0))
+    })
+  }
+
+  list.innerHTML = cards.join('')
 }
 
 function escapeHtml(str: string): string {
@@ -288,14 +496,80 @@ export function openSavedSnapshot(index: number) {
   void openSnapshotModal(entry.snapshot)
 }
 
-export function deleteSavedSnapshot(index: number) {
-  void showConfirmModal('Delete snapshot', 'Are you sure you want to delete this snapshot?', () => {
-    const entries = getSavedSnapshots()
+export function openTerminalSnapshot(index: number) {
+  const entries = getTerminalSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  void openSnapshotModal(entry.snapshot)
+}
+
+export function runSavedSnapshot(index: number) {
+  const entries = getSavedSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  currentSnapshot = entry.snapshot
+  void resumeSnapshot()
+}
+
+export function saveTerminalSnapshotToSaved(index: number) {
+  const entries = getTerminalSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  promptSnapshotName(async name => {
+    const savedEntries = getSavedSnapshots()
+    savedEntries.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    setSavedSnapshots(savedEntries)
+    // Animate removal from terminal snapshots
+    await animateCardRemoval('terminal', index)
+    entries.splice(index, 1)
+    localStorage.setItem('playground-terminal-snapshots', JSON.stringify(entries))
+    populateSnapshotsList({ animateNewSaved: true })
+    showToast('Snapshot saved')
+  })
+}
+
+function downloadSnapshotJson(snapshot: Snapshot, filename: string) {
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function downloadTerminalSnapshotByIndex(index: number) {
+  const entries = getTerminalSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  downloadSnapshotJson(entry.snapshot, `snapshot-terminal-${index}.json`)
+}
+
+export function downloadSavedSnapshotByIndex(index: number) {
+  const entries = getSavedSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+  downloadSnapshotJson(entry.snapshot, `snapshot-${entry.snapshot.index}.json`)
+}
+
+export async function deleteSavedSnapshot(index: number) {
+  const entries = getSavedSnapshots()
+  const entry = entries[index]
+  if (!entry) return
+
+  const doDelete = async () => {
+    await animateCardRemoval('saved', index)
     entries.splice(index, 1)
     setSavedSnapshots(entries)
     populateSnapshotsList()
     showToast('Snapshot deleted')
-  })
+  }
+
+  if (entry.locked) {
+    void showConfirmModal('Delete locked snapshot', 'This snapshot is locked. Are you sure you want to delete it?', doDelete)
+  } else {
+    await doDelete()
+  }
 }
 
 export function toggleSnapshotLock(index: number) {
@@ -308,9 +582,17 @@ export function toggleSnapshotLock(index: number) {
 }
 
 export function clearUnlockedSnapshots() {
-  void showConfirmModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', () => {
-    const entries = getSavedSnapshots().filter(e => e.locked)
-    setSavedSnapshots(entries)
+  void showConfirmModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
+    const terminalEntries = getTerminalSnapshots()
+    const savedEntries = getSavedSnapshots()
+    const unlockedSavedIndices = savedEntries.map((e, i) => e.locked ? -1 : i).filter(i => i >= 0)
+    // Animate all unlocked cards simultaneously
+    await Promise.all([
+      ...terminalEntries.map((_, i) => animateCardRemoval('terminal', i)),
+      ...unlockedSavedIndices.map(i => animateCardRemoval('saved', i)),
+    ])
+    localStorage.removeItem(TERMINAL_SNAPSHOTS_KEY)
+    setSavedSnapshots(savedEntries.filter(e => e.locked))
     populateSnapshotsList()
     showToast('Unlocked snapshots cleared')
   })
@@ -477,6 +759,9 @@ export function resetPlayground() {
   if (lockedSnapshots.length > 0) {
     setSavedSnapshots(lockedSnapshots)
   }
+  // Clear terminal snapshots (recent runs)
+  localStorage.removeItem('playground-terminal-snapshots')
+  populateSnapshotsList()
 
   resetContext()
   resetDvalaCode()
@@ -1167,18 +1452,26 @@ export async function run() {
       const content = stringifyValue(result, false)
       appendOutput(content, 'result')
     } else {
+      // Always keep time travel enabled to ensure terminal snapshots are created
       const runResult = await getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint: getState('disable-auto-checkpoint') }
-        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint: getState('disable-auto-checkpoint') },
+        ? { bindings: dvalaParams.bindings, pure: true, disableTimeTravel: false }
+        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableTimeTravel: false },
       )
-      if (runResult.type === 'error')
+      if (runResult.type === 'error') {
+        if (runResult.snapshot) {
+          saveTerminalSnapshot(runResult.snapshot, 'error')
+        }
         throw runResult.error
+      }
       if (runResult.type === 'suspended') {
         appendOutput('Program suspended', 'comment')
         void openSnapshotModal(runResult.snapshot)
         return
       }
       const content = stringifyValue(runResult.value, false)
+      if (runResult.snapshot) {
+        saveTerminalSnapshot(runResult.snapshot, 'completed', content)
+      }
       appendOutput(content, 'result')
     }
   } catch (error) {
@@ -1322,11 +1615,18 @@ export function toggleInterceptCheckpoint() {
   showToast(`Checkpoint interception ${intercept ? 'ON' : 'OFF'}`)
 }
 
-export function toggleAutoCheckpoint() {
-  const disabled = !getState('disable-auto-checkpoint')
-  saveState({ 'disable-auto-checkpoint': disabled })
+export function toggleDisablePlaygroundHandlers() {
+  const disableHandlers = !getState('disable-playground-handlers')
+  saveState({ 'disable-playground-handlers': disableHandlers })
   updateCSS()
-  showToast(`Auto-checkpoint ${disabled ? 'disabled' : 'enabled'}`)
+  showToast(`Playground handlers ${disableHandlers ? 'disabled' : 'enabled'}`)
+}
+
+export function toggleTimeTravel() {
+  const disabled = !getState('disable-time-travel')
+  saveState({ 'disable-time-travel': disabled })
+  updateCSS()
+  showToast(`Time travel ${disabled ? 'disabled' : 'enabled'}`)
 }
 
 export function focusContext() {
@@ -1422,11 +1722,68 @@ function popToLevel(targetIndex: number) {
 
 const MAX_URL_LENGTH = 32_767
 
-function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
+function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: DvalaErrorJSON) {
   const ref = (name: string) => panel.querySelector(`[data-ref="${name}"]`) as HTMLElement
 
-  // Effect name
-  ref('effect-name').textContent = snapshot.effectName ?? '(checkpoint — no active effect)'
+  // Error section - insert at the top if there's an error
+  if (error) {
+    const breadcrumbs = ref('breadcrumbs')
+    const errorSection = document.createElement('div')
+    errorSection.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;'
+
+    const errorLabel = document.createElement('span')
+    errorLabel.textContent = 'ERROR'
+    errorLabel.style.cssText = 'font-size: 0.75rem; font-weight: bold; color: #d16969; text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif;'
+    errorSection.appendChild(errorLabel)
+
+    const codeWrapper = document.createElement('div')
+    codeWrapper.className = 'example-code'
+    codeWrapper.style.cssText = 'position: relative; border-left-color: #d16969;'
+
+    const errorPre = document.createElement('pre')
+    errorPre.className = 'fancy-scroll'
+    errorPre.textContent = error.message
+    errorPre.style.cssText = 'background: rgb(30 30 30); color: rgb(212 212 212); padding: 0.5rem; font-size: 0.875rem; font-family: monospace; overflow: auto; max-height: 8rem; white-space: pre-wrap; word-break: break-word; margin: 0; border: none;'
+    codeWrapper.appendChild(errorPre)
+
+    const actionBar = document.createElement('div')
+    actionBar.className = 'example-action-bar'
+    actionBar.style.cssText = 'position: absolute; top: 0; right: 0; flex-direction: row; margin-top: 2px;'
+
+    const copyBtn = document.createElement('div')
+    copyBtn.className = 'example-action-btn'
+    copyBtn.style.cssText = 'padding: 0.5rem; font-size: 1.125rem; cursor: pointer;'
+    copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
+    copyBtn.addEventListener('click', () => {
+      void navigator.clipboard.writeText(error.message)
+    })
+    actionBar.appendChild(copyBtn)
+    codeWrapper.appendChild(actionBar)
+
+    errorSection.appendChild(codeWrapper)
+    breadcrumbs.insertAdjacentElement('afterend', errorSection)
+  }
+
+  // Suspended effect section - hide if no active effect (terminal snapshots)
+  const suspendedEffectSection = ref('suspended-effect-section')
+  if (snapshot.effectName) {
+    suspendedEffectSection.style.display = 'flex'
+    ref('effect-name').textContent = snapshot.effectName
+
+    // Effect args
+    const argsEl = ref('effect-args')
+    argsEl.innerHTML = ''
+    if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
+      const empty = document.createElement('span')
+      empty.textContent = '(no arguments)'
+      empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+      argsEl.appendChild(empty)
+    } else {
+      snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
+    }
+  } else {
+    suspendedEffectSection.style.display = 'none'
+  }
 
   // Share button — mark if snapshot URL would be too long
   const shareBtn = ref('share-btn') as HTMLButtonElement
@@ -1435,18 +1792,6 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
     shareBtn.style.opacity = '0.4'
     shareBtn.textContent = 'Share ⚠'
     shareBtn.title = 'Snapshot is too large to share as a URL'
-  }
-
-  // Effect args
-  const argsEl = ref('effect-args')
-  argsEl.innerHTML = ''
-  if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
-    const empty = document.createElement('span')
-    empty.textContent = '(no arguments)'
-    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    argsEl.appendChild(empty)
-  } else {
-    snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
   }
 
   // Meta
@@ -1550,7 +1895,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot) {
   })
 }
 
-function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean): HTMLElement {
+function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean, error?: DvalaErrorJSON): HTMLElement {
   const clone = elements.snapshotPanelTemplate.content.cloneNode(true) as DocumentFragment
   const panel = clone.firstElementChild as HTMLElement
 
@@ -1569,7 +1914,7 @@ function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean): HTMLElement {
     panel.style.display = 'none'
   }
 
-  populateSnapshotPanel(panel, snapshot)
+  populateSnapshotPanel(panel, snapshot, error)
   return panel
 }
 
@@ -1588,6 +1933,11 @@ function pushCheckpointPanel(snapshot: Snapshot) {
   )
 }
 
+function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
+  const meta = snapshot.meta as { error?: DvalaErrorJSON } | undefined
+  return meta?.error
+}
+
 let resolveSnapshotModal: (() => void) | null = null
 
 export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
@@ -1595,7 +1945,8 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   elements.snapshotPanelContainer.innerHTML = ''
   snapshotPanelStack.length = 0
 
-  const panel = createSnapshotPanel(snapshot, true)
+  const error = getSnapshotError(snapshot)
+  const panel = createSnapshotPanel(snapshot, true, error)
   elements.snapshotPanelContainer.appendChild(panel)
   snapshotPanelStack.push({ panel, snapshot, label: 'Snapshot' })
   buildBreadcrumbs(panel)
@@ -1717,12 +2068,12 @@ export function closeInfoModal() {
 
 let resolveConfirmModal: (() => void) | null = null
 
-export function showConfirmModal(title: string, message: string, onConfirm: () => void): Promise<void> {
+export function showConfirmModal(title: string, message: string, onConfirm: () => void | Promise<void>): Promise<void> {
   elements.confirmModalTitle.textContent = title
   elements.confirmModalMessage.textContent = message
   elements.confirmModalOk.onclick = () => {
     closeConfirmModal()
-    onConfirm()
+    void onConfirm()
   }
   elements.confirmModal.style.display = 'flex'
 
@@ -1793,8 +2144,53 @@ export function closeCheckpointModal() {
 }
 
 const SAVED_CHECKPOINTS_KEY = 'playground-saved-checkpoints'
+const TERMINAL_SNAPSHOTS_KEY = 'playground-terminal-snapshots'
+const MAX_TERMINAL_SNAPSHOTS = 3
 
-function promptSnapshotName(onSave: (name: string) => void) {
+interface TerminalSnapshotEntry {
+  kind: 'terminal'
+  snapshot: Snapshot
+  savedAt: number
+  resultType: 'completed' | 'error'
+  result?: string
+}
+
+function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error', result?: string): void {
+  const entry: TerminalSnapshotEntry = {
+    kind: 'terminal',
+    snapshot,
+    savedAt: Date.now(),
+    resultType,
+    result,
+  }
+  const entries = getTerminalSnapshots()
+  entries.unshift(entry) // Add to front (most recent first)
+  if (entries.length > MAX_TERMINAL_SNAPSHOTS) {
+    entries.length = MAX_TERMINAL_SNAPSHOTS
+  }
+  localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+  populateSnapshotsList({ animateNewTerminal: true })
+}
+
+function getTerminalSnapshots(): TerminalSnapshotEntry[] {
+  const raw = localStorage.getItem(TERMINAL_SNAPSHOTS_KEY)
+  if (!raw) return []
+  try {
+    return JSON.parse(raw) as TerminalSnapshotEntry[]
+  } catch {
+    return []
+  }
+}
+
+export async function clearTerminalSnapshot(index: number): Promise<void> {
+  await animateCardRemoval('terminal', index)
+  const entries = getTerminalSnapshots()
+  entries.splice(index, 1)
+  localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+  populateSnapshotsList()
+}
+
+function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
   elements.readlinePrompt.textContent = 'Enter a name for this snapshot'
   elements.readlinePrompt.style.display = 'block'
   elements.readlineInput.value = ''
@@ -1803,7 +2199,7 @@ function promptSnapshotName(onSave: (name: string) => void) {
   pendingReadline = {
     resolve: (value: string | null) => {
       if (value !== null) {
-        onSave(value)
+        void onSave(value)
       }
     },
   }
@@ -1815,9 +2211,9 @@ export function saveCheckpoint() {
   const snapshot = currentCheckpointSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots()
-    existing.push({ snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    populateSnapshotsList()
+    populateSnapshotsList({ animateNewSaved: true })
     showToast(`Checkpoint saved (${existing.length} total)`)
   })
 }
@@ -1890,9 +2286,9 @@ export function saveSnapshot() {
   const snapshot = currentSnapshot
   promptSnapshotName(name => {
     const existing = getSavedSnapshots()
-    existing.push({ snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    populateSnapshotsList()
+    populateSnapshotsList({ animateNewSaved: true })
     showToast(`Snapshot saved (${existing.length} total)`)
   })
 }
@@ -1907,27 +2303,36 @@ export async function resumeSnapshot() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
+    // Always keep time travel enabled to ensure terminal snapshots are created
     const runResult = snapshot.effectName
       ? await retrigger(snapshot, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        disableAutoCheckpoint: getState('disable-auto-checkpoint'),
+        disableTimeTravel: false,
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        disableAutoCheckpoint: getState('disable-auto-checkpoint'),
+        disableTimeTravel: false,
       })
-    if (runResult.type === 'error')
+    if (runResult.type === 'error') {
+      if (runResult.snapshot) {
+        saveTerminalSnapshot(runResult.snapshot, 'error')
+      }
       throw runResult.error
+    }
     if (runResult.type === 'suspended') {
       appendOutput('Program suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
       return
     }
-    appendOutput(stringifyValue(runResult.value, false), 'result')
+    const content = stringifyValue(runResult.value, false)
+    if (runResult.snapshot) {
+      saveTerminalSnapshot(runResult.snapshot, 'completed', content)
+    }
+    appendOutput(content, 'result')
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
@@ -1936,13 +2341,23 @@ export async function resumeSnapshot() {
   }
 }
 
+function disabledHandlersFallback(ctx: EffectContext): void {
+  // With playground handlers disabled, unhandled effects should throw
+  throw new Error(`Unhandled effect (playground handlers disabled): ${ctx.effectName}`)
+}
+
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
   if (ctx.effectName === 'dvala.checkpoint') {
-    const message = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
-    const meta = ctx.args[1]
-    const snapshot = ctx.checkpoint(message, meta)
+    // The checkpoint snapshot is already created by dispatchPerform before
+    // the effect reaches handlers. We only need to show the modal if
+    // intercept-checkpoint is enabled, then continue.
     if (getState('intercept-checkpoint')) {
-      await openCheckpointModal(snapshot)
+      // Get the latest checkpoint from ctx.snapshots
+      const snapshots = ctx.snapshots
+      const snapshot = snapshots[snapshots.length - 1]
+      if (snapshot) {
+        await openCheckpointModal(snapshot)
+      }
     }
     ctx.next()
     return
@@ -2263,7 +2678,16 @@ function syncDefaultEffectHandler(ctx: EffectContext): void {
   throw new Error(`Unhandled effect: ${ctx.effectName}`)
 }
 
+function syncDisabledHandlersFallback(ctx: EffectContext): void {
+  throw new Error(`Unhandled effect (playground handlers disabled): ${ctx.effectName}`)
+}
+
 function getSyncEffectHandlers(): HandlerRegistration[] {
+  if (getState('disable-playground-handlers')) {
+    return [
+      { pattern: '*', handler: syncDisabledHandlersFallback },
+    ]
+  }
   return [
     { pattern: 'dvala.io.read-line', handler: syncReadlineHandler },
     { pattern: 'dvala.io.println', handler: syncPrintlnHandler },
@@ -2300,6 +2724,16 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
 
     const hasPattern = (p: string) => effectHandlers.some(h => h.pattern === p)
 
+    // With playground handlers disabled, only use context-defined handlers and a basic fallback
+    if (getState('disable-playground-handlers')) {
+      if (!hasPattern('*'))
+        effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
+      return {
+        bindings,
+        effectHandlers,
+      }
+    }
+
     if (!hasPattern('dvala.io.read-line'))
       effectHandlers.push({ pattern: 'dvala.io.read-line', handler: readlineHandler })
     if (!hasPattern('dvala.io.println'))
@@ -2315,7 +2749,8 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     }
   } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
-    return { bindings: {}, effectHandlers: [{ pattern: '*', handler: defaultEffectHandler }] }
+    const fallback = getState('disable-playground-handlers') ? disabledHandlersFallback : defaultEffectHandler
+    return { bindings: {}, effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
 }
 function getSelectedDvalaCode(): {
@@ -2385,21 +2820,30 @@ function updateCSS() {
     syncToggle.checked = getState('sync')
   const sync = getState('sync')
   const pure = getState('pure')
+  const disableHandlers = getState('disable-playground-handlers')
   const disabled = sync || pure
+  const checkpointDisabled = disabled || disableHandlers
   const checkpointToggle = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
   if (checkpointToggle) {
-    checkpointToggle.checked = !disabled && getState('intercept-checkpoint')
-    checkpointToggle.disabled = disabled
-    checkpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
-    checkpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+    checkpointToggle.checked = !checkpointDisabled && getState('intercept-checkpoint')
+    checkpointToggle.disabled = checkpointDisabled
+    checkpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', checkpointDisabled)
+    checkpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', checkpointDisabled)
   }
-  const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
-  if (autoCheckpointToggle) {
-    // Checkbox is "Disable auto-checkpoint" so checked = disabled
-    autoCheckpointToggle.checked = !disabled && getState('disable-auto-checkpoint')
-    autoCheckpointToggle.disabled = disabled
-    autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
-    autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  const disableHandlersToggle = document.getElementById('settings-disable-handlers-toggle') as HTMLInputElement | null
+  if (disableHandlersToggle) {
+    disableHandlersToggle.checked = !disabled && disableHandlers
+    disableHandlersToggle.disabled = disabled
+    disableHandlersToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
+    disableHandlersToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  }
+  const timeTravelToggle = document.getElementById('settings-time-travel-toggle') as HTMLInputElement | null
+  if (timeTravelToggle) {
+    // Checkbox is "Disable time travel" so checked = disabled
+    timeTravelToggle.checked = !disabled && getState('disable-time-travel')
+    timeTravelToggle.disabled = disabled
+    timeTravelToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
+    timeTravelToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''

@@ -36,6 +36,12 @@ export interface Snapshot {
   /** Human-readable label from the checkpoint perform call. */
   readonly message: string
 
+  /**
+   * True when this snapshot represents the terminal state of a run (completed or failed).
+   * False/absent for mid-execution checkpoints that can be resumed.
+   */
+  readonly terminal?: boolean
+
   /** Optional domain metadata from the perform call or suspend call. */
   readonly meta?: Any
 
@@ -226,11 +232,14 @@ export function findMatchingHandlers(
 /**
  * The result of `run()` — always resolves, never rejects.
  * Errors are captured in the `error` variant.
+ *
+ * When time travel is enabled, `completed` and `error` results include a
+ * terminal snapshot containing the checkpoint history for debugging/replay.
  */
 export type RunResult =
-  | { type: 'completed'; value: Any; definedBindings?: Record<string, unknown> }
+  | { type: 'completed'; value: Any; definedBindings?: Record<string, unknown>; snapshot?: Snapshot }
   | { type: 'suspended'; snapshot: Snapshot }
-  | { type: 'error'; error: DvalaError }
+  | { type: 'error'; error: DvalaError; snapshot?: Snapshot }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline
