@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { resume as resumeContinuation } from '../src/resume'
-import type { Handlers } from '../src/evaluator/effectTypes'
+import { resume as baseResume } from '../src/resume'
+import type { ResumeOptions } from '../src/resume'
+import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 import { effectNameMatchesPattern, findMatchingHandlers, generateRunId } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
+import type { Any } from '../src/interface'
 
-const dvala = createDvala()
+const dvala = createDvala({ disableAutoCheckpoint: true })
+
+// Wrapper that defaults to disableAutoCheckpoint: true, but allows explicit override
+function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
+  return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })
+}
 
 describe('phase 2 — Local Effect Handling', () => {
   describe('2a: effect(name) special expression', () => {
@@ -1870,7 +1877,7 @@ describe('phase 4 — Suspension & Resume', () => {
     })
   })
 
-  describe('9: autoCheckpoint option', () => {
+  describe('9: auto-checkpoint (enabled by default)', () => {
     it('should capture a snapshot before each non-checkpoint effect', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
@@ -1878,7 +1885,7 @@ describe('phase 4 — Suspension & Resume', () => {
         perform(effect(my.b));
         perform(effect(my.check))
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false, // explicitly enable (dvala instance has it disabled for other tests)
         effectHandlers: [
           { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
           { pattern: 'my.b', handler: async ({ resume: r }) => { r(null) } },
@@ -1895,13 +1902,13 @@ describe('phase 4 — Suspension & Resume', () => {
       expect((capturedSnapshots[2] as { message: string }).message).toBe('Auto checkpoint before my.check')
     })
 
-    it('should not capture auto-checkpoints when disabled', async () => {
+    it('should not capture auto-checkpoints when disableAutoCheckpoint is true', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
         perform(effect(my.a));
         perform(effect(my.check))
       `, {
-        autoCheckpoint: false,
+        disableAutoCheckpoint: true,
         effectHandlers: [
           { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
           { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
@@ -1919,7 +1926,7 @@ describe('phase 4 — Suspension & Resume', () => {
         perform(effect(my.action));
         42
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false,
         effectHandlers: [
           { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
             checkpointMessages.push(args[0] as string)
@@ -1937,7 +1944,7 @@ describe('phase 4 — Suspension & Resume', () => {
         perform(effect(dvala.checkpoint), "manual");
         perform(effect(my.action))
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false,
         effectHandlers: [
           { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
             checkpointMessages.push(args[0] as string)
@@ -1958,7 +1965,7 @@ describe('phase 4 — Suspension & Resume', () => {
         perform(effect(my.c));
         perform(effect(my.check))
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false,
         maxSnapshots: 2,
         effectHandlers: [
           { pattern: 'my.a', handler: async ({ resume: r }) => { r(null) } },
@@ -1981,7 +1988,7 @@ describe('phase 4 — Suspension & Resume', () => {
         perform(effect(my.action));
         42
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false,
         effectHandlers: [
           { pattern: 'dvala.checkpoint', handler: async ({ suspend }) => {
             suspend({ reason: 'auto-checkpoint intercepted' })
@@ -2000,7 +2007,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let x = perform(effect(my.action));
         x * 2
       `, {
-        autoCheckpoint: true,
+        disableAutoCheckpoint: false,
         effectHandlers: [
           { pattern: 'dvala.checkpoint', handler: async ({ resume: r }) => { r(null) } },
           { pattern: 'my.action', handler: async ({ suspend }) => { suspend() } },
@@ -2009,7 +2016,7 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r1.type).toBe('suspended')
       if (r1.type !== 'suspended') return
 
-      const r2 = await resumeContinuation(r1.snapshot, 21)
+      const r2 = await resumeContinuation(r1.snapshot, 21, { disableAutoCheckpoint: false })
       expect(r2).toMatchObject({ type: 'completed', value: 42 })
     })
   })

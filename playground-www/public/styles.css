@@ -255,10 +255,10 @@ button:focus {
   opacity: 0.5;
 }
 .snapshot-btn {
-  transition: background-color 0.15s ease;
+  transition: color 0.15s ease;
 }
 .snapshot-btn:hover {
-  background-color: rgb(75 75 75) !important;
+  color: rgb(245 245 245) !important;
 }
 
 .fancy-scroll-background::-webkit-scrollbar-track {

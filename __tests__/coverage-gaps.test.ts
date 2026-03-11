@@ -38,8 +38,8 @@ import type { EffectReference } from '../reference'
  * edge cases in special expressions, and miscellaneous coverage gaps.
  */
 
-const dvala = createDvala()
-const dvalaFull = createDvala({ modules: allBuiltinModules })
+const dvala = createDvala({ disableAutoCheckpoint: true })
+const dvalaFull = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 
 // ---------------------------------------------------------------------------
 // Recursive evaluator path — compound function types

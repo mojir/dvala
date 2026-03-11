@@ -22,7 +22,7 @@ import { isDataType, isFunctionDocs } from '../src/builtin/interface'
 import { allReference } from '../reference'
 import '../src/initReferenceData'
 
-const dvala = createDvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 
 // ---------------------------------------------------------------------------
 // Helpers

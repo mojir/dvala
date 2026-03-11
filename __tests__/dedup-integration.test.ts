@@ -3,7 +3,7 @@ import { resume } from '../src/resume'
 import { createDvala } from '../src/createDvala'
 import { dedupSubTrees, expandPoolRefs } from '../src/evaluator/dedupSubTrees'
 
-const dvala = createDvala()
+const dvala = createDvala({ disableAutoCheckpoint: true })
 
 describe('continuation dedup integration', () => {
   describe('blob size comparison', () => {

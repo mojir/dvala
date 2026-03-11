@@ -1,7 +1,8 @@
 import { examples } from '../../../reference/examples'
 import { formatDvalaExpression } from '../formatter/rules'
-import { copyIcon, lampIcon, playIcon } from '../icons'
+import { copyIcon, lampIcon, penIcon } from '../icons'
 import { styles } from '../styles'
+import { pageLayout } from './pageLayout'
 
 function formatContextJson(context: Record<string, unknown>): string {
   const parts: string[] = ['{']
@@ -55,16 +56,12 @@ function getExamplesIndexPage(): string {
       </a>`
   }).join('\n')
 
-  return `
-  <div id="example-page" class="content">
-    <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
-      <div ${styles('text-3xl', 'mb-6', 'text-center')}>Examples</div>
+  const content = `
       <div ${styles('flex', 'flex-col', 'text-lg', 'gap-4')}>
         ${tocEntries}
       </div>
-    </div>
-  </div>
   `
+  return pageLayout('example-page', 'Examples', content)
 }
 
 function renderExamplePage(example: typeof examples[number], index: number): string {
@@ -79,7 +76,7 @@ function renderExamplePage(example: typeof examples[number], index: number): str
   const encodedExample = btoa(encodeURIComponent(JSON.stringify(example)))
   const encodedCode = btoa(encodeURIComponent(example.code))
   const formattedCode = formatDvalaExpression(example.code)
-  const playButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.setPlayground('${example.name}', '${encodedExample}')">${playIcon}</div>`
+  const playButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.setPlayground('${example.name}', '${encodedExample}')">${penIcon}</div>`
   const copyButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.copyExample('${encodedCode}')">${copyIcon}</div>`
   const actionBar = `<div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>${playButton}${copyButton}</div>`
   const codeSection = `<div ${styles('py-3', 'px-4', 'text-sm', 'font-mono', 'whitespace-pre-wrap')}>${formattedCode}</div>`

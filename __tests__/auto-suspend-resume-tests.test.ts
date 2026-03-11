@@ -25,12 +25,18 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { resume as resumeContinuation } from '../src/resume'
+import { resume as baseResume } from '../src/resume'
+import type { ResumeOptions } from '../src/resume'
 import { createDvala } from '../src/createDvala'
 import type { Any } from '../src/interface'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 
-const dvala = createDvala()
+const dvala = createDvala({ disableAutoCheckpoint: true })
+
+// Wrapper that defaults to disableAutoCheckpoint: true, but allows explicit override
+function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
+  return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })
+}
 
 // ---------------------------------------------------------------------------
 // 1. Multi-cycle suspend/resume with checkpoint accumulation

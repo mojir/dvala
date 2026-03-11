@@ -6,20 +6,16 @@ Try it in the [Dvala Playground](https://mojir.github.io/dvala/).
 
 ## Features
 
-- **Algebraic effects** - `perform` is the only IO boundary; host-side handlers in JavaScript decide whether to resume synchronously, resolve asynchronously, or suspend the VM entirely
-- **Serializable continuations** - when a handler suspends, the entire execution state freezes to a JSON blob; store it anywhere and resume across processes, machines, and time
-- **Time-travel debugging** - step backward through any execution, jump to any captured state, and explore alternate timelines by re-running from any point with a different value
-- **Parallel & race** - run effects concurrently with `parallel` (waits for all) and `race` (takes the first to complete, cancelling the rest)
-- **Pure functional** - immutable data and no side effects; variables cannot be changed, ensuring predictable behavior
-- **Expression-based syntax** - everything returns a value; no statements, making the language composable and consistent
-- **Sandboxed** - no file system, network, or global access unless the host explicitly provides it — safe for user-supplied code
-- **Algebraic notation** - all operators can be used as functions, and binary functions can be used as operators
-- **First-class functions** - functions are values that can be passed, returned, and composed freely
-- **Comprehensive standard library** - rich set of functions for collections, math, strings, regular expressions, and more
-- **JavaScript interoperability** - JavaScript values and functions can be exposed directly in Dvala
-- **Fully serializable** - every Dvala value, including functions and regexps, is JSON-serializable
-- **Structural equality** - objects are compared by value, not by reference
-- **Destructuring** - extract values from complex data structures with ease
+- **Algebraic effects** — `perform` is the only IO boundary; host handlers decide to resume, await, or suspend
+- **Serializable continuations** — Execution state freezes to JSON, resumable across processes and time
+- **Time-travel debugging** — Step backward, jump to any state, explore alternate timelines
+- **Sandboxed execution** — No file system, network, or global access — safe for untrusted code
+- **Pure functional** — Immutable data, no side effects, predictable behavior
+- **Host-controlled IO** — Every side effect goes through the host, who controls what Dvala can access
+- **Expression-based** — Everything returns a value, no statements
+- **First-class functions** — Functions are values that can be passed, returned, and composed
+- **Fully serializable** — Every Dvala value, including functions and regexps, is JSON-serializable
+- **Structural equality** — Objects compared by value, not reference
 
 ## Installation
 

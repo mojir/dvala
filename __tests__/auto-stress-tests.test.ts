@@ -27,7 +27,7 @@ import { createDvala } from '../src/createDvala'
 import { resume as resumeContinuation } from '../src/resume'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 
-const dvala = createDvala()
+const dvala = createDvala({ disableAutoCheckpoint: true })
 
 // ---------------------------------------------------------------------------
 // 1. Parallel + checkpoints/suspend interactions

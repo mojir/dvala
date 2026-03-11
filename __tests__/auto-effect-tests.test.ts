@@ -26,7 +26,7 @@ import type { Any } from '../src/interface'
 import { allReference } from '../reference'
 import '../src/initReferenceData'
 
-const dvala = createDvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 
 // ---------------------------------------------------------------------------
 // 1. Standard Effects Docs Metadata Consistency
