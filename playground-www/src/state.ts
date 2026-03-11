@@ -23,7 +23,7 @@ export const defaultState = {
   'pure': false as boolean,
   'sync': false as boolean,
   'intercept-checkpoint': false as boolean,
-  'auto-checkpoint': false as boolean,
+  'disable-auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
 } as const
 

@@ -3,7 +3,7 @@ import { stringifyValue } from '../../common/utils'
 import { allBuiltinModules } from '../../src/allModules'
 import { createDvala } from '../../src/createDvala'
 import { formatDvalaExpression } from './formatter/rules'
-import { copyIcon, playIcon } from './icons'
+import { copyIcon, penIcon } from './icons'
 import { styles } from './styles'
 
 const dvala = createDvala({ debug: false, modules: allBuiltinModules })
@@ -19,7 +19,7 @@ export async function renderExample(example: string | string[], name: string, op
   const encodedUriExample = btoa(encodeURIComponent(code))
   const formattedExample = formatDvalaExpression(code)
 
-  const playButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.addToPlayground('${name}', '${encodedUriExample}')">${playIcon}</div>`
+  const playButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.addToPlayground('${name}', '${encodedUriExample}')">${penIcon}</div>`
   const copyButton = `<div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} onclick="event.stopPropagation(); Playground.copyExample('${encodedUriExample}')">${copyIcon}</div>`
   const actionBar = `<div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>${playButton}${copyButton}</div>`
 

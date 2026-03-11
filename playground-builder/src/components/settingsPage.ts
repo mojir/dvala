@@ -1,11 +1,9 @@
 import { styles } from '../styles'
+import { pageLayout } from './pageLayout'
 
 export function getSettingsPage(): string {
-  return `
-  <div id="settings-page" class="content">
-    <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
-      <div ${styles('text-3xl', 'mb-6', 'text-center')}>Settings</div>
-      <div ${styles('flex', 'flex-col', 'gap-6', 'max-width: 500px;', 'margin: 0 auto;')}>
+  const content = `
+      <div ${styles('flex', 'flex-col', 'gap-6')}>
 
         <!-- Debug toggle -->
         <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
@@ -58,8 +56,8 @@ export function getSettingsPage(): string {
         <!-- Auto-checkpoint toggle -->
         <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
           <div ${styles('flex', 'flex-col')}>
-            <span ${styles('text-lg')}>Auto-checkpoint before effects</span>
-            <span ${styles('text-sm', 'text-color-gray-400')}>Automatically captures a checkpoint snapshot before each effect is handled.</span>
+            <span ${styles('text-lg')}>Disable auto-checkpoint</span>
+            <span ${styles('text-sm', 'text-color-gray-400')}>Auto-checkpoint is enabled by default, capturing a snapshot before each effect. Check to disable.</span>
           </div>
           <label class="settings-toggle">
             <input type="checkbox" id="settings-auto-checkpoint-toggle" onclick="Playground.toggleAutoCheckpoint()">
@@ -77,7 +75,6 @@ export function getSettingsPage(): string {
         </div>
 
       </div>
-    </div>
-  </div>
   `
+  return pageLayout('settings-page', 'Settings', content)
 }

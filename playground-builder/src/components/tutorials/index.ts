@@ -3,6 +3,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { styles } from '../../styles'
 import { extractCodeBlocks, parseTutorialMarkdown, renderMarkdown } from '../../formatter/renderMarkdown'
+import { pageLayout } from '../pageLayout'
 
 // --- Types ---
 
@@ -145,16 +146,12 @@ function getTutorialsIndexPage(): string {
     return `<a class="tutorial-nav-link" ${styles('cursor-pointer', 'py-1')} onclick="Playground.showPage('${item.id}', 'smooth')">${item.title}</a>`
   }).join('\n')
 
-  return `
-  <div id="tutorials-page" class="content">
-    <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
-      <div ${styles('text-3xl', 'mb-6', 'text-center')}>Tutorials</div>
+  const content = `
       <div ${styles('flex', 'flex-col', 'text-lg')}>
         ${tocEntries}
       </div>
-    </div>
-  </div>
   `
+  return pageLayout('tutorials-page', 'Tutorials', content)
 }
 
 export async function getAllTutorialPages(): Promise<string> {

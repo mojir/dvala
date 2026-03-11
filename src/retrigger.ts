@@ -20,13 +20,14 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 /**
  * Options for `retrigger()` — resume a suspended continuation by re-firing
  * the original effect to the host handlers.
+ * Auto-checkpointing is enabled by default. Set `disableAutoCheckpoint: true` to opt out.
  */
 export interface RetriggerOptions {
   bindings?: Record<string, Any>
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
-  autoCheckpoint?: boolean
+  disableAutoCheckpoint?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
         snapshots: deserialized.snapshots,
         nextSnapshotIndex: deserialized.nextSnapshotIndex,
         maxSnapshots: options?.maxSnapshots,
-        autoCheckpoint: options?.autoCheckpoint,
+        autoCheckpoint: !options?.disableAutoCheckpoint,
       },
       deserializeOptions,
     )

@@ -94,7 +94,7 @@ export function getPlayground() {
             ${styles('text-color-gray-400', 'bg-gray-800', 'h-full')}
           >
             <div ${styles('h-full', 'flex', 'flex-row', 'gap-1', 'text-sm', 'text-color-gray-400', 'items-center')}>
-              <a onclick="Playground.run()" ${styles('text-xl', 'flex', 'items-center')}>${playIcon}</a>
+              <a onclick="Playground.run()" ${styles('text-lg', 'flex', 'items-center', 'gap-1')}>${playIcon} Run</a>
               <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
               <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
               <a onclick="Playground.resetDvalaCode()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>

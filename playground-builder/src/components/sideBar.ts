@@ -1,8 +1,9 @@
 import type { Reference } from '../../../reference'
 import { apiReference, effectReference, getLinkName, moduleReference } from '../../../reference'
 import { moduleCategories } from '../../../reference/api'
-import { chevronRightIcon, cameraIcon, gearIcon, homeIcon, labIcon, lampIcon, searchIcon } from '../icons'
+import { cameraIcon, chevronRightIcon, gearIcon, homeIcon, infoIcon, labIcon, lampIcon, searchIcon } from '../icons'
 import { styles } from '../styles'
+import { version } from '../../../package.json'
 
 function menuLink(icon: string, title: string, onclick: string) {
   return `
@@ -120,6 +121,10 @@ export function getSideBar() {
 
   return `
   <nav id="sidebar" class="fancy-scroll-background">
+    <div ${styles('flex', 'flex-col', 'items-center', 'mb-4')}>
+      <img src="images/dvala-logo.png" alt="Dvala" ${styles('max-width: 120px;', 'width: 100%;', 'cursor-pointer')} onclick="Playground.showPage('index', 'smooth')">
+      <a href="https://github.com/mojir/dvala" target="_blank" class="link" ${styles('text-sm', 'mt-1')}>v${version}</a>
+    </div>
     <div ${styles('py-1', 'px-2', 'text-color-gray-400', 'flex', 'items-center', 'justify-between', 'gap-2', 'mb-4', 'cursor-pointer', 'border-gray-300', 'border', 'border-solid')} onclick="Playground.Search.openSearch()">
       <span ${styles('flex', 'items-center', 'gap-1')}>
         ${searchIcon}
@@ -128,8 +133,9 @@ export function getSideBar() {
       <span ${styles('text-sm')}>F3</span>
     </div>
     ${menuLink(homeIcon, 'Home', 'Playground.showPage(\'index\', \'smooth\')')}
-    ${menuLink(lampIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
-    ${menuLink(labIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
+    ${menuLink(infoIcon, 'About', 'Playground.showPage(\'about-page\', \'smooth\')')}
+    ${menuLink(lampIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
+    ${menuLink(labIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
     ${menuLink(cameraIcon, 'Snapshots', 'Playground.showSnapshotsPage()')}
     ${menuLink(gearIcon, 'Settings', 'Playground.showPage(\'settings-page\', \'smooth\')')}
 

@@ -22,8 +22,8 @@ import type { RunResult } from '../src/evaluator/effectTypes'
 import { allBuiltinModules } from '../src/allModules'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, transformSymbols, untokenize } from '../src/tooling'
 
-const dvala = createDvala({ modules: allBuiltinModules })
-const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true })
+const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
+const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true, disableAutoCheckpoint: true })
 
 function runValue(result: RunResult): unknown {
   if (result.type !== 'completed')

@@ -8,6 +8,7 @@ import { getExamplePage } from './components/examplePage'
 import { getModulesPage } from './components/modulesPage'
 import { getSettingsPage } from './components/settingsPage'
 import { getSnapshotsPage } from './components/snapshotsPage'
+import { getAboutPage } from './components/aboutPage'
 import { getCorePage } from './components/corePage'
 import { getAllTutorialPages } from './components/tutorials'
 import { getPlayground } from './components/playground'
@@ -49,6 +50,7 @@ async function writeIndexPage() {
     <div id="wrapper" ${styles('hidden')}>
       <main id="main-panel" class="fancy-scroll">
         ${startPage}
+        ${getAboutPage()}
         ${examplePage}
         ${tutorialPages}
         ${corePage}

@@ -255,10 +255,11 @@ function populateSnapshotsList() {
     const pad = (n: number) => String(n).padStart(2, '0')
     const savedTime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
     const lockIcon = locked
-      ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(180 180 180)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>'
-      : '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(100 100 100)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 0 1 7.917-.768M12 17v2"/></svg>'
     const lockTitle = locked ? 'Unlock snapshot' : 'Lock snapshot'
-    const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="rgb(180 180 180)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>'
+    const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4v16l14-8z"/></svg>'
+    const closeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>'
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${locked ? 'rgb(234 179 8)' : 'rgb(107 114 128)'};">
         <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
@@ -267,9 +268,9 @@ function populateSnapshotsList() {
           <div style="font-size: 0.75rem; color: rgb(100 100 100);">${savedTime}</div>
         </div>
         <div style="display: flex; gap: 4px; align-items: center;">
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.openSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px;" title="Open snapshot">${playIcon}</button>
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleSnapshotLock(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px;" title="${lockTitle}">${lockIcon}</button>
-          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.deleteSavedSnapshot(${index})" style="background: rgb(60 60 60); color: rgb(160 160 160); border: none; padding: 6px 8px; border-radius: 4px; font-size: 1.1em; display: flex; align-items: center; cursor: pointer;" title="Delete snapshot">✕</button>
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.openSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Open snapshot">${playIcon}</button>
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleSnapshotLock(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="${lockTitle}">${lockIcon}</button>
+          <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.deleteSavedSnapshot(${index})" style="background: none; border: none; padding: 4px; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Delete snapshot">${closeIcon}</button>
         </div>
       </div>
     `
@@ -1167,8 +1168,8 @@ export async function run() {
       appendOutput(content, 'result')
     } else {
       const runResult = await getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, autoCheckpoint: getState('auto-checkpoint') }
-        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, autoCheckpoint: getState('auto-checkpoint') },
+        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint: getState('disable-auto-checkpoint') }
+        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint: getState('disable-auto-checkpoint') },
       )
       if (runResult.type === 'error')
         throw runResult.error
@@ -1322,10 +1323,10 @@ export function toggleInterceptCheckpoint() {
 }
 
 export function toggleAutoCheckpoint() {
-  const auto = !getState('auto-checkpoint')
-  saveState({ 'auto-checkpoint': auto })
+  const disabled = !getState('disable-auto-checkpoint')
+  saveState({ 'disable-auto-checkpoint': disabled })
   updateCSS()
-  showToast(`Auto-checkpoint ${auto ? 'ON' : 'OFF'}`)
+  showToast(`Auto-checkpoint ${disabled ? 'disabled' : 'enabled'}`)
 }
 
 export function focusContext() {
@@ -1911,13 +1912,13 @@ export async function resumeSnapshot() {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        autoCheckpoint: getState('auto-checkpoint'),
+        disableAutoCheckpoint: getState('disable-auto-checkpoint'),
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        autoCheckpoint: getState('auto-checkpoint'),
+        disableAutoCheckpoint: getState('disable-auto-checkpoint'),
       })
     if (runResult.type === 'error')
       throw runResult.error
@@ -2394,7 +2395,8 @@ function updateCSS() {
   }
   const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
   if (autoCheckpointToggle) {
-    autoCheckpointToggle.checked = !disabled && getState('auto-checkpoint')
+    // Checkbox is "Disable auto-checkpoint" so checked = disabled
+    autoCheckpointToggle.checked = !disabled && getState('disable-auto-checkpoint')
     autoCheckpointToggle.disabled = disabled
     autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
     autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
@@ -2514,6 +2516,13 @@ ${code}
   saveState({ 'focused-panel': 'dvala-code' })
   applyState()
   showToast(`Example loaded: ${name}`)
+}
+
+export function loadCode(code: string) {
+  setDvalaCode(code, true, 'top')
+  saveState({ 'focused-panel': 'dvala-code' })
+  applyState()
+  showToast('Code loaded')
 }
 
 function hijackConsole() {

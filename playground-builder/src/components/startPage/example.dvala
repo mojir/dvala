@@ -1,0 +1,19 @@
+
+// Read user input via an effect (suspendable IO)
+let nums = perform(effect(dvala.io.read-line), "How many?")
+  |> number            // Convert string to number
+  |> range             // Create array [0, 1, 2, ...]
+  |> _ + 1             // Add 1 to each (partial application)
+  |> map(_, -> $ ^ 2)  // Square each value
+  |> filter(_, even?); // Keep only even numbers
+
+// Pattern match on the result
+let msg = match nums
+  case [] then "None were even"
+  case [x] then "One result: " ++ str(x)
+  case [x, y] then "Two results: " ++ str(x) ++ " and " ++ str(y)
+  case [x, ...xs] then "First: " ++ str(x) ++ ", rest: " ++ str(xs)
+end;
+
+// Print the result (another effect)
+perform(effect(dvala.io.println), msg)

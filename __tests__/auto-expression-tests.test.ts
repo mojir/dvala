@@ -16,7 +16,7 @@ import { normalExpressions } from '../src/builtin/normalExpressions'
 import type { TypedValue } from '../src/builtin/interface'
 import '../src/initReferenceData'
 
-const dvala = createDvala({ modules: allBuiltinModules })
+const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: true })
 
 // ---------------------------------------------------------------------------
 // DataType → Dvala predicate name mapping

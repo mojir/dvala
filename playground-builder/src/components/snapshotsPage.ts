@@ -1,11 +1,9 @@
 import { styles } from '../styles'
+import { pageLayout } from './pageLayout'
 
 export function getSnapshotsPage(): string {
-  return `
-  <div id="snapshots-page" class="content">
-    <div ${styles('mb-6', 'p-4', 'bg-gray-800', 'text-color-gray-300')}>
-      <div ${styles('text-3xl', 'mb-6', 'text-center')}>Snapshots</div>
-      <div ${styles('flex', 'flex-col', 'gap-4', 'max-width: 600px;', 'margin: 0 auto;')}>
+  const content = `
+      <div ${styles('flex', 'flex-col', 'gap-4')}>
         <div id="snapshots-clear-all" style="display: flex; justify-content: flex-end; visibility: hidden;">
           <button class="button" onclick="Playground.clearUnlockedSnapshots()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Clear all unlocked</button>
         </div>
@@ -16,7 +14,6 @@ export function getSnapshotsPage(): string {
           No saved snapshots
         </div>
       </div>
-    </div>
-  </div>
   `
+  return pageLayout('snapshots-page', 'Snapshots', content)
 }

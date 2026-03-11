@@ -1,0 +1,61 @@
+// Human-in-the-loop Email Workflow
+//
+// Flow (repeats until approved):
+//   1. Author writes / revises draft        → dvala.io.read-line  (suspend + share)
+//   2. LLM polishes the draft               → llm.ask
+//   3. Approver reviews the polished text   → human.approve       (suspend + share)
+//   4a. Approved  → done
+//   4b. Rejected  → loop back to step 1 with LLM text + feedback
+
+let edit-draft = (previous, feedback, attempt) -> do
+  perform(effect(dvala.io.println), "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")");
+
+  if feedback != "" then
+    perform(effect(dvala.io.println), "Approver feedback: \"" ++ feedback ++ "\"");
+    perform(effect(dvala.io.println), "Previous version:\n" ++ previous ++ "\n");
+  end;
+
+  perform(effect(dvala.io.read-line), "Your draft:\n")
+end;
+
+let polish = (draft) -> do
+  perform(effect(dvala.io.println), "\n🤖 STEP 2 — LLM POLISH");
+  perform(effect(dvala.io.println), "Improving your draft...\n");
+
+  let polished = perform(effect(llm.ask),
+    "Improve this email for a professional audience. "
+    ++ "Keep it concise and engaging. "
+    ++ "Reply with only the improved email text, no commentary.\n\n"
+    ++ draft
+  );
+
+  perform(effect(dvala.io.println), polished);
+  polished
+end;
+
+let request-approval = (text, attempt) -> do
+  perform(effect(dvala.io.println), "\n👤 STEP 3 — APPROVAL REQUEST");
+  perform(effect(dvala.io.println), "Waiting for approver...\n");
+
+  perform(effect(human.approve), { text: text, attempt: attempt })
+end;
+
+let run = (previous, feedback, attempt) -> do
+  let draft    = edit-draft(previous, feedback, attempt);
+  let polished = polish(draft);
+  let decision = request-approval(polished, attempt);
+
+  if decision.approved then
+    perform(effect(dvala.io.println), "\n✅ APPROVED — sending email to all subscribers.");
+    perform(effect(dvala.io.println), "\nFinal email:\n" ++ polished);
+    { sent: true, text: polished, attempts: attempt }
+  else
+    perform(effect(dvala.io.println), "\n↩️  REJECTED — looping back to author.\n");
+    run(polished, decision.comment, attempt + 1)
+  end
+end;
+
+perform(effect(dvala.io.println), "📧 EMAIL CAMPAIGN EDITOR");
+perform(effect(dvala.io.println), "Write a draft, let the LLM polish it, get it approved.\n");
+
+run("", "", 1)
