@@ -21,6 +21,9 @@ export const SUSPENDED_MESSAGE = 'Program suspended'
  * The `continuation` field is opaque — hosts should not inspect or modify it.
  */
 export interface Snapshot {
+  /** Unique ID for this snapshot, generated at creation time. */
+  readonly id: string
+
   /** Opaque serialized continuation. Do not inspect or modify. */
   readonly continuation: unknown
 
@@ -31,7 +34,7 @@ export interface Snapshot {
   readonly index: number
 
   /** UUID identifying the run() or resume() call that created this snapshot. */
-  readonly runId: string
+  readonly executionId: string
 
   /** Human-readable label from the checkpoint perform call. */
   readonly message: string
@@ -66,7 +69,7 @@ export interface Snapshot {
  * Generate a UUID for identifying a run() or resume() call.
  * Uses crypto.randomUUID() when available, falls back to a simple generator.
  */
-export function generateRunId(): string {
+export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
@@ -74,6 +77,13 @@ export function generateRunId(): string {
     const r = (Math.random() * 16) | 0
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
+}
+
+/**
+ * Create a Snapshot with a freshly generated unique `id`.
+ */
+export function createSnapshot(fields: Omit<Snapshot, 'id'>): Snapshot {
+  return { id: generateUUID(), ...fields }
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +103,7 @@ export interface SnapshotState {
   nextSnapshotIndex: number
 
   /** UUID identifying this run()/resume() call. */
-  readonly runId: string
+  readonly executionId: string
 
   /** Maximum number of snapshots to retain. Oldest are evicted when exceeded. */
   readonly maxSnapshots?: number

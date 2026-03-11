@@ -43,6 +43,28 @@ export class DvalaError extends Error {
   public getCodeMarker(): string | undefined {
     return this.sourceCodeInfo && getCodeMarker(this.sourceCodeInfo)
   }
+
+  public toJSON(): DvalaErrorJSON {
+    return {
+      name: this.name,
+      message: this.message,
+      shortMessage: this.shortMessage,
+      line: this.sourceCodeInfo?.position.line,
+      column: this.sourceCodeInfo?.position.column,
+      code: this.sourceCodeInfo?.code,
+      filePath: this.sourceCodeInfo?.filePath,
+    }
+  }
+}
+
+export interface DvalaErrorJSON {
+  name: string
+  message: string
+  shortMessage: string
+  line?: number
+  column?: number
+  code?: string
+  filePath?: string
 }
 
 export class UserDefinedError extends DvalaError {

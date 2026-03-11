@@ -137,20 +137,9 @@ export function getPlayground() {
                       </div>
                       Ctrl+F
                     </a>
-                    <a ${styles('flex', 'justify-between', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.toggleDebug()">
-                      <div ${styles('flex', 'gap-2', 'w-full', 'items-center')}>
-                        <span ${styles('text-color-Rose', 'items-center', 'flex')}>${debugIcon}</span>
-                        <span id="toggle-debug-menu-label" ${styles('mr-8')}>Debug</span>
-                      </div>
-                      Ctrl+D
-                    </a>
                     <a ${styles('flex', 'gap-2', 'w-full', 'items-center', 'pt-2', 'border-0', 'border-t', 'border-solid', 'border-gray-500')} onclick="Playground.closeMoreMenu(); Playground.share();">
                       <span ${styles('text-color-Pink', 'items-center', 'flex')}>${linkIcon}</span>
                       <span>Share</span>
-                    </a>
-                    <a ${styles('flex', 'gap-2', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.openImportSnapshotModal();">
-                      <span ${styles('text-color-SkyLavender', 'items-center', 'flex')}>${addIcon}</span>
-                      <span>Import Snapshot</span>
                     </a>
                     <a ${styles('flex', 'gap-2', 'w-full', 'items-center', 'pt-2', 'border-0', 'border-t', 'border-solid', 'border-gray-500')} onclick="Playground.closeMoreMenu(); Playground.resetPlayground();">
                       <span ${styles('text-color-Crimson', 'items-center', 'flex')}>${resetIcon}</span>
@@ -206,7 +195,7 @@ export function getPlayground() {
           </div>
 
           <!-- Suspended effect section (bordered) -->
-          <div ${styles('flex', 'flex-col', 'gap-2')}>
+          <div data-ref="suspended-effect-section" ${styles('flex', 'flex-col', 'gap-2')}>
             <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Suspended effect</span>
             <div ${styles('flex', 'flex-col', 'gap-2', 'border: 1px solid rgb(82 82 82);', 'padding: 0.75rem;')}>
               <div ${styles('flex', 'flex-col', 'gap-1', 'margin-bottom: 0.25rem;')}>
@@ -234,16 +223,16 @@ export function getPlayground() {
         </div>
       </div>
 
-      <!-- Raw snapshot JSON -->
-      <div ${styles('flex', 'flex-col', 'gap-2')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Raw Snapshot</span>
-        <div class="example-code" ${styles('position: relative;')}>
+      <!-- Raw snapshot JSON (collapsible) -->
+      <details>
+        <summary ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'cursor: pointer;', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Raw Snapshot</summary>
+        <div class="example-code" ${styles('position: relative;', 'margin-top: 0.5rem;')}>
           <pre data-ref="raw-json" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'p-2', 'text-sm', 'font-mono', 'overflow: auto;', 'max-height: 16rem;', 'white-space: pre;', 'border: none;', 'margin: 0;')}></pre>
           <div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>
             <div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} data-ref="copy-raw-btn">${copyIcon}</div>
           </div>
         </div>
-      </div>
+      </details>
 
       <!-- Buttons -->
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
@@ -266,7 +255,7 @@ export function getPlayground() {
   </template>
 
   <div id="snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div id="snapshot-panel-container" ${styles('bg-gray-800', 'border-0', 'border-solid', 'border-gray-600', 'min-width: 36rem;', 'max-width: 64rem;', 'max-height: 85vh;', 'border-width: 1px;', 'position: relative;', 'clip-path: inset(0);', 'border-top: 2px solid #e6c07b;')}>
+    <div id="snapshot-panel-container" ${styles('bg-gray-800', 'border-0', 'border-solid', 'border-gray-600', 'width: 42rem;', 'max-width: calc(100vw - 2rem);', 'max-height: 85vh;', 'border-width: 1px;', 'position: relative;', 'clip-path: inset(0);', 'border-top: 2px solid #e6c07b;')}>
     </div>
   </div>
 
@@ -360,7 +349,7 @@ export function getPlayground() {
       <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Import Snapshot</div>
       <div ${styles('flex', 'flex-col', 'gap-1')}>
         <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Paste snapshot JSON</span>
-        <textarea id="import-snapshot-textarea" rows="12" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono')} spellcheck="false" placeholder='{"effectName": "...", ...}'></textarea>
+        <textarea id="import-snapshot-textarea" rows="12" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono')} spellcheck="false"></textarea>
         <span id="import-snapshot-error" ${styles('text-color-Rose', 'text-xs', 'hidden')}></span>
       </div>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>

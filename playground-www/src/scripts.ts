@@ -94,7 +94,6 @@ const elements = {
   resizeDevider1: document.getElementById('resize-divider-1') as HTMLElement,
   resizeDevider2: document.getElementById('resize-divider-2') as HTMLElement,
   resizeSidebar: document.getElementById('resize-sidebar') as HTMLElement,
-  toggleDebugMenuLabel: document.getElementById('toggle-debug-menu-label') as HTMLSpanElement,
   dvalaPanelDebugInfo: document.getElementById('dvala-panel-debug-info') as HTMLDivElement,
   contextUndoButton: document.getElementById('context-undo-button') as HTMLAnchorElement,
   contextRedoButton: document.getElementById('context-redo-button') as HTMLAnchorElement,
@@ -246,6 +245,15 @@ export function showSnapshotsPage() {
   showPage('snapshots-page', 'smooth')
 }
 
+function notifySnapshotAdded() {
+  const snapshotsPage = document.getElementById('snapshots-page')
+  if (snapshotsPage?.classList.contains('active-content')) return
+  const indicator = document.getElementById('snapshots-nav-indicator')
+  if (indicator) indicator.style.display = 'inline-block'
+  const navLink = document.getElementById('snapshots-nav-link')
+  if (navLink) navLink.style.color = 'rgb(245 245 245)'
+}
+
 interface SavedSnapshot {
   kind: 'saved'
   snapshot: Snapshot
@@ -381,7 +389,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     titlePrefix = ''
     message = snapshot.message
     detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
-    borderColor = entry.resultType === 'error' ? '#d16969' : '#4ec9b0'
+    borderColor = entry.resultType === 'error' ? '#d16969' : '#4db36e'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
       { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
@@ -397,7 +405,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     titlePrefix = entry.locked ? `<span style="color: rgb(234 179 8); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
     message = getSnapshotDisplayMessage(snapshot)
     detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
-    borderColor = 'rgb(107 114 128)'
+    borderColor = isCompleted ? ((snapshot.meta as { error?: unknown } | undefined)?.error ? '#d16969' : '#4db36e') : 'rgb(107 114 128)'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
       { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
@@ -411,7 +419,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
   return `
     <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='rgb(52 52 52)'" onmouseout="this.style.background='rgb(46 46 46)'">
       <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
-        <div style="font-size: 1rem; color: rgb(209 213 219); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}</div>
+        <div style="font-size: 1rem; color: rgb(209 213 219); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}${entry.kind === 'saved' && snapshot.terminal !== true ? '<span style="font-size: 0.65rem; color: rgb(100 100 100); font-family: sans-serif; font-weight: bold; letter-spacing: 0.05em;">SUSPENDED</span>' : ''}</div>
         <div style="font-size: 0.8rem; color: rgb(140 140 140);">${escapeHtml(message)}</div>
         ${detailLine}
       </div>
@@ -443,7 +451,6 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
   const { animateNewTerminal = false, animateNewSaved = false } = options
   const list = document.getElementById('snapshots-list')
   const empty = document.getElementById('snapshots-empty')
-  const content = document.getElementById('snapshots-content')
   const clearBtn = document.getElementById('snapshots-clear-all')
   if (!list || !empty) return
 
@@ -454,19 +461,18 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
   if (!hasContent) {
     list.innerHTML = ''
     empty.style.display = 'block'
-    if (content) content.style.display = 'none'
+    if (clearBtn) clearBtn.style.visibility = 'hidden'
     return
   }
 
   empty.style.display = 'none'
-  if (content) content.style.display = 'flex'
   if (clearBtn) clearBtn.style.visibility = terminalEntries.length > 0 || savedEntries.some(e => !e.locked) ? 'visible' : 'hidden'
 
   const cards: string[] = []
 
   // Terminal snapshots with group label
   if (terminalEntries.length > 0) {
-    cards.push(renderGroupLabel('Completed Runs'))
+    cards.push(renderGroupLabel('Completed Programs'))
     terminalEntries.forEach((entry, index) => {
       // Only animate the first (newest) terminal entry if animateNewTerminal is true
       cards.push(renderSnapshotCard(entry, index, animateNewTerminal && index === 0))
@@ -517,12 +523,14 @@ export function saveTerminalSnapshotToSaved(index: number) {
   if (!entry) return
   promptSnapshotName(async name => {
     const savedEntries = getSavedSnapshots()
-    savedEntries.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
-    setSavedSnapshots(savedEntries)
+    const deduped = savedEntries.filter(e => e.snapshot.id !== entry.snapshot.id)
+    deduped.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
+    setSavedSnapshots(deduped)
+    notifySnapshotAdded()
     // Animate removal from terminal snapshots
     await animateCardRemoval('terminal', index)
     entries.splice(index, 1)
-    localStorage.setItem('playground-terminal-snapshots', JSON.stringify(entries))
+    localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
     populateSnapshotsList({ animateNewSaved: true })
     showToast('Snapshot saved')
   })
@@ -672,14 +680,10 @@ export function closeAddContextMenu() {
 }
 
 export function share() {
-  addOutputSeparator()
-  appendOutput('Sharable link:', 'comment')
   const href = `${location.origin}${location.pathname}?state=${encodeState()}`
-  const a = document.createElement('a')
-  a.textContent = href
-  a.className = 'share-link'
-  a.href = href
-  addOutputElement(a)
+  void navigator.clipboard.writeText(href).then(() => {
+    showToast('Link copied to clipboard')
+  })
 }
 
 function onDocumentClick(event: Event) {
@@ -760,7 +764,7 @@ export function resetPlayground() {
     setSavedSnapshots(lockedSnapshots)
   }
   // Clear terminal snapshots (recent runs)
-  localStorage.removeItem('playground-terminal-snapshots')
+  localStorage.removeItem(TERMINAL_SNAPSHOTS_KEY)
   populateSnapshotsList()
 
   resetContext()
@@ -1452,10 +1456,10 @@ export async function run() {
       const content = stringifyValue(result, false)
       appendOutput(content, 'result')
     } else {
-      // Always keep time travel enabled to ensure terminal snapshots are created
+      const disableAutoCheckpoint = getState('disable-auto-checkpoint')
       const runResult = await getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, disableTimeTravel: false }
-        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableTimeTravel: false },
+        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint }
+        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint },
       )
       if (runResult.type === 'error') {
         if (runResult.snapshot) {
@@ -1585,48 +1589,41 @@ export function format() {
 }
 
 export function toggleDebug() {
-  const debug = !getState('debug')
-  saveState({ debug })
+  saveState({ debug: !getState('debug') })
   updateCSS()
-  showToast(`Debug mode ${debug ? 'ON' : 'OFF'}`)
   focusDvalaCode()
 }
 
 export function togglePure() {
-  const pure = !getState('pure')
-  saveState({ pure })
+  saveState({ pure: !getState('pure') })
   updateCSS()
-  showToast(`Pure mode ${pure ? 'ON' : 'OFF'}`)
   focusDvalaCode()
 }
 
 export function toggleSync() {
-  const sync = !getState('sync')
-  saveState({ sync })
+  saveState({ sync: !getState('sync') })
   updateCSS()
-  showToast(`Synchronous mode ${sync ? 'ON' : 'OFF'}`)
   focusDvalaCode()
 }
 
 export function toggleInterceptCheckpoint() {
-  const intercept = !getState('intercept-checkpoint')
-  saveState({ 'intercept-checkpoint': intercept })
+  saveState({ 'intercept-checkpoint': !getState('intercept-checkpoint') })
   updateCSS()
-  showToast(`Checkpoint interception ${intercept ? 'ON' : 'OFF'}`)
+}
+
+export function toggleInterceptError() {
+  saveState({ 'intercept-error': !getState('intercept-error') })
+  updateCSS()
 }
 
 export function toggleDisablePlaygroundHandlers() {
-  const disableHandlers = !getState('disable-playground-handlers')
-  saveState({ 'disable-playground-handlers': disableHandlers })
+  saveState({ 'disable-playground-handlers': !getState('disable-playground-handlers') })
   updateCSS()
-  showToast(`Playground handlers ${disableHandlers ? 'disabled' : 'enabled'}`)
 }
 
-export function toggleTimeTravel() {
-  const disabled = !getState('disable-time-travel')
-  saveState({ 'disable-time-travel': disabled })
+export function toggleAutoCheckpoint() {
+  saveState({ 'disable-auto-checkpoint': !getState('disable-auto-checkpoint') })
   updateCSS()
-  showToast(`Time travel ${disabled ? 'disabled' : 'enabled'}`)
 }
 
 export function focusContext() {
@@ -1814,8 +1811,9 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   const techEl = ref('tech')
   techEl.innerHTML = ''
   const techRows: [string, string][] = [
+    ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
-    ['Run ID', snapshot.runId],
+    ['Run ID', snapshot.executionId],
     ['Timestamp', (() => {
       const d = new Date(snapshot.timestamp)
       const pad = (n: number) => String(n).padStart(2, '0')
@@ -1883,6 +1881,19 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       info.appendChild(ts)
 
       card.appendChild(info)
+
+      const playIcon = document.createElement('span')
+      playIcon.innerHTML = ICONS.play
+      playIcon.style.cssText = 'margin-left:auto; flex-shrink:0; font-size:1.1rem; color:rgb(163 163 163); transition:color 0.15s ease;'
+      playIcon.addEventListener('mouseenter', () => { playIcon.style.color = 'rgb(245 245 245)' })
+      playIcon.addEventListener('mouseleave', () => { playIcon.style.color = 'rgb(163 163 163)' })
+      playIcon.addEventListener('click', evt => {
+        evt.stopPropagation()
+        currentSnapshot = cpSnapshot
+        void resumeSnapshot()
+      })
+      card.appendChild(playIcon)
+
       checkpointsEl.appendChild(card)
     })
   }
@@ -1986,7 +1997,7 @@ let resolveImportSnapshotModal: (() => void) | null = null
 
 export function openImportSnapshotModal(): Promise<void> {
   elements.importSnapshotTextarea.value = ''
-  elements.importSnapshotError.classList.add('hidden')
+  elements.importSnapshotError.style.display = 'none'
   elements.importSnapshotModal.style.display = 'flex'
   elements.importSnapshotTextarea.focus()
 
@@ -2005,18 +2016,34 @@ export function importSnapshot() {
   const text = elements.importSnapshotTextarea.value.trim()
   if (!text) {
     elements.importSnapshotError.textContent = 'Please paste a snapshot JSON'
-    elements.importSnapshotError.classList.remove('hidden')
+    elements.importSnapshotError.style.display = ''
     return
   }
+  let parsed: unknown
   try {
-    const snapshot = JSON.parse(text) as Snapshot
-    closeImportSnapshotModal()
-    showToast('Snapshot imported')
-    void openSnapshotModal(snapshot)
+    parsed = JSON.parse(text)
   } catch {
-    elements.importSnapshotError.textContent = 'Invalid JSON'
-    elements.importSnapshotError.classList.remove('hidden')
+    elements.importSnapshotError.textContent = 'Invalid JSON — could not parse'
+    elements.importSnapshotError.style.display = ''
+    return
   }
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('id' in parsed) ||
+    !('continuation' in parsed) ||
+    !('timestamp' in parsed) ||
+    !('index' in parsed) ||
+    !('executionId' in parsed) ||
+    !('message' in parsed)
+  ) {
+    elements.importSnapshotError.textContent = 'Not a valid snapshot object'
+    elements.importSnapshotError.style.display = ''
+    return
+  }
+  closeImportSnapshotModal()
+  showToast('Snapshot imported')
+  void openSnapshotModal(parsed as Snapshot)
 }
 
 const TOAST_DURATION = 4_000
@@ -2116,8 +2143,9 @@ export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
   const pad = (n: number) => String(n).padStart(2, '0')
   const d = new Date(snapshot.timestamp)
   const techRows: [string, string][] = [
+    ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
-    ['Run ID', snapshot.runId],
+    ['Run ID', snapshot.executionId],
     ['Timestamp', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`],
   ]
   techRows.forEach(([label, value]) => {
@@ -2163,13 +2191,15 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
     resultType,
     result,
   }
-  const entries = getTerminalSnapshots()
+  const entries = getTerminalSnapshots().filter(e => e.snapshot.id !== snapshot.id)
   entries.unshift(entry) // Add to front (most recent first)
   if (entries.length > MAX_TERMINAL_SNAPSHOTS) {
     entries.length = MAX_TERMINAL_SNAPSHOTS
   }
   localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+  notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
+  showToast(resultType === 'error' ? 'Program failed — snapshot captured' : 'Program completed — snapshot captured')
 }
 
 function getTerminalSnapshots(): TerminalSnapshotEntry[] {
@@ -2210,9 +2240,10 @@ export function saveCheckpoint() {
     return
   const snapshot = currentCheckpointSnapshot
   promptSnapshotName(name => {
-    const existing = getSavedSnapshots()
+    const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
+    notifySnapshotAdded()
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Checkpoint saved (${existing.length} total)`)
   })
@@ -2285,9 +2316,10 @@ export function saveSnapshot() {
     return
   const snapshot = currentSnapshot
   promptSnapshotName(name => {
-    const existing = getSavedSnapshots()
+    const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
+    notifySnapshotAdded()
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Snapshot saved (${existing.length} total)`)
   })
@@ -2303,19 +2335,19 @@ export async function resumeSnapshot() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    // Always keep time travel enabled to ensure terminal snapshots are created
+    const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = snapshot.effectName
       ? await retrigger(snapshot, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        disableTimeTravel: false,
+        disableAutoCheckpoint,
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
-        disableTimeTravel: false,
+        disableAutoCheckpoint,
       })
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
@@ -2359,6 +2391,10 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
         await openCheckpointModal(snapshot)
       }
     }
+    ctx.next()
+    return
+  }
+  if (ctx.effectName.startsWith('dvala.error') && !getState('intercept-error')) {
     ctx.next()
     return
   }
@@ -2806,7 +2842,6 @@ function applyState(scrollToTop = false) {
 
 function updateCSS() {
   const debug = getState('debug')
-  elements.toggleDebugMenuLabel.textContent = debug ? 'Debug: ON' : 'Debug: OFF'
   elements.dvalaPanelDebugInfo.style.display = debug ? 'flex' : 'none'
 
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
@@ -2823,6 +2858,13 @@ function updateCSS() {
   const disableHandlers = getState('disable-playground-handlers')
   const disabled = sync || pure
   const checkpointDisabled = disabled || disableHandlers
+  const interceptErrorToggle = document.getElementById('settings-intercept-error-toggle') as HTMLInputElement | null
+  if (interceptErrorToggle) {
+    interceptErrorToggle.checked = !checkpointDisabled && getState('intercept-error')
+    interceptErrorToggle.disabled = checkpointDisabled
+    interceptErrorToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', checkpointDisabled)
+    interceptErrorToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', checkpointDisabled)
+  }
   const checkpointToggle = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
   if (checkpointToggle) {
     checkpointToggle.checked = !checkpointDisabled && getState('intercept-checkpoint')
@@ -2837,13 +2879,13 @@ function updateCSS() {
     disableHandlersToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
     disableHandlersToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
-  const timeTravelToggle = document.getElementById('settings-time-travel-toggle') as HTMLInputElement | null
-  if (timeTravelToggle) {
-    // Checkbox is "Disable time travel" so checked = disabled
-    timeTravelToggle.checked = !disabled && getState('disable-time-travel')
-    timeTravelToggle.disabled = disabled
-    timeTravelToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
-    timeTravelToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
+  if (autoCheckpointToggle) {
+    // Checkbox is "Disable auto checkpoint" so checked = disabled
+    autoCheckpointToggle.checked = !disabled && getState('disable-auto-checkpoint')
+    autoCheckpointToggle.disabled = disabled
+    autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
+    autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
@@ -2868,8 +2910,13 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
 
     page.classList.add('active-content')
-    if (id === 'snapshots-page')
+    if (id === 'snapshots-page') {
       populateSnapshotsList()
+      const indicator = document.getElementById('snapshots-nav-indicator')
+      if (indicator) indicator.style.display = 'none'
+      const navLink = document.getElementById('snapshots-nav-link')
+      if (navLink) navLink.style.color = ''
+    }
     if (link) {
       link.classList.add('active-sidebar-entry')
 

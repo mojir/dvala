@@ -11,7 +11,7 @@
  *  2. resumeFrom across suspend/resume boundaries
  *  3. Checkpoint inside nested do/with scopes + suspend
  *  4. maxSnapshots across suspend/resume boundaries
- *  5. runId consistency across runs and resumes
+ *  5. executionId consistency across runs and resumes
  *  6. Mixed dvala.checkpoint and ctx.checkpoint ordering
  *  7. resumeFrom during resumed execution (post-resume checkpoints)
  *  8. Multiple rollbacks to the same checkpoint
@@ -502,11 +502,11 @@ describe('auto: maxSnapshots across suspend/resume', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 5. runId consistency
+// 5. executionId consistency
 // ---------------------------------------------------------------------------
 
-describe('auto: runId consistency', () => {
-  it('checkpoints within one run share the same runId', async () => {
+describe('auto: executionId consistency', () => {
+  it('checkpoints within one run share the same executionId', async () => {
     let capturedSnapshots: readonly Snapshot[] = []
 
     await dvala.runAsync(`
@@ -523,17 +523,17 @@ describe('auto: runId consistency', () => {
       ],
     })
     expect(capturedSnapshots.length).toBe(3)
-    const runIds = capturedSnapshots.map(s => (s).runId)
-    expect(runIds[0]).toBe(runIds[1])
-    expect(runIds[1]).toBe(runIds[2])
-    // runId should be a non-empty string
-    expect(typeof runIds[0]).toBe('string')
-    expect((runIds[0] as string).length).toBeGreaterThan(0)
+    const executionIds = capturedSnapshots.map(s => (s).executionId)
+    expect(executionIds[0]).toBe(executionIds[1])
+    expect(executionIds[1]).toBe(executionIds[2])
+    // executionId should be a non-empty string
+    expect(typeof executionIds[0]).toBe('string')
+    expect((executionIds[0] as string).length).toBeGreaterThan(0)
   })
 
-  it('suspension snapshot has a different runId from checkpoints in the same run', async () => {
+  it('suspension snapshot has a different executionId from checkpoints in the same run', async () => {
     // Suspension snapshot is created by the effect loop, not inside the snapshotState
-    // The suspension itself consumes an index but gets a runId from snapshotState
+    // The suspension itself consumes an index but gets a executionId from snapshotState
     const handlers: Handlers = [
       { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
     ]
@@ -546,14 +546,14 @@ describe('auto: runId consistency', () => {
     if (r1.type !== 'suspended')
       return
 
-    // The suspension snapshot's runId should match the same run's checkpoints
+    // The suspension snapshot's executionId should match the same run's checkpoints
     // because it was created by the same runEffectLoop call
-    expect(typeof r1.snapshot.runId).toBe('string')
-    expect(r1.snapshot.runId.length).toBeGreaterThan(0)
+    expect(typeof r1.snapshot.executionId).toBe('string')
+    expect(r1.snapshot.executionId.length).toBeGreaterThan(0)
   })
 
-  it('resume creates a new runId for new checkpoints', async () => {
-    let runIdsSeen: string[] = []
+  it('resume creates a new executionId for new checkpoints', async () => {
+    let executionIdsSeen: string[] = []
     const handlers: Handlers = [
       { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
     ]
@@ -567,7 +567,7 @@ describe('auto: runId consistency', () => {
     `, { effectHandlers: [
       ...handlers,
       { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
-        runIdsSeen = snapshots.map(s => (s).runId)
+        executionIdsSeen = snapshots.map(s => (s).executionId)
         r(null)
       } },
     ] })
@@ -578,16 +578,16 @@ describe('auto: runId consistency', () => {
     const r2 = await resumeContinuation(r1.snapshot, 42, {
       handlers: [
         { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
-          runIdsSeen = snapshots.map(s => (s).runId)
+          executionIdsSeen = snapshots.map(s => (s).executionId)
           r(null)
         } },
       ],
     })
     expect(r2.type).toBe('completed')
     // Two checkpoints: step 1 from original run, step 2 from resumed run
-    expect(runIdsSeen.length).toBe(2)
-    // They should have different runIds since they're from different runs
-    expect(runIdsSeen[0]).not.toBe(runIdsSeen[1])
+    expect(executionIdsSeen.length).toBe(2)
+    // They should have different executionIds since they're from different runs
+    expect(executionIdsSeen[0]).not.toBe(executionIdsSeen[1])
   })
 })
 
@@ -985,7 +985,7 @@ describe('auto: ctx.checkpoint return value', () => {
     expect(returnedSnapshot!.meta).toEqual({ label: 'test' })
     expect(typeof returnedSnapshot!.timestamp).toBe('number')
     expect(typeof returnedSnapshot!.index).toBe('number')
-    expect(typeof returnedSnapshot!.runId).toBe('string')
+    expect(typeof returnedSnapshot!.executionId).toBe('string')
     expect(returnedSnapshot!.continuation).toBeDefined()
   })
 

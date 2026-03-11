@@ -17,7 +17,12 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { resume as resumeContinuation } from '../src/resume'
+import { resume as baseResume } from '../src/resume'
+import type { ResumeOptions } from '../src/resume'
+// Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
+function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
+  return baseResume(snapshot, value, { disableAutoCheckpoint: true, ...options })
+}
 import type { Snapshot } from '../src/evaluator/effectTypes'
 import { allStandardEffectDefinitions, standardEffectNames } from '../src/evaluator/standardEffects'
 import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'

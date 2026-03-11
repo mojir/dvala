@@ -136,7 +136,13 @@ export function getSideBar() {
     ${menuLink(infoIcon, 'About', 'Playground.showPage(\'about-page\', \'smooth\')')}
     ${menuLink(lampIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
     ${menuLink(labIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
-    ${menuLink(cameraIcon, 'Snapshots', 'Playground.showSnapshotsPage()')}
+    <div onclick="Playground.showSnapshotsPage()" ${styles('flex', 'mb-2', 'text-base', 'cursor-pointer')}>
+      <a id="snapshots-nav-link" ${styles('flex', 'items-center', 'gap-1')} class="link">
+        <span ${styles('font-size: 1.2em;', 'flex', 'items-center')}>${cameraIcon}</span>
+        <span>Snapshots</span>
+        <span id="snapshots-nav-indicator" style="display:none; width:7px; height:7px; border-radius:50%; background:#4db36e; margin-left:4px; margin-bottom:6px; flex-shrink:0;"></span>
+      </a>
+    </div>
     ${menuLink(gearIcon, 'Settings', 'Playground.showPage(\'settings-page\', \'smooth\')')}
 
     <!-- API Reference -->

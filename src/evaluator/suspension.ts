@@ -235,6 +235,46 @@ export function serializeSuspensionBlob(
   return base
 }
 
+/**
+ * Create a terminal snapshot for completed or errored program states.
+ * The continuation is empty (cannot resume), but checkpoints are preserved
+ * for time travel debugging.
+ */
+export function serializeTerminalSnapshot(
+  snapshots: unknown[],
+  nextSnapshotIndex: number,
+): SuspensionBlobData {
+  const base: SuspensionBlobData = {
+    version: SUSPENSION_VERSION,
+    contextStacks: [],
+    k: [], // Empty continuation - terminal state, cannot resume
+  }
+
+  if (snapshots.length > 0) {
+    base.snapshots = snapshots
+
+    // Run dedup across all snapshot data to reduce size
+    const roots: unknown[] = []
+    for (const snapshot of snapshots) {
+      roots.push(snapshot)
+    }
+
+    const { roots: dedupedRoots, pool } = dedupSubTrees(roots, DEFAULT_DEDUP_THRESHOLD)
+
+    for (let i = 0; i < base.snapshots.length; i++) {
+      base.snapshots[i] = dedupedRoots[i]
+    }
+
+    if (Object.keys(pool).length > 0) {
+      base.pool = pool
+    }
+  }
+
+  base.nextSnapshotIndex = nextSnapshotIndex
+
+  return base
+}
+
 // ---------------------------------------------------------------------------
 // Deserialize
 // ---------------------------------------------------------------------------

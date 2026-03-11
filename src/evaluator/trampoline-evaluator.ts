@@ -77,7 +77,7 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, effectNameMatchesPattern, findMatchingHandlers, generateRunId, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, effectNameMatchesPattern, findMatchingHandlers, generateUUID, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -2189,14 +2189,14 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
     const message = args[0] as string
     const meta = args[1] as Any | undefined
     const continuation = serializeToObject(k)
-    const snapshot: Snapshot = {
+    const snapshot = createSnapshot({
       continuation,
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex++,
-      runId: snapshotState.runId,
+      executionId: snapshotState.executionId,
       message,
       ...(meta !== undefined ? { meta } : {}),
-    }
+    })
     snapshotState.snapshots.push(snapshot)
     if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
       snapshotState.snapshots.shift()
@@ -2395,14 +2395,14 @@ function dispatchHostHandler(
           throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
         const continuation = serializeToObject(k)
-        const snapshot: Snapshot = {
+        const snapshot = createSnapshot({
           continuation,
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
-          runId: snapshotState.runId,
+          executionId: snapshotState.executionId,
           message,
           ...(meta !== undefined ? { meta } : {}),
-        }
+        })
         snapshotState.snapshots.push(snapshot)
         if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
           snapshotState.snapshots.shift()
@@ -2416,7 +2416,7 @@ function dispatchHostHandler(
         if (!snapshotState) {
           throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
         }
-        const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.runId === snapshot.runId)
+        const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.executionId === snapshot.executionId)
         if (!found) {
           throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
         }
@@ -3915,16 +3915,16 @@ async function retriggerParallelGroup(
       if (isSuspensionSignal(error)) {
         parallelAbort.abort()
         const continuation = serializeSuspensionBlob(error.k, error.snapshots, error.nextSnapshotIndex, error.meta)
-        const snapshot: Snapshot = {
+        const snapshot = createSnapshot({
           continuation,
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
-          runId: snapshotState.runId,
+          executionId: snapshotState.executionId,
           message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,
-        }
+        })
         return { index: currentBranchIndex, result: { type: 'suspended', snapshot } }
       }
       const err = error instanceof DvalaError ? error : new DvalaError(`${error}`, undefined)
@@ -3991,16 +3991,16 @@ async function retriggerParallelGroup(
     }
     const resumeK: ContinuationStack = [newFrame, ...outerK]
     const continuation = serializeSuspensionBlob(resumeK, snapshotState.snapshots, snapshotState.nextSnapshotIndex, firstSuspended.snapshot.meta)
-    const snapshot: Snapshot = {
+    const snapshot = createSnapshot({
       continuation,
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex++,
-      runId: snapshotState.runId,
+      executionId: snapshotState.executionId,
       message: SUSPENDED_MESSAGE,
       meta: firstSuspended.snapshot.meta,
       effectName: firstSuspended.snapshot.effectName,
       effectArgs: firstSuspended.snapshot.effectArgs,
-    }
+    })
     return { type: 'suspended', snapshot }
   }
 
@@ -4037,7 +4037,7 @@ export async function retriggerWithEffects(
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState?.snapshots ?? [],
     nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
-    runId: generateRunId(),
+    executionId: generateUUID(),
     maxSnapshots: initialSnapshotState?.maxSnapshots,
     autoCheckpoint: initialSnapshotState?.autoCheckpoint,
   }
@@ -4073,16 +4073,16 @@ export async function retriggerWithEffects(
         error.nextSnapshotIndex,
         error.meta,
       )
-      const snapshot: Snapshot = {
+      const snapshot = createSnapshot({
         continuation,
         timestamp: Date.now(),
         index: snapshotState.nextSnapshotIndex++,
-        runId: snapshotState.runId,
+        executionId: snapshotState.executionId,
         message: SUSPENDED_MESSAGE,
         meta: error.meta,
         effectName: error.effectName,
         effectArgs: error.effectArgs,
-      }
+      })
       return { type: 'suspended', snapshot }
     }
     if (error instanceof DvalaError)
@@ -4117,7 +4117,7 @@ async function runEffectLoop(
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
-    runId: generateRunId(),
+    executionId: generateUUID(),
     ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
     ...(autoCheckpoint ? { autoCheckpoint } : {}),
   }
@@ -4141,15 +4141,15 @@ async function runEffectLoop(
       meta.result = options.result
     }
     const message = options?.error ? 'Run failed with error' : 'Run completed successfully'
-    return {
+    return createSnapshot({
       continuation,
       timestamp: Date.now(),
       index: snapshotState.nextSnapshotIndex,
-      runId: snapshotState.runId,
+      executionId: snapshotState.executionId,
       message,
       terminal: true,
       ...(Object.keys(meta).length > 0 ? { meta } : {}),
-    }
+    })
   }
 
   for (;;) {
@@ -4200,16 +4200,16 @@ async function runEffectLoop(
           error.nextSnapshotIndex,
           error.meta,
         )
-        const snapshot: Snapshot = {
+        const snapshot = createSnapshot({
           continuation,
           timestamp: Date.now(),
           index: snapshotState.nextSnapshotIndex++,
-          runId: snapshotState.runId,
+          executionId: snapshotState.executionId,
           message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
           effectArgs: error.effectArgs,
-        }
+        })
         return { type: 'suspended', snapshot }
       }
       if (error instanceof DvalaError) {

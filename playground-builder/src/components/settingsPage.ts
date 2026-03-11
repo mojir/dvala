@@ -41,6 +41,42 @@ export function getSettingsPage(): string {
           </label>
         </div>
 
+        <!-- Auto checkpoint toggle -->
+        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
+          <div ${styles('flex', 'flex-col')}>
+            <span ${styles('text-lg')}>Disable auto checkpoint</span>
+            <span ${styles('text-sm', 'text-color-gray-400')}>When enabled, the runtime automatically captures snapshots before every effect, enabling crash recovery and step-back debugging. Explicit <code>dvala.checkpoint</code> effects are always recorded regardless of this setting.</span>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-auto-checkpoint-toggle" onclick="Playground.toggleAutoCheckpoint()">
+            <span class="settings-toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Disable playground handlers toggle -->
+        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
+          <div ${styles('flex', 'flex-col')}>
+            <span ${styles('text-lg')}>Disable Playground effect handlers</span>
+            <span ${styles('text-sm', 'text-color-gray-400')}>Disables all built-in playground effect handlers (read-line dialogs, checkpoint interception, etc). Only context-defined handlers will run.</span>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-disable-handlers-toggle" onclick="Playground.toggleDisablePlaygroundHandlers()">
+            <span class="settings-toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Error effect interception toggle -->
+        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
+          <div ${styles('flex', 'flex-col')}>
+            <span ${styles('text-lg')}>Intercept error effect</span>
+            <span ${styles('text-sm', 'text-color-gray-400')}>When enabled, dvala.error effects are intercepted and shown in the effect panel. When disabled, errors propagate normally as run errors.</span>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-intercept-error-toggle" onclick="Playground.toggleInterceptError()">
+            <span class="settings-toggle-slider"></span>
+          </label>
+        </div>
+
         <!-- Checkpoint interception toggle -->
         <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
           <div ${styles('flex', 'flex-col')}>
@@ -49,18 +85,6 @@ export function getSettingsPage(): string {
           </div>
           <label class="settings-toggle">
             <input type="checkbox" id="settings-checkpoint-toggle" onclick="Playground.toggleInterceptCheckpoint()">
-            <span class="settings-toggle-slider"></span>
-          </label>
-        </div>
-
-        <!-- Auto-checkpoint toggle -->
-        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
-          <div ${styles('flex', 'flex-col')}>
-            <span ${styles('text-lg')}>Disable auto-checkpoint</span>
-            <span ${styles('text-sm', 'text-color-gray-400')}>Auto-checkpoint is enabled by default, capturing a snapshot before each effect. Check to disable.</span>
-          </div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="settings-auto-checkpoint-toggle" onclick="Playground.toggleAutoCheckpoint()">
             <span class="settings-toggle-slider"></span>
           </label>
         </div>
