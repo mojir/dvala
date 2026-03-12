@@ -1,3 +1,4 @@
+import { downloadIcon, linkIcon, trashIcon, uploadIcon } from '../icons'
 import { styles } from '../styles'
 import { pageLayout } from './pageLayout'
 
@@ -67,63 +68,58 @@ export function getSettingsPage(): string {
     <div id="settings-tab-actions" class="settings-tab-content">
       <p ${styles('text-sm', 'text-color-gray-500', 'm-0')}>Manage playground data and storage. Reset or clear data, export and import, or share a link.</p>
 
-      <!-- Storage usage -->
-      <div ${styles('flex', 'flex-col', 'gap-2')}>
-        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
-          <div ${styles('flex', 'flex-col')}>
-            <span ${styles('text-lg')}>Storage usage</span>
-            <span ${styles('text-sm', 'text-color-gray-400')}>Amount of browser localStorage used by the playground.</span>
-          </div>
-          <span id="settings-storage-usage" ${styles('text-sm', 'text-color-gray-400')}></span>
-        </div>
-        <div ${styles('width: 100%;', 'height: 6px;', 'border-radius: 3px;', 'overflow: hidden;', 'background-color: #374151;')}>
-          <div id="settings-storage-bar" ${styles('height: 100%;', 'background-color: #6b7280;', 'width: 0%;', 'border-radius: 3px;', 'transition: width 0.3s ease;')}></div>
-        </div>
-      </div>
-
-      <!-- Reset Playground -->
+      <!-- Share -->
       <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
         <div ${styles('flex', 'flex-col')}>
-          <span ${styles('text-lg')}>Reset playground</span>
-          <span ${styles('text-sm', 'text-color-gray-400')}>Resets code, context, output panels and layout to their default state. Snapshots are kept.</span>
+          <span>Share</span>
+          <span ${styles('text-sm', 'text-color-gray-400', 'max-width: 32rem;')}>Copy a shareable link to the clipboard with the current code and context encoded in the URL.</span>
         </div>
-        <button class="button" onclick="Playground.showConfirmModal('Reset playground', 'This will reset the code, context, and output panels, and restore the default layout. Snapshots will not be affected.', Playground.resetPlayground)" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Reset</button>
-      </div>
-
-      <!-- Clear Data -->
-      <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
-        <div ${styles('flex', 'flex-col')}>
-          <span ${styles('text-lg')}>Clear all data</span>
-          <span ${styles('text-sm', 'text-color-gray-400')}>Wipes all playground data from localStorage, including unlocked snapshots.</span>
-        </div>
-        <button class="button" onclick="Playground.showClearDataModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Clear</button>
-      </div>
-
-      <!-- Export -->
-      <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
-        <div ${styles('flex', 'flex-col')}>
-          <span ${styles('text-lg')}>Export</span>
-          <span ${styles('text-sm', 'text-color-gray-400', 'max-width: 32rem;')}>Download all playground data as a JSON file. Includes snapshots, code, context, and settings.</span>
-        </div>
-        <button class="button" onclick="Playground.exportPlayground()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Export</button>
+        <button class="button" onclick="Playground.share()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'min-width: 8rem;', 'padding: 0.5rem 0.75rem;', 'flex', 'items-center', 'justify-content: center;', 'gap: 0.4rem;')}>${linkIcon}Copy link</button>
       </div>
 
       <!-- Import -->
       <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
         <div ${styles('flex', 'flex-col')}>
-          <span ${styles('text-lg')}>Import</span>
+          <span>Import</span>
           <span ${styles('text-sm', 'text-color-gray-400', 'max-width: 32rem;')}>Restore playground data from a previously exported JSON file. Current data will be replaced.</span>
         </div>
-        <button class="button" onclick="Playground.importPlayground()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Import</button>
+        <button class="button" onclick="Playground.importPlayground()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'min-width: 8rem;', 'padding: 0.5rem 0.75rem;', 'flex', 'items-center', 'justify-content: center;', 'gap: 0.4rem;')}>${uploadIcon}Import</button>
       </div>
 
-      <!-- Share -->
+      <!-- Export -->
       <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
         <div ${styles('flex', 'flex-col')}>
-          <span ${styles('text-lg')}>Share</span>
-          <span ${styles('text-sm', 'text-color-gray-400', 'max-width: 32rem;')}>Copy a shareable link to the clipboard with the current code and context encoded in the URL.</span>
+          <span>Export</span>
+          <span ${styles('text-sm', 'text-color-gray-400', 'max-width: 32rem;')}>Download all playground data as a JSON file. Includes snapshots, code, context, and settings.</span>
         </div>
-        <button class="button" onclick="Playground.share()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Copy link</button>
+        <button class="button" onclick="Playground.exportPlayground()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'min-width: 8rem;', 'padding: 0.5rem 0.75rem;', 'flex', 'items-center', 'justify-content: center;', 'gap: 0.4rem;')}>${downloadIcon}Export</button>
+      </div>
+
+      <!-- Storage section -->
+      <div ${styles('flex', 'flex-col', 'gap-3')}>
+        <div ${styles('text-sm', 'text-color-gray-500', 'text-transform: uppercase;', 'letter-spacing: 0.08em;', 'padding-bottom: 0.35rem;', 'border-bottom: 1px solid rgb(82 82 82);')}>Storage</div>
+
+        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
+          <div ${styles('flex', 'flex-col')}>
+            <div ${styles('flex', 'items-center', 'gap-2')}>
+              <span>Local Storage</span>
+              <span id="settings-storage-local" ${styles('text-sm', 'text-color-gray-500')}></span>
+            </div>
+            <span ${styles('text-sm', 'text-color-gray-400')}>Stores code, context, settings, and layout preferences.</span>
+          </div>
+          <button class="button" onclick="Playground.clearLocalStorageData()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'min-width: 8rem;', 'padding: 0.5rem 0.75rem;', 'flex', 'items-center', 'justify-content: center;', 'gap: 0.4rem;')}>${trashIcon}Clear</button>
+        </div>
+
+        <div ${styles('flex', 'justify-between', 'items-center', 'gap-4')}>
+          <div ${styles('flex', 'flex-col')}>
+            <div ${styles('flex', 'items-center', 'gap-2')}>
+              <span>IndexedDB</span>
+              <span id="settings-storage-idb" ${styles('text-sm', 'text-color-gray-500')}></span>
+            </div>
+            <span ${styles('text-sm', 'text-color-gray-400')}>Stores snapshots (saved and terminal).</span>
+          </div>
+          <button class="button" onclick="Playground.clearIndexedDbData()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'min-width: 8rem;', 'padding: 0.5rem 0.75rem;', 'flex', 'items-center', 'justify-content: center;', 'gap: 0.4rem;')}>${trashIcon}Clear</button>
+        </div>
       </div>
 
     </div>`

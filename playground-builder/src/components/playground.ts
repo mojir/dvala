@@ -16,6 +16,7 @@ import {
   trashIcon,
   treeIcon,
   undoIcon,
+  uploadIcon,
 } from '../icons'
 import { createStyles, css } from '../styles'
 
@@ -394,6 +395,100 @@ export function getPlayground() {
         </button>
         <button class="button" id="confirm-modal-ok" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
           <span>Confirm</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="import-options-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 30rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Import</div>
+      <p ${styles('text-sm', 'text-color-gray-400', 'font-sans', 'm-0')}>Select what to import. Greyed-out entries are not present in the file.</p>
+      <div ${styles('flex', 'flex-col', 'gap-2')}>
+        <label id="import-opt-code-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-code">
+          <span>Dvala code</span>
+        </label>
+        <label id="import-opt-context-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-context">
+          <span>Context</span>
+        </label>
+        <label id="import-opt-settings-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-settings">
+          <span>Settings</span>
+        </label>
+        <label id="import-opt-saved-snapshots-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-saved-snapshots">
+          <span>Saved snapshots</span>
+        </label>
+        <label id="import-opt-recent-snapshots-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-recent-snapshots">
+          <span>Recent snapshots</span>
+        </label>
+        <label id="import-opt-layout-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-layout">
+          <span>Layout</span>
+        </label>
+      </div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeImportOptionsModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Cancel</span>
+        </button>
+        <button class="button" onclick="Playground.doImport()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          ${uploadIcon}<span>Import</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="import-result-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 34rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Import complete</div>
+      <div id="import-result-content" class="fancy-scroll" ${styles('text-sm', 'font-sans', 'text-color-gray-400', 'overflow-y: auto;', 'max-height: 20rem;')}></div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeImportResultModal()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>OK</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 30rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Export</div>
+      <p ${styles('text-sm', 'text-color-gray-400', 'font-sans', 'm-0')}>Choose what to include in the export file.</p>
+      <div ${styles('flex', 'flex-col', 'gap-2')}>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-code" checked>
+          <span>Dvala code</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-context" checked>
+          <span>Context</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-settings" checked>
+          <span>Settings</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-saved-snapshots" checked>
+          <span>Saved snapshots</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-recent-snapshots">
+          <span>Recent snapshots</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-layout">
+          <span>Layout</span>
+        </label>
+      </div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.closeExportModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Cancel</span>
+        </button>
+        <button class="button" onclick="Playground.doExport()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          ${downloadIcon}<span>Export</span>
         </button>
       </div>
     </div>

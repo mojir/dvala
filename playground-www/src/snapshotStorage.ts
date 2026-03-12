@@ -85,3 +85,13 @@ export function setTerminalSnapshots(entries: TerminalSnapshotEntry[]): void {
   terminalCache = entries
   if (db) idbPut(TERMINAL_STORE, STATE_KEY, entries)
 }
+
+export function clearAll(): void {
+  savedCache = []
+  terminalCache = []
+  if (db) {
+    const tx = db.transaction([SAVED_STORE, TERMINAL_STORE], 'readwrite')
+    tx.objectStore(SAVED_STORE).clear()
+    tx.objectStore(TERMINAL_STORE).clear()
+  }
+}

@@ -207,6 +207,14 @@ button:focus {
   outline-color: rgb(82 82 82);
 }
 
+.button {
+  cursor: pointer;
+}
+
+.button:hover {
+  color: rgb(212 212 212) !important;
+}
+
 .snapshot-btn:focus {
   outline: none;
 }
