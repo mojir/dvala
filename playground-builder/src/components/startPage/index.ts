@@ -1,4 +1,4 @@
-import { infoIcon, labIcon, lampIcon, penIcon } from '../../icons'
+import { infoIcon, labIcon, lampIcon } from '../../icons'
 import { renderExample } from '../../renderExample'
 import { styles } from '../../styles'
 import startPageExample from './example.dvala'
@@ -27,10 +27,8 @@ export async function getStartPage(): Promise<string> {
         </a>
       </div>
       <div ${styles('max-width: 60rem;', 'width: 100%;')}>
+        <p ${styles('mb-0.5', 'font-size: 1rem;', 'color: #a3a3a3;')}>Here is a taste of Dvala - <a class="tutorial-nav-link" ${styles('cursor-pointer')} onclick="Playground.addToPlayground('start-page-example', '${encodedExample}')">Try it now</a></p>
         ${renderedExample}
-        <div ${styles('flex', 'justify-center', 'mt-4')}>
-          <a class="tutorial-nav-link" ${styles('text-lg', 'cursor-pointer', 'display: inline-flex;', 'align-items: center;', 'gap-2', 'px-6', 'py-3', 'border-radius: 0.5rem;', 'background-color: #404040;', 'border: 1px solid #525252;')} onclick="Playground.addToPlayground('start-page-example', '${encodedExample}')">${penIcon} Try it out</a>
-        </div>
       </div>
     </div>
   </div>
