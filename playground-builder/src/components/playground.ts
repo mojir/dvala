@@ -8,6 +8,7 @@ import {
   labIcon,
   leftAlignIcon,
   linkIcon,
+  newFileIcon,
   objectIcon,
   playIcon,
   redoIcon,
@@ -76,7 +77,6 @@ export function getPlayground() {
               </div>
               <a id="context-undo-button" onclick="Playground.undoContextHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
               <a id="context-redo-button" onclick="Playground.redoContextHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
-              <a onclick="Playground.resetContext()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>
             </div>
           </div>
         </div>
@@ -87,9 +87,13 @@ export function getPlayground() {
   
       ><div id="dvala-panel" ${styles('h-full')}>
         <div ${styles('PanelHeader')} onclick="Playground.focusDvalaCode()">
-          <div id="dvala-code-title" ${styles('flex', 'gap-1', 'w-full', 'items-center')}>
+          <div id="dvala-code-title" ${styles('flex', 'gap-1', 'w-full', 'items-center', 'overflow: hidden;')}>
             <span id="dvala-panel-debug-info" ${styles('flex', 'items-center', 'text-xl')}>${debugIcon}</span>
-            <div id="dvala-code-title-string" ${styles('text-lg', 'font-sans', 'cursor-pointer')}>Code</div>
+            <span id="dvala-code-title-string" ${styles('text-lg', 'font-sans', 'cursor-pointer', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;')} onclick="Playground.onProgramTitleClick(event)" title="Click to name or rename"></span>
+            <span id="dvala-code-pending-indicator" style="display:none; width:7px; height:7px; border-radius:50%; background:rgb(245 245 245); margin-left:2px; margin-bottom:6px; flex-shrink:0;" title="Unsaved changes"></span>
+            <input id="dvala-code-title-input" type="text" ${styles('text-lg', 'font-sans', 'bg-transparent', 'border: none;', 'outline: none;', 'min-width: 8rem;', 'max-width: 20rem;', 'padding: 0 2px;', 'color: inherit;', 'display: none;')} spellcheck="false" placeholder="Program name"
+              onkeydown="Playground.onProgramTitleKeydown(event)"
+              onblur="Playground.onProgramTitleBlur()">
           </div>
           <div
             id="dvala-links"
@@ -100,7 +104,7 @@ export function getPlayground() {
               <a onclick="Playground.run()" title="Run asynchronously (Ctrl+R)" ${styles('text-lg', 'flex', 'items-center', 'gap-1')}>${playIcon} Run</a>
               <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
               <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
-              <a onclick="Playground.resetDvalaCode()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>
+              <a onclick="Playground.newFile()" title="New file" ${styles('text-xl', 'flex', 'items-center')}>${newFileIcon}</a>
               <div>
                 <a onclick="Playground.openMoreMenu(this)" ${styles('text-xl', 'flex', 'items-center')}>${hamburgerIcon}</a>
                 <div id="more-menu" ${styles('hidden', 'max-width: 20rem;', 'absolute', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'bg-gray-700')}>
@@ -146,6 +150,12 @@ export function getPlayground() {
                         <span ${styles('mr-8')}>Format</span>
                       </div>
                       Ctrl+F
+                    </a>
+                    <a ${styles('flex', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.saveAs()">
+                      <div ${styles('flex', 'gap-2', 'w-full', 'items-center')}>
+                        <span ${styles('text-color-gray-400', 'items-center', 'flex')}>${saveIcon}</span>
+                        <span>Save as...</span>
+                      </div>
                     </a>
                   </div>
                 </div>
@@ -336,22 +346,6 @@ export function getPlayground() {
     </div>
   </div>
 
-  <div id="import-snapshot-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 36rem;', 'max-width: 64rem;', 'border-width: 1px;')}>
-      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Import Snapshot</div>
-      <div ${styles('flex', 'flex-col', 'gap-1')}>
-        <span ${styles('text-xs', 'font-sans', 'text-color-gray-400')} style="font-weight:bold; text-transform:uppercase; letter-spacing:0.05em;">Paste snapshot JSON</span>
-        <textarea id="import-snapshot-textarea" rows="12" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono')} spellcheck="false"></textarea>
-        <span id="import-snapshot-error" ${styles('text-color-Rose', 'text-xs', 'hidden')}></span>
-      </div>
-      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
-        <button class="button" onclick="Playground.closeImportSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Close</span>
-        </button>
-        <button class="button" onclick="Playground.importSnapshot()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans')}>Import</button>
-      </div>
-    </div>
-  </div>
 
   <div id="readline-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
@@ -417,6 +411,10 @@ export function getPlayground() {
           <input type="checkbox" id="import-opt-settings">
           <span>Settings</span>
         </label>
+        <label id="import-opt-saved-programs-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="import-opt-saved-programs">
+          <span>Saved programs</span>
+        </label>
         <label id="import-opt-saved-snapshots-label" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
           <input type="checkbox" id="import-opt-saved-snapshots">
           <span>Saved snapshots</span>
@@ -469,6 +467,10 @@ export function getPlayground() {
         <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
           <input type="checkbox" id="export-opt-settings" checked>
           <span>Settings</span>
+        </label>
+        <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
+          <input type="checkbox" id="export-opt-saved-programs" checked>
+          <span>Saved programs</span>
         </label>
         <label ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-300', 'cursor-pointer')}>
           <input type="checkbox" id="export-opt-saved-snapshots" checked>

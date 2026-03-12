@@ -24,6 +24,13 @@ import {
 } from './snapshotStorage'
 import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
 import {
+  clearAllPrograms,
+  getSavedPrograms,
+  initPrograms,
+  setSavedPrograms,
+} from './programStorage'
+import type { SavedProgram } from './programStorage'
+import {
   applyEncodedState,
   clearAllStates,
   clearState,
@@ -111,11 +118,12 @@ const elements = {
   dvalaCodeRedoButton: document.getElementById('dvala-code-redo-button') as HTMLAnchorElement,
   contextTitle: document.getElementById('context-title') as HTMLDivElement,
   dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
-  dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLDivElement,
+  dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLSpanElement,
+  dvalaCodeTitleInput: document.getElementById('dvala-code-title-input') as HTMLInputElement,
+  dvalaCodePendingIndicator: document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement,
   snapshotModal: document.getElementById('snapshot-modal') as HTMLDivElement,
   snapshotPanelContainer: document.getElementById('snapshot-panel-container') as HTMLDivElement,
   snapshotPanelTemplate: document.getElementById('snapshot-panel-template') as HTMLTemplateElement,
-  importSnapshotModal: document.getElementById('import-snapshot-modal') as HTMLDivElement,
   infoModal: document.getElementById('info-modal') as HTMLDivElement,
   infoModalTitle: document.getElementById('info-modal-title') as HTMLDivElement,
   infoModalMessage: document.getElementById('info-modal-message') as HTMLDivElement,
@@ -132,6 +140,8 @@ const elements = {
   importOptRecentSnapshotsLabel: document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement,
   importOptLayout: document.getElementById('import-opt-layout') as HTMLInputElement,
   importOptLayoutLabel: document.getElementById('import-opt-layout-label') as HTMLLabelElement,
+  importOptSavedPrograms: document.getElementById('import-opt-saved-programs') as HTMLInputElement,
+  importOptSavedProgramsLabel: document.getElementById('import-opt-saved-programs-label') as HTMLLabelElement,
   importResultModal: document.getElementById('import-result-modal') as HTMLDivElement,
   importResultContent: document.getElementById('import-result-content') as HTMLDivElement,
   exportModal: document.getElementById('export-modal') as HTMLDivElement,
@@ -141,6 +151,7 @@ const elements = {
   exportOptSavedSnapshots: document.getElementById('export-opt-saved-snapshots') as HTMLInputElement,
   exportOptRecentSnapshots: document.getElementById('export-opt-recent-snapshots') as HTMLInputElement,
   exportOptLayout: document.getElementById('export-opt-layout') as HTMLInputElement,
+  exportOptSavedPrograms: document.getElementById('export-opt-saved-programs') as HTMLInputElement,
   confirmModal: document.getElementById('confirm-modal') as HTMLDivElement,
   confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
   confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
@@ -152,8 +163,6 @@ const elements = {
   checkpointModalMessage: document.getElementById('checkpoint-modal-message') as HTMLElement,
   checkpointModalMeta: document.getElementById('checkpoint-modal-meta') as HTMLDivElement,
   checkpointModalTech: document.getElementById('checkpoint-modal-tech') as HTMLDivElement,
-  importSnapshotTextarea: document.getElementById('import-snapshot-textarea') as HTMLTextAreaElement,
-  importSnapshotError: document.getElementById('import-snapshot-error') as HTMLSpanElement,
   toastContainer: document.getElementById('toast-container') as HTMLDivElement,
   effectModal: document.getElementById('effect-modal') as HTMLDivElement,
   effectModalNav: document.getElementById('effect-modal-nav') as HTMLDivElement,
@@ -297,12 +306,26 @@ export function showSnapshotsPage() {
   showPage('snapshots-page', 'smooth')
 }
 
+export function showSavedProgramsPage() {
+  populateSavedProgramsList()
+  showPage('saved-programs-page', 'smooth')
+}
+
+function notifyProgramAdded() {
+  const programsPage = document.getElementById('saved-programs-page')
+  if (programsPage?.classList.contains('active-content')) return
+  const indicator = document.getElementById('programs-nav-indicator')
+  if (indicator) indicator.style.display = 'inline-block'
+  const navLink = document.getElementById('saved-programs-page_link')
+  if (navLink) navLink.style.color = 'rgb(245 245 245)'
+}
+
 function notifySnapshotAdded() {
   const snapshotsPage = document.getElementById('snapshots-page')
   if (snapshotsPage?.classList.contains('active-content')) return
   const indicator = document.getElementById('snapshots-nav-indicator')
   if (indicator) indicator.style.display = 'inline-block'
-  const navLink = document.getElementById('snapshots-nav-link')
+  const navLink = document.getElementById('snapshots-page_link')
   if (navLink) navLink.style.color = 'rgb(245 245 245)'
 }
 
@@ -320,6 +343,7 @@ const ICONS = {
   eye: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8s11 8 11 8s-4 8-11 8s-11-8-11-8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   download: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
   save: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2M17 21v-8H7v8M7 3v5h8"/></svg>',
+  duplicate: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/></svg>',
 }
 
 interface ContextMenuItem {
@@ -538,6 +562,414 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+// ─── Saved Programs ───────────────────────────────────────────────────────────
+
+function animateProgramCardRemoval(id: string): Promise<void> {
+  const card = document.querySelector(`.snapshot-card[data-program-id="${id}"]`)
+  if (!card) return Promise.resolve()
+  return new Promise(resolve => {
+    card.classList.add('removing')
+    card.addEventListener('animationend', () => resolve(), { once: true })
+    setTimeout(resolve, 300)
+  })
+}
+
+function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
+  const { animateNewId } = options
+  const list = document.getElementById('saved-programs-list')
+  const empty = document.getElementById('saved-programs-empty')
+  const clearBtn = document.getElementById('saved-programs-clear-all')
+  if (!list || !empty) return
+
+  const programs = getSavedPrograms()
+  if (clearBtn)
+    clearBtn.style.visibility = programs.some(p => !p.locked) ? 'visible' : 'hidden'
+
+  if (programs.length === 0) {
+    list.innerHTML = ''
+    empty.style.display = 'block'
+    return
+  }
+
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
+  const todayMs = startOfToday.getTime()
+  const weekMs = todayMs - 6 * 24 * 60 * 60 * 1000
+  const monthMs = todayMs - 29 * 24 * 60 * 60 * 1000
+
+  const groups: { label: string; programs: SavedProgram[] }[] = [
+    { label: 'Today', programs: [] },
+    { label: 'Last Week', programs: [] },
+    { label: 'Last Month', programs: [] },
+    { label: 'Older', programs: [] },
+  ]
+
+  for (const p of programs) {
+    if (p.updatedAt >= todayMs) groups[0]!.programs.push(p)
+    else if (p.updatedAt >= weekMs) groups[1]!.programs.push(p)
+    else if (p.updatedAt >= monthMs) groups[2]!.programs.push(p)
+    else groups[3]!.programs.push(p)
+  }
+
+  empty.style.display = 'none'
+  list.innerHTML = groups
+    .filter(g => g.programs.length > 0)
+    .flatMap(g => [renderGroupLabel(g.label), ...g.programs.map(p => renderProgramCard(p, p.id === animateNewId))])
+    .join('')
+}
+
+function renderProgramCard(program: SavedProgram, animateIn = false): string {
+  const normalized = program.code.trim().replace(/\s+/g, ' ')
+  const snippet = normalized.slice(0, 120)
+  const displaySnippet = snippet.length < normalized.length ? `${snippet}…` : snippet
+  const isActive = getState('current-program-id') === program.id
+  const borderColor = 'rgb(82 82 82)'
+  const animateClass = animateIn ? 'animate-in' : ''
+  const lockIcon = program.locked
+    ? `<span style="color:rgb(234 179 8); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
+    : ''
+  const menuId = `program-menu-${program.id}`
+  const menuItems: ContextMenuItem[] = [
+    { label: program.locked ? 'Unlock' : 'Lock', icon: program.locked ? ICONS.unlock : ICONS.lock, action: `Playground.toggleProgramLock('${program.id}')` },
+    { label: 'Create copy', icon: ICONS.duplicate, action: `Playground.duplicateProgram('${program.id}')` },
+    { label: 'Download', icon: ICONS.download, action: `Playground.downloadProgram('${program.id}')` },
+    { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedProgram('${program.id}')` },
+  ]
+  return `
+    <div class="snapshot-card ${animateClass}" data-program-id="${program.id}" onclick="Playground.loadSavedProgram('${program.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:rgb(46 46 46); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='rgb(52 52 52)'" onmouseout="this.style.background='rgb(46 46 46)'">
+      <div style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          ${lockIcon}
+          <span style="font-size:1rem; color:rgb(209 213 219);">${escapeHtml(program.name)}</span>
+          ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(78 201 176); border:1px solid rgb(78 201 176); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
+        </div>
+        ${normalized ? `<div style="font-size:0.8rem; color:rgb(140 140 140); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(140 140 140); padding:1px 0;">EMPTY PROGRAM</span>'}
+        <div style="font-size:0.75rem; color:rgb(100 100 100);">${formatTime(new Date(program.updatedAt))}</div>
+      </div>
+      <div onclick="event.stopPropagation()">
+        ${renderContextMenu(menuItems, menuId)}
+      </div>
+    </div>
+  `
+}
+
+export function loadSavedProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+  saveState({ 'dvala-code': program.code, 'context': program.context, 'current-program-id': program.id })
+  elements.dvalaTextArea.value = program.code
+  elements.contextTextArea.value = program.context
+  syntaxOverlay.update()
+  updateCSS()
+  populateSavedProgramsList()
+}
+
+export function deleteSavedProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+  const doDelete = async () => {
+    await animateProgramCardRemoval(id)
+    const updated = getSavedPrograms().filter(p => p.id !== id)
+    setSavedPrograms(updated)
+    if (getState('current-program-id') === id) {
+      saveState({ 'current-program-id': null })
+      updateCSS()
+    }
+    populateSavedProgramsList()
+  }
+  if (program.locked) {
+    void showConfirmModal('Delete program', 'This program is locked. Are you sure you want to permanently delete it?', doDelete)
+  } else {
+    void doDelete()
+  }
+}
+
+export function downloadProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+  const filename = `${program.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
+  const { id: _id, ...exportData } = program
+  void saveFile(JSON.stringify(exportData, null, 2), filename)
+}
+
+export function toggleProgramLock(id: string) {
+  const programs = getSavedPrograms()
+  const updated = programs.map(p => p.id === id ? { ...p, locked: !p.locked } : p)
+  setSavedPrograms(updated)
+  populateSavedProgramsList()
+}
+
+export function clearUnlockedPrograms() {
+  void showConfirmModal('Clear unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
+    const unlocked = getSavedPrograms().filter(p => !p.locked)
+    await Promise.all(unlocked.map(p => animateProgramCardRemoval(p.id)))
+    const kept = getSavedPrograms().filter(p => p.locked)
+    setSavedPrograms(kept)
+    if (!kept.find(p => p.id === getState('current-program-id'))) {
+      saveState({ 'current-program-id': null })
+      updateCSS()
+    }
+    populateSavedProgramsList()
+    showToast('Unlocked programs cleared')
+  })
+}
+
+export function openImportProgramModal() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(reader.result as string)
+      } catch {
+        void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
+        return
+      }
+      if (typeof parsed !== 'object' || parsed === null || !('name' in parsed) || !('code' in parsed)) {
+        void showInfoModal('Import failed', 'Not a valid program object (requires at least "name" and "code").')
+        return
+      }
+      const raw = parsed as Record<string, unknown>
+      const now = Date.now()
+      const existing = getSavedPrograms()
+      const existingNames = new Set(existing.map(p => p.name))
+      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported Program'
+      const uniqueName = (base: string) => {
+        if (!existingNames.has(base)) return base
+        let i = 1
+        while (existingNames.has(`${base} (${i})`)) i++
+        return `${base} (${i})`
+      }
+      const imported: SavedProgram = {
+        id: crypto.randomUUID(),
+        name: uniqueName(rawName),
+        code: typeof raw['code'] === 'string' ? raw['code'] : '',
+        context: typeof raw['context'] === 'string' ? raw['context'] : '',
+        createdAt: typeof raw['createdAt'] === 'number' ? raw['createdAt'] : now,
+        updatedAt: typeof raw['updatedAt'] === 'number' ? raw['updatedAt'] : now,
+        locked: typeof raw['locked'] === 'boolean' ? raw['locked'] : false,
+      }
+      setSavedPrograms([imported, ...existing])
+      notifyProgramAdded()
+      populateSavedProgramsList({ animateNewId: imported.id })
+      showToast(`Imported "${imported.name}"`)
+    }
+    reader.readAsText(file)
+  }
+  input.click()
+}
+
+export function duplicateProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+  const now = Date.now()
+  const copy: SavedProgram = {
+    id: crypto.randomUUID(),
+    name: `Copy of ${program.name}`,
+    code: program.code,
+    context: program.context,
+    createdAt: now,
+    updatedAt: now,
+    locked: false,
+  }
+  setSavedPrograms([copy, ...getSavedPrograms()])
+  saveState({ 'dvala-code': copy.code, 'context': copy.context, 'current-program-id': copy.id })
+  elements.dvalaTextArea.value = copy.code
+  elements.contextTextArea.value = copy.context
+  syntaxOverlay.update()
+  notifyProgramAdded()
+  updateCSS()
+  populateSavedProgramsList({ animateNewId: copy.id })
+  showToast(`Created "${copy.name}"`)
+}
+
+export function saveAs() {
+  const currentId = getState('current-program-id')
+  const currentProgram = currentId ? getSavedPrograms().find(p => p.id === currentId) : null
+  const defaultName = currentProgram ? `Copy of ${currentProgram.name}` : ''
+  showNameInputModal('Save as', defaultName, name => {
+    const programs = getSavedPrograms()
+    const duplicate = programs.find(p => p.name === name)
+    const doSave = () => {
+      const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
+      const now = Date.now()
+      const newProgram: SavedProgram = {
+        id: crypto.randomUUID(),
+        name,
+        code: getState('dvala-code'),
+        context: getState('context'),
+        createdAt: now,
+        updatedAt: now,
+        locked: false,
+      }
+      setSavedPrograms([newProgram, ...filtered])
+      saveState({ 'current-program-id': newProgram.id })
+      notifyProgramAdded()
+      updateCSS()
+      populateSavedProgramsList({ animateNewId: newProgram.id })
+      showToast(`Saved as "${name}"`)
+    }
+    if (duplicate) {
+      void showConfirmModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
+    } else {
+      doSave()
+    }
+  })
+}
+
+function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void) {
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center;'
+
+  const dialog = document.createElement('div')
+  dialog.style.cssText = 'background:rgb(50 50 50); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; min-width:20rem; max-width:90vw;'
+
+  const titleEl = document.createElement('div')
+  titleEl.textContent = title
+  titleEl.style.cssText = 'font-size:1rem; color:rgb(209 213 219); font-weight:600;'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.value = defaultValue
+  input.spellcheck = false
+  input.style.cssText = 'background:rgb(30 30 30); border:1px solid rgb(82 82 82); border-radius:4px; padding:0.4rem 0.6rem; color:rgb(209 213 219); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+
+  const buttons = document.createElement('div')
+  buttons.style.cssText = 'display:flex; justify-content:flex-end; gap:0.5rem;'
+
+  const cancelBtn = document.createElement('button')
+  cancelBtn.textContent = 'Cancel'
+  cancelBtn.className = 'toolbar-btn'
+  cancelBtn.onclick = () => overlay.remove()
+
+  const okBtn = document.createElement('button')
+  okBtn.textContent = 'Save'
+  okBtn.className = 'toolbar-btn'
+  okBtn.onclick = () => {
+    const name = input.value.trim()
+    if (!name) return
+    overlay.remove()
+    onConfirm(name)
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') okBtn.click()
+    else if (e.key === 'Escape') overlay.remove()
+  })
+
+  buttons.append(cancelBtn, okBtn)
+  dialog.append(titleEl, input, buttons)
+  overlay.append(dialog)
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+  document.body.appendChild(overlay)
+  setTimeout(() => { input.focus(); input.select() }, 0)
+}
+
+// ─── Program title editing ────────────────────────────────────────────────────
+
+export function onProgramTitleClick(event: MouseEvent) {
+  event.stopPropagation()
+  const input = elements.dvalaCodeTitleInput
+  const span = elements.dvalaCodeTitleString
+  input.value = getState('current-program-id') ? elements.dvalaCodeTitleString.textContent ?? '' : ''
+  span.style.display = 'none'
+  input.style.display = ''
+  input.focus()
+  input.select()
+}
+
+export function onProgramTitleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    elements.dvalaCodeTitleInput.blur()
+  } else if (event.key === 'Escape') {
+    elements.dvalaCodeTitleInput.style.display = 'none'
+    elements.dvalaCodeTitleString.style.display = ''
+  }
+}
+
+export function onProgramTitleBlur() {
+  const input = elements.dvalaCodeTitleInput
+  const name = input.value.trim()
+  input.style.display = 'none'
+  elements.dvalaCodeTitleString.style.display = ''
+  if (!name) return
+  commitProgramName(name)
+}
+
+function commitProgramName(name: string) {
+  const programs = getSavedPrograms()
+  const currentId = getState('current-program-id')
+  const duplicate = programs.find(p => p.name === name && p.id !== currentId)
+
+  if (duplicate) {
+    void showConfirmModal('Replace existing program?', `"${name}" already exists. Replace it with the current code and context?`, () => {
+      const without = programs.filter(p => p.id !== duplicate.id)
+      saveOrRenameProgram(name, without, currentId)
+    })
+  } else {
+    saveOrRenameProgram(name, programs, currentId)
+  }
+}
+
+function saveOrRenameProgram(name: string, programs: SavedProgram[], currentId: string | null) {
+  const now = Date.now()
+  if (currentId) {
+    const updated = programs.map(p =>
+      p.id === currentId
+        ? { ...p, name, code: getState('dvala-code'), context: getState('context'), updatedAt: now }
+        : p,
+    )
+    setSavedPrograms(updated)
+  } else {
+    const newProgram: SavedProgram = {
+      id: crypto.randomUUID(),
+      name,
+      code: getState('dvala-code'),
+      context: getState('context'),
+      createdAt: now,
+      updatedAt: now,
+      locked: false,
+    }
+    setSavedPrograms([newProgram, ...programs])
+    saveState({ 'current-program-id': newProgram.id })
+    notifyProgramAdded()
+    updateCSS()
+    populateSavedProgramsList({ animateNewId: newProgram.id })
+    return
+  }
+  updateCSS()
+  populateSavedProgramsList()
+}
+
+// ─── Auto-save ────────────────────────────────────────────────────────────────
+
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleAutoSave() {
+  const currentId = getState('current-program-id')
+  if (!currentId) return
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null
+    const id = getState('current-program-id')
+    if (!id) return
+    const updated = getSavedPrograms().map(p =>
+      p.id === id
+        ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
+        : p,
+    )
+    setSavedPrograms(updated)
+    populateSavedProgramsList()
+    updateCSS()
+  }, 3000)
+  updateCSS()
+}
+
 export function openSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
@@ -580,13 +1012,7 @@ export function saveTerminalSnapshotToSaved(index: number) {
 }
 
 function downloadSnapshotJson(snapshot: Snapshot, filename: string) {
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  void saveFile(JSON.stringify(snapshot, null, 2), filename)
 }
 
 export function downloadTerminalSnapshotByIndex(index: number) {
@@ -831,24 +1257,21 @@ function updateStorageUsage() {
 export function clearLocalStorageData() {
   void showConfirmModal('Clear Local Storage', 'This will clear code, context, settings, and layout preferences.', () => {
     clearAllStates()
-    layout()
-    updateCSS()
+    applyState(true)
     updateStorageUsage()
   })
 }
 
 export function clearIndexedDbData() {
-  void showConfirmModal('Clear IndexedDB', 'This will delete all saved and terminal snapshots.', () => {
+  void showConfirmModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved programs.', () => {
     clearAllSnapshots()
+    clearAllPrograms()
+    saveState({ 'current-program-id': null })
     populateSnapshotsList()
+    populateSavedProgramsList()
+    updateCSS()
     updateStorageUsage()
   })
-}
-
-export function resetContext() {
-  elements.contextTextArea.value = ''
-  clearState('context', 'context-scroll-top', 'context-selection-start', 'context-selection-end')
-  focusContext()
 }
 
 function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
@@ -860,6 +1283,7 @@ function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bot
       'context-selection-start': elements.contextTextArea.selectionStart,
       'context-selection-end': elements.contextTextArea.selectionEnd,
     }, true)
+    scheduleAutoSave()
   } else {
     saveState({ context: value }, false)
   }
@@ -998,10 +1422,26 @@ export function addSampleContext() {
   setContext(formatContextJson(context), true)
 }
 
-export function resetDvalaCode() {
+export function newFile() {
+  // Flush any pending auto-save for the current program
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+    const id = getState('current-program-id')
+    if (id) {
+      const updated = getSavedPrograms().map(p =>
+        p.id === id
+          ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
+          : p,
+      )
+      setSavedPrograms(updated)
+    }
+  }
+  saveState({ 'dvala-code': '', 'current-program-id': null }, true)
   elements.dvalaTextArea.value = ''
   syntaxOverlay.update()
-  clearState('dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end')
+  updateCSS()
+  populateSavedProgramsList()
   focusDvalaCode()
 }
 
@@ -1015,6 +1455,7 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
       'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
       'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
     }, true)
+    scheduleAutoSave()
   } else {
     saveState({ 'dvala-code': value }, false)
   }
@@ -1063,6 +1504,7 @@ function addOutputElement(element: HTMLElement) {
 
 window.onload = async function () {
   await initSnapshotStorage()
+  await initPrograms()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
   elements.contextUndoButton.classList.add('disabled')
@@ -1270,8 +1712,6 @@ window.onload = async function () {
         closeConfirmModal()
       } else if (elements.checkpointModal.style.display !== 'none') {
         closeCheckpointModal()
-      } else if (elements.importSnapshotModal.style.display !== 'none') {
-        closeImportSnapshotModal()
       } else if (currentSnapshot) {
         if (snapshotPanelStack.length > 1) {
           slideBackSnapshotModal()
@@ -1390,6 +1830,8 @@ window.onload = async function () {
   })
 
   applyState(true)
+  populateSnapshotsList()
+  populateSavedProgramsList()
 
   const [pageId, tabId] = (location.hash.substring(1) || 'index').split('/')
   showPage(pageId!, 'instant', 'replace', tabId)
@@ -2083,57 +2525,41 @@ export function closeSnapshotModal() {
   resolveSnapshotModal = null
 }
 
-let resolveImportSnapshotModal: (() => void) | null = null
-
-export function openImportSnapshotModal(): Promise<void> {
-  elements.importSnapshotTextarea.value = ''
-  elements.importSnapshotError.style.display = 'none'
-  elements.importSnapshotModal.style.display = 'flex'
-  elements.importSnapshotTextarea.focus()
-
-  return new Promise<void>(resolve => {
-    resolveImportSnapshotModal = resolve
-  })
-}
-
-export function closeImportSnapshotModal() {
-  elements.importSnapshotModal.style.display = 'none'
-  resolveImportSnapshotModal?.()
-  resolveImportSnapshotModal = null
-}
-
-export function importSnapshot() {
-  const text = elements.importSnapshotTextarea.value.trim()
-  if (!text) {
-    elements.importSnapshotError.textContent = 'Please paste a snapshot JSON'
-    elements.importSnapshotError.style.display = ''
-    return
+export function openImportSnapshotModal() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(reader.result as string)
+      } catch {
+        void showInfoModal('Import failed', 'Invalid JSON — could not parse the file.')
+        return
+      }
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        !('id' in parsed) ||
+        !('continuation' in parsed) ||
+        !('timestamp' in parsed) ||
+        !('index' in parsed) ||
+        !('executionId' in parsed) ||
+        !('message' in parsed)
+      ) {
+        void showInfoModal('Import failed', 'Not a valid snapshot object.')
+        return
+      }
+      showToast('Snapshot imported')
+      void openSnapshotModal(parsed as Snapshot)
+    }
+    reader.readAsText(file)
   }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    elements.importSnapshotError.textContent = 'Invalid JSON — could not parse'
-    elements.importSnapshotError.style.display = ''
-    return
-  }
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('id' in parsed) ||
-    !('continuation' in parsed) ||
-    !('timestamp' in parsed) ||
-    !('index' in parsed) ||
-    !('executionId' in parsed) ||
-    !('message' in parsed)
-  ) {
-    elements.importSnapshotError.textContent = 'Not a valid snapshot object'
-    elements.importSnapshotError.style.display = ''
-    return
-  }
-  closeImportSnapshotModal()
-  showToast('Snapshot imported')
-  void openSnapshotModal(parsed as Snapshot)
+  input.click()
 }
 
 const TOAST_DURATION = 4_000
@@ -2229,6 +2655,7 @@ export function doExport() {
   const includeSaved = elements.exportOptSavedSnapshots.checked
   const includeRecent = elements.exportOptRecentSnapshots.checked
   const includeLayout = elements.exportOptLayout.checked
+  const includePrograms = elements.exportOptSavedPrograms.checked
 
   const allowedKeys = new Set<string>([
     ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
@@ -2259,6 +2686,7 @@ export function doExport() {
     data,
     ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
     ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
+    ...(includePrograms ? { savedPrograms: getSavedPrograms() } : {}),
   }, null, 2)
 
   const now = new Date()
@@ -2298,6 +2726,7 @@ type ExportPayload = {
   data: Record<string, string>
   savedSnapshots?: SavedSnapshot[]
   recentSnapshots?: TerminalSnapshotEntry[]
+  savedPrograms?: SavedProgram[]
 }
 
 function isExportPayload(value: unknown): value is ExportPayload {
@@ -2347,6 +2776,7 @@ export function importPlayground() {
         const hasLayout = hasCategoryInPayload(parsed, importCategoryKeys.layout)
         const hasSaved = (parsed.savedSnapshots?.length ?? 0) > 0
         const hasRecent = (parsed.recentSnapshots?.length ?? 0) > 0
+        const hasPrograms = (parsed.savedPrograms?.length ?? 0) > 0
 
         const setup = (el: HTMLInputElement, label: HTMLLabelElement, present: boolean) => {
           el.checked = present
@@ -2361,6 +2791,7 @@ export function importPlayground() {
         setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
         setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
         setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
+        setup(elements.importOptSavedPrograms, elements.importOptSavedProgramsLabel, hasPrograms)
 
         elements.importOptionsModal.style.display = 'flex'
       } catch {
@@ -2430,7 +2861,20 @@ export function doImport() {
       skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
+  if (elements.importOptSavedPrograms.checked && payload.savedPrograms) {
+    const existingIds = new Set(getSavedPrograms().map(p => p.id))
+    const toAdd = payload.savedPrograms.filter(p => !existingIds.has(p.id))
+    const conflicts = payload.savedPrograms.length - toAdd.length
+    if (toAdd.length > 0) {
+      setSavedPrograms([...getSavedPrograms(), ...toAdd])
+      imported.push(`${toAdd.length} saved program${toAdd.length !== 1 ? 's' : ''}`)
+    }
+    if (conflicts > 0)
+      skipped.push(`${conflicts} saved program${conflicts !== 1 ? 's' : ''} (already exist)`)
+  }
+
   populateSnapshotsList()
+  populateSavedProgramsList()
   pendingImportPayload = null
 
   const importedHtml = imported.length > 0
@@ -2580,13 +3024,7 @@ export function saveCheckpoint() {
 export function downloadCheckpoint() {
   if (!currentCheckpointSnapshot)
     return
-  const blob = new Blob([JSON.stringify(currentCheckpointSnapshot, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `checkpoint-${currentCheckpointSnapshot.index}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  void saveFile(JSON.stringify(currentCheckpointSnapshot, null, 2), `checkpoint-${currentCheckpointSnapshot.index}.json`)
 }
 
 export function shareCheckpoint() {
@@ -2630,13 +3068,7 @@ export function shareSnapshot() {
 export function downloadSnapshot() {
   if (!currentSnapshot)
     return
-  const blob = new Blob([JSON.stringify(currentSnapshot, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `snapshot-${currentSnapshot.index}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  void saveFile(JSON.stringify(currentSnapshot, null, 2), `snapshot-${currentSnapshot.index}.json`)
 }
 
 export function saveSnapshot() {
@@ -3213,7 +3645,10 @@ function updateCSS() {
   }
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
-  elements.dvalaCodeTitleString.textContent = 'Dvala Code'
+  const currentProgramId = getState('current-program-id')
+  const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
+  elements.dvalaCodeTitleString.textContent = currentProgram ? currentProgram.name : 'Untitled Program'
+  elements.dvalaCodePendingIndicator.style.display = autoSaveTimer !== null ? 'inline-block' : 'none'
   elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
@@ -3239,11 +3674,17 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
       tab = tab || 'dvala'
       showSettingsTab(tab)
     }
+    if (id === 'saved-programs-page') {
+      const indicator = document.getElementById('programs-nav-indicator')
+      if (indicator) indicator.style.display = 'none'
+      const navLink = document.getElementById('saved-programs-page_link')
+      if (navLink) navLink.style.color = ''
+    }
     if (id === 'snapshots-page') {
       populateSnapshotsList()
       const indicator = document.getElementById('snapshots-nav-indicator')
       if (indicator) indicator.style.display = 'none'
-      const navLink = document.getElementById('snapshots-nav-link')
+      const navLink = document.getElementById('snapshots-page_link')
       if (navLink) navLink.style.color = ''
     }
     if (link) {

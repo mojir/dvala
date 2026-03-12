@@ -26,6 +26,7 @@ export const defaultState = {
   'disable-playground-handlers': false as boolean,
   'disable-auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
+  'current-program-id': null as string | null,
 } as const
 
 type State = {

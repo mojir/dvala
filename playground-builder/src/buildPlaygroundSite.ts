@@ -7,6 +7,7 @@ import { getStartPage } from './components/startPage'
 import { getExamplePage } from './components/examplePage'
 import { getModulesPage } from './components/modulesPage'
 import { getSettingsPage } from './components/settingsPage'
+import { getSavedProgramsPage } from './components/savedProgramsPage'
 import { getSnapshotsPage } from './components/snapshotsPage'
 import { getAboutPage } from './components/aboutPage'
 import { getCorePage } from './components/corePage'
@@ -61,6 +62,7 @@ async function writeIndexPage() {
         ${modulesPage}
         ${docItems}
         ${getSettingsPage()}
+        ${getSavedProgramsPage()}
         ${getSnapshotsPage()}
       </main>
       <div id="resize-sidebar" style="position: fixed; width: 5px; cursor: col-resize; background-color: rgb(82 82 82); top: 0; z-index: 10;"></div>

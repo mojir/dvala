@@ -467,10 +467,9 @@ button:focus {
 }
 
 #sidebar .active-sidebar-entry {
-  background-color: rgb(82 82 82);
-  color: white;
+  color: rgb(245 245 245);
   a {
-    color: white;
+    color: rgb(245 245 245);
   }
 }
 
