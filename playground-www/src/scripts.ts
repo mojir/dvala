@@ -1471,6 +1471,12 @@ export function resetOutput() {
   clearState('output')
 }
 
+export function resetPlayground() {
+  setDvalaCode('', true)
+  setContext('', true)
+  resetOutput()
+}
+
 function hasOutput() {
   return getState('output').trim() !== ''
 }

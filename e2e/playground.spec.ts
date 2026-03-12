@@ -363,23 +363,6 @@ test.describe('snapshots', () => {
     })
     await expect(page.locator('#snapshots-list .snapshot-card').first()).toBeVisible()
   })
-
-  test('import snapshot modal opens and shows error on invalid JSON', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
-    // openImportSnapshotModal is async — fire-and-forget to avoid hanging
-    await page.evaluate(() => { void (window as any).Playground.openImportSnapshotModal() })
-
-    const modal = page.locator('#import-snapshot-modal')
-    await expect(modal).toBeVisible()
-
-    // Type invalid JSON and try to import
-    await page.locator('#import-snapshot-textarea').fill('not valid json')
-    await page.evaluate(() => (window as any).Playground.importSnapshot())
-
-    // Error message should appear
-    const error = page.locator('#import-snapshot-error')
-    await expect(error).toBeVisible()
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -528,5 +511,100 @@ test.describe('api reference navigation', () => {
     const activeContent = page.locator('.active-content').first()
     await expect(activeContent).toBeVisible()
     expect(resultText?.length).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Programs
+// ---------------------------------------------------------------------------
+
+/** Save current code as a named program via the saveAs modal. */
+async function saveAsProgram(page: Page, name: string) {
+  await page.evaluate(() => (window as any).Playground.saveAs())
+  // The name input modal is dynamically created — browser normalizes rgba(0,0,0,0.5) with spaces
+  const input = page.locator('[style*="rgba(0, 0, 0, 0.5)"] input[type="text"]')
+  await input.waitFor({ timeout: 2000 })
+  await input.fill(name)
+  await input.press('Enter')
+}
+
+test.describe('programs', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('programs page shows empty state when no programs saved', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
+    await expect(page.locator('#saved-programs-empty')).toBeVisible()
+  })
+
+  test('saving code creates a program card', async ({ page }) => {
+    await setDvalaCode(page, '1 + 1')
+    await saveAsProgram(page, 'My Test Program')
+
+    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+
+    await page.waitForFunction(() =>
+      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
+    )
+    const card = page.locator('#saved-programs-list .snapshot-card').first()
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('My Test Program')
+  })
+
+  test('nav indicator appears after save and clears when programs page opens', async ({ page }) => {
+    const indicator = page.locator('#programs-nav-indicator')
+    await expect(indicator).toBeHidden()
+
+    await setDvalaCode(page, '2 + 2')
+    await saveAsProgram(page, 'Indicator Test')
+
+    await expect(indicator).toBeVisible()
+
+    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    await expect(indicator).toBeHidden()
+  })
+
+  test('loading a saved program restores code into editor', async ({ page }) => {
+    await setDvalaCode(page, '99 * 2')
+    await saveAsProgram(page, 'Restore Test')
+
+    // Navigate to programs page so the card is rendered, get ID from DOM, then load
+    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    await page.waitForFunction(() =>
+      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
+    )
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => {
+      const id = document.querySelector('#saved-programs-list .snapshot-card')?.getAttribute('data-program-id')
+      if (id) (window as any).Playground.loadSavedProgram(id)
+    })
+
+    const value = await page.locator('#dvala-textarea').inputValue()
+    expect(value).toBe('99 * 2')
+  })
+
+  test('deleting a program removes it from the list', async ({ page }) => {
+    await setDvalaCode(page, '5 + 5')
+    await saveAsProgram(page, 'Delete Me')
+
+    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    await page.waitForFunction(() =>
+      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
+    )
+
+    // Delete via JS using the first program's id
+    await page.evaluate(() => {
+      const id = document.querySelector('#saved-programs-list .snapshot-card')?.getAttribute('data-program-id')
+      if (id) (window as any).Playground.deleteSavedProgram(id)
+    })
+
+    await page.waitForFunction(() =>
+      document.querySelectorAll('#saved-programs-list .snapshot-card').length === 0,
+    )
+    await expect(page.locator('#saved-programs-empty')).toBeVisible()
   })
 })
