@@ -1,14 +1,15 @@
 import type { Reference } from '../../../reference'
 import { apiReference, effectReference, getLinkName, moduleReference } from '../../../reference'
 import { moduleCategories } from '../../../reference/api'
-import { cameraIcon, chevronRightIcon, gearIcon, homeIcon, infoIcon, labIcon, lampIcon, searchIcon } from '../icons'
+import { cameraIcon, chevronRightIcon, gearIcon, homeIcon, infoIcon, labIcon, lampIcon, saveIcon, searchIcon } from '../icons'
 import { styles } from '../styles'
 import { version } from '../../../package.json'
 
-function menuLink(icon: string, title: string, onclick: string) {
+function menuLink(icon: string, title: string, onclick: string, id?: string) {
+  const idAttr = id ? ` id="${id}"` : ''
   return `
     <div onclick="${onclick}" ${styles('flex', 'mb-2', 'text-color-gray-400', 'text-base', 'cursor-pointer')}>
-      <a ${styles('flex', 'items-center', 'gap-1')} class="link">
+      <a${idAttr} ${styles('flex', 'items-center', 'gap-1')} class="link">
         <span ${styles('font-size: 1.2em;', 'flex', 'items-center')}>${icon}</span>
         <span>${title}</span>
       </a>
@@ -132,22 +133,32 @@ export function getSideBar() {
       </span>
       <span ${styles('text-sm')}>F3</span>
     </div>
-    ${menuLink(homeIcon, 'Home', 'Playground.showPage(\'index\', \'smooth\')')}
-    ${menuLink(infoIcon, 'About', 'Playground.showPage(\'about-page\', \'smooth\')')}
-    ${menuLink(lampIcon, 'Tutorials', 'Playground.showTutorialsPage()')}
-    ${menuLink(labIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')')}
-    <div onclick="Playground.showSnapshotsPage()" ${styles('flex', 'mb-2', 'text-base', 'cursor-pointer')}>
-      <a id="snapshots-nav-link" ${styles('flex', 'items-center', 'gap-1')} class="link">
-        <span ${styles('font-size: 1.2em;', 'flex', 'items-center')}>${cameraIcon}</span>
-        <span>Snapshots</span>
-        <span id="snapshots-nav-indicator" style="display:none; width:7px; height:7px; border-radius:50%; background:#4db36e; margin-left:4px; margin-bottom:6px; flex-shrink:0;"></span>
+    ${menuLink(homeIcon, 'Home', 'Playground.showPage(\'index\', \'smooth\')', 'home-page_link')}
+    ${menuLink(infoIcon, 'About', 'Playground.showPage(\'about-page\', \'smooth\')', 'about-page_link')}
+    ${menuLink(lampIcon, 'Tutorials', 'Playground.showTutorialsPage()', 'tutorials-page_link')}
+    ${menuLink(labIcon, 'Examples', 'Playground.showPage(\'example-page\', \'smooth\')', 'example-page_link')}
+    <div style="height: 1.25rem;"></div>
+    <div onclick="Playground.showSavedProgramsPage()" ${styles('flex', 'mb-2', 'text-base', 'cursor-pointer')}>
+      <a id="saved-programs-page_link" ${styles('flex', 'items-center', 'gap-1')} class="link">
+        <span ${styles('font-size: 1.2em;', 'flex', 'items-center')}>${saveIcon}</span>
+        <span>Programs</span>
+        <span id="programs-nav-indicator" style="display:none; width:7px; height:7px; border-radius:50%; background:rgb(245 245 245); margin-left:4px; margin-bottom:6px; flex-shrink:0;"></span>
       </a>
     </div>
-    ${menuLink(gearIcon, 'Settings', 'Playground.showPage(\'settings-page\', \'smooth\')')}
+    <div onclick="Playground.showSnapshotsPage()" ${styles('flex', 'mb-2', 'text-base', 'cursor-pointer')}>
+      <a id="snapshots-page_link" ${styles('flex', 'items-center', 'gap-1')} class="link">
+        <span ${styles('font-size: 1.2em;', 'flex', 'items-center')}>${cameraIcon}</span>
+        <span>Snapshots</span>
+        <span id="snapshots-nav-indicator" style="display:none; width:7px; height:7px; border-radius:50%; background:rgb(245 245 245); margin-left:4px; margin-bottom:6px; flex-shrink:0;"></span>
+      </a>
+    </div>
+    <div style="height: 1.25rem;"></div>
+    ${menuLink(gearIcon, 'Settings', 'Playground.showPage(\'settings-page\', \'smooth\')', 'settings-page_link')}
+    <div style="height: 1.25rem;"></div>
 
     <!-- API Reference -->
-    <div ${styles('flex', 'flex-col', 'gap-2', 'my-4')}>
-      <div ${styles('text-color-gray-400', 'text-base', 'font-bold', 'mb-1')}>API Reference</div>
+    <div ${styles('flex', 'flex-col', 'gap-2', 'mb-4')}>
+      <div ${styles('text-color-gray-400', 'text-sm', 'font-bold', 'mb-1', 'letter-spacing: 0.08em;', 'text-transform: uppercase;')}>API Reference</div>
       <div ${styles('flex', 'flex-col', 'gap-2')}>
         ${renderApiSection('special-expressions', 'Special expressions', specialExpressionRefs)}
         ${renderApiSection('core-functions', 'Core functions', coreFunctionRefs)}
