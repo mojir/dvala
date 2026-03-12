@@ -5,11 +5,9 @@ import {
   hamburgerIcon,
   labIcon,
   leftAlignIcon,
-  linkIcon,
   objectIcon,
   playIcon,
   redoIcon,
-  resetIcon,
   tokenIcon,
   trashIcon,
   treeIcon,
@@ -94,12 +92,12 @@ export function getPlayground() {
             ${styles('text-color-gray-400', 'bg-gray-800', 'h-full')}
           >
             <div ${styles('h-full', 'flex', 'flex-row', 'gap-1', 'text-sm', 'text-color-gray-400', 'items-center')}>
-              <a onclick="Playground.run()" ${styles('text-lg', 'flex', 'items-center', 'gap-1')}>${playIcon} Run</a>
+              <a onclick="Playground.run()" title="Run asynchronously (Ctrl+R)" ${styles('text-lg', 'flex', 'items-center', 'gap-1')}>${playIcon} Run</a>
               <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${undoIcon}</a>
               <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" ${styles('text-xl', 'flex', 'items-center')}>${redoIcon}</a>
               <a onclick="Playground.resetDvalaCode()" ${styles('text-xl', 'flex', 'items-center')}>${trashIcon}</a>
               <div>
-                <a onclick="Playground.openMoreMenu()" ${styles('text-xl', 'flex', 'items-center')}>${hamburgerIcon}</a>
+                <a onclick="Playground.openMoreMenu(this)" ${styles('text-xl', 'flex', 'items-center')}>${hamburgerIcon}</a>
                 <div id="more-menu" ${styles('hidden', 'max-width: 20rem;', 'absolute', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'bg-gray-700')}>
                   <div ${styles('flex', 'flex-col', 'gap-2', 'text-base')}>
                     <a ${styles('flex', 'justify-between', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.run()">
@@ -108,6 +106,13 @@ export function getPlayground() {
                         <span ${styles('mr-8')}>Run</span>
                       </div>
                       Ctrl+R
+                    </a>
+                    <a ${styles('flex', 'justify-between', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); void Playground.runSync()">
+                      <div ${styles('flex', 'gap-2', 'w-full', 'items-center')}>
+                        <span ${styles('text-color-SkyLavender', 'items-center', 'flex')}>${playIcon}</span>
+                        <span ${styles('mr-8')}>Run sync</span>
+                      </div>
+                      Ctrl+Shift+R
                     </a>
                     <a ${styles('flex', 'justify-between', 'w-full', 'items-center')} onclick="Playground.closeMoreMenu(); Playground.analyze()">
                       <div ${styles('flex', 'gap-2', 'w-full', 'items-center')}>
@@ -136,14 +141,6 @@ export function getPlayground() {
                         <span ${styles('mr-8')}>Format</span>
                       </div>
                       Ctrl+F
-                    </a>
-                    <a ${styles('flex', 'gap-2', 'w-full', 'items-center', 'pt-2', 'border-0', 'border-t', 'border-solid', 'border-gray-500')} onclick="Playground.closeMoreMenu(); Playground.share();">
-                      <span ${styles('text-color-Pink', 'items-center', 'flex')}>${linkIcon}</span>
-                      <span>Share</span>
-                    </a>
-                    <a ${styles('flex', 'gap-2', 'w-full', 'items-center', 'pt-2', 'border-0', 'border-t', 'border-solid', 'border-gray-500')} onclick="Playground.closeMoreMenu(); Playground.resetPlayground();">
-                      <span ${styles('text-color-Crimson', 'items-center', 'flex')}>${resetIcon}</span>
-                      <span>Reset Playground</span>
                     </a>
                   </div>
                 </div>
@@ -393,6 +390,10 @@ export function getPlayground() {
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 30rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
       <div id="confirm-modal-title" ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}></div>
       <div id="confirm-modal-message" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
+      <label id="confirm-modal-checkbox-row" style="display:none;" ${styles('flex', 'items-center', 'gap-2', 'text-sm', 'font-sans', 'text-color-gray-400', 'cursor-pointer')}>
+        <input type="checkbox" id="confirm-modal-checkbox">
+        <span id="confirm-modal-checkbox-label"></span>
+      </label>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.closeConfirmModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
           <span>Cancel</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>

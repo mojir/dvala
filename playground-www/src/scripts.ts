@@ -112,6 +112,9 @@ const elements = {
   confirmModal: document.getElementById('confirm-modal') as HTMLDivElement,
   confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
   confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
+  confirmModalCheckboxRow: document.getElementById('confirm-modal-checkbox-row') as HTMLLabelElement,
+  confirmModalCheckbox: document.getElementById('confirm-modal-checkbox') as HTMLInputElement,
+  confirmModalCheckboxLabel: document.getElementById('confirm-modal-checkbox-label') as HTMLSpanElement,
   confirmModalOk: document.getElementById('confirm-modal-ok') as HTMLButtonElement,
   checkpointModal: document.getElementById('checkpoint-modal') as HTMLDivElement,
   checkpointModalMessage: document.getElementById('checkpoint-modal-message') as HTMLElement,
@@ -197,7 +200,14 @@ function calculateDimensions() {
   }
 }
 
-export function openMoreMenu() {
+export function openMoreMenu(triggerEl?: HTMLElement) {
+  if (triggerEl) {
+    const rect = triggerEl.getBoundingClientRect()
+    elements.moreMenu.style.position = 'fixed'
+    elements.moreMenu.style.top = `${rect.bottom}px`
+    elements.moreMenu.style.right = `${window.innerWidth - rect.right}px`
+    elements.moreMenu.style.left = 'auto'
+  }
   elements.moreMenu.style.display = 'block'
 }
 
@@ -238,6 +248,16 @@ function collapseCollapsible(el: HTMLElement, animate = true) {
 
 export function showTutorialsPage() {
   showPage('tutorials-page', 'smooth')
+}
+
+export function showSettingsTab(id: string) {
+  document.querySelectorAll('.settings-tab-btn').forEach(el => el.classList.remove('active'))
+  document.querySelectorAll('.settings-tab-content').forEach(el => el.classList.remove('active'))
+  document.getElementById(`settings-tab-btn-${id}`)?.classList.add('active')
+  document.getElementById(`settings-tab-${id}`)?.classList.add('active')
+  history.replaceState(null, '', `#settings-page/${id}`)
+  if (id === 'actions')
+    updateStorageUsage()
 }
 
 export function showSnapshotsPage() {
@@ -308,15 +328,15 @@ function renderContextMenu(items: ContextMenuItem[], menuId: string): string {
 
   return `
     <div style="position: relative;">
-      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}')" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="More actions">${ICONS.menu}</button>
-      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: absolute; right: 0; top: 100%; min-width: 150px; background: rgb(40 40 40); border: 1px solid rgb(60 60 60); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; overflow: hidden;">
+      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}', this)" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="More actions">${ICONS.menu}</button>
+      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: fixed; min-width: 150px; background: rgb(40 40 40); border: 1px solid rgb(60 60 60); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; overflow: hidden;">
         ${menuItems}
       </div>
     </div>
   `
 }
 
-export function toggleContextMenu(menuId: string): void {
+export function toggleContextMenu(menuId: string, triggerEl?: HTMLElement): void {
   const menu = document.getElementById(menuId)
   if (!menu) return
 
@@ -325,7 +345,18 @@ export function toggleContextMenu(menuId: string): void {
     if (m.id !== menuId) (m as HTMLElement).style.display = 'none'
   })
 
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none'
+  if (menu.style.display === 'block') {
+    menu.style.display = 'none'
+    return
+  }
+
+  if (triggerEl) {
+    const rect = triggerEl.getBoundingClientRect()
+    menu.style.top = `${rect.bottom}px`
+    menu.style.right = `${window.innerWidth - rect.right}px`
+    menu.style.left = 'auto'
+  }
+  menu.style.display = 'block'
 }
 
 export function closeContextMenu(): void {
@@ -681,6 +712,17 @@ export function closeAddContextMenu() {
 
 export function share() {
   const href = `${location.origin}${location.pathname}?state=${encodeState()}`
+  if (href.length > MAX_URL_LENGTH) {
+    showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
+    return
+  }
+  addOutputSeparator()
+  appendOutput('Shareable link:', 'comment')
+  const a = document.createElement('a')
+  a.textContent = href
+  a.className = 'share-link'
+  a.href = href
+  addOutputElement(a)
   void navigator.clipboard.writeText(href).then(() => {
     showToast('Link copied to clipboard')
   })
@@ -757,16 +799,21 @@ export const redoDvalaCodeHistory = throttle(() => {
   setTimeout(() => ignoreSelectionChange = false)
 })
 
-export function resetPlayground() {
-  const lockedSnapshots = getSavedSnapshots().filter(e => e.locked)
-  clearAllStates()
-  if (lockedSnapshots.length > 0) {
-    setSavedSnapshots(lockedSnapshots)
+function updateStorageUsage() {
+  const storageUsageEl = document.getElementById('settings-storage-usage')
+  const storageBarEl = document.getElementById('settings-storage-bar')
+  if (storageUsageEl) {
+    const bytes = JSON.stringify(localStorage).length
+    const kb = (bytes / 1024).toFixed(2)
+    const pct = bytes / (5 * 1024 * 1024) * 100
+    storageUsageEl.textContent = `${kb} KB / 5120 KB (${pct.toFixed(2)}%)`
+    if (storageBarEl)
+      storageBarEl.style.width = `${Math.min(pct, 100)}%`
   }
-  // Clear terminal snapshots (recent runs)
-  localStorage.removeItem(TERMINAL_SNAPSHOTS_KEY)
-  populateSnapshotsList()
+}
 
+export function resetPlayground() {
+  clearState('sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent')
   resetContext()
   resetDvalaCode()
   resetOutput()
@@ -1030,6 +1077,15 @@ window.onload = function () {
 
   document.addEventListener('click', onDocumentClick, true)
 
+  elements.mainPanel.addEventListener('scroll', () => {
+    closeContextMenu()
+  })
+
+  window.addEventListener('resize', () => {
+    closeMoreMenu()
+    closeContextMenu()
+  })
+
   elements.resizePlayground.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
@@ -1144,7 +1200,10 @@ window.onload = function () {
       switch (evt.key) {
         case 'r':
           evt.preventDefault()
-          void run()
+          if (evt.shiftKey)
+            void runSync()
+          else
+            void run()
           break
         case 'a':
           evt.preventDefault()
@@ -1310,8 +1369,8 @@ window.onload = function () {
 
   applyState(true)
 
-  const id = location.hash.substring(1) || 'index'
-  showPage(id, 'instant', 'replace')
+  const [pageId, tabId] = (location.hash.substring(1) || 'index').split('/')
+  showPage(pageId!, 'instant', 'replace', tabId)
 
   Search.onClose(() => {
     applyState()
@@ -1422,8 +1481,8 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
 }
 
 window.addEventListener('popstate', () => {
-  const id = location.hash.substring(1) || 'index'
-  showPage(id, 'instant', 'none')
+  const [pageId, tabId] = (location.hash.substring(1) || 'index').split('/')
+  showPage(pageId!, 'instant', 'none', tabId)
 })
 
 function truncateCode(code: string) {
@@ -1447,37 +1506,54 @@ export async function run() {
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
-    const sync = getState('sync')
-    if (sync) {
-      const result = getDvala().run(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true }
-        : { bindings: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
-      )
-      const content = stringifyValue(result, false)
-      appendOutput(content, 'result')
-    } else {
-      const disableAutoCheckpoint = getState('disable-auto-checkpoint')
-      const runResult = await getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint }
-        : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint },
-      )
-      if (runResult.type === 'error') {
-        if (runResult.snapshot) {
-          saveTerminalSnapshot(runResult.snapshot, 'error')
-        }
-        throw runResult.error
-      }
-      if (runResult.type === 'suspended') {
-        appendOutput('Program suspended', 'comment')
-        void openSnapshotModal(runResult.snapshot)
-        return
-      }
-      const content = stringifyValue(runResult.value, false)
+    const disableAutoCheckpoint = getState('disable-auto-checkpoint')
+    const runResult = await getDvala().runAsync(code, pure
+      ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint }
+      : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint },
+    )
+    if (runResult.type === 'error') {
       if (runResult.snapshot) {
-        saveTerminalSnapshot(runResult.snapshot, 'completed', content)
+        saveTerminalSnapshot(runResult.snapshot, 'error')
       }
-      appendOutput(content, 'result')
+      throw runResult.error
     }
+    if (runResult.type === 'suspended') {
+      appendOutput('Program suspended', 'comment')
+      void openSnapshotModal(runResult.snapshot)
+      return
+    }
+    const content = stringifyValue(runResult.value, false)
+    if (runResult.snapshot) {
+      saveTerminalSnapshot(runResult.snapshot, 'completed', content)
+    }
+    appendOutput(content, 'result')
+  } catch (error) {
+    appendOutput(error, 'error')
+  } finally {
+    hijacker.releaseConsole()
+    focusDvalaCode()
+  }
+}
+
+export function runSync() {
+  addOutputSeparator()
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
+  const title = selectedCode.code ? 'Run selection (sync)' : 'Run sync'
+
+  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+
+  const dvalaParams = getDvalaParamsFromContext()
+
+  const hijacker = hijackConsole()
+  try {
+    const pure = getState('pure')
+    const result = getDvala().run(code, pure
+      ? { bindings: dvalaParams.bindings, pure: true }
+      : { bindings: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
+    )
+    const content = stringifyValue(result, false)
+    appendOutput(content, 'result')
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
@@ -1591,19 +1667,11 @@ export function format() {
 export function toggleDebug() {
   saveState({ debug: !getState('debug') })
   updateCSS()
-  focusDvalaCode()
 }
 
 export function togglePure() {
   saveState({ pure: !getState('pure') })
   updateCSS()
-  focusDvalaCode()
-}
-
-export function toggleSync() {
-  saveState({ sync: !getState('sync') })
-  updateCSS()
-  focusDvalaCode()
 }
 
 export function toggleInterceptCheckpoint() {
@@ -1717,7 +1785,7 @@ function popToLevel(targetIndex: number) {
   currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
 }
 
-const MAX_URL_LENGTH = 32_767
+const MAX_URL_LENGTH = 24 * 1024 // 24KB, arbitrary limit to avoid creating unshareable links
 
 function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: DvalaErrorJSON) {
   const ref = (name: string) => panel.querySelector(`[data-ref="${name}"]`) as HTMLElement
@@ -2098,6 +2166,7 @@ let resolveConfirmModal: (() => void) | null = null
 export function showConfirmModal(title: string, message: string, onConfirm: () => void | Promise<void>): Promise<void> {
   elements.confirmModalTitle.textContent = title
   elements.confirmModalMessage.textContent = message
+  elements.confirmModalCheckboxRow.style.display = 'none'
   elements.confirmModalOk.onclick = () => {
     closeConfirmModal()
     void onConfirm()
@@ -2107,6 +2176,91 @@ export function showConfirmModal(title: string, message: string, onConfirm: () =
   return new Promise<void>(resolve => {
     resolveConfirmModal = resolve
   })
+}
+
+export function exportPlayground() {
+  const data: Record<string, string> = {}
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)!
+    data[key] = localStorage.getItem(key)!
+  }
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), data }, null, 2)
+  const blob = new Blob([payload], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `dvala-playground-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function importPlayground() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string) as unknown
+        if (!isExportPayload(parsed)) {
+          showToast('Invalid export file')
+          return
+        }
+        void showConfirmModal('Import playground data', 'This will replace all current data with the imported data. The page will reload.', () => {
+          localStorage.clear()
+          for (const [key, value] of Object.entries(parsed.data))
+            localStorage.setItem(key, value)
+          window.location.reload()
+        })
+      } catch {
+        showToast('Failed to parse export file')
+      }
+    }
+    reader.readAsText(file)
+  }
+  input.click()
+}
+
+function isExportPayload(value: unknown): value is { version: number; data: Record<string, string> } {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'version' in value
+    && 'data' in value
+    && typeof (value as Record<string, unknown>).data === 'object'
+  )
+}
+
+export function showClearDataModal() {
+  elements.confirmModalTitle.textContent = 'Clear all data'
+  elements.confirmModalMessage.textContent = 'This will clear all playground data from localStorage, including all unlocked snapshots.'
+  elements.confirmModalCheckboxRow.style.display = 'flex'
+  elements.confirmModalCheckboxLabel.textContent = 'Also delete locked snapshots'
+  elements.confirmModalCheckbox.checked = false
+  elements.confirmModalOk.onclick = () => {
+    const clearLocked = elements.confirmModalCheckbox.checked
+    closeConfirmModal()
+    clearData(clearLocked)
+  }
+  elements.confirmModal.style.display = 'flex'
+
+  return new Promise<void>(resolve => {
+    resolveConfirmModal = resolve
+  })
+}
+
+function clearData(clearLocked: boolean) {
+  const lockedSnapshots = clearLocked ? [] : getSavedSnapshots().filter(e => e.locked)
+  clearAllStates()
+  if (lockedSnapshots.length > 0)
+    setSavedSnapshots(lockedSnapshots)
+  populateSnapshotsList()
+  layout()
+  updateCSS()
+  updateStorageUsage()
 }
 
 export function closeConfirmModal() {
@@ -2850,13 +3004,9 @@ function updateCSS() {
   const pureToggle = document.getElementById('settings-pure-toggle') as HTMLInputElement | null
   if (pureToggle)
     pureToggle.checked = getState('pure')
-  const syncToggle = document.getElementById('settings-sync-toggle') as HTMLInputElement | null
-  if (syncToggle)
-    syncToggle.checked = getState('sync')
-  const sync = getState('sync')
   const pure = getState('pure')
   const disableHandlers = getState('disable-playground-handlers')
-  const disabled = sync || pure
+  const disabled = pure
   const checkpointDisabled = disabled || disableHandlers
   const interceptErrorToggle = document.getElementById('settings-intercept-error-toggle') as HTMLInputElement | null
   if (interceptErrorToggle) {
@@ -2891,9 +3041,10 @@ function updateCSS() {
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   elements.dvalaCodeTitleString.textContent = 'Dvala Code'
   elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
+
 }
 
-export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', historyEvent: 'replace' | 'push' | 'none' = 'push') {
+export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', historyEvent: 'replace' | 'push' | 'none' = 'push', tab?: string) {
   setTimeout(() => {
     inactivateAll()
 
@@ -2910,6 +3061,10 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
 
     page.classList.add('active-content')
+    if (id === 'settings-page') {
+      tab = tab || 'dvala'
+      showSettingsTab(tab)
+    }
     if (id === 'snapshots-page') {
       populateSnapshotsList()
       const indicator = document.getElementById('snapshots-nav-indicator')
@@ -2947,10 +3102,10 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
       history.replaceState(null, 'Dvala', window.location.pathname + window.location.search)
 
     else if (historyEvent === 'replace')
-      history.replaceState(null, '', `#${id}`)
+      history.replaceState(null, '', `#${id}${tab ? `/${tab}` : ''}`)
 
     else if (historyEvent !== 'none')
-      history.pushState(null, '', `#${id}`)
+      history.pushState(null, '', `#${id}${tab ? `/${tab}` : ''}`)
   }, 0)
 }
 
