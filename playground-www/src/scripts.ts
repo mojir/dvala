@@ -15,6 +15,7 @@ import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource
 import type { DvalaErrorJSON } from '../../src/errors'
 import { Search } from './Search'
 import {
+  clearAll as clearAllSnapshots,
   getSavedSnapshots,
   getTerminalSnapshots,
   init as initSnapshotStorage,
@@ -26,6 +27,7 @@ import {
   applyEncodedState,
   clearAllStates,
   clearState,
+  defaultState,
   encodeState,
   getState,
   redoContext,
@@ -117,6 +119,28 @@ const elements = {
   infoModal: document.getElementById('info-modal') as HTMLDivElement,
   infoModalTitle: document.getElementById('info-modal-title') as HTMLDivElement,
   infoModalMessage: document.getElementById('info-modal-message') as HTMLDivElement,
+  importOptionsModal: document.getElementById('import-options-modal') as HTMLDivElement,
+  importOptCode: document.getElementById('import-opt-code') as HTMLInputElement,
+  importOptCodeLabel: document.getElementById('import-opt-code-label') as HTMLLabelElement,
+  importOptContext: document.getElementById('import-opt-context') as HTMLInputElement,
+  importOptContextLabel: document.getElementById('import-opt-context-label') as HTMLLabelElement,
+  importOptSettings: document.getElementById('import-opt-settings') as HTMLInputElement,
+  importOptSettingsLabel: document.getElementById('import-opt-settings-label') as HTMLLabelElement,
+  importOptSavedSnapshots: document.getElementById('import-opt-saved-snapshots') as HTMLInputElement,
+  importOptSavedSnapshotsLabel: document.getElementById('import-opt-saved-snapshots-label') as HTMLLabelElement,
+  importOptRecentSnapshots: document.getElementById('import-opt-recent-snapshots') as HTMLInputElement,
+  importOptRecentSnapshotsLabel: document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement,
+  importOptLayout: document.getElementById('import-opt-layout') as HTMLInputElement,
+  importOptLayoutLabel: document.getElementById('import-opt-layout-label') as HTMLLabelElement,
+  importResultModal: document.getElementById('import-result-modal') as HTMLDivElement,
+  importResultContent: document.getElementById('import-result-content') as HTMLDivElement,
+  exportModal: document.getElementById('export-modal') as HTMLDivElement,
+  exportOptCode: document.getElementById('export-opt-code') as HTMLInputElement,
+  exportOptContext: document.getElementById('export-opt-context') as HTMLInputElement,
+  exportOptSettings: document.getElementById('export-opt-settings') as HTMLInputElement,
+  exportOptSavedSnapshots: document.getElementById('export-opt-saved-snapshots') as HTMLInputElement,
+  exportOptRecentSnapshots: document.getElementById('export-opt-recent-snapshots') as HTMLInputElement,
+  exportOptLayout: document.getElementById('export-opt-layout') as HTMLInputElement,
   confirmModal: document.getElementById('confirm-modal') as HTMLDivElement,
   confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
   confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
@@ -787,29 +811,38 @@ export const redoDvalaCodeHistory = throttle(() => {
   setTimeout(() => ignoreSelectionChange = false)
 })
 
+function formatStorageSize(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`
+}
+
 function updateStorageUsage() {
-  const storageUsageEl = document.getElementById('settings-storage-usage')
-  const storageBarEl = document.getElementById('settings-storage-bar')
-  if (storageUsageEl) {
-    const bytes = JSON.stringify(localStorage).length
-    const kb = (bytes / 1024).toFixed(2)
-    const pct = bytes / (5 * 1024 * 1024) * 100
-    storageUsageEl.textContent = `${kb} KB / 5120 KB (${pct.toFixed(2)}%)`
-    if (storageBarEl)
-      storageBarEl.style.width = `${Math.min(pct, 100)}%`
+  const localEl = document.getElementById('settings-storage-local')
+  const idbEl = document.getElementById('settings-storage-idb')
+  if (localEl) {
+    const bytes = new TextEncoder().encode(JSON.stringify(localStorage)).length
+    localEl.textContent = formatStorageSize(bytes)
+  }
+  if (idbEl) {
+    const bytes = new TextEncoder().encode(JSON.stringify({ saved: getSavedSnapshots(), terminal: getTerminalSnapshots() })).length
+    idbEl.textContent = formatStorageSize(bytes)
   }
 }
 
-export function resetPlayground() {
-  clearState('sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent')
-  resetContext()
-  resetDvalaCode()
-  resetOutput()
-  Search.closeSearch()
-  Search.clearSearch()
+export function clearLocalStorageData() {
+  void showConfirmModal('Clear Local Storage', 'This will clear code, context, settings, and layout preferences.', () => {
+    clearAllStates()
+    layout()
+    updateCSS()
+    updateStorageUsage()
+  })
+}
 
-  layout()
-  updateCSS()
+export function clearIndexedDbData() {
+  void showConfirmModal('Clear IndexedDB', 'This will delete all saved and terminal snapshots.', () => {
+    clearAllSnapshots()
+    populateSnapshotsList()
+    updateStorageUsage()
+  })
 }
 
 export function resetContext() {
@@ -2168,19 +2201,127 @@ export function showConfirmModal(title: string, message: string, onConfirm: () =
 }
 
 export function exportPlayground() {
+  elements.exportModal.style.display = 'flex'
+}
+
+export function closeExportModal() {
+  elements.exportModal.style.display = 'none'
+}
+
+export function doExport() {
+  const settingsKeys = [
+    'debug', 'pure', 'intercept-checkpoint', 'intercept-error',
+    'disable-playground-handlers', 'disable-auto-checkpoint',
+  ]
+  const codeKeys = [
+    'dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end',
+  ]
+  const contextKeys = [
+    'context', 'context-scroll-top', 'context-selection-start', 'context-selection-end',
+  ]
+  const layoutKeys = [
+    'sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent',
+  ]
+
+  const includeCode = elements.exportOptCode.checked
+  const includeContext = elements.exportOptContext.checked
+  const includeSettings = elements.exportOptSettings.checked
+  const includeSaved = elements.exportOptSavedSnapshots.checked
+  const includeRecent = elements.exportOptRecentSnapshots.checked
+  const includeLayout = elements.exportOptLayout.checked
+
+  const allowedKeys = new Set<string>([
+    ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
+    ...(includeContext ? contextKeys.map(k => `playground-${k}`) : []),
+    ...(includeSettings ? settingsKeys.map(k => `playground-${k}`) : []),
+    ...(includeLayout ? layoutKeys.map(k => `playground-${k}`) : []),
+  ])
+
   const data: Record<string, string> = {}
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)!
-    data[key] = localStorage.getItem(key)!
+    if (allowedKeys.has(key))
+      data[key] = localStorage.getItem(key)!
   }
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), data }, null, 2)
-  const blob = new Blob([payload], { type: 'application/json' })
+  for (const [flag, keys] of [[includeSettings, settingsKeys], [includeLayout, layoutKeys]] as [boolean, string[]][]) {
+    if (flag) {
+      for (const k of keys) {
+        const storageKey = `playground-${k}`
+        if (!(storageKey in data))
+          data[storageKey] = JSON.stringify(defaultState[k as keyof typeof defaultState])
+      }
+    }
+  }
+
+  const payload = JSON.stringify({
+    version: 1,
+    exportedAt: Date.now(),
+    data,
+    ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
+    ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
+  }, null, 2)
+
+  const now = new Date()
+  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`
+  const filename = `dvala-playground-${ts}.json`
+  closeExportModal()
+  void saveFile(payload, filename)
+}
+
+async function saveFile(content: string, filename: string): Promise<void> {
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as Window & typeof globalThis & { showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+        suggestedName: filename,
+        startIn: 'downloads',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      })
+      const writable = await handle.createWritable()
+      await writable.write(content)
+      await writable.close()
+      return
+    } catch (e) {
+      if ((e as DOMException).name === 'AbortError') return
+    }
+  }
+  const blob = new Blob([content], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `dvala-playground-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+type ExportPayload = {
+  version: number
+  data: Record<string, string>
+  savedSnapshots?: SavedSnapshot[]
+  recentSnapshots?: TerminalSnapshotEntry[]
+}
+
+function isExportPayload(value: unknown): value is ExportPayload {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'version' in value
+    && 'data' in value
+    && typeof (value as Record<string, unknown>).data === 'object'
+  )
+}
+
+let pendingImportPayload: ExportPayload | null = null
+let importNeedsReload = false
+
+const importCategoryKeys = {
+  code: ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end'],
+  context: ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end'],
+  settings: ['debug', 'pure', 'intercept-checkpoint', 'intercept-error', 'disable-playground-handlers', 'disable-auto-checkpoint'],
+  layout: ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent'],
+}
+
+function hasCategoryInPayload(payload: ExportPayload, keys: string[]): boolean {
+  return keys.some(k => `playground-${k}` in payload.data)
 }
 
 export function importPlayground() {
@@ -2198,12 +2339,30 @@ export function importPlayground() {
           showToast('Invalid export file')
           return
         }
-        void showConfirmModal('Import playground data', 'This will replace all current data with the imported data. The page will reload.', () => {
-          localStorage.clear()
-          for (const [key, value] of Object.entries(parsed.data))
-            localStorage.setItem(key, value)
-          window.location.reload()
-        })
+        pendingImportPayload = parsed
+
+        const hasCode = hasCategoryInPayload(parsed, importCategoryKeys.code)
+        const hasContext = hasCategoryInPayload(parsed, importCategoryKeys.context)
+        const hasSettings = hasCategoryInPayload(parsed, importCategoryKeys.settings)
+        const hasLayout = hasCategoryInPayload(parsed, importCategoryKeys.layout)
+        const hasSaved = (parsed.savedSnapshots?.length ?? 0) > 0
+        const hasRecent = (parsed.recentSnapshots?.length ?? 0) > 0
+
+        const setup = (el: HTMLInputElement, label: HTMLLabelElement, present: boolean) => {
+          el.checked = present
+          el.disabled = !present
+          label.style.opacity = present ? '' : '0.4'
+          label.style.cursor = present ? '' : 'default'
+        }
+
+        setup(elements.importOptCode, elements.importOptCodeLabel, hasCode)
+        setup(elements.importOptContext, elements.importOptContextLabel, hasContext)
+        setup(elements.importOptSettings, elements.importOptSettingsLabel, hasSettings)
+        setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
+        setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
+        setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
+
+        elements.importOptionsModal.style.display = 'flex'
       } catch {
         showToast('Failed to parse export file')
       }
@@ -2213,43 +2372,87 @@ export function importPlayground() {
   input.click()
 }
 
-function isExportPayload(value: unknown): value is { version: number; data: Record<string, string> } {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && 'version' in value
-    && 'data' in value
-    && typeof (value as Record<string, unknown>).data === 'object'
-  )
+export function closeImportOptionsModal() {
+  elements.importOptionsModal.style.display = 'none'
+  pendingImportPayload = null
 }
 
-export function showClearDataModal() {
-  elements.confirmModalTitle.textContent = 'Clear all data'
-  elements.confirmModalMessage.textContent = 'This will clear all playground data from localStorage, including all unlocked snapshots.'
-  elements.confirmModalCheckboxRow.style.display = 'flex'
-  elements.confirmModalCheckboxLabel.textContent = 'Also delete locked snapshots'
-  elements.confirmModalCheckbox.checked = false
-  elements.confirmModalOk.onclick = () => {
-    const clearLocked = elements.confirmModalCheckbox.checked
-    closeConfirmModal()
-    clearData(clearLocked)
+export function doImport() {
+  const payload = pendingImportPayload
+  if (!payload) return
+  elements.importOptionsModal.style.display = 'none'
+
+  const imported: string[] = []
+  const skipped: string[] = []
+  importNeedsReload = false
+
+  const applyKeys = (keys: string[], categoryLabel: string) => {
+    const applied = keys.filter(k => {
+      const sk = `playground-${k}`
+      if (sk in payload.data) {
+        localStorage.setItem(sk, payload.data[sk]!)
+        return true
+      }
+      return false
+    })
+    if (applied.length > 0) {
+      imported.push(categoryLabel)
+      importNeedsReload = true
+    }
   }
-  elements.confirmModal.style.display = 'flex'
 
-  return new Promise<void>(resolve => {
-    resolveConfirmModal = resolve
-  })
+  if (elements.importOptCode.checked) applyKeys(importCategoryKeys.code, 'Dvala code')
+  if (elements.importOptContext.checked) applyKeys(importCategoryKeys.context, 'Context')
+  if (elements.importOptSettings.checked) applyKeys(importCategoryKeys.settings, 'Settings')
+  if (elements.importOptLayout.checked) applyKeys(importCategoryKeys.layout, 'Layout')
+
+  if (elements.importOptSavedSnapshots.checked && payload.savedSnapshots) {
+    const existingIds = new Set(getSavedSnapshots().map(s => s.snapshot.id))
+    const toAdd = payload.savedSnapshots.filter(s => !existingIds.has(s.snapshot.id))
+    const conflicts = payload.savedSnapshots.length - toAdd.length
+    if (toAdd.length > 0) {
+      setSavedSnapshots([...getSavedSnapshots(), ...toAdd])
+      imported.push(`${toAdd.length} saved snapshot${toAdd.length !== 1 ? 's' : ''}`)
+    }
+    if (conflicts > 0)
+      skipped.push(`${conflicts} saved snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
+  }
+
+  if (elements.importOptRecentSnapshots.checked && payload.recentSnapshots) {
+    const existingIds = new Set(getTerminalSnapshots().map(s => s.snapshot.id))
+    const toAdd = payload.recentSnapshots.filter(s => !existingIds.has(s.snapshot.id))
+    const conflicts = payload.recentSnapshots.length - toAdd.length
+    if (toAdd.length > 0) {
+      setTerminalSnapshots([...getTerminalSnapshots(), ...toAdd])
+      imported.push(`${toAdd.length} recent snapshot${toAdd.length !== 1 ? 's' : ''}`)
+    }
+    if (conflicts > 0)
+      skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
+  }
+
+  populateSnapshotsList()
+  pendingImportPayload = null
+
+  const importedHtml = imported.length > 0
+    ? `<p style="margin:0 0 0.5rem 0; color: rgb(212 212 212);">Imported:</p><ul style="margin:0 0 0.75rem 0; padding-left:1.25rem;">${imported.map(s => `<li>${s}</li>`).join('')}</ul>`
+    : '<p style="margin:0 0 0.75rem 0;">Nothing was imported.</p>'
+  const skippedHtml = skipped.length > 0
+    ? `<p style="margin:0 0 0.5rem 0; color: rgb(212 212 212);">Skipped:</p><ul style="margin:0; padding-left:1.25rem;">${skipped.map(s => `<li>${s}</li>`).join('')}</ul>`
+    : ''
+  const reloadHtml = importNeedsReload
+    ? '<p style="margin:0.75rem 0 0 0; color: rgb(115 115 115);">The page will reload when you close this.</p>'
+    : ''
+
+  elements.importResultContent.innerHTML = importedHtml + skippedHtml + reloadHtml
+  elements.importResultModal.style.display = 'flex'
 }
 
-function clearData(clearLocked: boolean) {
-  const lockedSnapshots = clearLocked ? [] : getSavedSnapshots().filter(e => e.locked)
-  clearAllStates()
-  if (lockedSnapshots.length > 0)
-    setSavedSnapshots(lockedSnapshots)
-  populateSnapshotsList()
-  layout()
-  updateCSS()
-  updateStorageUsage()
+export function closeImportResultModal() {
+  elements.importResultModal.style.display = 'none'
+  if (importNeedsReload) {
+    importNeedsReload = false
+    window.location.reload()
+  }
 }
 
 export function closeConfirmModal() {
