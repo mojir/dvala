@@ -1,13 +1,17 @@
 import {
   addIcon,
+  closeIcon,
   copyIcon,
   debugIcon,
+  downloadIcon,
   hamburgerIcon,
   labIcon,
   leftAlignIcon,
+  linkIcon,
   objectIcon,
   playIcon,
   redoIcon,
+  saveIcon,
   tokenIcon,
   trashIcon,
   treeIcon,
@@ -206,11 +210,11 @@ export function getPlayground() {
             </div>
           </div>
 
-          <!-- Technical info (collapsible) -->
-          <details>
-            <summary ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'cursor: pointer;', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Technical Info</summary>
-            <div data-ref="tech" ${styles('flex', 'flex-col', 'gap-2', 'margin-top: 0.5rem;')}></div>
-          </details>
+          <!-- Technical info -->
+          <div ${styles('flex', 'flex-col', 'gap-2')}>
+            <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Technical Info</span>
+            <div data-ref="tech" ${styles('flex', 'flex-col', 'gap-2')}></div>
+          </div>
         </div>
 
         <!-- Right column: Checkpoints -->
@@ -220,31 +224,21 @@ export function getPlayground() {
         </div>
       </div>
 
-      <!-- Raw snapshot JSON (collapsible) -->
-      <details>
-        <summary ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'cursor: pointer;', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Raw Snapshot</summary>
-        <div class="example-code" ${styles('position: relative;', 'margin-top: 0.5rem;')}>
-          <pre data-ref="raw-json" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'p-2', 'text-sm', 'font-mono', 'overflow: auto;', 'max-height: 16rem;', 'white-space: pre;', 'border: none;', 'margin: 0;')}></pre>
-          <div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>
-            <div class="example-action-btn" ${styles('p-2', 'text-lg', 'cursor-pointer')} data-ref="copy-raw-btn">${copyIcon}</div>
-          </div>
-        </div>
-      </details>
-
       <!-- Buttons -->
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
         <button data-ref="close-btn" class="button" onclick="Playground.closeSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Close</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+          ${closeIcon}<span>Close</span>
         </button>
         <button data-ref="back-btn" class="button" onclick="Playground.slideBackSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'gap-2', 'items-center', 'display: none;')}>
           <span>&#8592; Back</span>
         </button>
         <div ${styles('flex', 'flex-row', 'gap-2')}>
-          <button data-ref="share-btn" class="button" onclick="Playground.shareSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Share</button>
-          <button class="button" onclick="Playground.downloadSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Download</button>
-          <button class="button" onclick="Playground.saveSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Save</button>
+          <button data-ref="share-btn" class="button" onclick="Playground.shareSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>${linkIcon}<span>Share</span></button>
+          <button class="button" onclick="Playground.downloadSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>${downloadIcon}<span>Download</span></button>
+          <button data-ref="copy-json-btn" class="button" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>${copyIcon}<span>Copy</span></button>
+          <button class="button" onclick="Playground.saveSnapshot()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>${saveIcon}<span>Save</span></button>
           <button class="button" onclick="Playground.resumeSnapshot()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-            <span>Run</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+            ${playIcon}<span>Run</span>
           </button>
         </div>
       </div>
@@ -275,20 +269,20 @@ export function getPlayground() {
       </div>
 
       <!-- Technical info -->
-      <details>
-        <summary ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'cursor: pointer;', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Technical Info</summary>
-        <div id="checkpoint-modal-tech" ${styles('flex', 'flex-col', 'gap-2', 'margin-top: 0.5rem;')}></div>
-      </details>
+      <div ${styles('flex', 'flex-col', 'gap-2')}>
+        <span ${styles('text-xs', 'font-sans', 'text-color-gray-300', 'font-weight: bold;', 'text-transform: uppercase;', 'letter-spacing: 0.05em;', 'font-size: 0.8rem;')}>Technical Info</span>
+        <div id="checkpoint-modal-tech" ${styles('flex', 'flex-col', 'gap-2')}></div>
+      </div>
 
       <!-- Buttons -->
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
         <div ${styles('flex', 'flex-row', 'gap-2')}>
-          <button class="button" onclick="Playground.shareCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')} title="Copy shareable link to clipboard">Share</button>
-          <button class="button" onclick="Playground.downloadCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')} title="Download snapshot as JSON file">Download</button>
-          <button class="button" onclick="Playground.saveCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')} title="Save snapshot to local storage">Save</button>
+          <button class="button" onclick="Playground.shareCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')} title="Copy shareable link to clipboard">${linkIcon}<span>Share</span></button>
+          <button class="button" onclick="Playground.downloadCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')} title="Download snapshot as JSON file">${downloadIcon}<span>Download</span></button>
+          <button class="button" onclick="Playground.saveCheckpoint()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')} title="Save snapshot to local storage">${saveIcon}<span>Save</span></button>
         </div>
         <button class="button" onclick="Playground.closeCheckpointModal()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Close</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+          ${closeIcon}<span>Close</span>
         </button>
       </div>
     </div>
@@ -317,13 +311,13 @@ export function getPlayground() {
       </div>
       <div id="effect-modal-main-buttons" ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 1rem;')}>
         <button id="effect-modal-btn-ignore" class="button" onclick="Playground.selectEffectAction('ignore')" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Ignore</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+          <span>Ignore</span>
         </button>
         <div ${styles('flex', 'flex-row', 'gap-2')}>
           <button id="effect-modal-btn-suspend" class="button" onclick="Playground.selectEffectAction('suspend')" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans')}>Suspend</button>
           <button id="effect-modal-btn-fail" class="button" onclick="Playground.selectEffectAction('fail')" ${styles('bg-gray-700', 'text-color-Rose', 'font-sans')}>Fail</button>
           <button id="effect-modal-btn-resume" class="button" onclick="Playground.selectEffectAction('resume')" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-            <span>Resume</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+            <span>Resume</span>
           </button>
         </div>
       </div>
@@ -351,7 +345,7 @@ export function getPlayground() {
       </div>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-between', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.closeImportSnapshotModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Close</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+          <span>Close</span>
         </button>
         <button class="button" onclick="Playground.importSnapshot()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans')}>Import</button>
       </div>
@@ -365,7 +359,7 @@ export function getPlayground() {
       <textarea id="readline-input" rows="3" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono', 'resize: vertical;')} spellcheck="false" autocomplete="off"></textarea>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.cancelReadline()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Cancel</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+          <span>Cancel</span>
         </button>
         <button class="button" onclick="Playground.submitReadline()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
           <span>OK</span>
@@ -380,7 +374,7 @@ export function getPlayground() {
       <div id="info-modal-message" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.closeInfoModal()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>OK</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+          <span>OK</span>
         </button>
       </div>
     </div>
@@ -396,10 +390,10 @@ export function getPlayground() {
       </label>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.closeConfirmModal()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Cancel</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">Esc</span>
+          <span>Cancel</span>
         </button>
         <button class="button" id="confirm-modal-ok" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>Confirm</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+          <span>Confirm</span>
         </button>
       </div>
     </div>
@@ -416,7 +410,7 @@ export function getPlayground() {
       </div>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
         <button class="button" onclick="Playground.dismissPrintln()" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
-          <span>OK</span><span ${styles('text-color-gray-500')} style="font-size:0.7rem;">↵</span>
+          <span>OK</span>
         </button>
       </div>
     </div>

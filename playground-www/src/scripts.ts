@@ -15,6 +15,14 @@ import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource
 import type { DvalaErrorJSON } from '../../src/errors'
 import { Search } from './Search'
 import {
+  getSavedSnapshots,
+  getTerminalSnapshots,
+  init as initSnapshotStorage,
+  setSavedSnapshots,
+  setTerminalSnapshots,
+} from './snapshotStorage'
+import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
+import {
   applyEncodedState,
   clearAllStates,
   clearState,
@@ -274,28 +282,6 @@ function notifySnapshotAdded() {
   if (navLink) navLink.style.color = 'rgb(245 245 245)'
 }
 
-interface SavedSnapshot {
-  kind: 'saved'
-  snapshot: Snapshot
-  savedAt: number
-  locked: boolean
-  name?: string
-}
-
-function getSavedSnapshots(): SavedSnapshot[] {
-  const raw = JSON.parse(localStorage.getItem(SAVED_CHECKPOINTS_KEY) ?? '[]') as unknown[]
-  return raw.map(entry => {
-    if (typeof entry === 'object' && entry !== null && 'snapshot' in entry && 'savedAt' in entry) {
-      return entry as SavedSnapshot
-    }
-    return { kind: 'saved' as const, snapshot: entry as Snapshot, savedAt: (entry as Snapshot).timestamp, locked: false }
-  })
-}
-
-function setSavedSnapshots(entries: SavedSnapshot[]) {
-  localStorage.setItem(SAVED_CHECKPOINTS_KEY, JSON.stringify(entries))
-}
-
 function formatTime(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -401,7 +387,9 @@ function getSnapshotDisplayMessage(snapshot: Snapshot): string {
 function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index: number, animateIn = false): string {
   const { snapshot, savedAt } = entry
   const animateClass = animateIn ? 'animate-in' : ''
-  const timestamp = `<div style="font-size: 0.75rem; color: rgb(100 100 100);">${formatTime(new Date(savedAt))}</div>`
+  const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
+  const sizeStr = snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(1)} MB` : `${(snapshotBytes / 1024).toFixed(1)} KB`
+  const timestamp = `<div style="font-size: 0.75rem; color: rgb(100 100 100); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
 
   let type: 'terminal' | 'saved'
   let title: string
@@ -561,7 +549,7 @@ export function saveTerminalSnapshotToSaved(index: number) {
     // Animate removal from terminal snapshots
     await animateCardRemoval('terminal', index)
     entries.splice(index, 1)
-    localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+    setTerminalSnapshots(entries)
     populateSnapshotsList({ animateNewSaved: true })
     showToast('Snapshot saved')
   })
@@ -630,7 +618,7 @@ export function clearUnlockedSnapshots() {
       ...terminalEntries.map((_, i) => animateCardRemoval('terminal', i)),
       ...unlockedSavedIndices.map(i => animateCardRemoval('saved', i)),
     ])
-    localStorage.removeItem(TERMINAL_SNAPSHOTS_KEY)
+    setTerminalSnapshots([])
     setSavedSnapshots(savedEntries.filter(e => e.locked))
     populateSnapshotsList()
     showToast('Unlocked snapshots cleared')
@@ -1040,7 +1028,8 @@ function addOutputElement(element: HTMLElement) {
   saveState({ output: elements.outputResult.innerHTML })
 }
 
-window.onload = function () {
+window.onload = async function () {
+  await initSnapshotStorage()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
   elements.contextUndoButton.classList.add('disabled')
@@ -1878,6 +1867,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   // Technical info
   const techEl = ref('tech')
   techEl.innerHTML = ''
+  const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
   const techRows: [string, string][] = [
     ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
@@ -1887,6 +1877,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       const pad = (n: number) => String(n).padStart(2, '0')
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
     })()],
+    ['Size', snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(2)} MB` : `${(snapshotBytes / 1024).toFixed(2)} KB`],
   ]
   techRows.forEach(([label, value]) => {
     const row = makeArgRow(value)
@@ -1966,11 +1957,9 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     })
   }
 
-  // Raw JSON
-  const rawJson = JSON.stringify(snapshot, null, 2)
-  ref('raw-json').textContent = rawJson
-  ref('copy-raw-btn').addEventListener('click', () => {
-    void navigator.clipboard.writeText(rawJson)
+  // Copy JSON button
+  ref('copy-json-btn').addEventListener('click', () => {
+    void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2))
   })
 }
 
@@ -2296,11 +2285,13 @@ export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
   elements.checkpointModalTech.innerHTML = ''
   const pad = (n: number) => String(n).padStart(2, '0')
   const d = new Date(snapshot.timestamp)
+  const checkpointBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
   const techRows: [string, string][] = [
     ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.executionId],
     ['Timestamp', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`],
+    ['Size', checkpointBytes >= 1024 * 1024 ? `${(checkpointBytes / (1024 * 1024)).toFixed(2)} MB` : `${(checkpointBytes / 1024).toFixed(2)} KB`],
   ]
   techRows.forEach(([label, value]) => {
     const row = makeArgRow(value)
@@ -2325,17 +2316,7 @@ export function closeCheckpointModal() {
   resolveCheckpointModal = null
 }
 
-const SAVED_CHECKPOINTS_KEY = 'playground-saved-checkpoints'
-const TERMINAL_SNAPSHOTS_KEY = 'playground-terminal-snapshots'
 const MAX_TERMINAL_SNAPSHOTS = 3
-
-interface TerminalSnapshotEntry {
-  kind: 'terminal'
-  snapshot: Snapshot
-  savedAt: number
-  resultType: 'completed' | 'error'
-  result?: string
-}
 
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error', result?: string): void {
   const entry: TerminalSnapshotEntry = {
@@ -2350,27 +2331,17 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
   if (entries.length > MAX_TERMINAL_SNAPSHOTS) {
     entries.length = MAX_TERMINAL_SNAPSHOTS
   }
-  localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+  setTerminalSnapshots(entries)
   notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
   showToast(resultType === 'error' ? 'Program failed — snapshot captured' : 'Program completed — snapshot captured')
-}
-
-function getTerminalSnapshots(): TerminalSnapshotEntry[] {
-  const raw = localStorage.getItem(TERMINAL_SNAPSHOTS_KEY)
-  if (!raw) return []
-  try {
-    return JSON.parse(raw) as TerminalSnapshotEntry[]
-  } catch {
-    return []
-  }
 }
 
 export async function clearTerminalSnapshot(index: number): Promise<void> {
   await animateCardRemoval('terminal', index)
   const entries = getTerminalSnapshots()
   entries.splice(index, 1)
-  localStorage.setItem(TERMINAL_SNAPSHOTS_KEY, JSON.stringify(entries))
+  setTerminalSnapshots(entries)
   populateSnapshotsList()
 }
 
