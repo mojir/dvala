@@ -138,6 +138,7 @@
     "dvala": "node ./dist/cli/cli.js",
     "dev": "npx serve docs -p 9901",
     "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
     "lcov": "open-cli ./coverage/index.html",
     "mcp:inspect": "npx @modelcontextprotocol/inspector node ./dist/mcp-server/server.js"
   },
