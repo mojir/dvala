@@ -9,12 +9,12 @@ import type { AstNode, StringNode, TemplateStringNode } from '../types'
 import { createParserContext, parseExpression } from './parseExpression'
 
 // ---------------------------------------------------------------------------
-// Segment types (internal to parser)
+// Segment types
 // ---------------------------------------------------------------------------
 
 type LiteralSegment = { type: 'literal'; value: string }
 type ExpressionSegment = { type: 'expression'; value: string }
-type Segment = LiteralSegment | ExpressionSegment
+export type Segment = LiteralSegment | ExpressionSegment
 
 // ---------------------------------------------------------------------------
 // Raw content scanner — splits template content into literal/expression spans
@@ -136,7 +136,7 @@ function scanNestedTemplate(raw: string, start: number): { str: string; consumed
  * Split the raw content of a template string (between the surrounding backticks)
  * into alternating literal and expression segments.
  */
-function splitSegments(raw: string): Segment[] {
+export function splitSegments(raw: string): Segment[] {
   const segments: Segment[] = []
   let i = 0
   let literal = ''

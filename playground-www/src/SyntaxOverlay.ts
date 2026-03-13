@@ -1,6 +1,7 @@
 import type { Token } from '../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
+import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../../src/tooling'
 
 const normalExpressionSet = new Set(normalExpressionKeys)
@@ -87,10 +88,29 @@ function isCommentToken(token: Token): boolean {
   return token[0] === 'SingleLineComment' || token[0] === 'MultiLineComment' || token[0] === 'Shebang'
 }
 
+function renderTemplateStringToken(rawValue: string): string {
+  const content = rawValue.slice(1, -1) // strip surrounding backticks
+  const segments = splitSegments(content)
+  const backtick = `<span style="color:${colors.Pink}">\`</span>`
+  let result = backtick
+  for (const seg of segments) {
+    if (seg.type === 'literal') {
+      result += `<span style="color:${colors.Pink}">${escapeHtml(seg.value)}</span>`
+    } else {
+      result += `<span style="color:${colors.Gray300}">\${</span>`
+      result += tokenizeToHtml(seg.value)
+      result += `<span style="color:${colors.Gray300}">}</span>`
+    }
+  }
+  return result + backtick
+}
+
 function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
     return tokens.map((token, index) => {
+      if (token[0] === 'TemplateString')
+        return renderTemplateStringToken(token[1])
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token, tokens, index)
       if (!color)

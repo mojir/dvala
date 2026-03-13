@@ -5,6 +5,7 @@ import type { Token } from '../../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../../src/builtin'
 import { standardEffectNames } from '../../../src/evaluator/standardEffects'
 import { allReference, getLinkName } from '../../../reference'
+import { splitSegments } from '../../../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../../../src/tooling'
 
 export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
@@ -85,10 +86,38 @@ export type StyleOverride = {
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 
+function renderTemplateStringTokenHtml(rawValue: string): string {
+  const content = rawValue.slice(1, -1)
+  const segments = splitSegments(content)
+  const backtick = `<span ${styles('text-color-Pink')}>\`</span>`
+  let result = backtick
+  for (const seg of segments) {
+    if (seg.type === 'literal') {
+      result += `<span ${styles('text-color-Pink')}>${seg.value}</span>`
+    } else {
+      result += `<span ${styles('text-color-gray-300')}>${'${'}</span>`
+      try {
+        const innerTokens = tokenizeSource(seg.value).tokens
+        result += innerTokens.map((t, i) => {
+          if (t[0] === 'TemplateString')
+            return renderTemplateStringTokenHtml(t[1])
+          return `<span ${getStylesFromToken(t, innerTokens, i)}>${t[1]}</span>`
+        }).join('')
+      } catch {
+        result += `<span ${styles('text-color-Mint')}>${seg.value}</span>`
+      }
+      result += `<span ${styles('text-color-gray-300')}>}</span>`
+    }
+  }
+  return result + backtick
+}
+
 export function formatDvalaExpression(program: string, styleOverride?: StyleOverride): string {
   try {
     const tokens = tokenizeSource(program).tokens
     const spans = tokens.map((token, index) => {
+      if (token[0] === 'TemplateString')
+        return renderTemplateStringTokenHtml(token[1])
       const style = styleOverride?.values.includes(token[1]) ? styleOverride.style : getStylesFromToken(token, tokens, index)
       return `<span ${style}>${token[1]}</span>`
     })
