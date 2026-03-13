@@ -249,7 +249,139 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       examples: [
         'effect(dvala.io.read-line)',
       ],
-      seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.println', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.println', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
+    },
+  },
+
+  'dvala.io.pick': {
+    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const items = args[0]
+      const options = args[1]
+
+      if (!Array.isArray(items)) {
+        throw new DvalaError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)
+      }
+      if (items.length === 0) {
+        throw new DvalaError('dvala.io.pick: items array must not be empty', sourceCodeInfo)
+      }
+      for (let i = 0; i < items.length; i++) {
+        if (typeof items[i] !== 'string') {
+          throw new DvalaError(`dvala.io.pick: items[${i}] must be a string, got ${typeof items[i]}`, sourceCodeInfo)
+        }
+      }
+
+      let promptMessage: string | undefined
+      let defaultIndex: number | undefined
+
+      if (options !== undefined) {
+        if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+          throw new DvalaError(`dvala.io.pick: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
+        }
+        const opts = options as UnknownRecord
+        if (opts['prompt'] !== undefined) {
+          if (typeof opts['prompt'] !== 'string') {
+            throw new DvalaError('dvala.io.pick: options.prompt must be a string', sourceCodeInfo)
+          }
+          promptMessage = opts['prompt']
+        }
+        if (opts['default'] !== undefined) {
+          if (typeof opts['default'] !== 'number' || !Number.isInteger(opts['default'])) {
+            throw new DvalaError('dvala.io.pick: options.default must be an integer', sourceCodeInfo)
+          }
+          defaultIndex = opts['default']
+          if (defaultIndex < 0 || defaultIndex >= items.length) {
+            throw new DvalaError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.length}`, sourceCodeInfo)
+          }
+        }
+      }
+
+      // Browser: window.prompt (synchronous)
+      if (typeof globalThis.prompt === 'function') {
+        const listLines = (items as string[]).map((item, i) => `${i}: ${item}`).join('\n')
+        const header = promptMessage ?? 'Choose an item:'
+        const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
+        const message = `${header}${defaultHint}\n${listLines}`
+
+        const result = globalThis.prompt(message)
+        if (result === null) {
+          return { type: 'Value', value: null, k }
+        }
+        const trimmed = result.trim()
+        if (trimmed === '') {
+          return { type: 'Value', value: defaultIndex !== undefined ? defaultIndex : null, k }
+        }
+        const parsed = Number(trimmed)
+        if (!Number.isInteger(parsed) || parsed < 0 || parsed >= items.length) {
+          throw new DvalaError(`dvala.io.pick: invalid selection "${trimmed}"`, sourceCodeInfo)
+        }
+        return { type: 'Value', value: parsed, k }
+      }
+
+      throw new DvalaError('dvala.io.pick is not supported in this environment. In Node.js, register a "dvala.io.pick" host handler.', sourceCodeInfo)
+    },
+    arity: { min: 1, max: 2 },
+    docs: {
+      category: 'effect',
+      description: 'Presents a numbered list of items and asks the user to choose one. In browsers uses `window.prompt()`. In Node.js, register a host handler. Resumes with the index of the chosen item, or `null` if the user cancels.',
+      returns: { type: ['integer', 'null'] },
+      args: {
+        items: { type: 'array', description: 'Non-empty array of strings to display.' },
+        options: { type: 'object', description: 'Optional settings: `prompt` (string label) and `default` (integer index to use when the user submits an empty input).' },
+      },
+      variants: [
+        { argumentNames: ['items'] },
+        { argumentNames: ['items', 'options'] },
+      ],
+      examples: [
+        'effect(dvala.io.pick)',
+      ],
+      seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.confirm', 'perform', 'effect'],
+    },
+  },
+
+  'dvala.io.confirm': {
+    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const question = args[0]
+      const options = args[1]
+
+      if (typeof question !== 'string') {
+        throw new DvalaError(`dvala.io.confirm: first argument must be a string, got ${typeof question}`, sourceCodeInfo)
+      }
+
+      if (options !== undefined) {
+        if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+          throw new DvalaError(`dvala.io.confirm: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
+        }
+        const opts = options as UnknownRecord
+        if (opts['default'] !== undefined && typeof opts['default'] !== 'boolean') {
+          throw new DvalaError('dvala.io.confirm: options.default must be a boolean', sourceCodeInfo)
+        }
+      }
+
+      // Browser: window.confirm (synchronous)
+      if (typeof globalThis.confirm === 'function') {
+        return { type: 'Value', value: globalThis.confirm(question), k }
+      }
+
+      throw new DvalaError('dvala.io.confirm is not supported in this environment. In Node.js, register a "dvala.io.confirm" host handler.', sourceCodeInfo)
+    },
+    arity: { min: 1, max: 2 },
+    docs: {
+      category: 'effect',
+      description: 'Asks the user a yes/no question. In browsers uses `window.confirm()` and returns `true` (OK) or `false` (Cancel). In Node.js, register a host handler. The optional `default` hints the preferred answer to host handlers (e.g. for rendering `[Y/n]` in a CLI), but has no effect on the browser implementation.',
+      returns: { type: 'boolean' },
+      args: {
+        question: { type: 'string', description: 'The yes/no question to present.' },
+        options: { type: 'object', description: 'Optional settings: `default` (boolean, hints the preferred answer for host handlers).' },
+      },
+      variants: [
+        { argumentNames: ['question'] },
+        { argumentNames: ['question', 'options'] },
+      ],
+      examples: [
+        'effect(dvala.io.confirm)',
+      ],
+      seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.pick', 'perform', 'effect'],
     },
   },
 

@@ -11,6 +11,8 @@
  * The tests are intentionally decoupled from DOM structure so they remain
  * stable as the playground UI evolves.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
@@ -384,5 +386,29 @@ describe('autoCompleter', () => {
     // If no match, suggestion may be null or return something
     // The key is it doesn't crash
     expect(() => completer.getNextSuggestion()).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 7. Start page example.dvala
+// ---------------------------------------------------------------------------
+
+describe('start page example', () => {
+  const dvala = makePlaygroundDvala()
+  const exampleCode = readFileSync(
+    join(__dirname, '../playground-builder/src/components/startPage/example.dvala'),
+    'utf-8',
+  )
+
+  it('runs with mocked io effect handlers', async () => {
+    let printlnValue: unknown
+    const result = await dvala.runAsync(exampleCode, {
+      effectHandlers: [
+        { pattern: 'dvala.io.read-line', handler: ctx => { ctx.resume('SAVE10') } },
+        { pattern: 'dvala.io.println', handler: ctx => { printlnValue = ctx.args[0]; ctx.resume(ctx.args[0] ?? null) } },
+      ],
+    })
+    expect(result.type).toBe('completed')
+    expect(printlnValue).toBe('Total: $47.67 (You saved $5.3)')
   })
 })

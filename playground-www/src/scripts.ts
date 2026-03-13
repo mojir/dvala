@@ -177,6 +177,13 @@ const elements = {
   effectModalInputLabel: document.getElementById('effect-modal-input-label') as HTMLSpanElement,
   effectModalValue: document.getElementById('effect-modal-value') as HTMLTextAreaElement,
   effectModalError: document.getElementById('effect-modal-error') as HTMLSpanElement,
+  ioPickModal: document.getElementById('io-pick-modal') as HTMLDivElement,
+  ioPickModalTitle: document.getElementById('io-pick-modal-title') as HTMLDivElement,
+  ioPickList: document.getElementById('io-pick-list') as HTMLDivElement,
+  ioConfirmModal: document.getElementById('io-confirm-modal') as HTMLDivElement,
+  ioConfirmQuestion: document.getElementById('io-confirm-question') as HTMLDivElement,
+  ioConfirmNoBtn: document.getElementById('io-confirm-no-btn') as HTMLButtonElement,
+  ioConfirmYesBtn: document.getElementById('io-confirm-yes-btn') as HTMLButtonElement,
   readlineModal: document.getElementById('readline-modal') as HTMLDivElement,
   readlinePrompt: document.getElementById('readline-prompt') as HTMLDivElement,
   readlineInput: document.getElementById('readline-input') as HTMLTextAreaElement,
@@ -229,8 +236,10 @@ let pendingEffects: PendingEffect[] = []
 let currentEffectIndex = 0
 let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
-let pendingReadline: { resolve: (value: string | null) => void } | null = null
-let pendingPrintln: { resolve: () => void } | null = null
+let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void } | null = null
+let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; focusedIndex: number | null; itemCount: number } | null = null
+let pendingIoConfirm: { resolve: (value: boolean) => void; suspend: () => void; defaultValue: boolean | undefined } | null = null
+let pendingPrintln: { resolve: () => void; suspend: () => void } | null = null
 let currentSnapshot: Snapshot | null = null
 const snapshotPanelStack: { panel: HTMLElement; snapshot: Snapshot; label: string }[] = []
 
@@ -1666,6 +1675,69 @@ window.onload = async function () {
     if (Search.handleKeyDown(evt))
       return
 
+    if (pendingIoPick && elements.ioPickModal.style.display !== 'none') {
+      if (evt.key === 'ArrowDown') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        const next = pendingIoPick.focusedIndex === null ? 0 : Math.min(pendingIoPick.focusedIndex + 1, pendingIoPick.itemCount - 1)
+        setPickFocus(next)
+      } else if (evt.key === 'ArrowUp') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        const prev = pendingIoPick.focusedIndex === null ? pendingIoPick.itemCount - 1 : Math.max(pendingIoPick.focusedIndex - 1, 0)
+        setPickFocus(prev)
+      } else if (evt.key === 'Escape') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        closeEffectHandlerMenus()
+        cancelIoPick()
+      } else {
+        evt.preventDefault()
+        evt.stopPropagation()
+      }
+      return
+    }
+
+    if (pendingIoConfirm && elements.ioConfirmModal.style.display !== 'none') {
+      if (evt.key === 'Escape') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        closeEffectHandlerMenus()
+        submitIoConfirm(false)
+      } else if (evt.key === 'Enter') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        if (pendingIoConfirm.defaultValue !== undefined)
+          submitIoConfirm(pendingIoConfirm.defaultValue)
+      } else {
+        evt.preventDefault()
+        evt.stopPropagation()
+      }
+      return
+    }
+
+    if (pendingReadline && elements.readlineModal.style.display !== 'none') {
+      evt.stopPropagation()
+      if (evt.key === 'Escape') {
+        evt.preventDefault()
+        closeEffectHandlerMenus()
+        cancelReadline()
+      } else if (evt.ctrlKey || evt.metaKey) {
+        evt.preventDefault()
+      }
+      return
+    }
+
+    if (pendingPrintln && elements.printlnModal.style.display !== 'none') {
+      evt.preventDefault()
+      evt.stopPropagation()
+      if (evt.key === 'Escape' || evt.key === 'Enter') {
+        closeEffectHandlerMenus()
+        dismissPrintln()
+      }
+      return
+    }
+
     if (evt.ctrlKey) {
       switch (evt.key) {
         case 'r':
@@ -1708,11 +1780,7 @@ window.onload = async function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (elements.readlineModal.style.display !== 'none') {
-        cancelReadline()
-      } else if (elements.printlnModal.style.display !== 'none') {
-        dismissPrintln()
-      } else if (elements.infoModal.style.display !== 'none') {
+      if (elements.infoModal.style.display !== 'none') {
         closeInfoModal()
       } else if (elements.confirmModal.style.display !== 'none') {
         closeConfirmModal()
@@ -1876,6 +1944,11 @@ function getDataFromUrl() {
 }
 
 function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
+  if (pendingIoPick || pendingIoConfirm || pendingPrintln) {
+    evt.preventDefault()
+    evt.stopPropagation()
+    return
+  }
   const target = evt.target as HTMLTextAreaElement
   const start = target.selectionStart
   const end = target.selectionEnd
@@ -3370,6 +3443,152 @@ export function confirmEffectAction() {
 }
 
 // ---------------------------------------------------------------------------
+// dvala.io.pick handler — shows a scrollable clickable list modal
+// ---------------------------------------------------------------------------
+
+function setPickFocus(index: number | null) {
+  if (!pendingIoPick)
+    return
+  pendingIoPick.focusedIndex = index
+  const rows = elements.ioPickList.children
+  for (let i = 0; i < rows.length; i++) {
+    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(50 50 50)' : ''
+  }
+  if (index !== null)
+    (rows[index] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' })
+}
+
+function ioPickHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    const items = ctx.args[0] as string[]
+    const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
+    const promptText = options?.prompt ?? 'Choose an item:'
+    const defaultIndex = options?.default ?? null
+
+    elements.ioPickModalTitle.textContent = promptText
+    elements.ioPickList.innerHTML = ''
+
+    const submit = (value: number | null) => {
+      elements.ioPickModal.style.display = 'none'
+      pendingIoPick = null
+      ctx.resume(value as Any)
+      resolve()
+      focusDvalaCode()
+    }
+
+    items.forEach((item, i) => {
+      const row = document.createElement('div')
+      row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+      row.onmouseenter = () => { row.style.background = 'rgb(60 60 60)' }
+      row.onmouseleave = () => { row.style.background = pendingIoPick?.focusedIndex === i ? 'rgb(50 50 50)' : '' }
+      const indexSpan = document.createElement('span')
+      indexSpan.style.cssText = 'font-size:0.75rem; color:rgb(115 115 115); font-family:monospace; min-width:1.2rem; text-align:right; flex-shrink:0;'
+      indexSpan.textContent = String(i)
+      const labelSpan = document.createElement('span')
+      labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
+      labelSpan.textContent = item
+      row.appendChild(indexSpan)
+      row.appendChild(labelSpan)
+      row.onclick = () => submit(i)
+      elements.ioPickList.appendChild(row)
+    })
+
+    const suspendPick = () => {
+      elements.ioPickModal.style.display = 'none'
+      pendingIoPick = null
+      ctx.suspend()
+      resolve()
+      focusDvalaCode()
+    }
+    pendingIoPick = { submit, suspend: suspendPick, focusedIndex: defaultIndex, itemCount: items.length }
+    setPickFocus(defaultIndex)
+    elements.ioPickModal.style.display = 'flex'
+  })
+}
+
+const effectHandlerMenuIds = ['io-pick-more-menu', 'io-confirm-more-menu', 'readline-more-menu', 'println-more-menu']
+
+export function closeEffectHandlerMenus() {
+  effectHandlerMenuIds.forEach(id => {
+    const el = document.getElementById(id)
+    if (el)
+      el.style.display = 'none'
+  })
+}
+
+export function toggleEffectHandlerMenu(id: string) {
+  const menu = document.getElementById(id)
+  if (!menu)
+    return
+  const wasHidden = menu.style.display === 'none'
+  closeEffectHandlerMenus()
+  if (wasHidden)
+    menu.style.display = 'flex'
+}
+
+export function suspendCurrentEffectHandler() {
+  closeEffectHandlerMenus()
+  if (pendingIoPick)
+    pendingIoPick.suspend()
+  else if (pendingIoConfirm)
+    pendingIoConfirm.suspend()
+  else if (pendingReadline?.suspend)
+    pendingReadline.suspend()
+  else if (pendingPrintln)
+    pendingPrintln.suspend()
+}
+
+export function cancelIoPick() {
+  if (!pendingIoPick)
+    return
+  pendingIoPick.submit(null)
+}
+
+// ---------------------------------------------------------------------------
+// dvala.io.confirm handler — shows a Yes/No modal
+// ---------------------------------------------------------------------------
+
+function ioConfirmHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    const question = ctx.args[0] as string
+    const options = ctx.args[1] as { default?: boolean } | undefined
+    const defaultValue = options?.default
+
+    elements.ioConfirmQuestion.textContent = question
+
+    // Only highlight a button when a default is explicitly set
+    elements.ioConfirmNoBtn.style.color = defaultValue === false ? '#4ec9b0' : ''
+    elements.ioConfirmYesBtn.style.color = defaultValue === true ? '#4ec9b0' : ''
+
+    elements.ioConfirmModal.style.display = 'flex'
+    pendingIoConfirm = {
+      resolve: (value: boolean) => {
+        ctx.resume(value as Any)
+        resolve()
+      },
+      suspend: () => {
+        elements.ioConfirmModal.style.display = 'none'
+        pendingIoConfirm = null
+        ctx.suspend()
+        resolve()
+        focusDvalaCode()
+      },
+      defaultValue,
+    }
+  })
+}
+
+export function submitIoConfirm(value: boolean) {
+  if (!pendingIoConfirm)
+    return
+  elements.ioConfirmModal.style.display = 'none'
+  const p = pendingIoConfirm
+  pendingIoConfirm = null
+  p.resolve(value)
+  focusDvalaCode()
+}
+
+// ---------------------------------------------------------------------------
 // dvala.io.read-line handler — shows a simple input modal
 // ---------------------------------------------------------------------------
 
@@ -3385,6 +3604,13 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
       resolve: (value: string | null) => {
         ctx.resume(value)
         resolve()
+      },
+      suspend: () => {
+        elements.readlineModal.style.display = 'none'
+        pendingReadline = null
+        ctx.suspend()
+        resolve()
+        focusDvalaCode()
       },
     }
   })
@@ -3424,6 +3650,13 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
         ctx.resume(value as Any)
         resolve()
       },
+      suspend: () => {
+        elements.printlnModal.style.display = 'none'
+        pendingPrintln = null
+        ctx.suspend()
+        resolve()
+        focusDvalaCode()
+      },
     }
   })
 }
@@ -3451,6 +3684,32 @@ export function dismissPrintln() {
 // ---------------------------------------------------------------------------
 // Synchronous effect handlers (used in sync mode)
 // ---------------------------------------------------------------------------
+
+function syncIoPickHandler(ctx: EffectContext): void {
+  const items = ctx.args[0] as string[]
+  const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
+  const header = options?.prompt ?? 'Choose an item:'
+  const defaultIndex = options?.default
+  const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
+  const listLines = items.map((item, i) => `${i}: ${item}`).join('\n')
+  const result = window.prompt(`${header}${defaultHint}\n${listLines}`)
+  if (result === null) {
+    ctx.resume(null as Any)
+    return
+  }
+  const trimmed = result.trim()
+  if (trimmed === '') {
+    ctx.resume((defaultIndex !== undefined ? defaultIndex : null) as Any)
+    return
+  }
+  const parsed = Number(trimmed)
+  ctx.resume(parsed as Any)
+}
+
+function syncIoConfirmHandler(ctx: EffectContext): void {
+  const question = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+  ctx.resume(window.confirm(question) as Any)
+}
 
 function syncReadlineHandler(ctx: EffectContext): void {
   const promptText = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
@@ -3491,6 +3750,8 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
     ]
   }
   return [
+    { pattern: 'dvala.io.pick', handler: syncIoPickHandler },
+    { pattern: 'dvala.io.confirm', handler: syncIoConfirmHandler },
     { pattern: 'dvala.io.read-line', handler: syncReadlineHandler },
     { pattern: 'dvala.io.println', handler: syncPrintlnHandler },
     { pattern: 'dvala.io.print', handler: syncPrintHandler },
@@ -3536,6 +3797,10 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       }
     }
 
+    if (!hasPattern('dvala.io.pick'))
+      effectHandlers.push({ pattern: 'dvala.io.pick', handler: ioPickHandler })
+    if (!hasPattern('dvala.io.confirm'))
+      effectHandlers.push({ pattern: 'dvala.io.confirm', handler: ioConfirmHandler })
     if (!hasPattern('dvala.io.read-line'))
       effectHandlers.push({ pattern: 'dvala.io.read-line', handler: readlineHandler })
     if (!hasPattern('dvala.io.println'))

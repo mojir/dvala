@@ -58,7 +58,7 @@ async function getOutputText(page: Page): Promise<string> {
 
 test.describe('playground loads', () => {
   test('page title and main elements are visible', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await expect(page).toHaveTitle('Playground')
 
     // Wrapper becomes visible after JS init
@@ -74,7 +74,7 @@ test.describe('playground loads', () => {
 
 test.describe('code execution', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     // Reset playground to clean state
     await page.evaluate(() => (window as any).Playground.resetPlayground())
@@ -120,7 +120,7 @@ test.describe('code execution', () => {
 
 test.describe('toolbar actions', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
@@ -174,7 +174,7 @@ test.describe('toolbar actions', () => {
 
 test.describe('navigation', () => {
   test('sidebar links navigate to content pages', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
 
     // Click Examples link in sidebar
@@ -185,7 +185,7 @@ test.describe('navigation', () => {
   })
 
   test('navigating via hash shows correct page', async ({ page }) => {
-    await page.goto('/#example-page')
+    await page.goto('#example-page')
     await waitForInit(page)
     await expect(page.locator('#example-page')).toHaveClass(/active-content/)
   })
@@ -193,7 +193,7 @@ test.describe('navigation', () => {
 
 test.describe('search', () => {
   test('opens search with Ctrl+K, types, and closes with Escape', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
 
     // Open search via keyboard
@@ -217,7 +217,7 @@ test.describe('search', () => {
 test.describe('examples', () => {
   test('loading an example populates code and context', async ({ page }) => {
     test.setTimeout(10_000)
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
@@ -240,7 +240,7 @@ test.describe('examples', () => {
 
 test.describe('state persistence', () => {
   test('code persists across page reload', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
@@ -258,7 +258,7 @@ test.describe('state persistence', () => {
 
 test.describe('share', () => {
   test('share generates a link with encoded state', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
@@ -284,7 +284,7 @@ test.describe('share', () => {
   })
 
   test('opening a ?state= URL restores code and context', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
@@ -295,7 +295,7 @@ test.describe('share', () => {
       return btoa(encodeURIComponent(JSON.stringify({ 'dvala-code': c, 'context': ctx })))
     }, { c: code, ctx: context })
 
-    await page.goto(`/?state=${encodedState}`)
+    await page.goto(`?state=${encodedState}`)
     await waitForInit(page)
 
     const dvalaValue = await page.locator('#dvala-textarea').inputValue()
@@ -311,7 +311,7 @@ test.describe('share', () => {
 
 test.describe('snapshots', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
@@ -371,7 +371,7 @@ test.describe('snapshots', () => {
 
 test.describe('settings', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
@@ -428,7 +428,7 @@ test.describe('settings', () => {
 
 test.describe('output panel', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
@@ -471,7 +471,7 @@ test.describe('output panel', () => {
 
 test.describe('api reference navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
   })
 
@@ -530,7 +530,7 @@ async function saveAsProgram(page: Page, name: string) {
 
 test.describe('programs', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
