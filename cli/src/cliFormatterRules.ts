@@ -1,7 +1,9 @@
 import type { TextFormatter } from '../../common/createFormatter'
 import type { Colorizer } from './colorizer'
 import { createFormatter } from '../../common/createFormatter'
+import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
+import { tokenizeSource } from '../../src/tooling'
 import { Colors } from './colorizer'
 
 export type FormatterRule = (text: string, index: number, formatter: TextFormatter) => {
@@ -167,11 +169,40 @@ const getInlineCodeRule: (fmt: Colorizer) => FormatterRule = fmt => (text, index
   return { count: 0, formattedText: '' }
 }
 
+function getTemplateStringRule(fmt: Colorizer): FormatterRule {
+  return (text, index) => {
+    if (text[index] !== '`') return noMatch
+    try {
+      const { tokens } = tokenizeSource(text.slice(index))
+      const first = tokens[0]
+      if (!first || first[0] !== 'TemplateString') return noMatch
+      const count = first[1].length
+      const content = first[1].slice(1, -1)
+      const segments = splitSegments(content)
+      let formattedText = `${Colors.FgRed}\`${Colors.Reset}`
+      for (const seg of segments) {
+        if (seg.type === 'literal') {
+          formattedText += Colors.FgRed + seg.value + Colors.Reset
+        } else {
+          formattedText += `${Colors.Bright}${Colors.FgWhite}` + `\${${Colors.Reset}`
+          formattedText += getDvalaFormatter(fmt)(seg.value)
+          formattedText += `${Colors.Bright}${Colors.FgWhite}` + `}${Colors.Reset}`
+        }
+      }
+      formattedText += `${Colors.FgRed}\`${Colors.Reset}`
+      return { count, formattedText }
+    } catch {
+      return noMatch
+    }
+  }
+}
+
 export function getDvalaExpressionRules(cli: Colorizer): FormatterRule[] {
   return [
     commentRule,
     stringRule,
     shortcutStringRule,
+    getTemplateStringRule(cli),
     functionNameRule,
     getNumberRule(cli),
     dvalaKeywordRule,

@@ -1,7 +1,7 @@
 import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
-import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken } from '../../tokenizer/token'
+import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import { asUserDefinedSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -9,6 +9,7 @@ import { NodeTypes } from '../../constants/constants'
 import { parseSymbol } from './parseSymbol'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'
+import { parseTemplateString } from './parseTemplateString'
 
 export interface ParseBindingTargetOptions {
   requireDefaultValue?: true
@@ -29,6 +30,10 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
   if (allowLiteralPatterns && isLiteralToken(firstToken)) {
     if (isNumberToken(firstToken) || isBasePrefixedNumberToken(firstToken)) {
       const node = parseNumber(ctx)
+      return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
+    }
+    if (isTemplateStringToken(firstToken)) {
+      const node = parseTemplateString(ctx, firstToken)
       return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
     }
     if (isStringToken(firstToken)) {
@@ -214,6 +219,7 @@ function isLiteralToken(token: Token | undefined): boolean {
   return isNumberToken(token)
     || isBasePrefixedNumberToken(token)
     || isStringToken(token)
+    || isTemplateStringToken(token)
     || isReservedSymbolToken(token, 'true')
     || isReservedSymbolToken(token, 'false')
     || isReservedSymbolToken(token, 'null')

@@ -2,11 +2,12 @@ import type { ObjectNode } from '../../builtin/specialExpressions/object'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken } from '../../tokenizer/token'
+import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import { stringFromQuotedSymbol, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseString } from './parseString'
+import { parseTemplateString } from './parseTemplateString'
 
 export function parseObject(ctx: ParserContext): ObjectNode {
   const
@@ -19,7 +20,9 @@ export function parseObject(ctx: ParserContext): ObjectNode {
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
     } else {
       const token = ctx.tryPeek()
-      if (isStringToken(token)) {
+      if (isTemplateStringToken(token)) {
+        params.push(parseTemplateString(ctx, token))
+      } else if (isStringToken(token)) {
         const stringNode = parseString(ctx, token)
         params.push(withSourceCodeInfo([NodeTypes.String, stringNode[1]], token[2]))
       } else if (isSymbolToken(token)) {

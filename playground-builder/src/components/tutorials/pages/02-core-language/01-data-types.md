@@ -38,6 +38,28 @@ Strings are enclosed in double quotes and support escape sequences:
 "Line 1\nLine 2"
 ```
 
+## Template Strings
+
+Template strings use backticks and support `${...}` interpolation — any expression can be embedded directly:
+
+```dvala
+let name = "World";
+`Hello, ${name}!`
+```
+
+```dvala
+let x = 7;
+let y = 6;
+`${x} * ${y} = ${x * y}`
+```
+
+Interpolations can contain full expressions including function calls, conditionals, and more:
+
+```dvala
+let items = ["apple", "banana", "cherry"];
+for (i in range(count(items))) -> `${i + 1}. ${items[i]}`
+```
+
 ## Booleans and Null
 
 The boolean values `true` and `false`, plus `null`:

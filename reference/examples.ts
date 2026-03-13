@@ -42,6 +42,24 @@ perform(effect(dvala.io.print), [1, 2, 3][2]);
     `.trim(),
   },
   {
+    id: 'template-strings',
+    name: 'Template strings',
+    description: 'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',
+    code: `
+// Template strings embed expressions with \${...}
+let name = "Alice";
+let score = 42;
+
+perform(effect(dvala.io.println), \`Hello, \${name}!\`);
+perform(effect(dvala.io.println), \`Score: \${score}/100\`);
+
+// Any expression works inside \${...}
+let items = ["apple", "banana", "cherry"];
+for (i in range(count(items))) ->
+  perform(effect(dvala.io.println), \`\${i + 1}. \${items[i]}\`)
+    `.trim(),
+  },
+  {
     id: 'simple-context-example',
     name: 'Using context',
     description: 'Simple example using bindings and a host effect handler.',

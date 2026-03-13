@@ -16,10 +16,12 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     datatype: true,
     title: 'string',
     category: 'datatype',
-    description: 'A `string`',
+    description: 'A `string`. Strings are written with double quotes. Template strings use backticks and support `${...}` interpolation — any expression can appear inside the braces.',
     examples: [
       '"hello"',
       '""',
+      '`Hello, World!`',
+      '`${2} * ${3} = ${2 * 3}`',
     ],
   },
   '-type-object': {

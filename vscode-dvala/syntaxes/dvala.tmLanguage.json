@@ -5,6 +5,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#docstrings" },
+    { "include": "#template-strings" },
     { "include": "#strings" },
     { "include": "#regexp-shorthand" },
     { "include": "#effect-names" },
@@ -54,6 +55,50 @@
             "0": { "name": "punctuation.definition.string.end.dvala" }
           },
           "patterns": [
+            {
+              "name": "constant.character.escape.dvala",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "template-strings": {
+      "patterns": [
+        {
+          "name": "string.template.dvala",
+          "begin": "`",
+          "end": "`",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.template.begin.dvala" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.template.end.dvala" }
+          },
+          "patterns": [
+            {
+              "name": "meta.template.expression.dvala",
+              "begin": "\\$\\{",
+              "end": "\\}",
+              "beginCaptures": {
+                "0": { "name": "punctuation.definition.template-expression.begin.dvala" }
+              },
+              "endCaptures": {
+                "0": { "name": "punctuation.definition.template-expression.end.dvala" }
+              },
+              "patterns": [
+                { "include": "#comments" },
+                { "include": "#template-strings" },
+                { "include": "#strings" },
+                { "include": "#numbers" },
+                { "include": "#reserved-symbols" },
+                { "include": "#special-expressions" },
+                { "include": "#builtin-functions" },
+                { "include": "#operators" },
+                { "include": "#brackets" },
+                { "include": "#symbols" }
+              ]
+            },
             {
               "name": "constant.character.escape.dvala",
               "match": "\\\\."
