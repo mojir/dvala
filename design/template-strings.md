@@ -14,7 +14,7 @@ let name = "world"
 
 ## Alternative 1 — Syntax Choice
 
-### Option A: Backtick with `${expr}` (recommended)
+### Option A: Backtick with `${expr}` (chosen)
 
 ```dvala
 `Hello ${name}!`
@@ -54,13 +54,21 @@ f"{first} {last}"
   but the mental model is subtle
 - Hard to distinguish at a glance from plain strings
 
-**Recommendation: Option A (backtick).** Cleanest separation, no conflicts, familiar.
+### Option D: `${...}` inside regular `"..."` strings
+
+- No new delimiter or syntax
+- **Hard technical limitation**: you can't embed a `"..."` string inside `${...}` because
+  the inner `"` closes the outer string. e.g. `"Hello ${"world"}"` is broken.
+- Breaking change for any existing string containing `${`
+- No visual distinction between plain and interpolated strings
+
+**Decision: Option A (backtick).** Cleanest separation, no conflicts, familiar, no nesting limitation with inner strings.
 
 ---
 
 ## Alternative 2 — Implementation Architecture
 
-### Approach X: Parse-time desugaring (recommended)
+### Approach X: Parse-time desugaring
 
 Transform a template string into a `(str ...)` call during parsing.
 
@@ -71,29 +79,36 @@ str("Hello ", name, ", ", age, " years old")
 ```
 
 - Zero evaluator changes — reuses existing `str` built-in
-- Zero changes to `getUndefinedSymbols` logic (symbols inside `${...}` are just
-  normal expression nodes already handled by the recursive walk)
-- Slightly higher parser complexity (re-parse expression parts)
+- Zero changes to `getUndefinedSymbols` logic
 - Error messages refer to the desugared form, not the original template syntax
+- `untokenize` cannot faithfully reconstruct the backtick form
 
-### Approach Y: New `TemplateString` AST node
+### Approach Y: New `TemplateString` AST node (chosen)
 
-Add `NodeTypes.TemplateString = 22` and a new node type:
+Add `NodeTypes.TemplateString` and a new node type:
 
 ```typescript
-type TemplateStringNode = SpecialExpressionNode<[22, Array<StringNode | AstNode>]>
+type TemplateStringNode = [
+  typeof NodeTypes.TemplateString,
+  Array<StringNode | AstNode>,  // alternating literal StringNodes and expression AstNodes
+  SourceCodeInfo?,
+]
 ```
 
-- Clean AST representation; error messages can point to template
-- Requires evaluator changes (`trampoline-evaluator.ts` case)
-- Requires `getUndefinedSymbols` handler
-- More code surface area; no real user-visible benefit over desugaring
+- Clean AST representation; error messages can point to the original template
+- `untokenize` can faithfully reconstruct the backtick form
+- Evaluator needs a new `TemplateStringBuildFrame` — but it is mechanical (~40 lines,
+  structurally identical to `ArrayBuildFrame` but concatenates strings)
+- `getUndefinedSymbols` needs one new case (~8 lines)
+- `typeGuards/astNode.ts` needs `NodeTypes.TemplateString` in `isExpressionNode`
+- The `satisfies never` exhaustiveness guard in `getUndefinedSymbols` ensures
+  TypeScript catches any missed cases at compile time
 
-**Recommendation: Approach X (parse-time desugaring).** Less code, no evaluator risk.
+**Decision: Approach Y.** The extra code is mechanical and the faithful `untokenize` reconstruction is worth it.
 
 ---
 
-## Recommended Design: Backtick + Parse-time Desugaring
+## Design: Backtick + TemplateString AST Node
 
 ### 1. Tokenizer (`src/tokenizer/tokenizers.ts`)
 
@@ -110,14 +125,16 @@ interpolated `${...}` spans, using brace-depth counting to handle nested braces:
 
 Token type: `['template-string', rawContent]`
 
-The tokenizer only needs to:
+The tokenizer must:
 - Enter on `` ` ``
-- Track brace depth when inside `${...}` so a `}` that closes a nested object
-  literal doesn't end the interpolation span
+- Track brace depth when inside `${...}` so a `}` closing a nested object literal
+  doesn't end the interpolation span
+- When inside a `${...}` span and a `` ` `` is encountered, recursively scan an
+  inner template string (enabling nested templates — see Edge Cases)
 - Exit on `` ` `` that is **outside** a `${...}` span
 - Return error on unclosed template string
 
-No `\`` inside a template string is supported in V1 (escaped backtick). Add `\\`` in V2.
+No `` \` `` inside a template string is supported in V1 (escaped backtick). Add in V2.
 
 ### 2. New token type (`src/tokenizer/token.ts`)
 
@@ -129,44 +146,96 @@ Add `TemplateStringToken` to the `Token` union.
 
 ### 3. Parser (`src/parser/subParsers/parseTemplateString.ts`) — new file
 
-Split the raw content string into alternating literal/expression spans:
+Split the raw content string into alternating literal/expression segments:
 
 ```
 "Hello ${name}, ${age} years!"
-  → ["Hello ", "name", ", ", "age", " years!"]
-     literal   expr   literal  expr   literal
+  → ["Hello ", name-expr, ", ", age-expr, " years!"]
+     literal   AstNode   literal AstNode  literal
 ```
 
 Algorithm:
 1. Scan for `${` with brace-depth counting to find matching `}`
-2. Each literal segment → `StringNode`
+2. Each literal segment → `StringNode` (empty literals are omitted)
 3. Each expression segment → re-tokenize with `tokenize()` + re-parse with `parseTokens()`
-4. If only one segment (no interpolations), return a plain `StringNode`
-5. If multiple segments, return a `NormalExpressionNode` calling `str`:
-   `[NodeTypes.NormalExpression, 'str', [seg1, seg2, ...], sourceCodeInfo]`
+4. If only one segment (no interpolations) → return a plain `StringNode`
+5. Otherwise → return a `TemplateStringNode`:
+   `[NodeTypes.TemplateString, [seg1, seg2, ...], sourceCodeInfo]`
 
-### 4. Main parser dispatch (`src/parser/parseAstNode.ts` or equivalent)
+### 4. Main parser dispatch
 
 Add a case for `'template-string'` token → call `parseTemplateString(ctx, token)`.
 
-### 5. No evaluator changes needed
+### 5. Evaluator (`src/evaluator/frames.ts` + `src/evaluator/trampoline-evaluator.ts`)
 
-The desugared node is an ordinary `str(...)` call — the evaluator handles it already.
+Add `TemplateStringBuildFrame` to `frames.ts`:
 
-### 6. `getUndefinedSymbols`
+```typescript
+interface TemplateStringBuildFrame {
+  type: 'TemplateStringBuild'
+  segments: AstNode[]   // all segments (StringNodes + expression nodes)
+  index: number         // next segment to evaluate
+  result: string        // accumulated string so far
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+```
 
-No new handler needed. The desugared node is a `NormalExpressionNode`; its children
-(the segment AST nodes) are already walked by the existing recursive logic.
+This is structurally identical to `ArrayBuildFrame` — evaluate nodes sequentially,
+accumulate into a result, return the final value. ~40 lines total.
 
-### 7. Tooling (`src/tooling.ts`)
+Add `stepTemplateString` in `trampoline-evaluator.ts`:
+- Creates the frame, kicks off evaluation of `segments[0]`
 
-`getAutoCompleter` / `untokenize` may need minor updates to handle the new token type.
-`untokenize` could reconstruct the backtick form or fall back to the `str(...)` form.
+Add `applyFrame` case for `TemplateStringBuildFrame`:
+- Coerce value to string with `String(value)`, append to `result`
+- Advance index or return final string value
 
-### 8. Docs / reference
+### 6. `getUndefinedSymbols` (`src/getUndefinedSymbols/index.ts`)
 
-Add a `TemplateString` entry to the syntax section of the reference, with examples and
-a note about the nesting limitation (V1: no `\`` escape inside template strings).
+Add one case:
+
+```typescript
+case NodeTypes.TemplateString: {
+  const unresolvedSymbols = new Set<string>()
+  for (const segment of (node as TemplateStringNode)[1]) {
+    findUnresolvedSymbolsInNode(segment, contextStack, builtin)
+      ?.forEach(symbol => unresolvedSymbols.add(symbol))
+  }
+  return unresolvedSymbols
+}
+```
+
+The `satisfies never` exhaustiveness guard will fail to compile until this is added.
+
+### 7. `typeGuards/astNode.ts`
+
+Add `NodeTypes.TemplateString` to `isExpressionNode`:
+
+```typescript
+export function isExpressionNode(node: AstNode): node is ExpressionNode {
+  return isNormalExpressionNode(node)
+    || node[0] === NodeTypes.SpecialExpression
+    || node[0] === NodeTypes.Number
+    || node[0] === NodeTypes.String
+    || node[0] === NodeTypes.TemplateString
+}
+```
+
+### 8. Tooling (`src/tooling.ts`)
+
+`untokenize` reconstructs the backtick form from a `TemplateStringNode`:
+
+```
+[NodeTypes.TemplateString, [StringNode("Hello "), nameNode, StringNode("!")]]
+  → `Hello ${name}!`
+```
+
+This is the primary reason for choosing Approach Y over X.
+
+### 9. Docs / reference
+
+Add a `TemplateString` entry to the syntax section of the reference, with examples.
 
 ---
 
@@ -175,11 +244,11 @@ a note about the nesting limitation (V1: no `\`` escape inside template strings)
 | Case | V1 behaviour |
 |------|-------------|
 | Empty interpolation `` `${}` `` | Parse error (empty expression) |
-| Nested template `` `${`inner`}` `` | Not supported — inner backtick closes the outer |
-| Escaped backtick `` `a\`b` `` | Not supported — treat as parse error |
+| Nested template `` `${`inner ${x}`}` `` | Supported — tokenizer recursively scans inner template |
+| Escaped backtick `` `a\`b` `` | Not supported in V1 — parse error |
 | Multi-line template strings | Supported (backtick allows newlines) |
-| `str()` with zero literal segments `` `${x}` `` | Desugar to `str(x)` — works fine |
-| Single literal, no interpolation `` `hello` `` | Return plain `StringNode("hello")` |
+| Zero literal segments `` `${x}` `` | `TemplateStringNode` with single expression segment |
+| Single literal, no interpolation `` `hello` `` | Returns plain `StringNode("hello")` |
 
 ---
 
@@ -187,34 +256,31 @@ a note about the nesting limitation (V1: no `\`` escape inside template strings)
 
 | File | Change |
 |------|--------|
-| `src/tokenizer/tokenizers.ts` | Add `tokenizeTemplateString`, export it |
+| `src/tokenizer/tokenizers.ts` | Add `tokenizeTemplateString` with recursive inner-template scanning |
 | `src/tokenizer/token.ts` | Add `TemplateStringToken` to the `Token` union |
 | `src/tokenizer/index.ts` | Register `tokenizeTemplateString` in the tokenizer chain |
+| `src/constants/constants.ts` | Add `NodeTypes.TemplateString = 22` |
+| `src/parser/types.ts` | Add `TemplateStringNode` type; add to `AstNode` union |
 | `src/parser/subParsers/parseTemplateString.ts` | **New file** — split + re-parse logic |
 | `src/parser/parseAstNode.ts` (or equivalent dispatch) | Add `'template-string'` case |
-| `src/tooling.ts` | Handle `TemplateStringToken` in `untokenize` |
+| `src/evaluator/frames.ts` | Add `TemplateStringBuildFrame`; add to `Frame` union |
+| `src/evaluator/trampoline-evaluator.ts` | Add `stepTemplateString` + `applyFrame` case |
+| `src/getUndefinedSymbols/index.ts` | Add `NodeTypes.TemplateString` case |
+| `src/typeGuards/astNode.ts` | Add `NodeTypes.TemplateString` to `isExpressionNode` |
+| `src/tooling.ts` | Handle `TemplateStringNode` in `untokenize` |
 | `__tests__/template-string.test.ts` | **New file** — integration tests |
-
-No changes required in:
-- `src/evaluator/` (desugaring means `str(...)` is already handled)
-- `src/builtin/` (no new built-in needed)
-- `src/constants/constants.ts` (no new `NodeTypes` entry)
 
 ---
 
 ## Open Questions
 
-1. **Should `` ` `` support escaped backtick** (`\``)?
-   V1: no. V2: add `\\`` handling in `tokenizeTemplateString`.
+1. **Should `` ` `` support escaped backtick** (`` \` ``)?
+   V1: no. V2: add `` \` `` handling in `tokenizeTemplateString`.
 
 2. **Should tagged template strings be considered?**
    e.g. `` html`<b>${x}</b>` `` — not in scope for V1.
 
-3. **Should `untokenize` reconstruct backtick form or emit `str(...)`?**
-   Reconstructing the backtick form is nicer for user-facing output; emitting `str(...)`
-   is simpler and sufficient for tooling.
-
-4. **`string.template()` overlap**
+3. **`string.template()` overlap**
    The existing `string.template()` function uses `$1`/`$2` positional placeholders and
    supports pluralization. Template strings and `string.template()` are complementary —
    template strings are inline/syntactic; `string.template()` is for l10n/pluralization.
