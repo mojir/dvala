@@ -4,7 +4,7 @@ import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
 import type { ContextStack } from '../evaluator/ContextStack'
-import type { Ast, AstNode, NormalExpressionNode, SpecialExpressionNode, SpreadNode, UserDefinedSymbolNode } from '../parser/types'
+import type { Ast, AstNode, NormalExpressionNode, SpecialExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
 import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 
 export type UndefinedSymbols = Set<string>
@@ -76,6 +76,14 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     }
     case NodeTypes.Spread:
       return findUnresolvedSymbolsInNode((node as SpreadNode)[1], contextStack, builtin)
+    case NodeTypes.TemplateString: {
+      const unresolvedSymbols = new Set<string>()
+      for (const segment of (node as TemplateStringNode)[1]) {
+        findUnresolvedSymbolsInNode(segment, contextStack, builtin)
+          ?.forEach(symbol => unresolvedSymbols.add(symbol))
+      }
+      return unresolvedSymbols
+    }
 
     /* v8 ignore next 2 */
     default:

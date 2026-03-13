@@ -57,6 +57,7 @@ import type {
   SpecialExpressionNode,
   StringNode,
   SymbolNode,
+  TemplateStringNode,
   UserDefinedFunction,
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
@@ -130,6 +131,7 @@ import type {
   RecurLoopRebindFrame,
   SequenceFrame,
   SomePredFrame,
+  TemplateStringBuildFrame,
   TryWithFrame,
 } from './frames'
 import type { Context } from './interface'
@@ -246,10 +248,36 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return stepNormalExpression(node as NormalExpressionNode, env, k)
     case NodeTypes.SpecialExpression:
       return stepSpecialExpression(node as SpecialExpressionNode, env, k)
+    case NodeTypes.TemplateString:
+      return stepTemplateString(node as TemplateStringNode, env, k)
     /* v8 ignore next 2 */
     default:
       throw new DvalaError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
   }
+}
+
+// ---------------------------------------------------------------------------
+// stepTemplateString — evaluate interpolated segments and concatenate
+// ---------------------------------------------------------------------------
+
+function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: ContinuationStack): Step {
+  const segments = node[1]
+  const sourceCodeInfo = node[2]
+
+  if (segments.length === 0) {
+    return { type: 'Value', value: '', k }
+  }
+
+  const frame: TemplateStringBuildFrame = {
+    type: 'TemplateStringBuild',
+    segments,
+    index: 0,
+    result: '',
+    env,
+    sourceCodeInfo,
+  }
+
+  return { type: 'Eval', node: segments[0]!, env, k: [frame, ...k] }
 }
 
 // ---------------------------------------------------------------------------
@@ -1168,6 +1196,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyOr(frame, value, k)
     case 'Qq':
       return applyQq(frame, value, k)
+    case 'TemplateStringBuild':
+      return applyTemplateStringBuild(frame, value, k)
     case 'ArrayBuild':
       return applyArrayBuild(frame, value, k)
     case 'ObjectBuild':
@@ -1434,6 +1464,19 @@ function advanceQq(frame: QqFrame, k: ContinuationStack): Step {
 /** Skip undefined user symbols in ?? until we find one to evaluate. */
 function skipUndefinedQq(frame: QqFrame, k: ContinuationStack): Step {
   return advanceQq(frame, k)
+}
+
+function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k: ContinuationStack): Step {
+  const { segments, env } = frame
+  const result = frame.result + String(value)
+
+  const nextIndex = frame.index + 1
+  if (nextIndex >= segments.length) {
+    return { type: 'Value', value: result, k }
+  }
+
+  const newFrame: TemplateStringBuildFrame = { ...frame, index: nextIndex, result }
+  return { type: 'Eval', node: segments[nextIndex]!, env, k: [newFrame, ...k] }
 }
 
 function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStack): Step {

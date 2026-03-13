@@ -43,6 +43,7 @@ function getTokenColor(token: Token, tokens: Token[], index: number): string | n
   const tokenType = token[0]
   switch (tokenType) {
     case 'string':
+    case 'TemplateString':
     case 'RegexpShorthand':
       return colors.Pink
     case 'Symbol':

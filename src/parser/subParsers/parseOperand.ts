@@ -6,7 +6,7 @@ import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { AstNode, NormalBuiltinSymbolNode, NormalExpressionNodeExpression, SpecialBuiltinSymbolNode, StringNode } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
-import type { SourceCodeInfo, StringToken, TokenType } from '../../tokenizer/token'
+import type { SourceCodeInfo, StringToken, TemplateStringToken, TokenType } from '../../tokenizer/token'
 import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -19,6 +19,7 @@ import { parseLambdaFunction, parseShorthandLambdaFunction } from './parseFuncti
 import { parseFunctionCall } from './parseFunctionCall'
 import { parseNumber } from './parseNumber'
 import { parseObject } from './parseObject'
+import { parseTemplateString } from './parseTemplateString'
 
 export function parseOperand(ctx: ParserContext): AstNode {
   let operand: AstNode = parseOperandPart(ctx)
@@ -120,6 +121,8 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseNumber(ctx)
     case 'string':
       return parseString(ctx, token as StringToken)
+    case 'TemplateString':
+      return parseTemplateString(ctx, token as TemplateStringToken)
     case 'Symbol': {
       ctx.storePosition()
       const lamdaFunction = parseLambdaFunction(ctx)

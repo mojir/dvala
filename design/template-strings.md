@@ -254,21 +254,22 @@ Add a `TemplateString` entry to the syntax section of the reference, with exampl
 
 ## File Change Map
 
-| File | Change |
-|------|--------|
-| `src/tokenizer/tokenizers.ts` | Add `tokenizeTemplateString` with recursive inner-template scanning |
-| `src/tokenizer/token.ts` | Add `TemplateStringToken` to the `Token` union |
-| `src/tokenizer/index.ts` | Register `tokenizeTemplateString` in the tokenizer chain |
-| `src/constants/constants.ts` | Add `NodeTypes.TemplateString = 22` |
-| `src/parser/types.ts` | Add `TemplateStringNode` type; add to `AstNode` union |
-| `src/parser/subParsers/parseTemplateString.ts` | **New file** — split + re-parse logic |
-| `src/parser/parseAstNode.ts` (or equivalent dispatch) | Add `'template-string'` case |
-| `src/evaluator/frames.ts` | Add `TemplateStringBuildFrame`; add to `Frame` union |
-| `src/evaluator/trampoline-evaluator.ts` | Add `stepTemplateString` + `applyFrame` case |
-| `src/getUndefinedSymbols/index.ts` | Add `NodeTypes.TemplateString` case |
-| `src/typeGuards/astNode.ts` | Add `NodeTypes.TemplateString` to `isExpressionNode` |
-| `src/tooling.ts` | Handle `TemplateStringNode` in `untokenize` |
-| `__tests__/template-string.test.ts` | **New file** — integration tests |
+| File | Change | Status |
+|------|--------|--------|
+| `src/tokenizer/tokenizers.ts` | Add `tokenizeTemplateString` with recursive inner-template scanning | ✅ Done |
+| `src/tokenizer/token.ts` | Add `TemplateStringToken` to the `Token` union | ✅ Done |
+| `src/constants/constants.ts` | Add `NodeTypes.TemplateString = 11` | ✅ Done |
+| `src/parser/types.ts` | Add `TemplateStringNode` type; add to `ExpressionNode` union | ✅ Done |
+| `src/parser/subParsers/parseTemplateString.ts` | **New file** — split + re-parse logic | ✅ Done |
+| `src/parser/subParsers/parseOperand.ts` | Add `'TemplateString'` case | ✅ Done |
+| `src/evaluator/frames.ts` | Add `TemplateStringBuildFrame`; add to `Frame` union | ✅ Done |
+| `src/evaluator/trampoline-evaluator.ts` | Add `stepTemplateString` + `applyFrame` case | ✅ Done |
+| `src/getUndefinedSymbols/index.ts` | Add `NodeTypes.TemplateString` case | ✅ Done |
+| `src/typeGuards/astNode.ts` | Add `NodeTypes.TemplateString` to `isExpressionNode` | ✅ Done |
+| `playground-builder/src/formatter/rules.ts` | Add `'TemplateString'` case to syntax highlighter | ✅ Done |
+| `src/evaluator/frames.test.ts` | Add `TemplateStringBuild` to exhaustiveness test | ✅ Done |
+| `__tests__/template-string.test.ts` | **New file** — integration tests (27 tests) | ✅ Done |
+| `src/tooling.ts` / `untokenizer` | No changes needed — token stores raw source, `untokenize` works for free | ✅ N/A |
 
 ---
 
