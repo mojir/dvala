@@ -100,7 +100,7 @@ add5(10)
 ```
 
 ```dvala
-let half = /(_, 2);
+let half = _ / 2;
 half(20)
 ```
 

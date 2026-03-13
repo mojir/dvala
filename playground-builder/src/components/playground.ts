@@ -347,9 +347,60 @@ export function getPlayground() {
   </div>
 
 
+  <div id="io-pick-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 40rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div ${styles('flex', 'flex-row', 'items-center', 'justify-between', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>
+        <div id="io-pick-modal-title" ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;')}></div>
+        <div style="position:relative;">
+          <a onclick="Playground.toggleEffectHandlerMenu('io-pick-more-menu')" ${styles('flex', 'items-center', 'cursor-pointer', 'text-color-gray-400', 'text-xl')}>${hamburgerIcon}</a>
+          <div id="io-pick-more-menu" ${styles('absolute', 'bg-gray-700', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'flex', 'flex-col', 'gap-2', 'text-sm', 'display: none;')} style="right:0; top:100%; z-index:210; min-width:8rem;">
+            <a ${styles('flex', 'gap-2', 'items-center', 'cursor-pointer')} onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
+          </div>
+        </div>
+      </div>
+      <div id="io-pick-list" class="fancy-scroll" ${styles('flex', 'flex-col', 'gap-1', 'overflow-y: auto;', 'max-height: 20rem;')}></div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button class="button" onclick="Playground.cancelIoPick()" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Cancel</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="io-confirm-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 36rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
+      <div ${styles('flex', 'flex-row', 'items-center', 'justify-between', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>
+        <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;')}>Confirm</div>
+        <div style="position:relative;">
+          <a onclick="Playground.toggleEffectHandlerMenu('io-confirm-more-menu')" ${styles('flex', 'items-center', 'cursor-pointer', 'text-color-gray-400', 'text-xl')}>${hamburgerIcon}</a>
+          <div id="io-confirm-more-menu" ${styles('absolute', 'bg-gray-700', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'flex', 'flex-col', 'gap-2', 'text-sm', 'display: none;')} style="right:0; top:100%; z-index:210; min-width:8rem;">
+            <a ${styles('flex', 'gap-2', 'items-center', 'cursor-pointer')} onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
+          </div>
+        </div>
+      </div>
+      <div id="io-confirm-question" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
+      <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
+        <button id="io-confirm-no-btn" class="button" onclick="Playground.submitIoConfirm(false)" ${styles('bg-gray-700', 'text-color-gray-400', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>No</span>
+        </button>
+        <button id="io-confirm-yes-btn" class="button" onclick="Playground.submitIoConfirm(true)" ${styles('bg-gray-700', 'text-color-Mint', 'font-sans', 'flex', 'gap-2', 'items-center')}>
+          <span>Yes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="readline-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
-      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Input</div>
+      <div ${styles('flex', 'flex-row', 'items-center', 'justify-between', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>
+        <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;')}>Input</div>
+        <div style="position:relative;">
+          <a onclick="Playground.toggleEffectHandlerMenu('readline-more-menu')" ${styles('flex', 'items-center', 'cursor-pointer', 'text-color-gray-400', 'text-xl')}>${hamburgerIcon}</a>
+          <div id="readline-more-menu" ${styles('absolute', 'bg-gray-700', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'flex', 'flex-col', 'gap-2', 'text-sm', 'display: none;')} style="right:0; top:100%; z-index:210; min-width:8rem;">
+            <a ${styles('flex', 'gap-2', 'items-center', 'cursor-pointer')} onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
+          </div>
+        </div>
+      </div>
       <div id="readline-prompt" ${styles('text-sm', 'font-sans', 'text-color-gray-400')}></div>
       <textarea id="readline-input" rows="3" ${styles('bg-gray-850', 'text-color-gray-300', 'border-0', 'p-2', 'text-sm', 'font-mono', 'resize: vertical;')} spellcheck="false" autocomplete="off"></textarea>
       <div ${styles('flex', 'flex-row', 'gap-2', 'justify-end', 'margin-top: 0.5rem;')}>
@@ -498,7 +549,15 @@ export function getPlayground() {
 
   <div id="println-modal" style="display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
     <div ${styles('bg-gray-800', 'p-4', 'border-0', 'border-solid', 'border-gray-600', 'flex', 'flex-col', 'gap-3', 'min-width: 24rem;', 'max-width: 48rem;', 'border-width: 1px;', 'border-top: 2px solid #e6c07b;')}>
-      <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>Output</div>
+      <div ${styles('flex', 'flex-row', 'items-center', 'justify-between', 'background-color: rgb(50 50 50);', 'margin: -1rem -1rem 0 -1rem;', 'padding: 0.6rem 1rem;')}>
+        <div ${styles('text-color-gray-200', 'font-sans', 'font-size: 1.1rem;', 'font-weight: bold;')}>Output</div>
+        <div style="position:relative;">
+          <a onclick="Playground.toggleEffectHandlerMenu('println-more-menu')" ${styles('flex', 'items-center', 'cursor-pointer', 'text-color-gray-400', 'text-xl')}>${hamburgerIcon}</a>
+          <div id="println-more-menu" ${styles('absolute', 'bg-gray-700', 'p-2', 'border-0', 'border-solid', 'border-gray-300', 'flex', 'flex-col', 'gap-2', 'text-sm', 'display: none;')} style="right:0; top:100%; z-index:210; min-width:8rem;">
+            <a ${styles('flex', 'gap-2', 'items-center', 'cursor-pointer')} onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
+          </div>
+        </div>
+      </div>
       <div class="example-code" ${styles('position: relative;')}>
         <pre id="println-content" class="fancy-scroll" ${styles('bg-gray-850', 'text-color-gray-300', 'p-3', 'text-sm', 'font-mono', 'overflow: auto;', 'max-height: 20rem;', 'max-width: 48rem;', 'white-space: pre;', 'margin: 0;')}></pre>
         <div class="example-action-bar" ${styles('absolute', 'top-0', 'right-0', 'flex-row', 'margin-top: 2px;')}>

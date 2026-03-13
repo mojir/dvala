@@ -14,6 +14,8 @@ describe('standardEffects', () => {
         'dvala.io.println',
         'dvala.io.error',
         'dvala.io.read-line',
+        'dvala.io.pick',
+        'dvala.io.confirm',
         'dvala.io.read-stdin',
         'dvala.random',
         'dvala.random.uuid',
@@ -34,6 +36,8 @@ describe('standardEffects', () => {
       expect(getStandardEffectHandler('dvala.io.println')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.io.error')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.io.read-line')).toBeTypeOf('function')
+      expect(getStandardEffectHandler('dvala.io.pick')).toBeTypeOf('function')
+      expect(getStandardEffectHandler('dvala.io.confirm')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.io.read-stdin')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.random')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.random.uuid')).toBeTypeOf('function')
@@ -310,6 +314,216 @@ describe('standardEffects', () => {
         expect(() => handler(['msg'], emptyK)).toThrow('not supported in this environment')
       } finally {
         globalThis.prompt = originalPrompt
+      }
+    })
+  })
+
+  describe('dvala.io.pick handler', () => {
+    const items = ['Apple', 'Banana', 'Cherry']
+
+    it('should return selected index via globalThis.prompt', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '1')
+        const result = handler([items], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBe(1)
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should return null when prompt is cancelled', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => null)
+        const result = handler([items], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBeNull()
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should return default index when user submits empty input with default option', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '')
+        const result = handler([items, { default: 2 }], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBe(2)
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should return null when user submits empty input with no default', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '')
+        const result = handler([items], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBeNull()
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should include custom prompt label in message', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '0')
+        void handler([items, { prompt: 'Pick a fruit:' }], emptyK)
+        expect((globalThis.prompt as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toContain('Pick a fruit:')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should throw on empty items array', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '0')
+        expect(() => handler([[]], emptyK)).toThrow('must not be empty')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should throw on non-array first argument', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler(['not-an-array'], emptyK)).toThrow('must be an array')
+    })
+
+    it('should throw when items contain non-strings', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '0')
+        expect(() => handler([['ok', 42]], emptyK)).toThrow('must be a string')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should throw when default index is out of bounds', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => '0')
+        expect(() => handler([items, { default: 10 }], emptyK)).toThrow('out of bounds')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should throw on invalid selection string', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        globalThis.prompt = vi.fn(() => 'banana')
+        expect(() => handler([items], emptyK)).toThrow('invalid selection')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+
+    it('should throw when prompt is not available (Node.js environment)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      const originalPrompt = globalThis.prompt
+      try {
+        // @ts-expect-error -- simulating Node.js environment without prompt
+        globalThis.prompt = undefined
+        expect(() => handler([items], emptyK)).toThrow('not supported in this environment')
+      } finally {
+        globalThis.prompt = originalPrompt
+      }
+    })
+  })
+
+  describe('dvala.io.confirm handler', () => {
+    it('should return true when confirm is accepted', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        globalThis.confirm = vi.fn(() => true)
+        const result = handler(['Are you sure?'], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBe(true)
+        expect(globalThis.confirm).toHaveBeenCalledWith('Are you sure?')
+      } finally {
+        globalThis.confirm = originalConfirm
+      }
+    })
+
+    it('should return false when confirm is cancelled', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        globalThis.confirm = vi.fn(() => false)
+        const result = handler(['Delete?'], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBe(false)
+      } finally {
+        globalThis.confirm = originalConfirm
+      }
+    })
+
+    it('should accept options object with default boolean', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        globalThis.confirm = vi.fn(() => true)
+        const result = handler(['Proceed?', { default: true }], emptyK) as { type: string; value: unknown; k: unknown }
+        expect(result.type).toBe('Value')
+        expect(result.value).toBe(true)
+      } finally {
+        globalThis.confirm = originalConfirm
+      }
+    })
+
+    it('should throw on non-string first argument', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      expect(() => handler([42], emptyK)).toThrow('must be a string')
+    })
+
+    it('should throw on non-object second argument', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        globalThis.confirm = vi.fn(() => true)
+        expect(() => handler(['Sure?', 'bad'], emptyK)).toThrow('must be an object')
+      } finally {
+        globalThis.confirm = originalConfirm
+      }
+    })
+
+    it('should throw when options.default is not a boolean', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        globalThis.confirm = vi.fn(() => true)
+        expect(() => handler(['Sure?', { default: 1 }], emptyK)).toThrow('must be a boolean')
+      } finally {
+        globalThis.confirm = originalConfirm
+      }
+    })
+
+    it('should throw when confirm is not available (Node.js environment)', () => {
+      const handler = getStandardEffectHandler('dvala.io.confirm')!
+      const originalConfirm = globalThis.confirm
+      try {
+        // @ts-expect-error -- simulating Node.js environment without confirm
+        globalThis.confirm = undefined
+        expect(() => handler(['Sure?'], emptyK)).toThrow('not supported in this environment')
+      } finally {
+        globalThis.confirm = originalConfirm
       }
     })
   })
