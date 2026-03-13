@@ -131,11 +131,12 @@ export type FunctionLike = DvalaFunction | Coll | number
 
 export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payload] | [T, Payload, SourceCodeInfo]
 
-export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode
-
 export type SpreadNode = AstNode<typeof NodeTypes.Spread, AstNode> // Payload should be array or object depending on context
 export type NumberNode = AstNode<typeof NodeTypes.Number, number>
 export type StringNode = AstNode<typeof NodeTypes.String, string>
+export type TemplateStringNode = AstNode<typeof NodeTypes.TemplateString, (StringNode | AstNode)[]>
+
+export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.UserDefinedSymbol, string>
 export type NormalBuiltinSymbolNode = AstNode<typeof NodeTypes.NormalBuiltinSymbol, number>
 export type SpecialBuiltinSymbolNode = AstNode<typeof NodeTypes.SpecialBuiltinSymbol, SpecialExpressionType>

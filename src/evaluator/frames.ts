@@ -153,6 +153,22 @@ export interface QqFrame {
 // ---------------------------------------------------------------------------
 
 /**
+ * Template string construction — evaluates interpolated segments sequentially
+ * and concatenates them into a string result.
+ *
+ * Structurally identical to ArrayBuildFrame but accumulates a string
+ * via String() coercion instead of an array.
+ */
+export interface TemplateStringBuildFrame {
+  type: 'TemplateStringBuild'
+  segments: AstNode[] // all segment nodes (StringNodes and expression AstNodes)
+  index: number // next segment to evaluate
+  result: string // accumulated string so far
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
  * Array literal construction (`[]` / `array`).
  *
  * Evaluates elements sequentially. Spread nodes (`...expr`) evaluate the
@@ -944,6 +960,7 @@ export type Frame =
   | OrFrame
   | QqFrame
   // Collection construction
+  | TemplateStringBuildFrame
   | ArrayBuildFrame
   | ObjectBuildFrame
   // Binding

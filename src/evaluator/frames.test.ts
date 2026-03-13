@@ -62,6 +62,7 @@ describe('frame types', () => {
       And: true,
       Or: true,
       Qq: true,
+      TemplateStringBuild: true,
       ArrayBuild: true,
       ObjectBuild: true,
       LetBind: true,
@@ -98,7 +99,7 @@ describe('frame types', () => {
       ImportMerge: true,
       AutoCheckpoint: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(42)
+    expect(Object.keys(frameTypes)).toHaveLength(43)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -119,6 +120,7 @@ describe('frame types', () => {
         case 'And': return 'short-circuit'
         case 'Or': return 'short-circuit'
         case 'Qq': return 'short-circuit'
+        case 'TemplateStringBuild': return 'collection'
         case 'ArrayBuild': return 'collection'
         case 'ObjectBuild': return 'collection'
         case 'LetBind': return 'binding'

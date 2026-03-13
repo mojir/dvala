@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -371,6 +371,101 @@ export const tokenizeShebang: Tokenizer<SingleLineCommentToken> = (input, positi
   return NO_MATCH
 }
 
+export const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
+  if (input[position] !== '`')
+    return NO_MATCH
+
+  let value = '`'
+  let length = 1
+
+  while (position + length < input.length) {
+    const char = input[position + length]!
+
+    if (char === '`') {
+      value += '`'
+      length += 1
+      return [length, ['TemplateString', value]]
+    }
+
+    if (char === '$' && input[position + length + 1] === '{') {
+      value += '${'
+      length += 2
+      let braceDepth = 1
+
+      while (position + length < input.length && braceDepth > 0) {
+        const c = input[position + length]!
+
+        if (c === '{') {
+          braceDepth += 1
+          value += c
+          length += 1
+        } else if (c === '}') {
+          braceDepth -= 1
+          value += c
+          length += 1
+        } else if (c === '"') {
+          // String literal inside interpolation — scan to matching closing "
+          value += c
+          length += 1
+          let escaping = false
+          while (position + length < input.length) {
+            const sc = input[position + length]!
+            value += sc
+            length += 1
+            if (escaping) {
+              escaping = false
+            } else if (sc === '\\') {
+              escaping = true
+            } else if (sc === '"') {
+              break
+            }
+          }
+        } else if (c === '\'') {
+          // Quoted symbol inside interpolation — scan to matching closing '
+          value += c
+          length += 1
+          let escaping = false
+          while (position + length < input.length) {
+            const sc = input[position + length]!
+            value += sc
+            length += 1
+            if (escaping) {
+              escaping = false
+            } else if (sc === '\\') {
+              escaping = true
+            } else if (sc === '\'') {
+              break
+            }
+          }
+        } else if (c === '`') {
+          // Nested template string — delegate recursively
+          const [nestedLength, nestedToken] = tokenizeTemplateString(input, position + length)
+          if (nestedLength === 0 || !nestedToken) {
+            return [length, ['Error', value, undefined, `Unclosed nested template string at position ${position + length}`]]
+          }
+          if (nestedToken[0] === 'Error') {
+            return [length + nestedLength, ['Error', value + nestedToken[1], undefined, nestedToken[3]]]
+          }
+          value += nestedToken[1]
+          length += nestedLength
+        } else {
+          value += c
+          length += 1
+        }
+      }
+
+      if (braceDepth > 0) {
+        return [length, ['Error', value, undefined, `Unclosed interpolation in template string at position ${position}`]]
+      }
+    } else {
+      value += char
+      length += 1
+    }
+  }
+
+  return [length, ['Error', value, undefined, `Unclosed template string at position ${position}`]]
+}
+
 export const tokenizeSingleLineComment: Tokenizer<SingleLineCommentToken> = (input, position) => {
   if (input[position] === '/' && input[position + 1] === '/') {
     let length = 2
@@ -398,6 +493,7 @@ export const tokenizers = [
   tokenizeLBrace,
   tokenizeRBrace,
   tokenizeString,
+  tokenizeTemplateString,
   tokenizeRegexpShorthand,
   tokenizeBasePrefixedNumber,
   tokenizeNumber,

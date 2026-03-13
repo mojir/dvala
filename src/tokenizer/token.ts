@@ -20,6 +20,7 @@ export const tokenTypes = [
   'Shebang',
   'string',
   'Symbol',
+  'TemplateString',
   'Whitespace',
 ] as const
 
@@ -46,6 +47,7 @@ export type SingleLineCommentToken = GenericToken<'SingleLineComment'>
 export type ShebangToken = GenericToken<'Shebang'>
 export type StringToken = GenericToken<'string'>
 export type SymbolToken<T extends string = string> = GenericToken<'Symbol', T>
+export type TemplateStringToken = GenericToken<'TemplateString'>
 export type WhitespaceToken = GenericToken<'Whitespace'>
 
 export type Token =
@@ -66,6 +68,7 @@ export type Token =
   | ShebangToken
   | StringToken
   | SymbolToken
+  | TemplateStringToken
   | WhitespaceToken
 
 export type TokenDescriptor<T extends Token> = [length: number, token?: T]
@@ -302,6 +305,19 @@ export function assertA_BinaryOperatorToken(token: Token | undefined): asserts t
 }
 export function asA_BinaryOperatorToken(token: Token | undefined): OperatorToken<SymbolicBinaryOperator> {
   assertA_BinaryOperatorToken(token)
+  return token
+}
+
+export function isTemplateStringToken(token: Token | undefined): token is TemplateStringToken {
+  return token?.[0] === 'TemplateString'
+}
+export function assertTemplateStringToken(token: Token | undefined): asserts token is TemplateStringToken {
+  if (!isTemplateStringToken(token)) {
+    throwUnexpectedToken('TemplateString', undefined, token)
+  }
+}
+export function asTemplateStringToken(token: Token | undefined): TemplateStringToken {
+  assertTemplateStringToken(token)
   return token
 }
 

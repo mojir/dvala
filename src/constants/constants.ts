@@ -9,6 +9,7 @@ export const NodeTypes = {
   ReservedSymbol: 8,
   Binding: 9,
   Spread: 10,
+  TemplateString: 11,
 } as const
 
 const NodeTypesSet = new Set(Object.values(NodeTypes))

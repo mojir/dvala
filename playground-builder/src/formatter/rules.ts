@@ -125,6 +125,7 @@ function getStylesFromToken(token: Token, tokens: Token[], index: number): strin
   const tokenType = token[0]
   switch (tokenType) {
     case 'string':
+    case 'TemplateString':
       return styles('text-color-Pink')
     case 'RegexpShorthand':
       return styles('text-color-Pink')
