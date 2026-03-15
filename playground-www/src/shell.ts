@@ -23,178 +23,179 @@ function getShellHTML(): string {
     ${getSnapshotsPage()}
   </main>
 
-  <div id="resize-sidebar" style="position:fixed;width:5px;cursor:col-resize;background-color:rgb(82 82 82);top:0;z-index:10;"></div>
+  <div id="resize-sidebar"></div>
 
   <nav id="sidebar" class="fancy-scroll-background">
-    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:1rem;">
-      <img src="images/dvala-logo.png" alt="Dvala" style="max-width:120px;width:100%;cursor:pointer;" onclick="Playground.showPage('index','smooth')">
+    <div class="sidebar-logo-wrap">
+      <img src="images/dvala-logo.png" alt="Dvala" onclick="Playground.showPage('index','smooth')">
     </div>
-    <div style="padding:0.25rem 0.5rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:1rem;cursor:pointer;border:1px solid #444;" onclick="Playground.Search.openSearch()">
+    <div class="sidebar-search-row" onclick="Playground.Search.openSearch()">
       <span>🔍 Search</span>
-      <span style="font-size:0.8rem;">F3</span>
+      <span class="sidebar-search-kbd">F3</span>
     </div>
-    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
-      <a id="home-page_link" style="cursor:pointer;" onclick="Playground.showPage('index','smooth')">🏠 Home</a>
-      <a id="about-page_link" style="cursor:pointer;" onclick="Playground.showPage('about-page','smooth')">ℹ️ About</a>
-      <a id="tutorials-page_link" style="cursor:pointer;" onclick="Playground.showTutorialsPage()">💡 Tutorials</a>
-      <a id="example-page_link" style="cursor:pointer;" onclick="Playground.showPage('example-page','smooth')">🧪 Examples</a>
+    <div class="sidebar-nav-list">
+      <a id="home-page_link" onclick="Playground.showPage('index','smooth')">🏠 Home</a>
+      <a id="about-page_link" onclick="Playground.showPage('about-page','smooth')">ℹ️ About</a>
+      <a id="tutorials-page_link" onclick="Playground.showTutorialsPage()">💡 Tutorials</a>
+      <a id="example-page_link" onclick="Playground.showPage('example-page','smooth')">🧪 Examples</a>
     </div>
-    <div style="margin-bottom:0.5rem;">
-      <a id="saved-programs-page_link" style="cursor:pointer;display:flex;align-items:center;gap:0.25rem;" onclick="Playground.showSavedProgramsPage()">
+    <div class="sidebar-nav-item-row">
+      <a id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
         💾 Programs
-        <span id="programs-nav-indicator" style="display:none;width:7px;height:7px;border-radius:50%;background:rgb(245 245 245);margin-left:4px;flex-shrink:0;"></span>
       </a>
+      <span id="programs-nav-indicator" class="nav-indicator"></span>
     </div>
-    <div style="margin-bottom:0.5rem;">
-      <a id="snapshots-page_link" style="cursor:pointer;display:flex;align-items:center;gap:0.25rem;" onclick="Playground.showSnapshotsPage()">
+    <div class="sidebar-nav-item-row">
+      <a id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
         📷 Snapshots
-        <span id="snapshots-nav-indicator" style="display:none;width:7px;height:7px;border-radius:50%;background:rgb(245 245 245);margin-left:4px;flex-shrink:0;"></span>
       </a>
+      <span id="snapshots-nav-indicator" class="nav-indicator"></span>
     </div>
-    <div style="margin-bottom:0.5rem;">
-      <a id="settings-page_link" style="cursor:pointer;" onclick="Playground.showPage('settings-page','smooth')">⚙️ Settings</a>
+    <div class="sidebar-nav-item-row">
+      <a id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">⚙️ Settings</a>
     </div>
-    <div style="height:1rem;"></div>
-    <div style="font-size:0.75rem;font-weight:bold;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;color:#888;">API Reference</div>
-    <div id="api-content-special-expressions" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
-    <div id="api-content-core-functions" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
-    <div id="api-content-effects" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
-    <div id="api-content-shorthands" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
-    <div id="api-content-datatypes" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
-    <div id="api-content-modules" class="sidebar-collapsible-content" style="display:flex;flex-direction:column;"></div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-section-label">API Reference</div>
+    <div id="api-content-special-expressions" class="sidebar-collapsible-content"></div>
+    <div id="api-content-core-functions" class="sidebar-collapsible-content"></div>
+    <div id="api-content-effects" class="sidebar-collapsible-content"></div>
+    <div id="api-content-shorthands" class="sidebar-collapsible-content"></div>
+    <div id="api-content-datatypes" class="sidebar-collapsible-content"></div>
+    <div id="api-content-modules" class="sidebar-collapsible-content"></div>
   </nav>
 
   ${getPlaygroundPanel()}
 
   ${getModals()}
 
-  <div id="search-dialog-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;">
-    <div style="display:flex;justify-content:center;padding-top:80px;max-height:calc(100% - 80px);">
-      <div id="search-dialog" style="background:#333;border:8px solid #444;border-radius:4px;width:800px;display:flex;flex-direction:column;max-height:100%;">
-        <input id="search-input" type="text" placeholder="Search..." style="padding:0.75rem;font-size:1.1rem;background:#444;border:none;color:#d4d4d4;outline:none;">
-        <div id="search-intro" style="padding:1rem;text-align:center;color:#888;">Type to search functions, modules, effects…</div>
-        <div id="no-search-result" style="display:none;padding:1rem;text-align:center;color:#888;">No results</div>
-        <div id="search-result" class="fancy-scroll" style="display:none;flex-direction:column;overflow-y:auto;flex:1;"></div>
+  <div id="search-dialog-overlay">
+    <div class="search-dialog-overlay__inner">
+      <div id="search-dialog" class="search-dialog">
+        <input id="search-input" type="text" placeholder="Search..." class="search-dialog__input">
+        <div id="search-intro">Type to search functions, modules, effects…</div>
+        <div id="no-search-result" style="display:none;">No results</div>
+        <div id="search-result" class="search-dialog__results fancy-scroll" style="display:none;"></div>
       </div>
     </div>
   </div>
 
-  <div id="toast-container" style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:0.5rem;pointer-events:none;"></div>
+  <div id="toast-container"></div>
   `
 }
 
 function getPlaygroundPanel(): string {
   return `
-  <div id="playground" style="position:fixed;bottom:0;left:0;right:0;background:transparent;">
-    <div id="resize-playground" style="height:5px;background:#555;cursor:row-resize;"></div>
-    <div id="panels-container" style="height:100%;width:100%;display:flex;flex-direction:row;white-space:nowrap;">
+  <div id="playground">
+    <div id="resize-playground"></div>
+    <div id="panels-container">
 
-      <div id="context-panel" style="height:100%;display:flex;flex-direction:column;">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0.5rem;height:1.6rem;background:#333;border-bottom:1px solid #555;user-select:none;cursor:pointer;" onclick="Playground.focusContext()">
-          <div id="context-title" style="font-size:1.1rem;">Context</div>
-          <div style="display:flex;gap:0.25rem;align-items:center;">
-            <a onclick="Playground.openAddContextMenu()" style="font-size:1.25rem;cursor:pointer;">+
-              <div id="add-context-menu" style="display:none;position:absolute;max-width:20rem;padding:0.5rem;border:1px solid #555;background:#444;z-index:50;">
-                <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                  <div style="display:flex;flex-direction:column;">
-                    <span style="font-size:0.75rem;font-weight:bold;">Name</span>
-                    <input id="new-context-name" style="background:#333;color:#d4d4d4;">
-                    <span style="font-size:0.75rem;font-weight:bold;margin-top:0.5rem;">Value (JSON)</span>
-                    <textarea id="new-context-value" rows="5" style="border:none;color:#d4d4d4;background:#333;" class="fancy-scroll"></textarea>
-                    <button class="button" onclick="Playground.addContextEntry()" style="margin-top:0.25rem;">Add</button>
-                    <span id="new-context-error" style="display:none;color:#f87171;font-size:0.75rem;"></span>
+      <div id="context-panel">
+        <div class="panel-header" onclick="Playground.focusContext()">
+          <div id="context-title" class="panel-header__title">Context</div>
+          <div class="panel-header__actions">
+            <a onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn">+
+              <div id="add-context-menu" class="dropdown-menu" style="display:none;">
+                <div class="dropdown-menu__body">
+                  <div class="dropdown-menu__field-group">
+                    <span class="dropdown-menu__label">Name</span>
+                    <input id="new-context-name" class="dropdown-menu__input">
+                    <span class="dropdown-menu__label">Value (JSON)</span>
+                    <textarea id="new-context-value" rows="5" class="dropdown-menu__textarea fancy-scroll"></textarea>
+                    <button class="button dropdown-menu__add-btn" onclick="Playground.addContextEntry()">Add</button>
+                    <span id="new-context-error" class="dropdown-menu__error" style="display:none;"></span>
                   </div>
-                  <a style="cursor:pointer;" onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
+                  <a onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
                 </div>
               </div>
             </a>
-            <a id="context-undo-button" onclick="Playground.undoContextHistory()" style="cursor:pointer;">↩</a>
-            <a id="context-redo-button" onclick="Playground.redoContextHistory()" style="cursor:pointer;">↪</a>
+            <a id="context-undo-button" onclick="Playground.undoContextHistory()">↩</a>
+            <a id="context-redo-button" onclick="Playground.redoContextHistory()">↪</a>
           </div>
         </div>
-        <textarea id="context-textarea" class="fancy-scroll" spellcheck="false" style="height:calc(100% - 1.6rem);border:none;resize:none;"></textarea>
+        <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
       </div>
 
-      ><div id="resize-divider-1" style="width:5px;height:100%;cursor:col-resize;background:#555;"></div>
+      ><div id="resize-divider-1"></div>
 
-      ><div id="dvala-panel" style="height:100%;display:flex;flex-direction:column;">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0.5rem;height:1.6rem;background:#333;border-bottom:1px solid #555;user-select:none;cursor:pointer;" onclick="Playground.focusDvalaCode()">
-          <div id="dvala-code-title" style="display:flex;gap:0.25rem;align-items:center;overflow:hidden;">
-            <span id="dvala-panel-debug-info" style="font-size:1.25rem;">🐛</span>
-            <span id="dvala-code-title-string" style="font-size:1.1rem;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onclick="Playground.onProgramTitleClick(event)" title="Click to rename"></span>
-            <span id="dvala-code-pending-indicator" style="display:none;width:7px;height:7px;border-radius:50%;background:rgb(245 245 245);margin-left:2px;flex-shrink:0;" title="Unsaved"></span>
+      ><div id="dvala-panel">
+        <div class="panel-header" onclick="Playground.focusDvalaCode()">
+          <div id="dvala-code-title" class="panel-header__code-title">
+            <span id="dvala-panel-debug-info" class="panel-header__debug-icon">🐛</span>
+            <span id="dvala-code-title-string" class="panel-header__title-string" onclick="Playground.onProgramTitleClick(event)" title="Click to rename"></span>
+            <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
             <input id="dvala-code-title-input" type="text" spellcheck="false" placeholder="Program name"
-              style="display:none;font-size:1.1rem;background:transparent;border:none;outline:none;min-width:8rem;max-width:20rem;padding:0 2px;color:inherit;"
+              class="panel-header__title-input"
+              style="display:none;"
               onkeydown="Playground.onProgramTitleKeydown(event)"
               onblur="Playground.onProgramTitleBlur()">
           </div>
-          <div style="display:flex;gap:0.25rem;align-items:center;" onclick="event.preventDefault();event.stopPropagation()">
-            <a onclick="Playground.run()" title="Run (Ctrl+R)" style="cursor:pointer;">▶ Run</a>
-            <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" style="cursor:pointer;">↩</a>
-            <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" style="cursor:pointer;">↪</a>
-            <a onclick="Playground.newFile()" title="New file" style="cursor:pointer;">📄</a>
+          <div class="panel-header__actions" onclick="event.preventDefault();event.stopPropagation()">
+            <a onclick="Playground.run()" title="Run (Ctrl+R)">▶ Run</a>
+            <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()">↩</a>
+            <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()">↪</a>
+            <a onclick="Playground.newFile()" title="New file">📄</a>
             <div>
-              <a onclick="Playground.openMoreMenu(this)" style="cursor:pointer;">☰
-                <div id="more-menu" style="display:none;position:absolute;max-width:20rem;padding:0.5rem;border:1px solid #555;background:#444;z-index:50;">
-                  <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.run()">▶ Run — Ctrl+R</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();void Playground.runSync()">▶ Run sync — Ctrl+Shift+R</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.analyze()">Analyze — Ctrl+A</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.tokenize()">Tokenize — Ctrl+T</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.parse()">Parse — Ctrl+P</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.format()">Format — Ctrl+F</a>
-                    <a style="cursor:pointer;" onclick="Playground.closeMoreMenu();Playground.saveAs()">Save as…</a>
+              <a onclick="Playground.openMoreMenu(this)">☰
+                <div id="more-menu" class="dropdown-menu" style="display:none;">
+                  <div class="dropdown-menu__body">
+                    <a onclick="Playground.closeMoreMenu();Playground.run()">▶ Run — Ctrl+R</a>
+                    <a onclick="Playground.closeMoreMenu();void Playground.runSync()">▶ Run sync — Ctrl+Shift+R</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.analyze()">Analyze — Ctrl+A</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.tokenize()">Tokenize — Ctrl+T</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.parse()">Parse — Ctrl+P</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.format()">Format — Ctrl+F</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.saveAs()">Save as…</a>
                   </div>
                 </div>
               </a>
             </div>
           </div>
         </div>
-        <textarea id="dvala-textarea" class="fancy-scroll" spellcheck="false" style="height:calc(100% - 1.6rem);border:none;resize:none;"></textarea>
+        <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
       </div>
 
-      ><div id="resize-divider-2" style="width:5px;height:100%;cursor:col-resize;background:#555;"></div>
+      ><div id="resize-divider-2"></div>
 
-      ><div id="output-panel" style="height:100%;display:flex;flex-direction:column;">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0.5rem;height:1.6rem;background:#333;border-bottom:1px solid #555;user-select:none;">
-          <span style="font-size:1.1rem;">Output</span>
-          <a onclick="Playground.resetOutput()" style="cursor:pointer;font-size:1.25rem;">🗑</a>
+      ><div id="output-panel">
+        <div class="panel-header">
+          <span class="panel-header__title">Output</span>
+          <a onclick="Playground.resetOutput()" class="panel-header__icon-btn">🗑</a>
         </div>
-        <div id="output-result" class="fancy-scroll" style="font-family:monospace;background:#1a1a1a;padding:0.5rem;font-size:0.875rem;display:flex;flex-direction:column;gap:0.5rem;height:calc(100% - 1.6rem);overflow-y:auto;"></div>
+        <div id="output-result" class="fancy-scroll"></div>
       </div>
 
     </div>
   </div>
 
   <template id="snapshot-panel-template">
-    <div class="fancy-scroll" style="background:#333;padding:1rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;max-height:85vh;">
-      <div data-ref="breadcrumbs" style="color:#d4d4d4;display:flex;flex-wrap:wrap;gap:0.25rem;background:rgb(50 50 50);margin:-1rem -1rem 0 -1rem;padding:0.6rem 1rem;font-weight:bold;"></div>
-      <div style="display:flex;flex-direction:row;gap:1rem;">
-        <div style="display:flex;flex-direction:column;gap:1rem;flex:1;">
-          <div style="display:flex;flex-direction:column;gap:0.5rem;">
-            <span style="font-size:0.8rem;font-weight:bold;text-transform:uppercase;">Metadata</span>
-            <div data-ref="meta-container"><div class="example-code" style="position:relative;"></div></div>
+    <div class="snapshot-panel fancy-scroll">
+      <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
+      <div class="snapshot-panel__columns">
+        <div class="snapshot-panel__col">
+          <div class="snapshot-panel__section">
+            <span class="snapshot-panel__section-label">Metadata</span>
+            <div data-ref="meta-container"><div class="example-code snapshot-panel__code-block"></div></div>
           </div>
-          <div data-ref="effect-section" style="display:flex;flex-direction:column;gap:0.5rem;">
-            <span style="font-size:0.8rem;font-weight:bold;text-transform:uppercase;">Effect</span>
-            <div data-ref="effect-container"><div class="example-code" style="position:relative;"></div></div>
+          <div data-ref="effect-section" class="snapshot-panel__section">
+            <span class="snapshot-panel__section-label">Effect</span>
+            <div data-ref="effect-container"><div class="example-code snapshot-panel__code-block"></div></div>
           </div>
-          <div data-ref="tech-section" style="display:flex;flex-direction:column;gap:0.5rem;">
-            <span style="font-size:0.8rem;font-weight:bold;text-transform:uppercase;">Technical</span>
-            <div data-ref="tech-container"><div class="example-code" style="position:relative;"></div></div>
+          <div data-ref="tech-section" class="snapshot-panel__section">
+            <span class="snapshot-panel__section-label">Technical</span>
+            <div data-ref="tech-container"><div class="example-code snapshot-panel__code-block"></div></div>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem;flex:1;">
-          <div data-ref="code-section" style="display:flex;flex-direction:column;gap:0.5rem;">
-            <span style="font-size:0.8rem;font-weight:bold;text-transform:uppercase;">Code</span>
-            <div class="example-code" style="position:relative;">
-              <pre data-ref="code-content" style="margin:0;overflow-x:auto;"></pre>
-              <a data-ref="add-to-playground" style="cursor:pointer;position:absolute;top:0.5rem;right:0.5rem;font-size:0.75rem;">Use in playground</a>
+        <div class="snapshot-panel__col">
+          <div data-ref="code-section" class="snapshot-panel__section">
+            <span class="snapshot-panel__section-label">Code</span>
+            <div class="example-code snapshot-panel__code-block">
+              <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
+              <a data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
             </div>
           </div>
         </div>
       </div>
-      <div data-ref="buttons" style="display:flex;gap:0.5rem;margin-top:1rem;">
+      <div data-ref="buttons" class="snapshot-panel__buttons">
         <button data-ref="resume-btn" class="button" style="display:none;">Resume</button>
         <button data-ref="save-btn" class="button">Save</button>
         <button data-ref="delete-btn" class="button button--danger">Delete</button>
@@ -203,130 +204,130 @@ function getPlaygroundPanel(): string {
     </div>
   </template>
 
-  <div id="snapshot-panel-container" style="position:fixed;inset:0;display:none;background:rgba(0,0,0,0.7);z-index:150;display:none;justify-content:center;align-items:center;"></div>
+  <div id="snapshot-panel-container" class="modal-overlay" style="display:none;"></div>
   `
 }
 
 function getModals(): string {
   const modal = (id: string, content: string) =>
-    `<div id="${id}" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:none;justify-content:center;align-items:center;">${content}</div>`
+    `<div id="${id}" class="modal-overlay" style="display:none;">${content}</div>`
 
   const box = (content: string) =>
-    `<div style="background:#333;border:1px solid #555;padding:1.5rem;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">${content}</div>`
+    `<div class="modal-box">${content}</div>`
 
   return `
   ${modal('checkpoint-modal', box(`
-    <div id="checkpoint-modal-message" style="margin-bottom:1rem;"></div>
-    <div id="checkpoint-modal-meta" style="margin-bottom:0.5rem;font-size:0.875rem;color:#888;"></div>
-    <div id="checkpoint-modal-tech" style="margin-bottom:1rem;font-size:0.875rem;color:#888;"></div>
-    <div style="display:flex;gap:0.5rem;">
+    <div id="checkpoint-modal-message" class="modal-body-row"></div>
+    <div id="checkpoint-modal-meta" class="modal-meta-row"></div>
+    <div id="checkpoint-modal-tech" class="modal-meta-row modal-body-row--last"></div>
+    <div class="modal-btn-row">
       <button class="button" onclick="Playground.resumeSnapshot()">Resume</button>
       <button class="button" onclick="Playground.closeCheckpointModal()">Dismiss</button>
     </div>
   `))}
 
   ${modal('confirm-modal', box(`
-    <div id="confirm-modal-title" style="font-size:1.25rem;margin-bottom:0.5rem;"></div>
-    <div id="confirm-modal-message" style="margin-bottom:1rem;"></div>
-    <label id="confirm-modal-checkbox-row" style="display:none;gap:0.5rem;align-items:center;margin-bottom:1rem;">
+    <div id="confirm-modal-title" class="modal-title"></div>
+    <div id="confirm-modal-message" class="modal-body-row"></div>
+    <label id="confirm-modal-checkbox-row" class="modal-checkbox-row" style="display:none;">
       <input type="checkbox" id="confirm-modal-checkbox">
       <span id="confirm-modal-checkbox-label"></span>
     </label>
-    <div style="display:flex;gap:0.5rem;">
+    <div class="modal-btn-row">
       <button id="confirm-modal-ok" class="button">OK</button>
       <button class="button" onclick="Playground.closeConfirmModal(false)">Cancel</button>
     </div>
   `))}
 
   ${modal('effect-modal', box(`
-    <div id="effect-modal-nav" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">
+    <div id="effect-modal-nav" class="effect-modal__nav">
       <button id="effect-modal-prev" class="button">◀</button>
-      <span id="effect-modal-counter" style="font-size:0.875rem;"></span>
+      <span id="effect-modal-counter" class="effect-modal__counter"></span>
       <button id="effect-modal-next" class="button">▶</button>
-      <div id="effect-modal-handled-badge" style="display:none;font-size:0.75rem;padding:0.1rem 0.4rem;background:#2d6a2d;color:#fff;border-radius:2px;">handled</div>
+      <div id="effect-modal-handled-badge" class="effect-modal__handled-badge" style="display:none;">handled</div>
     </div>
-    <div id="effect-modal-name" style="font-size:1.1rem;font-weight:bold;margin-bottom:0.5rem;"></div>
-    <div id="effect-modal-args" style="margin-bottom:1rem;font-size:0.875rem;"></div>
-    <div id="effect-modal-main-buttons" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;"></div>
-    <div id="effect-modal-input-section" style="display:none;flex-direction:column;gap:0.25rem;">
-      <label id="effect-modal-input-label" style="font-size:0.875rem;"></label>
-      <textarea id="effect-modal-value" rows="4" style="border:1px solid #555;background:#1a1a1a;color:#d4d4d4;padding:0.25rem;resize:vertical;"></textarea>
-      <span id="effect-modal-error" style="color:#f87171;font-size:0.75rem;display:none;"></span>
+    <div id="effect-modal-name" class="effect-modal__name"></div>
+    <div id="effect-modal-args" class="modal-body-row"></div>
+    <div id="effect-modal-main-buttons" class="modal-btn-row modal-body-row--last"></div>
+    <div id="effect-modal-input-section" class="effect-modal__input-section" style="display:none;">
+      <label id="effect-modal-input-label" class="effect-modal__input-label"></label>
+      <textarea id="effect-modal-value" rows="4" class="effect-modal__textarea"></textarea>
+      <span id="effect-modal-error" class="form-error" style="display:none;"></span>
     </div>
   `))}
 
   ${modal('export-modal', box(`
-    <div style="font-size:1.25rem;margin-bottom:1rem;">Export</div>
-    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-code" checked> Code</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-context"> Context</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-settings"> Settings</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-saved-snapshots"> Saved snapshots</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-recent-snapshots"> Recent snapshots</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-layout"> Layout</label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="export-opt-saved-programs"> Saved programs</label>
+    <div class="modal-title">Export</div>
+    <div class="modal-checklist">
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-code" checked> Code</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-context"> Context</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-settings"> Settings</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-snapshots"> Saved snapshots</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-recent-snapshots"> Recent snapshots</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-layout"> Layout</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-programs"> Saved programs</label>
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div class="modal-btn-row">
       <button class="button" onclick="Playground.doExport()">Export</button>
       <button class="button" onclick="Playground.closeExportModal()">Cancel</button>
     </div>
   `))}
 
   ${modal('import-options-modal', box(`
-    <div style="font-size:1.25rem;margin-bottom:1rem;">Import options</div>
-    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-code" checked><span id="import-opt-code-label">Code</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-context"><span id="import-opt-context-label">Context</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-settings"><span id="import-opt-settings-label">Settings</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-saved-snapshots"><span id="import-opt-saved-snapshots-label">Saved snapshots</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-recent-snapshots"><span id="import-opt-recent-snapshots-label">Recent snapshots</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-layout"><span id="import-opt-layout-label">Layout</span></label>
-      <label style="display:flex;gap:0.5rem;"><input type="checkbox" id="import-opt-saved-programs"><span id="import-opt-saved-programs-label">Saved programs</span></label>
+    <div class="modal-title">Import options</div>
+    <div class="modal-checklist">
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-code" checked><span id="import-opt-code-label">Code</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-context"><span id="import-opt-context-label">Context</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-settings"><span id="import-opt-settings-label">Settings</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-snapshots"><span id="import-opt-saved-snapshots-label">Saved snapshots</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-recent-snapshots"><span id="import-opt-recent-snapshots-label">Recent snapshots</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-layout"><span id="import-opt-layout-label">Layout</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-programs"><span id="import-opt-saved-programs-label">Saved programs</span></label>
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div class="modal-btn-row">
       <button class="button" onclick="Playground.doImport()">Import</button>
       <button class="button" onclick="Playground.closeImportOptionsModal()">Cancel</button>
     </div>
   `))}
 
   ${modal('import-result-modal', box(`
-    <div style="font-size:1.25rem;margin-bottom:1rem;">Import result</div>
-    <div id="import-result-content" style="margin-bottom:1rem;"></div>
+    <div class="modal-title">Import result</div>
+    <div id="import-result-content" class="modal-body-row"></div>
     <button class="button" onclick="Playground.closeImportResultModal()">OK</button>
   `))}
 
   ${modal('info-modal', box(`
-    <div id="info-modal-title" style="font-size:1.25rem;margin-bottom:0.5rem;"></div>
-    <div id="info-modal-message" style="margin-bottom:1rem;"></div>
+    <div id="info-modal-title" class="modal-title"></div>
+    <div id="info-modal-message" class="modal-body-row"></div>
     <button class="button" onclick="Playground.closeInfoModal()">OK</button>
   `))}
 
   ${modal('io-confirm-modal', box(`
-    <div id="io-confirm-question" style="margin-bottom:1rem;"></div>
-    <div style="display:flex;gap:0.5rem;">
+    <div id="io-confirm-question" class="modal-body-row"></div>
+    <div class="modal-btn-row">
       <button id="io-confirm-yes-btn" class="button">Yes</button>
       <button id="io-confirm-no-btn" class="button">No</button>
     </div>
   `))}
 
   ${modal('io-pick-modal', box(`
-    <div id="io-pick-modal-title" style="font-size:1.1rem;margin-bottom:0.5rem;"></div>
-    <div id="io-pick-list" style="display:flex;flex-direction:column;gap:0.25rem;max-height:50vh;overflow-y:auto;"></div>
+    <div id="io-pick-modal-title" class="modal-subtitle"></div>
+    <div id="io-pick-list" class="io-pick-list"></div>
   `))}
 
   ${modal('println-modal', box(`
-    <div style="font-size:1.1rem;margin-bottom:0.5rem;">Output</div>
-    <pre id="println-content" style="background:#1a1a1a;padding:0.5rem;overflow-x:auto;max-height:60vh;overflow-y:auto;white-space:pre-wrap;"></pre>
-    <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+    <div class="modal-subtitle">Output</div>
+    <pre id="println-content" class="println-content"></pre>
+    <div class="modal-btn-row modal-btn-row--top-gap">
       <button id="copy-println-btn" class="button">Copy</button>
       <button class="button" onclick="Playground.dismissPrintln()">OK</button>
     </div>
   `))}
 
   ${modal('readline-modal', box(`
-    <div id="readline-prompt" style="margin-bottom:0.5rem;"></div>
-    <textarea id="readline-input" rows="3" style="width:100%;border:1px solid #555;background:#1a1a1a;color:#d4d4d4;padding:0.25rem;resize:vertical;margin-bottom:0.5rem;"></textarea>
-    <div style="display:flex;gap:0.5rem;">
+    <div id="readline-prompt" class="modal-body-row"></div>
+    <textarea id="readline-input" rows="3" class="readline-input"></textarea>
+    <div class="modal-btn-row">
       <button class="button" onclick="Playground.submitReadline()">Submit</button>
       <button class="button" onclick="Playground.cancelReadline()">Cancel</button>
     </div>
@@ -338,10 +339,10 @@ function getModals(): string {
 
 function getSettingsPage(): string {
   const toggle = (id: string, label: string, description: string, onclick: string) => `
-    <div class="settings-toggle-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:0.5rem 0;border-bottom:1px solid #444;">
-      <div style="display:flex;flex-direction:column;">
-        <span style="font-size:1rem;">${label}</span>
-        <span style="font-size:0.8rem;color:#888;max-width:32rem;">${description}</span>
+    <div class="settings-toggle-row">
+      <div class="settings-toggle-row__labels">
+        <span class="settings-toggle-row__label">${label}</span>
+        <span class="settings-toggle-row__desc">${description}</span>
       </div>
       <label class="settings-toggle">
         <input type="checkbox" id="${id}" onclick="${onclick}">
@@ -354,9 +355,9 @@ function getSettingsPage(): string {
 
   return `
   <div id="settings-page" class="content">
-    <div style="display:flex;justify-content:center;font-size:1.75rem;margin-bottom:1.5rem;">Settings</div>
-    <div style="padding:1rem;background:#2a2a2a;">
-      <div class="settings-tabs" style="display:flex;gap:0.25rem;margin-bottom:1rem;">
+    <div class="settings-page__heading">Settings</div>
+    <div class="settings-page__body">
+      <div class="settings-tabs">
         ${tabBtn('dvala', 'Dvala')}
         ${tabBtn('playground', 'Playground')}
         ${tabBtn('actions', 'Actions')}
@@ -375,15 +376,15 @@ function getSettingsPage(): string {
       </div>
 
       <div id="settings-tab-actions" class="settings-tab-content" style="display:none;">
-        <div style="display:flex;flex-direction:column;gap:0.75rem;padding:0.5rem 0;">
-          <div>
-            <p style="margin:0 0 0.25rem;font-size:0.875rem;color:#aaa;">Storage type</p>
-            <div style="display:flex;gap:1rem;">
-              <label style="display:flex;gap:0.5rem;align-items:center;"><input type="radio" id="settings-storage-local" name="storage-type" value="local" onclick="Playground.setStorageType('local')"> Local storage</label>
-              <label style="display:flex;gap:0.5rem;align-items:center;"><input type="radio" id="settings-storage-idb" name="storage-type" value="idb" onclick="Playground.setStorageType('idb')"> IndexedDB</label>
+        <div class="settings-actions">
+          <div class="settings-actions__storage">
+            <p class="settings-actions__storage-label">Storage type</p>
+            <div class="settings-actions__storage-options">
+              <label class="settings-actions__radio-label"><input type="radio" id="settings-storage-local" name="storage-type" value="local" onclick="Playground.setStorageType('local')"> Local storage</label>
+              <label class="settings-actions__radio-label"><input type="radio" id="settings-storage-idb" name="storage-type" value="idb" onclick="Playground.setStorageType('idb')"> IndexedDB</label>
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+          <div class="settings-actions__buttons">
             <button class="button" onclick="Playground.openExportModal()">Export</button>
             <button class="button" onclick="Playground.openImportModal()">Import</button>
             <button class="button" onclick="Playground.copyStateLink()">Copy state link</button>
@@ -398,23 +399,23 @@ function getSettingsPage(): string {
 function getSavedProgramsPage(): string {
   return `
   <div id="saved-programs-page" class="content">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-      <span style="font-size:1.75rem;">Saved Programs</span>
-      <a id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" style="cursor:pointer;font-size:0.875rem;color:#888;">Clear all</a>
+    <div class="list-page__header">
+      <span class="list-page__heading">Saved Programs</span>
+      <a id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" class="list-page__clear-btn">Clear all</a>
     </div>
-    <div id="saved-programs-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
-    <div id="saved-programs-empty" style="color:#888;font-style:italic;">No saved programs yet.</div>
+    <div id="saved-programs-list" class="list-page__list"></div>
+    <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
   </div>`
 }
 
 function getSnapshotsPage(): string {
   return `
   <div id="snapshots-page" class="content">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-      <span style="font-size:1.75rem;">Snapshots</span>
-      <a id="snapshots-clear-all" onclick="Playground.clearAllSnapshots()" style="cursor:pointer;font-size:0.875rem;color:#888;">Clear all</a>
+    <div class="list-page__header">
+      <span class="list-page__heading">Snapshots</span>
+      <a id="snapshots-clear-all" onclick="Playground.clearAllSnapshots()" class="list-page__clear-btn">Clear all</a>
     </div>
-    <div id="snapshots-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
-    <div id="snapshots-empty" style="color:#888;font-style:italic;">No snapshots yet.</div>
+    <div id="snapshots-list" class="list-page__list"></div>
+    <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
   </div>`
 }
