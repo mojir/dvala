@@ -1,45 +1,68 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import { getAllDocumentationItems } from './components/functionDocumentation'
-import { getSearchDialog } from './components/searchDialog/searchDialog'
-import { randomNumbers } from './randomNumbers'
-import { getStartPage } from './components/startPage'
-import { getExamplePage } from './components/examplePage'
-import { getModulesPage } from './components/modulesPage'
-import { getSettingsPage } from './components/settingsPage'
-import { getSavedProgramsPage } from './components/savedProgramsPage'
-import { getSnapshotsPage } from './components/snapshotsPage'
-import { getAboutPage } from './components/aboutPage'
-import { getCorePage } from './components/corePage'
-import { getAllTutorialPages } from './components/tutorials'
-import { getPlayground } from './components/playground'
-import { getSideBar } from './components/sideBar'
-import { allSearchResultEntries } from './allSearchResultEntries'
-import { styles } from './styles'
+import { apiReference, effectReference, getLinkName, moduleReference } from '../../reference'
+import { moduleCategories, coreCategories } from '../../reference/api'
+import { examples } from '../../reference/examples'
+import type { ReferenceData, SearchEntry } from '../../common/referenceData'
+import { version } from '../../package.json'
 
 const DOC_DIR = path.resolve(__dirname, '../../docs')
-setupPredictability()
+
 setupDocDir()
 copyAssets()
-writeIndexPage().catch(err => {
-  // eslint-disable-next-line no-console
-  console.error(err)
-  process.exit(1)
-})
+writeIndexPage()
+write404Page()
 
-async function writeIndexPage() {
-  const [startPage, examplePage, tutorialPages, corePage, modulesPage, docItems] = await Promise.all([
-    Promise.resolve(getStartPage()),
-    Promise.resolve(getExamplePage()),
-    getAllTutorialPages(),
-    getCorePage(),
-    getModulesPage(),
-    getAllDocumentationItems(),
-  ])
+// ---------------------------------------------------------------------------
+// Reference data assembly
+// ---------------------------------------------------------------------------
+
+function buildReferenceData(): ReferenceData {
+  const shortDescRegExp = /(.*?) {2}\n|\n\n|$/
+
+  const searchEntries: SearchEntry[] = Object.values({
+    ...apiReference,
+    ...moduleReference,
+    ...effectReference,
+  }).map(ref => {
+    const match = shortDescRegExp.exec(ref.description)
+    const description = (match?.[1] ?? ref.description)
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/\*\*([^*]*)\*\*/g, '$1')
+      .replace(/\*([^*]*)\*/g, '$1')
+    return {
+      title: ref.title,
+      search: `${ref.title} ${ref.category}`,
+      description,
+      category: ref.category,
+      linkName: getLinkName(ref),
+    } satisfies SearchEntry
+  })
+
+  return {
+    version,
+    api: apiReference,
+    modules: moduleReference,
+    effects: effectReference,
+    moduleCategories: moduleCategories as string[],
+    coreCategories: coreCategories as string[],
+    searchEntries,
+    examples,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page writers
+// ---------------------------------------------------------------------------
+
+function writeIndexPage() {
+  const data = buildReferenceData()
+  const json = JSON.stringify(data)
+
   const page = `<!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Playground</title>
+    <title>Dvala Playground</title>
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
     <meta name="description" content="A reference and a playground for Dvala">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -49,38 +72,56 @@ async function writeIndexPage() {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap">
     <link rel="stylesheet" href="styles.css">
-  </head>
-
-  <body>
-    <div id="wrapper" ${styles('hidden')}>
-      <main id="main-panel" class="fancy-scroll">
-        ${startPage}
-        ${getAboutPage()}
-        ${examplePage}
-        ${tutorialPages}
-        ${corePage}
-        ${modulesPage}
-        ${docItems}
-        ${getSettingsPage()}
-        ${getSavedProgramsPage()}
-        ${getSnapshotsPage()}
-      </main>
-      <div id="resize-sidebar" style="position: fixed; width: 5px; cursor: col-resize; background-color: rgb(82 82 82); top: 0; z-index: 10;"></div>
-      ${getSideBar()}
-      ${getPlayground()}
-    </div>
-    ${getSearchDialog()}
-    <div id="toast-container" style="position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:300; display:flex; flex-direction:column; gap:0.5rem; pointer-events:none;"></div>
-
-    <script src='playground.js'></script>
     <script>
-      window.Playground.allSearchResultEntries = JSON.parse(decodeURIComponent(atob('${btoa(encodeURIComponent(JSON.stringify(allSearchResultEntries)))}')))
+      // GitHub Pages SPA routing: restore path from query param set by 404.html
+      ;(function(l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).replace(/~and~/g, '&')
+          window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + (decoded.slice(-1) === '?' ? '' : l.hash))
+        }
+      }(window.location))
     </script>
+    <script>window.referenceData = ${json}</script>
+  </head>
+  <body>
+    <div id="wrapper" style="display:none;"></div>
+    <script src="playground.js"></script>
   </body>
 </html>
 `
   fs.writeFileSync(path.join(DOC_DIR, 'index.html'), page, { encoding: 'utf-8' })
 }
+
+function write404Page() {
+  const page = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Dvala Playground</title>
+    <script>
+      // GitHub Pages SPA routing: encode the path as a query param and redirect to index.html
+      // pathSegmentsToKeep=1 keeps the /dvala/ repo prefix on GitHub Pages
+      var pathSegmentsToKeep = 1
+      var l = window.location
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      )
+    </script>
+  </head>
+  <body></body>
+</html>
+`
+  fs.writeFileSync(path.join(DOC_DIR, '404.html'), page, { encoding: 'utf-8' })
+}
+
+// ---------------------------------------------------------------------------
+// Filesystem helpers
+// ---------------------------------------------------------------------------
 
 function setupDocDir() {
   fs.rmSync(DOC_DIR, { recursive: true, force: true })
@@ -92,8 +133,6 @@ function copyAssets() {
   fs.copyFileSync(path.join(__dirname, '../../playground-www/build/playground.js'), path.join(DOC_DIR, 'playground.js'))
   const mapFile = path.join(__dirname, '../../playground-www/build/playground.js.map')
   if (fs.existsSync(mapFile)) {
-    // Rewrite source paths: the map was generated relative to playground-www/build/
-    // but is served from docs/, so adjust paths accordingly.
     const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
     const buildDir = path.resolve(__dirname, '../../playground-www/build')
     const docsDir = path.resolve(__dirname, '../../docs')
@@ -103,15 +142,4 @@ function copyAssets() {
     })
     fs.writeFileSync(path.join(DOC_DIR, 'playground.js.map'), JSON.stringify(map))
   }
-}
-
-function setupPredictability() {
-  let i = 0
-  Math.random = () => {
-    const result = randomNumbers[i]!
-    i = (i + 1) % randomNumbers.length
-    return result
-  }
-
-  Date.now = () => 1712145842007
 }

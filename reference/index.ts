@@ -311,10 +311,6 @@ export const effectReference: Record<string, EffectReference> = deriveEffectRefe
 // All references including modules and effects (for search and full documentation)
 export const allReference: Record<string, Reference> = sortByCategory({ ...apiReference, ...moduleReference, ...effectReference })
 
-Object.values(allReference).forEach(ref => {
-  ref.title = ref.title.replace(/"/g, '&quot;')
-})
-
 function sortByCategory<T extends Record<string, Reference>>(ref: T): T {
   return Object.fromEntries(
     Object.entries(ref).sort(([keyA, refA], [keyB, refB]) => {
