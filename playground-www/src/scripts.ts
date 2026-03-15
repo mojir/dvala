@@ -14,6 +14,8 @@ import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { Search } from './Search'
+import { renderShell } from './shell'
+import * as router from './router'
 import {
   clearAll as clearAllSnapshots,
   getSavedSnapshots,
@@ -92,109 +94,105 @@ animationStyles.textContent = `
 document.head.appendChild(animationStyles)
 
 const elements = {
-  wrapper: document.getElementById('wrapper') as HTMLElement,
-  playground: document.getElementById('playground') as HTMLElement,
-  sidebar: document.getElementById('sidebar') as HTMLElement,
-  mainPanel: document.getElementById('main-panel') as HTMLElement,
-  contextPanel: document.getElementById('context-panel') as HTMLElement,
-  dvalaPanel: document.getElementById('dvala-panel') as HTMLElement,
-  outputPanel: document.getElementById('output-panel') as HTMLElement,
-  moreMenu: document.getElementById('more-menu') as HTMLElement,
-  addContextMenu: document.getElementById('add-context-menu') as HTMLElement,
-  newContextName: document.getElementById('new-context-name') as HTMLInputElement,
-  newContextValue: document.getElementById('new-context-value') as HTMLTextAreaElement,
-  newContextError: document.getElementById('new-context-error') as HTMLSpanElement,
-  contextTextArea: document.getElementById('context-textarea') as HTMLTextAreaElement,
-  outputResult: document.getElementById('output-result') as HTMLElement,
-  dvalaTextArea: document.getElementById('dvala-textarea') as HTMLTextAreaElement,
-  resizePlayground: document.getElementById('resize-playground') as HTMLElement,
-  resizeDevider1: document.getElementById('resize-divider-1') as HTMLElement,
-  resizeDevider2: document.getElementById('resize-divider-2') as HTMLElement,
-  resizeSidebar: document.getElementById('resize-sidebar') as HTMLElement,
-  dvalaPanelDebugInfo: document.getElementById('dvala-panel-debug-info') as HTMLDivElement,
-  contextUndoButton: document.getElementById('context-undo-button') as HTMLAnchorElement,
-  contextRedoButton: document.getElementById('context-redo-button') as HTMLAnchorElement,
-  dvalaCodeUndoButton: document.getElementById('dvala-code-undo-button') as HTMLAnchorElement,
-  dvalaCodeRedoButton: document.getElementById('dvala-code-redo-button') as HTMLAnchorElement,
-  contextTitle: document.getElementById('context-title') as HTMLDivElement,
-  dvalaCodeTitle: document.getElementById('dvala-code-title') as HTMLDivElement,
-  dvalaCodeTitleString: document.getElementById('dvala-code-title-string') as HTMLSpanElement,
-  dvalaCodeTitleInput: document.getElementById('dvala-code-title-input') as HTMLInputElement,
-  dvalaCodePendingIndicator: document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement,
-  snapshotModal: document.getElementById('snapshot-modal') as HTMLDivElement,
-  snapshotPanelContainer: document.getElementById('snapshot-panel-container') as HTMLDivElement,
-  snapshotPanelTemplate: document.getElementById('snapshot-panel-template') as HTMLTemplateElement,
-  infoModal: document.getElementById('info-modal') as HTMLDivElement,
-  infoModalTitle: document.getElementById('info-modal-title') as HTMLDivElement,
-  infoModalMessage: document.getElementById('info-modal-message') as HTMLDivElement,
-  importOptionsModal: document.getElementById('import-options-modal') as HTMLDivElement,
-  importOptCode: document.getElementById('import-opt-code') as HTMLInputElement,
-  importOptCodeLabel: document.getElementById('import-opt-code-label') as HTMLLabelElement,
-  importOptContext: document.getElementById('import-opt-context') as HTMLInputElement,
-  importOptContextLabel: document.getElementById('import-opt-context-label') as HTMLLabelElement,
-  importOptSettings: document.getElementById('import-opt-settings') as HTMLInputElement,
-  importOptSettingsLabel: document.getElementById('import-opt-settings-label') as HTMLLabelElement,
-  importOptSavedSnapshots: document.getElementById('import-opt-saved-snapshots') as HTMLInputElement,
-  importOptSavedSnapshotsLabel: document.getElementById('import-opt-saved-snapshots-label') as HTMLLabelElement,
-  importOptRecentSnapshots: document.getElementById('import-opt-recent-snapshots') as HTMLInputElement,
-  importOptRecentSnapshotsLabel: document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement,
-  importOptLayout: document.getElementById('import-opt-layout') as HTMLInputElement,
-  importOptLayoutLabel: document.getElementById('import-opt-layout-label') as HTMLLabelElement,
-  importOptSavedPrograms: document.getElementById('import-opt-saved-programs') as HTMLInputElement,
-  importOptSavedProgramsLabel: document.getElementById('import-opt-saved-programs-label') as HTMLLabelElement,
-  importResultModal: document.getElementById('import-result-modal') as HTMLDivElement,
-  importResultContent: document.getElementById('import-result-content') as HTMLDivElement,
-  exportModal: document.getElementById('export-modal') as HTMLDivElement,
-  exportOptCode: document.getElementById('export-opt-code') as HTMLInputElement,
-  exportOptContext: document.getElementById('export-opt-context') as HTMLInputElement,
-  exportOptSettings: document.getElementById('export-opt-settings') as HTMLInputElement,
-  exportOptSavedSnapshots: document.getElementById('export-opt-saved-snapshots') as HTMLInputElement,
-  exportOptRecentSnapshots: document.getElementById('export-opt-recent-snapshots') as HTMLInputElement,
-  exportOptLayout: document.getElementById('export-opt-layout') as HTMLInputElement,
-  exportOptSavedPrograms: document.getElementById('export-opt-saved-programs') as HTMLInputElement,
-  confirmModal: document.getElementById('confirm-modal') as HTMLDivElement,
-  confirmModalTitle: document.getElementById('confirm-modal-title') as HTMLDivElement,
-  confirmModalMessage: document.getElementById('confirm-modal-message') as HTMLDivElement,
-  confirmModalCheckboxRow: document.getElementById('confirm-modal-checkbox-row') as HTMLLabelElement,
-  confirmModalCheckbox: document.getElementById('confirm-modal-checkbox') as HTMLInputElement,
-  confirmModalCheckboxLabel: document.getElementById('confirm-modal-checkbox-label') as HTMLSpanElement,
-  confirmModalOk: document.getElementById('confirm-modal-ok') as HTMLButtonElement,
-  checkpointModal: document.getElementById('checkpoint-modal') as HTMLDivElement,
-  checkpointModalMessage: document.getElementById('checkpoint-modal-message') as HTMLElement,
-  checkpointModalMeta: document.getElementById('checkpoint-modal-meta') as HTMLDivElement,
-  checkpointModalTech: document.getElementById('checkpoint-modal-tech') as HTMLDivElement,
-  toastContainer: document.getElementById('toast-container') as HTMLDivElement,
-  effectModal: document.getElementById('effect-modal') as HTMLDivElement,
-  effectModalNav: document.getElementById('effect-modal-nav') as HTMLDivElement,
-  effectModalCounter: document.getElementById('effect-modal-counter') as HTMLSpanElement,
-  effectModalPrev: document.getElementById('effect-modal-prev') as HTMLButtonElement,
-  effectModalNext: document.getElementById('effect-modal-next') as HTMLButtonElement,
-  effectModalHandledBadge: document.getElementById('effect-modal-handled-badge') as HTMLDivElement,
-  effectModalName: document.getElementById('effect-modal-name') as HTMLElement,
-  effectModalArgs: document.getElementById('effect-modal-args') as HTMLDivElement,
-  effectModalMainButtons: document.getElementById('effect-modal-main-buttons') as HTMLDivElement,
-  effectModalInputSection: document.getElementById('effect-modal-input-section') as HTMLDivElement,
-  effectModalInputLabel: document.getElementById('effect-modal-input-label') as HTMLSpanElement,
-  effectModalValue: document.getElementById('effect-modal-value') as HTMLTextAreaElement,
-  effectModalError: document.getElementById('effect-modal-error') as HTMLSpanElement,
-  ioPickModal: document.getElementById('io-pick-modal') as HTMLDivElement,
-  ioPickModalTitle: document.getElementById('io-pick-modal-title') as HTMLDivElement,
-  ioPickList: document.getElementById('io-pick-list') as HTMLDivElement,
-  ioConfirmModal: document.getElementById('io-confirm-modal') as HTMLDivElement,
-  ioConfirmQuestion: document.getElementById('io-confirm-question') as HTMLDivElement,
-  ioConfirmNoBtn: document.getElementById('io-confirm-no-btn') as HTMLButtonElement,
-  ioConfirmYesBtn: document.getElementById('io-confirm-yes-btn') as HTMLButtonElement,
-  readlineModal: document.getElementById('readline-modal') as HTMLDivElement,
-  readlinePrompt: document.getElementById('readline-prompt') as HTMLDivElement,
-  readlineInput: document.getElementById('readline-input') as HTMLTextAreaElement,
-  printlnModal: document.getElementById('println-modal') as HTMLDivElement,
-  printlnContent: document.getElementById('println-content') as HTMLPreElement,
-  copyPrintlnBtn: document.getElementById('copy-println-btn') as HTMLDivElement,
+  get wrapper() { return document.getElementById('wrapper') as HTMLElement },
+  get playground() { return document.getElementById('playground') as HTMLElement },
+  get sidebar() { return document.getElementById('sidebar') as HTMLElement },
+  get mainPanel() { return document.getElementById('main-panel') as HTMLElement },
+  get contextPanel() { return document.getElementById('context-panel') as HTMLElement },
+  get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
+  get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
+  get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
+  get addContextMenu() { return document.getElementById('add-context-menu') as HTMLElement },
+  get newContextName() { return document.getElementById('new-context-name') as HTMLInputElement },
+  get newContextValue() { return document.getElementById('new-context-value') as HTMLTextAreaElement },
+  get newContextError() { return document.getElementById('new-context-error') as HTMLSpanElement },
+  get contextTextArea() { return document.getElementById('context-textarea') as HTMLTextAreaElement },
+  get outputResult() { return document.getElementById('output-result') as HTMLElement },
+  get dvalaTextArea() { return document.getElementById('dvala-textarea') as HTMLTextAreaElement },
+  get resizePlayground() { return document.getElementById('resize-playground') as HTMLElement },
+  get resizeDevider1() { return document.getElementById('resize-divider-1') as HTMLElement },
+  get resizeDevider2() { return document.getElementById('resize-divider-2') as HTMLElement },
+  get resizeSidebar() { return document.getElementById('resize-sidebar') as HTMLElement },
+  get dvalaPanelDebugInfo() { return document.getElementById('dvala-panel-debug-info') as HTMLDivElement },
+  get contextUndoButton() { return document.getElementById('context-undo-button') as HTMLAnchorElement },
+  get contextRedoButton() { return document.getElementById('context-redo-button') as HTMLAnchorElement },
+  get dvalaCodeUndoButton() { return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement },
+  get dvalaCodeRedoButton() { return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement },
+  get contextTitle() { return document.getElementById('context-title') as HTMLDivElement },
+  get dvalaCodeTitle() { return document.getElementById('dvala-code-title') as HTMLDivElement },
+  get dvalaCodeTitleString() { return document.getElementById('dvala-code-title-string') as HTMLSpanElement },
+  get dvalaCodeTitleInput() { return document.getElementById('dvala-code-title-input') as HTMLInputElement },
+  get dvalaCodePendingIndicator() { return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement },
+  get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
+  get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
+  get snapshotPanelTemplate() { return document.getElementById('snapshot-panel-template') as HTMLTemplateElement },
+  get infoModal() { return document.getElementById('info-modal') as HTMLDivElement },
+  get infoModalTitle() { return document.getElementById('info-modal-title') as HTMLDivElement },
+  get infoModalMessage() { return document.getElementById('info-modal-message') as HTMLDivElement },
+  get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
+  get importOptCode() { return document.getElementById('import-opt-code') as HTMLInputElement },
+  get importOptCodeLabel() { return document.getElementById('import-opt-code-label') as HTMLLabelElement },
+  get importOptContext() { return document.getElementById('import-opt-context') as HTMLInputElement },
+  get importOptContextLabel() { return document.getElementById('import-opt-context-label') as HTMLLabelElement },
+  get importOptSettings() { return document.getElementById('import-opt-settings') as HTMLInputElement },
+  get importOptSettingsLabel() { return document.getElementById('import-opt-settings-label') as HTMLLabelElement },
+  get importOptSavedSnapshots() { return document.getElementById('import-opt-saved-snapshots') as HTMLInputElement },
+  get importOptSavedSnapshotsLabel() { return document.getElementById('import-opt-saved-snapshots-label') as HTMLLabelElement },
+  get importOptRecentSnapshots() { return document.getElementById('import-opt-recent-snapshots') as HTMLInputElement },
+  get importOptRecentSnapshotsLabel() { return document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement },
+  get importOptLayout() { return document.getElementById('import-opt-layout') as HTMLInputElement },
+  get importOptLayoutLabel() { return document.getElementById('import-opt-layout-label') as HTMLLabelElement },
+  get importOptSavedPrograms() { return document.getElementById('import-opt-saved-programs') as HTMLInputElement },
+  get importOptSavedProgramsLabel() { return document.getElementById('import-opt-saved-programs-label') as HTMLLabelElement },
+  get importResultModal() { return document.getElementById('import-result-modal') as HTMLDivElement },
+  get importResultContent() { return document.getElementById('import-result-content') as HTMLDivElement },
+  get exportModal() { return document.getElementById('export-modal') as HTMLDivElement },
+  get exportOptCode() { return document.getElementById('export-opt-code') as HTMLInputElement },
+  get exportOptContext() { return document.getElementById('export-opt-context') as HTMLInputElement },
+  get exportOptSettings() { return document.getElementById('export-opt-settings') as HTMLInputElement },
+  get exportOptSavedSnapshots() { return document.getElementById('export-opt-saved-snapshots') as HTMLInputElement },
+  get exportOptRecentSnapshots() { return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement },
+  get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
+  get exportOptSavedPrograms() { return document.getElementById('export-opt-saved-programs') as HTMLInputElement },
+  get confirmModal() { return document.getElementById('confirm-modal') as HTMLDivElement },
+  get confirmModalTitle() { return document.getElementById('confirm-modal-title') as HTMLDivElement },
+  get confirmModalMessage() { return document.getElementById('confirm-modal-message') as HTMLDivElement },
+  get confirmModalCheckboxRow() { return document.getElementById('confirm-modal-checkbox-row') as HTMLLabelElement },
+  get confirmModalCheckbox() { return document.getElementById('confirm-modal-checkbox') as HTMLInputElement },
+  get confirmModalCheckboxLabel() { return document.getElementById('confirm-modal-checkbox-label') as HTMLSpanElement },
+  get confirmModalOk() { return document.getElementById('confirm-modal-ok') as HTMLButtonElement },
+  get checkpointModal() { return document.getElementById('checkpoint-modal') as HTMLDivElement },
+  get checkpointModalMessage() { return document.getElementById('checkpoint-modal-message') as HTMLElement },
+  get checkpointModalMeta() { return document.getElementById('checkpoint-modal-meta') as HTMLDivElement },
+  get checkpointModalTech() { return document.getElementById('checkpoint-modal-tech') as HTMLDivElement },
+  get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
+  get effectModal() { return document.getElementById('effect-modal') as HTMLDivElement },
+  get effectModalNav() { return document.getElementById('effect-modal-nav') as HTMLDivElement },
+  get effectModalCounter() { return document.getElementById('effect-modal-counter') as HTMLSpanElement },
+  get effectModalPrev() { return document.getElementById('effect-modal-prev') as HTMLButtonElement },
+  get effectModalNext() { return document.getElementById('effect-modal-next') as HTMLButtonElement },
+  get effectModalHandledBadge() { return document.getElementById('effect-modal-handled-badge') as HTMLDivElement },
+  get effectModalName() { return document.getElementById('effect-modal-name') as HTMLElement },
+  get effectModalArgs() { return document.getElementById('effect-modal-args') as HTMLDivElement },
+  get effectModalMainButtons() { return document.getElementById('effect-modal-main-buttons') as HTMLDivElement },
+  get effectModalInputSection() { return document.getElementById('effect-modal-input-section') as HTMLDivElement },
+  get effectModalInputLabel() { return document.getElementById('effect-modal-input-label') as HTMLSpanElement },
+  get effectModalValue() { return document.getElementById('effect-modal-value') as HTMLTextAreaElement },
+  get effectModalError() { return document.getElementById('effect-modal-error') as HTMLSpanElement },
+  get ioPickModal() { return document.getElementById('io-pick-modal') as HTMLDivElement },
+  get ioPickModalTitle() { return document.getElementById('io-pick-modal-title') as HTMLDivElement },
+  get ioPickList() { return document.getElementById('io-pick-list') as HTMLDivElement },
+  get ioConfirmModal() { return document.getElementById('io-confirm-modal') as HTMLDivElement },
+  get ioConfirmQuestion() { return document.getElementById('io-confirm-question') as HTMLDivElement },
+  get ioConfirmNoBtn() { return document.getElementById('io-confirm-no-btn') as HTMLButtonElement },
+  get ioConfirmYesBtn() { return document.getElementById('io-confirm-yes-btn') as HTMLButtonElement },
+  get readlineModal() { return document.getElementById('readline-modal') as HTMLDivElement },
+  get readlinePrompt() { return document.getElementById('readline-prompt') as HTMLDivElement },
+  get readlineInput() { return document.getElementById('readline-input') as HTMLTextAreaElement },
+  get printlnModal() { return document.getElementById('println-modal') as HTMLDivElement },
+  get printlnContent() { return document.getElementById('println-content') as HTMLPreElement },
+  get copyPrintlnBtn() { return document.getElementById('copy-println-btn') as HTMLDivElement },
 }
-
-elements.copyPrintlnBtn.addEventListener('click', () => {
-  void navigator.clipboard.writeText(elements.printlnContent.textContent ?? '')
-})
 
 type MoveParams = {
   id: 'playground'
@@ -305,7 +303,7 @@ export function showSettingsTab(id: string) {
   document.querySelectorAll('.settings-tab-content').forEach(el => el.classList.remove('active'))
   document.getElementById(`settings-tab-btn-${id}`)?.classList.add('active')
   document.getElementById(`settings-tab-${id}`)?.classList.add('active')
-  history.replaceState(null, '', `#settings-page/${id}`)
+  router.navigate(`/settings/${id}`, true)
   if (id === 'actions')
     updateStorageUsage()
 }
@@ -1518,6 +1516,10 @@ function addOutputElement(element: HTMLElement) {
 }
 
 window.onload = async function () {
+  renderShell()
+  elements.copyPrintlnBtn.addEventListener('click', () => {
+    void navigator.clipboard.writeText(elements.printlnContent.textContent ?? '')
+  })
   await initSnapshotStorage()
   await initPrograms()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
@@ -1907,8 +1909,10 @@ window.onload = async function () {
   populateSnapshotsList()
   populateSavedProgramsList()
 
-  const [pageId, tabId] = (location.hash.substring(1) || 'index').split('/')
-  showPage(pageId!, 'instant', 'replace', tabId)
+  router.init(appPath => {
+    const id = appPathToPageId(appPath)
+    showPage(id, 'instant', 'replace')
+  })
 
   Search.onClose(() => {
     applyState()
@@ -2023,10 +2027,24 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   }
 }
 
-window.addEventListener('popstate', () => {
-  const [pageId, tabId] = (location.hash.substring(1) || 'index').split('/')
-  showPage(pageId!, 'instant', 'none', tabId)
-})
+function appPathToPageId(appPath: string): string {
+  const path = appPath.replace(/^\//, '')
+  if (!path || path === '/') return 'index'
+  if (path.startsWith('ref/')) return path.slice(4) // linkName like 'collection-map'
+  if (path.startsWith('tutorials/')) return `tutorial-${path.slice(10)}`
+  return path // e.g. 'settings-page', 'about-page', etc.
+}
+
+function pageIdToAppPath(pageId: string): string {
+  if (!pageId || pageId === 'index') return '/'
+  // tutorial pages
+  if (pageId.startsWith('tutorial-')) return `/tutorials/${pageId.slice(9)}`
+  // special pages
+  const staticPages = ['about-page', 'tutorials-page', 'example-page', 'settings-page', 'saved-programs-page', 'snapshots-page']
+  if (staticPages.includes(pageId)) return `/${pageId.replace(/-page$/, '')}`
+  // reference pages: pageId is the linkName like 'collection-map'
+  return `/ref/${pageId}`
+}
 
 function truncateCode(code: string) {
   const oneLiner = tokenizeSource(code).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
@@ -3984,14 +4002,11 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
         link.scrollIntoView({ block: 'center', behavior: scroll })
     }
 
-    if (id === 'index')
-      history.replaceState(null, 'Dvala', window.location.pathname + window.location.search)
-
-    else if (historyEvent === 'replace')
-      history.replaceState(null, '', `#${id}${tab ? `/${tab}` : ''}`)
-
-    else if (historyEvent !== 'none')
-      history.pushState(null, '', `#${id}${tab ? `/${tab}` : ''}`)
+    if (historyEvent === 'replace')
+      router.navigate(pageIdToAppPath(id), true)
+    else if (historyEvent === 'push')
+      router.navigate(pageIdToAppPath(id))
+    // historyEvent === 'none': don't update URL
   }, 0)
 }
 

@@ -366,9 +366,13 @@ record of what was actually done, not just what was intended.
 - [x] Remove `&quot;` HTML-encoding mutation from `reference/index.ts`
 - [x] Delete `common/createFormatter.test.ts` (tested deleted formatter rules)
 
-### Chunk 3 — Router + shell
-- [ ] Implement path router in `playground-www/src/router.ts` (history API + `popstate`)
-- [ ] Wire up `DOMContentLoaded` + `popstate` in `playground.ts`
+### Chunk 3 — Router + shell ✅ (2026-03-15)
+- [x] Implement path router in `playground-www/src/router.ts` (history API + `popstate`)
+- [x] Wire up `DOMContentLoaded` + `popstate` in `playground.ts`
+- [x] Create `playground-www/src/shell.ts` — renders full app HTML shell with all element IDs into `#wrapper`
+- [x] Convert `elements` object to getter-based (defers DOM lookup until after `renderShell()`)
+- [x] Replace hash-based routing with `router.init()` / `router.navigate()` in `scripts.ts`
+- [x] Fix `404.html` path encoding bug (strip base segment before encoding)
 
 ### Chunk 4 — Pages
 - [ ] Rewrite component functions in `playground-www/src/components/` with BEM classes:
