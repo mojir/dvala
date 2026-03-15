@@ -1,5 +1,5 @@
 import { defineConfig } from 'rolldown'
-import { dvalaSourcePlugin } from './rolldown.plugins.mjs'
+import { dvalaSourcePlugin, markdownSourcePlugin } from './rolldown.plugins.mjs'
 
 const isCI = !!process.env.CI
 
@@ -22,6 +22,6 @@ export default defineConfig([
         sourcemap: !isCI,
       },
     ],
-    plugins: [dvalaSourcePlugin()],
+    plugins: [dvalaSourcePlugin(), markdownSourcePlugin()],
   },
 ])

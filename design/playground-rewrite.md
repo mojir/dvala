@@ -374,10 +374,12 @@ record of what was actually done, not just what was intended.
 - [x] Replace hash-based routing with `router.init()` / `router.navigate()` in `scripts.ts`
 - [x] Fix `404.html` path encoding bug (strip base segment before encoding)
 
-### Chunk 4 — Pages
-- [ ] Rewrite component functions in `playground-www/src/components/` with BEM classes:
-  `sidebar.ts`, `docPage.ts`, `tutorialPage.ts`, `corePage.ts`, `modulesPage.ts`, `examplePage.ts`, `startPage.ts`, etc.
-- [ ] Rewrite search to read from `window.referenceData.searchEntries`
+### Chunk 4 — Pages ✅ (2026-03-15)
+- [x] Rewrite component functions in `playground-www/src/components/` with BEM classes:
+  `sidebar.ts`, `docPage.ts`, `tutorialPage.ts`, `corePage.ts`, `modulesPage.ts`, `examplePage.ts`, `startPage.ts`
+- [x] Rewrite search to read from `window.referenceData.searchEntries` (`searchDialog.ts`)
+- [x] Add `markdownSourcePlugin` to `rolldown.config.playground-www.mjs`
+- [x] Add `types/markdown-source.d.ts` for `.md` import type declarations
 
 ### Chunk 5 — CSS
 - [ ] Rewrite `styles.css` with `:root` tokens + BEM classes

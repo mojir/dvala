@@ -16,6 +16,12 @@ import type { DvalaErrorJSON } from '../../src/errors'
 import { Search } from './Search'
 import { renderShell } from './shell'
 import * as router from './router'
+import { renderDocPage } from './components/docPage'
+import { renderCorePage } from './components/corePage'
+import { renderModulesPage } from './components/modulesPage'
+import { renderExamplePage } from './components/examplePage'
+import { renderStartPage } from './components/startPage'
+import { renderTutorialsIndexPage, renderTutorialPage } from './components/tutorialPage'
 import {
   clearAll as clearAllSnapshots,
   getSavedSnapshots,
@@ -1910,8 +1916,7 @@ window.onload = async function () {
   populateSavedProgramsList()
 
   router.init(appPath => {
-    const id = appPathToPageId(appPath)
-    showPage(id, 'instant', 'replace')
+    routeToPath(appPath)
   })
 
   Search.onClose(() => {
@@ -2027,23 +2032,72 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   }
 }
 
-function appPathToPageId(appPath: string): string {
-  const path = appPath.replace(/^\//, '')
-  if (!path || path === '/') return 'index'
-  if (path.startsWith('ref/')) return path.slice(4) // linkName like 'collection-map'
-  if (path.startsWith('tutorials/')) return `tutorial-${path.slice(10)}`
-  return path // e.g. 'settings-page', 'about-page', etc.
-}
-
 function pageIdToAppPath(pageId: string): string {
   if (!pageId || pageId === 'index') return '/'
   // tutorial pages
   if (pageId.startsWith('tutorial-')) return `/tutorials/${pageId.slice(9)}`
   // special pages
-  const staticPages = ['about-page', 'tutorials-page', 'example-page', 'settings-page', 'saved-programs-page', 'snapshots-page']
+  const staticPages = ['settings-page', 'saved-programs-page', 'snapshots-page']
   if (staticPages.includes(pageId)) return `/${pageId.replace(/-page$/, '')}`
   // reference pages: pageId is the linkName like 'collection-map'
   return `/ref/${pageId}`
+}
+
+/** Static page IDs that live as real DOM elements (show/hide via active-content). */
+const STATIC_PAGES = new Set(['settings-page', 'saved-programs-page', 'snapshots-page'])
+
+/**
+ * Route to the given app-relative path.
+ * Dynamic content pages render HTML into #dynamic-page.
+ * Static pages (settings, saved-programs, snapshots) use the old show/hide mechanism.
+ */
+function routeToPath(appPath: string): void {
+  const path = appPath.replace(/^\//, '')
+
+  // Determine if this is a static page that already exists in the DOM
+  let staticPageId: string | null = null
+  if (path === 'settings' || path.startsWith('settings/')) staticPageId = 'settings-page'
+  else if (path === 'saved') staticPageId = 'saved-programs-page'
+  else if (path === 'snapshots') staticPageId = 'snapshots-page'
+
+  if (staticPageId && STATIC_PAGES.has(staticPageId)) {
+    // Clear any dynamic page content, then show the static page
+    const dynPage = document.getElementById('dynamic-page')
+    if (dynPage) dynPage.innerHTML = ''
+    const tab = path.startsWith('settings/') ? path.slice(9) : undefined
+    showPage(staticPageId, 'instant', 'none', tab)
+    return
+  }
+
+  // For all other paths, render dynamically into #dynamic-page
+  inactivateAll()
+  Search.closeSearch()
+  elements.mainPanel.scrollTo({ top: 0 })
+
+  const dynPage = document.getElementById('dynamic-page')
+  if (!dynPage) return
+
+  if (!path || path === '/') {
+    dynPage.innerHTML = renderStartPage()
+  } else if (path === 'core') {
+    dynPage.innerHTML = renderCorePage()
+  } else if (path === 'modules') {
+    dynPage.innerHTML = renderModulesPage()
+  } else if (path === 'examples') {
+    dynPage.innerHTML = renderExamplePage()
+  } else if (path === 'tutorials') {
+    dynPage.innerHTML = renderTutorialsIndexPage()
+  } else if (path.startsWith('tutorials/')) {
+    const tutId = path.slice('tutorials/'.length)
+    dynPage.innerHTML = renderTutorialPage(tutId)
+  } else if (path.startsWith('ref/')) {
+    const linkName = path.slice('ref/'.length)
+    dynPage.innerHTML = renderDocPage(linkName)
+  } else if (path === 'about') {
+    dynPage.innerHTML = renderStartPage() // fallback to start for now
+  } else {
+    dynPage.innerHTML = renderStartPage()
+  }
 }
 
 function truncateCode(code: string) {
