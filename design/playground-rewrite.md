@@ -17,14 +17,12 @@ File sizes and DOM node count are deterministic. Timing metrics averaged over 5 
 | TTFB                          | 16ms   | 13ms   | 14ms   | 13ms   | 14ms   | ~14 ms       | ~14 ms     =    | **~5 ms         ✅** |
 | FCP                           | 288ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~280 ms      | ~220 ms    ↓    | **~206 ms       ✅** |
 | LCP                           | 300ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~282 ms      | ~250 ms    ↓    | **~214 ms       ✅** |
-| CLS                           | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000       | 0.0000     =    | **0.2809    ↑ ⚠️** |
+| CLS                           | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000       | 0.0000     =    | **0.0000        ✅** |
 | Time to playground ready      | 276ms  | 274ms  | 281ms  | 272ms  | 267ms  | ~274 ms      | ~200 ms    ↓    | **~224 ms       ✅** |
 | Time to navigate to doc page¹ | 19ms   | 26ms   | 27ms   | 16ms   | 16ms   | ~21 ms       | ~150 ms    ↑    | **~3 ms         ✅** |
 | `build-playground` time       | —      | —      | —      | —      | —      | ~3 s         | ~1 s       ↓    | **~0.6 s        ✅** |
 
 ¹ Pre-rewrite navigation is a DOM class toggle — content is already in the page. Post-rewrite it involves a JS render + live example execution. The increase is the honest trade-off for a dynamic architecture.
-
-⚠️ CLS regressed from 0.0 to 0.28 — dynamic shell injection causes layout shift. Can be fixed by reserving sidebar/main dimensions in the initial CSS (or using `visibility:hidden` instead of `display:none` on `#wrapper`).
 
 ---
 
@@ -392,8 +390,8 @@ record of what was actually done, not just what was intended.
 - [x] Replace `Search.ts` module-level DOM lookups with deferred `searchDialog.ts` (fixed startup crash)
 - [x] Run `npm run check` — passes
 - [x] Run KPI spec (5 runs) — results in table above
+- [x] Fix CLS: call `applyLayout()` before showing `#wrapper` so layout is set before first paint (0.2809 → 0.0000)
 - [ ] Smoke-test routing, search, tutorials, doc pages, playground editor (manual)
-- Note: CLS regressed to 0.28 (see ⚠️ above) — follow-up fix needed
 
 ---
 

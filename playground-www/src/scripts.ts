@@ -1523,6 +1523,7 @@ function addOutputElement(element: HTMLElement) {
 
 window.onload = async function () {
   renderShell()
+  applyLayout()
   elements.copyPrintlnBtn.addEventListener('click', () => {
     void navigator.clipboard.writeText(elements.printlnContent.textContent ?? '')
   })
