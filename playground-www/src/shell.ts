@@ -11,7 +11,6 @@ export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
   if (!wrapper) return
   wrapper.innerHTML = getShellHTML()
-  wrapper.style.display = 'block'
 }
 
 function getShellHTML(): string {
