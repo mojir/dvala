@@ -17,6 +17,7 @@ export function renderShell(): void {
 function getShellHTML(): string {
   return `
   <main id="main-panel" class="fancy-scroll">
+    <div id="dynamic-page"></div>
     ${getSettingsPage()}
     ${getSavedProgramsPage()}
     ${getSnapshotsPage()}
