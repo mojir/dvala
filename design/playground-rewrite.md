@@ -353,10 +353,10 @@ record of what was actually done, not just what was intended.
 ### Chunk 1 — Foundation ✅ (2026-03-15)
 - [x] Define `ReferenceData` + `SearchEntry` types in `common/referenceData.ts`
 - [x] Write `e2e/kpi.spec.ts` and capture KPI baseline (5 runs, Core Web Vitals included)
-- [ ] Move tutorial `.md` files to top-level `tutorials/` folder
-- [ ] Add `markdownSourcePlugin` to `rolldown.plugins.mjs` (mirrors `dvalaSourcePlugin`)
-- [ ] Install `marked`
-- [ ] Verify `npm run check` passes
+- [x] Move tutorial `.md` files to top-level `tutorials/` folder
+- [x] Add `markdownSourcePlugin` to `rolldown.plugins.mjs` (mirrors `dvalaSourcePlugin`)
+- [x] Install `marked`
+- [x] Verify `npm run check` passes
 
 ### Chunk 2 — Build step rewrite
 - [ ] Rewrite `buildPlaygroundSite.ts` — assemble JSON only, no HTML rendering, emit `404.html`
