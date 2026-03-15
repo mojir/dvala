@@ -7,22 +7,24 @@ Build time measured with `npm run build-playground`.
 
 File sizes and DOM node count are deterministic. Timing metrics averaged over 5 runs (individual runs shown).
 
-| Metric                        | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Avg / Fixed  | Target (after)  |
-|-------------------------------|--------|--------|--------|--------|--------|--------------|-----------------|
-| `index.html` size             | —      | —      | —      | —      | —      | 21,035.9 KB  | ~2,000 KB  ↓90% |
-| `playground.js` size          | —      | —      | —      | —      | —      | 1,221.8 KB   | ~1,500 KB  ↑20% |
-| `styles.css` size             | —      | —      | —      | —      | —      | 11.1 KB      | ~40 KB     ↑    |
-| `docs/` total                 | —      | —      | —      | —      | —      | 24,584.6 KB  | ~5,000 KB  ↓80% |
-| DOM nodes at load             | —      | —      | —      | —      | —      | 211,168      | ~2,000     ↓99% |
-| TTFB                          | 16ms   | 13ms   | 14ms   | 13ms   | 14ms   | ~14 ms       | ~14 ms     =    |
-| FCP                           | 288ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~280 ms      | ~220 ms    ↓    |
-| LCP                           | 300ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~282 ms      | ~250 ms    ↓    |
-| CLS                           | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000       | 0.0000     =    |
-| Time to playground ready      | 276ms  | 274ms  | 281ms  | 272ms  | 267ms  | ~274 ms      | ~200 ms    ↓    |
-| Time to navigate to doc page¹ | 19ms   | 26ms   | 27ms   | 16ms   | 16ms   | ~21 ms       | ~150 ms    ↑    |
-| `build-playground` time       | —      | —      | —      | —      | —      | ~3 s         | ~1 s       ↓    |
+| Metric                        | Run 1  | Run 2  | Run 3  | Run 4  | Run 5  | Avg / Fixed  | Target (after)  | **After (actual)**   |
+|-------------------------------|--------|--------|--------|--------|--------|--------------|-----------------|----------------------|
+| `index.html` size             | —      | —      | —      | —      | —      | 21,035.9 KB  | ~2,000 KB  ↓90% | **995.3 KB  ↓95% ✅** |
+| `playground.js` size          | —      | —      | —      | —      | —      | 1,221.8 KB   | ~1,500 KB  ↑20% | **1,395.4 KB ↑14% ✅** |
+| `styles.css` size             | —      | —      | —      | —      | —      | 11.1 KB      | ~40 KB     ↑    | **39.6 KB       ✅** |
+| `docs/` total                 | —      | —      | —      | —      | —      | 24,584.6 KB  | ~5,000 KB  ↓80% | **4,969.9 KB ↓80% ✅** |
+| DOM nodes at load             | —      | —      | —      | —      | —      | 211,168      | ~2,000     ↓99% | **323       ↓99% ✅** |
+| TTFB                          | 16ms   | 13ms   | 14ms   | 13ms   | 14ms   | ~14 ms       | ~14 ms     =    | **~5 ms         ✅** |
+| FCP                           | 288ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~280 ms      | ~220 ms    ↓    | **~206 ms       ✅** |
+| LCP                           | 300ms  | 276ms  | 276ms  | 280ms  | 280ms  | ~282 ms      | ~250 ms    ↓    | **~214 ms       ✅** |
+| CLS                           | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000       | 0.0000     =    | **0.2809    ↑ ⚠️** |
+| Time to playground ready      | 276ms  | 274ms  | 281ms  | 272ms  | 267ms  | ~274 ms      | ~200 ms    ↓    | **~224 ms       ✅** |
+| Time to navigate to doc page¹ | 19ms   | 26ms   | 27ms   | 16ms   | 16ms   | ~21 ms       | ~150 ms    ↑    | **~3 ms         ✅** |
+| `build-playground` time       | —      | —      | —      | —      | —      | ~3 s         | ~1 s       ↓    | **~0.6 s        ✅** |
 
 ¹ Pre-rewrite navigation is a DOM class toggle — content is already in the page. Post-rewrite it involves a JS render + live example execution. The increase is the honest trade-off for a dynamic architecture.
+
+⚠️ CLS regressed from 0.0 to 0.28 — dynamic shell injection causes layout shift. Can be fixed by reserving sidebar/main dimensions in the initial CSS (or using `visibility:hidden` instead of `display:none` on `#wrapper`).
 
 ---
 
@@ -385,11 +387,13 @@ record of what was actually done, not just what was intended.
 - [x] Rewrite `styles.css` with `:root` tokens + BEM classes
 - [x] Remove all old inline styles from `shell.ts` component HTML
 
-### Chunk 6 — Cleanup + KPI
-- [ ] Delete `playground-builder/src/styles/` and all dead component code
-- [ ] Run `npm run check`
-- [ ] Run KPI spec (5 runs) and fill in the "After" column in the baseline table
-- [ ] Smoke-test routing, search, tutorials, doc pages, playground editor
+### Chunk 6 — Cleanup + KPI ✅ (2026-03-15)
+- [x] Dead component code already deleted in Chunk 2 (`playground-builder/src/styles/` + components)
+- [x] Replace `Search.ts` module-level DOM lookups with deferred `searchDialog.ts` (fixed startup crash)
+- [x] Run `npm run check` — passes
+- [x] Run KPI spec (5 runs) — results in table above
+- [ ] Smoke-test routing, search, tutorials, doc pages, playground editor (manual)
+- Note: CLS regressed to 0.28 (see ⚠️ above) — follow-up fix needed
 
 ---
 

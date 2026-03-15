@@ -29,7 +29,7 @@ function getShellHTML(): string {
     <div class="sidebar-logo-wrap">
       <img src="images/dvala-logo.png" alt="Dvala" onclick="Playground.showPage('index','smooth')">
     </div>
-    <div class="sidebar-search-row" onclick="Playground.Search.openSearch()">
+    <div class="sidebar-search-row" onclick="Playground.openSearch()">
       <span>🔍 Search</span>
       <span class="sidebar-search-kbd">F3</span>
     </div>

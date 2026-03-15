@@ -162,10 +162,11 @@ test('time to navigate to a doc page', async ({ page }) => {
   await waitForInit(page)
 
   const t0 = Date.now()
-  await page.evaluate(() => (window as any).Playground.showPage('collection-map', 'smooth'))
-  await page.waitForFunction(() =>
-    document.getElementById('collection-map')?.classList.contains('active-content'),
-  { timeout: 5000 })
+  await page.evaluate(() => (window as any).Playground.navigate('/ref/map'))
+  await page.waitForFunction(() => {
+    const el = document.getElementById('dynamic-page')
+    return el && el.innerHTML.includes('doc-page')
+  }, { timeout: 5000 })
   const elapsed = Date.now() - t0
 
   results['time to navigate to doc page'] = ms(elapsed)
