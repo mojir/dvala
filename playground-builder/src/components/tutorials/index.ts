@@ -45,7 +45,7 @@ function toDisplayName(name: string): string {
 
 // --- Filesystem scanning ---
 
-const pagesDir = path.resolve(process.cwd(), 'playground-builder/src/components/tutorials/pages')
+const pagesDir = path.resolve(process.cwd(), 'tutorials')
 
 function loadMarkdownFile(filePath: string): TutorialEntry {
   const basename = path.basename(filePath, '.md').replace(/^\d+-/, '')

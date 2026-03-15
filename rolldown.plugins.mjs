@@ -18,6 +18,21 @@ export function dvalaSourcePlugin() {
 }
 
 /**
+ * Treats .md files as raw string exports.
+ * Allows `import raw from './tutorial.md'` to import the file contents as a string.
+ */
+export function markdownSourcePlugin() {
+  return {
+    name: 'markdown-source',
+    transform(code, id) {
+      if (id.endsWith('.md')) {
+        return { code: `export default ${JSON.stringify(code)}`, map: null }
+      }
+    },
+  }
+}
+
+/**
  * Rolldown plugin to strip `docs` fields from built-in expressions.
  * Used for the minimal bundle to reduce size.
  * Operates on the final JavaScript output via renderChunk.

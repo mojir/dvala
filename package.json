@@ -326,5 +326,8 @@
       ],
       "clean": "if-file-deleted"
     }
+  },
+  "dependencies": {
+    "marked": "^17.0.4"
   }
 }
