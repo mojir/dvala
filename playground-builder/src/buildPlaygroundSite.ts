@@ -63,6 +63,23 @@ function writeIndexPage() {
 <html lang="en">
   <head>
     <title>Dvala Playground</title>
+    <script>
+      // Set <base> so relative asset URLs (playground.js, styles.css) resolve correctly
+      // even when the page is loaded at a sub-path like /settings/dvala.
+      // For a local dev server (served at /), base is '/'.
+      // For GitHub Pages (served at /dvala/), base is '/dvala/'.
+      ;(function() {
+        var APP_ROOTS = ['about','tutorials','examples','core','modules','ref','saved','snapshots','settings']
+        var segs = location.pathname.split('/').filter(Boolean)
+        var base = document.createElement('base')
+        if (segs.length === 0 || APP_ROOTS.indexOf(segs[0]) !== -1) {
+          base.href = '/'
+        } else {
+          base.href = '/' + segs[0] + '/'
+        }
+        document.head.appendChild(base)
+      }())
+    </script>
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
     <meta name="description" content="A reference and a playground for Dvala">
     <meta name="viewport" content="width=device-width, initial-scale=1">

@@ -21,7 +21,7 @@ export function renderExamplePage(): string {
 <li class="content-page__entry example-page__entry">
   <div class="example-page__entry-header">
     <span class="example-page__entry-title">${escapeHtml(ex.name)}</span>
-    <button class="example-page__entry-btn" onclick="Playground.setPlayground(${JSON.stringify(ex.name)}, ${JSON.stringify(encodedExample)})">
+    <button class="example-page__entry-btn" onclick="Playground.setPlayground(${escapeHtml(JSON.stringify(ex.name))}, ${escapeHtml(JSON.stringify(encodedExample))})">
       Load in playground
     </button>
   </div>

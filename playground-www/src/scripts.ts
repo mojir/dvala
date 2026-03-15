@@ -711,6 +711,13 @@ export function toggleProgramLock(id: string) {
   populateSavedProgramsList()
 }
 
+export function clearAllSavedPrograms() {
+  clearAllPrograms()
+  saveState({ 'current-program-id': null })
+  populateSavedProgramsList()
+  updateCSS()
+}
+
 export function clearUnlockedPrograms() {
   void showConfirmModal('Clear unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
     const unlocked = getSavedPrograms().filter(p => !p.locked)
@@ -1092,7 +1099,7 @@ export function toggleApiSection(sectionId: string, animate = true) {
   const chevron = document.getElementById(`api-chevron-${sectionId}`)
   const content = document.getElementById(`api-content-${sectionId}`)
 
-  if (!chevron || !content)
+  if (!content)
     return
 
   const isExpanded = expandedApiSections.has(sectionId)
@@ -1111,7 +1118,8 @@ export function toggleApiSection(sectionId: string, animate = true) {
   if (!isExpanded) {
     expandedApiSections.add(sectionId)
     expandCollapsible(content, animate)
-    chevron.innerHTML = chevronDown
+    if (chevron)
+      chevron.innerHTML = chevronDown
   }
 }
 
@@ -2038,9 +2046,10 @@ function pageIdToAppPath(pageId: string): string {
   if (!pageId || pageId === 'index') return '/'
   // tutorial pages
   if (pageId.startsWith('tutorial-')) return `/tutorials/${pageId.slice(9)}`
-  // special pages
-  const staticPages = ['settings-page', 'saved-programs-page', 'snapshots-page']
-  if (staticPages.includes(pageId)) return `/${pageId.replace(/-page$/, '')}`
+  // special static pages — map to router paths expected by routeToPath
+  if (pageId === 'settings-page') return '/settings'
+  if (pageId === 'saved-programs-page') return '/saved'
+  if (pageId === 'snapshots-page') return '/snapshots'
   // reference pages: pageId is the linkName like 'collection-map'
   return `/ref/${pageId}`
 }
