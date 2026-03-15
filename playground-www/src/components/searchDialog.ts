@@ -8,6 +8,11 @@ import { navigate } from '../router'
 
 let selectedIndex: number | null = null
 let currentResults: SearchEntry[] = []
+let _onCloseCallback: (() => void) | null = null
+
+export function onSearchClose(cb: () => void): void {
+  _onCloseCallback = cb
+}
 
 export function initSearchDialog(): void {
   const input = document.getElementById('search-input') as HTMLInputElement | null
@@ -173,6 +178,7 @@ export function closeSearch(): void {
   const overlay = document.getElementById('search-dialog-overlay')
   if (!overlay) return
   overlay.style.display = 'none'
+  _onCloseCallback?.()
 }
 
 function escapeHtml(str: string): string {

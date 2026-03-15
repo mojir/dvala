@@ -13,7 +13,7 @@ import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
-import { Search } from './Search'
+import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
@@ -1680,7 +1680,7 @@ window.onload = async function () {
   }
 
   window.addEventListener('keydown', evt => {
-    if (Search.handleKeyDown(evt))
+    if (handleSearchKeyDown(evt))
       return
 
     if (pendingIoPick && elements.ioPickModal.style.display !== 'none') {
@@ -1919,9 +1919,10 @@ window.onload = async function () {
     routeToPath(appPath)
   })
 
-  Search.onClose(() => {
+  onSearchClose(() => {
     applyState()
   })
+  initSearchDialog()
 }
 
 function getDataFromUrl() {
@@ -2071,7 +2072,7 @@ function routeToPath(appPath: string): void {
 
   // For all other paths, render dynamically into #dynamic-page
   inactivateAll()
-  Search.closeSearch()
+  closeSearch()
   elements.mainPanel.scrollTo({ top: 0 })
 
   const dynPage = document.getElementById('dynamic-page')
@@ -4000,7 +4001,7 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
   setTimeout(() => {
     inactivateAll()
 
-    Search.closeSearch()
+    closeSearch()
     const page = document.getElementById(id)
     const linkElementId = `${(!id || id === 'index') ? 'home-page' : id}_link`
     const link = document.getElementById(linkElementId)
