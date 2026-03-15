@@ -396,7 +396,7 @@ describe('autoCompleter', () => {
 describe('start page example', () => {
   const dvala = makePlaygroundDvala()
   const exampleCode = readFileSync(
-    join(__dirname, '../playground-builder/src/components/startPage/example.dvala'),
+    join(__dirname, '../playground-www/src/startPageExample.dvala'),
     'utf-8',
   )
 

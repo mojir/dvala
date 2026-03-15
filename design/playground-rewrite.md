@@ -358,9 +358,13 @@ record of what was actually done, not just what was intended.
 - [x] Install `marked`
 - [x] Verify `npm run check` passes
 
-### Chunk 2 — Build step rewrite
-- [ ] Rewrite `buildPlaygroundSite.ts` — assemble JSON only, no HTML rendering, emit `404.html`
-- [ ] Delete `playground-builder` component/style files
+### Chunk 2 — Build step rewrite ✅ (2026-03-15)
+- [x] Rewrite `buildPlaygroundSite.ts` — assemble JSON only, no HTML rendering, emit `404.html`
+- [x] Delete `playground-builder` component/style/formatter files
+- [x] Move tutorial scanning logic to `reference/tutorials.ts` (tests still run all tutorial examples)
+- [x] Move `startPageExample.dvala` to `playground-www/src/`
+- [x] Remove `&quot;` HTML-encoding mutation from `reference/index.ts`
+- [x] Delete `common/createFormatter.test.ts` (tested deleted formatter rules)
 
 ### Chunk 3 — Router + shell
 - [ ] Implement path router in `playground-www/src/router.ts` (history API + `popstate`)

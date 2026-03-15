@@ -10,9 +10,19 @@ import { allBuiltinModules } from '../src/allModules'
 import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import { type ApiName, categories } from '../reference/api'
 import '../src/initReferenceData'
-import { corePageExamples } from '../playground-builder/src/components/corePage'
-import { moduleExamples } from '../playground-builder/src/components/modulesPage'
-import { getExamples, tutorials } from '../playground-builder/src/components/tutorials'
+import { getExamples, tutorials } from '../reference/tutorials'
+
+const corePageExamples = [
+  '1 + 2 + 3',
+  'upper-case("hello, world!")',
+  'map([1, 2, 3], inc)',
+  'if 3 > 2 then "yes" else "no" end',
+]
+
+const moduleExamples = [
+  'let { dot } = import(linear-algebra);\ndot([1, 2, 3], [4, 5, 6])',
+  'let lin = import(linear-algebra);\n{\n "Cross product": lin.cross([1, 0, 0], [0, 1, 0]),\n  "Distance": lin.euclidean-distance([1, 1], [4, 5])\n}',
+]
 
 const dvala = createDvala({ modules: allBuiltinModules })
 describe('apiReference', () => {
