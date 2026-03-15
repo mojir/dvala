@@ -38,8 +38,8 @@ async function setContext(page: Page, json: string) {
 
 /** Click the Run button (the play icon next to the Dvala Code title). */
 async function clickRun(page: Page) {
-  // The run button is the first <a> inside #dvala-links
-  await page.locator('#dvala-links a').first().click()
+  // The run button is the first <a> inside .panel-header__actions in #dvala-panel
+  await page.locator('#dvala-panel .panel-header__actions a').first().click()
 }
 
 /** Wait for output to appear in the output panel. */
@@ -59,7 +59,7 @@ async function getOutputText(page: Page): Promise<string> {
 test.describe('playground loads', () => {
   test('page title and main elements are visible', async ({ page }) => {
     await page.goto('')
-    await expect(page).toHaveTitle('Playground')
+    await expect(page).toHaveTitle('Dvala Playground')
 
     // Wrapper becomes visible after JS init
     await waitForInit(page)
@@ -180,14 +180,27 @@ test.describe('navigation', () => {
     // Click Examples link in sidebar
     await page.locator('#sidebar').getByText('Examples').click()
 
-    // The example page should be active
-    await expect(page.locator('#example-page')).toHaveClass(/active-content/)
+    // The examples page should be rendered into #dynamic-page
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+    const dynPage = page.locator('#dynamic-page')
+    await expect(dynPage).toBeVisible()
+    // Check that URL contains /examples
+    await page.waitForURL(/\/examples/, { timeout: 3000 })
   })
 
-  test('navigating via hash shows correct page', async ({ page }) => {
-    await page.goto('#example-page')
+  test('navigating via path shows correct page', async ({ page }) => {
+    await page.goto('/examples')
     await waitForInit(page)
-    await expect(page.locator('#example-page')).toHaveClass(/active-content/)
+    // The examples page should be rendered into #dynamic-page
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+    const dynPage = page.locator('#dynamic-page')
+    await expect(dynPage).toBeVisible()
   })
 })
 
@@ -221,15 +234,18 @@ test.describe('examples', () => {
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
 
-    // Navigate directly to the first example's detail page (the index only shows nav links,
-    // and the play button is inside .example-action-bar which is display:none by default)
-    await page.evaluate(() => (window as any).Playground.showPage('example-default', 'smooth'))
-    await expect(page.locator('#example-default')).toHaveClass(/active-content/)
+    // Navigate to examples page via router
+    await page.evaluate(() => (window as any).Playground.navigate('/examples'))
 
-    // Hover over the code block to reveal the action bar, then click the play button
-    const codeBlock = page.locator('#example-default .example-code').first()
-    await codeBlock.hover()
-    const loadButton = page.locator('#example-default [onclick*="Playground.setPlayground"]').first()
+    // Wait for the examples page to render in #dynamic-page
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.querySelector('.content-page') !== null
+    }, { timeout: 5000 })
+
+    // Click the first "Load in playground" button
+    const loadButton = page.locator('#dynamic-page [onclick*="Playground.setPlayground"]').first()
+    await loadButton.waitFor({ timeout: 3000 })
     await loadButton.click()
 
     // Code should be populated in the editor
@@ -498,18 +514,19 @@ test.describe('api reference navigation', () => {
     await page.keyboard.press('Control+k')
     await page.locator('#search-input').fill('map')
 
-    // Click first result
-    const firstResult = page.locator('#search-result a').first()
+    // Click first result (search results are div.search-dialog__entry elements)
+    const firstResult = page.locator('#search-result .search-dialog__entry').first()
     await firstResult.waitFor({ timeout: 3000 })
     const resultText = await firstResult.textContent()
     await firstResult.click()
 
-    // A doc page should become active
+    // A doc page should be rendered in #dynamic-page
     await page.waitForFunction(() => {
-      return document.querySelector('.active-content') !== null
-    })
-    const activeContent = page.locator('.active-content').first()
-    await expect(activeContent).toBeVisible()
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+    const dynPage = page.locator('#dynamic-page')
+    await expect(dynPage).toBeVisible()
     expect(resultText?.length).toBeGreaterThan(0)
   })
 })
@@ -533,6 +550,8 @@ test.describe('programs', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
+    // Clear all saved programs to ensure a clean state
+    await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
   })
 
   test('programs page shows empty state when no programs saved', async ({ page }) => {
@@ -546,6 +565,8 @@ test.describe('programs', () => {
     await saveAsProgram(page, 'My Test Program')
 
     await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    // Wait for the page to become active before checking card visibility
+    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
 
     await page.waitForFunction(() =>
       document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
@@ -592,6 +613,8 @@ test.describe('programs', () => {
     await saveAsProgram(page, 'Delete Me')
 
     await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
+    // Wait for the page to become active before checking
+    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
     await page.waitForFunction(() =>
       document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
     )
@@ -605,6 +628,8 @@ test.describe('programs', () => {
     await page.waitForFunction(() =>
       document.querySelectorAll('#saved-programs-list .snapshot-card').length === 0,
     )
+    // Ensure page is still active before checking empty state visibility
+    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
     await expect(page.locator('#saved-programs-empty')).toBeVisible()
   })
 })

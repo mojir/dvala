@@ -36,7 +36,7 @@ function getShellHTML(): string {
       <a id="home-page_link" onclick="Playground.showPage('index','smooth')">🏠 Home</a>
       <a id="about-page_link" onclick="Playground.showPage('about-page','smooth')">ℹ️ About</a>
       <a id="tutorials-page_link" onclick="Playground.showTutorialsPage()">💡 Tutorials</a>
-      <a id="example-page_link" onclick="Playground.showPage('example-page','smooth')">🧪 Examples</a>
+      <a id="example-page_link" onclick="Playground.navigate('/examples')">🧪 Examples</a>
     </div>
     <div class="sidebar-nav-item-row">
       <a id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
