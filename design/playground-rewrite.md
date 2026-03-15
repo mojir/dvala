@@ -381,9 +381,9 @@ record of what was actually done, not just what was intended.
 - [x] Add `markdownSourcePlugin` to `rolldown.config.playground-www.mjs`
 - [x] Add `types/markdown-source.d.ts` for `.md` import type declarations
 
-### Chunk 5 — CSS
-- [ ] Rewrite `styles.css` with `:root` tokens + BEM classes
-- [ ] Remove all old inline styles
+### Chunk 5 — CSS ✅ (2026-03-15)
+- [x] Rewrite `styles.css` with `:root` tokens + BEM classes
+- [x] Remove all old inline styles from `shell.ts` component HTML
 
 ### Chunk 6 — Cleanup + KPI
 - [ ] Delete `playground-builder/src/styles/` and all dead component code
