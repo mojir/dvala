@@ -3,7 +3,7 @@
   "overrides": {
     "file-type": "^21.3.2"
   },
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "dvala",
   "author": "Albert Mojir",
   "license": "MIT",
