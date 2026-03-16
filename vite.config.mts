@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [
     {
       name: 'dvala-source',
-      transform(_code, id) {
+      transform(_code: string, id: string) {
         if (!id.endsWith('.dvala'))
           return undefined
         const content = readFileSync(id, 'utf-8')
