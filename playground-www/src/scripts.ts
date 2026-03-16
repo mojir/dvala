@@ -680,7 +680,7 @@ export function deleteSavedProgram(id: string) {
     populateSavedProgramsList()
   }
   if (program.locked) {
-    void showConfirmModal('Delete program', 'This program is locked. Are you sure you want to permanently delete it?', doDelete)
+    void showInfoModal('Delete program', 'This program is locked. Are you sure you want to permanently delete it?', doDelete)
   } else {
     void doDelete()
   }
@@ -709,7 +709,7 @@ export function clearAllSavedPrograms() {
 }
 
 export function clearUnlockedPrograms() {
-  void showConfirmModal('Clear unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
+  void showInfoModal('Clear unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
     const unlocked = getSavedPrograms().filter(p => !p.locked)
     await Promise.all(unlocked.map(p => animateProgramCardRemoval(p.id)))
     const kept = getSavedPrograms().filter(p => p.locked)
@@ -824,7 +824,7 @@ export function saveAs() {
       showToast(`Saved as "${name}"`)
     }
     if (duplicate) {
-      void showConfirmModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
+      void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
     } else {
       doSave()
     }
@@ -917,7 +917,7 @@ function commitProgramName(name: string) {
   const duplicate = programs.find(p => p.name === name && p.id !== currentId)
 
   if (duplicate) {
-    void showConfirmModal('Replace existing program?', `"${name}" already exists. Replace it with the current code and context?`, () => {
+    void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it with the current code and context?`, () => {
       const without = programs.filter(p => p.id !== duplicate.id)
       saveOrRenameProgram(name, without, currentId)
     })
@@ -1053,7 +1053,7 @@ export async function deleteSavedSnapshot(index: number) {
   }
 
   if (entry.locked) {
-    void showConfirmModal('Delete locked snapshot', 'This snapshot is locked. Are you sure you want to delete it?', doDelete)
+    void showInfoModal('Delete locked snapshot', 'This snapshot is locked. Are you sure you want to delete it?', doDelete)
   } else {
     await doDelete()
   }
@@ -1069,7 +1069,7 @@ export function toggleSnapshotLock(index: number) {
 }
 
 export function clearUnlockedSnapshots() {
-  void showConfirmModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
+  void showInfoModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
     const terminalEntries = getTerminalSnapshots()
     const savedEntries = getSavedSnapshots()
     const unlockedSavedIndices = savedEntries.map((e, i) => e.locked ? -1 : i).filter(i => i >= 0)
@@ -1366,7 +1366,7 @@ function updateStorageUsage() {
 }
 
 export function clearLocalStorageData() {
-  void showConfirmModal('Clear Local Storage', 'This will clear code, context, settings, and layout preferences.', () => {
+  void showInfoModal('Clear Local Storage', 'This will clear code, context, settings, and layout preferences.', () => {
     clearAllStates()
     applyState(true)
     updateStorageUsage()
@@ -1374,7 +1374,7 @@ export function clearLocalStorageData() {
 }
 
 export function clearIndexedDbData() {
-  void showConfirmModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved programs.', () => {
+  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved programs.', () => {
     clearAllSnapshots()
     clearAllPrograms()
     saveState({ 'current-program-id': null })
@@ -1880,8 +1880,6 @@ window.onload = async function () {
       closeAddContextMenu()
       if (resolveInfoModal) {
         closeInfoModal()
-      } else if (resolveConfirmModal) {
-        closeConfirmModal()
       } else if (currentCheckpointSnapshot !== null) {
         closeCheckpointModal()
       } else if (pendingIoConfirm || pendingIoPick || pendingReadline) {
@@ -1904,10 +1902,6 @@ window.onload = async function () {
     if (evt.key === 'Enter' && resolveInfoModal) {
       evt.preventDefault()
       closeInfoModal()
-    }
-    if (evt.key === 'Enter' && resolveConfirmModal) {
-      evt.preventDefault()
-      closeConfirmModal()
     }
     if (evt.key === 'Enter' && currentCheckpointSnapshot !== null) {
       evt.preventDefault()
@@ -3028,8 +3022,13 @@ function dismissToast(toast: HTMLElement) {
 }
 
 let resolveInfoModal: (() => void) | null = null
+let infoModalOnConfirm: (() => void | Promise<void>) | null = null
 
-export function showInfoModal(title: string, message: string): Promise<void> {
+export function showInfoModal(
+  title: string,
+  message: string,
+  onConfirm?: () => void | Promise<void>,
+): Promise<void> {
   const { panel, body, footer } = createModalPanel()
 
   const messageEl = document.createElement('div')
@@ -3043,6 +3042,7 @@ export function showInfoModal(title: string, message: string): Promise<void> {
   okBtn.addEventListener('click', () => closeInfoModal())
   footer.appendChild(okBtn)
 
+  infoModalOnConfirm = onConfirm ?? null
   pushPanel(panel, title)
 
   return new Promise<void>(resolve => {
@@ -3051,36 +3051,12 @@ export function showInfoModal(title: string, message: string): Promise<void> {
 }
 
 export function closeInfoModal() {
+  const onConfirm = infoModalOnConfirm
   resolveInfoModal?.()
   resolveInfoModal = null
+  infoModalOnConfirm = null
   popModal()
-}
-
-let resolveConfirmModal: (() => void) | null = null
-
-export function showConfirmModal(title: string, message: string, onConfirm: () => void | Promise<void>): Promise<void> {
-  const { panel, body, footer } = createModalPanel()
-
-  const messageEl = document.createElement('div')
-  messageEl.className = 'modal-body-row'
-  messageEl.textContent = message
-  body.appendChild(messageEl)
-
-  const okBtn = document.createElement('button')
-  okBtn.className = 'button button--primary'
-  okBtn.textContent = 'OK'
-  okBtn.addEventListener('click', () => {
-    closeConfirmModal()
-    void onConfirm()
-  })
-
-  footer.appendChild(okBtn)
-
-  pushPanel(panel, title)
-
-  return new Promise<void>(resolve => {
-    resolveConfirmModal = resolve
-  })
+  if (onConfirm) void onConfirm()
 }
 
 export function exportPlayground() {
@@ -3354,12 +3330,6 @@ export function closeImportResultModal() {
     importNeedsReload = false
     window.location.reload()
   }
-}
-
-export function closeConfirmModal() {
-  resolveConfirmModal?.()
-  resolveConfirmModal = null
-  popModal()
 }
 
 let currentCheckpointSnapshot: Snapshot | null = null
