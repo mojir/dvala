@@ -2142,6 +2142,26 @@ button:focus {
   color: var(--color-text-bright);
 }
 
+.breadcrumb-sep {
+  color: rgb(115 115 115);
+  margin: 0 0.15rem;
+  font-weight: normal;
+}
+
+.breadcrumb-item {
+  color: rgb(229 229 229);
+}
+
+.breadcrumb-item--clickable {
+  color: rgb(115 115 115);
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.breadcrumb-item--clickable:hover {
+  color: rgb(180 180 180);
+}
+
 .snapshot-panel__columns {
   display: flex;
   flex-direction: row;

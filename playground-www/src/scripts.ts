@@ -2473,18 +2473,16 @@ function buildBreadcrumbs(panel: HTMLElement) {
   modalStack.forEach((entry, i) => {
     if (i > 0) {
       const sep = document.createElement('span')
+      sep.className = 'breadcrumb-sep'
       sep.textContent = '›'
-      sep.style.cssText = 'color: rgb(115 115 115); margin: 0 0.15rem; font-weight: normal;'
       container.appendChild(sep)
     }
 
     const isLast = i === modalStack.length - 1
     const span = document.createElement('span')
     span.textContent = entry.label
-    if (isLast) {
-      span.style.cssText = 'color: rgb(229 229 229);'
-    } else {
-      span.style.cssText = 'color: rgb(115 115 115); cursor: pointer; font-weight: normal;'
+    span.className = isLast ? 'breadcrumb-item' : 'breadcrumb-item--clickable'
+    if (!isLast) {
       const targetIndex = i
       span.addEventListener('click', () => popToLevel(targetIndex))
     }
