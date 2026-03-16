@@ -8,7 +8,7 @@
 import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import type { EffectContext, HandlerRegistration } from '../../src/evaluator/effectTypes'
-import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../../src/utils/symbols'
+import { stringifyValue } from '../../common/utils'
 
 const dvala = createDvala({ debug: false, modules: allBuiltinModules })
 
@@ -98,35 +98,11 @@ export function runExampleCode(code: string): string | null {
     const value = dvala.run(code, {
       effectHandlers: exampleHandlers,
     })
-    return formatValue(value)
+    return stringifyValue(value, false)
   } catch (e) {
     if (e instanceof EffectPerformedError) {
       return `<effect ${e.effectName}>` // Show which effect halted execution
     }
     return `Error: ${String(e instanceof Error ? e.message : e)}`
   }
-}
-
-export function formatValue(value: unknown): string {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  if (typeof value === 'string') return JSON.stringify(value)
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  if (typeof value === 'object') {
-    if (EFFECT_SYMBOL in value) return `<effect ${(value as Record<string, unknown>)['name']}>`
-    if (FUNCTION_SYMBOL in value) return '<function>'
-    if (REGEXP_SYMBOL in value) return String(value)
-    try {
-      return JSON.stringify(value, (_k, v: unknown) => {
-        if (v !== null && typeof v === 'object') {
-          if (EFFECT_SYMBOL in v) return `<effect ${(v as Record<string, unknown>)['name']}>`
-          if (FUNCTION_SYMBOL in v) return '<function>'
-        }
-        return v
-      })
-    } catch {
-      return String(value)
-    }
-  }
-  return String(value)
 }

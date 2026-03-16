@@ -1,14 +1,17 @@
-
 // Your shopping cart
 let prices = [12.99, 5.49, 8.00, 22.50, 3.99];
 
-// Ask for a discount code via an effect (suspendable IO)
-let code = perform(effect(dvala.io.read-line), "Enter discount code (SAVE10 / SAVE20):");
+// Pick a discount code via an effect (suspendable IO)
+let choice = perform(
+  effect(dvala.io.pick),
+  ["No discount", "SAVE10", "SAVE20"],
+  { prompt: "Select discount code:" },
+);
 
-// Pattern match the code to a discount rate
-let discount = match code
-  case "SAVE10" then 0.10
-  case "SAVE20" then 0.20
+// Map index to discount rate
+let discount = match choice
+  case 1 then 0.10
+  case 2 then 0.20
   case _ then 0
 end;
 
@@ -18,11 +21,15 @@ let total = prices
   |> sum
   |> _ round 2;
 
+// Calculate how much was saved for display
 let saved-amount = sum(prices) - total |> _ round 2;
+
 perform(effect(dvala.io.println),
-  "Total: $" ++ str(total) ++
+  `Total: $ ${str(total)} ` ++
   cond
-    case saved-amount > 0 then " (You saved $" ++ str(saved-amount) ++ ")"
-    case true then " (No discount applied)"
+    case saved-amount > 0 then
+      `(You saved $${str(saved-amount)})`
+    case true then
+      "(No discount applied)"
   end
 );
