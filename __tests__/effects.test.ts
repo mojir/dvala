@@ -673,6 +673,65 @@ describe('phase 3 — Host Async API', () => {
     })
   })
 
+  describe('3b2: host handler — halt', () => {
+    it('should return halted result when handler calls halt with value', async () => {
+      const result = await dvala.runAsync(`
+        let x = perform(effect(my.stop), "reason");
+        "should not reach: " ++ x
+      `, {
+        effectHandlers: [
+          { pattern: 'my.stop', handler: async ({ args, halt }) => {
+            halt({ reason: args[0] })
+          } },
+        ],
+      })
+      expect(result.type).toBe('halted')
+      if (result.type === 'halted') {
+        expect(result.value).toEqual({ reason: 'reason' })
+      }
+    })
+
+    it('should return halted result with null when halt called without value', async () => {
+      const result = await dvala.runAsync(`
+        perform(effect(my.abort))
+      `, {
+        effectHandlers: [
+          { pattern: 'my.abort', handler: async ({ halt }) => {
+            halt()
+          } },
+        ],
+      })
+      expect(result.type).toBe('halted')
+      if (result.type === 'halted') {
+        expect(result.value).toBeNull()
+      }
+    })
+
+    it('should halt immediately without running subsequent code', async () => {
+      const log: string[] = []
+      const result = await dvala.runAsync(`
+        do
+          let a = perform(effect(my.log), "before");
+          let b = perform(effect(my.halt));
+          let c = perform(effect(my.log), "after");
+          "done"
+        end
+      `, {
+        effectHandlers: [
+          { pattern: 'my.log', handler: async ({ args, resume }) => {
+            log.push(args[0] as string)
+            resume(null)
+          } },
+          { pattern: 'my.halt', handler: async ({ halt }) => {
+            halt('stopped')
+          } },
+        ],
+      })
+      expect(result.type).toBe('halted')
+      expect(log).toEqual(['before'])
+    })
+  })
+
   describe('3c: AbortSignal', () => {
     it('should provide an abort signal to the handler', async () => {
       let receivedSignal: AbortSignal | undefined

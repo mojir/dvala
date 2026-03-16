@@ -177,9 +177,16 @@ export interface EffectContext {
    * All snapshots after the target are discarded.
    */
   resumeFrom: (snapshot: Snapshot, value: Any) => void
+
+  /**
+   * Halt the program immediately. Returns a `{ type: 'halted', value }` result.
+   * Unlike `fail()`, this does not trigger error handlers — it's a clean termination.
+   * If `value` is omitted, defaults to `null`.
+   */
+  halt: (value?: Any) => void
 }
 
-/** A function that handles an effect by calling `resume`, `suspend`, `fail`, or `next`. */
+/** A function that handles an effect by calling `resume`, `suspend`, `fail`, `halt`, or `next`. */
 export type EffectHandler = (ctx: EffectContext) => void | Promise<void>
 
 /** A single handler registration: a pattern (e.g. `'llm.complete'`, `'dvala.*'`, `'*'`) paired with its handler. */
@@ -250,6 +257,7 @@ export type RunResult =
   | { type: 'completed'; value: Any; definedBindings?: Record<string, unknown>; snapshot?: Snapshot }
   | { type: 'suspended'; snapshot: Snapshot }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot }
+  | { type: 'halted'; value: Any; snapshot?: Snapshot }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline
@@ -305,4 +313,29 @@ export class ResumeFromSignal {
 
 export function isResumeFromSignal(value: unknown): value is ResumeFromSignal {
   return value instanceof ResumeFromSignal
+}
+
+// ---------------------------------------------------------------------------
+// HaltSignal — used internally by the trampoline
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown (as a promise rejection) by `halt()` inside a host handler.
+ * Caught by the effect trampoline loop — NOT by Dvala-level try/catch.
+ * Terminates execution immediately and returns a halted result.
+ */
+export class HaltSignal {
+  public readonly _brand = 'HaltSignal' as const
+  constructor(
+    /** The value to return as the halted result. */
+    public readonly value: Any,
+    /** Accumulated snapshots at the point of halt. */
+    public readonly snapshots: Snapshot[],
+    /** High-water mark for snapshot indices at the point of halt. */
+    public readonly nextSnapshotIndex: number,
+  ) {}
+}
+
+export function isHaltSignal(value: unknown): value is HaltSignal {
+  return value instanceof HaltSignal
 }

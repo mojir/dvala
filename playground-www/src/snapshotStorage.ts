@@ -13,7 +13,7 @@ export interface TerminalSnapshotEntry {
   kind: 'terminal'
   snapshot: Snapshot
   savedAt: number
-  resultType: 'completed' | 'error'
+  resultType: 'completed' | 'error' | 'halted'
   result?: string
 }
 

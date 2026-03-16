@@ -161,6 +161,11 @@ const elements = {
   get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
   get exportOptSavedPrograms() { return document.getElementById('export-opt-saved-programs') as HTMLInputElement },
   get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
+  get executionControlBar() { return document.getElementById('execution-control-bar') as HTMLDivElement },
+  get executionStatus() { return document.getElementById('execution-status') as HTMLSpanElement },
+  get execPlayBtn() { return document.getElementById('exec-play-btn') as HTMLButtonElement },
+  get execPauseBtn() { return document.getElementById('exec-pause-btn') as HTMLButtonElement },
+  get execStopBtn() { return document.getElementById('exec-stop-btn') as HTMLButtonElement },
   get effectModal() { return document.getElementById('effect-modal') as HTMLDivElement },
   get effectModalNav() { return document.getElementById('effect-modal-nav') as HTMLDivElement },
   get effectModalCounter() { return document.getElementById('effect-modal-counter') as HTMLSpanElement },
@@ -219,11 +224,12 @@ let pendingEffects: PendingEffect[] = []
 let currentEffectIndex = 0
 let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
-let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void } | null = null
+let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void; halt?: () => void } | null = null
 let readlineInputEl: HTMLTextAreaElement | null = null
-let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; focusedIndex: number | null; itemCount: number } | null = null
-let pendingIoConfirm: { resolve: (value: boolean) => void; suspend: () => void; defaultValue: boolean | undefined } | null = null
-let pendingPrintln: { resolve: () => void; suspend: () => void } | null = null
+let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; halt: () => void; focusedIndex: number | null; itemCount: number } | null = null
+let pendingIoConfirm: { resolve: (value: boolean) => void; suspend: () => void; halt: () => void; defaultValue: boolean | undefined } | null = null
+let pendingPrintln: { resolve: () => void; suspend: () => void; halt: () => void } | null = null
+let currentEffectCtx: EffectContext | null = null
 let currentSnapshot: Snapshot | null = null
 const modalStack: { panel: HTMLElement; label: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
@@ -459,7 +465,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     titlePrefix = ''
     message = snapshot.message
     detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
-    borderColor = entry.resultType === 'error' ? '#d16969' : '#4db36e'
+    borderColor = entry.resultType === 'error' ? '#d16969' : entry.resultType === 'halted' ? '#e6c07b' : '#4db36e'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
       { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
@@ -470,12 +476,13 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     onclick = `Playground.openTerminalSnapshot(${index})`
   } else {
     const isCompleted = snapshot.terminal === true
+    const meta = snapshot.meta as { error?: unknown; halted?: boolean } | undefined
     type = 'saved'
     title = entry.name || `Snapshot #${index + 1}`
     titlePrefix = entry.locked ? `<span style="color: rgb(234 179 8); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
     message = getSnapshotDisplayMessage(snapshot)
     detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
-    borderColor = isCompleted ? ((snapshot.meta as { error?: unknown } | undefined)?.error ? '#d16969' : '#4db36e') : 'rgb(107 114 128)'
+    borderColor = isCompleted ? (meta?.error ? '#d16969' : meta?.halted ? '#e6c07b' : '#4db36e') : 'rgb(107 114 128)'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
       { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
@@ -543,10 +550,26 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
   // Terminal snapshots with group label
   if (terminalEntries.length > 0) {
     cards.push(renderGroupLabel('Completed Programs'))
-    terminalEntries.forEach((entry, index) => {
-      // Only animate the first (newest) terminal entry if animateNewTerminal is true
-      cards.push(renderSnapshotCard(entry, index, animateNewTerminal && index === 0))
-    })
+    // Always render first N cards normally
+    for (let i = 0; i < Math.min(VISIBLE_TERMINAL_SNAPSHOTS, terminalEntries.length); i++) {
+      cards.push(renderSnapshotCard(terminalEntries[i]!, i, animateNewTerminal && i === 0))
+    }
+    const hiddenCount = terminalEntries.length - VISIBLE_TERMINAL_SNAPSHOTS
+    if (hiddenCount > 0) {
+      // Wrap extra cards in collapsible container
+      const expandedStyle = showAllTerminalSnapshots ? 'max-height: 2000px; opacity: 1;' : 'max-height: 0; opacity: 0;'
+      cards.push(`<div id="terminal-snapshots-overflow" style="display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; ${expandedStyle}">`)
+      for (let i = VISIBLE_TERMINAL_SNAPSHOTS; i < terminalEntries.length; i++) {
+        cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
+      }
+      cards.push('</div>')
+      const toggleStyle = 'background: none; border: none; color: rgb(140 140 140); font-size: 0.75rem; cursor: pointer; padding: 0.5rem 0; text-align: center; width: 100%;'
+      if (showAllTerminalSnapshots) {
+        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show less</button>`)
+      } else {
+        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show all (${terminalEntries.length})</button>`)
+      }
+    }
   }
 
   // Saved snapshots with group label
@@ -1285,6 +1308,14 @@ function onDocumentClick(event: Event) {
 
   if (!target?.closest('#add-context-menu') && elements.addContextMenu.style.display === 'block')
     closeAddContextMenu()
+
+  // Close modal more-menus when clicking outside
+  if (!target?.closest('.modal-more-menu') && !target?.closest('.modal-header__more-btn')) {
+    document.querySelectorAll('.modal-more-menu').forEach(menu => {
+      (menu as HTMLElement).style.display = 'none'
+    })
+    closeEffectHandlerMenus()
+  }
 }
 
 function applyLayout() {
@@ -1625,6 +1656,7 @@ window.onload = async function () {
   populateSidebarApiSections()
   await initSnapshotStorage()
   await initPrograms()
+  initExecutionControlBar()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
   elements.contextUndoButton.classList.add('disabled')
@@ -1825,6 +1857,7 @@ window.onload = async function () {
         evt.preventDefault()
         evt.stopPropagation()
         closeEffectHandlerMenus()
+        showToast('Use the Submit button', { severity: 'error' })
         return
       }
     }
@@ -1921,6 +1954,14 @@ window.onload = async function () {
     if (evt.key === 'Enter' && pendingEffects.length > 0 && !pendingEffectAction) {
       evt.preventDefault()
       selectEffectAction('resume')
+    }
+    if (evt.key === 'Enter' && pendingEffectAction && (evt.ctrlKey || evt.metaKey)) {
+      evt.preventDefault()
+      confirmEffectAction()
+    }
+    if (evt.key === 'Escape' && pendingEffectAction) {
+      evt.preventDefault()
+      cancelEffectAction()
     }
     // Enter on pick modal — must click an item
     if (evt.key === 'Enter' && pendingIoPick) {
@@ -2238,6 +2279,13 @@ export async function run() {
       void openSnapshotModal(runResult.snapshot)
       return
     }
+    if (runResult.type === 'halted') {
+      appendOutput('Program halted', 'comment')
+      if (runResult.snapshot) {
+        saveTerminalSnapshot(runResult.snapshot, 'halted')
+      }
+      return
+    }
     const content = stringifyValue(runResult.value, false)
     if (runResult.snapshot) {
       saveTerminalSnapshot(runResult.snapshot, 'completed', content)
@@ -2378,6 +2426,7 @@ export function format() {
     })
   }
   applyState()
+  showToast('Code formatted')
 }
 
 export function toggleDebug() {
@@ -2434,8 +2483,8 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
 
     const textToCopy = copyContent ?? content
     const copyBtn = document.createElement('span')
-    copyBtn.innerHTML = '&#x2398;'
-    copyBtn.style.cssText = 'font-size:1.6rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:rgb(115 115 115); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
+    copyBtn.innerHTML = copyIcon
+    copyBtn.style.cssText = 'font-size:0.9rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:rgb(115 115 115); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
     copyBtn.addEventListener('click', e => {
       e.stopPropagation()
       void navigator.clipboard.writeText(textToCopy)
@@ -2508,6 +2557,10 @@ function popToLevel(targetIndex: number) {
     ).onfinish = () => { panel.remove() }
   }
   currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
+  // Update control bar based on current snapshot state
+  if (elements.executionControlBar.style.display === 'flex') {
+    updateExecutionControlBarForSnapshot()
+  }
 }
 
 const MAX_URL_LENGTH = 24 * 1024 // 24KB, arbitrary limit to avoid creating unshareable links
@@ -2515,11 +2568,11 @@ const MAX_URL_LENGTH = 24 * 1024 // 24KB, arbitrary limit to avoid creating unsh
 function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: DvalaErrorJSON) {
   const ref = (name: string) => panel.querySelector(`[data-ref="${name}"]`) as HTMLElement
 
-  // Error section - insert at the top if there's an error
+  // Error section - insert before the columns if there's an error
   if (error) {
-    const breadcrumbs = ref('breadcrumbs')
+    const columns = panel.querySelector('.snapshot-panel__columns') as HTMLElement
     const errorSection = document.createElement('div')
-    errorSection.style.cssText = 'display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;'
+    errorSection.className = 'snapshot-panel__error'
 
     const errorLabel = document.createElement('span')
     errorLabel.textContent = 'ERROR'
@@ -2551,7 +2604,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     codeWrapper.appendChild(actionBar)
 
     errorSection.appendChild(codeWrapper)
-    breadcrumbs.insertAdjacentElement('afterend', errorSection)
+    columns.parentElement!.insertBefore(errorSection, columns)
   }
 
   // Suspended effect section - hide if no active effect (terminal snapshots)
@@ -2575,8 +2628,8 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     suspendedEffectSection.style.display = 'none'
   }
 
-  // Show Run button only for suspended snapshots
-  ref('resume-btn').style.display = snapshot.effectName ? 'inline-flex' : 'none'
+  // Show Run button for all snapshots except terminal (completed) ones
+  ref('resume-btn').style.display = snapshot.terminal === true ? 'none' : 'inline-flex'
 
   // Mark share menu item if snapshot URL would be too long
   const shareBtn = ref('share-btn')
@@ -2730,7 +2783,10 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
   q('download-btn').addEventListener('click', () => { moreMenu.style.display = 'none'; downloadSnapshot() })
   q('copy-json-btn').addEventListener('click', () => {
     moreMenu.style.display = 'none'
-    if (currentSnapshot) void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
+    if (currentSnapshot) {
+      void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
+      showToast('JSON copied to clipboard')
+    }
   })
 
   populateSnapshotPanel(panel, snapshot, error)
@@ -2886,6 +2942,10 @@ function pushSavePanel(onSave: (name: string) => void) {
 function pushCheckpointPanel(snapshot: Snapshot) {
   const panel = createSnapshotPanel(snapshot)
   pushPanel(panel, snapshotLabel(snapshot), snapshot)
+  // Update control bar label to show new snapshot index
+  if (elements.executionControlBar.style.display === 'flex') {
+    showExecutionControlBarPaused()
+  }
 }
 
 function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
@@ -2908,6 +2968,14 @@ export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
   }
 
   pushPanel(panel, 'Snapshot', snapshot)
+
+  // Show control bar for all snapshots
+  if (snapshot.terminal === true) {
+    showExecutionControlBarTerminal()
+  } else {
+    showExecutionControlBarPaused()
+  }
+
   return new Promise<void>(resolve => {
     resolveSnapshotModal = resolve
   })
@@ -2929,6 +2997,7 @@ export function popModal() {
     currentSnapshot = null
     resolveSnapshotModal?.()
     resolveSnapshotModal = null
+    hideExecutionControlBar()
 
     // Fade out, then hide overlay
     const container = elements.snapshotPanelContainer
@@ -2949,6 +3018,10 @@ export function popModal() {
   panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: 250, easing: 'ease' })
     .onfinish = () => { panel.remove() }
   currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
+  // Update control bar based on current snapshot state
+  if (elements.executionControlBar.style.display === 'flex') {
+    updateExecutionControlBarForSnapshot()
+  }
 }
 
 export function closeAllModals() {
@@ -2958,6 +3031,7 @@ export function closeAllModals() {
   elements.snapshotPanelContainer.innerHTML = ''
   modalStack.length = 0
   currentSnapshot = null
+  hideExecutionControlBar()
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
 }
@@ -3417,9 +3491,11 @@ export function closeCheckpointModal() {
   popModal()
 }
 
-const MAX_TERMINAL_SNAPSHOTS = 3
+const MAX_TERMINAL_SNAPSHOTS = 99
+const VISIBLE_TERMINAL_SNAPSHOTS = 3
+let showAllTerminalSnapshots = false
 
-function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error', result?: string): void {
+function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
     kind: 'terminal',
     snapshot,
@@ -3435,7 +3511,8 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
   setTerminalSnapshots(entries)
   notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
-  showToast(resultType === 'error' ? 'Program failed — snapshot captured' : 'Program completed — snapshot captured')
+  const toastMessages = { completed: 'Program completed — snapshot captured', error: 'Program failed — snapshot captured', halted: 'Program halted — snapshot captured' }
+  showToast(toastMessages[resultType])
 }
 
 export async function clearTerminalSnapshot(index: number): Promise<void> {
@@ -3444,6 +3521,28 @@ export async function clearTerminalSnapshot(index: number): Promise<void> {
   entries.splice(index, 1)
   setTerminalSnapshots(entries)
   populateSnapshotsList()
+}
+
+export function toggleShowAllTerminalSnapshots(): void {
+  showAllTerminalSnapshots = !showAllTerminalSnapshots
+  const overflow = document.getElementById('terminal-snapshots-overflow')
+  if (overflow) {
+    if (showAllTerminalSnapshots) {
+      overflow.style.maxHeight = '2000px'
+      overflow.style.opacity = '1'
+    } else {
+      overflow.style.maxHeight = '0'
+      overflow.style.opacity = '0'
+    }
+    // Update button text
+    const btn = overflow.nextElementSibling as HTMLButtonElement | null
+    if (btn) {
+      const entries = getTerminalSnapshots()
+      btn.textContent = showAllTerminalSnapshots ? 'Show less' : `Show all (${entries.length})`
+    }
+  } else {
+    populateSnapshotsList()
+  }
 }
 
 function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
@@ -3545,6 +3644,7 @@ export function downloadSnapshot() {
   if (!currentSnapshot)
     return
   void saveFile(JSON.stringify(currentSnapshot, null, 2), `snapshot-${currentSnapshot.index}.json`)
+  showToast('Snapshot downloaded')
 }
 
 export function saveSnapshot() {
@@ -3594,6 +3694,13 @@ export async function resumeSnapshot() {
     if (runResult.type === 'suspended') {
       appendOutput('Program suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
+      return
+    }
+    if (runResult.type === 'halted') {
+      appendOutput('Program halted', 'comment')
+      if (runResult.snapshot) {
+        saveTerminalSnapshot(runResult.snapshot, 'halted')
+      }
       return
     }
     const content = stringifyValue(runResult.value, false)
@@ -3670,6 +3777,7 @@ function openEffectModal() {
   currentEffectIndex = 0
   renderCurrentEffect()
   elements.effectModal.style.display = 'flex'
+  showExecutionControlBar()
 }
 
 function renderCurrentEffect() {
@@ -3741,6 +3849,7 @@ function closeEffectModal() {
   pendingEffects = []
   currentEffectIndex = 0
   pendingEffectAction = null
+  hideExecutionControlBar()
 }
 
 function advanceAfterHandle() {
@@ -3780,12 +3889,13 @@ export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'igno
 
   pendingEffectAction = action
   const labels: Record<typeof action, string> = {
-    resume: 'Resume message',
+    resume: 'Mock response (JSON)',
     fail: 'Error message (optional)',
     suspend: 'Suspend message',
   }
   elements.effectModalInputLabel.textContent = labels[action]
   elements.effectModalValue.value = ''
+  elements.effectModalValue.placeholder = action === 'resume' ? 'Empty = null. Examples: 42, "hello", {"key": "value"}' : ''
   elements.effectModalError.style.display = 'none'
   elements.effectModalMainButtons.style.opacity = '0.4'
   elements.effectModalMainButtons.style.pointerEvents = 'none'
@@ -3857,6 +3967,9 @@ function setPickFocus(index: number | null) {
 
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
+    currentEffectCtx = ctx
+    showExecutionControlBar()
+
     const items = ctx.args[0] as string[]
     const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
     const promptText = options?.prompt ?? 'Choose an item:'
@@ -3868,6 +3981,8 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
     const submit = (value: number | null) => {
       elements.ioPickModal.style.display = 'none'
       pendingIoPick = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
       ctx.resume(value as Any)
       resolve()
       focusDvalaCode()
@@ -3893,11 +4008,22 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
     const suspendPick = () => {
       elements.ioPickModal.style.display = 'none'
       pendingIoPick = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
       ctx.suspend()
       resolve()
       focusDvalaCode()
     }
-    pendingIoPick = { submit, suspend: suspendPick, focusedIndex: defaultIndex, itemCount: items.length }
+    const haltPick = () => {
+      elements.ioPickModal.style.display = 'none'
+      pendingIoPick = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
+      ctx.halt()
+      resolve()
+      focusDvalaCode()
+    }
+    pendingIoPick = { submit, suspend: suspendPick, halt: haltPick, focusedIndex: defaultIndex, itemCount: items.length }
     setPickFocus(defaultIndex)
     elements.ioPickModal.style.display = 'flex'
   })
@@ -3933,6 +4059,114 @@ export function suspendCurrentEffectHandler() {
     pendingReadline.suspend()
   else if (pendingPrintln)
     pendingPrintln.suspend()
+  else if (pendingEffects.length > 0) {
+    // Suspend all unhandled effects
+    for (const pe of pendingEffects) {
+      if (!pe.handled) {
+        pe.ctx.suspend()
+        pe.handled = true
+        pe.handledAction = 'suspend'
+        pe.resolve()
+      }
+    }
+    closeEffectModal()
+  }
+}
+
+export function haltCurrentEffectHandler() {
+  closeEffectHandlerMenus()
+  // Use halt callbacks for handled effects
+  if (pendingIoPick) {
+    pendingIoPick.halt()
+    pendingIoPick = null
+  } else if (pendingIoConfirm) {
+    pendingIoConfirm.halt()
+    pendingIoConfirm = null
+  } else if (pendingReadline?.halt) {
+    pendingReadline.halt()
+    pendingReadline = null
+    readlineInputEl = null
+  } else if (pendingPrintln) {
+    pendingPrintln.halt()
+    pendingPrintln = null
+  } else if (pendingEffects.length > 0) {
+    // Halt all unhandled effects
+    for (const pe of pendingEffects) {
+      if (!pe.handled) {
+        pe.ctx.halt()
+        pe.handled = true
+        pe.resolve()
+      }
+    }
+    closeEffectModal()
+  }
+}
+
+export function showExecutionControlBar() {
+  elements.executionControlBar.style.display = 'flex'
+  elements.executionStatus.textContent = 'Running'
+  elements.executionStatus.className = 'execution-status execution-status--running'
+  elements.execPlayBtn.style.display = 'none'
+  elements.execPauseBtn.style.display = 'flex'
+  elements.execStopBtn.style.display = 'flex'
+}
+
+export function showExecutionControlBarPaused() {
+  elements.executionControlBar.style.display = 'flex'
+  // Show "Paused" for root snapshot, "Paused #N" when navigating to checkpoints
+  const label = modalStack.length > 1 && currentSnapshot ? `Paused #${currentSnapshot.index}` : 'Paused'
+  elements.executionStatus.textContent = label
+  elements.executionStatus.className = 'execution-status execution-status--paused'
+  elements.execPlayBtn.style.display = 'flex'
+  elements.execPlayBtn.disabled = false
+  elements.execPlayBtn.style.opacity = ''
+  elements.execPauseBtn.style.display = 'none'
+  elements.execStopBtn.style.display = 'flex'
+}
+
+export function showExecutionControlBarTerminal() {
+  elements.executionControlBar.style.display = 'flex'
+  elements.executionStatus.textContent = 'Completed'
+  elements.executionStatus.className = 'execution-status execution-status--terminal'
+  elements.execPlayBtn.style.display = 'flex'
+  elements.execPlayBtn.disabled = true
+  elements.execPlayBtn.style.opacity = '0.3'
+  elements.execPauseBtn.style.display = 'none'
+  elements.execStopBtn.style.display = 'flex'
+}
+
+/** Update control bar based on current snapshot state */
+export function updateExecutionControlBarForSnapshot() {
+  if (currentSnapshot?.terminal === true) {
+    showExecutionControlBarTerminal()
+  } else {
+    showExecutionControlBarPaused()
+  }
+}
+
+export function hideExecutionControlBar() {
+  elements.executionControlBar.style.display = 'none'
+}
+
+function initExecutionControlBar() {
+  elements.execPlayBtn.addEventListener('click', () => {
+    hideExecutionControlBar()
+    void resumeSnapshot()
+  })
+  elements.execPauseBtn.addEventListener('click', () => {
+    suspendCurrentEffectHandler()
+    hideExecutionControlBar()
+  })
+  elements.execStopBtn.addEventListener('click', () => {
+    // In running mode, halt the current effect
+    // In paused mode, just close the modal (abandon the suspended execution)
+    if (currentEffectCtx || pendingEffects.length > 0) {
+      haltCurrentEffectHandler()
+    } else {
+      closeSnapshotModal()
+      hideExecutionControlBar()
+    }
+  })
 }
 
 export function cancelIoPick() {
@@ -3947,12 +4181,14 @@ export function cancelIoPick() {
 
 function ioConfirmHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
+    currentEffectCtx = ctx
+    showExecutionControlBar()
+
     const question = ctx.args[0] as string
     const options = ctx.args[1] as { default?: boolean } | undefined
     const defaultValue = options?.default
 
     const { panel, body, footer } = createModalPanel({
-      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
       noClose: true,
     })
 
@@ -3976,13 +4212,26 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
 
     pendingIoConfirm = {
       resolve: (value: boolean) => {
+        currentEffectCtx = null
+        hideExecutionControlBar()
         popModal()
         ctx.resume(value as Any)
         resolve()
       },
       suspend: () => {
         pendingIoConfirm = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
         ctx.suspend()
+        resolve()
+        focusDvalaCode()
+      },
+      halt: () => {
+        pendingIoConfirm = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
+        closeAllModals()
+        ctx.halt()
         resolve()
         focusDvalaCode()
       },
@@ -4008,10 +4257,12 @@ export function submitIoConfirm(value: boolean) {
 
 function readlineHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
+    currentEffectCtx = ctx
+    showExecutionControlBar()
+
     const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
 
     const { panel, body, footer } = createModalPanel({
-      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
       noClose: true,
     })
 
@@ -4052,6 +4303,8 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
 
     pendingReadline = {
       resolve: (value: string | null) => {
+        currentEffectCtx = null
+        hideExecutionControlBar()
         popModal()
         ctx.resume(value)
         resolve()
@@ -4059,7 +4312,19 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
       suspend: () => {
         pendingReadline = null
         readlineInputEl = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
         ctx.suspend()
+        resolve()
+        focusDvalaCode()
+      },
+      halt: () => {
+        pendingReadline = null
+        readlineInputEl = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
+        closeAllModals()
+        ctx.halt()
         resolve()
         focusDvalaCode()
       },
@@ -4092,11 +4357,13 @@ export function cancelReadline() {
 
 function printlnHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
+    currentEffectCtx = ctx
+    showExecutionControlBar()
+
     const value = ctx.args[0]
     const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
 
     const { panel, body, footer } = createModalPanel({
-      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
       onClose: () => dismissPrintln(),
     })
 
@@ -4127,13 +4394,26 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
 
     pendingPrintln = {
       resolve: () => {
+        currentEffectCtx = null
+        hideExecutionControlBar()
         popModal()
         ctx.resume(value as Any)
         resolve()
       },
       suspend: () => {
         pendingPrintln = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
         ctx.suspend()
+        resolve()
+        focusDvalaCode()
+      },
+      halt: () => {
+        pendingPrintln = null
+        currentEffectCtx = null
+        hideExecutionControlBar()
+        closeAllModals()
+        ctx.halt()
         resolve()
         focusDvalaCode()
       },

@@ -1825,6 +1825,37 @@ button:focus {
   font-size: var(--font-size-xs);
 }
 
+/* Menu items with icons */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.menu-item:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-bright);
+}
+
+.menu-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.menu-item:hover svg {
+  opacity: 1;
+}
+
+.menu-shortcut {
+  margin-left: auto;
+  opacity: 0.5;
+  font-size: var(--font-size-xs);
+}
+
 /* ============================================================
    Modal overlay + box
    ============================================================ */
@@ -1836,6 +1867,97 @@ button:focus {
   display: none;
   justify-content: center;
   align-items: center;
+}
+
+/* ------------------------------------------------------------------
+   Execution Control Bar
+   ------------------------------------------------------------------ */
+.execution-control-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  z-index: 300;
+  backdrop-filter: blur(4px);
+}
+
+.execution-status {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  min-width: 60px;
+}
+
+.execution-status--running {
+  color: #98c379;
+}
+
+.execution-status--paused {
+  color: #e5c07b;
+}
+
+.execution-status--terminal {
+  color: #abb2bf;
+}
+
+.execution-controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.exec-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.exec-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-bright);
+  color: var(--color-text-bright);
+}
+
+.exec-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.exec-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.exec-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+#exec-pause-btn:hover:not(:disabled) {
+  color: #e5c07b;
+  border-color: #e5c07b;
+}
+
+#exec-stop-btn:hover:not(:disabled) {
+  color: #e06c75;
+  border-color: #e06c75;
+}
+
+#exec-play-btn:hover:not(:disabled) {
+  color: #98c379;
+  border-color: #98c379;
 }
 
 
@@ -1982,6 +2104,10 @@ button:focus {
 /* ============================================================
    Effect modal
    ============================================================ */
+#effect-modal .modal-box {
+  border-top-color: #e06c75;
+}
+
 .effect-modal__nav {
   display: flex;
   gap: var(--space-2);
@@ -2166,6 +2292,7 @@ button:focus {
   display: flex;
   flex-direction: row;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .snapshot-panel__col {
@@ -2173,6 +2300,14 @@ button:focus {
   flex-direction: column;
   gap: var(--space-4);
   flex: 1;
+  min-width: 0;
+}
+
+.snapshot-panel__error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .snapshot-panel__section {
