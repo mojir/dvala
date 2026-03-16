@@ -2260,22 +2260,6 @@ button:focus {
   font-size: var(--font-size-sm);
 }
 
-.effect-modal__handled-badge {
-  font-size: var(--font-size-xs);
-  padding: 0.1rem 0.4rem;
-  background: #2d6a2d;
-  color: #fff;
-  border-radius: 2px;
-}
-
-.effect-modal__body {
-  border: 1px solid var(--color-border-dim);
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
 
 .effect-modal__field {
   display: flex;
@@ -2296,20 +2280,6 @@ button:focus {
   color: #b294bb;
 }
 
-.effect-modal__args {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  overflow-y: auto;
-  max-height: 12rem;
-  font-size: var(--font-size-sm);
-}
-
-.effect-modal__input-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .effect-modal__input-label {
   font-size: var(--font-size-sm);
@@ -2323,17 +2293,6 @@ button:focus {
   color: var(--color-text);
   padding: var(--space-1);
   resize: vertical;
-}
-
-/* ============================================================
-   IO pick list
-   ============================================================ */
-.io-pick-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-height: 50vh;
-  overflow-y: auto;
 }
 
 /* ============================================================

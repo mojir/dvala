@@ -404,7 +404,7 @@ describe('start page example', () => {
     let printlnValue: unknown
     const result = await dvala.runAsync(exampleCode, {
       effectHandlers: [
-        { pattern: 'dvala.io.read-line', handler: ctx => { ctx.resume('SAVE10') } },
+        { pattern: 'dvala.io.pick', handler: ctx => { ctx.resume(1) } },
         { pattern: 'dvala.io.println', handler: ctx => { printlnValue = ctx.args[0]; ctx.resume(ctx.args[0] ?? null) } },
       ],
     })
