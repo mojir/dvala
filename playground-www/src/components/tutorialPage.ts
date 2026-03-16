@@ -6,6 +6,25 @@
 
 import { marked } from 'marked'
 import { href, navigate } from '../router'
+import { tokenizeToHtml } from '../SyntaxOverlay'
+
+const penIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>'
+const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
+
+const renderer = new marked.Renderer()
+renderer.code = ({ text, lang }) => {
+  const highlighted = (lang === 'dvala' || !lang) ? tokenizeToHtml(text) : escapeHtml(text)
+  const encoded = btoa(encodeURIComponent(text))
+  return `<div class="doc-page__example">
+  <div class="doc-page__example-code-wrap">
+    <pre class="doc-page__example-code"><code>${highlighted}</code></pre>
+    <div class="doc-page__example-action-bar">
+      <button class="doc-page__example-action-btn" title="Load in editor" onclick="Playground.loadEncodedCode('${encoded}')">${penIcon}</button>
+      <button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>
+    </div>
+  </div>
+</div>`
+}
 
 export interface TutorialEntry {
   id: string // URL slug, e.g. "getting-started"
@@ -111,15 +130,17 @@ export function renderTutorialsIndexPage(): string {
   <ul class="content-page__entry-list">
     ${folder.entries.map(entry => `
     <li class="content-page__entry">
-      <a class="content-page__entry-link" href="${href(`/tutorials/${entry.id}`)}">${escapeHtml(entry.title)}</a>
+      <a class="content-page__entry-link" href="${href(`/tutorials/${entry.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${entry.id}')">${escapeHtml(entry.title)}</a>
     </li>`).join('')}
   </ul>
 </section>`).join('\n')
 
   return `
 <div class="content-page">
-  <div class="content-page__header">
-    <h1>Tutorials</h1>
+  <div class="content-page__header start-page__header">
+    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
+    <p class="start-page__tagline">Run anywhere - Resume everywhere</p>
+    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
   </div>
   <div class="content-page__body">
     ${sections}
@@ -137,14 +158,14 @@ export function renderTutorialPage(id: string): string {
   const prev = idx > 0 ? allTutorials[idx - 1] : null
   const next = idx < allTutorials.length - 1 ? allTutorials[idx + 1] : null
 
-  const contentHtml = marked.parse(entry.raw) as string
+  const contentHtml = marked.parse(entry.raw, { renderer }) as string
 
   const prevLink = prev
-    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--prev" href="${href(`/tutorials/${prev.id}`)}">← ${escapeHtml(prev.title)}</a>`
+    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--prev" href="${href(`/tutorials/${prev.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${prev.id}')">← ${escapeHtml(prev.title)}</a>`
     : '<span class="tutorial-page__nav-link tutorial-page__nav-link--disabled"></span>'
 
   const nextLink = next
-    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--next" href="${href(`/tutorials/${next.id}`)}">→ ${escapeHtml(next.title)}</a>`
+    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--next" href="${href(`/tutorials/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${next.id}')">→ ${escapeHtml(next.title)}</a>`
     : '<span class="tutorial-page__nav-link tutorial-page__nav-link--disabled"></span>'
 
   return `

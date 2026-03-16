@@ -7,6 +7,25 @@
  * populates and shows/hides them directly.
  */
 
+import {
+  addIcon,
+  cameraIcon,
+  debugIcon,
+  gearIcon,
+  hamburgerIcon,
+  homeIcon,
+  infoIcon,
+  labIcon,
+  lampIcon,
+  newFileIcon,
+  playIcon,
+  redoIcon,
+  saveIcon,
+  searchIcon,
+  trashIcon,
+  undoIcon,
+} from './icons'
+
 export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
   if (!wrapper) return
@@ -26,41 +45,36 @@ function getShellHTML(): string {
 
   <nav id="sidebar" class="fancy-scroll-background">
     <div class="sidebar-logo-wrap">
-      <img src="images/dvala-logo.png" alt="Dvala" onclick="Playground.showPage('index','smooth')">
+      <img src="images/dvala-logo.png" alt="Dvala" onclick="Playground.navigate('/')">
     </div>
     <div class="sidebar-search-row" onclick="Playground.openSearch()">
-      <span>🔍 Search</span>
+      <span class="sidebar-search-icon">${searchIcon}</span>
+      <span>Search</span>
       <span class="sidebar-search-kbd">F3</span>
     </div>
     <div class="sidebar-nav-list">
-      <a id="home-page_link" onclick="Playground.showPage('index','smooth')">🏠 Home</a>
-      <a id="about-page_link" onclick="Playground.showPage('about-page','smooth')">ℹ️ About</a>
-      <a id="tutorials-page_link" onclick="Playground.showTutorialsPage()">💡 Tutorials</a>
-      <a id="example-page_link" onclick="Playground.navigate('/examples')">🧪 Examples</a>
+      <a id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
+      <a id="about-page_link" onclick="Playground.navigate('/about')">${infoIcon} About</a>
+      <a id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
+      <a id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
     </div>
     <div class="sidebar-nav-item-row">
       <a id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
-        💾 Programs
+        ${saveIcon} Programs
       </a>
       <span id="programs-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
       <a id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
-        📷 Snapshots
+        ${cameraIcon} Snapshots
       </a>
       <span id="snapshots-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
-      <a id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">⚙️ Settings</a>
+      <a id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">${gearIcon} Settings</a>
     </div>
     <div class="sidebar-spacer"></div>
-    <div class="sidebar-section-label">API Reference</div>
-    <div id="api-content-special-expressions" class="sidebar-collapsible-content"></div>
-    <div id="api-content-core-functions" class="sidebar-collapsible-content"></div>
-    <div id="api-content-effects" class="sidebar-collapsible-content"></div>
-    <div id="api-content-shorthands" class="sidebar-collapsible-content"></div>
-    <div id="api-content-datatypes" class="sidebar-collapsible-content"></div>
-    <div id="api-content-modules" class="sidebar-collapsible-content"></div>
+    <div id="api-ref-sections"></div>
   </nav>
 
   ${getPlaygroundPanel()}
@@ -92,7 +106,7 @@ function getPlaygroundPanel(): string {
         <div class="panel-header" onclick="Playground.focusContext()">
           <div id="context-title" class="panel-header__title">Context</div>
           <div class="panel-header__actions">
-            <a onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn">+
+            <a onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn">${addIcon}
               <div id="add-context-menu" class="dropdown-menu" style="display:none;">
                 <div class="dropdown-menu__body">
                   <div class="dropdown-menu__field-group">
@@ -107,19 +121,19 @@ function getPlaygroundPanel(): string {
                 </div>
               </div>
             </a>
-            <a id="context-undo-button" onclick="Playground.undoContextHistory()">↩</a>
-            <a id="context-redo-button" onclick="Playground.redoContextHistory()">↪</a>
+            <a id="context-undo-button" onclick="Playground.undoContextHistory()">${undoIcon}</a>
+            <a id="context-redo-button" onclick="Playground.redoContextHistory()">${redoIcon}</a>
           </div>
         </div>
         <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
       </div>
 
-      ><div id="resize-divider-1"></div>
+      <div id="resize-divider-1"></div>
 
-      ><div id="dvala-panel">
+      <div id="dvala-panel">
         <div class="panel-header" onclick="Playground.focusDvalaCode()">
           <div id="dvala-code-title" class="panel-header__code-title">
-            <span id="dvala-panel-debug-info" class="panel-header__debug-icon">🐛</span>
+            <span id="dvala-panel-debug-info" class="panel-header__debug-icon">${debugIcon}</span>
             <span id="dvala-code-title-string" class="panel-header__title-string" onclick="Playground.onProgramTitleClick(event)" title="Click to rename"></span>
             <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
             <input id="dvala-code-title-input" type="text" spellcheck="false" placeholder="Program name"
@@ -129,12 +143,12 @@ function getPlaygroundPanel(): string {
               onblur="Playground.onProgramTitleBlur()">
           </div>
           <div class="panel-header__actions" onclick="event.preventDefault();event.stopPropagation()">
-            <a onclick="Playground.run()" title="Run (Ctrl+R)">▶ Run</a>
-            <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()">↩</a>
-            <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()">↪</a>
-            <a onclick="Playground.newFile()" title="New file">📄</a>
+            <a onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
+            <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()">${undoIcon}</a>
+            <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()">${redoIcon}</a>
+            <a onclick="Playground.newFile()" title="New file">${newFileIcon}</a>
             <div>
-              <a onclick="Playground.openMoreMenu(this)">☰
+              <a onclick="Playground.openMoreMenu(this)">${hamburgerIcon}
                 <div id="more-menu" class="dropdown-menu" style="display:none;">
                   <div class="dropdown-menu__body">
                     <a onclick="Playground.closeMoreMenu();Playground.run()">▶ Run — Ctrl+R</a>
@@ -153,12 +167,12 @@ function getPlaygroundPanel(): string {
         <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
       </div>
 
-      ><div id="resize-divider-2"></div>
+      <div id="resize-divider-2"></div>
 
-      ><div id="output-panel">
+      <div id="output-panel">
         <div class="panel-header">
           <span class="panel-header__title">Output</span>
-          <a onclick="Playground.resetOutput()" class="panel-header__icon-btn">🗑</a>
+          <a onclick="Playground.resetOutput()" class="panel-header__icon-btn">${trashIcon}</a>
         </div>
         <div id="output-result" class="fancy-scroll"></div>
       </div>
@@ -168,42 +182,66 @@ function getPlaygroundPanel(): string {
 
   <template id="snapshot-panel-template">
     <div class="snapshot-panel fancy-scroll">
-      <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
+      <div class="modal-header">
+        <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
+        <div class="modal-header__more">
+          <a class="modal-header__more-btn" data-ref="more-btn">${hamburgerIcon}</a>
+          <div data-ref="more-menu" class="modal-more-menu">
+            <a data-ref="save-btn">Save</a>
+            <a data-ref="share-btn">Share</a>
+            <a data-ref="download-btn">Download</a>
+            <a data-ref="copy-json-btn">Copy JSON</a>
+          </div>
+        </div>
+        <a class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
+      </div>
+      <div class="snapshot-panel__body">
       <div class="snapshot-panel__columns">
         <div class="snapshot-panel__col">
           <div class="snapshot-panel__section">
             <span class="snapshot-panel__section-label">Metadata</span>
-            <div data-ref="meta-container"><div class="example-code snapshot-panel__code-block"></div></div>
+            <div data-ref="meta-container">
+              <div class="example-code snapshot-panel__code-block">
+                <pre data-ref="meta-json" class="fancy-scroll snapshot-panel__code-pre"></pre>
+                <div class="example-action-bar" style="position:absolute;top:0;right:0;">
+                  <div class="example-action-btn" data-ref="copy-meta-btn"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div data-ref="effect-section" class="snapshot-panel__section">
+          <div data-ref="suspended-effect-section" class="snapshot-panel__section">
             <span class="snapshot-panel__section-label">Effect</span>
-            <div data-ref="effect-container"><div class="example-code snapshot-panel__code-block"></div></div>
+            <div class="snapshot-panel__field">
+              <span class="snapshot-panel__field-label">Name</span>
+              <code data-ref="effect-name" class="snapshot-panel__effect-name"></code>
+            </div>
+            <div data-ref="effect-args" class="snapshot-panel__effect-args fancy-scroll"></div>
           </div>
-          <div data-ref="tech-section" class="snapshot-panel__section">
+          <div class="snapshot-panel__section">
             <span class="snapshot-panel__section-label">Technical</span>
-            <div data-ref="tech-container"><div class="example-code snapshot-panel__code-block"></div></div>
+            <div data-ref="tech" class="snapshot-panel__tech"></div>
           </div>
         </div>
         <div class="snapshot-panel__col">
           <div data-ref="code-section" class="snapshot-panel__section">
-            <span class="snapshot-panel__section-label">Code</span>
             <div class="example-code snapshot-panel__code-block">
               <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
               <a data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
             </div>
           </div>
+          <div class="snapshot-panel__section">
+            <span class="snapshot-panel__section-label">Checkpoints (<span data-ref="cp-count">0</span>)</span>
+            <div data-ref="checkpoints" class="snapshot-panel__checkpoints fancy-scroll"></div>
+          </div>
         </div>
       </div>
+      </div>
       <div data-ref="buttons" class="snapshot-panel__buttons">
-        <button data-ref="resume-btn" class="button" style="display:none;">Resume</button>
-        <button data-ref="save-btn" class="button">Save</button>
-        <button data-ref="delete-btn" class="button button--danger">Delete</button>
-        <button data-ref="close-btn" class="button">Close</button>
+        <button data-ref="resume-btn" class="button button--primary" style="display:none;">Run</button>
       </div>
     </div>
   </template>
 
-  <div id="snapshot-panel-container" class="modal-overlay" style="display:none;"></div>
   `
 }
 
@@ -215,38 +253,26 @@ function getModals(): string {
     `<div class="modal-box">${content}</div>`
 
   return `
-  ${modal('checkpoint-modal', box(`
-    <div id="checkpoint-modal-message" class="modal-body-row"></div>
-    <div id="checkpoint-modal-meta" class="modal-meta-row"></div>
-    <div id="checkpoint-modal-tech" class="modal-meta-row modal-body-row--last"></div>
-    <div class="modal-btn-row">
-      <button class="button" onclick="Playground.resumeSnapshot()">Resume</button>
-      <button class="button" onclick="Playground.closeCheckpointModal()">Dismiss</button>
-    </div>
-  `))}
-
-  ${modal('confirm-modal', box(`
-    <div id="confirm-modal-title" class="modal-title"></div>
-    <div id="confirm-modal-message" class="modal-body-row"></div>
-    <label id="confirm-modal-checkbox-row" class="modal-checkbox-row" style="display:none;">
-      <input type="checkbox" id="confirm-modal-checkbox">
-      <span id="confirm-modal-checkbox-label"></span>
-    </label>
-    <div class="modal-btn-row">
-      <button id="confirm-modal-ok" class="button">OK</button>
-      <button class="button" onclick="Playground.closeConfirmModal(false)">Cancel</button>
-    </div>
-  `))}
-
   ${modal('effect-modal', box(`
-    <div id="effect-modal-nav" class="effect-modal__nav">
-      <button id="effect-modal-prev" class="button">◀</button>
-      <span id="effect-modal-counter" class="effect-modal__counter"></span>
-      <button id="effect-modal-next" class="button">▶</button>
-      <div id="effect-modal-handled-badge" class="effect-modal__handled-badge" style="display:none;">handled</div>
+    <div class="modal-header">
+      <span class="modal-header__title">Unhandled Effect Triggered</span>
+      <div id="effect-modal-nav" class="effect-modal__nav" style="display:none;">
+        <button id="effect-modal-prev" class="button" onclick="Playground.navigateEffect(-1)">‹</button>
+        <span id="effect-modal-counter" class="effect-modal__counter"></span>
+        <button id="effect-modal-next" class="button" onclick="Playground.navigateEffect(1)">›</button>
+      </div>
     </div>
-    <div id="effect-modal-name" class="effect-modal__name"></div>
-    <div id="effect-modal-args" class="modal-body-row"></div>
+    <div id="effect-modal-handled-badge" class="effect-modal__handled-badge" style="display:none;"></div>
+    <div class="effect-modal__body">
+      <div class="effect-modal__field">
+        <span class="effect-modal__field-label">Effect name</span>
+        <code id="effect-modal-name" class="effect-modal__name"></code>
+      </div>
+      <div class="effect-modal__field">
+        <span class="effect-modal__field-label">Arguments</span>
+        <div id="effect-modal-args" class="effect-modal__args"></div>
+      </div>
+    </div>
     <div id="effect-modal-main-buttons" class="modal-btn-row modal-body-row--last"></div>
     <div id="effect-modal-input-section" class="effect-modal__input-section" style="display:none;">
       <label id="effect-modal-input-label" class="effect-modal__input-label"></label>
@@ -256,7 +282,7 @@ function getModals(): string {
   `))}
 
   ${modal('export-modal', box(`
-    <div class="modal-title">Export</div>
+    <div class="modal-header"><span class="modal-header__title">Export</span></div>
     <div class="modal-checklist">
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-code" checked> Code</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-context"> Context</label>
@@ -273,7 +299,7 @@ function getModals(): string {
   `))}
 
   ${modal('import-options-modal', box(`
-    <div class="modal-title">Import options</div>
+    <div class="modal-header"><span class="modal-header__title">Import options</span></div>
     <div class="modal-checklist">
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-code" checked><span id="import-opt-code-label">Code</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-context"><span id="import-opt-context-label">Context</span></label>
@@ -290,49 +316,27 @@ function getModals(): string {
   `))}
 
   ${modal('import-result-modal', box(`
-    <div class="modal-title">Import result</div>
+    <div class="modal-header"><span class="modal-header__title">Import result</span></div>
     <div id="import-result-content" class="modal-body-row"></div>
     <button class="button" onclick="Playground.closeImportResultModal()">OK</button>
   `))}
 
-  ${modal('info-modal', box(`
-    <div id="info-modal-title" class="modal-title"></div>
-    <div id="info-modal-message" class="modal-body-row"></div>
-    <button class="button" onclick="Playground.closeInfoModal()">OK</button>
-  `))}
-
-  ${modal('io-confirm-modal', box(`
-    <div id="io-confirm-question" class="modal-body-row"></div>
-    <div class="modal-btn-row">
-      <button id="io-confirm-yes-btn" class="button">Yes</button>
-      <button id="io-confirm-no-btn" class="button">No</button>
-    </div>
-  `))}
-
   ${modal('io-pick-modal', box(`
-    <div id="io-pick-modal-title" class="modal-subtitle"></div>
+    <div class="modal-header">
+      <span id="io-pick-modal-title" class="modal-header__title"></span>
+      <div class="modal-header__more">
+        <a class="modal-header__more-btn" onclick="Playground.toggleEffectHandlerMenu('io-pick-more-menu')">${hamburgerIcon}</a>
+        <div id="io-pick-more-menu" class="modal-more-menu">
+          <a onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
+        </div>
+      </div>
+    </div>
     <div id="io-pick-list" class="io-pick-list"></div>
   `))}
 
-  ${modal('println-modal', box(`
-    <div class="modal-subtitle">Output</div>
-    <pre id="println-content" class="println-content"></pre>
-    <div class="modal-btn-row modal-btn-row--top-gap">
-      <button id="copy-println-btn" class="button">Copy</button>
-      <button class="button" onclick="Playground.dismissPrintln()">OK</button>
-    </div>
-  `))}
-
-  ${modal('readline-modal', box(`
-    <div id="readline-prompt" class="modal-body-row"></div>
-    <textarea id="readline-input" rows="3" class="readline-input"></textarea>
-    <div class="modal-btn-row">
-      <button class="button" onclick="Playground.submitReadline()">Submit</button>
-      <button class="button" onclick="Playground.cancelReadline()">Cancel</button>
-    </div>
-  `))}
-
-  ${modal('snapshot-modal', box('<div id="snapshot-modal-content"></div>'))}
+  <div id="snapshot-modal" class="modal-overlay" style="display:none;">
+    <div id="snapshot-panel-container" class="modal-box snapshot-panel-container"></div>
+  </div>
   `
 }
 
@@ -363,32 +367,77 @@ function getSettingsPage(): string {
       </div>
 
       <div id="settings-tab-dvala" class="settings-tab-content">
+        <p class="settings-tab-content__desc">Configure the Dvala language runtime behavior.</p>
         ${toggle('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
         ${toggle('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
         ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots before every effect.', 'Playground.toggleAutoCheckpoint()')}
       </div>
 
-      <div id="settings-tab-playground" class="settings-tab-content" style="display:none;">
+      <div id="settings-tab-playground" class="settings-tab-content">
+        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running programs.</p>
         ${toggle('settings-disable-handlers-toggle', 'Disable Playground effect handlers', 'Disables built-in playground handlers.', 'Playground.toggleDisablePlaygroundHandlers()')}
         ${toggle('settings-intercept-error-toggle', 'Intercept error effect', 'Intercepts dvala.error effects in the effect panel.', 'Playground.toggleInterceptError()')}
         ${toggle('settings-checkpoint-toggle', 'Intercept checkpoint effect', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
       </div>
 
-      <div id="settings-tab-actions" class="settings-tab-content" style="display:none;">
-        <div class="settings-actions">
-          <div class="settings-actions__storage">
-            <p class="settings-actions__storage-label">Storage type</p>
-            <div class="settings-actions__storage-options">
-              <label class="settings-actions__radio-label"><input type="radio" id="settings-storage-local" name="storage-type" value="local" onclick="Playground.setStorageType('local')"> Local storage</label>
-              <label class="settings-actions__radio-label"><input type="radio" id="settings-storage-idb" name="storage-type" value="idb" onclick="Playground.setStorageType('idb')"> IndexedDB</label>
-            </div>
+      <div id="settings-tab-actions" class="settings-tab-content">
+        <p class="settings-tab-content__desc">Manage playground data and storage. Reset or clear data, export and import, or share a link.</p>
+
+        <div class="settings-action-row">
+          <div class="settings-action-row__info">
+            <span class="settings-action-row__label">Share</span>
+            <span class="settings-action-row__desc">Copy a shareable link with the current code and context encoded in the URL.</span>
           </div>
-          <div class="settings-actions__buttons">
-            <button class="button" onclick="Playground.openExportModal()">Export</button>
-            <button class="button" onclick="Playground.openImportModal()">Import</button>
-            <button class="button" onclick="Playground.copyStateLink()">Copy state link</button>
-            <button class="button button--danger" onclick="Playground.clearAllData()">Clear all data</button>
+          <button class="button" onclick="Playground.share()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81c1.66 0 3-1.34 3-3s-1.34-3-3-3s-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65c0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+            Copy link
+          </button>
+        </div>
+
+        <div class="settings-action-row">
+          <div class="settings-action-row__info">
+            <span class="settings-action-row__label">Import</span>
+            <span class="settings-action-row__desc">Restore playground data from a previously exported JSON file. Current data will be replaced.</span>
           </div>
+          <button class="button" onclick="Playground.importPlayground()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16h6v-6h4l-7-7l-7 7h4zm-4 2h14v2H5z"/></svg>
+            Import
+          </button>
+        </div>
+
+        <div class="settings-action-row">
+          <div class="settings-action-row__info">
+            <span class="settings-action-row__label">Export</span>
+            <span class="settings-action-row__desc">Download all playground data as a JSON file. Includes snapshots, code, context, and settings.</span>
+          </div>
+          <button class="button" onclick="Playground.exportPlayground()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z"/></svg>
+            Export
+          </button>
+        </div>
+
+        <div class="settings-action-section-header">Storage</div>
+
+        <div class="settings-action-row">
+          <div class="settings-action-row__info">
+            <span class="settings-action-row__label">Local Storage <span id="settings-storage-local" class="settings-action-row__size"></span></span>
+            <span class="settings-action-row__desc">Stores code, context, settings, and layout preferences.</span>
+          </div>
+          <button class="button" onclick="Playground.clearLocalStorageData()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+            Clear
+          </button>
+        </div>
+
+        <div class="settings-action-row">
+          <div class="settings-action-row__info">
+            <span class="settings-action-row__label">IndexedDB <span id="settings-storage-idb" class="settings-action-row__size"></span></span>
+            <span class="settings-action-row__desc">Stores snapshots (saved and terminal).</span>
+          </div>
+          <button class="button" onclick="Playground.clearIndexedDbData()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+            Clear
+          </button>
         </div>
       </div>
     </div>

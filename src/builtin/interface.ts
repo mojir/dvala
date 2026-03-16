@@ -93,13 +93,15 @@ export interface Variant {
   argumentNames: string[]
 }
 
+export type ExampleEntry = string | { code: string; noRun: true }
+
 export interface FunctionDocs {
   category: Category
   description: string
   returns: TypedValue
   args: Record<string, Argument>
   variants: Variant[]
-  examples: string[]
+  examples: ExampleEntry[]
   seeAlso?: string[]
   hideOperatorForm?: true
   tags?: string[]
@@ -111,7 +113,7 @@ export interface CustomDocs {
   customVariants: string[]
   details?: [string, string, string | undefined][]
   returns?: TypedValue
-  examples: string[]
+  examples: ExampleEntry[]
   seeAlso?: string[]
   tags?: string[]
 }

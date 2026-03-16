@@ -33,7 +33,7 @@ export function renderModulesPage(): string {
   <ul class="content-page__entry-list">
     ${fns.map(e => `
     <li class="content-page__entry">
-      <a class="content-page__entry-link" href="${href(`/ref/${e.key}`)}">${escapeHtml(e.fn)}</a>
+      <a class="content-page__entry-link" href="${href(`/ref/${e.key}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.key}')">${escapeHtml(e.fn)}</a>
       ${e.description ? `<span class="content-page__entry-desc">${escapeHtml(e.description)}</span>` : ''}
     </li>`).join('')}
   </ul>

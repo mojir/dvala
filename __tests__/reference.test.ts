@@ -88,9 +88,11 @@ describe('apiReference', () => {
   describe('examples', () => {
     Object.entries(apiReference).forEach(([key, obj]) => {
       test(key, () => {
-        obj.examples.forEach((example, index) => {
+        obj.examples.forEach((entry, index) => {
+          const example = typeof entry === 'string' ? entry : entry.code
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          if (typeof entry === 'string')
+            expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
         })
       })
     })
@@ -153,9 +155,11 @@ describe('moduleReference', () => {
   describe('examples', () => {
     Object.entries(moduleReference).forEach(([key, obj]) => {
       test(key, () => {
-        obj.examples.forEach((example, index) => {
+        obj.examples.forEach((entry, index) => {
+          const example = typeof entry === 'string' ? entry : entry.code
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          if (typeof entry === 'string')
+            expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
         })
       })
     })

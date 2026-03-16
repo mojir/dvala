@@ -47,7 +47,8 @@ function buildHoverMarkdown(name: string, ref: Reference): vscode.MarkdownString
 
   if (ref.examples.length > 0) {
     md.appendMarkdown('\n**Example:**\n')
-    md.appendCodeblock(ref.examples[0], 'dvala')
+    const ex0 = ref.examples[0]
+    md.appendCodeblock(typeof ex0 === 'string' ? ex0 : ex0.code, 'dvala')
   }
 
   return md

@@ -105,7 +105,7 @@ function renderTemplateStringToken(rawValue: string): string {
   return result + backtick
 }
 
-function tokenizeToHtml(code: string): string {
+export function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
     return tokens.map((token, index) => {
