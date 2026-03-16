@@ -4,6 +4,7 @@
 
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
+import { getPageHeader } from '../utils'
 
 declare global {
   interface Window {
@@ -18,11 +19,8 @@ export function renderAboutPage(): string {
 
   return `
 <div class="content-page about-page">
-  <div class="content-page__header start-page__header">
-    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
-    <p class="start-page__tagline">Run anywhere - Resume everywhere</p>
-    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
-  </div>
+  ${getPageHeader()}
+  <h1 class="content-page__title">About</h1>
   <div class="content-page__body">
     <section class="about-page__section">
       <h2 class="about-page__section-title">What is Dvala?</h2>

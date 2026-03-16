@@ -5,6 +5,7 @@
 
 import type { ReferenceData } from '../../../common/referenceData'
 import { tokenizeToHtml } from '../SyntaxOverlay'
+import { getPageHeader } from '../utils'
 
 declare global {
   interface Window {
@@ -33,11 +34,8 @@ export function renderExamplePage(): string {
 
   return `
 <div class="content-page">
-  <div class="content-page__header start-page__header">
-    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
-    <p class="start-page__tagline">Run anywhere - Resume everywhere</p>
-    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
-  </div>
+  ${getPageHeader()}
+  <h1 class="content-page__title">Examples</h1>
   <div class="content-page__body">
     <ul class="content-page__entry-list">
       ${entries}

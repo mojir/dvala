@@ -2366,6 +2366,12 @@ function dispatchHostHandler(
   // Recursive helper: try handler at `index`, with `next()` advancing to `index + 1`.
   function tryHandler(index: number): Step | Promise<Step> {
     if (index >= matchingHandlers.length) {
+      // All host handlers called next() — fall through to standard handlers
+      const standardHandler = getStandardEffectHandler(effectName)
+      if (standardHandler) {
+        return standardHandler(args, k, sourceCodeInfo)
+      }
+
       if (effectName === 'dvala.error') {
         const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
         throw new UserDefinedError(message, sourceCodeInfo)
@@ -2377,15 +2383,7 @@ function dispatchHostHandler(
       throw new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
     }
 
-    const [pattern, handler] = matchingHandlers[index]!
-
-    // Before trying a "*" catch-all, fall back to standard effects.
-    if (pattern === '*') {
-      const standardHandler = getStandardEffectHandler(effectName)
-      if (standardHandler) {
-        return standardHandler(args, k, sourceCodeInfo)
-      }
-    }
+    const [_pattern, handler] = matchingHandlers[index]!
 
     let outcome: HandlerOutcome | undefined
     let settled = false

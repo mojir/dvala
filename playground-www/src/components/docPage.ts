@@ -1,26 +1,22 @@
 /**
  * Renders a single reference doc page for /ref/<linkName>.
  * Looks up the reference in window.referenceData.api or window.referenceData.modules.
- * Runs code examples live via createDvala().
+ * Runs code examples live via runExampleCode utility.
  */
 
 import { marked } from 'marked'
-import { createDvala } from '../../../src/createDvala'
-import { allBuiltinModules } from '../../../src/allModules'
 import type { ReferenceData } from '../../../common/referenceData'
 import type { Reference } from '../../../reference'
 import { isFunctionReference, isCustomReference, makeLinkName } from '../../../reference'
 import { href } from '../router'
 import { tokenizeToHtml } from '../SyntaxOverlay'
-import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../../../src/utils/symbols'
+import { runExampleCode } from '../runExampleCode'
 
 declare global {
   interface Window {
     referenceData?: ReferenceData
   }
 }
-
-const dvala = createDvala({ modules: allBuiltinModules })
 
 export function renderDocPage(linkName: string): string {
   const data = window.referenceData
@@ -198,35 +194,7 @@ function renderExample(entry: string | { code: string; noRun: true }): string {
 }
 
 function runExample(code: string): string | null {
-  try {
-    const value = dvala.run(code)
-    return formatValue(value)
-  } catch (e) {
-    return `Error: ${String(e instanceof Error ? e.message : e)}`
-  }
-}
-
-function formatValue(value: unknown): string {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  if (typeof value === 'string') return JSON.stringify(value)
-  if (typeof value === 'object') {
-    if (EFFECT_SYMBOL in value) return `<effect ${(value as Record<string, unknown>)['name']}>`
-    if (FUNCTION_SYMBOL in value) return '<function>'
-    if (REGEXP_SYMBOL in value) return String(value)
-    try {
-      return JSON.stringify(value, (_k, v: unknown) => {
-        if (v !== null && typeof v === 'object') {
-          if (EFFECT_SYMBOL in v) return `<effect ${(v as Record<string, unknown>)['name']}>`
-          if (FUNCTION_SYMBOL in v) return '<function>'
-        }
-        return v
-      })
-    } catch {
-      return String(value)
-    }
-  }
-  return String(value)
+  return runExampleCode(code)
 }
 
 function escapeHtml(str: string): string {

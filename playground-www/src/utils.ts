@@ -12,6 +12,19 @@ export function asNotNull<T>(value: T | null | undefined): T {
   return value
 }
 
+export function getPageHeader(options?: { tagline?: boolean }): string {
+  const showTagline = options?.tagline ?? false
+  const taglineHtml = showTagline
+    ? `<p class="start-page__tagline">Run anywhere - Resume everywhere</p>
+    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>`
+    : ''
+  return `
+  <div class="content-page__header start-page__header">
+    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
+    ${taglineHtml}
+  </div>`
+}
+
 export function throttle(func: () => void) {
   let pending = false
   return function () {
