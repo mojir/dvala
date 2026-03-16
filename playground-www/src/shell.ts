@@ -86,6 +86,7 @@ function getShellHTML(): string {
     </div>
     <div class="sidebar-spacer"></div>
     <div id="api-ref-sections"></div>
+    <div id="sidebar-version" class="sidebar-version"></div>
   </nav>
 
   ${getPlaygroundPanel()}

@@ -1211,6 +1211,13 @@ export function share() {
   })
 }
 
+function populateSidebarVersion(): void {
+  const data = window.referenceData
+  const el = document.getElementById('sidebar-version')
+  if (!data || !el) return
+  el.textContent = `v${data.version}`
+}
+
 function populateSidebarApiSections(): void {
   const data = window.referenceData
   const container = document.getElementById('api-ref-sections')
@@ -1664,6 +1671,7 @@ window.onload = async function () {
   renderShell()
   applyLayout()
   populateSidebarApiSections()
+  populateSidebarVersion()
   await initSnapshotStorage()
   await initPrograms()
   initExecutionControlBar()
