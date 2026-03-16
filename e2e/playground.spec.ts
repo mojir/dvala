@@ -644,3 +644,48 @@ test.describe('programs', () => {
     await expect(page.locator('#saved-programs-empty')).toBeVisible()
   })
 })
+
+test.describe('error interception', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+  })
+
+  test('intercept-error opens effect modal without infinite loop', async ({ page }) => {
+    // Enable intercept-effects and intercept-error via JS API
+    // toggleInterceptEffects/Error toggle the boolean state
+    await page.evaluate(() => {
+      const P = (window as any).Playground
+      // Toggle intercept-effects ON
+      P.toggleInterceptEffects()
+      // Toggle intercept-error ON
+      P.toggleInterceptError()
+    })
+
+    // Run code that causes a dvala.error
+    await setDvalaCode(page, 'sqrt(-1)')
+    await clickRun(page)
+
+    // The effect modal should open with dvala.error - if there's an infinite loop,
+    // this will timeout
+    await expect(page.locator('#effect-modal')).toBeVisible({ timeout: 3000 })
+
+    // Verify it's a dvala.error effect
+    const effectName = await page.locator('#effect-modal-name').textContent()
+    expect(effectName).toContain('dvala.error')
+
+    // Mock a response: click "Mock response...", fill value, then Confirm
+    await page.getByRole('button', { name: 'Mock response…' }).click()
+    await page.locator('#effect-modal-value').fill('0')
+    await page.getByRole('button', { name: 'Confirm' }).click()
+
+    // Modal should close and output should appear
+    await expect(page.locator('#effect-modal')).toBeHidden({ timeout: 2000 })
+    await waitForOutput(page)
+
+    // Output should contain the mocked value
+    const output = await getOutputText(page)
+    expect(output).toContain('0')
+  })
+})
