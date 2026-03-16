@@ -166,29 +166,6 @@ const elements = {
   get execPlayBtn() { return document.getElementById('exec-play-btn') as HTMLButtonElement },
   get execPauseBtn() { return document.getElementById('exec-pause-btn') as HTMLButtonElement },
   get execStopBtn() { return document.getElementById('exec-stop-btn') as HTMLButtonElement },
-  get effectModal() { return document.getElementById('effect-modal') as HTMLDivElement },
-  get effectModalNav() { return document.getElementById('effect-modal-nav') as HTMLDivElement },
-  get effectModalCounter() { return document.getElementById('effect-modal-counter') as HTMLSpanElement },
-  get effectModalPrev() { return document.getElementById('effect-modal-prev') as HTMLButtonElement },
-  get effectModalNext() { return document.getElementById('effect-modal-next') as HTMLButtonElement },
-  get effectModalHandledBadge() { return document.getElementById('effect-modal-handled-badge') as HTMLDivElement },
-  get effectModalName() { return document.getElementById('effect-modal-name') as HTMLElement },
-  get effectModalArgs() { return document.getElementById('effect-modal-args') as HTMLDivElement },
-  get effectModalMainButtons() { return document.getElementById('effect-modal-main-buttons') as HTMLDivElement },
-  get effectModalInputSection() { return document.getElementById('effect-modal-input-section') as HTMLDivElement },
-  get effectModalInputLabel() { return document.getElementById('effect-modal-input-label') as HTMLSpanElement },
-  get effectModalValue() { return document.getElementById('effect-modal-value') as HTMLTextAreaElement },
-  get effectModalError() { return document.getElementById('effect-modal-error') as HTMLSpanElement },
-  get ioPickModal() { return document.getElementById('io-pick-modal') as HTMLDivElement },
-  get ioPickModalTitle() { return document.getElementById('io-pick-modal-title') as HTMLDivElement },
-  get ioPickList() { return document.getElementById('io-pick-list') as HTMLDivElement },
-  get ioConfirmModal() { return document.getElementById('io-confirm-modal') as HTMLDivElement },
-  get ioConfirmModalTitle() { return document.getElementById('io-confirm-modal-title') as HTMLDivElement },
-  get ioConfirmList() { return document.getElementById('io-confirm-list') as HTMLDivElement },
-  get checkpointModal() { return document.getElementById('checkpoint-modal') as HTMLDivElement },
-  get checkpointModalMessage() { return document.getElementById('checkpoint-modal-message') as HTMLDivElement },
-  get checkpointModalMetaField() { return document.getElementById('checkpoint-modal-meta-field') as HTMLDivElement },
-  get checkpointModalMeta() { return document.getElementById('checkpoint-modal-meta') as HTMLElement },
 }
 
 type MoveParams = {
@@ -222,21 +199,20 @@ let autoCompleter: AutoCompleter | null = null
 let ignoreSelectionChange = false
 interface PendingEffect {
   ctx: EffectContext
+  title: string
+  renderBody: (el: HTMLElement) => void
+  renderFooter: (el: HTMLElement) => void
+  onKeyDown?: (evt: KeyboardEvent) => boolean
   resolve: () => void
-  handled: boolean
-  handledAction?: 'resume' | 'fail' | 'suspend' | 'ignore'
-  handledValue?: string
 }
 let pendingEffects: PendingEffect[] = []
 let currentEffectIndex = 0
 let effectBatchScheduled = false
-let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
-let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void; halt?: () => void } | null = null
-let readlineInputEl: HTMLTextAreaElement | null = null
-let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; halt: () => void; focusedIndex: number | null; itemCount: number } | null = null
-let pendingIoConfirm: { submit: (value: boolean) => void; suspend: () => void; halt: () => void; focusedIndex: number | null } | null = null
-let pendingPrintln: { resolve: () => void; suspend: () => void; halt: () => void } | null = null
-let currentEffectCtx: EffectContext | null = null
+// Refs valid while the unified effect panel is open
+let effectPanelBodyEl: HTMLElement | null = null
+let effectPanelFooterEl: HTMLElement | null = null
+let effectNavEl: HTMLElement | null = null
+let effectNavCounterEl: HTMLSpanElement | null = null
 let currentSnapshot: Snapshot | null = null
 const modalStack: { panel: HTMLElement; label: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
@@ -1839,83 +1815,11 @@ window.onload = async function () {
     if (handleSearchKeyDown(evt))
       return
 
-    // Note: io-pick modal has no close button, so Escape should not cancel it.
-    // User must click an item or use the Suspend option.
-    if (pendingIoPick && elements.ioPickModal.style.display !== 'none') {
-      if (evt.key === 'ArrowDown') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        const next = pendingIoPick.focusedIndex === null ? 0 : Math.min(pendingIoPick.focusedIndex + 1, pendingIoPick.itemCount - 1)
-        setPickFocus(next)
+    // Unified effect panel: delegate key events to the current effect's handler first
+    if (pendingEffects.length > 0) {
+      const entry = pendingEffects[currentEffectIndex]
+      if (entry?.onKeyDown?.(evt))
         return
-      } else if (evt.key === 'ArrowUp') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        const prev = pendingIoPick.focusedIndex === null ? pendingIoPick.itemCount - 1 : Math.max(pendingIoPick.focusedIndex - 1, 0)
-        setPickFocus(prev)
-        return
-      } else if (evt.key === 'Escape') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        closeEffectHandlerMenus()
-        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
-        return
-      }
-    }
-
-    // Note: pendingIoConfirm modal has no close button, so Escape should not close it.
-    // User must click an item or use the Suspend option.
-    if (pendingIoConfirm && elements.ioConfirmModal.style.display !== 'none') {
-      if (evt.key === 'ArrowDown') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        const next = pendingIoConfirm.focusedIndex === null ? 0 : Math.min(pendingIoConfirm.focusedIndex + 1, 1)
-        setConfirmFocus(next)
-        return
-      } else if (evt.key === 'ArrowUp') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        const prev = pendingIoConfirm.focusedIndex === null ? 1 : Math.max(pendingIoConfirm.focusedIndex - 1, 0)
-        setConfirmFocus(prev)
-        return
-      } else if (evt.key === 'Escape') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        closeEffectHandlerMenus()
-        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
-        return
-      } else if (evt.key === 'Enter') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        if (pendingIoConfirm.focusedIndex !== null) {
-          pendingIoConfirm.submit(pendingIoConfirm.focusedIndex === 0)
-        } else {
-          showToast('Use arrow keys to select', { severity: 'error' })
-        }
-        return
-      }
-    }
-
-    // Note: readline modal has noClose: true, so Escape should not cancel it.
-    // User must submit or use the Suspend option.
-    if (pendingReadline) {
-      if (evt.key === 'Escape') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        closeEffectHandlerMenus()
-        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
-        return
-      }
-    }
-
-    if (pendingPrintln) {
-      if (evt.key === 'Escape' || evt.key === 'Enter') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        closeEffectHandlerMenus()
-        dismissPrintln()
-        return
-      }
     }
 
     if (evt.ctrlKey) {
@@ -1962,12 +1866,8 @@ window.onload = async function () {
       closeAddContextMenu()
       if (resolveInfoModal) {
         dismissInfoModal()
-      } else if (pendingCheckpoint) {
-        // Checkpoint modal - Escape does nothing, use buttons or control bar
-        closeEffectHandlerMenus()
-        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
-      } else if (pendingIoConfirm || pendingIoPick || pendingReadline) {
-        // These modals have no close button — Escape can't dismiss them
+      } else if (pendingEffects.length > 0) {
+        // Effect panel has no close button — Escape can't dismiss it
         closeEffectHandlerMenus()
         showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
       } else if (modalStack.length > 0) {
@@ -1976,10 +1876,6 @@ window.onload = async function () {
         } else {
           closeAllModals()
         }
-      } else if (pendingEffectAction) {
-        cancelEffectAction()
-      } else if (pendingEffects.length > 0) {
-        selectEffectAction('ignore')
       }
       evt.preventDefault()
     }
@@ -1987,38 +1883,9 @@ window.onload = async function () {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && pendingCheckpoint) {
-      evt.preventDefault()
-      resumeCheckpoint()
-    }
-    if (evt.key === 'Enter' && pendingPrintln) {
-      evt.preventDefault()
-      dismissPrintln()
-    }
     if (evt.key === 'Enter' && currentSnapshot) {
       evt.preventDefault()
       void resumeSnapshot()
-    }
-    if (evt.key === 'Enter' && pendingEffects.length > 0 && !pendingEffectAction) {
-      evt.preventDefault()
-      selectEffectAction('resume')
-    }
-    if (evt.key === 'Enter' && pendingEffectAction && (evt.ctrlKey || evt.metaKey)) {
-      evt.preventDefault()
-      confirmEffectAction()
-    }
-    if (evt.key === 'Escape' && pendingEffectAction) {
-      evt.preventDefault()
-      cancelEffectAction()
-    }
-    // Enter on pick modal — submit focused item or show error
-    if (evt.key === 'Enter' && pendingIoPick) {
-      evt.preventDefault()
-      if (pendingIoPick.focusedIndex !== null) {
-        pendingIoPick.submit(pendingIoPick.focusedIndex)
-      } else {
-        showToast('Click an item to select', { severity: 'error' })
-      }
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
@@ -2143,9 +2010,8 @@ function getDataFromUrl() {
 }
 
 function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
-  if (pendingIoPick || pendingIoConfirm || pendingPrintln || pendingReadline) {
-    // A modal is open - prevent textarea from handling keys, but let the event
-    // bubble to the window handler which will process modal-specific actions.
+  if (pendingEffects.length > 0) {
+    // An effect panel is open - prevent the code textarea from handling these keys
     if (['Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evt.key)) {
       evt.preventDefault()
     }
@@ -3516,51 +3382,8 @@ export function closeImportResultModal() {
   }
 }
 
-let pendingCheckpoint: { ctx: EffectContext; resolve: () => void } | null = null
+// Set by checkpoint effect handler; cleared on resolve. Used by saveCheckpoint / downloadCheckpoint / shareCheckpoint.
 let currentCheckpointSnapshot: Snapshot | null = null
-
-export function openCheckpointModal(ctx: EffectContext, snapshot: Snapshot): Promise<void> {
-  return new Promise<void>(resolve => {
-    currentCheckpointSnapshot = snapshot
-
-    // Populate modal
-    elements.checkpointModalMessage.textContent = snapshot.message || '(no message)'
-    if (snapshot.meta !== undefined && snapshot.meta !== null) {
-      elements.checkpointModalMetaField.style.display = 'block'
-      elements.checkpointModalMeta.textContent = JSON.stringify(snapshot.meta, null, 2)
-    } else {
-      elements.checkpointModalMetaField.style.display = 'none'
-    }
-
-    pendingCheckpoint = {
-      ctx,
-      resolve: () => {
-        pendingCheckpoint = null
-        currentCheckpointSnapshot = null
-        hideExecutionControlBar()
-        elements.checkpointModal.style.display = 'none'
-        resolve()
-      },
-    }
-
-    elements.checkpointModal.style.display = 'flex'
-    showExecutionControlBar()
-  })
-}
-
-export function resumeCheckpoint() {
-  if (!pendingCheckpoint) return
-  const { ctx, resolve } = pendingCheckpoint
-  ctx.next()
-  resolve()
-  focusDvalaCode()
-}
-
-export function closeCheckpointModal() {
-  if (!pendingCheckpoint) return
-  pendingCheckpoint.resolve()
-  focusDvalaCode()
-}
 
 const MAX_TERMINAL_SNAPSHOTS = 99
 const VISIBLE_TERMINAL_SNAPSHOTS = 3
@@ -3802,15 +3625,15 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
 
   if (ctx.effectName === 'dvala.checkpoint') {
     // The checkpoint snapshot is already created by dispatchPerform before
-    // the effect reaches handlers. We only need to show the modal if
+    // the effect reaches handlers. We only need to show the panel if
     // intercept-checkpoint is enabled, then continue.
     if (interceptEffects && getState('intercept-checkpoint')) {
-      // Get the latest checkpoint from ctx.snapshots
       const snapshots = ctx.snapshots
       const snapshot = snapshots[snapshots.length - 1]
       if (snapshot) {
-        await openCheckpointModal(ctx, snapshot)
-        return // ctx.next() is called by resumeCheckpoint or pause/stop handled the effect
+        return new Promise<void>(resolve => {
+          registerPendingEffect(makeCheckpointEffect(ctx, snapshot, resolve))
+        })
       }
     }
     ctx.next()
@@ -3822,32 +3645,8 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
       ctx.next()
       return
     }
-    // When intercept-error is ON, show in the effect modal
     return new Promise<void>(resolve => {
-      const pending: PendingEffect = { ctx, resolve, handled: false }
-      pendingEffects.push(pending)
-
-      ctx.signal.addEventListener('abort', () => {
-        if (pending.handled)
-          return
-        pending.ctx.suspend()
-        pending.handled = true
-        pending.resolve()
-        const idx = pendingEffects.indexOf(pending)
-        if (idx !== -1)
-          pendingEffects.splice(idx, 1)
-        if (currentEffectIndex >= pendingEffects.length)
-          currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-        if (pendingEffects.length === 0 || pendingEffects.every(e => e.handled))
-          closeEffectModal()
-        else
-          renderCurrentEffect()
-      }, { once: true })
-
-      if (!effectBatchScheduled) {
-        effectBatchScheduled = true
-        void Promise.resolve().then(openEffectModal)
-      }
+      registerPendingEffect(makeUnhandledEffect(ctx, resolve))
     })
   }
   // Pass through to standard handlers for non-interactive standard effects
@@ -3860,130 +3659,127 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
     throw new Error(`Unhandled effect: ${ctx.effectName}`)
   }
   return new Promise<void>(resolve => {
-    const pending: PendingEffect = { ctx, resolve, handled: false }
-    pendingEffects.push(pending)
-
-    // When the parallel group aborts (because another branch suspended),
-    // auto-suspend this effect so executeParallelBranches can collect it.
-    ctx.signal.addEventListener('abort', () => {
-      if (pending.handled)
-        return
-      pending.ctx.suspend()
-      pending.handled = true
-      pending.resolve()
-      // Remove from the visible pending list — the user never interacted with it
-      const idx = pendingEffects.indexOf(pending)
-      if (idx !== -1)
-        pendingEffects.splice(idx, 1)
-      if (currentEffectIndex >= pendingEffects.length)
-        currentEffectIndex = Math.max(0, pendingEffects.length - 1)
-      if (pendingEffects.length === 0 || pendingEffects.every(e => e.handled))
-        closeEffectModal()
-      else
-        renderCurrentEffect()
-    }, { once: true })
-
-    if (!effectBatchScheduled) {
-      effectBatchScheduled = true
-      void Promise.resolve().then(openEffectModal)
-    }
+    registerPendingEffect(makeUnhandledEffect(ctx, resolve))
   })
 }
 
-function openEffectModal() {
+// ---------------------------------------------------------------------------
+// Unified effect panel — core functions
+// ---------------------------------------------------------------------------
+
+function registerPendingEffect(entry: PendingEffect): void {
+  pendingEffects.push(entry)
+
+  entry.ctx.signal.addEventListener('abort', () => {
+    const idx = pendingEffects.indexOf(entry)
+    if (idx === -1)
+      return // already resolved
+    entry.ctx.suspend()
+    entry.resolve()
+    pendingEffects.splice(idx, 1)
+    if (currentEffectIndex >= pendingEffects.length)
+      currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+    if (pendingEffects.length === 0)
+      closeEffectPanel()
+    else
+      renderCurrentEffect()
+  }, { once: true })
+
+  if (!effectBatchScheduled) {
+    effectBatchScheduled = true
+    void Promise.resolve().then(openEffectPanel)
+  }
+}
+
+function openEffectPanel(): void {
   effectBatchScheduled = false
   currentEffectIndex = 0
+
+  // Discard any stale snapshot panels so the effect panel always opens as root
+  if (modalStack.length > 0) {
+    elements.snapshotPanelContainer.innerHTML = ''
+    elements.snapshotPanelContainer.style.maxWidth = ''
+    modalStack.length = 0
+    currentSnapshot = null
+    resolveSnapshotModal?.()
+    resolveSnapshotModal = null
+  }
+
+  const { panel, body, footer } = createModalPanel({ noClose: true })
+  effectPanelBodyEl = body
+  effectPanelFooterEl = footer
+
+  // Inject nav into header (reuses existing CSS classes)
+  const header = panel.firstElementChild as HTMLElement
+  const navEl = document.createElement('div')
+  navEl.className = 'effect-modal__nav'
+  navEl.style.display = 'none'
+  const prevBtn = document.createElement('button')
+  prevBtn.className = 'button'
+  prevBtn.textContent = '‹'
+  prevBtn.addEventListener('click', () => navigateEffect(-1))
+  const counterEl = document.createElement('span')
+  counterEl.className = 'effect-modal__counter'
+  const nextBtn = document.createElement('button')
+  nextBtn.className = 'button'
+  nextBtn.textContent = '›'
+  nextBtn.addEventListener('click', () => navigateEffect(1))
+  navEl.appendChild(prevBtn)
+  navEl.appendChild(counterEl)
+  navEl.appendChild(nextBtn)
+  header.appendChild(navEl)
+  effectNavEl = navEl
+  effectNavCounterEl = counterEl
+
   renderCurrentEffect()
-  elements.effectModal.style.display = 'flex'
+  const firstTitle = pendingEffects[0]?.title ?? 'Effect'
+  pushPanel(panel, firstTitle, undefined, true)
   showExecutionControlBar()
 }
 
-function renderCurrentEffect() {
-  const effect = pendingEffects[currentEffectIndex]
-  if (!effect)
-    return
-
-  // Counter / nav
-  const total = pendingEffects.length
-  if (total > 1) {
-    elements.effectModalNav.style.display = 'flex'
-    elements.effectModalCounter.textContent = `${currentEffectIndex + 1} / ${total}`
-    elements.effectModalPrev.style.opacity = currentEffectIndex > 0 ? '1' : '0.3'
-    elements.effectModalPrev.style.pointerEvents = currentEffectIndex > 0 ? 'auto' : 'none'
-    elements.effectModalNext.style.opacity = currentEffectIndex < total - 1 ? '1' : '0.3'
-    elements.effectModalNext.style.pointerEvents = currentEffectIndex < total - 1 ? 'auto' : 'none'
-  } else {
-    elements.effectModalNav.style.display = 'none'
-  }
-
-  // Handled badge + result
-  elements.effectModalHandledBadge.innerHTML = ''
-  if (effect.handled) {
-    elements.effectModalHandledBadge.style.display = 'flex'
-    const actionLabel = document.createElement('span')
-    const actionColors: Record<string, string> = { resume: 'rgb(110 231 183)', fail: 'rgb(251 113 133)', suspend: 'rgb(148 163 184)', ignore: 'rgb(115 115 115)' }
-    actionLabel.textContent = `✓ ${effect.handledAction ?? 'handled'}`
-    actionLabel.style.cssText = `font-weight:bold; color:${actionColors[effect.handledAction ?? ''] ?? 'rgb(110 231 183)'};`
-    elements.effectModalHandledBadge.appendChild(actionLabel)
-    if (effect.handledValue) {
-      const sep = document.createElement('span')
-      sep.textContent = '→'
-      sep.style.cssText = 'color: rgb(115 115 115); margin: 0 0.3rem;'
-      elements.effectModalHandledBadge.appendChild(sep)
-      const val = document.createElement('code')
-      val.textContent = effect.handledValue
-      val.style.cssText = 'color: rgb(212 212 212); font-size: 0.8rem;'
-      elements.effectModalHandledBadge.appendChild(val)
-    }
-  } else {
-    elements.effectModalHandledBadge.style.display = 'none'
-  }
-
-  // Effect name
-  elements.effectModalName.textContent = effect.ctx.effectName
-
-  // Args
-  elements.effectModalArgs.innerHTML = ''
-  if (effect.ctx.args.length === 0) {
-    const empty = document.createElement('span')
-    empty.textContent = '(no arguments)'
-    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    elements.effectModalArgs.appendChild(empty)
-  } else {
-    effect.ctx.args.forEach((arg, i) => {
-      elements.effectModalArgs.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2)))
-    })
-  }
-
-  // Input section reset
-  pendingEffectAction = null
-  elements.effectModalInputSection.style.display = 'none'
-  elements.effectModalMainButtons.style.opacity = effect.handled ? '0.4' : '1'
-  elements.effectModalMainButtons.style.pointerEvents = effect.handled ? 'none' : 'auto'
-}
-
-function closeEffectModal() {
-  elements.effectModal.style.display = 'none'
+function closeEffectPanel(): void {
+  effectPanelBodyEl = null
+  effectPanelFooterEl = null
+  effectNavEl = null
+  effectNavCounterEl = null
   pendingEffects = []
   currentEffectIndex = 0
-  pendingEffectAction = null
-  hideExecutionControlBar()
+  closeAllModals()
+  focusDvalaCode()
 }
 
-function advanceAfterHandle() {
-  // Find next unhandled effect after current
-  let next = pendingEffects.findIndex((e, i) => i > currentEffectIndex && !e.handled)
-  if (next === -1)
-    next = pendingEffects.findIndex(e => !e.handled)
-  if (next === -1) {
-    closeEffectModal()
-  } else {
-    currentEffectIndex = next
-    renderCurrentEffect()
+function renderCurrentEffect(): void {
+  const entry = pendingEffects[currentEffectIndex]
+  if (!entry || !effectPanelBodyEl || !effectPanelFooterEl)
+    return
+
+  // Update breadcrumb label in modalStack to match current effect's title
+  const stackEntry = modalStack[modalStack.length - 1]
+  if (stackEntry)
+    stackEntry.label = entry.title
+
+  // Nav
+  const total = pendingEffects.length
+  if (effectNavEl) {
+    effectNavEl.style.display = total > 1 ? 'flex' : 'none'
+    if (effectNavCounterEl)
+      effectNavCounterEl.textContent = `${currentEffectIndex + 1} / ${total}`
+    const prev = effectNavEl.firstElementChild as HTMLElement
+    const next = effectNavEl.lastElementChild as HTMLElement
+    prev.style.opacity = currentEffectIndex > 0 ? '1' : '0.3'
+    prev.style.pointerEvents = currentEffectIndex > 0 ? 'auto' : 'none'
+    next.style.opacity = currentEffectIndex < total - 1 ? '1' : '0.3'
+    next.style.pointerEvents = currentEffectIndex < total - 1 ? 'auto' : 'none'
   }
+
+  effectPanelBodyEl.innerHTML = ''
+  effectPanelFooterEl.innerHTML = ''
+  entry.renderBody(effectPanelBodyEl)
+  entry.renderFooter(effectPanelFooterEl)
+  effectPanelFooterEl.style.display = effectPanelFooterEl.childElementCount > 0 ? '' : 'none'
 }
 
-export function navigateEffect(delta: number) {
+export function navigateEffect(delta: number): void {
   const next = currentEffectIndex + delta
   if (next < 0 || next >= pendingEffects.length)
     return
@@ -3991,165 +3787,494 @@ export function navigateEffect(delta: number) {
   renderCurrentEffect()
 }
 
-export function selectEffectAction(action: 'resume' | 'fail' | 'suspend' | 'ignore') {
-  const effect = pendingEffects[currentEffectIndex]
-  if (!effect || effect.handled)
+function resolveCurrentEffect(): void {
+  const entry = pendingEffects[currentEffectIndex]
+  if (!entry)
     return
-
-  if (action === 'ignore') {
-    effect.ctx.next()
-    effect.handled = true
-    effect.handledAction = 'ignore'
-    effect.resolve()
-    advanceAfterHandle()
-    return
-  }
-
-  pendingEffectAction = action
-  const labels: Record<typeof action, string> = {
-    resume: 'Mock response (JSON)',
-    fail: 'Error message (optional)',
-    suspend: 'Suspend message',
-  }
-  elements.effectModalInputLabel.textContent = labels[action]
-  elements.effectModalValue.value = ''
-  elements.effectModalValue.placeholder = action === 'resume' ? 'Empty = null. Examples: 42, "hello", {"key": "value"}' : ''
-  elements.effectModalError.style.display = 'none'
-  elements.effectModalMainButtons.style.opacity = '0.4'
-  elements.effectModalMainButtons.style.pointerEvents = 'none'
-  elements.effectModalInputSection.style.display = 'flex'
-  elements.effectModalValue.focus()
+  pendingEffects.splice(currentEffectIndex, 1)
+  if (currentEffectIndex >= pendingEffects.length)
+    currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+  if (pendingEffects.length === 0)
+    closeEffectPanel()
+  else
+    renderCurrentEffect()
 }
 
-export function cancelEffectAction() {
-  pendingEffectAction = null
-  elements.effectModalInputSection.style.display = 'none'
-  elements.effectModalMainButtons.style.opacity = '1'
-  elements.effectModalMainButtons.style.pointerEvents = 'auto'
+// ---------------------------------------------------------------------------
+// Effect handler factories
+// ---------------------------------------------------------------------------
+
+function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: () => void): PendingEffect {
+  currentCheckpointSnapshot = snapshot
+
+  const submit = () => {
+    currentCheckpointSnapshot = null
+    ctx.next()
+    resolve()
+    resolveCurrentEffect()
+    focusDvalaCode()
+  }
+
+  return {
+    ctx,
+    title: 'Checkpoint',
+    renderBody(el) {
+      const msgField = document.createElement('div')
+      msgField.className = 'effect-modal__field'
+      const msgLabel = document.createElement('span')
+      msgLabel.className = 'effect-modal__field-label'
+      msgLabel.textContent = 'Message'
+      const msgText = document.createElement('div')
+      msgText.style.cssText = 'font-size: 0.875rem; color: rgb(212 212 212);'
+      msgText.textContent = snapshot.message || '(no message)'
+      msgField.appendChild(msgLabel)
+      msgField.appendChild(msgText)
+      el.appendChild(msgField)
+
+      if (snapshot.meta !== undefined && snapshot.meta !== null) {
+        const metaField = document.createElement('div')
+        metaField.className = 'effect-modal__field'
+        const metaLabel = document.createElement('span')
+        metaLabel.className = 'effect-modal__field-label'
+        metaLabel.textContent = 'Metadata'
+        const metaCode = document.createElement('code')
+        metaCode.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+        metaCode.textContent = JSON.stringify(snapshot.meta, null, 2)
+        metaField.appendChild(metaLabel)
+        metaField.appendChild(metaCode)
+        el.appendChild(metaField)
+      }
+    },
+    renderFooter(el) {
+      const btn = document.createElement('button')
+      btn.className = 'button button--primary'
+      btn.textContent = 'Resume'
+      btn.addEventListener('click', submit)
+      el.appendChild(btn)
+    },
+    onKeyDown(evt) {
+      if (evt.key === 'Enter') {
+        evt.preventDefault()
+        submit()
+        return true
+      }
+      return false
+    },
+    resolve,
+  }
 }
 
-export function confirmEffectAction() {
-  const effect = pendingEffects[currentEffectIndex]
-  if (!effect || effect.handled || !pendingEffectAction)
-    return
+function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEffect {
+  let inputMode: 'resume' | 'fail' | null = null
+  let inputEl: HTMLTextAreaElement | null = null
+  let errorEl: HTMLSpanElement | null = null
 
-  const valueStr = elements.effectModalValue.value.trim()
+  const rerenderFooter = () => {
+    if (!effectPanelFooterEl)
+      return
+    effectPanelFooterEl.innerHTML = ''
+    entry.renderFooter(effectPanelFooterEl)
+    if (inputMode !== null)
+      void Promise.resolve().then(() => inputEl?.focus())
+  }
 
-  if (pendingEffectAction === 'resume') {
-    try {
-      const value = valueStr === '' ? null : JSON.parse(valueStr) as Any
-      effect.ctx.resume(value)
-      effect.handled = true
-      effect.handledAction = 'resume'
-      effect.handledValue = valueStr || 'null'
-      effect.resolve()
-      advanceAfterHandle()
-    } catch {
-      elements.effectModalError.textContent = 'Invalid JSON'
-      elements.effectModalError.style.display = 'block'
-      elements.effectModalValue.focus()
+  const ignore = () => {
+    ctx.next()
+    resolve()
+    resolveCurrentEffect()
+  }
+
+  const enterInputMode = (mode: 'resume' | 'fail') => {
+    inputMode = mode
+    rerenderFooter()
+  }
+
+  const cancelInput = () => {
+    inputMode = null
+    inputEl = null
+    errorEl = null
+    rerenderFooter()
+  }
+
+  const confirmInput = () => {
+    const raw = inputEl?.value.trim() ?? ''
+    if (inputMode === 'resume') {
+      try {
+        const value = raw === '' ? null : JSON.parse(raw) as Any
+        ctx.resume(value)
+        resolve()
+        resolveCurrentEffect()
+      } catch {
+        if (errorEl) {
+          errorEl.textContent = 'Invalid JSON'
+          errorEl.style.display = 'block'
+        }
+        inputEl?.focus()
+      }
+    } else if (inputMode === 'fail') {
+      ctx.fail(raw || undefined)
+      resolve()
+      resolveCurrentEffect()
     }
-  } else if (pendingEffectAction === 'fail') {
-    effect.ctx.fail(valueStr || undefined)
-    effect.handled = true
-    effect.handledAction = 'fail'
-    effect.handledValue = valueStr || undefined
-    effect.resolve()
-    advanceAfterHandle()
-  } else if (pendingEffectAction === 'suspend') {
-    const meta: Any | undefined = valueStr ? { message: valueStr } : undefined
-    effect.ctx.suspend(meta)
-    effect.handled = true
-    effect.handledAction = 'suspend'
-    effect.handledValue = valueStr || undefined
-    effect.resolve()
-    advanceAfterHandle()
   }
+
+  // eslint-disable-next-line prefer-const
+  let entry: PendingEffect = {
+    ctx,
+    title: ctx.effectName,
+    renderBody(el) {
+      const nameField = document.createElement('div')
+      nameField.className = 'effect-modal__field'
+      const nameLabel = document.createElement('span')
+      nameLabel.className = 'effect-modal__field-label'
+      nameLabel.textContent = 'Effect name'
+      const nameCode = document.createElement('code')
+      nameCode.className = 'effect-modal__name'
+      nameCode.textContent = ctx.effectName
+      nameField.appendChild(nameLabel)
+      nameField.appendChild(nameCode)
+      el.appendChild(nameField)
+
+      const argsField = document.createElement('div')
+      argsField.className = 'effect-modal__field'
+      const argsLabel = document.createElement('span')
+      argsLabel.className = 'effect-modal__field-label'
+      argsLabel.textContent = 'Arguments'
+      argsField.appendChild(argsLabel)
+      const argsContainer = document.createElement('div')
+      if (ctx.args.length === 0) {
+        const empty = document.createElement('span')
+        empty.textContent = '(no arguments)'
+        empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+        argsContainer.appendChild(empty)
+      } else {
+        ctx.args.forEach((arg, i) => {
+          argsContainer.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2)))
+        })
+      }
+      argsField.appendChild(argsContainer)
+      el.appendChild(argsField)
+    },
+    renderFooter(el) {
+      if (inputMode === null) {
+        el.style.flexDirection = ''
+        el.style.alignItems = ''
+        const ignoreBtn = document.createElement('button')
+        ignoreBtn.className = 'button'
+        ignoreBtn.textContent = 'Ignore'
+        ignoreBtn.addEventListener('click', ignore)
+        const mockBtn = document.createElement('button')
+        mockBtn.className = 'button button--primary'
+        mockBtn.textContent = 'Mock response…'
+        mockBtn.addEventListener('click', () => enterInputMode('resume'))
+        el.appendChild(ignoreBtn)
+        el.appendChild(mockBtn)
+      } else {
+        el.style.flexDirection = 'column'
+        el.style.alignItems = 'stretch'
+
+        const labels = { resume: 'Mock response (JSON)', fail: 'Error message (optional)' }
+        const label = document.createElement('label')
+        label.className = 'effect-modal__input-label'
+        label.textContent = labels[inputMode]
+
+        inputEl = document.createElement('textarea')
+        inputEl.rows = 4
+        inputEl.className = 'effect-modal__textarea'
+        inputEl.placeholder = inputMode === 'resume' ? 'Empty = null. Examples: 42, "hello", {"key": "value"}' : ''
+        inputEl.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault()
+            confirmInput()
+          }
+        })
+
+        errorEl = document.createElement('span')
+        errorEl.className = 'form-error'
+        errorEl.style.display = 'none'
+
+        const cancelBtn = document.createElement('button')
+        cancelBtn.className = 'button'
+        cancelBtn.textContent = 'Cancel'
+        cancelBtn.addEventListener('click', cancelInput)
+
+        const confirmBtn = document.createElement('button')
+        confirmBtn.className = 'button button--primary'
+        confirmBtn.textContent = 'Confirm'
+        confirmBtn.addEventListener('click', confirmInput)
+
+        const btnRow = document.createElement('div')
+        btnRow.className = 'modal-btn-row'
+        btnRow.style.marginTop = 'var(--space-2)'
+        btnRow.style.alignSelf = 'flex-end'
+        btnRow.appendChild(cancelBtn)
+        btnRow.appendChild(confirmBtn)
+
+        el.appendChild(label)
+        el.appendChild(inputEl)
+        el.appendChild(errorEl)
+        el.appendChild(btnRow)
+      }
+    },
+    onKeyDown(evt) {
+      if (inputMode === null && evt.key === 'Enter') {
+        evt.preventDefault()
+        enterInputMode('resume')
+        return true
+      }
+      if (inputMode !== null && evt.key === 'Escape') {
+        evt.preventDefault()
+        cancelInput()
+        return true
+      }
+      return false
+    },
+    resolve,
+  }
+
+  return entry
 }
 
-// ---------------------------------------------------------------------------
-// dvala.io.pick handler — shows a scrollable clickable list modal
-// ---------------------------------------------------------------------------
+function readlineHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    let inputEl: HTMLTextAreaElement | null = null
+    const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
 
-function setPickFocus(index: number | null) {
-  if (!pendingIoPick)
-    return
-  pendingIoPick.focusedIndex = index
-  const rows = elements.ioPickList.children
-  for (let i = 0; i < rows.length; i++) {
-    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(75 75 75)' : ''
-  }
-  if (index !== null)
-    (rows[index] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' })
+    const submit = () => {
+      ctx.resume(inputEl?.value ?? null)
+      resolve()
+      resolveCurrentEffect()
+      focusDvalaCode()
+    }
+
+    registerPendingEffect({
+      ctx,
+      title: 'Input',
+      renderBody(el) {
+        if (prompt) {
+          const p = document.createElement('div')
+          p.className = 'modal-body-row'
+          p.textContent = prompt
+          el.appendChild(p)
+        }
+        const textarea = document.createElement('textarea')
+        textarea.rows = 3
+        textarea.className = 'readline-input'
+        textarea.setAttribute('aria-label', prompt || 'Enter input')
+        el.appendChild(textarea)
+        inputEl = textarea
+        void Promise.resolve().then(() => textarea.focus())
+      },
+      renderFooter(el) {
+        const btn = document.createElement('button')
+        btn.className = 'button button--primary'
+        btn.textContent = 'Submit'
+        btn.addEventListener('click', submit)
+        el.appendChild(btn)
+      },
+      onKeyDown(evt) {
+        if (evt.key === 'Enter' && !evt.shiftKey && !evt.ctrlKey && !evt.metaKey && !evt.altKey) {
+          evt.preventDefault()
+          evt.stopPropagation()
+          submit()
+          return true
+        }
+        return false
+      },
+      resolve,
+    })
+  })
 }
 
-function setConfirmFocus(index: number | null) {
-  if (!pendingIoConfirm)
-    return
-  pendingIoConfirm.focusedIndex = index
-  const rows = elements.ioConfirmList.children
-  for (let i = 0; i < rows.length; i++) {
-    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(75 75 75)' : ''
-  }
+function printlnHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    const value = ctx.args[0]
+    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+
+    const submit = () => {
+      ctx.resume(value as Any)
+      resolve()
+      resolveCurrentEffect()
+      focusDvalaCode()
+    }
+
+    registerPendingEffect({
+      ctx,
+      title: 'Output',
+      renderBody(el) {
+        const outputWrap = document.createElement('div')
+        outputWrap.className = 'println-output'
+        const pre = document.createElement('pre')
+        pre.className = 'println-content'
+        pre.textContent = text
+        outputWrap.appendChild(pre)
+        const copyBtn = document.createElement('span')
+        copyBtn.className = 'println-copy-btn'
+        copyBtn.innerHTML = copyIcon
+        copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
+        outputWrap.appendChild(copyBtn)
+        el.appendChild(outputWrap)
+      },
+      renderFooter(el) {
+        const btn = document.createElement('button')
+        btn.className = 'button button--primary'
+        btn.textContent = 'OK'
+        btn.addEventListener('click', submit)
+        el.appendChild(btn)
+      },
+      onKeyDown(evt) {
+        if (evt.key === 'Enter' || evt.key === 'Escape') {
+          evt.preventDefault()
+          submit()
+          return true
+        }
+        return false
+      },
+      resolve,
+    })
+  })
 }
 
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
-    currentEffectCtx = ctx
-    showExecutionControlBar()
-
     const items = ctx.args[0] as string[]
     const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
     const promptText = options?.prompt ?? 'Choose an item:'
     const defaultIndex = options?.default ?? null
+    let focusedIndex: number | null = defaultIndex
+    let rowEls: HTMLElement[] = []
 
-    elements.ioPickModalTitle.textContent = promptText
-    elements.ioPickList.innerHTML = ''
+    const setFocus = (index: number | null) => {
+      focusedIndex = index
+      rowEls.forEach((row, i) => {
+        row.style.background = i === index ? 'rgb(75 75 75)' : ''
+      })
+      if (index !== null)
+        rowEls[index]?.scrollIntoView({ block: 'nearest' })
+    }
 
-    const submit = (value: number | null) => {
-      elements.ioPickModal.style.display = 'none'
-      pendingIoPick = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
+    const submit = (index: number | null) => {
+      ctx.resume(index as Any)
+      resolve()
+      resolveCurrentEffect()
+      focusDvalaCode()
+    }
+
+    registerPendingEffect({
+      ctx,
+      title: promptText,
+      renderBody(el) {
+        rowEls = []
+        items.forEach((item, i) => {
+          const row = document.createElement('div')
+          row.style.cssText = 'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'rgb(75 75 75)' }
+          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'rgb(75 75 75)' : '' }
+          const labelSpan = document.createElement('span')
+          labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
+          labelSpan.textContent = item
+          row.appendChild(labelSpan)
+          row.onclick = () => submit(i)
+          el.appendChild(row)
+          rowEls.push(row)
+        })
+        setFocus(focusedIndex)
+      },
+      renderFooter(_el) { /* no footer buttons — items are clickable */ },
+      onKeyDown(evt) {
+        if (evt.key === 'ArrowDown') {
+          evt.preventDefault()
+          setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, items.length - 1))
+          return true
+        }
+        if (evt.key === 'ArrowUp') {
+          evt.preventDefault()
+          setFocus(focusedIndex === null ? items.length - 1 : Math.max(focusedIndex - 1, 0))
+          return true
+        }
+        if (evt.key === 'Enter') {
+          evt.preventDefault()
+          if (focusedIndex !== null)
+            submit(focusedIndex)
+          else
+            showToast('Use arrow keys to select', { severity: 'error' })
+          return true
+        }
+        return false
+      },
+      resolve,
+    })
+  })
+}
+
+function ioConfirmHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    const question = ctx.args[0] as string
+    const options = ctx.args[1] as { default?: boolean } | undefined
+    const defaultValue = options?.default
+    const defaultIndex = defaultValue === true ? 0 : defaultValue === false ? 1 : null
+    let focusedIndex: number | null = defaultIndex
+    let rowEls: HTMLElement[] = []
+    const choiceItems = [{ label: 'Yes', value: true }, { label: 'No', value: false }]
+
+    const setFocus = (index: number | null) => {
+      focusedIndex = index
+      rowEls.forEach((row, i) => {
+        row.style.background = i === index ? 'rgb(75 75 75)' : ''
+      })
+    }
+
+    const submit = (value: boolean) => {
       ctx.resume(value as Any)
       resolve()
+      resolveCurrentEffect()
       focusDvalaCode()
     }
 
-    items.forEach((item, i) => {
-      const row = document.createElement('div')
-      row.style.cssText = 'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-      row.onmouseenter = () => { row.style.background = 'rgb(75 75 75)' }
-      row.onmouseleave = () => { row.style.background = pendingIoPick?.focusedIndex === i ? 'rgb(75 75 75)' : '' }
-      const labelSpan = document.createElement('span')
-      labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
-      labelSpan.textContent = item
-      row.appendChild(labelSpan)
-      row.onclick = () => submit(i)
-      elements.ioPickList.appendChild(row)
+    registerPendingEffect({
+      ctx,
+      title: question,
+      renderBody(el) {
+        rowEls = []
+        choiceItems.forEach((item, i) => {
+          const row = document.createElement('div')
+          row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'rgb(75 75 75)' }
+          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'rgb(75 75 75)' : '' }
+          const labelSpan = document.createElement('span')
+          labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
+          labelSpan.textContent = item.label
+          row.appendChild(labelSpan)
+          row.onclick = () => submit(item.value)
+          el.appendChild(row)
+          rowEls.push(row)
+        })
+        setFocus(focusedIndex)
+      },
+      renderFooter(_el) { /* no footer buttons */ },
+      onKeyDown(evt) {
+        if (evt.key === 'ArrowDown') {
+          evt.preventDefault()
+          setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, 1))
+          return true
+        }
+        if (evt.key === 'ArrowUp') {
+          evt.preventDefault()
+          setFocus(focusedIndex === null ? 1 : Math.max(focusedIndex - 1, 0))
+          return true
+        }
+        if (evt.key === 'Enter') {
+          evt.preventDefault()
+          if (focusedIndex !== null)
+            submit(choiceItems[focusedIndex]!.value)
+          else
+            showToast('Use arrow keys to select', { severity: 'error' })
+          return true
+        }
+        return false
+      },
+      resolve,
     })
-
-    const suspendPick = () => {
-      elements.ioPickModal.style.display = 'none'
-      pendingIoPick = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
-      ctx.suspend()
-      resolve()
-      focusDvalaCode()
-    }
-    const haltPick = () => {
-      elements.ioPickModal.style.display = 'none'
-      pendingIoPick = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
-      ctx.halt()
-      resolve()
-      focusDvalaCode()
-    }
-    pendingIoPick = { submit, suspend: suspendPick, halt: haltPick, focusedIndex: defaultIndex, itemCount: items.length }
-    setPickFocus(defaultIndex)
-    elements.ioPickModal.style.display = 'flex'
   })
 }
 
@@ -4175,71 +4300,24 @@ export function toggleEffectHandlerMenu(id: string) {
 
 export function suspendCurrentEffectHandler() {
   closeEffectHandlerMenus()
-  if (pendingCheckpoint) {
-    const { ctx, resolve } = pendingCheckpoint
-    pendingCheckpoint = null
-    currentCheckpointSnapshot = null
-    elements.checkpointModal.style.display = 'none'
-    ctx.suspend()
-    resolve()
-    focusDvalaCode()
-  } else if (pendingIoPick)
-    pendingIoPick.suspend()
-  else if (pendingIoConfirm)
-    pendingIoConfirm.suspend()
-  else if (pendingReadline?.suspend)
-    pendingReadline.suspend()
-  else if (pendingPrintln)
-    pendingPrintln.suspend()
-  else if (pendingEffects.length > 0) {
-    // Suspend all unhandled effects
-    for (const pe of pendingEffects) {
-      if (!pe.handled) {
-        pe.ctx.suspend()
-        pe.handled = true
-        pe.handledAction = 'suspend'
-        pe.resolve()
-      }
-    }
-    closeEffectModal()
+  for (const entry of [...pendingEffects]) {
+    entry.ctx.suspend()
+    entry.resolve()
   }
+  pendingEffects = []
+  currentEffectIndex = 0
+  closeEffectPanel()
 }
 
 export function haltCurrentEffectHandler() {
   closeEffectHandlerMenus()
-  // Use halt callbacks for handled effects
-  if (pendingCheckpoint) {
-    const { ctx, resolve } = pendingCheckpoint
-    pendingCheckpoint = null
-    currentCheckpointSnapshot = null
-    elements.checkpointModal.style.display = 'none'
-    ctx.halt()
-    resolve()
-    focusDvalaCode()
-  } else if (pendingIoPick) {
-    pendingIoPick.halt()
-    pendingIoPick = null
-  } else if (pendingIoConfirm) {
-    pendingIoConfirm.halt()
-    pendingIoConfirm = null
-  } else if (pendingReadline?.halt) {
-    pendingReadline.halt()
-    pendingReadline = null
-    readlineInputEl = null
-  } else if (pendingPrintln) {
-    pendingPrintln.halt()
-    pendingPrintln = null
-  } else if (pendingEffects.length > 0) {
-    // Halt all unhandled effects
-    for (const pe of pendingEffects) {
-      if (!pe.handled) {
-        pe.ctx.halt()
-        pe.handled = true
-        pe.resolve()
-      }
-    }
-    closeEffectModal()
+  for (const entry of [...pendingEffects]) {
+    entry.ctx.halt()
+    entry.resolve()
   }
+  pendingEffects = []
+  currentEffectIndex = 0
+  closeEffectPanel()
 }
 
 export function showExecutionControlBar() {
@@ -4300,264 +4378,11 @@ function initExecutionControlBar() {
   elements.execStopBtn.addEventListener('click', () => {
     // In running mode, halt the current effect
     // In paused mode, just close the modal (abandon the suspended execution)
-    if (currentEffectCtx || pendingEffects.length > 0) {
+    if (pendingEffects.length > 0) {
       haltCurrentEffectHandler()
     } else {
       closeSnapshotModal()
       hideExecutionControlBar()
-    }
-  })
-}
-
-export function cancelIoPick() {
-  if (!pendingIoPick)
-    return
-  pendingIoPick.submit(null)
-}
-
-// ---------------------------------------------------------------------------
-// dvala.io.confirm handler — shows a Yes/No modal
-// ---------------------------------------------------------------------------
-
-function ioConfirmHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>(resolve => {
-    currentEffectCtx = ctx
-    showExecutionControlBar()
-
-    const question = ctx.args[0] as string
-    const options = ctx.args[1] as { default?: boolean } | undefined
-    const defaultValue = options?.default
-    const defaultIndex = defaultValue === true ? 0 : defaultValue === false ? 1 : null
-
-    elements.ioConfirmModalTitle.textContent = question
-    elements.ioConfirmList.innerHTML = ''
-
-    const submit = (value: boolean) => {
-      elements.ioConfirmModal.style.display = 'none'
-      pendingIoConfirm = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
-      ctx.resume(value as Any)
-      resolve()
-      focusDvalaCode()
-    }
-
-    const items = [
-      { label: 'Yes', value: true },
-      { label: 'No', value: false },
-    ]
-
-    items.forEach((item, i) => {
-      const row = document.createElement('div')
-      row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-      row.onmouseenter = () => { row.style.background = 'rgb(75 75 75)' }
-      row.onmouseleave = () => { row.style.background = pendingIoConfirm?.focusedIndex === i ? 'rgb(75 75 75)' : '' }
-      const labelSpan = document.createElement('span')
-      labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
-      labelSpan.textContent = item.label
-      row.appendChild(labelSpan)
-      row.onclick = () => submit(item.value)
-      elements.ioConfirmList.appendChild(row)
-    })
-
-    const suspendConfirm = () => {
-      elements.ioConfirmModal.style.display = 'none'
-      pendingIoConfirm = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
-      ctx.suspend()
-      resolve()
-      focusDvalaCode()
-    }
-    const haltConfirm = () => {
-      elements.ioConfirmModal.style.display = 'none'
-      pendingIoConfirm = null
-      currentEffectCtx = null
-      hideExecutionControlBar()
-      ctx.halt()
-      resolve()
-      focusDvalaCode()
-    }
-
-    pendingIoConfirm = { submit, suspend: suspendConfirm, halt: haltConfirm, focusedIndex: defaultIndex }
-    setConfirmFocus(defaultIndex)
-    elements.ioConfirmModal.style.display = 'flex'
-  })
-}
-
-export function submitIoConfirm(value: boolean) {
-  if (!pendingIoConfirm)
-    return
-  pendingIoConfirm.submit(value)
-}
-
-// ---------------------------------------------------------------------------
-// dvala.io.read-line handler — shows a simple input modal
-// ---------------------------------------------------------------------------
-
-function readlineHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>(resolve => {
-    currentEffectCtx = ctx
-    showExecutionControlBar()
-
-    const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
-
-    const { panel, body, footer } = createModalPanel({
-      noClose: true,
-    })
-
-    if (prompt) {
-      const promptEl = document.createElement('div')
-      promptEl.className = 'modal-body-row'
-      promptEl.textContent = prompt
-      body.appendChild(promptEl)
-    }
-
-    const input = document.createElement('textarea')
-    input.rows = 3
-    input.className = 'readline-input'
-    input.setAttribute('aria-label', prompt || 'Enter input')
-    body.appendChild(input)
-    readlineInputEl = input
-
-    const submitBtn = document.createElement('button')
-    submitBtn.className = 'button button--primary'
-    submitBtn.textContent = 'Submit'
-    submitBtn.addEventListener('click', () => submitReadline())
-
-    footer.appendChild(submitBtn)
-
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) {
-          // Allow modifier+Enter to insert newline (default behavior)
-          return
-        }
-        e.preventDefault()
-        e.stopPropagation()
-        submitReadline()
-      }
-    })
-
-    pushPanel(panel, 'Input', undefined, true)
-    input.focus()
-
-    pendingReadline = {
-      resolve: (value: string | null) => {
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        popModal()
-        ctx.resume(value)
-        resolve()
-      },
-      suspend: () => {
-        pendingReadline = null
-        readlineInputEl = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        ctx.suspend()
-        resolve()
-        focusDvalaCode()
-      },
-      halt: () => {
-        pendingReadline = null
-        readlineInputEl = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        closeAllModals()
-        ctx.halt()
-        resolve()
-        focusDvalaCode()
-      },
-    }
-  })
-}
-
-export function submitReadline() {
-  if (!pendingReadline)
-    return
-  const value = readlineInputEl?.value ?? ''
-  pendingReadline.resolve(value)
-  pendingReadline = null
-  readlineInputEl = null
-  focusDvalaCode()
-}
-
-export function cancelReadline() {
-  if (!pendingReadline)
-    return
-  pendingReadline.resolve(null)
-  pendingReadline = null
-  readlineInputEl = null
-  focusDvalaCode()
-}
-
-// ---------------------------------------------------------------------------
-// dvala.io.println handler — shows output in a modal
-// ---------------------------------------------------------------------------
-
-function printlnHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>(resolve => {
-    currentEffectCtx = ctx
-    showExecutionControlBar()
-
-    const value = ctx.args[0]
-    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-
-    const { panel, body, footer } = createModalPanel({
-      onClose: () => dismissPrintln(),
-    })
-
-    const outputWrap = document.createElement('div')
-    outputWrap.className = 'println-output'
-
-    const pre = document.createElement('pre')
-    pre.className = 'println-content'
-    pre.textContent = text
-    outputWrap.appendChild(pre)
-
-    const copyBtn = document.createElement('span')
-    copyBtn.className = 'println-copy-btn'
-    copyBtn.innerHTML = copyIcon
-    copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
-    outputWrap.appendChild(copyBtn)
-
-    body.appendChild(outputWrap)
-
-    const okBtn = document.createElement('button')
-    okBtn.className = 'button button--primary'
-    okBtn.textContent = 'OK'
-    okBtn.addEventListener('click', () => dismissPrintln())
-
-    footer.appendChild(okBtn)
-
-    pushPanel(panel, 'Output', undefined, true)
-
-    pendingPrintln = {
-      resolve: () => {
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        popModal()
-        ctx.resume(value as Any)
-        resolve()
-      },
-      suspend: () => {
-        pendingPrintln = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        ctx.suspend()
-        resolve()
-        focusDvalaCode()
-      },
-      halt: () => {
-        pendingPrintln = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        closeAllModals()
-        ctx.halt()
-        resolve()
-        focusDvalaCode()
-      },
     }
   })
 }
@@ -4571,14 +4396,6 @@ async function printHandler(ctx: EffectContext): Promise<void> {
   const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
   appendOutput(text, 'output')
   ctx.resume(value as Any)
-}
-
-export function dismissPrintln() {
-  if (!pendingPrintln)
-    return
-  pendingPrintln.resolve()
-  pendingPrintln = null
-  focusDvalaCode()
 }
 
 // ---------------------------------------------------------------------------

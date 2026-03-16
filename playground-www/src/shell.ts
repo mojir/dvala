@@ -270,60 +270,6 @@ function getModals(): string {
     `<div class="modal-box">${content}</div>`
 
   return `
-  ${modal('effect-modal', box(`
-    <div class="modal-header">
-      <span class="modal-header__title">Unhandled Effect Triggered</span>
-      <div id="effect-modal-nav" class="effect-modal__nav" style="display:none;">
-        <button id="effect-modal-prev" class="button" onclick="Playground.navigateEffect(-1)">‹</button>
-        <span id="effect-modal-counter" class="effect-modal__counter"></span>
-        <button id="effect-modal-next" class="button" onclick="Playground.navigateEffect(1)">›</button>
-      </div>
-    </div>
-    <div id="effect-modal-handled-badge" class="effect-modal__handled-badge" style="display:none;"></div>
-    <div class="effect-modal__body">
-      <div class="effect-modal__field">
-        <span class="effect-modal__field-label">Effect name</span>
-        <code id="effect-modal-name" class="effect-modal__name"></code>
-      </div>
-      <div class="effect-modal__field">
-        <span class="effect-modal__field-label">Arguments</span>
-        <div id="effect-modal-args" class="effect-modal__args"></div>
-      </div>
-    </div>
-    <div id="effect-modal-main-buttons" class="modal-btn-row modal-body-row--last">
-      <button class="button" onclick="Playground.selectEffectAction('ignore')">Ignore</button>
-      <button class="button button--primary" onclick="Playground.selectEffectAction('resume')">Mock response…</button>
-    </div>
-    <div id="effect-modal-input-section" class="effect-modal__input-section" style="display:none;">
-      <label for="effect-modal-value" id="effect-modal-input-label" class="effect-modal__input-label"></label>
-      <textarea id="effect-modal-value" rows="4" class="effect-modal__textarea"></textarea>
-      <span id="effect-modal-error" class="form-error" style="display:none;"></span>
-      <div class="modal-btn-row" style="margin-top: var(--space-2);">
-        <button class="button" onclick="Playground.cancelEffectAction()">Cancel</button>
-        <button class="button button--primary" onclick="Playground.confirmEffectAction()">Confirm</button>
-      </div>
-    </div>
-  `))}
-
-  ${modal('checkpoint-modal', box(`
-    <div class="modal-header">
-      <span class="modal-header__title">Checkpoint</span>
-    </div>
-    <div class="effect-modal__body">
-      <div class="effect-modal__field">
-        <span class="effect-modal__field-label">Message</span>
-        <div id="checkpoint-modal-message" style="font-size: 0.875rem; color: rgb(212 212 212);"></div>
-      </div>
-      <div class="effect-modal__field" id="checkpoint-modal-meta-field" style="display:none;">
-        <span class="effect-modal__field-label">Metadata</span>
-        <code id="checkpoint-modal-meta" style="white-space:pre; font-size:0.75rem; color: rgb(212 212 212);"></code>
-      </div>
-    </div>
-    <div class="modal-btn-row modal-body-row--last">
-      <button class="button button--primary" onclick="Playground.resumeCheckpoint()">Resume</button>
-    </div>
-  `))}
-
   ${modal('export-modal', box(`
     <div class="modal-header"><span class="modal-header__title">Export</span></div>
     <div class="modal-checklist">
@@ -362,20 +308,6 @@ function getModals(): string {
     <div class="modal-header"><span class="modal-header__title">Import result</span></div>
     <div id="import-result-content" class="modal-body-row"></div>
     <button class="button" onclick="Playground.closeImportResultModal()">OK</button>
-  `))}
-
-  ${modal('io-pick-modal', box(`
-    <div class="modal-header">
-      <span id="io-pick-modal-title" class="modal-header__title"></span>
-    </div>
-    <div id="io-pick-list" class="io-pick-list"></div>
-  `))}
-
-  ${modal('io-confirm-modal', box(`
-    <div class="modal-header">
-      <span id="io-confirm-modal-title" class="modal-header__title"></span>
-    </div>
-    <div id="io-confirm-list" class="io-pick-list"></div>
   `))}
 
   <div id="snapshot-modal" class="modal-overlay" style="display:none;">
