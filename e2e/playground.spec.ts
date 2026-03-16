@@ -713,3 +713,76 @@ test.describe('source maps', () => {
     expect(map.sources.length).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// SEO and Meta Tags
+// ---------------------------------------------------------------------------
+
+test.describe('SEO meta tags', () => {
+  test('has correct meta description', async ({ page }) => {
+    await page.goto('')
+    const description = await page.locator('meta[name="description"]').getAttribute('content')
+    expect(description).toContain('Dvala')
+    expect(description).toContain('suspendable')
+  })
+
+  test('has Open Graph tags', async ({ page }) => {
+    await page.goto('')
+    const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content')
+    const ogDescription = await page.locator('meta[property="og:description"]').getAttribute('content')
+    const ogImage = await page.locator('meta[property="og:image"]').getAttribute('content')
+    const ogUrl = await page.locator('meta[property="og:url"]').getAttribute('content')
+
+    expect(ogTitle).toBeTruthy()
+    expect(ogDescription).toContain('functional language')
+    expect(ogImage).toContain('dvala-logo')
+    expect(ogUrl).toContain('dvala')
+  })
+
+  test('has Twitter card tags', async ({ page }) => {
+    await page.goto('')
+    const twitterCard = await page.locator('meta[name="twitter:card"]').getAttribute('content')
+    const twitterTitle = await page.locator('meta[name="twitter:title"]').getAttribute('content')
+
+    expect(twitterCard).toBe('summary_large_image')
+    expect(twitterTitle).toBeTruthy()
+  })
+
+  test('has canonical URL', async ({ page }) => {
+    await page.goto('')
+    const canonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+    expect(canonical).toContain('dvala')
+  })
+
+  test('has valid JSON-LD structured data', async ({ page }) => {
+    await page.goto('')
+    const jsonLd = await page.locator('script[type="application/ld+json"]').textContent()
+    expect(jsonLd).toBeTruthy()
+
+    const data = JSON.parse(jsonLd!)
+    expect(data['@context']).toBe('https://schema.org')
+    expect(data['@type']).toBe('SoftwareApplication')
+    expect(data.name).toBe('Dvala')
+    expect(data.isAccessibleForFree).toBe(true)
+  })
+
+  test('page title updates on navigation', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+
+    // Home page title
+    await expect(page).toHaveTitle(/Dvala/)
+
+    // Navigate to about
+    await page.evaluate(() => (window as any).Playground.navigate('/about'))
+    await expect(page).toHaveTitle(/About.*Dvala/)
+
+    // Navigate to tutorials
+    await page.evaluate(() => (window as any).Playground.navigate('/tutorials'))
+    await expect(page).toHaveTitle(/Tutorials.*Dvala/)
+
+    // Navigate to examples
+    await page.evaluate(() => (window as any).Playground.navigate('/examples'))
+    await expect(page).toHaveTitle(/Examples.*Dvala/)
+  })
+})

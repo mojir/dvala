@@ -4,7 +4,7 @@
     "file-type": "^21.3.2"
   },
   "version": "0.0.21",
-  "description": "dvala",
+  "description": "A suspendable, time-traveling functional language for JavaScript with algebraic effects",
   "author": "Albert Mojir",
   "license": "MIT",
   "repository": {
@@ -12,15 +12,21 @@
     "url": "git+https://github.com/mojir/dvala.git"
   },
   "keywords": [
-    "Dvala",
-    "Functional",
-    "Pure",
-    "Typescript",
-    "Web",
-    "Compiler",
-    "AST",
-    "Interpreter",
-    "Clojure"
+    "dvala",
+    "functional",
+    "programming-language",
+    "interpreter",
+    "suspendable",
+    "resumable",
+    "algebraic-effects",
+    "time-travel",
+    "pure",
+    "immutable",
+    "expression-language",
+    "typescript",
+    "javascript",
+    "lisp",
+    "clojure"
   ],
   "exports": {
     ".": {

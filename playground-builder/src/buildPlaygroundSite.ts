@@ -65,7 +65,7 @@ function writeIndexPage() {
   const page = `<!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Dvala Playground</title>
+    <title>Dvala - Suspendable Functional Language for JavaScript</title>
     <script>
       // Set <base> so relative asset URLs (playground.js, styles.css) resolve correctly
       // even when the page is loaded at a sub-path like /settings/dvala.
@@ -84,9 +84,43 @@ function writeIndexPage() {
       }())
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
-    <meta name="description" content="A reference and a playground for Dvala">
+    <meta name="description" content="Dvala is a suspendable, time-traveling functional language for JavaScript with algebraic effects. Run anywhere, resume everywhere.">
+    <meta name="author" content="Albert Mojir">
+    <meta name="keywords" content="Dvala, functional programming, suspendable, resumable, algebraic effects, time-travel, JavaScript, interpreter">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8">
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mojir.github.io/dvala/">
+    <meta property="og:title" content="Dvala Playground">
+    <meta property="og:description" content="A suspendable, time-traveling functional language for JavaScript with algebraic effects.">
+    <meta property="og:image" content="https://mojir.github.io/dvala/images/dvala-logo.webp">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://mojir.github.io/dvala/">
+    <meta name="twitter:title" content="Dvala Playground">
+    <meta name="twitter:description" content="A suspendable, time-traveling functional language for JavaScript with algebraic effects.">
+    <meta name="twitter:image" content="https://mojir.github.io/dvala/images/dvala-logo.webp">
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://mojir.github.io/dvala/">
+    <meta name="theme-color" content="#1a1a1a">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Dvala",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "description": "A suspendable, time-traveling functional language for JavaScript with algebraic effects.",
+      "url": "https://mojir.github.io/dvala/",
+      "author": {
+        "@type": "Person",
+        "name": "Albert Mojir"
+      },
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true
+    }
+    </script>
     <link rel="preload" href="playground.js" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

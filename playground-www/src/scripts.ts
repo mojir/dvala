@@ -24,7 +24,7 @@ import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
 import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
-import { renderTutorialsIndexPage, renderTutorialPage } from './components/tutorialPage'
+import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
 import {
   clearAll as clearAllSnapshots,
   getSavedSnapshots,
@@ -2243,6 +2243,7 @@ function routeToPath(appPath: string): void {
     if (dynPage) dynPage.innerHTML = ''
     const tab = path.startsWith('settings/') ? path.slice(9) : undefined
     showPage(staticPageId, 'instant', 'none', tab)
+    document.title = 'Settings | Dvala'
     return
   }
 
@@ -2256,34 +2257,51 @@ function routeToPath(appPath: string): void {
 
   // Determine which sidebar link to highlight
   let sidebarLinkId: string | null = null
+  let pageTitle = 'Dvala'
 
   if (!path || path === '/') {
     dynPage.innerHTML = renderStartPage()
     sidebarLinkId = 'home-page_link'
+    pageTitle = 'Dvala - Suspendable Functional Language for JavaScript'
   } else if (path === 'core') {
     dynPage.innerHTML = renderCorePage()
+    pageTitle = 'Core API | Dvala'
   } else if (path === 'modules') {
     dynPage.innerHTML = renderModulesPage()
+    pageTitle = 'Modules | Dvala'
   } else if (path === 'examples') {
     dynPage.innerHTML = renderExamplePage()
     sidebarLinkId = 'example-page_link'
+    pageTitle = 'Examples | Dvala'
   } else if (path === 'tutorials') {
     dynPage.innerHTML = renderTutorialsIndexPage()
     sidebarLinkId = 'tutorials-page_link'
+    pageTitle = 'Tutorials | Dvala'
   } else if (path.startsWith('tutorials/')) {
     const tutId = path.slice('tutorials/'.length)
     dynPage.innerHTML = renderTutorialPage(tutId)
     sidebarLinkId = 'tutorials-page_link'
+    const tut = allTutorials.find(t => t.id === tutId)
+    pageTitle = tut ? `${tut.title} | Dvala Tutorials` : 'Tutorial | Dvala'
   } else if (path.startsWith('ref/')) {
     const linkName = path.slice('ref/'.length)
     dynPage.innerHTML = renderDocPage(linkName)
+    const data = window.referenceData
+    if (data) {
+      const entry = data.searchEntries.find(e => e.linkName === linkName)
+      pageTitle = entry ? `${entry.title} | Dvala Reference` : 'Reference | Dvala'
+    }
   } else if (path === 'about') {
     dynPage.innerHTML = renderAboutPage()
     sidebarLinkId = 'about-page_link'
+    pageTitle = 'About | Dvala'
   } else {
     dynPage.innerHTML = renderStartPage()
     sidebarLinkId = 'home-page_link'
+    pageTitle = 'Dvala - Suspendable Functional Language for JavaScript'
   }
+
+  document.title = pageTitle
 
   // Highlight the sidebar link
   if (sidebarLinkId) {
