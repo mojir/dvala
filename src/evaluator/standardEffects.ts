@@ -167,8 +167,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        'perform(effect(dvala.io.print), "hello")',
-        'perform(effect(dvala.io.print), 42)',
+        { code: 'perform(effect(dvala.io.print), "hello")', noRun: true },
+        { code: 'perform(effect(dvala.io.print), 42)', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.println', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
@@ -186,8 +186,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        'perform(effect(dvala.io.println), "hello")',
-        'perform(effect(dvala.io.println), [1, 2, 3])',
+        { code: 'perform(effect(dvala.io.println), "hello")', noRun: true },
+        { code: 'perform(effect(dvala.io.println), [1, 2, 3])', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
@@ -215,7 +215,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        'perform(effect(dvala.io.error), "something went wrong")',
+        { code: 'perform(effect(dvala.io.error), "something went wrong")', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.println', 'perform', 'effect'],
     },

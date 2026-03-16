@@ -4,6 +4,7 @@
  */
 
 import type { ReferenceData } from '../../../common/referenceData'
+import { makeLinkName } from '../../../reference'
 import { href } from '../router'
 
 declare global {
@@ -22,7 +23,7 @@ export function renderCorePage(): string {
     const cat = ref.category
     if (!byCategory[cat]) byCategory[cat] = []
     const shortDesc = getShortDescription(ref.description)
-    const linkName = encodeURIComponent(`${ref.category}-${key}`)
+    const linkName = makeLinkName(ref.category, key)
     byCategory[cat].push({ key, title: key, description: shortDesc, linkName })
   }
 
@@ -35,7 +36,7 @@ export function renderCorePage(): string {
   <ul class="content-page__entry-list">
     ${entries.map(e => `
     <li class="content-page__entry">
-      <a class="content-page__entry-link" href="${href(`/ref/${e.linkName}`)}">${escapeHtml(e.title)}</a>
+      <a class="content-page__entry-link" href="${href(`/ref/${e.linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.linkName}')">${escapeHtml(e.title)}</a>
       ${e.description ? `<span class="content-page__entry-desc">${escapeHtml(e.description)}</span>` : ''}
     </li>`).join('')}
   </ul>

@@ -9,8 +9,10 @@ import { createDvala } from '../../../src/createDvala'
 import { allBuiltinModules } from '../../../src/allModules'
 import type { ReferenceData } from '../../../common/referenceData'
 import type { Reference } from '../../../reference'
-import { isFunctionReference, isCustomReference } from '../../../reference'
+import { isFunctionReference, isCustomReference, makeLinkName } from '../../../reference'
 import { href } from '../router'
+import { tokenizeToHtml } from '../SyntaxOverlay'
+import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../../../src/utils/symbols'
 
 declare global {
   interface Window {
@@ -24,16 +26,17 @@ export function renderDocPage(linkName: string): string {
   const data = window.referenceData
   if (!data) return '<div class="doc-page"><p>Reference data not available.</p></div>'
 
-  const decodedLinkName = decodeURIComponent(linkName)
+  let decodedLinkName: string
+  try { decodedLinkName = decodeURIComponent(linkName) } catch { decodedLinkName = linkName }
 
   // Search in api first, then modules
   let ref: Reference | undefined
   let foundKey: string | undefined
 
-  // api keys are the bare function names; linkName is category-title
+  // api keys are the bare function names; linkName is category-title or bare key
   for (const [key, r] of Object.entries(data.api)) {
-    const candidate = encodeURIComponent(`${r.category}-${key}`)
-    if (candidate === linkName || `${r.category}-${key}` === decodedLinkName) {
+    const candidate = makeLinkName(r.category, key)
+    if (candidate === linkName || key === decodedLinkName || `${r.category}-${key}` === decodedLinkName) {
       ref = r
       foundKey = key
       break
@@ -42,7 +45,18 @@ export function renderDocPage(linkName: string): string {
 
   if (!ref) {
     for (const [key, r] of Object.entries(data.modules)) {
-      const candidate = encodeURIComponent(`${r.category}-${key}`)
+      const candidate = makeLinkName(r.category, key)
+      if (candidate === linkName || key === decodedLinkName || `${r.category}-${key}` === decodedLinkName) {
+        ref = r
+        foundKey = key
+        break
+      }
+    }
+  }
+
+  if (!ref) {
+    for (const [key, r] of Object.entries(data.effects)) {
+      const candidate = makeLinkName(r.category, key)
       if (candidate === linkName || key === decodedLinkName || `${r.category}-${key}` === decodedLinkName) {
         ref = r
         foundKey = key
@@ -55,10 +69,25 @@ export function renderDocPage(linkName: string): string {
     return `<div class="doc-page"><p class="doc-page__not-found">No documentation found for <code>${escapeHtml(decodedLinkName)}</code>.</p></div>`
   }
 
-  return renderReference(foundKey, ref)
+  return renderReference(foundKey, ref, data)
 }
 
-function renderReference(key: string, ref: Reference): string {
+function seeAlsoInfo(name: string, data: ReferenceData): { title: string; linkName: string } {
+  const allEntries = [
+    ...Object.entries(data.api),
+    ...Object.entries(data.modules),
+    ...Object.entries(data.effects),
+  ]
+  for (const [k, r] of allEntries) {
+    if (k === name || r.title === name) {
+      return { title: r.title, linkName: makeLinkName(r.category, k) }
+    }
+  }
+  // Fallback: use name as-is with safe encoding
+  return { title: name, linkName: encodeURIComponent(name).replace(/%2F/gi, '~') }
+}
+
+function renderReference(key: string, ref: Reference, data: ReferenceData): string {
   const descHtml = marked.parse(ref.description) as string
 
   const variants = isFunctionReference(ref)
@@ -78,7 +107,7 @@ function renderReference(key: string, ref: Reference): string {
     ? `<div class="doc-page__section">
         <div class="doc-page__section-title">See Also</div>
         <div class="doc-page__see-also">
-          ${ref.seeAlso.map(name => `<a class="doc-page__see-also-link" href="${href(`/ref/${name}`)}">${escapeHtml(String(name))}</a>`).join(' ')}
+          ${ref.seeAlso.map(name => { const { title, linkName: ln } = seeAlsoInfo(String(name), data); return `<a class="doc-page__see-also-link" href="${href(`/ref/${ln}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${ln}')">${escapeHtml(title)}</a>` }).join(' ')}
         </div>
       </div>`
     : ''
@@ -98,31 +127,35 @@ function renderReference(key: string, ref: Reference): string {
     <div class="doc-page__description">${descHtml}</div>
   </div>
 
-  ${examples}
   ${seeAlso}
+  ${examples}
 </div>`.trim()
 }
 
 function renderFunctionVariants(name: string, ref: ReturnType<typeof isFunctionReference> extends true ? never : Parameters<typeof isFunctionReference>[0]): string {
   if (!isFunctionReference(ref)) return ''
   const { args, variants } = ref
-  const argNames = Object.keys(args)
 
-  return variants.map(v => {
+  const retType = Array.isArray(ref.returns.type)
+    ? ref.returns.type.join(' | ')
+    : String(ref.returns.type)
+
+  const normalVariants = variants.map(v => {
     const params = v.argumentNames.map(argName => {
       const arg = args[argName]
       if (!arg) return argName
       const typeStr = Array.isArray(arg.type) ? arg.type.join(' | ') : String(arg.type)
       return `${argName}: ${typeStr}`
     }).join(', ')
-
-    const retType = Array.isArray(ref.returns.type)
-      ? ref.returns.type.join(' | ')
-      : String(ref.returns.type)
-
-    void argNames // suppress unused var warning
     return `<code class="doc-page__signature-variant">${escapeHtml(name)}(${escapeHtml(params)}) → ${escapeHtml(retType)}</code>`
   }).join('\n')
+
+  if (!ref._isOperator) return normalVariants
+
+  const operatorForm = `<span class="doc-page__signature-label">Operator form</span>
+<code class="doc-page__signature-variant">${escapeHtml(`a ${name} b`)} → ${escapeHtml(retType)}</code>`
+
+  return `${normalVariants}\n${operatorForm}`
 }
 
 function renderCustomVariants(ref: Reference): string {
@@ -132,15 +165,34 @@ function renderCustomVariants(ref: Reference): string {
   ).join('\n')
 }
 
-function renderExample(code: string): string {
-  const output = runExample(code)
+const penIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>'
+const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
+
+function encodeCode(code: string): string {
+  return btoa(encodeURIComponent(code))
+}
+
+function renderExample(entry: string | { code: string; noRun: true }): string {
+  const code = typeof entry === 'string' ? entry : entry.code
+  const noRun = typeof entry !== 'string' && entry.noRun
+
+  const output = noRun ? null : runExample(code)
   const outputHtml = output !== null
     ? `<div class="doc-page__example-output">${escapeHtml(output)}</div>`
     : ''
 
+  const encoded = encodeCode(code)
+  const actionBar = `<div class="doc-page__example-action-bar">
+    <button class="doc-page__example-action-btn" title="Load in editor" onclick="Playground.loadEncodedCode('${encoded}')">${penIcon}</button>
+    <button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>
+  </div>`
+
   return `
 <div class="doc-page__example">
-  <pre class="doc-page__example-code"><code>${escapeHtml(code)}</code></pre>
+  <div class="doc-page__example-code-wrap">
+    <pre class="doc-page__example-code"><code>${tokenizeToHtml(code)}</code></pre>
+    ${actionBar}
+  </div>
   ${outputHtml}
 </div>`
 }
@@ -159,8 +211,17 @@ function formatValue(value: unknown): string {
   if (value === undefined) return 'undefined'
   if (typeof value === 'string') return JSON.stringify(value)
   if (typeof value === 'object') {
+    if (EFFECT_SYMBOL in value) return `<effect ${(value as Record<string, unknown>)['name']}>`
+    if (FUNCTION_SYMBOL in value) return '<function>'
+    if (REGEXP_SYMBOL in value) return String(value)
     try {
-      return JSON.stringify(value)
+      return JSON.stringify(value, (_k, v: unknown) => {
+        if (v !== null && typeof v === 'object') {
+          if (EFFECT_SYMBOL in v) return `<effect ${(v as Record<string, unknown>)['name']}>`
+          if (FUNCTION_SYMBOL in v) return '<function>'
+        }
+        return v
+      })
     } catch {
       return String(value)
     }

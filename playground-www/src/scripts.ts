@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
+import { makeLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
@@ -14,12 +15,14 @@ import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
+import { copyIcon, hamburgerIcon } from './icons'
 import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
+import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
 import { renderTutorialsIndexPage, renderTutorialPage } from './components/tutorialPage'
 import {
@@ -132,9 +135,6 @@ const elements = {
   get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
   get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
   get snapshotPanelTemplate() { return document.getElementById('snapshot-panel-template') as HTMLTemplateElement },
-  get infoModal() { return document.getElementById('info-modal') as HTMLDivElement },
-  get infoModalTitle() { return document.getElementById('info-modal-title') as HTMLDivElement },
-  get infoModalMessage() { return document.getElementById('info-modal-message') as HTMLDivElement },
   get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
   get importOptCode() { return document.getElementById('import-opt-code') as HTMLInputElement },
   get importOptCodeLabel() { return document.getElementById('import-opt-code-label') as HTMLLabelElement },
@@ -160,17 +160,6 @@ const elements = {
   get exportOptRecentSnapshots() { return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement },
   get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
   get exportOptSavedPrograms() { return document.getElementById('export-opt-saved-programs') as HTMLInputElement },
-  get confirmModal() { return document.getElementById('confirm-modal') as HTMLDivElement },
-  get confirmModalTitle() { return document.getElementById('confirm-modal-title') as HTMLDivElement },
-  get confirmModalMessage() { return document.getElementById('confirm-modal-message') as HTMLDivElement },
-  get confirmModalCheckboxRow() { return document.getElementById('confirm-modal-checkbox-row') as HTMLLabelElement },
-  get confirmModalCheckbox() { return document.getElementById('confirm-modal-checkbox') as HTMLInputElement },
-  get confirmModalCheckboxLabel() { return document.getElementById('confirm-modal-checkbox-label') as HTMLSpanElement },
-  get confirmModalOk() { return document.getElementById('confirm-modal-ok') as HTMLButtonElement },
-  get checkpointModal() { return document.getElementById('checkpoint-modal') as HTMLDivElement },
-  get checkpointModalMessage() { return document.getElementById('checkpoint-modal-message') as HTMLElement },
-  get checkpointModalMeta() { return document.getElementById('checkpoint-modal-meta') as HTMLDivElement },
-  get checkpointModalTech() { return document.getElementById('checkpoint-modal-tech') as HTMLDivElement },
   get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
   get effectModal() { return document.getElementById('effect-modal') as HTMLDivElement },
   get effectModalNav() { return document.getElementById('effect-modal-nav') as HTMLDivElement },
@@ -188,16 +177,6 @@ const elements = {
   get ioPickModal() { return document.getElementById('io-pick-modal') as HTMLDivElement },
   get ioPickModalTitle() { return document.getElementById('io-pick-modal-title') as HTMLDivElement },
   get ioPickList() { return document.getElementById('io-pick-list') as HTMLDivElement },
-  get ioConfirmModal() { return document.getElementById('io-confirm-modal') as HTMLDivElement },
-  get ioConfirmQuestion() { return document.getElementById('io-confirm-question') as HTMLDivElement },
-  get ioConfirmNoBtn() { return document.getElementById('io-confirm-no-btn') as HTMLButtonElement },
-  get ioConfirmYesBtn() { return document.getElementById('io-confirm-yes-btn') as HTMLButtonElement },
-  get readlineModal() { return document.getElementById('readline-modal') as HTMLDivElement },
-  get readlinePrompt() { return document.getElementById('readline-prompt') as HTMLDivElement },
-  get readlineInput() { return document.getElementById('readline-input') as HTMLTextAreaElement },
-  get printlnModal() { return document.getElementById('println-modal') as HTMLDivElement },
-  get printlnContent() { return document.getElementById('println-content') as HTMLPreElement },
-  get copyPrintlnBtn() { return document.getElementById('copy-println-btn') as HTMLDivElement },
 }
 
 type MoveParams = {
@@ -241,11 +220,13 @@ let currentEffectIndex = 0
 let effectBatchScheduled = false
 let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void } | null = null
+let readlineInputEl: HTMLTextAreaElement | null = null
 let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; focusedIndex: number | null; itemCount: number } | null = null
 let pendingIoConfirm: { resolve: (value: boolean) => void; suspend: () => void; defaultValue: boolean | undefined } | null = null
 let pendingPrintln: { resolve: () => void; suspend: () => void } | null = null
 let currentSnapshot: Snapshot | null = null
-const snapshotPanelStack: { panel: HTMLElement; snapshot: Snapshot; label: string }[] = []
+const modalStack: { panel: HTMLElement; label: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
+let overlayCloseAnimation: Animation | null = null
 
 function calculateDimensions() {
   return {
@@ -275,33 +256,40 @@ const chevronRight = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height
 const chevronDown = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
 
 function expandCollapsible(el: HTMLElement, animate = true) {
-  if (!animate)
-    el.style.transition = 'none'
-  el.classList.add('expanded')
-  el.style.maxHeight = `${el.scrollHeight}px`
   if (!animate) {
+    el.style.transition = 'none'
+    el.classList.add('expanded')
+    el.style.maxHeight = 'none'
     void el.offsetHeight
     el.style.transition = ''
+    return
   }
+  el.classList.add('expanded')
+  el.style.maxHeight = `${el.scrollHeight}px`
+  el.addEventListener('transitionend', () => {
+    if (el.classList.contains('expanded'))
+      el.style.maxHeight = 'none'
+  }, { once: true })
 }
 
 function collapseCollapsible(el: HTMLElement, animate = true) {
-  if (!animate)
+  if (!animate) {
     el.style.transition = 'none'
-  // Set max-height to current scrollHeight so the transition starts from actual height
-  el.style.maxHeight = `${el.scrollHeight}px`
-  // Force reflow, then collapse
+    el.classList.remove('expanded')
+    el.style.maxHeight = '0'
+    void el.offsetHeight
+    el.style.transition = ''
+    return
+  }
+  // Pin current rendered height so the transition starts from actual height
+  el.style.maxHeight = `${el.getBoundingClientRect().height}px`
   void el.offsetHeight
   el.classList.remove('expanded')
   el.style.maxHeight = '0'
-  if (!animate) {
-    void el.offsetHeight
-    el.style.transition = ''
-  }
 }
 
 export function showTutorialsPage() {
-  showPage('tutorials-page', 'smooth')
+  router.navigate('/tutorials')
 }
 
 export function showSettingsTab(id: string) {
@@ -309,7 +297,9 @@ export function showSettingsTab(id: string) {
   document.querySelectorAll('.settings-tab-content').forEach(el => el.classList.remove('active'))
   document.getElementById(`settings-tab-btn-${id}`)?.classList.add('active')
   document.getElementById(`settings-tab-${id}`)?.classList.add('active')
-  router.navigate(`/settings/${id}`, true)
+  const targetPath = `/settings/${id}`
+  if (router.currentPath() !== targetPath)
+    router.navigate(targetPath, true)
   if (id === 'actions')
     updateStorageUsage()
 }
@@ -1152,6 +1142,7 @@ export function toggleModuleCategory(categoryKey: string, animate = true) {
     expandCollapsible(content, animate)
     chevron.innerHTML = chevronDown
   }
+
 }
 
 export function openAddContextMenu() {
@@ -1185,6 +1176,105 @@ export function share() {
   void navigator.clipboard.writeText(href).then(() => {
     showToast('Link copied to clipboard')
   })
+}
+
+function populateSidebarApiSections(): void {
+  const data = window.referenceData
+  const container = document.getElementById('api-ref-sections')
+  if (!data || !container) return
+
+  let html = '<div class="sidebar-section-label">API Reference</div>\n'
+
+  // Group core API entries by category
+  const byCategory: Record<string, { title: string; linkName: string }[]> = {}
+  for (const [key, r] of Object.entries(data.api)) {
+    const cat = r.category
+    if (!byCategory[cat]) byCategory[cat] = []
+    const linkName = makeLinkName(cat, key)
+    byCategory[cat].push({ title: r.title, linkName })
+  }
+
+  const makeLink = (linkName: string, title: string) =>
+    `<a id="${linkName}_link" href="${router.href(`/ref/${linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${linkName}')">${escapeHtml(title)}</a>`
+
+  const makeSection = (id: string, label: string, links: string[]) =>
+    `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('${id}')">
+  <span>${label}</span><span id="api-chevron-${id}">${chevronRight}</span>
+</div>
+<div id="api-content-${id}" class="sidebar-collapsible-content">
+  ${links.join('\n  ')}
+</div>\n`
+
+  // Special expressions
+  const specialLinks = (byCategory['special-expression'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
+  if (specialLinks.length > 0)
+    html += makeSection('special-expressions', 'Special expressions', specialLinks)
+
+  // Core functions — everything except special-expression, shorthand, datatype
+  const coreCats = data.coreCategories.filter(c => c !== 'special-expression' && c !== 'shorthand' && c !== 'datatype')
+  const coreFnEntries: { title: string; linkName: string }[] = []
+  for (const cat of coreCats) {
+    coreFnEntries.push(...(byCategory[cat] ?? []))
+  }
+  coreFnEntries.sort((a, b) => a.title.localeCompare(b.title))
+  const coreFnLinks = coreFnEntries.map(e => makeLink(e.linkName, e.title))
+  if (coreFnLinks.length > 0)
+    html += makeSection('core-functions', 'Core functions', coreFnLinks)
+
+  // Effects
+  const effectLinks = Object.entries(data.effects).map(([key, r]) => {
+    const linkName = makeLinkName(r.category, key)
+    return { title: r.title, link: makeLink(linkName, r.title) }
+  }).sort((a, b) => a.title.localeCompare(b.title)).map(e => e.link)
+  if (effectLinks.length > 0)
+    html += makeSection('effects', 'Effects', effectLinks)
+
+  // Shorthands
+  const shorthandLinks = (byCategory['shorthand'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
+  if (shorthandLinks.length > 0)
+    html += makeSection('shorthands', 'Shorthands', shorthandLinks)
+
+  // Datatypes
+  const datatypeLinks = (byCategory['datatype'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
+  if (datatypeLinks.length > 0)
+    html += makeSection('datatypes', 'Datatypes', datatypeLinks)
+
+  // Render modules section with sub-sections per module
+  const byModule: Record<string, { key: string; fnName: string }[]> = {}
+  for (const key of Object.keys(data.modules)) {
+    const dotIdx = key.indexOf('.')
+    if (dotIdx === -1) continue
+    const moduleName = key.slice(0, dotIdx)
+    if (!byModule[moduleName]) byModule[moduleName] = []
+    byModule[moduleName].push({ key, fnName: key.slice(dotIdx + 1) })
+  }
+
+  let modulesHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('modules')">
+  <span>Modules</span><span id="api-chevron-modules">${chevronRight}</span>
+</div>
+<div id="api-content-modules" class="sidebar-collapsible-content">`
+
+  for (const moduleName of data.moduleCategories) {
+    const fns = byModule[moduleName]
+    if (!fns || fns.length === 0) continue
+    const sanitized = moduleName.replace(/\s+/g, '-')
+    const fnLinks = fns.map(e => {
+      const encodedKey = encodeURIComponent(e.key)
+      return `<a id="${encodedKey}_link" href="${router.href(`/ref/${encodedKey}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${encodedKey}')">${escapeHtml(e.fnName)}</a>`
+    }).join('\n    ')
+    modulesHtml += `
+  <div class="sidebar-collapsible-header" onclick="Playground.toggleModuleCategory('${escapeHtml(moduleName)}')">
+    <span>${escapeHtml(moduleName)}</span><span id="ns-chevron-${sanitized}">${chevronRight}</span>
+  </div>
+  <div id="ns-content-${sanitized}" class="sidebar-collapsible-content">
+    ${fnLinks}
+  </div>`
+  }
+
+  modulesHtml += '\n</div>'
+  html += modulesHtml
+
+  container.innerHTML = html
 }
 
 function onDocumentClick(event: Event) {
@@ -1532,9 +1622,7 @@ function addOutputElement(element: HTMLElement) {
 window.onload = async function () {
   renderShell()
   applyLayout()
-  elements.copyPrintlnBtn.addEventListener('click', () => {
-    void navigator.clipboard.writeText(elements.printlnContent.textContent ?? '')
-  })
+  populateSidebarApiSections()
   await initSnapshotStorage()
   await initPrograms()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
@@ -1692,67 +1780,60 @@ window.onload = async function () {
     if (handleSearchKeyDown(evt))
       return
 
+    // Note: io-pick modal has no close button, so Escape should not cancel it.
+    // User must click an item or use the Suspend option.
     if (pendingIoPick && elements.ioPickModal.style.display !== 'none') {
       if (evt.key === 'ArrowDown') {
         evt.preventDefault()
         evt.stopPropagation()
         const next = pendingIoPick.focusedIndex === null ? 0 : Math.min(pendingIoPick.focusedIndex + 1, pendingIoPick.itemCount - 1)
         setPickFocus(next)
+        return
       } else if (evt.key === 'ArrowUp') {
         evt.preventDefault()
         evt.stopPropagation()
         const prev = pendingIoPick.focusedIndex === null ? pendingIoPick.itemCount - 1 : Math.max(pendingIoPick.focusedIndex - 1, 0)
         setPickFocus(prev)
+        return
       } else if (evt.key === 'Escape') {
         evt.preventDefault()
         evt.stopPropagation()
         closeEffectHandlerMenus()
-        cancelIoPick()
-      } else {
-        evt.preventDefault()
-        evt.stopPropagation()
+        return
       }
-      return
     }
 
-    if (pendingIoConfirm && elements.ioConfirmModal.style.display !== 'none') {
-      if (evt.key === 'Escape') {
-        evt.preventDefault()
-        evt.stopPropagation()
-        closeEffectHandlerMenus()
-        submitIoConfirm(false)
-      } else if (evt.key === 'Enter') {
+    // Note: pendingIoConfirm has noClose: true, so Escape should not close it.
+    // User must explicitly click Yes/No or use the Suspend option.
+    if (pendingIoConfirm) {
+      if (evt.key === 'Enter') {
         evt.preventDefault()
         evt.stopPropagation()
         if (pendingIoConfirm.defaultValue !== undefined)
           submitIoConfirm(pendingIoConfirm.defaultValue)
-      } else {
-        evt.preventDefault()
-        evt.stopPropagation()
+        return
       }
-      return
     }
 
-    if (pendingReadline && elements.readlineModal.style.display !== 'none') {
-      evt.stopPropagation()
+    // Note: readline modal has noClose: true, so Escape should not cancel it.
+    // User must submit or use the Suspend option.
+    if (pendingReadline) {
       if (evt.key === 'Escape') {
         evt.preventDefault()
+        evt.stopPropagation()
         closeEffectHandlerMenus()
-        cancelReadline()
-      } else if (evt.ctrlKey || evt.metaKey) {
-        evt.preventDefault()
+        return
       }
-      return
     }
 
-    if (pendingPrintln && elements.printlnModal.style.display !== 'none') {
-      evt.preventDefault()
-      evt.stopPropagation()
+    if (pendingPrintln) {
       if (evt.key === 'Escape' || evt.key === 'Enter') {
+        evt.preventDefault()
+        evt.stopPropagation()
         closeEffectHandlerMenus()
         dismissPrintln()
+        return
       }
-      return
     }
 
     if (evt.ctrlKey) {
@@ -1797,17 +1878,21 @@ window.onload = async function () {
     if (evt.key === 'Escape') {
       closeMoreMenu()
       closeAddContextMenu()
-      if (elements.infoModal.style.display !== 'none') {
+      if (resolveInfoModal) {
         closeInfoModal()
-      } else if (elements.confirmModal.style.display !== 'none') {
+      } else if (resolveConfirmModal) {
         closeConfirmModal()
-      } else if (elements.checkpointModal.style.display !== 'none') {
+      } else if (currentCheckpointSnapshot !== null) {
         closeCheckpointModal()
-      } else if (currentSnapshot) {
-        if (snapshotPanelStack.length > 1) {
+      } else if (pendingIoConfirm || pendingIoPick || pendingReadline) {
+        // These modals have no close button, so Escape should not close them.
+        // Just close hamburger menus if open.
+        closeEffectHandlerMenus()
+      } else if (modalStack.length > 0) {
+        if (modalStack.length > 1) {
           slideBackSnapshotModal()
         } else {
-          closeSnapshotModal()
+          closeAllModals()
         }
       } else if (pendingEffectAction) {
         cancelEffectAction()
@@ -1816,19 +1901,19 @@ window.onload = async function () {
       }
       evt.preventDefault()
     }
-    if (evt.key === 'Enter' && elements.infoModal.style.display !== 'none') {
+    if (evt.key === 'Enter' && resolveInfoModal) {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && elements.confirmModal.style.display !== 'none') {
+    if (evt.key === 'Enter' && resolveConfirmModal) {
       evt.preventDefault()
-      elements.confirmModalOk.click()
+      closeConfirmModal()
     }
-    if (evt.key === 'Enter' && elements.checkpointModal.style.display !== 'none') {
+    if (evt.key === 'Enter' && currentCheckpointSnapshot !== null) {
       evt.preventDefault()
       closeCheckpointModal()
     }
-    if (evt.key === 'Enter' && pendingPrintln && elements.printlnModal.style.display !== 'none') {
+    if (evt.key === 'Enter' && pendingPrintln) {
       evt.preventDefault()
       dismissPrintln()
     }
@@ -1963,9 +2048,12 @@ function getDataFromUrl() {
 }
 
 function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
-  if (pendingIoPick || pendingIoConfirm || pendingPrintln) {
-    evt.preventDefault()
-    evt.stopPropagation()
+  if (pendingIoPick || pendingIoConfirm || pendingPrintln || pendingReadline) {
+    // A modal is open - prevent textarea from handling keys, but let the event
+    // bubble to the window handler which will process modal-specific actions.
+    if (['Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evt.key)) {
+      evt.preventDefault()
+    }
     return
   }
   const target = evt.target as HTMLTextAreaElement
@@ -2105,7 +2193,7 @@ function routeToPath(appPath: string): void {
     const linkName = path.slice('ref/'.length)
     dynPage.innerHTML = renderDocPage(linkName)
   } else if (path === 'about') {
-    dynPage.innerHTML = renderStartPage() // fallback to start for now
+    dynPage.innerHTML = renderAboutPage()
   } else {
     dynPage.innerHTML = renderStartPage()
   }
@@ -2380,8 +2468,9 @@ function snapshotLabel(snapshot: Snapshot): string {
 function buildBreadcrumbs(panel: HTMLElement) {
   const container = panel.querySelector('[data-ref="breadcrumbs"]') as HTMLElement
   container.innerHTML = ''
+  container.style.display = ''
 
-  snapshotPanelStack.forEach((entry, i) => {
+  modalStack.forEach((entry, i) => {
     if (i > 0) {
       const sep = document.createElement('span')
       sep.textContent = '›'
@@ -2389,7 +2478,7 @@ function buildBreadcrumbs(panel: HTMLElement) {
       container.appendChild(sep)
     }
 
-    const isLast = i === snapshotPanelStack.length - 1
+    const isLast = i === modalStack.length - 1
     const span = document.createElement('span')
     span.textContent = entry.label
     if (isLast) {
@@ -2401,14 +2490,24 @@ function buildBreadcrumbs(panel: HTMLElement) {
     }
     container.appendChild(span)
   })
+
 }
 
 function popToLevel(targetIndex: number) {
-  while (snapshotPanelStack.length > targetIndex + 1) {
-    const { panel } = snapshotPanelStack.pop()!
+  // Remove all panels above target immediately (no animation), keep the top one for animation
+  while (modalStack.length > targetIndex + 2) {
+    const { panel } = modalStack.pop()!
     panel.remove()
   }
-  currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
+  // Animate the top panel out to the right
+  if (modalStack.length > targetIndex + 1) {
+    const { panel } = modalStack.pop()!
+    panel.animate(
+      [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }],
+      { duration: 250, easing: 'ease' },
+    ).onfinish = () => { panel.remove() }
+  }
+  currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
 }
 
 const MAX_URL_LENGTH = 24 * 1024 // 24KB, arbitrary limit to avoid creating unshareable links
@@ -2476,8 +2575,11 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     suspendedEffectSection.style.display = 'none'
   }
 
-  // Share button — mark if snapshot URL would be too long
-  const shareBtn = ref('share-btn') as HTMLButtonElement
+  // Show Run button only for suspended snapshots
+  ref('resume-btn').style.display = snapshot.effectName ? 'inline-flex' : 'none'
+
+  // Mark share menu item if snapshot URL would be too long
+  const shareBtn = ref('share-btn')
   const encodedLength = `${location.origin}${location.pathname}?snapshot=${encodeSnapshot(snapshot)}`.length
   if (encodedLength > MAX_URL_LENGTH) {
     shareBtn.style.opacity = '0.4'
@@ -2594,48 +2696,196 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     })
   }
 
-  // Copy JSON button
-  ref('copy-json-btn').addEventListener('click', () => {
-    void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2))
-  })
 }
 
-function createSnapshotPanel(snapshot: Snapshot, isRoot: boolean, error?: DvalaErrorJSON): HTMLElement {
+function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLElement {
   const clone = elements.snapshotPanelTemplate.content.cloneNode(true) as DocumentFragment
   const panel = clone.firstElementChild as HTMLElement
 
-  // Show/hide appropriate button
-  if (isRoot) {
-    ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'none'
-  } else {
-    ;(panel.querySelector('[data-ref="close-btn"]') as HTMLElement).style.display = 'none'
-    ;(panel.querySelector('[data-ref="back-btn"]') as HTMLElement).style.display = 'flex'
-    panel.style.position = 'absolute'
-    panel.style.top = '0'
-    panel.style.left = '0'
-    panel.style.right = '0'
-    panel.style.bottom = '0'
-    panel.style.zIndex = String(snapshotPanelStack.length)
-    panel.style.display = 'none'
-  }
+  const q = (ref: string) => panel.querySelector(`[data-ref="${ref}"]`) as HTMLElement
+
+  q('resume-btn').addEventListener('click', () => { void resumeSnapshot() })
+
+  // More menu toggle
+  const moreMenu = q('more-menu')
+  q('more-btn').addEventListener('click', () => {
+    moreMenu.style.display = moreMenu.style.display === 'flex' ? 'none' : 'flex'
+  })
+
+  // More menu actions
+  q('save-btn').addEventListener('click', () => {
+    moreMenu.style.display = 'none'
+    const snap = currentSnapshot
+    if (!snap) return
+    pushSavePanel((name: string) => {
+      const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snap.id)
+      existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), locked: false, name: name || undefined })
+      setSavedSnapshots(existing)
+      notifySnapshotAdded()
+      populateSnapshotsList({ animateNewSaved: true })
+      showToast(`Snapshot saved (${existing.length} total)`)
+    })
+  })
+  q('share-btn').addEventListener('click', () => { moreMenu.style.display = 'none'; shareSnapshot() })
+  q('download-btn').addEventListener('click', () => { moreMenu.style.display = 'none'; downloadSnapshot() })
+  q('copy-json-btn').addEventListener('click', () => {
+    moreMenu.style.display = 'none'
+    if (currentSnapshot) void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
+  })
 
   populateSnapshotPanel(panel, snapshot, error)
   return panel
 }
 
-function pushCheckpointPanel(snapshot: Snapshot) {
-  currentSnapshot = snapshot
-  const panel = createSnapshotPanel(snapshot, false)
-  elements.snapshotPanelContainer.appendChild(panel)
-  const label = snapshotLabel(snapshot)
-  snapshotPanelStack.push({ panel, snapshot, label })
-  buildBreadcrumbs(panel)
+/** Push a panel onto the modal stack. Sub-panels slide in from the right. */
+function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEffect?: boolean) {
+  if (snapshot !== undefined) currentSnapshot = snapshot
+  const isRoot = modalStack.length === 0
+
+  // If a close animation is in progress, cancel it and do instant swap
+  const isReplacement = isRoot && overlayCloseAnimation !== null
+  if (isReplacement) {
+    overlayCloseAnimation!.cancel()
+    overlayCloseAnimation = null
+    elements.snapshotPanelContainer.innerHTML = ''
+    elements.snapshotPanelContainer.style.opacity = '1'
+  }
+
+  if (!isRoot) {
+    panel.style.position = 'absolute'
+    panel.style.top = '0'
+    panel.style.left = '0'
+    panel.style.right = '0'
+    panel.style.minHeight = `${elements.snapshotPanelContainer.offsetHeight}px`
+    panel.style.zIndex = String(modalStack.length + 1)
+  }
 
   panel.style.display = 'flex'
-  panel.animate(
-    [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
-    { duration: 250, easing: 'ease', fill: 'forwards' },
-  )
+  elements.snapshotPanelContainer.appendChild(panel)
+  modalStack.push({ panel, label, snapshot: snapshot ?? (currentSnapshot ?? null), isEffect })
+  buildBreadcrumbs(panel)
+
+  if (!isRoot) {
+    // Slide in from right
+    panel.animate(
+      [{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }],
+      { duration: 250, easing: 'ease', fill: 'forwards' },
+    )
+  } else {
+    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : ''
+    elements.snapshotModal.style.display = 'flex'
+    // Fade in (unless replacing, then instant)
+    if (!isReplacement) {
+      const container = elements.snapshotPanelContainer
+      container.style.opacity = '0'
+      container.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' })
+        .onfinish = () => { container.style.opacity = '1' }
+    }
+  }
+}
+
+/** Build a standard modal panel: modal-header with breadcrumbs + optional hamburger, body div, footer div. */
+function createModalPanel(options?: {
+  hamburgerItems?: { label: string; action: () => void }[]
+  noClose?: boolean
+  onClose?: () => void
+}): { panel: HTMLElement; body: HTMLElement; footer: HTMLElement } {
+  const panel = document.createElement('div')
+  panel.className = 'modal-panel'
+
+  const header = document.createElement('div')
+  header.className = 'modal-header'
+
+  const crumbs = document.createElement('div')
+  crumbs.setAttribute('data-ref', 'breadcrumbs')
+  crumbs.className = 'snapshot-panel__breadcrumbs'
+  header.appendChild(crumbs)
+
+  if (options?.hamburgerItems?.length) {
+    const moreWrap = document.createElement('div')
+    moreWrap.className = 'modal-header__more'
+
+    const moreBtn = document.createElement('a')
+    moreBtn.className = 'modal-header__more-btn'
+    moreBtn.innerHTML = hamburgerIcon
+
+    const menu = document.createElement('div')
+    menu.className = 'modal-more-menu'
+
+    options.hamburgerItems.forEach(item => {
+      const a = document.createElement('a')
+      a.textContent = item.label
+      a.addEventListener('click', () => {
+        menu.style.display = 'none'
+        item.action()
+      })
+      menu.appendChild(a)
+    })
+
+    moreBtn.addEventListener('click', () => {
+      closeEffectHandlerMenus()
+      menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex'
+    })
+
+    moreWrap.appendChild(moreBtn)
+    moreWrap.appendChild(menu)
+    header.appendChild(moreWrap)
+  }
+
+  if (!options?.noClose) {
+    const closeBtn = document.createElement('a')
+    closeBtn.className = 'modal-header__close-btn'
+    closeBtn.textContent = '✕'
+    closeBtn.title = 'Close'
+    closeBtn.addEventListener('click', () => options?.onClose ? options.onClose() : popModal())
+    header.appendChild(closeBtn)
+  }
+
+  panel.appendChild(header)
+
+  const body = document.createElement('div')
+  body.className = 'modal-panel__body'
+  panel.appendChild(body)
+
+  const footer = document.createElement('div')
+  footer.className = 'modal-panel__footer'
+  panel.appendChild(footer)
+
+  return { panel, body, footer }
+}
+
+/** Slide in a "Save As" form panel within the snapshot modal. */
+function pushSavePanel(onSave: (name: string) => void) {
+  const panel = document.createElement('div')
+  panel.className = 'snapshot-panel fancy-scroll'
+  panel.innerHTML = `
+    <div class="modal-header">
+      <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
+    </div>
+    <div class="snapshot-panel__body" style="display:flex;flex-direction:column;gap:var(--space-2);">
+      <label class="snapshot-panel__section-label">Name (optional)</label>
+      <input type="text" class="readline-input" placeholder="My snapshot…" style="width:100%;box-sizing:border-box;">
+    </div>
+    <div class="snapshot-panel__buttons">
+      <button class="button cancel-btn">Cancel</button>
+      <button class="button button--primary save-btn" style="margin-left:auto;">Save</button>
+    </div>
+  `
+  const input = panel.querySelector('input') as HTMLInputElement
+  const doSave = () => { onSave(input.value.trim()); slideBackSnapshotModal() }
+  panel.querySelector('.cancel-btn')!.addEventListener('click', () => slideBackSnapshotModal())
+  panel.querySelector('.save-btn')!.addEventListener('click', doSave)
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSave()
+    else if (e.key === 'Escape') slideBackSnapshotModal()
+  })
+  pushPanel(panel, 'Save As')
+  setTimeout(() => input.focus(), 260)
+}
+
+function pushCheckpointPanel(snapshot: Snapshot) {
+  const panel = createSnapshotPanel(snapshot)
+  pushPanel(panel, snapshotLabel(snapshot), snapshot)
 }
 
 function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
@@ -2646,46 +2896,72 @@ function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
 let resolveSnapshotModal: (() => void) | null = null
 
 export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
-  currentSnapshot = snapshot
-  elements.snapshotPanelContainer.innerHTML = ''
-  snapshotPanelStack.length = 0
-
   const error = getSnapshotError(snapshot)
-  const panel = createSnapshotPanel(snapshot, true, error)
-  elements.snapshotPanelContainer.appendChild(panel)
-  snapshotPanelStack.push({ panel, snapshot, label: 'Snapshot' })
-  buildBreadcrumbs(panel)
+  const panel = createSnapshotPanel(snapshot, error)
 
-  elements.snapshotModal.style.display = 'flex'
+  // If an effect panel is at the top of the stack, replace it with the snapshot panel.
+  // Uses instant swap to avoid jarring transitions.
+  const top = modalStack[modalStack.length - 1]
+  if (top?.isEffect) {
+    modalStack.pop()
+    top.panel.remove()
+  }
 
+  pushPanel(panel, 'Snapshot', snapshot)
   return new Promise<void>(resolve => {
     resolveSnapshotModal = resolve
   })
 }
 
 export function slideBackSnapshotModal() {
-  if (snapshotPanelStack.length <= 1)
-    return
-
-  const { panel } = snapshotPanelStack.pop()!
-  panel.animate(
-    [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }],
-    { duration: 250, easing: 'ease' },
-  ).onfinish = () => {
-    panel.remove()
-  }
-
-  currentSnapshot = snapshotPanelStack[snapshotPanelStack.length - 1]?.snapshot ?? null
+  if (modalStack.length <= 1) return
+  popModal()
 }
 
-export function closeSnapshotModal() {
+/** Pop the current panel. Last panel fades out; sub-panels slide out. */
+export function popModal() {
+  if (modalStack.length === 0) return
+
+  if (modalStack.length === 1) {
+    // Clear state immediately so follow-up effects see a clean stack
+    const dyingPanel = modalStack[0]!.panel
+    modalStack.length = 0
+    currentSnapshot = null
+    resolveSnapshotModal?.()
+    resolveSnapshotModal = null
+
+    // Fade out, then hide overlay
+    const container = elements.snapshotPanelContainer
+    overlayCloseAnimation = container.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease' })
+    overlayCloseAnimation.onfinish = () => {
+      overlayCloseAnimation = null
+      elements.snapshotModal.style.display = 'none'
+      container.style.opacity = ''
+      container.style.maxWidth = ''
+      container.innerHTML = ''
+      dyingPanel.remove()
+    }
+    return
+  }
+
+  // Slide out to the right
+  const { panel } = modalStack.pop()!
+  panel.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: 250, easing: 'ease' })
+    .onfinish = () => { panel.remove() }
+  currentSnapshot = modalStack[modalStack.length - 1]?.snapshot ?? null
+}
+
+export function closeAllModals() {
   elements.snapshotModal.style.display = 'none'
+  elements.snapshotPanelContainer.style.opacity = ''
+  elements.snapshotPanelContainer.style.maxWidth = ''
   elements.snapshotPanelContainer.innerHTML = ''
-  snapshotPanelStack.length = 0
+  modalStack.length = 0
   currentSnapshot = null
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
 }
+export const closeSnapshotModal = closeAllModals
 
 export function openImportSnapshotModal() {
   const input = document.createElement('input')
@@ -2756,9 +3032,20 @@ function dismissToast(toast: HTMLElement) {
 let resolveInfoModal: (() => void) | null = null
 
 export function showInfoModal(title: string, message: string): Promise<void> {
-  elements.infoModalTitle.textContent = title
-  elements.infoModalMessage.textContent = message
-  elements.infoModal.style.display = 'flex'
+  const { panel, body, footer } = createModalPanel()
+
+  const messageEl = document.createElement('div')
+  messageEl.className = 'modal-body-row'
+  messageEl.textContent = message
+  body.appendChild(messageEl)
+
+  const okBtn = document.createElement('button')
+  okBtn.className = 'button button--primary'
+  okBtn.textContent = 'OK'
+  okBtn.addEventListener('click', () => closeInfoModal())
+  footer.appendChild(okBtn)
+
+  pushPanel(panel, title)
 
   return new Promise<void>(resolve => {
     resolveInfoModal = resolve
@@ -2766,22 +3053,32 @@ export function showInfoModal(title: string, message: string): Promise<void> {
 }
 
 export function closeInfoModal() {
-  elements.infoModal.style.display = 'none'
   resolveInfoModal?.()
   resolveInfoModal = null
+  popModal()
 }
 
 let resolveConfirmModal: (() => void) | null = null
 
 export function showConfirmModal(title: string, message: string, onConfirm: () => void | Promise<void>): Promise<void> {
-  elements.confirmModalTitle.textContent = title
-  elements.confirmModalMessage.textContent = message
-  elements.confirmModalCheckboxRow.style.display = 'none'
-  elements.confirmModalOk.onclick = () => {
+  const { panel, body, footer } = createModalPanel()
+
+  const messageEl = document.createElement('div')
+  messageEl.className = 'modal-body-row'
+  messageEl.textContent = message
+  body.appendChild(messageEl)
+
+  const okBtn = document.createElement('button')
+  okBtn.className = 'button button--primary'
+  okBtn.textContent = 'OK'
+  okBtn.addEventListener('click', () => {
     closeConfirmModal()
     void onConfirm()
-  }
-  elements.confirmModal.style.display = 'flex'
+  })
+
+  footer.appendChild(okBtn)
+
+  pushPanel(panel, title)
 
   return new Promise<void>(resolve => {
     resolveConfirmModal = resolve
@@ -3062,9 +3359,9 @@ export function closeImportResultModal() {
 }
 
 export function closeConfirmModal() {
-  elements.confirmModal.style.display = 'none'
   resolveConfirmModal?.()
   resolveConfirmModal = null
+  popModal()
 }
 
 let currentCheckpointSnapshot: Snapshot | null = null
@@ -3073,34 +3370,42 @@ let resolveCheckpointModal: (() => void) | null = null
 export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
   currentCheckpointSnapshot = snapshot
 
+  const { panel, body, footer } = createModalPanel()
+
   // Message
-  elements.checkpointModalMessage.textContent = snapshot.message || '(no message)'
+  const messageEl = document.createElement('div')
+  messageEl.className = 'modal-body-row'
+  messageEl.textContent = snapshot.message || '(no message)'
+  body.appendChild(messageEl)
 
   // Meta
-  elements.checkpointModalMeta.innerHTML = ''
+  const metaEl = document.createElement('div')
+  metaEl.className = 'modal-meta-row'
   if (snapshot.meta === undefined || snapshot.meta === null) {
     const empty = document.createElement('span')
     empty.textContent = '(no metadata)'
     empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    elements.checkpointModalMeta.appendChild(empty)
+    metaEl.appendChild(empty)
   } else {
     const code = document.createElement('code')
     code.textContent = JSON.stringify(snapshot.meta, null, 2)
     code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
-    elements.checkpointModalMeta.appendChild(code)
+    metaEl.appendChild(code)
   }
+  body.appendChild(metaEl)
 
   // Technical info
-  elements.checkpointModalTech.innerHTML = ''
+  const techEl = document.createElement('div')
+  techEl.className = 'modal-meta-row modal-body-row--last'
   const pad = (n: number) => String(n).padStart(2, '0')
   const d = new Date(snapshot.timestamp)
-  const checkpointBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
+  const bytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
   const techRows: [string, string][] = [
     ['ID', snapshot.id],
     ['Index', String(snapshot.index)],
     ['Run ID', snapshot.executionId],
     ['Timestamp', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`],
-    ['Size', checkpointBytes >= 1024 * 1024 ? `${(checkpointBytes / (1024 * 1024)).toFixed(2)} MB` : `${(checkpointBytes / 1024).toFixed(2)} KB`],
+    ['Size', bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`],
   ]
   techRows.forEach(([label, value]) => {
     const row = makeArgRow(value)
@@ -3108,10 +3413,21 @@ export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
     labelEl.textContent = label
     labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
     row.insertBefore(labelEl, row.firstChild)
-    elements.checkpointModalTech.appendChild(row)
+    techEl.appendChild(row)
+  })
+  body.appendChild(techEl)
+
+  const resumeBtn = document.createElement('button')
+  resumeBtn.className = 'button button--primary'
+  resumeBtn.textContent = 'Resume'
+  resumeBtn.addEventListener('click', () => {
+    closeCheckpointModal()
+    void resumeSnapshot()
   })
 
-  elements.checkpointModal.style.display = 'flex'
+  footer.appendChild(resumeBtn)
+
+  pushPanel(panel, 'Checkpoint')
 
   return new Promise<void>(resolve => {
     resolveCheckpointModal = resolve
@@ -3119,10 +3435,10 @@ export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
 }
 
 export function closeCheckpointModal() {
-  elements.checkpointModal.style.display = 'none'
   currentCheckpointSnapshot = null
   resolveCheckpointModal?.()
   resolveCheckpointModal = null
+  popModal()
 }
 
 const MAX_TERMINAL_SNAPSHOTS = 3
@@ -3155,18 +3471,40 @@ export async function clearTerminalSnapshot(index: number): Promise<void> {
 }
 
 function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
-  elements.readlinePrompt.textContent = 'Enter a name for this snapshot'
-  elements.readlinePrompt.style.display = 'block'
-  elements.readlineInput.value = ''
-  elements.readlineModal.style.display = 'flex'
-  elements.readlineInput.focus()
-  pendingReadline = {
-    resolve: (value: string | null) => {
-      if (value !== null) {
-        void onSave(value)
-      }
-    },
+  const { panel, body, footer } = createModalPanel()
+
+  const promptEl = document.createElement('div')
+  promptEl.className = 'modal-body-row'
+  promptEl.textContent = 'Enter a name for this snapshot'
+  body.appendChild(promptEl)
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.className = 'readline-input'
+  input.placeholder = 'My snapshot…'
+  input.style.cssText = 'width:100%; box-sizing:border-box;'
+  body.appendChild(input)
+
+  const doSave = () => {
+    const name = input.value.trim()
+    popModal()
+    void onSave(name)
   }
+
+  const saveBtn = document.createElement('button')
+  saveBtn.className = 'button button--primary'
+  saveBtn.textContent = 'Save'
+  saveBtn.addEventListener('click', doSave)
+
+  footer.appendChild(saveBtn)
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSave()
+    else if (e.key === 'Escape') popModal()
+  })
+
+  pushPanel(panel, 'Save As')
+  setTimeout(() => input.focus(), 260)
 }
 
 export function saveCheckpoint() {
@@ -3603,7 +3941,7 @@ export function toggleEffectHandlerMenu(id: string) {
   const menu = document.getElementById(id)
   if (!menu)
     return
-  const wasHidden = menu.style.display === 'none'
+  const wasHidden = menu.style.display !== 'flex'
   closeEffectHandlerMenus()
   if (wasHidden)
     menu.style.display = 'flex'
@@ -3637,20 +3975,36 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
     const options = ctx.args[1] as { default?: boolean } | undefined
     const defaultValue = options?.default
 
-    elements.ioConfirmQuestion.textContent = question
+    const { panel, body, footer } = createModalPanel({
+      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
+      noClose: true,
+    })
 
-    // Only highlight a button when a default is explicitly set
-    elements.ioConfirmNoBtn.style.color = defaultValue === false ? '#4ec9b0' : ''
-    elements.ioConfirmYesBtn.style.color = defaultValue === true ? '#4ec9b0' : ''
+    const questionEl = document.createElement('div')
+    questionEl.className = 'modal-body-row'
+    questionEl.textContent = question
+    body.appendChild(questionEl)
 
-    elements.ioConfirmModal.style.display = 'flex'
+    const noBtn = document.createElement('button')
+    noBtn.className = 'button'
+    noBtn.textContent = 'No'
+
+    const yesBtn = document.createElement('button')
+    yesBtn.className = 'button button--primary'
+    yesBtn.textContent = 'Yes'
+
+    footer.appendChild(noBtn)
+    footer.appendChild(yesBtn)
+
+    pushPanel(panel, 'Confirm', undefined, true)
+
     pendingIoConfirm = {
       resolve: (value: boolean) => {
+        popModal()
         ctx.resume(value as Any)
         resolve()
       },
       suspend: () => {
-        elements.ioConfirmModal.style.display = 'none'
         pendingIoConfirm = null
         ctx.suspend()
         resolve()
@@ -3658,16 +4012,17 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
       },
       defaultValue,
     }
+
+    noBtn.addEventListener('click', () => submitIoConfirm(false))
+    yesBtn.addEventListener('click', () => submitIoConfirm(true))
   })
 }
 
 export function submitIoConfirm(value: boolean) {
   if (!pendingIoConfirm)
     return
-  elements.ioConfirmModal.style.display = 'none'
-  const p = pendingIoConfirm
+  pendingIoConfirm.resolve(value)
   pendingIoConfirm = null
-  p.resolve(value)
   focusDvalaCode()
 }
 
@@ -3678,19 +4033,56 @@ export function submitIoConfirm(value: boolean) {
 function readlineHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
-    elements.readlinePrompt.textContent = prompt
-    elements.readlinePrompt.style.display = prompt ? 'block' : 'none'
-    elements.readlineInput.value = ''
-    elements.readlineModal.style.display = 'flex'
-    elements.readlineInput.focus()
+
+    const { panel, body, footer } = createModalPanel({
+      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
+      noClose: true,
+    })
+
+    if (prompt) {
+      const promptEl = document.createElement('div')
+      promptEl.className = 'modal-body-row'
+      promptEl.textContent = prompt
+      body.appendChild(promptEl)
+    }
+
+    const input = document.createElement('textarea')
+    input.rows = 3
+    input.className = 'readline-input'
+    body.appendChild(input)
+    readlineInputEl = input
+
+    const submitBtn = document.createElement('button')
+    submitBtn.className = 'button button--primary'
+    submitBtn.textContent = 'Submit'
+    submitBtn.addEventListener('click', () => submitReadline())
+
+    footer.appendChild(submitBtn)
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) {
+          // Allow modifier+Enter to insert newline (default behavior)
+          return
+        }
+        e.preventDefault()
+        e.stopPropagation()
+        submitReadline()
+      }
+    })
+
+    pushPanel(panel, 'Input', undefined, true)
+    input.focus()
+
     pendingReadline = {
       resolve: (value: string | null) => {
+        popModal()
         ctx.resume(value)
         resolve()
       },
       suspend: () => {
-        elements.readlineModal.style.display = 'none'
         pendingReadline = null
+        readlineInputEl = null
         ctx.suspend()
         resolve()
         focusDvalaCode()
@@ -3702,19 +4094,19 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
 export function submitReadline() {
   if (!pendingReadline)
     return
-  const value = elements.readlineInput.value
-  elements.readlineModal.style.display = 'none'
+  const value = readlineInputEl?.value ?? ''
   pendingReadline.resolve(value)
   pendingReadline = null
+  readlineInputEl = null
   focusDvalaCode()
 }
 
 export function cancelReadline() {
   if (!pendingReadline)
     return
-  elements.readlineModal.style.display = 'none'
   pendingReadline.resolve(null)
   pendingReadline = null
+  readlineInputEl = null
   focusDvalaCode()
 }
 
@@ -3726,15 +4118,44 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     const value = ctx.args[0]
     const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-    elements.printlnContent.textContent = text
-    elements.printlnModal.style.display = 'flex'
+
+    const { panel, body, footer } = createModalPanel({
+      hamburgerItems: [{ label: 'Suspend', action: () => suspendCurrentEffectHandler() }],
+      onClose: () => dismissPrintln(),
+    })
+
+    const outputWrap = document.createElement('div')
+    outputWrap.className = 'println-output'
+
+    const pre = document.createElement('pre')
+    pre.className = 'println-content'
+    pre.textContent = text
+    outputWrap.appendChild(pre)
+
+    const copyBtn = document.createElement('span')
+    copyBtn.className = 'println-copy-btn'
+    copyBtn.innerHTML = copyIcon
+    copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
+    outputWrap.appendChild(copyBtn)
+
+    body.appendChild(outputWrap)
+
+    const okBtn = document.createElement('button')
+    okBtn.className = 'button button--primary'
+    okBtn.textContent = 'OK'
+    okBtn.addEventListener('click', () => dismissPrintln())
+
+    footer.appendChild(okBtn)
+
+    pushPanel(panel, 'Output', undefined, true)
+
     pendingPrintln = {
       resolve: () => {
+        popModal()
         ctx.resume(value as Any)
         resolve()
       },
       suspend: () => {
-        elements.printlnModal.style.display = 'none'
         pendingPrintln = null
         ctx.suspend()
         resolve()
@@ -3758,7 +4179,6 @@ async function printHandler(ctx: EffectContext): Promise<void> {
 export function dismissPrintln() {
   if (!pendingPrintln)
     return
-  elements.printlnModal.style.display = 'none'
   pendingPrintln.resolve()
   pendingPrintln = null
   focusDvalaCode()
@@ -4029,6 +4449,7 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
       showSettingsTab(tab)
     }
     if (id === 'saved-programs-page') {
+      populateSavedProgramsList()
       const indicator = document.getElementById('programs-nav-indicator')
       if (indicator) indicator.style.display = 'none'
       const navLink = document.getElementById('saved-programs-page_link')
@@ -4103,6 +4524,14 @@ export function copyCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
   void navigator.clipboard.writeText(code)
   showToast('Code copied to clipboard')
+}
+
+export function loadEncodedCode(encodedCode: string) {
+  const code = decodeURIComponent(atob(encodedCode))
+  setDvalaCode(code, true, 'top')
+  showToast('Code loaded in editor')
+  saveState({ 'focused-panel': 'dvala-code' })
+  applyState()
 }
 
 export function setPlayground(name: string, encodedExample: string) {

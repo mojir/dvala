@@ -119,7 +119,9 @@ function write404Page() {
     <script>
       // GitHub Pages SPA routing: encode the path as a query param and redirect to index.html
       // pathSegmentsToKeep=1 keeps the /dvala/ repo prefix on GitHub Pages
-      var pathSegmentsToKeep = 1
+      var appRoutes = ['about','tutorials','examples','core','modules','ref','saved','snapshots','settings']
+      var firstSeg = window.location.pathname.split('/').filter(Boolean)[0]
+      var pathSegmentsToKeep = (firstSeg && appRoutes.indexOf(firstSeg) !== -1) ? 0 : 1
       var l = window.location
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +

@@ -9,7 +9,7 @@ const dvala = createDvala({ debug: false })
 export function getCliFunctionExamples(fmt: Colorizer, reference: Reference) {
   const { examples } = reference
   return examples
-    .map(example => example.trim())
+    .map(example => (typeof example === 'string' ? example : example.code).trim())
     .map(example => {
       // eslint-disable-next-line no-console
       const oldLog = console.log

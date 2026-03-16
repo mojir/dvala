@@ -598,8 +598,10 @@ describe('auto: example determinism (core)', () => {
 
     const docs = expr.docs
 
-    for (const [i, example] of docs.examples.entries()) {
+    for (const [i, entry] of docs.examples.entries()) {
+      const example = typeof entry === 'string' ? entry : entry.code
       it(`${name} example ${i + 1} is deterministic`, () => {
+        if (typeof entry !== 'string') return
         let result1: unknown, result2: unknown
         let threw1 = false
         let threw2 = false
@@ -636,8 +638,10 @@ describe('auto: example determinism (modules)', () => {
         if (skipDeterminismTests.has(fnName))
           continue
 
-        for (const [i, example] of docs.examples.entries()) {
+        for (const [i, entry] of docs.examples.entries()) {
+          const example = typeof entry === 'string' ? entry : entry.code
           it(`${mod.name}.${fnName} example ${i + 1} is deterministic`, () => {
+            if (typeof entry !== 'string') return
             let result1: unknown, result2: unknown
             let threw1 = false
             let threw2 = false

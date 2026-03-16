@@ -5,6 +5,7 @@
  */
 
 import type { ReferenceData } from '../../../common/referenceData'
+import { makeLinkName } from '../../../reference'
 import { href } from '../router'
 
 declare global {
@@ -68,7 +69,7 @@ export function renderSidebar(currentPath: string): string {
 function renderNavItem(path: string, label: string, currentPath: string): string {
   const isActive = currentPath === path || (path !== '/' && currentPath.startsWith(path))
   const activeClass = isActive ? ' sidebar__nav-item--active' : ''
-  return `<li class="sidebar__nav-item${activeClass}"><a class="sidebar__link" href="${href(path)}">${label}</a></li>`
+  return `<li class="sidebar__nav-item${activeClass}"><a class="sidebar__link" href="${href(path)}" onclick="event.preventDefault();Playground.navigate('${path}')">${label}</a></li>`
 }
 
 function renderCoreSections(data: ReferenceData, currentPath: string): string {
@@ -78,8 +79,8 @@ function renderCoreSections(data: ReferenceData, currentPath: string): string {
     const cat = ref.category
     if (!byCategory[cat]) byCategory[cat] = []
     // linkName comes from SearchEntry; derive it the same way: category-title
-    const linkName = encodeURIComponent(`${ref.category}-${key}`)
-    byCategory[cat].push({ linkName, title: key })
+    const linkName = makeLinkName(ref.category, key)
+    byCategory[cat].push({ linkName, title: ref.title })
   }
 
   const sections: string[] = []

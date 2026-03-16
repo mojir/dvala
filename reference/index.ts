@@ -1,5 +1,5 @@
 import type { SpecialExpressionName } from '../src/builtin'
-import type { BuiltinNormalExpressions, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
+import type { BuiltinNormalExpressions, ExampleEntry, FunctionDocs, SpecialExpressionDocs } from '../src/builtin/interface'
 import type { DvalaModule } from '../src/builtin/modules/interface'
 import type { ApiName, ArrayApiName, AssertionApiName, BitwiseApiName, Category, CollectionApiName, CoreApiName, CoreNormalExpressionName, DataType, FunctionalApiName, MathApiName, MetaApiName, MiscApiName, ModuleExpressionName, ObjectApiName, PredicateApiName, RegularExpressionApiName, SequenceApiName, StringApiName, VectorApiName } from './api'
 import { specialExpressions } from '../src/builtin'
@@ -165,7 +165,7 @@ interface Variant {
 export interface CommonReference<T extends Category> {
   title: string
   category: T
-  examples: string[]
+  examples: ExampleEntry[]
   description: string
   seeAlso?: string[]
 }
@@ -324,6 +324,11 @@ function sortByCategory<T extends Record<string, Reference>>(ref: T): T {
   ) as T
 }
 
+/** Build a URL-safe linkName. Replaces %2F (slash) with ~ to avoid path-separator issues. */
+export function makeLinkName(category: string, key: string): string {
+  return encodeURIComponent(`${category}-${key}`).replace(/%2F/gi, '~')
+}
+
 export function getLinkName(reference: Reference): string {
-  return encodeURIComponent(`${reference.category}-${reference.title}`)
+  return makeLinkName(reference.category, reference.title)
 }

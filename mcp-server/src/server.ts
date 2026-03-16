@@ -88,7 +88,7 @@ function formatFunctionDoc(ref: FunctionReference): string {
     lines.push('## Examples')
     for (const example of ref.examples) {
       lines.push('```dvala')
-      lines.push(example.trim())
+      lines.push((typeof example === 'string' ? example : example.code).trim())
       lines.push('```')
       lines.push('')
     }
@@ -134,7 +134,7 @@ function formatCustomDoc(ref: CustomReference): string {
     lines.push('## Examples')
     for (const example of ref.examples) {
       lines.push('```dvala')
-      lines.push(example.trim())
+      lines.push((typeof example === 'string' ? example : example.code).trim())
       lines.push('```')
       lines.push('')
     }
@@ -183,7 +183,7 @@ function formatEffectDoc(ref: EffectReference): string {
     lines.push('## Examples')
     for (const example of ref.examples) {
       lines.push('```dvala')
-      lines.push(example.trim())
+      lines.push((typeof example === 'string' ? example : example.code).trim())
       lines.push('```')
       lines.push('')
     }
@@ -208,7 +208,7 @@ function formatShorthandDoc(ref: ShorthandReference): string {
     lines.push('## Examples')
     for (const example of ref.examples) {
       lines.push('```dvala')
-      lines.push(example.trim())
+      lines.push((typeof example === 'string' ? example : example.code).trim())
       lines.push('```')
       lines.push('')
     }
@@ -231,7 +231,7 @@ function formatDatatypeDoc(ref: DatatypeReference): string {
     lines.push('## Examples')
     for (const example of ref.examples) {
       lines.push('```dvala')
-      lines.push(example.trim())
+      lines.push((typeof example === 'string' ? example : example.code).trim())
       lines.push('```')
       lines.push('')
     }

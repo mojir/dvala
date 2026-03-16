@@ -21,7 +21,7 @@ export function generateDocString(reference: DocStringSource): string {
       ${argStrings(reference).join('\n      ')}
 
     Examples:
-${reference.examples.map(example => smartTrim(example, 4)).join('\n\n')}`)
+${reference.examples.map(example => smartTrim(typeof example === 'string' ? example : example.code, 4)).join('\n\n')}`)
 }
 
 function isEffectRef(ref: DocStringSource): ref is EffectReference {
