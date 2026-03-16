@@ -78,7 +78,7 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, effectNameMatchesPattern, findMatchingHandlers, generateUUID, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, effectNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -2466,6 +2466,17 @@ function dispatchHostHandler(
         settled = true
         outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, value, found.index) }
       },
+      halt: (value: Any = null) => {
+        assertNotSettled('halt')
+        outcome = {
+          kind: 'throw',
+          error: new HaltSignal(
+            value,
+            snapshotState ? snapshotState.snapshots : [],
+            snapshotState ? snapshotState.nextSnapshotIndex : 0,
+          ),
+        }
+      },
     }
 
     const handlerResult = handler(ctx)
@@ -2473,7 +2484,7 @@ function dispatchHostHandler(
     if (!(handlerResult instanceof Promise)) {
       // Synchronous handler — outcome must already be set
       if (!outcome) {
-        throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), or next()`, sourceCodeInfo)
+        throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
       }
       return resolveOutcome(outcome, index + 1)
     }
@@ -2489,7 +2500,7 @@ function dispatchHostHandler(
     return handlerResult.then(
       () => {
         if (!outcome) {
-          throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), or next()`, sourceCodeInfo)
+          throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
         }
         return resolveOutcome(outcome, index + 1)
       },
@@ -2498,7 +2509,7 @@ function dispatchHostHandler(
           // Already settled — return that result, ignore the rejection
           return resolveOutcome(outcome, index + 1)
         }
-        if (isSuspensionSignal(e) || isResumeFromSignal(e)) {
+        if (isSuspensionSignal(e) || isResumeFromSignal(e) || isHaltSignal(e)) {
 
           throw e
         }
@@ -3680,9 +3691,9 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       }
     }
   } catch (error) {
-    // SuspensionSignal must propagate out of tick to the effect trampoline loop
+    // SuspensionSignal and HaltSignal must propagate out of tick to the effect trampoline loop
     // (runEffectLoop).
-    if (isSuspensionSignal(error)) {
+    if (isSuspensionSignal(error) || isHaltSignal(error)) {
 
       throw error
     }
@@ -3970,11 +3981,15 @@ async function retriggerParallelGroup(
         })
         return { index: currentBranchIndex, result: { type: 'suspended', snapshot } }
       }
+      if (isHaltSignal(error)) {
+        parallelAbort.abort()
+        return { index: currentBranchIndex, result: { type: 'halted', value: error.value } }
+      }
       const err = error instanceof DvalaError ? error : new DvalaError(`${error}`, undefined)
       return { index: currentBranchIndex, result: { type: 'error', error: err } }
     }
     const result = await runEffectLoop(firstStep, handlers, effectSignal, snapshotState, undefined, deserializeOptions)
-    if (result.type === 'suspended')
+    if (result.type === 'suspended' || result.type === 'halted')
       parallelAbort.abort()
     return { index: currentBranchIndex, result }
   })()
@@ -4015,6 +4030,8 @@ async function retriggerParallelGroup(
         newCompleted.push({ index, value: result.value })
       else if (result.type === 'suspended')
         newSuspended.push({ index, snapshot: result.snapshot })
+      else if (result.type === 'halted')
+        return result
       else
         errors.push(result.error)
     }
@@ -4128,12 +4145,16 @@ export async function retriggerWithEffects(
       })
       return { type: 'suspended', snapshot }
     }
+    // Handler called halt() — return halted result
+    if (isHaltSignal(error)) {
+      return { type: 'halted', value: error.value }
+    }
     if (error instanceof DvalaError)
       return { type: 'error', error }
     return { type: 'error', error: new DvalaError(`${error}`, undefined) }
   }
 
-  return runEffectLoop(firstStep, handlers, signal, snapshotState, snapshotState.maxSnapshots, deserializeOptions)
+  return runEffectLoop(firstStep, handlers, signal, snapshotState, snapshotState.maxSnapshots, deserializeOptions, snapshotState.autoCheckpoint)
 }
 
 /**
@@ -4167,8 +4188,8 @@ async function runEffectLoop(
 
   let step: Step | Promise<Step> = initial
 
-  // Helper to create a terminal snapshot for completed/error states
-  function createTerminalSnapshot(options?: { error?: DvalaError; result?: Any }): Snapshot | undefined {
+  // Helper to create a terminal snapshot for completed/error/halted states
+  function createTerminalSnapshot(options?: { error?: DvalaError; result?: Any; halted?: boolean }): Snapshot | undefined {
     if (!snapshotState.autoCheckpoint) {
       return undefined
     }
@@ -4180,10 +4201,17 @@ async function runEffectLoop(
     if (options?.error) {
       meta.error = options.error.toJSON()
     }
+    if (options?.halted) {
+      meta.halted = true
+    }
     if (options?.result !== undefined) {
       meta.result = options.result
     }
-    const message = options?.error ? 'Run failed with error' : 'Run completed successfully'
+    const message = options?.error
+      ? 'Run failed with error'
+      : options?.halted
+        ? 'Program halted'
+        : 'Run completed successfully'
     return createSnapshot({
       continuation,
       timestamp: Date.now(),
@@ -4254,6 +4282,12 @@ async function runEffectLoop(
           effectArgs: error.effectArgs,
         })
         return { type: 'suspended', snapshot }
+      }
+      if (isHaltSignal(error)) {
+        const snapshot = createTerminalSnapshot({ result: error.value, halted: true })
+        return snapshot
+          ? { type: 'halted', value: error.value, snapshot }
+          : { type: 'halted', value: error.value }
       }
       if (error instanceof DvalaError) {
         const snapshot = createTerminalSnapshot({ error })

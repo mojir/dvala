@@ -427,8 +427,8 @@ test.describe('settings', () => {
     await setDvalaCode(page, 'perform(effect(dvala.checkpoint), "test point")')
     await clickRun(page)
 
-    // Checkpoint modal should open
-    await expect(page.locator('#checkpoint-modal')).toBeVisible({ timeout: 5000 })
+    // Checkpoint modal should open (now uses the snapshot modal system)
+    await expect(page.locator('#snapshot-modal')).toBeVisible({ timeout: 5000 })
 
     // Clean up — close modal and disable intercept checkpoint
     await page.evaluate(() => (window as any).Playground.closeCheckpointModal())

@@ -9,8 +9,13 @@
 
 import {
   addIcon,
+  analyzeIcon,
   cameraIcon,
+  codeIcon,
+  copyIcon,
   debugIcon,
+  downloadIcon,
+  formatIcon,
   gearIcon,
   hamburgerIcon,
   homeIcon,
@@ -18,11 +23,16 @@ import {
   labIcon,
   lampIcon,
   newFileIcon,
+  pauseIcon,
   playIcon,
   redoIcon,
   saveIcon,
   searchIcon,
+  shareIcon,
+  stopIcon,
+  syncIcon,
   trashIcon,
+  treeIcon,
   undoIcon,
 } from './icons'
 
@@ -151,13 +161,13 @@ function getPlaygroundPanel(): string {
               <a onclick="Playground.openMoreMenu(this)">${hamburgerIcon}
                 <div id="more-menu" class="dropdown-menu" style="display:none;">
                   <div class="dropdown-menu__body">
-                    <a onclick="Playground.closeMoreMenu();Playground.run()">▶ Run — Ctrl+R</a>
-                    <a onclick="Playground.closeMoreMenu();void Playground.runSync()">▶ Run sync — Ctrl+Shift+R</a>
-                    <a onclick="Playground.closeMoreMenu();Playground.analyze()">Analyze — Ctrl+A</a>
-                    <a onclick="Playground.closeMoreMenu();Playground.tokenize()">Tokenize — Ctrl+T</a>
-                    <a onclick="Playground.closeMoreMenu();Playground.parse()">Parse — Ctrl+P</a>
-                    <a onclick="Playground.closeMoreMenu();Playground.format()">Format — Ctrl+F</a>
-                    <a onclick="Playground.closeMoreMenu();Playground.saveAs()">Save as…</a>
+                    <a onclick="Playground.closeMoreMenu();Playground.run()" class="menu-item">${playIcon}<span>Run</span><span class="menu-shortcut">Ctrl+R</span></a>
+                    <a onclick="Playground.closeMoreMenu();void Playground.runSync()" class="menu-item">${syncIcon}<span>Run sync</span><span class="menu-shortcut">⇧Ctrl+R</span></a>
+                    <a onclick="Playground.closeMoreMenu();Playground.analyze()" class="menu-item">${analyzeIcon}<span>Analyze</span><span class="menu-shortcut">Ctrl+A</span></a>
+                    <a onclick="Playground.closeMoreMenu();Playground.tokenize()" class="menu-item">${codeIcon}<span>Tokenize</span><span class="menu-shortcut">Ctrl+T</span></a>
+                    <a onclick="Playground.closeMoreMenu();Playground.parse()" class="menu-item">${treeIcon}<span>Parse</span><span class="menu-shortcut">Ctrl+P</span></a>
+                    <a onclick="Playground.closeMoreMenu();Playground.format()" class="menu-item">${formatIcon}<span>Format</span><span class="menu-shortcut">Ctrl+F</span></a>
+                    <a onclick="Playground.closeMoreMenu();Playground.saveAs()" class="menu-item">${saveIcon}<span>Save as…</span></a>
                   </div>
                 </div>
               </a>
@@ -187,10 +197,10 @@ function getPlaygroundPanel(): string {
         <div class="modal-header__more">
           <a class="modal-header__more-btn" data-ref="more-btn">${hamburgerIcon}</a>
           <div data-ref="more-menu" class="modal-more-menu">
-            <a data-ref="save-btn">Save</a>
-            <a data-ref="share-btn">Share</a>
-            <a data-ref="download-btn">Download</a>
-            <a data-ref="copy-json-btn">Copy JSON</a>
+            <a data-ref="save-btn" class="menu-item">${saveIcon}<span>Save</span></a>
+            <a data-ref="share-btn" class="menu-item">${shareIcon}<span>Share</span></a>
+            <a data-ref="download-btn" class="menu-item">${downloadIcon}<span>Download</span></a>
+            <a data-ref="copy-json-btn" class="menu-item">${copyIcon}<span>Copy JSON</span></a>
           </div>
         </div>
         <a class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
@@ -273,11 +283,18 @@ function getModals(): string {
         <div id="effect-modal-args" class="effect-modal__args"></div>
       </div>
     </div>
-    <div id="effect-modal-main-buttons" class="modal-btn-row modal-body-row--last"></div>
+    <div id="effect-modal-main-buttons" class="modal-btn-row modal-body-row--last">
+      <button class="button" onclick="Playground.selectEffectAction('ignore')">Ignore</button>
+      <button class="button button--primary" onclick="Playground.selectEffectAction('resume')">Mock response…</button>
+    </div>
     <div id="effect-modal-input-section" class="effect-modal__input-section" style="display:none;">
       <label id="effect-modal-input-label" class="effect-modal__input-label"></label>
       <textarea id="effect-modal-value" rows="4" class="effect-modal__textarea"></textarea>
       <span id="effect-modal-error" class="form-error" style="display:none;"></span>
+      <div class="modal-btn-row" style="margin-top: var(--space-2);">
+        <button class="button" onclick="Playground.cancelEffectAction()">Cancel</button>
+        <button class="button button--primary" onclick="Playground.confirmEffectAction()">Confirm</button>
+      </div>
     </div>
   `))}
 
@@ -324,18 +341,21 @@ function getModals(): string {
   ${modal('io-pick-modal', box(`
     <div class="modal-header">
       <span id="io-pick-modal-title" class="modal-header__title"></span>
-      <div class="modal-header__more">
-        <a class="modal-header__more-btn" onclick="Playground.toggleEffectHandlerMenu('io-pick-more-menu')">${hamburgerIcon}</a>
-        <div id="io-pick-more-menu" class="modal-more-menu">
-          <a onclick="Playground.suspendCurrentEffectHandler()">Suspend</a>
-        </div>
-      </div>
     </div>
     <div id="io-pick-list" class="io-pick-list"></div>
   `))}
 
   <div id="snapshot-modal" class="modal-overlay" style="display:none;">
     <div id="snapshot-panel-container" class="modal-box snapshot-panel-container"></div>
+  </div>
+
+  <div id="execution-control-bar" class="execution-control-bar" style="display:none;">
+    <span id="execution-status" class="execution-status">Running</span>
+    <div class="execution-controls">
+      <button id="exec-play-btn" class="exec-btn" title="Resume">${playIcon}</button>
+      <button id="exec-pause-btn" class="exec-btn" title="Pause (Suspend)">${pauseIcon}</button>
+      <button id="exec-stop-btn" class="exec-btn" title="Stop (Halt)">${stopIcon}</button>
+    </div>
   </div>
   `
 }
