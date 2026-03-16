@@ -415,25 +415,36 @@ test.describe('settings', () => {
   })
 
   test('intercept checkpoint opens checkpoint modal when program performs checkpoint', async ({ page }) => {
-    // Enable intercept checkpoint via JS to avoid visibility issues with custom toggle styling
-    const isChecked = await page.evaluate(() => {
+    // Enable intercept effects (main toggle) and intercept checkpoint
+    const wasInterceptEffectsEnabled = await page.evaluate(() => {
+      const el = document.getElementById('settings-intercept-effects-toggle') as HTMLInputElement | null
+      return el?.checked ?? false
+    })
+    const wasCheckpointEnabled = await page.evaluate(() => {
       const el = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
       return el?.checked ?? false
     })
-    if (!isChecked) {
+    
+    if (!wasInterceptEffectsEnabled) {
+      await page.evaluate(() => (window as any).Playground.toggleInterceptEffects())
+    }
+    if (!wasCheckpointEnabled) {
       await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
     }
 
     await setDvalaCode(page, 'perform(effect(dvala.checkpoint), "test point")')
     await clickRun(page)
 
-    // Checkpoint modal should open (now uses the snapshot modal system)
-    await expect(page.locator('#snapshot-modal')).toBeVisible({ timeout: 5000 })
+    // Checkpoint modal should open
+    await expect(page.locator('#checkpoint-modal')).toBeVisible({ timeout: 5000 })
 
-    // Clean up — close modal and disable intercept checkpoint
+    // Clean up — close modal and restore settings
     await page.evaluate(() => (window as any).Playground.closeCheckpointModal())
-    if (!isChecked) {
+    if (!wasCheckpointEnabled) {
       await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
+    }
+    if (!wasInterceptEffectsEnabled) {
+      await page.evaluate(() => (window as any).Playground.toggleInterceptEffects())
     }
   })
 })

@@ -35,6 +35,7 @@ import {
   treeIcon,
   undoIcon,
 } from './icons'
+import { getPageHeader } from './utils'
 
 export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
@@ -298,6 +299,25 @@ function getModals(): string {
     </div>
   `))}
 
+  ${modal('checkpoint-modal', box(`
+    <div class="modal-header">
+      <span class="modal-header__title">Checkpoint</span>
+    </div>
+    <div class="effect-modal__body">
+      <div class="effect-modal__field">
+        <span class="effect-modal__field-label">Message</span>
+        <div id="checkpoint-modal-message" style="font-size: 0.875rem; color: rgb(212 212 212);"></div>
+      </div>
+      <div class="effect-modal__field" id="checkpoint-modal-meta-field" style="display:none;">
+        <span class="effect-modal__field-label">Metadata</span>
+        <code id="checkpoint-modal-meta" style="white-space:pre; font-size:0.75rem; color: rgb(212 212 212);"></code>
+      </div>
+    </div>
+    <div class="modal-btn-row modal-body-row--last">
+      <button class="button button--primary" onclick="Playground.resumeCheckpoint()">Resume</button>
+    </div>
+  `))}
+
   ${modal('export-modal', box(`
     <div class="modal-header"><span class="modal-header__title">Export</span></div>
     <div class="modal-checklist">
@@ -345,6 +365,13 @@ function getModals(): string {
     <div id="io-pick-list" class="io-pick-list"></div>
   `))}
 
+  ${modal('io-confirm-modal', box(`
+    <div class="modal-header">
+      <span id="io-confirm-modal-title" class="modal-header__title"></span>
+    </div>
+    <div id="io-confirm-list" class="io-pick-list"></div>
+  `))}
+
   <div id="snapshot-modal" class="modal-overlay" style="display:none;">
     <div id="snapshot-panel-container" class="modal-box snapshot-panel-container"></div>
   </div>
@@ -377,8 +404,9 @@ function getSettingsPage(): string {
     `<button id="settings-tab-btn-${id}" class="settings-tab-btn" onclick="Playground.showSettingsTab('${id}')">${label}</button>`
 
   return `
-  <div id="settings-page" class="content">
-    <div class="settings-page__heading">Settings</div>
+  <div id="settings-page" class="content content-page">
+    ${getPageHeader()}
+    <h1 class="content-page__title">Settings</h1>
     <div class="settings-page__body">
       <div class="settings-tabs">
         ${tabBtn('dvala', 'Dvala')}
@@ -396,8 +424,12 @@ function getSettingsPage(): string {
       <div id="settings-tab-playground" class="settings-tab-content">
         <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running programs.</p>
         ${toggle('settings-disable-handlers-toggle', 'Disable Playground effect handlers', 'Disables built-in playground handlers.', 'Playground.toggleDisablePlaygroundHandlers()')}
-        ${toggle('settings-intercept-error-toggle', 'Intercept error effect', 'Intercepts dvala.error effects in the effect panel.', 'Playground.toggleInterceptError()')}
-        ${toggle('settings-checkpoint-toggle', 'Intercept checkpoint effect', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
+        ${toggle('settings-intercept-effects-toggle', 'Intercept effects', 'Show a modal when certain effects are triggered.', 'Playground.toggleInterceptEffects()')}
+        <div id="settings-intercept-sub-toggles" class="settings-sub-toggles" style="display:none;">
+          ${toggle('settings-intercept-error-toggle', 'Intercept errors', 'Intercepts dvala.error effects.', 'Playground.toggleInterceptError()')}
+          ${toggle('settings-checkpoint-toggle', 'Intercept checkpoints', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
+          ${toggle('settings-intercept-unhandled-toggle', 'Intercept unhandled', 'Shows modal for effects without a handler.', 'Playground.toggleInterceptUnhandled()')}
+        </div>
       </div>
 
       <div id="settings-tab-actions" class="settings-tab-content">
@@ -466,9 +498,10 @@ function getSettingsPage(): string {
 
 function getSavedProgramsPage(): string {
   return `
-  <div id="saved-programs-page" class="content">
+  <div id="saved-programs-page" class="content content-page">
+    ${getPageHeader()}
     <div class="list-page__header">
-      <span class="list-page__heading">Saved Programs</span>
+      <span class="list-page__heading">Programs</span>
       <a id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" class="list-page__clear-btn">Clear all</a>
     </div>
     <div id="saved-programs-list" class="list-page__list"></div>
@@ -478,10 +511,11 @@ function getSavedProgramsPage(): string {
 
 function getSnapshotsPage(): string {
   return `
-  <div id="snapshots-page" class="content">
+  <div id="snapshots-page" class="content content-page">
+    ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Snapshots</span>
-      <a id="snapshots-clear-all" onclick="Playground.clearAllSnapshots()" class="list-page__clear-btn">Clear all</a>
+      <a id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__clear-btn">Clear unlocked</a>
     </div>
     <div id="snapshots-list" class="list-page__list"></div>
     <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>

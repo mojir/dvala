@@ -159,7 +159,12 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       }
     } },
     { pattern: '*', handler: async (ctx) => {
-      if (ctx.effectName.startsWith('dvala.error')) {
+      // Pass through to standard handlers for standard effects
+      if (ctx.effectName.startsWith('dvala.error') ||
+          ctx.effectName.startsWith('dvala.random') ||
+          ctx.effectName.startsWith('dvala.time') ||
+          ctx.effectName === 'dvala.sleep' ||
+          ctx.effectName === 'dvala.checkpoint') {
         ctx.next()
         return
       }

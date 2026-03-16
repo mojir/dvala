@@ -182,6 +182,13 @@ const elements = {
   get ioPickModal() { return document.getElementById('io-pick-modal') as HTMLDivElement },
   get ioPickModalTitle() { return document.getElementById('io-pick-modal-title') as HTMLDivElement },
   get ioPickList() { return document.getElementById('io-pick-list') as HTMLDivElement },
+  get ioConfirmModal() { return document.getElementById('io-confirm-modal') as HTMLDivElement },
+  get ioConfirmModalTitle() { return document.getElementById('io-confirm-modal-title') as HTMLDivElement },
+  get ioConfirmList() { return document.getElementById('io-confirm-list') as HTMLDivElement },
+  get checkpointModal() { return document.getElementById('checkpoint-modal') as HTMLDivElement },
+  get checkpointModalMessage() { return document.getElementById('checkpoint-modal-message') as HTMLDivElement },
+  get checkpointModalMetaField() { return document.getElementById('checkpoint-modal-meta-field') as HTMLDivElement },
+  get checkpointModalMeta() { return document.getElementById('checkpoint-modal-meta') as HTMLElement },
 }
 
 type MoveParams = {
@@ -227,12 +234,15 @@ let pendingEffectAction: 'resume' | 'fail' | 'suspend' | null = null
 let pendingReadline: { resolve: (value: string | null) => void; suspend?: () => void; halt?: () => void } | null = null
 let readlineInputEl: HTMLTextAreaElement | null = null
 let pendingIoPick: { submit: (value: number | null) => void; suspend: () => void; halt: () => void; focusedIndex: number | null; itemCount: number } | null = null
-let pendingIoConfirm: { resolve: (value: boolean) => void; suspend: () => void; halt: () => void; defaultValue: boolean | undefined } | null = null
+let pendingIoConfirm: { submit: (value: boolean) => void; suspend: () => void; halt: () => void; focusedIndex: number | null } | null = null
 let pendingPrintln: { resolve: () => void; suspend: () => void; halt: () => void } | null = null
 let currentEffectCtx: EffectContext | null = null
 let currentSnapshot: Snapshot | null = null
 const modalStack: { panel: HTMLElement; label: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
+
+// Toast hint for effect modals that can't be dismissed with Escape
+const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
 
 function calculateDimensions() {
   return {
@@ -557,8 +567,8 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
     const hiddenCount = terminalEntries.length - VISIBLE_TERMINAL_SNAPSHOTS
     if (hiddenCount > 0) {
       // Wrap extra cards in collapsible container
-      const expandedStyle = showAllTerminalSnapshots ? 'max-height: 2000px; opacity: 1;' : 'max-height: 0; opacity: 0;'
-      cards.push(`<div id="terminal-snapshots-overflow" style="display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; ${expandedStyle}">`)
+      const displayStyle = showAllTerminalSnapshots ? 'display: flex;' : 'display: none;'
+      cards.push(`<div id="terminal-snapshots-overflow" style="flex-direction: column; gap: var(--space-2); ${displayStyle}">`)
       for (let i = VISIBLE_TERMINAL_SNAPSHOTS; i < terminalEntries.length; i++) {
         cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
       }
@@ -1831,20 +1841,39 @@ window.onload = async function () {
         evt.preventDefault()
         evt.stopPropagation()
         closeEffectHandlerMenus()
+        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
         return
       }
     }
 
-    // Note: pendingIoConfirm has noClose: true, so Escape should not close it.
-    // User must explicitly click Yes/No or use the Suspend option.
-    if (pendingIoConfirm) {
-      if (evt.key === 'Enter') {
+    // Note: pendingIoConfirm modal has no close button, so Escape should not close it.
+    // User must click an item or use the Suspend option.
+    if (pendingIoConfirm && elements.ioConfirmModal.style.display !== 'none') {
+      if (evt.key === 'ArrowDown') {
         evt.preventDefault()
         evt.stopPropagation()
-        if (pendingIoConfirm.defaultValue !== undefined) {
-          submitIoConfirm(pendingIoConfirm.defaultValue)
+        const next = pendingIoConfirm.focusedIndex === null ? 0 : Math.min(pendingIoConfirm.focusedIndex + 1, 1)
+        setConfirmFocus(next)
+        return
+      } else if (evt.key === 'ArrowUp') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        const prev = pendingIoConfirm.focusedIndex === null ? 1 : Math.max(pendingIoConfirm.focusedIndex - 1, 0)
+        setConfirmFocus(prev)
+        return
+      } else if (evt.key === 'Escape') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        closeEffectHandlerMenus()
+        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
+        return
+      } else if (evt.key === 'Enter') {
+        evt.preventDefault()
+        evt.stopPropagation()
+        if (pendingIoConfirm.focusedIndex !== null) {
+          pendingIoConfirm.submit(pendingIoConfirm.focusedIndex === 0)
         } else {
-          showToast('Use Yes/No to respond', { severity: 'error' })
+          showToast('Use arrow keys to select', { severity: 'error' })
         }
         return
       }
@@ -1857,7 +1886,7 @@ window.onload = async function () {
         evt.preventDefault()
         evt.stopPropagation()
         closeEffectHandlerMenus()
-        showToast('Use the Submit button', { severity: 'error' })
+        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
         return
       }
     }
@@ -1916,12 +1945,14 @@ window.onload = async function () {
       closeAddContextMenu()
       if (resolveInfoModal) {
         closeInfoModal()
-      } else if (currentCheckpointSnapshot !== null) {
-        closeCheckpointModal()
+      } else if (pendingCheckpoint) {
+        // Checkpoint modal - Escape does nothing, use buttons or control bar
+        closeEffectHandlerMenus()
+        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
       } else if (pendingIoConfirm || pendingIoPick || pendingReadline) {
         // These modals have no close button — Escape can't dismiss them
         closeEffectHandlerMenus()
-        showToast('Use a button to respond', { severity: 'error' })
+        showToast(EFFECT_MODAL_ESCAPE_HINT, { severity: 'error' })
       } else if (modalStack.length > 0) {
         if (modalStack.length > 1) {
           slideBackSnapshotModal()
@@ -1939,9 +1970,9 @@ window.onload = async function () {
       evt.preventDefault()
       closeInfoModal()
     }
-    if (evt.key === 'Enter' && currentCheckpointSnapshot !== null) {
+    if (evt.key === 'Enter' && pendingCheckpoint) {
       evt.preventDefault()
-      closeCheckpointModal()
+      resumeCheckpoint()
     }
     if (evt.key === 'Enter' && pendingPrintln) {
       evt.preventDefault()
@@ -1963,10 +1994,14 @@ window.onload = async function () {
       evt.preventDefault()
       cancelEffectAction()
     }
-    // Enter on pick modal — must click an item
+    // Enter on pick modal — submit focused item or show error
     if (evt.key === 'Enter' && pendingIoPick) {
       evt.preventDefault()
-      showToast('Click an item to select', { severity: 'error' })
+      if (pendingIoPick.focusedIndex !== null) {
+        pendingIoPick.submit(pendingIoPick.focusedIndex)
+      } else {
+        showToast('Click an item to select', { severity: 'error' })
+      }
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
@@ -2219,26 +2254,41 @@ function routeToPath(appPath: string): void {
   const dynPage = document.getElementById('dynamic-page')
   if (!dynPage) return
 
+  // Determine which sidebar link to highlight
+  let sidebarLinkId: string | null = null
+
   if (!path || path === '/') {
     dynPage.innerHTML = renderStartPage()
+    sidebarLinkId = 'home-page_link'
   } else if (path === 'core') {
     dynPage.innerHTML = renderCorePage()
   } else if (path === 'modules') {
     dynPage.innerHTML = renderModulesPage()
   } else if (path === 'examples') {
     dynPage.innerHTML = renderExamplePage()
+    sidebarLinkId = 'example-page_link'
   } else if (path === 'tutorials') {
     dynPage.innerHTML = renderTutorialsIndexPage()
+    sidebarLinkId = 'tutorials-page_link'
   } else if (path.startsWith('tutorials/')) {
     const tutId = path.slice('tutorials/'.length)
     dynPage.innerHTML = renderTutorialPage(tutId)
+    sidebarLinkId = 'tutorials-page_link'
   } else if (path.startsWith('ref/')) {
     const linkName = path.slice('ref/'.length)
     dynPage.innerHTML = renderDocPage(linkName)
   } else if (path === 'about') {
     dynPage.innerHTML = renderAboutPage()
+    sidebarLinkId = 'about-page_link'
   } else {
     dynPage.innerHTML = renderStartPage()
+    sidebarLinkId = 'home-page_link'
+  }
+
+  // Highlight the sidebar link
+  if (sidebarLinkId) {
+    const link = document.getElementById(sidebarLinkId)
+    if (link) link.classList.add('active-sidebar-entry')
   }
 }
 
@@ -2439,6 +2489,11 @@ export function togglePure() {
   updateCSS()
 }
 
+export function toggleInterceptEffects() {
+  saveState({ 'intercept-effects': !getState('intercept-effects') })
+  updateCSS()
+}
+
 export function toggleInterceptCheckpoint() {
   saveState({ 'intercept-checkpoint': !getState('intercept-checkpoint') })
   updateCSS()
@@ -2446,6 +2501,11 @@ export function toggleInterceptCheckpoint() {
 
 export function toggleInterceptError() {
   saveState({ 'intercept-error': !getState('intercept-error') })
+  updateCSS()
+}
+
+export function toggleInterceptUnhandled() {
+  saveState({ 'intercept-unhandled': !getState('intercept-unhandled') })
   updateCSS()
 }
 
@@ -3091,7 +3151,7 @@ export function showToast(message: string, options?: { severity?: 'info' | 'erro
   closeBtn.addEventListener('click', () => dismissToast(toast))
   toast.appendChild(closeBtn)
 
-  elements.toastContainer.appendChild(toast)
+  elements.toastContainer.prepend(toast)
 
   setTimeout(() => dismissToast(toast), TOAST_DURATION)
 }
@@ -3151,7 +3211,7 @@ export function closeExportModal() {
 
 export function doExport() {
   const settingsKeys = [
-    'debug', 'pure', 'intercept-checkpoint', 'intercept-error',
+    'debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled',
     'disable-playground-handlers', 'disable-auto-checkpoint',
   ]
   const codeKeys = [
@@ -3260,7 +3320,7 @@ let importNeedsReload = false
 const importCategoryKeys = {
   code: ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end'],
   context: ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end'],
-  settings: ['debug', 'pure', 'intercept-checkpoint', 'intercept-error', 'disable-playground-handlers', 'disable-auto-checkpoint'],
+  settings: ['debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled', 'disable-playground-handlers', 'disable-auto-checkpoint'],
   layout: ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent'],
 }
 
@@ -3414,81 +3474,50 @@ export function closeImportResultModal() {
   }
 }
 
+let pendingCheckpoint: { ctx: EffectContext; resolve: () => void } | null = null
 let currentCheckpointSnapshot: Snapshot | null = null
-let resolveCheckpointModal: (() => void) | null = null
 
-export function openCheckpointModal(snapshot: Snapshot): Promise<void> {
-  currentCheckpointSnapshot = snapshot
-
-  const { panel, body, footer } = createModalPanel()
-
-  // Message
-  const messageEl = document.createElement('div')
-  messageEl.className = 'modal-body-row'
-  messageEl.textContent = snapshot.message || '(no message)'
-  body.appendChild(messageEl)
-
-  // Meta
-  const metaEl = document.createElement('div')
-  metaEl.className = 'modal-meta-row'
-  if (snapshot.meta === undefined || snapshot.meta === null) {
-    const empty = document.createElement('span')
-    empty.textContent = '(no metadata)'
-    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
-    metaEl.appendChild(empty)
-  } else {
-    const code = document.createElement('code')
-    code.textContent = JSON.stringify(snapshot.meta, null, 2)
-    code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
-    metaEl.appendChild(code)
-  }
-  body.appendChild(metaEl)
-
-  // Technical info
-  const techEl = document.createElement('div')
-  techEl.className = 'modal-meta-row modal-body-row--last'
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const d = new Date(snapshot.timestamp)
-  const bytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
-  const techRows: [string, string][] = [
-    ['ID', snapshot.id],
-    ['Index', String(snapshot.index)],
-    ['Run ID', snapshot.executionId],
-    ['Timestamp', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`],
-    ['Size', bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` : `${(bytes / 1024).toFixed(2)} KB`],
-  ]
-  techRows.forEach(([label, value]) => {
-    const row = makeArgRow(value)
-    const labelEl = document.createElement('span')
-    labelEl.textContent = label
-    labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
-    row.insertBefore(labelEl, row.firstChild)
-    techEl.appendChild(row)
-  })
-  body.appendChild(techEl)
-
-  const resumeBtn = document.createElement('button')
-  resumeBtn.className = 'button button--primary'
-  resumeBtn.textContent = 'Resume'
-  resumeBtn.addEventListener('click', () => {
-    closeCheckpointModal()
-    void resumeSnapshot()
-  })
-
-  footer.appendChild(resumeBtn)
-
-  pushPanel(panel, 'Checkpoint')
-
+export function openCheckpointModal(ctx: EffectContext, snapshot: Snapshot): Promise<void> {
   return new Promise<void>(resolve => {
-    resolveCheckpointModal = resolve
+    currentCheckpointSnapshot = snapshot
+
+    // Populate modal
+    elements.checkpointModalMessage.textContent = snapshot.message || '(no message)'
+    if (snapshot.meta !== undefined && snapshot.meta !== null) {
+      elements.checkpointModalMetaField.style.display = 'block'
+      elements.checkpointModalMeta.textContent = JSON.stringify(snapshot.meta, null, 2)
+    } else {
+      elements.checkpointModalMetaField.style.display = 'none'
+    }
+
+    pendingCheckpoint = {
+      ctx,
+      resolve: () => {
+        pendingCheckpoint = null
+        currentCheckpointSnapshot = null
+        hideExecutionControlBar()
+        elements.checkpointModal.style.display = 'none'
+        resolve()
+      },
+    }
+
+    elements.checkpointModal.style.display = 'flex'
+    showExecutionControlBar()
   })
 }
 
+export function resumeCheckpoint() {
+  if (!pendingCheckpoint) return
+  const { ctx, resolve } = pendingCheckpoint
+  ctx.next()
+  resolve()
+  focusDvalaCode()
+}
+
 export function closeCheckpointModal() {
-  currentCheckpointSnapshot = null
-  resolveCheckpointModal?.()
-  resolveCheckpointModal = null
-  popModal()
+  if (!pendingCheckpoint) return
+  pendingCheckpoint.resolve()
+  focusDvalaCode()
 }
 
 const MAX_TERMINAL_SNAPSHOTS = 99
@@ -3512,7 +3541,7 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
   notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
   const toastMessages = { completed: 'Program completed — snapshot captured', error: 'Program failed — snapshot captured', halted: 'Program halted — snapshot captured' }
-  showToast(toastMessages[resultType])
+  showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
 }
 
 export async function clearTerminalSnapshot(index: number): Promise<void> {
@@ -3527,13 +3556,7 @@ export function toggleShowAllTerminalSnapshots(): void {
   showAllTerminalSnapshots = !showAllTerminalSnapshots
   const overflow = document.getElementById('terminal-snapshots-overflow')
   if (overflow) {
-    if (showAllTerminalSnapshots) {
-      overflow.style.maxHeight = '2000px'
-      overflow.style.opacity = '1'
-    } else {
-      overflow.style.maxHeight = '0'
-      overflow.style.opacity = '0'
-    }
+    overflow.style.display = showAllTerminalSnapshots ? 'flex' : 'none'
     // Update button text
     const btn = overflow.nextElementSibling as HTMLButtonElement | null
     if (btn) {
@@ -3717,29 +3740,51 @@ export async function resumeSnapshot() {
 }
 
 function disabledHandlersFallback(ctx: EffectContext): void {
+  // Pass through to standard handlers for standard effects
+  if (ctx.effectName === 'dvala.checkpoint' ||
+      ctx.effectName.startsWith('dvala.error') ||
+      ctx.effectName.startsWith('dvala.random') ||
+      ctx.effectName.startsWith('dvala.time') ||
+      ctx.effectName === 'dvala.sleep' ||
+      ctx.effectName.startsWith('dvala.io.')) {
+    ctx.next()
+    return
+  }
   // With playground handlers disabled, unhandled effects should throw
   throw new Error(`Unhandled effect (playground handlers disabled): ${ctx.effectName}`)
 }
 
 async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
+  const interceptEffects = getState('intercept-effects')
+
   if (ctx.effectName === 'dvala.checkpoint') {
     // The checkpoint snapshot is already created by dispatchPerform before
     // the effect reaches handlers. We only need to show the modal if
     // intercept-checkpoint is enabled, then continue.
-    if (getState('intercept-checkpoint')) {
+    if (interceptEffects && getState('intercept-checkpoint')) {
       // Get the latest checkpoint from ctx.snapshots
       const snapshots = ctx.snapshots
       const snapshot = snapshots[snapshots.length - 1]
       if (snapshot) {
-        await openCheckpointModal(snapshot)
+        await openCheckpointModal(ctx, snapshot)
+        return // ctx.next() is called by resumeCheckpoint or pause/stop handled the effect
       }
     }
     ctx.next()
     return
   }
-  if (ctx.effectName.startsWith('dvala.error') && !getState('intercept-error')) {
+  if (ctx.effectName.startsWith('dvala.error') && !(interceptEffects && getState('intercept-error'))) {
     ctx.next()
     return
+  }
+  // Pass through to standard handlers for non-interactive standard effects
+  if (ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+    ctx.next()
+    return
+  }
+  // Unhandled effects - check intercept-unhandled setting
+  if (!interceptEffects || !getState('intercept-unhandled')) {
+    throw new Error(`Unhandled effect: ${ctx.effectName}`)
   }
   return new Promise<void>(resolve => {
     const pending: PendingEffect = { ctx, resolve, handled: false }
@@ -3959,10 +4004,20 @@ function setPickFocus(index: number | null) {
   pendingIoPick.focusedIndex = index
   const rows = elements.ioPickList.children
   for (let i = 0; i < rows.length; i++) {
-    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(50 50 50)' : ''
+    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(75 75 75)' : ''
   }
   if (index !== null)
     (rows[index] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' })
+}
+
+function setConfirmFocus(index: number | null) {
+  if (!pendingIoConfirm)
+    return
+  pendingIoConfirm.focusedIndex = index
+  const rows = elements.ioConfirmList.children
+  for (let i = 0; i < rows.length; i++) {
+    (rows[i] as HTMLElement).style.background = i === index ? 'rgb(75 75 75)' : ''
+  }
 }
 
 function ioPickHandler(ctx: EffectContext): Promise<void> {
@@ -3990,16 +4045,12 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
 
     items.forEach((item, i) => {
       const row = document.createElement('div')
-      row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-      row.onmouseenter = () => { row.style.background = 'rgb(60 60 60)' }
-      row.onmouseleave = () => { row.style.background = pendingIoPick?.focusedIndex === i ? 'rgb(50 50 50)' : '' }
-      const indexSpan = document.createElement('span')
-      indexSpan.style.cssText = 'font-size:0.75rem; color:rgb(115 115 115); font-family:monospace; min-width:1.2rem; text-align:right; flex-shrink:0;'
-      indexSpan.textContent = String(i)
+      row.style.cssText = 'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+      row.onmouseenter = () => { row.style.background = 'rgb(75 75 75)' }
+      row.onmouseleave = () => { row.style.background = pendingIoPick?.focusedIndex === i ? 'rgb(75 75 75)' : '' }
       const labelSpan = document.createElement('span')
       labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
       labelSpan.textContent = item
-      row.appendChild(indexSpan)
       row.appendChild(labelSpan)
       row.onclick = () => submit(i)
       elements.ioPickList.appendChild(row)
@@ -4051,7 +4102,15 @@ export function toggleEffectHandlerMenu(id: string) {
 
 export function suspendCurrentEffectHandler() {
   closeEffectHandlerMenus()
-  if (pendingIoPick)
+  if (pendingCheckpoint) {
+    const { ctx, resolve } = pendingCheckpoint
+    pendingCheckpoint = null
+    currentCheckpointSnapshot = null
+    elements.checkpointModal.style.display = 'none'
+    ctx.suspend()
+    resolve()
+    focusDvalaCode()
+  } else if (pendingIoPick)
     pendingIoPick.suspend()
   else if (pendingIoConfirm)
     pendingIoConfirm.suspend()
@@ -4076,7 +4135,15 @@ export function suspendCurrentEffectHandler() {
 export function haltCurrentEffectHandler() {
   closeEffectHandlerMenus()
   // Use halt callbacks for handled effects
-  if (pendingIoPick) {
+  if (pendingCheckpoint) {
+    const { ctx, resolve } = pendingCheckpoint
+    pendingCheckpoint = null
+    currentCheckpointSnapshot = null
+    elements.checkpointModal.style.display = 'none'
+    ctx.halt()
+    resolve()
+    focusDvalaCode()
+  } else if (pendingIoPick) {
     pendingIoPick.halt()
     pendingIoPick = null
   } else if (pendingIoConfirm) {
@@ -4187,68 +4254,68 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
     const question = ctx.args[0] as string
     const options = ctx.args[1] as { default?: boolean } | undefined
     const defaultValue = options?.default
+    const defaultIndex = defaultValue === true ? 0 : defaultValue === false ? 1 : null
 
-    const { panel, body, footer } = createModalPanel({
-      noClose: true,
-    })
+    elements.ioConfirmModalTitle.textContent = question
+    elements.ioConfirmList.innerHTML = ''
 
-    const questionEl = document.createElement('div')
-    questionEl.className = 'modal-body-row'
-    questionEl.textContent = question
-    body.appendChild(questionEl)
-
-    const noBtn = document.createElement('button')
-    noBtn.className = 'button'
-    noBtn.textContent = 'No'
-
-    const yesBtn = document.createElement('button')
-    yesBtn.className = 'button button--primary'
-    yesBtn.textContent = 'Yes'
-
-    footer.appendChild(noBtn)
-    footer.appendChild(yesBtn)
-
-    pushPanel(panel, 'Confirm', undefined, true)
-
-    pendingIoConfirm = {
-      resolve: (value: boolean) => {
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        popModal()
-        ctx.resume(value as Any)
-        resolve()
-      },
-      suspend: () => {
-        pendingIoConfirm = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        ctx.suspend()
-        resolve()
-        focusDvalaCode()
-      },
-      halt: () => {
-        pendingIoConfirm = null
-        currentEffectCtx = null
-        hideExecutionControlBar()
-        closeAllModals()
-        ctx.halt()
-        resolve()
-        focusDvalaCode()
-      },
-      defaultValue,
+    const submit = (value: boolean) => {
+      elements.ioConfirmModal.style.display = 'none'
+      pendingIoConfirm = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
+      ctx.resume(value as Any)
+      resolve()
+      focusDvalaCode()
     }
 
-    noBtn.addEventListener('click', () => submitIoConfirm(false))
-    yesBtn.addEventListener('click', () => submitIoConfirm(true))
+    const items = [
+      { label: 'Yes', value: true },
+      { label: 'No', value: false },
+    ]
+
+    items.forEach((item, i) => {
+      const row = document.createElement('div')
+      row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
+      row.onmouseenter = () => { row.style.background = 'rgb(75 75 75)' }
+      row.onmouseleave = () => { row.style.background = pendingIoConfirm?.focusedIndex === i ? 'rgb(75 75 75)' : '' }
+      const labelSpan = document.createElement('span')
+      labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
+      labelSpan.textContent = item.label
+      row.appendChild(labelSpan)
+      row.onclick = () => submit(item.value)
+      elements.ioConfirmList.appendChild(row)
+    })
+
+    const suspendConfirm = () => {
+      elements.ioConfirmModal.style.display = 'none'
+      pendingIoConfirm = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
+      ctx.suspend()
+      resolve()
+      focusDvalaCode()
+    }
+    const haltConfirm = () => {
+      elements.ioConfirmModal.style.display = 'none'
+      pendingIoConfirm = null
+      currentEffectCtx = null
+      hideExecutionControlBar()
+      ctx.halt()
+      resolve()
+      focusDvalaCode()
+    }
+
+    pendingIoConfirm = { submit, suspend: suspendConfirm, halt: haltConfirm, focusedIndex: defaultIndex }
+    setConfirmFocus(defaultIndex)
+    elements.ioConfirmModal.style.display = 'flex'
   })
 }
 
 export function submitIoConfirm(value: boolean) {
   if (!pendingIoConfirm)
     return
-  pendingIoConfirm.resolve(value)
-  pendingIoConfirm = null
-  focusDvalaCode()
+  pendingIoConfirm.submit(value)
 }
 
 // ---------------------------------------------------------------------------
@@ -4495,10 +4562,25 @@ function syncDefaultEffectHandler(ctx: EffectContext): void {
     ctx.next()
     return
   }
+  // Pass through to standard handlers for non-interactive standard effects
+  if (ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+    ctx.next()
+    return
+  }
   throw new Error(`Unhandled effect: ${ctx.effectName}`)
 }
 
 function syncDisabledHandlersFallback(ctx: EffectContext): void {
+  // Pass through to standard handlers for standard effects
+  if (ctx.effectName === 'dvala.checkpoint' ||
+      ctx.effectName.startsWith('dvala.error') ||
+      ctx.effectName.startsWith('dvala.random') ||
+      ctx.effectName.startsWith('dvala.time') ||
+      ctx.effectName === 'dvala.sleep' ||
+      ctx.effectName.startsWith('dvala.io.')) {
+    ctx.next()
+    return
+  }
   throw new Error(`Unhandled effect (playground handlers disabled): ${ctx.effectName}`)
 }
 
@@ -4643,21 +4725,38 @@ function updateCSS() {
   const pure = getState('pure')
   const disableHandlers = getState('disable-playground-handlers')
   const disabled = pure
-  const checkpointDisabled = disabled || disableHandlers
+  const interceptDisabled = disabled || disableHandlers
+  const interceptEffects = getState('intercept-effects')
+
+  // Main intercept effects toggle
+  const interceptEffectsToggle = document.getElementById('settings-intercept-effects-toggle') as HTMLInputElement | null
+  if (interceptEffectsToggle) {
+    interceptEffectsToggle.checked = !interceptDisabled && interceptEffects
+    interceptEffectsToggle.disabled = interceptDisabled
+    interceptEffectsToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', interceptDisabled)
+    interceptEffectsToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', interceptDisabled)
+  }
+
+  // Sub-toggles container visibility
+  const subToggles = document.getElementById('settings-intercept-sub-toggles')
+  if (subToggles) {
+    subToggles.style.display = interceptEffects && !interceptDisabled ? 'block' : 'none'
+  }
+
+  // Sub-toggles
   const interceptErrorToggle = document.getElementById('settings-intercept-error-toggle') as HTMLInputElement | null
   if (interceptErrorToggle) {
-    interceptErrorToggle.checked = !checkpointDisabled && getState('intercept-error')
-    interceptErrorToggle.disabled = checkpointDisabled
-    interceptErrorToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', checkpointDisabled)
-    interceptErrorToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', checkpointDisabled)
+    interceptErrorToggle.checked = getState('intercept-error')
   }
   const checkpointToggle = document.getElementById('settings-checkpoint-toggle') as HTMLInputElement | null
   if (checkpointToggle) {
-    checkpointToggle.checked = !checkpointDisabled && getState('intercept-checkpoint')
-    checkpointToggle.disabled = checkpointDisabled
-    checkpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', checkpointDisabled)
-    checkpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', checkpointDisabled)
+    checkpointToggle.checked = getState('intercept-checkpoint')
   }
+  const interceptUnhandledToggle = document.getElementById('settings-intercept-unhandled-toggle') as HTMLInputElement | null
+  if (interceptUnhandledToggle) {
+    interceptUnhandledToggle.checked = getState('intercept-unhandled')
+  }
+
   const disableHandlersToggle = document.getElementById('settings-disable-handlers-toggle') as HTMLInputElement | null
   if (disableHandlersToggle) {
     disableHandlersToggle.checked = !disabled && disableHandlers

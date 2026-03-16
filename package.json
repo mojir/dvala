@@ -298,6 +298,7 @@
         "src/**",
         "common/**",
         "reference/**/*.ts",
+        "tutorials/**",
         "rolldown.config.playground-builder.mjs",
         "rolldown.config.playground-www.mjs",
         "rolldown.plugins.mjs",

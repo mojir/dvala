@@ -7,14 +7,23 @@
 import { marked } from 'marked'
 import { href, navigate } from '../router'
 import { tokenizeToHtml } from '../SyntaxOverlay'
+import { runExampleCode } from '../runExampleCode'
+import { getPageHeader } from '../utils'
 
 const penIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>'
 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
 
 const renderer = new marked.Renderer()
 renderer.code = ({ text, lang }) => {
-  const highlighted = (lang === 'dvala' || !lang) ? tokenizeToHtml(text) : escapeHtml(text)
+  const isDvala = lang === 'dvala' || !lang
+  const highlighted = isDvala ? tokenizeToHtml(text) : escapeHtml(text)
   const encoded = btoa(encodeURIComponent(text))
+
+  const output = isDvala ? runExampleCode(text) : null
+  const outputHtml = output !== null
+    ? `<div class="doc-page__example-output">${escapeHtml(output)}</div>`
+    : ''
+
   return `<div class="doc-page__example">
   <div class="doc-page__example-code-wrap">
     <pre class="doc-page__example-code"><code>${highlighted}</code></pre>
@@ -23,6 +32,7 @@ renderer.code = ({ text, lang }) => {
       <button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>
     </div>
   </div>
+  ${outputHtml}
 </div>`
 }
 
@@ -137,11 +147,8 @@ export function renderTutorialsIndexPage(): string {
 
   return `
 <div class="content-page">
-  <div class="content-page__header start-page__header">
-    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
-    <p class="start-page__tagline">Run anywhere - Resume everywhere</p>
-    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
-  </div>
+  ${getPageHeader()}
+  <h1 class="content-page__title">Tutorials</h1>
   <div class="content-page__body">
     ${sections}
   </div>

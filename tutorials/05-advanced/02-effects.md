@@ -58,6 +58,24 @@ Dvala provides built-in effects that are always available without explicit handl
 perform(effect(dvala.random))
 ```
 
+Here's an example using `read-line` with a local handler to simulate user input:
+
+```dvala
+do
+  let name = perform(effect(dvala.io.read-line));
+  "Hello, " ++ name ++ "!"
+with
+  case effect(dvala.io.read-line) then () -> "Alice"
+end
+```
+
+Without a local handler, effects like `read-line` propagate to the host environment (no output shown in documentation examples):
+
+```dvala
+let name = perform(effect(dvala.io.read-line));
+"Hello, " ++ name ++ "!"
+```
+
 ## Do / With Handlers
 
 `do...with...end` establishes local effect handlers. The handler receives the effect's arguments as an array and its return value becomes the result of the `perform` call:

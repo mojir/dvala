@@ -1,0 +1,132 @@
+/**
+ * Utility for running example code in the playground.
+ * - No debug mode
+ * - print/println just return their argument (no actual output)
+ * - All other effects cause no output to be shown
+ */
+
+import { createDvala } from '../../src/createDvala'
+import { allBuiltinModules } from '../../src/allModules'
+import type { EffectContext, HandlerRegistration } from '../../src/evaluator/effectTypes'
+import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../../src/utils/symbols'
+
+const dvala = createDvala({ debug: false, modules: allBuiltinModules })
+
+class EffectPerformedError extends Error {
+  effectName: string
+  constructor(effectName: string) {
+    super(`Effect performed: ${effectName}`)
+    this.name = 'EffectPerformedError'
+    this.effectName = effectName
+  }
+}
+
+// print/println: just resume with the first argument (identity behavior)
+const printHandler: HandlerRegistration = {
+  pattern: 'dvala.io.print',
+  handler: (ctx: EffectContext) => {
+    ctx.resume(ctx.args[0]!)
+  },
+}
+
+const printlnHandler: HandlerRegistration = {
+  pattern: 'dvala.io.println',
+  handler: (ctx: EffectContext) => {
+    ctx.resume(ctx.args[0]!)
+  },
+}
+
+// Interactive effects that would trigger prompts - intercept and throw
+// (Must be explicit patterns since * falls back to standard handlers)
+const interactiveEffectHandler = (ctx: EffectContext) => {
+  throw new EffectPerformedError(ctx.effectName)
+}
+
+const readlineHandler: HandlerRegistration = {
+  pattern: 'dvala.io.read-line',
+  handler: interactiveEffectHandler,
+}
+
+const pickHandler: HandlerRegistration = {
+  pattern: 'dvala.io.pick',
+  handler: interactiveEffectHandler,
+}
+
+const confirmHandler: HandlerRegistration = {
+  pattern: 'dvala.io.confirm',
+  handler: interactiveEffectHandler,
+}
+
+const readStdinHandler: HandlerRegistration = {
+  pattern: 'dvala.io.read-stdin',
+  handler: interactiveEffectHandler,
+}
+
+// All other effects: pass through standard effects, throw for unknown
+const haltOnEffectHandler: HandlerRegistration = {
+  pattern: '*',
+  handler: (ctx: EffectContext) => {
+    // Pass through to standard handlers for non-interactive standard effects
+    if (ctx.effectName.startsWith('dvala.random') ||
+        ctx.effectName.startsWith('dvala.time') ||
+        ctx.effectName === 'dvala.checkpoint' ||
+        ctx.effectName.startsWith('dvala.error')) {
+      ctx.next()
+      return
+    }
+    // dvala.sleep would block rendering, intercept it
+    throw new EffectPerformedError(ctx.effectName)
+  },
+}
+
+const exampleHandlers: HandlerRegistration[] = [
+  printHandler,
+  printlnHandler,
+  readlineHandler,
+  pickHandler,
+  confirmHandler,
+  readStdinHandler,
+  haltOnEffectHandler,
+]
+
+/**
+ * Run example code and return formatted output.
+ * print/println return their argument. Other effects cause no output.
+ */
+export function runExampleCode(code: string): string | null {
+  try {
+    const value = dvala.run(code, {
+      effectHandlers: exampleHandlers,
+    })
+    return formatValue(value)
+  } catch (e) {
+    if (e instanceof EffectPerformedError) {
+      return `<effect ${e.effectName}>` // Show which effect halted execution
+    }
+    return `Error: ${String(e instanceof Error ? e.message : e)}`
+  }
+}
+
+export function formatValue(value: unknown): string {
+  if (value === null) return 'null'
+  if (value === undefined) return 'undefined'
+  if (typeof value === 'string') return JSON.stringify(value)
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (typeof value === 'object') {
+    if (EFFECT_SYMBOL in value) return `<effect ${(value as Record<string, unknown>)['name']}>`
+    if (FUNCTION_SYMBOL in value) return '<function>'
+    if (REGEXP_SYMBOL in value) return String(value)
+    try {
+      return JSON.stringify(value, (_k, v: unknown) => {
+        if (v !== null && typeof v === 'object') {
+          if (EFFECT_SYMBOL in v) return `<effect ${(v as Record<string, unknown>)['name']}>`
+          if (FUNCTION_SYMBOL in v) return '<function>'
+        }
+        return v
+      })
+    } catch {
+      return String(value)
+    }
+  }
+  return String(value)
+}

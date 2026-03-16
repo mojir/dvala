@@ -72,6 +72,7 @@ h1, h2, h3, h4 {
 pre {
   font-family: var(--font-mono);
   font-size: var(--font-size-base);
+  margin: 0;
 }
 
 textarea {
@@ -489,6 +490,14 @@ a.external-link:active {
   font-weight: bold;
 }
 
+.content-page__title {
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  color: var(--color-text);
+  margin: 0 0 1rem 0;
+  text-align: left;
+}
+
 .content-page__body {
   display: flex;
   flex-direction: column;
@@ -583,7 +592,7 @@ a.external-link:active {
    Start page
    ============================================================ */
 .start-page__header {
-  padding-top: var(--space-8);
+  padding-top: var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -593,14 +602,14 @@ a.external-link:active {
 .start-page__logo {
   max-width: 400px;
   width: 100%;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .start-page__tagline {
   font-size: var(--font-size-lg);
   font-style: italic;
   color: var(--color-text);
-  margin: 0 0 var(--space-2) 0;
+  margin: 0 0 var(--space-1) 0;
 }
 
 .start-page__subtitle {
@@ -910,7 +919,12 @@ a.external-link:active {
   padding: var(--space-3);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   overflow-x: auto;
-  margin-bottom: var(--space-3);
+}
+
+.tutorial-page__content .doc-page__example pre {
+  border-left: none;
+  border-radius: 0;
+  background: rgb(64 64 64);
 }
 
 .tutorial-page__content pre code {
@@ -1321,6 +1335,17 @@ button:focus {
   color: var(--color-text-bright) !important;
 }
 
+.button--primary {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+
+.button--primary:hover {
+  background: rgb(65 65 65);
+  border-color: var(--color-text-bright);
+  color: var(--color-text-bright);
+}
+
 .button--danger {
   color: var(--color-error);
 }
@@ -1614,13 +1639,17 @@ button:focus {
 #toast-container {
   position: fixed;
   top: var(--space-4);
-  left: 50%;
-  transform: translateX(-50%);
+  right: var(--space-4);
   z-index: 300;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: var(--space-2);
   pointer-events: none;
+  height: 20vh;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 30%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 80%);
 }
 
 /* Sidebar logo wrapper */
@@ -2449,6 +2478,12 @@ button:focus {
   font-size: 0.8rem;
   color: var(--color-text-dim);
   max-width: 32rem;
+}
+
+.settings-sub-toggles {
+  margin-left: var(--space-4);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-border-dim);
 }
 
 .settings-tab-content__desc {
