@@ -6,12 +6,16 @@
  */
 
 /** Known top-level app paths — anything else is treated as a sub-path of the base. */
-const APP_ROOTS = ['/', '/about', '/tutorials', '/examples', '/core', '/modules', '/ref/', '/saved', '/snapshots', '/settings']
+const APP_ROOTS = ['/about', '/tutorials', '/examples', '/core', '/modules', '/ref/', '/saved', '/snapshots', '/settings']
 
 function detectBasePath(): string {
   const p = location.pathname
+  // Exact root path means no base
+  if (p === '/')
+    return ''
+  // Check if path starts with a known app route (no base prefix)
   for (const root of APP_ROOTS) {
-    if (p === root || p.startsWith(root) || (root === '/' && p === '/'))
+    if (p === root || p.startsWith(`${root}/`) || (root.endsWith('/') && p.startsWith(root)))
       return ''
   }
   // First path segment is the deployment base (e.g. /dvala)
