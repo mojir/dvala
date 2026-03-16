@@ -14,7 +14,7 @@ const colors = {
   Viola: '#c586c0',
   Pink: '#cc8f77',
   Gray300: 'rgb(212 212 212)',
-  Gray500: 'rgb(115 115 115)',
+  Gray500: 'rgb(150 150 150)',
   Crimson: '#dc143c',
   Blue: '#569cd6',
   SkyLavender: '#c5cbe3',

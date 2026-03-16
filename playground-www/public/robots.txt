@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mojir.github.io/dvala/sitemap.xml

@@ -20,7 +20,7 @@ export function getPageHeader(options?: { tagline?: boolean }): string {
     : ''
   return `
   <div class="content-page__header start-page__header">
-    <img src="images/dvala-logo.png" alt="Dvala" class="start-page__logo">
+    <img src="images/dvala-logo.webp" alt="Dvala" class="start-page__logo" width="800" height="232">
     ${taglineHtml}
   </div>`
 }

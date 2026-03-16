@@ -56,7 +56,7 @@ function getShellHTML(): string {
 
   <nav id="sidebar" class="fancy-scroll-background">
     <div class="sidebar-logo-wrap">
-      <img src="images/dvala-logo.png" alt="Dvala" onclick="Playground.navigate('/')">
+      <img src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
     </div>
     <div class="sidebar-search-row" onclick="Playground.openSearch()">
       <span class="sidebar-search-icon">${searchIcon}</span>
@@ -64,25 +64,25 @@ function getShellHTML(): string {
       <span class="sidebar-search-kbd">F3</span>
     </div>
     <div class="sidebar-nav-list">
-      <a id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
-      <a id="about-page_link" onclick="Playground.navigate('/about')">${infoIcon} About</a>
-      <a id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
-      <a id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
+      <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
+      <a href="#" role="button" id="about-page_link" onclick="Playground.navigate('/about')">${infoIcon} About</a>
+      <a href="#" role="button" id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
+      <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
     </div>
     <div class="sidebar-nav-item-row">
-      <a id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
+      <a href="#" role="button" id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
         ${saveIcon} Programs
       </a>
       <span id="programs-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
-      <a id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
+      <a href="#" role="button" id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
         ${cameraIcon} Snapshots
       </a>
       <span id="snapshots-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
-      <a id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">${gearIcon} Settings</a>
+      <a href="#" role="button" id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">${gearIcon} Settings</a>
     </div>
     <div class="sidebar-spacer"></div>
     <div id="api-ref-sections"></div>
@@ -95,7 +95,7 @@ function getShellHTML(): string {
   <div id="search-dialog-overlay">
     <div class="search-dialog-overlay__inner">
       <div id="search-dialog" class="search-dialog">
-        <input id="search-input" type="text" placeholder="Search..." class="search-dialog__input">
+        <input id="search-input" type="text" placeholder="Search..." class="search-dialog__input" aria-label="Search functions, modules, effects">
         <div id="search-intro">Type to search functions, modules, effects…</div>
         <div id="no-search-result" style="display:none;">No results</div>
         <div id="search-result" class="search-dialog__results fancy-scroll" style="display:none;"></div>
@@ -117,26 +117,26 @@ function getPlaygroundPanel(): string {
         <div class="panel-header" onclick="Playground.focusContext()">
           <div id="context-title" class="panel-header__title">Context</div>
           <div class="panel-header__actions">
-            <a onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn">${addIcon}
+            <a href="#" role="button" onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn" aria-label="Add context">${addIcon}
               <div id="add-context-menu" class="dropdown-menu" style="display:none;">
                 <div class="dropdown-menu__body">
                   <div class="dropdown-menu__field-group">
-                    <span class="dropdown-menu__label">Name</span>
+                    <label for="new-context-name" class="dropdown-menu__label">Name</label>
                     <input id="new-context-name" class="dropdown-menu__input">
-                    <span class="dropdown-menu__label">Value (JSON)</span>
+                    <label for="new-context-value" class="dropdown-menu__label">Value (JSON)</label>
                     <textarea id="new-context-value" rows="5" class="dropdown-menu__textarea fancy-scroll"></textarea>
                     <button class="button dropdown-menu__add-btn" onclick="Playground.addContextEntry()">Add</button>
                     <span id="new-context-error" class="dropdown-menu__error" style="display:none;"></span>
                   </div>
-                  <a onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
+                  <a href="#" role="button" onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
                 </div>
               </div>
             </a>
-            <a id="context-undo-button" onclick="Playground.undoContextHistory()">${undoIcon}</a>
-            <a id="context-redo-button" onclick="Playground.redoContextHistory()">${redoIcon}</a>
+            <a href="#" role="button" id="context-undo-button" onclick="Playground.undoContextHistory()" aria-label="Undo context">${undoIcon}</a>
+            <a href="#" role="button" id="context-redo-button" onclick="Playground.redoContextHistory()" aria-label="Redo context">${redoIcon}</a>
           </div>
         </div>
-        <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
+        <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON"></textarea>
       </div>
 
       <div id="resize-divider-1"></div>
@@ -150,32 +150,33 @@ function getPlaygroundPanel(): string {
             <input id="dvala-code-title-input" type="text" spellcheck="false" placeholder="Program name"
               class="panel-header__title-input"
               style="display:none;"
+              aria-label="Program name"
               onkeydown="Playground.onProgramTitleKeydown(event)"
               onblur="Playground.onProgramTitleBlur()">
           </div>
           <div class="panel-header__actions" onclick="event.preventDefault();event.stopPropagation()">
-            <a onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
-            <a id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()">${undoIcon}</a>
-            <a id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()">${redoIcon}</a>
-            <a onclick="Playground.newFile()" title="New file">${newFileIcon}</a>
+            <a href="#" role="button" onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
+            <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code">${undoIcon}</a>
+            <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code">${redoIcon}</a>
+            <a href="#" role="button" onclick="Playground.newFile()" title="New file" aria-label="New file">${newFileIcon}</a>
             <div>
-              <a onclick="Playground.openMoreMenu(this)">${hamburgerIcon}
+              <a href="#" role="button" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
                 <div id="more-menu" class="dropdown-menu" style="display:none;">
                   <div class="dropdown-menu__body">
-                    <a onclick="Playground.closeMoreMenu();Playground.run()" class="menu-item">${playIcon}<span>Run</span><span class="menu-shortcut">Ctrl+R</span></a>
-                    <a onclick="Playground.closeMoreMenu();void Playground.runSync()" class="menu-item">${syncIcon}<span>Run sync</span><span class="menu-shortcut">⇧Ctrl+R</span></a>
-                    <a onclick="Playground.closeMoreMenu();Playground.analyze()" class="menu-item">${analyzeIcon}<span>Analyze</span><span class="menu-shortcut">Ctrl+A</span></a>
-                    <a onclick="Playground.closeMoreMenu();Playground.tokenize()" class="menu-item">${codeIcon}<span>Tokenize</span><span class="menu-shortcut">Ctrl+T</span></a>
-                    <a onclick="Playground.closeMoreMenu();Playground.parse()" class="menu-item">${treeIcon}<span>Parse</span><span class="menu-shortcut">Ctrl+P</span></a>
-                    <a onclick="Playground.closeMoreMenu();Playground.format()" class="menu-item">${formatIcon}<span>Format</span><span class="menu-shortcut">Ctrl+F</span></a>
-                    <a onclick="Playground.closeMoreMenu();Playground.saveAs()" class="menu-item">${saveIcon}<span>Save as…</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.run()" class="menu-item">${playIcon}<span>Run</span><span class="menu-shortcut">Ctrl+R</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();void Playground.runSync()" class="menu-item">${syncIcon}<span>Run sync</span><span class="menu-shortcut">⇧Ctrl+R</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.analyze()" class="menu-item">${analyzeIcon}<span>Analyze</span><span class="menu-shortcut">Ctrl+A</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.tokenize()" class="menu-item">${codeIcon}<span>Tokenize</span><span class="menu-shortcut">Ctrl+T</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.parse()" class="menu-item">${treeIcon}<span>Parse</span><span class="menu-shortcut">Ctrl+P</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.format()" class="menu-item">${formatIcon}<span>Format</span><span class="menu-shortcut">Ctrl+F</span></a>
+                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.saveAs()" class="menu-item">${saveIcon}<span>Save as…</span></a>
                   </div>
                 </div>
               </a>
             </div>
           </div>
         </div>
-        <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false"></textarea>
+        <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
       </div>
 
       <div id="resize-divider-2"></div>
@@ -183,7 +184,7 @@ function getPlaygroundPanel(): string {
       <div id="output-panel">
         <div class="panel-header">
           <span class="panel-header__title">Output</span>
-          <a onclick="Playground.resetOutput()" class="panel-header__icon-btn">${trashIcon}</a>
+          <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn" aria-label="Clear output">${trashIcon}</a>
         </div>
         <div id="output-result" class="fancy-scroll"></div>
       </div>
@@ -196,15 +197,15 @@ function getPlaygroundPanel(): string {
       <div class="modal-header">
         <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
         <div class="modal-header__more">
-          <a class="modal-header__more-btn" data-ref="more-btn">${hamburgerIcon}</a>
+          <a href="#" role="button" class="modal-header__more-btn" data-ref="more-btn">${hamburgerIcon}</a>
           <div data-ref="more-menu" class="modal-more-menu">
-            <a data-ref="save-btn" class="menu-item">${saveIcon}<span>Save</span></a>
-            <a data-ref="share-btn" class="menu-item">${shareIcon}<span>Share</span></a>
-            <a data-ref="download-btn" class="menu-item">${downloadIcon}<span>Download</span></a>
-            <a data-ref="copy-json-btn" class="menu-item">${copyIcon}<span>Copy JSON</span></a>
+            <a href="#" role="button" data-ref="save-btn" class="menu-item">${saveIcon}<span>Save</span></a>
+            <a href="#" role="button" data-ref="share-btn" class="menu-item">${shareIcon}<span>Share</span></a>
+            <a href="#" role="button" data-ref="download-btn" class="menu-item">${downloadIcon}<span>Download</span></a>
+            <a href="#" role="button" data-ref="copy-json-btn" class="menu-item">${copyIcon}<span>Copy JSON</span></a>
           </div>
         </div>
-        <a class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
+        <a href="#" role="button" class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
       </div>
       <div class="snapshot-panel__body">
       <div class="snapshot-panel__columns">
@@ -237,7 +238,7 @@ function getPlaygroundPanel(): string {
           <div data-ref="code-section" class="snapshot-panel__section">
             <div class="example-code snapshot-panel__code-block">
               <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
-              <a data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
+              <a href="#" role="button" data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
             </div>
           </div>
           <div class="snapshot-panel__section">
@@ -289,7 +290,7 @@ function getModals(): string {
       <button class="button button--primary" onclick="Playground.selectEffectAction('resume')">Mock response…</button>
     </div>
     <div id="effect-modal-input-section" class="effect-modal__input-section" style="display:none;">
-      <label id="effect-modal-input-label" class="effect-modal__input-label"></label>
+      <label for="effect-modal-value" id="effect-modal-input-label" class="effect-modal__input-label"></label>
       <textarea id="effect-modal-value" rows="4" class="effect-modal__textarea"></textarea>
       <span id="effect-modal-error" class="form-error" style="display:none;"></span>
       <div class="modal-btn-row" style="margin-top: var(--space-2);">
@@ -502,7 +503,7 @@ function getSavedProgramsPage(): string {
     ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Programs</span>
-      <a id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" class="list-page__clear-btn">Clear all</a>
+      <a href="#" role="button" id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" class="list-page__clear-btn">Clear all</a>
     </div>
     <div id="saved-programs-list" class="list-page__list"></div>
     <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
@@ -515,7 +516,7 @@ function getSnapshotsPage(): string {
     ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Snapshots</span>
-      <a id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__clear-btn">Clear unlocked</a>
+      <a href="#" role="button" id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__clear-btn">Clear unlocked</a>
     </div>
     <div id="snapshots-list" class="list-page__list"></div>
     <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
