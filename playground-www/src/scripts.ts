@@ -3773,9 +3773,39 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
     ctx.next()
     return
   }
-  if (ctx.effectName.startsWith('dvala.error') && !(interceptEffects && getState('intercept-error'))) {
-    ctx.next()
-    return
+  if (ctx.effectName.startsWith('dvala.error')) {
+    // When intercept-error is OFF, pass through to standard handler
+    if (!(interceptEffects && getState('intercept-error'))) {
+      ctx.next()
+      return
+    }
+    // When intercept-error is ON, show in the effect modal
+    return new Promise<void>(resolve => {
+      const pending: PendingEffect = { ctx, resolve, handled: false }
+      pendingEffects.push(pending)
+
+      ctx.signal.addEventListener('abort', () => {
+        if (pending.handled)
+          return
+        pending.ctx.suspend()
+        pending.handled = true
+        pending.resolve()
+        const idx = pendingEffects.indexOf(pending)
+        if (idx !== -1)
+          pendingEffects.splice(idx, 1)
+        if (currentEffectIndex >= pendingEffects.length)
+          currentEffectIndex = Math.max(0, pendingEffects.length - 1)
+        if (pendingEffects.length === 0 || pendingEffects.every(e => e.handled))
+          closeEffectModal()
+        else
+          renderCurrentEffect()
+      }, { once: true })
+
+      if (!effectBatchScheduled) {
+        effectBatchScheduled = true
+        void Promise.resolve().then(openEffectModal)
+      }
+    })
   }
   // Pass through to standard handlers for non-interactive standard effects
   if (ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
