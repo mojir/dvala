@@ -1746,6 +1746,14 @@ button:focus {
   height: var(--space-4);
 }
 
+/* Sidebar version */
+.sidebar-version {
+  padding: var(--space-2) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 /* ============================================================
    Panel textarea (context + dvala editors)
    ============================================================ */
