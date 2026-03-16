@@ -64,19 +64,19 @@ function getShellHTML(): string {
       <span class="sidebar-search-kbd">F3</span>
     </div>
     <div class="sidebar-nav-list">
-      <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
-      <a href="#" role="button" id="about-page_link" onclick="Playground.navigate('/about')">${infoIcon} About</a>
-      <a href="#" role="button" id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
-      <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
+      <a href="#" role="button" id="home-page_link" onclick="event.preventDefault();Playground.navigate('/')">${homeIcon} Home</a>
+      <a href="#" role="button" id="about-page_link" onclick="event.preventDefault();Playground.navigate('/about')">${infoIcon} About</a>
+      <a href="#" role="button" id="tutorials-page_link" onclick="event.preventDefault();Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
+      <a href="#" role="button" id="example-page_link" onclick="event.preventDefault();Playground.navigate('/examples')">${labIcon} Examples</a>
     </div>
     <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
+      <a href="#" role="button" id="saved-programs-page_link" onclick="event.preventDefault();Playground.showSavedProgramsPage()">
         ${saveIcon} Programs
       </a>
       <span id="programs-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
+      <a href="#" role="button" id="snapshots-page_link" onclick="event.preventDefault();Playground.showSnapshotsPage()">
         ${cameraIcon} Snapshots
       </a>
       <span id="snapshots-nav-indicator" class="nav-indicator"></span>

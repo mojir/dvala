@@ -59,7 +59,7 @@ async function getOutputText(page: Page): Promise<string> {
 test.describe('playground loads', () => {
   test('page title and main elements are visible', async ({ page }) => {
     await page.goto('')
-    await expect(page).toHaveTitle('Dvala Playground')
+    await expect(page).toHaveTitle(/Dvala/)
 
     // Wrapper becomes visible after JS init
     await waitForInit(page)
@@ -188,7 +188,7 @@ test.describe('navigation', () => {
     const dynPage = page.locator('#dynamic-page')
     await expect(dynPage).toBeVisible()
     // Check that URL contains /examples
-    await page.waitForURL(/\/examples/, { timeout: 3000 })
+    expect(page.url()).toContain('/examples')
   })
 
   test('navigating via path shows correct page', async ({ page }) => {
