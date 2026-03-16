@@ -69,7 +69,7 @@ export function renderStartPage(): string {
     </nav>
 
     <div class="start-page__example-section">
-      <p class="start-page__example-label">Here is a taste of Dvala - <a class="start-page__example-try" onclick="Playground.loadEncodedCode('${encoded}')">Try it now</a></p>
+      <p class="start-page__example-label">Here is a taste of Dvala - <a href="#" role="button" class="start-page__example-try" onclick="Playground.loadEncodedCode('${encoded}')">Try it now</a></p>
       <div class="doc-page__example">
         <div class="doc-page__example-code-wrap">
           <pre class="doc-page__example-code"><code>${tokenizeToHtml(EXAMPLE)}</code></pre>

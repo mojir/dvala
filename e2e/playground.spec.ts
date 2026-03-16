@@ -689,3 +689,27 @@ test.describe('error interception', () => {
     expect(output).toContain('0')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Source maps
+// ---------------------------------------------------------------------------
+
+test.describe('source maps', () => {
+  test('playground.js contains sourceMappingURL comment', async ({ page }) => {
+    const response = await page.goto('/playground.js')
+    expect(response?.status()).toBe(200)
+    const content = await response?.text()
+    expect(content).toContain('//# sourceMappingURL=playground.js.map')
+  })
+
+  test('playground.js.map is accessible and valid', async ({ page }) => {
+    const response = await page.goto('/playground.js.map')
+    expect(response?.status()).toBe(200)
+    const content = await response?.text()
+    const map = JSON.parse(content!)
+    expect(map.version).toBe(3)
+    expect(map.file).toBe('playground.js')
+    expect(Array.isArray(map.sources)).toBe(true)
+    expect(map.sources.length).toBeGreaterThan(0)
+  })
+})

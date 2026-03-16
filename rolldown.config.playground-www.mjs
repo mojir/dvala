@@ -19,7 +19,7 @@ export default defineConfig([
         format: 'iife',
         name: 'Playground',
         minify: isCI,
-        sourcemap: !isCI,
+        sourcemap: true,
       },
     ],
     plugins: [dvalaSourcePlugin(), markdownSourcePlugin()],

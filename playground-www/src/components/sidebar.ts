@@ -25,7 +25,7 @@ export function renderSidebar(currentPath: string): string {
 <nav class="sidebar">
   <div class="sidebar__logo">
     <a href="${href('/')}">
-      <img src="images/dvala-logo.png" alt="Dvala">
+      <img src="images/dvala-logo.webp" alt="Dvala" width="800" height="232">
     </a>
   </div>
 

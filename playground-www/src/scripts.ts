@@ -2979,8 +2979,8 @@ function pushSavePanel(onSave: (name: string) => void) {
       <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
     </div>
     <div class="snapshot-panel__body" style="display:flex;flex-direction:column;gap:var(--space-2);">
-      <label class="snapshot-panel__section-label">Name (optional)</label>
-      <input type="text" class="readline-input" placeholder="My snapshot…" style="width:100%;box-sizing:border-box;">
+      <label for="save-snapshot-name" class="snapshot-panel__section-label">Name (optional)</label>
+      <input id="save-snapshot-name" type="text" class="readline-input" placeholder="My snapshot…" style="width:100%;box-sizing:border-box;">
     </div>
     <div class="snapshot-panel__buttons">
       <button class="button cancel-btn">Cancel</button>
@@ -3581,6 +3581,7 @@ function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
   input.className = 'readline-input'
   input.placeholder = 'My snapshot…'
   input.style.cssText = 'width:100%; box-sizing:border-box;'
+  input.setAttribute('aria-label', 'Snapshot name')
   body.appendChild(input)
 
   const doSave = () => {
@@ -4373,6 +4374,7 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
     const input = document.createElement('textarea')
     input.rows = 3
     input.className = 'readline-input'
+    input.setAttribute('aria-label', prompt || 'Enter input')
     body.appendChild(input)
     readlineInputEl = input
 

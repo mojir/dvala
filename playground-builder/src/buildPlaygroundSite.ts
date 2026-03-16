@@ -3,15 +3,18 @@ import fs from 'node:fs'
 import { apiReference, effectReference, getLinkName, moduleReference } from '../../reference'
 import { moduleCategories, coreCategories } from '../../reference/api'
 import { examples } from '../../reference/examples'
+import { tutorials } from '../../reference/tutorials'
 import type { ReferenceData, SearchEntry } from '../../common/referenceData'
 import { version } from '../../package.json'
 
 const DOC_DIR = path.resolve(__dirname, '../../docs')
+const BASE_URL = 'https://mojir.github.io/dvala'
 
 setupDocDir()
 copyAssets()
 writeIndexPage()
 write404Page()
+writeSitemap()
 
 // ---------------------------------------------------------------------------
 // Reference data assembly
@@ -87,7 +90,8 @@ function writeIndexPage() {
     <link rel="preload" href="playground.js" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"></noscript>
     <link rel="stylesheet" href="styles.css">
     <script>
       // GitHub Pages SPA routing: restore path from query param set by 404.html
@@ -149,8 +153,9 @@ function setupDocDir() {
 
 function copyAssets() {
   fs.cpSync(path.join(__dirname, '../../playground-www/public/'), path.join(DOC_DIR), { recursive: true })
-  fs.copyFileSync(path.join(__dirname, '../../playground-www/build/playground.js'), path.join(DOC_DIR, 'playground.js'))
+  const jsFile = path.join(__dirname, '../../playground-www/build/playground.js')
   const mapFile = path.join(__dirname, '../../playground-www/build/playground.js.map')
+  let jsContent = fs.readFileSync(jsFile, 'utf8')
   if (fs.existsSync(mapFile)) {
     const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
     const buildDir = path.resolve(__dirname, '../../playground-www/build')
@@ -160,5 +165,46 @@ function copyAssets() {
       return path.relative(docsDir, abs)
     })
     fs.writeFileSync(path.join(DOC_DIR, 'playground.js.map'), JSON.stringify(map))
+    // Add sourcemap reference if not present
+    if (!jsContent.includes('//# sourceMappingURL=')) {
+      jsContent += '\n//# sourceMappingURL=playground.js.map\n'
+    }
   }
+  fs.writeFileSync(path.join(DOC_DIR, 'playground.js'), jsContent)
+}
+
+function writeSitemap() {
+  const today = new Date().toISOString().split('T')[0]
+
+  // Static pages
+  const staticPages = [
+    '/',
+    '/about',
+    '/tutorials',
+    '/examples',
+    '/core',
+    '/modules',
+  ]
+
+  // Tutorial pages
+  const tutorialPages = tutorials.map(t => `/tutorials/${t.id}`)
+
+  // Reference pages (API, modules, effects)
+  const refPages = [
+    ...Object.values(apiReference).map(ref => `/ref/${getLinkName(ref)}`),
+    ...Object.values(moduleReference).map(ref => `/ref/${getLinkName(ref)}`),
+    ...Object.values(effectReference).map(ref => `/ref/${getLinkName(ref)}`),
+  ]
+
+  const allPages = [...staticPages, ...tutorialPages, ...refPages]
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allPages.map(page => `  <url>
+    <loc>${BASE_URL}${page}</loc>
+    <lastmod>${today}</lastmod>
+  </url>`).join('\n')}
+</urlset>
+`
+  fs.writeFileSync(path.join(DOC_DIR, 'sitemap.xml'), sitemap, { encoding: 'utf-8' })
 }
