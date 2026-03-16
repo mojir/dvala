@@ -168,13 +168,20 @@ function encodeCode(code: string): string {
   return btoa(encodeURIComponent(code))
 }
 
+function formatOutput(output: string): string {
+  const lines = output.split('\n')
+  const prefix = '<span class="output-arrow">=&gt;</span> '
+  const indent = '   ' // 3 spaces to align with after "=> "
+  return prefix + lines.map((line, i) => i === 0 ? escapeHtml(line) : indent + escapeHtml(line)).join('\n')
+}
+
 function renderExample(entry: string | { code: string; noRun: true }): string {
   const code = typeof entry === 'string' ? entry : entry.code
   const noRun = typeof entry !== 'string' && entry.noRun
 
   const output = noRun ? null : runExample(code)
   const outputHtml = output !== null
-    ? `<div class="doc-page__example-output">${escapeHtml(output)}</div>`
+    ? `<div class="doc-page__example-output">${formatOutput(output)}</div>`
     : ''
 
   const encoded = encodeCode(code)

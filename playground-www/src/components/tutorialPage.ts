@@ -13,6 +13,13 @@ import { getPageHeader } from '../utils'
 const penIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>'
 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
 
+function formatOutput(output: string): string {
+  const lines = output.split('\n')
+  const prefix = '<span class="output-arrow">=&gt;</span> '
+  const indent = '   ' // 3 spaces to align with after "=> "
+  return prefix + lines.map((line, i) => i === 0 ? escapeHtml(line) : indent + escapeHtml(line)).join('\n')
+}
+
 const renderer = new marked.Renderer()
 renderer.code = ({ text, lang }) => {
   const isDvala = lang === 'dvala' || !lang
@@ -21,7 +28,7 @@ renderer.code = ({ text, lang }) => {
 
   const output = isDvala ? runExampleCode(text) : null
   const outputHtml = output !== null
-    ? `<div class="doc-page__example-output">${escapeHtml(output)}</div>`
+    ? `<div class="doc-page__example-output">${formatOutput(output)}</div>`
     : ''
 
   return `<div class="doc-page__example">

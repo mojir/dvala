@@ -424,6 +424,15 @@ function isAnyContextMenuOpen(): boolean {
   )
 }
 
+// Prevent all href="#" anchors from scrolling to top / navigating.
+// Uses capture phase so it fires before onclick handlers and before
+// the browser processes the default action.
+document.addEventListener('click', e => {
+  const anchor = e.composedPath().find(el => el instanceof HTMLAnchorElement)
+  if (anchor?.getAttribute('href') === '#')
+    e.preventDefault()
+}, true)
+
 // Close context menu when clicking outside
 document.addEventListener('click', e => {
   const target = e.target as HTMLElement
@@ -1952,7 +1961,7 @@ window.onload = async function () {
       closeMoreMenu()
       closeAddContextMenu()
       if (resolveInfoModal) {
-        closeInfoModal()
+        dismissInfoModal()
       } else if (pendingCheckpoint) {
         // Checkpoint modal - Escape does nothing, use buttons or control bar
         closeEffectHandlerMenus()
@@ -2857,7 +2866,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
     const snap = currentSnapshot
     if (!snap) return
     pushSavePanel((name: string) => {
-      const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snap.id)
+      const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
       existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), locked: false, name: name || undefined })
       setSavedSnapshots(existing)
       notifySnapshotAdded()
@@ -3225,6 +3234,13 @@ export function closeInfoModal() {
   infoModalOnConfirm = null
   popModal()
   if (onConfirm) void onConfirm()
+}
+
+function dismissInfoModal() {
+  resolveInfoModal?.()
+  resolveInfoModal = null
+  infoModalOnConfirm = null
+  popModal()
 }
 
 export function exportPlayground() {

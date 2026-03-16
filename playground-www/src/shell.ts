@@ -17,6 +17,7 @@ import {
   downloadIcon,
   formatIcon,
   gearIcon,
+  githubIcon,
   hamburgerIcon,
   homeIcon,
   infoIcon,
@@ -64,19 +65,19 @@ function getShellHTML(): string {
       <span class="sidebar-search-kbd">F3</span>
     </div>
     <div class="sidebar-nav-list">
-      <a href="#" role="button" id="home-page_link" onclick="event.preventDefault();Playground.navigate('/')">${homeIcon} Home</a>
-      <a href="#" role="button" id="about-page_link" onclick="event.preventDefault();Playground.navigate('/about')">${infoIcon} About</a>
-      <a href="#" role="button" id="tutorials-page_link" onclick="event.preventDefault();Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
-      <a href="#" role="button" id="example-page_link" onclick="event.preventDefault();Playground.navigate('/examples')">${labIcon} Examples</a>
+      <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
+      <a href="#" role="button" id="about-page_link" onclick="Playground.navigate('/about')">${infoIcon} About</a>
+      <a href="#" role="button" id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
+      <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
     </div>
     <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="saved-programs-page_link" onclick="event.preventDefault();Playground.showSavedProgramsPage()">
+      <a href="#" role="button" id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
         ${saveIcon} Programs
       </a>
       <span id="programs-nav-indicator" class="nav-indicator"></span>
     </div>
     <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="snapshots-page_link" onclick="event.preventDefault();Playground.showSnapshotsPage()">
+      <a href="#" role="button" id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
         ${cameraIcon} Snapshots
       </a>
       <span id="snapshots-nav-indicator" class="nav-indicator"></span>
@@ -86,6 +87,7 @@ function getShellHTML(): string {
     </div>
     <div class="sidebar-spacer"></div>
     <div id="api-ref-sections"></div>
+    <a class="sidebar-github" href="https://github.com/mojir/dvala" target="_blank" rel="noopener">${githubIcon} GitHub</a>
     <div id="sidebar-version" class="sidebar-version"></div>
   </nav>
 
@@ -103,6 +105,8 @@ function getShellHTML(): string {
       </div>
     </div>
   </div>
+
+  ${getMobileOverlay()}
 
   <div id="toast-container"></div>
   `
@@ -155,7 +159,7 @@ function getPlaygroundPanel(): string {
               onkeydown="Playground.onProgramTitleKeydown(event)"
               onblur="Playground.onProgramTitleBlur()">
           </div>
-          <div class="panel-header__actions" onclick="event.preventDefault();event.stopPropagation()">
+          <div class="panel-header__actions" onclick="event.stopPropagation()">
             <a href="#" role="button" onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
             <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code">${undoIcon}</a>
             <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code">${redoIcon}</a>
@@ -236,7 +240,7 @@ function getPlaygroundPanel(): string {
           </div>
         </div>
         <div class="snapshot-panel__col">
-          <div data-ref="code-section" class="snapshot-panel__section">
+          <div data-ref="code-section" class="snapshot-panel__section" style="display:none;">
             <div class="example-code snapshot-panel__code-block">
               <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
               <a href="#" role="button" data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
@@ -504,7 +508,7 @@ function getSavedProgramsPage(): string {
     ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Programs</span>
-      <a href="#" role="button" id="saved-programs-clear-all" onclick="Playground.clearAllPrograms()" class="list-page__clear-btn">Clear all</a>
+      <a href="#" role="button" id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__clear-btn">Clear unlocked</a>
     </div>
     <div id="saved-programs-list" class="list-page__list"></div>
     <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
@@ -521,5 +525,28 @@ function getSnapshotsPage(): string {
     </div>
     <div id="snapshots-list" class="list-page__list"></div>
     <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
+  </div>`
+}
+
+function getMobileOverlay(): string {
+  return `
+  <div id="mobile-overlay">
+    <div class="mobile-overlay__header">
+      <img src="images/dvala-logo.webp" alt="Dvala" class="mobile-overlay__logo" width="800" height="232">
+      <p class="mobile-overlay__tagline">Run anywhere - Resume everywhere</p>
+      <p class="mobile-overlay__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
+    </div>
+
+    <div class="mobile-overlay__note">
+      <div class="mobile-overlay__note-title">Desktop Required</div>
+      <p class="mobile-overlay__note-text">
+        The Dvala Playground is an interactive code editor that requires a larger screen.
+        Please visit on a desktop or laptop to explore Dvala.
+      </p>
+    </div>
+
+    <a class="mobile-overlay__github" href="https://github.com/mojir/dvala" target="_blank" rel="noopener">
+      ${githubIcon} View on GitHub
+    </a>
   </div>`
 }
