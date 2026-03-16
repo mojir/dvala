@@ -1809,8 +1809,11 @@ window.onload = async function () {
       if (evt.key === 'Enter') {
         evt.preventDefault()
         evt.stopPropagation()
-        if (pendingIoConfirm.defaultValue !== undefined)
+        if (pendingIoConfirm.defaultValue !== undefined) {
           submitIoConfirm(pendingIoConfirm.defaultValue)
+        } else {
+          showToast('Use Yes/No to respond', { severity: 'error' })
+        }
         return
       }
     }
@@ -1883,9 +1886,9 @@ window.onload = async function () {
       } else if (currentCheckpointSnapshot !== null) {
         closeCheckpointModal()
       } else if (pendingIoConfirm || pendingIoPick || pendingReadline) {
-        // These modals have no close button, so Escape should not close them.
-        // Just close hamburger menus if open.
+        // These modals have no close button — Escape can't dismiss them
         closeEffectHandlerMenus()
+        showToast('Use a button to respond', { severity: 'error' })
       } else if (modalStack.length > 0) {
         if (modalStack.length > 1) {
           slideBackSnapshotModal()
@@ -1918,6 +1921,11 @@ window.onload = async function () {
     if (evt.key === 'Enter' && pendingEffects.length > 0 && !pendingEffectAction) {
       evt.preventDefault()
       selectEffectAction('resume')
+    }
+    // Enter on pick modal — must click an item
+    if (evt.key === 'Enter' && pendingIoPick) {
+      evt.preventDefault()
+      showToast('Click an item to select', { severity: 'error' })
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
