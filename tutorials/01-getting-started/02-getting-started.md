@@ -48,7 +48,7 @@ import { matrixModule } from '@mojir/dvala/modules/matrix'
 const dvala = createDvala({ modules: [vectorModule, matrixModule] })
 ```
 
-Available modules: `assertion`, `grid`, `random`, `vector`, `linear-algebra`, `matrix`, `number-theory`, `math`, `functional`, `string`, `collection`, `sequence`, and `bitwise`.
+Available modules: `assertion`, `bitwise`, `collection`, `convert`, `functional`, `grid`, `linear-algebra`, `math`, `matrix`, `number-theory`, `sequence`, `string`, and `vector`.
 
 ### Passing Values
 
