@@ -435,11 +435,12 @@ test.describe('settings', () => {
     await setDvalaCode(page, 'perform(effect(dvala.checkpoint), "test point")')
     await clickRun(page)
 
-    // Checkpoint modal should open
-    await expect(page.locator('#checkpoint-modal')).toBeVisible({ timeout: 5000 })
+    // Checkpoint panel should open (unified effect panel with "Checkpoint" title)
+    await expect(page.locator('#snapshot-panel-container .modal-header')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('#snapshot-panel-container')).toContainText('Checkpoint')
 
-    // Clean up — close modal and restore settings
-    await page.evaluate(() => (window as any).Playground.closeCheckpointModal())
+    // Clean up — close panel and restore settings
+    await page.evaluate(() => (window as any).Playground.closeAllModals())
     if (!wasCheckpointEnabled) {
       await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
     }
@@ -667,21 +668,21 @@ test.describe('error interception', () => {
     await setDvalaCode(page, 'sqrt(-1)')
     await clickRun(page)
 
-    // The effect modal should open with dvala.error - if there's an infinite loop,
+    // The effect panel should open with dvala.error - if there's an infinite loop,
     // this will timeout
-    await expect(page.locator('#effect-modal')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('#snapshot-panel-container .effect-modal__name')).toBeVisible({ timeout: 3000 })
 
     // Verify it's a dvala.error effect
-    const effectName = await page.locator('#effect-modal-name').textContent()
+    const effectName = await page.locator('#snapshot-panel-container .effect-modal__name').textContent()
     expect(effectName).toContain('dvala.error')
 
     // Mock a response: click "Mock response...", fill value, then Confirm
     await page.getByRole('button', { name: 'Mock response…' }).click()
-    await page.locator('#effect-modal-value').fill('0')
+    await page.locator('.effect-modal__textarea').fill('0')
     await page.getByRole('button', { name: 'Confirm' }).click()
 
-    // Modal should close and output should appear
-    await expect(page.locator('#effect-modal')).toBeHidden({ timeout: 2000 })
+    // Panel should close and output should appear
+    await expect(page.locator('#snapshot-panel-container .effect-modal__name')).toBeHidden({ timeout: 2000 })
     await waitForOutput(page)
 
     // Output should contain the mocked value
