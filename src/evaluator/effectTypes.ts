@@ -110,6 +110,9 @@ export interface SnapshotState {
 
   /** When true, automatically capture a checkpoint before every non-checkpoint effect. */
   readonly autoCheckpoint?: boolean
+
+  /** When true, always create a terminal snapshot on completion/error/halt even if autoCheckpoint is false. */
+  readonly terminalSnapshot?: boolean
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,7 @@ export interface RetriggerOptions {
   modules?: DvalaModule[]
   maxSnapshots?: number
   disableAutoCheckpoint?: boolean
+  terminalSnapshot?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +87,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
         nextSnapshotIndex: deserialized.nextSnapshotIndex,
         maxSnapshots: options?.maxSnapshots,
         autoCheckpoint: !options?.disableAutoCheckpoint,
+        ...(options?.terminalSnapshot ? { terminalSnapshot: true } : {}),
       },
       deserializeOptions,
     )
