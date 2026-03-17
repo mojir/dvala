@@ -558,7 +558,7 @@ a.external-link:active {
    ============================================================ */
 .about-intro {
   max-width: 600px;
-  margin: 0 auto var(--space-6);
+  margin: 0 auto var(--space-16);
   text-align: center;
 }
 
@@ -578,7 +578,7 @@ a.external-link:active {
 }
 
 .about-features {
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-16);
 }
 
 .about-features__grid {
@@ -623,7 +623,7 @@ a.external-link:active {
 }
 
 .about-stats {
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-12);
 }
 
 .about-stats__grid {
@@ -706,7 +706,7 @@ a.external-link:active {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--space-16);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-12);
 }
 
 .start-page__nav-link {
@@ -1077,12 +1077,32 @@ a.external-link:active {
   border-left: 3px solid var(--color-border-dim);
 }
 
-.example-page__entry-header {
+.example-page__details {
+  list-style: none;
+}
+
+.example-page__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.example-page__summary::-webkit-details-marker {
+  display: none;
+}
+
+.example-page__summary-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-2);
   gap: var(--space-3);
+}
+
+.example-page__details[open] .example-page__summary {
+  margin-bottom: var(--space-2);
 }
 
 .example-page__entry-title {
@@ -2617,13 +2637,26 @@ button:focus {
   font-size: var(--font-size-xl);
 }
 
-.list-page__clear-btn {
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-dim);
+.list-page__actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
 }
 
-.list-page__clear-btn:hover {
+.list-page__action-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.15s, color 0.15s;
+}
+
+.list-page__action-btn:hover {
+  background: var(--color-surface-3);
   color: var(--color-text-bright);
 }
 

@@ -440,7 +440,10 @@ function getSavedProgramsPage(): string {
     ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Programs</span>
-      <a href="#" role="button" id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__clear-btn">Clear unlocked</a>
+      <div class="list-page__actions">
+        <button id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__action-btn">Clear unlocked</button>
+        <button onclick="Playground.openImportProgramModal()" class="list-page__action-btn">Import</button>
+      </div>
     </div>
     <div id="saved-programs-list" class="list-page__list"></div>
     <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
@@ -453,7 +456,10 @@ function getSnapshotsPage(): string {
     ${getPageHeader()}
     <div class="list-page__header">
       <span class="list-page__heading">Snapshots</span>
-      <a href="#" role="button" id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__clear-btn">Clear unlocked</a>
+      <div class="list-page__actions">
+        <button id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__action-btn">Clear unlocked</button>
+        <button onclick="Playground.openImportSnapshotModal()" class="list-page__action-btn">Import</button>
+      </div>
     </div>
     <div id="snapshots-list" class="list-page__list"></div>
     <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
