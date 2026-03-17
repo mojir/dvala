@@ -201,15 +201,6 @@ function getPlaygroundPanel(): string {
     <div class="snapshot-panel fancy-scroll">
       <div class="modal-header">
         <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
-        <div class="modal-header__more">
-          <a href="#" role="button" class="modal-header__more-btn" data-ref="more-btn">${hamburgerIcon}</a>
-          <div data-ref="more-menu" class="modal-more-menu">
-            <a href="#" role="button" data-ref="save-btn" class="menu-item">${saveIcon}<span>Save</span></a>
-            <a href="#" role="button" data-ref="share-btn" class="menu-item">${shareIcon}<span>Share</span></a>
-            <a href="#" role="button" data-ref="download-btn" class="menu-item">${downloadIcon}<span>Download</span></a>
-            <a href="#" role="button" data-ref="copy-json-btn" class="menu-item">${copyIcon}<span>Copy JSON</span></a>
-          </div>
-        </div>
         <a href="#" role="button" class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
       </div>
       <div class="snapshot-panel__body">
@@ -254,7 +245,13 @@ function getPlaygroundPanel(): string {
       </div>
       </div>
       <div data-ref="buttons" class="snapshot-panel__buttons">
-        <button data-ref="resume-btn" class="button button--primary" style="display:none;">Run</button>
+        <div class="snapshot-panel__buttons-left">
+          <button data-ref="save-btn" class="button">${saveIcon} Save</button>
+          <button data-ref="share-btn" class="button">${shareIcon} Share</button>
+          <button data-ref="download-btn" class="button">${downloadIcon} Download</button>
+          <button data-ref="copy-json-btn" class="button">${copyIcon} Copy JSON</button>
+        </div>
+        <button data-ref="resume-btn" class="button button--primary">Run</button>
       </div>
     </div>
   </template>
@@ -441,8 +438,8 @@ function getSavedProgramsPage(): string {
     <div class="list-page__header">
       <span class="list-page__heading">Programs</span>
       <div class="list-page__actions">
-        <button id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__action-btn">Clear unlocked</button>
-        <button onclick="Playground.openImportProgramModal()" class="list-page__action-btn">Import</button>
+        <button id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
+        <button onclick="Playground.openImportProgramModal()" class="list-page__action-btn">${addIcon} Import</button>
       </div>
     </div>
     <div id="saved-programs-list" class="list-page__list"></div>
@@ -457,8 +454,8 @@ function getSnapshotsPage(): string {
     <div class="list-page__header">
       <span class="list-page__heading">Snapshots</span>
       <div class="list-page__actions">
-        <button id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__action-btn">Clear unlocked</button>
-        <button onclick="Playground.openImportSnapshotModal()" class="list-page__action-btn">Import</button>
+        <button id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
+        <button onclick="Playground.openImportSnapshotModal()" class="list-page__action-btn">${addIcon} Import</button>
       </div>
     </div>
     <div id="snapshots-list" class="list-page__list"></div>

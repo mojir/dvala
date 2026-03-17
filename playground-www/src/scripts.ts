@@ -12,7 +12,7 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import { copyIcon, hamburgerIcon } from './icons'
@@ -441,7 +441,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
   const animateClass = animateIn ? 'animate-in' : ''
   const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
   const sizeStr = snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(1)} MB` : `${(snapshotBytes / 1024).toFixed(1)} KB`
-  const timestamp = `<div style="font-size: 0.75rem; color: rgb(100 100 100); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
+  const timestamp = `<div style="font-size: 0.75rem; color: rgb(140 140 140); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
 
   let type: 'terminal' | 'saved'
   let title: string
@@ -504,7 +504,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
 }
 
 function renderGroupLabel(label: string): string {
-  return `<div style="font-size: 0.75rem; font-weight: 600; color: rgb(140 140 140); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
+  return `<div class="list-group-label" style="font-size: 0.75rem; font-weight: 600; color: rgb(140 140 140); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
 }
 
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
@@ -639,9 +639,16 @@ function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
 }
 
 function renderProgramCard(program: SavedProgram, animateIn = false): string {
-  const normalized = program.code.trim().replace(/\s+/g, ' ')
-  const snippet = normalized.slice(0, 120)
-  const displaySnippet = snippet.length < normalized.length ? `${snippet}…` : snippet
+  const tokenStream = tokenizeSource(program.code)
+  const meaningfulTokens = tokenStream.tokens
+  let firstMeaningful = 0
+  while (firstMeaningful < meaningfulTokens.length) {
+    const type = meaningfulTokens[firstMeaningful]![0]
+    if (type !== 'Whitespace' && type !== 'SingleLineComment' && type !== 'MultiLineComment') break
+    firstMeaningful++
+  }
+  const trimmedCode = untokenize({ ...tokenStream, tokens: meaningfulTokens.slice(firstMeaningful) })
+  const displaySnippet = trimmedCode.split('\n').slice(0, 3).join('\n')
   const isActive = getState('current-program-id') === program.id
   const borderColor = 'rgb(82 82 82)'
   const animateClass = animateIn ? 'animate-in' : ''
@@ -663,8 +670,8 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
           <span style="font-size:1rem; color:rgb(209 213 219);">${escapeHtml(program.name)}</span>
           ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(78 201 176); border:1px solid rgb(78 201 176); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
         </div>
-        ${normalized ? `<div style="font-size:0.8rem; color:rgb(140 140 140); font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(140 140 140); padding:1px 0;">EMPTY PROGRAM</span>'}
-        <div style="font-size:0.75rem; color:rgb(100 100 100);">${formatTime(new Date(program.updatedAt))}</div>
+        ${program.code.trim() ? `<div style="font-size:0.8rem; color:rgb(140 140 140); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(140 140 140); padding:1px 0;">EMPTY PROGRAM</span>'}
+        <div style="font-size:0.75rem; color:rgb(140 140 140);">${formatTime(new Date(program.updatedAt))}</div>
       </div>
       <div onclick="event.stopPropagation()">
         ${renderContextMenu(menuItems, menuId)}
@@ -727,7 +734,7 @@ export function clearAllSavedPrograms() {
 }
 
 export function clearUnlockedPrograms() {
-  void showInfoModal('Clear unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
+  void showInfoModal('Remove unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
     const unlocked = getSavedPrograms().filter(p => !p.locked)
     await Promise.all(unlocked.map(p => animateProgramCardRemoval(p.id)))
     const kept = getSavedPrograms().filter(p => p.locked)
@@ -1087,7 +1094,7 @@ export function toggleSnapshotLock(index: number) {
 }
 
 export function clearUnlockedSnapshots() {
-  void showInfoModal('Clear unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
+  void showInfoModal('Remove unlocked snapshots', 'This will delete all unlocked snapshots. Locked snapshots will be kept.', async () => {
     const terminalEntries = getTerminalSnapshots()
     const savedEntries = getSavedSnapshots()
     const unlockedSavedIndices = savedEntries.map((e, i) => e.locked ? -1 : i).filter(i => i >= 0)
@@ -2589,8 +2596,15 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     suspendedEffectSection.style.display = 'none'
   }
 
-  // Show Run button for all snapshots except terminal (completed) ones
-  ref('resume-btn').style.display = snapshot.terminal === true ? 'none' : 'inline-flex'
+  // Show Run button for all snapshots; disable it for completed (terminal) ones
+  const resumeBtn = ref('resume-btn') as HTMLButtonElement
+  if (snapshot.terminal === true) {
+    resumeBtn.disabled = true
+    resumeBtn.title = 'This snapshot has already completed and cannot be resumed'
+  } else {
+    resumeBtn.disabled = false
+    resumeBtn.title = ''
+  }
 
   // Mark share menu item if snapshot URL would be too long
   const shareBtn = ref('share-btn')
@@ -2720,15 +2734,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
 
   q('resume-btn').addEventListener('click', () => { void resumeSnapshot() })
 
-  // More menu toggle
-  const moreMenu = q('more-menu')
-  q('more-btn').addEventListener('click', () => {
-    moreMenu.style.display = moreMenu.style.display === 'flex' ? 'none' : 'flex'
-  })
-
-  // More menu actions
   q('save-btn').addEventListener('click', () => {
-    moreMenu.style.display = 'none'
     const snap = currentSnapshot
     if (!snap) return
     pushSavePanel((name: string) => {
@@ -2740,10 +2746,9 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
       showToast(`Snapshot saved (${existing.length} total)`)
     })
   })
-  q('share-btn').addEventListener('click', () => { moreMenu.style.display = 'none'; shareSnapshot() })
-  q('download-btn').addEventListener('click', () => { moreMenu.style.display = 'none'; downloadSnapshot() })
+  q('share-btn').addEventListener('click', () => { shareSnapshot() })
+  q('download-btn').addEventListener('click', () => { downloadSnapshot() })
   q('copy-json-btn').addEventListener('click', () => {
-    moreMenu.style.display = 'none'
     if (currentSnapshot) {
       void navigator.clipboard.writeText(JSON.stringify(currentSnapshot, null, 2))
       showToast('JSON copied to clipboard')
@@ -2789,7 +2794,7 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
       { duration: 250, easing: 'ease', fill: 'forwards' },
     )
   } else {
-    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : ''
+    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : panel.classList.contains('modal-panel') ? '420px' : ''
     elements.snapshotModal.style.display = 'flex'
     // Fade in (unless replacing, then instant)
     if (!isReplacement) {
@@ -3078,6 +3083,14 @@ export function showInfoModal(
   messageEl.className = 'modal-body-row'
   messageEl.textContent = message
   body.appendChild(messageEl)
+
+  if (onConfirm) {
+    const cancelBtn = document.createElement('button')
+    cancelBtn.className = 'button'
+    cancelBtn.textContent = 'Cancel'
+    cancelBtn.addEventListener('click', () => dismissInfoModal())
+    footer.appendChild(cancelBtn)
+  }
 
   const okBtn = document.createElement('button')
   okBtn.className = 'button button--primary'
