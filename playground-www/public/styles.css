@@ -2459,10 +2459,17 @@ button:focus {
 
 .snapshot-panel__buttons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border-dim);
+}
+
+.snapshot-panel__buttons-left {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 /* ============================================================
@@ -2644,6 +2651,9 @@ button:focus {
 }
 
 .list-page__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   background: none;
   border: 1px solid var(--color-border);
   color: var(--color-text-dim);
@@ -2664,6 +2674,19 @@ button:focus {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+#snapshots-list,
+#saved-programs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-2);
+}
+
+#snapshots-list .list-group-label,
+#snapshots-list button:not(.snapshot-card),
+#saved-programs-list .list-group-label {
+  grid-column: 1 / -1;
 }
 
 .list-page__empty {
