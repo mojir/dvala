@@ -29,6 +29,7 @@ export const defaultState = {
   'disable-auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
   'current-program-id': null as string | null,
+  'dvala-code-edited': false as boolean,
 } as const
 
 type State = {
