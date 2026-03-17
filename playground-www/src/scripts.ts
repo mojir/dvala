@@ -552,8 +552,8 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
     const hiddenCount = terminalEntries.length - VISIBLE_TERMINAL_SNAPSHOTS
     if (hiddenCount > 0) {
       // Wrap extra cards in collapsible container
-      const displayStyle = showAllTerminalSnapshots ? 'display: flex;' : 'display: none;'
-      cards.push(`<div id="terminal-snapshots-overflow" style="flex-direction: column; gap: var(--space-2); ${displayStyle}">`)
+      const displayStyle = showAllTerminalSnapshots ? 'display: contents;' : 'display: none;'
+      cards.push(`<div id="terminal-snapshots-overflow" style="${displayStyle}">`)
       for (let i = VISIBLE_TERMINAL_SNAPSHOTS; i < terminalEntries.length; i++) {
         cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
       }
@@ -683,12 +683,15 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
 export function loadSavedProgram(id: string) {
   const program = getSavedPrograms().find(p => p.id === id)
   if (!program) return
-  saveState({ 'dvala-code': program.code, 'context': program.context, 'current-program-id': program.id })
-  elements.dvalaTextArea.value = program.code
-  elements.contextTextArea.value = program.context
-  syntaxOverlay.update()
-  updateCSS()
-  populateSavedProgramsList()
+  if (getState('current-program-id') === id) return
+  guardCodeReplacement(() => {
+    saveState({ 'dvala-code': program.code, 'context': program.context, 'current-program-id': program.id, 'dvala-code-edited': false })
+    elements.dvalaTextArea.value = program.code
+    elements.contextTextArea.value = program.context
+    syntaxOverlay.update()
+    updateCSS()
+    populateSavedProgramsList()
+  })
 }
 
 export function deleteSavedProgram(id: string) {
@@ -984,6 +987,44 @@ function saveOrRenameProgram(name: string, programs: SavedProgram[], currentId: 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function flushPendingAutoSave() {
+  if (!autoSaveTimer) return
+  clearTimeout(autoSaveTimer)
+  autoSaveTimer = null
+  const id = getState('current-program-id')
+  if (id) {
+    const updated = getSavedPrograms().map(p =>
+      p.id === id
+        ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
+        : p,
+    )
+    setSavedPrograms(updated)
+  }
+}
+
+/**
+ * Guards a code-replacing action.
+ * - If a saved program is active, flush any pending auto-save and proceed immediately.
+ * - If the editor has unsaved edits (no program ID), show a confirmation modal first.
+ */
+function guardCodeReplacement(proceed: () => void) {
+  if (getState('current-program-id') !== null) {
+    flushPendingAutoSave()
+    updateCSS()
+    proceed()
+    return
+  }
+  if (getState('dvala-code-edited')) {
+    void showInfoModal(
+      'Unsaved program',
+      'The current program is not saved. Proceeding will discard it.',
+      proceed,
+    )
+    return
+  }
+  proceed()
+}
 
 function scheduleAutoSave() {
   const currentId = getState('current-program-id')
@@ -1574,29 +1615,32 @@ export function addSampleContext() {
 }
 
 export function newFile() {
-  // Flush any pending auto-save for the current program
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer)
-    autoSaveTimer = null
-    const id = getState('current-program-id')
-    if (id) {
-      const updated = getSavedPrograms().map(p =>
-        p.id === id
-          ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
-          : p,
-      )
-      setSavedPrograms(updated)
-    }
-  }
-  saveState({ 'dvala-code': '', 'current-program-id': null }, true)
-  elements.dvalaTextArea.value = ''
-  syntaxOverlay.update()
-  updateCSS()
-  populateSavedProgramsList()
-  focusDvalaCode()
+  guardCodeReplacement(() => {
+    flushPendingAutoSave()
+    saveState({ 'dvala-code': '', 'current-program-id': null, 'dvala-code-edited': false }, true)
+    elements.dvalaTextArea.value = ''
+    syntaxOverlay.update()
+    updateCSS()
+    populateSavedProgramsList()
+    focusDvalaCode()
+  })
 }
 
-function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
+/**
+ * Sets the code in the editor.
+ * When `onProceed` is provided the entire operation (code change + callback) is
+ * run inside `guardCodeReplacement`, so callers never need to add the guard manually.
+ */
+function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', onProceed?: () => void) {
+  if (onProceed !== undefined) {
+    guardCodeReplacement(() => {
+      saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+      setDvalaCode(value, pushToHistory, scroll)
+      onProceed()
+    })
+    return
+  }
+
   elements.dvalaTextArea.value = value
   syntaxOverlay.update()
 
@@ -1623,6 +1667,8 @@ export function resetOutput() {
 }
 
 export function resetPlayground() {
+  flushPendingAutoSave()
+  saveState({ 'current-program-id': null, 'dvala-code-edited': false })
   setDvalaCode('', true)
   setContext('', true)
   resetOutput()
@@ -1936,10 +1982,16 @@ window.onload = async function () {
   })
 
   elements.dvalaTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => setDvalaCode(elements.dvalaTextArea.value, true))
+    keydownHandler(evt, () => {
+      setDvalaCode(elements.dvalaTextArea.value, true)
+      saveState({ 'dvala-code-edited': true })
+      updateCSS()
+    })
   })
   elements.dvalaTextArea.addEventListener('input', () => {
     setDvalaCode(elements.dvalaTextArea.value, true)
+    saveState({ 'dvala-code-edited': true })
+    updateCSS()
     syntaxOverlay.update()
   })
   elements.dvalaTextArea.addEventListener('scroll', () => {
@@ -3434,7 +3486,7 @@ export function toggleShowAllTerminalSnapshots(): void {
   showAllTerminalSnapshots = !showAllTerminalSnapshots
   const overflow = document.getElementById('terminal-snapshots-overflow')
   if (overflow) {
-    overflow.style.display = showAllTerminalSnapshots ? 'flex' : 'none'
+    overflow.style.display = showAllTerminalSnapshots ? 'contents' : 'none'
     // Update button text
     const btn = overflow.nextElementSibling as HTMLButtonElement | null
     if (btn) {
@@ -4681,7 +4733,8 @@ function updateCSS() {
   const currentProgramId = getState('current-program-id')
   const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
   elements.dvalaCodeTitleString.textContent = currentProgram ? currentProgram.name : 'Untitled Program'
-  elements.dvalaCodePendingIndicator.style.display = autoSaveTimer !== null ? 'inline-block' : 'none'
+  const showIndicator = autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0)
+  elements.dvalaCodePendingIndicator.style.display = showIndicator ? 'inline-block' : 'none'
   elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
@@ -4767,10 +4820,11 @@ function inactivateAll() {
 
 export function addToPlayground(name: string, encodedExample: string) {
   const example = decodeURIComponent(atob(encodedExample))
-  setDvalaCode(`// ${name}\n\n${example}\n`, true, 'top')
-  showToast('Example loaded in editor')
-  saveState({ 'focused-panel': 'dvala-code' })
-  applyState()
+  setDvalaCode(`// ${name}\n\n${example}\n`, true, 'top', () => {
+    showToast('Example loaded in editor')
+    saveState({ 'focused-panel': 'dvala-code' })
+    applyState()
+  })
 }
 
 export function copyExample(encodedExample: string) {
@@ -4787,42 +4841,47 @@ export function copyCode(encodedCode: string) {
 
 export function loadEncodedCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
-  setDvalaCode(code, true, 'top')
-  showToast('Code loaded in editor')
-  saveState({ 'focused-panel': 'dvala-code' })
-  applyState()
+  setDvalaCode(code, true, 'top', () => {
+    showToast('Code loaded in editor')
+    saveState({ 'focused-panel': 'dvala-code' })
+    applyState()
+  })
 }
 
 export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
+  guardCodeReplacement(() => {
+    saveState({ 'current-program-id': null, 'dvala-code-edited': false })
 
-  const context = example.context
-    ? formatContextJson(example.context as Record<string, unknown>)
-    : ''
+    const context = example.context
+      ? formatContextJson(example.context as Record<string, unknown>)
+      : ''
 
-  setContext(context, true, 'top')
+    setContext(context, true, 'top')
 
-  const code = example.code ? example.code : ''
-  const size = Math.max(name.length + 10, 40)
-  const paddingLeft = Math.floor((size - name.length) / 2)
-  const paddingRight = Math.ceil((size - name.length) / 2)
-  setDvalaCode(`
+    const code = example.code ? example.code : ''
+    const size = Math.max(name.length + 10, 40)
+    const paddingLeft = Math.floor((size - name.length) / 2)
+    const paddingRight = Math.ceil((size - name.length) / 2)
+    setDvalaCode(`
 /*${'*'.repeat(size)}**
  *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
  *${'*'.repeat(size)}**/
 
 ${code}
 `.trimStart(), true, 'top')
-  saveState({ 'focused-panel': 'dvala-code' })
-  applyState()
-  showToast(`Example loaded: ${name}`)
+    saveState({ 'focused-panel': 'dvala-code' })
+    applyState()
+    showToast(`Example loaded: ${name}`)
+  })
 }
 
 export function loadCode(code: string) {
-  setDvalaCode(code, true, 'top')
-  saveState({ 'focused-panel': 'dvala-code' })
-  applyState()
-  showToast('Code loaded')
+  setDvalaCode(code, true, 'top', () => {
+    saveState({ 'focused-panel': 'dvala-code' })
+    applyState()
+    showToast('Code loaded')
+  })
 }
 
 function hijackConsole() {
