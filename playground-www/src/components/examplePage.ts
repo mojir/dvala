@@ -21,14 +21,18 @@ export function renderExamplePage(): string {
     const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
     return `
 <li class="content-page__entry example-page__entry">
-  <div class="example-page__entry-header">
-    <span class="example-page__entry-title">${escapeHtml(ex.name)}</span>
-    <button class="example-page__entry-btn" onclick="Playground.setPlayground(${escapeHtml(JSON.stringify(ex.name))}, ${escapeHtml(JSON.stringify(encodedExample))})">
-      Load in playground
-    </button>
-  </div>
-  ${ex.description ? `<p class="example-page__entry-desc">${escapeHtml(ex.description)}</p>` : ''}
-  <pre class="example-page__code"><code>${tokenizeToHtml(ex.code)}</code></pre>
+  <details class="example-page__details">
+    <summary class="example-page__summary">
+      <div class="example-page__summary-row">
+        <span class="example-page__entry-title">${escapeHtml(ex.name)}</span>
+        <button class="example-page__entry-btn" onclick="event.stopPropagation(); Playground.setPlayground(${escapeHtml(JSON.stringify(ex.name))}, ${escapeHtml(JSON.stringify(encodedExample))})">
+          Load in playground
+        </button>
+      </div>
+      ${ex.description ? `<p class="example-page__entry-desc">${escapeHtml(ex.description)}</p>` : ''}
+    </summary>
+    <pre class="example-page__code"><code>${tokenizeToHtml(ex.code)}</code></pre>
+  </details>
 </li>`
   }).join('\n')
 
