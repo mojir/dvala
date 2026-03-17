@@ -40,8 +40,8 @@ export type DvalaRunOptions =
  * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -204,10 +204,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         const programSource = isDvalaBundle(source) ? source.program : source
         const ast = buildAst(programSource)
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
+        const terminalSnapshot = runOptions?.terminalSnapshot
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
-        }, !disableAutoCheckpoint)
+        }, !disableAutoCheckpoint, terminalSnapshot)
         if (result.type === 'completed') {
           return { ...result, definedBindings: contextStack.getModuleScopeBindings() }
         }

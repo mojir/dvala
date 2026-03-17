@@ -2275,8 +2275,8 @@ export async function run() {
     const pure = getState('pure')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = await getDvala().runAsync(code, pure
-      ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint }
-      : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint },
+      ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+      : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint, terminalSnapshot: true },
     )
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
@@ -3632,12 +3632,14 @@ export async function resumeSnapshot() {
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
+        terminalSnapshot: true,
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
         bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
+        terminalSnapshot: true,
       })
     if (runResult.type === 'error') {
       if (runResult.snapshot) {

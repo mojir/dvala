@@ -3853,12 +3853,13 @@ export async function evaluateWithEffects(
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
   autoCheckpoint?: boolean,
+  terminalSnapshot?: boolean,
 ): Promise<RunResult> {
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint)
+  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint, terminalSnapshot)
 }
 
 /**
@@ -4174,6 +4175,7 @@ async function runEffectLoop(
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
   autoCheckpoint?: boolean,
+  terminalSnapshot?: boolean,
 ): Promise<RunResult> {
   const debugMode = Array.isArray(handlers) && handlers.some(h => h.pattern === 'dvala.debug.step')
   const snapshotState: SnapshotState = {
@@ -4182,13 +4184,14 @@ async function runEffectLoop(
     executionId: generateUUID(),
     ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
     ...(autoCheckpoint ? { autoCheckpoint } : {}),
+    ...(terminalSnapshot ? { terminalSnapshot } : {}),
   }
 
   let step: Step | Promise<Step> = initial
 
   // Helper to create a terminal snapshot for completed/error/halted states
   function createTerminalSnapshot(options?: { error?: DvalaError; result?: Any; halted?: boolean }): Snapshot | undefined {
-    if (!snapshotState.autoCheckpoint) {
+    if (!snapshotState.autoCheckpoint && !snapshotState.terminalSnapshot) {
       return undefined
     }
     const continuation = serializeTerminalSnapshot(
