@@ -230,7 +230,7 @@ perform(effect(dvala.io.read-line), "Press Enter when ready...")  // waits for u
 ### 3. Code generator
 ```dvala
 let n = 5
-let code = "let sum = " ++ join(map(range(1, n + 1), fn(i) => str(i)), " + ")
+let code = "let total = " ++ join(map(range(1, n + 1), fn(i) => str(i)), " + ")
 perform(effect(playground.editor.setContent), code)
 ```
 

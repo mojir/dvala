@@ -1664,25 +1664,39 @@ button:focus {
 
 /* ============================================================
    Syntax overlay (textarea-based code editor)
+   Parent-scrolls pattern: container is the only scroll host;
+   neither child has its own scrollbar → zero scrollbar mismatch.
    ============================================================ */
 .syntax-overlay-container {
-  position: relative;
+  display: grid;
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
+}
+
+/* Shared text-layout properties so caret aligns with highlighted text */
+.syntax-overlay-container textarea,
+.syntax-overlay-container pre {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  padding: var(--space-2);
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  tab-size: 2;
+  white-space: pre;
+  box-sizing: border-box;
+  border: none;
 }
 
 .syntax-overlay-container textarea {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
   color: transparent;
   caret-color: white;
   background-color: transparent;
   z-index: 1;
+  overflow: hidden;
+  resize: none;
+  outline: none;
 }
 
 .syntax-overlay-container textarea::selection {
@@ -1694,24 +1708,14 @@ button:focus {
 }
 
 .syntax-overlay-container pre {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  margin: 0;
-  padding: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-family: monospace;
   background-color: var(--color-code-bg);
   color: var(--color-text);
-  border: 0;
-  white-space: pre;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
-  box-sizing: border-box;
-  line-height: normal;
-  tab-size: 2;
+  height: max-content;
+  width: max-content;
+  min-height: 100%;
+  min-width: 100%;
 }
 
 /* ============================================================
