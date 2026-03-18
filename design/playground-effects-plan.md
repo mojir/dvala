@@ -243,7 +243,7 @@ let challenges = [
 
 ### Phase 0: Preparation
 - [x] Create `PlaygroundAPI` interface
-- [ ] Implement facade wrapping existing `scripts.ts` functions
+- [x] Implement facade wrapping existing `scripts.ts` functions
 - [ ] Wire up effect handler registration infrastructure
 - [ ] Rename "Disable Playground effect handlers" → "Disable standard effect handlers"
 - [ ] Add "Disable playground.* effects" toggle
