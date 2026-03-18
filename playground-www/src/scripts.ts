@@ -1227,7 +1227,8 @@ export function closeAddContextMenu() {
 }
 
 export function share() {
-  const href = `${location.origin}/?state=${encodeState()}`
+  const base = document.querySelector('base')?.href ?? `${location.origin}/`
+  const href = `${base}?state=${encodeState()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
     return
