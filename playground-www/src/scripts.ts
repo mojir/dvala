@@ -2103,9 +2103,8 @@ window.onload = async function () {
     updateCSS()
     syntaxOverlay.update()
   })
-  elements.dvalaTextArea.addEventListener('scroll', () => {
-    saveState({ 'dvala-code-scroll-top': elements.dvalaTextArea.scrollTop })
-    syntaxOverlay.syncScroll()
+  syntaxOverlay.scrollContainer.addEventListener('scroll', () => {
+    saveState({ 'dvala-code-scroll-top': syntaxOverlay.scrollContainer.scrollTop })
   })
   elements.dvalaTextArea.addEventListener('selectionchange', () => {
     if (!ignoreSelectionChange) {
@@ -2414,8 +2413,8 @@ export async function run() {
     dvalaCode: getState('dvala-code'),
     context: getState('context'),
     theme: document.documentElement.getAttribute('data-theme'),
-    scrollTop: ta.scrollTop,
-    scrollLeft: ta.scrollLeft,
+    scrollTop: syntaxOverlay.scrollContainer.scrollTop,
+    scrollLeft: syntaxOverlay.scrollContainer.scrollLeft,
     selectionStart: ta.selectionStart,
     selectionEnd: ta.selectionEnd,
     route: location.pathname,
@@ -2468,14 +2467,15 @@ export async function run() {
     if (uiSnapshot.theme && document.documentElement.getAttribute('data-theme') !== uiSnapshot.theme) {
       document.documentElement.setAttribute('data-theme', uiSnapshot.theme)
     }
-    ta.scrollTop = uiSnapshot.scrollTop
-    ta.scrollLeft = uiSnapshot.scrollLeft
-    ta.setSelectionRange(uiSnapshot.selectionStart, uiSnapshot.selectionEnd)
+    syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
+    syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
     if (location.pathname !== uiSnapshot.route) {
       router.navigate(uiSnapshot.route)
     }
     hijacker.releaseConsole()
     focusDvalaCode()
+    ta.setSelectionRange(uiSnapshot.selectionStart, uiSnapshot.selectionEnd)
+    syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
   }
 }
 
@@ -4858,7 +4858,7 @@ function applyState(scrollToTop = false) {
       focusDvalaCode()
 
     elements.contextTextArea.scrollTop = getState('context-scroll-top')
-    elements.dvalaTextArea.scrollTop = getState('dvala-code-scroll-top')
+    syntaxOverlay.scrollContainer.scrollTop = getState('dvala-code-scroll-top')
     elements.outputResult.scrollTop = getState('output-scroll-top')
   }, 0)
 }

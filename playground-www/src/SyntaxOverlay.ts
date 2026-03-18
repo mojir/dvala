@@ -126,7 +126,7 @@ export function tokenizeToHtml(code: string): string {
 export class SyntaxOverlay {
   private textarea: HTMLTextAreaElement
   private highlight: HTMLPreElement
-  private container: HTMLDivElement
+  readonly scrollContainer: HTMLDivElement
   private lastCode = ''
 
   constructor(textareaId: string) {
@@ -134,25 +134,31 @@ export class SyntaxOverlay {
     if (!textarea)
       throw new Error(`Element #${textareaId} not found`)
 
-    this.container = document.createElement('div')
-    this.container.className = 'syntax-overlay-container'
-    this.container.style.height = textarea.style.height || 'calc(100% - 32px)'
+    this.scrollContainer = document.createElement('div')
+    this.scrollContainer.className = 'syntax-overlay-container fancy-scroll'
+    this.scrollContainer.style.height = textarea.style.height || 'calc(100% - 32px)'
 
     this.highlight = document.createElement('pre')
 
-    textarea.parentNode!.insertBefore(this.container, textarea)
-    this.container.appendChild(this.highlight)
-    this.container.appendChild(textarea)
+    textarea.parentNode!.insertBefore(this.scrollContainer, textarea)
+    this.scrollContainer.appendChild(this.highlight)
+    this.scrollContainer.appendChild(textarea)
 
     textarea.style.height = ''
-    textarea.style.lineHeight = 'normal'
-    textarea.style.tabSize = '2'
 
     this.textarea = textarea
 
-    textarea.addEventListener('scroll', () => this.syncScroll())
+    // Keep textarea sized to match the pre content area
+    const resizeObserver = new ResizeObserver(() => this.syncSize())
+    resizeObserver.observe(this.highlight)
 
     this.update()
+  }
+
+  private syncSize(): void {
+    const style = getComputedStyle(this.highlight)
+    this.textarea.style.width = style.width
+    this.textarea.style.height = style.height
   }
 
   update(): void {
@@ -162,11 +168,6 @@ export class SyntaxOverlay {
     this.lastCode = code
 
     this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
-    this.syncScroll()
-  }
-
-  syncScroll(): void {
-    this.highlight.scrollTop = this.textarea.scrollTop
-    this.highlight.scrollLeft = this.textarea.scrollLeft
+    this.syncSize()
   }
 }

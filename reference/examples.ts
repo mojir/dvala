@@ -923,7 +923,7 @@ perform(effect(dvala.io.println), "Editor has " ++ str(count(original)) ++ " cha
 
 // 3. Generate some code and write it to the editor
 let n = 5;
-let generated = "let sum = " ++ join(for (i in range(1, n + 1)) -> str(i), " + ") ++ "; sum";
+let generated = "let total = " ++ join(for (i in range(1, n + 1)) -> str(i), " + ") ++ "; total";
 perform(effect(playground.editor.setContent), generated);
 perform(effect(playground.ui.showToast), "Code generated!", "info");
 
