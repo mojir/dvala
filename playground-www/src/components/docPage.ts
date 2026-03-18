@@ -61,6 +61,17 @@ export function renderDocPage(linkName: string): string {
     }
   }
 
+  if (!ref) {
+    for (const [key, r] of Object.entries(data.playgroundEffects)) {
+      const candidate = makeLinkName(r.category, key)
+      if (candidate === linkName || key === decodedLinkName || `${r.category}-${key}` === decodedLinkName) {
+        ref = r
+        foundKey = key
+        break
+      }
+    }
+  }
+
   if (!ref || !foundKey) {
     return `<div class="doc-page"><p class="doc-page__not-found">No documentation found for <code>${escapeHtml(decodedLinkName)}</code>.</p></div>`
   }
@@ -73,6 +84,7 @@ function seeAlsoInfo(name: string, data: ReferenceData): { title: string; linkNa
     ...Object.entries(data.api),
     ...Object.entries(data.modules),
     ...Object.entries(data.effects),
+    ...Object.entries(data.playgroundEffects),
   ]
   for (const [k, r] of allEntries) {
     if (k === name || r.title === name) {

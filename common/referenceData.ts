@@ -14,6 +14,7 @@ export interface ReferenceData {
   api: Record<string, Reference> // core functions, special expressions, shorthands, datatypes
   modules: Record<string, Reference> // module functions, keyed by "module.fn"
   effects: Record<string, Reference> // effects
+  playgroundEffects: Record<string, Reference> // playground-specific effects
   moduleCategories: string[] // ordered list of module category names
   coreCategories: string[] // ordered list of core category names
   searchEntries: SearchEntry[]

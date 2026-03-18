@@ -3,9 +3,6 @@ import type { SavedProgram } from './programStorage'
 export interface PlaygroundAPI {
   ui: {
     showToast(message: string, level?: 'info' | 'success' | 'warning' | 'error'): void
-    setTheme(theme: 'light' | 'dark'): void
-    highlight(id: string): void
-    click(id: string): void
   }
   editor: {
     getContent(): string
@@ -50,9 +47,6 @@ export interface PlaygroundDeps {
   getSavedPrograms(): SavedProgram[]
   saveProgram(name: string, code: string): void
   runCode(code: string): Promise<unknown>
-  setTheme(theme: 'light' | 'dark'): void
-  highlightElement(id: string): void
-  clickElement(id: string): void
   navigateTo(route: string): void
   navigateBack(): void
 }
@@ -78,15 +72,6 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
         lastToastTime = now
         deps.showToast(message, { severity: toastSeverityMap[level] ?? 'info' })
       },
-      setTheme(theme: 'light' | 'dark') {
-        deps.setTheme(theme)
-      },
-      highlight(id: string) {
-        deps.highlightElement(id)
-      },
-      click(id: string) {
-        deps.clickElement(id)
-      },
     },
     editor: {
       getContent() {
@@ -102,11 +87,12 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
       },
       typeText(text: string, delayMs = 50) {
         if (deps.isEditorReadOnly()) throw new Error('Editor is read-only')
+        const startPos = deps.getEditorCursor()
         return new Promise<void>(resolve => {
           let i = 0
           function typeNext() {
             if (i < text.length) {
-              deps.insertEditorText(text[i]!)
+              deps.insertEditorText(text[i]!, startPos + i)
               i++
               setTimeout(typeNext, delayMs)
             } else {

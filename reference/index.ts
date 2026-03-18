@@ -191,7 +191,7 @@ export interface DatatypeReference extends CommonReference<'datatype'> {
   datatype: true
 }
 
-export interface EffectReference extends CommonReference<'effect'> {
+export interface EffectReference extends CommonReference<'effect' | 'playground-effect'> {
   effect: true
   args: Record<string, Argument>
   returns: TypedValue

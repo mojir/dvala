@@ -1669,14 +1669,33 @@ button:focus {
    ============================================================ */
 .syntax-overlay-container {
   display: grid;
+  grid-template-columns: auto 1fr;
   width: 100%;
   overflow: auto;
+  background-color: var(--color-code-bg);
+}
+
+.syntax-overlay-line-numbers {
+  grid-column: 1;
+  grid-row: 1;
+  padding: var(--space-2) 0.6em var(--space-2) var(--space-2);
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  white-space: pre;
+  color: rgb(100 100 100);
+  user-select: none;
+  border-right: 1px solid rgb(50 50 50);
+  position: sticky;
+  left: 0;
+  background-color: var(--color-code-bg);
+  z-index: 2;
 }
 
 /* Shared text-layout properties so caret aligns with highlighted text */
 .syntax-overlay-container textarea,
 .syntax-overlay-container pre {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   margin: 0;
   padding: var(--space-2);
@@ -2818,60 +2837,3 @@ h2.discrete {
   }
 }
 
-/* Playground API page */
-.playground-api__intro {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.5;
-  margin-bottom: 0.75rem;
-}
-.playground-api__intro code {
-  background: var(--bg-secondary);
-  padding: 0.1em 0.35em;
-  border-radius: 3px;
-  font-size: 0.8rem;
-}
-.playground-api__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-  margin-bottom: 1rem;
-}
-.playground-api__table th {
-  text-align: left;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 0.75rem;
-}
-.playground-api__table td {
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--border-color);
-  vertical-align: top;
-}
-.playground-api__name code {
-  color: var(--text-primary);
-  font-weight: 500;
-  white-space: nowrap;
-}
-.playground-api__args {
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-}
-.playground-api__returns code {
-  color: var(--text-secondary);
-}
-.playground-api__desc {
-  color: var(--text-primary);
-}
-
-/* Playground highlight effect */
-@keyframes playgroundHighlight {
-  0% { outline: 2px solid transparent; outline-offset: 2px; }
-  20% { outline: 2px solid var(--accent-color, #4fc3f7); outline-offset: 2px; }
-  100% { outline: 2px solid transparent; outline-offset: 2px; }
-}
-.playground-highlight {
-  animation: playgroundHighlight 1.5s ease-out;
-}
