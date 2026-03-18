@@ -77,6 +77,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
   if (!_playgroundHandlers) {
     const api = createPlaygroundAPI({
       showToast: (msg, opts) => showToast(msg, opts),
+      isEditorReadOnly: () => elements.dvalaTextArea.readOnly,
       getEditorContent: () => elements.dvalaTextArea.value,
       setEditorContent: code => {
         elements.dvalaTextArea.value = code
@@ -2408,10 +2409,16 @@ export async function run() {
   const dvalaParams = getDvalaParamsFromContext()
 
   // Snapshot UI state that playground effects may modify
+  const ta = elements.dvalaTextArea
   const uiSnapshot = {
     dvalaCode: getState('dvala-code'),
     context: getState('context'),
     theme: document.documentElement.getAttribute('data-theme'),
+    scrollTop: ta.scrollTop,
+    scrollLeft: ta.scrollLeft,
+    selectionStart: ta.selectionStart,
+    selectionEnd: ta.selectionEnd,
+    route: location.pathname,
   }
 
   const hijacker = hijackConsole()
@@ -2460,6 +2467,12 @@ export async function run() {
     }
     if (uiSnapshot.theme && document.documentElement.getAttribute('data-theme') !== uiSnapshot.theme) {
       document.documentElement.setAttribute('data-theme', uiSnapshot.theme)
+    }
+    ta.scrollTop = uiSnapshot.scrollTop
+    ta.scrollLeft = uiSnapshot.scrollLeft
+    ta.setSelectionRange(uiSnapshot.selectionStart, uiSnapshot.selectionEnd)
+    if (location.pathname !== uiSnapshot.route) {
+      router.navigate(uiSnapshot.route)
     }
     hijacker.releaseConsole()
     focusDvalaCode()

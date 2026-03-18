@@ -37,6 +37,7 @@ export interface PlaygroundAPI {
 
 export interface PlaygroundDeps {
   showToast(message: string, options?: { severity?: 'info' | 'error' }): void
+  isEditorReadOnly(): boolean
   getEditorContent(): string
   setEditorContent(code: string): void
   insertEditorText(text: string, position?: number): void
@@ -92,12 +93,15 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
         return deps.getEditorContent()
       },
       setContent(code: string) {
+        if (deps.isEditorReadOnly()) throw new Error('Editor is read-only')
         deps.setEditorContent(code)
       },
       insertText(text: string, position?: number) {
+        if (deps.isEditorReadOnly()) throw new Error('Editor is read-only')
         deps.insertEditorText(text, position)
       },
       typeText(text: string, delayMs = 50) {
+        if (deps.isEditorReadOnly()) throw new Error('Editor is read-only')
         return new Promise<void>(resolve => {
           let i = 0
           function typeNext() {
