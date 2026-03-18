@@ -8,6 +8,7 @@
 import { builtin } from './builtin'
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
 import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
+import { standardEffectNames } from './evaluator/standardEffects'
 import { createContextStack } from './evaluator/ContextStack'
 import { getUndefinedSymbols as getUndefinedSymbolsInternal } from './getUndefinedSymbols'
 import type { DvalaModule } from './builtin/modules/interface'
@@ -80,5 +81,8 @@ export function getUndefinedSymbols(
  * @param params - Optional params (bindings to include as suggestions)
  */
 export function getAutoCompleter(program: string, position: number, params: AutoCompleterParams = {}): AutoCompleter {
-  return new AutoCompleter(program, position, params)
+  const effectNames = params.effectNames
+    ? [...standardEffectNames, ...params.effectNames]
+    : [...standardEffectNames]
+  return new AutoCompleter(program, position, { ...params, effectNames })
 }

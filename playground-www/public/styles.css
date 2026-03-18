@@ -1935,6 +1935,22 @@ button:focus {
   flex-shrink: 0;
 }
 
+/* Locked / read-only indicator */
+.locked-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  font-size: 0.75rem;
+  color: rgb(163 163 163);
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.panel-textarea--locked {
+  opacity: 0.7;
+  cursor: default;
+}
+
 /* ============================================================
    Dropdown menus (add-context-menu, more-menu)
    ============================================================ */

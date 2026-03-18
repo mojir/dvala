@@ -102,6 +102,46 @@ describe('autoCompleter', () => {
     })
   })
 
+  describe('effect name suggestions', () => {
+    const effectParams: AutoCompleterParams = {
+      effectNames: ['dvala.io.print', 'dvala.io.println', 'dvala.random', 'dvala.random.int'],
+    }
+
+    it('should suggest full effect names when searching from start', () => {
+      const completer = new AutoCompleter('effect(dvala', 12, effectParams)
+      const suggestions = completer.getSuggestions()
+      expect(suggestions).toContain('dvala.io.print')
+      expect(suggestions).toContain('dvala.io.println')
+      expect(suggestions).toContain('dvala.random')
+      expect(suggestions).toContain('dvala.random.int')
+    })
+
+    it('should complete effect name suffix in dotted context', () => {
+      const completer = new AutoCompleter('effect(dvala.io.print', 21, effectParams)
+      const suggestions = completer.getSuggestions()
+      expect(suggestions).toContain('print')
+      expect(suggestions).toContain('println')
+      expect(suggestions).not.toContain('dvala.io.print')
+    })
+
+    it('should produce correct program when completing dotted effect', () => {
+      const completer = new AutoCompleter('effect(dvala.io.print)', 21, effectParams)
+      const suggestion = completer.getNextSuggestion()
+      expect(suggestion).not.toBeNull()
+      expect(suggestion?.program).toMatch(/^effect\(dvala\.io\.print/)
+    })
+
+    it('should only suggest effects in dotted context, not regular commands', () => {
+      const completer = new AutoCompleter('effect(dvala.io.', 16, effectParams)
+      const suggestions = completer.getSuggestions()
+      expect(suggestions).toContain('print')
+      expect(suggestions).toContain('println')
+      // Regular commands should not appear
+      expect(suggestions).not.toContain('if')
+      expect(suggestions).not.toContain('let')
+    })
+  })
+
   describe('suggestion result format', () => {
     it('should return correct program and position', () => {
       const completer = new AutoCompleter('(def s)', 4, params)

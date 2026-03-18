@@ -4,6 +4,7 @@ import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 
 export interface AutoCompleterParams {
   bindings?: Record<string, unknown>
+  effectNames?: readonly string[]
 }
 
 type AutoCompleteSuggestion = {
@@ -13,11 +14,15 @@ type AutoCompleteSuggestion = {
 
 const dvalaCommands = new Set([...normalExpressionKeys, ...specialExpressionKeys, ...Object.keys(reservedSymbolRecord)])
 
+// Matches a trailing dotted-symbol prefix like "dvala.io." or "foo.bar."
+const DOT_PREFIX_RE = /((?:[a-zA-Z][a-zA-Z0-9_-]*\.)+)$/
+
 // TODO: replace with get suggestions function
 export class AutoCompleter {
   private prefixProgram: string = ''
   private suffixProgram: string = ''
   private searchString: string = ''
+  private dotPrefix: string = ''
   private suggestions: string[] = []
   private suggestionIndex: null | number = null
 
@@ -38,6 +43,18 @@ export class AutoCompleter {
     this.prefixProgram = this.originalProgram.slice(0, this.originalPosition - this.searchString.length)
     this.suffixProgram = this.originalProgram.slice(this.prefixProgram.length + this.searchString.length)
     this.originalProgram.slice(this.prefixProgram.length + this.searchString.length)
+
+    // When cursor is immediately after '.', fold the dot into prefixProgram
+    // so dotPrefix detection and completion work correctly
+    if (lastToken[0] === 'Operator' && this.searchString === '.') {
+      this.prefixProgram = this.originalProgram.slice(0, this.originalPosition)
+      this.suffixProgram = this.originalProgram.slice(this.originalPosition)
+      this.searchString = ''
+    }
+
+    const dotPrefixMatch = DOT_PREFIX_RE.exec(this.prefixProgram)
+    this.dotPrefix = dotPrefixMatch?.[1] ?? ''
+
     this.suggestions = this.generateSuggestions(params)
   }
 
@@ -104,6 +121,12 @@ export class AutoCompleter {
 
   private generateSuggestions(params: AutoCompleterParams): string[] {
     const blacklist = new Set<string>(['0_defn', '0_lambda'])
+    const fullSearch = this.dotPrefix + this.searchString
+
+    if (this.dotPrefix) {
+      // Inside a dotted-symbol context (e.g. "dvala.io.") — only complete effect names
+      return this.generateDottedEffectSuggestions(params.effectNames ?? [], fullSearch)
+    }
 
     const startsWithCaseSensitive = this.generateWithPredicate(params, suggestion =>
       !blacklist.has(suggestion) && suggestion.startsWith(this.searchString))
@@ -124,6 +147,30 @@ export class AutoCompleter {
     return [...startsWithCaseSensitive, ...startsWithCaseInsensitive, ...includesCaseSensitive, ...includesCaseInsensitive]
   }
 
+  private generateDottedEffectSuggestions(effectNames: readonly string[], fullSearch: string): string[] {
+    const seen = new Set<string>()
+    const results: string[] = []
+
+    const predicates = [
+      (name: string) => name.startsWith(fullSearch),
+      (name: string) => name.toLowerCase().startsWith(fullSearch.toLowerCase()),
+      (name: string) => name.includes(fullSearch),
+      (name: string) => name.toLowerCase().includes(fullSearch.toLowerCase()),
+    ]
+
+    for (const pred of predicates) {
+      for (const name of effectNames) {
+        const insertText = name.slice(this.dotPrefix.length)
+        if (insertText && !seen.has(insertText) && pred(name)) {
+          results.push(insertText)
+          seen.add(insertText)
+        }
+      }
+    }
+
+    return results
+  }
+
   private generateWithPredicate(params: AutoCompleterParams, shouldInclude: (suggestion: string) => boolean): string[] {
     const suggestions = new Set<string>()
 
@@ -136,6 +183,12 @@ export class AutoCompleter {
     Object.keys(params.bindings ?? {})
       .filter(shouldInclude)
       .forEach(suggestion => suggestions.add(suggestion))
+
+    params.effectNames?.forEach(name => {
+      if (shouldInclude(name)) {
+        suggestions.add(name)
+      }
+    })
 
     return [...suggestions].sort((a, b) => a.localeCompare(b))
   }

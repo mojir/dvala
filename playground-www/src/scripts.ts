@@ -132,6 +132,7 @@ const elements = {
   get dvalaCodeTitleString() { return document.getElementById('dvala-code-title-string') as HTMLSpanElement },
   get dvalaCodeTitleInput() { return document.getElementById('dvala-code-title-input') as HTMLInputElement },
   get dvalaCodePendingIndicator() { return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement },
+  get dvalaCodeLockedIndicator() { return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement },
   get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
   get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
   get snapshotPanelTemplate() { return document.getElementById('snapshot-panel-template') as HTMLTemplateElement },
@@ -727,6 +728,7 @@ export function toggleProgramLock(id: string) {
   const updated = programs.map(p => p.id === id ? { ...p, locked: !p.locked } : p)
   setSavedPrograms(updated)
   populateSavedProgramsList()
+  if (id === getState('current-program-id')) updateCSS()
 }
 
 export function clearAllSavedPrograms() {
@@ -911,9 +913,11 @@ function showNameInputModal(title: string, defaultValue: string, onConfirm: (nam
 
 export function onProgramTitleClick(event: MouseEvent) {
   event.stopPropagation()
+  const currentId = getState('current-program-id')
+  if (currentId && getSavedPrograms().find(p => p.id === currentId)?.locked) return
   const input = elements.dvalaCodeTitleInput
   const span = elements.dvalaCodeTitleString
-  input.value = getState('current-program-id') ? elements.dvalaCodeTitleString.textContent ?? '' : ''
+  input.value = currentId ? elements.dvalaCodeTitleString.textContent ?? '' : ''
   span.style.display = 'none'
   input.style.display = ''
   input.focus()
@@ -1029,6 +1033,7 @@ function guardCodeReplacement(proceed: () => void) {
 function scheduleAutoSave() {
   const currentId = getState('current-program-id')
   if (!currentId) return
+  if (getSavedPrograms().find(p => p.id === currentId)?.locked) return
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     autoSaveTimer = null
@@ -1413,6 +1418,7 @@ export const redoContextHistory = throttle(() => {
 })
 
 export const undoDvalaCodeHistory = throttle(() => {
+  if (elements.dvalaTextArea.readOnly) return
   ignoreSelectionChange = true
   if (undoDvalaCode()) {
     applyState()
@@ -1422,6 +1428,7 @@ export const undoDvalaCodeHistory = throttle(() => {
 })
 
 export const redoDvalaCodeHistory = throttle(() => {
+  if (elements.dvalaTextArea.readOnly) return
   ignoreSelectionChange = true
   if (redoDvalaCode()) {
     applyState()
@@ -1945,14 +1952,14 @@ window.onload = async function () {
       evt.preventDefault()
       if (document.activeElement === elements.contextTextArea)
         undoContextHistory()
-      else if (document.activeElement === elements.dvalaTextArea)
+      else if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly)
         undoDvalaCodeHistory()
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && evt.shiftKey && evt.key === 'z') {
       evt.preventDefault()
       if (document.activeElement === elements.contextTextArea)
         redoContextHistory()
-      else if (document.activeElement === elements.dvalaTextArea)
+      else if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly)
         redoDvalaCodeHistory()
     }
   })
@@ -2085,7 +2092,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   const onTabStop = rowLength % 2 === 0
 
   if (
-    (!['Shift', 'Control', 'Meta', 'Alt', 'Escape'].includes(evt.key) && evt.code !== 'Space')
+    (!['Shift', 'Control', 'Meta', 'Alt', 'Escape', 'Tab'].includes(evt.key) && evt.code !== 'Space')
     || (evt.code === 'Space' && !evt.altKey)
   ) {
     autoCompleter = null
@@ -2106,14 +2113,39 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   }
 
   switch (evt.code) {
-    case 'Tab':
+    case 'Tab': {
       evt.preventDefault()
-      if (!evt.shiftKey) {
+      if (autoCompleter) {
+        // Cycle through suggestions with Tab / Shift+Tab
+        const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
+        if (suggestion) {
+          target.value = suggestion.program
+          target.selectionStart = target.selectionEnd = suggestion.position
+          onChange()
+        }
+      } else if (!evt.shiftKey) {
+        // If cursor is directly after non-whitespace, try autocomplete first
+        const charBefore = start > 0 ? target.value[start - 1] : ''
+        if (charBefore && !/\s/.test(charBefore)) {
+          const completer = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings })
+          if (completer.getSuggestions().length > 0) {
+            autoCompleter = completer
+            const suggestion = autoCompleter.getNextSuggestion()
+            if (suggestion) {
+              target.value = suggestion.program
+              target.selectionStart = target.selectionEnd = suggestion.position
+              onChange()
+            }
+            break
+          }
+        }
+        // Fall back to indentation
         target.value = target.value.substring(0, start) + (onTabStop ? '  ' : ' ') + target.value.substring(end)
         target.selectionStart = target.selectionEnd = start + (onTabStop ? 2 : 1)
         onChange()
       }
       break
+    }
     case 'Escape':
       evt.preventDefault()
       if (autoCompleter) {
@@ -4735,8 +4767,16 @@ function updateCSS() {
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   const currentProgramId = getState('current-program-id')
   const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
+  const isLocked = currentProgram?.locked ?? false
   elements.dvalaCodeTitleString.textContent = currentProgram ? currentProgram.name : 'Untitled Program'
-  const showIndicator = autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0)
+  elements.dvalaTextArea.readOnly = isLocked
+  elements.dvalaTextArea.classList.toggle('panel-textarea--locked', isLocked)
+  elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
+  if (isLocked) {
+    elements.dvalaCodeUndoButton.classList.add('disabled')
+    elements.dvalaCodeRedoButton.classList.add('disabled')
+  }
+  const showIndicator = !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
   elements.dvalaCodePendingIndicator.style.display = showIndicator ? 'inline-block' : 'none'
   elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
