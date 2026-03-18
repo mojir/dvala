@@ -55,7 +55,7 @@ function getShellHTML(): string {
 
   <div id="resize-sidebar"></div>
 
-  <nav id="sidebar" class="fancy-scroll-background" data-playground-id="sidebar">
+  <nav id="sidebar" class="fancy-scroll-background">
     <div class="sidebar-logo-wrap">
       <img src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
     </div>
@@ -108,7 +108,7 @@ function getShellHTML(): string {
 
   ${getMobileOverlay()}
 
-  <div id="toast-container" data-playground-id="toast-container"></div>
+  <div id="toast-container"></div>
   `
 }
 
@@ -118,7 +118,7 @@ function getPlaygroundPanel(): string {
     <div id="resize-playground"></div>
     <div id="panels-container">
 
-      <div id="context-panel" data-playground-id="context-panel">
+      <div id="context-panel">
         <div class="panel-header" onclick="Playground.focusContext()">
           <div id="context-title" class="panel-header__title">Context</div>
           <div class="panel-header__actions">
@@ -146,7 +146,7 @@ function getPlaygroundPanel(): string {
 
       <div id="resize-divider-1"></div>
 
-      <div id="dvala-panel" data-playground-id="editor-panel">
+      <div id="dvala-panel">
         <div class="panel-header" onclick="Playground.focusDvalaCode()">
           <div id="dvala-code-title" class="panel-header__code-title">
             <span id="dvala-panel-debug-info" class="panel-header__debug-icon">${debugIcon}</span>
@@ -161,7 +161,7 @@ function getPlaygroundPanel(): string {
               onblur="Playground.onProgramTitleBlur()">
           </div>
           <div class="panel-header__actions" onclick="event.stopPropagation()">
-            <a href="#" role="button" onclick="Playground.run()" title="Run (Ctrl+R)" data-playground-id="run-button">${playIcon} Run</a>
+            <a href="#" role="button" onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
             <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code">${undoIcon}</a>
             <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code">${redoIcon}</a>
             <a href="#" role="button" onclick="Playground.newFile()" title="New file" aria-label="New file">${newFileIcon}</a>
@@ -187,7 +187,7 @@ function getPlaygroundPanel(): string {
 
       <div id="resize-divider-2"></div>
 
-      <div id="output-panel" data-playground-id="output-panel">
+      <div id="output-panel">
         <div class="panel-header">
           <span class="panel-header__title">Output</span>
           <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn" aria-label="Clear output">${trashIcon}</a>

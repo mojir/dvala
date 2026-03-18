@@ -22,7 +22,6 @@ import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
-import { renderPlaygroundApiPage } from './components/playgroundApiPage'
 import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
 import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
@@ -139,20 +138,6 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         if (result.type === 'error') throw result.error
         if (result.type === 'suspended') throw new Error('Program suspended')
         return result.value
-      },
-      setTheme: theme => {
-        document.documentElement.setAttribute('data-theme', theme)
-      },
-      highlightElement: id => {
-        const el = document.querySelector(`[data-playground-id="${CSS.escape(id)}"]`)
-        if (!el) throw new Error(`Element "${id}" not found`)
-        el.classList.add('playground-highlight')
-        setTimeout(() => el.classList.remove('playground-highlight'), 1500)
-      },
-      clickElement: id => {
-        const el = document.querySelector<HTMLElement>(`[data-playground-id="${CSS.escape(id)}"]`)
-        if (!el) throw new Error(`Element "${id}" not found`)
-        el.click()
       },
       navigateTo: route => {
         router.navigate(route.startsWith('/') ? route : `/${route}`)
@@ -1317,6 +1302,68 @@ export function toggleModuleCategory(categoryKey: string, animate = true) {
 
 }
 
+const expandedStandardEffectGroups = new Set<string>()
+
+export function toggleStandardEffectGroup(groupKey: string, animate = true) {
+  const sanitizedKey = groupKey.replace(/\s+/g, '-')
+  const chevron = document.getElementById(`se-chevron-${sanitizedKey}`)
+  const content = document.getElementById(`se-content-${sanitizedKey}`)
+
+  if (!chevron || !content)
+    return
+
+  const isExpanded = expandedStandardEffectGroups.has(groupKey)
+
+  // Collapse all expanded standard effect groups
+  for (const key of Array.from(expandedStandardEffectGroups)) {
+    const sk = key.replace(/\s+/g, '-')
+    const c = document.getElementById(`se-content-${sk}`)
+    const ch = document.getElementById(`se-chevron-${sk}`)
+    if (c)
+      collapseCollapsible(c, animate)
+    if (ch)
+      ch.innerHTML = chevronRight
+    expandedStandardEffectGroups.delete(key)
+  }
+
+  if (!isExpanded) {
+    expandedStandardEffectGroups.add(groupKey)
+    expandCollapsible(content, animate)
+    chevron.innerHTML = chevronDown
+  }
+}
+
+const expandedPlaygroundEffectGroups = new Set<string>()
+
+export function togglePlaygroundEffectGroup(groupKey: string, animate = true) {
+  const sanitizedKey = groupKey.replace(/\s+/g, '-')
+  const chevron = document.getElementById(`pe-chevron-${sanitizedKey}`)
+  const content = document.getElementById(`pe-content-${sanitizedKey}`)
+
+  if (!chevron || !content)
+    return
+
+  const isExpanded = expandedPlaygroundEffectGroups.has(groupKey)
+
+  // Collapse all expanded playground effect groups
+  for (const key of Array.from(expandedPlaygroundEffectGroups)) {
+    const sk = key.replace(/\s+/g, '-')
+    const c = document.getElementById(`pe-content-${sk}`)
+    const ch = document.getElementById(`pe-chevron-${sk}`)
+    if (c)
+      collapseCollapsible(c, animate)
+    if (ch)
+      ch.innerHTML = chevronRight
+    expandedPlaygroundEffectGroups.delete(key)
+  }
+
+  if (!isExpanded) {
+    expandedPlaygroundEffectGroups.add(groupKey)
+    expandCollapsible(content, animate)
+    chevron.innerHTML = chevronDown
+  }
+}
+
 export function openAddContextMenu() {
   elements.newContextName.value = getState('new-context-name')
   elements.newContextValue.value = getState('new-context-value')
@@ -1401,13 +1448,103 @@ function populateSidebarApiSections(): void {
   if (coreFnLinks.length > 0)
     html += makeSection('core-functions', 'Core functions', coreFnLinks)
 
-  // Effects
-  const effectLinks = Object.entries(data.effects).map(([key, r]) => {
-    const linkName = makeLinkName(r.category, key)
-    return { title: r.title, link: makeLink(linkName, r.title) }
-  }).sort((a, b) => a.title.localeCompare(b.title)).map(e => e.link)
-  if (effectLinks.length > 0)
-    html += makeSection('effects', 'Effects', effectLinks)
+  // Standard effects — grouped by sub-namespace (io, random, time, etc.)
+  if (Object.keys(data.effects).length > 0) {
+    const seByGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
+    for (const [key, r] of Object.entries(data.effects)) {
+      // title is e.g. "dvala.io.print" → group "io", shortName "print"
+      // title is e.g. "dvala.sleep" → group "other", shortName "sleep"
+      const parts = r.title.split('.')
+      const hasSubGroup = parts.length > 2
+      const group = hasSubGroup ? parts[1]! : 'other'
+      const shortName = hasSubGroup ? parts.slice(2).join('.') : parts.slice(1).join('.')
+      if (!seByGroup[group]) seByGroup[group] = []
+      seByGroup[group].push({ key, shortName, title: r.title })
+    }
+
+    const seGroupOrder = ['io', 'random', 'time', 'other']
+    const seGroupLabels: Record<string, string> = {
+      io: 'IO',
+      random: 'Random',
+      time: 'Time',
+      other: 'Other',
+    }
+
+    let seHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('effects')">
+  <span>Standard effects</span><span id="api-chevron-effects">${chevronRight}</span>
+</div>
+<div id="api-content-effects" class="sidebar-collapsible-content">`
+
+    for (const group of seGroupOrder) {
+      const entries = seByGroup[group]
+      if (!entries || entries.length === 0) continue
+      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
+      const label = seGroupLabels[group] ?? group
+      const fnLinks = entries.map(e => {
+        const linkName = makeLinkName('effect', e.key)
+        return makeLink(linkName, e.shortName)
+      }).join('\n    ')
+      seHtml += `
+  <div class="sidebar-collapsible-header" onclick="Playground.toggleStandardEffectGroup('${escapeHtml(group)}')">
+    <span>${escapeHtml(label)}</span><span id="se-chevron-${group}">${chevronRight}</span>
+  </div>
+  <div id="se-content-${group}" class="sidebar-collapsible-content">
+    ${fnLinks}
+  </div>`
+    }
+
+    seHtml += '\n</div>'
+    html += seHtml
+  }
+
+  // Playground effects — grouped by sub-namespace (ui, editor, context, etc.)
+  if (data.playgroundEffects && Object.keys(data.playgroundEffects).length > 0) {
+    const byGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
+    for (const [key, r] of Object.entries(data.playgroundEffects)) {
+      // title is e.g. "playground.ui.showToast" → group "ui", shortName "showToast"
+      const parts = r.title.split('.')
+      const group = parts[1] ?? 'other'
+      const shortName = parts.slice(2).join('.')
+      if (!byGroup[group]) byGroup[group] = []
+      byGroup[group].push({ key, shortName, title: r.title })
+    }
+
+    const groupOrder = ['ui', 'editor', 'context', 'exec', 'storage', 'router']
+    const groupLabels: Record<string, string> = {
+      ui: 'UI',
+      editor: 'Editor',
+      context: 'Context',
+      exec: 'Execution',
+      storage: 'Storage',
+      router: 'Router',
+    }
+
+    let peHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('playground-effects')">
+  <span>Playground effects</span><span id="api-chevron-playground-effects">${chevronRight}</span>
+</div>
+<div id="api-content-playground-effects" class="sidebar-collapsible-content">`
+
+    for (const group of groupOrder) {
+      const entries = byGroup[group]
+      if (!entries || entries.length === 0) continue
+      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
+      const label = groupLabels[group] ?? group
+      const fnLinks = entries.map(e => {
+        const linkName = makeLinkName('playground-effect', e.key)
+        return makeLink(linkName, e.shortName)
+      }).join('\n    ')
+      peHtml += `
+  <div class="sidebar-collapsible-header" onclick="Playground.togglePlaygroundEffectGroup('${escapeHtml(group)}')">
+    <span>${escapeHtml(label)}</span><span id="pe-chevron-${group}">${chevronRight}</span>
+  </div>
+  <div id="pe-content-${group}" class="sidebar-collapsible-content">
+    ${fnLinks}
+  </div>`
+    }
+
+    peHtml += '\n</div>'
+    html += peHtml
+  }
 
   // Shorthands
   const shorthandLinks = (byCategory['shorthand'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
@@ -1765,9 +1902,9 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   }
 
   if (scroll === 'top')
-    elements.dvalaTextArea.scrollTo(0, 0)
+    syntaxOverlay.scrollContainer.scrollTo(0, 0)
   else if (scroll === 'bottom')
-    elements.dvalaTextArea.scrollTo({ top: elements.dvalaTextArea.scrollHeight, behavior: 'smooth' })
+    syntaxOverlay.scrollContainer.scrollTo({ top: syntaxOverlay.scrollContainer.scrollHeight, behavior: 'smooth' })
 }
 
 export function resetOutput() {
@@ -2348,10 +2485,6 @@ function routeToPath(appPath: string): void {
     dynPage.innerHTML = renderExamplePage()
     sidebarLinkId = 'example-page_link'
     pageTitle = 'Examples | Dvala'
-  } else if (path === 'playground-api') {
-    dynPage.innerHTML = renderPlaygroundApiPage()
-    sidebarLinkId = 'playground-api-page_link'
-    pageTitle = 'Playground API | Dvala'
   } else if (path === 'tutorials') {
     dynPage.innerHTML = renderTutorialsIndexPage()
     sidebarLinkId = 'tutorials-page_link'
@@ -2412,7 +2545,6 @@ export async function run() {
   const uiSnapshot = {
     dvalaCode: getState('dvala-code'),
     context: getState('context'),
-    theme: document.documentElement.getAttribute('data-theme'),
     scrollTop: syntaxOverlay.scrollContainer.scrollTop,
     scrollLeft: syntaxOverlay.scrollContainer.scrollLeft,
     selectionStart: ta.selectionStart,
@@ -2463,9 +2595,6 @@ export async function run() {
     if (getState('context') !== uiSnapshot.context) {
       elements.contextTextArea.value = uiSnapshot.context
       saveState({ context: uiSnapshot.context }, false)
-    }
-    if (uiSnapshot.theme && document.documentElement.getAttribute('data-theme') !== uiSnapshot.theme) {
-      document.documentElement.setAttribute('data-theme', uiSnapshot.theme)
     }
     syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
     syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
@@ -5000,6 +5129,30 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
         const modulesContent = document.getElementById('api-content-modules')
         if (modulesContent && !modulesContent.classList.contains('expanded')) {
           toggleApiSection('modules', false)
+        }
+      }
+
+      // If the link is inside a collapsed standard effect group, expand it first
+      const seContent = link.closest('[id^="se-content-"]')
+      if (seContent && seContent instanceof HTMLElement && !seContent.classList.contains('expanded')) {
+        const groupKey = seContent.id.replace('se-content-', '')
+        toggleStandardEffectGroup(groupKey, false)
+        // Also expand the parent 'effects' API section if collapsed
+        const seParent = document.getElementById('api-content-effects')
+        if (seParent && !seParent.classList.contains('expanded')) {
+          toggleApiSection('effects', false)
+        }
+      }
+
+      // If the link is inside a collapsed playground effect group, expand it first
+      const peContent = link.closest('[id^="pe-content-"]')
+      if (peContent && peContent instanceof HTMLElement && !peContent.classList.contains('expanded')) {
+        const groupKey = peContent.id.replace('pe-content-', '')
+        togglePlaygroundEffectGroup(groupKey, false)
+        // Also expand the parent 'playground-effects' API section if collapsed
+        const peParent = document.getElementById('api-content-playground-effects')
+        if (peParent && !peParent.classList.contains('expanded')) {
+          toggleApiSection('playground-effects', false)
         }
       }
 

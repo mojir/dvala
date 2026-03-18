@@ -1,6 +1,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { apiReference, effectReference, getLinkName, moduleReference } from '../../reference'
+import { playgroundEffectReference } from '../../reference/playgroundEffects'
 import { moduleCategories, coreCategories } from '../../reference/api'
 import { examples } from '../../reference/examples'
 import { tutorials } from '../../reference/tutorials'
@@ -27,6 +28,7 @@ function buildReferenceData(): ReferenceData {
     ...apiReference,
     ...moduleReference,
     ...effectReference,
+    ...playgroundEffectReference,
   }).map(ref => {
     const match = shortDescRegExp.exec(ref.description)
     const description = (match?.[1] ?? ref.description)
@@ -47,6 +49,7 @@ function buildReferenceData(): ReferenceData {
     api: apiReference,
     modules: moduleReference,
     effects: effectReference,
+    playgroundEffects: playgroundEffectReference,
     moduleCategories: moduleCategories as string[],
     coreCategories: coreCategories as string[],
     searchEntries,
@@ -228,6 +231,7 @@ function writeSitemap() {
     ...Object.values(apiReference).map(ref => `/ref/${getLinkName(ref)}`),
     ...Object.values(moduleReference).map(ref => `/ref/${getLinkName(ref)}`),
     ...Object.values(effectReference).map(ref => `/ref/${getLinkName(ref)}`),
+    ...Object.values(playgroundEffectReference).map(ref => `/ref/${getLinkName(ref)}`),
   ]
 
   const allPages = [...staticPages, ...tutorialPages, ...refPages]

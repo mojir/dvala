@@ -65,6 +65,7 @@ export const categoryRecord = {
   'shorthand': true,
   'datatype': true,
   'effect': true,
+  'playground-effect': true,
 } as const
 
 export type Category = keyof typeof categoryRecord

@@ -126,8 +126,10 @@ export function tokenizeToHtml(code: string): string {
 export class SyntaxOverlay {
   private textarea: HTMLTextAreaElement
   private highlight: HTMLPreElement
+  private lineNumbers: HTMLDivElement
   readonly scrollContainer: HTMLDivElement
-  private lastCode = ''
+  private lastCode: string | null = null
+  private lastLineCount = 0
 
   constructor(textareaId: string) {
     const textarea = document.getElementById(textareaId) as HTMLTextAreaElement
@@ -138,9 +140,13 @@ export class SyntaxOverlay {
     this.scrollContainer.className = 'syntax-overlay-container fancy-scroll'
     this.scrollContainer.style.height = textarea.style.height || 'calc(100% - 32px)'
 
+    this.lineNumbers = document.createElement('div')
+    this.lineNumbers.className = 'syntax-overlay-line-numbers'
+
     this.highlight = document.createElement('pre')
 
     textarea.parentNode!.insertBefore(this.scrollContainer, textarea)
+    this.scrollContainer.appendChild(this.lineNumbers)
     this.scrollContainer.appendChild(this.highlight)
     this.scrollContainer.appendChild(textarea)
 
@@ -161,6 +167,18 @@ export class SyntaxOverlay {
     this.textarea.style.height = style.height
   }
 
+  private updateLineNumbers(code: string): void {
+    const lineCount = code === '' ? 1 : code.split('\n').length
+    if (lineCount === this.lastLineCount)
+      return
+    this.lastLineCount = lineCount
+    const digits = Math.max(2, String(lineCount).length)
+    const lines: string[] = []
+    for (let i = 1; i <= lineCount; i++)
+      lines.push(String(i).padStart(digits))
+    this.lineNumbers.textContent = lines.join('\n')
+  }
+
   update(): void {
     const code = this.textarea.value
     if (code === this.lastCode)
@@ -168,6 +186,7 @@ export class SyntaxOverlay {
     this.lastCode = code
 
     this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
+    this.updateLineNumbers(code)
     this.syncSize()
   }
 }
