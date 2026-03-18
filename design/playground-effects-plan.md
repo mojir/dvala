@@ -170,16 +170,16 @@ end
 
 ## UI State Restoration
 
-When a program runs:
-1. **Before run:** Snapshot localStorage (editor content, theme, panel sizes, etc.)
-2. **Run program:** Execute normally, playground effects can modify UI
-3. **After run:** Restore the snapshot
+~~When a program runs:~~
+1. ~~**Before run:** Snapshot localStorage (editor content, theme, panel sizes, etc.)~~
+2. ~~**Run program:** Execute normally, playground effects can modify UI~~
+3. ~~**After run:** Restore the snapshot~~
 
-**Result:** Programs can manipulate the UI for demos, but user's actual work is preserved.
+✅ Done — `run()` captures editor content, context, and theme before `runAsync`, restores in `finally` block.
 
 | Storage | Behavior | Examples |
 |---------|----------|----------|
-| localStorage | Temporary — restored after run | Editor content, theme, panel sizes |
+| localStorage | Temporary — restored after run | Editor content, theme, context |
 | IndexedDB | Permanent — persists | Saved programs, continuation snapshots |
 
 ## Settings
@@ -197,13 +197,17 @@ When disabled, performing a `playground.*` effect will trigger `dvala.error`.
 
 ## Safety Considerations
 
-### Infinite Loop Protection
-- Add timeout for `playground.exec.run` (prevent recursive infinite loops)
-- Consider execution step limits
+~~### Infinite Loop Protection~~
+~~- Add timeout for `playground.exec.run` (prevent recursive infinite loops)~~
+~~- Consider execution step limits~~
 
-### Rate Limiting
-- Limit toast frequency (debounce)
-- Limit storage operations
+✅ Done — `exec.run` has 10 s timeout (`EXEC_TIMEOUT_MS`) via `Promise.race`.
+
+~~### Rate Limiting~~
+~~- Limit toast frequency (debounce)~~
+~~- Limit storage operations~~
+
+✅ Done — `showToast` rate-limited to 200 ms minimum interval (`TOAST_MIN_INTERVAL_MS`).
 
 ## Fun Demo Ideas
 
@@ -244,46 +248,49 @@ let challenges = [
 ### Phase 0: Preparation
 - [x] Create `PlaygroundAPI` interface
 - [x] Implement facade wrapping existing `scripts.ts` functions
-- [ ] Wire up effect handler registration infrastructure
-- [ ] Rename "Disable Playground effect handlers" → "Disable standard effect handlers"
-- [ ] Add "Disable playground.* effects" toggle
+- [x] Wire up effect handler registration infrastructure
+- [x] Rename "Disable Playground effect handlers" → "Disable standard effect handlers"
+- [x] Add "Disable playground.* effects" toggle
 
 ### Phase 1: Core Effects
-- [ ] `playground.ui.showToast`
-- [ ] `playground.editor.getContent`
-- [ ] `playground.editor.setContent`
-- [ ] Add "Playground Demo" example to Examples page
+- [x] `playground.ui.showToast`
+- [x] `playground.editor.getContent`
+- [x] `playground.editor.setContent`
+- [x] Add "Playground Demo" example to Examples page
 
 ### Phase 2: Execution
-- [ ] `playground.exec.run`
+- [x] `playground.exec.run`
 
 ### Phase 3: Storage
-- [ ] `playground.storage.save`
-- [ ] `playground.storage.load`
-- [ ] `playground.storage.list`
+- [x] `playground.storage.save`
+- [x] `playground.storage.load`
+- [x] `playground.storage.list`
 
 ### Phase 4: Advanced
-- [ ] `playground.editor.typeText`
-- [ ] `playground.editor.insertText`
-- [ ] `playground.ui.setTheme`
+- [x] `playground.editor.typeText`
+- [x] `playground.editor.insertText`
+- [x] `playground.ui.setTheme`
 
 ### Future (maybe)
-- [ ] `playground.context.getContent` / `setContent` — manipulate context panel
-- [ ] `playground.editor.getSelection` / `setSelection` — cursor/selection control
-- [ ] `playground.editor.getCursor` / `setCursor`
-- [ ] `playground.ui.highlight(id)` — highlight a UI element by `data-playground-id` (pulse/glow). Runtime DOM query via `document.querySelector('[data-playground-id="..."]')`; fails with `dvala.error` if element not found. Script must navigate to the right page first.
-- [ ] `playground.ui.click(id)` — simulate click on a UI element by `data-playground-id`. Same runtime query approach.
-- [ ] `playground.router.goto(route)` — navigate to a page (e.g. `"settings"`, `"examples"`, `"tutorials/effects"`)
-- [ ] `playground.router.back` — navigate back
-- [ ] Add `data-playground-id` attributes to key DOM elements. Some IDs are dynamic (only exist on certain pages), so no static validation — runtime query with clear error messages.
+- [x] `playground.context.getContent` / `setContent` — manipulate context panel
+- [x] `playground.editor.getSelection` / `setSelection` — cursor/selection control
+- [x] `playground.editor.getCursor` / `setCursor`
+- [x] `playground.ui.highlight(id)` — highlight a UI element by `data-playground-id` (pulse/glow). Runtime DOM query via `document.querySelector('[data-playground-id="..."]')`; fails with `dvala.error` if element not found. Script must navigate to the right page first.
+- [x] `playground.ui.click(id)` — simulate click on a UI element by `data-playground-id`. Same runtime query approach.
+- [x] `playground.router.goto(route)` — navigate to a page (e.g. `"settings"`, `"examples"`, `"tutorials/effects"`)
+- [x] `playground.router.back` — navigate back
+- [x] Add `data-playground-id` attributes to key DOM elements. Some IDs are dynamic (only exist on certain pages), so no static validation — runtime query with clear error messages.
 
 ## Discoverability
 
 ### Autocomplete
-Register `playground.*` effect names in the editor autocomplete, alongside `dvala.*` effects. Consider a distinct icon/color to indicate playground-only.
+~~Register `playground.*` effect names in the editor autocomplete, alongside `dvala.*` effects. Consider a distinct icon/color to indicate playground-only.~~
+✅ Done — playground effect names passed to `getAutoCompleter` via `effectNames` param.
 
 ### Reference API
-Add a separate **"Playground API"** entry in the sidebar (not under "Effects"). This makes it clear these effects are playground-specific and won't work in CLI or embedded hosts.
+~~Add a separate **"Playground API"** entry in the sidebar (not under "Effects"). This makes it clear these effects are playground-specific and won't work in CLI or embedded hosts.~~
+✅ Done — `/playground-api` page with effect tables, descriptions, and example code. Sidebar nav item added.
 
 ### Examples
-Include a **"Playground Demo"** program on the Examples page that showcases the effects in action.
+~~Include a **"Playground Demo"** program on the Examples page that showcases the effects in action.~~
+✅ Done — "Playground Effects Demo" added to examples.

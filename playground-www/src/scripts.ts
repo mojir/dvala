@@ -22,6 +22,7 @@ import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
+import { renderPlaygroundApiPage } from './components/playgroundApiPage'
 import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
 import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
@@ -60,10 +61,109 @@ import {
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
+import { createPlaygroundAPI } from './playgroundAPI'
+import { createEffectHandlers } from './createEffectHandlers'
 
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
 const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
+
+// ---------------------------------------------------------------------------
+// Playground effect handlers (playground.*)
+// ---------------------------------------------------------------------------
+let _playgroundHandlers: HandlerRegistration[] | null = null
+
+function getPlaygroundEffectHandlers(): HandlerRegistration[] {
+  if (!_playgroundHandlers) {
+    const api = createPlaygroundAPI({
+      showToast: (msg, opts) => showToast(msg, opts),
+      getEditorContent: () => elements.dvalaTextArea.value,
+      setEditorContent: code => {
+        elements.dvalaTextArea.value = code
+        syntaxOverlay.update()
+        saveState({ 'dvala-code': code }, false)
+      },
+      insertEditorText: (text, position) => {
+        const ta = elements.dvalaTextArea
+        const pos = position ?? ta.selectionStart
+        ta.setRangeText(text, pos, pos, 'end')
+        syntaxOverlay.update()
+        saveState({ 'dvala-code': ta.value }, false)
+      },
+      getEditorSelection: () => {
+        const ta = elements.dvalaTextArea
+        return ta.value.slice(ta.selectionStart, ta.selectionEnd)
+      },
+      setEditorSelection: (start, end) => {
+        const ta = elements.dvalaTextArea
+        ta.selectionStart = start
+        ta.selectionEnd = end
+        ta.focus()
+      },
+      getEditorCursor: () => elements.dvalaTextArea.selectionStart,
+      setEditorCursor: position => {
+        const ta = elements.dvalaTextArea
+        ta.selectionStart = ta.selectionEnd = position
+        ta.focus()
+      },
+      getContextContent: () => elements.contextTextArea.value,
+      setContextContent: json => {
+        elements.contextTextArea.value = json
+        saveState({ context: json }, false)
+      },
+      getSavedPrograms: () => getSavedPrograms(),
+      saveProgram: (name, code) => {
+        const programs = getSavedPrograms()
+        const existing = programs.find(p => p.name === name)
+        const now = Date.now()
+        if (existing) {
+          existing.code = code
+          existing.updatedAt = now
+          setSavedPrograms([...programs])
+        } else {
+          const newProgram: SavedProgram = {
+            id: crypto.randomUUID(),
+            name,
+            code,
+            context: '',
+            createdAt: now,
+            updatedAt: now,
+            locked: false,
+          }
+          setSavedPrograms([newProgram, ...programs])
+        }
+      },
+      runCode: async code => {
+        const result = await getDvala().runAsync(code, { bindings: {}, effectHandlers: [], pure: false })
+        if (result.type === 'error') throw result.error
+        if (result.type === 'suspended') throw new Error('Program suspended')
+        return result.value
+      },
+      setTheme: theme => {
+        document.documentElement.setAttribute('data-theme', theme)
+      },
+      highlightElement: id => {
+        const el = document.querySelector(`[data-playground-id="${CSS.escape(id)}"]`)
+        if (!el) throw new Error(`Element "${id}" not found`)
+        el.classList.add('playground-highlight')
+        setTimeout(() => el.classList.remove('playground-highlight'), 1500)
+      },
+      clickElement: id => {
+        const el = document.querySelector<HTMLElement>(`[data-playground-id="${CSS.escape(id)}"]`)
+        if (!el) throw new Error(`Element "${id}" not found`)
+        el.click()
+      },
+      navigateTo: route => {
+        router.navigate(route.startsWith('/') ? route : `/${route}`)
+      },
+      navigateBack: () => {
+        history.back()
+      },
+    })
+    _playgroundHandlers = createEffectHandlers(api)
+  }
+  return _playgroundHandlers
+}
 
 // Inject CSS for list animations
 const animationStyles = document.createElement('style')
@@ -2101,7 +2201,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings })
+      autoCompleter = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -2127,7 +2227,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
         // If cursor is directly after non-whitespace, try autocomplete first
         const charBefore = start > 0 ? target.value[start - 1] : ''
         if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings })
+          const completer = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
           if (completer.getSuggestions().length > 0) {
             autoCompleter = completer
             const suggestion = autoCompleter.getNextSuggestion()
@@ -2248,6 +2348,10 @@ function routeToPath(appPath: string): void {
     dynPage.innerHTML = renderExamplePage()
     sidebarLinkId = 'example-page_link'
     pageTitle = 'Examples | Dvala'
+  } else if (path === 'playground-api') {
+    dynPage.innerHTML = renderPlaygroundApiPage()
+    sidebarLinkId = 'playground-api-page_link'
+    pageTitle = 'Playground API | Dvala'
   } else if (path === 'tutorials') {
     dynPage.innerHTML = renderTutorialsIndexPage()
     sidebarLinkId = 'tutorials-page_link'
@@ -2303,6 +2407,13 @@ export async function run() {
 
   const dvalaParams = getDvalaParamsFromContext()
 
+  // Snapshot UI state that playground effects may modify
+  const uiSnapshot = {
+    dvalaCode: getState('dvala-code'),
+    context: getState('context'),
+    theme: document.documentElement.getAttribute('data-theme'),
+  }
+
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
@@ -2337,6 +2448,19 @@ export async function run() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    // Restore UI state modified by playground effects
+    if (getState('dvala-code') !== uiSnapshot.dvalaCode) {
+      elements.dvalaTextArea.value = uiSnapshot.dvalaCode
+      syntaxOverlay.update()
+      saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
+    }
+    if (getState('context') !== uiSnapshot.context) {
+      elements.contextTextArea.value = uiSnapshot.context
+      saveState({ context: uiSnapshot.context }, false)
+    }
+    if (uiSnapshot.theme && document.documentElement.getAttribute('data-theme') !== uiSnapshot.theme) {
+      document.documentElement.setAttribute('data-theme', uiSnapshot.theme)
+    }
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -2502,8 +2626,13 @@ export function toggleInterceptUnhandled() {
   updateCSS()
 }
 
-export function toggleDisablePlaygroundHandlers() {
-  saveState({ 'disable-playground-handlers': !getState('disable-playground-handlers') })
+export function toggleDisableStandardHandlers() {
+  saveState({ 'disable-standard-handlers': !getState('disable-standard-handlers') })
+  updateCSS()
+}
+
+export function toggleDisablePlaygroundEffects() {
+  saveState({ 'disable-playground-effects': !getState('disable-playground-effects') })
   updateCSS()
 }
 
@@ -3218,7 +3347,7 @@ export function closeExportModal() {
 export function doExport() {
   const settingsKeys = [
     'debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled',
-    'disable-playground-handlers', 'disable-auto-checkpoint',
+    'disable-standard-handlers', 'disable-playground-effects', 'disable-auto-checkpoint',
   ]
   const codeKeys = [
     'dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end',
@@ -3326,7 +3455,7 @@ let importNeedsReload = false
 const importCategoryKeys = {
   code: ['dvala-code', 'dvala-code-scroll-top', 'dvala-code-selection-start', 'dvala-code-selection-end'],
   context: ['context', 'context-scroll-top', 'context-selection-start', 'context-selection-end'],
-  settings: ['debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled', 'disable-playground-handlers', 'disable-auto-checkpoint'],
+  settings: ['debug', 'pure', 'intercept-effects', 'intercept-checkpoint', 'intercept-error', 'intercept-unhandled', 'disable-standard-handlers', 'disable-playground-effects', 'disable-auto-checkpoint'],
   layout: ['sidebar-width', 'playground-height', 'resize-divider-1-percent', 'resize-divider-2-percent'],
 }
 
@@ -4576,8 +4705,9 @@ function syncDisabledHandlersFallback(ctx: EffectContext): void {
 }
 
 function getSyncEffectHandlers(): HandlerRegistration[] {
-  if (getState('disable-playground-handlers')) {
+  if (getState('disable-standard-handlers')) {
     return [
+      ...(!getState('disable-playground-effects') ? getPlaygroundEffectHandlers() : []),
       { pattern: '*', handler: syncDisabledHandlersFallback },
     ]
   }
@@ -4587,6 +4717,7 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
     { pattern: 'dvala.io.read-line', handler: syncReadlineHandler },
     { pattern: 'dvala.io.println', handler: syncPrintlnHandler },
     { pattern: 'dvala.io.print', handler: syncPrintHandler },
+    ...(!getState('disable-playground-effects') ? getPlaygroundEffectHandlers() : []),
     { pattern: '*', handler: syncDefaultEffectHandler },
   ]
 }
@@ -4619,8 +4750,15 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
 
     const hasPattern = (p: string) => effectHandlers.some(h => h.pattern === p)
 
-    // With playground handlers disabled, only use context-defined handlers and a basic fallback
-    if (getState('disable-playground-handlers')) {
+    // With standard handlers disabled, only use context-defined handlers and a basic fallback
+    if (getState('disable-standard-handlers')) {
+      // Still add playground effects unless separately disabled
+      if (!getState('disable-playground-effects')) {
+        for (const reg of getPlaygroundEffectHandlers()) {
+          if (!hasPattern(reg.pattern))
+            effectHandlers.push(reg)
+        }
+      }
       if (!hasPattern('*'))
         effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
       return {
@@ -4639,6 +4777,15 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       effectHandlers.push({ pattern: 'dvala.io.println', handler: printlnHandler })
     if (!hasPattern('dvala.io.print'))
       effectHandlers.push({ pattern: 'dvala.io.print', handler: printHandler })
+
+    // Playground effects (playground.*)
+    if (!getState('disable-playground-effects')) {
+      for (const reg of getPlaygroundEffectHandlers()) {
+        if (!hasPattern(reg.pattern))
+          effectHandlers.push(reg)
+      }
+    }
+
     if (!hasPattern('*'))
       effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
 
@@ -4648,7 +4795,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     }
   } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
-    const fallback = getState('disable-playground-handlers') ? disabledHandlersFallback : defaultEffectHandler
+    const fallback = getState('disable-standard-handlers') ? disabledHandlersFallback : defaultEffectHandler
     return { bindings: {}, effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
 }
@@ -4714,7 +4861,7 @@ function updateCSS() {
   if (pureToggle)
     pureToggle.checked = getState('pure')
   const pure = getState('pure')
-  const disableHandlers = getState('disable-playground-handlers')
+  const disableHandlers = getState('disable-standard-handlers')
   const disabled = pure
   const interceptDisabled = disabled || disableHandlers
   const interceptEffects = getState('intercept-effects')
@@ -4754,6 +4901,10 @@ function updateCSS() {
     disableHandlersToggle.disabled = disabled
     disableHandlersToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
     disableHandlersToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
+  }
+  const disablePlaygroundEffectsToggle = document.getElementById('settings-disable-playground-effects-toggle') as HTMLInputElement | null
+  if (disablePlaygroundEffectsToggle) {
+    disablePlaygroundEffectsToggle.checked = getState('disable-playground-effects')
   }
   const autoCheckpointToggle = document.getElementById('settings-auto-checkpoint-toggle') as HTMLInputElement | null
   if (autoCheckpointToggle) {

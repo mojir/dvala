@@ -313,6 +313,7 @@ describe('built-in examples', () => {
   }
   const runnableExamples = examples.filter(
     e => !skipIds.has(e.id)
+      && !e.id.startsWith('playground-')
       && (!e.context?.effectHandlers || Object.keys(e.context.effectHandlers).length === 0),
   )
 

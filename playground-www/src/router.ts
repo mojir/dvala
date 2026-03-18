@@ -6,7 +6,7 @@
  */
 
 /** Known top-level app paths — anything else is treated as a sub-path of the base. */
-const APP_ROOTS = ['/about', '/tutorials', '/examples', '/core', '/modules', '/ref/', '/saved', '/snapshots', '/settings']
+const APP_ROOTS = ['/about', '/tutorials', '/examples', '/playground-api', '/core', '/modules', '/ref/', '/saved', '/snapshots', '/settings']
 
 function detectBasePath(): string {
   const p = location.pathname
