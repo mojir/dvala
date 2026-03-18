@@ -39,6 +39,7 @@ export function renderSidebar(currentPath: string): string {
     ${renderNavItem('/about', 'About', currentPath)}
     ${renderNavItem('/tutorials', 'Tutorials', currentPath)}
     ${renderNavItem('/examples', 'Examples', currentPath)}
+    ${renderNavItem('/playground-api', 'Playground API', currentPath)}
     ${renderNavItem('/saved', 'Programs', currentPath)}
     ${renderNavItem('/snapshots', 'Snapshots', currentPath)}
     ${renderNavItem('/settings', 'Settings', currentPath)}

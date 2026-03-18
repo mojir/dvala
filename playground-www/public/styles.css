@@ -2813,3 +2813,61 @@ h2.discrete {
     height: 1.25em;
   }
 }
+
+/* Playground API page */
+.playground-api__intro {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+.playground-api__intro code {
+  background: var(--bg-secondary);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+.playground-api__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+.playground-api__table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.playground-api__table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+.playground-api__name code {
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.playground-api__args {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.playground-api__returns code {
+  color: var(--text-secondary);
+}
+.playground-api__desc {
+  color: var(--text-primary);
+}
+
+/* Playground highlight effect */
+@keyframes playgroundHighlight {
+  0% { outline: 2px solid transparent; outline-offset: 2px; }
+  20% { outline: 2px solid var(--accent-color, #4fc3f7); outline-offset: 2px; }
+  100% { outline: 2px solid transparent; outline-offset: 2px; }
+}
+.playground-highlight {
+  animation: playgroundHighlight 1.5s ease-out;
+}

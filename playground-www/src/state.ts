@@ -25,7 +25,8 @@ export const defaultState = {
   'intercept-checkpoint': false as boolean,
   'intercept-error': false as boolean,
   'intercept-unhandled': true as boolean,
-  'disable-playground-handlers': false as boolean,
+  'disable-standard-handlers': false as boolean,
+  'disable-playground-effects': false as boolean,
   'disable-auto-checkpoint': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
   'current-program-id': null as string | null,
@@ -139,7 +140,8 @@ export function encodeState() {
     'pure': state.pure,
     'intercept-checkpoint': state['intercept-checkpoint'],
     'intercept-error': state['intercept-error'],
-    'disable-playground-handlers': state['disable-playground-handlers'],
+    'disable-standard-handlers': state['disable-standard-handlers'],
+    'disable-playground-effects': state['disable-playground-effects'],
     'disable-auto-checkpoint': state['disable-auto-checkpoint'],
   }
   return btoa(encodeURIComponent(JSON.stringify(sharedState)))

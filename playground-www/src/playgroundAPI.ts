@@ -4,12 +4,22 @@ export interface PlaygroundAPI {
   ui: {
     showToast(message: string, level?: 'info' | 'success' | 'warning' | 'error'): void
     setTheme(theme: 'light' | 'dark'): void
+    highlight(id: string): void
+    click(id: string): void
   }
   editor: {
     getContent(): string
     setContent(code: string): void
     insertText(text: string, position?: number): void
     typeText(text: string, delayMs?: number): Promise<void>
+    getSelection(): string
+    setSelection(start: number, end: number): void
+    getCursor(): number
+    setCursor(position: number): void
+  }
+  context: {
+    getContent(): string
+    setContent(json: string): void
   }
   storage: {
     save(name: string, code?: string): void
@@ -19,6 +29,10 @@ export interface PlaygroundAPI {
   exec: {
     run(code: string): Promise<unknown>
   }
+  router: {
+    goto(route: string): void
+    back(): void
+  }
 }
 
 export interface PlaygroundDeps {
@@ -26,11 +40,24 @@ export interface PlaygroundDeps {
   getEditorContent(): string
   setEditorContent(code: string): void
   insertEditorText(text: string, position?: number): void
+  getEditorSelection(): string
+  setEditorSelection(start: number, end: number): void
+  getEditorCursor(): number
+  setEditorCursor(position: number): void
+  getContextContent(): string
+  setContextContent(json: string): void
   getSavedPrograms(): SavedProgram[]
   saveProgram(name: string, code: string): void
   runCode(code: string): Promise<unknown>
   setTheme(theme: 'light' | 'dark'): void
+  highlightElement(id: string): void
+  clickElement(id: string): void
+  navigateTo(route: string): void
+  navigateBack(): void
 }
+
+const TOAST_MIN_INTERVAL_MS = 200
+const EXEC_TIMEOUT_MS = 10_000
 
 const toastSeverityMap: Record<string, 'info' | 'error'> = {
   info: 'info',
@@ -40,13 +67,24 @@ const toastSeverityMap: Record<string, 'info' | 'error'> = {
 }
 
 export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
+  let lastToastTime = 0
+
   return {
     ui: {
       showToast(message: string, level = 'info') {
+        const now = Date.now()
+        if (now - lastToastTime < TOAST_MIN_INTERVAL_MS) return
+        lastToastTime = now
         deps.showToast(message, { severity: toastSeverityMap[level] ?? 'info' })
       },
       setTheme(theme: 'light' | 'dark') {
         deps.setTheme(theme)
+      },
+      highlight(id: string) {
+        deps.highlightElement(id)
+      },
+      click(id: string) {
+        deps.clickElement(id)
       },
     },
     editor: {
@@ -74,6 +112,26 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
           typeNext()
         })
       },
+      getSelection() {
+        return deps.getEditorSelection()
+      },
+      setSelection(start: number, end: number) {
+        deps.setEditorSelection(start, end)
+      },
+      getCursor() {
+        return deps.getEditorCursor()
+      },
+      setCursor(position: number) {
+        deps.setEditorCursor(position)
+      },
+    },
+    context: {
+      getContent() {
+        return deps.getContextContent()
+      },
+      setContent(json: string) {
+        deps.setContextContent(json)
+      },
     },
     storage: {
       save(name: string, code?: string) {
@@ -93,7 +151,20 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
     },
     exec: {
       run(code: string): Promise<unknown> {
-        return deps.runCode(code)
+        return Promise.race([
+          deps.runCode(code),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('playground.exec.run timed out')), EXEC_TIMEOUT_MS),
+          ),
+        ])
+      },
+    },
+    router: {
+      goto(route: string) {
+        deps.navigateTo(route)
+      },
+      back() {
+        deps.navigateBack()
       },
     },
   }
