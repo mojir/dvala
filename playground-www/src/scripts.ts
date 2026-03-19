@@ -400,7 +400,7 @@ function notifyProgramAdded() {
   const indicator = document.getElementById('programs-nav-indicator')
   if (indicator) indicator.style.display = 'inline-block'
   const navLink = document.getElementById('saved-programs-page_link')
-  if (navLink) navLink.style.color = 'rgb(245 245 245)'
+  if (navLink) navLink.style.color = 'var(--color-text-bright)'
 }
 
 function notifySnapshotAdded() {
@@ -409,7 +409,7 @@ function notifySnapshotAdded() {
   const indicator = document.getElementById('snapshots-nav-indicator')
   if (indicator) indicator.style.display = 'inline-block'
   const navLink = document.getElementById('snapshots-page_link')
-  if (navLink) navLink.style.color = 'rgb(245 245 245)'
+  if (navLink) navLink.style.color = 'var(--color-text-bright)'
 }
 
 function formatTime(date: Date): string {
@@ -437,7 +437,7 @@ interface ContextMenuItem {
 
 function renderContextMenu(items: ContextMenuItem[], menuId: string): string {
   const menuItems = items.map(item => `
-    <button onclick="event.stopPropagation(); Playground.closeContextMenu(); ${item.action}" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; background: none; border: none; color: rgb(209 213 219); font-size: 0.875rem; cursor: pointer; text-align: left;" onmouseover="this.style.background='rgb(60 60 60)'" onmouseout="this.style.background='none'">
+    <button onclick="event.stopPropagation(); Playground.closeContextMenu(); ${item.action}" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; background: none; border: none; color: var(--color-text); font-size: 0.875rem; cursor: pointer; text-align: left;" onmouseover="this.style.background='var(--color-border-dim)'" onmouseout="this.style.background='none'">
       <span style="display: flex; align-items: center;">${item.icon}</span>
       <span>${escapeHtml(item.label)}</span>
     </button>
@@ -445,8 +445,8 @@ function renderContextMenu(items: ContextMenuItem[], menuId: string): string {
 
   return `
     <div style="position: relative;">
-      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}', this)" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="More actions">${ICONS.menu}</button>
-      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: fixed; min-width: 150px; background: rgb(40 40 40); border: 1px solid rgb(60 60 60); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; overflow: hidden;">
+      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}', this)" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="More actions">${ICONS.menu}</button>
+      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: fixed; min-width: 150px; background: var(--color-surface-dim); border: 1px solid var(--color-border-dim); border-radius: 6px; box-shadow: 0 4px 12px var(--color-shadow-deep); z-index: 1000; overflow: hidden;">
         ${menuItems}
       </div>
     </div>
@@ -512,10 +512,10 @@ document.addEventListener('click', e => {
 function buildTerminalDetailLine(snapshot: Snapshot): string {
   const meta = snapshot.meta as { result?: unknown; error?: { message?: string } } | undefined
   if (meta?.error?.message) {
-    return `<div style="font-size: 0.8rem; color: rgb(140 140 140); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: rgb(100 100 100);">error:</span> ${escapeHtml(String(meta.error.message))}</div>`
+    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">error:</span> ${escapeHtml(String(meta.error.message))}</div>`
   }
   if (meta?.result !== undefined) {
-    return `<div style="font-size: 0.8rem; color: rgb(140 140 140); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: rgb(100 100 100);">result:</span> ${escapeHtml(String(meta.result))}</div>`
+    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">result:</span> ${escapeHtml(String(meta.result))}</div>`
   }
   return ''
 }
@@ -529,7 +529,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
   const animateClass = animateIn ? 'animate-in' : ''
   const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
   const sizeStr = snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(1)} MB` : `${(snapshotBytes / 1024).toFixed(1)} KB`
-  const timestamp = `<div style="font-size: 0.75rem; color: rgb(140 140 140); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
+  const timestamp = `<div style="font-size: 0.75rem; color: var(--color-text-dim); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
 
   let type: 'terminal' | 'saved'
   let title: string
@@ -548,7 +548,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     titlePrefix = ''
     message = snapshot.message
     detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
-    borderColor = entry.resultType === 'error' ? '#d16969' : entry.resultType === 'halted' ? '#e6c07b' : '#4db36e'
+    borderColor = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
       { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
@@ -562,25 +562,25 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
     const meta = snapshot.meta as { error?: unknown; halted?: boolean } | undefined
     type = 'saved'
     title = entry.name || `Snapshot #${index + 1}`
-    titlePrefix = entry.locked ? `<span style="color: rgb(234 179 8); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
+    titlePrefix = entry.locked ? `<span style="color: var(--color-primary); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
     message = getSnapshotDisplayMessage(snapshot)
     detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
-    borderColor = isCompleted ? (meta?.error ? '#d16969' : meta?.halted ? '#e6c07b' : '#4db36e') : 'rgb(107 114 128)'
+    borderColor = isCompleted ? (meta?.error ? 'var(--color-error)' : meta?.halted ? 'var(--color-primary)' : 'var(--color-success)') : 'var(--color-border)'
     menuItems = [
       { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
       { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
       { label: 'Download', icon: ICONS.download, action: `Playground.downloadSavedSnapshotByIndex(${index})` },
       { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedSnapshot(${index})` },
     ]
-    actionButtons = isCompleted ? '' : `<button class="snapshot-btn" onclick="event.stopPropagation(); Playground.runSavedSnapshot(${index})" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: rgb(163 163 163);" title="Run snapshot">${ICONS.play}</button>`
+    actionButtons = isCompleted ? '' : `<button class="snapshot-btn" onclick="event.stopPropagation(); Playground.runSavedSnapshot(${index})" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="Run snapshot">${ICONS.play}</button>`
     onclick = `Playground.openSavedSnapshot(${index})`
   }
 
   return `
-    <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: rgb(46 46 46); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='rgb(52 52 52)'" onmouseout="this.style.background='rgb(46 46 46)'">
+    <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: var(--color-surface); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
       <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
-        <div style="font-size: 1rem; color: rgb(209 213 219); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}${entry.kind === 'saved' && snapshot.terminal !== true ? '<span style="font-size: 0.65rem; color: rgb(100 100 100); font-family: sans-serif; font-weight: bold; letter-spacing: 0.05em;">SUSPENDED</span>' : ''}</div>
-        <div style="font-size: 0.8rem; color: rgb(140 140 140);">${escapeHtml(message)}</div>
+        <div style="font-size: 1rem; color: var(--color-text); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}${entry.kind === 'saved' && snapshot.terminal !== true ? '<span style="font-size: 0.65rem; color: var(--color-text-dim); font-family: sans-serif; font-weight: bold; letter-spacing: 0.05em;">SUSPENDED</span>' : ''}</div>
+        <div style="font-size: 0.8rem; color: var(--color-text-dim);">${escapeHtml(message)}</div>
         ${detailLine}
       </div>
       <div style="display: flex; gap: 2px; align-items: flex-start;" onclick="event.stopPropagation()">
@@ -592,7 +592,7 @@ function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index:
 }
 
 function renderGroupLabel(label: string): string {
-  return `<div class="list-group-label" style="font-size: 0.75rem; font-weight: 600; color: rgb(140 140 140); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
+  return `<div class="list-group-label" style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
 }
 
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
@@ -646,7 +646,7 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
         cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
       }
       cards.push('</div>')
-      const toggleStyle = 'background: none; border: none; color: rgb(140 140 140); font-size: 0.75rem; cursor: pointer; padding: 0.5rem 0; text-align: center; width: 100%;'
+      const toggleStyle = 'background: none; border: none; color: var(--color-text-dim); font-size: 0.75rem; cursor: pointer; padding: 0.5rem 0; text-align: center; width: 100%;'
       if (showAllTerminalSnapshots) {
         cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show less</button>`)
       } else {
@@ -738,10 +738,10 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
   const trimmedCode = untokenize({ ...tokenStream, tokens: meaningfulTokens.slice(firstMeaningful) })
   const displaySnippet = trimmedCode.split('\n').slice(0, 3).join('\n')
   const isActive = getState('current-program-id') === program.id
-  const borderColor = 'rgb(82 82 82)'
+  const borderColor = 'var(--color-scrollbar-track)'
   const animateClass = animateIn ? 'animate-in' : ''
   const lockIcon = program.locked
-    ? `<span style="color:rgb(234 179 8); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
+    ? `<span style="color:var(--color-primary); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
     : ''
   const menuId = `program-menu-${program.id}`
   const menuItems: ContextMenuItem[] = [
@@ -751,15 +751,15 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
     { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedProgram('${program.id}')` },
   ]
   return `
-    <div class="snapshot-card ${animateClass}" data-program-id="${program.id}" onclick="Playground.loadSavedProgram('${program.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:rgb(46 46 46); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='rgb(52 52 52)'" onmouseout="this.style.background='rgb(46 46 46)'">
+    <div class="snapshot-card ${animateClass}" data-program-id="${program.id}" onclick="Playground.loadSavedProgram('${program.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:var(--color-surface); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
       <div style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:0;">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           ${lockIcon}
-          <span style="font-size:1rem; color:rgb(209 213 219);">${escapeHtml(program.name)}</span>
-          ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(78 201 176); border:1px solid rgb(78 201 176); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
+          <span style="font-size:1rem; color:var(--color-text);">${escapeHtml(program.name)}</span>
+          ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-primary); border:1px solid var(--color-primary); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
         </div>
-        ${program.code.trim() ? `<div style="font-size:0.8rem; color:rgb(140 140 140); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:rgb(140 140 140); padding:1px 0;">EMPTY PROGRAM</span>'}
-        <div style="font-size:0.75rem; color:rgb(140 140 140);">${formatTime(new Date(program.updatedAt))}</div>
+        ${program.code.trim() ? `<div style="font-size:0.8rem; color:var(--color-text-dim); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-text-dim); padding:1px 0;">EMPTY PROGRAM</span>'}
+        <div style="font-size:0.75rem; color:var(--color-text-dim);">${formatTime(new Date(program.updatedAt))}</div>
       </div>
       <div onclick="event.stopPropagation()">
         ${renderContextMenu(menuItems, menuId)}
@@ -950,20 +950,20 @@ export function saveAs() {
 
 function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void) {
   const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center;'
+  overlay.style.cssText = 'position:fixed; inset:0; background:var(--color-overlay); z-index:200; display:flex; align-items:center; justify-content:center;'
 
   const dialog = document.createElement('div')
-  dialog.style.cssText = 'background:rgb(50 50 50); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; min-width:20rem; max-width:90vw;'
+  dialog.style.cssText = 'background:var(--color-surface); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; min-width:20rem; max-width:90vw;'
 
   const titleEl = document.createElement('div')
   titleEl.textContent = title
-  titleEl.style.cssText = 'font-size:1rem; color:rgb(209 213 219); font-weight:600;'
+  titleEl.style.cssText = 'font-size:1rem; color:var(--color-text); font-weight:600;'
 
   const input = document.createElement('input')
   input.type = 'text'
   input.value = defaultValue
   input.spellcheck = false
-  input.style.cssText = 'background:rgb(30 30 30); border:1px solid rgb(82 82 82); border-radius:4px; padding:0.4rem 0.6rem; color:rgb(209 213 219); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+  input.style.cssText = 'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
 
   const buttons = document.createElement('div')
   buttons.style.cssText = 'display:flex; justify-content:flex-end; gap:0.5rem;'
@@ -2821,27 +2821,27 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
   if (index !== undefined) {
     const num = document.createElement('span')
     num.textContent = String(index + 1)
-    num.style.cssText = 'font-size:0.65rem; color: rgb(115 115 115); font-family:sans-serif; font-weight:bold; min-width:1rem; flex-shrink:0;'
+    num.style.cssText = 'font-size:0.65rem; color: var(--color-text-faintest); font-family:sans-serif; font-weight:bold; min-width:1rem; flex-shrink:0;'
     row.appendChild(num)
   }
   const code = document.createElement('code')
   code.textContent = content
   if (index !== undefined) {
-    code.style.cssText = 'white-space:nowrap; font-size:0.75rem; color: rgb(212 212 212); overflow:hidden; text-overflow:ellipsis; min-width:0; flex: 1 1 0;'
+    code.style.cssText = 'white-space:nowrap; font-size:0.75rem; color: var(--color-text); overflow:hidden; text-overflow:ellipsis; min-width:0; flex: 1 1 0;'
 
     const textToCopy = copyContent ?? content
     const copyBtn = document.createElement('span')
     copyBtn.innerHTML = copyIcon
-    copyBtn.style.cssText = 'font-size:0.9rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:rgb(115 115 115); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
+    copyBtn.style.cssText = 'font-size:0.9rem; display:inline-flex; align-items:center; justify-content:center; height:1.4rem; overflow:hidden; color:var(--color-text-faintest); cursor:pointer; flex-shrink:0; margin-left:1rem; opacity:0; transition:opacity 0.15s ease;'
     copyBtn.addEventListener('click', e => {
       e.stopPropagation()
       void navigator.clipboard.writeText(textToCopy)
     })
     copyBtn.addEventListener('mouseenter', () => {
-      copyBtn.style.color = 'rgb(229 229 229)'
+      copyBtn.style.color = 'var(--color-text)'
     })
     copyBtn.addEventListener('mouseleave', () => {
-      copyBtn.style.color = 'rgb(115 115 115)'
+      copyBtn.style.color = 'var(--color-text-faintest)'
     })
 
     row.addEventListener('mouseenter', () => {
@@ -2854,7 +2854,7 @@ function makeArgRow(content: string, index?: number, copyContent?: string): HTML
     row.appendChild(code)
     row.appendChild(copyBtn)
   } else {
-    code.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+    code.style.cssText = 'white-space:pre; font-size:0.75rem; color: var(--color-text);'
     row.appendChild(code)
   }
   return row
@@ -2924,17 +2924,17 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 
     const errorLabel = document.createElement('span')
     errorLabel.textContent = 'ERROR'
-    errorLabel.style.cssText = 'font-size: 0.75rem; font-weight: bold; color: #d16969; text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif;'
+    errorLabel.style.cssText = 'font-size: 0.75rem; font-weight: bold; color: var(--color-error); text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif;'
     errorSection.appendChild(errorLabel)
 
     const codeWrapper = document.createElement('div')
     codeWrapper.className = 'example-code'
-    codeWrapper.style.cssText = 'position: relative; border-left-color: #d16969;'
+    codeWrapper.style.cssText = 'position: relative; border-left-color: var(--color-error);'
 
     const errorPre = document.createElement('pre')
     errorPre.className = 'fancy-scroll'
     errorPre.textContent = error.message
-    errorPre.style.cssText = 'background: rgb(30 30 30); color: rgb(212 212 212); padding: 0.5rem; font-size: 0.875rem; font-family: monospace; overflow: auto; max-height: 8rem; white-space: pre-wrap; word-break: break-word; margin: 0; border: none;'
+    errorPre.style.cssText = 'background: var(--color-surface-dim); color: var(--color-text); padding: 0.5rem; font-size: 0.875rem; font-family: monospace; overflow: auto; max-height: 8rem; white-space: pre-wrap; word-break: break-word; margin: 0; border: none;'
     codeWrapper.appendChild(errorPre)
 
     const actionBar = document.createElement('div')
@@ -2967,7 +2967,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
       const empty = document.createElement('span')
       empty.textContent = '(no arguments)'
-      empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+      empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
       argsEl.appendChild(empty)
     } else {
       snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
@@ -3001,7 +3001,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     metaContainer.innerHTML = ''
     const empty = document.createElement('span')
     empty.textContent = '(no metadata)'
-    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
     metaContainer.appendChild(empty)
   } else {
     const metaJson = JSON.stringify(snapshot.meta, null, 2)
@@ -3030,7 +3030,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     const row = makeArgRow(value)
     const labelEl = document.createElement('span')
     labelEl.textContent = label
-    labelEl.style.cssText = 'font-size:0.7rem; color: rgb(115 115 115); font-weight:bold; font-family:sans-serif;'
+    labelEl.style.cssText = 'font-size:0.7rem; color: var(--color-text-faintest); font-weight:bold; font-family:sans-serif;'
     row.insertBefore(labelEl, row.firstChild)
     techEl.appendChild(row)
   })
@@ -3043,25 +3043,25 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   if (cpSnapshots.length === 0) {
     const empty = document.createElement('span')
     empty.textContent = '(no checkpoints)'
-    empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+    empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
     checkpointsEl.appendChild(empty)
   } else {
     cpSnapshots.forEach(cpSnapshot => {
       const card = document.createElement('div')
-      card.style.cssText = 'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid rgb(82 82 82); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
+      card.style.cssText = 'display:flex; flex-direction:row; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; border:1px solid var(--color-scrollbar-track); cursor:pointer; transition:border-color 0.15s ease, background 0.15s ease;'
       card.addEventListener('mouseenter', () => {
-        card.style.borderColor = 'rgb(140 140 140)'
-        card.style.background = 'rgba(255,255,255,0.03)'
+        card.style.borderColor = 'var(--color-text-dim)'
+        card.style.background = 'var(--color-surface-hover)'
       })
       card.addEventListener('mouseleave', () => {
-        card.style.borderColor = 'rgb(82 82 82)'
+        card.style.borderColor = 'var(--color-scrollbar-track)'
         card.style.background = 'transparent'
       })
       card.addEventListener('click', () => pushCheckpointPanel(cpSnapshot))
 
       const badge = document.createElement('span')
       badge.textContent = `#${cpSnapshot.index}`
-      badge.style.cssText = 'font-size:0.7rem; font-weight:bold; font-family:sans-serif; color:rgb(163 163 163); background:rgb(50 50 50); padding:0.1rem 0.35rem; flex-shrink:0;'
+      badge.style.cssText = 'font-size:0.7rem; font-weight:bold; font-family:sans-serif; color:var(--color-text-secondary); background:var(--color-surface); padding:0.1rem 0.35rem; flex-shrink:0;'
       card.appendChild(badge)
 
       const info = document.createElement('div')
@@ -3070,29 +3070,29 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
       if (cpSnapshot.meta !== null && cpSnapshot.meta !== undefined) {
         const meta = document.createElement('code')
         meta.textContent = JSON.stringify(cpSnapshot.meta)
-        meta.style.cssText = 'font-size:0.75rem; color:rgb(200 200 200); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+        meta.style.cssText = 'font-size:0.75rem; color:var(--color-text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
         info.appendChild(meta)
       }
 
       const msg = document.createElement('span')
       msg.textContent = cpSnapshot.message
-      msg.style.cssText = 'font-size:0.75rem; color:rgb(229 229 229); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
+      msg.style.cssText = 'font-size:0.75rem; color:var(--color-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'
       info.appendChild(msg)
 
       const ts = document.createElement('span')
       const d = new Date(cpSnapshot.timestamp)
       const pad = (n: number) => String(n).padStart(2, '0')
       ts.textContent = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-      ts.style.cssText = 'font-size:0.65rem; color:rgb(115 115 115); font-family:sans-serif;'
+      ts.style.cssText = 'font-size:0.65rem; color:var(--color-text-faintest); font-family:sans-serif;'
       info.appendChild(ts)
 
       card.appendChild(info)
 
       const playIcon = document.createElement('span')
       playIcon.innerHTML = ICONS.play
-      playIcon.style.cssText = 'margin-left:auto; flex-shrink:0; font-size:1.1rem; color:rgb(163 163 163); transition:color 0.15s ease;'
-      playIcon.addEventListener('mouseenter', () => { playIcon.style.color = 'rgb(245 245 245)' })
-      playIcon.addEventListener('mouseleave', () => { playIcon.style.color = 'rgb(163 163 163)' })
+      playIcon.style.cssText = 'margin-left:auto; flex-shrink:0; font-size:1.1rem; color:var(--color-text-secondary); transition:color 0.15s ease;'
+      playIcon.addEventListener('mouseenter', () => { playIcon.style.color = 'var(--color-text-bright)' })
+      playIcon.addEventListener('mouseleave', () => { playIcon.style.color = 'var(--color-text-secondary)' })
       playIcon.addEventListener('click', evt => {
         evt.stopPropagation()
         currentSnapshot = cpSnapshot
@@ -3754,13 +3754,13 @@ export function doImport() {
   pendingImportPayload = null
 
   const importedHtml = imported.length > 0
-    ? `<p style="margin:0 0 0.5rem 0; color: rgb(212 212 212);">Imported:</p><ul style="margin:0 0 0.75rem 0; padding-left:1.25rem;">${imported.map(s => `<li>${s}</li>`).join('')}</ul>`
+    ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Imported:</p><ul style="margin:0 0 0.75rem 0; padding-left:1.25rem;">${imported.map(s => `<li>${s}</li>`).join('')}</ul>`
     : '<p style="margin:0 0 0.75rem 0;">Nothing was imported.</p>'
   const skippedHtml = skipped.length > 0
-    ? `<p style="margin:0 0 0.5rem 0; color: rgb(212 212 212);">Skipped:</p><ul style="margin:0; padding-left:1.25rem;">${skipped.map(s => `<li>${s}</li>`).join('')}</ul>`
+    ? `<p style="margin:0 0 0.5rem 0; color: var(--color-text);">Skipped:</p><ul style="margin:0; padding-left:1.25rem;">${skipped.map(s => `<li>${s}</li>`).join('')}</ul>`
     : ''
   const reloadHtml = importNeedsReload
-    ? '<p style="margin:0.75rem 0 0 0; color: rgb(115 115 115);">The page will reload when you close this.</p>'
+    ? '<p style="margin:0.75rem 0 0 0; color: var(--color-text-faintest);">The page will reload when you close this.</p>'
     : ''
 
   elements.importResultContent.innerHTML = importedHtml + skippedHtml + reloadHtml
@@ -4220,7 +4220,7 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
       msgLabel.className = 'effect-modal__field-label'
       msgLabel.textContent = 'Message'
       const msgText = document.createElement('div')
-      msgText.style.cssText = 'font-size: 0.875rem; color: rgb(212 212 212);'
+      msgText.style.cssText = 'font-size: 0.875rem; color: var(--color-text);'
       msgText.textContent = snapshot.message || '(no message)'
       msgField.appendChild(msgLabel)
       msgField.appendChild(msgText)
@@ -4233,7 +4233,7 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
         metaLabel.className = 'effect-modal__field-label'
         metaLabel.textContent = 'Metadata'
         const metaCode = document.createElement('code')
-        metaCode.style.cssText = 'white-space:pre; font-size:0.75rem; color: rgb(212 212 212);'
+        metaCode.style.cssText = 'white-space:pre; font-size:0.75rem; color: var(--color-text);'
         metaCode.textContent = JSON.stringify(snapshot.meta, null, 2)
         metaField.appendChild(metaLabel)
         metaField.appendChild(metaCode)
@@ -4340,7 +4340,7 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
       if (ctx.args.length === 0) {
         const empty = document.createElement('span')
         empty.textContent = '(no arguments)'
-        empty.style.cssText = 'font-size:0.75rem; color: rgb(115 115 115); font-style: italic;'
+        empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
         argsContainer.appendChild(empty)
       } else {
         ctx.args.forEach((arg, i) => {
@@ -4542,7 +4542,7 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
     const setFocus = (index: number | null) => {
       focusedIndex = index
       rowEls.forEach((row, i) => {
-        row.style.background = i === index ? 'rgb(75 75 75)' : ''
+        row.style.background = i === index ? 'var(--color-surface-hover)' : ''
       })
       if (index !== null)
         rowEls[index]?.scrollIntoView({ block: 'nearest' })
@@ -4563,8 +4563,8 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         items.forEach((item, i) => {
           const row = document.createElement('div')
           row.style.cssText = 'display:flex; align-items:center; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'rgb(75 75 75)' }
-          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'rgb(75 75 75)' : '' }
+          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)' }
+          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : '' }
           const labelSpan = document.createElement('span')
           labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
           labelSpan.textContent = item
@@ -4615,7 +4615,7 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
     const setFocus = (index: number | null) => {
       focusedIndex = index
       rowEls.forEach((row, i) => {
-        row.style.background = i === index ? 'rgb(75 75 75)' : ''
+        row.style.background = i === index ? 'var(--color-surface-hover)' : ''
       })
     }
 
@@ -4634,8 +4634,8 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         choiceItems.forEach((item, i) => {
           const row = document.createElement('div')
           row.style.cssText = 'display:flex; align-items:center; gap:0.75rem; padding:0.4rem 0.5rem; cursor:pointer; border-radius:3px;'
-          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'rgb(75 75 75)' }
-          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'rgb(75 75 75)' : '' }
+          row.onmouseenter = () => { if (focusedIndex !== i) row.style.background = 'var(--color-surface-hover)' }
+          row.onmouseleave = () => { row.style.background = i === focusedIndex ? 'var(--color-surface-hover)' : '' }
           const labelSpan = document.createElement('span')
           labelSpan.style.cssText = 'font-size:0.875rem; font-family:sans-serif;'
           labelSpan.textContent = item.label

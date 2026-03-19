@@ -8,16 +8,16 @@ const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 
 const colors = {
-  BrightYellow: '#f0e68c',
-  Beige: '#dcdcaa',
-  Mint: '#4ec9b0',
-  Viola: '#c586c0',
-  Pink: '#cc8f77',
-  Gray300: 'rgb(212 212 212)',
-  Gray500: 'rgb(150 150 150)',
-  Crimson: '#dc143c',
-  Blue: '#569cd6',
-  SkyLavender: '#c5cbe3',
+  BrightYellow: 'var(--syntax-keyword)',
+  Beige: 'var(--syntax-builtin)',
+  Mint: 'var(--syntax-symbol)',
+  Viola: 'var(--syntax-number)',
+  Pink: 'var(--syntax-string)',
+  Gray300: 'var(--syntax-punctuation)',
+  Gray500: 'var(--syntax-comment-dim)',
+  Crimson: 'var(--syntax-error)',
+  Blue: 'var(--syntax-effect)',
+  SkyLavender: 'var(--syntax-effect-custom)',
 }
 
 function escapeHtml(text: string): string {
