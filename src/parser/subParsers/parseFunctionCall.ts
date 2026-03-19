@@ -25,7 +25,7 @@ import type { ParserContext } from '../ParserContext'
 export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode {
   ctx.advance()
 
-  // Handle effect(dotted.name) — custom parsing for dotted identifier argument
+  // Handle @dotted.name — custom parsing for dotted identifier argument
   if (isSpecialBuiltinSymbolNode(symbol) && symbol[1] === specialExpressionTypes.effect) {
     return parseEffectArgs(ctx, symbol)
   }

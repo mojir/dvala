@@ -240,7 +240,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
       })
 
       const result = await dbg.run(`
-        let eff = effect(test.echo);
+        let eff = @test.echo;
         perform(eff, "hello")
       `)
 
@@ -266,7 +266,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
         ],
       })
 
-      let r = await dbg.run('perform(effect(dvala.now))')
+      let r = await dbg.run('perform(@dvala.now)')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -280,9 +280,9 @@ describe('phase 7 — Time-Travel Debugger', () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
         do
-          perform(effect(test.mock), "input")
+          perform(@test.mock, "input")
         with
-          case effect(test.mock) then ([arg]) -> "mocked: " ++ arg
+          case @test.mock then ([arg]) -> "mocked: " ++ arg
         end
       `)
       while (r.type === 'suspended') {
@@ -428,7 +428,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
         ],
       })
 
-      let r = await dbg.run('perform(effect(dvala.random))')
+      let r = await dbg.run('perform(@dvala.random)')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -440,7 +440,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
 
     it('should handle errors in program', async () => {
       const dbg = createDebugger()
-      let r = await dbg.run('perform(effect(dvala.error), "boom")')
+      let r = await dbg.run('perform(@dvala.error, "boom")')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
@@ -451,9 +451,9 @@ describe('phase 7 — Time-Travel Debugger', () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
         do
-          perform(effect(dvala.error), "oops")
+          perform(@dvala.error, "oops")
         with
-          case effect(dvala.error) then (args) -> "caught: " ++ first(args)
+          case @dvala.error then (args) -> "caught: " ++ first(args)
         end
       `)
       while (r.type === 'suspended') {
@@ -562,7 +562,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
           } },
         ],
       })
-      const r = await dbg.run('perform(effect(test.throw))')
+      const r = await dbg.run('perform(@test.throw)')
       // Step through until the effect is reached
       let result = r
       while (result.type === 'suspended') {

@@ -7,7 +7,7 @@ const dvala = createDvala()
 describe('suspend through migrated HOFs', () => {
   it('should suspend in simple perform (baseline)', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.get), 42)
+      perform(@my.get, 42)
     `, {
       effectHandlers: [
         { pattern: 'my.get', handler: async ({ args, suspend }) => {
@@ -20,7 +20,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside a direct for loop', async () => {
     const result = await dvala.runAsync(`
-      for (x in [10]) -> perform(effect(my.get), x)
+      for (x in [10]) -> perform(@my.get, x)
     `, {
       effectHandlers: [
         { pattern: 'my.get', handler: async ({ args, suspend }) => {
@@ -36,7 +36,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should resume a for loop across multiple elements', async () => {
     const result = await dvala.runAsync(`
-      for (x in [1, 2]) -> perform(effect(my.test), x)
+      for (x in [1, 2]) -> perform(@my.test, x)
     `, {
       effectHandlers: [
         { pattern: 'my.test', handler: async ({ args, suspend }) => {
@@ -74,7 +74,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside a user-defined function calling perform', async () => {
     const result = await dvala.runAsync(`
-      ((x) -> perform(effect(my.get), x))(42)
+      ((x) -> perform(@my.get, x))(42)
     `, {
       effectHandlers: [
         { pattern: 'my.get', handler: async ({ args, suspend }) => {
@@ -90,7 +90,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside for loop calling user function', async () => {
     const result = await dvala.runAsync(`
-      for (x in [10]) -> ((y) -> perform(effect(my.get), y))(x)
+      for (x in [10]) -> ((y) -> perform(@my.get, y))(x)
     `, {
       effectHandlers: [
         { pattern: 'my.get', handler: async ({ args, suspend }) => {
@@ -118,7 +118,7 @@ describe('suspend through migrated HOFs', () => {
   it('should suspend inside map callback', async () => {
     // Minimal 2-element test to isolate resume issue
     const result = await dvala.runAsync(`
-      map([1, 2], (x) -> perform(effect(my.approve), x))
+      map([1, 2], (x) -> perform(@my.approve, x))
     `, {
       effectHandlers: [
         { pattern: 'my.approve', handler: async ({ args, suspend }) => {
@@ -163,7 +163,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside reduce callback and resume', async () => {
     const result = await dvala.runAsync(`
-      reduce([1, 2, 3], (acc, x) -> acc + perform(effect(my.transform), x), 0)
+      reduce([1, 2, 3], (acc, x) -> acc + perform(@my.transform, x), 0)
     `, {
       effectHandlers: [
         { pattern: 'my.transform', handler: async ({ args, suspend }) => {
@@ -211,7 +211,7 @@ describe('suspend through migrated HOFs', () => {
 
   it('should suspend inside filter callback and resume', async () => {
     const result = await dvala.runAsync(`
-      filter([1, 2, 3, 4], (x) -> perform(effect(my.check), x))
+      filter([1, 2, 3, 4], (x) -> perform(@my.check, x))
     `, {
       effectHandlers: [
         { pattern: 'my.check', handler: async ({ args, suspend }) => {

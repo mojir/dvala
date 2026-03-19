@@ -2,6 +2,7 @@ import type { TokenStream } from '../tokenizer/tokenize'
 
 export function untokenize(tokenStream: TokenStream): string {
   return tokenStream.tokens.reduce((acc: string, token) => {
-    return `${acc}${token[1]}`
+    const prefix = token[0] === 'EffectName' ? '@' : ''
+    return `${acc}${prefix}${token[1]}`
   }, '')
 }

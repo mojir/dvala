@@ -14,7 +14,7 @@ const docs: CustomDocs = {
     'perform(eff, arg1, arg2, ...)',
   ],
   details: [
-    ['eff', 'expression', 'An expression evaluating to an effect value (from `effect(name)`).'],
+    ['eff', 'expression', 'An expression evaluating to an effect value (from `@name`).'],
     ['arg1, arg2, ...', 'expressions', 'Arguments passed to the effect handler.'],
   ],
   description: 'Invokes an effect. The nearest enclosing `do/with` handler matching the effect '
@@ -24,9 +24,9 @@ const docs: CustomDocs = {
   examples: [
     `
 do
-  perform(effect(dvala.io.println), "hello")
+  perform(@dvala.io.println, "hello")
 with
-  case effect(dvala.io.println) then ([msg]) -> msg
+  case @dvala.io.println then ([msg]) -> msg
 end
 `,
   ],

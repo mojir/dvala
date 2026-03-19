@@ -6,7 +6,7 @@ const dvala = createDvala()
 describe('runSync with sync effect handlers', () => {
   describe('basic resume', () => {
     it('resumes with a value from a sync handler', () => {
-      const result = dvala.run('perform(effect(my.ask))', {
+      const result = dvala.run('perform(@my.ask)', {
         effectHandlers: [
           { pattern: 'my.ask', handler: ({ resume }) => resume(42) },
         ],
@@ -15,7 +15,7 @@ describe('runSync with sync effect handlers', () => {
     })
 
     it('handler receives effect args', () => {
-      const result = dvala.run('perform(effect(my.add), 3, 4)', {
+      const result = dvala.run('perform(@my.add, 3, 4)', {
         effectHandlers: [
           { pattern: 'my.add', handler: ({ args, resume }) => resume((args[0] as number) + ((args[1] ?? 0) as number)) },
         ],
@@ -25,7 +25,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('handler receives effectName', () => {
       let capturedName: string | undefined
-      dvala.run('perform(effect(my.effect))', {
+      dvala.run('perform(@my.effect)', {
         effectHandlers: [
           { pattern: 'my.effect', handler: ({ effectName, resume }) => {
             capturedName = effectName
@@ -38,7 +38,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('resume value is used as result of perform expression', () => {
       const result = dvala.run(`
-        let x = perform(effect(my.val));
+        let x = perform(@my.val);
         x * 2
       `, {
         effectHandlers: [
@@ -50,8 +50,8 @@ describe('runSync with sync effect handlers', () => {
 
     it('works with multiple perform calls', () => {
       const result = dvala.run(`
-        let a = perform(effect(my.val), 1);
-        let b = perform(effect(my.val), 2);
+        let a = perform(@my.val, 1);
+        let b = perform(@my.val, 2);
         a + b
       `, {
         effectHandlers: [
@@ -65,7 +65,7 @@ describe('runSync with sync effect handlers', () => {
   describe('fail', () => {
     it('fail() causes an error to be thrown', () => {
       expect(() =>
-        dvala.run('perform(effect(my.bad))', {
+        dvala.run('perform(@my.bad)', {
           effectHandlers: [
             { pattern: 'my.bad', handler: ({ fail }) => fail('something went wrong') },
           ],
@@ -75,7 +75,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('fail() with no message throws a generic error', () => {
       expect(() =>
-        dvala.run('perform(effect(my.bad))', {
+        dvala.run('perform(@my.bad)', {
           effectHandlers: [
             { pattern: 'my.bad', handler: ({ fail }) => fail() },
           ],
@@ -86,7 +86,7 @@ describe('runSync with sync effect handlers', () => {
 
   describe('next', () => {
     it('next() passes to the next matching handler', () => {
-      const result = dvala.run('perform(effect(my.effect))', {
+      const result = dvala.run('perform(@my.effect)', {
         effectHandlers: [
           { pattern: 'my.effect', handler: ({ next }) => next() },
 
@@ -98,7 +98,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('next() with no further handler throws unhandled effect', () => {
       expect(() =>
-        dvala.run('perform(effect(my.effect))', {
+        dvala.run('perform(@my.effect)', {
           effectHandlers: [
             { pattern: 'my.effect', handler: ({ next }) => next() },
           ],
@@ -109,7 +109,7 @@ describe('runSync with sync effect handlers', () => {
 
   describe('pattern matching', () => {
     it('wildcard * matches any effect', () => {
-      const result = dvala.run('perform(effect(any.effect))', {
+      const result = dvala.run('perform(@any.effect)', {
         effectHandlers: [
           { pattern: '*', handler: ({ resume }) => resume('caught') },
         ],
@@ -119,17 +119,17 @@ describe('runSync with sync effect handlers', () => {
 
     it('node.* matches the node itself and descendants', () => {
       const results = [
-        dvala.run('perform(effect(my))', {
+        dvala.run('perform(@my)', {
           effectHandlers: [
             { pattern: 'my.*', handler: ({ resume }) => resume(1) },
           ],
         }),
-        dvala.run('perform(effect(my.child))', {
+        dvala.run('perform(@my.child)', {
           effectHandlers: [
             { pattern: 'my.*', handler: ({ resume }) => resume(2) },
           ],
         }),
-        dvala.run('perform(effect(my.child.deep))', {
+        dvala.run('perform(@my.child.deep)', {
           effectHandlers: [
             { pattern: 'my.*', handler: ({ resume }) => resume(3) },
           ],
@@ -140,7 +140,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('exact pattern does not match descendants', () => {
       expect(() =>
-        dvala.run('perform(effect(my.child))', {
+        dvala.run('perform(@my.child)', {
           effectHandlers: [
             { pattern: 'my', handler: ({ resume }) => resume(1) },
           ],
@@ -152,7 +152,7 @@ describe('runSync with sync effect handlers', () => {
   describe('side effects', () => {
     it('handler can produce side effects', () => {
       const log: string[] = []
-      dvala.run('perform(effect(my.log), "hello")', {
+      dvala.run('perform(@my.log, "hello")', {
         effectHandlers: [
           { pattern: 'my.log', handler: ({ args, resume }) => {
             log.push(args[0] as string)
@@ -167,7 +167,7 @@ describe('runSync with sync effect handlers', () => {
   describe('error cases', () => {
     it('throws on unhandled effect', () => {
       expect(() =>
-        dvala.run('perform(effect(my.unhandled))', { effectHandlers: [] }),
+        dvala.run('perform(@my.unhandled)', { effectHandlers: [] }),
       ).toThrow()
     })
 
@@ -177,7 +177,7 @@ describe('runSync with sync effect handlers', () => {
 
     it('throws if handler calls resume twice', () => {
       expect(() =>
-        dvala.run('perform(effect(my.effect))', {
+        dvala.run('perform(@my.effect)', {
           effectHandlers: [
             { pattern: 'my.effect', handler: ({ resume }) => {
               resume(1)
@@ -193,9 +193,9 @@ describe('runSync with sync effect handlers', () => {
     it('local do...with handler wins over effectHandlers', () => {
       const result = dvala.run(`
         do
-          perform(effect(my.effect), "local")
+          perform(@my.effect, "local")
         with
-          case effect(my.effect) then ([msg]) -> upper-case(msg)
+          case @my.effect then ([msg]) -> upper-case(msg)
         end
       `, {
         effectHandlers: [

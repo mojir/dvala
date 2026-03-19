@@ -432,7 +432,7 @@ test.describe('settings', () => {
       await page.evaluate(() => (window as any).Playground.toggleInterceptCheckpoint())
     }
 
-    await setDvalaCode(page, 'perform(effect(dvala.checkpoint), "test point")')
+    await setDvalaCode(page, 'perform(@dvala.checkpoint, "test point")')
     await clickRun(page)
 
     // Checkpoint panel should open (unified effect panel with "Checkpoint" title)
@@ -804,7 +804,7 @@ test.describe('playground effects', () => {
   test('ui.showToast displays a toast message', async ({ page }) => {
     // Disable auto-checkpoint to avoid extra toasts
     await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
-    await setDvalaCode(page, 'perform(effect(playground.ui.show-toast), "Hello from test!")')
+    await setDvalaCode(page, 'perform(@playground.ui.show-toast, "Hello from test!")')
     await clickRun(page)
     const toast = page.locator('#toast-container .toast', { hasText: 'Hello from test!' })
     await expect(toast).toBeVisible({ timeout: 3000 })
@@ -812,7 +812,7 @@ test.describe('playground effects', () => {
 
   test('ui.showToast with severity level', async ({ page }) => {
     await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
-    await setDvalaCode(page, 'perform(effect(playground.ui.show-toast), "Oops", "error")')
+    await setDvalaCode(page, 'perform(@playground.ui.show-toast, "Oops", "error")')
     await clickRun(page)
     const toast = page.locator('#toast-container .toast-error', { hasText: 'Oops' })
     await expect(toast).toBeVisible({ timeout: 3000 })
@@ -821,7 +821,7 @@ test.describe('playground effects', () => {
   // ── Editor ──
 
   test('editor.getContent returns the actual editor content', async ({ page }) => {
-    await setDvalaCode(page, 'do let code = perform(effect(playground.editor.get-content)); slice(code, 0, 6) == "do let" end')
+    await setDvalaCode(page, 'do let code = perform(@playground.editor.get-content); slice(code, 0, 6) == "do let" end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -829,7 +829,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setContent replaces editor text', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "replaced"); perform(effect(playground.editor.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "replaced"); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -837,7 +837,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.insertText inserts at explicit position', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "hello"); perform(effect(playground.editor.insert-text), " world", 5); perform(effect(playground.editor.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello"); perform(@playground.editor.insert-text, " world", 5); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -845,7 +845,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.insertText inserts at cursor when no position given', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "ac"); perform(effect(playground.editor.set-cursor), 1); perform(effect(playground.editor.insert-text), "b"); perform(effect(playground.editor.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "ac"); perform(@playground.editor.set-cursor, 1); perform(@playground.editor.insert-text, "b"); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -853,7 +853,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.getCursor returns a number', async ({ page }) => {
-    await setDvalaCode(page, 'number?(perform(effect(playground.editor.get-cursor)))')
+    await setDvalaCode(page, 'number?(perform(@playground.editor.get-cursor))')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -861,7 +861,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setCursor and getCursor round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "abcdef"); perform(effect(playground.editor.set-cursor), 3); perform(effect(playground.editor.get-cursor)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "abcdef"); perform(@playground.editor.set-cursor, 3); perform(@playground.editor.get-cursor) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -869,7 +869,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setSelection and getSelection round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "hello world"); perform(effect(playground.editor.set-selection), 6, 11); perform(effect(playground.editor.get-selection)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello world"); perform(@playground.editor.set-selection, 6, 11); perform(@playground.editor.get-selection) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -877,7 +877,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.getSelection returns empty string when nothing selected', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), "abc"); perform(effect(playground.editor.set-cursor), 1); perform(effect(playground.editor.get-selection)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "abc"); perform(@playground.editor.set-cursor, 1); perform(@playground.editor.get-selection) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -885,7 +885,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.typeText types characters into the editor', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), ""); perform(effect(playground.editor.type-text), "hi"); perform(effect(playground.editor.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, ""); perform(@playground.editor.type-text, "hi"); perform(@playground.editor.get-content) end')
     await clickRun(page)
     // typeText is async with setTimeout delays — wait longer
     await page.waitForFunction(() => {
@@ -897,7 +897,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.typeText respects custom delay', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.editor.set-content), ""); perform(effect(playground.editor.type-text), "ab", 100); perform(effect(playground.editor.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, ""); perform(@playground.editor.type-text, "ab", 100); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await page.waitForFunction(() => {
       const output = document.getElementById('output-result')
@@ -911,7 +911,7 @@ test.describe('playground effects', () => {
 
   test('context.getContent returns the actual context text', async ({ page }) => {
     await setContext(page, '{"bindings": {"x": 42}}')
-    await setDvalaCode(page, 'do let ctx = perform(effect(playground.context.get-content)); slice(ctx, 0, 1) == "{" end')
+    await setDvalaCode(page, 'do let ctx = perform(@playground.context.get-content); slice(ctx, 0, 1) == "{" end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -919,7 +919,7 @@ test.describe('playground effects', () => {
   })
 
   test('context.setContent and getContent round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(effect(playground.context.set-content), "{}"); perform(effect(playground.context.get-content)) end')
+    await setDvalaCode(page, 'do perform(@playground.context.set-content, "{}"); perform(@playground.context.get-content) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -929,7 +929,7 @@ test.describe('playground effects', () => {
   // ── Execution ──
 
   test('exec.run executes code and returns result', async ({ page }) => {
-    await setDvalaCode(page, 'perform(effect(playground.exec.run), "10 + 32")')
+    await setDvalaCode(page, 'perform(@playground.exec.run, "10 + 32")')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -937,7 +937,7 @@ test.describe('playground effects', () => {
   })
 
   test('exec.run returns strings', async ({ page }) => {
-    await setDvalaCode(page, 'perform(effect(playground.exec.run), "\\"hello\\"")')
+    await setDvalaCode(page, 'perform(@playground.exec.run, "\\"hello\\"")')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -946,7 +946,7 @@ test.describe('playground effects', () => {
 
   test('storage.load fails for nonexistent program', async ({ page }) => {
     await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
-    await setDvalaCode(page, 'perform(effect(playground.storage.load), "does-not-exist")')
+    await setDvalaCode(page, 'perform(@playground.storage.load, "does-not-exist")')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -960,9 +960,9 @@ test.describe('playground effects', () => {
     await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
 
     await setDvalaCode(page, `do
-  perform(effect(playground.storage.save), "test-prog", "1 + 2");
-  let names = perform(effect(playground.storage.list));
-  let code = perform(effect(playground.storage.load), "test-prog");
+  perform(@playground.storage.save, "test-prog", "1 + 2");
+  let names = perform(@playground.storage.list);
+  let code = perform(@playground.storage.load, "test-prog");
   [names, code]
 end`)
     await clickRun(page)
@@ -975,7 +975,7 @@ end`)
   // ── Router ──
 
   test('router.goto navigates to a page', async ({ page }) => {
-    await setDvalaCode(page, 'perform(effect(playground.router.goto), "examples")')
+    await setDvalaCode(page, 'perform(@playground.router.goto, "examples")')
     await clickRun(page)
     // SPA routing uses pushState — check the dynamic page content
     await expect(page.locator('#dynamic-page')).toContainText('Examples', { timeout: 3000 })
@@ -992,7 +992,7 @@ end`)
     await page.evaluate(() => (window as any).Playground.navigate('/'))
     await waitForInit(page)
 
-    await setDvalaCode(page, 'perform(effect(playground.router.back))')
+    await setDvalaCode(page, 'perform(@playground.router.back)')
     await clickRun(page)
     await expect(page.locator('#dynamic-page')).toContainText('Tutorials', { timeout: 3000 })
   })

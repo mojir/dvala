@@ -291,7 +291,7 @@ describe('dvala Destructuring', () => {
         do
           let { value } = 42
         with
-          case effect(dvala.error) then (args) -> "Error caught"
+          case @dvala.error then (args) -> "Error caught"
         end
       `)).toBe('Error caught')
     })

@@ -36,7 +36,7 @@
         )
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -59,7 +59,7 @@
         )
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -87,7 +87,7 @@
         reduce(keys(coll), (acc, k) -> fn(acc, coll(k), k), initial)
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -103,7 +103,7 @@
         reduce(reverse(keys(coll)), (acc, k) -> fn(acc, coll(k)), initial)
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -133,7 +133,7 @@
         reduce(reverse(keys(coll)), (acc, k) -> fn(acc, coll(k), k), initial)
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -148,7 +148,7 @@
         for (k in keys(coll)) -> coll(k)
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end;
     if count(items) == 0 then
       [initial]
@@ -205,7 +205,7 @@
       end
 
       case true then
-        perform(effect(dvala.error), "Expected collection")
+        perform(@dvala.error, "Expected collection")
     end
   end,
 
@@ -214,7 +214,7 @@
       case array?(coll) then coll
       case string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       case object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
-      case true then perform(effect(dvala.error), "Expected collection")
+      case true then perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
       cond
@@ -229,7 +229,7 @@
       case array?(coll) then coll
       case string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       case object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
-      case true then perform(effect(dvala.error), "Expected collection")
+      case true then perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
       cond
@@ -244,7 +244,7 @@
       case array?(coll) then coll
       case string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       case object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
-      case true then perform(effect(dvala.error), "Expected collection")
+      case true then perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
       cond
@@ -259,7 +259,7 @@
       case array?(coll) then coll
       case string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       case object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
-      case true then perform(effect(dvala.error), "Expected collection")
+      case true then perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
       cond

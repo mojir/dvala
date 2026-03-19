@@ -32,13 +32,13 @@ let data = {
   string: "Albert"
 };
 
-perform(effect(dvala.io.print), data.numbers[0]);
-perform(effect(dvala.io.print), data.chars[2]);
-perform(effect(dvala.io.print), data.string[0]);
+perform(@dvala.io.print, data.numbers[0]);
+perform(@dvala.io.print, data.chars[2]);
+perform(@dvala.io.print, data.string[0]);
 
-perform(effect(dvala.io.print), {a: 1, b: 2, c: 3}.b);
-perform(effect(dvala.io.print), "Albert"[3]);
-perform(effect(dvala.io.print), [1, 2, 3][2]);
+perform(@dvala.io.print, {a: 1, b: 2, c: 3}.b);
+perform(@dvala.io.print, "Albert"[3]);
+perform(@dvala.io.print, [1, 2, 3][2]);
     `.trim(),
   },
   {
@@ -50,13 +50,13 @@ perform(effect(dvala.io.print), [1, 2, 3][2]);
 let name = "Alice";
 let score = 42;
 
-perform(effect(dvala.io.println), \`Hello, \${name}!\`);
-perform(effect(dvala.io.println), \`Score: \${score}/100\`);
+perform(@dvala.io.println, \`Hello, \${name}!\`);
+perform(@dvala.io.println, \`Score: \${score}/100\`);
 
 // Any expression works inside \${...}
 let items = ["apple", "banana", "cherry"];
 for (i in range(count(items))) ->
-  perform(effect(dvala.io.println), \`\${i + 1}. \${items[i]}\`)
+  perform(@dvala.io.println, \`\${i + 1}. \${items[i]}\`)
     `.trim(),
   },
   {
@@ -70,7 +70,7 @@ for (i in range(count(items))) ->
       ],
     },
     code: `
-perform(effect(host.plus), x, y)
+perform(@host.plus, x, y)
     `.trim(),
   },
   {
@@ -103,20 +103,20 @@ perform(effect(host.plus), x, y)
 // Call async host effects with perform(effect(...), args...)
 
 // Simulate a delay
-perform(effect(dvala.io.print), "Waiting 500ms...");
-perform(effect(host.delay), 500);
-perform(effect(dvala.io.print), "Done waiting!");
+perform(@dvala.io.print, "Waiting 500ms...");
+perform(@host.delay, 500);
+perform(@dvala.io.print, "Done waiting!");
 
 // Fetch a user from a REST API
-let user = perform(effect(host.fetch-user), 1);
-perform(effect(dvala.io.print), "User: " ++ user.name);
-perform(effect(dvala.io.print), "Email: " ++ user.email);
-perform(effect(dvala.io.print), "City: " ++ user.city);
+let user = perform(@host.fetch-user, 1);
+perform(@dvala.io.print, "User: " ++ user.name);
+perform(@dvala.io.print, "Email: " ++ user.email);
+perform(@dvala.io.print, "City: " ++ user.city);
 
 // Fetch their posts
-let posts = perform(effect(host.fetch-posts), 1);
-perform(effect(dvala.io.print), "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
-doseq (post in posts) -> perform(effect(dvala.io.print), "- " ++ post.title);
+let posts = perform(@host.fetch-posts, 1);
+perform(@dvala.io.print, "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
+doseq (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     `.trim(),
   },
   {
@@ -149,57 +149,57 @@ doseq (post in posts) -> perform(effect(dvala.io.print), "- " ++ post.title);
 let lookup-user! = (id-str) -> do
   let id = number(id-str);
   if not(number?(id)) || id < 1 || id > 10 then
-    perform(effect(dvala.io.print), "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
+    perform(@dvala.io.print, "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
   else
-    perform(effect(dvala.io.print), "Fetching user " ++ str(id) ++ "...");
-    let user = perform(effect(host.fetch-user), id);
+    perform(@dvala.io.print, "Fetching user " ++ str(id) ++ "...");
+    let user = perform(@host.fetch-user, id);
     if null?(user) then
-      perform(effect(dvala.io.print), "User not found.");
+      perform(@dvala.io.print, "User not found.");
     else
-      perform(effect(dvala.io.print), "Name:    " ++ user.name);
-      perform(effect(dvala.io.print), "Email:   " ++ user.email);
-      perform(effect(dvala.io.print), "City:    " ++ user.city);
-      perform(effect(dvala.io.print), "Company: " ++ user.company);
+      perform(@dvala.io.print, "Name:    " ++ user.name);
+      perform(@dvala.io.print, "Email:   " ++ user.email);
+      perform(@dvala.io.print, "City:    " ++ user.city);
+      perform(@dvala.io.print, "Company: " ++ user.company);
       user;
     end
   end
 end;
 
 let show-todos! = (user) -> do
-  perform(effect(dvala.io.print), "\\nFetching todos for " ++ user.name ++ "...");
-  let todos = perform(effect(host.fetch-todos), user.id);
+  perform(@dvala.io.print, "\\nFetching todos for " ++ user.name ++ "...");
+  let todos = perform(@host.fetch-todos, user.id);
   let done = filter(todos, -> $.completed);
   let pending = filter(todos, -> not($.completed));
 
-  perform(effect(dvala.io.print), "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
-  doseq (t in done take 5) -> perform(effect(dvala.io.print), "  ✓ " ++ t.title);
+  perform(@dvala.io.print, "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
+  doseq (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
   if count(done) > 5 then
-    perform(effect(dvala.io.print), "  ... and " ++ str(count(done) - 5) ++ " more");
+    perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more");
   end;
 
-  perform(effect(dvala.io.print), "\\nPending (" ++ str(count(pending)) ++ "):");
-  doseq (t in pending take 5) -> perform(effect(dvala.io.print), "  ○ " ++ t.title);
+  perform(@dvala.io.print, "\\nPending (" ++ str(count(pending)) ++ "):");
+  doseq (t in pending take 5) -> perform(@dvala.io.print, "  ○ " ++ t.title);
   if count(pending) > 5 then
-    perform(effect(dvala.io.print), "  ... and " ++ str(count(pending) - 5) ++ " more");
+    perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more");
   end
 end;
 
 // Main interaction loop
 let main! = () -> do
-  perform(effect(dvala.io.print), "=== User Lookup Tool ===\\n");
+  perform(@dvala.io.print, "=== User Lookup Tool ===\\n");
 
   loop (continue? = true) ->
     if continue? then
-      let input = perform(effect(dvala.io.read-line), "Enter a user ID (1-10), or cancel to quit:");
+      let input = perform(@dvala.io.read-line, "Enter a user ID (1-10), or cancel to quit:");
       if null?(input) || input == "" then
-        perform(effect(dvala.io.print), "Goodbye!");
+        perform(@dvala.io.print, "Goodbye!");
       else
         let user = lookup-user!(input);
         if user then
-          let show = perform(effect(dvala.io.read-line), "Show todos for " ++ user.name ++ "? (yes/no)");
+          let show = perform(@dvala.io.read-line, "Show todos for " ++ user.name ++ "? (yes/no)");
           if show == "yes" then show-todos!(user) end;
         end;
-        perform(effect(dvala.io.print), "");
+        perform(@dvala.io.print, "");
         recur(true)
       end
 
@@ -539,15 +539,15 @@ end;
 
 // Game loop
 let game-loop = (state) -> do
-  let input = perform(effect(dvala.io.read-line), describe-location(state) ++ "\\nWhat do you do? ");
+  let input = perform(@dvala.io.read-line, describe-location(state) ++ "\\nWhat do you do? ");
   let command_result = parse-command(state, input);
   let new-state = first(command_result);
   let message = second(command_result);
 
-  perform(effect(dvala.io.print), "\\n" ++ message ++ "\\n");
+  perform(@dvala.io.print, "\\n" ++ message ++ "\\n");
 
   if new-state.game-over then
-    perform(effect(dvala.io.print), "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
+    perform(@dvala.io.print, "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
     new-state
   else
     game-loop(new-state)
@@ -556,7 +556,7 @@ end;
 
 // Start game
 let start-game = () -> do
-  perform(effect(dvala.io.print), "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
+  perform(@dvala.io.print, "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
   game-loop(initial-state)
 end;
 
@@ -573,12 +573,12 @@ start-game()
 let determinant = (matrix) -> do
   // Check if input is an array
   unless array?(matrix) then
-    perform(effect(dvala.error), "Input must be an array");
+    perform(@dvala.error, "Input must be an array");
   end;
 
   // Check if matrix is empty
   if empty?(matrix) then
-    perform(effect(dvala.error), "Matrix cannot be empty");
+    perform(@dvala.error, "Matrix cannot be empty");
   end;
 
   let rows = count(matrix);
@@ -588,14 +588,14 @@ let determinant = (matrix) -> do
   
   // Check if first row is an array
   unless array?(firstRow) then
-    perform(effect(dvala.error), "Input must be a 2D array");
+    perform(@dvala.error, "Input must be a 2D array");
   end;
   
   let cols = count(firstRow);
   
   // Ensure matrix is square
   if rows != cols then
-    perform(effect(dvala.error), "Matrix must be square");
+    perform(@dvala.error, "Matrix must be square");
   end;
   
   // Base case: 1x1 matrix
@@ -673,15 +673,15 @@ determinant(matrix4x4);
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
   // Check if inputs are arrays
-  unless array?(matrixA) then perform(effect(dvala.error), "First input must be an array") end;
-  unless array?(matrixB) then perform(effect(dvala.error), "Second input must be an array") end;
+  unless array?(matrixA) then perform(@dvala.error, "First input must be an array") end;
+  unless array?(matrixB) then perform(@dvala.error, "Second input must be an array") end;
 
   // Check if matrices are not empty
-  if empty?(matrixA) || empty?(matrixB) then perform(effect(dvala.error), "Matrices cannot be empty") end;
+  if empty?(matrixA) || empty?(matrixB) then perform(@dvala.error, "Matrices cannot be empty") end;
 
   // Check if matrices are 2D arrays
-  unless array?(first(matrixA)) then perform(effect(dvala.error), "First input must be a 2D array") end;
-  unless array?(first(matrixB)) then perform(effect(dvala.error), "Second input must be a 2D array") end;
+  unless array?(first(matrixA)) then perform(@dvala.error, "First input must be a 2D array") end;
+  unless array?(first(matrixB)) then perform(@dvala.error, "Second input must be a 2D array") end;
 
   // Get dimensions
   let rowsA = count(matrixA);
@@ -691,16 +691,16 @@ let matrixMultiply = (matrixA, matrixB) -> do
 
   // Check if all rows have consistent length
   unless every?(matrixA, row -> array?(row) && count(row) == colsA) then
-    perform(effect(dvala.error), "First matrix has inconsistent row lengths")
+    perform(@dvala.error, "First matrix has inconsistent row lengths")
   end;
   
   unless every?(matrixB, row -> array?(row) && count(row) == colsB) then
-    perform(effect(dvala.error), "Second matrix has inconsistent row lengths")
+    perform(@dvala.error, "Second matrix has inconsistent row lengths")
   end;
 
   // Check if matrices can be multiplied
   unless colsA == rowsB then
-    perform(effect(dvala.error), "Matrix dimensions mismatch: first matrix columns must equal second matrix rows");
+    perform(@dvala.error, "Matrix dimensions mismatch: first matrix columns must equal second matrix rows");
   end;
 
   // Create a row of the result matrix
@@ -760,12 +760,12 @@ let formatPhoneNumber = (data) -> do
 end;
 
 
-perform(effect(dvala.io.print), formatPhoneNumber);
-perform(effect(dvala.io.print), formatPhoneNumber(123234));
-perform(effect(dvala.io.print), formatPhoneNumber("123234"));
-perform(effect(dvala.io.print), formatPhoneNumber("1232343456"));
-perform(effect(dvala.io.print), formatPhoneNumber("+11232343456789"));
-perform(effect(dvala.io.print), formatPhoneNumber("+11232343456"));
+perform(@dvala.io.print, formatPhoneNumber);
+perform(@dvala.io.print, formatPhoneNumber(123234));
+perform(@dvala.io.print, formatPhoneNumber("123234"));
+perform(@dvala.io.print, formatPhoneNumber("1232343456"));
+perform(@dvala.io.print, formatPhoneNumber("+11232343456789"));
+perform(@dvala.io.print, formatPhoneNumber("+11232343456"));
   `.trim(),
   },
   {
@@ -826,8 +826,8 @@ let isoDateString? = (data) -> do
   end
 end;
 
-perform(effect(dvala.io.print), isoDateString?("1978-12-21"));
-perform(effect(dvala.io.print), isoDateString?("197-12-21"));
+perform(@dvala.io.print, isoDateString?("1978-12-21"));
+perform(@dvala.io.print, isoDateString?("197-12-21"));
   `.trim(),
   },
 
@@ -915,22 +915,22 @@ fizzbuzz join ", "
 // It only works when run inside the playground.
 
 // 1. Show a greeting toast
-perform(effect(playground.ui.showToast), "Welcome to Playground Effects!", "success");
+perform(@playground.ui.showToast, "Welcome to Playground Effects!", "success");
 
 // 2. Read the current editor content
-let original = perform(effect(playground.editor.getContent));
-perform(effect(dvala.io.println), "Editor has " ++ str(count(original)) ++ " characters");
+let original = perform(@playground.editor.getContent);
+perform(@dvala.io.println, "Editor has " ++ str(count(original)) ++ " characters");
 
 // 3. Generate some code and write it to the editor
 let n = 5;
 let generated = "let total = " ++ join(for (i in range(1, n + 1)) -> str(i), " + ") ++ "; total";
-perform(effect(playground.editor.setContent), generated);
-perform(effect(playground.ui.showToast), "Code generated!", "info");
+perform(@playground.editor.setContent, generated);
+perform(@playground.ui.showToast, "Code generated!", "info");
 
 // 4. Wait a moment, then restore the original
-perform(effect(dvala.sleep), 1500);
-perform(effect(playground.editor.setContent), original);
-perform(effect(playground.ui.showToast), "Original restored!", "success");
+perform(@dvala.sleep, 1500);
+perform(@playground.editor.setContent, original);
+perform(@playground.ui.showToast, "Original restored!", "success");
 
 "Done!"
 `.trim(),

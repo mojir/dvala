@@ -33,7 +33,7 @@ function escapeHtml(text: string): string {
 /**
  * If the token at `index` is part of a dotted name inside `effect(...)`,
  * return the effect color. Otherwise return null.
- * Handles: effect(dvala.io.println) — tokens: effect ( dvala . io . println )
+ * Handles: @dvala.io.println — tokens: effect ( dvala . io . println )
  */
 function getEffectColor(tokens: Token[], index: number): string | null {
   const token = tokens[index]!

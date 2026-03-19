@@ -261,32 +261,30 @@ export const tokenizeBasePrefixedNumber: Tokenizer<BasePrefixedNumberToken> = (i
 
 /**
  * Tokenize effect name literal: @segment.segment.segment
- * At least one dot required. Each segment follows symbol naming rules.
+ * Each segment follows symbol naming rules. Dots separate segments.
  * The token value is the name without the @ prefix.
  */
 export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) => {
   if (input[position] !== '@') return NO_MATCH
 
   let i = position + 1
-  let name = ''
-  let dotCount = 0
 
   // Parse first segment
   const firstChar = input[i]
   if (!firstChar || illegalFirstSymbolCharacterSet.has(firstChar)) return NO_MATCH
 
+  let name = ''
   while (i < input.length && !illegalSymbolCharacterSet.has(input[i]!)) {
     name += input[i]
     i++
   }
 
-  // Parse .segment pairs
+  // Parse optional .segment pairs
   while (i < input.length && input[i] === '.') {
     const dotPos = i
     i++ // skip dot
     const segStart = i
     if (i >= input.length || illegalFirstSymbolCharacterSet.has(input[i]!)) {
-      // Dot not followed by valid segment — backtrack to before the dot
       i = dotPos
       break
     }
@@ -294,10 +292,7 @@ export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) 
       i++
     }
     name += `.${input.slice(segStart, i)}`
-    dotCount++
   }
-
-  if (dotCount === 0) return NO_MATCH // At least one dot required
 
   return [i - position, ['EffectName', name]]
 }

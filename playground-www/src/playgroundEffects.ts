@@ -28,8 +28,8 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'level'] }],
       examples: [
-        { code: 'perform(effect(playground.ui.show-toast), "Hello!")', noRun: true },
-        { code: 'perform(effect(playground.ui.show-toast), "Saved!", "success")', noRun: true },
+        { code: 'perform(@playground.ui.show-toast, "Hello!")', noRun: true },
+        { code: 'perform(@playground.ui.show-toast, "Saved!", "success")', noRun: true },
       ],
     },
     // ── Editor ──
@@ -41,7 +41,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let code = perform(effect(playground.editor.get-content))', noRun: true },
+        { code: 'let code = perform(@playground.editor.get-content)', noRun: true },
       ],
     },
     {
@@ -54,7 +54,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['code'] }],
       examples: [
-        { code: 'perform(effect(playground.editor.set-content), "1 + 2")', noRun: true },
+        { code: 'perform(@playground.editor.set-content, "1 + 2")', noRun: true },
       ],
     },
     {
@@ -68,8 +68,8 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'position'] }],
       examples: [
-        { code: 'perform(effect(playground.editor.insert-text), "; hello")', noRun: true },
-        { code: 'perform(effect(playground.editor.insert-text), "prefix ", 0)', noRun: true },
+        { code: 'perform(@playground.editor.insert-text, "; hello")', noRun: true },
+        { code: 'perform(@playground.editor.insert-text, "prefix ", 0)', noRun: true },
       ],
     },
     {
@@ -83,8 +83,8 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'delayMs'] }],
       examples: [
-        { code: 'perform(effect(playground.editor.type-text), "Hello!")', noRun: true },
-        { code: 'perform(effect(playground.editor.type-text), "Hello!", 50)', noRun: true },
+        { code: 'perform(@playground.editor.type-text, "Hello!")', noRun: true },
+        { code: 'perform(@playground.editor.type-text, "Hello!", 50)', noRun: true },
       ],
     },
     {
@@ -95,7 +95,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let sel = perform(effect(playground.editor.get-selection))', noRun: true },
+        { code: 'let sel = perform(@playground.editor.get-selection)', noRun: true },
       ],
     },
     {
@@ -109,7 +109,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['start', 'end'] }],
       examples: [
-        { code: 'perform(effect(playground.editor.set-selection), 0, 10)', noRun: true },
+        { code: 'perform(@playground.editor.set-selection, 0, 10)', noRun: true },
       ],
     },
     {
@@ -120,7 +120,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'integer' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let pos = perform(effect(playground.editor.get-cursor))', noRun: true },
+        { code: 'let pos = perform(@playground.editor.get-cursor)', noRun: true },
       ],
     },
     {
@@ -133,7 +133,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['position'] }],
       examples: [
-        { code: 'perform(effect(playground.editor.set-cursor), 0)', noRun: true },
+        { code: 'perform(@playground.editor.set-cursor, 0)', noRun: true },
       ],
     },
 
@@ -146,7 +146,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let ctx = perform(effect(playground.context.get-content))', noRun: true },
+        { code: 'let ctx = perform(@playground.context.get-content)', noRun: true },
       ],
     },
     {
@@ -159,7 +159,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['json'] }],
       examples: [
-        { code: 'perform(effect(playground.context.set-content), "{}")', noRun: true },
+        { code: 'perform(@playground.context.set-content, "{}")', noRun: true },
       ],
     },
 
@@ -174,7 +174,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'any' },
       variants: [{ argumentNames: ['code'] }],
       examples: [
-        { code: 'let result = perform(effect(playground.exec.run), "1 + 2")', noRun: true },
+        { code: 'let result = perform(@playground.exec.run, "1 + 2")', noRun: true },
       ],
     },
 
@@ -190,8 +190,8 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['name'] }, { argumentNames: ['name', 'code'] }],
       examples: [
-        { code: 'perform(effect(playground.storage.save), "my-program")', noRun: true },
-        { code: 'perform(effect(playground.storage.save), "hello", "1 + 2")', noRun: true },
+        { code: 'perform(@playground.storage.save, "my-program")', noRun: true },
+        { code: 'perform(@playground.storage.save, "hello", "1 + 2")', noRun: true },
       ],
     },
     {
@@ -204,7 +204,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string' },
       variants: [{ argumentNames: ['name'] }],
       examples: [
-        { code: 'let code = perform(effect(playground.storage.load), "my-program")', noRun: true },
+        { code: 'let code = perform(@playground.storage.load, "my-program")', noRun: true },
       ],
     },
     {
@@ -215,7 +215,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string', array: true },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let names = perform(effect(playground.storage.list))', noRun: true },
+        { code: 'let names = perform(@playground.storage.list)', noRun: true },
       ],
     },
 
@@ -230,7 +230,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['route'] }],
       examples: [
-        { code: 'perform(effect(playground.router.goto), "examples")', noRun: true },
+        { code: 'perform(@playground.router.goto, "examples")', noRun: true },
       ],
     },
     {
@@ -241,7 +241,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'perform(effect(playground.router.back))', noRun: true },
+        { code: 'perform(@playground.router.back)', noRun: true },
       ],
     },
   ]

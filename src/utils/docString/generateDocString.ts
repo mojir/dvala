@@ -34,7 +34,7 @@ function signature(reference: DocStringSource): string[] {
 
   const functionForms = variants.map(variant => {
     if (isEffectRef(reference)) {
-      // Effect form: perform(effect(name), arg1, arg2)
+      // Effect form: perform(@name, arg1, arg2)
       const argsStr = variant.argumentNames.length > 0
         ? `, ${variant.argumentNames.map(argName => {
           let result = ''
@@ -46,7 +46,7 @@ function signature(reference: DocStringSource): string[] {
           return result
         }).join(', ')}`
         : ''
-      return `  perform(effect(${title})${argsStr}) -> ${type(returns)}`
+      return `  perform(@${title}${argsStr}) -> ${type(returns)}`
     }
 
     const form = `  ${title}(${variant.argumentNames.map(argName => {

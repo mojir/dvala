@@ -32,9 +32,9 @@ describe('analyze', () => {
     // with-handler body: undefined symbols in effect expr and handler fn
     expect(getUndefinedSymbols(`
       do
-        perform(effect(dvala.io.println), "hello")
+        perform(@dvala.io.println, "hello")
       with
-        case effect(dvala.io.println) then (args) -> null
+        case @dvala.io.println then (args) -> null
       end`)).toEqual(new Set([]))
 
     // undefined symbol in handler function
@@ -42,7 +42,7 @@ describe('analyze', () => {
       do
         1
       with
-        case effect(dvala.io.println) then (args) -> undefinedHandler
+        case @dvala.io.println then (args) -> undefinedHandler
       end`)).toEqual(new Set(['undefinedHandler']))
 
     // undefined symbol in effect expression of case

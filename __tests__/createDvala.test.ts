@@ -52,12 +52,12 @@ describe('createDvala', () => {
           { pattern: 'my.val', handler: ({ resume }) => resume(42) },
         ],
       })
-      expect(d.run('perform(effect(my.val))')).toBe(42)
+      expect(d.run('perform(@my.val)')).toBe(42)
     })
 
     it('run uses effectHandlers from per-run options', () => {
       const d = createDvala()
-      expect(d.run('perform(effect(my.val))', {
+      expect(d.run('perform(@my.val)', {
         effectHandlers: [
           { pattern: 'my.val', handler: ({ resume }) => resume(99) },
         ],
@@ -70,7 +70,7 @@ describe('createDvala', () => {
           { pattern: 'my.*', handler: ({ resume }) => resume('factory') },
         ],
       })
-      expect(d.run('perform(effect(my.specific))', {
+      expect(d.run('perform(@my.specific)', {
         effectHandlers: [
           { pattern: 'my.specific', handler: ({ resume }) => resume('run') },
         ],
@@ -119,13 +119,13 @@ describe('createDvala', () => {
           { pattern: 'my.ask', handler: async ({ resume }) => resume(42) },
         ],
       })
-      const result = await d.runAsync('perform(effect(my.ask))')
+      const result = await d.runAsync('perform(@my.ask)')
       expect(result).toMatchObject({ type: 'completed', value: 42, definedBindings: {} })
     })
 
     it('runs with effectHandlers from per-run options', async () => {
       const d = createDvala()
-      const result = await d.runAsync('perform(effect(my.ask))', {
+      const result = await d.runAsync('perform(@my.ask)', {
         effectHandlers: [
           { pattern: 'my.ask', handler: async ({ resume }) => resume(7) },
         ],
@@ -139,7 +139,7 @@ describe('createDvala', () => {
           { pattern: 'my.*', handler: async ({ resume }) => resume('factory') },
         ],
       })
-      const result = await d.runAsync('perform(effect(my.specific))', {
+      const result = await d.runAsync('perform(@my.specific)', {
         effectHandlers: [
           { pattern: 'my.specific', handler: async ({ resume }) => resume('run') },
         ],
@@ -149,7 +149,7 @@ describe('createDvala', () => {
 
     it('returns error result on Dvala error', async () => {
       const d = createDvala()
-      const result = await d.runAsync('perform(effect(dvala.error), "oops")')
+      const result = await d.runAsync('perform(@dvala.error, "oops")')
       expect(result.type).toBe('error')
     })
 

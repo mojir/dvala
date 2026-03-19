@@ -280,34 +280,34 @@ describe('auto: effect + control flow', () => {
     do
       ${body}
     with
-      case effect(test.eff) then ([x]) -> x * 10
+      case @test.eff then ([x]) -> x * 10
     end
   `
 
   it('effect in if-then branch', () => {
-    const result = dvala.run(wrap('if true then perform(effect(test.eff), 5) else 0 end'))
+    const result = dvala.run(wrap('if true then perform(@test.eff, 5) else 0 end'))
     expect(result).toBe(50)
   })
 
   it('effect in if-else branch', () => {
-    const result = dvala.run(wrap('if false then 0 else perform(effect(test.eff), 3) end'))
+    const result = dvala.run(wrap('if false then 0 else perform(@test.eff, 3) end'))
     expect(result).toBe(30)
   })
 
   it('effect in if condition', () => {
-    const result = dvala.run(wrap('if >(perform(effect(test.eff), 1), 5) then "big" else "small" end'))
+    const result = dvala.run(wrap('if >(perform(@test.eff, 1), 5) then "big" else "small" end'))
     expect(result).toBe('big')
   })
 
   it('effect in unless-then branch', () => {
-    const result = dvala.run(wrap('unless false then perform(effect(test.eff), 4) else 0 end'))
+    const result = dvala.run(wrap('unless false then perform(@test.eff, 4) else 0 end'))
     expect(result).toBe(40)
   })
 
   it('effect in cond test', () => {
     const result = dvala.run(wrap(`
       cond
-        case >(perform(effect(test.eff), 1), 5) then "big"
+        case >(perform(@test.eff, 1), 5) then "big"
         case true then "small"
       end
     `))
@@ -317,7 +317,7 @@ describe('auto: effect + control flow', () => {
   it('effect in cond result', () => {
     const result = dvala.run(wrap(`
       cond
-        case true then perform(effect(test.eff), 7)
+        case true then perform(@test.eff, 7)
         case true then 0
       end
     `))
@@ -327,46 +327,46 @@ describe('auto: effect + control flow', () => {
   it('effect in match body', () => {
     const result = dvala.run(wrap(`
       match 42
-        case 42 then perform(effect(test.eff), 6)
+        case 42 then perform(@test.eff, 6)
       end
     `))
     expect(result).toBe(60)
   })
 
   it('effect in && (all truthy)', () => {
-    const result = dvala.run(wrap('&&(perform(effect(test.eff), 1), perform(effect(test.eff), 2))'))
+    const result = dvala.run(wrap('&&(perform(@test.eff, 1), perform(@test.eff, 2))'))
     expect(result).toBe(20) // last truthy value
   })
 
   it('effect in || (first truthy)', () => {
-    const result = dvala.run(wrap('||(perform(effect(test.eff), 3), perform(effect(test.eff), 4))'))
+    const result = dvala.run(wrap('||(perform(@test.eff, 3), perform(@test.eff, 4))'))
     expect(result).toBe(30) // first truthy value
   })
 
   it('effect in || (first falsy)', () => {
     const result = dvala.run(`
       do
-        ||(null, perform(effect(test.eff), 4))
+        ||(null, perform(@test.eff, 4))
       with
-        case effect(test.eff) then ([x]) -> x * 10
+        case @test.eff then ([x]) -> x * 10
       end
     `)
     expect(result).toBe(40)
   })
 
   it('effect in ?? (first non-null)', () => {
-    const result = dvala.run(wrap('??(perform(effect(test.eff), 5), 99)'))
+    const result = dvala.run(wrap('??(perform(@test.eff, 5), 99)'))
     expect(result).toBe(50) // 5 * 10 = 50, not null so returned
   })
 
   it('effect in let binding', () => {
-    const result = dvala.run(wrap('let x = perform(effect(test.eff), 2); x + 1'))
+    const result = dvala.run(wrap('let x = perform(@test.eff, 2); x + 1'))
     expect(result).toBe(21) // 2 * 10 + 1
   })
 
   it('effect in for comprehension', () => {
     const result = dvala.run(wrap(`
-      for (x in [1, 2, 3]) -> perform(effect(test.eff), x)
+      for (x in [1, 2, 3]) -> perform(@test.eff, x)
     `))
     expect(result).toEqual([10, 20, 30])
   })
@@ -377,7 +377,7 @@ describe('auto: effect + control flow', () => {
         if ==(i, 3) then
           acc
         else
-          recur(+(i, 1), +(acc, perform(effect(test.eff), i)))
+          recur(+(i, 1), +(acc, perform(@test.eff, i)))
         end
       end
     `))
@@ -386,7 +386,7 @@ describe('auto: effect + control flow', () => {
 
   it('effect in fn body', () => {
     const result = dvala.run(wrap(`
-      let f = (x) -> perform(effect(test.eff), x);
+      let f = (x) -> perform(@test.eff, x);
       f(8)
     `))
     expect(result).toBe(80)
@@ -395,9 +395,9 @@ describe('auto: effect + control flow', () => {
   it('effect in do/with error handler (no error)', () => {
     const result = dvala.run(wrap(`
       do
-        perform(effect(test.eff), 9)
+        perform(@test.eff, 9)
       with
-        case effect(dvala.error) then ([msg]) -> 0
+        case @dvala.error then ([msg]) -> 0
       end
     `))
     expect(result).toBe(90)
@@ -407,9 +407,9 @@ describe('auto: effect + control flow', () => {
     const result = dvala.run(wrap(`
       do
         do
-          perform(effect(dvala.error), "boom")
+          perform(@dvala.error, "boom")
         with
-          case effect(dvala.error) then ([msg]) -> perform(effect(test.eff), 4)
+          case @dvala.error then ([msg]) -> perform(@test.eff, 4)
         end
       end
     `))
@@ -425,43 +425,43 @@ describe('auto: effect + higher-order functions', () => {
     do
       ${body}
     with
-      case effect(test.double) then ([x]) -> x * 2
+      case @test.double then ([x]) -> x * 2
     end
   `
 
   it('effect in map callback', () => {
-    const result = dvala.run(wrap('map([1, 2, 3], (x) -> perform(effect(test.double), x))'))
+    const result = dvala.run(wrap('map([1, 2, 3], (x) -> perform(@test.double, x))'))
     expect(result).toEqual([2, 4, 6])
   })
 
   it('effect in filter callback', () => {
-    const result = dvala.run(wrap('filter([1, 2, 3, 4], (x) -> >(perform(effect(test.double), x), 4))'))
+    const result = dvala.run(wrap('filter([1, 2, 3, 4], (x) -> >(perform(@test.double, x), 4))'))
     expect(result).toEqual([3, 4])
   })
 
   it('effect in reduce callback', () => {
-    const result = dvala.run(wrap('reduce([1, 2, 3], (acc, x) -> +(acc, perform(effect(test.double), x)), 0)'))
+    const result = dvala.run(wrap('reduce([1, 2, 3], (acc, x) -> +(acc, perform(@test.double, x)), 0)'))
     expect(result).toBe(12) // 2 + 4 + 6
   })
 
   it('effect in mapcat callback', () => {
-    const result = dvala.run(wrap('mapcat([1, 2, 3], (x) -> [perform(effect(test.double), x)])'))
+    const result = dvala.run(wrap('mapcat([1, 2, 3], (x) -> [perform(@test.double, x)])'))
     expect(result).toEqual([2, 4, 6])
   })
 
   it('effect in some callback', () => {
-    const result = dvala.run(wrap('some([1, 2, 3, 4], (x) -> ==(perform(effect(test.double), x), 6))'))
+    const result = dvala.run(wrap('some([1, 2, 3, 4], (x) -> ==(perform(@test.double, x), 6))'))
     expect(result).toBe(3)
   })
 
   it('effect in every callback via reduce', () => {
-    const result = dvala.run(wrap('reduce([1, 2, 3], (acc, x) -> &&(acc, >(perform(effect(test.double), x), 0)), true)'))
+    const result = dvala.run(wrap('reduce([1, 2, 3], (acc, x) -> &&(acc, >(perform(@test.double, x), 0)), true)'))
     expect(result).toBe(true)
   })
 
   it('effect in sort comparator', () => {
     const result = dvala.run(wrap(`
-      sort([3, 1, 2], (a, b) -> -(perform(effect(test.double), a), perform(effect(test.double), b)))
+      sort([3, 1, 2], (a, b) -> -(perform(@test.double, a), perform(@test.double, b)))
     `))
     expect(result).toEqual([1, 2, 3])
   })
@@ -469,7 +469,7 @@ describe('auto: effect + higher-order functions', () => {
   it('effect in doseq / map equivalent', () => {
     // doseq is side-effectful; use for comprehension to collect results instead
     const result = dvala.run(wrap(`
-      for (x in [1, 2, 3]) -> perform(effect(test.double), x)
+      for (x in [1, 2, 3]) -> perform(@test.double, x)
     `))
     expect(result).toEqual([2, 4, 6])
   })
@@ -483,12 +483,12 @@ describe('auto: effect handler scoping', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(test.eff), 5)
+          perform(@test.eff, 5)
         with
-          case effect(test.eff) then ([x]) -> x * 10
+          case @test.eff then ([x]) -> x * 10
         end
       with
-        case effect(test.eff) then ([x]) -> x * 100
+        case @test.eff then ([x]) -> x * 100
       end
     `)
     expect(result).toBe(50) // inner: 5 * 10
@@ -498,12 +498,12 @@ describe('auto: effect handler scoping', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(outer.eff), 5)
+          perform(@outer.eff, 5)
         with
-          case effect(inner.eff) then ([x]) -> x * 10
+          case @inner.eff then ([x]) -> x * 10
         end
       with
-        case effect(outer.eff) then ([x]) -> x * 100
+        case @outer.eff then ([x]) -> x * 100
       end
     `)
     expect(result).toBe(500) // outer: 5 * 100
@@ -513,12 +513,12 @@ describe('auto: effect handler scoping', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(test.eff), "orig")
+          perform(@test.eff, "orig")
         with
-          case effect(test.eff) then ([x]) -> perform(effect(test.eff), x ++ "+inner")
+          case @test.eff then ([x]) -> perform(@test.eff, x ++ "+inner")
         end
       with
-        case effect(test.eff) then ([x]) -> "outer:" ++ x
+        case @test.eff then ([x]) -> "outer:" ++ x
       end
     `)
     expect(result).toBe('outer:orig+inner')
@@ -527,14 +527,14 @@ describe('auto: effect handler scoping', () => {
   // Parametric nesting: generate 1 to 4 levels
   for (const depth of [1, 2, 3, 4]) {
     it(`${depth}-level nesting: deepest handler catches`, () => {
-      let code = 'perform(effect(test.eff), 1)'
+      let code = 'perform(@test.eff, 1)'
       for (let i = 0; i < depth; i++) {
         const multiplier = (i + 1) * 10
         code = `
           do
             ${code}
           with
-            case effect(test.eff) then ([x]) -> x * ${multiplier}
+            case @test.eff then ([x]) -> x * ${multiplier}
           end
         `
       }
@@ -550,9 +550,9 @@ describe('auto: effect handler scoping', () => {
       do
         null
       with
-        case effect(test.eff) then ([x]) -> x
+        case @test.eff then ([x]) -> x
       end;
-      perform(effect(test.eff), "should fail")
+      perform(@test.eff, "should fail")
     `)).toThrow('Unhandled effect')
   })
 
@@ -560,9 +560,9 @@ describe('auto: effect handler scoping', () => {
     const result = dvala.run(`
       let factor = 100;
       do
-        perform(effect(test.eff), 5)
+        perform(@test.eff, 5)
       with
-        case effect(test.eff) then ([x]) -> x * factor
+        case @test.eff then ([x]) -> x * factor
       end
     `)
     expect(result).toBe(500)
@@ -651,7 +651,7 @@ describe('auto: suspend/resume round-trip', () => {
   for (const { label, value, code } of resumeValues) {
     it(`suspend then resume with ${label}`, async () => {
       const r1 = await dvala.runAsync(`
-        let x = perform(effect(my.wait));
+        let x = perform(@my.wait);
         ${code}
       `, {
         effectHandlers: [
@@ -668,7 +668,7 @@ describe('auto: suspend/resume round-trip', () => {
 
     it(`suspend then resume with ${label} through JSON round-trip`, async () => {
       const r1 = await dvala.runAsync(`
-        let x = perform(effect(my.wait));
+        let x = perform(@my.wait);
         ${code}
       `, {
         effectHandlers: [
@@ -691,7 +691,7 @@ describe('auto: suspend/resume round-trip', () => {
   it('resume preserves computation context', async () => {
     const r1 = await dvala.runAsync(`
       let a = 10;
-      let b = perform(effect(my.wait));
+      let b = perform(@my.wait);
       let c = 32;
       a + b
     `, {
@@ -709,8 +709,8 @@ describe('auto: suspend/resume round-trip', () => {
 
   it('double suspend/resume chain', async () => {
     const r1 = await dvala.runAsync(`
-      let a = perform(effect(my.wait));
-      let b = perform(effect(my.wait));
+      let a = perform(@my.wait);
+      let b = perform(@my.wait);
       a ++ " " ++ b
     `, {
       effectHandlers: [
@@ -740,15 +740,15 @@ describe('auto: suspend/resume round-trip', () => {
 // ---------------------------------------------------------------------------
 describe('auto: effect + error propagation', () => {
   it('dvala.error without handler throws', () => {
-    expect(() => dvala.run('perform(effect(dvala.error), "boom")')).toThrow('boom')
+    expect(() => dvala.run('perform(@dvala.error, "boom")')).toThrow('boom')
   })
 
   it('dvala.error caught by do/with handler', () => {
     const result = dvala.run(`
       do
-        perform(effect(dvala.error), "boom")
+        perform(@dvala.error, "boom")
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: boom')
@@ -759,7 +759,7 @@ describe('auto: effect + error propagation', () => {
       do
         1 + "not a number"
       with
-        case effect(dvala.error) then ([msg]) -> "caught"
+        case @dvala.error then ([msg]) -> "caught"
       end
     `)
     expect(result).toBe('caught')
@@ -768,9 +768,9 @@ describe('auto: effect + error propagation', () => {
   it('unhandled effect error caught by dvala.error handler', () => {
     const result = dvala.run(`
       do
-        perform(effect(no.handler), "arg")
+        perform(@no.handler, "arg")
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `)
     expect(result).toContain('caught:')
@@ -781,12 +781,12 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(test.eff), "data")
+          perform(@test.eff, "data")
         with
-          case effect(test.eff) then ([x]) -> perform(effect(dvala.error), "handler error")
+          case @test.eff then ([x]) -> perform(@dvala.error, "handler error")
         end
       with
-        case effect(dvala.error) then ([msg]) -> "outer: " ++ msg
+        case @dvala.error then ([msg]) -> "outer: " ++ msg
       end
     `)
     expect(result).toBe('outer: handler error')
@@ -796,12 +796,12 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(dvala.error), "boom")
+          perform(@dvala.error, "boom")
         with
-          case effect(dvala.error) then ([e]) -> perform(effect(test.eff), e)
+          case @dvala.error then ([e]) -> perform(@test.eff, e)
         end
       with
-        case effect(test.eff) then ([msg]) -> "effect got: " ++ msg
+        case @test.eff then ([msg]) -> "effect got: " ++ msg
       end
     `)
     expect(result).toBe('effect got: boom')
@@ -811,12 +811,12 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(test.eff), "data")
+          perform(@test.eff, "data")
         with
-          case effect(test.eff) then ([x]) -> perform(effect(dvala.error), "handler error")
+          case @test.eff then ([x]) -> perform(@dvala.error, "handler error")
         end
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: handler error')
@@ -827,12 +827,12 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(dvala.error), "boom")
+          perform(@dvala.error, "boom")
         with
-          case effect(dvala.error) then ([msg]) -> "inner: " ++ msg
+          case @dvala.error then ([msg]) -> "inner: " ++ msg
         end
       with
-        case effect(dvala.error) then ([msg]) -> "outer: " ++ msg
+        case @dvala.error then ([msg]) -> "outer: " ++ msg
       end
     `)
     expect(result).toBe('inner: boom')
@@ -846,9 +846,9 @@ describe('auto: host handler patterns', () => {
   it('wildcard handler matches all effects', async () => {
     const captured: string[] = []
     const result = await dvala.runAsync(`
-      perform(effect(a.b), 1);
-      perform(effect(c.d), 2);
-      perform(effect(e), 3)
+      perform(@a.b, 1);
+      perform(@c.d, 2);
+      perform(@e, 3)
     `, {
       effectHandlers: [
         { pattern: '*', handler: async ({ effectName, args, resume: r }) => {
@@ -864,8 +864,8 @@ describe('auto: host handler patterns', () => {
   it('prefix wildcard handler matches subtree', async () => {
     const captured: string[] = []
     const result = await dvala.runAsync(`
-      perform(effect(dvala.io.println), "msg");
-      perform(effect(dvala.random))
+      perform(@dvala.io.println, "msg");
+      perform(@dvala.random)
     `, {
       effectHandlers: [
         { pattern: 'dvala.*', handler: async ({ effectName, resume: r }) => {
@@ -880,7 +880,7 @@ describe('auto: host handler patterns', () => {
 
   it('exact handler takes priority over wildcard (by registration order)', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.eff), 5)
+      perform(@my.eff, 5)
     `, {
       effectHandlers: [
         { pattern: '*', handler: async ({ resume: r }) => { r('wildcard') } },
@@ -895,7 +895,7 @@ describe('auto: host handler patterns', () => {
   it('next() passes to next matching handler', async () => {
     const log: string[] = []
     const result = await dvala.runAsync(`
-      perform(effect(my.eff), "data")
+      perform(@my.eff, "data")
     `, {
       effectHandlers: [
         { pattern: '*', handler: async ({ next }) => {
@@ -916,9 +916,9 @@ describe('auto: host handler patterns', () => {
   it('fail() produces error result', async () => {
     const result = await dvala.runAsync(`
       do
-        perform(effect(my.eff))
+        perform(@my.eff)
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -933,7 +933,7 @@ describe('auto: host handler patterns', () => {
 
   it('suspend with meta', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.wait), "please approve")
+      perform(@my.wait, "please approve")
     `, {
       effectHandlers: [
         { pattern: 'my.wait', handler: async ({ args, suspend }) => {
@@ -950,9 +950,9 @@ describe('auto: host handler patterns', () => {
   it('local handler always takes priority over host handler', async () => {
     const result = await dvala.runAsync(`
       do
-        perform(effect(my.eff), "data")
+        perform(@my.eff, "data")
       with
-        case effect(my.eff) then ([x]) -> "local: " ++ x
+        case @my.eff then ([x]) -> "local: " ++ x
       end
     `, {
       effectHandlers: [
@@ -964,7 +964,7 @@ describe('auto: host handler patterns', () => {
 
   it('handler receives AbortSignal', async () => {
     let receivedSignal = false
-    await dvala.runAsync('perform(effect(my.check))', {
+    await dvala.runAsync('perform(@my.check)', {
       effectHandlers: [
         { pattern: 'my.check', handler: async ({ signal, resume: r }) => {
           receivedSignal = signal instanceof AbortSignal
@@ -989,33 +989,33 @@ describe('auto: runSync constraints', () => {
   })
 
   it('runSync throws on unhandled effect', () => {
-    expect(() => dvala.run('perform(effect(my.eff))')).toThrow('Unhandled effect')
+    expect(() => dvala.run('perform(@my.eff)')).toThrow('Unhandled effect')
   })
 
   it('runSync handles local do/with effects', () => {
     const result = dvala.run(`
       do
-        perform(effect(my.eff), 5)
+        perform(@my.eff, 5)
       with
-        case effect(my.eff) then ([x]) -> x * 10
+        case @my.eff then ([x]) -> x * 10
       end
     `)
     expect(result).toBe(50)
   })
 
   it('runSync handles standard sync effects', () => {
-    const result = dvala.run('perform(effect(dvala.random))')
+    const result = dvala.run('perform(@dvala.random)')
     expect(typeof result).toBe('number')
   })
 
   it('runSync handles dvala.time.now', () => {
-    const result = dvala.run('perform(effect(dvala.time.now))')
+    const result = dvala.run('perform(@dvala.time.now)')
     expect(typeof result).toBe('number')
     expect(result as number).toBeGreaterThan(0)
   })
 
   it('runSync handles dvala.time.zone', () => {
-    const result = dvala.run('perform(effect(dvala.time.zone))')
+    const result = dvala.run('perform(@dvala.time.zone)')
     expect(typeof result).toBe('string')
   })
 })
@@ -1078,7 +1078,7 @@ describe('auto: predicate-based handler matching', () => {
     const result = dvala.run(`
       let io-handler = effect-matcher("test.io.*");
       do
-        perform(effect(test.io.println), "msg")
+        perform(@test.io.println, "msg")
       with
         case io-handler then ([x]) -> "handled: " ++ x
       end
@@ -1090,7 +1090,7 @@ describe('auto: predicate-based handler matching', () => {
     expect(() => dvala.run(`
       let io-handler = effect-matcher("test.io.*");
       do
-        perform(effect(test.other), "msg")
+        perform(@test.other, "msg")
       with
         case io-handler then ([x]) -> "handled: " ++ x
       end
@@ -1102,7 +1102,7 @@ describe('auto: predicate-based handler matching', () => {
       let all-handler = effect-matcher("*");
       let io-handler = effect-matcher("test.io.*");
       do
-        perform(effect(test.io.println), "msg")
+        perform(@test.io.println, "msg")
       with
         case io-handler then ([x]) -> "io: " ++ x
         case all-handler then ([x]) -> "all: " ++ x
@@ -1116,7 +1116,7 @@ describe('auto: predicate-based handler matching', () => {
       let re = regexp("^test\\\\.io");
       let pred = effect-matcher(re);
       do
-        perform(effect(test.io.println), "data")
+        perform(@test.io.println, "data")
       with
         case pred then ([x]) -> "matched: " ++ x
       end
@@ -1172,82 +1172,82 @@ describe('auto: standard sync effects via runSync', () => {
 // ---------------------------------------------------------------------------
 describe('auto: standard effects return value semantics', () => {
   it('dvala.io.print returns the original value', () => {
-    const result = dvala.run('perform(effect(dvala.io.print), "hello")')
+    const result = dvala.run('perform(@dvala.io.print, "hello")')
     expect(result).toBe('hello')
   })
 
   it('dvala.io.println returns the original value', () => {
-    const result = dvala.run('perform(effect(dvala.io.println), "hello")')
+    const result = dvala.run('perform(@dvala.io.println, "hello")')
     expect(result).toBe('hello')
   })
 
   it('dvala.io.error returns the original value', () => {
-    const result = dvala.run('perform(effect(dvala.io.error), "err")')
+    const result = dvala.run('perform(@dvala.io.error, "err")')
     expect(result).toBe('err')
   })
 
   it('dvala.random returns a number in [0, 1)', () => {
-    const result = dvala.run('perform(effect(dvala.random))') as number
+    const result = dvala.run('perform(@dvala.random)') as number
     expect(typeof result).toBe('number')
     expect(result).toBeGreaterThanOrEqual(0)
     expect(result).toBeLessThan(1)
   })
 
   it('dvala.random.uuid returns a UUID-like string', () => {
-    const result = dvala.run('perform(effect(dvala.random.uuid))') as string
+    const result = dvala.run('perform(@dvala.random.uuid)') as string
     expect(typeof result).toBe('string')
     expect(result).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
   it('dvala.random.int returns an integer in range', () => {
-    const result = dvala.run('perform(effect(dvala.random.int), 1, 10)') as number
+    const result = dvala.run('perform(@dvala.random.int, 1, 10)') as number
     expect(Number.isInteger(result)).toBe(true)
     expect(result).toBeGreaterThanOrEqual(1)
     expect(result).toBeLessThan(10)
   })
 
   it('dvala.random.item returns an element from the array', () => {
-    const result = dvala.run('perform(effect(dvala.random.item), ["a", "b", "c"])')
+    const result = dvala.run('perform(@dvala.random.item, ["a", "b", "c"])')
     expect(['a', 'b', 'c']).toContain(result)
   })
 
   it('dvala.random.shuffle returns array of same length', () => {
-    const result = dvala.run('perform(effect(dvala.random.shuffle), [1, 2, 3, 4, 5])') as number[]
+    const result = dvala.run('perform(@dvala.random.shuffle, [1, 2, 3, 4, 5])') as number[]
     expect(result).toHaveLength(5)
     expect(result.sort()).toEqual([1, 2, 3, 4, 5])
   })
 
   it('dvala.time.now returns current-ish timestamp', () => {
     const before = Date.now()
-    const result = dvala.run('perform(effect(dvala.time.now))') as number
+    const result = dvala.run('perform(@dvala.time.now)') as number
     const after = Date.now()
     expect(result).toBeGreaterThanOrEqual(before)
     expect(result).toBeLessThanOrEqual(after)
   })
 
   it('dvala.checkpoint returns null by default', () => {
-    const result = dvala.run('perform(effect(dvala.checkpoint), "cp")')
+    const result = dvala.run('perform(@dvala.checkpoint, "cp")')
     expect(result).toBe(null)
   })
 
   it('dvala.random.int rejects non-integer min', () => {
-    expect(() => dvala.run('perform(effect(dvala.random.int), 1.5, 10)')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.int, 1.5, 10)')).toThrow()
   })
 
   it('dvala.random.int rejects max <= min', () => {
-    expect(() => dvala.run('perform(effect(dvala.random.int), 10, 5)')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.int, 10, 5)')).toThrow()
   })
 
   it('dvala.random.item rejects empty array', () => {
-    expect(() => dvala.run('perform(effect(dvala.random.item), [])')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.item, [])')).toThrow()
   })
 
   it('dvala.random.item rejects non-array', () => {
-    expect(() => dvala.run('perform(effect(dvala.random.item), "not array")')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.item, "not array")')).toThrow()
   })
 
   it('dvala.random.shuffle rejects non-array', () => {
-    expect(() => dvala.run('perform(effect(dvala.random.shuffle), "not array")')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.shuffle, "not array")')).toThrow()
   })
 })
 
@@ -1259,9 +1259,9 @@ describe('auto: effect + closures', () => {
     const result = dvala.run(`
       let prefix = "handled";
       do
-        perform(effect(test.eff), "msg")
+        perform(@test.eff, "msg")
       with
-        case effect(test.eff) then ([x]) -> prefix ++ ": " ++ x
+        case @test.eff then ([x]) -> prefix ++ ": " ++ x
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1270,11 +1270,11 @@ describe('auto: effect + closures', () => {
   it('closure captures effect result', () => {
     const result = dvala.run(`
       do
-        let val = perform(effect(test.eff), 5);
+        let val = perform(@test.eff, 5);
         let f = () -> val * 2;
         f()
       with
-        case effect(test.eff) then ([x]) -> x + 10
+        case @test.eff then ([x]) -> x + 10
       end
     `)
     expect(result).toBe(30) // (5 + 10) * 2
@@ -1283,10 +1283,10 @@ describe('auto: effect + closures', () => {
   it('effect in closure called later', () => {
     const result = dvala.run(`
       do
-        let f = (x) -> perform(effect(test.eff), x);
+        let f = (x) -> perform(@test.eff, x);
         f(3) + f(4)
       with
-        case effect(test.eff) then ([x]) -> x * 10
+        case @test.eff then ([x]) -> x * 10
       end
     `)
     expect(result).toBe(70) // 30 + 40
@@ -1295,11 +1295,11 @@ describe('auto: effect + closures', () => {
   it('nested closures with effects', () => {
     const result = dvala.run(`
       do
-        let make-adder = (n) -> (x) -> perform(effect(test.eff), n + x);
+        let make-adder = (n) -> (x) -> perform(@test.eff, n + x);
         let add10 = make-adder(10);
         add10(5)
       with
-        case effect(test.eff) then ([x]) -> x * 2
+        case @test.eff then ([x]) -> x * 2
       end
     `)
     expect(result).toBe(30) // (10 + 5) * 2
@@ -1313,10 +1313,10 @@ describe('auto: effect + recursion', () => {
   it('recursive function with effects', () => {
     const result = dvala.run(`
       do
-        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(effect(test.eff), n), my-sum(-(n, 1))) end;
+        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
       with
-        case effect(test.eff) then ([x]) -> x
+        case @test.eff then ([x]) -> x
       end
     `)
     expect(result).toBe(6) // 3 + 2 + 1 + 0
@@ -1325,10 +1325,10 @@ describe('auto: effect + recursion', () => {
   it('effect handler return modifies recursive computation', () => {
     const result = dvala.run(`
       do
-        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(effect(test.eff), n), my-sum(-(n, 1))) end;
+        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
       with
-        case effect(test.eff) then ([x]) -> x * 2
+        case @test.eff then ([x]) -> x * 2
       end
     `)
     expect(result).toBe(12) // (3*2) + (2*2) + (1*2) + 0

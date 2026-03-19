@@ -50,11 +50,11 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
     ]
     // Run: checkpoint → suspend
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      let a = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      let b = perform(effect(my.step));
-      perform(effect(my.done));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      let a = perform(@my.step);
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      let b = perform(@my.step);
+      perform(@my.done);
       a + b
     `, { effectHandlers: [
       ...handlers,
@@ -107,12 +107,12 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step a", { step: "a" });
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step b", { step: "b" });
-      let y = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step c", { step: "c" });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step a", { step: "a" });
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "step b", { step: "b" });
+      let y = perform(@my.step);
+      perform(@dvala.checkpoint, "step c", { step: "c" });
+      perform(@my.check);
       x + y
     `, { effectHandlers: [
       ...handlers,
@@ -164,7 +164,7 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
       { pattern: 'my.step', handler: async ({ args, suspend }) => { suspend({ step: args[0] }) } },
     ]
 
-    const r1 = await dvala.runAsync('let a = perform(effect(my.step), 1); let b = perform(effect(my.step), 2); let c = perform(effect(my.step), 3); [a, b, c]', { effectHandlers: handlers })
+    const r1 = await dvala.runAsync('let a = perform(@my.step, 1); let b = perform(@my.step, 2); let c = perform(@my.step, 3); [a, b, c]', { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
@@ -200,9 +200,9 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
 
     // checkpoint(step:1) → suspend → resume(10) → my.action → resumeFrom(checkpoint) → replay
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      let x = perform(effect(my.step));
-      let y = perform(effect(my.action));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      let x = perform(@my.step);
+      let y = perform(@my.action);
       x + y
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -237,9 +237,9 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "after resume", { step: "after-resume" });
-      let y = perform(effect(my.action));
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "after resume", { step: "after-resume" });
+      let y = perform(@my.action);
       x + y
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -282,13 +282,13 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        perform(effect(dvala.checkpoint), "inside do-with", { loc: "inside-do-with" });
-        perform(effect(my.local), 5)
+        perform(@dvala.checkpoint, "inside do-with", { loc: "inside-do-with" });
+        perform(@my.local, 5)
       with
-        case effect(my.local) then ([v]) -> v * 2
+        case @my.local then ([v]) -> v * 2
       end;
-      let x = perform(effect(my.step));
-      perform(effect(my.check));
+      let x = perform(@my.step);
+      perform(@my.check);
       x
     `, { effectHandlers: [
       ...handlers,
@@ -324,12 +324,12 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "outer", { loc: "outer" });
+      perform(@dvala.checkpoint, "outer", { loc: "outer" });
       do
-        let x = perform(effect(my.step));
+        let x = perform(@my.step);
         x + 1
       with
-        case effect(my.local) then ([v]) -> v
+        case @my.local then ([v]) -> v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -346,11 +346,11 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.step));
+      let x = perform(@my.step);
       do
-        perform(effect(my.double), x)
+        perform(@my.double, x)
       with
-        case effect(my.double) then ([v]) -> v * 2
+        case @my.double then ([v]) -> v * 2
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -375,12 +375,12 @@ describe('auto: maxSnapshots across suspend/resume', () => {
 
     // Take 2 checkpoints, then suspend. maxSnapshots=2.
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      perform(effect(dvala.checkpoint), "step 4", { step: 4 });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      perform(@dvala.checkpoint, "step 4", { step: 4 });
+      perform(@my.check);
       x
     `, {
       maxSnapshots: 2,
@@ -423,11 +423,11 @@ describe('auto: maxSnapshots across suspend/resume', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      perform(@my.check);
       x
     `, {
       maxSnapshots: 1,
@@ -465,11 +465,11 @@ describe('auto: maxSnapshots across suspend/resume', () => {
 
     // Run with no limit → 3 checkpoints
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      let x = perform(effect(my.step));
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      let x = perform(@my.step);
+      perform(@my.check);
       x
     `, { effectHandlers: [
       ...handlers,
@@ -510,10 +510,10 @@ describe('auto: executionId consistency', () => {
     let capturedSnapshots: readonly Snapshot[] = []
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      perform(effect(my.check))
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      perform(@my.check)
     `, {
       effectHandlers: [
         { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
@@ -539,8 +539,8 @@ describe('auto: executionId consistency', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(my.step))
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@my.step)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -559,10 +559,10 @@ describe('auto: executionId consistency', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@my.check);
       x
     `, { effectHandlers: [
       ...handlers,
@@ -600,10 +600,10 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
     let capturedSnapshots: readonly Snapshot[] = []
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "source dvala-1", { source: "dvala-1" });
-      perform(effect(my.host-save));
-      perform(effect(dvala.checkpoint), "source dvala-2", { source: "dvala-2" });
-      perform(effect(my.check))
+      perform(@dvala.checkpoint, "source dvala-1", { source: "dvala-1" });
+      perform(@my.host-save);
+      perform(@dvala.checkpoint, "source dvala-2", { source: "dvala-2" });
+      perform(@my.check)
     `, {
       effectHandlers: [
         { pattern: 'my.host-save', handler: async ({ checkpoint, resume: r }) => {
@@ -638,9 +638,9 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "source dvala", { source: "dvala" });
-      let x = perform(effect(my.save-and-wait));
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "source dvala", { source: "dvala" });
+      let x = perform(@my.save-and-wait);
+      perform(@my.check);
       x
     `, { effectHandlers: [
       ...handlers,
@@ -685,9 +685,9 @@ describe('auto: resumeFrom during resumed execution', () => {
 
     // Suspend, resume, take checkpoint, then resumeFrom that checkpoint
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "label post-resume", { label: "post-resume" });
-      let y = perform(effect(my.action));
+      let x = perform(@my.step);
+      perform(@dvala.checkpoint, "label post-resume", { label: "post-resume" });
+      let y = perform(@my.action);
       x + y
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -724,8 +724,8 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
   it('can rollback to the same checkpoint multiple times', async () => {
     let callCount = 0
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label start", { label: "start" });
-      let x = perform(effect(my.action));
+      perform(@dvala.checkpoint, "label start", { label: "start" });
+      let x = perform(@my.action);
       x
     `, {
       effectHandlers: [
@@ -752,9 +752,9 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
     let callCount = 0
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label start", { label: "start" });
-      let x = perform(effect(my.action));
-      perform(effect(my.record), x);
+      perform(@dvala.checkpoint, "label start", { label: "start" });
+      let x = perform(@my.action);
+      perform(@my.record, x);
       x
     `, {
       effectHandlers: [
@@ -788,8 +788,8 @@ describe('auto: suspend inside resumeFrom replay', () => {
 
     // checkpoint → my.action → resumeFrom(checkpoint) → on replay, my.step suspends
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label before", { label: "before" });
-      let x = perform(effect(my.action));
+      perform(@dvala.checkpoint, "label before", { label: "before" });
+      let x = perform(@my.action);
       x
     `, {
       effectHandlers: [
@@ -813,8 +813,8 @@ describe('auto: suspend inside resumeFrom replay', () => {
     let actionCallCount = 0
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label cp", { label: "cp" });
-      let x = perform(effect(my.action));
+      perform(@dvala.checkpoint, "label cp", { label: "cp" });
+      let x = perform(@my.action);
       x
     `, {
       effectHandlers: [
@@ -846,11 +846,11 @@ describe('auto: snapshot trimming on resumeFrom', () => {
     let callCount = 0
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      let x = perform(effect(my.action));
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      let x = perform(@my.action);
+      perform(@my.check);
       x
     `, {
       effectHandlers: [
@@ -888,11 +888,11 @@ describe('auto: snapshot trimming on resumeFrom', () => {
     let callCount = 0
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(dvala.checkpoint), "step 3", { step: 3 });
-      let x = perform(effect(my.action));
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@dvala.checkpoint, "step 3", { step: 3 });
+      let x = perform(@my.action);
+      perform(@my.check);
       x
     `, {
       effectHandlers: [
@@ -931,11 +931,11 @@ describe('auto: nextSnapshotIndex monotonicity', () => {
     let callCount = 0
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      let x = perform(effect(my.action));
-      perform(effect(dvala.checkpoint), "step after-rollback", { step: "after-rollback" });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      let x = perform(@my.action);
+      perform(@dvala.checkpoint, "step after-rollback", { step: "after-rollback" });
+      perform(@my.check);
       x
     `, {
       effectHandlers: [
@@ -973,7 +973,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('ctx.checkpoint("checkpoint") returns a Snapshot with correct fields', async () => {
     let returnedSnapshot: Snapshot | null = null
 
-    await dvala.runAsync('perform(effect(my.save))', {
+    await dvala.runAsync('perform(@my.save)', {
       effectHandlers: [
         { pattern: 'my.save', handler: async ({ checkpoint, resume: r }) => {
           returnedSnapshot = checkpoint('label test', { label: 'test' })
@@ -992,7 +992,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('ctx.checkpoint("checkpoint") without meta creates snapshot without meta field', async () => {
     let returnedSnapshot: Snapshot | null = null
 
-    await dvala.runAsync('perform(effect(my.save))', {
+    await dvala.runAsync('perform(@my.save)', {
       effectHandlers: [
         { pattern: 'my.save', handler: async ({ checkpoint, resume: r }) => {
           returnedSnapshot = checkpoint('checkpoint')
@@ -1008,7 +1008,7 @@ describe('auto: ctx.checkpoint return value', () => {
   it('consecutive ctx.checkpoint("checkpoint") calls produce increasing indices', async () => {
     const snapshots: Snapshot[] = []
 
-    await dvala.runAsync('perform(effect(my.multi-save))', {
+    await dvala.runAsync('perform(@my.multi-save)', {
       effectHandlers: [
         { pattern: 'my.multi-save', handler: async ({ checkpoint, resume: r }) => {
           snapshots.push(checkpoint('n 1', { n: 1 }))
@@ -1053,8 +1053,8 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
       ]
 
       const r1 = await dvala.runAsync(`
-        perform(effect(dvala.checkpoint), meta);
-        let x = perform(effect(my.step));
+        perform(@dvala.checkpoint, meta);
+        let x = perform(@my.step);
         x
       `, {
         bindings: { meta },
@@ -1079,7 +1079,7 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
       { pattern: 'my.step', handler: async ({ suspend }) => { suspend(complexMeta) } },
     ]
 
-    const r1 = await dvala.runAsync('let x = perform(effect(my.step)); x', { effectHandlers: handlers })
+    const r1 = await dvala.runAsync('let x = perform(@my.step); x', { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
@@ -1106,10 +1106,10 @@ describe('auto: snapshot accumulation in suspension blobs', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      perform(effect(dvala.checkpoint), "n 3", { n: 3 });
-      let x = perform(effect(my.step));
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      perform(@dvala.checkpoint, "n 3", { n: 3 });
+      let x = perform(@my.step);
       x
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1129,10 +1129,10 @@ describe('auto: snapshot accumulation in suspension blobs', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      let a = perform(effect(my.step));
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      let b = perform(effect(my.step));
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      let a = perform(@my.step);
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      let b = perform(@my.step);
       b
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1160,7 +1160,7 @@ describe('auto: edge cases', () => {
     const handlers: Handlers = [
       { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
     ]
-    const r1 = await dvala.runAsync('let x = perform(effect(my.step)); x + 1', { effectHandlers: handlers })
+    const r1 = await dvala.runAsync('let x = perform(@my.step); x + 1', { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
@@ -1171,9 +1171,9 @@ describe('auto: edge cases', () => {
 
   it('checkpoint taken but never used still produces correct result', async () => {
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      perform(effect(dvala.checkpoint), "step 2", { step: 2 });
-      perform(effect(my.done))
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 2", { step: 2 });
+      perform(@my.done)
     `, {
       effectHandlers: [
         { pattern: 'my.done', handler: async ({ resume: r }) => { r('all done') } },
@@ -1188,9 +1188,9 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
-      let x = perform(effect(my.step));
-      perform(effect(dvala.error), "boom: " ++ x)
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
+      let x = perform(@my.step);
+      perform(@dvala.error, "boom: " ++ x)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -1209,12 +1209,12 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "step 1", { step: 1 });
+      perform(@dvala.checkpoint, "step 1", { step: 1 });
       do
-        let x = perform(effect(my.step));
-        perform(effect(dvala.error), "boom: " ++ x)
+        let x = perform(@my.step);
+        perform(@dvala.error, "boom: " ++ x)
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1230,10 +1230,10 @@ describe('auto: edge cases', () => {
     let snaps2: readonly Snapshot[] = []
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(my.first));
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      perform(effect(my.second))
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@my.first);
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      perform(@my.second)
     `, {
       effectHandlers: [
         { pattern: 'my.first', handler: async ({ snapshots, resume: r }) => {
@@ -1262,8 +1262,8 @@ describe('auto: edge cases', () => {
     const r1 = await dvala.runAsync(`
       let make-adder = (n) -> (x) -> n + x;
       let add10 = make-adder(10);
-      perform(effect(dvala.checkpoint), "label pre-suspend", { label: "pre-suspend" });
-      let input = perform(effect(my.step));
+      perform(@dvala.checkpoint, "label pre-suspend", { label: "pre-suspend" });
+      let input = perform(@my.step);
       add10(input)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1284,8 +1284,8 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label before", { label: "before" });
-      let factor = perform(effect(my.step));
+      perform(@dvala.checkpoint, "label before", { label: "before" });
+      let factor = perform(@my.step);
       map([1, 2, 3], (x) -> x * factor)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1302,8 +1302,8 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "label before", { label: "before" });
-      let offset = perform(effect(my.step));
+      perform(@dvala.checkpoint, "label before", { label: "before" });
+      let offset = perform(@my.step);
       reduce([1, 2, 3, 4], (acc, x) -> acc + x + offset, 0)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1321,9 +1321,9 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      let x = perform(effect(my.step));
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      let x = perform(@my.step);
       x
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1350,9 +1350,9 @@ describe('auto: edge cases', () => {
     ]
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      let x = perform(effect(my.step));
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      let x = perform(@my.step);
       x
     `, { effectHandlers: handlers })
     expect(snapshotCountAtSuspend).toBe(2)
@@ -1376,9 +1376,9 @@ describe('auto: complex workflow patterns', () => {
     ]
 
     const source = `
-      let d = perform(effect(my.prepare), "report");
-      perform(effect(dvala.checkpoint), "stage prepared", { stage: "prepared" });
-      let decision = perform(effect(my.approve), d);
+      let d = perform(@my.prepare, "report");
+      perform(@dvala.checkpoint, "stage prepared", { stage: "prepared" });
+      let decision = perform(@my.approve, d);
       decision
     `
 
@@ -1409,12 +1409,12 @@ describe('auto: complex workflow patterns', () => {
     ]
 
     const source = `
-      perform(effect(dvala.checkpoint), "wizard start", { wizard: "start" });
-      let name = perform(effect(my.wizard-step), "name");
-      perform(effect(dvala.checkpoint), "wizard after-name", { wizard: "after-name" });
-      let email = perform(effect(my.wizard-step), "email");
-      perform(effect(dvala.checkpoint), "wizard after-email", { wizard: "after-email" });
-      let phone = perform(effect(my.wizard-step), "phone");
+      perform(@dvala.checkpoint, "wizard start", { wizard: "start" });
+      let name = perform(@my.wizard-step, "name");
+      perform(@dvala.checkpoint, "wizard after-name", { wizard: "after-name" });
+      let email = perform(@my.wizard-step, "email");
+      perform(@dvala.checkpoint, "wizard after-email", { wizard: "after-email" });
+      let phone = perform(@my.wizard-step, "phone");
       { name: name, email: email, phone: phone }
     `
 
@@ -1449,11 +1449,11 @@ describe('auto: complex workflow patterns', () => {
     ]
 
     const source = `
-      let name = perform(effect(my.wizard-step), "name");
-      perform(effect(dvala.checkpoint), "after name", { after: "name", value: name });
-      let email = perform(effect(my.wizard-step), "email");
-      perform(effect(dvala.checkpoint), "after email", { after: "email", value: email });
-      let phone = perform(effect(my.wizard-step), "phone");
+      let name = perform(@my.wizard-step, "name");
+      perform(@dvala.checkpoint, "after name", { after: "name", value: name });
+      let email = perform(@my.wizard-step, "email");
+      perform(@dvala.checkpoint, "after email", { after: "email", value: email });
+      let phone = perform(@my.wizard-step, "phone");
       { name: name, email: email, phone: phone }
     `
 
@@ -1510,8 +1510,8 @@ describe('auto: complex workflow patterns', () => {
     let riskyCallCount = 0
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "stage safe", { stage: "safe" });
-      let x = perform(effect(my.risky));
+      perform(@dvala.checkpoint, "stage safe", { stage: "safe" });
+      let x = perform(@my.risky);
       x * 2
     `, {
       effectHandlers: [
