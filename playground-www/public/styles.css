@@ -1927,6 +1927,18 @@ button:focus {
 
 .panel-header__debug-icon {
   font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  opacity: 0.3;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.panel-header__debug-icon:hover {
+  opacity: 0.6;
+}
+.panel-header__debug-icon.active {
+  opacity: 1;
+  color: var(--color-warn);
 }
 
 .panel-header__title-string {

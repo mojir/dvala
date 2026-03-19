@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
-import { makeLinkName } from '../../reference'
+import { getLinkName, makeLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
@@ -25,6 +25,7 @@ import { renderExamplePage } from './components/examplePage'
 import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
 import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
+import { playgroundEffectReference } from './playgroundEffects'
 import {
   clearAll as clearAllSnapshots,
   getSavedSnapshots,
@@ -1398,6 +1399,27 @@ export function share() {
   })
 }
 
+/** Inject playground effects into window.referenceData search entries at runtime. */
+function injectPlaygroundEffects(): void {
+  const data = window.referenceData
+  if (!data) return
+  const shortDescRegExp = /(.*?) {2}\n|\n\n|$/
+  for (const ref of Object.values(playgroundEffectReference)) {
+    const match = shortDescRegExp.exec(ref.description)
+    const description = (match?.[1] ?? ref.description)
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/\*\*([^*]*)\*\*/g, '$1')
+      .replace(/\*([^*]*)\*/g, '$1')
+    data.searchEntries.push({
+      title: ref.title,
+      search: `${ref.title} ${ref.category}`,
+      description,
+      category: ref.category,
+      linkName: getLinkName(ref),
+    })
+  }
+}
+
 function populateSidebarVersion(): void {
   const data = window.referenceData
   const el = document.getElementById('sidebar-version')
@@ -1482,7 +1504,7 @@ function populateSidebarApiSections(): void {
       const label = seGroupLabels[group] ?? group
       const fnLinks = entries.map(e => {
         const linkName = makeLinkName('effect', e.key)
-        return makeLink(linkName, e.shortName)
+        return makeLink(linkName, e.title)
       }).join('\n    ')
       seHtml += `
   <div class="sidebar-collapsible-header" onclick="Playground.toggleStandardEffectGroup('${escapeHtml(group)}')">
@@ -1495,55 +1517,6 @@ function populateSidebarApiSections(): void {
 
     seHtml += '\n</div>'
     html += seHtml
-  }
-
-  // Playground effects — grouped by sub-namespace (ui, editor, context, etc.)
-  if (data.playgroundEffects && Object.keys(data.playgroundEffects).length > 0) {
-    const byGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
-    for (const [key, r] of Object.entries(data.playgroundEffects)) {
-      // title is e.g. "playground.ui.showToast" → group "ui", shortName "showToast"
-      const parts = r.title.split('.')
-      const group = parts[1] ?? 'other'
-      const shortName = parts.slice(2).join('.')
-      if (!byGroup[group]) byGroup[group] = []
-      byGroup[group].push({ key, shortName, title: r.title })
-    }
-
-    const groupOrder = ['ui', 'editor', 'context', 'exec', 'storage', 'router']
-    const groupLabels: Record<string, string> = {
-      ui: 'UI',
-      editor: 'Editor',
-      context: 'Context',
-      exec: 'Execution',
-      storage: 'Storage',
-      router: 'Router',
-    }
-
-    let peHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('playground-effects')">
-  <span>Playground effects</span><span id="api-chevron-playground-effects">${chevronRight}</span>
-</div>
-<div id="api-content-playground-effects" class="sidebar-collapsible-content">`
-
-    for (const group of groupOrder) {
-      const entries = byGroup[group]
-      if (!entries || entries.length === 0) continue
-      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
-      const label = groupLabels[group] ?? group
-      const fnLinks = entries.map(e => {
-        const linkName = makeLinkName('playground-effect', e.key)
-        return makeLink(linkName, e.shortName)
-      }).join('\n    ')
-      peHtml += `
-  <div class="sidebar-collapsible-header" onclick="Playground.togglePlaygroundEffectGroup('${escapeHtml(group)}')">
-    <span>${escapeHtml(label)}</span><span id="pe-chevron-${group}">${chevronRight}</span>
-  </div>
-  <div id="pe-content-${group}" class="sidebar-collapsible-content">
-    ${fnLinks}
-  </div>`
-    }
-
-    peHtml += '\n</div>'
-    html += peHtml
   }
 
   // Shorthands
@@ -1590,6 +1563,56 @@ function populateSidebarApiSections(): void {
 
   modulesHtml += '\n</div>'
   html += modulesHtml
+
+  // Playground Reference — separate section for playground-only effects
+  if (Object.keys(playgroundEffectReference).length > 0) {
+    html += '<div class="sidebar-section-label">Playground Reference</div>\n'
+
+    const byGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
+    for (const [key, r] of Object.entries(playgroundEffectReference)) {
+      const parts = r.title.split('.')
+      const group = parts[1] ?? 'other'
+      const shortName = parts.slice(2).join('.')
+      if (!byGroup[group]) byGroup[group] = []
+      byGroup[group].push({ key, shortName, title: r.title })
+    }
+
+    const groupOrder = ['ui', 'editor', 'context', 'exec', 'storage', 'router']
+    const groupLabels: Record<string, string> = {
+      ui: 'UI',
+      editor: 'Editor',
+      context: 'Context',
+      exec: 'Execution',
+      storage: 'Storage',
+      router: 'Router',
+    }
+
+    let peHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('playground-effects')">
+  <span>Playground effects</span><span id="api-chevron-playground-effects">${chevronRight}</span>
+</div>
+<div id="api-content-playground-effects" class="sidebar-collapsible-content">`
+
+    for (const group of groupOrder) {
+      const entries = byGroup[group]
+      if (!entries || entries.length === 0) continue
+      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
+      const label = groupLabels[group] ?? group
+      const fnLinks = entries.map(e => {
+        const linkName = makeLinkName('playground-effect', e.key)
+        return makeLink(linkName, e.title)
+      }).join('\n    ')
+      peHtml += `
+  <div class="sidebar-collapsible-header" onclick="Playground.togglePlaygroundEffectGroup('${escapeHtml(group)}')">
+    <span>${escapeHtml(label)}</span><span id="pe-chevron-${group}">${chevronRight}</span>
+  </div>
+  <div id="pe-content-${group}" class="sidebar-collapsible-content">
+    ${fnLinks}
+  </div>`
+    }
+
+    peHtml += '\n</div>'
+    html += peHtml
+  }
 
   container.innerHTML = html
 }
@@ -1954,6 +1977,7 @@ function addOutputElement(element: HTMLElement) {
 window.onload = async function () {
   renderShell()
   applyLayout()
+  injectPlaygroundEffects()
   populateSidebarApiSections()
   populateSidebarVersion()
   await initSnapshotStorage()
@@ -4994,7 +5018,7 @@ function applyState(scrollToTop = false) {
 
 function updateCSS() {
   const debug = getState('debug')
-  elements.dvalaPanelDebugInfo.style.display = debug ? 'flex' : 'none'
+  elements.dvalaPanelDebugInfo.classList.toggle('active', debug)
 
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
   if (debugToggle)
