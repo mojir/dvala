@@ -84,6 +84,8 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       }
       return unresolvedSymbols
     }
+    case NodeTypes.EffectName:
+      return null // Effect names are always valid (resolved at runtime)
 
     /* v8 ignore next 2 */
     default:

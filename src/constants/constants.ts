@@ -10,6 +10,7 @@ export const NodeTypes = {
   Binding: 9,
   Spread: 10,
   TemplateString: 11,
+  EffectName: 12,
 } as const
 
 const NodeTypesSet = new Set(Object.values(NodeTypes))
