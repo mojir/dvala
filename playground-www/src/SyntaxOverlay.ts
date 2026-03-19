@@ -10,131 +10,67 @@ const specialExpressionSet = new Set(specialExpressionKeys)
 const playgroundEffectNames = new Set(Object.values(playgroundEffectReference).map(r => r.title))
 
 const colors = {
-  BrightYellow: 'var(--syntax-keyword)',
-  Beige: 'var(--syntax-builtin)',
-  Mint: 'var(--syntax-symbol)',
-  Viola: 'var(--syntax-number)',
-  Pink: 'var(--syntax-string)',
-  Gray300: 'var(--syntax-punctuation)',
-  Gray500: 'var(--syntax-comment-dim)',
-  Crimson: 'var(--syntax-error)',
-  Blue: 'var(--syntax-effect)',
-  Teal: 'var(--syntax-effect-playground)',
-  SkyLavender: 'var(--syntax-effect-custom)',
-  EffectConstruct: 'var(--syntax-effect-construct)',
+  keyword: 'var(--syntax-keyword)',
+  builtin: 'var(--syntax-builtin)',
+  symbol: 'var(--syntax-symbol)',
+  number: 'var(--syntax-number)',
+  string: 'var(--syntax-string)',
+  punctuation: 'var(--syntax-punctuation)',
+  comment: 'var(--syntax-comment)',
+  error: 'var(--syntax-error)',
+  effectStandard: 'var(--syntax-effect-standard)',
+  effectPlayground: 'var(--syntax-effect-playground)',
+  effectCustom: 'var(--syntax-effect-custom)',
+  effectConstruct: 'var(--syntax-effect-construct)',
 }
 
-const effectConstructs = new Set(['effect', 'perform', 'effect-matcher', 'effect-name'])
+const effectConstructs = new Set(['perform', 'effect-matcher', 'effect-name'])
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-/**
- * If the token at `index` is part of a dotted name inside `effect(...)`,
- * return the effect color. Otherwise return null.
- * Handles: @dvala.io.println — tokens: effect ( dvala . io . println )
- */
-function getEffectColor(tokens: Token[], index: number): string | null {
-  const token = tokens[index]!
-  // Only Symbol and Operator '.' can be part of an effect name
-  if (token[0] !== 'Symbol' && !(token[0] === 'Operator' && token[1] === '.'))
-    return null
-
-  // Walk backward past Symbol/dot pairs to find the start of the dotted name
-  let start = index
-  while (start > 0) {
-    const prev = tokens[start - 1]!
-    if (prev[0] === 'Operator' && prev[1] === '.') {
-      if (start >= 2 && tokens[start - 2]![0] === 'Symbol') {
-        start -= 2
-      } else break
-    } else if (prev[0] === 'Symbol' && start < tokens.length - 1) {
-      const next = tokens[start]!
-      if (next[0] === 'Operator' && next[1] === '.') {
-        start--
-      } else break
-    } else break
-  }
-
-  // Walk forward past Symbol/dot pairs to find the end
-  let end = index
-  while (end < tokens.length - 1) {
-    const next = tokens[end + 1]!
-    if (next[0] === 'Operator' && next[1] === '.') {
-      if (end + 2 < tokens.length && tokens[end + 2]![0] === 'Symbol') {
-        end += 2
-      } else break
-    } else if (next[0] === 'Symbol' && end > 0) {
-      const prev = tokens[end]!
-      if (prev[0] === 'Operator' && prev[1] === '.') {
-        end++
-      } else break
-    } else break
-  }
-
-  // Check that we're preceded by effect( and followed by )
-  let before = start - 1
-  while (before >= 0 && tokens[before]![0] === 'Whitespace') before--
-  if (before < 0 || tokens[before]![0] !== 'LParen') return null
-  before--
-  while (before >= 0 && tokens[before]![0] === 'Whitespace') before--
-  if (before < 0 || tokens[before]![0] !== 'Symbol' || tokens[before]![1] !== 'effect') return null
-
-  let after = end + 1
-  while (after < tokens.length && tokens[after]![0] === 'Whitespace') after++
-  if (after >= tokens.length || tokens[after]![0] !== 'RParen') return null
-
-  // Build the full dotted name
-  const fullName = tokens.slice(start, end + 1).map(t => t[1]).join('')
-
-  if (standardEffectNames.has(fullName)) return colors.Blue
-  if (playgroundEffectNames.has(fullName)) return colors.Teal
-  return colors.SkyLavender
-}
-
-function getTokenColor(token: Token, tokens: Token[], index: number): string | null {
+function getTokenColor(token: Token): string | null {
   const tokenType = token[0]
   switch (tokenType) {
     case 'string':
     case 'TemplateString':
     case 'RegexpShorthand':
-      return colors.Pink
+      return colors.string
+    case 'EffectName':
+      return standardEffectNames.has(token[1])
+        ? colors.effectStandard
+        : playgroundEffectNames.has(token[1])
+          ? colors.effectPlayground
+          : colors.effectCustom
     case 'Symbol': {
-      const effectColor = getEffectColor(tokens, index)
-      if (effectColor) return effectColor
-      if (effectConstructs.has(token[1])) return colors.EffectConstruct
+      if (effectConstructs.has(token[1])) return colors.effectConstruct
       return specialExpressionSet.has(token[1])
-        ? colors.BrightYellow
+        ? colors.keyword
         : normalExpressionSet.has(token[1])
-          ? colors.Beige
-          : colors.Mint
+          ? colors.builtin
+          : colors.symbol
     }
     case 'BasePrefixedNumber':
     case 'Number':
-      return colors.Viola
+      return colors.number
     case 'Shebang':
     case 'SingleLineComment':
     case 'MultiLineComment':
-      return colors.Gray500
+      return colors.comment
     case 'ReservedSymbol':
-      return colors.BrightYellow
-    case 'Operator': {
-      if (token[1] === '.') {
-        const effectColor = getEffectColor(tokens, index)
-        if (effectColor) return effectColor
-      }
-      return colors.Gray300
-    }
+      return colors.keyword
+    case 'Operator':
+      return colors.punctuation
     case 'LBrace':
     case 'RBrace':
     case 'LBracket':
     case 'RBracket':
     case 'LParen':
     case 'RParen':
-      return colors.Gray300
+      return colors.punctuation
     case 'Error':
-      return colors.Crimson
+      return colors.error
     case 'Whitespace':
       return null
     default:
@@ -149,15 +85,15 @@ function isCommentToken(token: Token): boolean {
 function renderTemplateStringToken(rawValue: string): string {
   const content = rawValue.slice(1, -1) // strip surrounding backticks
   const segments = splitSegments(content)
-  const backtick = `<span style="color:${colors.Pink}">\`</span>`
+  const backtick = `<span style="color:${colors.string}">\`</span>`
   let result = backtick
   for (const seg of segments) {
     if (seg.type === 'literal') {
-      result += `<span style="color:${colors.Pink}">${escapeHtml(seg.value)}</span>`
+      result += `<span style="color:${colors.string}">${escapeHtml(seg.value)}</span>`
     } else {
-      result += `<span style="color:${colors.Gray300}">\${</span>`
+      result += `<span style="color:${colors.punctuation}">\${</span>`
       result += tokenizeToHtml(seg.value)
-      result += `<span style="color:${colors.Gray300}">}</span>`
+      result += `<span style="color:${colors.punctuation}">}</span>`
     }
   }
   return result + backtick
@@ -166,15 +102,16 @@ function renderTemplateStringToken(rawValue: string): string {
 export function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
-    return tokens.map((token, index) => {
+    return tokens.map(token => {
       if (token[0] === 'TemplateString')
         return renderTemplateStringToken(token[1])
+      const prefix = token[0] === 'EffectName' ? '@' : ''
       const escaped = escapeHtml(token[1])
-      const color = getTokenColor(token, tokens, index)
+      const color = getTokenColor(token)
       if (!color)
-        return escaped
+        return prefix + escaped
       const italic = isCommentToken(token) ? 'font-style:italic;' : ''
-      return `<span style="color:${color};${italic}">${escaped}</span>`
+      return `<span style="color:${color};${italic}">${prefix}${escaped}</span>`
     }).join('')
   } catch {
     return escapeHtml(code)

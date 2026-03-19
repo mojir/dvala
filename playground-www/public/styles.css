@@ -46,33 +46,18 @@
   --color-toggle-on:      #3b82f6;
 
   /* Syntax highlighting — Dark+ (VS Code default dark) */
-  --syntax-keyword:       #569cd6;
-  --syntax-builtin:       #dcdcaa;
-  --syntax-symbol:        #9cdcfe;
-  --syntax-number:        #b5cea8;
-  --syntax-string:        #ce9178;
-  --syntax-punctuation:   #d4d4d4;
-  --syntax-comment-dim:   #6a9955;
-  --syntax-error:         #f44747;
-  --syntax-effect:        #4ec9b0;
+  --syntax-keyword:          #569cd6;
+  --syntax-builtin:          #dcdcaa;
+  --syntax-symbol:           #9cdcfe;
+  --syntax-number:           #b5cea8;
+  --syntax-string:           #ce9178;
+  --syntax-punctuation:      #d4d4d4;
+  --syntax-comment:      #6a9955;
+  --syntax-error:            #f44747;
+  --syntax-effect-standard:  #e6b455;
   --syntax-effect-construct: #e06c9f;
-  --syntax-effect-playground: #e6b455;
-  --syntax-effect-custom: #9cdcfe;
-
-  /* Previous palette (One Dark hybrid)
-  --syntax-keyword:       #f0e68c;
-  --syntax-builtin:       #dcdcaa;
-  --syntax-symbol:        #4ec9b0;
-  --syntax-number:        #c586c0;
-  --syntax-string:        #cc8f77;
-  --syntax-punctuation:   #d4d4d4;
-  --syntax-comment-dim:   #969696;
-  --syntax-error:         #dc143c;
-  --syntax-effect:        #569cd6;
-  --syntax-effect-custom: #c5cbe3;
-  */
-
-
+  --syntax-effect-playground:#4ec9b0;
+  --syntax-effect-custom:    #9cdcfe;
 
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Roboto', sans-serif;
@@ -1326,7 +1311,7 @@ a.disabled {
 }
 
 #output-result .analyze {
-  color: var(--syntax-effect);
+  color: var(--syntax-effect-standard);
   white-space: pre-wrap;
 }
 
@@ -1347,7 +1332,7 @@ a.disabled {
 }
 
 #output-result .comment {
-  color: var(--syntax-comment-dim);
+  color: var(--syntax-comment);
   white-space: pre-wrap;
 }
 
