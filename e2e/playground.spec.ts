@@ -550,8 +550,8 @@ test.describe('api reference navigation', () => {
 /** Save current code as a named program via the saveAs modal. */
 async function saveAsProgram(page: Page, name: string) {
   await page.evaluate(() => (window as any).Playground.saveAs())
-  // The name input modal is dynamically created — browser normalizes rgba(0,0,0,0.5) with spaces
-  const input = page.locator('[style*="rgba(0, 0, 0, 0.5)"] input[type="text"]')
+  // The name input modal overlay uses a CSS variable — match by the overlay's structural role
+  const input = page.locator('[style*="--color-overlay"] input[type="text"]')
   await input.waitFor({ timeout: 2000 })
   await input.fill(name)
   await input.press('Enter')

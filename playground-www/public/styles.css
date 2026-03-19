@@ -2,20 +2,70 @@
    Design tokens
    ============================================================ */
 :root {
-  --color-bg:       #1a1a1a;
-  --color-surface:  #2a2a2a;
-  --color-surface-2: #333;
-  --color-surface-3: #444;
-  --color-code-bg:  #0d0d0d;
-  --color-text:     #d4d4d4;
-  --color-text-dim: #888;
-  --color-text-muted: #9ca3af;
-  --color-text-bright: #f5f5f5;
-  --color-accent:   #7c9ef8;
-  --color-border:   #444;
-  --color-border-dim: #555;
-  --color-error:    #ff8a8a;
-  --color-warn:     #e6c07b;
+  /* Surfaces & backgrounds */
+  --color-bg:             #1a1a1a;
+  --color-surface:        #2a2a2a;
+  --color-surface-2:      #333;
+  --color-surface-3:      #444;
+  --color-surface-dim:    rgb(35 35 35);
+  --color-surface-hover:  rgb(65 65 65);
+  --color-code-bg:        #0d0d0d;
+
+  /* Text */
+  --color-text:           #d4d4d4;
+  --color-text-bright:    #f5f5f5;
+  --color-text-secondary: rgb(170 170 170);
+  --color-text-dim:       rgb(140 140 140);
+  --color-text-faintest:  rgb(115 115 115);
+
+  /* Accent & semantic */
+  --color-primary:        #e6c07b;
+  --color-accent:         #7c9ef8;
+  --color-error:          #ff8a8a;
+  --color-success:        #98c379;
+  --color-purple:         #b294bb;
+  --color-terminal:       #abb2bf;
+
+  /* Borders */
+  --color-border:         #444;
+  --color-border-dim:     rgb(60 60 60);
+  --color-border-dark:    #222;
+
+  /* Scrollbar */
+  --color-scrollbar:       rgb(64 64 64);
+  --color-scrollbar-track: rgb(82 82 82);
+
+  /* Overlays & shadows */
+  --color-overlay:        rgba(0, 0, 0, 0.7);
+  --color-overlay-heavy:  rgba(30, 30, 30, 0.95);
+  --color-shadow:         rgb(23 23 23);
+  --color-shadow-deep:    rgba(0, 0, 0, 0.4);
+  --color-selection:      rgba(150, 150, 150, 0.5);
+
+  /* Toggle */
+  --color-toggle-on:      rgb(59 130 246);
+
+  /* Syntax highlighting (editor) */
+  --syntax-keyword:       #f0e68c;
+  --syntax-builtin:       #dcdcaa;
+  --syntax-symbol:        #4ec9b0;
+  --syntax-number:        #c586c0;
+  --syntax-string:        #cc8f77;
+  --syntax-punctuation:   rgb(212 212 212);
+  --syntax-comment-dim:   rgb(150 150 150);
+  --syntax-error:         #dc143c;
+  --syntax-effect:        #569cd6;
+  --syntax-effect-custom: #c5cbe3;
+
+  /* Syntax highlighting (output panel) */
+  --syntax-output:        #ca9d8b;
+  --syntax-analyze:       #569cd6;
+  --syntax-tokenize:      #4ec9b0;
+  --syntax-parse:         #c586c0;
+  --syntax-result:        #c5cbe3;
+  --syntax-comment:       rgb(150 150 150);
+  --syntax-link:          #cc8f77;
+
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Roboto', sans-serif;
   --font-size-xs:   0.75rem;
@@ -29,13 +79,11 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
-  --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
   --radius-sm: 4px;
   --radius-md: 8px;
   --sidebar-default-width: 350px;
-  --playground-default-height: 260px;
 }
 
 /* ============================================================
@@ -94,7 +142,7 @@ input {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   padding: 0.2rem;
-  color: #dddddd;
+  color: var(--color-text);
   font-size: var(--font-size-base);
   box-sizing: border-box;
 }
@@ -111,11 +159,11 @@ table {
 }
 
 ::-moz-selection {
-  background: rgb(82 82 82);
+  background: var(--color-scrollbar-track);
 }
 
 ::selection {
-  background: rgb(82 82 82);
+  background: var(--color-scrollbar-track);
 }
 
 /* ============================================================
@@ -126,7 +174,7 @@ a:link,
 a:visited,
 a:hover,
 a:active {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   text-decoration: none;
   cursor: pointer;
 }
@@ -138,16 +186,6 @@ a:hover {
 a.disabled {
   color: var(--color-border);
   cursor: default;
-}
-
-a.external-link,
-a.external-link:link,
-a.external-link:visited,
-a.external-link:hover,
-a.external-link:active {
-  color: #569cd6;
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 /* Links inside rich content areas get underlines */
@@ -175,27 +213,11 @@ a.external-link:active {
   height: 8px;
 }
 .fancy-scroll-background::-webkit-scrollbar-thumb {
-  background-color: rgb(64 64 64);
+  background-color: var(--color-scrollbar);
   cursor: default;
   border: none;
 }
 .fancy-scroll-background::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
-
-.fancy-scroll-invert::-webkit-scrollbar-track {
-  background-color: rgb(64 64 64);
-}
-.fancy-scroll-invert::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.fancy-scroll-invert::-webkit-scrollbar-thumb {
-  background-color: var(--color-code-bg);
-  cursor: default;
-  border: none;
-}
-.fancy-scroll-invert::-webkit-scrollbar-corner {
   background-color: transparent;
 }
 
@@ -207,7 +229,7 @@ a.external-link:active {
   height: 8px;
 }
 .fancy-scroll::-webkit-scrollbar-thumb {
-  background-color: rgb(64 64 64);
+  background-color: var(--color-scrollbar);
   cursor: default;
   border: none;
 }
@@ -248,7 +270,7 @@ a.external-link:active {
   position: fixed;
   width: 5px;
   cursor: col-resize;
-  background-color: rgb(82 82 82);
+  background-color: var(--color-scrollbar-track);
   top: 0;
   z-index: 10;
 }
@@ -319,7 +341,7 @@ a.external-link:active {
 }
 
 .sidebar__link {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   text-decoration: none;
   cursor: pointer;
   display: block;
@@ -349,10 +371,6 @@ a.external-link:active {
 
 .sidebar__section-header:hover {
   color: var(--color-text-bright);
-}
-
-.sidebar__section-header--open .sidebar__section-chevron {
-  transform: rotate(90deg);
 }
 
 .sidebar__section-chevron {
@@ -393,7 +411,7 @@ a.external-link:active {
 
 /* Old sidebar classes (used in shell.ts inline HTML — kept for compatibility) */
 #sidebar .sidebar-collapsible-header {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -465,7 +483,7 @@ a.external-link:active {
 }
 
 .content .example {
-  box-shadow: 1px 1px 3px rgb(23 23 23);
+  box-shadow: 1px 1px 3px var(--color-shadow);
 }
 
 .content .example:hover svg:not(.example-action-btn svg) {
@@ -564,7 +582,7 @@ a.external-link:active {
 
 .about-intro__text {
   font-size: var(--font-size-base);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   line-height: 1.6;
 }
 
@@ -617,7 +635,7 @@ a.external-link:active {
 
 .about-feature-card__desc {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -662,12 +680,7 @@ a.external-link:active {
 
 .about-stat-card__label {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.about-stat-card__sublabel {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-dim);
+  color: var(--color-text-secondary);
 }
 
 /* ============================================================
@@ -714,7 +727,7 @@ a.external-link:active {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-lg);
   text-decoration: underline;
   cursor: pointer;
@@ -758,17 +771,6 @@ a.external-link:active {
 
 .start-page__example-try:hover {
   color: var(--color-text-bright);
-}
-
-.start-page__example-code {
-  background: var(--color-code-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-5);
-  font-size: var(--font-size-sm);
-  line-height: 1.7;
-  overflow-x: auto;
-  margin: 0;
 }
 
 /* ============================================================
@@ -831,7 +833,7 @@ a.external-link:active {
 .doc-page__signature-label {
   display: block;
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-top: var(--space-3);
@@ -865,9 +867,9 @@ a.external-link:active {
   margin-bottom: var(--space-4);
   border-radius: var(--radius-md);
   overflow: hidden;
-  border-left: 3px solid var(--color-warn);
+  border-left: 3px solid var(--color-primary);
   background: var(--color-code-bg);
-  box-shadow: 1px 1px 3px rgb(23 23 23);
+  box-shadow: 1px 1px 3px var(--color-shadow);
 }
 
 .doc-page__example-code {
@@ -892,11 +894,11 @@ a.external-link:active {
 
 .doc-page__example-output {
   background: var(--color-code-bg);
-  border-top: 1px solid #222;
+  border-top: 1px solid var(--color-border-dark);
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   white-space: pre-wrap;
 }
 
@@ -924,7 +926,7 @@ a.external-link:active {
 .doc-page__example-action-btn {
   background: none;
   border: none;
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   cursor: pointer;
   padding: var(--space-1);
   font-size: 1rem;
@@ -1002,7 +1004,7 @@ a.external-link:active {
 
 .tutorial-page__content pre {
   background: var(--color-surface);
-  border-left: 3px solid var(--color-warn);
+  border-left: 3px solid var(--color-primary);
   padding: var(--space-3);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   overflow-x: auto;
@@ -1044,7 +1046,7 @@ a.external-link:active {
 }
 
 .tutorial-page__nav-link {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   text-decoration: none;
   transition: color 0.15s;
   font-size: var(--font-size-sm);
@@ -1194,7 +1196,7 @@ a.external-link:active {
 
 .search-dialog__entry:hover,
 .search-dialog__entry--focused {
-  background: rgb(38 38 38);
+  background: var(--color-surface-dim);
 }
 
 .search-dialog__entry-title {
@@ -1310,39 +1312,39 @@ a.external-link:active {
 }
 
 #output-result .output {
-  color: #ca9d8b;
+  color: var(--syntax-output);
   white-space: pre-wrap;
   padding-left: var(--space-2);
 }
 
 #output-result .analyze {
-  color: #569cd6;
+  color: var(--syntax-analyze);
   white-space: pre-wrap;
 }
 
 #output-result .tokenize {
-  color: #4ec9b0;
+  color: var(--syntax-tokenize);
   white-space: pre-wrap;
 }
 
 #output-result .parse {
-  color: #c586c0;
+  color: var(--syntax-parse);
   white-space: pre-wrap;
 }
 
 #output-result .result {
-  color: #c5cbe3;
+  color: var(--syntax-result);
   white-space: pre-wrap;
   margin-bottom: var(--space-1);
 }
 
 #output-result .comment {
-  color: rgb(150 150 150);
+  color: var(--syntax-comment);
   white-space: pre-wrap;
 }
 
 #output-result a.share-link {
-  color: #cc8f77;
+  color: var(--syntax-link);
   white-space: nowrap;
 }
 
@@ -1352,7 +1354,7 @@ a.external-link:active {
 
 #output-result .separator {
   font-size: var(--font-size-sm);
-  border-bottom: solid 1px rgb(82 82 82);
+  border-bottom: solid 1px var(--color-scrollbar-track);
   height: 0;
   margin: 0;
   padding: 0;
@@ -1368,31 +1370,29 @@ a.external-link:active {
   align-items: center;
   gap: var(--space-3);
   padding: 0.6rem var(--space-4);
-  background: rgb(50 50 50);
-  border: 1px solid rgb(82 82 82);
-  border-left: 3px solid var(--color-warn);
-  color: rgb(200 200 200);
+  background: var(--color-surface);
+  border: 1px solid var(--color-scrollbar-track);
+  border-left: 3px solid var(--color-primary);
+  color: var(--color-text-secondary);
   font-family: var(--font-sans);
   font-size: 0.85rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px var(--color-shadow-deep);
   animation: toast-in 0.25s ease;
   min-width: 16rem;
 }
 
-.toast--error,
 .toast.toast-error {
   border-left-color: var(--color-error);
 }
 
-.toast--info,
 .toast.toast-info {
-  border-left-color: var(--color-warn);
+  border-left-color: var(--color-primary);
 }
 
 .toast-close {
   background: none;
   border: none;
-  color: rgb(130 130 130);
+  color: var(--color-text-dim);
   font-size: var(--font-size-base);
   cursor: pointer;
   padding: 0 var(--space-1);
@@ -1401,7 +1401,7 @@ a.external-link:active {
 }
 
 .toast-close:hover {
-  color: rgb(220 220 220);
+  color: var(--color-text);
 }
 
 @keyframes toast-in {
@@ -1418,7 +1418,7 @@ a.external-link:active {
    Buttons
    ============================================================ */
 button:focus {
-  outline-color: rgb(82 82 82);
+  outline-color: var(--color-scrollbar-track);
 }
 
 .button {
@@ -1427,9 +1427,9 @@ button:focus {
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  background: rgb(50 50 50);
+  background: var(--color-surface);
   color: var(--color-text-bright);
-  border: 1px solid rgb(70 70 70);
+  border: 1px solid var(--color-border-dim);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-3);
   font-family: var(--font-sans);
@@ -1438,27 +1438,19 @@ button:focus {
 }
 
 .button:hover {
-  background: rgb(65 65 65);
+  background: var(--color-surface-hover);
   color: var(--color-text-bright) !important;
 }
 
 .button--primary {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .button--primary:hover {
-  background: rgb(65 65 65);
+  background: var(--color-surface-hover);
   border-color: var(--color-text-bright);
   color: var(--color-text-bright);
-}
-
-.button--danger {
-  color: var(--color-error);
-}
-
-.button--danger:hover {
-  color: var(--color-error) !important;
 }
 
 .settings-action-row .button {
@@ -1488,7 +1480,7 @@ button:focus {
   align-items: center;
   gap: 6px;
   border-radius: var(--radius-sm);
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   transition: color 0.15s ease;
   font-family: inherit;
 }
@@ -1500,12 +1492,6 @@ button:focus {
 /* ============================================================
    Settings
    ============================================================ */
-.settings-tab-bar {
-  display: flex;
-  border-bottom: 1px solid #4b5563;
-  margin-bottom: var(--space-6);
-}
-
 .settings-tab-btn {
   background: none;
   border: none;
@@ -1513,13 +1499,13 @@ button:focus {
   margin-bottom: -1px;
   padding: 0.4rem 1.25rem;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
   font-size: var(--font-size-base);
   font-family: inherit;
 }
 
 .settings-tab-btn:hover {
-  color: #d1d5db;
+  color: var(--color-text);
 }
 
 .settings-tab-btn.active {
@@ -1556,7 +1542,7 @@ button:focus {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: rgb(82 82 82);
+  background-color: var(--color-scrollbar-track);
   border-radius: 24px;
   transition: background-color 0.2s;
 }
@@ -1568,13 +1554,13 @@ button:focus {
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: rgb(200 200 200);
+  background-color: var(--color-text-secondary);
   border-radius: 50%;
   transition: transform 0.2s;
 }
 
 .settings-toggle input:checked + .settings-toggle-slider {
-  background-color: rgb(59 130 246);
+  background-color: var(--color-toggle-on);
 }
 
 .settings-toggle input:checked + .settings-toggle-slider::before {
@@ -1600,7 +1586,7 @@ button:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0);
+  background-color: transparent;
   backdrop-filter: blur(12px);
   animation: fade-in 0.2s ease-in-out;
   z-index: 100;
@@ -1623,12 +1609,7 @@ button:focus {
   background-color: var(--color-code-bg);
   border-radius: var(--radius-md);
   overflow: hidden;
-  border-left: 3px solid var(--color-warn);
-}
-
-.example-result {
-  background-color: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
 }
 
 .example-action-bar {
@@ -1640,7 +1621,7 @@ button:focus {
 }
 
 .example-action-btn {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   transition: color 0.15s ease;
 }
 
@@ -1653,7 +1634,7 @@ button:focus {
 .content .tutorial-nav-link:link,
 .content .tutorial-nav-link:visited,
 .content .tutorial-nav-link:hover {
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   transition: color 0.15s;
   text-decoration: none;
 }
@@ -1683,9 +1664,9 @@ button:focus {
   font-size: var(--font-size-sm);
   line-height: 1.2;
   white-space: pre;
-  color: rgb(100 100 100);
+  color: var(--color-text-dim);
   user-select: none;
-  border-right: 1px solid rgb(50 50 50);
+  border-right: 1px solid var(--color-surface);
   position: sticky;
   left: 0;
   background-color: var(--color-code-bg);
@@ -1719,11 +1700,11 @@ button:focus {
 }
 
 .syntax-overlay-container textarea::selection {
-  background: rgba(150, 150, 150, 0.5);
+  background: var(--color-selection);
 }
 
 .syntax-overlay-container textarea::-moz-selection {
-  background: rgba(150, 150, 150, 0.5);
+  background: var(--color-selection);
 }
 
 .syntax-overlay-container pre {
@@ -1746,7 +1727,7 @@ button:focus {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--color-overlay);
   z-index: 200;
 }
 
@@ -1882,7 +1863,7 @@ button:focus {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-2) var(--space-1);
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-decoration: none;
   margin-top: var(--space-6);
 }
@@ -1895,7 +1876,7 @@ button:focus {
 .sidebar-version {
   padding: var(--space-1) var(--space-2) var(--space-2);
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   text-align: center;
 }
 
@@ -1938,7 +1919,7 @@ button:focus {
 }
 .panel-header__debug-icon.active {
   opacity: 1;
-  color: var(--color-warn);
+  color: var(--color-primary);
 }
 
 .panel-header__title-string {
@@ -1976,7 +1957,7 @@ button:focus {
   align-items: center;
   gap: 0.25em;
   font-size: 0.75rem;
-  color: rgb(163 163 163);
+  color: var(--color-text-secondary);
   flex-shrink: 0;
   margin-left: 2px;
 }
@@ -2035,7 +2016,7 @@ button:focus {
 }
 
 .dropdown-menu__error {
-  color: #f87171;
+  color: var(--color-error);
   font-size: var(--font-size-xs);
 }
 
@@ -2076,7 +2057,7 @@ button:focus {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--color-overlay);
   z-index: 100;
   display: none;
   justify-content: center;
@@ -2094,7 +2075,7 @@ button:focus {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  background: rgba(30, 30, 30, 0.95);
+  background: var(--color-overlay-heavy);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: var(--space-2) var(--space-4);
@@ -2109,15 +2090,15 @@ button:focus {
 }
 
 .execution-status--running {
-  color: #98c379;
+  color: var(--color-success);
 }
 
 .execution-status--paused {
-  color: #e5c07b;
+  color: var(--color-primary);
 }
 
 .execution-status--terminal {
-  color: #abb2bf;
+  color: var(--color-terminal);
 }
 
 .execution-controls {
@@ -2160,8 +2141,8 @@ button:focus {
 }
 
 #exec-pause-btn:hover:not(:disabled) {
-  color: #e5c07b;
-  border-color: #e5c07b;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 #exec-stop-btn:hover:not(:disabled) {
@@ -2170,15 +2151,15 @@ button:focus {
 }
 
 #exec-play-btn:hover:not(:disabled) {
-  color: #98c379;
-  border-color: #98c379;
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
 
 
 .modal-box {
   background: var(--color-surface-2);
   border: 1px solid var(--color-border-dim);
-  border-top: 2px solid #e6c07b;
+  border-top: 2px solid var(--color-primary);
   padding: var(--space-6) var(--space-3) var(--space-3);
   max-width: 500px;
   width: 90%;
@@ -2189,8 +2170,8 @@ button:focus {
 .modal-header {
   display: flex;
   align-items: center;
-  background-color: rgb(38 38 38);
-  border-bottom: 1px solid rgb(65 58 42);
+  background-color: var(--color-surface-dim);
+  border-bottom: 1px solid var(--color-border-dim);
   margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-3)) var(--space-4);
   padding: 0.6rem var(--space-3);
 }
@@ -2260,45 +2241,14 @@ button:focus {
   color: var(--color-text-bright);
 }
 
-.modal-title {
-  font-size: var(--font-size-lg);
-  margin-bottom: var(--space-4);
-}
-
-.modal-subtitle {
-  font-size: 1.1rem;
-  margin-bottom: var(--space-2);
-}
-
 .modal-body-row {
   margin-bottom: var(--space-4);
-}
-
-.modal-body-row--last {
-  margin-bottom: var(--space-2);
-}
-
-.modal-meta-row {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-dim);
-  margin-bottom: var(--space-2);
 }
 
 .modal-btn-row {
   display: flex;
   gap: var(--space-2);
   margin-top: var(--space-4);
-}
-
-.modal-btn-row--top-gap {
-  margin-top: var(--space-2);
-}
-
-.modal-checkbox-row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  margin-bottom: var(--space-4);
 }
 
 .modal-checklist {
@@ -2349,7 +2299,7 @@ button:focus {
 
 .effect-modal__name {
   font-size: 1rem;
-  color: #b294bb;
+  color: var(--color-purple);
 }
 
 
@@ -2394,7 +2344,7 @@ button:focus {
    Form error
    ============================================================ */
 .form-error {
-  color: #f87171;
+  color: var(--color-error);
   font-size: var(--font-size-xs);
 }
 
@@ -2442,23 +2392,23 @@ button:focus {
 }
 
 .breadcrumb-sep {
-  color: rgb(150 150 150);
+  color: var(--color-text-dim);
   margin: 0 0.15rem;
   font-weight: normal;
 }
 
 .breadcrumb-item {
-  color: rgb(229 229 229);
+  color: var(--color-text);
 }
 
 .breadcrumb-item--clickable {
-  color: rgb(150 150 150);
+  color: var(--color-text-dim);
   cursor: pointer;
   font-weight: normal;
 }
 
 .breadcrumb-item--clickable:hover {
-  color: rgb(180 180 180);
+  color: var(--color-text-secondary);
 }
 
 .snapshot-panel__columns {
@@ -2571,7 +2521,7 @@ button:focus {
   padding: 0.25rem;
   font-size: 1rem;
   cursor: pointer;
-  color: rgb(150 150 150);
+  color: var(--color-text-dim);
   opacity: 0;
   transition: opacity 0.15s ease, color 0.15s ease;
 }
@@ -2587,13 +2537,6 @@ button:focus {
 /* ============================================================
    Settings page
    ============================================================ */
-.settings-page__heading {
-  display: flex;
-  justify-content: center;
-  font-size: var(--font-size-xl);
-  margin-bottom: var(--space-6);
-}
-
 .settings-page__body {
   padding: var(--space-4);
   background: var(--color-surface);
@@ -2661,7 +2604,7 @@ button:focus {
 
 .settings-action-row__desc {
   font-size: var(--font-size-base);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   max-width: 32rem;
 }
 
@@ -2670,14 +2613,14 @@ button:focus {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   padding: var(--space-4) 0 var(--space-1);
-  border-bottom: 1px solid rgb(55 55 55);
+  border-bottom: 1px solid var(--color-border-dim);
 }
 
 .settings-action-row__size {
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-weight: normal;
   margin-left: var(--space-2);
 }
@@ -2753,9 +2696,6 @@ h2.discrete {
   color: gray;
 }
 
-.hover-bold:hover td {
-  font-weight: bold;
-}
 
 /* ============================================================
    Mobile overlay
@@ -2803,7 +2743,7 @@ h2.discrete {
 
   .mobile-overlay__subtitle {
     font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
     max-width: 300px;
     margin: 0 auto;
   }
@@ -2826,7 +2766,7 @@ h2.discrete {
 
   .mobile-overlay__note-text {
     font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
     line-height: 1.5;
   }
 
@@ -2834,7 +2774,7 @@ h2.discrete {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
     text-decoration: none;
     font-size: var(--font-size-sm);
   }
