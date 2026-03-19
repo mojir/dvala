@@ -1,5 +1,5 @@
-import type { ExampleEntry } from '../src/builtin/interface'
-import type { EffectReference } from '.'
+import type { ExampleEntry } from '../../src/builtin/interface'
+import type { EffectReference } from '../../reference'
 
 /**
  * Playground effect references — these effects only work inside the playground.

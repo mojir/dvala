@@ -8,6 +8,7 @@ import { marked } from 'marked'
 import type { ReferenceData } from '../../../common/referenceData'
 import type { Reference } from '../../../reference'
 import { isFunctionReference, isCustomReference, makeLinkName } from '../../../reference'
+import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
 import { tokenizeToHtml } from '../SyntaxOverlay'
 import { runExampleCode } from '../runExampleCode'
@@ -62,7 +63,7 @@ export function renderDocPage(linkName: string): string {
   }
 
   if (!ref) {
-    for (const [key, r] of Object.entries(data.playgroundEffects)) {
+    for (const [key, r] of Object.entries(playgroundEffectReference)) {
       const candidate = makeLinkName(r.category, key)
       if (candidate === linkName || key === decodedLinkName || `${r.category}-${key}` === decodedLinkName) {
         ref = r
@@ -84,7 +85,7 @@ function seeAlsoInfo(name: string, data: ReferenceData): { title: string; linkNa
     ...Object.entries(data.api),
     ...Object.entries(data.modules),
     ...Object.entries(data.effects),
-    ...Object.entries(data.playgroundEffects),
+    ...Object.entries(playgroundEffectReference),
   ]
   for (const [k, r] of allEntries) {
     if (k === name || r.title === name) {
