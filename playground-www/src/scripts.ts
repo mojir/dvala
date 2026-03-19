@@ -382,6 +382,71 @@ export function showSettingsTab(id: string) {
     router.navigate(targetPath, true)
   if (id === 'actions')
     updateStorageUsage()
+  if (id === 'developer')
+    renderColorPalette()
+}
+
+function renderColorPalette(): void {
+  const container = document.getElementById('settings-color-palette')
+  if (!container) return
+
+  const root = getComputedStyle(document.documentElement)
+  const groups: { title: string; prefix: string; type: 'swatch' | 'text' }[] = [
+    { title: 'Surfaces & Backgrounds', prefix: '--color-surface,--color-bg,--color-code-bg', type: 'swatch' },
+    { title: 'Text', prefix: '--color-text', type: 'text' },
+    { title: 'Accent & Semantic', prefix: '--color-primary,--color-accent,--color-error,--color-success,--color-purple,--color-terminal,--color-toggle-on', type: 'swatch' },
+    { title: 'Borders', prefix: '--color-border', type: 'swatch' },
+    { title: 'Scrollbar', prefix: '--color-scrollbar', type: 'swatch' },
+    { title: 'Overlays & Shadows', prefix: '--color-overlay,--color-shadow,--color-selection', type: 'swatch' },
+    { title: 'Syntax Highlighting', prefix: '--syntax-', type: 'swatch' },
+  ]
+
+  // Collect all CSS custom properties from the stylesheet
+  const allVars: { name: string; value: string }[] = []
+  for (let s = 0; s < document.styleSheets.length; s++) {
+    try {
+      const rules = document.styleSheets[s]!.cssRules
+      for (let r = 0; r < rules.length; r++) {
+        const rule = rules[r]!
+        if (rule instanceof CSSStyleRule && rule.selectorText === ':root') {
+          for (let i = 0; i < rule.style.length; i++) {
+            const name = rule.style[i]!
+            if (name.startsWith('--color-') || name.startsWith('--syntax-')) {
+              allVars.push({ name, value: root.getPropertyValue(name).trim() })
+            }
+          }
+        }
+      }
+    } catch { /* cross-origin sheets */ }
+  }
+
+  let html = ''
+  for (const group of groups) {
+    const prefixes = group.prefix.split(',')
+    const vars = allVars.filter(v => prefixes.some(p => v.name.startsWith(p)))
+    if (vars.length === 0) continue
+
+    html += `<div class="color-palette__group-title">${escapeHtml(group.title)}</div>`
+    html += '<div class="color-palette__group">'
+    for (const v of vars) {
+      const shortName = v.name.replace(/^--(color-|syntax-)/, '')
+      if (group.type === 'text') {
+        html += `<div class="color-palette__text-preview">
+          <span class="color-palette__text-sample" style="color:var(${v.name})">${escapeHtml(shortName)}</span>
+          <span class="color-palette__hex">${escapeHtml(v.value)}</span>
+        </div>`
+      } else {
+        const hasAlpha = v.value.length === 9 || v.value.includes('rgba')
+        html += `<div class="color-palette__swatch">
+          <div class="color-palette__color${hasAlpha ? ' color-palette__color--alpha' : ''}">${hasAlpha ? `<span style="background:var(${v.name})"></span>` : `<span style="background:var(${v.name})"></span>`}</div>
+          <div class="color-palette__name">${escapeHtml(shortName)}</div>
+          <div class="color-palette__hex">${escapeHtml(v.value)}</div>
+        </div>`
+      }
+    }
+    html += '</div>'
+  }
+  container.innerHTML = html
 }
 
 export function showSnapshotsPage() {
@@ -777,6 +842,7 @@ export function loadSavedProgram(id: string) {
     elements.dvalaTextArea.value = program.code
     elements.contextTextArea.value = program.context
     syntaxOverlay.update()
+    syntaxOverlay.scrollContainer.scrollTo(0, 0)
     updateCSS()
     populateSavedProgramsList()
   })
@@ -2804,6 +2870,11 @@ export function toggleDisablePlaygroundEffects() {
 
 export function toggleAutoCheckpoint() {
   saveState({ 'disable-auto-checkpoint': !getState('disable-auto-checkpoint') })
+  updateCSS()
+}
+
+export function togglePlaygroundDeveloper() {
+  saveState({ 'playground-developer': !getState('playground-developer') })
   updateCSS()
 }
 
@@ -5080,6 +5151,13 @@ function updateCSS() {
     autoCheckpointToggle.closest('.settings-toggle')?.classList.toggle('settings-toggle-disabled', disabled)
     autoCheckpointToggle.closest('[class]')?.closest('[class]')?.classList.toggle('settings-toggle-row-disabled', disabled)
   }
+
+  const playgroundDevToggle = document.getElementById('settings-playground-developer-toggle') as HTMLInputElement | null
+  if (playgroundDevToggle)
+    playgroundDevToggle.checked = getState('playground-developer')
+  const devTabBtn = document.getElementById('settings-tab-btn-developer')
+  if (devTabBtn)
+    devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
   elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   const currentProgramId = getState('current-program-id')
