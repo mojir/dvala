@@ -7,16 +7,16 @@
   --color-surface:        #2a2a2a;
   --color-surface-2:      #333;
   --color-surface-3:      #444;
-  --color-surface-dim:    rgb(35 35 35);
-  --color-surface-hover:  rgb(65 65 65);
+  --color-surface-dim:    #232323;
+  --color-surface-hover:  #414141;
   --color-code-bg:        #0d0d0d;
 
   /* Text */
   --color-text:           #d4d4d4;
   --color-text-bright:    #f5f5f5;
-  --color-text-secondary: rgb(170 170 170);
-  --color-text-dim:       rgb(140 140 140);
-  --color-text-faintest:  rgb(115 115 115);
+  --color-text-secondary: #aaa;
+  --color-text-dim:       #8c8c8c;
+  --color-text-faintest:  #737373;
 
   /* Accent & semantic */
   --color-primary:        #e6c07b;
@@ -28,43 +28,51 @@
 
   /* Borders */
   --color-border:         #444;
-  --color-border-dim:     rgb(60 60 60);
+  --color-border-dim:     #3c3c3c;
   --color-border-dark:    #222;
 
   /* Scrollbar */
-  --color-scrollbar:       rgb(64 64 64);
-  --color-scrollbar-track: rgb(82 82 82);
+  --color-scrollbar:       #404040;
+  --color-scrollbar-track: #525252;
 
   /* Overlays & shadows */
-  --color-overlay:        rgba(0, 0, 0, 0.7);
-  --color-overlay-heavy:  rgba(30, 30, 30, 0.95);
-  --color-shadow:         rgb(23 23 23);
-  --color-shadow-deep:    rgba(0, 0, 0, 0.4);
-  --color-selection:      rgba(150, 150, 150, 0.5);
+  --color-overlay:        #000000b3;
+  --color-overlay-heavy:  #1e1e1ef2;
+  --color-shadow:         #171717;
+  --color-shadow-deep:    #00000066;
+  --color-selection:      #96969680;
 
   /* Toggle */
-  --color-toggle-on:      rgb(59 130 246);
+  --color-toggle-on:      #3b82f6;
 
-  /* Syntax highlighting (editor) */
+  /* Syntax highlighting — Dark+ (VS Code default dark) */
+  --syntax-keyword:       #569cd6;
+  --syntax-builtin:       #dcdcaa;
+  --syntax-symbol:        #9cdcfe;
+  --syntax-number:        #b5cea8;
+  --syntax-string:        #ce9178;
+  --syntax-punctuation:   #d4d4d4;
+  --syntax-comment-dim:   #6a9955;
+  --syntax-error:         #f44747;
+  --syntax-effect:        #4ec9b0;
+  --syntax-effect-construct: #e06c9f;
+  --syntax-effect-playground: #e6b455;
+  --syntax-effect-custom: #9cdcfe;
+
+  /* Previous palette (One Dark hybrid)
   --syntax-keyword:       #f0e68c;
   --syntax-builtin:       #dcdcaa;
   --syntax-symbol:        #4ec9b0;
   --syntax-number:        #c586c0;
   --syntax-string:        #cc8f77;
-  --syntax-punctuation:   rgb(212 212 212);
-  --syntax-comment-dim:   rgb(150 150 150);
+  --syntax-punctuation:   #d4d4d4;
+  --syntax-comment-dim:   #969696;
   --syntax-error:         #dc143c;
   --syntax-effect:        #569cd6;
   --syntax-effect-custom: #c5cbe3;
+  */
 
-  /* Syntax highlighting (output panel) */
-  --syntax-output:        #ca9d8b;
-  --syntax-analyze:       #569cd6;
-  --syntax-tokenize:      #4ec9b0;
-  --syntax-parse:         #c586c0;
-  --syntax-result:        #c5cbe3;
-  --syntax-comment:       rgb(150 150 150);
-  --syntax-link:          #cc8f77;
+
 
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Roboto', sans-serif;
@@ -1312,39 +1320,39 @@ a.disabled {
 }
 
 #output-result .output {
-  color: var(--syntax-output);
+  color: var(--syntax-string);
   white-space: pre-wrap;
   padding-left: var(--space-2);
 }
 
 #output-result .analyze {
-  color: var(--syntax-analyze);
+  color: var(--syntax-effect);
   white-space: pre-wrap;
 }
 
 #output-result .tokenize {
-  color: var(--syntax-tokenize);
+  color: var(--syntax-symbol);
   white-space: pre-wrap;
 }
 
 #output-result .parse {
-  color: var(--syntax-parse);
+  color: var(--syntax-number);
   white-space: pre-wrap;
 }
 
 #output-result .result {
-  color: var(--syntax-result);
+  color: var(--syntax-effect-custom);
   white-space: pre-wrap;
   margin-bottom: var(--space-1);
 }
 
 #output-result .comment {
-  color: var(--syntax-comment);
+  color: var(--syntax-comment-dim);
   white-space: pre-wrap;
 }
 
 #output-result a.share-link {
-  color: var(--syntax-link);
+  color: var(--syntax-string);
   white-space: nowrap;
 }
 
@@ -2575,6 +2583,80 @@ button:focus {
   margin-left: var(--space-4);
   padding-left: var(--space-3);
   border-left: 2px solid var(--color-border-dim);
+}
+
+/* Color palette (Developer tab) */
+.color-palette__group-title {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.color-palette__group-title:first-child {
+  margin-top: 0;
+}
+.color-palette__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.color-palette__swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 90px;
+}
+.color-palette__color {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.color-palette__color > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.color-palette__color--alpha {
+  background-image:
+    linear-gradient(45deg, var(--color-surface-2) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-surface-2) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-surface-2) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-surface-2) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+}
+.color-palette__name {
+  font-size: 0.6rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  word-break: break-all;
+}
+.color-palette__hex {
+  font-size: 0.55rem;
+  color: var(--color-text-faintest);
+  font-family: monospace;
+}
+.color-palette__text-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  width: 180px;
+}
+.color-palette__text-sample {
+  font-size: var(--font-size-sm);
+  flex: 1;
+}
+.color-palette__text-preview .color-palette__hex {
+  flex-shrink: 0;
 }
 
 .settings-tab-content__desc {

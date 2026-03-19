@@ -1,11 +1,13 @@
 import type { Token } from '../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
+import { playgroundEffectReference } from './playgroundEffects'
 import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
 import { tokenizeSource } from '../../src/tooling'
 
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
+const playgroundEffectNames = new Set(Object.values(playgroundEffectReference).map(r => r.title))
 
 const colors = {
   BrightYellow: 'var(--syntax-keyword)',
@@ -17,27 +19,78 @@ const colors = {
   Gray500: 'var(--syntax-comment-dim)',
   Crimson: 'var(--syntax-error)',
   Blue: 'var(--syntax-effect)',
+  Teal: 'var(--syntax-effect-playground)',
   SkyLavender: 'var(--syntax-effect-custom)',
+  EffectConstruct: 'var(--syntax-effect-construct)',
 }
+
+const effectConstructs = new Set(['effect', 'perform', 'effect-matcher', 'effect-name'])
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function isEffectName(tokens: Token[], index: number): boolean {
-  let i = index - 1
-  while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
-  if (i < 0 || tokens[i]![0] !== 'LParen')
-    return false
-  i--
-  while (i >= 0 && tokens[i]![0] === 'Whitespace') i--
-  if (i < 0 || tokens[i]![0] !== 'Symbol' || tokens[i]![1] !== 'effect')
-    return false
-  let j = index + 1
-  while (j < tokens.length && tokens[j]![0] === 'Whitespace') j++
-  if (j >= tokens.length || tokens[j]![0] !== 'RParen')
-    return false
-  return true
+/**
+ * If the token at `index` is part of a dotted name inside `effect(...)`,
+ * return the effect color. Otherwise return null.
+ * Handles: effect(dvala.io.println) — tokens: effect ( dvala . io . println )
+ */
+function getEffectColor(tokens: Token[], index: number): string | null {
+  const token = tokens[index]!
+  // Only Symbol and Operator '.' can be part of an effect name
+  if (token[0] !== 'Symbol' && !(token[0] === 'Operator' && token[1] === '.'))
+    return null
+
+  // Walk backward past Symbol/dot pairs to find the start of the dotted name
+  let start = index
+  while (start > 0) {
+    const prev = tokens[start - 1]!
+    if (prev[0] === 'Operator' && prev[1] === '.') {
+      if (start >= 2 && tokens[start - 2]![0] === 'Symbol') {
+        start -= 2
+      } else break
+    } else if (prev[0] === 'Symbol' && start < tokens.length - 1) {
+      const next = tokens[start]!
+      if (next[0] === 'Operator' && next[1] === '.') {
+        start--
+      } else break
+    } else break
+  }
+
+  // Walk forward past Symbol/dot pairs to find the end
+  let end = index
+  while (end < tokens.length - 1) {
+    const next = tokens[end + 1]!
+    if (next[0] === 'Operator' && next[1] === '.') {
+      if (end + 2 < tokens.length && tokens[end + 2]![0] === 'Symbol') {
+        end += 2
+      } else break
+    } else if (next[0] === 'Symbol' && end > 0) {
+      const prev = tokens[end]!
+      if (prev[0] === 'Operator' && prev[1] === '.') {
+        end++
+      } else break
+    } else break
+  }
+
+  // Check that we're preceded by effect( and followed by )
+  let before = start - 1
+  while (before >= 0 && tokens[before]![0] === 'Whitespace') before--
+  if (before < 0 || tokens[before]![0] !== 'LParen') return null
+  before--
+  while (before >= 0 && tokens[before]![0] === 'Whitespace') before--
+  if (before < 0 || tokens[before]![0] !== 'Symbol' || tokens[before]![1] !== 'effect') return null
+
+  let after = end + 1
+  while (after < tokens.length && tokens[after]![0] === 'Whitespace') after++
+  if (after >= tokens.length || tokens[after]![0] !== 'RParen') return null
+
+  // Build the full dotted name
+  const fullName = tokens.slice(start, end + 1).map(t => t[1]).join('')
+
+  if (standardEffectNames.has(fullName)) return colors.Blue
+  if (playgroundEffectNames.has(fullName)) return colors.Teal
+  return colors.SkyLavender
 }
 
 function getTokenColor(token: Token, tokens: Token[], index: number): string | null {
@@ -47,17 +100,16 @@ function getTokenColor(token: Token, tokens: Token[], index: number): string | n
     case 'TemplateString':
     case 'RegexpShorthand':
       return colors.Pink
-    case 'Symbol':
-      if (isEffectName(tokens, index)) {
-        return standardEffectNames.has(token[1])
-          ? colors.Blue
-          : colors.SkyLavender
-      }
+    case 'Symbol': {
+      const effectColor = getEffectColor(tokens, index)
+      if (effectColor) return effectColor
+      if (effectConstructs.has(token[1])) return colors.EffectConstruct
       return specialExpressionSet.has(token[1])
         ? colors.BrightYellow
         : normalExpressionSet.has(token[1])
           ? colors.Beige
           : colors.Mint
+    }
     case 'BasePrefixedNumber':
     case 'Number':
       return colors.Viola
@@ -67,7 +119,13 @@ function getTokenColor(token: Token, tokens: Token[], index: number): string | n
       return colors.Gray500
     case 'ReservedSymbol':
       return colors.BrightYellow
-    case 'Operator':
+    case 'Operator': {
+      if (token[1] === '.') {
+        const effectColor = getEffectColor(tokens, index)
+        if (effectColor) return effectColor
+      }
+      return colors.Gray300
+    }
     case 'LBrace':
     case 'RBrace':
     case 'LBracket':
@@ -184,6 +242,10 @@ export class SyntaxOverlay {
     if (code === this.lastCode)
       return
     this.lastCode = code
+
+    // Reset textarea size so the grid cell can shrink when content gets smaller
+    this.textarea.style.height = ''
+    this.textarea.style.width = ''
 
     this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
     this.updateLineNumbers(code)

@@ -348,6 +348,7 @@ function getSettingsPage(): string {
         ${tabBtn('dvala', 'Dvala')}
         ${tabBtn('playground', 'Playground')}
         ${tabBtn('actions', 'Actions')}
+        <button id="settings-tab-btn-developer" class="settings-tab-btn" style="display:none" onclick="Playground.showSettingsTab('developer')">Developer</button>
       </div>
 
       <div id="settings-tab-dvala" class="settings-tab-content">
@@ -367,6 +368,12 @@ function getSettingsPage(): string {
           ${toggle('settings-checkpoint-toggle', 'Intercept checkpoints', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
           ${toggle('settings-intercept-unhandled-toggle', 'Intercept unhandled', 'Shows modal for effects without a handler.', 'Playground.toggleInterceptUnhandled()')}
         </div>
+        ${toggle('settings-playground-developer-toggle', 'Playground developer', 'Enables the Developer tab with color palette and design tokens.', 'Playground.togglePlaygroundDeveloper()')}
+      </div>
+
+      <div id="settings-tab-developer" class="settings-tab-content">
+        <p class="settings-tab-content__desc">Design tokens and color palette for the playground theme.</p>
+        <div id="settings-color-palette"></div>
       </div>
 
       <div id="settings-tab-actions" class="settings-tab-content">
