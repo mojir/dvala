@@ -136,6 +136,10 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseReservedSymbol(ctx)
     case 'RegexpShorthand':
       return parseRegexpShorthand(ctx)
+    case 'EffectName': {
+      ctx.advance()
+      return withSourceCodeInfo([NodeTypes.EffectName, token[1]], token[2])
+    }
 
     default:
       throw new DvalaError(`Unknown token type: ${tokenType}`, token[2])

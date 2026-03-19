@@ -10,6 +10,7 @@ export const tokenTypes = [
   'LParen',
   'RParen',
   'BasePrefixedNumber',
+  'EffectName',
   'Error',
   'MultiLineComment',
   'Number',
@@ -37,6 +38,7 @@ export type RBraceToken = GenericToken<'RBrace', '}'>
 export type RBracketToken = GenericToken<'RBracket', ']'>
 export type RParenToken = GenericToken<'RParen', ')'>
 
+export type EffectNameToken = GenericToken<'EffectName'>
 export type BasePrefixedNumberToken = GenericToken<'BasePrefixedNumber'>
 export type MultiLineCommentToken = GenericToken<'MultiLineComment'>
 export type NumberToken = GenericToken<'Number'>
@@ -57,6 +59,7 @@ export type Token =
   | RBraceToken
   | RBracketToken
   | RParenToken
+  | EffectNameToken
   | BasePrefixedNumberToken
   | ErrorToken
   | MultiLineCommentToken
@@ -99,6 +102,19 @@ export function assertSymbolToken<T extends string>(token: Token | undefined, sy
 }
 export function asSymbolToken<T extends string>(token: Token | undefined, symbolName?: T): SymbolToken<T> {
   assertSymbolToken(token, symbolName)
+  return token
+}
+
+export function isEffectNameToken(token: Token | undefined): token is EffectNameToken {
+  return token?.[0] === 'EffectName'
+}
+export function assertEffectNameToken(token: Token | undefined): asserts token is EffectNameToken {
+  if (!isEffectNameToken(token)) {
+    throwUnexpectedToken('EffectName', undefined, token)
+  }
+}
+export function asEffectNameToken(token: Token | undefined): EffectNameToken {
+  assertEffectNameToken(token)
   return token
 }
 

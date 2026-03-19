@@ -142,6 +142,7 @@ export type NormalBuiltinSymbolNode = AstNode<typeof NodeTypes.NormalBuiltinSymb
 export type SpecialBuiltinSymbolNode = AstNode<typeof NodeTypes.SpecialBuiltinSymbol, SpecialExpressionType>
 export type SymbolNode = UserDefinedSymbolNode | NormalBuiltinSymbolNode | SpecialBuiltinSymbolNode
 export type ReservedSymbolNode = AstNode<typeof NodeTypes.ReservedSymbol, ReservedSymbol>
+export type EffectNameNode = AstNode<typeof NodeTypes.EffectName, string>
 export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
 export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.NormalExpression, [NormalBuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]

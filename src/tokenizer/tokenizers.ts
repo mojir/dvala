@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -34,6 +34,7 @@ const illegalFirstSymbolCharacters = [
   '7',
   '8',
   '9',
+  '@',
   ...illegalSymbolCharacters,
 ]
 const illegalSymbolCharacterSet = new Set(illegalSymbolCharacters)
@@ -256,6 +257,49 @@ export const tokenizeBasePrefixedNumber: Tokenizer<BasePrefixedNumberToken> = (i
   }
 
   return [length, ['BasePrefixedNumber', input.substring(position, i)]]
+}
+
+/**
+ * Tokenize effect name literal: @segment.segment.segment
+ * At least one dot required. Each segment follows symbol naming rules.
+ * The token value is the name without the @ prefix.
+ */
+export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) => {
+  if (input[position] !== '@') return NO_MATCH
+
+  let i = position + 1
+  let name = ''
+  let dotCount = 0
+
+  // Parse first segment
+  const firstChar = input[i]
+  if (!firstChar || illegalFirstSymbolCharacterSet.has(firstChar)) return NO_MATCH
+
+  while (i < input.length && !illegalSymbolCharacterSet.has(input[i]!)) {
+    name += input[i]
+    i++
+  }
+
+  // Parse .segment pairs
+  while (i < input.length && input[i] === '.') {
+    const dotPos = i
+    i++ // skip dot
+    const segStart = i
+    if (i >= input.length || illegalFirstSymbolCharacterSet.has(input[i]!)) {
+      // Dot not followed by valid segment — backtrack to before the dot
+      i = dotPos
+      break
+    }
+    while (i < input.length && !illegalSymbolCharacterSet.has(input[i]!)) {
+      i++
+    }
+    name += `.${input.slice(segStart, i)}`
+    dotCount++
+  }
+
+  if (dotCount === 0) return NO_MATCH // At least one dot required
+
+  return [i - position, ['EffectName', name]]
 }
 
 export const tokenizeSymbol: Tokenizer<SymbolToken> = (input, position) => {
@@ -498,5 +542,6 @@ export const tokenizers = [
   tokenizeBasePrefixedNumber,
   tokenizeNumber,
   tokenizeOperator,
+  tokenizeEffectName,
   tokenizeSymbol,
 ] as const satisfies Tokenizer<Token>[]
