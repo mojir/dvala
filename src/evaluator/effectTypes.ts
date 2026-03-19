@@ -171,7 +171,7 @@ export interface EffectContext {
   /**
    * Explicitly capture a snapshot at the current continuation point.
    * Returns the new Snapshot. This is the host-side equivalent of
-   * `perform(effect(dvala.checkpoint))`.
+   * `perform(@dvala.checkpoint)`.
    */
   checkpoint: (message: string, meta?: Any) => Snapshot
 

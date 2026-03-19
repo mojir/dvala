@@ -371,7 +371,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       description: 'Returns `true` if $x is an effect, otherwise `false`.',
       seeAlso: ['effect', 'effect-name', 'effect-matcher', 'perform', 'type-of'],
       examples: [
-        'effect?(effect(dvala.io.println))',
+        'effect?(@dvala.io.println)',
         'effect?(42)',
         'effect?("hello")',
         'effect?(null)',

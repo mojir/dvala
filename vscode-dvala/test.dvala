@@ -11,5 +11,5 @@ let robotify = (input) -> do
   ">>> INITIATING TRANSMISSION... " ++ join(stuttered, "... ") ++ "... BEEP BOOP. END TRANSMISSION <<<"
 end;
 
-let input = perform(effect(dvala.io.read-line), "Enter a message: ");
+let input = perform(@dvala.io.read-line, "Enter a message: ");
 robotify(input)

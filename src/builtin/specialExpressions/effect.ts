@@ -7,7 +7,7 @@ export type EffectNode = SpecialExpressionNode<[typeof specialExpressionTypes['e
 const docs: CustomDocs = {
   category: 'special-expression',
   customVariants: [
-    'effect(name)',
+    '@name',
   ],
   details: [
     ['name', 'dotted identifier', 'The effect name, e.g. `llm.complete` or `dvala.io.println`.'],
@@ -16,8 +16,8 @@ const docs: CustomDocs = {
     + 'Calling `effect` with the same name always returns the same reference. '
     + 'Effect references are first-class values that can be stored, passed, and compared with `==`.',
   examples: [
-    'effect(dvala.io.println)',
-    '==(effect(llm.complete), effect(llm.complete))',
+    '@dvala.io.println',
+    '==(@llm.complete, @llm.complete)',
   ],
   seeAlso: ['effect?'],
 }

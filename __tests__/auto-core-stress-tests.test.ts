@@ -64,7 +64,7 @@ describe('round-trip: tokenize → untokenize', () => {
     'match { name: "alice" } case { name } then name end',
 
     // do/with
-    'do perform(effect(my.eff)) with case effect(my.eff) then (args) -> 42 end',
+    'do perform(@my.eff) with case @my.eff then (args) -> 42 end',
 
     // Operators
     '1 + 2 * 3',

@@ -44,12 +44,12 @@ describe('stress: parallel + checkpoints', () => {
     // Branches run via independent runEffectLoop calls without shared snapshotState
     let outerSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "loc outer", { loc: "outer" });
+      perform(@dvala.checkpoint, "loc outer", { loc: "outer" });
       let results = parallel(
-        perform(effect(my.op), "a"),
-        perform(effect(my.op), "b")
+        perform(@my.op, "a"),
+        perform(@my.op, "b")
       );
-      perform(effect(my.check));
+      perform(@my.check);
       results
     `, {
       effectHandlers: [
@@ -77,9 +77,9 @@ describe('stress: parallel + checkpoints', () => {
 
     const r1 = await dvala.runAsync(`
       parallel(
-        perform(effect(my.ask), "q1"),
-        perform(effect(my.ask), "q2"),
-        perform(effect(my.ask), "q3")
+        perform(@my.ask, "q1"),
+        perform(@my.ask, "q2"),
+        perform(@my.ask, "q3")
       )
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -109,8 +109,8 @@ describe('stress: parallel + checkpoints', () => {
 
     const r1 = await dvala.runAsync(`
       let results = parallel(
-        perform(effect(my.fast)),
-        perform(effect(my.slow))
+        perform(@my.fast),
+        perform(@my.slow)
       );
       map(results, -> upper-case($))
     `, { effectHandlers: handlers })
@@ -129,7 +129,7 @@ describe('stress: parallel + checkpoints', () => {
     const result = await dvala.runAsync(`
       parallel(
         1 + 2,
-        perform(effect(dvala.error), "branch error"),
+        perform(@dvala.error, "branch error"),
         3 + 4
       )
     `)
@@ -139,13 +139,13 @@ describe('stress: parallel + checkpoints', () => {
   it('parallel + checkpoint before and after', async () => {
     let capturedSnapshots: readonly Snapshot[] = []
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "pos before-parallel", { pos: "before-parallel" });
+      perform(@dvala.checkpoint, "pos before-parallel", { pos: "before-parallel" });
       let results = parallel(
-        perform(effect(my.op), 1),
-        perform(effect(my.op), 2)
+        perform(@my.op, 1),
+        perform(@my.op, 2)
       );
-      perform(effect(dvala.checkpoint), "pos after-parallel", { pos: "after-parallel" });
-      perform(effect(my.check));
+      perform(@dvala.checkpoint, "pos after-parallel", { pos: "after-parallel" });
+      perform(@my.check);
       results
     `, {
       effectHandlers: [
@@ -188,8 +188,8 @@ describe('stress: race + checkpoints/suspend', () => {
   it('race where all branches suspend returns suspended with branch metas', async () => {
     const result = await dvala.runAsync(`
       race(
-        perform(effect(my.a)),
-        perform(effect(my.b))
+        perform(@my.a),
+        perform(@my.b)
       )
     `, {
       effectHandlers: [
@@ -210,8 +210,8 @@ describe('stress: race + checkpoints/suspend', () => {
   it('race with one completing and one suspending picks completed', async () => {
     const result = await dvala.runAsync(`
       race(
-        perform(effect(my.fast)),
-        perform(effect(my.slow))
+        perform(@my.fast),
+        perform(@my.slow)
       )
     `, {
       effectHandlers: [
@@ -232,8 +232,8 @@ describe('stress: race + checkpoints/suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let winner = race(
-        perform(effect(my.a)),
-        perform(effect(my.b))
+        perform(@my.a),
+        perform(@my.b)
       );
       "winner: " ++ winner
     `, { effectHandlers: handlers })
@@ -248,8 +248,8 @@ describe('stress: race + checkpoints/suspend', () => {
   it('race with all branches erroring produces aggregate error', async () => {
     const result = await dvala.runAsync(`
       race(
-        perform(effect(dvala.error), "err-1"),
-        perform(effect(dvala.error), "err-2")
+        perform(@dvala.error, "err-1"),
+        perform(@dvala.error, "err-2")
       )
     `)
     expect(result.type).toBe('error')
@@ -262,12 +262,12 @@ describe('stress: race + checkpoints/suspend', () => {
     const result = await dvala.runAsync(`
       parallel(
         race(
-          perform(effect(my.slow)),
-          perform(effect(my.fast))
+          perform(@my.slow),
+          perform(@my.fast)
         ),
         race(
-          perform(effect(my.fast)),
-          perform(effect(my.slow))
+          perform(@my.fast),
+          perform(@my.slow)
         )
       )
     `, {
@@ -291,7 +291,7 @@ describe('stress: race + checkpoints/suspend', () => {
 describe('stress: next() middleware + suspend/fail', () => {
   it('next() then suspend in final handler', async () => {
     const log: string[] = []
-    const result = await dvala.runAsync('perform(effect(my.effect), "data")', {
+    const result = await dvala.runAsync('perform(@my.effect, "data")', {
       effectHandlers: [
         { pattern: '*', handler: async ({ next }) => {
           log.push('middleware')
@@ -322,7 +322,7 @@ describe('stress: next() middleware + suspend/fail', () => {
       } },
     ]
 
-    const r1 = await dvala.runAsync('let x = perform(effect(my.wait)); x * 2', { effectHandlers: handlers })
+    const r1 = await dvala.runAsync('let x = perform(@my.wait); x * 2', { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
@@ -336,9 +336,9 @@ describe('stress: next() middleware + suspend/fail', () => {
     const log: string[] = []
     const result = await dvala.runAsync(`
       do
-        perform(effect(my.effect), "data")
+        perform(@my.effect, "data")
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -379,7 +379,7 @@ describe('stress: next() middleware + suspend/fail', () => {
       } },
     ]
 
-    const r1 = await dvala.runAsync('let x = perform(effect(my.wait)); x', { effectHandlers: handlers })
+    const r1 = await dvala.runAsync('let x = perform(@my.wait); x', { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
       return
@@ -392,9 +392,9 @@ describe('stress: next() middleware + suspend/fail', () => {
   it('next() to unhandled effect is caught by dvala.error handler', async () => {
     const result = await dvala.runAsync(`
       do
-        perform(effect(no.handler), "payload")
+        perform(@no.handler, "payload")
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -418,9 +418,9 @@ describe('stress: local + host handler priority with suspend', () => {
   it('local handler catches effect even when host handler exists', async () => {
     const result = await dvala.runAsync(`
       do
-        perform(effect(my.eff), 10)
+        perform(@my.eff, 10)
       with
-        case effect(my.eff) then ([x]) -> x * 3
+        case @my.eff then ([x]) -> x * 3
       end
     `, {
       effectHandlers: [
@@ -437,11 +437,11 @@ describe('stress: local + host handler priority with suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       do
-        perform(effect(my.local), x)
+        perform(@my.local, x)
       with
-        case effect(my.local) then ([v]) -> v * 2
+        case @my.local then ([v]) -> v * 2
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -459,14 +459,14 @@ describe('stress: local + host handler priority with suspend', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        let x = perform(effect(my.wait));
+        let x = perform(@my.wait);
         do
-          perform(effect(outer.eff), x)
+          perform(@outer.eff, x)
         with
-          case effect(inner.eff) then ([v]) -> "inner: " ++ v
+          case @inner.eff then ([v]) -> "inner: " ++ v
         end
       with
-        case effect(outer.eff) then ([v]) -> "outer: " ++ v
+        case @outer.eff then ([v]) -> "outer: " ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -486,16 +486,16 @@ describe('stress: local + host handler priority with suspend', () => {
       do
         do
           do
-            let x = perform(effect(my.wait));
-            perform(effect(level3), x)
+            let x = perform(@my.wait);
+            perform(@level3, x)
           with
-            case effect(level3) then ([v]) -> "L3:" ++ v
+            case @level3 then ([v]) -> "L3:" ++ v
           end
         with
-          case effect(level2) then ([v]) -> "L2:" ++ v
+          case @level2 then ([v]) -> "L2:" ++ v
         end
       with
-        case effect(level1) then ([v]) -> "L1:" ++ v
+        case @level1 then ([v]) -> "L1:" ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -513,8 +513,8 @@ describe('stress: local + host handler priority with suspend', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        let x = perform(effect(my.wait));
-        perform(effect(custom.foo), x)
+        let x = perform(@my.wait);
+        perform(@custom.foo, x)
       with
         case effect-matcher("custom.*")
         then ([v]) -> "matched: " ++ v
@@ -543,7 +543,7 @@ describe('stress: deep closures + effects + suspend', () => {
       let make-adder = (a) -> (b) -> (c) -> a + b + c;
       let add10 = make-adder(10);
       let add10and20 = add10(20);
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       add10and20(x)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -563,7 +563,7 @@ describe('stress: deep closures + effects + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let fns = map([1, 2, 3], (n) -> (x) -> n * x);
-      let factor = perform(effect(my.wait));
+      let factor = perform(@my.wait);
       map(fns, (f) -> f(factor))
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -581,7 +581,7 @@ describe('stress: deep closures + effects + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let pipeline = comp(inc, (x) -> x * 2, dec);
-      let input = perform(effect(my.wait));
+      let input = perform(@my.wait);
       pipeline(input)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -603,7 +603,7 @@ describe('stress: deep closures + effects + suspend', () => {
         if n <= 1 then 1
         else n * factorial(n - 1)
         end;
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       factorial(x)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -622,7 +622,7 @@ describe('stress: deep closures + effects + suspend', () => {
     const r1 = await dvala.runAsync(`
       let make-scaler = (factor) -> (arr) -> map(arr, (x) -> x * factor);
       let scale3 = make-scaler(3);
-      let data = perform(effect(my.wait));
+      let data = perform(@my.wait);
       scale3(data)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -644,12 +644,12 @@ describe('stress: cascading effects', () => {
   it('handler resume value triggers another perform', async () => {
     const result = await dvala.runAsync(`
       do
-        let x = perform(effect(my.first));
-        let y = perform(effect(my.second), x);
+        let x = perform(@my.first);
+        let y = perform(@my.second, x);
         y
       with
-        case effect(my.first) then (args) -> 10
-        case effect(my.second) then ([v]) -> v * 2
+        case @my.first then (args) -> 10
+        case @my.second then ([v]) -> v * 2
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 20 })
@@ -657,8 +657,8 @@ describe('stress: cascading effects', () => {
 
   it('host handler resume triggers another host effect', async () => {
     const result = await dvala.runAsync(`
-      let x = perform(effect(my.step1));
-      let y = perform(effect(my.step2), x);
+      let x = perform(@my.step1);
+      let y = perform(@my.step2, x);
       x + y
     `, {
       effectHandlers: [
@@ -673,10 +673,10 @@ describe('stress: cascading effects', () => {
   it('local handler triggers host effect', async () => {
     const result = await dvala.runAsync(`
       do
-        let x = perform(effect(my.local));
-        perform(effect(my.host), x)
+        let x = perform(@my.local);
+        perform(@my.host, x)
       with
-        case effect(my.local) then (args) -> 5
+        case @my.local then (args) -> 5
       end
     `, {
       effectHandlers: [
@@ -689,11 +689,11 @@ describe('stress: cascading effects', () => {
   it('error in cascading effect caught by outer handler', async () => {
     const result = await dvala.runAsync(`
       do
-        let x = perform(effect(my.first));
-        perform(effect(dvala.error), "cascade error: " ++ x)
+        let x = perform(@my.first);
+        perform(@dvala.error, "cascade error: " ++ x)
       with
-        case effect(my.first) then (args) -> "triggered"
-        case effect(dvala.error) then ([msg]) -> msg
+        case @my.first then (args) -> "triggered"
+        case @dvala.error then ([msg]) -> msg
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 'cascade error: triggered' })
@@ -711,11 +711,11 @@ describe('stress: loop/recur + effects', () => {
         loop(i = 0, acc = 0) ->
           if i >= 3 then acc
           else
-            let v = perform(effect(my.get), i);
+            let v = perform(@my.get, i);
             recur(i + 1, acc + v)
           end
       with
-        case effect(my.get) then ([n]) -> n * 10
+        case @my.get then ([n]) -> n * 10
       end
     `)
     expect(result).toBe(30) // 0*10 + 1*10 + 2*10
@@ -726,7 +726,7 @@ describe('stress: loop/recur + effects', () => {
       loop(i = 0, acc = "") ->
         if i >= 3 then acc
         else
-          let v = perform(effect(my.get), i);
+          let v = perform(@my.get, i);
           recur(i + 1, if acc == "" then v else acc ++ ", " ++ v end)
         end
     `, {
@@ -743,7 +743,7 @@ describe('stress: loop/recur + effects', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let start = perform(effect(my.init));
+      let start = perform(@my.init);
       loop(i = start, acc = 0) ->
         if i >= 5 then acc
         else recur(i + 1, acc + i)
@@ -762,7 +762,7 @@ describe('stress: loop/recur + effects', () => {
     const collected: number[] = []
     const result = await dvala.runAsync(`
       for (i in [1, 2, 3, 4, 5]) ->
-        perform(effect(my.process), i)
+        perform(@my.process, i)
     `, {
       effectHandlers: [
         { pattern: 'my.process', handler: async ({ args, resume: r }) => {
@@ -778,9 +778,9 @@ describe('stress: loop/recur + effects', () => {
   it('reduce with effect in reducer function', async () => {
     const result = await dvala.runAsync(`
       do
-        reduce([1, 2, 3], (acc, x) -> acc + perform(effect(my.transform), x), 0)
+        reduce([1, 2, 3], (acc, x) -> acc + perform(@my.transform, x), 0)
       with
-        case effect(my.transform) then ([x]) -> x * x
+        case @my.transform then ([x]) -> x * x
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 14 }) // 1+4+9
@@ -798,18 +798,18 @@ describe('stress: deeply nested do/with + suspend', () => {
         do
           do
             do
-              perform(effect(deep), 1)
+              perform(@deep, 1)
             with
-              case effect(deep) then ([x]) -> x + 10
+              case @deep then ([x]) -> x + 10
             end
           with
-            case effect(level3) then ([x]) -> x
+            case @level3 then ([x]) -> x
           end
         with
-          case effect(level2) then ([x]) -> x
+          case @level2 then ([x]) -> x
         end
       with
-        case effect(level1) then ([x]) -> x
+        case @level1 then ([x]) -> x
       end
     `)
     expect(result).toBe(11)
@@ -821,18 +821,18 @@ describe('stress: deeply nested do/with + suspend', () => {
         do
           do
             do
-              perform(effect(bubbles), "hello")
+              perform(@bubbles, "hello")
             with
-              case effect(other1) then ([x]) -> "wrong1"
+              case @other1 then ([x]) -> "wrong1"
             end
           with
-            case effect(other2) then ([x]) -> "wrong2"
+            case @other2 then ([x]) -> "wrong2"
           end
         with
-          case effect(other3) then ([x]) -> "wrong3"
+          case @other3 then ([x]) -> "wrong3"
         end
       with
-        case effect(bubbles) then ([x]) -> "correct: " ++ x
+        case @bubbles then ([x]) -> "correct: " ++ x
       end
     `)
     expect(result).toBe('correct: hello')
@@ -846,13 +846,13 @@ describe('stress: deeply nested do/with + suspend', () => {
     const r1 = await dvala.runAsync(`
       do
         do
-          let x = perform(effect(my.wait));
-          perform(effect(inner), x)
+          let x = perform(@my.wait);
+          perform(@inner, x)
         with
-          case effect(inner) then ([v]) -> v ++ "!"
+          case @inner then ([v]) -> v ++ "!"
         end
       with
-        case effect(dvala.error) then ([msg]) -> "error: " ++ msg
+        case @dvala.error then ([msg]) -> "error: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -871,15 +871,15 @@ describe('stress: deeply nested do/with + suspend', () => {
     const r1 = await dvala.runAsync(`
       do
         do
-          let x = perform(effect(my.wait));
-          if x == "bad" then perform(effect(dvala.error), "bad input")
+          let x = perform(@my.wait);
+          if x == "bad" then perform(@dvala.error, "bad input")
           else x
           end
         with
-          case effect(some.other) then ([v]) -> v
+          case @some.other then ([v]) -> v
         end
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -901,13 +901,13 @@ describe('stress: effect-matcher in complex flows', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(custom.thing), "data")
+          perform(@custom.thing, "data")
         with
           case effect-matcher("custom.*")
           then ([v]) -> "matched: " ++ v
         end
       with
-        case effect(dvala.error) then ([msg]) -> "error: " ++ msg
+        case @dvala.error then ([msg]) -> "error: " ++ msg
       end
     `)
     expect(result).toBe('matched: data')
@@ -920,8 +920,8 @@ describe('stress: effect-matcher in complex flows', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        let x = perform(effect(my.wait));
-        perform(effect(app.transform), x)
+        let x = perform(@my.wait);
+        perform(@app.transform, x)
       with
         case effect-matcher(#"^app\\.")
         then ([v]) -> "transformed: " ++ v
@@ -940,7 +940,7 @@ describe('stress: effect-matcher in complex flows', () => {
   it('multiple effect-matchers in same do/with, first match wins', () => {
     const result = dvala.run(`
       do
-        perform(effect(custom.foo), "data")
+        perform(@custom.foo, "data")
       with
         case effect-matcher("custom.*")
         then ([v]) -> "wildcard: " ++ v
@@ -955,7 +955,7 @@ describe('stress: effect-matcher in complex flows', () => {
     const result = dvala.run(`
       let is-custom = effect-matcher("custom.*");
       do
-        perform(effect(custom.bar), 42)
+        perform(@custom.bar, 42)
       with
         case is-custom
         then ([v]) -> v * 2
@@ -977,17 +977,17 @@ describe('stress: dedup pool with many checkpoints', () => {
 
     // Take 10 checkpoints, then suspend — should share AST sub-trees
     const r1 = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      perform(effect(dvala.checkpoint), "n 3", { n: 3 });
-      perform(effect(dvala.checkpoint), "n 4", { n: 4 });
-      perform(effect(dvala.checkpoint), "n 5", { n: 5 });
-      perform(effect(dvala.checkpoint), "n 6", { n: 6 });
-      perform(effect(dvala.checkpoint), "n 7", { n: 7 });
-      perform(effect(dvala.checkpoint), "n 8", { n: 8 });
-      perform(effect(dvala.checkpoint), "n 9", { n: 9 });
-      perform(effect(dvala.checkpoint), "n 10", { n: 10 });
-      let x = perform(effect(my.wait));
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      perform(@dvala.checkpoint, "n 3", { n: 3 });
+      perform(@dvala.checkpoint, "n 4", { n: 4 });
+      perform(@dvala.checkpoint, "n 5", { n: 5 });
+      perform(@dvala.checkpoint, "n 6", { n: 6 });
+      perform(@dvala.checkpoint, "n 7", { n: 7 });
+      perform(@dvala.checkpoint, "n 8", { n: 8 });
+      perform(@dvala.checkpoint, "n 9", { n: 9 });
+      perform(@dvala.checkpoint, "n 10", { n: 10 });
+      let x = perform(@my.wait);
       x
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1011,9 +1011,9 @@ describe('stress: dedup pool with many checkpoints', () => {
       let make-fn = (n) -> (x) -> n + x;
       let f1 = make-fn(1);
       let f2 = make-fn(2);
-      perform(effect(dvala.checkpoint), "fn f1", { fn: "f1" });
-      perform(effect(dvala.checkpoint), "fn f2", { fn: "f2" });
-      let input = perform(effect(my.wait));
+      perform(@dvala.checkpoint, "fn f1", { fn: "f1" });
+      perform(@dvala.checkpoint, "fn f2", { fn: "f2" });
+      let input = perform(@my.wait);
       [f1(input), f2(input)]
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1034,15 +1034,15 @@ describe('stress: dedup pool with many checkpoints', () => {
     let capturedSnapshots: readonly Snapshot[] = []
 
     await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "n 1", { n: 1 });
-      perform(effect(dvala.checkpoint), "n 2", { n: 2 });
-      perform(effect(dvala.checkpoint), "n 3", { n: 3 });
-      perform(effect(dvala.checkpoint), "n 4", { n: 4 });
-      perform(effect(dvala.checkpoint), "n 5", { n: 5 });
-      perform(effect(dvala.checkpoint), "n 6", { n: 6 });
-      perform(effect(dvala.checkpoint), "n 7", { n: 7 });
-      perform(effect(dvala.checkpoint), "n 8", { n: 8 });
-      perform(effect(my.check))
+      perform(@dvala.checkpoint, "n 1", { n: 1 });
+      perform(@dvala.checkpoint, "n 2", { n: 2 });
+      perform(@dvala.checkpoint, "n 3", { n: 3 });
+      perform(@dvala.checkpoint, "n 4", { n: 4 });
+      perform(@dvala.checkpoint, "n 5", { n: 5 });
+      perform(@dvala.checkpoint, "n 6", { n: 6 });
+      perform(@dvala.checkpoint, "n 7", { n: 7 });
+      perform(@dvala.checkpoint, "n 8", { n: 8 });
+      perform(@my.check)
     `, {
       maxSnapshots: 3,
       effectHandlers: [
@@ -1071,7 +1071,7 @@ describe('stress: host bindings across complex flows', () => {
 
     const r1 = await dvala.runAsync(`
       let before = prefix ++ "before";
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       let after = prefix ++ x;
       [before, after]
     `, {
@@ -1095,7 +1095,7 @@ describe('stress: host bindings across complex flows', () => {
 
     const r1 = await dvala.runAsync(`
       let scale = (x) -> x * factor;
-      let input = perform(effect(my.wait));
+      let input = perform(@my.wait);
       scale(input)
     `, {
       bindings: { factor: 7 },
@@ -1117,7 +1117,7 @@ describe('stress: host bindings across complex flows', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       x + offset
     `, {
       bindings: { offset: 100 },
@@ -1144,12 +1144,12 @@ describe('stress: error propagation through effect stacks', () => {
     const result = dvala.run(`
       do
         do
-          perform(effect(my.eff), 1)
+          perform(@my.eff, 1)
         with
-          case effect(my.eff) then ([x]) -> 0 / 0
+          case @my.eff then ([x]) -> 0 / 0
         end
       with
-        case effect(dvala.error) then ([msg]) -> msg
+        case @dvala.error then ([msg]) -> msg
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -1158,9 +1158,9 @@ describe('stress: error propagation through effect stacks', () => {
   it('host handler fail() caught by local do/with', async () => {
     const result = await dvala.runAsync(`
       do
-        perform(effect(my.eff))
+        perform(@my.eff)
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -1177,13 +1177,13 @@ describe('stress: error propagation through effect stacks', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        let a = perform(effect(my.step), 1);
-        let b = perform(effect(my.step), 2);
-        if b == "error" then perform(effect(dvala.error), "bad: " ++ a ++ b)
+        let a = perform(@my.step, 1);
+        let b = perform(@my.step, 2);
+        if b == "error" then perform(@dvala.error, "bad: " ++ a ++ b)
         else a ++ b
         end
       with
-        case effect(dvala.error) then ([msg]) -> msg
+        case @dvala.error then ([msg]) -> msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1201,7 +1201,7 @@ describe('stress: error propagation through effect stacks', () => {
   })
 
   it('unhandled effect produces error result (not exception)', async () => {
-    const result = await dvala.runAsync('perform(effect(no.handler.exists), "data")')
+    const result = await dvala.runAsync('perform(@no.handler.exists, "data")')
     expect(result.type).toBe('error')
     if (result.type === 'error') {
       expect(result.error.message).toContain('Unhandled effect')
@@ -1215,10 +1215,10 @@ describe('stress: error propagation through effect stacks', () => {
 
     const r1 = await dvala.runAsync(`
       do
-        let x = perform(effect(my.wait));
+        let x = perform(@my.wait);
         x / 0
       with
-        case effect(dvala.error) then ([msg]) -> "div-error: " ++ msg
+        case @dvala.error then ([msg]) -> "div-error: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1250,7 +1250,7 @@ describe('stress: complex data through suspend/resume', () => {
         e: [[4, 5], [6, 7]],
         f: "hello"
       };
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       { result: data, input: x }
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1274,7 +1274,7 @@ describe('stress: complex data through suspend/resume', () => {
 
     const r1 = await dvala.runAsync(`
       let data = range(100);
-      let x = perform(effect(my.wait));
+      let x = perform(@my.wait);
       push(data, x)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1301,7 +1301,7 @@ describe('stress: complex data through suspend/resume', () => {
 
     const r1 = await dvala.runAsync(`
       let greet = (name) -> "Hello, " ++ upper-case(name) ++ "!";
-      let name = perform(effect(my.wait));
+      let name = perform(@my.wait);
       greet(name)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1319,7 +1319,7 @@ describe('stress: complex data through suspend/resume', () => {
 
     const r1 = await dvala.runAsync(`
       let pattern = #"(\\d+)";
-      let input = perform(effect(my.wait));
+      let input = perform(@my.wait);
       first(re-match(input, pattern))
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1339,9 +1339,9 @@ describe('stress: runSync edge cases', () => {
   it('runSync with local do/with handler works', () => {
     const result = dvala.run(`
       do
-        perform(effect(my.eff), 21)
+        perform(@my.eff, 21)
       with
-        case effect(my.eff) then ([x]) -> x * 2
+        case @my.eff then ([x]) -> x * 2
       end
     `)
     expect(result).toBe(42)
@@ -1350,16 +1350,16 @@ describe('stress: runSync edge cases', () => {
   it('runSync with effect but caught locally does not throw', () => {
     const result = dvala.run(`
       do
-        perform(effect(dvala.error), "oops")
+        perform(@dvala.error, "oops")
       with
-        case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then ([msg]) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: oops')
   })
 
   it('runSync throws on unhandled effect', () => {
-    expect(() => dvala.run('perform(effect(no.handler), "data")')).toThrow('Unhandled effect')
+    expect(() => dvala.run('perform(@no.handler, "data")')).toThrow('Unhandled effect')
   })
 
   it('runSync throws on parallel', () => {
@@ -1383,7 +1383,7 @@ describe('stress: suspend inside control flow', () => {
 
     const r1 = await dvala.runAsync(`
       if true then
-        let x = perform(effect(my.wait));
+        let x = perform(@my.wait);
         x * 2
       else
         0
@@ -1405,7 +1405,7 @@ describe('stress: suspend inside control flow', () => {
     const r1 = await dvala.runAsync(`
       let flag = true;
       cond
-        case flag then perform(effect(my.wait))
+        case flag then perform(@my.wait)
         case true then 0
       end
     `, { effectHandlers: handlers })
@@ -1423,7 +1423,7 @@ describe('stress: suspend inside control flow', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      true && perform(effect(my.wait))
+      true && perform(@my.wait)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -1439,7 +1439,7 @@ describe('stress: suspend inside control flow', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      false || perform(effect(my.wait))
+      false || perform(@my.wait)
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -1451,7 +1451,7 @@ describe('stress: suspend inside control flow', () => {
 
   it('|| short-circuits — no suspend when first is truthy', async () => {
     const result = await dvala.runAsync(`
-      42 || perform(effect(my.wait))
+      42 || perform(@my.wait)
     `, {
       effectHandlers: [
         { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
@@ -1462,7 +1462,7 @@ describe('stress: suspend inside control flow', () => {
 
   it('&& short-circuits — no suspend when first is falsy', async () => {
     const result = await dvala.runAsync(`
-      false && perform(effect(my.wait))
+      false && perform(@my.wait)
     `, {
       effectHandlers: [
         { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
@@ -1477,7 +1477,7 @@ describe('stress: suspend inside control flow', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let [a, b, c] = perform(effect(my.wait));
+      let [a, b, c] = perform(@my.wait);
       a + b + c
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1504,10 +1504,10 @@ describe('stress: complex end-to-end patterns', () => {
     ]
 
     const source = `
-      let raw = perform(effect(my.fetch), "report");
-      let processed = perform(effect(my.transform), raw);
-      perform(effect(dvala.checkpoint), "stage ready-for-approval", { stage: "ready-for-approval" });
-      let approval = perform(effect(my.approve), processed);
+      let raw = perform(@my.fetch, "report");
+      let processed = perform(@my.transform, raw);
+      perform(@dvala.checkpoint, "stage ready-for-approval", { stage: "ready-for-approval" });
+      let approval = perform(@my.approve, processed);
       if approval then "finalized: " ++ processed
       else "rejected"
       end
@@ -1528,8 +1528,8 @@ describe('stress: complex end-to-end patterns', () => {
     let attempt = 0
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "stage start", { stage: "start" });
-      let x = perform(effect(my.risky));
+      perform(@dvala.checkpoint, "stage start", { stage: "start" });
+      let x = perform(@my.risky);
       x * 2
     `, {
       effectHandlers: [
@@ -1550,9 +1550,9 @@ describe('stress: complex end-to-end patterns', () => {
 
   it('accumulator pattern: multiple effects building a result', async () => {
     const result = await dvala.runAsync(`
-      let a = perform(effect(my.get), 1);
-      let b = perform(effect(my.get), 2);
-      let c = perform(effect(my.get), 3);
+      let a = perform(@my.get, 1);
+      let b = perform(@my.get, 2);
+      let c = perform(@my.get, 3);
       [a, b, c]
     `, {
       effectHandlers: [
@@ -1565,7 +1565,7 @@ describe('stress: complex end-to-end patterns', () => {
   it('suspend inside map callback via host handler', async () => {
     // This tests whether map can work with async host effects
     const result = await dvala.runAsync(`
-      map([1, 2, 3], (x) -> perform(effect(my.double), x))
+      map([1, 2, 3], (x) -> perform(@my.double, x))
     `, {
       effectHandlers: [
         { pattern: 'my.double', handler: async ({ args, resume: r }) => { r((args[0] as number) * 2) } },
@@ -1577,9 +1577,9 @@ describe('stress: complex end-to-end patterns', () => {
   it('filter with effect predicate', async () => {
     const result = await dvala.runAsync(`
       do
-        filter([1, 2, 3, 4, 5, 6], (x) -> perform(effect(my.even?), x))
+        filter([1, 2, 3, 4, 5, 6], (x) -> perform(@my.even?, x))
       with
-        case effect(my.even?) then ([x]) -> x % 2 == 0
+        case @my.even? then ([x]) -> x % 2 == 0
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: [2, 4, 6] })
@@ -1589,13 +1589,13 @@ describe('stress: complex end-to-end patterns', () => {
     let snapshotsAtEnd: readonly Snapshot[] = []
 
     const result = await dvala.runAsync(`
-      perform(effect(dvala.checkpoint), "phase 1", { phase: 1 });
-      let a = perform(effect(my.compute), 1);
-      perform(effect(dvala.checkpoint), "phase 2", { phase: 2 });
-      let b = perform(effect(my.compute), 2);
-      perform(effect(dvala.checkpoint), "phase 3", { phase: 3 });
-      let c = perform(effect(my.compute), 3);
-      perform(effect(my.report));
+      perform(@dvala.checkpoint, "phase 1", { phase: 1 });
+      let a = perform(@my.compute, 1);
+      perform(@dvala.checkpoint, "phase 2", { phase: 2 });
+      let b = perform(@my.compute, 2);
+      perform(@dvala.checkpoint, "phase 3", { phase: 3 });
+      let c = perform(@my.compute, 3);
+      perform(@my.report);
       [a, b, c]
     `, {
       effectHandlers: [

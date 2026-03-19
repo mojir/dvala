@@ -1029,13 +1029,13 @@ describe('trampoline integration', () => {
     expect(runTrampoline(step)).toBe(11)
   })
 
-  it('should evaluate perform(effect(dvala.error)) as error', () => {
-    const node = parseFirst('perform(effect(dvala.error), "test error")')
+  it('should evaluate perform(@dvala.error) as error', () => {
+    const node = parseFirst('perform(@dvala.error, "test error")')
     expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), []))).toThrow(UserDefinedError)
   })
 
   it('should evaluate do...with dvala.error handler on success', () => {
-    const node = parseFirst('do 42 with case effect(dvala.error) then (args) -> 0 end')
+    const node = parseFirst('do 42 with case @dvala.error then (args) -> 0 end')
     const step = stepNodeSync(node, emptyEnv(), [])
     expect(runTrampoline(step)).toBe(42)
   })
@@ -1173,8 +1173,8 @@ describe('sync/async trampoline parity', () => {
     ['((x) -> x * 2)(21)', 42],
     ['loop (x = 0) -> if x < 5 then recur(x + 1) else x end', 5],
     ['(n -> if n > 0 then recur(n - 1) else n end)(10)', 0],
-    ['do 1 + 2 with case effect(dvala.error) then (args) -> 0 end', 3],
-    ['do perform(effect(dvala.error), "oops") with case effect(dvala.error) then ([msg]) -> "caught" end', 'caught'],
+    ['do 1 + 2 with case @dvala.error then (args) -> 0 end', 3],
+    ['do perform(@dvala.error, "oops") with case @dvala.error then ([msg]) -> "caught" end', 'caught'],
     ['for (x in [1, 2, 3]) -> x * 10', [10, 20, 30]],
     ['match 3 case 1 then "one" case 3 then "three" end', 'three'],
   ]

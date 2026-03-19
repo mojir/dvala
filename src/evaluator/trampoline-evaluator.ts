@@ -2157,7 +2157,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
 /**
  * Check if a handler's case clause matches the given effect.
  * Supports two forms:
- * - EffectRef: exact name match (`case effect(dvala.error)`)
+ * - EffectRef: exact name match (`case @dvala.error`)
  * - Predicate function: called with the effect, truthy = match (`case my-predicate`)
  *
  * Predicate functions must be synchronous — async predicates throw an error.

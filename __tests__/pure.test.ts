@@ -18,13 +18,13 @@ describe('pure mode', () => {
   describe('effects', () => {
     it('should throw when performing effects in pure mode (sync)', () => {
       const dvala = createDvala()
-      expect(() => dvala.run('perform(effect(dvala.sleep), 1000)', { pure: true }))
+      expect(() => dvala.run('perform(@dvala.sleep, 1000)', { pure: true }))
         .toThrow("Cannot perform effect 'dvala.sleep' in pure mode")
     })
 
     it('should throw when performing effects in pure mode (async)', async () => {
       const dvala = createDvala()
-      const result = await dvala.runAsync('perform(effect(dvala.sleep), 1000)', { pure: true })
+      const result = await dvala.runAsync('perform(@dvala.sleep, 1000)', { pure: true })
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain("Cannot perform effect 'dvala.sleep' in pure mode")

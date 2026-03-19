@@ -166,7 +166,7 @@ function formatEffectDoc(ref: EffectReference): string {
         return arg?.rest ? `...${name}` : name
       }).join(', ')}`
       : ''
-    lines.push(`  perform(effect(${ref.title})${argList}) -> ${typeToString(ref.returns)}`)
+    lines.push(`  perform(@${ref.title}${argList}) -> ${typeToString(ref.returns)}`)
   }
   lines.push('')
 

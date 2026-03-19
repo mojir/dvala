@@ -9,10 +9,10 @@ describe('continuation dedup integration', () => {
   describe('blob size comparison', () => {
     it('should produce a suspension blob with dedup pool when checkpoints are present', async () => {
       const result = await dvala.runAsync(`
-        let a = perform(effect(my.step), 1);
-        let b = perform(effect(my.step), 2);
-        let c = perform(effect(my.step), 3);
-        perform(effect(my.done));
+        let a = perform(@my.step, 1);
+        let b = perform(@my.step, 2);
+        let c = perform(@my.step, 3);
+        perform(@my.done);
         a + b + c
       `, {
         effectHandlers: [
@@ -48,8 +48,8 @@ describe('continuation dedup integration', () => {
       let step = 0
 
       const result = await dvala.runAsync(`
-        let a = perform(effect(my.work), "first");
-        let b = perform(effect(my.work), "second");
+        let a = perform(@my.work, "first");
+        let b = perform(@my.work, "second");
         a ++ " and " ++ b
       `, {
         effectHandlers: [

@@ -13,7 +13,7 @@ const dvala = createDvala()
 describe('snapshot captures effectName and effectArgs', () => {
   it('captures effectName when handler suspends', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.task), 42)
+      perform(@my.task, 42)
     `, {
       effectHandlers: [
         { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
@@ -27,7 +27,7 @@ describe('snapshot captures effectName and effectArgs', () => {
 
   it('captures effectArgs when handler suspends', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.task), 1, "hello", true)
+      perform(@my.task, 1, "hello", true)
     `, {
       effectHandlers: [
         { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
@@ -43,8 +43,8 @@ describe('snapshot captures effectName and effectArgs', () => {
     // my.a resumes, my.b suspends — outer snapshot should carry my.b's effectName
     const result = await dvala.runAsync(`
       parallel(
-        perform(effect(my.a)),
-        perform(effect(my.b))
+        perform(@my.a),
+        perform(@my.b)
       )
     `, {
       effectHandlers: [
@@ -61,7 +61,7 @@ describe('snapshot captures effectName and effectArgs', () => {
 
   it('captures effectName and args across JSON round-trip', async () => {
     const result = await dvala.runAsync(`
-      perform(effect(my.save), { id: 99 })
+      perform(@my.save, { id: 99 })
     `, {
       effectHandlers: [
         { pattern: 'my.save', handler: async ({ suspend }) => { suspend() } },
@@ -84,7 +84,7 @@ describe('snapshot captures effectName and effectArgs', () => {
 describe('retrigger()', () => {
   it('re-fires the effect and completes when handler resumes', async () => {
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.ask));
+      let x = perform(@my.ask);
       x + 1
     `, {
       effectHandlers: [
@@ -109,7 +109,7 @@ describe('retrigger()', () => {
   it('passes original effectArgs to the retriggered handler', async () => {
     let capturedArgs: unknown[] = []
     const r1 = await dvala.runAsync(`
-      perform(effect(my.task), "foo", 42)
+      perform(@my.task, "foo", 42)
     `, {
       effectHandlers: [
         { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
@@ -133,7 +133,7 @@ describe('retrigger()', () => {
   it('returns error when snapshot has no effectName', async () => {
     // Construct a minimal snapshot without effectName
     const r1 = await dvala.runAsync(`
-      perform(effect(my.thing))
+      perform(@my.thing)
     `, {
       effectHandlers: [
         { pattern: 'my.thing', handler: async ({ suspend }) => { suspend() } },
@@ -155,7 +155,7 @@ describe('retrigger()', () => {
 
   it('re-suspends if the retriggered handler suspends again', async () => {
     const r1 = await dvala.runAsync(`
-      perform(effect(my.step))
+      perform(@my.step)
     `, {
       effectHandlers: [
         { pattern: 'my.step', handler: async ({ suspend }) => { suspend() } },
@@ -176,7 +176,7 @@ describe('retrigger()', () => {
 
   it('works after JSON round-trip of the snapshot', async () => {
     const r1 = await dvala.runAsync(`
-      let x = perform(effect(my.get));
+      let x = perform(@my.get);
       x * 2
     `, {
       effectHandlers: [
@@ -201,8 +201,8 @@ describe('retrigger()', () => {
 
   it('can retrigger then resume to chain two suspensions', async () => {
     const r1 = await dvala.runAsync(`
-      let a = perform(effect(my.first));
-      let b = perform(effect(my.second));
+      let a = perform(@my.first);
+      let b = perform(@my.second);
       a + b
     `, {
       effectHandlers: [
@@ -241,8 +241,8 @@ describe('retrigger()', () => {
     // Resume branch A, suspend branch B — snapshot should capture B's effect
     const r1 = await dvala.runAsync(`
       parallel(
-        perform(effect(foo.bar), "A"),
-        perform(effect(foo.bar), "B")
+        perform(@foo.bar, "A"),
+        perform(@foo.bar, "B")
       )
     `, {
       effectHandlers: [
@@ -265,8 +265,8 @@ describe('retrigger()', () => {
     // Resume branch A, suspend branch B — then retrigger B
     const r1 = await dvala.runAsync(`
       parallel(
-        perform(effect(foo.bar), "A"),
-        perform(effect(foo.bar), "B")
+        perform(@foo.bar, "A"),
+        perform(@foo.bar, "B")
       )
     `, {
       effectHandlers: [
@@ -298,9 +298,9 @@ describe('retrigger()', () => {
     // When retriggered, B and C are dispatched concurrently (not sequentially).
     const r1 = await dvala.runAsync(`
       parallel(
-        perform(effect(foo.bar), "A"),
-        perform(effect(foo.bar), "B"),
-        perform(effect(foo.bar), "C")
+        perform(@foo.bar, "A"),
+        perform(@foo.bar, "B"),
+        perform(@foo.bar, "C")
       )
     `, {
       effectHandlers: [
@@ -361,9 +361,9 @@ describe('retrigger()', () => {
 
     const r1 = await dvala.runAsync(`
       parallel(
-        perform(effect(foo.bar), "A"),
-        perform(effect(foo.bar), "B"),
-        perform(effect(foo.bar), "C")
+        perform(@foo.bar, "A"),
+        perform(@foo.bar, "B"),
+        perform(@foo.bar, "C")
       )
     `, { effectHandlers: [
       { pattern: 'foo.bar', handler: suspendHandler },
@@ -386,7 +386,7 @@ describe('retrigger()', () => {
 
   it('accepts modules option and passes them through deserialization', async () => {
     const r1 = await dvala.runAsync(`
-      perform(effect(my.ask))
+      perform(@my.ask)
     `, {
       effectHandlers: [
         { pattern: 'my.ask', handler: async ({ suspend }) => { suspend() } },

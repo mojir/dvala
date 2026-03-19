@@ -167,8 +167,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        { code: 'perform(effect(dvala.io.print), "hello")', noRun: true },
-        { code: 'perform(effect(dvala.io.print), 42)', noRun: true },
+        { code: 'perform(@dvala.io.print, "hello")', noRun: true },
+        { code: 'perform(@dvala.io.print, 42)', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.println', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
@@ -186,8 +186,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        { code: 'perform(effect(dvala.io.println), "hello")', noRun: true },
-        { code: 'perform(effect(dvala.io.println), [1, 2, 3])', noRun: true },
+        { code: 'perform(@dvala.io.println, "hello")', noRun: true },
+        { code: 'perform(@dvala.io.println, [1, 2, 3])', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
     },
@@ -215,7 +215,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['value'] }],
       examples: [
-        { code: 'perform(effect(dvala.io.error), "something went wrong")', noRun: true },
+        { code: 'perform(@dvala.io.error, "something went wrong")', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.println', 'perform', 'effect'],
     },
@@ -247,7 +247,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         { argumentNames: ['message'] },
       ],
       examples: [
-        'effect(dvala.io.read-line)',
+        '@dvala.io.read-line',
       ],
       seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.println', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
@@ -333,7 +333,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         { argumentNames: ['items', 'options'] },
       ],
       examples: [
-        'effect(dvala.io.pick)',
+        '@dvala.io.pick',
       ],
       seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
@@ -379,7 +379,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         { argumentNames: ['question', 'options'] },
       ],
       examples: [
-        'effect(dvala.io.confirm)',
+        '@dvala.io.confirm',
       ],
       seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.pick', 'perform', 'effect'],
     },
@@ -407,7 +407,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        'effect(dvala.io.read-stdin)',
+        '@dvala.io.read-stdin',
       ],
       seeAlso: ['-effect-dvala.io.read-line', 'perform', 'effect'],
     },
@@ -427,7 +427,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        'perform(effect(dvala.random))',
+        'perform(@dvala.random)',
       ],
       seeAlso: ['-effect-dvala.random.int', '-effect-dvala.random.uuid', '-effect-dvala.random.item', '-effect-dvala.random.shuffle', 'perform', 'effect'],
     },
@@ -445,7 +445,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        'perform(effect(dvala.random.uuid))',
+        'perform(@dvala.random.uuid)',
       ],
       seeAlso: ['-effect-dvala.random', 'perform', 'effect'],
     },
@@ -477,7 +477,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['min', 'max'] }],
       examples: [
-        'perform(effect(dvala.random.int), 1, 100)',
+        'perform(@dvala.random.int, 1, 100)',
       ],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.item', 'perform', 'effect'],
     },
@@ -505,7 +505,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['array'] }],
       examples: [
-        'perform(effect(dvala.random.item), ["a", "b", "c"])',
+        'perform(@dvala.random.item, ["a", "b", "c"])',
       ],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.shuffle', '-effect-dvala.random.int', 'perform', 'effect'],
     },
@@ -536,7 +536,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['array'] }],
       examples: [
-        'perform(effect(dvala.random.shuffle), [1, 2, 3, 4, 5])',
+        'perform(@dvala.random.shuffle, [1, 2, 3, 4, 5])',
       ],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.item', 'perform', 'effect'],
     },
@@ -556,7 +556,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        'perform(effect(dvala.time.now))',
+        'perform(@dvala.time.now)',
       ],
       seeAlso: ['-effect-dvala.time.zone', '-effect-dvala.sleep', 'perform', 'effect'],
     },
@@ -574,7 +574,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        'perform(effect(dvala.time.zone))',
+        'perform(@dvala.time.zone)',
       ],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
     },
@@ -601,8 +601,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
         { argumentNames: ['message', 'meta'] },
       ],
       examples: [
-        'perform(effect(dvala.checkpoint), "init")',
-        'perform(effect(dvala.checkpoint), "analysis-done", { step: 1 })',
+        'perform(@dvala.checkpoint, "init")',
+        'perform(@dvala.checkpoint, "analysis-done", { step: 1 })',
       ],
       seeAlso: ['perform', 'effect'],
     },
@@ -630,7 +630,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['ms'] }],
       examples: [
-        'effect(dvala.sleep)',
+        '@dvala.sleep',
       ],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
     },
