@@ -123,7 +123,7 @@ function renderReference(key: string, ref: Reference, data: ReferenceData): stri
 
   return `
 <div class="doc-page">
-  <h1 class="doc-page__title">${escapeHtml(ref.title)}</h1>
+  <h1 class="doc-page__title">${ref.category === 'effect' || ref.category === 'playground-effect' ? '@' : ''}${escapeHtml(ref.title)}</h1>
   <div class="doc-page__category">${escapeHtml(ref.category)}</div>
 
   ${variants ? `<div class="doc-page__section">

@@ -54,10 +54,8 @@
   --syntax-punctuation:      #d4d4d4;
   --syntax-comment:      #6a9955;
   --syntax-error:            #f44747;
-  --syntax-effect-standard:  #e6b455;
+  --syntax-effect:           #e6b455;
   --syntax-effect-construct: #e06c9f;
-  --syntax-effect-playground:#4ec9b0;
-  --syntax-effect-custom:    #9cdcfe;
 
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Roboto', sans-serif;
@@ -1311,7 +1309,7 @@ a.disabled {
 }
 
 #output-result .analyze {
-  color: var(--syntax-effect-standard);
+  color: var(--syntax-keyword);
   white-space: pre-wrap;
 }
 
@@ -1326,7 +1324,7 @@ a.disabled {
 }
 
 #output-result .result {
-  color: var(--syntax-effect-custom);
+  color: var(--syntax-symbol);
   white-space: pre-wrap;
   margin-bottom: var(--space-1);
 }

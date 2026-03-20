@@ -90,6 +90,7 @@
                 { "include": "#comments" },
                 { "include": "#template-strings" },
                 { "include": "#strings" },
+                { "include": "#effect-names" },
                 { "include": "#numbers" },
                 { "include": "#reserved-symbols" },
                 { "include": "#special-expressions" },
@@ -139,23 +140,11 @@
     "effect-names": {
       "patterns": [
         {
-          "comment": "Standard effect names: dvala.error, dvala.io.*, dvala.random.*, dvala.time.*, dvala.sleep, dvala.checkpoint",
-          "match": "(effect)(\\()(dvala\\.(?:error|io\\.(?:print|println|error|read-line|read-stdin)|random(?:\\.(?:int|item|shuffle|uuid))?|time\\.(?:now|zone)|sleep|checkpoint))(\\))",
+          "comment": "Effect name literal: @name or @dotted.name",
+          "match": "(@)([a-zA-Z][a-zA-Z0-9_?!-]*(?:\\.[a-zA-Z][a-zA-Z0-9_?!-]*)*)",
           "captures": {
-            "1": { "name": "keyword.control.dvala" },
-            "2": { "name": "punctuation.paren.open.dvala" },
-            "3": { "name": "support.constant.effect-name.standard.dvala" },
-            "4": { "name": "punctuation.paren.close.dvala" }
-          }
-        },
-        {
-          "comment": "User-defined / custom effect names inside effect(...)",
-          "match": "(effect)(\\()([a-zA-Z_][a-zA-Z0-9_.:-]*)(\\))",
-          "captures": {
-            "1": { "name": "keyword.control.dvala" },
-            "2": { "name": "punctuation.paren.open.dvala" },
-            "3": { "name": "entity.name.type.effect-name.dvala" },
-            "4": { "name": "punctuation.paren.close.dvala" }
+            "1": { "name": "punctuation.definition.effect-name.dvala" },
+            "2": { "name": "support.constant.effect-name.dvala" }
           }
         }
       ]
@@ -212,9 +201,9 @@
     "special-expressions": {
       "patterns": [
         {
-          "comment": "Special expressions: if, let, for, cond, match, loop, block, doseq, unless, import, effect, perform, parallel, race, recur, array, object, defined?",
+          "comment": "Special expressions: if, let, for, cond, match, loop, block, doseq, unless, import, perform, parallel, race, recur, defined?",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|doseq|unless|import|effect|perform|parallel|race|recur|defined\\?)(?=[\\s(\\[{)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|doseq|unless|import|perform|parallel|race|recur|defined\\?)(?=[\\s(\\[{)\\]},;]|$)"
         }
       ]
     },
@@ -334,7 +323,7 @@
         {
           "comment": "Regular identifiers (variable names, user-defined functions)",
           "name": "variable.other.dvala",
-          "match": "[a-zA-Z_@%^?=!$<>+*/&|~-][\\w@%^?=!$<>+*/:&|~-]*"
+          "match": "[a-zA-Z_%^?=!$<>+*/&|~-][\\w@%^?=!$<>+*/:&|~-]*"
         }
       ]
     }
