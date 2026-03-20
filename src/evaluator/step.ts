@@ -21,7 +21,7 @@
  */
 
 import type { DvalaError } from '../errors'
-import type { Any, Arr } from '../interface'
+import type { Any } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack, Frame } from './frames'
@@ -76,19 +76,19 @@ export interface ApplyStep {
 }
 
 /**
- * An effect was invoked via `perform(effect, ...args)`.
+ * An effect was invoked via `perform(effect, arg)`.
  *
  * The trampoline searches the continuation stack `k` from top to bottom for
  * a matching `TryWithFrame`. If found, the handler is dispatched locally.
  * If not found, the effect is dispatched to the host handler registered
  * in `run()` options, or to a standard effect default implementation.
  *
- * `args` is always an array (possibly empty for zero-argument effects).
+ * `arg` is the single payload value (null when no payload was provided).
  */
 export interface PerformStep {
   type: 'Perform'
   effect: EffectRef
-  args: Arr
+  arg: Any
   k: ContinuationStack
   sourceCodeInfo?: SourceCodeInfo
 }

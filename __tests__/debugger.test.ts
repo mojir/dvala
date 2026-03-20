@@ -233,8 +233,8 @@ describe('phase 7 — Time-Travel Debugger', () => {
     it('should work with host effect handlers', async () => {
       const dbg = createDebugger({
         handlers: [
-          { pattern: 'test.echo', handler: async ({ args, resume }) => {
-            resume(`echo: ${args[0]}`)
+          { pattern: 'test.echo', handler: async ({ arg, resume }) => {
+            resume(`echo: ${arg}`)
           } },
         ],
       })

@@ -25,14 +25,14 @@ class EffectPerformedError extends Error {
 const printHandler: HandlerRegistration = {
   pattern: 'dvala.io.print',
   handler: (ctx: EffectContext) => {
-    ctx.resume(ctx.args[0]!)
+    ctx.resume(ctx.arg)
   },
 }
 
 const printlnHandler: HandlerRegistration = {
   pattern: 'dvala.io.println',
   handler: (ctx: EffectContext) => {
-    ctx.resume(ctx.args[0]!)
+    ctx.resume(ctx.arg)
   },
 }
 

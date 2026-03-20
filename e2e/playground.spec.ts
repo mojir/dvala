@@ -946,23 +946,23 @@ test.describe('playground effects', () => {
 
   test('storage.load fails for nonexistent program', async ({ page }) => {
     await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
-    await setDvalaCode(page, 'perform(@playground.storage.load, "does-not-exist")')
+    await setDvalaCode(page, 'perform(@playground.programs.load, "does-not-exist")')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
     expect(output.toLowerCase()).toContain('not found')
   })
 
-  // ── Storage ──
+  // ── Programs ──
 
   test('storage save, list, and load round-trip', async ({ page }) => {
     // Clear any existing saved programs
     await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
 
     await setDvalaCode(page, `do
-  perform(@playground.storage.save, "test-prog", "1 + 2");
-  let names = perform(@playground.storage.list);
-  let code = perform(@playground.storage.load, "test-prog");
+  perform(@playground.programs.save, "test-prog", "1 + 2");
+  let names = perform(@playground.programs.list);
+  let code = perform(@playground.programs.load, "test-prog");
   [names, code]
 end`)
     await clickRun(page)

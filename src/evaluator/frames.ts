@@ -764,13 +764,13 @@ export interface EffectRefFrame {
  * This frame captures the context needed to dispatch after evaluation.
  *
  * Fields:
- * - `args`: The effect arguments to pass to the handler
+ * - `arg`: The single payload to pass to the handler
  * - `handlerK`: The continuation stack for the handler invocation
  * - `handlerEnv`: Environment for dispatching the handler
  */
 export interface HandlerInvokeFrame {
   type: 'HandlerInvoke'
-  args: Arr
+  arg: Any
   handlerK: ContinuationStack
   handlerEnv: ContextStack
   sourceCodeInfo?: SourceCodeInfo
@@ -944,7 +944,7 @@ export interface AutoCheckpointFrame {
   type: 'AutoCheckpoint'
   phase: 'awaitCheckpoint' | 'awaitEffect'
   effect: EffectRef
-  args: Arr
+  arg: Any
   sourceCodeInfo?: SourceCodeInfo
 }
 

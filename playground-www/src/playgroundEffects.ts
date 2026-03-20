@@ -1,5 +1,44 @@
 import type { ExampleEntry } from '../../src/builtin/interface'
 import type { EffectReference } from '../../reference'
+import type { PlaygroundAPI } from './playgroundAPI'
+
+// Derive kebab-case effect names from PlaygroundAPI at the type level
+type ToKebab<S extends string> = S extends `${infer Head}${infer Tail}`
+  ? Head extends Uppercase<Head>
+    ? Head extends Lowercase<Head>
+      ? `${Head}${ToKebab<Tail>}`
+      : `-${Lowercase<Head>}${ToKebab<Tail>}`
+    : `${Head}${ToKebab<Tail>}`
+  : S
+
+type LeafPaths<T, Prefix extends string = ''> = {
+  [K in keyof T & string]:
+  T[K] extends (...args: never[]) => unknown
+    ? `${Prefix}${ToKebab<K>}`
+    : T[K] extends object
+      ? LeafPaths<T[K], `${Prefix}${ToKebab<K>}.`>
+      : never
+}[keyof T & string]
+
+type PlaygroundEffectName = LeafPaths<PlaygroundAPI, 'playground.'>
+
+interface EffectDef {
+  name: PlaygroundEffectName
+  args: Record<string, { type: string; description: string }>
+  returns: { type: string; array?: true }
+  variants: { argumentNames: string[] }[]
+  description: string
+  group: string
+  examples: ExampleEntry[]
+}
+
+// Infers literal name types via `const` and errors if any PlaygroundEffectName is missing.
+// The error message includes the missing effect names.
+function definePlaygroundEffects<const T extends readonly EffectDef[]>(
+  effects: T & ([PlaygroundEffectName] extends [T[number]['name']] ? unknown : `Missing effects: ${Exclude<PlaygroundEffectName, T[number]['name']>}`),
+): T {
+  return effects
+}
 
 /**
  * Playground effect references — these effects only work inside the playground.
@@ -7,15 +46,7 @@ import type { EffectReference } from '../../reference'
  * using category 'playground-effect' to distinguish them.
  */
 function derivePlaygroundEffectReference(): Record<string, EffectReference> {
-  const effects: {
-    name: string
-    args: Record<string, { type: string; description: string }>
-    returns: { type: string; array?: true }
-    variants: { argumentNames: string[] }[]
-    description: string
-    group: string
-    examples: ExampleEntry[]
-  }[] = [
+  const effects = definePlaygroundEffects([
     // ── UI ──
     {
       name: 'playground.ui.show-toast',
@@ -178,10 +209,10 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       ],
     },
 
-    // ── Storage ──
+    // ── Programs ──
     {
-      name: 'playground.storage.save',
-      group: 'Storage',
+      name: 'playground.programs.save',
+      group: 'Programs',
       description: 'Save a program. Defaults to current editor content.',
       args: {
         name: { type: 'string', description: 'Name for the saved program.' },
@@ -190,13 +221,13 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['name'] }, { argumentNames: ['name', 'code'] }],
       examples: [
-        { code: 'perform(@playground.storage.save, "my-program")', noRun: true },
-        { code: 'perform(@playground.storage.save, "hello", "1 + 2")', noRun: true },
+        { code: 'perform(@playground.programs.save, "my-program")', noRun: true },
+        { code: 'perform(@playground.programs.save, "hello", "1 + 2")', noRun: true },
       ],
     },
     {
-      name: 'playground.storage.load',
-      group: 'Storage',
+      name: 'playground.programs.load',
+      group: 'Programs',
       description: 'Load a saved program by name. Fails if not found.',
       args: {
         name: { type: 'string', description: 'Name of the saved program to load.' },
@@ -204,18 +235,18 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'string' },
       variants: [{ argumentNames: ['name'] }],
       examples: [
-        { code: 'let code = perform(@playground.storage.load, "my-program")', noRun: true },
+        { code: 'let code = perform(@playground.programs.load, "my-program")', noRun: true },
       ],
     },
     {
-      name: 'playground.storage.list',
-      group: 'Storage',
+      name: 'playground.programs.list',
+      group: 'Programs',
       description: 'List all saved program names.',
       args: {},
       returns: { type: 'string', array: true },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let names = perform(@playground.storage.list)', noRun: true },
+        { code: 'let names = perform(@playground.programs.list)', noRun: true },
       ],
     },
 
@@ -244,7 +275,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
         { code: 'perform(@playground.router.back)', noRun: true },
       ],
     },
-  ]
+  ])
 
   const result: Record<string, EffectReference> = {}
   for (const e of effects) {

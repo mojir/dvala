@@ -16,9 +16,9 @@ describe('continuation dedup integration', () => {
         a + b + c
       `, {
         effectHandlers: [
-          { pattern: 'my.step', handler: async ({ args, checkpoint, resume: r }) => {
+          { pattern: 'my.step', handler: async ({ arg, checkpoint, resume: r }) => {
             checkpoint('checkpoint')
-            r(args[0]!)
+            r(arg!)
           } },
 
           { pattern: 'my.done', handler: async ({ suspend }) => {

@@ -40,7 +40,7 @@ export interface RetriggerOptions {
  *
  * Takes a `Snapshot` from a previous `RunResult` of type `'suspended'` and
  * re-dispatches the original effect (captured in `snapshot.effectName` /
- * `snapshot.effectArgs`) to the registered host handlers. The handler then
+ * `snapshot.effectArg`) to the registered host handlers. The handler then
  * calls `resume(value)`, `fail()`, or `suspend()` as normal.
  *
  * Throws if the snapshot has no captured effect (i.e. suspension occurred
@@ -55,7 +55,7 @@ export interface RetriggerOptions {
  * ```
  */
 export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions): Promise<RunResult> {
-  if (!snapshot.effectName || !snapshot.effectArgs) {
+  if (!snapshot.effectName || !snapshot.effectArg) {
     return {
       type: 'error',
       error: new DvalaError(
@@ -80,7 +80,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
     return await retriggerWithEffects(
       deserialized.k,
       snapshot.effectName,
-      snapshot.effectArgs,
+      snapshot.effectArg,
       options?.handlers,
       {
         snapshots: deserialized.snapshots,

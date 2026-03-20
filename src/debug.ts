@@ -187,8 +187,8 @@ export function createDebugger(options?: DebuggerOptions): DvalaDebugger {
   // The debug handler always suspends with the step info as meta.
   // This pauses execution at each compound expression, capturing the
   // continuation as a serializable blob.
-  const debugHandler = async (ctx: { args: Any[]; suspend: (meta?: Any) => void }) => {
-    ctx.suspend(ctx.args[0])
+  const debugHandler = async (ctx: { arg: Any; suspend: (meta?: Any) => void }) => {
+    ctx.suspend(ctx.arg)
   }
 
   // Merge user handlers with the debug step handler

@@ -298,7 +298,7 @@ describe('tutorialExamples', () => {
   // Interactive effects resume with mock values, others pass through
   const testHandlers: HandlerRegistration[] = [
     { pattern: 'dvala.io.read-line', handler: ctx => ctx.resume('test-input') },
-    { pattern: 'dvala.io.pick', handler: ctx => ctx.resume((ctx.args[0] as Any[])[0]!) },
+    { pattern: 'dvala.io.pick', handler: ctx => ctx.resume((ctx.arg as Any[])[0]!) },
     { pattern: 'dvala.io.confirm', handler: ctx => ctx.resume(true) },
     { pattern: 'dvala.io.read-stdin', handler: ctx => ctx.resume('') },
     { pattern: '*', handler: ctx => ctx.next() },

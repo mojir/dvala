@@ -83,7 +83,7 @@ import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
 import { deserializeFromObject, serializeSuspensionBlob, serializeTerminalSnapshot, serializeToObject } from './suspension'
-import { getStandardEffectDefinition, getStandardEffectHandler } from './standardEffects'
+import { getStandardEffectHandler } from './standardEffects'
 import type {
   AndFrame,
   ArrayBuildFrame,
@@ -2116,16 +2116,16 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   params.push(value)
 
   if (index >= argNodes.length) {
-    // All values collected — first is the effect ref, rest are args
+    // All values collected — first is the effect ref, second (optional) is the payload
     const effectRef = params[0]!
     assertEffect(effectRef, frame.sourceCodeInfo)
     // Pure mode check — effects are not allowed in pure mode
     if (env.pure) {
       throw new DvalaError(`Cannot perform effect '${effectRef.name}' in pure mode`, frame.sourceCodeInfo)
     }
-    const args = params.slice(1)
+    const arg = (params.length > 1 ? params[1]! : null) as Any
     // Produce a PerformStep — let the trampoline dispatch it
-    return { type: 'Perform', effect: effectRef, args, k, sourceCodeInfo: frame.sourceCodeInfo }
+    return { type: 'Perform', effect: effectRef, arg, k, sourceCodeInfo: frame.sourceCodeInfo }
   }
 
   // Evaluate next arg
@@ -2188,7 +2188,7 @@ function handlerMatchesEffect(
 function invokeMatchedHandler(
   handler: EvaluatedWithHandler,
   frame: TryWithFrame,
-  args: Arr,
+  arg: Any,
   k: ContinuationStack,
   frameIndex: number,
   sourceCodeInfo?: SourceCodeInfo,
@@ -2213,7 +2213,7 @@ function invokeMatchedHandler(
   // Push HandlerInvokeFrame to dispatch the handler after evaluation.
   const handlerInvokeFrame: HandlerInvokeFrame = {
     type: 'HandlerInvoke',
-    args,
+    arg,
     handlerK,
     handlerEnv: frame.env,
     sourceCodeInfo,
@@ -2221,18 +2221,11 @@ function invokeMatchedHandler(
   return { type: 'Eval', node: handler.handlerNode, env: frame.env, k: [handlerInvokeFrame, ...outerK] }
 }
 
-function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
-  // Validate arity for standard effects (even those without a built-in handler).
-  const standardDef = getStandardEffectDefinition(effect.name)
-  if (standardDef) {
-    assertNumberOfParams(standardDef.arity, args.length, sourceCodeInfo)
-  }
-
+function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   if (effect.name === 'dvala.checkpoint' && snapshotState) {
-    const message = args[0] as string
-    const meta = args[1] as Any | undefined
+    const message = arg as string
     const continuation = serializeToObject(k)
     const snapshot = createSnapshot({
       continuation,
@@ -2240,7 +2233,6 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
       index: snapshotState.nextSnapshotIndex++,
       executionId: snapshotState.executionId,
       message,
-      ...(meta !== undefined ? { meta } : {}),
     })
     snapshotState.snapshots.push(snapshot)
     if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
@@ -2260,11 +2252,11 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
         type: 'AutoCheckpoint',
         phase: 'awaitCheckpoint',
         effect,
-        args,
+        arg,
         sourceCodeInfo,
       }
       const checkpointMessage = `Auto checkpoint before ${effect.name}`
-      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), args: [checkpointMessage], k: [autoCheckpointFrame, ...k], sourceCodeInfo }
+      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), arg: checkpointMessage, k: [autoCheckpointFrame, ...k], sourceCodeInfo }
     }
   }
 
@@ -2274,7 +2266,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
       // Search this frame's handlers for a matching effect
       for (const handler of frame.handlers) {
         if (handlerMatchesEffect(handler, effect, frame.env, sourceCodeInfo)) {
-          return invokeMatchedHandler(handler, frame, args, k, i, sourceCodeInfo)
+          return invokeMatchedHandler(handler, frame, arg, k, i, sourceCodeInfo)
         }
       }
     }
@@ -2283,13 +2275,13 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   // No matching local handler found — dispatch to host handler if available.
   const matchingHostHandlers = findMatchingHandlers(effect.name, handlers)
   if (matchingHostHandlers.length > 0) {
-    return dispatchHostHandler(effect.name, matchingHostHandlers, args, k, signal, sourceCodeInfo, snapshotState)
+    return dispatchHostHandler(effect.name, matchingHostHandlers, arg, k, signal, sourceCodeInfo, snapshotState)
   }
 
   // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
-    return standardHandler(args, k, sourceCodeInfo)
+    return standardHandler(arg, k, sourceCodeInfo)
   }
 
   // dvala.checkpoint resolves to null when completely unhandled.
@@ -2300,7 +2292,7 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
   // dvala.error is special — when unhandled, throw UserDefinedError
   // so the error message propagates as a proper user error.
   if (effect.name === 'dvala.error') {
-    const message = typeof args[0] === 'string' ? args[0] : String(args[0] ?? 'Unknown error')
+    const message = typeof arg === 'string' ? arg : String(arg ?? 'Unknown error')
     throw new UserDefinedError(message, sourceCodeInfo)
   }
 
@@ -2331,20 +2323,19 @@ function dispatchPerform(effect: EffectRef, args: Arr, k: ContinuationStack, sou
 function dispatchHostHandler(
   effectName: string,
   matchingHandlers: [string, EffectHandler][],
-  args: Arr,
+  arg: Any,
   k: ContinuationStack,
   signal: AbortSignal | undefined,
   sourceCodeInfo: SourceCodeInfo | undefined,
   snapshotState?: SnapshotState,
 ): Step | Promise<Step> {
   const effectSignal = signal ?? new AbortController().signal
-  const argsArray = Array.from(args) as Any[]
 
   // If the abort signal already fired before the handler was called, auto-suspend immediately.
   // This happens when a parallel group aborts (e.g. another branch suspended) before this
   // branch's dispatchHostHandler runs.
   if (effectSignal.aborted) {
-    throwSuspension(k, undefined, effectName, argsArray)
+    throwSuspension(k, undefined, effectName, arg)
   }
 
   type HandlerOutcome =
@@ -2371,11 +2362,11 @@ function dispatchHostHandler(
       // All host handlers called next() — fall through to standard handlers
       const standardHandler = getStandardEffectHandler(effectName)
       if (standardHandler) {
-        return standardHandler(args, k, sourceCodeInfo)
+        return standardHandler(arg, k, sourceCodeInfo)
       }
 
       if (effectName === 'dvala.error') {
-        const message = typeof argsArray[0] === 'string' ? argsArray[0] : String(argsArray[0] ?? 'Unknown error')
+        const message = typeof arg === 'string' ? arg : String(arg ?? 'Unknown error')
         throw new UserDefinedError(message, sourceCodeInfo)
       }
       // dvala.checkpoint resolves to null when all handlers call next().
@@ -2399,7 +2390,7 @@ function dispatchHostHandler(
 
     const ctx: EffectContext = {
       effectName,
-      args: argsArray,
+      arg,
       signal: effectSignal,
       resume: (value: Any | Promise<Any>) => {
         assertNotSettled('resume')
@@ -2424,7 +2415,7 @@ function dispatchHostHandler(
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
             meta,
             effectName,
-            argsArray,
+            arg,
           ),
         }
       },
@@ -2546,9 +2537,9 @@ function combineSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   return controller.signal
 }
 
-function throwSuspension(k: ContinuationStack, meta?: Any, effectName?: string, effectArgs?: Any[]): never {
+function throwSuspension(k: ContinuationStack, meta?: Any, effectName?: string, effectArg?: Any): never {
   // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism, not an error
-  throw new SuspensionSignal(k, [], 0, meta, effectName, effectArgs)
+  throw new SuspensionSignal(k, [], 0, meta, effectName, effectArg)
 }
 
 /**
@@ -2651,7 +2642,7 @@ async function executeParallelBranches(
 
     // Throw SuspensionSignal with the first suspended branch's meta and effect info
     const firstSuspended = suspendedBranches[0]!
-    return throwSuspension(resumeK, firstSuspended.snapshot.meta, firstSuspended.snapshot.effectName, firstSuspended.snapshot.effectArgs)
+    return throwSuspension(resumeK, firstSuspended.snapshot.meta, firstSuspended.snapshot.effectName, firstSuspended.snapshot.effectArg)
   }
 
   // All branches completed — build the result array in original order
@@ -2830,7 +2821,7 @@ function handleParallelResume(
       suspendedBranches: remaining,
     }
     const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
-    return throwSuspension(resumeK, nextSuspended.snapshot.meta, nextSuspended.snapshot.effectName, nextSuspended.snapshot.effectArgs)
+    return throwSuspension(resumeK, nextSuspended.snapshot.meta, nextSuspended.snapshot.effectName, nextSuspended.snapshot.effectArg)
   }
 
   // All branches now completed — build the result array in original order
@@ -3431,7 +3422,7 @@ function applyEffectRef(frame: EffectRefFrame, value: Any, k: ContinuationStack)
  */
 function applyHandlerInvoke(frame: HandlerInvokeFrame, value: Any, _k: ContinuationStack): Step | Promise<Step> {
   const fnLike = asFunctionLike(value, frame.sourceCodeInfo)
-  return dispatchFunction(fnLike, [frame.args], [], frame.handlerEnv, frame.sourceCodeInfo, frame.handlerK)
+  return dispatchFunction(fnLike, [frame.arg], [], frame.handlerEnv, frame.sourceCodeInfo, frame.handlerK)
 }
 
 /**
@@ -3583,7 +3574,7 @@ function applyDebugStep(frame: DebugStepFrame, value: Any, k: ContinuationStack)
       env: frame.env,
     }
     const debugEffect = getEffectRef('dvala.debug.step')
-    return { type: 'Perform', effect: debugEffect, args: [stepInfo as Any], k: [awaitFrame, ...k] }
+    return { type: 'Perform', effect: debugEffect, arg: stepInfo as Any, k: [awaitFrame, ...k] }
   }
 
   // phase === 'awaitPerform': pass through the value
@@ -3597,10 +3588,10 @@ function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): 
     type: 'AutoCheckpoint',
     phase: 'awaitEffect',
     effect: frame.effect,
-    args: frame.args,
+    arg: frame.arg,
     sourceCodeInfo: frame.sourceCodeInfo,
   }
-  return { type: 'Perform', effect: frame.effect, args: frame.args, k: [markerFrame, ...k], sourceCodeInfo: frame.sourceCodeInfo }
+  return { type: 'Perform', effect: frame.effect, arg: frame.arg, k: [markerFrame, ...k], sourceCodeInfo: frame.sourceCodeInfo }
 }
 
 // ---------------------------------------------------------------------------
@@ -3674,7 +3665,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.args, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
+        return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -3914,7 +3905,7 @@ export async function resumeWithEffects(
  * Re-trigger the effect from a suspended snapshot.
  *
  * Deserializes the continuation from `snapshot` and re-dispatches the
- * original effect (captured in `snapshot.effectName` / `snapshot.effectArgs`)
+ * original effect (captured in `snapshot.effectName` / `snapshot.effectArg`)
  * to the registered host handlers. The handler then calls `resume(value)`,
  * `fail()`, or `suspend()` as normal.
  *
@@ -3933,7 +3924,7 @@ async function retriggerParallelGroup(
   frame: ParallelResumeFrame,
   outerK: ContinuationStack,
   currentEffectName: string,
-  currentEffectArgs: Any[],
+  currentEffectArgs: Any,
   handlers: Handlers | undefined,
   signal: AbortSignal,
   snapshotState: SnapshotState,
@@ -3978,7 +3969,7 @@ async function retriggerParallelGroup(
           message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
-          effectArgs: error.effectArgs,
+          effectArg: error.effectArg,
         })
         return { index: currentBranchIndex, result: { type: 'suspended', snapshot } }
       }
@@ -3997,15 +3988,15 @@ async function retriggerParallelGroup(
 
   // Dispatch each remaining suspended branch concurrently via retriggerWithEffects
   const otherBranchPromises: Promise<BranchOutcome>[] = suspendedBranches.map(async branch => {
-    const { effectName: branchEffectName, effectArgs: branchEffectArgs } = branch.snapshot
-    if (!branchEffectName || !branchEffectArgs) {
+    const { effectName: branchEffectName, effectArg: branchEffectArg } = branch.snapshot
+    if (!branchEffectName || branchEffectArg === undefined) {
       return { index: branch.index, result: { type: 'suspended' as const, snapshot: branch.snapshot } }
     }
     const deserialized = deserializeFromObject(branch.snapshot.continuation, deserializeOptions)
     const result = await retriggerWithEffects(
       deserialized.k,
       branchEffectName,
-      branchEffectArgs,
+      branchEffectArg,
       handlers,
       { snapshots: deserialized.snapshots, nextSnapshotIndex: deserialized.nextSnapshotIndex },
       deserializeOptions,
@@ -4060,7 +4051,7 @@ async function retriggerParallelGroup(
       message: SUSPENDED_MESSAGE,
       meta: firstSuspended.snapshot.meta,
       effectName: firstSuspended.snapshot.effectName,
-      effectArgs: firstSuspended.snapshot.effectArgs,
+      effectArg: firstSuspended.snapshot.effectArg,
     })
     return { type: 'suspended', snapshot }
   }
@@ -4084,7 +4075,7 @@ async function retriggerParallelGroup(
 export async function retriggerWithEffects(
   k: ContinuationStack,
   effectName: string,
-  effectArgs: Any[],
+  effectArg: Any,
   handlers?: Handlers,
   initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
@@ -4110,7 +4101,7 @@ export async function retriggerWithEffects(
       k[0],
       k.slice(1),
       effectName,
-      effectArgs,
+      effectArg,
       handlers,
       signal,
       snapshotState,
@@ -4123,7 +4114,7 @@ export async function retriggerWithEffects(
   let firstStep: Step
   try {
     firstStep = await Promise.resolve(
-      dispatchHostHandler(effectName, matchingHandlers, effectArgs as Arr, k, signal, undefined, snapshotState),
+      dispatchHostHandler(effectName, matchingHandlers, effectArg as Arr, k, signal, undefined, snapshotState),
     )
   } catch (error) {
     // Handler called suspend() — capture continuation and return suspended result
@@ -4142,7 +4133,7 @@ export async function retriggerWithEffects(
         message: SUSPENDED_MESSAGE,
         meta: error.meta,
         effectName: error.effectName,
-        effectArgs: error.effectArgs,
+        effectArg: error.effectArg,
       })
       return { type: 'suspended', snapshot }
     }
@@ -4282,7 +4273,7 @@ async function runEffectLoop(
           message: SUSPENDED_MESSAGE,
           meta: error.meta,
           effectName: error.effectName,
-          effectArgs: error.effectArgs,
+          effectArg: error.effectArg,
         })
         return { type: 'suspended', snapshot }
       }

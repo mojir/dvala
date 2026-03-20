@@ -133,22 +133,22 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
 
   const handlers: Handlers = [
     { pattern: 'dvala.io.print', handler: async (ctx) => {
-      const str = stringifyValue(ctx.args[0], false)
+      const str = stringifyValue(ctx.arg, false)
       channel.append(str)
-      ctx.resume(ctx.args[0])
+      ctx.resume(ctx.arg)
     } },
     { pattern: 'dvala.io.println', handler: async (ctx) => {
-      const str = stringifyValue(ctx.args[0], false)
+      const str = stringifyValue(ctx.arg, false)
       channel.appendLine(str)
-      ctx.resume(ctx.args[0])
+      ctx.resume(ctx.arg)
     } },
     { pattern: 'dvala.io.error', handler: async (ctx) => {
-      const str = stringifyValue(ctx.args[0], false)
+      const str = stringifyValue(ctx.arg, false)
       channel.appendLine(`[stderr] ${str}`)
-      ctx.resume(ctx.args[0])
+      ctx.resume(ctx.arg)
     } },
     { pattern: 'dvala.io.read-line', handler: async (ctx) => {
-      const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : undefined
+      const prompt = typeof ctx.arg === 'string' ? ctx.arg : undefined
       const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
       if (result === undefined) {
         // User cancelled — resume with null (same as browser prompt cancel)
@@ -168,10 +168,10 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
         ctx.next()
         return
       }
-      const argsStr = ctx.args.map(a => stringifyValue(a, false)).join(', ')
+      const argStr = stringifyValue(ctx.arg, false)
       const input = await vscode.window.showInputBox({
         title: `Unhandled effect: ${ctx.effectName}`,
-        prompt: `Args: ${argsStr || '(none)'}. Enter JSON return value:`,
+        prompt: `Arg: ${argStr || '(none)'}. Enter JSON return value:`,
         placeHolder: 'null',
         ignoreFocusOut: true,
       })

@@ -161,7 +161,7 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
 
   it('three suspend/resume cycles without checkpoints', async () => {
     const handlers: Handlers = [
-      { pattern: 'my.step', handler: async ({ args, suspend }) => { suspend({ step: args[0] }) } },
+      { pattern: 'my.step', handler: async ({ arg, suspend }) => { suspend({ step: arg }) } },
     ]
 
     const r1 = await dvala.runAsync('let a = perform(@my.step, 1); let b = perform(@my.step, 2); let c = perform(@my.step, 3); [a, b, c]', { effectHandlers: handlers })
@@ -767,8 +767,8 @@ describe('auto: multiple rollbacks to same checkpoint', () => {
           }
         } },
 
-        { pattern: 'my.record', handler: async ({ args, resume: r }) => {
-          values.push(args[0] as number)
+        { pattern: 'my.record', handler: async ({ arg, resume: r }) => {
+          values.push(arg as number)
           r(null)
         } },
       ],
@@ -1366,12 +1366,12 @@ describe('auto: edge cases', () => {
 describe('auto: complex workflow patterns', () => {
   it('approval workflow with checkpoint, suspend, resume, approve', async () => {
     const handlers: Handlers = [
-      { pattern: 'my.prepare', handler: async ({ resume: r, args }) => {
-        r(`prepared: ${args[0]}`)
+      { pattern: 'my.prepare', handler: async ({ resume: r, arg }) => {
+        r(`prepared: ${arg}`)
       } },
 
-      { pattern: 'my.approve', handler: async ({ args, suspend }) => {
-        suspend({ action: 'approve', payload: args[0] })
+      { pattern: 'my.approve', handler: async ({ arg, suspend }) => {
+        suspend({ action: 'approve', payload: arg })
       } },
     ]
 
@@ -1402,9 +1402,9 @@ describe('auto: complex workflow patterns', () => {
   it('multi-step wizard with suspend at each step', async () => {
     const steps: string[] = []
     const handlers: Handlers = [
-      { pattern: 'my.wizard-step', handler: async ({ args, suspend }) => {
-        steps.push(args[0] as string)
-        suspend({ step: args[0] })
+      { pattern: 'my.wizard-step', handler: async ({ arg, suspend }) => {
+        steps.push(arg as string)
+        suspend({ step: arg })
       } },
     ]
 
@@ -1443,8 +1443,8 @@ describe('auto: complex workflow patterns', () => {
   it('wizard with back-button via resumeFrom', async () => {
     let phoneCallCount = 0
     const handlers: Handlers = [
-      { pattern: 'my.wizard-step', handler: async ({ args, suspend }) => {
-        suspend({ step: args[0] })
+      { pattern: 'my.wizard-step', handler: async ({ arg, suspend }) => {
+        suspend({ step: arg })
       } },
     ]
 
@@ -1472,7 +1472,7 @@ describe('auto: complex workflow patterns', () => {
     // Step 3: phone — user wants to go back to email
     const r3 = await resumeContinuation(r2.snapshot, 'alice@old.com', {
       handlers: [
-        { pattern: 'my.wizard-step', handler: async ({ args, suspend, snapshots, resumeFrom }) => {
+        { pattern: 'my.wizard-step', handler: async ({ arg, suspend, snapshots, resumeFrom }) => {
           phoneCallCount++
           if (phoneCallCount === 1) {
             // User presses back — rollback to "after name" checkpoint
@@ -1481,7 +1481,7 @@ describe('auto: complex workflow patterns', () => {
             // Resume from after-name checkpoint, re-entering at email step with name='Alice' preserved
             resumeFrom(afterName!, 0) // value doesn't matter, checkpoint is at the perform return
           } else {
-            suspend({ step: args[0] })
+            suspend({ step: arg })
           }
         } },
       ],

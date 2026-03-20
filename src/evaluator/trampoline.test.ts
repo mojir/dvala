@@ -103,7 +103,7 @@ describe('tick', () => {
 
   it('should throw on PerformStep (effects not implemented yet)', () => {
     const effect: EffectRef = { [EFFECT_SYMBOL]: true, name: 'test.effect' }
-    const step: Step = { type: 'Perform', effect, args: [], k: [] }
+    const step: Step = { type: 'Perform', effect, arg: null, k: [] }
     expect(() => tick(step)).toThrow('Unhandled effect')
   })
 
