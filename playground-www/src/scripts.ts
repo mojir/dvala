@@ -1570,7 +1570,7 @@ function populateSidebarApiSections(): void {
       const label = seGroupLabels[group] ?? group
       const fnLinks = entries.map(e => {
         const linkName = makeLinkName('effect', e.key)
-        return makeLink(linkName, e.title)
+        return makeLink(linkName, `@${e.title}`)
       }).join('\n    ')
       seHtml += `
   <div class="sidebar-collapsible-header" onclick="Playground.toggleStandardEffectGroup('${escapeHtml(group)}')">
@@ -1665,7 +1665,7 @@ function populateSidebarApiSections(): void {
       const label = groupLabels[group] ?? group
       const fnLinks = entries.map(e => {
         const linkName = makeLinkName('playground-effect', e.key)
-        return makeLink(linkName, e.title)
+        return makeLink(linkName, `@${e.title}`)
       }).join('\n    ')
       peHtml += `
   <div class="sidebar-collapsible-header" onclick="Playground.togglePlaygroundEffectGroup('${escapeHtml(group)}')">

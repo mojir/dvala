@@ -18,9 +18,7 @@ const colors = {
   punctuation: 'var(--syntax-punctuation)',
   comment: 'var(--syntax-comment)',
   error: 'var(--syntax-error)',
-  effectStandard: 'var(--syntax-effect-standard)',
-  effectPlayground: 'var(--syntax-effect-playground)',
-  effectCustom: 'var(--syntax-effect-custom)',
+  effect: 'var(--syntax-effect)',
   effectConstruct: 'var(--syntax-effect-construct)',
 }
 
@@ -28,6 +26,12 @@ const effectConstructs = new Set(['perform', 'effect-matcher', 'effect-name'])
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function getEffectNameStyle(name: string): string {
+  if (playgroundEffectNames.has(name)) return 'font-style:italic;'
+  if (!standardEffectNames.has(name)) return 'text-decoration:underline;'
+  return 'font-weight:bold;'
 }
 
 function getTokenColor(token: Token): string | null {
@@ -38,11 +42,7 @@ function getTokenColor(token: Token): string | null {
     case 'RegexpShorthand':
       return colors.string
     case 'EffectName':
-      return standardEffectNames.has(token[1])
-        ? colors.effectStandard
-        : playgroundEffectNames.has(token[1])
-          ? colors.effectPlayground
-          : colors.effectCustom
+      return colors.effect
     case 'Symbol': {
       if (effectConstructs.has(token[1])) return colors.effectConstruct
       return specialExpressionSet.has(token[1])
@@ -110,8 +110,12 @@ export function tokenizeToHtml(code: string): string {
       const color = getTokenColor(token)
       if (!color)
         return prefix + escaped
-      const italic = isCommentToken(token) ? 'font-style:italic;' : ''
-      return `<span style="color:${color};${italic}">${prefix}${escaped}</span>`
+      const extraStyle = isCommentToken(token)
+        ? 'font-style:italic;'
+        : token[0] === 'EffectName'
+          ? getEffectNameStyle(token[1])
+          : ''
+      return `<span style="color:${color};${extraStyle}">${prefix}${escaped}</span>`
     }).join('')
   } catch {
     return escapeHtml(code)
