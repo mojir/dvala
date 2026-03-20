@@ -423,8 +423,8 @@ describe('phase 3 — Host Async API', () => {
         perform(@my.double, 21)
       `, {
         effectHandlers: [
-          { pattern: 'my.double', handler: async ({ args, resume: doResume }) => {
-            doResume((args[0] as number) * 2)
+          { pattern: 'my.double', handler: async ({ arg, resume: doResume }) => {
+            doResume((arg as number) * 2)
           } },
         ],
       })
@@ -437,8 +437,8 @@ describe('phase 3 — Host Async API', () => {
         msg
       `, {
         effectHandlers: [
-          { pattern: 'my.greet', handler: async ({ args, resume: doResume }) => {
-            doResume(`Hello, ${args[0]}!`)
+          { pattern: 'my.greet', handler: async ({ arg, resume: doResume }) => {
+            doResume(`Hello, ${arg}!`)
           } },
         ],
       })
@@ -452,8 +452,8 @@ describe('phase 3 — Host Async API', () => {
         b
       `, {
         effectHandlers: [
-          { pattern: 'my.add', handler: async ({ args, resume: doResume }) => {
-            doResume((args[0] as number) + (args[1] as number))
+          { pattern: 'my.add', handler: async ({ arg, resume: doResume }) => {
+            doResume(arg as number)
           } },
         ],
       })
@@ -480,8 +480,8 @@ describe('phase 3 — Host Async API', () => {
         perform(@my.fetch, "data")
       `, {
         effectHandlers: [
-          { pattern: 'my.fetch', handler: async ({ args, resume: doResume }) => {
-            const value = await Promise.resolve(`fetched: ${args[0]}`)
+          { pattern: 'my.fetch', handler: async ({ arg, resume: doResume }) => {
+            const value = await Promise.resolve(`fetched: ${arg}`)
             doResume(value)
           } },
         ],
@@ -494,8 +494,8 @@ describe('phase 3 — Host Async API', () => {
         perform(@my.delayed, 42)
       `, {
         effectHandlers: [
-          { pattern: 'my.delayed', handler: async ({ args, resume: doResume }) => {
-            doResume(Promise.resolve(args[0]!))
+          { pattern: 'my.delayed', handler: async ({ arg, resume: doResume }) => {
+            doResume(Promise.resolve(arg!))
           } },
         ],
       })
@@ -593,8 +593,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'my.eff', handler: async ({ args, resume: doResume }) => {
-            doResume(`host: ${args[0]}`)
+          { pattern: 'my.eff', handler: async ({ arg, resume: doResume }) => {
+            doResume(`host: ${arg}`)
           } },
         ],
       })
@@ -610,8 +610,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'other.eff', handler: async ({ args, resume: doResume }) => {
-            doResume(`host: ${args[0]}`)
+          { pattern: 'other.eff', handler: async ({ arg, resume: doResume }) => {
+            doResume(`host: ${arg}`)
           } },
         ],
       })
@@ -627,8 +627,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'my.eff', handler: async ({ args, resume: doResume }) => {
-            doResume(`host(${args[0]})`)
+          { pattern: 'my.eff', handler: async ({ arg, resume: doResume }) => {
+            doResume(`host(${arg})`)
           } },
         ],
       })
@@ -643,8 +643,8 @@ describe('phase 3 — Host Async API', () => {
         "approved: " ++ x
       `, {
         effectHandlers: [
-          { pattern: 'my.wait', handler: async ({ args, suspend }) => {
-            suspend({ payload: args[0] })
+          { pattern: 'my.wait', handler: async ({ arg, suspend }) => {
+            suspend({ payload: arg })
           } },
         ],
       })
@@ -680,8 +680,8 @@ describe('phase 3 — Host Async API', () => {
         "should not reach: " ++ x
       `, {
         effectHandlers: [
-          { pattern: 'my.stop', handler: async ({ args, halt }) => {
-            halt({ reason: args[0] })
+          { pattern: 'my.stop', handler: async ({ arg, halt }) => {
+            halt({ reason: arg })
           } },
         ],
       })
@@ -718,8 +718,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'my.log', handler: async ({ args, resume }) => {
-            log.push(args[0] as string)
+          { pattern: 'my.log', handler: async ({ arg, resume }) => {
+            log.push(arg as string)
             resume(null)
           } },
           { pattern: 'my.halt', handler: async ({ halt }) => {
@@ -761,9 +761,9 @@ describe('phase 3 — Host Async API', () => {
         { summary: summary, critique: critique }
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: doResume }) => {
-            log.push(args[0] as string)
-            doResume(`[result for: ${args[0]}]`)
+          { pattern: 'llm.complete', handler: async ({ arg, resume: doResume }) => {
+            log.push(arg as string)
+            doResume(`[result for: ${arg}]`)
           } },
         ],
       })
@@ -792,8 +792,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: doResume }) => {
-            doResume(`LLM says: ${args[0]}`)
+          { pattern: 'llm.complete', handler: async ({ arg, resume: doResume }) => {
+            doResume(`LLM says: ${arg}`)
           } },
         ],
       })
@@ -827,8 +827,8 @@ describe('phase 3 — Host Async API', () => {
       `, {
         bindings: { x: 10, y: 32 },
         effectHandlers: [
-          { pattern: 'my.compute', handler: async ({ args, resume: doResume }) => {
-            doResume((args[0] as number) + (args[1] as number))
+          { pattern: 'my.compute', handler: async ({ arg, resume: doResume }) => {
+            doResume(arg as number)
           } },
         ],
       })
@@ -850,8 +850,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: doResume }) => {
-            doResume(`[LLM: ${args[0]}]`)
+          { pattern: 'llm.complete', handler: async ({ arg, resume: doResume }) => {
+            doResume(`[LLM: ${arg}]`)
           } },
 
           { pattern: 'com.myco.human.approve', handler: async ({ resume: doResume }) => {
@@ -880,8 +880,8 @@ describe('phase 3 — Host Async API', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: doResume }) => {
-            doResume(`[LLM: ${args[0]}]`)
+          { pattern: 'llm.complete', handler: async ({ arg, resume: doResume }) => {
+            doResume(`[LLM: ${arg}]`)
           } },
 
           { pattern: 'com.myco.human.approve', handler: async ({ resume: doResume }) => {
@@ -1637,10 +1637,10 @@ describe('phase 4 — Suspension & Resume', () => {
         a ++ " " ++ b
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: r, checkpoint }) => {
-            const snap = checkpoint('prompt', { prompt: args[0] })
+          { pattern: 'llm.complete', handler: async ({ arg, resume: r, checkpoint }) => {
+            const snap = checkpoint('prompt', { prompt: arg })
             checkpoints.push(snap)
-            r(`result-of-${args[0]}`)
+            r(`result-of-${arg}`)
           } },
         ],
       })
@@ -1989,8 +1989,8 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         disableAutoCheckpoint: false,
         effectHandlers: [
-          { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
-            checkpointMessages.push(args[0] as string)
+          { pattern: 'dvala.checkpoint', handler: async ({ arg, resume: r }) => {
+            checkpointMessages.push(arg as string)
             r(null)
           } },
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
@@ -2007,8 +2007,8 @@ describe('phase 4 — Suspension & Resume', () => {
       `, {
         disableAutoCheckpoint: false,
         effectHandlers: [
-          { pattern: 'dvala.checkpoint', handler: async ({ args, resume: r }) => {
-            checkpointMessages.push(args[0] as string)
+          { pattern: 'dvala.checkpoint', handler: async ({ arg, resume: r }) => {
+            checkpointMessages.push(arg as string)
             r(null)
           } },
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
@@ -2184,7 +2184,7 @@ describe('phase 4 — Suspension & Resume', () => {
         "Hello, " ++ name ++ "!"
       `, {
         effectHandlers: [
-          { pattern: 'my.ask', handler: async ({ suspend, args }) => { suspend({ prompt: args[0] }) } },
+          { pattern: 'my.ask', handler: async ({ suspend, arg }) => { suspend({ prompt: arg }) } },
         ],
       })
       expect(r1.type).toBe('suspended')
@@ -2205,7 +2205,7 @@ describe('phase 4 — Suspension & Resume', () => {
         end
       `, {
         effectHandlers: [
-          { pattern: 'my.approve', handler: async ({ suspend, args }) => { suspend({ doc: args[0] }) } },
+          { pattern: 'my.approve', handler: async ({ suspend, arg }) => { suspend({ doc: arg }) } },
         ],
       })
       expect(r1.type).toBe('suspended')
@@ -2291,8 +2291,8 @@ describe('phase 4 — Suspension & Resume', () => {
 
     it('should handle multiple suspensions (re-suspend on resume)', async () => {
       const handlers: Handlers = [
-        { pattern: 'my.step', handler: async ({ args, suspend }) => {
-          suspend({ step: args[0] })
+        { pattern: 'my.step', handler: async ({ arg, suspend }) => {
+          suspend({ step: arg })
         } },
       ]
       const r1 = await dvala.runAsync(`
@@ -2326,7 +2326,7 @@ describe('phase 4 — Suspension & Resume', () => {
         effectHandlers: [
           { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
 
-          { pattern: 'my.compute', handler: async ({ args, resume: r }) => { r((args[0] as number) * 2) } },
+          { pattern: 'my.compute', handler: async ({ arg, resume: r }) => { r((arg as number) * 2) } },
         ],
       })
       expect(r1.type).toBe('suspended')
@@ -2336,7 +2336,7 @@ describe('phase 4 — Suspension & Resume', () => {
       // Resume with handlers so my.compute works
       const r2 = await resumeContinuation(r1.snapshot, 21, {
         handlers: [
-          { pattern: 'my.compute', handler: async ({ args, resume: r }) => { r((args[0] as number) * 2) } },
+          { pattern: 'my.compute', handler: async ({ arg, resume: r }) => { r((arg as number) * 2) } },
         ],
       })
       expect(r2).toEqual({ type: 'completed', value: 42 })
@@ -2475,12 +2475,12 @@ describe('phase 4 — Suspension & Resume', () => {
         end
       `
       const handlers: Handlers = [
-        { pattern: 'llm.complete', handler: async ({ args, resume: doResume }) => {
-          doResume(`[LLM: ${args[0]}]`)
+        { pattern: 'llm.complete', handler: async ({ arg, resume: doResume }) => {
+          doResume(`[LLM: ${arg}]`)
         } },
 
-        { pattern: 'com.myco.approve', handler: async ({ args, suspend }) => {
-          suspend({ payload: args[0], assignedTo: 'finance-team' })
+        { pattern: 'com.myco.approve', handler: async ({ arg, suspend }) => {
+          suspend({ payload: arg, assignedTo: 'finance-team' })
         } },
       ]
 
@@ -2529,8 +2529,8 @@ describe('phase 4 — Suspension & Resume', () => {
         [step1, step2, step3]
       `
       const handlers: Handlers = [
-        { pattern: 'my.step', handler: async ({ args, suspend }) => {
-          suspend({ step: args[0] })
+        { pattern: 'my.step', handler: async ({ arg, suspend }) => {
+          suspend({ step: arg })
         } },
       ]
 
@@ -2666,11 +2666,11 @@ describe('phase 5 — Standard Effects', () => {
     })
 
     it('should be overridable by host handler', async () => {
-      const logs: unknown[][] = []
+      const logs: unknown[] = []
       const result = await dvala.runAsync('perform(@dvala.io.println, "custom")', {
         effectHandlers: [
-          { pattern: 'dvala.io.println', handler: async ({ args, resume: r }) => {
-            logs.push(args)
+          { pattern: 'dvala.io.println', handler: async ({ arg, resume: r }) => {
+            logs.push(arg)
             r(null)
           } },
         ],
@@ -2795,8 +2795,8 @@ describe('phase 5 — Standard Effects', () => {
       let sleepMs: number | undefined
       const result = await dvala.runAsync('perform(@dvala.sleep, 100)', {
         effectHandlers: [
-          { pattern: 'dvala.sleep', handler: async ({ args, resume: r }) => {
-            sleepMs = args[0] as number
+          { pattern: 'dvala.sleep', handler: async ({ arg, resume: r }) => {
+            sleepMs = arg as number
             r(null)
           } },
         ],
@@ -2926,14 +2926,14 @@ describe('phase 6 — Parallel & Race', () => {
         )
       `, {
         effectHandlers: [
-          { pattern: 'slow.op', handler: async ({ args, resume: res }) => {
+          { pattern: 'slow.op', handler: async ({ arg, resume: res }) => {
             await new Promise(resolve => setTimeout(resolve, 50))
-            res(`slow:${args[0]}`)
+            res(`slow:${arg}`)
           } },
 
-          { pattern: 'fast.op', handler: async ({ args, resume: res }) => {
+          { pattern: 'fast.op', handler: async ({ arg, resume: res }) => {
             await new Promise(resolve => setTimeout(resolve, 10))
-            res(`fast:${args[0]}`)
+            res(`fast:${arg}`)
           } },
         ],
       })
@@ -2953,8 +2953,8 @@ describe('phase 6 — Parallel & Race', () => {
         )
       `, {
         effectHandlers: [
-          { pattern: 'llm.complete', handler: async ({ args, resume: res }) => {
-            res(`result:${args[0]}`)
+          { pattern: 'llm.complete', handler: async ({ arg, resume: res }) => {
+            res(`result:${arg}`)
           } },
         ],
       })
@@ -3009,8 +3009,8 @@ describe('phase 6 — Parallel & Race', () => {
         { a: a, b: b, c: c }
       `, {
         effectHandlers: [
-          { pattern: 'llm', handler: async ({ args, resume: res }) => {
-            res(`done:${args[0]}`)
+          { pattern: 'llm', handler: async ({ arg, resume: res }) => {
+            res(`done:${arg}`)
           } },
         ],
       })
@@ -3157,8 +3157,8 @@ describe('phase 6 — Parallel & Race', () => {
         const decisions = ['yes', 'no', 'maybe']
         let decisionIndex = 0
         const handlers: Handlers = [
-          { pattern: 'ask.human', handler: async ({ args, suspend }) => {
-            suspend({ question: args[0] })
+          { pattern: 'ask.human', handler: async ({ arg, suspend }) => {
+            suspend({ question: arg })
           } },
         ]
 
@@ -3193,13 +3193,13 @@ describe('phase 6 — Parallel & Race', () => {
         )
       `, {
         effectHandlers: [
-          { pattern: 'slow.op', handler: async ({ args, resume: res }) => {
+          { pattern: 'slow.op', handler: async ({ arg, resume: res }) => {
             await new Promise(resolve => setTimeout(resolve, 50))
-            res(`slow:${args[0]}`)
+            res(`slow:${arg}`)
           } },
 
-          { pattern: 'fast.op', handler: async ({ args, resume: res }) => {
-            res(`fast:${args[0]}`)
+          { pattern: 'fast.op', handler: async ({ arg, resume: res }) => {
+            res(`fast:${arg}`)
           } },
         ],
       })
@@ -3252,8 +3252,8 @@ describe('phase 6 — Parallel & Race', () => {
         race(perform(@op, "only"))
       `, {
         effectHandlers: [
-          { pattern: 'op', handler: async ({ args, resume: res }) => {
-            res(`result:${args[0]}`)
+          { pattern: 'op', handler: async ({ arg, resume: res }) => {
+            res(`result:${arg}`)
           } },
         ],
       })
@@ -3411,7 +3411,7 @@ describe('phase 6 — Parallel & Race', () => {
         map(results, -> "got:" ++ $)
       `, {
         effectHandlers: [
-          { pattern: 'op', handler: async ({ args, resume: res }) => { res(args[0]!) } },
+          { pattern: 'op', handler: async ({ arg, resume: res }) => { res(arg!) } },
         ],
       })
       expect(result).toMatchObject({
@@ -3434,13 +3434,13 @@ describe('phase 6 — Parallel & Race', () => {
         )
       `, {
         effectHandlers: [
-          { pattern: 'slow', handler: async ({ args, resume: res }) => {
+          { pattern: 'slow', handler: async ({ arg, resume: res }) => {
             await new Promise(resolve => setTimeout(resolve, 50))
-            res(`slow:${args[0]}`)
+            res(`slow:${arg}`)
           } },
 
-          { pattern: 'fast', handler: async ({ args, resume: res }) => {
-            res(`fast:${args[0]}`)
+          { pattern: 'fast', handler: async ({ arg, resume: res }) => {
+            res(`fast:${arg}`)
           } },
         ],
       })
@@ -3969,7 +3969,7 @@ describe('host handler wildcard patterns', () => {
     it('exact match works', async () => {
       const result = await dvala.runAsync('perform(@my.effect, 42)', {
         effectHandlers: [
-          { pattern: 'my.effect', handler: async ({ args, resume }) => { resume(args[0]!) } },
+          { pattern: 'my.effect', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 42 })
@@ -3978,7 +3978,7 @@ describe('host handler wildcard patterns', () => {
     it('wildcard suffix matches child effect', async () => {
       const result = await dvala.runAsync('perform(@dvala.io.println, "hello")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ args, resume }) => { resume(args[0]!) } },
+          { pattern: 'dvala.*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 'hello' })
@@ -3987,7 +3987,7 @@ describe('host handler wildcard patterns', () => {
     it('wildcard suffix matches the prefix itself', async () => {
       const result = await dvala.runAsync('perform(@dvala, "value")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ args, resume }) => { resume(args[0]!) } },
+          { pattern: 'dvala.*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 'value' })
@@ -3996,7 +3996,7 @@ describe('host handler wildcard patterns', () => {
     it('wildcard suffix matches deeply nested effects', async () => {
       const result = await dvala.runAsync('perform(@dvala.log.verbose, "deep")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ args, resume }) => { resume(args[0]!) } },
+          { pattern: 'dvala.*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 'deep' })
@@ -4009,9 +4009,9 @@ describe('host handler wildcard patterns', () => {
       let capturedEffectName = ''
       const result = await dvala.runAsync('perform(@dvalaXXX, "val")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ effectName, args, resume }) => {
+          { pattern: 'dvala.*', handler: async ({ effectName, arg, resume }) => {
             capturedEffectName = effectName
-            resume(args[0]!)
+            resume(arg!)
           } },
         ],
       })
@@ -4023,7 +4023,7 @@ describe('host handler wildcard patterns', () => {
     it('catch-all * matches everything', async () => {
       const result = await dvala.runAsync('perform(@anything.at.all, 99)', {
         effectHandlers: [
-          { pattern: '*', handler: async ({ args, resume }) => { resume(args[0]!) } },
+          { pattern: '*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 99 })
@@ -4047,9 +4047,9 @@ describe('host handler wildcard patterns', () => {
       let capturedName = ''
       const result = await dvala.runAsync('perform(@my.custom.effect, "val")', {
         effectHandlers: [
-          { pattern: '*', handler: async ({ effectName, args, resume }) => {
+          { pattern: '*', handler: async ({ effectName, arg, resume }) => {
             capturedName = effectName
-            resume(args[0]!)
+            resume(arg!)
           } },
         ],
       })
@@ -4146,9 +4146,9 @@ describe('host handler wildcard patterns', () => {
             next()
           } },
 
-          { pattern: 'app.action', handler: async ({ args, resume }) => {
+          { pattern: 'app.action', handler: async ({ arg, resume }) => {
             log.push('exact')
-            resume(args[0]!)
+            resume(arg!)
           } },
         ],
       })
@@ -4189,8 +4189,8 @@ describe('host handler wildcard patterns', () => {
     it('dvala.* catches runtime errors', async () => {
       const result = await dvala.runAsync('perform(@dvala.error, "test error")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ effectName, args, resume }) => {
-            resume(`caught ${effectName}: ${args[0]}`)
+          { pattern: 'dvala.*', handler: async ({ effectName, arg, resume }) => {
+            resume(`caught ${effectName}: ${arg}`)
           } },
         ],
       })
@@ -4211,8 +4211,8 @@ describe('host handler wildcard patterns', () => {
     it('exact dvala.error handler still works', async () => {
       const result = await dvala.runAsync('perform(@dvala.error, "oops")', {
         effectHandlers: [
-          { pattern: 'dvala.error', handler: async ({ args, resume }) => {
-            resume(`error: ${args[0]}`)
+          { pattern: 'dvala.error', handler: async ({ arg, resume }) => {
+            resume(`error: ${arg}`)
           } },
         ],
       })
@@ -4228,9 +4228,9 @@ describe('host handler wildcard patterns', () => {
             next()
           } },
 
-          { pattern: 'dvala.error', handler: async ({ args, resume }) => {
+          { pattern: 'dvala.error', handler: async ({ arg, resume }) => {
             log.push('dvala-error-exact')
-            resume(`handled: ${args[0]}`)
+            resume(`handled: ${arg}`)
           } },
         ],
       })
@@ -4274,10 +4274,10 @@ describe('host handler wildcard patterns', () => {
             next()
           } },
 
-          { pattern: 'my.effect', handler: async ({ args, resume }) => {
+          { pattern: 'my.effect', handler: async ({ arg, resume }) => {
             await new Promise(resolve => setTimeout(resolve, 10))
             log.push('async-handler')
-            resume((args[0] as number) * 2)
+            resume((arg as number) * 2)
           } },
         ],
       })

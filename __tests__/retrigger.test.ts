@@ -7,10 +7,10 @@ import { resume } from '../src/resume'
 const dvala = createDvala()
 
 // ---------------------------------------------------------------------------
-// effectName / effectArgs captured in snapshot
+// effectName / effectArg captured in snapshot
 // ---------------------------------------------------------------------------
 
-describe('snapshot captures effectName and effectArgs', () => {
+describe('snapshot captures effectName and effectArg', () => {
   it('captures effectName when handler suspends', async () => {
     const result = await dvala.runAsync(`
       perform(@my.task, 42)
@@ -25,7 +25,7 @@ describe('snapshot captures effectName and effectArgs', () => {
     expect(result.snapshot.effectName).toBe('my.task')
   })
 
-  it('captures effectArgs when handler suspends', async () => {
+  it('captures effectArg when handler suspends', async () => {
     const result = await dvala.runAsync(`
       perform(@my.task, 1, "hello", true)
     `, {
@@ -36,7 +36,7 @@ describe('snapshot captures effectName and effectArgs', () => {
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
       return
-    expect(result.snapshot.effectArgs).toEqual([1, 'hello', true])
+    expect(result.snapshot.effectArg).toBe(1)
   })
 
   it('captures effectName from a suspending parallel branch', async () => {
@@ -59,7 +59,7 @@ describe('snapshot captures effectName and effectArgs', () => {
     expect(result.snapshot.effectName).toBe('my.b')
   })
 
-  it('captures effectName and args across JSON round-trip', async () => {
+  it('captures effectName and arg across JSON round-trip', async () => {
     const result = await dvala.runAsync(`
       perform(@my.save, { id: 99 })
     `, {
@@ -73,7 +73,7 @@ describe('snapshot captures effectName and effectArgs', () => {
 
     const roundTripped = JSON.parse(JSON.stringify(result.snapshot)) as Snapshot
     expect(roundTripped.effectName).toBe('my.save')
-    expect(roundTripped.effectArgs).toEqual([{ id: 99 }])
+    expect(roundTripped.effectArg).toEqual({ id: 99 })
   })
 })
 
@@ -106,8 +106,8 @@ describe('retrigger()', () => {
     expect(r2.value).toBe(11)
   })
 
-  it('passes original effectArgs to the retriggered handler', async () => {
-    let capturedArgs: unknown[] = []
+  it('passes original effectArg to the retriggered handler', async () => {
+    let capturedArg: unknown
     const r1 = await dvala.runAsync(`
       perform(@my.task, "foo", 42)
     `, {
@@ -121,13 +121,13 @@ describe('retrigger()', () => {
 
     await retrigger(r1.snapshot, {
       handlers: [
-        { pattern: 'my.task', handler: async ({ args, resume: r }) => {
-          capturedArgs = args
+        { pattern: 'my.task', handler: async ({ arg, resume: r }) => {
+          capturedArg = arg
           r(null)
         } },
       ],
     })
-    expect(capturedArgs).toEqual(['foo', 42])
+    expect(capturedArg).toBe('foo')
   })
 
   it('returns error when snapshot has no effectName', async () => {
@@ -144,7 +144,7 @@ describe('retrigger()', () => {
       return
 
     // Strip effectName to simulate a non-effect suspension
-    const strippedSnapshot = { ...r1.snapshot, effectName: undefined, effectArgs: undefined }
+    const strippedSnapshot = { ...r1.snapshot, effectName: undefined, effectArg: undefined }
     const r2 = await retrigger(strippedSnapshot, {
       handlers: [
         { pattern: 'my.thing', handler: async ({ resume: r }) => { r(null) } },
@@ -237,7 +237,7 @@ describe('retrigger()', () => {
     expect(r3.value).toBe(7)
   })
 
-  it('preserves effectName/effectArgs when a parallel branch suspends', async () => {
+  it('preserves effectName/effectArg when a parallel branch suspends', async () => {
     // Resume branch A, suspend branch B — snapshot should capture B's effect
     const r1 = await dvala.runAsync(`
       parallel(
@@ -246,8 +246,8 @@ describe('retrigger()', () => {
       )
     `, {
       effectHandlers: [
-        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend }) => {
-          if (args[0] === 'A')
+        { pattern: 'foo.bar', handler: async ({ arg, resume: r, suspend }) => {
+          if (arg === 'A')
             r('resumed-A')
           else
             suspend()
@@ -258,7 +258,7 @@ describe('retrigger()', () => {
     if (r1.type !== 'suspended')
       return
     expect(r1.snapshot.effectName).toBe('foo.bar')
-    expect(r1.snapshot.effectArgs).toEqual(['B'])
+    expect(r1.snapshot.effectArg).toBe('B')
   })
 
   it('can retrigger a snapshot from a parallel branch suspension', async () => {
@@ -270,8 +270,8 @@ describe('retrigger()', () => {
       )
     `, {
       effectHandlers: [
-        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend }) => {
-          if (args[0] === 'A')
+        { pattern: 'foo.bar', handler: async ({ arg, resume: r, suspend }) => {
+          if (arg === 'A')
             r('got-A')
           else
             suspend()
@@ -304,10 +304,10 @@ describe('retrigger()', () => {
       )
     `, {
       effectHandlers: [
-        { pattern: 'foo.bar', handler: async ({ args, resume: r, suspend, signal }) => {
-          if (args[0] === 'A') {
+        { pattern: 'foo.bar', handler: async ({ arg, resume: r, suspend, signal }) => {
+          if (arg === 'A') {
             r('got-A')
-          } else if (args[0] === 'B') {
+          } else if (arg === 'B') {
             suspend()
           } else {
             // C: auto-suspend when the parallel group aborts
@@ -325,13 +325,13 @@ describe('retrigger()', () => {
     if (r1.type !== 'suspended')
       return
     expect(r1.snapshot.effectName).toBe('foo.bar')
-    expect(r1.snapshot.effectArgs).toEqual(['B'])
+    expect(r1.snapshot.effectArg).toBe('B')
 
     // Retrigger: B and C are dispatched concurrently — single retrigger completes all
     const r2 = await retrigger(r1.snapshot, {
       handlers: [
-        { pattern: 'foo.bar', handler: async ({ args, resume: r }) => {
-          r(args[0] === 'B' ? 'got-B' : 'got-C')
+        { pattern: 'foo.bar', handler: async ({ arg, resume: r }) => {
+          r(arg === 'B' ? 'got-B' : 'got-C')
         } },
       ],
     })
@@ -345,8 +345,8 @@ describe('retrigger()', () => {
     // A suspends → B and C auto-suspend via abort. Retrigger → A suspends again.
     // Expected: program suspended (B and C should auto-abort via parallelAbort,
     // NOT shown in the effect modal).
-    const suspendHandler = async ({ args, suspend, signal }: { args: any[]; suspend: () => void; signal: AbortSignal }) => {
-      if (args[0] === 'A') {
+    const suspendHandler = async ({ arg, suspend, signal }: { arg: any; suspend: () => void; signal: AbortSignal }) => {
+      if (arg === 'A') {
         suspend()
       } else {
         // B and C: auto-suspend when A suspends (abort signal fires)
@@ -373,7 +373,7 @@ describe('retrigger()', () => {
     if (r1.type !== 'suspended')
       return
     expect(r1.snapshot.effectName).toBe('foo.bar')
-    expect(r1.snapshot.effectArgs).toEqual(['A'])
+    expect(r1.snapshot.effectArg).toBe('A')
 
     // Retrigger — A suspends again; B and C must also re-suspend via abort
     const r2 = await retrigger(r1.snapshot, {
@@ -414,7 +414,7 @@ describe('retrigger()', () => {
     const badSnapshot = {
       continuation: 'not-a-valid-continuation',
       effectName: 'my.effect',
-      effectArgs: [],
+      effectArg: null,
     } as any
 
     const result1 = await retrigger(badSnapshot, {
@@ -431,7 +431,7 @@ describe('retrigger()', () => {
     const badSnapshot = {
       continuation: null,
       effectName: 'my.effect',
-      effectArgs: [],
+      effectArg: null,
     } as any
 
     const result2 = await retrigger(badSnapshot, {

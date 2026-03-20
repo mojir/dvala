@@ -16,10 +16,10 @@
 
 import { DvalaError } from '../errors'
 import type { Arity, FunctionDocs } from '../builtin/interface'
-import type { Any, Arr, UnknownRecord } from '../interface'
+import type { Any, UnknownRecord } from '../interface'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
-import { assertNumberOfParams, toFixedArity } from '../utils/arity'
+import { toFixedArity } from '../utils/arity'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack } from './frames'
 import type { Step } from './step'
@@ -32,7 +32,7 @@ import type { Step } from './step'
  * A standard effect handler returns the next step directly.
  * Sync effects return `Step`, async effects return `Promise<Step>`.
  */
-type StandardEffectHandlerFn = (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>
+type StandardEffectHandlerFn = (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>
 
 /**
  * A standard effect definition — mirrors BuiltinNormalExpression structure.
@@ -112,8 +112,8 @@ function replaceSpecialValues(value: unknown): unknown {
   return value
 }
 
-function printHandler(args: Arr, k: ContinuationStack): Step {
-  const value = args[0] as Any
+function printHandler(arg: Any, k: ContinuationStack): Step {
+  const value = arg
   const str = formatForOutput(value)
   if (isNode()) {
     process.stdout.write(str)
@@ -124,8 +124,8 @@ function printHandler(args: Arr, k: ContinuationStack): Step {
   return { type: 'Value', value, k }
 }
 
-function printlnHandler(args: Arr, k: ContinuationStack): Step {
-  const value = args[0] as Any
+function printlnHandler(arg: Any, k: ContinuationStack): Step {
+  const value = arg
   const str = formatForOutput(value)
   if (isNode()) {
     process.stdout.write(`${str}\n`)
@@ -148,10 +148,32 @@ function generateUUID(): string {
 }
 
 // ---------------------------------------------------------------------------
+// Standard effect name union — add new effects here
+// ---------------------------------------------------------------------------
+
+type StandardEffectName =
+  | 'dvala.io.print'
+  | 'dvala.io.println'
+  | 'dvala.io.error'
+  | 'dvala.io.read-line'
+  | 'dvala.io.pick'
+  | 'dvala.io.confirm'
+  | 'dvala.io.read-stdin'
+  | 'dvala.random'
+  | 'dvala.random.uuid'
+  | 'dvala.random.int'
+  | 'dvala.random.item'
+  | 'dvala.random.shuffle'
+  | 'dvala.time.now'
+  | 'dvala.time.zone'
+  | 'dvala.checkpoint'
+  | 'dvala.sleep'
+
+// ---------------------------------------------------------------------------
 // Standard effect definitions (handler + arity + docs)
 // ---------------------------------------------------------------------------
 
-const standardEffects: Record<string, StandardEffectDefinition> = {
+const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   // ── I/O ──────────────────────────────────────────────────────────────────
 
@@ -194,16 +216,15 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.io.error': {
-    handler: (args: Arr, k: ContinuationStack): Step => {
-      const value = args[0] as Any
-      const str = formatForOutput(value)
+    handler: (arg: Any, k: ContinuationStack): Step => {
+      const str = formatForOutput(arg)
       if (isNode()) {
         process.stderr.write(`${str}\n`)
       } else {
         // eslint-disable-next-line no-console
         console.error(str)
       }
-      return { type: 'Value', value, k }
+      return { type: 'Value', value: arg, k }
     },
     arity: toFixedArity(1),
     docs: {
@@ -222,8 +243,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.io.read-line': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const message = typeof args[0] === 'string' ? args[0] : ''
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const message = typeof arg === 'string' ? arg : ''
 
       // Browser: window.prompt (synchronous)
       if (typeof globalThis.prompt === 'function') {
@@ -254,9 +275,10 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.io.pick': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const items = args[0]
-      const options = args[1]
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const argObj = arg as UnknownRecord
+      const items = argObj?.['items']
+      const options = argObj?.['options']
 
       if (!Array.isArray(items)) {
         throw new DvalaError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)
@@ -340,9 +362,10 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.io.confirm': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const question = args[0]
-      const options = args[1]
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const argObj = arg as UnknownRecord
+      const question = typeof arg === 'string' ? arg : argObj?.['question']
+      const options = typeof arg === 'string' ? undefined : argObj?.['options']
 
       if (typeof question !== 'string') {
         throw new DvalaError(`dvala.io.confirm: first argument must be a string, got ${typeof question}`, sourceCodeInfo)
@@ -386,7 +409,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.io.read-stdin': {
-    handler: (_args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
+    handler: (_arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       if (!isNode() || !process.stdin) {
         throw new DvalaError('dvala.io.read-stdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
       }
@@ -416,7 +439,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   // ── Random ───────────────────────────────────────────────────────────────
 
   'dvala.random': {
-    handler: (_args: Arr, k: ContinuationStack): Step => {
+    handler: (_arg: Any, k: ContinuationStack): Step => {
       return { type: 'Value', value: Math.random(), k }
     },
     arity: toFixedArity(0),
@@ -434,7 +457,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.random.uuid': {
-    handler: (_args: Arr, k: ContinuationStack): Step => {
+    handler: (_arg: Any, k: ContinuationStack): Step => {
       return { type: 'Value', value: generateUUID(), k }
     },
     arity: toFixedArity(0),
@@ -452,9 +475,10 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.random.int': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const min = args[0]
-      const max = args[1]
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const a = Array.isArray(arg) ? arg : []
+      const min = a[0]
+      const max = a[1]
       if (typeof min !== 'number' || !Number.isInteger(min)) {
         throw new DvalaError(`dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`, sourceCodeInfo)
       }
@@ -484,8 +508,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.random.item': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const array = args[0]
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      const array = arg
       if (!Array.isArray(array)) {
         throw new DvalaError(`dvala.random.item: argument must be an array, got ${typeof array}`, sourceCodeInfo)
       }
@@ -512,12 +536,11 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.random.shuffle': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const array = args[0]
-      if (!Array.isArray(array)) {
-        throw new DvalaError(`dvala.random.shuffle: argument must be an array, got ${typeof array}`, sourceCodeInfo)
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      if (!Array.isArray(arg)) {
+        throw new DvalaError(`dvala.random.shuffle: argument must be an array, got ${typeof arg}`, sourceCodeInfo)
       }
-      const shuffled: Arr = Array.from(array) as Arr
+      const shuffled: Any[] = Array.from(arg) as Any[]
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
         const tmp = shuffled[i]
@@ -545,7 +568,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   // ── Time ─────────────────────────────────────────────────────────────────
 
   'dvala.time.now': {
-    handler: (_args: Arr, k: ContinuationStack): Step => {
+    handler: (_arg: Any, k: ContinuationStack): Step => {
       return { type: 'Value', value: Date.now(), k }
     },
     arity: toFixedArity(0),
@@ -563,7 +586,7 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   },
 
   'dvala.time.zone': {
-    handler: (_args: Arr, k: ContinuationStack): Step => {
+    handler: (_arg: Any, k: ContinuationStack): Step => {
       return { type: 'Value', value: Intl.DateTimeFormat().resolvedOptions().timeZone, k }
     },
     arity: toFixedArity(0),
@@ -611,8 +634,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
   // ── Async ────────────────────────────────────────────────────────────────
 
   'dvala.sleep': {
-    handler: (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
-      const ms = args[0]
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
+      const ms = arg
       if (typeof ms !== 'number' || ms < 0) {
         throw new DvalaError(`dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`, sourceCodeInfo)
       }
@@ -642,6 +665,8 @@ const standardEffects: Record<string, StandardEffectDefinition> = {
 // Public API
 // ---------------------------------------------------------------------------
 
+export type { StandardEffectName }
+
 /** All standard effect names. */
 export const standardEffectNames: ReadonlySet<string> = new Set(Object.keys(standardEffects))
 
@@ -653,7 +678,7 @@ export const allStandardEffectDefinitions: Readonly<Record<string, StandardEffec
  * Returns undefined if the effect is not a standard effect.
  */
 export function getStandardEffectDefinition(effectName: string): StandardEffectDefinition | undefined {
-  return standardEffects[effectName]
+  return (standardEffects as Record<string, StandardEffectDefinition>)[effectName]
 }
 
 /**
@@ -661,14 +686,13 @@ export function getStandardEffectDefinition(effectName: string): StandardEffectD
  * Validates arity before calling the handler.
  * Returns undefined if the effect is not a standard effect.
  */
-export function getStandardEffectHandler(effectName: string): ((args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>) | undefined {
-  const def = standardEffects[effectName]
+export function getStandardEffectHandler(effectName: string): ((arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => Step | Promise<Step>) | undefined {
+  const def = (standardEffects as Record<string, StandardEffectDefinition>)[effectName]
   const handler = def?.handler
   if (!handler)
     return undefined
 
-  return (args: Arr, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => {
-    assertNumberOfParams(def.arity, args.length, sourceCodeInfo)
-    return handler(args, k, sourceCodeInfo)
+  return (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo) => {
+    return handler(arg, k, sourceCodeInfo)
   }
 }

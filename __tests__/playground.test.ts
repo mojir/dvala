@@ -406,7 +406,7 @@ describe('start page example', () => {
     const result = await dvala.runAsync(exampleCode, {
       effectHandlers: [
         { pattern: 'dvala.io.pick', handler: ctx => { ctx.resume(1) } },
-        { pattern: 'dvala.io.println', handler: ctx => { printlnValue = ctx.args[0]; ctx.resume(ctx.args[0] ?? null) } },
+        { pattern: 'dvala.io.println', handler: ctx => { printlnValue = ctx.arg; ctx.resume(ctx.arg ?? null) } },
       ],
     })
     expect(result.type).toBe('completed')

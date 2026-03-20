@@ -55,10 +55,10 @@ export interface Snapshot {
   readonly effectName?: string
 
   /**
-   * The arguments passed to the suspended effect's perform call.
+   * The payload passed to the suspended effect's perform call.
    * Undefined when suspension occurred outside of an effect handler.
    */
-  readonly effectArgs?: Any[]
+  readonly effectArg?: Any
 }
 
 // ---------------------------------------------------------------------------
@@ -130,8 +130,8 @@ export interface EffectContext {
   /** Full dotted name of the performed effect (useful for wildcard handlers). */
   effectName: string
 
-  /** Arguments from the Dvala `perform(eff, arg1, arg2, ...)` call. */
-  args: Any[]
+  /** The single payload from the Dvala `perform(eff, payload)` call. */
+  arg: Any
 
   /**
    * Aborted when: `race()` branch loses, runtime is disposed, or host cancels.
@@ -283,8 +283,8 @@ export class SuspensionSignal {
     public readonly meta?: Any,
     /** The effect name being handled when suspend() was called. */
     public readonly effectName?: string,
-    /** The effect arguments being handled when suspend() was called. */
-    public readonly effectArgs?: Any[],
+    /** The effect payload being handled when suspend() was called. */
+    public readonly effectArg?: Any,
   ) {}
 }
 

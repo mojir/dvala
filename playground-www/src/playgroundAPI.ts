@@ -18,7 +18,7 @@ export interface PlaygroundAPI {
     getContent(): string
     setContent(json: string): void
   }
-  storage: {
+  programs: {
     save(name: string, code?: string): void
     load(name: string): string
     list(): string[]
@@ -123,7 +123,7 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
         deps.setContextContent(json)
       },
     },
-    storage: {
+    programs: {
       save(name: string, code?: string) {
         const content = code ?? deps.getEditorContent()
         deps.saveProgram(name, content)

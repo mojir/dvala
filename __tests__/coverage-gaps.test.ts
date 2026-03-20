@@ -489,8 +489,8 @@ describe('debug step', () => {
     const steps: unknown[] = []
     const handlers: Handlers = [
       { pattern: 'dvala.debug.step', handler: async ctx => {
-        steps.push(ctx.args[0])
-        ctx.resume(ctx.args[0]!)
+        steps.push(ctx.arg)
+        ctx.resume(ctx.arg!)
       } },
     ]
     const d = createDvala({ debug: true })
@@ -1022,7 +1022,7 @@ describe('debug step — error during evaluation', () => {
   it('should handle debug step by resuming with value', async () => {
     const handlers: Handlers = [
       { pattern: 'dvala.debug.step', handler: async ctx => {
-        const stepInfo = ctx.args[0] as { value: unknown }
+        const stepInfo = ctx.arg as { value: unknown }
         ctx.resume(stepInfo.value as never)
       } },
     ]
@@ -1303,8 +1303,8 @@ describe('wrapMaybePromiseAsStep — async path', () => {
       x * 2
     `, {
       effectHandlers: [
-        { pattern: 'my.async.val', handler: async ({ args, resume: doResume }) => {
-          const val = await Promise.resolve(args[0]!)
+        { pattern: 'my.async.val', handler: async ({ arg, resume: doResume }) => {
+          const val = await Promise.resolve(arg!)
           doResume(val)
         } },
       ],
@@ -1326,8 +1326,8 @@ describe('evaluateNode — async fallback', () => {
       a + b
     `, {
       effectHandlers: [
-        { pattern: 'my.compute', handler: async ({ args, resume: doResume }) => {
-          const val = await Promise.resolve((args[0] as number) + 1)
+        { pattern: 'my.compute', handler: async ({ arg, resume: doResume }) => {
+          const val = await Promise.resolve((arg as number) + 1)
           doResume(val)
         } },
       ],
@@ -1721,7 +1721,7 @@ describe('dvala.async.run — with effect handlers', () => {
       perform(@test.echo, 42)
     `, {
       effectHandlers: [
-        { pattern: 'test.echo', handler: async ({ args, resume: doResume }) => { doResume(args[0]!) } },
+        { pattern: 'test.echo', handler: async ({ arg, resume: doResume }) => { doResume(arg!) } },
       ],
     })
     expect(result.type).toBe('completed')
@@ -1914,9 +1914,9 @@ describe('trampoline — effect execution via run()', () => {
     const printed: string[] = []
     const result = await dvala.runAsync('perform(@dvala.io.println, "hello")', {
       effectHandlers: [
-        { pattern: 'dvala.io.println', handler: async ({ args, resume: doResume }) => {
-          printed.push(String(args[0]))
-          doResume(args[0]!)
+        { pattern: 'dvala.io.println', handler: async ({ arg, resume: doResume }) => {
+          printed.push(String(arg))
+          doResume(arg!)
         } },
       ],
     })
@@ -1938,8 +1938,8 @@ describe('trampoline — parallel with suspending branches', () => {
       )
     `, {
       effectHandlers: [
-        { pattern: 'test.work', handler: async ({ args, resume: doResume }) => {
-          doResume(args[0]!)
+        { pattern: 'test.work', handler: async ({ arg, resume: doResume }) => {
+          doResume(arg!)
         } },
       ],
     })
@@ -3439,7 +3439,7 @@ describe('wildcard handler with standard effect fallback', () => {
 
       { pattern: 'dvala.io.println', handler: async ctx => {
         // Intercept println to avoid console output
-        log.push(`println: ${ctx.args[0]}`)
+        log.push(`println: ${ctx.arg}`)
         ctx.resume(null)
       } },
     ]

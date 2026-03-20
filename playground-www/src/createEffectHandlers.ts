@@ -23,7 +23,7 @@ export function createEffectHandlers(api: PlaygroundAPI): HandlerRegistration[] 
         const fn = value
         const handler: EffectHandler = (ctx): void | Promise<void> => {
           try {
-            const result = fn(...ctx.args as never[])
+            const result = fn(ctx.arg as never)
             if (result instanceof Promise) {
               return result.then(r => ctx.resume((r ?? null) as Any)).catch(e => ctx.fail((e as Error).message))
             }

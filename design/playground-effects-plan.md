@@ -54,12 +54,12 @@ perform(effect(dvala.sleep), 500)  // use standard sleep
 |--------|-----------|---------|-------------|
 | `playground.exec.run` | `code: string` | `any` | Execute Dvala code, return result |
 
-### Storage (`playground.storage.*`)
+### Programs (`playground.programs.*`)
 | Effect | Arguments | Returns | Description |
 |--------|-----------|---------|-------------|
-| `playground.storage.save` | `name: string, code?: string` | `nil` | Save program (defaults to current editor) |
-| `playground.storage.load` | `name: string` | `string` | Load saved program |
-| `playground.storage.list` | none | `array<string>` | List saved program names |
+| `playground.programs.save` | `name: string, code?: string` | `nil` | Save program (defaults to current editor) |
+| `playground.programs.load` | `name: string` | `string` | Load saved program |
+| `playground.programs.list` | none | `array<string>` | List saved program names |
 
 ## Implementation
 
@@ -162,7 +162,7 @@ Effect handlers call `fail(msg)` on error → triggers `dvala.error` effect → 
 
 ```dvala
 do
-  perform(effect(playground.storage.load), "nonexistent")
+  perform(effect(playground.programs.load), "nonexistent")
 with
   case effect(dvala.error) then ([msg]) -> "File not found"
 end
@@ -261,10 +261,10 @@ let challenges = [
 ### Phase 2: Execution
 - [x] `playground.exec.run`
 
-### Phase 3: Storage
-- [x] `playground.storage.save`
-- [x] `playground.storage.load`
-- [x] `playground.storage.list`
+### Phase 3: Programs
+- [x] `playground.programs.save`
+- [x] `playground.programs.load`
+- [x] `playground.programs.list`
 
 ### Phase 4: Advanced
 - [x] `playground.editor.typeText`

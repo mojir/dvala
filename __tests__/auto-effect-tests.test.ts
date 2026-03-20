@@ -851,9 +851,9 @@ describe('auto: host handler patterns', () => {
       perform(@e, 3)
     `, {
       effectHandlers: [
-        { pattern: '*', handler: async ({ effectName, args, resume: r }) => {
+        { pattern: '*', handler: async ({ effectName, arg, resume: r }) => {
           captured.push(effectName)
-          r(args[0]!)
+          r(arg!)
         } },
       ],
     })
@@ -903,9 +903,9 @@ describe('auto: host handler patterns', () => {
           next()
         } },
 
-        { pattern: 'my.eff', handler: async ({ args, resume: r }) => {
+        { pattern: 'my.eff', handler: async ({ arg, resume: r }) => {
           log.push('exact')
-          r(args[0]!)
+          r(arg!)
         } },
       ],
     })
@@ -936,8 +936,8 @@ describe('auto: host handler patterns', () => {
       perform(@my.wait, "please approve")
     `, {
       effectHandlers: [
-        { pattern: 'my.wait', handler: async ({ args, suspend }) => {
-          suspend({ payload: args[0] })
+        { pattern: 'my.wait', handler: async ({ arg, suspend }) => {
+          suspend({ payload: arg })
         } },
       ],
     })

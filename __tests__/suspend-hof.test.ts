@@ -10,8 +10,8 @@ describe('suspend through migrated HOFs', () => {
       perform(@my.get, 42)
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, suspend }) => {
-          suspend({ value: args[0] })
+        { pattern: 'my.get', handler: async ({ arg, suspend }) => {
+          suspend({ value: arg })
         } },
       ],
     })
@@ -23,8 +23,8 @@ describe('suspend through migrated HOFs', () => {
       for (x in [10]) -> perform(@my.get, x)
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, suspend }) => {
-          suspend({ requested: args[0] })
+        { pattern: 'my.get', handler: async ({ arg, suspend }) => {
+          suspend({ requested: arg })
         } },
       ],
     })
@@ -39,8 +39,8 @@ describe('suspend through migrated HOFs', () => {
       for (x in [1, 2]) -> perform(@my.test, x)
     `, {
       effectHandlers: [
-        { pattern: 'my.test', handler: async ({ args, suspend }) => {
-          suspend({ value: args[0] })
+        { pattern: 'my.test', handler: async ({ arg, suspend }) => {
+          suspend({ value: arg })
         } },
       ],
     })
@@ -51,8 +51,8 @@ describe('suspend through migrated HOFs', () => {
       expect(result.snapshot.meta).toEqual({ value: 1 })
       const result2 = await resumeContinuation(result.snapshot, 10, {
         handlers: [
-          { pattern: 'my.test', handler: async ({ args, suspend }) => {
-            suspend({ value: args[0] })
+          { pattern: 'my.test', handler: async ({ arg, suspend }) => {
+            suspend({ value: arg })
           } },
         ],
       })
@@ -77,8 +77,8 @@ describe('suspend through migrated HOFs', () => {
       ((x) -> perform(@my.get, x))(42)
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, suspend }) => {
-          suspend({ requested: args[0] })
+        { pattern: 'my.get', handler: async ({ arg, suspend }) => {
+          suspend({ requested: arg })
         } },
       ],
     })
@@ -93,8 +93,8 @@ describe('suspend through migrated HOFs', () => {
       for (x in [10]) -> ((y) -> perform(@my.get, y))(x)
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, suspend }) => {
-          suspend({ requested: args[0] })
+        { pattern: 'my.get', handler: async ({ arg, suspend }) => {
+          suspend({ requested: arg })
         } },
       ],
     })
@@ -121,8 +121,8 @@ describe('suspend through migrated HOFs', () => {
       map([1, 2], (x) -> perform(@my.approve, x))
     `, {
       effectHandlers: [
-        { pattern: 'my.approve', handler: async ({ args, suspend }) => {
-          suspend({ value: args[0] })
+        { pattern: 'my.approve', handler: async ({ arg, suspend }) => {
+          suspend({ value: arg })
         } },
       ],
     })
@@ -135,8 +135,8 @@ describe('suspend through migrated HOFs', () => {
 
       const result2 = await resumeContinuation(result.snapshot, 10, {
         handlers: [
-          { pattern: 'my.approve', handler: async ({ args, suspend }) => {
-            suspend({ value: args[0] })
+          { pattern: 'my.approve', handler: async ({ arg, suspend }) => {
+            suspend({ value: arg })
           } },
         ],
       })
@@ -166,8 +166,8 @@ describe('suspend through migrated HOFs', () => {
       reduce([1, 2, 3], (acc, x) -> acc + perform(@my.transform, x), 0)
     `, {
       effectHandlers: [
-        { pattern: 'my.transform', handler: async ({ args, suspend }) => {
-          suspend({ transforming: args[0] })
+        { pattern: 'my.transform', handler: async ({ arg, suspend }) => {
+          suspend({ transforming: arg })
         } },
       ],
     })
@@ -179,8 +179,8 @@ describe('suspend through migrated HOFs', () => {
       expect(result.snapshot.meta).toEqual({ transforming: 1 })
       const result2 = await resumeContinuation(result.snapshot, 10, {
         handlers: [
-          { pattern: 'my.transform', handler: async ({ args, suspend }) => {
-            suspend({ transforming: args[0] })
+          { pattern: 'my.transform', handler: async ({ arg, suspend }) => {
+            suspend({ transforming: arg })
           } },
         ],
       })
@@ -189,8 +189,8 @@ describe('suspend through migrated HOFs', () => {
         expect(result2.snapshot.meta).toEqual({ transforming: 2 })
         const result3 = await resumeContinuation(result2.snapshot, 20, {
           handlers: [
-            { pattern: 'my.transform', handler: async ({ args, suspend }) => {
-              suspend({ transforming: args[0] })
+            { pattern: 'my.transform', handler: async ({ arg, suspend }) => {
+              suspend({ transforming: arg })
             } },
           ],
         })
@@ -214,8 +214,8 @@ describe('suspend through migrated HOFs', () => {
       filter([1, 2, 3, 4], (x) -> perform(@my.check, x))
     `, {
       effectHandlers: [
-        { pattern: 'my.check', handler: async ({ args, suspend }) => {
-          suspend({ checking: args[0] })
+        { pattern: 'my.check', handler: async ({ arg, suspend }) => {
+          suspend({ checking: arg })
         } },
       ],
     })
@@ -224,8 +224,8 @@ describe('suspend through migrated HOFs', () => {
       expect(result.snapshot.meta).toEqual({ checking: 1 })
       const result2 = await resumeContinuation(result.snapshot, true, {
         handlers: [
-          { pattern: 'my.check', handler: async ({ args, suspend }) => {
-            suspend({ checking: args[0] })
+          { pattern: 'my.check', handler: async ({ arg, suspend }) => {
+            suspend({ checking: arg })
           } },
         ],
       })
@@ -234,8 +234,8 @@ describe('suspend through migrated HOFs', () => {
         expect(result2.snapshot.meta).toEqual({ checking: 2 })
         const result3 = await resumeContinuation(result2.snapshot, false, {
           handlers: [
-            { pattern: 'my.check', handler: async ({ args, suspend }) => {
-              suspend({ checking: args[0] })
+            { pattern: 'my.check', handler: async ({ arg, suspend }) => {
+              suspend({ checking: arg })
             } },
           ],
         })
@@ -244,8 +244,8 @@ describe('suspend through migrated HOFs', () => {
           expect(result3.snapshot.meta).toEqual({ checking: 3 })
           const result4 = await resumeContinuation(result3.snapshot, true, {
             handlers: [
-              { pattern: 'my.check', handler: async ({ args, suspend }) => {
-                suspend({ checking: args[0] })
+              { pattern: 'my.check', handler: async ({ arg, suspend }) => {
+                suspend({ checking: arg })
               } },
             ],
           })

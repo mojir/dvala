@@ -53,7 +53,7 @@ describe('stress: parallel + checkpoints', () => {
       results
     `, {
       effectHandlers: [
-        { pattern: 'my.op', handler: async ({ args, resume: r }) => { r(`done:${args[0]}`) } },
+        { pattern: 'my.op', handler: async ({ arg, resume: r }) => { r(`done:${arg}`) } },
 
         { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
           outerSnapshots = [...snapshots]
@@ -72,7 +72,7 @@ describe('stress: parallel + checkpoints', () => {
 
   it('parallel with all branches suspended, resume one at a time', async () => {
     const handlers: Handlers = [
-      { pattern: 'my.ask', handler: async ({ args, suspend }) => { suspend({ q: args[0] }) } },
+      { pattern: 'my.ask', handler: async ({ arg, suspend }) => { suspend({ q: arg }) } },
     ]
 
     const r1 = await dvala.runAsync(`
@@ -149,7 +149,7 @@ describe('stress: parallel + checkpoints', () => {
       results
     `, {
       effectHandlers: [
-        { pattern: 'my.op', handler: async ({ args, resume: r }) => { r((args[0] as number) * 10) } },
+        { pattern: 'my.op', handler: async ({ arg, resume: r }) => { r((arg as number) * 10) } },
 
         { pattern: 'my.check', handler: async ({ snapshots, resume: r }) => {
           capturedSnapshots = [...snapshots]
@@ -424,7 +424,7 @@ describe('stress: local + host handler priority with suspend', () => {
       end
     `, {
       effectHandlers: [
-        { pattern: 'my.eff', handler: async ({ args, resume: r }) => { r((args[0] as number) * 100) } },
+        { pattern: 'my.eff', handler: async ({ arg, resume: r }) => { r((arg as number) * 100) } },
       ],
     })
     // Local handler takes precedence
@@ -664,7 +664,7 @@ describe('stress: cascading effects', () => {
       effectHandlers: [
         { pattern: 'my.step1', handler: async ({ resume: r }) => { r(10) } },
 
-        { pattern: 'my.step2', handler: async ({ args, resume: r }) => { r((args[0] as number) * 3) } },
+        { pattern: 'my.step2', handler: async ({ arg, resume: r }) => { r((arg as number) * 3) } },
       ],
     })
     expect(result).toMatchObject({ type: 'completed', value: 40 }) // 10 + 30
@@ -680,7 +680,7 @@ describe('stress: cascading effects', () => {
       end
     `, {
       effectHandlers: [
-        { pattern: 'my.host', handler: async ({ args, resume: r }) => { r((args[0] as number) * 8) } },
+        { pattern: 'my.host', handler: async ({ arg, resume: r }) => { r((arg as number) * 8) } },
       ],
     })
     expect(result).toMatchObject({ type: 'completed', value: 40 })
@@ -731,7 +731,7 @@ describe('stress: loop/recur + effects', () => {
         end
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, resume: r }) => { r(`item-${args[0]}`) } },
+        { pattern: 'my.get', handler: async ({ arg, resume: r }) => { r(`item-${arg}`) } },
       ],
     })
     expect(result).toMatchObject({ type: 'completed', value: 'item-0, item-1, item-2' })
@@ -765,8 +765,8 @@ describe('stress: loop/recur + effects', () => {
         perform(@my.process, i)
     `, {
       effectHandlers: [
-        { pattern: 'my.process', handler: async ({ args, resume: r }) => {
-          collected.push(args[0] as number)
+        { pattern: 'my.process', handler: async ({ arg, resume: r }) => {
+          collected.push(arg as number)
           r(null)
         } },
       ],
@@ -1172,7 +1172,7 @@ describe('stress: error propagation through effect stacks', () => {
 
   it('error after multi-step suspend/resume caught correctly', async () => {
     const handlers: Handlers = [
-      { pattern: 'my.step', handler: async ({ args, suspend }) => { suspend({ step: args[0] }) } },
+      { pattern: 'my.step', handler: async ({ arg, suspend }) => { suspend({ step: arg }) } },
     ]
 
     const r1 = await dvala.runAsync(`
@@ -1496,11 +1496,11 @@ describe('stress: suspend inside control flow', () => {
 describe('stress: complex end-to-end patterns', () => {
   it('pipeline: fetch → transform → approve → finalize', async () => {
     const handlersStep1: Handlers = [
-      { pattern: 'my.fetch', handler: async ({ args, resume: r }) => { r(`data-${args[0]}`) } },
+      { pattern: 'my.fetch', handler: async ({ arg, resume: r }) => { r(`data-${arg}`) } },
 
-      { pattern: 'my.transform', handler: async ({ args, resume: r }) => { r(`transformed-${args[0]}`) } },
+      { pattern: 'my.transform', handler: async ({ arg, resume: r }) => { r(`transformed-${arg}`) } },
 
-      { pattern: 'my.approve', handler: async ({ args, suspend }) => { suspend({ payload: args[0] }) } },
+      { pattern: 'my.approve', handler: async ({ arg, suspend }) => { suspend({ payload: arg }) } },
     ]
 
     const source = `
@@ -1556,7 +1556,7 @@ describe('stress: complex end-to-end patterns', () => {
       [a, b, c]
     `, {
       effectHandlers: [
-        { pattern: 'my.get', handler: async ({ args, resume: r }) => { r((args[0] as number) * 10) } },
+        { pattern: 'my.get', handler: async ({ arg, resume: r }) => { r((arg as number) * 10) } },
       ],
     })
     expect(result).toMatchObject({ type: 'completed', value: [10, 20, 30] })
@@ -1568,7 +1568,7 @@ describe('stress: complex end-to-end patterns', () => {
       map([1, 2, 3], (x) -> perform(@my.double, x))
     `, {
       effectHandlers: [
-        { pattern: 'my.double', handler: async ({ args, resume: r }) => { r((args[0] as number) * 2) } },
+        { pattern: 'my.double', handler: async ({ arg, resume: r }) => { r((arg as number) * 2) } },
       ],
     })
     expect(result).toMatchObject({ type: 'completed', value: [2, 4, 6] })
@@ -1599,7 +1599,7 @@ describe('stress: complex end-to-end patterns', () => {
       [a, b, c]
     `, {
       effectHandlers: [
-        { pattern: 'my.compute', handler: async ({ args, resume: r }) => { r((args[0] as number) * 10) } },
+        { pattern: 'my.compute', handler: async ({ arg, resume: r }) => { r((arg as number) * 10) } },
 
         { pattern: 'my.report', handler: async ({ snapshots, resume: r }) => {
           snapshotsAtEnd = [...snapshots]

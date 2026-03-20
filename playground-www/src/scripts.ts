@@ -1632,6 +1632,7 @@ function populateSidebarApiSections(): void {
 
   // Playground Reference — separate section for playground-only effects
   if (Object.keys(playgroundEffectReference).length > 0) {
+    html += '<div class="sidebar-spacer"></div>\n'
     html += '<div class="sidebar-section-label">Playground Reference</div>\n'
 
     const byGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
@@ -1643,13 +1644,13 @@ function populateSidebarApiSections(): void {
       byGroup[group].push({ key, shortName, title: r.title })
     }
 
-    const groupOrder = ['ui', 'editor', 'context', 'exec', 'storage', 'router']
+    const groupOrder = ['ui', 'editor', 'context', 'exec', 'programs', 'router']
     const groupLabels: Record<string, string> = {
       ui: 'UI',
       editor: 'Editor',
       context: 'Context',
       exec: 'Execution',
-      storage: 'Storage',
+      programs: 'Programs',
       router: 'Router',
     }
 
@@ -3035,13 +3036,13 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
     // Effect args
     const argsEl = ref('effect-args')
     argsEl.innerHTML = ''
-    if (!snapshot.effectArgs || snapshot.effectArgs.length === 0) {
+    if (snapshot.effectArg === undefined) {
       const empty = document.createElement('span')
       empty.textContent = '(no arguments)'
       empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
       argsEl.appendChild(empty)
     } else {
-      snapshot.effectArgs.forEach((arg, i) => argsEl.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2))))
+      argsEl.appendChild(makeArgRow(JSON.stringify(snapshot.effectArg), 0, JSON.stringify(snapshot.effectArg, null, 2)))
     }
   } else {
     suspendedEffectSection.style.display = 'none'
@@ -4408,15 +4409,13 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
       argsLabel.textContent = 'Arguments'
       argsField.appendChild(argsLabel)
       const argsContainer = document.createElement('div')
-      if (ctx.args.length === 0) {
+      if (ctx.arg === undefined) {
         const empty = document.createElement('span')
         empty.textContent = '(no arguments)'
         empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
         argsContainer.appendChild(empty)
       } else {
-        ctx.args.forEach((arg, i) => {
-          argsContainer.appendChild(makeArgRow(JSON.stringify(arg), i, JSON.stringify(arg, null, 2)))
-        })
+        argsContainer.appendChild(makeArgRow(JSON.stringify(ctx.arg), 0, JSON.stringify(ctx.arg, null, 2)))
       }
       argsField.appendChild(argsContainer)
       el.appendChild(argsField)
@@ -4504,7 +4503,7 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
 function readlineHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     let inputEl: HTMLTextAreaElement | null = null
-    const prompt = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+    const prompt = typeof ctx.arg === 'string' ? ctx.arg : ''
 
     const submit = () => {
       ctx.resume(inputEl?.value ?? null)
@@ -4554,11 +4553,11 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
 
 function printlnHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
-    const value = ctx.args[0]
+    const value = ctx.arg
     const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
 
     const submit = () => {
-      ctx.resume(value as Any)
+      ctx.resume(value)
       resolve()
       resolveCurrentEffect()
       focusDvalaCode()
@@ -4603,8 +4602,9 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
 
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
-    const items = ctx.args[0] as string[]
-    const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
+    const argObj = ctx.arg as { items: string[]; options?: { prompt?: string; default?: number } }
+    const items = argObj.items
+    const options = argObj.options
     const promptText = options?.prompt ?? 'Choose an item:'
     const defaultIndex = options?.default ?? null
     let focusedIndex: number | null = defaultIndex
@@ -4675,8 +4675,9 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
 
 function ioConfirmHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
-    const question = ctx.args[0] as string
-    const options = ctx.args[1] as { default?: boolean } | undefined
+    const argObj = ctx.arg as string | { question: string; options?: { default?: boolean } }
+    const question = typeof argObj === 'string' ? argObj : argObj.question
+    const options = typeof argObj === 'string' ? undefined : argObj.options
     const defaultValue = options?.default
     const defaultIndex = defaultValue === true ? 0 : defaultValue === false ? 1 : null
     let focusedIndex: number | null = defaultIndex
@@ -4858,10 +4859,10 @@ function initExecutionControlBar() {
 // ---------------------------------------------------------------------------
 
 async function printHandler(ctx: EffectContext): Promise<void> {
-  const value = ctx.args[0]
+  const value = ctx.arg
   const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
   appendOutput(text, 'output')
-  ctx.resume(value as Any)
+  ctx.resume(value)
 }
 
 // ---------------------------------------------------------------------------
@@ -4869,8 +4870,9 @@ async function printHandler(ctx: EffectContext): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function syncIoPickHandler(ctx: EffectContext): void {
-  const items = ctx.args[0] as string[]
-  const options = ctx.args[1] as { prompt?: string; default?: number } | undefined
+  const argObj = ctx.arg as { items: string[]; options?: { prompt?: string; default?: number } }
+  const items = argObj.items
+  const options = argObj.options
   const header = options?.prompt ?? 'Choose an item:'
   const defaultIndex = options?.default
   const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
@@ -4890,28 +4892,28 @@ function syncIoPickHandler(ctx: EffectContext): void {
 }
 
 function syncIoConfirmHandler(ctx: EffectContext): void {
-  const question = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+  const question = typeof ctx.arg === 'string' ? ctx.arg : ''
   ctx.resume(window.confirm(question) as Any)
 }
 
 function syncReadlineHandler(ctx: EffectContext): void {
-  const promptText = typeof ctx.args[0] === 'string' ? ctx.args[0] : ''
+  const promptText = typeof ctx.arg === 'string' ? ctx.arg : ''
   const value = window.prompt(promptText)
   ctx.resume(value)
 }
 
 function syncPrintlnHandler(ctx: EffectContext): void {
-  const value = ctx.args[0]
+  const value = ctx.arg
   const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
   window.alert(text)
-  ctx.resume(value as Any)
+  ctx.resume(value)
 }
 
 function syncPrintHandler(ctx: EffectContext): void {
-  const value = ctx.args[0]
+  const value = ctx.arg
   const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
   appendOutput(text, 'output')
-  ctx.resume(value as Any)
+  ctx.resume(value)
 }
 
 function syncDefaultEffectHandler(ctx: EffectContext): void {
