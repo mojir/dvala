@@ -26,7 +26,7 @@ const docs: CustomDocs = {
 do
   perform(@dvala.io.println, "hello")
 with
-  case @dvala.io.println then ([msg]) -> msg
+  case @dvala.io.println then (msg) -> msg
 end
 `,
   ],

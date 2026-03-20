@@ -61,7 +61,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@my.effect, "hello")
         with
-          case @my.effect then ([msg]) -> upper-case(msg)
+          case @my.effect then (msg) -> upper-case(msg)
         end
       `)
       expect(result).toBe('HELLO')
@@ -72,16 +72,16 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@my.value)
         with
-          case @my.value then ([]) -> 42
+          case @my.value then (payload) -> 42
         end
       `)
       expect(result).toBe(42)
     })
 
-    it('should perform an effect with multiple arguments', () => {
+    it('should perform an effect with an array payload', () => {
       const result = dvala.run(`
         do
-          perform(@my.add, 10, 20)
+          perform(@my.add, [10, 20])
         with
           case @my.add then ([a, b]) -> a + b
         end
@@ -89,10 +89,10 @@ describe('phase 2 — Local Effect Handling', () => {
       expect(result).toBe(30)
     })
 
-    it('should pass arguments as an array to the handler', () => {
+    it('should pass single payload to the handler', () => {
       const result = dvala.run(`
         do
-          perform(@my.count, "a", "b", "c")
+          perform(@my.count, ["a", "b", "c"])
         with
           case @my.count then (args) -> count(args)
         end
@@ -110,7 +110,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(eff, "world")
         with
-          case eff then ([msg]) -> "hello " ++ msg
+          case eff then (msg) -> "hello " ++ msg
         end
       `)
       expect(result).toBe('hello world')
@@ -123,8 +123,8 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@a, 1) + perform(@b, 2)
         with
-          case @a then ([x]) -> x * 10
-          case @b then ([x]) -> x * 100
+          case @a then (x) -> x * 10
+          case @b then (x) -> x * 100
         end
       `)
       expect(result).toBe(210) // 10 + 200
@@ -136,8 +136,8 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(eff, "test")
         with
-          case eff then ([x]) -> "first: " ++ x
-          case eff then ([x]) -> "second: " ++ x
+          case eff then (x) -> "first: " ++ x
+          case eff then (x) -> "second: " ++ x
         end
       `)
       expect(result).toBe('first: test')
@@ -149,10 +149,10 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(@outer.eff, "value")
           with
-            case @inner.eff then ([x]) -> "inner: " ++ x
+            case @inner.eff then (x) -> "inner: " ++ x
           end
         with
-          case @outer.eff then ([x]) -> "outer: " ++ x
+          case @outer.eff then (x) -> "outer: " ++ x
         end
       `)
       expect(result).toBe('outer: value')
@@ -164,11 +164,11 @@ describe('phase 2 — Local Effect Handling', () => {
           let a = do
             perform(@inner, "a")
           with
-            case @inner then ([x]) -> "inner(" ++ x ++ ")"
+            case @inner then (x) -> "inner(" ++ x ++ ")"
           end;
           a ++ " + " ++ perform(@outer, "b")
         with
-          case @outer then ([x]) -> "outer(" ++ x ++ ")"
+          case @outer then (x) -> "outer(" ++ x ++ ")"
         end
       `)
       expect(result).toBe('inner(a) + outer(b)')
@@ -183,10 +183,10 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(@my.eff, "original")
           with
-            case @my.eff then ([x]) -> perform(@my.eff, x ++ "+delegated")
+            case @my.eff then (x) -> perform(@my.eff, x ++ "+delegated")
           end
         with
-          case @my.eff then ([x]) -> "caught: " ++ x
+          case @my.eff then (x) -> "caught: " ++ x
         end
       `)
       expect(result).toBe('caught: original+delegated')
@@ -198,7 +198,7 @@ describe('phase 2 — Local Effect Handling', () => {
           let x = perform(@my.eff, 5);
           x * 2
         with
-          case @my.eff then ([n]) -> n + 10
+          case @my.eff then (n) -> n + 10
         end
       `)
       expect(result).toBe(30) // (5 + 10) * 2
@@ -210,10 +210,10 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(@my.eff, "msg")
           with
-            case @my.eff then ([x]) -> perform(@dvala.io.println, x)
+            case @my.eff then (x) -> perform(@dvala.io.println, x)
           end
         with
-          case @dvala.io.println then ([x]) -> "logged: " ++ x
+          case @dvala.io.println then (x) -> "logged: " ++ x
         end
       `)
       expect(result).toBe('logged: msg')
@@ -224,7 +224,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           42
         with
-          case @my.eff then ([x]) -> x * 100
+          case @my.eff then (x) -> x * 100
         end
       `)
       expect(result).toBe(42)
@@ -238,7 +238,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@dvala.error, "boom")
         with
-          case @my.eff then ([x]) -> x
+          case @my.eff then (x) -> x
         end
       `)).toThrow('boom')
     })
@@ -248,7 +248,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@my.eff, "data")
         with
-          case @my.eff then ([x]) -> "handled: " ++ x
+          case @my.eff then (x) -> "handled: " ++ x
         end
       `)
       expect(result).toBe('handled: data')
@@ -260,10 +260,10 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(@my.eff, "data")
           with
-            case @my.eff then ([x]) -> perform(@dvala.error, "handler error: " ++ x)
+            case @my.eff then (x) -> perform(@dvala.error, "handler error: " ++ x)
           end
         with
-          case @dvala.error then ([msg]) -> "outer catch: " ++ msg
+          case @dvala.error then (msg) -> "outer catch: " ++ msg
         end
       `)
       // The error from the handler should NOT be caught by any inner scope.
@@ -276,8 +276,8 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@dvala.error, "body error")
         with
-          case @my.eff then ([x]) -> x
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @my.eff then (x) -> x
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('caught: body error')
@@ -288,8 +288,8 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@my.eff, "hello")
         with
-          case @my.eff then ([x]) -> upper-case(x)
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @my.eff then (x) -> upper-case(x)
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('HELLO')
@@ -303,10 +303,10 @@ describe('phase 2 — Local Effect Handling', () => {
               perform(@dvala.error, "body boom")
             end
           with
-            case @my.eff then ([x]) -> x
+            case @my.eff then (x) -> x
           end
         with
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('caught: body boom')
@@ -317,7 +317,7 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(@no.handler, "data")
         with
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `)
       expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
@@ -331,7 +331,7 @@ describe('phase 2 — Local Effect Handling', () => {
           do
             perform(eff, value)
           with
-            case eff then ([x]) -> x * 2
+            case eff then (x) -> x * 2
           end;
         handle-it(@my.eff, 21)
       `)
@@ -344,8 +344,8 @@ describe('phase 2 — Local Effect Handling', () => {
         do
           perform(effects[0], 1) + perform(effects[1], 2)
         with
-          case @a then ([x]) -> x * 10
-          case @b then ([x]) -> x * 100
+          case @a then (x) -> x * 10
+          case @b then (x) -> x * 100
         end
       `)
       expect(result).toBe(210)
@@ -447,13 +447,14 @@ describe('phase 3 — Host Async API', () => {
 
     it('should handle multiple host effects sequentially', async () => {
       const result = await dvala.runAsync(`
-        let a = perform(@my.add, 10, 20);
-        let b = perform(@my.add, a, 12);
+        let a = perform(@my.add, [10, 20]);
+        let b = perform(@my.add, [a, 12]);
         b
       `, {
         effectHandlers: [
           { pattern: 'my.add', handler: async ({ arg, resume: doResume }) => {
-            doResume(arg as number)
+            const pair = arg as number[]
+            doResume(pair[0]! + pair[1]!)
           } },
         ],
       })
@@ -507,7 +508,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@my.fail, "oops")
         with
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `, {
         effectHandlers: [
@@ -551,7 +552,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@my.fail)
         with
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `, {
         effectHandlers: [
@@ -589,7 +590,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@my.eff, "test")
         with
-          case @my.eff then ([x]) -> "local: " ++ x
+          case @my.eff then (x) -> "local: " ++ x
         end
       `, {
         effectHandlers: [
@@ -606,7 +607,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@other.eff, "test")
         with
-          case @my.eff then ([x]) -> "local: " ++ x
+          case @my.eff then (x) -> "local: " ++ x
         end
       `, {
         effectHandlers: [
@@ -623,7 +624,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@my.eff, "msg")
         with
-          case @my.eff then ([x]) -> perform(@my.eff, x ++ "+enriched")
+          case @my.eff then (x) -> perform(@my.eff, x ++ "+enriched")
         end
       `, {
         effectHandlers: [
@@ -788,7 +789,7 @@ describe('phase 3 — Host Async API', () => {
           let msg = perform(llm, "prompt");
           perform(log-eff, msg)
         with
-          case log-eff then ([msg]) -> "logged: " ++ msg
+          case log-eff then (msg) -> "logged: " ++ msg
         end
       `, {
         effectHandlers: [
@@ -805,7 +806,7 @@ describe('phase 3 — Host Async API', () => {
         do
           perform(@my.risky)
         with
-          case @dvala.error then ([msg]) -> "recovered: " ++ msg
+          case @dvala.error then (msg) -> "recovered: " ++ msg
         end
       `, {
         effectHandlers: [
@@ -822,13 +823,14 @@ describe('phase 3 — Host Async API', () => {
 
     it('should work with bindings and handlers together', async () => {
       const result = await dvala.runAsync(`
-        let result = perform(@my.compute, x, y);
+        let result = perform(@my.compute, [x, y]);
         result
       `, {
         bindings: { x: 10, y: 32 },
         effectHandlers: [
           { pattern: 'my.compute', handler: async ({ arg, resume: doResume }) => {
-            doResume(arg as number)
+            const pair = arg as number[]
+            doResume(pair[0]! + pair[1]!)
           } },
         ],
       })
@@ -1233,7 +1235,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let x = do
           perform(@dvala.checkpoint, "cp")
         with
-          case @dvala.checkpoint then ([msg]) -> "from-local"
+          case @dvala.checkpoint then (msg) -> "from-local"
         end;
         perform(@my.check);
         x
@@ -1270,10 +1272,10 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(capturedSnapshots).toHaveLength(1)
     })
 
-    it('should include metadata in snapshot from perform args', async () => {
+    it('should capture checkpoint message in snapshot', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "analysis", { step: "analysis-done" });
+        perform(@dvala.checkpoint, "analysis");
         perform(@my.check)
       `, {
         effectHandlers: [
@@ -1284,7 +1286,7 @@ describe('phase 4 — Suspension & Resume', () => {
         ],
       })
       expect(capturedSnapshots).toHaveLength(1)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 'analysis-done' })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('analysis')
     })
 
     it('should have no meta when called with only message', async () => {
@@ -1307,9 +1309,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should accumulate multiple checkpoint snapshots in order', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
         perform(@my.check)
       `, {
         effectHandlers: [
@@ -1320,18 +1322,18 @@ describe('phase 4 — Suspension & Resume', () => {
         ],
       })
       expect(capturedSnapshots).toHaveLength(3)
-      expect((capturedSnapshots[0] as { index: number; meta: unknown }).index).toBe(0)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 1 })
+      expect((capturedSnapshots[0] as { index: number; message: string }).index).toBe(0)
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('step 1')
       expect((capturedSnapshots[1] as { index: number }).index).toBe(1)
-      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 2 })
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('step 2')
       expect((capturedSnapshots[2] as { index: number }).index).toBe(2)
-      expect((capturedSnapshots[2] as { meta: unknown }).meta).toEqual({ step: 3 })
+      expect((capturedSnapshots[2] as { message: string }).message).toBe('step 3')
     })
 
     it('should work alongside ctx.checkpoint in host handler', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "from program", { from: "program" });
+        perform(@dvala.checkpoint, "from program");
         perform(@my.save);
         perform(@my.check)
       `, {
@@ -1348,7 +1350,7 @@ describe('phase 4 — Suspension & Resume', () => {
         ],
       })
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ from: 'program' })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('from program')
       expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ from: 'host' })
     })
   })
@@ -1703,8 +1705,8 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(r2).toEqual({ type: 'completed', value: 'hello' })
       // Two pre-suspension checkpoints should be preserved
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 1 })
-      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 2 })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('step 1')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('step 2')
     })
 
     it('should append new snapshots after resume with correct indices', async () => {
@@ -1715,9 +1717,9 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take one checkpoint (index 0), then suspend
       const r1 = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
+        perform(@dvala.checkpoint, "step 1");
         let x = perform(@my.step);
-        perform(@dvala.checkpoint, "after resume", { step: "after-resume" });
+        perform(@dvala.checkpoint, "after resume");
         perform(@my.check);
         x
       `, { effectHandlers: handlers })
@@ -1737,9 +1739,9 @@ describe('phase 4 — Suspension & Resume', () => {
       // Pre-suspension checkpoint (index 0) + the suspension itself consumed an index
       // + new checkpoint after resume
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { index: number; meta: unknown }).meta).toEqual({ step: 1 })
-      const newSnap = capturedSnapshots[1] as { index: number; meta: unknown }
-      expect(newSnap.meta).toEqual({ step: 'after-resume' })
+      expect((capturedSnapshots[0] as { index: number; message: string }).message).toBe('step 1')
+      const newSnap = capturedSnapshots[1] as { index: number; message: string }
+      expect(newSnap.message).toBe('after resume')
       // New snapshot index should be > the suspension index
       expect(newSnap.index).toBeGreaterThan((capturedSnapshots[0] as { index: number }).index)
     })
@@ -1845,9 +1847,9 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       // 4 checkpoints taken, limit is 3 — oldest (step 1) should be evicted
       expect(capturedSnapshots).toHaveLength(3)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 2 })
-      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 3 })
-      expect((capturedSnapshots[2] as { meta: unknown }).meta).toEqual({ step: 4 })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('step 2')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('step 3')
+      expect((capturedSnapshots[2] as { message: string }).message).toBe('step 4')
     })
 
     it('should evict from host checkpoint when maxSnapshots is exceeded', async () => {
@@ -1873,8 +1875,8 @@ describe('phase 4 — Suspension & Resume', () => {
       })
       // 3 total snapshots, limit 2 — oldest (step 1) evicted
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 2 })
-      expect((capturedSnapshots[1] as { meta: unknown }).meta).toEqual({ step: 'host' })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('step 2')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('host')
     })
 
     it('should fail gracefully when resumeFrom targets an evicted snapshot', async () => {
@@ -1934,7 +1936,7 @@ describe('phase 4 — Suspension & Resume', () => {
         ],
       })
       expect(capturedSnapshots).toHaveLength(1)
-      expect((capturedSnapshots[0] as { meta: unknown }).meta).toEqual({ step: 3 })
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('step 3')
     })
   })
 
@@ -2422,7 +2424,7 @@ describe('phase 4 — Suspension & Resume', () => {
           let x = perform(@my.wait);
           if x == "bad" then perform(@dvala.error, "bad input") else x end
         with
-          case @dvala.error then ([msg]) -> "caught: " ++ msg
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `, {
         effectHandlers: [
@@ -2562,7 +2564,7 @@ describe('phase 4 — Suspension & Resume', () => {
         do
           perform(@my.local, x)
         with
-          case @my.local then ([v]) -> upper-case(v)
+          case @my.local then (v) -> upper-case(v)
         end
       `, {
         effectHandlers: [
@@ -2653,15 +2655,15 @@ describe('phase 5 — Standard Effects', () => {
       }
     })
 
-    it('should log with no arguments', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    it('should log null with no arguments', async () => {
+      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
         const result = await dvala.runAsync('perform(@dvala.io.println)')
 
-        expect(result.type).toBe('error')
-        expect(consoleSpy).not.toHaveBeenCalled()
+        expect(result.type).toBe('completed')
+        expect(spy).toHaveBeenCalledWith('null\n')
       } finally {
-        consoleSpy.mockRestore()
+        spy.mockRestore()
       }
     })
 
@@ -2676,7 +2678,7 @@ describe('phase 5 — Standard Effects', () => {
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: null })
-      expect(logs).toEqual([['custom']])
+      expect(logs).toEqual(['custom'])
     })
 
     it('should be overridable by local try/with', () => {
@@ -2684,7 +2686,7 @@ describe('phase 5 — Standard Effects', () => {
         do
           perform(@dvala.io.println, "intercepted")
         with
-          case @dvala.io.println then ([msg]) -> "logged: " ++ msg
+          case @dvala.io.println then (msg) -> "logged: " ++ msg
         end
       `)
       expect(result).toBe('logged: intercepted')
@@ -2726,7 +2728,7 @@ describe('phase 5 — Standard Effects', () => {
         do
           perform(@dvala.time.now)
         with
-          case @dvala.time.now then ([]) -> 1234567890
+          case @dvala.time.now then (payload) -> 1234567890
         end
       `)
       expect(result).toBe(1234567890)
@@ -2763,7 +2765,7 @@ describe('phase 5 — Standard Effects', () => {
         do
           perform(@dvala.random)
         with
-          case @dvala.random then ([]) -> 0.5
+          case @dvala.random then (payload) -> 0.5
         end
       `)
       expect(result).toBe(0.5)
@@ -3476,16 +3478,16 @@ describe('step 1 — do...with...end', () => {
         do
           perform(@my.log, "hello")
         with
-          case @my.log then ([msg]) -> "logged: " ++ msg
+          case @my.log then (msg) -> "logged: " ++ msg
         end
       `)
       expect(result).toBe('logged: hello')
     })
 
-    it('should pass args as an array to the handler', () => {
+    it('should pass single payload to the handler', () => {
       const result = dvala.run(`
         do
-          perform(@my.add, 10, 20)
+          perform(@my.add, [10, 20])
         with
           case @my.add then ([a, b]) -> a + b
         end
@@ -3532,8 +3534,8 @@ describe('step 1 — do...with...end', () => {
         do
           perform(@a, 1) + perform(@b, 2)
         with
-          case @a then ([x]) -> x * 10
-          case @b then ([x]) -> x * 100
+          case @a then (x) -> x * 10
+          case @b then (x) -> x * 100
         end
       `)
       expect(result).toBe(210)
@@ -3545,10 +3547,10 @@ describe('step 1 — do...with...end', () => {
           do
             perform(@outer.eff, "value")
           with
-            case @inner.eff then ([x]) -> "inner: " ++ x
+            case @inner.eff then (x) -> "inner: " ++ x
           end
         with
-          case @outer.eff then ([x]) -> "outer: " ++ x
+          case @outer.eff then (x) -> "outer: " ++ x
         end
       `)
       expect(result).toBe('outer: value')
@@ -3560,7 +3562,7 @@ describe('step 1 — do...with...end', () => {
         do
           perform(eff, "world")
         with
-          case eff then ([msg]) -> "hello " ++ msg
+          case eff then (msg) -> "hello " ++ msg
         end
       `)
       expect(result).toBe('hello world')
@@ -3584,7 +3586,7 @@ describe('step 1 — do...with...end', () => {
         do
           perform(@my.eff, "value")
         with
-          case @my.eff then ([x]) -> prefix ++ x
+          case @my.eff then (x) -> prefix ++ x
         end
       `)
       expect(result).toBe('pre-value')
@@ -3608,7 +3610,7 @@ describe('step 2 — dvala.error standard effect', () => {
       do
         0 / 0
       with
-        case @dvala.error then ([msg]) -> msg
+        case @dvala.error then (msg) -> msg
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -3647,7 +3649,7 @@ describe('step 2 — dvala.error standard effect', () => {
         perform(@my.eff, 99)
       with
         case @dvala.error then (args) -> -1
-        case @my.eff then ([x]) -> x * 2
+        case @my.eff then (x) -> x * 2
       end
     `)).toBe(198)
   })
@@ -3710,7 +3712,7 @@ describe('step 2 — dvala.error standard effect', () => {
       `do
         perform(@dvala.io.println, "hello")
       with
-        case @dvala.error then ([msg]) -> msg
+        case @dvala.error then (msg) -> msg
       end`,
       {
         effectHandlers: [
@@ -3754,7 +3756,7 @@ describe('step 10 — predicate-based case matching', () => {
         perform(@dvala.io.println, "hello")
       with
         case (e) -> effect-name(e) == "dvala.io.println"
-        then (args) -> ++ ("logged: ", first(args))
+        then (msg) -> "logged: " ++ msg
       end
     `)
     expect(result).toBe('logged: hello')
@@ -3844,7 +3846,7 @@ describe('step 10 — predicate-based case matching', () => {
         perform(@dvala.error, "oops")
       with
         case (e) -> effect-name(e) == "dvala.error"
-        then ([msg]) -> msg
+        then (msg) -> msg
       end
     `)
     expect(result).toBe('oops')
@@ -4101,7 +4103,7 @@ describe('host handler wildcard patterns', () => {
         do
           perform(@my.effect, "data")
         with
-          case @dvala.error then ([msg]) -> msg
+          case @dvala.error then (msg) -> msg
         end
       `, {
         effectHandlers: [

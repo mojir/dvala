@@ -1174,7 +1174,7 @@ describe('sync/async trampoline parity', () => {
     ['loop (x = 0) -> if x < 5 then recur(x + 1) else x end', 5],
     ['(n -> if n > 0 then recur(n - 1) else n end)(10)', 0],
     ['do 1 + 2 with case @dvala.error then (args) -> 0 end', 3],
-    ['do perform(@dvala.error, "oops") with case @dvala.error then ([msg]) -> "caught" end', 'caught'],
+    ['do perform(@dvala.error, "oops") with case @dvala.error then (msg) -> "caught" end', 'caught'],
     ['for (x in [1, 2, 3]) -> x * 10', [10, 20, 30]],
     ['match 3 case 1 then "one" case 3 then "three" end', 'three'],
   ]

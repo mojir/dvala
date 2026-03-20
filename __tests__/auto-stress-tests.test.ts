@@ -67,7 +67,7 @@ describe('stress: parallel + checkpoints', () => {
     }
     // Only the outer checkpoint should be visible
     expect(outerSnapshots.length).toBe(1)
-    expect((outerSnapshots[0] as Snapshot).meta).toEqual({ loc: 'outer' })
+    expect((outerSnapshots[0] as Snapshot).message).toBe('loc outer')
   })
 
   it('parallel with all branches suspended, resume one at a time', async () => {
@@ -162,8 +162,8 @@ describe('stress: parallel + checkpoints', () => {
       expect(result.value).toEqual([10, 20])
     }
     expect(capturedSnapshots.length).toBe(2)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ pos: 'before-parallel' })
-    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ pos: 'after-parallel' })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('pos before-parallel')
+    expect((capturedSnapshots[1] as Snapshot).message).toBe('pos after-parallel')
   })
 
   it('nested parallel should work', async () => {
@@ -338,7 +338,7 @@ describe('stress: next() middleware + suspend/fail', () => {
       do
         perform(@my.effect, "data")
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -394,7 +394,7 @@ describe('stress: next() middleware + suspend/fail', () => {
       do
         perform(@no.handler, "payload")
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -420,7 +420,7 @@ describe('stress: local + host handler priority with suspend', () => {
       do
         perform(@my.eff, 10)
       with
-        case @my.eff then ([x]) -> x * 3
+        case @my.eff then (x) -> x * 3
       end
     `, {
       effectHandlers: [
@@ -441,7 +441,7 @@ describe('stress: local + host handler priority with suspend', () => {
       do
         perform(@my.local, x)
       with
-        case @my.local then ([v]) -> v * 2
+        case @my.local then (v) -> v * 2
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -463,10 +463,10 @@ describe('stress: local + host handler priority with suspend', () => {
         do
           perform(@outer.eff, x)
         with
-          case @inner.eff then ([v]) -> "inner: " ++ v
+          case @inner.eff then (v) -> "inner: " ++ v
         end
       with
-        case @outer.eff then ([v]) -> "outer: " ++ v
+        case @outer.eff then (v) -> "outer: " ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -489,13 +489,13 @@ describe('stress: local + host handler priority with suspend', () => {
             let x = perform(@my.wait);
             perform(@level3, x)
           with
-            case @level3 then ([v]) -> "L3:" ++ v
+            case @level3 then (v) -> "L3:" ++ v
           end
         with
-          case @level2 then ([v]) -> "L2:" ++ v
+          case @level2 then (v) -> "L2:" ++ v
         end
       with
-        case @level1 then ([v]) -> "L1:" ++ v
+        case @level1 then (v) -> "L1:" ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -517,7 +517,7 @@ describe('stress: local + host handler priority with suspend', () => {
         perform(@custom.foo, x)
       with
         case effect-matcher("custom.*")
-        then ([v]) -> "matched: " ++ v
+        then (v) -> "matched: " ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -649,7 +649,7 @@ describe('stress: cascading effects', () => {
         y
       with
         case @my.first then (args) -> 10
-        case @my.second then ([v]) -> v * 2
+        case @my.second then (v) -> v * 2
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 20 })
@@ -693,7 +693,7 @@ describe('stress: cascading effects', () => {
         perform(@dvala.error, "cascade error: " ++ x)
       with
         case @my.first then (args) -> "triggered"
-        case @dvala.error then ([msg]) -> msg
+        case @dvala.error then (msg) -> msg
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 'cascade error: triggered' })
@@ -715,7 +715,7 @@ describe('stress: loop/recur + effects', () => {
             recur(i + 1, acc + v)
           end
       with
-        case @my.get then ([n]) -> n * 10
+        case @my.get then (n) -> n * 10
       end
     `)
     expect(result).toBe(30) // 0*10 + 1*10 + 2*10
@@ -780,7 +780,7 @@ describe('stress: loop/recur + effects', () => {
       do
         reduce([1, 2, 3], (acc, x) -> acc + perform(@my.transform, x), 0)
       with
-        case @my.transform then ([x]) -> x * x
+        case @my.transform then (x) -> x * x
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 14 }) // 1+4+9
@@ -800,16 +800,16 @@ describe('stress: deeply nested do/with + suspend', () => {
             do
               perform(@deep, 1)
             with
-              case @deep then ([x]) -> x + 10
+              case @deep then (x) -> x + 10
             end
           with
-            case @level3 then ([x]) -> x
+            case @level3 then (x) -> x
           end
         with
-          case @level2 then ([x]) -> x
+          case @level2 then (x) -> x
         end
       with
-        case @level1 then ([x]) -> x
+        case @level1 then (x) -> x
       end
     `)
     expect(result).toBe(11)
@@ -823,16 +823,16 @@ describe('stress: deeply nested do/with + suspend', () => {
             do
               perform(@bubbles, "hello")
             with
-              case @other1 then ([x]) -> "wrong1"
+              case @other1 then (x) -> "wrong1"
             end
           with
-            case @other2 then ([x]) -> "wrong2"
+            case @other2 then (x) -> "wrong2"
           end
         with
-          case @other3 then ([x]) -> "wrong3"
+          case @other3 then (x) -> "wrong3"
         end
       with
-        case @bubbles then ([x]) -> "correct: " ++ x
+        case @bubbles then (x) -> "correct: " ++ x
       end
     `)
     expect(result).toBe('correct: hello')
@@ -849,10 +849,10 @@ describe('stress: deeply nested do/with + suspend', () => {
           let x = perform(@my.wait);
           perform(@inner, x)
         with
-          case @inner then ([v]) -> v ++ "!"
+          case @inner then (v) -> v ++ "!"
         end
       with
-        case @dvala.error then ([msg]) -> "error: " ++ msg
+        case @dvala.error then (msg) -> "error: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -876,10 +876,10 @@ describe('stress: deeply nested do/with + suspend', () => {
           else x
           end
         with
-          case @some.other then ([v]) -> v
+          case @some.other then (v) -> v
         end
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -904,10 +904,10 @@ describe('stress: effect-matcher in complex flows', () => {
           perform(@custom.thing, "data")
         with
           case effect-matcher("custom.*")
-          then ([v]) -> "matched: " ++ v
+          then (v) -> "matched: " ++ v
         end
       with
-        case @dvala.error then ([msg]) -> "error: " ++ msg
+        case @dvala.error then (msg) -> "error: " ++ msg
       end
     `)
     expect(result).toBe('matched: data')
@@ -924,7 +924,7 @@ describe('stress: effect-matcher in complex flows', () => {
         perform(@app.transform, x)
       with
         case effect-matcher(#"^app\\.")
-        then ([v]) -> "transformed: " ++ v
+        then (v) -> "transformed: " ++ v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -943,9 +943,9 @@ describe('stress: effect-matcher in complex flows', () => {
         perform(@custom.foo, "data")
       with
         case effect-matcher("custom.*")
-        then ([v]) -> "wildcard: " ++ v
+        then (v) -> "wildcard: " ++ v
         case effect-matcher(#".*")
-        then ([v]) -> "regex: " ++ v
+        then (v) -> "regex: " ++ v
       end
     `)
     expect(result).toBe('wildcard: data')
@@ -958,7 +958,7 @@ describe('stress: effect-matcher in complex flows', () => {
         perform(@custom.bar, 42)
       with
         case is-custom
-        then ([v]) -> v * 2
+        then (v) -> v * 2
       end
     `)
     expect(result).toBe(84)
@@ -1053,9 +1053,9 @@ describe('stress: dedup pool with many checkpoints', () => {
       ],
     })
     expect(capturedSnapshots.length).toBe(3)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ n: 6 })
-    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ n: 7 })
-    expect((capturedSnapshots[2] as Snapshot).meta).toEqual({ n: 8 })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('n 6')
+    expect((capturedSnapshots[1] as Snapshot).message).toBe('n 7')
+    expect((capturedSnapshots[2] as Snapshot).message).toBe('n 8')
   })
 })
 
@@ -1146,10 +1146,10 @@ describe('stress: error propagation through effect stacks', () => {
         do
           perform(@my.eff, 1)
         with
-          case @my.eff then ([x]) -> 0 / 0
+          case @my.eff then (x) -> 0 / 0
         end
       with
-        case @dvala.error then ([msg]) -> msg
+        case @dvala.error then (msg) -> msg
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -1160,7 +1160,7 @@ describe('stress: error propagation through effect stacks', () => {
       do
         perform(@my.eff)
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -1183,7 +1183,7 @@ describe('stress: error propagation through effect stacks', () => {
         else a ++ b
         end
       with
-        case @dvala.error then ([msg]) -> msg
+        case @dvala.error then (msg) -> msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1218,7 +1218,7 @@ describe('stress: error propagation through effect stacks', () => {
         let x = perform(@my.wait);
         x / 0
       with
-        case @dvala.error then ([msg]) -> "div-error: " ++ msg
+        case @dvala.error then (msg) -> "div-error: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1341,7 +1341,7 @@ describe('stress: runSync edge cases', () => {
       do
         perform(@my.eff, 21)
       with
-        case @my.eff then ([x]) -> x * 2
+        case @my.eff then (x) -> x * 2
       end
     `)
     expect(result).toBe(42)
@@ -1352,7 +1352,7 @@ describe('stress: runSync edge cases', () => {
       do
         perform(@dvala.error, "oops")
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: oops')
@@ -1579,7 +1579,7 @@ describe('stress: complex end-to-end patterns', () => {
       do
         filter([1, 2, 3, 4, 5, 6], (x) -> perform(@my.even?, x))
       with
-        case @my.even? then ([x]) -> x % 2 == 0
+        case @my.even? then (x) -> x % 2 == 0
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: [2, 4, 6] })
@@ -1609,8 +1609,8 @@ describe('stress: complex end-to-end patterns', () => {
     })
     expect(result).toMatchObject({ type: 'completed', value: [10, 20, 30] })
     expect(snapshotsAtEnd.length).toBe(3)
-    expect((snapshotsAtEnd[0] as Snapshot).meta).toEqual({ phase: 1 })
-    expect((snapshotsAtEnd[1] as Snapshot).meta).toEqual({ phase: 2 })
-    expect((snapshotsAtEnd[2] as Snapshot).meta).toEqual({ phase: 3 })
+    expect((snapshotsAtEnd[0] as Snapshot).message).toBe('phase 1')
+    expect((snapshotsAtEnd[1] as Snapshot).message).toBe('phase 2')
+    expect((snapshotsAtEnd[2] as Snapshot).message).toBe('phase 3')
   })
 })

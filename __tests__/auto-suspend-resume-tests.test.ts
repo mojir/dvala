@@ -96,8 +96,8 @@ describe('auto: multi-cycle suspend/resume + checkpoints', () => {
     }
     // Both checkpoints should have been accumulated
     expect(snapshotsAfterAll.length).toBe(2)
-    expect((snapshotsAfterAll[0] as Snapshot).meta).toEqual({ step: 1 })
-    expect((snapshotsAfterAll[1] as Snapshot).meta).toEqual({ step: 2 })
+    expect((snapshotsAfterAll[0] as Snapshot).message).toBe('step 1')
+    expect((snapshotsAfterAll[1] as Snapshot).message).toBe('step 2')
   })
 
   it('checkpoint indices stay monotonically increasing across suspend/resume', async () => {
@@ -254,7 +254,7 @@ describe('auto: resumeFrom across suspend/resume boundaries', () => {
             // There should be a checkpoint taken after resume
             expect(snapshots.length).toBeGreaterThanOrEqual(1)
             const lastSnap = snapshots[snapshots.length - 1]!
-            expect(lastSnap.meta).toEqual({ step: 'after-resume' })
+            expect(lastSnap.message).toBe('after resume')
             resumeFrom(lastSnap, 0)
           } else {
             r(32)
@@ -285,7 +285,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
         perform(@dvala.checkpoint, "inside do-with", { loc: "inside-do-with" });
         perform(@my.local, 5)
       with
-        case @my.local then ([v]) -> v * 2
+        case @my.local then (v) -> v * 2
       end;
       let x = perform(@my.step);
       perform(@my.check);
@@ -315,7 +315,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     }
     // The checkpoint taken inside do/with should be preserved
     expect(capturedSnapshots.length).toBe(1)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ loc: 'inside-do-with' })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('inside do-with')
   })
 
   it('checkpoint taken in outer scope, suspend inside nested do/with', async () => {
@@ -329,7 +329,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
         let x = perform(@my.step);
         x + 1
       with
-        case @my.local then ([v]) -> v
+        case @my.local then (v) -> v
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -350,7 +350,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       do
         perform(@my.double, x)
       with
-        case @my.double then ([v]) -> v * 2
+        case @my.double then (v) -> v * 2
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -412,8 +412,8 @@ describe('auto: maxSnapshots across suspend/resume', () => {
     }
     expect(capturedSnapshots.length).toBe(2)
     // Should be the two most recent
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ step: 3 })
-    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ step: 4 })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('step 3')
+    expect((capturedSnapshots[1] as Snapshot).message).toBe('step 4')
   })
 
   it('maxSnapshots=1 keeps only the latest across suspend/resume', async () => {
@@ -454,7 +454,7 @@ describe('auto: maxSnapshots across suspend/resume', () => {
     })
     expect(r2.type).toBe('completed')
     expect(capturedSnapshots.length).toBe(1)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ step: 3 })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('step 3')
   })
 
   it('maxSnapshots on resume can differ from the original run', async () => {
@@ -618,10 +618,9 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
       ],
     })
     expect(capturedSnapshots.length).toBe(3)
-    const metas = capturedSnapshots.map(s => (s).meta)
-    expect(metas[0]).toEqual({ source: 'dvala-1' })
-    expect(metas[1]).toEqual({ source: 'host' })
-    expect(metas[2]).toEqual({ source: 'dvala-2' })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('source dvala-1')
+    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ source: 'host' })
+    expect((capturedSnapshots[2] as Snapshot).message).toBe('source dvala-2')
     // Indices should be strictly increasing
     const indices = capturedSnapshots.map(s => (s).index)
     expect(indices[1]).toBeGreaterThan(indices[0]!)
@@ -667,7 +666,7 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
     }
     // Both the dvala checkpoint and the host checkpoint should be preserved
     expect(capturedSnapshots.length).toBe(2)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ source: 'dvala' })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('source dvala')
     expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ source: 'host-before-suspend' })
   })
 })
@@ -700,7 +699,7 @@ describe('auto: resumeFrom during resumed execution', () => {
           actionCallCount++
           if (actionCallCount === 1) {
             // Find the post-resume checkpoint
-            const postResumeSnap = snapshots.find(s => (s.meta as Record<string, unknown>)?.label === 'post-resume')
+            const postResumeSnap = snapshots.find(s => s.message === 'label post-resume')
             expect(postResumeSnap).toBeDefined()
             resumeFrom(postResumeSnap!, 0)
           } else {
@@ -874,9 +873,9 @@ describe('auto: snapshot trimming on resumeFrom', () => {
     // But the resumed continuation re-executes checkpoint(step 2) and checkpoint(step 3),
     // so we end up with 3 snapshots: original step 1 + re-executed step 2 + re-executed step 3.
     expect(capturedSnapshots.length).toBe(3)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ step: 1 })
-    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ step: 2 })
-    expect((capturedSnapshots[2] as Snapshot).meta).toEqual({ step: 3 })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('step 1')
+    expect((capturedSnapshots[1] as Snapshot).message).toBe('step 2')
+    expect((capturedSnapshots[2] as Snapshot).message).toBe('step 3')
     // Re-executed checkpoints should have higher indices than original step 1
     const indices = capturedSnapshots.map(s => (s).index)
     expect(indices[1]).toBeGreaterThan(indices[0]!)
@@ -915,9 +914,9 @@ describe('auto: snapshot trimming on resumeFrom', () => {
     // step 1 and step 2 survive the trim. The resumed continuation re-executes
     // checkpoint(step 3), so we end up with 3 snapshots.
     expect(capturedSnapshots.length).toBe(3)
-    expect((capturedSnapshots[0] as Snapshot).meta).toEqual({ step: 1 })
-    expect((capturedSnapshots[1] as Snapshot).meta).toEqual({ step: 2 })
-    expect((capturedSnapshots[2] as Snapshot).meta).toEqual({ step: 3 })
+    expect((capturedSnapshots[0] as Snapshot).message).toBe('step 1')
+    expect((capturedSnapshots[1] as Snapshot).message).toBe('step 2')
+    expect((capturedSnapshots[2] as Snapshot).message).toBe('step 3')
   })
 })
 
@@ -1214,7 +1213,7 @@ describe('auto: edge cases', () => {
         let x = perform(@my.step);
         perform(@dvala.error, "boom: " ++ x)
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1476,7 +1475,7 @@ describe('auto: complex workflow patterns', () => {
           phoneCallCount++
           if (phoneCallCount === 1) {
             // User presses back — rollback to "after name" checkpoint
-            const afterName = snapshots.find(s => (s.meta as Record<string, unknown>)?.after === 'name')
+            const afterName = snapshots.find(s => s.message === 'after name')
             expect(afterName).toBeDefined()
             // Resume from after-name checkpoint, re-entering at email step with name='Alice' preserved
             resumeFrom(afterName!, 0) // value doesn't matter, checkpoint is at the perform return

@@ -155,41 +155,10 @@ describe('auto: standard effects seeAlso symmetry', () => {
 // ---------------------------------------------------------------------------
 // 4. Standard Effects Arity Enforcement
 // ---------------------------------------------------------------------------
-
-/** Effects that need special environment or are async - skip arity tests */
-const skipArityEffects = new Set([
-  'dvala.io.read-line', // environment-dependent
-  'dvala.io.read-stdin', // Node.js only, async
-  'dvala.sleep', // async
-])
-
-describe('auto: standard effects arity enforcement', () => {
-  for (const [effectName, def] of Object.entries(allStandardEffectDefinitions)) {
-    if (skipArityEffects.has(effectName))
-      continue
-    const { arity } = def
-
-    if (arity.min !== undefined && arity.min > 0) {
-      const min = arity.min
-      it(`${effectName}: rejects ${min - 1} args (min ${min})`, () => {
-        const argStr = Array.from({ length: min - 1 }, () => '0').join(', ')
-        const code = argStr
-          ? `perform(effect(${effectName}), ${argStr})`
-          : `perform(effect(${effectName}))`
-        expect(() => dvala.run(code)).toThrow()
-      })
-    }
-
-    if (arity.max !== undefined) {
-      const max = arity.max
-      it(`${effectName}: rejects ${max + 1} args (max ${max})`, () => {
-        const argStr = Array.from({ length: max + 1 }, () => '0').join(', ')
-        const code = `perform(effect(${effectName}), ${argStr})`
-        expect(() => dvala.run(code)).toThrow()
-      })
-    }
-  }
-})
+// NOTE: Arity enforcement was removed during the migration from variadic args
+// to single payload. The perform expression now takes exactly one payload
+// (or none, which passes null). Standard effect handlers validate their own
+// payload structure internally.
 
 // ---------------------------------------------------------------------------
 // 5. effectNameMatchesPattern — Exhaustive Coverage
@@ -280,7 +249,7 @@ describe('auto: effect + control flow', () => {
     do
       ${body}
     with
-      case @test.eff then ([x]) -> x * 10
+      case @test.eff then (x) -> x * 10
     end
   `
 
@@ -348,7 +317,7 @@ describe('auto: effect + control flow', () => {
       do
         ||(null, perform(@test.eff, 4))
       with
-        case @test.eff then ([x]) -> x * 10
+        case @test.eff then (x) -> x * 10
       end
     `)
     expect(result).toBe(40)
@@ -397,7 +366,7 @@ describe('auto: effect + control flow', () => {
       do
         perform(@test.eff, 9)
       with
-        case @dvala.error then ([msg]) -> 0
+        case @dvala.error then (msg) -> 0
       end
     `))
     expect(result).toBe(90)
@@ -409,7 +378,7 @@ describe('auto: effect + control flow', () => {
         do
           perform(@dvala.error, "boom")
         with
-          case @dvala.error then ([msg]) -> perform(@test.eff, 4)
+          case @dvala.error then (msg) -> perform(@test.eff, 4)
         end
       end
     `))
@@ -425,7 +394,7 @@ describe('auto: effect + higher-order functions', () => {
     do
       ${body}
     with
-      case @test.double then ([x]) -> x * 2
+      case @test.double then (x) -> x * 2
     end
   `
 
@@ -485,10 +454,10 @@ describe('auto: effect handler scoping', () => {
         do
           perform(@test.eff, 5)
         with
-          case @test.eff then ([x]) -> x * 10
+          case @test.eff then (x) -> x * 10
         end
       with
-        case @test.eff then ([x]) -> x * 100
+        case @test.eff then (x) -> x * 100
       end
     `)
     expect(result).toBe(50) // inner: 5 * 10
@@ -500,10 +469,10 @@ describe('auto: effect handler scoping', () => {
         do
           perform(@outer.eff, 5)
         with
-          case @inner.eff then ([x]) -> x * 10
+          case @inner.eff then (x) -> x * 10
         end
       with
-        case @outer.eff then ([x]) -> x * 100
+        case @outer.eff then (x) -> x * 100
       end
     `)
     expect(result).toBe(500) // outer: 5 * 100
@@ -515,10 +484,10 @@ describe('auto: effect handler scoping', () => {
         do
           perform(@test.eff, "orig")
         with
-          case @test.eff then ([x]) -> perform(@test.eff, x ++ "+inner")
+          case @test.eff then (x) -> perform(@test.eff, x ++ "+inner")
         end
       with
-        case @test.eff then ([x]) -> "outer:" ++ x
+        case @test.eff then (x) -> "outer:" ++ x
       end
     `)
     expect(result).toBe('outer:orig+inner')
@@ -534,7 +503,7 @@ describe('auto: effect handler scoping', () => {
           do
             ${code}
           with
-            case @test.eff then ([x]) -> x * ${multiplier}
+            case @test.eff then (x) -> x * ${multiplier}
           end
         `
       }
@@ -550,7 +519,7 @@ describe('auto: effect handler scoping', () => {
       do
         null
       with
-        case @test.eff then ([x]) -> x
+        case @test.eff then (x) -> x
       end;
       perform(@test.eff, "should fail")
     `)).toThrow('Unhandled effect')
@@ -562,7 +531,7 @@ describe('auto: effect handler scoping', () => {
       do
         perform(@test.eff, 5)
       with
-        case @test.eff then ([x]) -> x * factor
+        case @test.eff then (x) -> x * factor
       end
     `)
     expect(result).toBe(500)
@@ -748,7 +717,7 @@ describe('auto: effect + error propagation', () => {
       do
         perform(@dvala.error, "boom")
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: boom')
@@ -759,7 +728,7 @@ describe('auto: effect + error propagation', () => {
       do
         1 + "not a number"
       with
-        case @dvala.error then ([msg]) -> "caught"
+        case @dvala.error then (msg) -> "caught"
       end
     `)
     expect(result).toBe('caught')
@@ -770,7 +739,7 @@ describe('auto: effect + error propagation', () => {
       do
         perform(@no.handler, "arg")
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `)
     expect(result).toContain('caught:')
@@ -783,10 +752,10 @@ describe('auto: effect + error propagation', () => {
         do
           perform(@test.eff, "data")
         with
-          case @test.eff then ([x]) -> perform(@dvala.error, "handler error")
+          case @test.eff then (x) -> perform(@dvala.error, "handler error")
         end
       with
-        case @dvala.error then ([msg]) -> "outer: " ++ msg
+        case @dvala.error then (msg) -> "outer: " ++ msg
       end
     `)
     expect(result).toBe('outer: handler error')
@@ -798,10 +767,10 @@ describe('auto: effect + error propagation', () => {
         do
           perform(@dvala.error, "boom")
         with
-          case @dvala.error then ([e]) -> perform(@test.eff, e)
+          case @dvala.error then (e) -> perform(@test.eff, e)
         end
       with
-        case @test.eff then ([msg]) -> "effect got: " ++ msg
+        case @test.eff then (msg) -> "effect got: " ++ msg
       end
     `)
     expect(result).toBe('effect got: boom')
@@ -813,10 +782,10 @@ describe('auto: effect + error propagation', () => {
         do
           perform(@test.eff, "data")
         with
-          case @test.eff then ([x]) -> perform(@dvala.error, "handler error")
+          case @test.eff then (x) -> perform(@dvala.error, "handler error")
         end
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `)
     expect(result).toBe('caught: handler error')
@@ -829,10 +798,10 @@ describe('auto: effect + error propagation', () => {
         do
           perform(@dvala.error, "boom")
         with
-          case @dvala.error then ([msg]) -> "inner: " ++ msg
+          case @dvala.error then (msg) -> "inner: " ++ msg
         end
       with
-        case @dvala.error then ([msg]) -> "outer: " ++ msg
+        case @dvala.error then (msg) -> "outer: " ++ msg
       end
     `)
     expect(result).toBe('inner: boom')
@@ -918,7 +887,7 @@ describe('auto: host handler patterns', () => {
       do
         perform(@my.eff)
       with
-        case @dvala.error then ([msg]) -> "caught: " ++ msg
+        case @dvala.error then (msg) -> "caught: " ++ msg
       end
     `, {
       effectHandlers: [
@@ -952,7 +921,7 @@ describe('auto: host handler patterns', () => {
       do
         perform(@my.eff, "data")
       with
-        case @my.eff then ([x]) -> "local: " ++ x
+        case @my.eff then (x) -> "local: " ++ x
       end
     `, {
       effectHandlers: [
@@ -997,7 +966,7 @@ describe('auto: runSync constraints', () => {
       do
         perform(@my.eff, 5)
       with
-        case @my.eff then ([x]) -> x * 10
+        case @my.eff then (x) -> x * 10
       end
     `)
     expect(result).toBe(50)
@@ -1080,7 +1049,7 @@ describe('auto: predicate-based handler matching', () => {
       do
         perform(@test.io.println, "msg")
       with
-        case io-handler then ([x]) -> "handled: " ++ x
+        case io-handler then (x) -> "handled: " ++ x
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1092,7 +1061,7 @@ describe('auto: predicate-based handler matching', () => {
       do
         perform(@test.other, "msg")
       with
-        case io-handler then ([x]) -> "handled: " ++ x
+        case io-handler then (x) -> "handled: " ++ x
       end
     `)).toThrow('Unhandled effect')
   })
@@ -1104,8 +1073,8 @@ describe('auto: predicate-based handler matching', () => {
       do
         perform(@test.io.println, "msg")
       with
-        case io-handler then ([x]) -> "io: " ++ x
-        case all-handler then ([x]) -> "all: " ++ x
+        case io-handler then (x) -> "io: " ++ x
+        case all-handler then (x) -> "all: " ++ x
       end
     `)
     expect(result).toBe('io: msg')
@@ -1118,7 +1087,7 @@ describe('auto: predicate-based handler matching', () => {
       do
         perform(@test.io.println, "data")
       with
-        case pred then ([x]) -> "matched: " ++ x
+        case pred then (x) -> "matched: " ++ x
       end
     `)
     expect(result).toBe('matched: data')
@@ -1132,7 +1101,7 @@ describe('auto: standard sync effects via runSync', () => {
   const syncEffects: { name: string; args: string }[] = [
     { name: 'dvala.random', args: '' },
     { name: 'dvala.random.uuid', args: '' },
-    { name: 'dvala.random.int', args: '1, 100' },
+    { name: 'dvala.random.int', args: '[1, 100]' },
     { name: 'dvala.random.item', args: '["a", "b", "c"]' },
     { name: 'dvala.random.shuffle', args: '[1, 2, 3]' },
     { name: 'dvala.time.now', args: '' },
@@ -1200,7 +1169,7 @@ describe('auto: standard effects return value semantics', () => {
   })
 
   it('dvala.random.int returns an integer in range', () => {
-    const result = dvala.run('perform(@dvala.random.int, 1, 10)') as number
+    const result = dvala.run('perform(@dvala.random.int, [1, 10])') as number
     expect(Number.isInteger(result)).toBe(true)
     expect(result).toBeGreaterThanOrEqual(1)
     expect(result).toBeLessThan(10)
@@ -1231,11 +1200,11 @@ describe('auto: standard effects return value semantics', () => {
   })
 
   it('dvala.random.int rejects non-integer min', () => {
-    expect(() => dvala.run('perform(@dvala.random.int, 1.5, 10)')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.int, [1.5, 10])')).toThrow()
   })
 
   it('dvala.random.int rejects max <= min', () => {
-    expect(() => dvala.run('perform(@dvala.random.int, 10, 5)')).toThrow()
+    expect(() => dvala.run('perform(@dvala.random.int, [10, 5])')).toThrow()
   })
 
   it('dvala.random.item rejects empty array', () => {
@@ -1261,7 +1230,7 @@ describe('auto: effect + closures', () => {
       do
         perform(@test.eff, "msg")
       with
-        case @test.eff then ([x]) -> prefix ++ ": " ++ x
+        case @test.eff then (x) -> prefix ++ ": " ++ x
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1274,7 +1243,7 @@ describe('auto: effect + closures', () => {
         let f = () -> val * 2;
         f()
       with
-        case @test.eff then ([x]) -> x + 10
+        case @test.eff then (x) -> x + 10
       end
     `)
     expect(result).toBe(30) // (5 + 10) * 2
@@ -1286,7 +1255,7 @@ describe('auto: effect + closures', () => {
         let f = (x) -> perform(@test.eff, x);
         f(3) + f(4)
       with
-        case @test.eff then ([x]) -> x * 10
+        case @test.eff then (x) -> x * 10
       end
     `)
     expect(result).toBe(70) // 30 + 40
@@ -1299,7 +1268,7 @@ describe('auto: effect + closures', () => {
         let add10 = make-adder(10);
         add10(5)
       with
-        case @test.eff then ([x]) -> x * 2
+        case @test.eff then (x) -> x * 2
       end
     `)
     expect(result).toBe(30) // (10 + 5) * 2
@@ -1316,7 +1285,7 @@ describe('auto: effect + recursion', () => {
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
       with
-        case @test.eff then ([x]) -> x
+        case @test.eff then (x) -> x
       end
     `)
     expect(result).toBe(6) // 3 + 2 + 1 + 0
@@ -1328,7 +1297,7 @@ describe('auto: effect + recursion', () => {
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
       with
-        case @test.eff then ([x]) -> x * 2
+        case @test.eff then (x) -> x * 2
       end
     `)
     expect(result).toBe(12) // (3*2) + (2*2) + (1*2) + 0

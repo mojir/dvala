@@ -1934,7 +1934,7 @@ function tryDispatchDvalaError(
   snapshotState?: SnapshotState,
 ): Step | Promise<Step> | null {
   const effect = getEffectRef('dvala.error')
-  const args: Arr = [error.shortMessage]
+  const arg: Any = error.shortMessage
 
   // Check local TryWithFrame handlers (same logic as dispatchPerform)
   for (let i = 0; i < k.length; i++) {
@@ -1942,7 +1942,7 @@ function tryDispatchDvalaError(
     if (frame.type === 'TryWith') {
       for (const handler of frame.handlers) {
         if (handlerMatchesEffect(handler, effect, frame.env, error.sourceCodeInfo)) {
-          return invokeMatchedHandler(handler, frame, args, k, i, error.sourceCodeInfo)
+          return invokeMatchedHandler(handler, frame, arg, k, i, error.sourceCodeInfo)
         }
       }
     }
@@ -1951,7 +1951,7 @@ function tryDispatchDvalaError(
   // Check host handlers for 'dvala.error' (supports wildcards like 'dvala.*' or '*')
   const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
   if (matchingHostHandlers.length > 0) {
-    return dispatchHostHandler('dvala.error', matchingHostHandlers, args, k, signal, error.sourceCodeInfo, snapshotState)
+    return dispatchHostHandler('dvala.error', matchingHostHandlers, arg, k, signal, error.sourceCodeInfo, snapshotState)
   }
 
   return null

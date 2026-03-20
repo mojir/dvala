@@ -773,7 +773,7 @@ end;
 do
   riskyOperation()
 with
-  case effect(dvala.error) then ([msg]) -> "Error: " ++ msg
+  case effect(dvala.error) then (msg) -> "Error: " ++ msg
 end;
 
 // Error handling for graceful degradation

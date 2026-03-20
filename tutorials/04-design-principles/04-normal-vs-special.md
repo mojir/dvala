@@ -124,7 +124,7 @@ let e = effect(my.double);
 do
   perform(e, 21)
 with
-  case effect(my.double) then ([x]) -> x * 2
+  case effect(my.double) then (x) -> x * 2
 end
 ```
 

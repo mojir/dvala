@@ -85,7 +85,7 @@ do
   let x = perform(effect(my.double), 21);
   x + 1
 with
-  case effect(my.double) then ([n]) -> n * 2
+  case effect(my.double) then (n) -> n * 2
 end
 ```
 
@@ -93,8 +93,8 @@ Multiple handlers can be defined in a single `with` block:
 
 ```dvala
 do
-  let a = perform(effect(my.add), 10, 20);
-  let b = perform(effect(my.mul), 3, 4);
+  let a = perform(effect(my.add), [10, 20]);
+  let b = perform(effect(my.mul), [3, 4]);
   [a, b]
 with
   case effect(my.add) then ([a, b]) -> a + b
@@ -112,7 +112,7 @@ To raise an error, perform `dvala.error`:
 do
   perform(effect(dvala.error), "oops")
 with
-  case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+  case effect(dvala.error) then (msg) -> "caught: " ++ msg
 end
 ```
 
@@ -122,7 +122,7 @@ Runtime errors — like calling a function with invalid arguments — are automa
 do
   sqrt(-1)
 with
-  case effect(dvala.error) then ([msg]) -> "caught: " ++ msg
+  case effect(dvala.error) then (msg) -> "caught: " ++ msg
 end
 ```
 
@@ -134,7 +134,7 @@ do
   sqrt(x * -1)
 with
   case effect(my.read) then () -> 42
-  case effect(dvala.error) then ([msg]) -> "error: " ++ msg
+  case effect(dvala.error) then (msg) -> "error: " ++ msg
 end
 ```
 
@@ -149,10 +149,10 @@ do
   do
     perform(effect(my.inner), "hi")
   with
-    case effect(my.inner) then ([msg]) -> upper-case(msg)
+    case effect(my.inner) then (msg) -> upper-case(msg)
   end
 with
-  case effect(my.outer) then ([msg]) -> msg
+  case effect(my.outer) then (msg) -> msg
 end
 ```
 
@@ -165,7 +165,7 @@ do
   perform(effect(dvala.io.println), "test")
 with
   case effect-matcher("dvala.*")
-    then ([msg]) -> "intercepted: " ++ msg
+    then (msg) -> "intercepted: " ++ msg
 end
 ```
 
@@ -200,7 +200,7 @@ const result = await dvala.runAsync(`
   do
     perform(effect(my.risky))
   with
-    case effect(dvala.error) then ([msg]) -> "recovered: " ++ msg
+    case effect(dvala.error) then (msg) -> "recovered: " ++ msg
   end
 `, {
   effectHandlers: [

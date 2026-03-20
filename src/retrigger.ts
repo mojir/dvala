@@ -55,7 +55,7 @@ export interface RetriggerOptions {
  * ```
  */
 export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions): Promise<RunResult> {
-  if (!snapshot.effectName || !snapshot.effectArg) {
+  if (!snapshot.effectName || snapshot.effectArg === undefined) {
     return {
       type: 'error',
       error: new DvalaError(

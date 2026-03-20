@@ -282,7 +282,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
         do
           perform(@test.mock, "input")
         with
-          case @test.mock then ([arg]) -> "mocked: " ++ arg
+          case @test.mock then (arg) -> "mocked: " ++ arg
         end
       `)
       while (r.type === 'suspended') {
@@ -453,7 +453,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
         do
           perform(@dvala.error, "oops")
         with
-          case @dvala.error then (args) -> "caught: " ++ first(args)
+          case @dvala.error then (msg) -> "caught: " ++ msg
         end
       `)
       while (r.type === 'suspended') {
