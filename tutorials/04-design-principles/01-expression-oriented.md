@@ -96,7 +96,7 @@ let safe-sqrt = (x) ->
   do
     sqrt(x)
   with
-    case effect(dvala.error) then ([msg]) -> null
+    case effect(dvala.error) then (msg) -> null
   end;
 [safe-sqrt(16), safe-sqrt(-1)]
 ```

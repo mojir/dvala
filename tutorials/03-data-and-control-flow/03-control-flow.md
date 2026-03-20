@@ -101,7 +101,7 @@ Use `do` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises a
 do
   perform(effect(dvala.error), "oops")
 with
-  case effect(dvala.error) then ([msg]) -> msg
+  case effect(dvala.error) then (msg) -> msg
 end
 ```
 

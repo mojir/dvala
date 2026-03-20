@@ -268,7 +268,7 @@ describe('effect matching with function predicate', () => {
         perform(@my.feature.test, "hello")
       with
         case effect-matcher("my.*")
-        then ([msg]) -> upper-case(msg)
+        then (msg) -> upper-case(msg)
       end
     `)
     expect(result).toBe('HELLO')
@@ -280,7 +280,7 @@ describe('effect matching with function predicate', () => {
         perform(@data.fetch, 42)
       with
         case effect-matcher(#"data\\..*")
-        then ([x]) -> x + 1
+        then (x) -> x + 1
       end
     `)
     expect(result).toBe(43)
@@ -341,7 +341,7 @@ describe('async trampoline operations', () => {
       do
         perform(@my.effect, 5)
       with
-        case @my.effect then ([x]) -> x * 10
+        case @my.effect then (x) -> x * 10
       end
     `)
     expect(result.type).toBe('completed')
@@ -819,7 +819,7 @@ describe('effect matching — dvala function handler predicate', () => {
         perform(@my.test.effect, "data")
       with
         case effect-matcher("my.test.*")
-        then ([msg]) -> upper-case(msg)
+        then (msg) -> upper-case(msg)
       end
     `)
     expect(result).toBe('DATA')
@@ -1392,7 +1392,7 @@ describe('effect matching — function predicate handler', () => {
       do
         42
       with
-        case @no.match then ([]) -> 0
+        case @no.match then (payload) -> 0
       end
     `)
     expect(result).toBe(42)
@@ -2607,7 +2607,7 @@ describe('parseFunction — do...with...end function body', () => {
       let f = () -> do
         perform(@my.eff, "hello")
       with
-        case @my.eff then ([msg]) -> upper-case(msg)
+        case @my.eff then (msg) -> upper-case(msg)
       end;
       f()
     `)
@@ -2763,7 +2763,7 @@ describe('parseFunction — shorthand lambda with do...with...end', () => {
       let f = -> do
         perform(@my.eff, $)
       with
-        case @my.eff then ([x]) -> x * 2
+        case @my.eff then (x) -> x * 2
       end;
       f(21)
     `
@@ -3144,7 +3144,7 @@ describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)
       do
         perform(@test.pred, 99)
       with
-        case (eff -> effect-name(eff) == "test.pred") then ([x]) -> x + 1
+        case (eff -> effect-name(eff) == "test.pred") then (x) -> x + 1
       end
     `)
     expect(result).toBe(100)

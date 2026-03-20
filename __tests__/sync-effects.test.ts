@@ -195,7 +195,7 @@ describe('runSync with sync effect handlers', () => {
         do
           perform(@my.effect, "local")
         with
-          case @my.effect then ([msg]) -> upper-case(msg)
+          case @my.effect then (msg) -> upper-case(msg)
         end
       `, {
         effectHandlers: [

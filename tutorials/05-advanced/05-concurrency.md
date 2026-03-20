@@ -14,7 +14,7 @@ do
   let b = perform(effect(my.val), 20);
   a + b
 with
-  case effect(my.val) then ([x]) -> x * 2
+  case effect(my.val) then (x) -> x * 2
 end
 ```
 

@@ -29,7 +29,7 @@ end`,
 do
   perform(@dvala.io.println, "hello")
 with
-  case @dvala.io.println then ([msg]) -> null
+  case @dvala.io.println then (msg) -> null
 end`,
   ],
 }
