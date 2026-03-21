@@ -10,67 +10,6 @@ const dvalaDebug = createDvala({ debug: true })
 const dvalaWithMathUtils = createDvala({ modules: [mathUtilsModule] })
 
 describe('parser', () => {
-  describe('conditional operator', () => {
-    test('? should work', () => {
-      expect(dvala.run('1 ? 2 : 3')).toBe(2)
-      expect(dvala.run('1 |> (1 ? inc: dec)')).toBe(2)
-      expect(dvala.run('1 |> (0 ? inc: dec)')).toBe(0)
-      expect(dvala.run('0 ? 2 : 3')).toBe(3)
-      expect(dvala.run('1 ? 2 : 3 ? 4 : 5')).toBe(2)
-      expect(dvala.run('0 ? 2 : 3 ? 4 : 5')).toBe(4)
-
-      // Test ternary with arithmetic operators
-      expect(dvala.run('1 + 2 ? 3 : 4')).toBe(3) // (1 + 2) ? 3: 4
-      expect(dvala.run('0 + 0 ? 3 : 4')).toBe(4) // (0 + 0) ? 3: 4
-      expect(dvala.run('1 ? 2 + 3 : 4')).toBe(5) // 1 ? (2 + 3): 4
-      expect(dvala.run('0 ? 2 : 3 + 4')).toBe(7) // 0 ? 2: (3 + 4)
-
-      // Test ternary with comparison operators
-      expect(dvala.run('1 < 2 ? "less" : "not less"')).toBe('less')
-      expect(dvala.run('2 == 2 ? "equal" : "not equal"')).toBe('equal')
-      expect(dvala.run('3 > 2 ? 3 * 2 : 3 / 2')).toBe(6)
-
-      // Test ternary with logical operators
-      expect(dvala.run('true && false ? "and" : "not and"')).toBe('not and')
-      expect(dvala.run('true || false ? "or" : "not or"')).toBe('or')
-      expect(dvala.run('1 ? true && false : true')).toBe(false)
-      expect(dvala.run('0 ? true : true || false')).toBe(true)
-
-      // Test ternary with nullish coalescing
-      expect(dvala.run('null ?? 5 ? "exists" : "null"')).toBe('exists')
-      expect(dvala.run('1 ? null ?? "default" : "falsy"')).toBe('default')
-
-      // Test nested ternary expressions
-      expect(dvala.run('1 ? 2 ? 3 : 4 : 5')).toBe(3)
-      expect(dvala.run('1 ? 0 ? 3 : 4 : 5')).toBe(4)
-      expect(dvala.run('0 ? 2 : 0 ? 3 : 4')).toBe(4)
-
-      // Test ternary with function calls
-      expect(dvala.run('even?(2) ? "even" : "odd"')).toBe('even')
-      expect(dvala.run('1 ? inc(2) : dec(2)')).toBe(3)
-
-      // Test ternary with bitwise operators
-      expect(dvala.run('1 & 1 ? "bitwise" : "not bitwise"')).toBe('bitwise')
-      expect(dvala.run('1 | 0 ? "bitwise or" : "not bitwise or"')).toBe('bitwise or')
-
-      // Test ternary with string concatenation
-      expect(dvala.run('"a" ++ "b" ? "concat" : "no concat"')).toBe('concat')
-      expect(dvala.run('1 ? "a" ++ "b" : "c"')).toBe('ab')
-
-      // Test ternary with multiple operators (complex precedence testing)
-      expect(dvala.run('1 + 2 * 3 ? 4 + 5 : 6 + 7')).toBe(9)
-      expect(dvala.run('1 + 2 > 3 * 4 ? 5 - 6 : 7 * 8')).toBe(56)
-      expect(dvala.run('1 && 0 || 1 ? "complex1" : "complex2"')).toBe('complex1')
-      expect(dvala.run('(1 && 0) || 1 ? "parentheses" : "no parentheses"')).toBe('parentheses')
-      expect(dvala.run('1 && (0 || 1) ? "logical group" : "no group"')).toBe('logical group')
-
-      // Test ternary with pipe and functional operators (low precedence interactions)
-      expect(dvala.run('[1, 2, 3] |> empty? ? "empty" : "not empty"')).toBe('not empty')
-      expect(dvala.run('[1, 2, 3] |> count |> even? ? "even count" : "odd count"')).toBe('odd count')
-      expect(dvala.run('1 ? [1, 2, 3] filter even? : [4, 5, 6]')).toEqual([2])
-    })
-  })
-
   describe('reserved symbol _', () => {
     it('should parse reserved symbol _', () => {
       expect(parseTokenStream(tokenizeSource('as'))).toEqual({
@@ -1165,7 +1104,7 @@ foo(1, 2)`)).toBe(3)
           complItem in products
           let isValid = mainProduct.id != complItem.id && accessory.id != complItem.id && complItem.stockLevel > 0
           let finalPrice = mainProduct.price + accessory.price + complItem.price
-          let discount = finalPrice > 500 ? 0.1 : 0.05
+          let discount = if finalPrice > 500 then 0.1 else 0.05 end
           let discountedPrice = finalPrice * (1 - discount)
           let matchesPreferences = contains?(customerPreferences.preferredCategories, complItem.category)
           when (isValid && finalPrice <= customerPreferences.priceLimit && matchesPreferences)

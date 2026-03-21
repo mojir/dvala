@@ -618,7 +618,7 @@ let determinant = (matrix) -> do
         (acc, j) -> do
           let minor = getMinor(matrix, 0, j);
           let cofactor = determinant(minor);
-          let signFactor = even?(j) ? 1 : -1;
+          let signFactor = if even?(j) then 1 else (0 - 1) end;
           let term = signFactor * matrix[0][j] * cofactor;
           
           acc + term;
@@ -743,7 +743,7 @@ matrixMultiply(matrixA, matrixB);
     code: `
 let formatPhoneNumber = (data) -> do
   if string?(data) then
-    let phoneNumber = data[0] == "+" ? data slice 2 : data;
+    let phoneNumber = if data[0] == "+" then slice(data, 2) else data end;
     let length = count(phoneNumber);
 
     cond

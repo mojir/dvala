@@ -153,13 +153,7 @@ people map "name"    // => ["Alice", "Bob"]
 
 ### Operator precedence (high → low)
 
-`^` → `* / %` → `+ -` → `<< >> >>>` → `++` → `< <= > >=` → `== !=` → `& xor |` → `&& || ??` → `|>` → `? :`
-
-### Ternary operator
-
-```dvala
-condition ? value-if-true : value-if-false
-```
+`^` → `* / %` → `+ -` → `<< >> >>>` → `++` → `< <= > >=` → `== !=` → `& xor |` → `&& || ??` → `|>`
 
 ### Pipe operator with placeholder `_`
 

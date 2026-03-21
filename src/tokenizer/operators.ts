@@ -40,8 +40,7 @@ const binaryOperators = [
 ] as const
 
 const otherOperators = [
-  '?', // conditional operator
-  ':', // conditional operator
+  ':', // property assignment
   '->', // lambda
   '...', // rest
   '.', // property accessor

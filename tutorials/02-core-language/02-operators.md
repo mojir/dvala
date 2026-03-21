@@ -104,11 +104,3 @@ let half = _ / 2;
 half(20)
 ```
 
-## Ternary Operator
-
-The ternary `? :` works as you would expect:
-
-```dvala
-let age = 25;
-age >= 18 ? "adult" : "minor"
-```

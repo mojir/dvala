@@ -41,7 +41,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       examples: [
         'string?("")',
         'string?("A string")',
-        'string?(true ? "A string" : false)',
+        'string?(if true then "A string" else false end)',
         'string?(false)',
         'string?([1, 2, 3])',
         'string?(100)',

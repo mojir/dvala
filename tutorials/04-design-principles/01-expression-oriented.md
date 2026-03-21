@@ -15,13 +15,6 @@ let status = if 10 > 5 then "big" else "small" end;
 status
 ```
 
-No need for a separate ternary operator (though Dvala has one for convenience):
-
-```dvala
-let x = 7;
-x > 0 ? "positive" : "non-positive"
-```
-
 ## Blocks Return Their Last Expression
 
 A `do...end` block is an expression whose value is its last sub-expression:

@@ -388,7 +388,7 @@ l`,
       examples: [
         'let su = import(sequence); su.group-by([{ name: "Albert" }, { name: "Albert" }, { name: "Mojir" }], "name")',
         'let su = import(sequence); su.group-by([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")',
-        'let su = import(sequence); su.group-by("Albert Mojir", -> "aoueiAOUEI" contains? $ ? "vowel" : "other")',
+        'let su = import(sequence); su.group-by("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)',
       ],
     },
   },
