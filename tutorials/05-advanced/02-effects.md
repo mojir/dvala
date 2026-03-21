@@ -370,7 +370,7 @@ with (arg, eff, nxt) ->
   if eff == @my.read then 42
   else if eff == @dvala.error then "error: " ++ arg
   else nxt(eff, arg)
-  end end
+  end
 end
 ```
 

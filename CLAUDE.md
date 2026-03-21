@@ -28,7 +28,7 @@ Create .md files inside /design
 
 ## Dvala Syntax Notes
 
-- **`if/else if` chains need one `end` per `if`**: `if A then B else if C then D else E end end` — the inner `if` and outer `if` each need their own `end`. A simple `if/else` only needs one.
+- **`if/else if` chains need only one `end`**: `if A then B else if C then D else E end` — the entire chain is closed by a single `end`.
 - **`loop` has no `end`**: the body is a single expression; the loop is terminated by its body expression's own `end` (or by the enclosing `do...end` block). Never add a bare `end` for the loop itself.
 - **`do...end` always needs explicit `end`**: `do let x = 1; x + 1 end`.
 - **Unary minus doesn't work**: `-x` is parsed as a function call. Use `(0 - x)` instead.

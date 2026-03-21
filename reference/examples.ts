@@ -625,7 +625,6 @@ let determinant = (matrix) -> do
         end,
         0,
       );
-    end
   end
 end;
 

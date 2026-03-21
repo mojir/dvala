@@ -1046,7 +1046,7 @@ describe('auto: predicate-based handler matching', () => {
         if io-match(eff) then "io: " ++ arg
         else if all-match(eff) then "all: " ++ arg
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)

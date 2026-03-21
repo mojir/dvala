@@ -791,7 +791,7 @@ describe('parser edge cases', () => {
         else if n > 10 then "medium"
         else if n > 0 then "small"
         else "zero-or-negative"
-        end end end end;
+        end;
       [classify(200), classify(75), classify(25), classify(5), classify(-1)]
     `)).toEqual(['huge', 'big', 'medium', 'small', 'zero-or-negative'])
   })
