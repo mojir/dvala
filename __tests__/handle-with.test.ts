@@ -134,4 +134,47 @@ describe('handle...with...end', () => {
       expect(result).toBe('inner:a outer:b')
     })
   })
+
+  describe('runtime error catching', () => {
+    it('should catch runtime errors via @dvala.error', () => {
+      const result = dvala.run(`
+        handle
+          1 + "hello"
+        with [(eff, arg, nxt) ->
+          if eff == @dvala.error then "caught"
+          else nxt(eff, arg)
+          end
+        ]
+        end
+      `)
+      expect(result).toBe('caught')
+    })
+
+    it('should catch perform(@dvala.error) via handle...with', () => {
+      const result = dvala.run(`
+        handle
+          perform(@dvala.error, "boom")
+        with [(eff, arg, nxt) ->
+          if eff == @dvala.error then "caught: " ++ arg
+          else nxt(eff, arg)
+          end
+        ]
+        end
+      `)
+      expect(result).toBe('caught: boom')
+    })
+
+    it('should propagate uncaught errors', () => {
+      expect(() => dvala.run(`
+        handle
+          1 + "hello"
+        with [(eff, arg, nxt) ->
+          if eff == @my.other then "nope"
+          else nxt(eff, arg)
+          end
+        ]
+        end
+      `)).toThrow()
+    })
+  })
 })

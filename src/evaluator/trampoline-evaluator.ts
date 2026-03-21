@@ -1981,7 +1981,7 @@ function tryDispatchDvalaError(
   const effect = getEffectRef('dvala.error')
   const arg: Any = error.shortMessage
 
-  // Check local TryWithFrame handlers (same logic as dispatchPerform)
+  // Check local handlers (TryWithFrame and HandleWithFrame)
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
@@ -1990,6 +1990,9 @@ function tryDispatchDvalaError(
           return invokeMatchedHandler(handler, frame, arg, k, i, error.sourceCodeInfo)
         }
       }
+    }
+    if (frame.type === 'HandleWith') {
+      return invokeHandleWithChain(frame, effect, arg, k, i, error.sourceCodeInfo)
     }
   }
 
