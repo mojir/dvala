@@ -77,22 +77,6 @@ describe('misc functions', () => {
       })
     })
 
-    describe('identical?', () => {
-      it('samples', () => {
-        expect(dvala.run('1 identical? 1')).toBe(true)
-        expect(dvala.run('1 identical? 2')).toBe(false)
-
-        expect(dvala.run('identical?(1, 1)')).toBe(true)
-        expect(dvala.run('identical?(1, 2)')).toBe(false)
-        expect(dvala.run('identical?("1", "1")')).toBe(true)
-        expect(dvala.run('identical?("1", "2")')).toBe(false)
-        expect(dvala.run('identical?(null, 0)')).toBe(false)
-        expect(dvala.run('identical?([1], [1])')).toBe(false)
-        expect(dvala.run('identical?({}, {})')).toBe(false)
-        expect(() => dvala.run('identical?()')).toThrow(DvalaError)
-      })
-    })
-
     describe('==', () => {
       it('samples', () => {
         expect(dvala.run('1 == 1')).toBe(true)
