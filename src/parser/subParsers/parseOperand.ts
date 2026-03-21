@@ -22,6 +22,28 @@ import { parseNumber } from './parseNumber'
 import { parseObject } from './parseObject'
 import { parseTemplateString } from './parseTemplateString'
 
+// All valid dvala.* effect names — standard effects + specially handled ones.
+// Hardcoded to avoid circular dependency with the evaluator module.
+const validDvalaEffects: ReadonlySet<string> = new Set([
+  'dvala.io.print',
+  'dvala.io.error',
+  'dvala.io.read',
+  'dvala.io.read-stdin',
+  'dvala.io.pick',
+  'dvala.io.confirm',
+  'dvala.random',
+  'dvala.random.uuid',
+  'dvala.random.int',
+  'dvala.random.item',
+  'dvala.random.shuffle',
+  'dvala.time.now',
+  'dvala.time.zone',
+  'dvala.sleep',
+  'dvala.error',
+  'dvala.checkpoint',
+  'dvala.debug.step',
+])
+
 export function parseOperand(ctx: ParserContext): AstNode {
   let operand: AstNode = parseOperandPart(ctx)
   let token = ctx.tryPeek()
@@ -138,12 +160,18 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     case 'RegexpShorthand':
       return parseRegexpShorthand(ctx)
     case 'EffectName': {
+      const effectName = token[1]
+      // Validate dvala.* effect names — only known standard effects are allowed.
+      // Wildcards (containing *) are exempt since they're patterns, not literal names.
+      if (effectName.startsWith('dvala.') && !effectName.includes('*') && !validDvalaEffects.has(effectName)) {
+        throw new DvalaError(`Unknown dvala effect: '${effectName}'`, token[2])
+      }
       ctx.advance()
       // Check for handler shorthand: @effect -> body, @effect(params...) -> body
       if (isHandlerShorthand(ctx)) {
-        return parseHandlerShorthand(ctx, token[1], token[2])
+        return parseHandlerShorthand(ctx, effectName, token[2])
       }
-      return withSourceCodeInfo([NodeTypes.EffectName, token[1]], token[2])
+      return withSourceCodeInfo([NodeTypes.EffectName, effectName], token[2])
     }
 
     default:

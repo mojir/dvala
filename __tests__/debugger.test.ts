@@ -260,13 +260,13 @@ describe('phase 7 — Time-Travel Debugger', () => {
     it('should work with standard effects', async () => {
       const dbg = createDebugger({
         handlers: [
-          { pattern: 'dvala.now', handler: async ({ resume }) => {
+          { pattern: 'dvala.time.now', handler: async ({ resume }) => {
             resume(1234567890)
           } },
         ],
       })
 
-      let r = await dbg.run('perform(@dvala.now)')
+      let r = await dbg.run('perform(@dvala.time.now)')
       while (r.type === 'suspended') {
         r = await dbg.stepForward()
       }
