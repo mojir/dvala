@@ -20,14 +20,6 @@ function isEqual([first, ...rest]: unknown[], sourceCodeInfo: SourceCodeInfo | u
   return true
 }
 
-function isIdentical([first, ...rest]: unknown[]) {
-  for (const param of rest) {
-    if (param !== first)
-      return false
-  }
-  return true
-}
-
 export const miscNormalExpression: BuiltinNormalExpressions = {
   '==': {
     evaluate: (params, sourceCodeInfo): boolean => {
@@ -48,7 +40,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x', 'ys'] },
       ],
       description: 'Returns `true` if all `values` are structaul equal to each other, otherwise result is `false`.',
-      seeAlso: ['!=', 'identical?'],
+      seeAlso: ['!='],
       examples: [
         '1 == 1',
         '[1, 2] == [1, 2]',
@@ -89,7 +81,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x', 'ys'] },
       ],
       description: 'Returns `true` if all `values` are not equal to each other, otherwise result is `false`. `(!= a b c)` is same as `(not (== a b c))`.',
-      seeAlso: ['==', 'identical?'],
+      seeAlso: ['=='],
       examples: [
         '1 != 2',
         '3 != 3',
@@ -97,28 +89,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         '!=(3, 3, 2)',
         '!=("3", "2", "1", "0",)',
         '!=(0, -0)',
-      ],
-    },
-  },
-  'identical?': {
-    evaluate: (params): boolean => {
-      return isIdentical(params)
-    },
-    arity: { min: 1 },
-    docs: {
-      category: 'misc',
-      returns: { type: 'boolean' },
-      args: {
-        a: { type: 'any' },
-        b: { type: 'any' },
-      },
-      variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns true if $a and $b are referential equal.',
-      seeAlso: ['==', '!='],
-      examples: [
-        'identical?({ a: 10, b: 20 }, { b: 20, a: 10 })',
-        'identical?([1, true, null], [1, true, null])',
-        'identical?(0.3, 0.1 + 0.2)',
       ],
     },
   },

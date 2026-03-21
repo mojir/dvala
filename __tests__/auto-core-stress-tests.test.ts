@@ -131,7 +131,7 @@ describe('module system edge cases', () => {
     const result = dvala.run(`
       let v1 = import(vector);
       let v2 = import(vector);
-      identical?(v1, v2)
+      ==(v1, v2)
     `)
     expect(result).toBe(true)
   })

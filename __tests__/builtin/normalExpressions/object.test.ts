@@ -144,13 +144,13 @@ describe('object functions', () => {
         })
       })
 
-      it('merge returns new object', () => {
+      it('merge returns equal object', () => {
         const program = `
         let obj1 = object("x", 10);
         let obj2 = merge(obj1);
-        identical?(obj1, obj2)
+        ==(obj1, obj2)
       `
-        expect(dvala.run(program)).toBe(false)
+        expect(dvala.run(program)).toBe(true)
       })
     })
 

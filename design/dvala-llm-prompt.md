@@ -387,7 +387,6 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `not(x)` | Logical NOT |
 | `boolean(x)` | Coerce to boolean |
 | `compare(a, b)` | Returns -1, 0, or 1 |
-| `identical?(a, b)` | Referential equality |
 
 ### String
 

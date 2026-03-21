@@ -122,7 +122,6 @@ const skipWrongTypeTests = new Set([
   'hash', // accepts any
   '=', // accepts any
   '!=', // accepts any
-  'identical?', // accepts any
   'str', // accepts any
   'deep-=', // deeply compares any
   '++', // handles multiple types
