@@ -355,13 +355,11 @@ export const api = {
     'matrix.inf-norm',
     'matrix.max-norm',
   ] as const,
-  vector: [
-    'sum',
-    'mean',
-    'median',
-    'prod',
-  ] as const,
   vectorUtils: [
+    'vector.sum',
+    'vector.prod',
+    'vector.mean',
+    'vector.median',
     'vector.monotonic?',
     'vector.strictly-monotonic?',
     'vector.increasing?',
@@ -1106,7 +1104,6 @@ export type AssertionUtilsApiName = typeof api.assertionUtils[number]
 export type GridApiName = typeof api.grid[number]
 export type MatrixApiName = typeof api.matrix[number]
 export type NumberTheoryApiName = typeof api.numberTheory[number]
-export type VectorApiName = typeof api.vector[number]
 export type VectorUtilsApiName = typeof api.vectorUtils[number]
 export type LinAlgApiName = typeof api.linAlg[number]
 export type MathUtilsApiName = typeof api.mathUtils[number]
@@ -1127,7 +1124,6 @@ export type CoreNormalExpressionName
     | RegularExpressionApiName
     | StringApiName
     | BitwiseApiName
-    | VectorApiName
     | AssertionApiName
 
 // Module functions - require import()
@@ -1172,7 +1168,6 @@ const coreApiFunctionNames = [
   ...api.regularExpression,
   ...api.string,
   ...api.bitwise,
-  ...api.vector,
   ...api.assertion,
 ] as const
 

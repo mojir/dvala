@@ -214,10 +214,10 @@ lin.euclidean-norm([3, 4]);         // => 5.0 (Euclidean norm/magnitude)
 lin.normalize-l2([3, 4]);           // => [0.6, 0.8] (unit vector)
 lin.euclidean-distance([0, 0], [3, 4]); // => 5.0 (Euclidean distance)
 
-// Vector statistical operations (sum, mean, median, prod are core built-ins)
-sum([1, 2, 3, 4]);             // => 10
-mean([1, 2, 3, 4]);            // => 2.5
-median([1, 2, 3, 4, 5]);       // => 3
+// Vector statistical operations (in the vector module)
+vec.sum([1, 2, 3, 4]);         // => 10
+vec.mean([1, 2, 3, 4]);        // => 2.5
+vec.median([1, 2, 3, 4, 5]);   // => 3
 vec.stdev([1, 2, 3, 4]);       // => 1.29... (standard deviation)
 vec.variance([1, 2, 3, 4]);    // => 1.67... (variance)
 
@@ -1316,7 +1316,7 @@ Here's the complete precedence table, from highest to lowest:
 | 5 | `&` `xor` `\|` | Bitwise operations | `4 \| 2 & 1` → `4 \| 0` → `4` |
 | 4 | `&&` `\|\|` `??` | Logical operations | `true && false \|\| true` → `false \|\| true` → `true` |
 | 3 | *function operators* | Binary functions used as operators | `5 max 3 + 2` → `5 max 5` → `5` |
-| 2 | `\|>` | Pipe operator | `[1,2] \|> map(_, inc) \|> sum` |
+| 2 | `\|>` | Pipe operator | `[1,2] \|> map(_, inc) \|> reduce(_, 0, +)` |
 
 #### Examples of Precedence in Action
 
@@ -1334,7 +1334,7 @@ Here's the complete precedence table, from highest to lowest:
 3 > 2 && 1 < 2;      // => true && true = true
 
 // Pipe has very low precedence
-let vec = import(vector);
+let { sum } = import(vector);
 [1, 2, 3] |> map(_, inc) |> sum;      // Evaluates left to right
 
 // Conditional expression

@@ -14,7 +14,102 @@ import { quartiles } from './quartiles'
 import { reductionFunctionNormalExpressions } from './reductionFunctions'
 import vectorModuleSource from './vector.dvala'
 
+function calcMedian(vector: number[]): number {
+  const sorted = [...vector].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!
+}
+
 const vectorFunctions: BuiltinNormalExpressions = {
+  'sum': {
+    evaluate: ([vector], sourceCodeInfo): number => {
+      assertVector(vector, sourceCodeInfo)
+      return vector.reduce((acc, val) => acc + val, 0)
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'vector',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to sum.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the **sum** of all elements in the `vector`. Returns `0` for an empty vector.',
+      seeAlso: ['vector.prod', 'vector.mean', 'vector.median', 'vector.moving-sum', 'vector.centered-moving-sum', 'vector.running-sum', 'vector.cumsum'],
+      examples: [
+        'let { sum } = import(vector);\nsum([1, 2, 3, 4, 5])',
+        'let { sum } = import(vector);\nsum([1, -2, 3])',
+        'let { sum } = import(vector);\nsum([])',
+      ],
+    },
+  },
+  'prod': {
+    evaluate: ([vector], sourceCodeInfo): number => {
+      assertVector(vector, sourceCodeInfo)
+      return vector.reduce((acc, val) => acc * val, 1)
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'vector',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to multiply.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the **product** of all elements in the `vector`. Returns `1` for an empty vector.',
+      seeAlso: ['vector.sum', 'vector.mean', 'vector.median', 'vector.moving-prod', 'vector.centered-moving-prod', 'vector.running-prod', 'vector.cumprod'],
+      examples: [
+        'let { prod } = import(vector);\nprod([1, 2, 3, 4, 5])',
+        'let { prod } = import(vector);\nprod([1, -2, 3])',
+        'let { prod } = import(vector);\nprod([])',
+      ],
+    },
+  },
+  'mean': {
+    evaluate: ([vector], sourceCodeInfo): number => {
+      assertNonEmptyVector(vector, sourceCodeInfo)
+      return vector.reduce((acc, val) => acc + val, 0) / vector.length
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'vector',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to calculate the mean of.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the arithmetic **mean** of all elements in the `vector`. Throws for an empty vector.',
+      seeAlso: ['vector.median', 'vector.sum', 'vector.prod', 'vector.moving-mean', 'vector.centered-moving-mean', 'vector.running-mean', 'vector.geometric-mean', 'vector.harmonic-mean', 'vector.rms', 'vector.mode'],
+      examples: [
+        'let { mean } = import(vector);\nmean([1, 2, 3, 4, 5])',
+        'let { mean } = import(vector);\nmean([1, -2, 3])',
+      ],
+    },
+  },
+  'median': {
+    evaluate: ([vector], sourceCodeInfo): number => {
+      assertNonEmptyVector(vector, sourceCodeInfo)
+      return calcMedian(vector)
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'vector',
+      returns: { type: 'number' },
+      args: {
+        vector: { type: 'vector', description: 'The vector to calculate the median of.' },
+      },
+      variants: [{ argumentNames: ['vector'] }],
+      description: 'Returns the **median** of all elements in the `vector`. For even-length vectors, returns the average of the two middle values. Throws for an empty vector.',
+      seeAlso: ['vector.mean', 'vector.sum', 'vector.prod', 'vector.moving-median', 'vector.centered-moving-median', 'vector.running-median', 'vector.mode', 'vector.quartiles', 'vector.percentile', 'vector.iqr', 'vector.medad'],
+      examples: [
+        'let { median } = import(vector);\nmedian([1, 2, 3, 4, 5])',
+        'let { median } = import(vector);\nmedian([1, 2, 3, 4])',
+        'let { median } = import(vector);\nmedian([3, 1, 4, 1, 5])',
+      ],
+    },
+  },
   'monotonic?': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)

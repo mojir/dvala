@@ -17,7 +17,6 @@ import { regexpNormalExpression } from '../core/regexp'
 import { stringNormalExpression } from '../core/string'
 import { functionalNormalExpression } from '../core/functional'
 import { getMetaNormalExpression } from '../core/meta'
-import { vectorNormalExpression } from '../core/vector'
 
 const normalExpressionReference: Record<string, FunctionReference> = {}
 const effectReference: Record<string, EffectReference> = {}
@@ -45,7 +44,6 @@ const expressions: BuiltinNormalExpressions = {
   ...regexpNormalExpression,
   ...stringNormalExpression,
   ...functionalNormalExpression,
-  ...vectorNormalExpression,
 }
 
 Object.entries(expressions).forEach(([name, expression]) => {
