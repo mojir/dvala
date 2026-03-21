@@ -29,7 +29,7 @@ with
 end
 `,
   ],
-  seeAlso: ['effect?'],
+  seeAlso: ['effect?', 'handle'],
 }
 
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {

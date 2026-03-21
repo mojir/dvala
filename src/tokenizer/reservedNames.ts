@@ -16,6 +16,7 @@ const nonNumberReservedSymbolRecord = {
   then: null,
   end: null,
   with: null,
+  handle: null,
   _: null,
 } as const satisfies Record<string, Any>
 

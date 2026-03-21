@@ -110,6 +110,18 @@ export interface ModuleFunction extends GenericDvalaFunction {
   functionName: string
 }
 
+/**
+ * The `next` function passed to handle...with handler functions.
+ * When called with (eff, arg), dispatches to the next handler in the chain
+ * or propagates to the outer scope if no more handlers.
+ */
+export interface HandleNextFunction extends GenericDvalaFunction {
+  functionType: 'HandleNext'
+  handlers: Any[] // handler functions in the chain
+  handlerIndex: number // next handler to try
+  resumeK: unknown // ContinuationStack — stored as unknown to avoid circular import
+}
+
 export type DvalaFunction =
   | UserDefinedFunction
   | NormalBuiltinFunction
@@ -124,6 +136,7 @@ export type DvalaFunction =
   | SomePredFunction
   | FNullFunction
   | EffectMatcherFunction
+  | HandleNextFunction
 
 export type DvalaFunctionType = DvalaFunction['functionType']
 

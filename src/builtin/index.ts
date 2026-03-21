@@ -20,6 +20,7 @@ import { objectSpecialExpression } from './specialExpressions/object'
 import { importSpecialExpression } from './specialExpressions/import'
 import { parallelSpecialExpression } from './specialExpressions/parallel'
 import { performSpecialExpression } from './specialExpressions/perform'
+import { handleSpecialExpression } from './specialExpressions/handle'
 import { raceSpecialExpression } from './specialExpressions/race'
 import { specialExpressionTypes } from './specialExpressionTypes'
 
@@ -46,6 +47,7 @@ export const specialExpressions = [
   performSpecialExpression,
   parallelSpecialExpression,
   raceSpecialExpression,
+  handleSpecialExpression,
 ] as const
 
 export type SpecialExpressions = typeof specialExpressions

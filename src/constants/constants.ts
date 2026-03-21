@@ -40,6 +40,7 @@ const functionTypes = [
   'Builtin',
   'SpecialBuiltin',
   'Module',
+  'HandleNext',
 ] as const
 
 const functionTypeSet = new Set(functionTypes)

@@ -58,6 +58,7 @@ import type {
   StringNode,
   SymbolNode,
   TemplateStringNode,
+  HandleNextFunction,
   UserDefinedFunction,
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
@@ -109,6 +110,8 @@ import type {
   ForLetBindFrame,
   ForLoopFrame,
   Frame,
+  HandleSetupFrame,
+  HandleWithFrame,
   HandlerInvokeFrame,
   IfBranchFrame,
   ImportMergeFrame,
@@ -792,6 +795,20 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Race', branches, env, k }
     }
 
+    // --- handle...with ---
+    case specialExpressionTypes.handle: {
+      const bodyExprs = node[1][1] as AstNode[]
+      const handlersExpr = node[1][2] as AstNode
+      // First evaluate the handlers expression, then set up the HandleWithFrame
+      const setupFrame: HandleSetupFrame = {
+        type: 'HandleSetup',
+        bodyExprs,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: handlersExpr, env, k: [setupFrame, ...k] }
+    }
+
     /* v8 ignore next 2 */
     default:
       throw new DvalaError(`Unknown special expression type: ${type}`, sourceCodeInfo)
@@ -929,6 +946,29 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const regexp = new RegExp(fn.pattern, fn.flags)
       return { type: 'Value', value: regexp.test(effectName), k }
+    }
+    case 'HandleNext': {
+      // next(eff, arg) — dispatch to the next handler in the chain
+      assertNumberOfParams({ min: 2, max: 2 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const nextEff = params[0] as Any
+      const nextArg = params[1] as Any
+      assertEffect(nextEff, sourceCodeInfo)
+      const { handlers, handlerIndex, resumeK } = fn
+      const rk = resumeK as ContinuationStack
+
+      if (handlerIndex >= handlers.length) {
+        // No more handlers in the chain — propagate past the HandleWithFrame.
+        // The current k already has EffectResumeFrame → outerK. Re-performing
+        // on k will skip past the HandleWithFrame since it's not in outerK.
+        return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo }
+      }
+
+      // Call handlers[handlerIndex](eff, arg, nextNextFn)
+      const nextNextFn = buildNextFunction(handlers, handlerIndex + 1, rk, sourceCodeInfo)
+      const handler = handlers[handlerIndex]!
+      const fnLike = asFunctionLike(handler, sourceCodeInfo)
+      // The handler runs on the same k (which has EffectResumeFrame → outerK)
+      return dispatchFunction(fnLike, [nextEff, nextArg, nextNextFn], [], env, sourceCodeInfo, k)
     }
     // Param-transforming compound types: transform and re-dispatch
     case 'Partial': {
@@ -1230,6 +1270,11 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyTryWith(value, k)
     case 'EffectResume':
       return applyEffectResume(frame, value, k)
+    case 'HandleSetup':
+      return applyHandleSetup(frame, value, k)
+    case 'HandleWith':
+      // Body completed — return value (frame is just a marker on the stack)
+      return { type: 'Value', value, k }
     case 'ParallelResume':
       return applyParallelResume(frame, value, k)
     case 'EvalArgs':
@@ -2094,6 +2139,40 @@ function applyEffectResume(frame: EffectResumeFrame, value: Any, _k: Continuatio
 }
 
 /**
+ * HandleSetup: the handlers expression has been evaluated.
+ * Now push a HandleWithFrame around the body and evaluate it.
+ */
+function applyHandleSetup(frame: HandleSetupFrame, value: Any, k: ContinuationStack): Step {
+  // value is the evaluated handlers expression — either a single function or an array of functions
+  const handlers = Array.isArray(value) ? value : [value]
+
+  const handleWithFrame: HandleWithFrame = {
+    type: 'HandleWith',
+    handlers: handlers as Any[],
+    env: frame.env,
+    sourceCodeInfo: frame.sourceCodeInfo,
+  }
+
+  // Build body as a sequence
+  const { bodyExprs, env } = frame
+  if (bodyExprs.length === 0) {
+    return { type: 'Value', value: null, k: [handleWithFrame, ...k] }
+  }
+  if (bodyExprs.length === 1) {
+    return { type: 'Eval', node: bodyExprs[0]!, env, k: [handleWithFrame, ...k] }
+  }
+  // Multiple body expressions — wrap in a sequence
+  const sequenceFrame: SequenceFrame = {
+    type: 'Sequence',
+    nodes: bodyExprs,
+    index: 1,
+    env,
+    sourceCodeInfo: frame.sourceCodeInfo,
+  }
+  return { type: 'Eval', node: bodyExprs[0]!, env, k: [sequenceFrame, handleWithFrame, ...k] }
+}
+
+/**
  * Convert a ParallelResumeFrame into a ParallelResumeStep.
  *
  * The value is the resume value from the host for the first suspended branch.
@@ -2221,6 +2300,73 @@ function invokeMatchedHandler(
   return { type: 'Eval', node: handler.handlerNode, env: frame.env, k: [handlerInvokeFrame, ...outerK] }
 }
 
+/**
+ * Build a HandleNextFunction for the given handler index in the chain.
+ * When called with (eff, arg), it dispatches to handlers[handlerIndex].
+ * If handlerIndex >= handlers.length, re-performs past the HandleWithFrame.
+ */
+function buildNextFunction(
+  handlers: Any[],
+  handlerIndex: number,
+  resumeK: ContinuationStack,
+  sourceCodeInfo?: SourceCodeInfo,
+): HandleNextFunction {
+  return {
+    [FUNCTION_SYMBOL]: true,
+    functionType: 'HandleNext',
+    handlers,
+    handlerIndex,
+    resumeK,
+    arity: { min: 2, max: 2 },
+    sourceCodeInfo,
+  }
+}
+
+/**
+ * Invoke the handle...with handler chain when a perform matches a HandleWithFrame.
+ *
+ * Builds a `next` closure and calls handlers[0](eff, arg, next).
+ * The handler's return value becomes the resume value for the perform.
+ */
+function invokeHandleWithChain(
+  frame: HandleWithFrame,
+  effect: EffectRef,
+  arg: Any,
+  k: ContinuationStack,
+  frameIndex: number,
+  sourceCodeInfo?: SourceCodeInfo,
+): Step | Promise<Step> {
+  const { handlers } = frame
+
+  if (handlers.length === 0) {
+    // No handlers — propagate past this frame by re-performing on the outer stack
+    const outerK = k.slice(frameIndex + 1)
+    return { type: 'Perform', effect, arg, k: outerK, sourceCodeInfo }
+  }
+
+  // resumeK = original k — handler's return value resumes here
+  const resumeK = k
+
+  // outerK = continuation past the HandleWithFrame (for handler execution)
+  const outerK = k.slice(frameIndex + 1)
+
+  // EffectResumeFrame bridges handler's return value back to resumeK
+  const effectResumeFrame: EffectResumeFrame = {
+    type: 'EffectResume',
+    resumeK,
+    sourceCodeInfo,
+  }
+  const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
+
+  // Build next function for handler[1..n]
+  const nextFn = buildNextFunction(handlers, 1, resumeK, sourceCodeInfo)
+
+  // Call handlers[0](eff, arg, nextFn)
+  const firstHandler = handlers[0]!
+  const fnLike = asFunctionLike(firstHandler, sourceCodeInfo)
+  return dispatchFunction(fnLike, [effect, arg, nextFn], [], frame.env, sourceCodeInfo, handlerK)
+}
+
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
@@ -2269,6 +2415,9 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
           return invokeMatchedHandler(handler, frame, arg, k, i, sourceCodeInfo)
         }
       }
+    }
+    if (frame.type === 'HandleWith') {
+      return invokeHandleWithChain(frame, effect, arg, k, i, sourceCodeInfo)
     }
   }
 

@@ -483,6 +483,38 @@ export interface EffectResumeFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+/**
+ * `handle...with` effect handler boundary.
+ *
+ * Similar to `TryWithFrame` but handlers are evaluated Dvala function values
+ * (not AST nodes). When `perform` is called, the trampoline searches for a
+ * matching `HandleWithFrame` and invokes the handler chain.
+ *
+ * The handlers list is an array of Dvala function values, each conforming
+ * to `(eff, arg, next) -> value`. They are tried in order via the `next`
+ * closure mechanism.
+ */
+export interface HandleWithFrame {
+  type: 'HandleWith'
+  handlers: Any[] // Array of Dvala function values
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Frame for evaluating the handlers expression in `handle...with`.
+ *
+ * First the body expressions are wrapped in a sequence. Then the handlers
+ * expression is evaluated. Once handlers are resolved, a `HandleWithFrame`
+ * is pushed and the body is evaluated.
+ */
+export interface HandleSetupFrame {
+  type: 'HandleSetup'
+  bodyExprs: AstNode[]
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
 // ---------------------------------------------------------------------------
 // Parallel resume
 // ---------------------------------------------------------------------------
@@ -980,6 +1012,8 @@ export type Frame =
   | TryWithFrame
   | EffectResumeFrame
   | EffectRefFrame
+  | HandleWithFrame
+  | HandleSetupFrame
   // Handler invocation
   | HandlerInvokeFrame
   // Compound function wrappers
