@@ -80,6 +80,13 @@ Arrays hold ordered collections of any types:
 [1, "two", true, null]
 ```
 
+Accessing out-of-bounds indices returns `null` (no error):
+
+```dvala
+let arr = [10, 20, 30];
+[arr[0], arr[2], arr[99]]
+```
+
 Use spread to merge arrays:
 
 ```dvala
@@ -92,6 +99,13 @@ Objects are key-value maps. Keys are strings:
 
 ```dvala
 { name: "Alice", age: 30 }
+```
+
+Accessing properties with `.` or `[]` is null-safe — missing keys return `null`, and accessing properties on `null` propagates `null` instead of erroring:
+
+```dvala
+let user = {name: "Alice"};
+[user.name, user.age, user.address.city]
 ```
 
 Spread works in objects too:
