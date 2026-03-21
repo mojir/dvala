@@ -71,8 +71,8 @@ describe('full entry point (src/full.ts)', () => {
     expect(Object.keys(apiReference).length).toBeGreaterThan(0)
   })
 
-  it('should export allBuiltinModules with 13 modules', () => {
-    expect(allBuiltinModules).toHaveLength(13)
+  it('should export allBuiltinModules with 14 modules', () => {
+    expect(allBuiltinModules).toHaveLength(14)
   })
 })
 

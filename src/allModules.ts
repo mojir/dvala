@@ -12,6 +12,7 @@ import { collectionUtilsModule } from './builtin/modules/collection'
 import { sequenceUtilsModule } from './builtin/modules/sequence'
 import { bitwiseUtilsModule } from './builtin/modules/bitwise'
 import { convertModule } from './builtin/modules/convert'
+import { timeModule } from './builtin/modules/time'
 
 export const allBuiltinModules: DvalaModule[] = [
   assertModule,
@@ -27,4 +28,5 @@ export const allBuiltinModules: DvalaModule[] = [
   sequenceUtilsModule,
   bitwiseUtilsModule,
   convertModule,
+  timeModule,
 ]
