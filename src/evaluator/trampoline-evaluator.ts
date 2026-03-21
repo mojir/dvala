@@ -95,7 +95,6 @@ import type {
   ComplementFrame,
   CompFrame,
   ContinuationStack,
-  DebugStepFrame,
   EffectResumeFrame,
   EvalArgsFrame,
   EveryPredFrame,
@@ -1234,8 +1233,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applySomePred(frame, value, k)
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
-    case 'DebugStep':
-      return applyDebugStep(frame, value, k)
     case 'ImportMerge': {
       const dvalaFunctions = isObj(value) ? value : {}
       // Set dvalaImpl on module expressions for functions overridden by .dvala source
@@ -3410,74 +3407,6 @@ function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): 
   return { type: 'Value', value: annotate(value), k }
 }
 
-// ---------------------------------------------------------------------------
-// Debug step handling
-// ---------------------------------------------------------------------------
-
-/**
- * Extract all visible bindings from a ContextStack as a flat record.
- * Iterates from outermost to innermost scope so that inner bindings
- * shadow outer ones, matching Dvala scoping semantics.
- */
-export function extractBindings(env: ContextStack): Record<string, Any> {
-  const result: Record<string, Any> = {}
-  // Include host values (plain bindings passed at creation)
-  const hostValues = env.getHostValues()
-  if (hostValues) {
-    for (const [name, value] of Object.entries(hostValues)) {
-      result[name] = value as Any
-    }
-  }
-  const contexts = env.getContextsRaw()
-  // Outer scopes first, inner override
-  for (let i = contexts.length - 1; i >= 0; i--) {
-    for (const [name, entry] of Object.entries(contexts[i]!)) {
-      result[name] = entry.value
-    }
-  }
-  return result
-}
-
-/**
- * Apply a DebugStepFrame.
- *
- * Phase 'awaitValue': The compound expression just evaluated to `value`.
- *   Build step info and produce a PerformStep for `dvala.debug.step`.
- *   Push self (in 'awaitPerform' phase) onto k so that when the debug
- *   perform completes, the value flows through correctly.
- *
- * Phase 'awaitPerform': The debug perform completed (handler resumed or
- *   suspension was resumed). Pass the value through to the next frame.
- *   For normal stepping, the debugger resumes with the original value.
- *   For `rerunFrom`, the debugger resumes with an alternate value.
- */
-function applyDebugStep(frame: DebugStepFrame, value: Any, k: ContinuationStack): Step {
-  if (frame.phase === 'awaitValue') {
-    // Build step info from source code info and evaluation result
-    const stepInfo: Obj = {
-      expression: frame.sourceCodeInfo?.code ?? '',
-      value,
-      location: frame.sourceCodeInfo
-        ? { line: frame.sourceCodeInfo.position.line, column: frame.sourceCodeInfo.position.column }
-        : { line: 0, column: 0 },
-      env: extractBindings(frame.env),
-    }
-
-    // Push awaitPerform phase frame, then produce PerformStep
-    const awaitFrame: DebugStepFrame = {
-      type: 'DebugStep',
-      phase: 'awaitPerform',
-      sourceCodeInfo: frame.sourceCodeInfo,
-      env: frame.env,
-    }
-    const debugEffect = getEffectRef('dvala.debug.step')
-    return { type: 'Perform', effect: debugEffect, arg: stepInfo as Any, k: [awaitFrame, ...k] }
-  }
-
-  // phase === 'awaitPerform': pass through the value
-  return { type: 'Value', value, k }
-}
-
 function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): Step {
   // Checkpoint resolved — now dispatch the original effect with a marker frame
   // so dispatchPerform knows to skip auto-checkpoint for this re-dispatch.
@@ -4060,12 +3989,6 @@ export async function retriggerWithEffects(
  * Shared effect trampoline loop used by both `evaluateWithEffects` and
  * `resumeWithEffects`. Runs the trampoline to completion, suspension, or error.
  *
- * When `handlers` includes a `dvala.debug.step` handler, the loop enters
- * debug mode: before evaluating compound nodes (NormalExpression,
- * SpecialExpression) that have source code info, a `DebugStepFrame` is
- * pushed onto the continuation stack. This causes each compound expression
- * to fire a `perform(dvala.debug.step, stepInfo)` after evaluation,
- * enabling the time-travel debugger.
  */
 async function runEffectLoop(
   initial: Step,
@@ -4077,7 +4000,6 @@ async function runEffectLoop(
   autoCheckpoint?: boolean,
   terminalSnapshot?: boolean,
 ): Promise<RunResult> {
-  const debugMode = Array.isArray(handlers) && handlers.some(h => h.pattern === 'dvala.debug.step')
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
@@ -4135,20 +4057,6 @@ async function runEffectLoop(
           return snapshot
             ? { type: 'completed', value: step.value, snapshot }
             : { type: 'completed', value: step.value }
-        }
-
-        // Debug mode: inject DebugStepFrame for compound nodes with source info
-        if (debugMode && step.type === 'Eval' && step.node[2]) {
-          const nodeType = step.node[0]
-          if (nodeType === NodeTypes.NormalExpression || nodeType === NodeTypes.SpecialExpression) {
-            const debugFrame: DebugStepFrame = {
-              type: 'DebugStep',
-              phase: 'awaitValue',
-              sourceCodeInfo: step.node[2],
-              env: step.env,
-            }
-            step = { ...step, k: [debugFrame, ...step.k] }
-          }
         }
 
         step = tick(step, handlers, signal, snapshotState)
