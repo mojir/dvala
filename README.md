@@ -705,7 +705,7 @@ for (entry in { a: 1, b: 2 } let [key, value] = entry) -> key ++ ":" ++ str(valu
 
 ```dvala
 // For side effects only (returns null)
-doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.println), x)
+doseq (x in [1, 2, 3]) -> perform(@dvala.io.println, x)
 // Prints: 1 2 3, returns null
 ```
 
@@ -758,49 +758,57 @@ end;
 
 ### Error Handling
 
-#### Do/With Effect Handlers
+#### Handle/With Effect Handlers
 
 ```dvala
-// Basic error handling with do/with
-let riskyOperation = () -> perform(effect(dvala.error), "Something went wrong");
-do
+// Basic error handling with handle/with
+let riskyOperation = () -> perform(@dvala.error, "Something went wrong");
+handle
   riskyOperation()
-with
-  case effect(dvala.error) then (args) -> "Something went wrong"
-end;
+with [(eff, arg, nxt) ->
+  if eff == @dvala.error then "Something went wrong"
+  else nxt(eff, arg)
+  end
+] end;
 
 // With error message binding
-do
+handle
   riskyOperation()
-with
-  case effect(dvala.error) then (msg) -> "Error: " ++ msg
-end;
+with [(eff, arg, nxt) ->
+  if eff == @dvala.error then "Error: " ++ arg
+  else nxt(eff, arg)
+  end
+] end;
 
 // Error handling for graceful degradation
 let parseData = () -> { value: 42 };
 let process = (val) -> val * 2;
-do
+handle
   let { value } = parseData();
   process(value)
-with
-  case effect(dvala.error) then (args) -> "Using default value"
-end;
+with [(eff, arg, nxt) ->
+  if eff == @dvala.error then "Using default value"
+  else nxt(eff, arg)
+  end
+] end;
 ```
 
 #### Raising Errors
 
 ```dvala
 // Raising errors
-do
-  perform(effect(dvala.error), "Custom error message")
-with
-  case effect(dvala.error) then (args) -> "Caught an error"
-end;
+handle
+  perform(@dvala.error, "Custom error message")
+with [(eff, arg, nxt) ->
+  if eff == @dvala.error then "Caught an error"
+  else nxt(eff, arg)
+  end
+] end;
 
 // Custom error messages in functions
 let divide = (a, b) ->
   if zero?(b) then
-    perform(effect(dvala.error), "Cannot divide by zero")
+    perform(@dvala.error, "Cannot divide by zero")
   else
     a / b
   end;
@@ -808,8 +816,8 @@ let divide = (a, b) ->
 // Conditional error raising
 let validateAge = (age) ->
   cond
-    case age < 0 then perform(effect(dvala.error), "Age cannot be negative")
-    case age > 150 then perform(effect(dvala.error), "Age seems unrealistic")
+    case age < 0 then perform(@dvala.error, "Age cannot be negative")
+    case age > 150 then perform(@dvala.error, "Age seems unrealistic")
     case true then age
   end;
 ```
@@ -834,10 +842,10 @@ let loadData = () -> [1, 2, 3];
 let processData = (data) -> data map -> $ * 2;
 
 do
-  perform(effect(dvala.io.println), "Starting process...");
+  perform(@dvala.io.println, "Starting process...");
   let data = loadData();
   let processed = processData(data);
-  perform(effect(dvala.io.println), "Process completed");
+  perform(@dvala.io.println, "Process completed");
   processed
 end
 ```

@@ -95,22 +95,28 @@ end
 
 ## Error Handling
 
-Use `do` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises an error:
+Use `handle` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises an error:
 
 ```dvala
-do
+handle
   perform(effect(dvala.error), "oops")
-with
-  case effect(dvala.error) then (msg) -> msg
+with [(eff, arg, nxt) ->
+  if eff == @dvala.error then arg
+  else nxt(eff, arg)
+  end
+]
 end
 ```
 
 ```dvala
 let safe-div = (a, b) ->
-  do
+  handle
     a / b
-  with
-    case effect(dvala.error) then (args) -> "error"
+  with [(eff, arg, nxt) ->
+    if eff == @dvala.error then "error"
+    else nxt(eff, arg)
+    end
+  ]
   end;
 safe-div(10, 0)
 ```

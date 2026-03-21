@@ -264,11 +264,10 @@ describe('cond edge cases', () => {
 describe('effect matching with function predicate', () => {
   it('should match effects with a wildcard matcher', () => {
     const result = dvala.run(`
-      do
+      let pred = effect-matcher("my.*");
+      handle
         perform(@my.feature.test, "hello")
-      with
-        case effect-matcher("my.*")
-        then (msg) -> upper-case(msg)
+      with [(eff, arg, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('HELLO')
@@ -276,11 +275,10 @@ describe('effect matching with function predicate', () => {
 
   it('should match effects with regexp matcher', () => {
     const result = dvala.run(`
-      do
+      let pred = effect-matcher(#"data\\..*");
+      handle
         perform(@data.fetch, 42)
-      with
-        case effect-matcher(#"data\\..*")
-        then (x) -> x + 1
+      with [(eff, arg, nxt) -> if pred(eff) then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(43)
@@ -814,11 +812,10 @@ describe('advanceQq — ?? after evaluating first to null', () => {
 describe('effect matching — dvala function handler predicate', () => {
   it('should match effect using a dvala function predicate in do...with', () => {
     const result = dvala.run(`
-      do
+      let pred = effect-matcher("my.test.*");
+      handle
         perform(@my.test.effect, "data")
-      with
-        case effect-matcher("my.test.*")
-        then (msg) -> upper-case(msg)
+      with [(eff, arg, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('DATA')
@@ -3137,10 +3134,9 @@ describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)
   it('should use predicate function as effect matcher via do-with', () => {
     // Predicate function matching: use a lambda as case pattern to match effects
     const result = dvala.run(`
-      do
+      handle
         perform(@test.pred, 99)
-      with
-        case (eff -> effect-name(eff) == "test.pred") then (x) -> x + 1
+      with [(eff, arg, nxt) -> if effect-name(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(100)

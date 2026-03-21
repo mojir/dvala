@@ -177,4 +177,141 @@ describe('handle...with...end', () => {
       `)).toThrow()
     })
   })
+
+  describe('@dvala.error infinite loop prevention', () => {
+    it('perform(@dvala.error) with non-matching handler should throw', () => {
+      expect(() => dvala.run(`
+        handle
+          perform(@dvala.error, "boom")
+        with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+        end
+      `)).toThrow('boom')
+    })
+
+    it('nested handlers both passing @dvala.error via nxt should throw', () => {
+      expect(() => dvala.run(`
+        handle
+          handle
+            perform(@dvala.error, "boom")
+          with [(eff, arg, nxt) -> nxt(eff, arg)]
+          end
+        with [(eff, arg, nxt) -> nxt(eff, arg)]
+        end
+      `)).toThrow('boom')
+    })
+
+    it('runtime error with no @dvala.error handler should throw', () => {
+      expect(() => dvala.run(`
+        handle
+          0 / 0
+        with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+        end
+      `)).toThrow()
+    })
+
+    it('unhandled effect error caught by @dvala.error handler', () => {
+      const result = dvala.run(`
+        handle
+          perform(@no.handler, "data")
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        end
+      `)
+      expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
+    })
+
+    it('inner handler catches @dvala.error, outer never reached', () => {
+      const result = dvala.run(`
+        handle
+          handle
+            perform(@dvala.error, "boom")
+          with [(eff, arg, nxt) -> if eff == @dvala.error then "inner: " ++ arg else nxt(eff, arg) end]
+          end
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
+        end
+      `)
+      expect(result).toBe('inner: boom')
+    })
+
+    it('inner passes @dvala.error via nxt, outer catches it', () => {
+      const result = dvala.run(`
+        handle
+          handle
+            perform(@dvala.error, "boom")
+          with [(eff, arg, nxt) -> nxt(eff, arg)]
+          end
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
+        end
+      `)
+      expect(result).toBe('outer: boom')
+    })
+
+    it('runtime error in handler body propagates past own scope', () => {
+      const result = dvala.run(`
+        handle
+          handle
+            perform(@my.eff, "data")
+          with [(eff, arg, nxt) -> if eff == @my.eff then 0 / 0 else nxt(eff, arg) end]
+          end
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "outer caught" else nxt(eff, arg) end]
+        end
+      `)
+      expect(result).toBe('outer caught')
+    })
+
+    it('nested HandleWith: inner skipped, outer catches @dvala.error', () => {
+      const result = dvala.run(`
+        handle
+          handle
+            0 / 0
+          with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+          end
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught" else nxt(eff, arg) end]
+        end
+      `)
+      expect(result).toBe('caught')
+    })
+
+    it('non-matching handler and no outer handler should throw', () => {
+      expect(() => dvala.run(`
+        handle
+          0 / 0
+        with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+        end
+      `)).toThrow()
+    })
+  })
+
+  describe('@dvala.error with host handlers', () => {
+    it('host handler for dvala.error that calls next() should error', async () => {
+      const result = await dvala.runAsync('perform(@dvala.error, "test")', {
+        effectHandlers: [
+          { pattern: 'dvala.error', handler: async ctx => { ctx.next() } },
+        ],
+      })
+      expect(result.type).toBe('error')
+    })
+
+    it('host handler for dvala.error that resumes should work', async () => {
+      const result = await dvala.runAsync('perform(@dvala.error, "test")', {
+        effectHandlers: [
+          { pattern: 'dvala.error', handler: async ({ resume }) => { resume('recovered') } },
+        ],
+      })
+      expect(result).toMatchObject({ type: 'completed', value: 'recovered' })
+    })
+
+    it('local handle...with catches runtime error even with host dvala.error handler', async () => {
+      const result = await dvala.runAsync(`
+        handle
+          0 / 0
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "local caught" else nxt(eff, arg) end]
+        end
+      `, {
+        effectHandlers: [
+          { pattern: 'dvala.error', handler: async ({ resume }) => { resume('host caught') } },
+        ],
+      })
+      expect(result).toMatchObject({ type: 'completed', value: 'local caught' })
+    })
+  })
 })

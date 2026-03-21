@@ -3,11 +3,10 @@ import { NodeTypes } from '../constants/constants'
 import { UserDefinedError } from '../errors'
 import type { Any } from '../interface'
 import { parse } from '../parser'
-import type { AstNode, EffectRef, NumberNode, StringNode } from '../parser/types'
+import type { AstNode, NumberNode, StringNode } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
-import { EFFECT_SYMBOL } from '../utils/symbols'
 import type { ContextStack } from './ContextStack'
 import { createContextStack } from './ContextStack'
 import type {
@@ -24,7 +23,6 @@ import type {
   QqFrame,
   RecurFrame,
   SequenceFrame,
-  TryWithFrame,
 } from './frames'
 import type { Step } from './step'
 import { applyFrame, runAsyncTrampoline, runSyncTrampoline, stepNode, tick } from './trampoline-evaluator'
@@ -99,12 +97,6 @@ describe('tick', () => {
     const step: Step = { type: 'Apply', frame, value: 42, k: [] }
     const next = tick(step) as Step
     expect(next).toEqual({ type: 'Value', value: 42, k: [] })
-  })
-
-  it('should throw on PerformStep (effects not implemented yet)', () => {
-    const effect: EffectRef = { [EFFECT_SYMBOL]: true, name: 'test.effect' }
-    const step: Step = { type: 'Perform', effect, arg: null, k: [] }
-    expect(() => tick(step)).toThrow('Unhandled effect')
   })
 
   it('should run a full program via tick loop', () => {
@@ -872,17 +864,6 @@ describe('applyFrame', () => {
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
         expect(step.k[0]!.type).toBe('Recur')
-      }
-    })
-  })
-
-  describe('tryWithFrame', () => {
-    it('should pass value through when try body succeeds', () => {
-      const frame: TryWithFrame = { type: 'TryWith', handlers: [], env: emptyEnv() }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(42)
       }
     })
   })

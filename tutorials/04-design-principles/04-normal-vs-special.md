@@ -121,10 +121,13 @@ for (x in [1, 2, 3] when x > 1) -> x * 10
 
 ```dvala
 let e = effect(my.double);
-do
+handle
   perform(e, 21)
-with
-  case effect(my.double) then (x) -> x * 2
+with [(eff, arg, nxt) ->
+  if eff == @my.double then arg * 2
+  else nxt(eff, arg)
+  end
+]
 end
 ```
 

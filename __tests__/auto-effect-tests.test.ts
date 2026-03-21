@@ -1015,13 +1015,12 @@ describe('auto: effect-matcher wildcard patterns', () => {
 // 16. Effect Predicate in do/with — handler matching via predicates
 // ---------------------------------------------------------------------------
 describe('auto: predicate-based handler matching', () => {
-  it('effect-matcher as handler case', () => {
+  it('effect-matcher in handle...with handler', () => {
     const result = dvala.run(`
-      let io-handler = effect-matcher("test.io.*");
-      do
+      let io-match = effect-matcher("test.io.*");
+      handle
         perform(@test.io.println, "msg")
-      with
-        case io-handler then (x) -> "handled: " ++ x
+      with [(eff, arg, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1029,24 +1028,26 @@ describe('auto: predicate-based handler matching', () => {
 
   it('effect-matcher does not match non-matching effect', () => {
     expect(() => dvala.run(`
-      let io-handler = effect-matcher("test.io.*");
-      do
+      let io-match = effect-matcher("test.io.*");
+      handle
         perform(@test.other, "msg")
-      with
-        case io-handler then (x) -> "handled: " ++ x
+      with [(eff, arg, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)).toThrow('Unhandled effect')
   })
 
   it('multiple predicate handlers checked in order', () => {
     const result = dvala.run(`
-      let all-handler = effect-matcher("*");
-      let io-handler = effect-matcher("test.io.*");
-      do
+      let all-match = effect-matcher("*");
+      let io-match = effect-matcher("test.io.*");
+      handle
         perform(@test.io.println, "msg")
-      with
-        case io-handler then (x) -> "io: " ++ x
-        case all-handler then (x) -> "all: " ++ x
+      with [(eff, arg, nxt) ->
+        if io-match(eff) then "io: " ++ arg
+        else if all-match(eff) then "all: " ++ arg
+        else nxt(eff, arg)
+        end end
+      ]
       end
     `)
     expect(result).toBe('io: msg')
@@ -1056,10 +1057,9 @@ describe('auto: predicate-based handler matching', () => {
     const result = dvala.run(`
       let re = regexp("^test\\\\.io");
       let pred = effect-matcher(re);
-      do
+      handle
         perform(@test.io.println, "data")
-      with
-        case pred then (x) -> "matched: " ++ x
+      with [(eff, arg, nxt) -> if pred(eff) then "matched: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched: data')

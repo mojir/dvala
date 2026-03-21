@@ -89,14 +89,17 @@ squares
 
 ## Effects Return Values
 
-Even `do...with` error handling returns a value:
+Even `handle...with` error handling returns a value:
 
 ```dvala
 let safe-sqrt = (x) ->
-  do
+  handle
     sqrt(x)
-  with
-    case effect(dvala.error) then (msg) -> null
+  with [(eff, arg, nxt) ->
+    if eff == @dvala.error then null
+    else nxt(eff, arg)
+    end
+  ]
   end;
 [safe-sqrt(16), safe-sqrt(-1)]
 ```
