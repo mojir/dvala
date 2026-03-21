@@ -161,24 +161,12 @@ describe('recursive evaluator — user-defined function edge cases', () => {
 // ---------------------------------------------------------------------------
 
 describe('?? (nullish coalescing) edge cases', () => {
-  it('should handle ?? with first undefined and second also undefined', () => {
-    expect(dvala.run('??(nonexistent1, nonexistent2, 42)')).toBe(42)
-  })
-
   it('should handle ?? with single defined value', () => {
     expect(dvala.run('let x = 7; ??(x)')).toBe(7)
   })
 
   it('should handle ?? with first value null and second defined', () => {
     expect(dvala.run('let x = null; let y = 5; ??(x, y)')).toBe(5)
-  })
-
-  it('should handle ?? with all undefined', () => {
-    expect(dvala.run('??(nonexistent1, nonexistent2)')).toBe(null)
-  })
-
-  it('should handle ?? with only one undefined symbol', () => {
-    expect(dvala.run('??(nonexistent1)')).toBe(null)
   })
 })
 
@@ -671,18 +659,10 @@ describe('recursive evaluator via module functions', () => {
 // Lines 895-929 in trampoline.ts are dead code guarded by the parser.
 
 // ---------------------------------------------------------------------------
-// ?? — additional edge cases for skipUndefinedQq and advanceQq
+// ?? — additional null coalescing edge cases
 // ---------------------------------------------------------------------------
 
-describe('?? — skipUndefinedQq and advanceQq edge cases', () => {
-  it('should handle ?? with two undefined then a defined value (3+ args)', () => {
-    expect(dvala.run('??(nonexistent1, nonexistent2, 42)')).toBe(42)
-  })
-
-  it('should handle ?? with first undefined and second defined (2 args)', () => {
-    expect(dvala.run('??(nonexistent1, 7)')).toBe(7)
-  })
-
+describe('?? — null coalescing edge cases', () => {
   it('should handle ?? with 3+ args, first defined returns immediately', () => {
     expect(dvala.run('let x = 5; ??(x, 10, 20)')).toBe(5)
   })
@@ -692,7 +672,7 @@ describe('?? — skipUndefinedQq and advanceQq edge cases', () => {
   })
 
   it('should handle ?? where first evaluates to null, skip to third', () => {
-    expect(dvala.run('let x = null; ??(x, nonexistent2, 99)')).toBe(99)
+    expect(dvala.run('let x = null; let y = null; ??(x, y, 99)')).toBe(99)
   })
 })
 
@@ -790,15 +770,16 @@ describe('applyMatch — match with guards', () => {
 // ---------------------------------------------------------------------------
 
 describe('advanceQq — ?? after evaluating first to null', () => {
-  it('should advance to third value when first two are null/undefined', () => {
+  it('should advance to third value when first two are null', () => {
     expect(dvala.run(`
       let x = null;
-      ??(x, nonexistent, 99)
+      let y = null;
+      ??(x, y, 99)
     `)).toBe(99)
   })
 
-  it('should skip multiple undefined symbols and evaluate last', () => {
-    expect(dvala.run('??(a, b, c, d, 100)')).toBe(100)
+  it('should return first non-null in chain', () => {
+    expect(dvala.run('let a = null; let b = null; let c = null; let d = 100; ??(a, b, c, d)')).toBe(100)
   })
 })
 
@@ -1097,36 +1078,28 @@ describe('number as function — trampoline dispatch', () => {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// ?? (nullish coalescing) — skipUndefinedQq and advanceQq
-// Lines 764-765, 788-789: skipUndefinedQq skipping multiple undefined symbols
-// Lines 1624-1625: advanceQq skipping undefined after null evaluation
+// ?? (nullish coalescing) — null coalescing with multiple null args
 // ---------------------------------------------------------------------------
 
-describe('?? — skipUndefinedQq and advanceQq with undefined symbols', () => {
-  it('should skip multiple undefined symbols at start and return first defined', () => {
-    // ?? where first two args are undefined symbols, third is defined
-    // Triggers skipUndefinedQq (lines 764-765)
-    expect(dvala.run('?? (undefined_var_1, undefined_var_2, 42)')).toBe(42)
+describe('?? — null coalescing with multiple null args', () => {
+  it('should skip multiple null values and return first non-null', () => {
+    expect(dvala.run('?? (null, null, 42)')).toBe(42)
   })
 
-  it('should return null when all args are undefined symbols', () => {
-    // ?? where all args are undefined → skipUndefinedQq reaches end
-    expect(dvala.run('?? (undef_a, undef_b, undef_c)')).toBe(null)
+  it('should return null when all args are null', () => {
+    expect(dvala.run('?? (null, null, null)')).toBe(null)
   })
 
-  it('should skip undefined symbols after null evaluation in advanceQq', () => {
-    // First arg evaluates to null, then undefined symbols are skipped
-    // Triggers advanceQq skip (lines 1624-1625)
-    expect(dvala.run('let x = null; ?? (x, undef_var, 42)')).toBe(42)
+  it('should skip null after null evaluation', () => {
+    expect(dvala.run('let x = null; let y = null; ?? (x, y, 42)')).toBe(42)
   })
 
-  it('should return null when null followed by all undefined', () => {
-    expect(dvala.run('let x = null; ?? (x, undef_a, undef_b)')).toBe(null)
+  it('should return null when all variables are null', () => {
+    expect(dvala.run('let x = null; let y = null; ?? (x, y)')).toBe(null)
   })
 
-  it('should handle two undefined then two defined', () => {
-    // Tests skipUndefinedQq with continuation to evaluate (lines 788-789)
-    expect(dvala.run('?? (undef_a, undef_b, null, 99)')).toBe(99)
+  it('should handle null then non-null values', () => {
+    expect(dvala.run('?? (null, null, null, 99)')).toBe(99)
   })
 })
 
@@ -1787,20 +1760,20 @@ describe('getStandardEffectDefinition', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Trampoline — ?? nullish coalescing with undefined symbols (lines 764-789)
+// Trampoline — ?? nullish coalescing with null values
 // ---------------------------------------------------------------------------
 
-describe('trampoline — ?? with undefined symbols', () => {
-  it('should fallback when first symbol is undefined', () => {
-    expect(dvala.run('??(undefined_var, 42)')).toBe(42)
+describe('trampoline — ?? with null values', () => {
+  it('should fallback when first value is null', () => {
+    expect(dvala.run('let x = null; ??(x, 42)')).toBe(42)
   })
 
-  it('should chain through multiple undefined symbols', () => {
-    expect(dvala.run('??(undef1, undef2, 99)')).toBe(99)
+  it('should chain through multiple null values', () => {
+    expect(dvala.run('let x = null; let y = null; ??(x, y, 99)')).toBe(99)
   })
 
-  it('should return null when single undefined symbol', () => {
-    expect(dvala.run('??(undef1)')).toBe(null)
+  it('should return null when single null value', () => {
+    expect(dvala.run('??(null)')).toBe(null)
   })
 })
 
@@ -2910,12 +2883,9 @@ describe('debug.ts — parseStepInfo with null/missing meta', () => {
 // ---------------------------------------------------------------------------
 
 describe('trampoline.ts — easy coverage gaps', () => {
-  it('should handle ?? with single undefined symbol (line 787)', () => {
-    expect(dvala.run('??(nonexistent1)')).toBe(null)
-  })
-
-  it('should handle ?? with multiple undefined symbols (line 763)', () => {
-    expect(dvala.run('??(undef1, undef2, 42)')).toBe(42)
+  it('should handle ?? with null values', () => {
+    expect(dvala.run('??(null)')).toBe(null)
+    expect(dvala.run('??(null, null, 42)')).toBe(42)
   })
 
   it('should handle number as function in recursive path (line 277)', () => {
@@ -3402,13 +3372,11 @@ describe('runEffectLoop error branches', () => {
 // ---------------------------------------------------------------------------
 
 describe('?? single-arg edge cases', () => {
-  it('should return null for single undefined symbol', () => {
-    // Covers line 764-765: nodes.length === 1 with undefined symbol
-    expect(dvala.run('??(nonexistent)')).toBe(null)
+  it('should return null for single null value', () => {
+    expect(dvala.run('??(null)')).toBe(null)
   })
 
   it('should return value for single defined expression', () => {
-    // Covers line 788-789: nodes.length === 1 with defined value
     expect(dvala.run('??(42)')).toBe(42)
   })
 })

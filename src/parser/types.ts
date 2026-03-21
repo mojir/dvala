@@ -99,7 +99,6 @@ export interface SpecialBuiltinFunction extends GenericDvalaFunction {
     | typeof specialExpressionTypes['||']
     | typeof specialExpressionTypes['array']
     | typeof specialExpressionTypes['object']
-    | typeof specialExpressionTypes['defined?']
     | typeof specialExpressionTypes['recur']
     | typeof specialExpressionTypes['??']
 }

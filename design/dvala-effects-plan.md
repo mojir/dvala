@@ -175,7 +175,7 @@ type Step =
 
 **Implemented:**
 - `src/evaluator/trampoline.ts` (~2100 lines) — full explicit-stack evaluator with:
-  - **`stepNode`**: dispatches AST nodes to steps — leaf nodes (Number, String, ReservedSymbol, UserDefinedSymbol, NormalBuiltinSymbol, SpecialBuiltinSymbol) return `ValueStep`; compound nodes push frames. All 20 special expression types handled: if/unless, &&, ||, ??, cond, match, block, let, loop, for/doseq, try, throw, recur, array, object, lambda, defined?, import.
+  - **`stepNode`**: dispatches AST nodes to steps — leaf nodes (Number, String, ReservedSymbol, UserDefinedSymbol, NormalBuiltinSymbol, SpecialBuiltinSymbol) return `ValueStep`; compound nodes push frames. All 19 special expression types handled: if/unless, &&, ||, ??, cond, match, block, let, loop, for/doseq, try, throw, recur, array, object, lambda, import.
   - **`applyFrame`**: exhaustive switch over all 22 frame types. Each handler processes a completed sub-result and returns the next step.
   - **Recur handling**: Instead of the recursive evaluator's exception-based `RecurSignal`, recur is handled via continuation-stack walking. `handleRecur()` searches for the nearest `LoopIterateFrame` or `FnBodyFrame`, rebinds parameters, and re-evaluates the body. `FnBodyFrame` stores `outerEnv` to enable proper function recur.
   - **Recursive fallback**: Compound function types (Comp, Juxt, Partial, etc.) and async paths fall back to recursive evaluation via `executeDvalaFunctionRecursive`. These fallbacks will be removed when the trampoline fully replaces the recursive evaluator.

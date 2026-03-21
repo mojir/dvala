@@ -578,7 +578,7 @@ let factorial = n ->
 
 ### Control Flow
 
-#### If/Unless
+#### If
 
 ```dvala
 let x = 15; // Fixed value for compilation
@@ -963,7 +963,7 @@ true || "never reached";  // => true
 ```dvala
 // Null coalescing operator
 null ?? "default";     // => "default"
-0 ?? "default";        // => 0 (only null/undefined are coalesced)
+0 ?? "default";        // => 0 (only null is coalesced)
 false ?? "default";    // => false
 "" ?? "default";       // => ""
 ```

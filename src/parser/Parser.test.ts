@@ -612,7 +612,6 @@ describe('parser', () => {
 
     it('evaluates nullish coalescing', () => {
       expect(dvala.run('null ?? 5')).toBe(5)
-      expect(dvala.run('undefined ?? 5')).toBe(5)
       expect(dvala.run('0 ?? 5')).toBe(0)
       expect(dvala.run('false ?? 5')).toBe(false)
       expect(dvala.run('"" ?? 5')).toBe('')

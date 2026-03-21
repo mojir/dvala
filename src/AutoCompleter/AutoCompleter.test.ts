@@ -17,21 +17,21 @@ describe('autoCompleter', () => {
 
   describe('constructor', () => {
     it('should initialize with valid input', () => {
-      const completer = new AutoCompleter('(def', 4, params)
-      expect(completer.getSearchString()).toBe('def')
-      expect(completer.getSuggestions()).toContain('defined?')
+      const completer = new AutoCompleter('(le', 3, params)
+      expect(completer.getSearchString()).toBe('le')
+      expect(completer.getSuggestions()).toContain('let')
     })
 
     it('should initialize with valid input 2', () => {
-      const completer = new AutoCompleter('(efin', 5, params)
-      expect(completer.getSearchString()).toBe('efin')
-      expect(completer.getSuggestions()).toContain('defined?')
+      const completer = new AutoCompleter('(mat', 4, params)
+      expect(completer.getSearchString()).toBe('mat')
+      expect(completer.getSuggestions()).toContain('match')
     })
 
     it('should initialize with no params', () => {
-      const completer = new AutoCompleter('(def', 4, {})
-      expect(completer.getSearchString()).toBe('def')
-      expect(completer.getSuggestions()).toContain('defined?')
+      const completer = new AutoCompleter('(le', 3, {})
+      expect(completer.getSearchString()).toBe('le')
+      expect(completer.getSuggestions()).toContain('let')
     })
 
     it('should handle empty input', () => {
@@ -49,9 +49,9 @@ describe('autoCompleter', () => {
 
   describe('suggestion generation', () => {
     it('should generate suggestions from dvalaCommands', () => {
-      const completer = new AutoCompleter('(def', 4, params)
+      const completer = new AutoCompleter('(le', 3, params)
       const suggestions = completer.getSuggestions()
-      expect(suggestions).toContain('defined?')
+      expect(suggestions).toContain('let')
     })
 
     it('should generate suggestions from bindings', () => {
@@ -144,12 +144,12 @@ describe('autoCompleter', () => {
 
   describe('suggestion result format', () => {
     it('should return correct program and position', () => {
-      const completer = new AutoCompleter('(def s)', 4, params)
+      const completer = new AutoCompleter('(le s)', 3, params)
       const suggestion = completer.getNextSuggestion()
 
       expect(suggestion).not.toBeNull()
-      expect(suggestion?.program).toBe('(defined? s)')
-      expect(suggestion?.position).toBe(9)
+      expect(suggestion?.program).toBe('(let s)')
+      expect(suggestion?.position).toBe(4)
     })
   })
 })

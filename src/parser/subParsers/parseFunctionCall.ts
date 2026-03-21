@@ -2,7 +2,6 @@ import type { SpecialExpression, SpecialExpressionType } from '../../builtin'
 import { builtin } from '../../builtin'
 import type { AndNode } from '../../builtin/specialExpressions/and'
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
-import type { DefinedNode } from '../../builtin/specialExpressions/defined'
 import type { EffectNode } from '../../builtin/specialExpressions/effect'
 import type { ImportNode } from '../../builtin/specialExpressions/import'
 import type { ObjectNode } from '../../builtin/specialExpressions/object'
@@ -15,7 +14,7 @@ import type { RecurNode } from '../../builtin/specialExpressions/recur'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { AstNode, NormalExpressionNodeExpression, SymbolNode } from '../types'
+import type { AstNode, NormalExpressionNodeExpression } from '../types'
 import { isOperatorToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { isNormalBuiltinSymbolNode, isSpecialBuiltinSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { assertNumberOfParams } from '../../utils/arity'
@@ -95,10 +94,6 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies ObjectNode
       case specialExpressionTypes['??']:
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies QqNode
-      case specialExpressionTypes['defined?']: {
-        const [param] = params
-        return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, param as SymbolNode]], symbol[2]) satisfies DefinedNode
-      }
       case specialExpressionTypes.perform: {
         const [effectExpr, payloadExpr] = params
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, effectExpr!, payloadExpr]], symbol[2]) satisfies PerformNode

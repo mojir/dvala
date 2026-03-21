@@ -194,7 +194,6 @@ let r = recur;
 r(1)`)).toThrow(RecurSignal)
       })
       expect(() => dvala.run('let t = \'if\';')).toThrow(DvalaError)
-      expect(() => dvala.run('let d = defined?; d(+)')).toThrow(DvalaError)
     })
   }
 })

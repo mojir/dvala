@@ -297,12 +297,6 @@ a || b || c       // short-circuit OR; returns first truthy or last falsy
 a ?? b            // returns a if a != null, else b
 ```
 
-### `defined?`
-
-```dvala
-defined?(x)       // true if x is defined in scope, false otherwise
-```
-
 ### `recur` (tail call in any enclosing function/loop)
 
 ```dvala

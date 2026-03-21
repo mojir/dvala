@@ -47,10 +47,10 @@ describe('dvala Destructuring', () => {
     })
 
     test('renaming with original property name still inaccessible', () => {
-      expect(dvala.run(`
+      expect(() => dvala.run(`
         let { name as userName } = { name: "Frank" };
-        defined?(name)
-      `)).toBe(false)
+        name
+      `)).toThrow()
     })
   })
 
