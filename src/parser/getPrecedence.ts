@@ -52,7 +52,10 @@ export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeIn
     case '|>': // pipe
       return 2
 
-      // leave room for conditionalOperatorPrecedence = 1
+    case '||>': // effect pipe
+      return 1
+
+      // conditionalOperatorPrecedence = 1 (handled separately in parseExpression)
 
     /* v8 ignore next 2 */
     default:

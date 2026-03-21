@@ -36,6 +36,7 @@ const binaryOperators = [
   '??', // nullish coalescing
 
   '|>', // pipe
+  '||>', // effect pipe
 ] as const
 
 const otherOperators = [
