@@ -7,10 +7,8 @@ do
     else loop (i = 3) ->
       if i * i > n then true
       else if n % i == 0 then false
-      else recur(i + 2) end
+      else recur(i + 2)
       end
-    end
-    end
     end;
 
   let is-perfect-square = (n) ->
@@ -32,7 +30,7 @@ do
       else if n % i == 0 then
         if i * i == n then recur(i + 1, acc + i)
         else recur(i + 1, acc + i + n / i) end
-      else recur(i + 1, acc) end
+      else recur(i + 1, acc)
       end end;
 
   let is-abundant = (n) -> n > 0 && sum-proper-divisors(n) > n;
@@ -50,7 +48,7 @@ do
     loop (slow = n, fast = sum-of-squared-digits(n)) ->
       if fast == 1 then true
       else if slow == fast then false
-      else recur(sum-of-squared-digits(slow), sum-of-squared-digits(sum-of-squared-digits(fast))) end
+      else recur(sum-of-squared-digits(slow), sum-of-squared-digits(sum-of-squared-digits(fast)))
       end
   end;
 
@@ -69,7 +67,7 @@ do
         if b ^ k == n then true
         else recur(k + 1) end
       end
-    end end end;
+    end end;
 
   let binom = (n, k) ->
     if k == 0 || k == n then 1
@@ -250,7 +248,6 @@ do
         if i >= count(bell-numbers) then result
         else if fn(nth(bell-numbers, i), i) then recur(push(result, nth(bell-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     catalan-take-while: (fn) -> do
@@ -258,7 +255,6 @@ do
         if i >= count(catalan-numbers) then result
         else if fn(nth(catalan-numbers, i), i) then recur(push(result, nth(catalan-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     mersenne-take-while: (fn) -> do
@@ -266,7 +262,6 @@ do
         if i >= count(mersenne-numbers) then result
         else if fn(nth(mersenne-numbers, i), i) then recur(push(result, nth(mersenne-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     partition-take-while: (fn) -> do
@@ -274,7 +269,6 @@ do
         if i >= count(partition-numbers) then result
         else if fn(nth(partition-numbers, i), i) then recur(push(result, nth(partition-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     perfect-take-while: (fn) -> do
@@ -282,7 +276,6 @@ do
         if i >= count(perfect-numbers) then result
         else if fn(nth(perfect-numbers, i), i) then recur(push(result, nth(perfect-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     sylvester-take-while: (fn) -> do
@@ -290,7 +283,6 @@ do
         if i >= count(sylvester-numbers) then result
         else if fn(nth(sylvester-numbers, i), i) then recur(push(result, nth(sylvester-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     // =========================================================================
@@ -332,7 +324,6 @@ do
         if i >= count(lucky-numbers) then result
         else if fn(nth(lucky-numbers, i), i) then recur(push(result, nth(lucky-numbers, i)), i + 1)
         else result end
-      end
     end,
 
     perfect-power-take-while: (fn) -> do
@@ -348,7 +339,7 @@ do
         loop (i = 0) ->
           if i >= count(arr) then false
           else if nth(arr, i) == val then true
-          else recur(i + 1) end
+          else recur(i + 1)
         end;
       if not(fn(0, 0)) then []
       else do

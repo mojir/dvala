@@ -641,7 +641,7 @@ describe('stress: cascading effects', () => {
         if eff == @my.first then 10
         else if eff == @my.second then arg * 2
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)
@@ -687,7 +687,7 @@ describe('stress: cascading effects', () => {
         if eff == @my.first then "triggered"
         else if eff == @dvala.error then arg
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)

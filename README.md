@@ -980,7 +980,7 @@ let result = if age >= 18 then "adult" else "minor" end;
 
 // Nested conditional
 let score = 85;
-let category = if score >= 90 then "A" else if score >= 80 then "B" else "C" end end;
+let category = if score >= 90 then "A" else if score >= 80 then "B" else "C" end;
 
 // With complex expressions
 let isLoggedIn = () -> true;

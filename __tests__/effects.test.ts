@@ -123,7 +123,7 @@ describe('phase 2 — Local Effect Handling', () => {
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
-          end end
+          end
         ]
         end
       `)
@@ -265,7 +265,7 @@ describe('phase 2 — Local Effect Handling', () => {
           if eff == @my.eff then arg
           else if eff == @dvala.error then "caught: " ++ arg
           else nxt(eff, arg)
-          end end
+          end
         ]
         end
       `)
@@ -280,7 +280,7 @@ describe('phase 2 — Local Effect Handling', () => {
           if eff == @my.eff then upper-case(arg)
           else if eff == @dvala.error then "caught: " ++ arg
           else nxt(eff, arg)
-          end end
+          end
         ]
         end
       `)
@@ -335,7 +335,7 @@ describe('phase 2 — Local Effect Handling', () => {
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
-          end end
+          end
         ]
         end
       `)
@@ -3512,7 +3512,7 @@ describe('step 1 — handle...with...end', () => {
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
-          end end
+          end
         ]
         end
       `)
@@ -3622,7 +3622,7 @@ describe('step 2 — dvala.error standard effect', () => {
         if eff == @dvala.error then 0 - 1
         else if eff == @my.eff then arg * 2
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)).toBe(198)
@@ -3736,7 +3736,7 @@ describe('step 10 — predicate-based handler matching', () => {
         if effect-name(eff) == "dvala.error" then "error handler"
         else if effect-name(eff) == "dvala.io.println" then "log handler"
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)
@@ -3751,7 +3751,7 @@ describe('step 10 — predicate-based handler matching', () => {
         if eff == @dvala.error then "error handler"
         else if effect-name(eff) == "dvala.io.println" then "log handler"
         else nxt(eff, arg)
-        end end
+        end
       ]
       end
     `)
