@@ -15,16 +15,46 @@ Two deliberate deviations:
 * **No return clause** — P&P handlers have a **return** clause that transforms the body's final value. Dvala omits this; the same transformation can be expressed by wrapping the `handle...with` block.
 * **No multi-shot continuations** — P&P allows a handler to resume the same continuation multiple times. Dvala restricts to single-shot because multi-shot is fundamentally incompatible with serializable continuations — the key feature that enables suspend/resume across processes and time.
 
-## Creating and Performing Effects
+---
 
-Use `@name` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
+## Effect References
+
+Use `@name` to create an effect reference. The name is a dotted identifier:
+
+```dvala
+@dvala.io.println
+```
+
+Effect references are first-class values — you can store them, pass them, and compare them:
 
 ```dvala
 let log = @dvala.io.println;
 log
 ```
 
-`perform` invokes an effect with arguments. When there is no local `handle...with` handler, the effect propagates outward. For custom effects that have no standard or host handler, the program fails with an unhandled effect error. In the CLI or when embedding Dvala in JavaScript, you can register your own host handlers (covered below).
+```dvala
+==(@my.eff, @my.eff)
+```
+
+```dvala
+==(@my.eff, @other.eff)
+```
+
+## Performing Effects
+
+`perform` invokes an effect with a single payload argument:
+
+```dvala
+perform(@dvala.random)
+```
+
+```dvala
+perform(@dvala.io.println, "hello")
+```
+
+When there is no local handler, the effect propagates outward to the host environment.
+
+---
 
 ## Standard Effects
 
@@ -54,34 +84,13 @@ Dvala provides built-in effects that are always available without explicit handl
 **Error:**
 * `dvala.error` — raises an error (covered in the Errors section below)
 
-```dvala
-perform(@dvala.random)
-```
+---
 
-Here's an example using `read-line` with a local handler to simulate user input:
+## Handling Effects
 
-```dvala
-handle
-  let name = perform(@dvala.io.read-line);
-  "Hello, " ++ name ++ "!"
-with [(arg, eff, nxt) ->
-  if eff == @dvala.io.read-line then "Alice"
-  else nxt(eff, arg)
-  end
-]
-end
-```
+### handle...with...end
 
-Without a local handler, effects like `read-line` propagate to the host environment (no output shown in documentation examples):
-
-```dvala
-let name = perform(@dvala.io.read-line);
-"Hello, " ++ name ++ "!"
-```
-
-## Handle / With Handlers
-
-`handle...with...end` establishes local effect handlers. The handler function receives three arguments: the effect reference (`eff`), the payload (`arg`), and a propagation function (`nxt`). The handler's return value becomes the result of the `perform` call:
+`handle...with...end` establishes a scope with effect handlers. When `perform` is called inside the body, the handler function intercepts it. The handler's return value becomes the result of `perform`:
 
 ```dvala
 handle
@@ -95,21 +104,235 @@ with [(arg, eff, nxt) ->
 end
 ```
 
-Multiple effects can be handled with an `if`/`else if` chain inside the handler:
+A handler function receives three arguments in order:
+
+| Parameter | Description |
+|---|---|
+| `arg` | The payload from `perform` |
+| `eff` | The effect reference that was performed |
+| `nxt` | A function to propagate the effect to the next handler |
+
+The handler checks which effect was performed, handles it if it matches, or calls `nxt(eff, arg)` to pass it along.
+
+### Handler Shorthand
+
+Writing `(arg, eff, nxt) -> if eff == @name then ... else nxt(eff, arg) end` is verbose. The **handler shorthand** eliminates the boilerplate:
+
+```
+@effect(param) -> body
+```
+
+This desugars to:
+
+```
+(param, eff, nxt) -> if eff == @effect then body else nxt(eff, param) end
+```
+
+**Example — these are equivalent:**
 
 ```dvala
 handle
-  let a = perform(@my.add, [10, 20]);
-  let b = perform(@my.mul, [3, 4]);
-  [a, b]
+  perform(@my.double, 21)
 with [(arg, eff, nxt) ->
-  if eff == @my.add then arg(0) + arg(1)
-  else if eff == @my.mul then arg(0) * arg(1)
+  if eff == @my.double then arg * 2
   else nxt(eff, arg)
-  end end
+  end
 ]
 end
 ```
+
+```dvala
+handle
+  perform(@my.double, 21)
+with [@my.double(x) -> x * 2]
+end
+```
+
+The shorthand supports **1 to 3 parameters**, binding them to `arg`, `eff`, and `nxt` in order:
+
+| Form | Binds |
+|---|---|
+| `@eff(x) -> body` | `x` = arg |
+| `@eff(x, e) -> body` | `x` = arg, `e` = eff |
+| `@eff(x, e, n) -> body` | `x` = arg, `e` = eff, `n` = nxt |
+
+The **2-param form** is useful with wildcards to inspect which specific effect matched:
+
+```dvala
+handle
+  perform(@my.action, "data")
+with [@my.*(x, e) -> effect-name(e) ++ ": " ++ x]
+end
+```
+
+The **3-param form** gives access to `nxt` for middleware patterns:
+
+```dvala
+handle
+  perform(@my.eff, 10)
+with [
+  @my.eff(x, e, n) -> x + n(e, x),
+  @my.eff(x) -> x * 3
+]
+end
+```
+
+A **zero-param** form uses `$1`, `$2`, `$3` (consistent with shorthand lambdas):
+
+```dvala
+handle perform(@my.eff, 21)
+with [@my.eff -> $1 * 2]
+end
+```
+
+### Single handler without brackets
+
+When there's only one handler, the array brackets are optional:
+
+```dvala
+handle perform(@my.eff, 21)
+with @my.eff(x) -> x * 2
+end
+```
+
+### Multiple handlers
+
+Multiple handlers form a chain. Each handler can match specific effects and call `nxt` to pass unmatched effects along:
+
+```dvala
+handle
+  perform(@a, 10) + perform(@b, 20)
+with [
+  @a(x) -> x * 2,
+  @b(x) -> x * 3
+]
+end
+```
+
+Handler shorthand and full handlers can be mixed freely:
+
+```dvala
+handle
+  perform(@a, 10) + perform(@b, 20)
+with [
+  @a(x) -> x * 2,
+  (arg, eff, nxt) -> if eff == @b then arg * 3 else nxt(eff, arg) end
+]
+end
+```
+
+### Handler shorthand as first-class values
+
+Handler shorthands produce regular functions. They can be stored, passed, and composed:
+
+```dvala
+let double-handler = @my.double(x) -> x * 2;
+handle perform(@my.double, 21) with [double-handler] end
+```
+
+```dvala
+let run-with = (body-fn, handler) ->
+  handle body-fn() with handler end;
+run-with(-> perform(@my.eff, 10), @my.eff(x) -> x * 5)
+```
+
+---
+
+## Effect Pipe `||>`
+
+The effect pipe is a lightweight alternative to `handle...with...end`:
+
+```
+expr ||> handler
+```
+
+is **pure sugar** for:
+
+```
+handle expr with handler end
+```
+
+**Error catching — the simplest case:**
+
+```dvala
+(0 / 0) ||> @dvala.error(msg) -> 0
+```
+
+**With a stored handler:**
+
+```dvala
+let safe-div = @dvala.error(msg) -> 0;
+(0 / 0) ||> safe-div
+```
+
+**With a list of handlers:**
+
+```dvala
+(perform(@a, 10) + perform(@b, 20)) ||> [@a(x) -> x * 2, @b(x) -> x * 3]
+```
+
+### Chaining
+
+Multiple `||>` operators chain left-to-right. Each creates a nested handler scope:
+
+```dvala
+let auth = @auth.check(x) -> "user1";
+let db = @db.get(x) -> "data:" ++ x;
+perform(@db.get, "key") ||> auth ||> db
+```
+
+Inline shorthand handlers chain naturally — the shorthand body stops at `||>`:
+
+```dvala
+perform(@a, 10) ||> @a(x) -> x + perform(@b, x) ||> @b(x) -> x * 3
+```
+
+### When to use `||>` vs `handle...with...end`
+
+| | `||>` | `handle...with...end` |
+|---|---|---|
+| Single-expression body | Clean | Verbose |
+| Multi-line body | Needs `do...end` on left | Natural |
+| Chaining handlers | Left-to-right pipe | Nesting blocks |
+| Multiple handlers | Use list: `||> [h1, h2]` | Use list: `with [h1, h2]` |
+
+---
+
+## Wildcard Handlers
+
+Effect names with `*` match a group of effects:
+
+```dvala
+handle
+  perform(@dvala.io.println, "hi")
+with [@dvala.io.*(x) -> null]
+end
+```
+
+Three wildcard forms:
+
+| Pattern | Matches |
+|---|---|
+| `@dvala.io.*` | `dvala.io.println`, `dvala.io.read-line`, etc. (dot-boundary enforced) |
+| `@dvala.*` | Everything under `dvala.` including `dvala.error`, `dvala.io.println`, etc. |
+| `@*` | Every effect |
+
+Wildcards work with the pipe too:
+
+```dvala
+perform(@anything, "data") ||> @*(x) -> "caught: " ++ x
+```
+
+The 2-param form lets you inspect which specific effect matched a wildcard:
+
+```dvala
+handle
+  perform(@my.custom.action, "data")
+with [@my.*(x, e) -> effect-name(e) ++ "=" ++ x]
+end
+```
+
+---
 
 ## Errors
 
@@ -120,28 +343,24 @@ To raise an error, perform `dvala.error`:
 ```dvala
 handle
   perform(@dvala.error, "oops")
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "caught: " ++ arg
-  else nxt(eff, arg)
-  end
-]
+with @dvala.error(msg) -> "caught: " ++ msg
 end
 ```
 
-Runtime errors — like calling a function with invalid arguments — are automatically routed through `dvala.error`. This means `handle...with` is the universal error-handling mechanism:
+Runtime errors — like calling a function with invalid arguments — are automatically routed through `dvala.error`. This means `handle...with` (and `||>`) is the universal error-handling mechanism:
+
+```dvala
+(0 / 0) ||> @dvala.error(msg) -> "caught: " ++ msg
+```
 
 ```dvala
 handle
   sqrt(-1)
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "caught: " ++ arg
-  else nxt(eff, arg)
-  end
-]
+with @dvala.error(msg) -> "caught: " ++ msg
 end
 ```
 
-You can mix error handling with other effect handlers in the same block:
+You can mix error handling with other effect handlers:
 
 ```dvala
 handle
@@ -156,7 +375,22 @@ with [(arg, eff, nxt) ->
 end
 ```
 
+Or using shorthand with separate handlers:
+
+```dvala
+handle
+  let x = perform(@my.read);
+  sqrt(x * -1)
+with [
+  @my.read(x) -> 42,
+  @dvala.error(msg) -> "error: " ++ msg
+]
+end
+```
+
 An unhandled `dvala.error` propagates like any other unhandled effect — up through nested handlers until it reaches the host.
+
+---
 
 ## Nested Handlers
 
@@ -166,34 +400,95 @@ Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate
 handle
   handle
     perform(@my.inner, "hi")
-  with [(arg, eff, nxt) ->
-    if eff == @my.inner then upper-case(arg)
-    else nxt(eff, arg)
-    end
-  ]
+  with [@my.inner(x) -> upper-case(x)]
   end
-with [(arg, eff, nxt) ->
-  if eff == @my.outer then arg
-  else nxt(eff, arg)
-  end
-]
+with [@my.outer(x) -> x]
 end
 ```
+
+With the pipe operator, nesting reads left-to-right:
+
+```dvala
+perform(@my.inner, "hi") ||> @my.inner(x) -> upper-case(x) ||> @my.outer(x) -> x
+```
+
+---
+
+## Middleware Patterns
+
+The `nxt` function enables middleware — handlers that observe, transform, or wrap effects before passing them along.
+
+### Logging middleware
+
+Using the 3-param shorthand to access `nxt`:
+
+```dvala
+let logger = @*(x, e, n) -> do
+  perform(@dvala.io.println, "effect: " ++ effect-name(e));
+  n(e, x)
+end;
+perform(@my.eff, 42) ||> logger ||> @my.eff(x) -> x * 2
+```
+
+### Transform and propagate
+
+A handler can modify the payload before forwarding:
+
+```dvala
+let aliaser = (arg, eff, nxt) ->
+  if eff == @old.name then nxt(@new.name, arg)
+  else nxt(eff, arg)
+  end;
+let handler = @new.name(x) -> "new:" ++ x;
+handle perform(@old.name, "x") with [aliaser, handler] end
+```
+
+### Wrap downstream result
+
+A handler can call `nxt`, get the result, and transform it:
+
+```dvala
+let wrapper = (arg, eff, nxt) -> do
+  let result = nxt(eff, arg);
+  "wrapped:" ++ str(result)
+end;
+let handler = @my.eff(x) -> x * 2;
+handle perform(@my.eff, 21) with [wrapper, handler] end
+```
+
+---
 
 ## Effect Matchers
 
-`effect-matcher` creates a predicate function that matches effects by name pattern. Use it with `handle...with` for wildcard matching:
+`effect-matcher` creates a predicate function that matches effects by name pattern. This is the function behind wildcard shorthand handlers:
 
 ```dvala
-handle
-  perform(@dvala.io.println, "test")
-with [(arg, eff, nxt) ->
-  if effect-matcher("dvala.*")(eff) then "intercepted: " ++ arg
+let pred = effect-matcher("dvala.*");
+pred(@dvala.error)
+```
+
+```dvala
+let pred = effect-matcher("dvala.*");
+pred(@custom.foo)
+```
+
+```dvala
+let pred = effect-matcher("*");
+pred(@anything)
+```
+
+You can use `effect-matcher` with regexp for more complex patterns:
+
+```dvala
+let pred = effect-matcher(#"^my\.(read|write)$");
+handle perform(@my.read, null) with [(arg, eff, nxt) ->
+  if pred(eff) then "matched"
   else nxt(eff, arg)
   end
-]
-end
+] end
 ```
+
+---
 
 ## Host Handlers (JavaScript)
 
@@ -209,8 +504,8 @@ import { createDvala } from '@mojir/dvala/full'
 const dvala = createDvala()
 const result = await dvala.runAsync('perform(@my.greet, "World")', {
   effectHandlers: [
-    { pattern: 'my.greet', handler: async ({ args, resume }) => {
-      resume(`Hello, ${args[0]}!`)
+    { pattern: 'my.greet', handler: async ({ arg, resume }) => {
+      resume(`Hello, ${arg}!`)
     } },
   ],
 })
@@ -225,11 +520,7 @@ Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error fl
 const result = await dvala.runAsync(`
   handle
     perform(@my.risky)
-  with [(arg, eff, nxt) ->
-    if eff == @dvala.error then "recovered: " ++ arg
-    else nxt(eff, arg)
-    end
-  ]
+  with @dvala.error(msg) -> "recovered: " ++ msg
   end
 `, {
   effectHandlers: [
@@ -251,8 +542,8 @@ const result = await dvala.runAsync(`
   "Approved: " ++ answer
 `, {
   effectHandlers: [
-    { pattern: 'human.approve', handler: async ({ args, suspend }) => {
-      suspend({ question: args[0] })
+    { pattern: 'human.approve', handler: async ({ arg, suspend }) => {
+      suspend({ question: arg })
     } },
   ],
 })
@@ -280,8 +571,8 @@ const result = await dvala.runAsync('perform(@app.save, "data")', {
       log.push(`[app] ${effectName}`)
       next()
     } },
-    { pattern: 'app.save', handler: async ({ args, resume }) => {
-      resume(`saved: ${args[0]}`)
+    { pattern: 'app.save', handler: async ({ arg, resume }) => {
+      resume(`saved: ${arg}`)
     } },
   ],
 })
@@ -300,10 +591,26 @@ Host handler keys support three matching modes:
 ```typescript
 const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
   effectHandlers: [
-    { pattern: 'my.*', handler: async ({ args, resume }) => {
-      resume(`handled: ${args[0]}`)
+    { pattern: 'my.*', handler: async ({ arg, resume }) => {
+      resume(`handled: ${arg}`)
     } },
   ],
 })
 // result = { type: 'completed', value: 'handled: go' }
 ```
+
+---
+
+## Summary
+
+| Concept | Syntax |
+|---|---|
+| Effect reference | `@name` |
+| Perform effect | `perform(@eff, arg)` |
+| Handle block | `handle body with handler end` |
+| Effect pipe | `expr \|\|> handler` |
+| Handler shorthand | `@eff(x) -> body` |
+| Wildcard handler | `@dvala.*(x) -> body` |
+| Full handler | `(arg, eff, nxt) -> ...` |
+| Error catching | `expr \|\|> @dvala.error(msg) -> default` |
+| Middleware | `expr \|\|> h1 \|\|> h2 \|\|> h3` |
