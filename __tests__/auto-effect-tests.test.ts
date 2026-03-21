@@ -248,7 +248,7 @@ describe('auto: effect + control flow', () => {
   const wrap = (body: string) => `
     handle
       ${body}
-    with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
+    with [(arg, eff, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
     end
   `
 
@@ -315,7 +315,7 @@ describe('auto: effect + control flow', () => {
     const result = dvala.run(`
       handle
         ||(null, perform(@test.eff, 4))
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(40)
@@ -363,7 +363,7 @@ describe('auto: effect + control flow', () => {
     const result = dvala.run(wrap(`
       handle
         perform(@test.eff, 9)
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
       end
     `))
     expect(result).toBe(90)
@@ -374,7 +374,7 @@ describe('auto: effect + control flow', () => {
       do
         handle
           perform(@dvala.error, "boom")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then perform(@test.eff, 4) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then perform(@test.eff, 4) else nxt(eff, arg) end]
         end
       end
     `))
@@ -389,7 +389,7 @@ describe('auto: effect + higher-order functions', () => {
   const wrap = (body: string) => `
     handle
       ${body}
-    with [(eff, arg, nxt) -> if eff == @test.double then arg * 2 else nxt(eff, arg) end]
+    with [(arg, eff, nxt) -> if eff == @test.double then arg * 2 else nxt(eff, arg) end]
     end
   `
 
@@ -448,9 +448,9 @@ describe('auto: effect handler scoping', () => {
       handle
         handle
           perform(@test.eff, 5)
-        with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 100 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * 100 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(50) // inner: 5 * 10
@@ -461,9 +461,9 @@ describe('auto: effect handler scoping', () => {
       handle
         handle
           perform(@outer.eff, 5)
-        with [(eff, arg, nxt) -> if eff == @inner.eff then arg * 10 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @inner.eff then arg * 10 else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @outer.eff then arg * 100 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @outer.eff then arg * 100 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(500) // outer: 5 * 100
@@ -474,9 +474,9 @@ describe('auto: effect handler scoping', () => {
       handle
         handle
           perform(@test.eff, "orig")
-        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@test.eff, arg ++ "+inner") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @test.eff then perform(@test.eff, arg ++ "+inner") else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @test.eff then "outer:" ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then "outer:" ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('outer:orig+inner')
@@ -491,7 +491,7 @@ describe('auto: effect handler scoping', () => {
         code = `
           handle
             ${code}
-          with [(eff, arg, nxt) -> if eff == @test.eff then arg * ${multiplier} else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @test.eff then arg * ${multiplier} else nxt(eff, arg) end]
           end
         `
       }
@@ -506,7 +506,7 @@ describe('auto: effect handler scoping', () => {
     expect(() => dvala.run(`
       handle
         null
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
       end;
       perform(@test.eff, "should fail")
     `)).toThrow('Unhandled effect')
@@ -517,7 +517,7 @@ describe('auto: effect handler scoping', () => {
       let factor = 100;
       handle
         perform(@test.eff, 5)
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * factor else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * factor else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(500)
@@ -702,7 +702,7 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.error, "boom")
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught: boom')
@@ -712,7 +712,7 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       handle
         1 + "not a number"
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught')
@@ -722,7 +722,7 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       handle
         perform(@no.handler, "arg")
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toContain('caught:')
@@ -734,9 +734,9 @@ describe('auto: effect + error propagation', () => {
       handle
         handle
           perform(@test.eff, "data")
-        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('outer: handler error')
@@ -747,9 +747,9 @@ describe('auto: effect + error propagation', () => {
       handle
         handle
           perform(@dvala.error, "boom")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then perform(@test.eff, arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then perform(@test.eff, arg) else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @test.eff then "effect got: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then "effect got: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('effect got: boom')
@@ -760,9 +760,9 @@ describe('auto: effect + error propagation', () => {
       handle
         handle
           perform(@test.eff, "data")
-        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught: handler error')
@@ -774,9 +774,9 @@ describe('auto: effect + error propagation', () => {
       handle
         handle
           perform(@dvala.error, "boom")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "inner: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "inner: " ++ arg else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('inner: boom')
@@ -861,7 +861,7 @@ describe('auto: host handler patterns', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@my.eff)
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -894,7 +894,7 @@ describe('auto: host handler patterns', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@my.eff, "data")
-      with [(eff, arg, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -938,7 +938,7 @@ describe('auto: runSync constraints', () => {
     const result = dvala.run(`
       handle
         perform(@my.eff, 5)
-      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 10 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(50)
@@ -1020,7 +1020,7 @@ describe('auto: predicate-based handler matching', () => {
       let io-match = effect-matcher("test.io.*");
       handle
         perform(@test.io.println, "msg")
-      with [(eff, arg, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1031,7 +1031,7 @@ describe('auto: predicate-based handler matching', () => {
       let io-match = effect-matcher("test.io.*");
       handle
         perform(@test.other, "msg")
-      with [(eff, arg, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)).toThrow('Unhandled effect')
   })
@@ -1042,7 +1042,7 @@ describe('auto: predicate-based handler matching', () => {
       let io-match = effect-matcher("test.io.*");
       handle
         perform(@test.io.println, "msg")
-      with [(eff, arg, nxt) ->
+      with [(arg, eff, nxt) ->
         if io-match(eff) then "io: " ++ arg
         else if all-match(eff) then "all: " ++ arg
         else nxt(eff, arg)
@@ -1059,7 +1059,7 @@ describe('auto: predicate-based handler matching', () => {
       let pred = effect-matcher(re);
       handle
         perform(@test.io.println, "data")
-      with [(eff, arg, nxt) -> if pred(eff) then "matched: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then "matched: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched: data')
@@ -1201,7 +1201,7 @@ describe('auto: effect + closures', () => {
       let prefix = "handled";
       handle
         perform(@test.eff, "msg")
-      with [(eff, arg, nxt) -> if eff == @test.eff then prefix ++ ": " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then prefix ++ ": " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1213,7 +1213,7 @@ describe('auto: effect + closures', () => {
         let val = perform(@test.eff, 5);
         let f = () -> val * 2;
         f()
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg + 10 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg + 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(30) // (5 + 10) * 2
@@ -1224,7 +1224,7 @@ describe('auto: effect + closures', () => {
       handle
         let f = (x) -> perform(@test.eff, x);
         f(3) + f(4)
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(70) // 30 + 40
@@ -1236,7 +1236,7 @@ describe('auto: effect + closures', () => {
         let make-adder = (n) -> (x) -> perform(@test.eff, n + x);
         let add10 = make-adder(10);
         add10(5)
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(30) // (10 + 5) * 2
@@ -1252,7 +1252,7 @@ describe('auto: effect + recursion', () => {
       handle
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(6) // 3 + 2 + 1 + 0
@@ -1263,7 +1263,7 @@ describe('auto: effect + recursion', () => {
       handle
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
-      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(12) // (3*2) + (2*2) + (1*2) + 0

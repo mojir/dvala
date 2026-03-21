@@ -281,7 +281,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
       let r = await dbg.run(`
         handle
           perform(@test.mock, "input")
-        with [(eff, arg, nxt) -> if eff == @test.mock then "mocked: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @test.mock then "mocked: " ++ arg else nxt(eff, arg) end]
         end
       `)
       while (r.type === 'suspended') {
@@ -451,7 +451,7 @@ describe('phase 7 — Time-Travel Debugger', () => {
       let r = await dbg.run(`
         handle
           perform(@dvala.error, "oops")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       while (r.type === 'suspended') {

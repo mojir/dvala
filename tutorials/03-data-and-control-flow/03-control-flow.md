@@ -100,7 +100,7 @@ Use `handle` / `with` to handle errors. `perform(@dvala.error, msg)` raises an e
 ```dvala
 handle
   perform(@dvala.error, "oops")
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then arg
   else nxt(eff, arg)
   end
@@ -112,7 +112,7 @@ end
 let safe-div = (a, b) ->
   handle
     a / b
-  with [(eff, arg, nxt) ->
+  with [(arg, eff, nxt) ->
     if eff == @dvala.error then "error"
     else nxt(eff, arg)
     end

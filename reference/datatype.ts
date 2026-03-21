@@ -179,6 +179,6 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     description: 'A value that can never be created',
     examples: [`
 // perform(@dvala.error, "error") will never return a value
-handle perform(@dvala.error, "error") with [(eff, arg, nxt) -> if eff == @dvala.error then "never" else nxt(eff, arg) end] end`],
+handle perform(@dvala.error, "error") with [(arg, eff, nxt) -> if eff == @dvala.error then "never" else nxt(eff, arg) end] end`],
   },
 }

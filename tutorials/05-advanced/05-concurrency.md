@@ -13,7 +13,7 @@ handle
   let a = perform(@my.val, 10);
   let b = perform(@my.val, 20);
   a + b
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.val then arg * 2
   else nxt(eff, arg)
   end

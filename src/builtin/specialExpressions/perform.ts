@@ -24,7 +24,7 @@ const docs: CustomDocs = {
     `
 handle
   perform(@dvala.io.println, "hello")
-with [(eff, arg, nxt) -> if eff == @dvala.io.println then arg else nxt(eff, arg) end]
+with [(arg, eff, nxt) -> if eff == @dvala.io.println then arg else nxt(eff, arg) end]
 end
 `,
   ],

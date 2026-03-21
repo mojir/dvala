@@ -64,7 +64,7 @@ Here's an example using `read-line` with a local handler to simulate user input:
 handle
   let name = perform(@dvala.io.read-line);
   "Hello, " ++ name ++ "!"
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.io.read-line then "Alice"
   else nxt(eff, arg)
   end
@@ -87,7 +87,7 @@ let name = perform(@dvala.io.read-line);
 handle
   let x = perform(@my.double, 21);
   x + 1
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.double then arg * 2
   else nxt(eff, arg)
   end
@@ -102,7 +102,7 @@ handle
   let a = perform(@my.add, [10, 20]);
   let b = perform(@my.mul, [3, 4]);
   [a, b]
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.add then arg(0) + arg(1)
   else if eff == @my.mul then arg(0) * arg(1)
   else nxt(eff, arg)
@@ -120,7 +120,7 @@ To raise an error, perform `dvala.error`:
 ```dvala
 handle
   perform(@dvala.error, "oops")
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "caught: " ++ arg
   else nxt(eff, arg)
   end
@@ -133,7 +133,7 @@ Runtime errors — like calling a function with invalid arguments — are automa
 ```dvala
 handle
   sqrt(-1)
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "caught: " ++ arg
   else nxt(eff, arg)
   end
@@ -147,7 +147,7 @@ You can mix error handling with other effect handlers in the same block:
 handle
   let x = perform(@my.read);
   sqrt(x * -1)
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.read then 42
   else if eff == @dvala.error then "error: " ++ arg
   else nxt(eff, arg)
@@ -166,13 +166,13 @@ Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate
 handle
   handle
     perform(@my.inner, "hi")
-  with [(eff, arg, nxt) ->
+  with [(arg, eff, nxt) ->
     if eff == @my.inner then upper-case(arg)
     else nxt(eff, arg)
     end
   ]
   end
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.outer then arg
   else nxt(eff, arg)
   end
@@ -187,7 +187,7 @@ end
 ```dvala
 handle
   perform(@dvala.io.println, "test")
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if effect-matcher("dvala.*")(eff) then "intercepted: " ++ arg
   else nxt(eff, arg)
   end
@@ -225,7 +225,7 @@ Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error fl
 const result = await dvala.runAsync(`
   handle
     perform(@my.risky)
-  with [(eff, arg, nxt) ->
+  with [(arg, eff, nxt) ->
     if eff == @dvala.error then "recovered: " ++ arg
     else nxt(eff, arg)
     end

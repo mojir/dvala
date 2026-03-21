@@ -123,7 +123,7 @@ for (x in [1, 2, 3] when x > 1) -> x * 10
 let e = @my.double;
 handle
   perform(e, 21)
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @my.double then arg * 2
   else nxt(eff, arg)
   end

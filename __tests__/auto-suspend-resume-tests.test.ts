@@ -284,7 +284,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       handle
         perform(@dvala.checkpoint, "inside do-with");
         perform(@my.local, 5)
-      with [(eff, arg, nxt) -> if eff == @my.local then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.local then arg * 2 else nxt(eff, arg) end]
       end;
       let x = perform(@my.step);
       perform(@my.check);
@@ -327,7 +327,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       handle
         let x = perform(@my.step);
         x + 1
-      with [(eff, arg, nxt) -> if eff == @my.local then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.local then arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -347,7 +347,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
       let x = perform(@my.step);
       handle
         perform(@my.double, x)
-      with [(eff, arg, nxt) -> if eff == @my.double then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.double then arg * 2 else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1209,7 +1209,7 @@ describe('auto: edge cases', () => {
       handle
         let x = perform(@my.step);
         perform(@dvala.error, "boom: " ++ x)
-      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
