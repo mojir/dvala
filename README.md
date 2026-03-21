@@ -971,21 +971,21 @@ false ?? "default";    // => false
 "" ?? "default";       // => ""
 ```
 
-### Ternary Operator
+### Conditional Expression
 
 ```dvala
-// Conditional expression
+// Conditional expression (if/then/else/end)
 let age = 25;
-let result = age >= 18 ? "adult" : "minor";
+let result = if age >= 18 then "adult" else "minor" end;
 
-// Nested ternary
+// Nested conditional
 let score = 85;
-let category = score >= 90 ? "A" : score >= 80 ? "B" : "C";
+let category = if score >= 90 then "A" else if score >= 80 then "B" else "C" end end;
 
 // With complex expressions
 let isLoggedIn = () -> true;
 let hasPermission = () -> true;
-let status = isLoggedIn() && hasPermission() ? "authorized" : "unauthorized";
+let status = if isLoggedIn() && hasPermission() then "authorized" else "unauthorized" end;
 ```
 
 ## Variable Names
@@ -1320,7 +1320,6 @@ Here's the complete precedence table, from highest to lowest:
 | 4 | `&&` `\|\|` `??` | Logical operations | `true && false \|\| true` → `false \|\| true` → `true` |
 | 3 | *function operators* | Binary functions used as operators | `5 max 3 + 2` → `5 max 5` → `5` |
 | 2 | `\|>` | Pipe operator | `[1,2] \|> map(_, inc) \|> sum` |
-| 1 | `?` `:` | Conditional (ternary) operator | `true ? 1 + 2 : 3` → `true ? 3 : 3` → `3` |
 
 #### Examples of Precedence in Action
 
@@ -1341,8 +1340,8 @@ Here's the complete precedence table, from highest to lowest:
 let vec = import(vector);
 [1, 2, 3] |> map(_, inc) |> sum;      // Evaluates left to right
 
-// Conditional has lowest precedence
-true ? 2 + 3 : 4 + 5;             // => true ? 5 : 9 = 5
+// Conditional expression
+if true then 2 + 3 else 4 + 5 end;   // => 5
 ```
 
 #### Using Parentheses
@@ -1364,7 +1363,7 @@ let d = true;
 let e = false;
 let f = 10;
 let g = 5;
-((a + b) * c) > (d && e ? f : g)  // => (5 * 4) > (false ? 10 : 5) = 20 > 5 = true;
+((a + b) * c) > (if d && e then f else g end)  // => (5 * 4) > (if false then 10 else 5 end) = 20 > 5 = true;
 ```
 
 #### Associativity
@@ -1435,7 +1434,7 @@ let square = x -> x * x;
 ### Factorial
 
 ```dvala
-let factorial = n -> n <= 1 ? 1 : n * self(n - 1);
+let factorial = (n) -> if n <= 1 then 1 else n * self(n - 1) end;
 
 factorial(5);  // => 120
 ```

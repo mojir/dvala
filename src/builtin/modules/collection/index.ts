@@ -241,7 +241,7 @@ let x = { a: 1, b: 2 };
 cu.update(
   x,
   "c",
-  val -> null?(val) ? 0 : inc(val)
+  val -> if null?(val) then 0 else inc(val) end
 )`,
       ],
     },
@@ -273,21 +273,21 @@ let cu = import(collection);
 cu.update-in(
   { a: [1, 2, 3] },
   ["a", 1],
-  -> null?($) ? 0 : inc($)
+  -> if null?($) then 0 else inc($) end
 )`,
         `
 let cu = import(collection);
 cu.update-in(
   { a: { foo: "bar"} },
   ["a", "foo"],
-  -> null?($) ? "?" : "!"
+  -> if null?($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
 cu.update-in(
   { a: { foo: "bar"} },
   ["a", "baz"],
-  -> null?($) ? "?" : "!"
+  -> if null?($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
@@ -447,7 +447,7 @@ cu.update-in(
 let cu = import(collection);
 cu.reductions(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  (result, value) -> result + (even?(value) ? value : 0),
+  (result, value) -> result + (if even?(value) then value else 0 end),
   0
 )`,
       ],

@@ -48,15 +48,6 @@ match day
 end
 ```
 
-## Ternary Operator
-
-A compact conditional with `? :`:
-
-```dvala
-let n = 7;
-n > 0 ? "positive" : "non-positive"
-```
-
 ## Logical Short-circuit
 
 `&&` returns the first falsy value (or the last value). `||` returns the first truthy value (or the last value):

@@ -15,7 +15,6 @@ import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12
 export const binaryFunctionalOperatorPrecedence = 3
-export const conditionalOperatorPrecedence = 1
 
 export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, sourceCodeInfo: SourceCodeInfo | undefined): T {
   if (sourceCodeInfo) {
@@ -149,7 +148,6 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case ',':
     case '->':
     case '...':
-    case '?':
       throw new DvalaError(`Unknown binary operator: ${operatorName}`, sourceCodeInfo)
     // Exhaustive check: all operator cases are handled above
     /* v8 ignore next 2 */

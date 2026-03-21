@@ -8,7 +8,7 @@
       assoc(coll, k, apply(fn, [get(coll, k), ...extra-params]))
     else
       let inner = get(coll, k);
-      let inner-coll = null?(inner) ? {} : inner;
+      let inner-coll = if null?(inner) then {} else inner end;
       assoc(coll, k, apply(self, [inner-coll, slice(ks, 1), fn, ...extra-params]))
     end
   end,

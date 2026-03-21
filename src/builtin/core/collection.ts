@@ -122,7 +122,7 @@ filter(
         `
 reduce(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  (result, value) -> result + (even?(value) ? value : 0),
+  (result, value) -> result + (if even?(value) then value else 0 end),
   0)`,
       ],
     },

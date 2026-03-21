@@ -55,8 +55,6 @@ export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeIn
     case '||>': // effect pipe
       return 1
 
-      // conditionalOperatorPrecedence = 1 (handled separately in parseExpression)
-
     /* v8 ignore next 2 */
     default:
       throw new DvalaError(`Unknown binary operator: ${operatorSign satisfies never}`, sourceCodeInfo)

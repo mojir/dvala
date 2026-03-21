@@ -1,14 +1,13 @@
 import type { SpecialExpressionName } from '../../builtin'
 import { normalExpressionTypes } from '../../builtin/normalExpressions'
-import type { IfNode } from '../../builtin/specialExpressions/if'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
-import { isA_BinaryOperatorToken, isOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import { isA_BinaryOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialBuiltinSymbolNode } from '../../typeGuards/astNode'
-import { binaryFunctionalOperatorPrecedence, conditionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
+import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
 import { getPrecedence } from '../getPrecedence'
@@ -95,18 +94,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         throw new DvalaError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2])
-    } else if (operator?.[1] === '?') {
-      if (conditionalOperatorPrecedence <= precedence) {
-        break
-      }
-      ctx.advance()
-      const trueNode = parseExpression(ctx)
-      if (!isOperatorToken(ctx.tryPeek(), ':')) {
-        throw new DvalaError('Expected :', ctx.peekSourceCodeInfo())
-      }
-      ctx.advance()
-      const falseNode = parseExpression(ctx)
-      left = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [left, trueNode, falseNode]]], left[2]) satisfies IfNode
     } else {
       break
     }
