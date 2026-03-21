@@ -62,6 +62,49 @@ false || "fallback"
 null ?? "default"
 ```
 
+## Property Access
+
+The `.` operator accesses object properties, and `[]` accesses by index or computed key:
+
+```dvala
+let obj = {name: "Alice", age: 30};
+obj.name
+```
+
+```dvala
+let arr = [10, 20, 30];
+arr[1]
+```
+
+Both `.` and `[]` are **null-safe by default**. Accessing a property on `null` returns `null` instead of throwing an error. This chains naturally — no special `?.` operator needed:
+
+```dvala
+let obj = {a: {b: 42}};
+obj.a.b
+```
+
+```dvala
+let obj = {a: null};
+obj.a.b
+```
+
+```dvala
+let obj = null;
+obj.x.y.z
+```
+
+Missing keys also return `null`:
+
+```dvala
+let obj = {a: 1};
+obj.missing
+```
+
+```dvala
+let arr = [10, 20];
+arr[99]
+```
+
 ## Operators as Functions
 
 Every operator can be called in function (prefix) form. Some are variadic:
