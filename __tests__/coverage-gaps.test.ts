@@ -1979,7 +1979,7 @@ describe('trampoline — race expression', () => {
 describe('trampoline — checkpoint and resumeFrom', () => {
   it('should capture checkpoint and resume', async () => {
     const result = await dvala.runAsync(`
-      perform(@dvala.checkpoint, "step init", {step: "init"});
+      perform(@dvala.checkpoint, "step init");
       42
     `)
     expect(result.type).toBe('completed')

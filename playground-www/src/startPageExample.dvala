@@ -5,7 +5,6 @@ let prices = [12.99, 5.49, 8.00, 22.50, 3.99];
 let choice = perform(
   @dvala.io.pick,
   ["No discount", "SAVE10", "SAVE20"],
-  { prompt: "Select discount code:" },
 );
 
 // Map index to discount rate

@@ -60,7 +60,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'level'] }],
       examples: [
         { code: 'perform(@playground.ui.show-toast, "Hello!")', noRun: true },
-        { code: 'perform(@playground.ui.show-toast, "Saved!", "success")', noRun: true },
+        { code: 'perform(@playground.ui.show-toast, ["Saved!", "success"])', noRun: true },
       ],
     },
     // ── Editor ──
@@ -100,7 +100,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'position'] }],
       examples: [
         { code: 'perform(@playground.editor.insert-text, "; hello")', noRun: true },
-        { code: 'perform(@playground.editor.insert-text, "prefix ", 0)', noRun: true },
+        { code: 'perform(@playground.editor.insert-text, ["prefix ", 0])', noRun: true },
       ],
     },
     {
@@ -115,7 +115,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'delayMs'] }],
       examples: [
         { code: 'perform(@playground.editor.type-text, "Hello!")', noRun: true },
-        { code: 'perform(@playground.editor.type-text, "Hello!", 50)', noRun: true },
+        { code: 'perform(@playground.editor.type-text, ["Hello!", 50])', noRun: true },
       ],
     },
     {
@@ -140,7 +140,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['start', 'end'] }],
       examples: [
-        { code: 'perform(@playground.editor.set-selection, 0, 10)', noRun: true },
+        { code: 'perform(@playground.editor.set-selection, [0, 10])', noRun: true },
       ],
     },
     {
@@ -222,7 +222,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       variants: [{ argumentNames: ['name'] }, { argumentNames: ['name', 'code'] }],
       examples: [
         { code: 'perform(@playground.programs.save, "my-program")', noRun: true },
-        { code: 'perform(@playground.programs.save, "hello", "1 + 2")', noRun: true },
+        { code: 'perform(@playground.programs.save, ["hello", "1 + 2"])', noRun: true },
       ],
     },
     {

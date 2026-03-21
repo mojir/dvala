@@ -490,18 +490,17 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       }
       return { type: 'Value', value: Math.floor(Math.random() * (max - min)) + min, k }
     },
-    arity: toFixedArity(2),
+    arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Returns a random integer in the range [min, max).',
+      description: 'Returns a random integer in the range [min, max). Pass a two-element array `[min, max]`.',
       returns: { type: 'integer' },
       args: {
-        min: { type: 'integer', description: 'Minimum value (inclusive).' },
-        max: { type: 'integer', description: 'Maximum value (exclusive). Must be greater than min.' },
+        range: { type: 'array', description: 'A two-element array [min, max] where min is inclusive and max is exclusive. Both must be integers with max > min.' },
       },
-      variants: [{ argumentNames: ['min', 'max'] }],
+      variants: [{ argumentNames: ['range'] }],
       examples: [
-        'perform(@dvala.random.int, 1, 100)',
+        'perform(@dvala.random.int, [1, 100])',
       ],
       seeAlso: ['-effect-dvala.random', '-effect-dvala.random.item', 'perform', 'effect'],
     },
@@ -610,22 +609,20 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     // (unconditional capture before normal dispatch). No handler here — checkpoint
     // propagates through the normal handler chain (local, host, wildcard).
     // If completely unhandled, dispatchPerform resolves it to null.
-    arity: { min: 1, max: 2 },
+    arity: toFixedArity(1),
     docs: {
       category: 'effect',
-      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Takes a mandatory message string and an optional metadata value for domain context (e.g., step labels, timestamps). The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
+      description: 'Captures a snapshot of the current program state (continuation stack). The snapshot is stored in an in-memory list accessible via `ctx.snapshots` in host handlers. Takes a mandatory message string. The standard fallback resumes with `null`, but host handlers can override the resume value. The snapshot is always captured regardless of whether a handler intercepts.',
       returns: { type: 'null' },
       args: {
         message: { type: 'string', description: 'A human-readable label for the checkpoint.' },
-        meta: { type: 'any', description: 'Optional metadata to attach to the snapshot.' },
       },
       variants: [
         { argumentNames: ['message'] },
-        { argumentNames: ['message', 'meta'] },
       ],
       examples: [
         'perform(@dvala.checkpoint, "init")',
-        'perform(@dvala.checkpoint, "analysis-done", { step: 1 })',
+        'perform(@dvala.checkpoint, "analysis-done")',
       ],
       seeAlso: ['perform', 'effect'],
     },

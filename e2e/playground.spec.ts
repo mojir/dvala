@@ -812,7 +812,7 @@ test.describe('playground effects', () => {
 
   test('ui.showToast with severity level', async ({ page }) => {
     await page.evaluate(() => (window as any).Playground.toggleAutoCheckpoint())
-    await setDvalaCode(page, 'perform(@playground.ui.show-toast, "Oops", "error")')
+    await setDvalaCode(page, 'perform(@playground.ui.show-toast, ["Oops", "error"])')
     await clickRun(page)
     const toast = page.locator('#toast-container .toast-error', { hasText: 'Oops' })
     await expect(toast).toBeVisible({ timeout: 3000 })
@@ -837,7 +837,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.insertText inserts at explicit position', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello"); perform(@playground.editor.insert-text, " world", 5); perform(@playground.editor.get-content) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello"); perform(@playground.editor.insert-text, [" world", 5]); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -869,7 +869,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.setSelection and getSelection round-trip', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello world"); perform(@playground.editor.set-selection, 6, 11); perform(@playground.editor.get-selection) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, "hello world"); perform(@playground.editor.set-selection, [6, 11]); perform(@playground.editor.get-selection) end')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
@@ -897,7 +897,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.typeText respects custom delay', async ({ page }) => {
-    await setDvalaCode(page, 'do perform(@playground.editor.set-content, ""); perform(@playground.editor.type-text, "ab", 100); perform(@playground.editor.get-content) end')
+    await setDvalaCode(page, 'do perform(@playground.editor.set-content, ""); perform(@playground.editor.type-text, ["ab", 100]); perform(@playground.editor.get-content) end')
     await clickRun(page)
     await page.waitForFunction(() => {
       const output = document.getElementById('output-result')
@@ -960,7 +960,7 @@ test.describe('playground effects', () => {
     await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
 
     await setDvalaCode(page, `do
-  perform(@playground.programs.save, "test-prog", "1 + 2");
+  perform(@playground.programs.save, ["test-prog", "1 + 2"]);
   let names = perform(@playground.programs.list);
   let code = perform(@playground.programs.load, "test-prog");
   [names, code]

@@ -101,8 +101,8 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, param as SymbolNode]], symbol[2]) satisfies DefinedNode
       }
       case specialExpressionTypes.perform: {
-        const [effectExpr, ...argExprs] = params
-        return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, effectExpr!, argExprs]], symbol[2]) satisfies PerformNode
+        const [effectExpr, payloadExpr] = params
+        return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, effectExpr!, payloadExpr]], symbol[2]) satisfies PerformNode
       }
       case specialExpressionTypes.parallel:
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies ParallelNode
