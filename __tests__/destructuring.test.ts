@@ -290,7 +290,7 @@ describe('dvala Destructuring', () => {
       expect(dvala.run(`
         handle
           let { value } = 42
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "Error caught" else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "Error caught" else nxt(eff, arg) end]
         end
       `)).toBe('Error caught')
     })

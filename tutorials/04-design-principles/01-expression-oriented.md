@@ -95,7 +95,7 @@ Even `handle...with` error handling returns a value:
 let safe-sqrt = (x) ->
   handle
     sqrt(x)
-  with [(eff, arg, nxt) ->
+  with [(arg, eff, nxt) ->
     if eff == @dvala.error then null
     else nxt(eff, arg)
     end

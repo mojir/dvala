@@ -765,7 +765,7 @@ end;
 let riskyOperation = () -> perform(@dvala.error, "Something went wrong");
 handle
   riskyOperation()
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "Something went wrong"
   else nxt(eff, arg)
   end
@@ -774,7 +774,7 @@ with [(eff, arg, nxt) ->
 // With error message binding
 handle
   riskyOperation()
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "Error: " ++ arg
   else nxt(eff, arg)
   end
@@ -786,7 +786,7 @@ let process = (val) -> val * 2;
 handle
   let { value } = parseData();
   process(value)
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "Using default value"
   else nxt(eff, arg)
   end
@@ -799,7 +799,7 @@ with [(eff, arg, nxt) ->
 // Raising errors
 handle
   perform(@dvala.error, "Custom error message")
-with [(eff, arg, nxt) ->
+with [(arg, eff, nxt) ->
   if eff == @dvala.error then "Caught an error"
   else nxt(eff, arg)
   end

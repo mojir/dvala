@@ -267,7 +267,7 @@ describe('effect matching with function predicate', () => {
       let pred = effect-matcher("my.*");
       handle
         perform(@my.feature.test, "hello")
-      with [(eff, arg, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('HELLO')
@@ -278,7 +278,7 @@ describe('effect matching with function predicate', () => {
       let pred = effect-matcher(#"data\\..*");
       handle
         perform(@data.fetch, 42)
-      with [(eff, arg, nxt) -> if pred(eff) then arg + 1 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(43)
@@ -338,7 +338,7 @@ describe('async trampoline operations', () => {
     const result = await d.runAsync(`
       handle
         perform(@my.effect, 5)
-      with [(eff, arg, nxt) -> if eff == @my.effect then arg * 10 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.effect then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result.type).toBe('completed')
@@ -815,7 +815,7 @@ describe('effect matching — dvala function handler predicate', () => {
       let pred = effect-matcher("my.test.*");
       handle
         perform(@my.test.effect, "data")
-      with [(eff, arg, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('DATA')
@@ -1387,7 +1387,7 @@ describe('effect matching — function predicate handler', () => {
     const result = dvala.run(`
       handle
         42
-      with [(eff, arg, nxt) -> if eff == @no.match then 0 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @no.match then 0 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(42)
@@ -2601,7 +2601,7 @@ describe('parseFunction — do...with...end function body', () => {
     const result = dvala.run(`
       let f = () -> handle
         perform(@my.eff, "hello")
-      with [(eff, arg, nxt) -> if eff == @my.eff then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.eff then upper-case(arg) else nxt(eff, arg) end]
       end;
       f()
     `)
@@ -2756,7 +2756,7 @@ describe('parseFunction — shorthand lambda with do...with...end', () => {
     const program = `
       let f = -> handle
         perform(@my.eff, $)
-      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end]
       end;
       f(21)
     `
@@ -3136,7 +3136,7 @@ describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)
     const result = dvala.run(`
       handle
         perform(@test.pred, 99)
-      with [(eff, arg, nxt) -> if effect-name(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-name(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(100)

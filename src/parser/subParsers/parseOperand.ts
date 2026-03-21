@@ -139,9 +139,8 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseRegexpShorthand(ctx)
     case 'EffectName': {
       ctx.advance()
-      // Check for handler shorthand: @effect(param) -> body
-      // Desugars to: (eff, param, nxt) -> if eff == @effect then body else nxt(eff, param) end
-      if (isLParenToken(ctx.tryPeek()) && isSymbolToken(ctx.peekAhead(1)) && isRParenToken(ctx.peekAhead(2)) && isOperatorToken(ctx.peekAhead(3), '->')) {
+      // Check for handler shorthand: @effect -> body, @effect(params...) -> body
+      if (isHandlerShorthand(ctx)) {
         return parseHandlerShorthand(ctx, token[1], token[2])
       }
       return withSourceCodeInfo([NodeTypes.EffectName, token[1]], token[2])
@@ -157,44 +156,94 @@ function createAccessorNode(left: AstNode, right: AstNode, sourceCodeInfo: Sourc
 }
 
 /**
- * Parse handler shorthand: @effect(param) -> body
+ * Detect handler shorthand after an EffectName token has been consumed.
+ * Matches: @effect -> body, @effect(params...) -> body
+ */
+function isHandlerShorthand(ctx: ParserContext): boolean {
+  // @effect -> body (zero params)
+  if (isOperatorToken(ctx.tryPeek(), '->')) return true
+
+  // @effect(params...) -> body (1-3 params)
+  if (!isLParenToken(ctx.tryPeek())) return false
+
+  // Scan ahead: ( symbol [, symbol [, symbol]] ) ->
+  let ahead = 1
+  if (!isSymbolToken(ctx.peekAhead(ahead))) return false
+  ahead++
+  for (let i = 0; i < 2; i++) {
+    if (isRParenToken(ctx.peekAhead(ahead))) {
+      return isOperatorToken(ctx.peekAhead(ahead + 1), '->')
+    }
+    if (!isOperatorToken(ctx.peekAhead(ahead), ',')) return false
+    ahead++
+    if (!isSymbolToken(ctx.peekAhead(ahead))) return false
+    ahead++
+  }
+  return isRParenToken(ctx.peekAhead(ahead)) && isOperatorToken(ctx.peekAhead(ahead + 1), '->')
+}
+
+/**
+ * Parse handler shorthand with 0-3 params.
  *
- * Desugars to: (eff, param, nxt) -> if eff == @effect then body else nxt(eff, param) end
+ * Handler signature order: (arg, eff, nxt) — matches the full handler contract.
  *
- * For wildcard effects (containing *), uses effect-matcher instead of ==:
- *   (eff, param, nxt) -> if effect-matcher("pattern")(eff) then body else nxt(eff, param) end
+ * Forms:
+ *   @effect -> body                    → ($1, $2, $3) -> if $2 == @effect then body else $3($2, $1) end
+ *   @effect(x) -> body                → (x, eff·, nxt·) -> if eff· == @effect then body else nxt·(eff·, x) end
+ *   @effect(x, e) -> body             → (x, e, nxt·) -> if e == @effect then body else nxt·(e, x) end
+ *   @effect(x, e, n) -> body          → (x, e, n) -> if e == @effect then body else n(e, x) end
+ *
+ * For wildcard effects (containing *), uses effect-matcher instead of ==.
  */
 function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCodeInfo: SourceCodeInfo | undefined): AstNode {
-  // Consume (param) ->
-  ctx.advance() // skip (
-  const paramToken = ctx.peek()
-  const paramName = paramToken[1]
-  ctx.advance() // skip param
-  ctx.advance() // skip )
-  ctx.advance() // skip ->
+  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) as UserDefinedSymbolNode
+  const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined]]
+
+  // Parse parameter names (0-3)
+  let argName: string
+  let effName: string
+  let nxtName: string
+
+  if (isOperatorToken(ctx.tryPeek(), '->')) {
+    // Zero-param form: @effect -> body (uses $1, $2, $3)
+    argName = '$1'
+    effName = '$2'
+    nxtName = '$3'
+    ctx.advance() // skip ->
+  } else {
+    // Parenthesized form: @effect(arg [, eff [, nxt]]) -> body
+    ctx.advance() // skip (
+    const params: string[] = []
+    while (!isRParenToken(ctx.tryPeek())) {
+      params.push(ctx.peek()[1])
+      ctx.advance() // skip param
+      if (isOperatorToken(ctx.tryPeek(), ',')) ctx.advance() // skip comma
+    }
+    ctx.advance() // skip )
+    ctx.advance() // skip ->
+
+    // Use untypeable names (middle dot) for unspecified params
+    argName = params[0]!
+    effName = params[1] ?? 'eff·'
+    nxtName = params[2] ?? 'nxt·'
+  }
 
   // Parse body expression
   const body = ctx.parseExpression()
 
-  // Build AST nodes for the desugared lambda
-  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) as UserDefinedSymbolNode
-  const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined]]
-
-  const effSym = mkSymbol('eff')
-  const paramSym = mkSymbol(paramName)
-  const nxtSym = mkSymbol('nxt')
+  const argSym = mkSymbol(argName)
+  const effSym = mkSymbol(effName)
+  const nxtSym = mkSymbol(nxtName)
 
   // Build condition: eff == @effect (or effect-matcher("pattern")(eff) for wildcards)
   let condition: AstNode
   if (effectName.includes('*')) {
-    // effect-matcher("pattern")(eff)
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
       withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['effect-matcher']], sourceCodeInfo),
       [withSourceCodeInfo([NodeTypes.String, effectName], sourceCodeInfo)],
     ]], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]]], sourceCodeInfo)
   } else {
-    // eff == @effect
     const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [
       withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['==']], sourceCodeInfo),
@@ -202,13 +251,13 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
     ]], sourceCodeInfo)
   }
 
-  // Build else: nxt(eff, param)
-  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, paramSym]]], sourceCodeInfo)
+  // Build else: nxt(eff, arg)
+  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, argSym]]], sourceCodeInfo)
 
-  // Build if: if condition then body else nxt(eff, param) end
+  // Build if: if condition then body else nxt(eff, arg) end
   const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, body, elseExpr]]], sourceCodeInfo)
 
-  // Build lambda: (eff, param, nxt) -> ifExpr
-  const args: BindingTarget[] = [mkBinding('eff'), mkBinding(paramName), mkBinding('nxt')]
+  // Build lambda: (arg, eff, nxt) -> ifExpr
+  const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
   return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['0_lambda'], [args, [ifExpr]]]], sourceCodeInfo)
 }

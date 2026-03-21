@@ -952,12 +952,12 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo, skipCheckpointCapture: true }
       }
 
-      // Call handlers[handlerIndex](eff, arg, nextNextFn)
+      // Call handlers[handlerIndex](arg, eff, nextNextFn)
       const nextNextFn = buildNextFunction(handlers, handlerIndex + 1, rk, sourceCodeInfo)
       const handler = handlers[handlerIndex]!
       const fnLike = asFunctionLike(handler, sourceCodeInfo)
       // The handler runs on the same k (which has EffectResumeFrame → outerK)
-      return dispatchFunction(fnLike, [nextEff, nextArg, nextNextFn], [], env, sourceCodeInfo, k)
+      return dispatchFunction(fnLike, [nextArg, nextEff, nextNextFn], [], env, sourceCodeInfo, k)
     }
     // Param-transforming compound types: transform and re-dispatch
     case 'Partial': {
@@ -2244,7 +2244,7 @@ function buildNextFunction(
 /**
  * Invoke the handle...with handler chain when a perform matches a HandleWithFrame.
  *
- * Builds a `next` closure and calls handlers[0](eff, arg, next).
+ * Builds a `next` closure and calls handlers[0](arg, eff, next).
  * The handler's return value becomes the resume value for the perform.
  */
 function invokeHandleWithChain(
@@ -2282,10 +2282,10 @@ function invokeHandleWithChain(
   // Build next function for handler[1..n]
   const nextFn = buildNextFunction(handlers, 1, resumeK, sourceCodeInfo)
 
-  // Call handlers[0](eff, arg, nextFn)
+  // Call handlers[0](arg, eff, nextFn)
   const firstHandler = handlers[0]!
   const fnLike = asFunctionLike(firstHandler, sourceCodeInfo)
-  return dispatchFunction(fnLike, [effect, arg, nextFn], [], frame.env, sourceCodeInfo, handlerK)
+  return dispatchFunction(fnLike, [arg, effect, nextFn], [], frame.env, sourceCodeInfo, handlerK)
 }
 
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {

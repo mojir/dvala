@@ -15,7 +15,7 @@
 becomes:
 
 ```
-(eff, arg, nxt) ->
+(arg, eff, nxt) ->
   if eff == @effect then
     let param = arg;
     body
@@ -32,7 +32,7 @@ When effect name contains `*` (wildcard), use `effect-matcher` instead of `==`:
 becomes:
 
 ```
-(eff, arg, nxt) ->
+(arg, eff, nxt) ->
   if effect-matcher("dvala.*")(eff) then
     let param = arg;
     body

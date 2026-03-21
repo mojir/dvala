@@ -24,7 +24,7 @@ const docs: CustomDocs = {
     + 'The handler\'s return value becomes the result of `perform`.',
   examples: [
     `do
-  let h = (eff, arg, nxt) ->
+  let h = (arg, eff, nxt) ->
     if eff == @dvala.io.println then "handled: " ++ arg
     else nxt(eff, arg)
     end;

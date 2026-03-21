@@ -23,7 +23,7 @@ end`,
     `
 handle
   perform(@dvala.io.println, "hello")
-with [(eff, arg, nxt) -> if eff == @dvala.io.println then null else nxt(eff, arg) end]
+with [(arg, eff, nxt) -> if eff == @dvala.io.println then null else nxt(eff, arg) end]
 end`,
   ],
 }

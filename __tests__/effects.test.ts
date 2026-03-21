@@ -60,7 +60,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.effect, "hello")
-        with [(eff, arg, nxt) -> if eff == @my.effect then upper-case(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.effect then upper-case(arg) else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('HELLO')
@@ -70,7 +70,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.value)
-        with [(eff, arg, nxt) -> if eff == @my.value then 42 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.value then 42 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(42)
@@ -80,7 +80,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.add, [10, 20])
-        with [(eff, arg, nxt) -> if eff == @my.add then do let [a, b] = arg; a + b end else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.add then do let [a, b] = arg; a + b end else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(30)
@@ -90,7 +90,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.count, ["a", "b", "c"])
-        with [(eff, arg, nxt) -> if eff == @my.count then count(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.count then count(arg) else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(3)
@@ -106,7 +106,7 @@ describe('phase 2 — Local Effect Handling', () => {
           let my-eff = @my.effect;
           handle
             perform(my-eff, "world")
-          with [(eff, arg, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -119,7 +119,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@a, 1) + perform(@b, 2)
-        with [(eff, arg, nxt) ->
+        with [(arg, eff, nxt) ->
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
@@ -136,7 +136,7 @@ describe('phase 2 — Local Effect Handling', () => {
           let my-eff = @my.eff;
           handle
             perform(my-eff, "test")
-          with [(eff, arg, nxt) -> if eff == my-eff then "first: " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == my-eff then "first: " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -148,9 +148,9 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           handle
             perform(@outer.eff, "value")
-          with [(eff, arg, nxt) -> if eff == @inner.eff then "inner: " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @inner.eff then "inner: " ++ arg else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @outer.eff then "outer: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @outer.eff then "outer: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('outer: value')
@@ -161,10 +161,10 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           let a = handle
             perform(@inner, "a")
-          with [(eff, arg, nxt) -> if eff == @inner then "inner(" ++ arg ++ ")" else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @inner then "inner(" ++ arg ++ ")" else nxt(eff, arg) end]
           end;
           a ++ " + " ++ perform(@outer, "b")
-        with [(eff, arg, nxt) -> if eff == @outer then "outer(" ++ arg ++ ")" else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @outer then "outer(" ++ arg ++ ")" else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('inner(a) + outer(b)')
@@ -178,9 +178,9 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           handle
             perform(@my.eff, "original")
-          with [(eff, arg, nxt) -> if eff == @my.eff then perform(@my.eff, arg ++ "+delegated") else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @my.eff then perform(@my.eff, arg ++ "+delegated") else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @my.eff then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: original+delegated')
@@ -191,7 +191,7 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           let x = perform(@my.eff, 5);
           x * 2
-        with [(eff, arg, nxt) -> if eff == @my.eff then arg + 10 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then arg + 10 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(30) // (5 + 10) * 2
@@ -202,9 +202,9 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           handle
             perform(@my.eff, "msg")
-          with [(eff, arg, nxt) -> if eff == @my.eff then perform(@dvala.io.println, arg) else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.io.println, arg) else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('logged: msg')
@@ -214,7 +214,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           42
-        with [(eff, arg, nxt) -> if eff == @my.eff then arg * 100 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then arg * 100 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(42)
@@ -227,7 +227,7 @@ describe('phase 2 — Local Effect Handling', () => {
       expect(() => dvala.run(`
         handle
           perform(@dvala.error, "boom")
-        with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
         end
       `)).toThrow('boom')
     })
@@ -236,7 +236,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.eff, "data")
-        with [(eff, arg, nxt) -> if eff == @my.eff then "handled: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then "handled: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('handled: data')
@@ -247,9 +247,9 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           handle
             perform(@my.eff, "data")
-          with [(eff, arg, nxt) -> if eff == @my.eff then perform(@dvala.error, "handler error: " ++ arg) else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.error, "handler error: " ++ arg) else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "outer catch: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "outer catch: " ++ arg else nxt(eff, arg) end]
         end
       `)
       // The error from the handler should NOT be caught by any inner scope.
@@ -261,7 +261,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@dvala.error, "body error")
-        with [(eff, arg, nxt) ->
+        with [(arg, eff, nxt) ->
           if eff == @my.eff then arg
           else if eff == @dvala.error then "caught: " ++ arg
           else nxt(eff, arg)
@@ -276,7 +276,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.eff, "hello")
-        with [(eff, arg, nxt) ->
+        with [(arg, eff, nxt) ->
           if eff == @my.eff then upper-case(arg)
           else if eff == @dvala.error then "caught: " ++ arg
           else nxt(eff, arg)
@@ -294,9 +294,9 @@ describe('phase 2 — Local Effect Handling', () => {
             do
               perform(@dvala.error, "body boom")
             end
-          with [(eff, arg, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: body boom')
@@ -306,7 +306,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@no.handler, "data")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
@@ -319,7 +319,7 @@ describe('phase 2 — Local Effect Handling', () => {
         let handle-it = (my-eff, value) ->
           handle
             perform(my-eff, value)
-          with [(eff, arg, nxt) -> if eff == my-eff then arg * 2 else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == my-eff then arg * 2 else nxt(eff, arg) end]
           end;
         handle-it(@my.eff, 21)
       `)
@@ -331,7 +331,7 @@ describe('phase 2 — Local Effect Handling', () => {
         let effects = [@a, @b];
         handle
           perform(effects[0], 1) + perform(effects[1], 2)
-        with [(eff, arg, nxt) ->
+        with [(arg, eff, nxt) ->
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
@@ -498,7 +498,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.fail, "oops")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -541,7 +541,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.fail)
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -578,7 +578,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.eff, "test")
-        with [(eff, arg, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -594,7 +594,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@other.eff, "test")
-        with [(eff, arg, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -610,7 +610,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.eff, "msg")
-        with [(eff, arg, nxt) -> if eff == @my.eff then perform(@my.eff, arg ++ "+enriched") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then perform(@my.eff, arg ++ "+enriched") else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -775,7 +775,7 @@ describe('phase 3 — Host Async API', () => {
           handle
             let msg = perform(llm, "prompt");
             perform(log-eff, msg)
-          with [(eff, arg, nxt) -> if eff == log-eff then "logged: " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == log-eff then "logged: " ++ arg else nxt(eff, arg) end]
           end
         end
       `, {
@@ -792,7 +792,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.risky)
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "recovered: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "recovered: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -1220,7 +1220,7 @@ describe('phase 4 — Suspension & Resume', () => {
       const result = await dvala.runAsync(`
         let x = handle
           perform(@dvala.checkpoint, "cp")
-        with [(eff, arg, nxt) -> if eff == @dvala.checkpoint then "from-local" else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.checkpoint then "from-local" else nxt(eff, arg) end]
         end;
         perform(@my.check);
         x
@@ -2408,7 +2408,7 @@ describe('phase 4 — Suspension & Resume', () => {
         handle
           let x = perform(@my.wait);
           if x == "bad" then perform(@dvala.error, "bad input") else x end
-        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -2547,7 +2547,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let x = perform(@my.wait);
         handle
           perform(@my.local, x)
-        with [(eff, arg, nxt) -> if eff == @my.local then upper-case(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.local then upper-case(arg) else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -2668,7 +2668,7 @@ describe('phase 5 — Standard Effects', () => {
       const result = dvala.run(`
         handle
           perform(@dvala.io.println, "intercepted")
-        with [(eff, arg, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('logged: intercepted')
@@ -2709,7 +2709,7 @@ describe('phase 5 — Standard Effects', () => {
       const result = dvala.run(`
         handle
           perform(@dvala.time.now)
-        with [(eff, arg, nxt) -> if eff == @dvala.time.now then 1234567890 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.time.now then 1234567890 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(1234567890)
@@ -2745,7 +2745,7 @@ describe('phase 5 — Standard Effects', () => {
       const result = dvala.run(`
         handle
           perform(@dvala.random)
-        with [(eff, arg, nxt) -> if eff == @dvala.random then 0.5 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.random then 0.5 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(0.5)
@@ -3457,7 +3457,7 @@ describe('step 1 — handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@my.log, "hello")
-        with [(eff, arg, nxt) -> if eff == @my.log then "logged: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.log then "logged: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('logged: hello')
@@ -3467,7 +3467,7 @@ describe('step 1 — handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@my.add, [10, 20])
-        with [(eff, arg, nxt) -> if eff == @my.add then do let [a, b] = arg; a + b end else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.add then do let [a, b] = arg; a + b end else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(30)
@@ -3477,7 +3477,7 @@ describe('step 1 — handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@my.value)
-        with [(eff, arg, nxt) -> if eff == @my.value then 42 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.value then 42 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(42)
@@ -3488,7 +3488,7 @@ describe('step 1 — handle...with...end', () => {
         handle
           let x = perform(@my.get);
           x * 2
-        with [(eff, arg, nxt) -> if eff == @my.get then 21 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.get then 21 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(42)
@@ -3498,7 +3498,7 @@ describe('step 1 — handle...with...end', () => {
       const result = dvala.run(`
         handle
           1 + 2
-        with [(eff, arg, nxt) -> if eff == @my.eff then 999 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then 999 else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe(3)
@@ -3508,7 +3508,7 @@ describe('step 1 — handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@a, 1) + perform(@b, 2)
-        with [(eff, arg, nxt) ->
+        with [(arg, eff, nxt) ->
           if eff == @a then arg * 10
           else if eff == @b then arg * 100
           else nxt(eff, arg)
@@ -3524,9 +3524,9 @@ describe('step 1 — handle...with...end', () => {
         handle
           handle
             perform(@outer.eff, "value")
-          with [(eff, arg, nxt) -> if eff == @inner.eff then "inner: " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @inner.eff then "inner: " ++ arg else nxt(eff, arg) end]
           end
-        with [(eff, arg, nxt) -> if eff == @outer.eff then "outer: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @outer.eff then "outer: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('outer: value')
@@ -3538,7 +3538,7 @@ describe('step 1 — handle...with...end', () => {
           let my-eff = @my.eff;
           handle
             perform(my-eff, "world")
-          with [(eff, arg, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -3549,7 +3549,7 @@ describe('step 1 — handle...with...end', () => {
       expect(() => dvala.run(`
         handle
           perform(@my.eff, "data")
-        with [(eff, arg, nxt) -> if eff == @my.eff then perform(@dvala.error, "something went wrong") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.error, "something went wrong") else nxt(eff, arg) end]
         end
       `)).toThrow('something went wrong')
     })
@@ -3561,7 +3561,7 @@ describe('step 1 — handle...with...end', () => {
         let prefix = "pre-";
         handle
           perform(@my.eff, "value")
-        with [(eff, arg, nxt) -> if eff == @my.eff then prefix ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then prefix ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('pre-value')
@@ -3574,7 +3574,7 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(dvala.run(`
       handle
         0 / 0
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
       end
     `)).toBe(42)
   })
@@ -3583,7 +3583,7 @@ describe('step 2 — dvala.error standard effect', () => {
     const result = dvala.run(`
       handle
         0 / 0
-      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -3596,7 +3596,7 @@ describe('step 2 — dvala.error standard effect', () => {
       handle
         let x = 0 / 0;
         x + 1
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
       end
     `)).toBe(1)
   })
@@ -3605,7 +3605,7 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(() => dvala.run(`
       handle
         0 / 0
-      with [(eff, arg, nxt) -> if eff == @dvala.io.println then 42 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.io.println then 42 else nxt(eff, arg) end]
       end
     `)).toThrow()
   })
@@ -3618,7 +3618,7 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(dvala.run(`
       handle
         perform(@my.eff, 99)
-      with [(eff, arg, nxt) ->
+      with [(arg, eff, nxt) ->
         if eff == @dvala.error then 0 - 1
         else if eff == @my.eff then arg * 2
         else nxt(eff, arg)
@@ -3633,9 +3633,9 @@ describe('step 2 — dvala.error standard effect', () => {
       handle
         handle
           0 / 0
-        with [(eff, arg, nxt) -> if eff == @dvala.io.println then 0 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.io.println then 0 else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 77 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 77 else nxt(eff, arg) end]
       end
     `)).toBe(77)
   })
@@ -3645,9 +3645,9 @@ describe('step 2 — dvala.error standard effect', () => {
       handle
         handle
           0 / 0
-        with [(eff, arg, nxt) -> if eff == @dvala.error then 0 / 0 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then 0 / 0 else nxt(eff, arg) end]
         end
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 55 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 55 else nxt(eff, arg) end]
       end
     `)).toBe(55)
   })
@@ -3656,7 +3656,7 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(dvala.run(`
       handle
         0 / 0
-      with [(eff, arg, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
       end
     `)).toBe(42)
   })
@@ -3680,7 +3680,7 @@ describe('step 2 — dvala.error standard effect', () => {
     const result = await dvala.runAsync(
       `handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end`,
       {
         effectHandlers: [
@@ -3722,7 +3722,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) -> if effect-name(eff) == "dvala.io.println" then "logged: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.io.println" then "logged: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('logged: hello')
@@ -3732,7 +3732,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) ->
+      with [(arg, eff, nxt) ->
         if effect-name(eff) == "dvala.error" then "error handler"
         else if effect-name(eff) == "dvala.io.println" then "log handler"
         else nxt(eff, arg)
@@ -3747,7 +3747,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) ->
+      with [(arg, eff, nxt) ->
         if eff == @dvala.error then "error handler"
         else if effect-name(eff) == "dvala.io.println" then "log handler"
         else nxt(eff, arg)
@@ -3762,7 +3762,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@com.myco.foo, "data")
-      with [(eff, arg, nxt) -> if slice(effect-name(eff), 0, 8) == "com.myco" then "matched prefix" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if slice(effect-name(eff), 0, 8) == "com.myco" then "matched prefix" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched prefix')
@@ -3772,7 +3772,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "data")
-      with [(eff, arg, nxt) -> if not(null?(re-match(effect-name(eff), #"^dvala\\."))) then "matched regex" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if not(null?(re-match(effect-name(eff), #"^dvala\\."))) then "matched regex" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched regex')
@@ -3783,7 +3783,7 @@ describe('step 10 — predicate-based handler matching', () => {
       let is-log? = (e) -> effect-name(e) == "dvala.io.println";
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) -> if is-log?(eff) then "matched" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if is-log?(eff) then "matched" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched')
@@ -3793,7 +3793,7 @@ describe('step 10 — predicate-based handler matching', () => {
     expect(() => dvala.run(`
       handle
         perform(@custom.eff, "data")
-      with [(eff, arg, nxt) -> if false then "never" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if false then "never" else nxt(eff, arg) end]
       end
     `)).toThrow('Unhandled effect')
   })
@@ -3802,7 +3802,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.error, "oops")
-      with [(eff, arg, nxt) -> if effect-name(eff) == "dvala.error" then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.error" then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('oops')
@@ -3812,7 +3812,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) -> if effect-matcher("dvala.*")(eff) then "matched dvala wildcard" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher("dvala.*")(eff) then "matched dvala wildcard" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched dvala wildcard')
@@ -3822,7 +3822,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala, "hello")
-      with [(eff, arg, nxt) -> if effect-matcher("dvala")(eff) then "matched" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher("dvala")(eff) then "matched" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched')
@@ -3850,7 +3850,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.println, "hello")
-      with [(eff, arg, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "matched regex" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "matched regex" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched regex')
@@ -3860,7 +3860,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@anything.goes, "data")
-      with [(eff, arg, nxt) -> if effect-matcher(#".*")(eff) then "catch-all" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher(#".*")(eff) then "catch-all" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('catch-all')
@@ -3871,7 +3871,7 @@ describe('step 10 — predicate-based handler matching', () => {
       handle
         let result = perform(@my.wait);
         result
-      with [(eff, arg, nxt) -> if effect-matcher("dvala.*")(eff) then "caught dvala" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher("dvala.*")(eff) then "caught dvala" else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -3891,7 +3891,7 @@ describe('step 10 — predicate-based handler matching', () => {
       handle
         let result = perform(@my.wait);
         result
-      with [(eff, arg, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "caught dvala" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "caught dvala" else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -4046,7 +4046,7 @@ describe('host handler wildcard patterns', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.effect, "data")
-        with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [

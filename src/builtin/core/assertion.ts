@@ -44,7 +44,7 @@ export const assertionNormalExpression: BuiltinNormalExpressions = {
         },
       ],
       examples: [
-        'handle assert(0, "Expected a positive value") with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+        'handle assert(0, "Expected a positive value") with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
       ],
       seeAlso: ['assertion.assert-truthy', 'assertion.assert-true'],
       hideOperatorForm: true,
