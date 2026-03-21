@@ -21,16 +21,9 @@ class EffectPerformedError extends Error {
   }
 }
 
-// print/println: just resume with the first argument (identity behavior)
+// print: just resume with the argument (identity behavior for example validation)
 const printHandler: HandlerRegistration = {
   pattern: 'dvala.io.print',
-  handler: (ctx: EffectContext) => {
-    ctx.resume(ctx.arg)
-  },
-}
-
-const printlnHandler: HandlerRegistration = {
-  pattern: 'dvala.io.println',
   handler: (ctx: EffectContext) => {
     ctx.resume(ctx.arg)
   },
@@ -43,7 +36,7 @@ const interactiveEffectHandler = (ctx: EffectContext) => {
 }
 
 const readlineHandler: HandlerRegistration = {
-  pattern: 'dvala.io.read-line',
+  pattern: 'dvala.io.read',
   handler: interactiveEffectHandler,
 }
 
@@ -81,7 +74,6 @@ const haltOnEffectHandler: HandlerRegistration = {
 
 const exampleHandlers: HandlerRegistration[] = [
   printHandler,
-  printlnHandler,
   readlineHandler,
   pickHandler,
   confirmHandler,

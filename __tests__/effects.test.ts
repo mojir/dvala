@@ -17,8 +17,8 @@ function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOpti
 describe('phase 2 — Local Effect Handling', () => {
   describe('2a: @name special expression', () => {
     it('should return an effect reference', () => {
-      const result = dvala.run('@dvala.io.println')
-      expect(result).toHaveProperty('name', 'dvala.io.println')
+      const result = dvala.run('@dvala.io.print')
+      expect(result).toHaveProperty('name', 'dvala.io.print')
     })
 
     it('should support dotted names', () => {
@@ -202,9 +202,9 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           handle
             perform(@my.eff, "msg")
-          with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.io.println, arg) else nxt(eff, arg) end]
+          with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.io.print, arg) else nxt(eff, arg) end]
           end
-        with [(arg, eff, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.io.print then "logged: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('logged: msg')
@@ -2626,13 +2626,13 @@ describe('phase 4 — Suspension & Resume', () => {
 })
 
 describe('phase 5 — Standard Effects', () => {
-  describe('5a: dvala.io.println', () => {
+  describe('5a: dvala.io.print', () => {
     it('should write to stdout and return value (via Dvala.run)', () => {
       const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
-        const result = dvala.run('perform(@dvala.io.println, "test")')
+        const result = dvala.run('perform(@dvala.io.print, "test")')
         expect(result).toBe('test')
-        expect(stdoutSpy).toHaveBeenCalledWith('test\n')
+        expect(stdoutSpy).toHaveBeenCalledWith('test')
       } finally {
         stdoutSpy.mockRestore()
       }
@@ -2641,10 +2641,10 @@ describe('phase 5 — Standard Effects', () => {
     it('should log null with no arguments', async () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
-        const result = await dvala.runAsync('perform(@dvala.io.println)')
+        const result = await dvala.runAsync('perform(@dvala.io.print)')
 
         expect(result.type).toBe('completed')
-        expect(spy).toHaveBeenCalledWith('null\n')
+        expect(spy).toHaveBeenCalledWith('null')
       } finally {
         spy.mockRestore()
       }
@@ -2652,9 +2652,9 @@ describe('phase 5 — Standard Effects', () => {
 
     it('should be overridable by host handler', async () => {
       const logs: unknown[] = []
-      const result = await dvala.runAsync('perform(@dvala.io.println, "custom")', {
+      const result = await dvala.runAsync('perform(@dvala.io.print, "custom")', {
         effectHandlers: [
-          { pattern: 'dvala.io.println', handler: async ({ arg, resume: r }) => {
+          { pattern: 'dvala.io.print', handler: async ({ arg, resume: r }) => {
             logs.push(arg)
             r(null)
           } },
@@ -2667,8 +2667,8 @@ describe('phase 5 — Standard Effects', () => {
     it('should be overridable by local handle/with', () => {
       const result = dvala.run(`
         handle
-          perform(@dvala.io.println, "intercepted")
-        with [(arg, eff, nxt) -> if eff == @dvala.io.println then "logged: " ++ arg else nxt(eff, arg) end]
+          perform(@dvala.io.print, "intercepted")
+        with [(arg, eff, nxt) -> if eff == @dvala.io.print then "logged: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('logged: intercepted')
@@ -2794,10 +2794,10 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const result = await dvala.runAsync(`
           do
-            perform(@dvala.io.println, "Starting");
+            perform(@dvala.io.print, "Starting");
             let t = perform(@dvala.time.now);
             let r = perform(@dvala.random);
-            perform(@dvala.io.println, "Done");
+            perform(@dvala.io.print, "Done");
             { time: number?(t), random: number?(r) }
           end
         `)
@@ -2818,9 +2818,9 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const r1 = await dvala.runAsync(`
           do
-            perform(@dvala.io.println, "Before suspend");
+            perform(@dvala.io.print, "Before suspend");
             let input = perform(@my.wait);
-            perform(@dvala.io.println, "After resume: " ++ input);
+            perform(@dvala.io.print, "After resume: " ++ input);
             input
           end
         `, {
@@ -2833,13 +2833,13 @@ describe('phase 5 — Standard Effects', () => {
           return
 
         expect(stdoutSpy).toHaveBeenCalledTimes(1)
-        expect(stdoutSpy).toHaveBeenCalledWith('Before suspend\n')
+        expect(stdoutSpy).toHaveBeenCalledWith('Before suspend')
         stdoutSpy.mockClear()
 
         const r2 = await resumeContinuation(r1.snapshot, 'hello')
         expect(r2).toEqual({ type: 'completed', value: 'hello' })
         expect(stdoutSpy).toHaveBeenCalledTimes(1)
-        expect(stdoutSpy).toHaveBeenCalledWith('After resume: hello\n')
+        expect(stdoutSpy).toHaveBeenCalledWith('After resume: hello')
       } finally {
         stdoutSpy.mockRestore()
       }
@@ -2867,14 +2867,14 @@ describe('phase 5 — Standard Effects', () => {
       try {
         const result = dvala.run(`
           do
-            perform(@dvala.io.println, "sync log");
+            perform(@dvala.io.print, "sync log");
             let t = perform(@dvala.time.now);
             let r = perform(@dvala.random);
             number?(t) && number?(r)
           end
         `)
         expect(result).toBe(true)
-        expect(stdoutSpy).toHaveBeenCalledWith('sync log\n')
+        expect(stdoutSpy).toHaveBeenCalledWith('sync log')
       } finally {
         stdoutSpy.mockRestore()
       }
@@ -3605,7 +3605,7 @@ describe('step 2 — dvala.error standard effect', () => {
     expect(() => dvala.run(`
       handle
         0 / 0
-      with [(arg, eff, nxt) -> if eff == @dvala.io.println then 42 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.io.print then 42 else nxt(eff, arg) end]
       end
     `)).toThrow()
   })
@@ -3633,7 +3633,7 @@ describe('step 2 — dvala.error standard effect', () => {
       handle
         handle
           0 / 0
-        with [(arg, eff, nxt) -> if eff == @dvala.io.println then 0 else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.io.print then 0 else nxt(eff, arg) end]
         end
       with [(arg, eff, nxt) -> if eff == @dvala.error then 77 else nxt(eff, arg) end]
       end
@@ -3674,17 +3674,17 @@ describe('step 2 — dvala.error standard effect', () => {
   })
 
   it('in-language dvala.error handler catches error from async host handler that throws', async () => {
-    // When a host handler for dvala.io.println throws, it produces an ErrorStep.
+    // When a host handler for dvala.io.print throws, it produces an ErrorStep.
     // tick() processes the ErrorStep and routes it through tryDispatchDvalaError,
     // which finds the in-language handle...with handler.
     const result = await dvala.runAsync(
       `handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end`,
       {
         effectHandlers: [
-          { pattern: 'dvala.io.println', handler: async () => { throw new Error('async host error') } },
+          { pattern: 'dvala.io.print', handler: async () => { throw new Error('async host error') } },
         ],
       },
     )
@@ -3709,7 +3709,7 @@ describe('step 9 — effect-name accessor', () => {
   })
 
   it('should work with effect stored in variable', () => {
-    expect(dvala.run('let e = @dvala.io.println; effect-name(e)')).toBe('dvala.io.println')
+    expect(dvala.run('let e = @dvala.io.print; effect-name(e)')).toBe('dvala.io.print')
   })
 
   it('should throw on non-effect argument', () => {
@@ -3721,8 +3721,8 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should match with a predicate function in handler', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "hello")
-      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.io.println" then "logged: " ++ arg else nxt(eff, arg) end]
+        perform(@dvala.io.print, "hello")
+      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.io.print" then "logged: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('logged: hello')
@@ -3731,10 +3731,10 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should skip non-matching predicate and match next', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) ->
         if effect-name(eff) == "dvala.error" then "error handler"
-        else if effect-name(eff) == "dvala.io.println" then "log handler"
+        else if effect-name(eff) == "dvala.io.print" then "log handler"
         else nxt(eff, arg)
         end
       ]
@@ -3746,10 +3746,10 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should mix exact-match and predicate checks', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) ->
         if eff == @dvala.error then "error handler"
-        else if effect-name(eff) == "dvala.io.println" then "log handler"
+        else if effect-name(eff) == "dvala.io.print" then "log handler"
         else nxt(eff, arg)
         end
       ]
@@ -3771,7 +3771,7 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should support regex matching via re-match', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "data")
+        perform(@dvala.io.print, "data")
       with [(arg, eff, nxt) -> if not(null?(re-match(effect-name(eff), #"^dvala\\."))) then "matched regex" else nxt(eff, arg) end]
       end
     `)
@@ -3780,9 +3780,9 @@ describe('step 10 — predicate-based handler matching', () => {
 
   it('should work with predicate stored in variable', () => {
     const result = dvala.run(`
-      let is-log? = (e) -> effect-name(e) == "dvala.io.println";
+      let is-log? = (e) -> effect-name(e) == "dvala.io.print";
       handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) -> if is-log?(eff) then "matched" else nxt(eff, arg) end]
       end
     `)
@@ -3811,7 +3811,7 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should support effect-matcher with wildcard suffix', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) -> if effect-matcher("dvala.*")(eff) then "matched dvala wildcard" else nxt(eff, arg) end]
       end
     `)
@@ -3849,7 +3849,7 @@ describe('step 10 — predicate-based handler matching', () => {
   it('should support effect-matcher with regexp', () => {
     const result = dvala.run(`
       handle
-        perform(@dvala.io.println, "hello")
+        perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "matched regex" else nxt(eff, arg) end]
       end
     `)
@@ -3922,7 +3922,7 @@ describe('host handler wildcard patterns', () => {
     })
 
     it('wildcard suffix matches child effect', async () => {
-      const result = await dvala.runAsync('perform(@dvala.io.println, "hello")', {
+      const result = await dvala.runAsync('perform(@dvala.io.print, "hello")', {
         effectHandlers: [
           { pattern: 'dvala.*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
@@ -4005,7 +4005,7 @@ describe('host handler wildcard patterns', () => {
 
     it('effectName is correct for wildcard suffix handlers', async () => {
       let capturedName = ''
-      await dvala.runAsync('perform(@dvala.io.println, "hello")', {
+      await dvala.runAsync('perform(@dvala.io.print, "hello")', {
         effectHandlers: [
           { pattern: 'dvala.*', handler: async ({ effectName, resume }) => {
             capturedName = effectName
@@ -4013,7 +4013,7 @@ describe('host handler wildcard patterns', () => {
           } },
         ],
       })
-      expect(capturedName).toBe('dvala.io.println')
+      expect(capturedName).toBe('dvala.io.print')
     })
   })
 
@@ -4266,7 +4266,7 @@ describe('generateUUID', () => {
 describe('effectNameMatchesPattern', () => {
   it('exact match', () => {
     expect(effectNameMatchesPattern('dvala.error', 'dvala.error')).toBe(true)
-    expect(effectNameMatchesPattern('dvala.io.println', 'dvala.error')).toBe(false)
+    expect(effectNameMatchesPattern('dvala.io.print', 'dvala.error')).toBe(false)
   })
 
   it('wildcard suffix matches prefix itself', () => {
@@ -4275,7 +4275,7 @@ describe('effectNameMatchesPattern', () => {
 
   it('wildcard suffix matches children', () => {
     expect(effectNameMatchesPattern('dvala.error', 'dvala.*')).toBe(true)
-    expect(effectNameMatchesPattern('dvala.io.println', 'dvala.*')).toBe(true)
+    expect(effectNameMatchesPattern('dvala.io.print', 'dvala.*')).toBe(true)
   })
 
   it('wildcard suffix matches deeply nested', () => {

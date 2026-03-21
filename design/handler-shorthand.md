@@ -59,7 +59,7 @@ with [@my.eff(val) -> val * 2]
 end
 
 ;; Wildcard
-handle perform(@dvala.io.println, "hi")
+handle perform(@dvala.io.print, "hi")
 with [@dvala.io.*(arg) -> null]
 end
 

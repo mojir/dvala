@@ -24,7 +24,7 @@ let total = prices
 // Calculate how much was saved for display
 let saved-amount = sum(prices) - total |> _ round 2;
 
-perform(@dvala.io.println,
+perform(@dvala.io.print,
   `Total: $${str(total)} ` ++
   if saved-amount > 0 then
     `(You saved $${str(saved-amount)})`

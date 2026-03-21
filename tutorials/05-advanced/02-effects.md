@@ -22,13 +22,13 @@ Two deliberate deviations:
 Use `@name` to create an effect reference. The name is a dotted identifier:
 
 ```dvala
-@dvala.io.println
+@dvala.io.print
 ```
 
 Effect references are first-class values — you can store them, pass them, and compare them:
 
 ```dvala
-let log = @dvala.io.println;
+let log = @dvala.io.print;
 log
 ```
 
@@ -49,7 +49,7 @@ perform(@dvala.random)
 ```
 
 ```dvala
-perform(@dvala.io.println, "hello")
+perform(@dvala.io.print, "hello")
 ```
 
 When there is no local handler, the effect propagates outward to the host environment.
@@ -62,9 +62,9 @@ Dvala provides built-in effects that are always available without explicit handl
 
 **I/O:**
 * `dvala.io.print` — writes a string to stdout (no newline), resumes with the string
-* `dvala.io.println` — writes a string to stdout with newline, resumes with the string
+* `dvala.io.print` — writes a string to stdout with newline, resumes with the string
 * `dvala.io.error` — writes a string to stderr with newline, resumes with the string
-* `dvala.io.read-line` — reads one line of user input, resumes with the input string or `null`
+* `dvala.io.read` — reads one line of user input, resumes with the input string or `null`
 * `dvala.io.read-stdin` — reads all of stdin until EOF (Node.js only), resumes with the string
 
 **Random:**
@@ -304,7 +304,7 @@ Effect names with `*` match a group of effects:
 
 ```dvala
 handle
-  perform(@dvala.io.println, "hi")
+  perform(@dvala.io.print, "hi")
 with @dvala.io.*(x) -> null
 end
 ```
@@ -313,8 +313,8 @@ Three wildcard forms:
 
 | Pattern | Matches |
 |---|---|
-| `@dvala.io.*` | `dvala.io.println`, `dvala.io.read-line`, etc. (dot-boundary enforced) |
-| `@dvala.*` | Everything under `dvala.` including `dvala.error`, `dvala.io.println`, etc. |
+| `@dvala.io.*` | `dvala.io.print`, `dvala.io.read`, etc. (dot-boundary enforced) |
+| `@dvala.*` | Everything under `dvala.` including `dvala.error`, `dvala.io.print`, etc. |
 | `@*` | Every effect |
 
 Wildcards work with the pipe too:
@@ -423,7 +423,7 @@ Using the 3-param shorthand to access `nxt`:
 
 ```dvala
 let logger = @*(x, e, n) -> do
-  perform(@dvala.io.println, "effect: " ++ effect-name(e));
+  perform(@dvala.io.print, "effect: " ++ effect-name(e));
   n(e, x)
 end;
 perform(@my.eff, 42) ||> logger ||> @my.eff(x) -> x * 2

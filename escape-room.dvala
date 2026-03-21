@@ -6,37 +6,37 @@
 //   2. Player 2 sees Player 1's answer + new riddle → suspend → share link back
 //   3. Player 1 resumes → vault opens (or not)
 
-perform(@dvala.io.println, "🔐 COLLABORATIVE ESCAPE ROOM 🔐");
-perform(@dvala.io.println, "Two players must each solve a riddle to open the vault.\n");
+perform(@dvala.io.print, "🔐 COLLABORATIVE ESCAPE ROOM 🔐");
+perform(@dvala.io.print, "Two players must each solve a riddle to open the vault.\n");
 
 // --- Player 1's turn ---
-perform(@dvala.io.println, "=== PLAYER 1 ===");
-perform(@dvala.io.println, "Riddle: I have cities, but no houses live there.");
-perform(@dvala.io.println, "        I have mountains, but no trees grow there.");
-perform(@dvala.io.println, "        I have water, but no fish swim there.");
-perform(@dvala.io.println, "        What am I?\n");
+perform(@dvala.io.print, "=== PLAYER 1 ===");
+perform(@dvala.io.print, "Riddle: I have cities, but no houses live there.");
+perform(@dvala.io.print, "        I have mountains, but no trees grow there.");
+perform(@dvala.io.print, "        I have water, but no fish swim there.");
+perform(@dvala.io.print, "        What am I?\n");
 
-let answer1 = perform(@dvala.io.read-line, "Your answer: ");
+let answer1 = perform(@dvala.io.read, "Your answer: ");
 
-perform(@dvala.io.println, "\nGot it! Now suspend and share the link with Player 2.\n");
+perform(@dvala.io.print, "\nGot it! Now suspend and share the link with Player 2.\n");
 
 // --- Player 2's turn ---
-perform(@dvala.io.println, "=== PLAYER 2 ===");
-perform(@dvala.io.println, "Player 1 answered: \"" ++ answer1 ++ "\"\n");
-perform(@dvala.io.println, "Riddle: The more you take, the more you leave behind.");
-perform(@dvala.io.println, "        What am I?\n");
+perform(@dvala.io.print, "=== PLAYER 2 ===");
+perform(@dvala.io.print, "Player 1 answered: \"" ++ answer1 ++ "\"\n");
+perform(@dvala.io.print, "Riddle: The more you take, the more you leave behind.");
+perform(@dvala.io.print, "        What am I?\n");
 
-let answer2 = perform(@dvala.io.read-line, "Your answer: ");
+let answer2 = perform(@dvala.io.read, "Your answer: ");
 
-perform(@dvala.io.println, "\nGot it! Now suspend and share the link back to Player 1.\n");
+perform(@dvala.io.print, "\nGot it! Now suspend and share the link back to Player 1.\n");
 
 // --- Final reveal ---
 let code = upper-case(slice(answer1, 0, 3)) ++ "-" ++ upper-case(slice(answer2, 0, 3));
 
-perform(@dvala.io.println, "=== THE VAULT ===");
-perform(@dvala.io.println, "Player 1 answered: \"" ++ answer1 ++ "\"");
-perform(@dvala.io.println, "Player 2 answered: \"" ++ answer2 ++ "\"");
-perform(@dvala.io.println, "Combined vault code: " ++ code ++ "\n");
+perform(@dvala.io.print, "=== THE VAULT ===");
+perform(@dvala.io.print, "Player 1 answered: \"" ++ answer1 ++ "\"");
+perform(@dvala.io.print, "Player 2 answered: \"" ++ answer2 ++ "\"");
+perform(@dvala.io.print, "Combined vault code: " ++ code ++ "\n");
 
 let correct1 = lower-case(trim(answer1)) == "map";
 let correct2 = lower-case(trim(answer2)) == "footsteps";
@@ -47,4 +47,4 @@ let result = if correct1 && correct2 then "🎉 BOTH CORRECT! The vault opens! Y
   else "❌ Neither answer correct. The vault stays locked."
 end;
 
-perform(@dvala.io.println, result);
+perform(@dvala.io.print, result);

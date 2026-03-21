@@ -49,7 +49,7 @@ export function getMetaNormalExpression(
         seeAlso: ['arity', 'with-doc'],
         examples: [
           'doc(+)',
-          'doc(@dvala.io.println)',
+          'doc(@dvala.io.print)',
           'let add = (x, y) -> x + y with-doc "Adds two numbers.";\ndoc(add)',
         ],
       },

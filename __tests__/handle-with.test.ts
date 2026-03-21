@@ -367,7 +367,7 @@ describe('handle...with...end', () => {
     it('wildcard effect matching', () => {
       const result = dvala.run(`
         handle
-          perform(@dvala.io.println, "hi")
+          perform(@dvala.io.print, "hi")
         with [@dvala.io.*(arg) -> null]
         end
       `)
@@ -619,9 +619,9 @@ describe('handle...with...end', () => {
   })
 
   describe('wildcard handler shorthand', () => {
-    it('@dvala.* matches dvala.io.println', () => {
+    it('@dvala.* matches dvala.io.print', () => {
       const result = dvala.run(`
-        handle perform(@dvala.io.println, "hi")
+        handle perform(@dvala.io.print, "hi")
         with [@dvala.*(arg) -> "intercepted"]
         end
       `)
@@ -637,9 +637,9 @@ describe('handle...with...end', () => {
       expect(result).toBe('caught')
     })
 
-    it('@dvala.* matches dvala.io.read-line', () => {
+    it('@dvala.* matches dvala.io.read', () => {
       const result = dvala.run(`
-        handle perform(@dvala.io.read-line, null)
+        handle perform(@dvala.io.read, null)
         with [@dvala.*(arg) -> "mocked"]
         end
       `)
@@ -656,10 +656,10 @@ describe('handle...with...end', () => {
       expect(result).toBe("caught: Unhandled effect: 'my.custom'")
     })
 
-    it('@dvala.io.* matches dvala.io.println but not dvala.error', () => {
+    it('@dvala.io.* matches dvala.io.print but not dvala.error', () => {
       const result = dvala.run(`
         handle
-          perform(@dvala.io.println, "hi")
+          perform(@dvala.io.print, "hi")
         with [@dvala.io.*(arg) -> "io intercepted"]
         end
       `)
@@ -760,7 +760,7 @@ describe('handle...with...end', () => {
     it('wildcard stored as value', () => {
       const result = dvala.run(`
         let silence-io = @dvala.io.*(arg) -> null;
-        handle perform(@dvala.io.println, "hi")
+        handle perform(@dvala.io.print, "hi")
         with [silence-io]
         end
       `)

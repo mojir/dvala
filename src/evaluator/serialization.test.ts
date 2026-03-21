@@ -126,7 +126,7 @@ describe('isSerializable', () => {
     })
 
     it('should accept arrays containing EffectRef', () => {
-      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.println' }
+      const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.print' }
       expect(isSerializable([1, ref] as Any)).toBe(true)
     })
 

@@ -32,15 +32,15 @@ describe('analyze', () => {
     // handle...with handler: no undefined symbols
     expect(getUndefinedSymbols(`
       handle
-        perform(@dvala.io.println, "hello")
-      with [(arg, eff, nxt) -> if eff == @dvala.io.println then null else nxt(eff, arg) end]
+        perform(@dvala.io.print, "hello")
+      with [(arg, eff, nxt) -> if eff == @dvala.io.print then null else nxt(eff, arg) end]
       end`)).toEqual(new Set([]))
 
     // undefined symbol in handler function
     expect(getUndefinedSymbols(`
       handle
         1
-      with [(arg, eff, nxt) -> if eff == @dvala.io.println then undefinedHandler else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.io.print then undefinedHandler else nxt(eff, arg) end]
       end`)).toEqual(new Set(['undefinedHandler']))
 
     // undefined symbol in handler effect expression
