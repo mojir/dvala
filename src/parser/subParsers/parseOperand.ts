@@ -228,8 +228,11 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
     nxtName = params[2] ?? 'nxt·'
   }
 
-  // Parse body expression
-  const body = ctx.parseExpression()
+  // Parse body expression, stopping at ||> so shorthand chaining works:
+  // expr ||> @a(x) -> x * 2 ||> @b(y) -> y + 1
+  // parses as: (expr ||> @a(x) -> x * 2) ||> @b(y) -> y + 1
+  const effectPipePrecedence = 1
+  const body = ctx.parseExpression(effectPipePrecedence)
 
   const argSym = mkSymbol(argName)
   const effSym = mkSymbol(effName)

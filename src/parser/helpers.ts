@@ -2,6 +2,7 @@ import type { NormalExpressionName } from '../../reference/api'
 import type { SpecialExpressionName } from '../builtin'
 import { allNormalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
 import type { AndNode } from '../builtin/specialExpressions/and'
+import type { HandleNode } from '../builtin/specialExpressions/handle'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
@@ -137,6 +138,9 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '||':
     case '??':
       return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]]] as AndNode, sourceCodeInfo)
+    case '||>':
+      // Effect pipe: expr ||> handler  →  handle expr with handler end
+      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right]], sourceCodeInfo) as HandleNode
     /* v8 ignore next 11 */
     case '.':
     case ';':

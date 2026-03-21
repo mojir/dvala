@@ -768,3 +768,181 @@ describe('handle...with...end', () => {
     })
   })
 })
+
+describe('effect pipe ||>', () => {
+  describe('basic', () => {
+    it('simple effect pipe', () => {
+      const result = dvala.run(`
+        perform(@my.eff, 21) ||> @my.eff(x) -> x * 2
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('pipe with named handler', () => {
+      const result = dvala.run(`
+        let h = @my.eff(x) -> x + 1;
+        perform(@my.eff, 41) ||> h
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('pipe with handler list', () => {
+      const result = dvala.run(`
+        (perform(@a, 10) + perform(@b, 20)) ||> [@a(x) -> x * 2, @b(x) -> x * 3]
+      `)
+      expect(result).toBe(80)
+    })
+
+    it('pipe with full handler', () => {
+      const result = dvala.run(`
+        perform(@my.eff, 21) ||> (arg, eff, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('error catching with pipe', () => {
+      const result = dvala.run(`
+        (0 / 0) ||> @dvala.error(msg) -> "caught: " ++ msg
+      `)
+      expect(result).toBe('caught: Number is NaN')
+    })
+
+    it('pipe with let binding', () => {
+      const result = dvala.run(`
+        let x = perform(@my.eff, 10) ||> @my.eff(v) -> v * 5;
+        x + 1
+      `)
+      expect(result).toBe(51)
+    })
+
+    it('no effect — value passes through', () => {
+      const result = dvala.run(`
+        42 ||> @my.eff(x) -> x * 2
+      `)
+      expect(result).toBe(42)
+    })
+  })
+
+  describe('chaining', () => {
+    it('chained named handlers', () => {
+      const result = dvala.run(`
+        let h1 = @my.eff(x) -> x * 2;
+        let h2 = @my.eff(x) -> x + 1;
+        perform(@my.eff, 10) ||> h1 ||> h2
+      `)
+      expect(result).toBe(20)
+    })
+
+    it('chained inline shorthands', () => {
+      const result = dvala.run(`
+        perform(@a, 10) ||> @a(x) -> x + perform(@b, x) ||> @b(x) -> x * 3
+      `)
+      expect(result).toBe(40)
+    })
+
+    it('three handlers chained', () => {
+      const result = dvala.run(`
+        let h1 = @a(x) -> x + 1;
+        let h2 = @b(x) -> x * 2;
+        let h3 = @c(x) -> x ++ "!";
+        (perform(@a, 10) + perform(@b, 5)) ||> h1 ||> h2 ||> h3
+      `)
+      expect(result).toBe(21)
+    })
+  })
+
+  describe('equivalence with handle...with', () => {
+    it('pipe equals handle...with for single handler', () => {
+      const pipe = dvala.run('perform(@my.eff, 21) ||> @my.eff(x) -> x * 2')
+      const block = dvala.run('handle perform(@my.eff, 21) with @my.eff(x) -> x * 2 end')
+      expect(pipe).toBe(block)
+    })
+
+    it('pipe with list equals handle...with list', () => {
+      const pipe = dvala.run(`
+        (perform(@a, 10) + perform(@b, 20)) ||> [@a(x) -> x * 2, @b(x) -> x * 3]
+      `)
+      const block = dvala.run(`
+        handle
+          perform(@a, 10) + perform(@b, 20)
+        with [@a(x) -> x * 2, @b(x) -> x * 3]
+        end
+      `)
+      expect(pipe).toBe(block)
+    })
+
+    it('chained pipe equals nested handle...with', () => {
+      const pipe = dvala.run(`
+        let h1 = @a(x) -> x * 2;
+        let h2 = @b(x) -> x + 1;
+        perform(@a, 10) ||> h1 ||> h2
+      `)
+      const block = dvala.run(`
+        let h1 = @a(x) -> x * 2;
+        let h2 = @b(x) -> x + 1;
+        handle (handle perform(@a, 10) with h1 end) with h2 end
+      `)
+      expect(pipe).toBe(block)
+    })
+
+    it('error catching pipe equals handle...with', () => {
+      const pipe = dvala.run('(0 / 0) ||> @dvala.error(msg) -> 0')
+      const block = dvala.run('handle 0 / 0 with @dvala.error(msg) -> 0 end')
+      expect(pipe).toBe(block)
+    })
+
+    it('reusable handler pipe equals handle...with', () => {
+      const pipe = dvala.run(`
+        let safe-div = @dvala.error(msg) -> 0;
+        (0 / 0) ||> safe-div
+      `)
+      const block = dvala.run(`
+        let safe-div = @dvala.error(msg) -> 0;
+        handle 0 / 0 with safe-div end
+      `)
+      expect(pipe).toBe(block)
+    })
+
+    it('middleware chaining pipe equals nested handle...with', () => {
+      const pipe = dvala.run(`
+        let auth = @auth.check(x) -> "user1";
+        let db = @db.get(x) -> "data:" ++ x;
+        let logger = (arg, eff, nxt) -> do let r = nxt(eff, arg); r end;
+        perform(@db.get, "key") ||> logger ||> auth ||> db
+      `)
+      const block = dvala.run(`
+        let auth = @auth.check(x) -> "user1";
+        let db = @db.get(x) -> "data:" ++ x;
+        let logger = (arg, eff, nxt) -> do let r = nxt(eff, arg); r end;
+        handle (handle (handle perform(@db.get, "key") with logger end) with auth end) with db end
+      `)
+      expect(pipe).toBe(block)
+    })
+
+    it('inline shorthand chaining parses correctly without parens', () => {
+      const withoutParens = dvala.run(`
+        perform(@a, 10) ||> @a(x) -> x + perform(@b, x) ||> @b(x) -> x * 3
+      `)
+      const withParens = dvala.run(`
+        (perform(@a, 10) ||> @a(x) -> x + perform(@b, x)) ||> @b(x) -> x * 3
+      `)
+      expect(withoutParens).toBe(withParens)
+    })
+  })
+
+  describe('precedence', () => {
+    it('||> has lower precedence than |>', () => {
+      const result = dvala.run(`
+        21 |> (x) -> perform(@my.eff, x) ||> @my.eff(x) -> x * 2
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('||> has lower precedence than arithmetic', () => {
+      const result = dvala.run(`
+        (1 + perform(@my.eff, 20)) ||> @my.eff(x) -> x * 2
+      `)
+      expect(result).toBe(41)
+    })
+  })
+})
