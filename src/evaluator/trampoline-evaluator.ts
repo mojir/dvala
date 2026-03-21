@@ -960,9 +960,13 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         // No more handlers in the chain — propagate past the HandleWithFrame.
         // Mark the EffectResumeFrame as no longer executing the handler body,
         // so that errors from downstream dispatch can be caught by the same scope.
-        const topFrame = k[0]
-        if (topFrame?.type === 'EffectResume') {
-          topFrame.handlerExecuting = false
+        // Walk k to find the EffectResumeFrame — it may not be at k[0] when
+        // the handler body has pushed intervening frames (e.g. NanCheck, FnBody).
+        for (const frame of k) {
+          if (frame.type === 'EffectResume') {
+            frame.handlerExecuting = false
+            break
+          }
         }
         // skipCheckpointCapture prevents double-capturing checkpoints that were
         // already captured upstream before the handler chain was invoked.
@@ -3885,6 +3889,15 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         : step.k
       const effectStep = tryDispatchDvalaError(error, kForDispatch)
       if (effectStep) return effectStep
+
+      // No local handler matched — check if host handlers can intercept dvala.error.
+      // Convert the runtime error to perform(@dvala.error, msg) so dispatchPerform
+      // can route it to host handlers.
+      if (handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
+        const effect = getEffectRef('dvala.error')
+        const arg: Any = error.shortMessage
+        return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: error.sourceCodeInfo }
+      }
     }
     // No handler matched — re-throw the error as a JS exception.
     throw error
