@@ -914,22 +914,22 @@ fizzbuzz join ", "
 // It only works when run inside the playground.
 
 // 1. Show a greeting toast
-perform(@playground.ui.showToast, ["Welcome to Playground Effects!", "success"]);
+perform(@playground.ui.show-toast, ["Welcome to Playground Effects!", "success"]);
 
 // 2. Read the current editor content
-let original = perform(@playground.editor.getContent);
+let original = perform(@playground.editor.get-content);
 perform(@dvala.io.println, "Editor has " ++ str(count(original)) ++ " characters");
 
 // 3. Generate some code and write it to the editor
 let n = 5;
 let generated = "let total = " ++ join(for (i in range(1, n + 1)) -> str(i), " + ") ++ "; total";
-perform(@playground.editor.setContent, generated);
-perform(@playground.ui.showToast, ["Code generated!", "info"]);
+perform(@playground.editor.set-content, generated);
+perform(@playground.ui.show-toast, ["Code generated!", "info"]);
 
 // 4. Wait a moment, then restore the original
 perform(@dvala.sleep, 1500);
-perform(@playground.editor.setContent, original);
-perform(@playground.ui.showToast, ["Original restored!", "success"]);
+perform(@playground.editor.set-content, original);
+perform(@playground.ui.show-toast, ["Original restored!", "success"]);
 
 "Done!"
 `.trim(),
