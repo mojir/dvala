@@ -164,7 +164,7 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('do 1, end')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('do 1 end')).not.toThrow()
     expect(() => dvalaDebug.run('null ?? 1')).not.toThrow()
-    expect(() => dvalaDebug.run('-> $ + $1')).toThrow(DvalaError)
+    expect(() => dvalaDebug.run('-> $1 + $2')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('-> $ + $21')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('(a) -> a')).not.toThrow()
     expect(() => dvalaDebug.run('(...a, ...b) -> a')).toThrow(DvalaError)
@@ -1333,7 +1333,7 @@ foo(1, 2)`)).toBe(3)
     // Testing the provided lambda function example
       expect(dvala.run('(-> 1)()')).toBe(1)
       expect(dvala.run('(-> $)(1)')).toBe(1)
-      expect(dvala.run('(-> do $1 + $2 end)(3, 4)')).toBe(7)
+      expect(dvala.run('(-> do $ + $2 end)(3, 4)')).toBe(7)
     })
 
     it('supports lambda functions with no parameters', () => {

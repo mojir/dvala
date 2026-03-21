@@ -27,8 +27,8 @@ describe('collection functions', () => {
       expect(dvala.run('map([1, 2, 3], -> 2 * $)')).toEqual([2, 4, 6])
       expect(dvala.run('map("ABCDE", "12345", ++)')).toBe('A1B2C3D4E5')
       expect(dvala.run('map([1, 2, 3], [1, 2], +)')).toEqual([2, 4])
-      expect(dvala.run('map("AaBbCc", -> if $1 >= "a" then "-" else "+" end)')).toBe('+-+-+-')
-      expect(() => dvala.run('map("AaBbCc", -> if $1 >= "a" 0 else 1 end)')).toThrow(DvalaError)
+      expect(dvala.run('map("AaBbCc", -> if $ >= "a" then "-" else "+" end)')).toBe('+-+-+-')
+      expect(() => dvala.run('map("AaBbCc", -> if $ >= "a" 0 else 1 end)')).toThrow(DvalaError)
       expect(dvala.run('map([1, "2", 3], null?)')).toEqual([false, false, false])
       expect(dvala.run('map([0, 1, 2, 3, 4, 5, 6, 7], -> zero?($ mod 3))')).toEqual([
         true,
@@ -299,9 +299,9 @@ describe('collection-Utils module functions', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}cu.mapi([1, "2", 3], -> $2)`)).toEqual([0, 1, 2])
         expect(mdvala.run(`${imp}cu.mapi([], number?)`)).toEqual([])
-        expect(mdvala.run(`${imp}cu.mapi([1, 2, 3], -> $1 + $2)`)).toEqual([1, 3, 5])
-        expect(mdvala.run(`${imp}cu.mapi("ABCDE", -> $2 ++ $1)`)).toBe('0A1B2C3D4E')
-        expect(mdvala.run(`${imp}cu.mapi({ a: 1, b: 2 }, -> $2 ++ $1)`)).toEqual({ a: 'a1', b: 'b2' })
+        expect(mdvala.run(`${imp}cu.mapi([1, 2, 3], -> $ + $2)`)).toEqual([1, 3, 5])
+        expect(mdvala.run(`${imp}cu.mapi("ABCDE", -> $2 ++ $)`)).toBe('0A1B2C3D4E')
+        expect(mdvala.run(`${imp}cu.mapi({ a: 1, b: 2 }, -> $2 ++ $)`)).toEqual({ a: 'a1', b: 'b2' })
         expect(() => mdvala.run(`${imp}cu.mapi({ a: 1, b: 2 }, { b: 20 }, +)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}cu.mapi(+)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}cu.mapi()`)).toThrow(DvalaError)
@@ -311,12 +311,12 @@ describe('collection-Utils module functions', () => {
 
     describe('reducei', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.reducei([1, 2, 3, 4, 5], -> $1 + $3, 0)`)).toBe(10)
-        expect(mdvala.run(`${imp}cu.reducei([], -> $1 + $3, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reducei([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
+        expect(mdvala.run(`${imp}cu.reducei([], -> $ + $3, 0)`)).toBe(0)
         expect(mdvala.run(`${imp}cu.reducei("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('0A1l2b3e4r5t')
         expect(mdvala.run(`${imp}cu.reducei("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
-        expect(mdvala.run(`${imp}cu.reducei({ a: 1, b: 2 }, -> $1 ++ $3, "")`)).toBe('ab')
-        expect(mdvala.run(`${imp}cu.reducei({}, -> $1 ++ $3, "")`)).toBe('')
+        expect(mdvala.run(`${imp}cu.reducei({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ab')
+        expect(mdvala.run(`${imp}cu.reducei({}, -> $ ++ $3, "")`)).toBe('')
 
         expect(() => mdvala.run(`${imp}cu.reducei([1, 2, 3], +)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}cu.reducei(+)`)).toThrow(DvalaError)
@@ -352,12 +352,12 @@ describe('collection-Utils module functions', () => {
 
     describe('reducei-right', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.reducei-right([1, 2, 3, 4, 5], -> $1 + $3, 0)`)).toBe(10)
-        expect(mdvala.run(`${imp}cu.reducei-right([], -> $1 + $3, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reducei-right([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
+        expect(mdvala.run(`${imp}cu.reducei-right([], -> $ + $3, 0)`)).toBe(0)
         expect(mdvala.run(`${imp}cu.reducei-right("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('5t4r3e2b1l0A')
         expect(mdvala.run(`${imp}cu.reducei-right("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
-        expect(mdvala.run(`${imp}cu.reducei-right({ a: 1, b: 2 }, -> $1 ++ $3, "")`)).toBe('ba')
-        expect(mdvala.run(`${imp}cu.reducei-right({}, -> $1 ++ $3, "")`)).toBe('')
+        expect(mdvala.run(`${imp}cu.reducei-right({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ba')
+        expect(mdvala.run(`${imp}cu.reducei-right({}, -> $ ++ $3, "")`)).toBe('')
 
         expect(() => mdvala.run(`${imp}cu.reducei-right([1, 2, 3], +)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}cu.reducei-right(+)`)).toThrow(DvalaError)
@@ -410,8 +410,8 @@ describe('collection-Utils module functions', () => {
 
     describe('reductionsi', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.reductionsi([1, 2, 3, 4, 5], -> $1 + $3, 0)`)).toEqual([0, 0, 1, 3, 6, 10])
-        expect(mdvala.run(`${imp}cu.reductionsi([], -> $1 + $3, 0)`)).toEqual([0])
+        expect(mdvala.run(`${imp}cu.reductionsi([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toEqual([0, 0, 1, 3, 6, 10])
+        expect(mdvala.run(`${imp}cu.reductionsi([], -> $ + $3, 0)`)).toEqual([0])
         expect(mdvala.run(`${imp}cu.reductionsi("Albert", (x, v, i) -> x ++ i ++ v, "")`)).toEqual([
           '',
           '0A',

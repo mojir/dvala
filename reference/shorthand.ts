@@ -19,13 +19,9 @@ export const shorthand: Record<ShorthandName, ShorthandReference> = {
     category: 'shorthand',
     description: `
 Shorthand for \`(args, ...) -> expression\`.
-\`$1, $2, $3, ...\` are shorthand for the first, second, third, ... argument.
-
-You can reference the first argument using either \`$1\` or \`$\`.
-However, please note that \`$1\` and \`$\` are mutually exclusive and cannot be used simultaneously.
-E.g. \`-> $ * $1\` is not valid.`,
+\`$\` is the first argument, and \`$2, $3, ...\` are the second, third, ... argument.`,
     examples: [
-      '-> $1 + $2',
+      '-> $ + $2',
       '(-> $ * $)(9)',
     ],
   },

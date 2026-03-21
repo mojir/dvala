@@ -77,9 +77,9 @@ let add = (x, y) -> x + y;
 // Single argument (parens optional)
 let square = x -> x * x;
 
-// Short lambda: $ or $1 = first arg, $2 = second, etc.
+// Short lambda: $ = first arg, $2 = second, etc.
 let double = -> $ * 2;
-let hyp    = -> $1 ^ 2 + $2 ^ 2;
+let hyp    = -> $ ^ 2 + $2 ^ 2;
 
 // Rest parameters
 let sum-all = (...nums) -> reduce(nums, +, 0);
@@ -336,9 +336,9 @@ data.users[0].name    // chaining
 `-> expression` with positional arguments:
 
 ```dvala
--> $ * 2         // single arg: $ or $1
--> $1 + $2       // two args
--> $1 * $2 + $3  // three args
+-> $ * 2         // single arg: $
+-> $ + $2        // two args
+-> $ * $2 + $3   // three args
 
 // Examples:
 [1, 2, 3] map (-> $ ^ 2)     // => [4, 9, 16] — wait, map takes (coll, fn)

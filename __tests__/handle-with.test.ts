@@ -464,10 +464,10 @@ describe('handle...with...end', () => {
   })
 
   describe('shorthand with 0 params ($ variables)', () => {
-    it('basic zero-param shorthand uses $1 for arg', () => {
+    it('basic zero-param shorthand uses $ for arg', () => {
       const result = dvala.run(`
         handle perform(@my.eff, 21)
-        with [@my.eff -> $1 * 2]
+        with [@my.eff -> $ * 2]
         end
       `)
       expect(result).toBe(42)
@@ -486,8 +486,8 @@ describe('handle...with...end', () => {
       const result = dvala.run(`
         handle perform(@my.eff, 10)
         with [
-          @my.eff -> $1 + $3($2, $1),
-          @my.eff -> $1 * 3
+          @my.eff -> $ + $3($2, $),
+          @my.eff -> $ * 3
         ]
         end
       `)
@@ -497,7 +497,7 @@ describe('handle...with...end', () => {
     it('zero-param wildcard', () => {
       const result = dvala.run(`
         handle perform(@anything, "data")
-        with [@* -> "caught: " ++ $1]
+        with [@* -> "caught: " ++ $]
         end
       `)
       expect(result).toBe('caught: data')
@@ -505,7 +505,7 @@ describe('handle...with...end', () => {
 
     it('zero-param stored as value', () => {
       const result = dvala.run(`
-        let h = @my.eff -> $1 + 1;
+        let h = @my.eff -> $ + 1;
         handle perform(@my.eff, 41) with [h] end
       `)
       expect(result).toBe(42)
@@ -602,7 +602,7 @@ describe('handle...with...end', () => {
     it('zero-param shorthand without brackets', () => {
       const result = dvala.run(`
         handle perform(@my.eff, 10)
-        with @my.eff -> $1 + 5
+        with @my.eff -> $ + 5
         end
       `)
       expect(result).toBe(15)

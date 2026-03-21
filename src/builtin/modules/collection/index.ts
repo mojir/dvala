@@ -373,7 +373,7 @@ cu.update-in(
       examples: [
         'let cu = import(collection); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
         'let cu = import(collection); cu.reducei("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reducei({ a: 1, b: 2 }, -> $1 ++ $3, "")',
+        'let cu = import(collection); cu.reducei({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -420,7 +420,7 @@ cu.update-in(
       examples: [
         'let cu = import(collection); cu.reducei-right([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
         'let cu = import(collection); cu.reducei-right("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reducei-right({ a: 1, b: 2 }, -> $1 ++ $3, "")',
+        'let cu = import(collection); cu.reducei-right({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -476,7 +476,7 @@ cu.reductions(
       examples: [
         'let cu = import(collection); cu.reductionsi([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
         'let cu = import(collection); cu.reductionsi("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reductionsi({ a: 1, b: 2 }, -> $1 ++ $3, "")',
+        'let cu = import(collection); cu.reductionsi({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },

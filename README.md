@@ -562,7 +562,7 @@ let square = x -> x * x;
 let constant = () -> 42;
 
 // Positional arguments
-let add-v2 = -> $1 + $2;
+let add-v2 = -> $ + $2;
 
 // Single positional argument
 let square-v2 = -> $ * $;

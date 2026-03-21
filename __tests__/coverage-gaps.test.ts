@@ -1624,9 +1624,9 @@ describe('effect name (@) syntax errors', () => {
 // parseFunction — mixed $/$ usage (lines 122-124)
 // ---------------------------------------------------------------------------
 
-describe('parseFunction — shorthand lambda mixed $ and $1', () => {
-  it('should throw when mixing $ and $1', () => {
-    expect(() => dvala.run('(-> $ + $1)(1, 2)')).toThrow('make up your mind')
+describe('parseFunction — shorthand lambda $1 rejection', () => {
+  it('should throw when using $1', () => {
+    expect(() => dvala.run('(-> $1 + $2)(1, 2)')).toThrow('Use $ instead of $1')
   })
 })
 

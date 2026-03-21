@@ -115,22 +115,18 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
 
   const endPos = ctx.getPosition() - 1
 
+  // Scan body for $ placeholders: $ = first arg, $2 = second, $3 = third, etc.
+  // $1 is not valid — use $ for the first argument.
   let arity = 0
-  let dollar1: 'NOT_SET' | 'WITH_1' | 'NAKED' = 'NOT_SET' // referring to argument bindings. $ = NAKED, $1, $2, $3, etc = WITH_1
   for (let pos = startPos; pos <= endPos; pos += 1) {
     const token = ctx.getTokenAt(pos)!
     if (isSymbolToken(token)) {
       const match = placeholderRegexp.exec(token[1])
       if (match) {
         const number = match[1] ?? '1'
-        if (number === '1') {
-          const mixedPercent1 = (!match[1] && dollar1 === 'WITH_1') || (match[1] && dollar1 === 'NAKED')
-          if (mixedPercent1)
-            throw new DvalaError('Please make up your mind, either use $ or $1', firstToken[2])
-
-          dollar1 = match[1] ? 'WITH_1' : 'NAKED'
+        if (match[1] === '1') {
+          throw new DvalaError('Use $ instead of $1 for the first argument', firstToken[2])
         }
-
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
           throw new DvalaError('Can\'t specify more than 20 arguments', firstToken[2])
@@ -138,14 +134,11 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     }
   }
 
+  // Build parameter bindings: $, $2, $3, ...
   const functionArguments: BindingTarget[] = []
-
   for (let i = 1; i <= arity; i += 1) {
-    if (i === 1 && dollar1 === 'NAKED') {
-      functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, '$'], undefined]], firstToken[2]))
-    } else {
-      functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, `$${i}`], undefined]], firstToken[2]))
-    }
+    const name = i === 1 ? '$' : `$${i}`
+    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, name], undefined]], firstToken[2]))
   }
 
   const node: LambdaNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['0_lambda'], [
