@@ -11,8 +11,8 @@ This is possible because Dvala is built on **serializable continuations**: when 
 ```typescript
 // First run — program suspends waiting for human approval
 const r1 = await dvala.runAsync(`
-  let report = perform(effect(llm.complete), "Generate Q4 report");
-  let approved = perform(effect(human.approve), report);
+  let report = perform(@llm.complete, "Generate Q4 report");
+  let approved = perform(@human.approve, report);
   if approved then "Published" else "Rejected" end
 `, { effectHandlers })
 

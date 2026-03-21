@@ -6,7 +6,7 @@ Dvala's effect system is rooted in **Handlers of Algebraic Effects** ([Plotkin &
 
 Dvala preserves the essential P&P model:
 
-* Effects as algebraic operations — `perform(eff, ...args)`
+* Effects as algebraic operations — `perform(eff, arg)`
 * Handlers as first-class effect interpreters — `handle...with...end`
 * Lexically scoped, deep handlers — innermost handler wins; effects inside handlers propagate outward
 
@@ -17,10 +17,10 @@ Two deliberate deviations:
 
 ## Creating and Performing Effects
 
-Use `effect(name)` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
+Use `@name` to create an effect reference. The name is a dotted identifier. Effect references are first-class values:
 
 ```dvala
-let log = effect(dvala.io.println);
+let log = @dvala.io.println;
 log
 ```
 
@@ -55,14 +55,14 @@ Dvala provides built-in effects that are always available without explicit handl
 * `dvala.error` — raises an error (covered in the Errors section below)
 
 ```dvala
-perform(effect(dvala.random))
+perform(@dvala.random)
 ```
 
 Here's an example using `read-line` with a local handler to simulate user input:
 
 ```dvala
 handle
-  let name = perform(effect(dvala.io.read-line));
+  let name = perform(@dvala.io.read-line);
   "Hello, " ++ name ++ "!"
 with [(eff, arg, nxt) ->
   if eff == @dvala.io.read-line then "Alice"
@@ -75,7 +75,7 @@ end
 Without a local handler, effects like `read-line` propagate to the host environment (no output shown in documentation examples):
 
 ```dvala
-let name = perform(effect(dvala.io.read-line));
+let name = perform(@dvala.io.read-line);
 "Hello, " ++ name ++ "!"
 ```
 
@@ -85,7 +85,7 @@ let name = perform(effect(dvala.io.read-line));
 
 ```dvala
 handle
-  let x = perform(effect(my.double), 21);
+  let x = perform(@my.double, 21);
   x + 1
 with [(eff, arg, nxt) ->
   if eff == @my.double then arg * 2
@@ -99,8 +99,8 @@ Multiple effects can be handled with an `if`/`else if` chain inside the handler:
 
 ```dvala
 handle
-  let a = perform(effect(my.add), [10, 20]);
-  let b = perform(effect(my.mul), [3, 4]);
+  let a = perform(@my.add, [10, 20]);
+  let b = perform(@my.mul, [3, 4]);
   [a, b]
 with [(eff, arg, nxt) ->
   if eff == @my.add then arg(0) + arg(1)
@@ -119,7 +119,7 @@ To raise an error, perform `dvala.error`:
 
 ```dvala
 handle
-  perform(effect(dvala.error), "oops")
+  perform(@dvala.error, "oops")
 with [(eff, arg, nxt) ->
   if eff == @dvala.error then "caught: " ++ arg
   else nxt(eff, arg)
@@ -145,7 +145,7 @@ You can mix error handling with other effect handlers in the same block:
 
 ```dvala
 handle
-  let x = perform(effect(my.read));
+  let x = perform(@my.read);
   sqrt(x * -1)
 with [(eff, arg, nxt) ->
   if eff == @my.read then 42
@@ -165,7 +165,7 @@ Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate
 ```dvala
 handle
   handle
-    perform(effect(my.inner), "hi")
+    perform(@my.inner, "hi")
   with [(eff, arg, nxt) ->
     if eff == @my.inner then upper-case(arg)
     else nxt(eff, arg)
@@ -186,7 +186,7 @@ end
 
 ```dvala
 handle
-  perform(effect(dvala.io.println), "test")
+  perform(@dvala.io.println, "test")
 with [(eff, arg, nxt) ->
   if effect-matcher("dvala.*")(eff) then "intercepted: " ++ arg
   else nxt(eff, arg)
@@ -207,7 +207,7 @@ The most common pattern — handle the effect and resume the program with a valu
 import { createDvala } from '@mojir/dvala/full'
 
 const dvala = createDvala()
-const result = await dvala.runAsync('perform(effect(my.greet), "World")', {
+const result = await dvala.runAsync('perform(@my.greet, "World")', {
   effectHandlers: [
     { pattern: 'my.greet', handler: async ({ args, resume }) => {
       resume(`Hello, ${args[0]}!`)
@@ -224,7 +224,7 @@ Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error fl
 ```typescript
 const result = await dvala.runAsync(`
   handle
-    perform(effect(my.risky))
+    perform(@my.risky)
   with [(eff, arg, nxt) ->
     if eff == @dvala.error then "recovered: " ++ arg
     else nxt(eff, arg)
@@ -247,7 +247,7 @@ Call `suspend(meta?)` to pause the entire program. The execution state is captur
 
 ```typescript
 const result = await dvala.runAsync(`
-  let answer = perform(effect(human.approve), "Draft report");
+  let answer = perform(@human.approve, "Draft report");
   "Approved: " ++ answer
 `, {
   effectHandlers: [
@@ -270,7 +270,7 @@ Call `next()` to pass the effect to the next matching handler. Combined with wil
 
 ```typescript
 const log: string[] = []
-const result = await dvala.runAsync('perform(effect(app.save), "data")', {
+const result = await dvala.runAsync('perform(@app.save, "data")', {
   effectHandlers: [
     { pattern: '*', handler: async ({ effectName, next }) => {
       log.push(`[audit] ${effectName}`)
@@ -298,7 +298,7 @@ Host handler keys support three matching modes:
 * **Catch-all**: `'*'` — matches everything
 
 ```typescript
-const result = await dvala.runAsync('perform(effect(my.sub.action), "go")', {
+const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
   effectHandlers: [
     { pattern: 'my.*', handler: async ({ args, resume }) => {
       resume(`handled: ${args[0]}`)

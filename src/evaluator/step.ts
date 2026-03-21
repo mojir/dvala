@@ -14,7 +14,7 @@
  * - **Apply**: A frame has received a value and needs to determine the next step.
  *   Dispatches to `applyFrame(frame, value, k)`.
  * - **Perform**: An effect was invoked via `perform`. The trampoline searches `k`
- *   for a matching `TryWithFrame` (local handler) or dispatches to a host handler.
+ *   for a matching `HandleWithFrame` (local handler) or dispatches to a host handler.
  *
  * All step types are plain serializable objects (when `ContextStack` is replaced
  * with a serializable representation in Phase 4).
@@ -79,7 +79,7 @@ export interface ApplyStep {
  * An effect was invoked via `perform(effect, arg)`.
  *
  * The trampoline searches the continuation stack `k` from top to bottom for
- * a matching `TryWithFrame`. If found, the handler is dispatched locally.
+ * a matching `HandleWithFrame`. If found, the handler is dispatched locally.
  * If not found, the effect is dispatched to the host handler registered
  * in `run()` options, or to a standard effect default implementation.
  *

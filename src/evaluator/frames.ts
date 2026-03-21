@@ -430,17 +430,17 @@ export interface RecurLoopRebindFrame {
 /**
  * Bridges a handler's return value back to the perform call site.
  *
- * When `perform` matches a `TryWithFrame`, the handler runs with a continuation
+ * When `perform` matches a `HandleWithFrame`, the handler runs with a continuation
  * that excludes the current try/with/catch scope (so errors and effects from
  * the handler propagate upward per P&P semantics). However, the handler's
  * return value needs to resume the body at the perform call site with the
- * TryWithFrame still on the stack (so subsequent performs in the same body
+ * HandleWithFrame still on the stack (so subsequent performs in the same body
  * can still match handlers).
  *
  * `EffectResumeFrame` is placed below the handler's function frames in the
  * continuation stack. When the handler returns a value, this frame replaces
  * the continuation with `resumeK` — the original continuation from the
- * perform call site, with the TryWithFrame intact.
+ * perform call site, with the HandleWithFrame intact.
  *
  * Error/effect semantics:
  * - Handler RETURNS value → EffectResumeFrame redirects to resumeK → body continues
@@ -464,7 +464,7 @@ export interface EffectResumeFrame {
 /**
  * `handle...with` effect handler boundary.
  *
- * Similar to `TryWithFrame` but handlers are evaluated Dvala function values
+ * `handle...with` effect handler boundary. Handlers are evaluated Dvala function values
  * (not AST nodes). When `perform` is called, the trampoline searches for a
  * matching `HandleWithFrame` and invokes the handler chain.
  *
@@ -874,7 +874,7 @@ export interface DebugStepFrame {
  * - **Collection construction**: ArrayBuildFrame, ObjectBuildFrame
  * - **Binding**: LetBindFrame, LoopBindFrame, LoopIterateFrame, ForLoopFrame
  * - **Control flow**: RecurFrame
- * - **Exception & effect handling**: TryWithFrame
+ * - **Exception & effect handling**: HandleWithFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: FnArgBindFrame, BindingSlotFrame, MatchSlotFrame
  * - **Post-processing**: NanCheckFrame

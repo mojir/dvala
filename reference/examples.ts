@@ -100,7 +100,7 @@ perform(@host.plus, [x, y])
       ],
     },
     code: `
-// Call async host effects with perform(effect(...), args...)
+// Call async host effects with perform(effect, args...)
 
 // Simulate a delay
 perform(@dvala.io.print, "Waiting 500ms...");

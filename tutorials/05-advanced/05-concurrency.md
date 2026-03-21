@@ -10,8 +10,8 @@ Since `parallel` and `race` require async mode and external effect handlers, the
 
 ```dvala
 handle
-  let a = perform(effect(my.val), 10);
-  let b = perform(effect(my.val), 20);
+  let a = perform(@my.val, 10);
+  let b = perform(@my.val, 20);
   a + b
 with [(eff, arg, nxt) ->
   if eff == @my.val then arg * 2
@@ -28,9 +28,9 @@ end
 ```dvala no-run
 // Each branch runs concurrently
 parallel(
-  perform(effect(fetch.user), "alice"),
-  perform(effect(fetch.user), "bob"),
-  perform(effect(fetch.user), "carol")
+  perform(@fetch.user, "alice"),
+  perform(@fetch.user, "bob"),
+  perform(@fetch.user, "carol")
 )
 // => [alice-data, bob-data, carol-data]
 ```
@@ -48,8 +48,8 @@ Key properties:
 ```dvala no-run
 // First response wins — others are cancelled
 race(
-  perform(effect(api.primary), query),
-  perform(effect(api.fallback), query)
+  perform(@api.primary, query),
+  perform(@api.fallback, query)
 )
 ```
 
@@ -66,8 +66,8 @@ Key properties:
 ```dvala no-run
 // Fetch user data and preferences concurrently
 let [user, prefs] = parallel(
-  perform(effect(db.get-user), id),
-  perform(effect(db.get-prefs), id)
+  perform(@db.get-user, id),
+  perform(@db.get-prefs, id)
 )
 ```
 
@@ -84,9 +84,9 @@ Process multiple items concurrently, then combine:
 ```dvala no-run
 // Process all items concurrently
 let results = parallel(
-  perform(effect(process.item), items(0)),
-  perform(effect(process.item), items(1)),
-  perform(effect(process.item), items(2))
+  perform(@process.item, items(0)),
+  perform(@process.item, items(1)),
+  perform(@process.item, items(2))
 );
 reduce(results, +, 0)
 ```
@@ -98,9 +98,9 @@ Race a computation against a timer:
 ```dvala no-run
 // Either get the result or time out
 race(
-  perform(effect(compute.heavy), data),
+  perform(@compute.heavy, data),
   do
-    perform(effect(dvala.sleep), 5000);
+    perform(@dvala.sleep, 5000);
     "timeout"
   end
 )
@@ -113,8 +113,8 @@ Try the preferred source first, fall back on failure:
 ```dvala no-run
 // Fastest successful response wins
 race(
-  perform(effect(cache.get), key),
-  perform(effect(db.get), key)
+  perform(@cache.get, key),
+  perform(@db.get, key)
 )
 ```
 

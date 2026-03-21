@@ -42,7 +42,7 @@ The Dvala code inside (`1 + 2` or `fetchData()`) is written the same way. The ch
 Dvala's effect system is the key integration point. When a program performs an effect, the host handler decides whether to resolve it synchronously or asynchronously:
 
 ```dvala
-let x = perform(effect(dvala.random));
+let x = perform(@dvala.random);
 x * 100
 ```
 
