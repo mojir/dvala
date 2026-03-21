@@ -114,7 +114,7 @@ describe('phase 2 — Local Effect Handling', () => {
     })
   })
 
-  describe('2c: TryWithFrame handler dispatch', () => {
+  describe('2c: handler dispatch', () => {
     it('should match handlers by effect name', () => {
       const result = dvala.run(`
         handle
@@ -170,7 +170,7 @@ describe('phase 2 — Local Effect Handling', () => {
       expect(result).toBe('inner(a) + outer(b)')
     })
 
-    it('should remove TryWithFrame after match — handlers run outside scope', () => {
+    it('should remove HandleWithFrame after match — handlers run outside scope', () => {
       // If the handler calls perform with the same effect, it should NOT match
       // the same handle/with (the frame was removed). It should either match an
       // outer handler or fail as unhandled.
@@ -210,7 +210,7 @@ describe('phase 2 — Local Effect Handling', () => {
       expect(result).toBe('logged: msg')
     })
 
-    it('should skip TryWithFrame on success (no effect performed)', () => {
+    it('should skip HandleWithFrame on success (no effect performed)', () => {
       const result = dvala.run(`
         handle
           42
