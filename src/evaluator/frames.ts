@@ -428,36 +428,6 @@ export interface RecurLoopRebindFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * `do...with` effect handler boundary.
- *
- * Pushed around the do body evaluation. When `perform` is called, the
- * trampoline searches the continuation stack for a matching `TryWithFrame`.
- * The delimited continuation between `perform` and this frame is captured.
- *
- * Handlers are stored as evaluated `[EffectRef, handlerFn AstNode]` pairs.
- * The effect expressions are evaluated eagerly when entering the `try/with`
- * scope (i.e., when the frame is created) via `evaluateNodeRecursive`.
- * This ensures handler matching is deterministic and doesn't depend on
- * state changes inside the do body.
- */
-export interface TryWithFrame {
-  type: 'TryWith'
-  handlers: EvaluatedWithHandler[]
-  env: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
- * A pre-evaluated effect handler pair for `TryWithFrame`.
- * `effectRef` is the resolved EffectRef value.
- * `handlerNode` is the AST node for the handler function expression.
- */
-export interface EvaluatedWithHandler {
-  effectRef: Any // Should be EffectRef at runtime — stored as Any for serialization
-  handlerNode: AstNode
-}
-
-/**
  * Bridges a handler's return value back to the perform call site.
  *
  * When `perform` matches a `TryWithFrame`, the handler runs with a continuation
@@ -771,51 +741,6 @@ export interface MatchSlotFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
-/**
- * Evaluate effect reference expressions in `do...with...end` blocks.
- *
- * When a block has multiple `with` handlers, the effect expressions need to
- * be evaluated sequentially before the body runs. This frame tracks the
- * evaluation progress.
- *
- * Fields:
- * - `handlerNodes`: All [effectExpr, handlerNode] pairs from the `with` clause
- * - `evaluatedHandlers`: Effect refs evaluated so far
- * - `index`: Current handler being evaluated
- * - `bodyNodes`: The block body to evaluate after all handlers are set up
- * - `bodyEnv`: The environment for body evaluation
- */
-export interface EffectRefFrame {
-  type: 'EffectRef'
-  handlerNodes: [AstNode, AstNode][]
-  evaluatedHandlers: EvaluatedWithHandler[]
-  index: number
-  bodyNodes: AstNode[]
-  bodyEnv: ContextStack
-  env: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
- * Frame for invoking a matched effect handler.
- *
- * When a `perform` matches a handler, we need to evaluate the handler
- * expression (a lambda or variable) and then dispatch the call.
- * This frame captures the context needed to dispatch after evaluation.
- *
- * Fields:
- * - `arg`: The single payload to pass to the handler
- * - `handlerK`: The continuation stack for the handler invocation
- * - `handlerEnv`: Environment for dispatching the handler
- */
-export interface HandlerInvokeFrame {
-  type: 'HandlerInvoke'
-  arg: Any
-  handlerK: ContinuationStack
-  handlerEnv: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
 // ---------------------------------------------------------------------------
 // Compound function wrappers
 // ---------------------------------------------------------------------------
@@ -1016,14 +941,10 @@ export type Frame =
   | RecurFrame
   | RecurLoopRebindFrame
   | PerformArgsFrame
-  // Exception & effect handling
-  | TryWithFrame
+  // Effect handling
   | EffectResumeFrame
-  | EffectRefFrame
   | HandleWithFrame
   | HandleSetupFrame
-  // Handler invocation
-  | HandlerInvokeFrame
   // Compound function wrappers
   | ComplementFrame
   | CompFrame

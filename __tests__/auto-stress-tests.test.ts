@@ -497,18 +497,17 @@ describe('stress: local + host handler priority with suspend', () => {
     expect(r2).toEqual({ type: 'completed', value: 'L3:deep' })
   })
 
-  it('effect-matcher predicate in do/with survives suspend/resume', async () => {
+  it('effect-matcher predicate in handle/with survives suspend/resume', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      let pred = effect-matcher("custom.*");
+      handle
         let x = perform(@my.wait);
         perform(@custom.foo, x)
-      with
-        case effect-matcher("custom.*")
-        then (v) -> "matched: " ++ v
+      with [(eff, arg, nxt) -> if pred(eff) then "matched: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -914,15 +913,16 @@ describe('stress: effect-matcher in complex flows', () => {
     expect(r2).toEqual({ type: 'completed', value: 'transformed: input' })
   })
 
-  it('multiple effect-matchers in same do/with, first match wins', () => {
+  it('multiple effect-matchers in handle/with, first match wins', () => {
     const result = dvala.run(`
-      do
+      let pred1 = effect-matcher("custom.*");
+      let pred2 = effect-matcher(#".*");
+      handle
         perform(@custom.foo, "data")
-      with
-        case effect-matcher("custom.*")
-        then (v) -> "wildcard: " ++ v
-        case effect-matcher(#".*")
-        then (v) -> "regex: " ++ v
+      with [
+        (eff, arg, nxt) -> if pred1(eff) then "wildcard: " ++ arg else nxt(eff, arg) end,
+        (eff, arg, nxt) -> if pred2(eff) then "regex: " ++ arg else nxt(eff, arg) end
+      ]
       end
     `)
     expect(result).toBe('wildcard: data')
@@ -931,11 +931,9 @@ describe('stress: effect-matcher in complex flows', () => {
   it('effect-matcher predicate stored in variable works', () => {
     const result = dvala.run(`
       let is-custom = effect-matcher("custom.*");
-      do
+      handle
         perform(@custom.bar, 42)
-      with
-        case is-custom
-        then (v) -> v * 2
+      with [(eff, arg, nxt) -> if is-custom(eff) then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(84)

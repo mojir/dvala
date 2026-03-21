@@ -16,7 +16,7 @@ const docs: CustomDocs = {
     ['eff', 'expression', 'An expression evaluating to an effect value (from `@name`).'],
     ['payload', 'expression', 'Optional single payload value passed to the effect handler. Defaults to `null` if omitted.'],
   ],
-  description: 'Invokes an effect. The nearest enclosing `do/with` handler matching the effect '
+  description: 'Invokes an effect. The nearest enclosing `handle/with` handler matching the effect '
     + 'intercepts the call. The handler receives the payload and its return value '
     + 'becomes the result of `perform`. If no local handler matches, the effect is dispatched '
     + 'to the host.',

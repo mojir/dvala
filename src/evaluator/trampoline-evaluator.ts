@@ -69,7 +69,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
-import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
+import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isObj } from '../typeGuards/dvala'
 import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -98,9 +98,7 @@ import type {
   ContinuationStack,
   DebugStepFrame,
   EffectResumeFrame,
-  EffectRefFrame,
   EvalArgsFrame,
-  EvaluatedWithHandler,
   EveryPredFrame,
   FnArgBindFrame,
   FnArgSlotCompleteFrame,
@@ -112,7 +110,6 @@ import type {
   Frame,
   HandleSetupFrame,
   HandleWithFrame,
-  HandlerInvokeFrame,
   IfBranchFrame,
   ImportMergeFrame,
   JuxtFrame,
@@ -135,7 +132,6 @@ import type {
   SequenceFrame,
   SomePredFrame,
   TemplateStringBuildFrame,
-  TryWithFrame,
 } from './frames'
 import type { Context } from './interface'
 import type { Step } from './step'
@@ -485,30 +481,13 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
     }
 
-    // --- block (do...end, do...with...end) ---
+    // --- block (do...end) ---
     case specialExpressionTypes.block: {
       const nodes = node[1][1] as AstNode[]
-      const withHandlerNodes = node[1][2] as [AstNode, AstNode][] | undefined
       const newContext: Context = {}
       const newEnv = env.create(newContext)
 
-      // If there are effect handlers, evaluate effect refs via frames
-      if (withHandlerNodes && withHandlerNodes.length > 0) {
-        const effectRefFrame: EffectRefFrame = {
-          type: 'EffectRef',
-          handlerNodes: withHandlerNodes,
-          evaluatedHandlers: [],
-          index: 0,
-          bodyNodes: nodes,
-          bodyEnv: newEnv,
-          env,
-          sourceCodeInfo,
-        }
-        const firstEffectExpr = withHandlerNodes[0]![0]
-        return { type: 'Eval', node: firstEffectExpr, env, k: [effectRefFrame, ...k] }
-      }
-
-      // No effect handlers — evaluate body directly
+      // Evaluate body directly
       if (nodes.length === 0) {
         return { type: 'Value', value: null, k }
       }
@@ -1276,8 +1255,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyRecurLoopRebind(frame, value, k)
     case 'PerformArgs':
       return applyPerformArgs(frame, value, k)
-    case 'TryWith':
-      return applyTryWith(value, k)
     case 'EffectResume':
       return applyEffectResume(frame, value, k)
     case 'HandleSetup':
@@ -1303,10 +1280,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyBindingSlot(frame, value, k)
     case 'MatchSlot':
       return applyMatchSlot(frame, value, k)
-    case 'EffectRef':
-      return applyEffectRef(frame, value, k)
-    case 'HandlerInvoke':
-      return applyHandlerInvoke(frame, value, k)
     case 'Complement':
       // Negate the result of the wrapped function
       return { type: 'Value', value: !value, k }
@@ -1978,7 +1951,7 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
  * re-throwing the error as a JS exception.
  *
  * Search order:
- * 1. Local `TryWithFrame` handlers (innermost first)
+ * 1. Local `HandleWithFrame` handlers (innermost first)
  * 2. Host handlers registered for `'dvala.error'`
  */
 function tryDispatchDvalaError(
@@ -1991,7 +1964,7 @@ function tryDispatchDvalaError(
   // Convert runtime error to a perform(@dvala.error, msg) if there's a
   // handler that can catch it. Otherwise return null (caller re-throws).
   //
-  // Walk k looking for handler frames (TryWith, HandleWith) or EffectResumeFrame
+  // Walk k looking for handler frames (HandleWith) or EffectResumeFrame
   // (which points back to the handler scope via resumeK).
   //
   // When inside a handler (EffectResumeFrame found):
@@ -2001,15 +1974,22 @@ function tryDispatchDvalaError(
   //   the same scope's @dvala.error handler should catch it
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
-    if (frame.type === 'TryWith' || frame.type === 'HandleWith') {
-      // Found a handler directly in k — use full k so body frames above
-      // the handler are preserved for proper resumption
+    if (frame.type === 'HandleWith') {
+      // HandleWith always receives all effects — the handler chain decides
       return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
     }
     if (frame.type === 'EffectResume') {
       // handlerExecuting=true: error from handler body → skip source HandleWithFrame
       // handlerExecuting=false: error from nxt() dispatch → same scope can catch it
-      const skipFrame = frame.handlerExecuting ? frame.sourceHandleFrame : undefined
+      //
+      // Special case: when the error is a UserDefinedError (thrown by dispatchPerform
+      // for unhandled @dvala.error), skip the sourceHandleFrame even when
+      // handlerExecuting=false. This prevents infinite loops where:
+      //   handler gets @dvala.error → calls nxt() → unhandled → UserDefinedError
+      //   → tryDispatchDvalaError routes @dvala.error back to same handler → loop
+      const skipFrame = (frame.handlerExecuting || error instanceof UserDefinedError)
+        ? frame.sourceHandleFrame
+        : undefined
       const resumeK = frame.resumeK
       for (let j = 0; j < resumeK.length; j++) {
         const rFrame = resumeK[j]!
@@ -2019,13 +1999,13 @@ function tryDispatchDvalaError(
           // Continue looking for an outer handler in the rest
           for (let jj = j; jj < patchedK.length; jj++) {
             const rrFrame = patchedK[jj]!
-            if (rrFrame.type === 'HandleWith' || rrFrame.type === 'TryWith') {
+            if (rrFrame.type === 'HandleWith') {
               return { type: 'Perform', effect, arg, k: patchedK, sourceCodeInfo: error.sourceCodeInfo }
             }
           }
           return null // No outer handler
         }
-        if (rFrame.type === 'HandleWith' || rFrame.type === 'TryWith') {
+        if (rFrame.type === 'HandleWith') {
           return { type: 'Perform', effect, arg, k: resumeK, sourceCodeInfo: error.sourceCodeInfo }
         }
       }
@@ -2156,15 +2136,9 @@ function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: Conti
   return startRecurLoopRebind(bindingNodes, bindingIndex + 1, params, bindingContext, body, env, remainingK, sourceCodeInfo)
 }
 
-function applyTryWith(_value: Any, k: ContinuationStack): Step {
-  // Try body completed successfully — the with frame is discarded.
-  // The value propagates up past the TryWithFrame.
-  return { type: 'Value', value: _value, k }
-}
-
 function applyEffectResume(frame: EffectResumeFrame, value: Any, _k: ContinuationStack): Step {
   // The handler returned a value. Replace the continuation with resumeK
-  // (the original continuation from the perform call site, with TryWithFrame
+  // (the original continuation from the perform call site, with HandleWithFrame
   // still on the stack for subsequent performs).
   // The _k (handler's remaining outer_k) is discarded — resumeK already
   // includes the full original continuation.
@@ -2243,94 +2217,6 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   // Evaluate next arg
   const newFrame: PerformArgsFrame = { ...frame, index: index + 1 }
   return { type: 'Eval', node: argNodes[index]!, env, k: [newFrame, ...k] }
-}
-
-/**
- * Dispatch a Perform step by searching the continuation stack for a matching
- * TryWithFrame. If found, evaluate the handler and use its return value as the
- * result of the perform call. If not found, throw an unhandled effect error.
- *
- * Handler semantics (per P&P / Dvala contract):
- * - Handler receives the perform args as an array: `([arg1, arg2]) -> ...`
- * - Handler's return value IS the resume value — no explicit resume needed
- * - Handlers run OUTSIDE the try/with scope — the TryWithFrame is removed
- *   from the handler's error/effect path. An EffectResumeFrame bridges the
- *   handler's return value back to the original continuation.
- * - The handler function's environment is the one captured at the with-clause,
- *   NOT the environment at the perform call site
- *
- * Continuation structure:
- *   Original k:   [...body_k, TryWithFrame(i), ...outer_k]
- *   Handler's k:  [EffectResumeFrame{resumeK=k}, ...outer_k]
- *   When handler returns V: EffectResumeFrame replaces k with original k,
- *   so V flows through body_k with TryWithFrame still on stack.
- */
-
-/**
- * Check if a handler's case clause matches the given effect.
- * Supports two forms:
- * - EffectRef: exact name match (e.g. `eff == @dvala.error` in handle...with handler)
- * - Predicate function: called with the effect, truthy = match (legacy `case my-predicate`)
- *
- * Predicate functions must be synchronous — async predicates throw an error.
- */
-function handlerMatchesEffect(
-  handler: EvaluatedWithHandler,
-  effect: EffectRef,
-  env: ContextStack,
-  sourceCodeInfo?: SourceCodeInfo,
-): boolean {
-  if (isEffect(handler.effectRef)) {
-    return handler.effectRef.name === effect.name
-  }
-  if (isDvalaFunction(handler.effectRef)) {
-    const step = dispatchFunction(handler.effectRef, [effect], [], env, sourceCodeInfo, [])
-    if (step instanceof Promise) {
-      throw new DvalaError('Effect handler predicates must be synchronous', sourceCodeInfo)
-    }
-    return !!runSyncTrampoline(step)
-  }
-  return false
-}
-
-/**
- * Invoke a matched handler for a performed effect.
- * Builds the handler continuation and dispatches the handler function.
- */
-function invokeMatchedHandler(
-  handler: EvaluatedWithHandler,
-  frame: TryWithFrame,
-  arg: Any,
-  k: ContinuationStack,
-  frameIndex: number,
-  sourceCodeInfo?: SourceCodeInfo,
-): Step | Promise<Step> {
-  // resumeK = original k — handler's return value resumes here
-  // (TryWithFrame stays on the stack for subsequent performs)
-  const resumeK = k
-
-  // Determine outer_k — skip TryWithFrame so errors and effects from the
-  // handler propagate upward past the current do...with block.
-  const outerK = k.slice(frameIndex + 1)
-
-  // Handler's continuation: EffectResumeFrame bridges back to resumeK
-  const effectResumeFrame: EffectResumeFrame = {
-    type: 'EffectResume',
-    resumeK,
-    sourceCodeInfo,
-  }
-  const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
-
-  // Evaluate the handler fn expression via trampoline (frame-based).
-  // Push HandlerInvokeFrame to dispatch the handler after evaluation.
-  const handlerInvokeFrame: HandlerInvokeFrame = {
-    type: 'HandlerInvoke',
-    arg,
-    handlerK,
-    handlerEnv: frame.env,
-    sourceCodeInfo,
-  }
-  return { type: 'Eval', node: handler.handlerNode, env: frame.env, k: [handlerInvokeFrame, ...outerK] }
 }
 
 /**
@@ -2444,14 +2330,6 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
 
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
-    if (frame.type === 'TryWith') {
-      // Search this frame's handlers for a matching effect
-      for (const handler of frame.handlers) {
-        if (handlerMatchesEffect(handler, effect, frame.env, sourceCodeInfo)) {
-          return invokeMatchedHandler(handler, frame, arg, k, i, sourceCodeInfo)
-        }
-      }
-    }
     if (frame.type === 'HandleWith') {
       return invokeHandleWithChain(frame, effect, arg, k, i, sourceCodeInfo)
     }
@@ -3549,67 +3427,6 @@ function tryNextMatchCase(matchFrame: MatchFrame, k: ContinuationStack): Step {
  * Handles continuation after evaluating an effect reference expression.
  * Stores the evaluated ref, then either evaluates the next ref or starts the body.
  */
-function applyEffectRef(frame: EffectRefFrame, value: Any, k: ContinuationStack): Step {
-  const { handlerNodes, evaluatedHandlers, index, bodyNodes, bodyEnv, env, sourceCodeInfo } = frame
-
-  // Store the evaluated effect reference
-  const currentHandler = handlerNodes[index]!
-  evaluatedHandlers.push({
-    effectRef: value,
-    handlerNode: currentHandler[1],
-  })
-
-  const nextIndex = index + 1
-
-  // If more handlers to evaluate, continue with next effect expression
-  if (nextIndex < handlerNodes.length) {
-    const nextFrame: EffectRefFrame = {
-      type: 'EffectRef',
-      handlerNodes,
-      evaluatedHandlers,
-      index: nextIndex,
-      bodyNodes,
-      bodyEnv,
-      env,
-      sourceCodeInfo,
-    }
-    const nextEffectExpr = handlerNodes[nextIndex]![0]
-    return { type: 'Eval', node: nextEffectExpr, env, k: [nextFrame, ...k] }
-  }
-
-  // All handlers evaluated — build TryWithFrame and evaluate body
-  const withFrame: TryWithFrame = {
-    type: 'TryWith',
-    handlers: evaluatedHandlers,
-    env,
-    sourceCodeInfo,
-  }
-  const bodyK: ContinuationStack = [withFrame, ...k]
-
-  if (bodyNodes.length === 0) {
-    return { type: 'Value', value: null, k: bodyK }
-  }
-  if (bodyNodes.length === 1) {
-    return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: bodyK }
-  }
-  const sequenceFrame: SequenceFrame = {
-    type: 'Sequence',
-    nodes: bodyNodes,
-    index: 1,
-    env: bodyEnv,
-    sourceCodeInfo,
-  }
-  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [sequenceFrame, ...bodyK] }
-}
-
-/**
- * Handler expression has been evaluated — dispatch the handler function.
- */
-function applyHandlerInvoke(frame: HandlerInvokeFrame, value: Any, _k: ContinuationStack): Step | Promise<Step> {
-  const fnLike = asFunctionLike(value, frame.sourceCodeInfo)
-  return dispatchFunction(fnLike, [frame.arg], [], frame.handlerEnv, frame.sourceCodeInfo, frame.handlerK)
-}
-
 /**
  * Comp iteration — chain to the next function in the composition.
  * Result from previous function is wrapped in array and passed to next.
@@ -3893,7 +3710,10 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // No local handler matched — check if host handlers can intercept dvala.error.
       // Convert the runtime error to perform(@dvala.error, msg) so dispatchPerform
       // can route it to host handlers.
-      if (handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
+      // Skip when the error is already a UserDefinedError (from unhandled @dvala.error)
+      // to prevent infinite re-dispatch: host handler calls next() → unhandled →
+      // UserDefinedError → re-dispatch to same host handler → loop.
+      if (!(error instanceof UserDefinedError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
         const effect = getEffectRef('dvala.error')
         const arg: Any = error.shortMessage
         return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: error.sourceCodeInfo }

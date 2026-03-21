@@ -9,12 +9,15 @@ Dvala provides two structured concurrency primitives: `parallel` and `race`. Bot
 Since `parallel` and `race` require async mode and external effect handlers, the examples in this tutorial are shown but not executed. The concepts can be understood through local effect handlers:
 
 ```dvala
-do
+handle
   let a = perform(effect(my.val), 10);
   let b = perform(effect(my.val), 20);
   a + b
-with
-  case effect(my.val) then (x) -> x * 2
+with [(eff, arg, nxt) ->
+  if eff == @my.val then arg * 2
+  else nxt(eff, arg)
+  end
+]
 end
 ```
 

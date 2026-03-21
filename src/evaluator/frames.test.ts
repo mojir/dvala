@@ -9,7 +9,6 @@ import type {
   CompFrame,
   CondFrame,
   ContinuationStack,
-  EffectRefFrame,
   EffectResumeFrame,
   EvalArgsFrame,
   EveryPredFrame,
@@ -22,7 +21,6 @@ import type {
   ForLetBindFrame,
   ForLoopFrame,
   Frame,
-  HandlerInvokeFrame,
   IfBranchFrame,
   JuxtFrame,
   LetBindCompleteFrame,
@@ -41,7 +39,6 @@ import type {
   RecurLoopRebindFrame,
   SequenceFrame,
   SomePredFrame,
-  TryWithFrame,
 } from './frames'
 
 describe('frame types', () => {
@@ -76,9 +73,6 @@ describe('frame types', () => {
       Recur: true,
       RecurLoopRebind: true,
       PerformArgs: true,
-      TryWith: true,
-      EffectRef: true,
-      HandlerInvoke: true,
       Complement: true,
       Comp: true,
       Juxt: true,
@@ -101,7 +95,7 @@ describe('frame types', () => {
       HandleWith: true,
       HandleSetup: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(45)
+    expect(Object.keys(frameTypes)).toHaveLength(42)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -136,9 +130,6 @@ describe('frame types', () => {
         case 'Recur': return 'control'
         case 'RecurLoopRebind': return 'control'
         case 'PerformArgs': return 'control'
-        case 'TryWith': return 'effect'
-        case 'EffectRef': return 'effect'
-        case 'HandlerInvoke': return 'effect'
         case 'Complement': return 'compound'
         case 'Comp': return 'compound'
         case 'Juxt': return 'compound'
@@ -205,10 +196,7 @@ describe('frame types', () => {
       'Recur',
       'RecurLoopRebind',
       'PerformArgs',
-      'TryWith',
-      'EffectRef',
       'EffectResume',
-      'HandlerInvoke',
       'Complement',
       'Comp',
       'Juxt',
@@ -229,7 +217,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(41)
+    expect(uniqueTypes.size).toBe(38)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -255,9 +243,6 @@ describe('frame types', () => {
     const _recur: RecurFrame['type'] = 'Recur'
     const _recurLoopRebind: RecurLoopRebindFrame['type'] = 'RecurLoopRebind'
     const _performArgs: PerformArgsFrame['type'] = 'PerformArgs'
-    const _tryWith: TryWithFrame['type'] = 'TryWith'
-    const _effectRef: EffectRefFrame['type'] = 'EffectRef'
-    const _handlerInvoke: HandlerInvokeFrame['type'] = 'HandlerInvoke'
     const _complement: ComplementFrame['type'] = 'Complement'
     const _comp: CompFrame['type'] = 'Comp'
     const _juxt: JuxtFrame['type'] = 'Juxt'
@@ -297,9 +282,6 @@ describe('frame types', () => {
     expect(_recur).toBe('Recur')
     expect(_recurLoopRebind).toBe('RecurLoopRebind')
     expect(_performArgs).toBe('PerformArgs')
-    expect(_tryWith).toBe('TryWith')
-    expect(_effectRef).toBe('EffectRef')
-    expect(_handlerInvoke).toBe('HandlerInvoke')
     expect(_complement).toBe('Complement')
     expect(_comp).toBe('Comp')
     expect(_juxt).toBe('Juxt')
