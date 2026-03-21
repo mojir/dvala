@@ -335,10 +335,9 @@ describe('stress: next() middleware + suspend/fail', () => {
   it('next() then fail in final handler', async () => {
     const log: string[] = []
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@my.effect, "data")
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -391,10 +390,9 @@ describe('stress: next() middleware + suspend/fail', () => {
 
   it('next() to unhandled effect is caught by dvala.error handler', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@no.handler, "payload")
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -1121,13 +1119,12 @@ describe('stress: host bindings across complex flows', () => {
 describe('stress: error propagation through effect stacks', () => {
   it('error in local handler body caught by outer do/with', () => {
     const result = dvala.run(`
-      do
+      handle
         handle
           perform(@my.eff, 1)
         with [(eff, arg, nxt) -> if eff == @my.eff then 0 / 0 else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -1135,10 +1132,9 @@ describe('stress: error propagation through effect stacks', () => {
 
   it('host handler fail() caught by local do/with', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@my.eff)
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -1154,14 +1150,13 @@ describe('stress: error propagation through effect stacks', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      handle
         let a = perform(@my.step, 1);
         let b = perform(@my.step, 2);
         if b == "error" then perform(@dvala.error, "bad: " ++ a ++ b)
         else a ++ b
         end
-      with
-        case @dvala.error then (msg) -> msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1192,11 +1187,10 @@ describe('stress: error propagation through effect stacks', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.wait);
         x / 0
-      with
-        case @dvala.error then (msg) -> "div-error: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "div-error: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

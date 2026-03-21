@@ -288,10 +288,9 @@ describe('dvala Destructuring', () => {
   describe('edge cases', () => {
     test('destructuring a number should fail gracefully', () => {
       expect(dvala.run(`
-        do
+        handle
           let { value } = 42
-        with
-          case @dvala.error then (args) -> "Error caught"
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "Error caught" else nxt(eff, arg) end]
         end
       `)).toBe('Error caught')
     })

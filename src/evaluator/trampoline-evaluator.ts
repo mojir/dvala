@@ -960,7 +960,9 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         // No more handlers in the chain — propagate past the HandleWithFrame.
         // The current k already has EffectResumeFrame → outerK. Re-performing
         // on k will skip past the HandleWithFrame since it's not in outerK.
-        return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo }
+        // skipCheckpointCapture prevents double-capturing checkpoints that were
+        // already captured upstream before the handler chain was invoked.
+        return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo, skipCheckpointCapture: true }
       }
 
       // Call handlers[handlerIndex](eff, arg, nextNextFn)
@@ -1982,6 +1984,9 @@ function tryDispatchDvalaError(
   const arg: Any = error.shortMessage
 
   // Check local handlers (TryWithFrame and HandleWithFrame)
+  // Also follow EffectResumeFrame.resumeK to find handlers that set up the
+  // current handler chain — this allows handle...with handlers to catch errors
+  // from nxt() propagation (e.g., unhandled effect errors).
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
     if (frame.type === 'TryWith') {
@@ -1993,6 +1998,25 @@ function tryDispatchDvalaError(
     }
     if (frame.type === 'HandleWith') {
       return invokeHandleWithChain(frame, effect, arg, k, i, error.sourceCodeInfo)
+    }
+    if (frame.type === 'EffectResume') {
+      // Follow resumeK to find the HandleWithFrame/TryWithFrame that set up
+      // this handler chain. This allows dvala.error to be caught by the same
+      // handle...with scope when nxt() propagation causes an error.
+      const resumeK = frame.resumeK
+      for (let j = 0; j < resumeK.length; j++) {
+        const rFrame = resumeK[j]!
+        if (rFrame.type === 'TryWith') {
+          for (const handler of rFrame.handlers) {
+            if (handlerMatchesEffect(handler, effect, rFrame.env, error.sourceCodeInfo)) {
+              return invokeMatchedHandler(handler, rFrame, arg, resumeK, j, error.sourceCodeInfo)
+            }
+          }
+        }
+        if (rFrame.type === 'HandleWith') {
+          return invokeHandleWithChain(rFrame, effect, arg, resumeK, j, error.sourceCodeInfo)
+        }
+      }
     }
   }
 
@@ -2344,7 +2368,7 @@ function invokeHandleWithChain(
   if (handlers.length === 0) {
     // No handlers — propagate past this frame by re-performing on the outer stack
     const outerK = k.slice(frameIndex + 1)
-    return { type: 'Perform', effect, arg, k: outerK, sourceCodeInfo }
+    return { type: 'Perform', effect, arg, k: outerK, sourceCodeInfo, skipCheckpointCapture: true }
   }
 
   // resumeK = original k — handler's return value resumes here
@@ -2370,10 +2394,11 @@ function invokeHandleWithChain(
   return dispatchFunction(fnLike, [effect, arg, nextFn], [], frame.env, sourceCodeInfo, handlerK)
 }
 
-function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
+function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
-  if (effect.name === 'dvala.checkpoint' && snapshotState) {
+  // Skipped when re-dispatching from a HandleNextFunction fallthrough (already captured upstream).
+  if (effect.name === 'dvala.checkpoint' && snapshotState && !skipCheckpointCapture) {
     const message = arg as string
     const continuation = serializeToObject(k)
     const snapshot = createSnapshot({
@@ -3817,7 +3842,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
+        return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState, step.skipCheckpointCapture)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':

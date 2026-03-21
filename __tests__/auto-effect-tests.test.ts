@@ -710,10 +710,9 @@ describe('auto: effect + error propagation', () => {
 
   it('runtime error caught by dvala.error handler', () => {
     const result = dvala.run(`
-      do
+      handle
         1 + "not a number"
-      with
-        case @dvala.error then (msg) -> "caught"
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught')
@@ -721,10 +720,9 @@ describe('auto: effect + error propagation', () => {
 
   it('unhandled effect error caught by dvala.error handler', () => {
     const result = dvala.run(`
-      do
+      handle
         perform(@no.handler, "arg")
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toContain('caught:')
@@ -861,10 +859,9 @@ describe('auto: host handler patterns', () => {
 
   it('fail() produces error result', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@my.eff)
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [

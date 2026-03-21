@@ -304,10 +304,9 @@ describe('phase 2 — Local Effect Handling', () => {
 
     it('unhandled effect error caught by dvala.error handler', () => {
       const result = dvala.run(`
-        do
+        handle
           perform(@no.handler, "data")
-        with
-          case @dvala.error then (msg) -> "caught: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
@@ -497,10 +496,9 @@ describe('phase 3 — Host Async API', () => {
 
     it('should handle async errors from promise resume', async () => {
       const result = await dvala.runAsync(`
-        do
+        handle
           perform(@my.fail, "oops")
-        with
-          case @dvala.error then (msg) -> "caught: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -541,10 +539,9 @@ describe('phase 3 — Host Async API', () => {
   describe('3b: host handler — error handling', () => {
     it('should catch host handler errors in dvala.error handler', async () => {
       const result = await dvala.runAsync(`
-        do
+        handle
           perform(@my.fail)
-        with
-          case @dvala.error then (msg) -> "caught: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -793,10 +790,9 @@ describe('phase 3 — Host Async API', () => {
 
     it('should handle dvala.error handler around host effect', async () => {
       const result = await dvala.runAsync(`
-        do
+        handle
           perform(@my.risky)
-        with
-          case @dvala.error then (msg) -> "recovered: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "recovered: " ++ arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -3576,20 +3572,18 @@ describe('step 1 — handle...with...end', () => {
 describe('step 2 — dvala.error standard effect', () => {
   it('do...with catches runtime error (NaN)', () => {
     expect(dvala.run(`
-      do
+      handle
         0 / 0
-      with
-        case @dvala.error then (args) -> 42
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
       end
     `)).toBe(42)
   })
 
   it('handler receives error message as first arg', () => {
     const result = dvala.run(`
-      do
+      handle
         0 / 0
-      with
-        case @dvala.error then (msg) -> msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -3599,21 +3593,19 @@ describe('step 2 — dvala.error standard effect', () => {
     // Handler returns 0, which becomes the resume value of (0/0).
     // Execution continues: let x = 0; x + 1 => 1
     expect(dvala.run(`
-      do
+      handle
         let x = 0 / 0;
         x + 1
-      with
-        case @dvala.error then (args) -> 0
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
       end
     `)).toBe(1)
   })
 
   it('unhandled runtime error still propagates when no dvala.error handler', () => {
     expect(() => dvala.run(`
-      do
+      handle
         0 / 0
-      with
-        case @dvala.io.println then (args) -> 42
+      with [(eff, arg, nxt) -> if eff == @dvala.io.println then 42 else nxt(eff, arg) end]
       end
     `)).toThrow()
   })
@@ -3638,38 +3630,33 @@ describe('step 2 — dvala.error standard effect', () => {
 
   it('dvala.error handler can be nested inside outer do...with', () => {
     expect(dvala.run(`
-      do
-        do
+      handle
+        handle
           0 / 0
-        with
-          case @dvala.io.println then (args) -> 0
+        with [(eff, arg, nxt) -> if eff == @dvala.io.println then 0 else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (args) -> 77
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 77 else nxt(eff, arg) end]
       end
     `)).toBe(77)
   })
 
   it('error in handler propagates outward', () => {
     expect(dvala.run(`
-      do
-        do
+      handle
+        handle
           0 / 0
-        with
-          case @dvala.error then (args) -> 0 / 0
+        with [(eff, arg, nxt) -> if eff == @dvala.error then 0 / 0 else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (args) -> 55
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 55 else nxt(eff, arg) end]
       end
     `)).toBe(55)
   })
 
   it('dvala.error handler catches the error', () => {
     expect(dvala.run(`
-      do
+      handle
         0 / 0
-      with
-        case @dvala.error then (args) -> 42
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 42 else nxt(eff, arg) end]
       end
     `)).toBe(42)
   })
@@ -3691,10 +3678,9 @@ describe('step 2 — dvala.error standard effect', () => {
     // tick() processes the ErrorStep and routes it through tryDispatchDvalaError,
     // which finds the in-language handle...with handler.
     const result = await dvala.runAsync(
-      `do
+      `handle
         perform(@dvala.io.println, "hello")
-      with
-        case @dvala.error then (msg) -> msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
       end`,
       {
         effectHandlers: [
@@ -4058,10 +4044,9 @@ describe('host handler wildcard patterns', () => {
 
     it('fail() can be caught by dvala.error in-language handler', async () => {
       const result = await dvala.runAsync(`
-        do
+        handle
           perform(@my.effect, "data")
-        with
-          case @dvala.error then (msg) -> msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
