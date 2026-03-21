@@ -106,9 +106,9 @@ match [1, 2, 3]
 end
 ```
 
-### for / doseq — Iteration
+### for — Iteration
 
-`for` creates a new array from a comprehension. `doseq` iterates for side effects:
+`for` creates a new array from a comprehension:
 
 ```dvala
 for (x in [1, 2, 3] when x > 1) -> x * 10
@@ -144,12 +144,12 @@ end
 
 ## The Complete List
 
-Dvala has **21** special expressions:
+Dvala has **20** special expressions:
 
 * **Logic** — `&&`, `||`, `??`
 * **Conditionals** — `if`, `match`
 * **Binding** — `let`
-* **Iteration** — `loop`, `recur`, `for`, `doseq`
+* **Iteration** — `loop`, `recur`, `for`
 * **Grouping** — `do` (block)
 * **Functions** — `->` (lambda)
 * **Data** — `array`, `object`

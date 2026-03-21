@@ -1,6 +1,6 @@
 # Loops & Recursion
 
-Dvala provides `for` comprehensions for building arrays, `doseq` for side effects, and `loop`/`recur` for tail-recursive iteration.
+Dvala provides `for` comprehensions for building arrays and `loop`/`recur` for tail-recursive iteration.
 
 ## For Comprehensions
 
@@ -82,10 +82,10 @@ let fib = n ->
 fib(10)
 ```
 
-## Doseq (Side Effects)
+## For with Side Effects
 
-`doseq` iterates for side effects and returns `null`:
+`for` can also be used for side effects (the result array can be ignored):
 
 ```dvala
-doseq (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
+for (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
 ```

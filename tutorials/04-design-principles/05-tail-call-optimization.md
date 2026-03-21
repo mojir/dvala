@@ -146,7 +146,7 @@ for (i in [1, 2, 3], j in ["a", "b"]) -> str(i) ++ j
 
 Dvala provides three levels of iteration:
 
-* **`for` / `doseq`** — declarative iteration for most problems
+* **`for`** — declarative iteration for most problems
 * **`loop` / `recur`** — explicit tail recursion for accumulator patterns, guaranteed constant stack space
 * **`self`** — simple recursion for tree-shaped problems with bounded depth
 

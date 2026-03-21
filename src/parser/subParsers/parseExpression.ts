@@ -43,7 +43,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         left = parseMatch(ctx, token)
         break
       case 'for':
-      case 'doseq':
         left = parseForOrDoseq(ctx, token)
         break
       case 'loop':

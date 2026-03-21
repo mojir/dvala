@@ -275,7 +275,7 @@ export interface LoopBindCompleteFrame {
 }
 
 /**
- * State for a single binding level in a `for`/`doseq` loop.
+ * State for a single binding level in a `for` loop.
  *
  * Each level iterates over a `collection`. Inner-level collections are
  * re-evaluated when outer-level bindings change.
@@ -286,11 +286,10 @@ export interface ForBindingLevelState {
 }
 
 /**
- * `for`/`doseq` multi-binding nested iteration.
+ * `for` multi-binding nested iteration.
  *
  * Multi-level nested loop with optional let-bindings, when-guards, and
- * while-guards at each binding level. `for` collects results; `doseq`
- * discards them (side-effects only).
+ * while-guards at each binding level. Collects body results into an array.
  *
  * Phase describes what sub-expression is currently being evaluated:
  * - `'evalCollection'`: evaluating the collection expression for a level
@@ -300,7 +299,6 @@ export interface ForBindingLevelState {
  */
 export interface ForLoopFrame {
   type: 'ForLoop'
-  returnResult: boolean // true for `for`, false for `doseq`
   bindingNodes: LoopBindingNode[]
   body: AstNode
   result: Arr // accumulated results (for `for`)
@@ -313,7 +311,7 @@ export interface ForLoopFrame {
 }
 
 /**
- * `for`/`doseq` element binding completion.
+ * `for` element binding completion.
  *
  * After `BindingSlotFrame` completes processing element destructuring,
  * this frame receives the resulting record, adds it to the context,
@@ -328,7 +326,7 @@ export interface ForElementBindCompleteFrame {
 }
 
 /**
- * `for`/`doseq` let-binding evaluation.
+ * `for` let-binding evaluation.
  *
  * Evaluates let-bindings at the current level sequentially.
  * Each let-binding's value is evaluated, then destructured.

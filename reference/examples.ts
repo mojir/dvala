@@ -116,7 +116,7 @@ perform(@dvala.io.print, "City: " ++ user.city);
 // Fetch their posts
 let posts = perform(@host.fetch-posts, 1);
 perform(@dvala.io.print, "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
-doseq (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
+for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     `.trim(),
   },
   {
@@ -172,13 +172,13 @@ let show-todos! = (user) -> do
   let pending = filter(todos, -> not($.completed));
 
   perform(@dvala.io.print, "\\nCompleted (" ++ str(count(done)) ++ "/" ++ str(count(todos)) ++ "):");
-  doseq (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
+  for (t in done take 5) -> perform(@dvala.io.print, "  ✓ " ++ t.title);
   if count(done) > 5 then
     perform(@dvala.io.print, "  ... and " ++ str(count(done) - 5) ++ " more");
   end;
 
   perform(@dvala.io.print, "\\nPending (" ++ str(count(pending)) ++ "):");
-  doseq (t in pending take 5) -> perform(@dvala.io.print, "  ○ " ++ t.title);
+  for (t in pending take 5) -> perform(@dvala.io.print, "  ○ " ++ t.title);
   if count(pending) > 5 then
     perform(@dvala.io.print, "  ... and " ++ str(count(pending) - 5) ++ " more");
   end

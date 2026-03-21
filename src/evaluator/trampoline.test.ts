@@ -1005,10 +1005,10 @@ describe('trampoline integration', () => {
     expect(runTrampoline(step)).toEqual([2, 4, 6])
   })
 
-  it('should evaluate doseq', () => {
-    const node = parseFirst('doseq (x in [1, 2, 3]) -> x')
+  it('should evaluate for (formerly doseq)', () => {
+    const node = parseFirst('for (x in [1, 2, 3]) -> x')
     const step = stepNodeSync(node, emptyEnv(), [])
-    expect(runTrampoline(step)).toBe(null)
+    expect(runTrampoline(step)).toEqual([1, 2, 3])
   })
 
   it('should evaluate nested function calls', () => {

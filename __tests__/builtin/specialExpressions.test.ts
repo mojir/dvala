@@ -645,27 +645,29 @@ foo(3)`)
     })
   })
 
-  describe('doseq', () => {
+  describe('for (former doseq tests)', () => {
     it('samples', () => {
-      expect(dvala.run('doseq (x in []) -> x')).toBeNull()
-      expect(dvala.run('doseq (x in [1, 2, 3], y in []) -> x')).toBeNull()
-      expect(dvala.run('doseq (x in [], y in [1, 2, 3]) -> x')).toBeNull()
+      expect(dvala.run('for (x in []) -> x')).toEqual([])
+      expect(dvala.run('for (x in [1, 2, 3], y in []) -> x')).toEqual([])
+      expect(dvala.run('for (x in [], y in [1, 2, 3]) -> x')).toEqual([])
 
-      expect(dvala.run('doseq (x in "Al", y in [1, 2]) -> do repeat(x, y) end'))
-        .toBeNull()
-      expect(dvala.run('doseq (x in { a: 10, b: 20 }, y in [1, 2]) -> repeat(x, y)')).toBeNull()
+      expect(dvala.run('for (x in "Al", y in [1, 2]) -> do repeat(x, y) end'))
+        .toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
+      expect(dvala.run('for (x in { a: 10, b: 20 }, y in [1, 2]) -> repeat(x, y)')).toEqual([
+        [['a', 10]], [['a', 10], ['a', 10]], [['b', 20]], [['b', 20], ['b', 20]],
+      ])
     })
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 when even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> y')),
         ).toEqual(new Set())
         expect(
-          (getUndefinedSymbols('doseq (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
+          (getUndefinedSymbols('for (x in [0, 1, 2, 3, 4, a] let y = x * b when even?(c)) -> d')),
         ).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })

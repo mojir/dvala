@@ -126,7 +126,7 @@ effect-name  → effectName     effect-matcher → effectMatcher
 
 ### Special expressions
 ```
-doseq → doSeq (or forEach?)
+doseq → removed (use `for` instead)
 ```
 
 ### Effect names

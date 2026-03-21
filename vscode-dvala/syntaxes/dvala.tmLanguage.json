@@ -201,9 +201,9 @@
     "special-expressions": {
       "patterns": [
         {
-          "comment": "Special expressions: if, let, for, cond, match, loop, block, doseq, import, perform, parallel, race, recur",
+          "comment": "Special expressions: if, let, for, cond, match, loop, block, import, perform, parallel, race, recur",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|doseq|import|perform|parallel|race|recur)(?=[\\s(\\[{)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|import|perform|parallel|race|recur)(?=[\\s(\\[{)\\]},;]|$)"
         }
       ]
     },
