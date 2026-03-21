@@ -162,8 +162,6 @@ export const api = {
     'not',
     'boolean',
     'compare',
-    'json-parse',
-    'json-stringify',
     'type-of',
   ] as const,
   object: [
@@ -1055,6 +1053,10 @@ export const api = {
     'convert.k->c',
     'convert.k->f',
   ] as const,
+  json: [
+    'json.json-parse',
+    'json.json-stringify',
+  ] as const,
   time: [
     'time.epoch->iso-date',
     'time.iso-date->epoch',
@@ -1111,6 +1113,7 @@ export type LinAlgApiName = typeof api.linAlg[number]
 export type MathUtilsApiName = typeof api.mathUtils[number]
 export type FunctionalUtilsApiName = typeof api.functionalUtils[number]
 export type ConvertApiName = typeof api.convert[number]
+export type JsonApiName = typeof api.json[number]
 export type TimeApiName = typeof api.time[number]
 
 // Core functions - always available without import
@@ -1144,6 +1147,7 @@ export type ModuleExpressionName
     | SequenceUtilsApiName
     | BitwiseUtilsApiName
     | ConvertApiName
+    | JsonApiName
     | TimeApiName
 export type NormalExpressionName
   = | CoreNormalExpressionName
@@ -1190,6 +1194,7 @@ const moduleApiFunctionNames = [
   ...api.sequenceUtils,
   ...api.bitwiseUtils,
   ...api.convert,
+  ...api.json,
   ...api.time,
 ] as const
 const apiFunctionNames = [

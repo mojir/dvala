@@ -1,11 +1,9 @@
 import { DvalaError } from '../../errors'
-import type { Any } from '../../interface'
 import type { EffectMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { asAny, asEffect, assertAny, isEffect, isRegularExpression } from '../../typeGuards/dvala'
+import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
-import { assertNumber } from '../../typeGuards/number'
-import { asStringOrNumber, assertString, assertStringOrNumber } from '../../typeGuards/string'
+import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
@@ -304,55 +302,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'compare(1, 0)',
         'compare("Albert", "Mojir")',
       ],
-    },
-  },
-  'json-parse': {
-    evaluate: ([first], sourceCodeInfo): Any => {
-      assertString(first, sourceCodeInfo)
-
-      return JSON.parse(first)
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'misc',
-      returns: { type: 'any' },
-      args: { x: { type: 'string' } },
-      variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `JSON.parse(`$x`)`.',
-      seeAlso: ['json-stringify'],
-      examples: [
-        'json-parse("[1, 2, 3]")',
-      ],
-    },
-  },
-  'json-stringify': {
-    evaluate: ([first, second], sourceCodeInfo): string => {
-      assertAny(first, sourceCodeInfo)
-      if (second === undefined)
-        return JSON.stringify(first)
-
-      assertNumber(second, sourceCodeInfo)
-      return JSON.stringify(first, null, second)
-    },
-    arity: { min: 1, max: 2 },
-    docs: {
-      category: 'misc',
-      returns: { type: 'string' },
-      args: {
-        x: { type: 'any' },
-        indent: { type: 'integer', description: 'Number of spaces to use for indentation.' },
-      },
-      variants: [
-        { argumentNames: ['x'] },
-        { argumentNames: ['x', 'indent'] },
-      ],
-      description: 'Returns `JSON.stringify(`$x`)`. If second argument is provided, returns `JSON.stringify(`$x`, null, `$indent`)`.',
-      seeAlso: ['json-parse'],
-      examples: [
-        'json-stringify([1, 2, 3])',
-        'json-stringify({ a: { b: 10 }}, 2)',
-      ],
-      hideOperatorForm: true,
     },
   },
   'effect-name': {

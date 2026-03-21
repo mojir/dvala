@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, vitest } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
+import { jsonModule } from '../../../src/builtin/modules/json'
 import { timeModule } from '../../../src/builtin/modules/time'
 import { DvalaError } from '../../../src/errors'
 
@@ -16,7 +17,7 @@ describe('misc functions', () => {
   afterEach(() => {
     console.log = oldLog
   })
-  for (const dvala of [createDvala({ modules: [timeModule] }), createDvala({ modules: [timeModule], debug: true })]) {
+  for (const dvala of [createDvala({ modules: [jsonModule, timeModule] }), createDvala({ modules: [jsonModule, timeModule], debug: true })]) {
     describe('epoch->iso-date', () => {
       it('samples', () => {
         expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')
@@ -45,6 +46,18 @@ describe('misc functions', () => {
         expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch(true)')).toThrow(DvalaError)
         expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("2022-04-1X")')).toThrow(DvalaError)
         expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("")')).toThrow(DvalaError)
+      })
+    })
+
+    describe('json-stringify', () => {
+      it('samples', () => {
+        expect(dvala.run('let { json-stringify } = import(json); json-stringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
+        expect(dvala.run('let { json-stringify } = import(json); json-stringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
+      })
+    })
+    describe('json-parse', () => {
+      it('samples', () => {
+        expect(dvala.run('let { json-parse } = import(json); json-parse("[1,2,3]")')).toEqual([1, 2, 3])
       })
     })
   }
@@ -269,18 +282,6 @@ describe('misc functions', () => {
         expect(dvala.run('compare(3, 1)')).toBe(1)
         expect(dvala.run('compare("A", "a")')).toBe(-1)
         expect(dvala.run('compare("A", "A")')).toBe(0)
-      })
-    })
-
-    describe('json-stringify', () => {
-      it('samples', () => {
-        expect(dvala.run('json-stringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
-        expect(dvala.run('json-stringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
-      })
-    })
-    describe('json-parse', () => {
-      it('samples', () => {
-        expect(dvala.run('json-parse("[1,2,3]")')).toEqual([1, 2, 3])
       })
     })
 
