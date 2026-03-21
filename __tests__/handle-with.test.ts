@@ -463,6 +463,161 @@ describe('handle...with...end', () => {
     })
   })
 
+  describe('shorthand with 0 params ($ variables)', () => {
+    it('basic zero-param shorthand uses $1 for arg', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 21)
+        with [@my.eff -> $1 * 2]
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('$2 is the effect reference', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, "hello")
+        with [@my.eff -> effect-name($2)]
+        end
+      `)
+      expect(result).toBe('my.eff')
+    })
+
+    it('$3 propagates to next handler', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 10)
+        with [
+          @my.eff -> $1 + $3($2, $1),
+          @my.eff -> $1 * 3
+        ]
+        end
+      `)
+      expect(result).toBe(40)
+    })
+
+    it('zero-param wildcard', () => {
+      const result = dvala.run(`
+        handle perform(@anything, "data")
+        with [@* -> "caught: " ++ $1]
+        end
+      `)
+      expect(result).toBe('caught: data')
+    })
+
+    it('zero-param stored as value', () => {
+      const result = dvala.run(`
+        let h = @my.eff -> $1 + 1;
+        handle perform(@my.eff, 41) with [h] end
+      `)
+      expect(result).toBe(42)
+    })
+  })
+
+  describe('shorthand with 2 params (arg, eff)', () => {
+    it('second param is the effect reference', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, "hello")
+        with [@my.eff(x, e) -> x ++ ":" ++ effect-name(e)]
+        end
+      `)
+      expect(result).toBe('hello:my.eff')
+    })
+
+    it('wildcard with effect inspection', () => {
+      const result = dvala.run(`
+        handle perform(@my.custom.action, "data")
+        with [@my.*(x, e) -> effect-name(e) ++ "=" ++ x]
+        end
+      `)
+      expect(result).toBe('my.custom.action=data')
+    })
+
+    it('nxt is not accessible with 2 params', () => {
+      const result = dvala.run(`
+        let outer-nxt = "safe";
+        handle perform(@my.eff, 1)
+        with [@my.eff(x, e) -> outer-nxt]
+        end
+      `)
+      expect(result).toBe('safe')
+    })
+  })
+
+  describe('shorthand with 3 params (arg, eff, nxt)', () => {
+    it('third param is the propagation function', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 10)
+        with [
+          @my.eff(x, e, n) -> x + n(e, x),
+          @my.eff(x) -> x * 5
+        ]
+        end
+      `)
+      expect(result).toBe(60)
+    })
+
+    it('middleware logging pattern', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 21)
+        with [
+          @my.eff(x, e, n) -> do let r = n(e, x); r + 1 end,
+          @my.eff(x) -> x * 2
+        ]
+        end
+      `)
+      expect(result).toBe(43)
+    })
+
+    it('transform and propagate with wildcard', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 10)
+        with [
+          @*(x, e, n) -> n(e, x * 2),
+          @my.eff(x) -> x + 1
+        ]
+        end
+      `)
+      expect(result).toBe(21)
+    })
+
+    it('all three params with named variables', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, "val")
+        with [@my.eff(arg, eff, nxt) -> arg ++ ":" ++ effect-name(eff)]
+        end
+      `)
+      expect(result).toBe('val:my.eff')
+    })
+  })
+
+  describe('shorthand without array wrapper', () => {
+    it('single shorthand handler without brackets', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 21)
+        with @my.eff(x) -> x * 2
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('zero-param shorthand without brackets', () => {
+      const result = dvala.run(`
+        handle perform(@my.eff, 10)
+        with @my.eff -> $1 + 5
+        end
+      `)
+      expect(result).toBe(15)
+    })
+
+    it('wildcard shorthand without brackets', () => {
+      const result = dvala.run(`
+        handle perform(@any.thing, "x")
+        with @*(msg) -> "got: " ++ msg
+        end
+      `)
+      expect(result).toBe('got: x')
+    })
+  })
+
   describe('wildcard handler shorthand', () => {
     it('@dvala.* matches dvala.io.println', () => {
       const result = dvala.run(`
