@@ -483,6 +483,11 @@ export interface EffectResumeFrame {
   /** The HandleWithFrame that spawned this handler chain. Used by
    *  tryDispatchDvalaError to skip re-entering the same handler on error. */
   sourceHandleFrame?: HandleWithFrame
+  /** Set to true while the handler is executing. When an error occurs and
+   *  this is true, the error is from the handler body and should NOT be
+   *  re-dispatched to the source HandleWithFrame. When false (set by nxt()),
+   *  the error is from downstream dispatch and CAN be caught by the same scope. */
+  handlerExecuting?: boolean
   sourceCodeInfo?: SourceCodeInfo
 }
 

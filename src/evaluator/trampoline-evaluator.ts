@@ -958,8 +958,12 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
 
       if (handlerIndex >= handlers.length) {
         // No more handlers in the chain — propagate past the HandleWithFrame.
-        // The current k already has EffectResumeFrame → outerK. Re-performing
-        // on k will skip past the HandleWithFrame since it's not in outerK.
+        // Mark the EffectResumeFrame as no longer executing the handler body,
+        // so that errors from downstream dispatch can be caught by the same scope.
+        const topFrame = k[0]
+        if (topFrame?.type === 'EffectResume') {
+          topFrame.handlerExecuting = false
+        }
         // skipCheckpointCapture prevents double-capturing checkpoints that were
         // already captured upstream before the handler chain was invoked.
         return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo, skipCheckpointCapture: true }
@@ -1999,24 +2003,29 @@ function tryDispatchDvalaError(
       return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
     }
     if (frame.type === 'EffectResume') {
-      const fromHandlerBody = i > 0
+      // handlerExecuting=true: error from handler body → skip source HandleWithFrame
+      // handlerExecuting=false: error from nxt() dispatch → same scope can catch it
+      const skipFrame = frame.handlerExecuting ? frame.sourceHandleFrame : undefined
       const resumeK = frame.resumeK
-      const skipFrame = fromHandlerBody ? frame.sourceHandleFrame : undefined
       for (let j = 0; j < resumeK.length; j++) {
         const rFrame = resumeK[j]!
         if (rFrame.type === 'HandleWith' && rFrame === skipFrame) {
-          // Error from handler body — skip this HandleWithFrame by splicing
-          // it out so dispatchPerform doesn't re-enter the same handler.
-          // Preserve body frames above for proper resumption.
+          // Splice out the skipped frame so dispatchPerform won't find it
           const patchedK = [...resumeK.slice(0, j), ...resumeK.slice(j + 1)]
-          return { type: 'Perform', effect, arg, k: patchedK, sourceCodeInfo: error.sourceCodeInfo }
+          // Continue looking for an outer handler in the rest
+          for (let jj = j; jj < patchedK.length; jj++) {
+            const rrFrame = patchedK[jj]!
+            if (rrFrame.type === 'HandleWith' || rrFrame.type === 'TryWith') {
+              return { type: 'Perform', effect, arg, k: patchedK, sourceCodeInfo: error.sourceCodeInfo }
+            }
+          }
+          return null // No outer handler
         }
         if (rFrame.type === 'HandleWith' || rFrame.type === 'TryWith') {
-          // Found an outer handler — use full resumeK (body frames preserved)
           return { type: 'Perform', effect, arg, k: resumeK, sourceCodeInfo: error.sourceCodeInfo }
         }
       }
-      return null // No handler found in resumeK
+      return null
     }
   }
   return null // No handler found
@@ -2375,6 +2384,7 @@ function invokeHandleWithChain(
     type: 'EffectResume',
     resumeK,
     sourceHandleFrame: frame,
+    handlerExecuting: true,
     sourceCodeInfo,
   }
   const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
