@@ -1,4 +1,8 @@
 {
+  mapcat: (arr, fn) -> do
+    flatten(map(arr, fn), 1)
+  end,
+
   position: (seq, fn) -> do
     let items = if null?(seq) then null
       else if string?(seq) then for (i in range(count(seq))) -> nth(seq, i)

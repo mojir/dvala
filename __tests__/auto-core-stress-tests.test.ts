@@ -868,7 +868,7 @@ describe('higher-order function edge cases', () => {
   })
 
   it('mapcat (flat-map)', () => {
-    expect(dvala.run('mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
+    expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
   })
 
   it('take-while / drop-while', () => {

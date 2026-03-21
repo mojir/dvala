@@ -12,6 +12,38 @@ import type { DvalaModule } from '../interface'
 import sequenceModuleSource from './sequence.dvala'
 
 const sequenceUtilsFunctions: BuiltinNormalExpressions = {
+  'mapcat': {
+    evaluate: () => { throw new Error('mapcat is implemented in Dvala') },
+    arity: toFixedArity(2),
+    docs: {
+      category: 'sequence',
+      returns: { type: 'collection' },
+      args: {
+        a: { type: 'collection' },
+        b: { type: 'function' },
+        colls: { type: 'collection', array: true },
+        fun: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['colls', 'fun'] }],
+      description: 'Returns the result of applying concat to the result of applying map to $fun and $colls.',
+      seeAlso: ['flatten', 'map', '++'],
+      examples: [
+        'let { mapcat } = import(sequence);\nmapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)',
+        `
+let { mapcat } = import(sequence);
+let foo = (n) -> do
+  [n - 1, n, n + 1]
+end;
+mapcat([1, 2, 3], foo)`,
+        `
+let { mapcat } = import(sequence);
+mapcat(
+  [[1, 2], [2, 2], [2, 3]],
+  -> $ filter odd?
+)`,
+      ],
+    },
+  },
   'position': {
     evaluate: () => { throw new Error('position: Dvala implementation should be used instead') },
     arity: toFixedArity(2),

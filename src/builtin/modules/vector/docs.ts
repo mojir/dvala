@@ -1,6 +1,39 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
+  'moving-fn': {
+    category: 'vector',
+    returns: { type: 'array' },
+    args: {
+      arr: { type: 'array' },
+      windowSize: { type: 'number', description: 'The size of the moving window.' },
+      fn: { type: 'function' },
+    },
+    variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
+    description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
+    seeAlso: ['vector.running-fn', 'vector.moving-mean'],
+    examples: [
+      'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 2, sum)',
+      'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 1, sum)',
+      'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 3, sum)',
+    ],
+  },
+  'running-fn': {
+    category: 'vector',
+    returns: { type: 'array' },
+    args: {
+      a: { type: 'array' },
+      b: { type: 'function' },
+    },
+    variants: [{ argumentNames: ['a', 'b'] }],
+    description: 'Returns the result of applying $b to each element of $a.',
+    seeAlso: ['vector.moving-fn', 'vector.running-mean'],
+    examples: [
+      'let { sum, running-fn } = import(vector);\nrunning-fn([1, 2, 3], sum)',
+      'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], max)',
+      'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], min)',
+    ],
+  },
   'sum': {
     category: 'vector',
     returns: { type: 'number' },
@@ -94,7 +127,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { moving-mean } = import(vector);\nmoving-mean([1, 2, 3, 4, 5], 3)',
       'let { moving-mean } = import(vector);\nmoving-mean([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['moving-fn', 'vector.mean', 'vector.centered-moving-mean', 'vector.running-mean'],
+    seeAlso: ['vector.moving-fn', 'vector.mean', 'vector.centered-moving-mean', 'vector.running-mean'],
   },
   'centered-moving-mean': {
     category: 'vector',
@@ -178,7 +211,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     examples: [
       'let { running-mean } = import(vector);\nrunning-mean([1, 2, 3, 4, 5])',
     ],
-    seeAlso: ['running-fn', 'vector.mean', 'vector.moving-mean', 'vector.centered-moving-mean'],
+    seeAlso: ['vector.running-fn', 'vector.mean', 'vector.moving-mean', 'vector.centered-moving-mean'],
   },
   'geometric-mean': {
     category: 'vector',

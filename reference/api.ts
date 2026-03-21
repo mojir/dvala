@@ -47,9 +47,6 @@ export const api = {
     'range',
     'repeat',
     'flatten',
-    'mapcat',
-    'moving-fn',
-    'running-fn',
   ] as const,
   sequence: [
     'nth',
@@ -73,6 +70,7 @@ export const api = {
     'drop-while',
   ] as const,
   sequenceUtils: [
+    'sequence.mapcat',
     'sequence.position',
     'sequence.last-index-of',
     'sequence.unshift',
@@ -356,6 +354,8 @@ export const api = {
     'matrix.max-norm',
   ] as const,
   vectorUtils: [
+    'vector.moving-fn',
+    'vector.running-fn',
     'vector.sum',
     'vector.prod',
     'vector.mean',

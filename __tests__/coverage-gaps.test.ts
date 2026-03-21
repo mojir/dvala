@@ -22,7 +22,7 @@ import '../src/initReferenceData'
 // ---------------------------------------------------------------------------
 
 import { functionalNormalExpression } from '../src/builtin/core/functional'
-import { arrayNormalExpression } from '../src/builtin/core/array'
+import { vectorModule } from '../src/builtin/modules/vector'
 import { objectNormalExpression } from '../src/builtin/core/object'
 import { collectionNormalExpression } from '../src/builtin/core/collection'
 import { sequenceNormalExpression } from '../src/builtin/core/sequence'
@@ -2407,15 +2407,18 @@ describe('stub evaluate — core/functional.ts', () => {
   })
 })
 
-describe('stub evaluate — core/array.ts', () => {
+describe('stub evaluate — sequence module (mapcat)', () => {
   it('mapcat evaluate throws', () => {
-    expect(() => arrayNormalExpression.mapcat!.evaluate([], undefined, undefined!)).toThrow('mapcat is implemented in Dvala')
+    expect(() => sequenceUtilsModule.functions.mapcat!.evaluate([], undefined, undefined!)).toThrow('mapcat is implemented in Dvala')
   })
+})
+
+describe('stub evaluate — vector module (moving-fn, running-fn)', () => {
   it('moving-fn evaluate throws', () => {
-    expect(() => arrayNormalExpression['moving-fn']!.evaluate([], undefined, undefined!)).toThrow('moving-fn is implemented in Dvala')
+    expect(() => vectorModule.functions['moving-fn']!.evaluate([], undefined, undefined!)).toThrow('moving-fn is implemented in Dvala')
   })
   it('running-fn evaluate throws', () => {
-    expect(() => arrayNormalExpression['running-fn']!.evaluate([], undefined, undefined!)).toThrow('running-fn is implemented in Dvala')
+    expect(() => vectorModule.functions['running-fn']!.evaluate([], undefined, undefined!)).toThrow('running-fn is implemented in Dvala')
   })
 })
 

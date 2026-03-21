@@ -156,9 +156,6 @@ const skipWrongTypeTests = new Set([
   'slice', // flexible input
   'distinct', // flexible input
   'flat-map', // flexible input
-  'mapcat', // flexible input
-  'moving-fn', // flexible input
-  'running-fn', // flexible input
   'merge-with', // flexible input
   'concat', // flexible input
   'keys', // flexible input

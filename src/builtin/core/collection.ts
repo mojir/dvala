@@ -89,7 +89,7 @@ filter(
       },
       variants: [{ argumentNames: ['colls', 'fun'] }],
       description: 'Creates a new collection populated with the results of calling $fun on every element in $colls.',
-      seeAlso: ['collection.mapi', 'filter', 'reduce', 'mapcat', 'grid.cell-map', 'grid.cell-mapi'],
+      seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cell-map', 'grid.cell-mapi'],
       examples: [
         '[1, 2, 3] map -',
         '[1, 2, 3] map -> -($)',
@@ -390,7 +390,7 @@ assoc(
         { argumentNames: ['a', 'colls'] },
       ],
       description: 'Concatenates collections into one collection.',
-      seeAlso: ['mapcat', 'str', 'join', 'push', 'sequence.unshift'],
+      seeAlso: ['sequence.mapcat', 'str', 'join', 'push', 'sequence.unshift'],
       examples: [
         '"Albert" ++ " " ++ "Mojir"',
         '"Albert" ++ "Mojir"',
