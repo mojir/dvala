@@ -426,9 +426,6 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `range(b)` / `range(a, b, step?)` | Array of numbers a..b (exclusive) |
 | `repeat(value, n)` | Array of value repeated n times |
 | `flatten(arr, depth?)` | Flatten nested arrays |
-| `mapcat(arr, fn)` | Map then flatten one level |
-| `moving-fn(arr, windowSize, fn)` | Apply fn to each sliding window |
-| `running-fn(arr, fn)` | Apply fn to cumulative subarrays |
 
 ### Collection (arrays, objects, and strings)
 
@@ -557,9 +554,9 @@ sin(PI)
 
 **math**: `sin`, `asin`, `sinh`, `asinh`, `cos`, `acos`, `cosh`, `acosh`, `tan`, `atan`, `tanh`, `atanh`, `ln`, `log2`, `log10`, `to-rad`, `to-deg`
 
-**vector**: `monotonic?`, `strictly-monotonic?`, `increasing?`, `decreasing?`, `strictly-increasing?`, `strictly-decreasing?`, `mode`, `min-index`, `max-index`, `sort-indices`, `count-values`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `outliers?`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
+**vector**: `moving-fn`, `running-fn`, `monotonic?`, `strictly-monotonic?`, `increasing?`, `decreasing?`, `strictly-increasing?`, `strictly-decreasing?`, `mode`, `min-index`, `max-index`, `sort-indices`, `count-values`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `outliers?`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
 
-**sequence**: `position`, `last-index-of`, `shift`, `splice`, `sort-by`, `take`, `take-last`, `take-while`, `drop`, `drop-last`, `drop-while`, `unshift`, `distinct`, `remove`, `remove-at`, `split-at`, `split-with`, `frequencies`, `group-by`, `partition`, `partition-all`, `partition-by`, `ends-with?`, `starts-with?`, `interleave`, `interpose`
+**sequence**: `mapcat`, `position`, `last-index-of`, `shift`, `splice`, `sort-by`, `take`, `take-last`, `take-while`, `drop`, `drop-last`, `drop-while`, `unshift`, `distinct`, `remove`, `remove-at`, `split-at`, `split-with`, `frequencies`, `group-by`, `partition`, `partition-all`, `partition-by`, `ends-with?`, `starts-with?`, `interleave`, `interpose`
 
 **collection**: `get-in`, `assoc-in`, `update`, `update-in`, `filteri`, `mapi`, `reducei`, `reduce-right`, `reducei-right`, `reductions`, `reductionsi`, `not-empty`, `every?`, `any?`, `not-any?`, `not-every?`
 

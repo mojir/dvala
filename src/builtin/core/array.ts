@@ -125,7 +125,7 @@ range(
       },
       variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'depth'] }],
       description: 'Takes a nested array $x and flattens it.',
-      seeAlso: ['mapcat'],
+      seeAlso: ['sequence.mapcat'],
       examples: [
         'flatten([1, 2, [3, 4], 5])',
         'flatten([1, [2, [3, [4]]]], 1)',
@@ -140,79 +140,6 @@ flatten([
 ])`,
       ],
       hideOperatorForm: true,
-    },
-  },
-  'mapcat': {
-    evaluate: () => { throw new Error('mapcat is implemented in Dvala') },
-    arity: toFixedArity(2),
-    docs: {
-      category: 'array',
-      returns: { type: 'collection' },
-      args: {
-        a: { type: 'collection' },
-        b: { type: 'function' },
-        colls: { type: 'collection', array: true },
-        fun: { type: 'function' },
-      },
-      variants: [{ argumentNames: ['colls', 'fun'] }],
-      description: 'Returns the result of applying concat to the result of applying map to $fun and $colls.',
-      seeAlso: ['flatten', 'map', '++'],
-      examples: [
-        '[[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]] mapcat reverse',
-        'mapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)',
-        '[[3, 2, 1, 0,], [6, 5, 4,], [9, 8, 7]] mapcat reverse',
-        `
-let foo = (n) -> do
-  [n - 1, n, n + 1]
-end;
-[1, 2, 3] mapcat foo`,
-        `
-mapcat(
-  [[1, 2], [2, 2], [2, 3]],
-  -> $ filter odd?
-)`,
-      ],
-    },
-  },
-  'moving-fn': {
-    evaluate: () => { throw new Error('moving-fn is implemented in Dvala') },
-    arity: toFixedArity(3),
-    docs: {
-      category: 'array',
-      returns: { type: 'array' },
-      args: {
-        arr: { type: 'array' },
-        windowSize: { type: 'number', description: 'The size of the moving window.' },
-        fn: { type: 'function' },
-      },
-      variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
-      description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
-      seeAlso: ['running-fn', 'vector.moving-mean'],
-      examples: [
-        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 2, sum)',
-        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 1, sum)',
-        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 3, sum)',
-      ],
-    },
-  },
-  'running-fn': {
-    evaluate: () => { throw new Error('running-fn is implemented in Dvala') },
-    arity: toFixedArity(2),
-    docs: {
-      category: 'array',
-      returns: { type: 'array' },
-      args: {
-        a: { type: 'array' },
-        b: { type: 'function' },
-      },
-      variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns the result of applying $b to each element of $a.',
-      seeAlso: ['moving-fn', 'vector.running-mean'],
-      examples: [
-        'let { sum } = import(vector);\nrunning-fn([1, 2, 3], sum)',
-        'running-fn([1, 2, 3], max)',
-        'running-fn([1, 2, 3], min)',
-      ],
     },
   },
 }

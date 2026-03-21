@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestData } from '../../testUtils'
 import { checkTestData, createTestData } from '../../testUtils'
 import { createDvala } from '../../../src/createDvala'
+import { sequenceUtilsModule } from '../../../src/builtin/modules/sequence'
 import { vectorModule } from '../../../src/builtin/modules/vector'
 import { DvalaError } from '../../../src/errors'
 
 let testData: TestData
-const dvala = createDvala({ modules: [vectorModule] })
+const dvala = createDvala({ modules: [vectorModule, sequenceUtilsModule] })
 
 beforeEach(() => {
   testData = createTestData()
@@ -74,30 +75,30 @@ describe('array functions', () => {
 
   describe('mapcat', () => {
     it('samples', () => {
-      expect(dvala.run('mapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-      expect(dvala.run('mapcat([[3, 2, 1, 0], [6, [5], 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, [5], 6, 7, 8, 9])
-      expect(dvala.run('let foo = (n) -> do [-(n, 1), n, +(n, 1)] end; mapcat([1, 2, 3], foo)')).toEqual([0, 1, 2, 1, 2, 3, 2, 3, 4])
-      expect(dvala.run('mapcat([[1, 2], [2, 2], [2, 3]], -> $ filter odd?)')).toEqual([1, 3])
+      expect(dvala.run('let { mapcat } = import(sequence); mapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+      expect(dvala.run('let { mapcat } = import(sequence); mapcat([[3, 2, 1, 0], [6, [5], 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, [5], 6, 7, 8, 9])
+      expect(dvala.run('let { mapcat } = import(sequence); let foo = (n) -> do [-(n, 1), n, +(n, 1)] end; mapcat([1, 2, 3], foo)')).toEqual([0, 1, 2, 1, 2, 3, 2, 3, 4])
+      expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [2, 2], [2, 3]], -> $ filter odd?)')).toEqual([1, 3])
     })
   })
 
   describe('running-fn', () => {
     it('samples', () => {
-      expect(dvala.run('let { sum } = import(vector); running-fn([1, 2, 3], sum)')).toEqual([1, 3, 6])
-      expect(() => dvala.run('running-fn(1)')).toThrow(DvalaError)
-      expect(() => dvala.run('let { sum } = import(vector); running-fn(1, sum)')).toThrow(DvalaError)
-      expect(() => dvala.run('let { sum } = import(vector); running-fn(1, sum, null)')).toThrow(DvalaError)
+      expect(dvala.run('let { sum, running-fn } = import(vector); running-fn([1, 2, 3], sum)')).toEqual([1, 3, 6])
+      expect(() => dvala.run('let { running-fn } = import(vector); running-fn(1)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { sum, running-fn } = import(vector); running-fn(1, sum)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { sum, running-fn } = import(vector); running-fn(1, sum, null)')).toThrow(DvalaError)
     })
   })
   describe('moving-fn', () => {
     it('samples', () => {
-      expect(dvala.run('let { sum } = import(vector); moving-fn([1, 2, 3], 2, sum)')).toEqual([3, 5])
-      expect(dvala.run('let { sum } = import(vector); moving-fn([1, 2, 3], 1, sum)')).toEqual([1, 2, 3])
-      expect(dvala.run('let { sum } = import(vector); moving-fn([1, 2, 3], 3, sum)')).toEqual([6])
-      expect(() => dvala.run('let { sum } = import(vector); moving-fn([1, 2, 3], 4, sum)')).toThrow(DvalaError)
-      expect(() => dvala.run('moving-fn(1)')).toThrow(DvalaError)
-      expect(() => dvala.run('moving-fn(1, 2)')).toThrow(DvalaError)
-      expect(() => dvala.run('moving-fn(1, 2, null)')).toThrow(DvalaError)
+      expect(dvala.run('let { sum, moving-fn } = import(vector); moving-fn([1, 2, 3], 2, sum)')).toEqual([3, 5])
+      expect(dvala.run('let { sum, moving-fn } = import(vector); moving-fn([1, 2, 3], 1, sum)')).toEqual([1, 2, 3])
+      expect(dvala.run('let { sum, moving-fn } = import(vector); moving-fn([1, 2, 3], 3, sum)')).toEqual([6])
+      expect(() => dvala.run('let { sum, moving-fn } = import(vector); moving-fn([1, 2, 3], 4, sum)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { moving-fn } = import(vector); moving-fn(1)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { moving-fn } = import(vector); moving-fn(1, 2)')).toThrow(DvalaError)
+      expect(() => dvala.run('let { moving-fn } = import(vector); moving-fn(1, 2, null)')).toThrow(DvalaError)
     })
   })
 })

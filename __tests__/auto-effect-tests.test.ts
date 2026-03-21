@@ -407,7 +407,7 @@ describe('auto: effect + higher-order functions', () => {
   })
 
   it('effect in mapcat callback', () => {
-    const result = dvala.run(wrap('mapcat([1, 2, 3], (x) -> [perform(@test.double, x)])'))
+    const result = dvala.run(wrap('let { mapcat } = import(sequence); mapcat([1, 2, 3], (x) -> [perform(@test.double, x)])'))
     expect(result).toEqual([2, 4, 6])
   })
 

@@ -23,6 +23,47 @@ function calcMedian(vector: number[]): number {
 }
 
 const vectorFunctions: BuiltinNormalExpressions = {
+  'moving-fn': {
+    evaluate: () => { throw new Error('moving-fn is implemented in Dvala') },
+    arity: toFixedArity(3),
+    docs: {
+      category: 'vector',
+      returns: { type: 'array' },
+      args: {
+        arr: { type: 'array' },
+        windowSize: { type: 'number', description: 'The size of the moving window.' },
+        fn: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
+      description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
+      seeAlso: ['vector.running-fn', 'vector.moving-mean'],
+      examples: [
+        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 2, sum)',
+        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 1, sum)',
+        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 3, sum)',
+      ],
+    },
+  },
+  'running-fn': {
+    evaluate: () => { throw new Error('running-fn is implemented in Dvala') },
+    arity: toFixedArity(2),
+    docs: {
+      category: 'vector',
+      returns: { type: 'array' },
+      args: {
+        a: { type: 'array' },
+        b: { type: 'function' },
+      },
+      variants: [{ argumentNames: ['a', 'b'] }],
+      description: 'Returns the result of applying $b to each element of $a.',
+      seeAlso: ['vector.moving-fn', 'vector.running-mean'],
+      examples: [
+        'let { sum, running-fn } = import(vector);\nrunning-fn([1, 2, 3], sum)',
+        'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], max)',
+        'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], min)',
+      ],
+    },
+  },
   'sum': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertVector(vector, sourceCodeInfo)
