@@ -96,13 +96,14 @@ Dvala provides built-in effects that are always available without explicit handl
 handle
   let x = perform(@my.double, 21);
   x + 1
-with [(arg, eff, nxt) ->
+with (arg, eff, nxt) ->
   if eff == @my.double then arg * 2
   else nxt(eff, arg)
   end
-]
 end
 ```
+
+When there are multiple handlers, wrap them in an array `[...]` (covered below). For a single handler, brackets are optional.
 
 A handler function receives three arguments in order:
 
@@ -133,18 +134,17 @@ This desugars to:
 ```dvala
 handle
   perform(@my.double, 21)
-with [(arg, eff, nxt) ->
+with (arg, eff, nxt) ->
   if eff == @my.double then arg * 2
   else nxt(eff, arg)
   end
-]
 end
 ```
 
 ```dvala
 handle
   perform(@my.double, 21)
-with [@my.double(x) -> x * 2]
+with @my.double(x) -> x * 2
 end
 ```
 
@@ -161,7 +161,7 @@ The **2-param form** is useful with wildcards to inspect which specific effect m
 ```dvala
 handle
   perform(@my.action, "data")
-with [@my.*(x, e) -> effect-name(e) ++ ": " ++ x]
+with @my.*(x, e) -> effect-name(e) ++ ": " ++ x
 end
 ```
 
@@ -181,7 +181,7 @@ A **zero-param** form uses `$1`, `$2`, `$3` (consistent with shorthand lambdas):
 
 ```dvala
 handle perform(@my.eff, 21)
-with [@my.eff -> $1 * 2]
+with @my.eff -> $1 * 2
 end
 ```
 
@@ -227,7 +227,7 @@ Handler shorthands produce regular functions. They can be stored, passed, and co
 
 ```dvala
 let double-handler = @my.double(x) -> x * 2;
-handle perform(@my.double, 21) with [double-handler] end
+handle perform(@my.double, 21) with double-handler end
 ```
 
 ```dvala
@@ -305,7 +305,7 @@ Effect names with `*` match a group of effects:
 ```dvala
 handle
   perform(@dvala.io.println, "hi")
-with [@dvala.io.*(x) -> null]
+with @dvala.io.*(x) -> null
 end
 ```
 
@@ -328,7 +328,7 @@ The 2-param form lets you inspect which specific effect matched a wildcard:
 ```dvala
 handle
   perform(@my.custom.action, "data")
-with [@my.*(x, e) -> effect-name(e) ++ "=" ++ x]
+with @my.*(x, e) -> effect-name(e) ++ "=" ++ x
 end
 ```
 
@@ -366,12 +366,11 @@ You can mix error handling with other effect handlers:
 handle
   let x = perform(@my.read);
   sqrt(x * -1)
-with [(arg, eff, nxt) ->
+with (arg, eff, nxt) ->
   if eff == @my.read then 42
   else if eff == @dvala.error then "error: " ++ arg
   else nxt(eff, arg)
   end end
-]
 end
 ```
 
@@ -400,9 +399,9 @@ Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate
 handle
   handle
     perform(@my.inner, "hi")
-  with [@my.inner(x) -> upper-case(x)]
+  with @my.inner(x) -> upper-case(x)
   end
-with [@my.outer(x) -> x]
+with @my.outer(x) -> x
 end
 ```
 
@@ -481,11 +480,11 @@ You can use `effect-matcher` with regexp for more complex patterns:
 
 ```dvala
 let pred = effect-matcher(#"^my\.(read|write)$");
-handle perform(@my.read, null) with [(arg, eff, nxt) ->
+handle perform(@my.read, null) with (arg, eff, nxt) ->
   if pred(eff) then "matched"
   else nxt(eff, arg)
   end
-] end
+end
 ```
 
 ---
