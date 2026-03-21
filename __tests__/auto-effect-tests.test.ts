@@ -244,12 +244,11 @@ describe('auto: findMatchingHandlers registration order', () => {
 // 7. Effect + Control Flow Interactions
 // ---------------------------------------------------------------------------
 describe('auto: effect + control flow', () => {
-  // Helper: wrap perform in a do/with that handles efficiently
+  // Helper: wrap perform in a handle/with that handles efficiently
   const wrap = (body: string) => `
-    do
+    handle
       ${body}
-    with
-      case @test.eff then (x) -> x * 10
+    with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
     end
   `
 
@@ -314,10 +313,9 @@ describe('auto: effect + control flow', () => {
 
   it('effect in || (first falsy)', () => {
     const result = dvala.run(`
-      do
+      handle
         ||(null, perform(@test.eff, 4))
-      with
-        case @test.eff then (x) -> x * 10
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(40)
@@ -361,24 +359,22 @@ describe('auto: effect + control flow', () => {
     expect(result).toBe(80)
   })
 
-  it('effect in do/with error handler (no error)', () => {
+  it('effect in handle/with error handler (no error)', () => {
     const result = dvala.run(wrap(`
-      do
+      handle
         perform(@test.eff, 9)
-      with
-        case @dvala.error then (msg) -> 0
+      with [(eff, arg, nxt) -> if eff == @dvala.error then 0 else nxt(eff, arg) end]
       end
     `))
     expect(result).toBe(90)
   })
 
-  it('effect in do/with error handler body', () => {
+  it('effect in handle/with error handler body', () => {
     const result = dvala.run(wrap(`
       do
-        do
+        handle
           perform(@dvala.error, "boom")
-        with
-          case @dvala.error then (msg) -> perform(@test.eff, 4)
+        with [(eff, arg, nxt) -> if eff == @dvala.error then perform(@test.eff, 4) else nxt(eff, arg) end]
         end
       end
     `))
@@ -391,10 +387,9 @@ describe('auto: effect + control flow', () => {
 // ---------------------------------------------------------------------------
 describe('auto: effect + higher-order functions', () => {
   const wrap = (body: string) => `
-    do
+    handle
       ${body}
-    with
-      case @test.double then (x) -> x * 2
+    with [(eff, arg, nxt) -> if eff == @test.double then arg * 2 else nxt(eff, arg) end]
     end
   `
 
@@ -450,14 +445,12 @@ describe('auto: effect + higher-order functions', () => {
 describe('auto: effect handler scoping', () => {
   it('inner handler takes precedence over outer', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@test.eff, 5)
-        with
-          case @test.eff then (x) -> x * 10
+        with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
         end
-      with
-        case @test.eff then (x) -> x * 100
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 100 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(50) // inner: 5 * 10
@@ -465,29 +458,25 @@ describe('auto: effect handler scoping', () => {
 
   it('unmatched inner effect bubbles to outer', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@outer.eff, 5)
-        with
-          case @inner.eff then (x) -> x * 10
+        with [(eff, arg, nxt) -> if eff == @inner.eff then arg * 10 else nxt(eff, arg) end]
         end
-      with
-        case @outer.eff then (x) -> x * 100
+      with [(eff, arg, nxt) -> if eff == @outer.eff then arg * 100 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(500) // outer: 5 * 100
   })
 
-  it('handler re-entrancy: handler performs same effect → outer catches', () => {
+  it('handler re-entrancy: handler performs same effect -> outer catches', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@test.eff, "orig")
-        with
-          case @test.eff then (x) -> perform(@test.eff, x ++ "+inner")
+        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@test.eff, arg ++ "+inner") else nxt(eff, arg) end]
         end
-      with
-        case @test.eff then (x) -> "outer:" ++ x
+      with [(eff, arg, nxt) -> if eff == @test.eff then "outer:" ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('outer:orig+inner')
@@ -500,10 +489,9 @@ describe('auto: effect handler scoping', () => {
       for (let i = 0; i < depth; i++) {
         const multiplier = (i + 1) * 10
         code = `
-          do
+          handle
             ${code}
-          with
-            case @test.eff then (x) -> x * ${multiplier}
+          with [(eff, arg, nxt) -> if eff == @test.eff then arg * ${multiplier} else nxt(eff, arg) end]
           end
         `
       }
@@ -513,13 +501,12 @@ describe('auto: effect handler scoping', () => {
     })
   }
 
-  // Handler scope ends after do/with block
-  it('handler scope ends after do/with block', () => {
+  // Handler scope ends after handle/with block
+  it('handler scope ends after handle/with block', () => {
     expect(() => dvala.run(`
-      do
+      handle
         null
-      with
-        case @test.eff then (x) -> x
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
       end;
       perform(@test.eff, "should fail")
     `)).toThrow('Unhandled effect')
@@ -528,10 +515,9 @@ describe('auto: effect handler scoping', () => {
   it('handler can access outer bindings', () => {
     const result = dvala.run(`
       let factor = 100;
-      do
+      handle
         perform(@test.eff, 5)
-      with
-        case @test.eff then (x) -> x * factor
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * factor else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(500)
@@ -712,12 +698,11 @@ describe('auto: effect + error propagation', () => {
     expect(() => dvala.run('perform(@dvala.error, "boom")')).toThrow('boom')
   })
 
-  it('dvala.error caught by do/with handler', () => {
+  it('dvala.error caught by handle/with handler', () => {
     const result = dvala.run(`
-      do
+      handle
         perform(@dvala.error, "boom")
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught: boom')
@@ -748,14 +733,12 @@ describe('auto: effect + error propagation', () => {
 
   it('error in handler body propagates past inner scope', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@test.eff, "data")
-        with
-          case @test.eff then (x) -> perform(@dvala.error, "handler error")
+        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "outer: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('outer: handler error')
@@ -763,14 +746,12 @@ describe('auto: effect + error propagation', () => {
 
   it('dvala.error handler catches body errors and passes to effect handler', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@dvala.error, "boom")
-        with
-          case @dvala.error then (e) -> perform(@test.eff, e)
+        with [(eff, arg, nxt) -> if eff == @dvala.error then perform(@test.eff, arg) else nxt(eff, arg) end]
         end
-      with
-        case @test.eff then (msg) -> "effect got: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @test.eff then "effect got: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('effect got: boom')
@@ -778,30 +759,26 @@ describe('auto: effect + error propagation', () => {
 
   it('error in handler body propagates as dvala.error', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@test.eff, "data")
-        with
-          case @test.eff then (x) -> perform(@dvala.error, "handler error")
+        with [(eff, arg, nxt) -> if eff == @test.eff then perform(@dvala.error, "handler error") else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught: handler error')
   })
 
-  // Multiple dvala.error handlers — inner catches
+  // Multiple dvala.error handlers -- inner catches
   it('dvala.error handler nesting: inner catches', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@dvala.error, "boom")
-        with
-          case @dvala.error then (msg) -> "inner: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "inner: " ++ arg else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "outer: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "outer: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('inner: boom')
@@ -918,10 +895,9 @@ describe('auto: host handler patterns', () => {
 
   it('local handler always takes priority over host handler', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@my.eff, "data")
-      with
-        case @my.eff then (x) -> "local: " ++ x
+      with [(eff, arg, nxt) -> if eff == @my.eff then "local: " ++ arg else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -961,12 +937,11 @@ describe('auto: runSync constraints', () => {
     expect(() => dvala.run('perform(@my.eff)')).toThrow('Unhandled effect')
   })
 
-  it('runSync handles local do/with effects', () => {
+  it('runSync handles local handle/with effects', () => {
     const result = dvala.run(`
-      do
+      handle
         perform(@my.eff, 5)
-      with
-        case @my.eff then (x) -> x * 10
+      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(50)
@@ -1227,10 +1202,9 @@ describe('auto: effect + closures', () => {
   it('handler captures enclosing scope', () => {
     const result = dvala.run(`
       let prefix = "handled";
-      do
+      handle
         perform(@test.eff, "msg")
-      with
-        case @test.eff then (x) -> prefix ++ ": " ++ x
+      with [(eff, arg, nxt) -> if eff == @test.eff then prefix ++ ": " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('handled: msg')
@@ -1238,12 +1212,11 @@ describe('auto: effect + closures', () => {
 
   it('closure captures effect result', () => {
     const result = dvala.run(`
-      do
+      handle
         let val = perform(@test.eff, 5);
         let f = () -> val * 2;
         f()
-      with
-        case @test.eff then (x) -> x + 10
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg + 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(30) // (5 + 10) * 2
@@ -1251,11 +1224,10 @@ describe('auto: effect + closures', () => {
 
   it('effect in closure called later', () => {
     const result = dvala.run(`
-      do
+      handle
         let f = (x) -> perform(@test.eff, x);
         f(3) + f(4)
-      with
-        case @test.eff then (x) -> x * 10
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(70) // 30 + 40
@@ -1263,12 +1235,11 @@ describe('auto: effect + closures', () => {
 
   it('nested closures with effects', () => {
     const result = dvala.run(`
-      do
+      handle
         let make-adder = (n) -> (x) -> perform(@test.eff, n + x);
         let add10 = make-adder(10);
         add10(5)
-      with
-        case @test.eff then (x) -> x * 2
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(30) // (10 + 5) * 2
@@ -1281,11 +1252,10 @@ describe('auto: effect + closures', () => {
 describe('auto: effect + recursion', () => {
   it('recursive function with effects', () => {
     const result = dvala.run(`
-      do
+      handle
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
-      with
-        case @test.eff then (x) -> x
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(6) // 3 + 2 + 1 + 0
@@ -1293,11 +1263,10 @@ describe('auto: effect + recursion', () => {
 
   it('effect handler return modifies recursive computation', () => {
     const result = dvala.run(`
-      do
+      handle
         let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
         my-sum(3)
-      with
-        case @test.eff then (x) -> x * 2
+      with [(eff, arg, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(12) // (3*2) + (2*2) + (1*2) + 0

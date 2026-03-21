@@ -72,13 +72,12 @@ describe('handle...with...end', () => {
   describe('next(eff, arg)', () => {
     it('should propagate unhandled effects to outer scope', () => {
       const result = dvala.run(`
-        do
+        handle
           handle
             perform(@my.inner, "hello")
           with [(eff, arg, nxt) -> nxt(eff, arg)]
           end
-        with
-          case @my.inner then (msg) -> "outer:" ++ msg
+        with [(eff, arg, nxt) -> if eff == @my.inner then "outer:" ++ arg else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('outer:hello')

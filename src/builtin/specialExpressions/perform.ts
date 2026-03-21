@@ -22,10 +22,9 @@ const docs: CustomDocs = {
     + 'to the host.',
   examples: [
     `
-do
+handle
   perform(@dvala.io.println, "hello")
-with
-  case @dvala.io.println then (msg) -> msg
+with [(eff, arg, nxt) -> if eff == @dvala.io.println then arg else nxt(eff, arg) end]
 end
 `,
   ],

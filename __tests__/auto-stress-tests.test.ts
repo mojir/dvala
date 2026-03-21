@@ -401,7 +401,7 @@ describe('stress: next() middleware + suspend/fail', () => {
         { pattern: '*', handler: async ({ next }) => { next() } },
       ],
     })
-    // next() exhausts the handler chain → unhandled effect → caught by do...with dvala.error handler
+    // next() exhausts the handler chain -> unhandled effect -> caught by do...with dvala.error handler
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
       expect(result.value).toContain('caught:')
@@ -417,10 +417,9 @@ describe('stress: next() middleware + suspend/fail', () => {
 describe('stress: local + host handler priority with suspend', () => {
   it('local handler catches effect even when host handler exists', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         perform(@my.eff, 10)
-      with
-        case @my.eff then (x) -> x * 3
+      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 3 else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -438,10 +437,9 @@ describe('stress: local + host handler priority with suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let x = perform(@my.wait);
-      do
+      handle
         perform(@my.local, x)
-      with
-        case @my.local then (v) -> v * 2
+      with [(eff, arg, nxt) -> if eff == @my.local then arg * 2 else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -458,15 +456,13 @@ describe('stress: local + host handler priority with suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.wait);
-        do
+        handle
           perform(@outer.eff, x)
-        with
-          case @inner.eff then (v) -> "inner: " ++ v
+        with [(eff, arg, nxt) -> if eff == @inner.eff then "inner: " ++ arg else nxt(eff, arg) end]
         end
-      with
-        case @outer.eff then (v) -> "outer: " ++ v
+      with [(eff, arg, nxt) -> if eff == @outer.eff then "outer: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -483,19 +479,16 @@ describe('stress: local + host handler priority with suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
-        do
-          do
+      handle
+        handle
+          handle
             let x = perform(@my.wait);
             perform(@level3, x)
-          with
-            case @level3 then (v) -> "L3:" ++ v
+          with [(eff, arg, nxt) -> if eff == @level3 then "L3:" ++ arg else nxt(eff, arg) end]
           end
-        with
-          case @level2 then (v) -> "L2:" ++ v
+        with [(eff, arg, nxt) -> if eff == @level2 then "L2:" ++ arg else nxt(eff, arg) end]
         end
-      with
-        case @level1 then (v) -> "L1:" ++ v
+      with [(eff, arg, nxt) -> if eff == @level1 then "L1:" ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -643,13 +636,16 @@ describe('stress: deep closures + effects + suspend', () => {
 describe('stress: cascading effects', () => {
   it('handler resume value triggers another perform', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.first);
         let y = perform(@my.second, x);
         y
-      with
-        case @my.first then (args) -> 10
-        case @my.second then (v) -> v * 2
+      with [(eff, arg, nxt) ->
+        if eff == @my.first then 10
+        else if eff == @my.second then arg * 2
+        else nxt(eff, arg)
+        end end
+      ]
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 20 })
@@ -672,11 +668,10 @@ describe('stress: cascading effects', () => {
 
   it('local handler triggers host effect', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.local);
         perform(@my.host, x)
-      with
-        case @my.local then (args) -> 5
+      with [(eff, arg, nxt) -> if eff == @my.local then 5 else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -688,12 +683,15 @@ describe('stress: cascading effects', () => {
 
   it('error in cascading effect caught by outer handler', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.first);
         perform(@dvala.error, "cascade error: " ++ x)
-      with
-        case @my.first then (args) -> "triggered"
-        case @dvala.error then (msg) -> msg
+      with [(eff, arg, nxt) ->
+        if eff == @my.first then "triggered"
+        else if eff == @dvala.error then arg
+        else nxt(eff, arg)
+        end end
+      ]
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 'cascade error: triggered' })
@@ -707,15 +705,14 @@ describe('stress: cascading effects', () => {
 describe('stress: loop/recur + effects', () => {
   it('effect inside loop body with local handler', () => {
     const result = dvala.run(`
-      do
+      handle
         loop(i = 0, acc = 0) ->
           if i >= 3 then acc
           else
             let v = perform(@my.get, i);
             recur(i + 1, acc + v)
           end
-      with
-        case @my.get then (n) -> n * 10
+      with [(eff, arg, nxt) -> if eff == @my.get then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(30) // 0*10 + 1*10 + 2*10
@@ -777,10 +774,9 @@ describe('stress: loop/recur + effects', () => {
 
   it('reduce with effect in reducer function', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         reduce([1, 2, 3], (acc, x) -> acc + perform(@my.transform, x), 0)
-      with
-        case @my.transform then (x) -> x * x
+      with [(eff, arg, nxt) -> if eff == @my.transform then arg * arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: 14 }) // 1+4+9
@@ -794,22 +790,18 @@ describe('stress: loop/recur + effects', () => {
 describe('stress: deeply nested do/with + suspend', () => {
   it('4-level do/with nesting, effect at deepest level', () => {
     const result = dvala.run(`
-      do
-        do
-          do
-            do
+      handle
+        handle
+          handle
+            handle
               perform(@deep, 1)
-            with
-              case @deep then (x) -> x + 10
+            with [(eff, arg, nxt) -> if eff == @deep then arg + 10 else nxt(eff, arg) end]
             end
-          with
-            case @level3 then (x) -> x
+          with [(eff, arg, nxt) -> if eff == @level3 then arg else nxt(eff, arg) end]
           end
-        with
-          case @level2 then (x) -> x
+        with [(eff, arg, nxt) -> if eff == @level2 then arg else nxt(eff, arg) end]
         end
-      with
-        case @level1 then (x) -> x
+      with [(eff, arg, nxt) -> if eff == @level1 then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(11)
@@ -817,22 +809,18 @@ describe('stress: deeply nested do/with + suspend', () => {
 
   it('4-level nesting, effect bubbles to outermost handler', () => {
     const result = dvala.run(`
-      do
-        do
-          do
-            do
+      handle
+        handle
+          handle
+            handle
               perform(@bubbles, "hello")
-            with
-              case @other1 then (x) -> "wrong1"
+            with [(eff, arg, nxt) -> if eff == @other1 then "wrong1" else nxt(eff, arg) end]
             end
-          with
-            case @other2 then (x) -> "wrong2"
+          with [(eff, arg, nxt) -> if eff == @other2 then "wrong2" else nxt(eff, arg) end]
           end
-        with
-          case @other3 then (x) -> "wrong3"
+        with [(eff, arg, nxt) -> if eff == @other3 then "wrong3" else nxt(eff, arg) end]
         end
-      with
-        case @bubbles then (x) -> "correct: " ++ x
+      with [(eff, arg, nxt) -> if eff == @bubbles then "correct: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('correct: hello')
@@ -844,15 +832,13 @@ describe('stress: deeply nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
-        do
+      handle
+        handle
           let x = perform(@my.wait);
           perform(@inner, x)
-        with
-          case @inner then (v) -> v ++ "!"
+        with [(eff, arg, nxt) -> if eff == @inner then arg ++ "!" else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "error: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "error: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -869,17 +855,15 @@ describe('stress: deeply nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
-        do
+      handle
+        handle
           let x = perform(@my.wait);
           if x == "bad" then perform(@dvala.error, "bad input")
           else x
           end
-        with
-          case @some.other then (v) -> v
+        with [(eff, arg, nxt) -> if eff == @some.other then arg else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -899,15 +883,12 @@ describe('stress: deeply nested do/with + suspend', () => {
 describe('stress: effect-matcher in complex flows', () => {
   it('effect-matcher with wildcard string in nested do/with', () => {
     const result = dvala.run(`
-      do
-        do
+      handle
+        handle
           perform(@custom.thing, "data")
-        with
-          case effect-matcher("custom.*")
-          then (v) -> "matched: " ++ v
+        with [(eff, arg, nxt) -> if effect-matcher("custom.*")(eff) then "matched: " ++ arg else nxt(eff, arg) end]
         end
-      with
-        case @dvala.error then (msg) -> "error: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "error: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched: data')
@@ -919,12 +900,10 @@ describe('stress: effect-matcher in complex flows', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      handle
         let x = perform(@my.wait);
         perform(@app.transform, x)
-      with
-        case effect-matcher(#"^app\\.")
-        then (v) -> "transformed: " ++ v
+      with [(eff, arg, nxt) -> if effect-matcher(#"^app\\.")(eff) then "transformed: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1143,10 +1122,9 @@ describe('stress: error propagation through effect stacks', () => {
   it('error in local handler body caught by outer do/with', () => {
     const result = dvala.run(`
       do
-        do
+        handle
           perform(@my.eff, 1)
-        with
-          case @my.eff then (x) -> 0 / 0
+        with [(eff, arg, nxt) -> if eff == @my.eff then 0 / 0 else nxt(eff, arg) end]
         end
       with
         case @dvala.error then (msg) -> msg
@@ -1338,10 +1316,9 @@ describe('stress: complex data through suspend/resume', () => {
 describe('stress: runSync edge cases', () => {
   it('runSync with local do/with handler works', () => {
     const result = dvala.run(`
-      do
+      handle
         perform(@my.eff, 21)
-      with
-        case @my.eff then (x) -> x * 2
+      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(42)
@@ -1349,10 +1326,9 @@ describe('stress: runSync edge cases', () => {
 
   it('runSync with effect but caught locally does not throw', () => {
     const result = dvala.run(`
-      do
+      handle
         perform(@dvala.error, "oops")
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('caught: oops')
@@ -1576,10 +1552,9 @@ describe('stress: complex end-to-end patterns', () => {
 
   it('filter with effect predicate', async () => {
     const result = await dvala.runAsync(`
-      do
+      handle
         filter([1, 2, 3, 4, 5, 6], (x) -> perform(@my.even?, x))
-      with
-        case @my.even? then (x) -> x % 2 == 0
+      with [(eff, arg, nxt) -> if eff == @my.even? then arg % 2 == 0 else nxt(eff, arg) end]
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: [2, 4, 6] })

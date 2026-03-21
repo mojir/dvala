@@ -10,7 +10,7 @@ export type DoNode = SpecialExpressionNode<[typeof specialExpressionTypes['block
 
 const docs: CustomDocs = {
   category: 'special-expression',
-  customVariants: ['do body end', 'do body with case @name then handler end'],
+  customVariants: ['do body end', 'handle body with [handler-fn] end'],
   details: [
     ['body', 'expressions', 'The expressions to evaluate.'],
     ['@name', 'expression', 'An expression evaluating to an effect value.'],
@@ -26,10 +26,9 @@ do
   b(a)
 end`,
     `
-do
+handle
   perform(@dvala.io.println, "hello")
-with
-  case @dvala.io.println then (msg) -> null
+with [(eff, arg, nxt) -> if eff == @dvala.io.println then null else nxt(eff, arg) end]
 end`,
   ],
 }

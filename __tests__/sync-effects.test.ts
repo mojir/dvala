@@ -190,12 +190,11 @@ describe('runSync with sync effect handlers', () => {
   })
 
   describe('local handlers take priority over sync host handlers', () => {
-    it('local do...with handler wins over effectHandlers', () => {
+    it('local handle...with handler wins over effectHandlers', () => {
       const result = dvala.run(`
-        do
+        handle
           perform(@my.effect, "local")
-        with
-          case @my.effect then (msg) -> upper-case(msg)
+        with [(eff, arg, nxt) -> if eff == @my.effect then upper-case(arg) else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
