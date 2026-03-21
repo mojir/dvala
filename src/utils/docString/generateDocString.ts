@@ -34,7 +34,7 @@ function signature(reference: DocStringSource): string[] {
 
   const functionForms = variants.map(variant => {
     if (isEffectRef(reference)) {
-      // Effect form: perform(@name, arg1, arg2)
+      // Effect form: perform(@name, payload)
       const argsStr = variant.argumentNames.length > 0
         ? `, ${variant.argumentNames.map(argName => {
           let result = ''

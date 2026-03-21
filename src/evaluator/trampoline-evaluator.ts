@@ -755,10 +755,10 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
     // --- perform ---
     case specialExpressionTypes.perform: {
       const effectExpr = node[1][1] as AstNode
-      const argExprs = node[1][2] as AstNode[]
-      const allNodes = [effectExpr, ...argExprs]
+      const payloadExpr = node[1][2] as AstNode | undefined
+      const allNodes = payloadExpr ? [effectExpr, payloadExpr] : [effectExpr]
       if (allNodes.length === 1) {
-        // Only the effect expression, no args — evaluate effect then dispatch
+        // Only the effect expression, no payload — evaluate effect then dispatch
         const frame: PerformArgsFrame = {
           type: 'PerformArgs',
           argNodes: allNodes,

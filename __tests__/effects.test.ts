@@ -1416,9 +1416,9 @@ describe('phase 4 — Suspension & Resume', () => {
       let capturedSnapshots: readonly unknown[] = []
       let callCount = 0
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
         perform(@my.action)
       `, {
         effectHandlers: [
@@ -1446,8 +1446,8 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should resume from the most recent snapshot', async () => {
       let callCount = 0
       const result = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
         let x = perform(@my.get_value);
         x
       `, {
@@ -1544,8 +1544,8 @@ describe('phase 4 — Suspension & Resume', () => {
       let capturedSnapshots: readonly unknown[] = []
       let callCount = 0
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
         perform(@my.action)
       `, {
         effectHandlers: [
@@ -1662,7 +1662,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take a checkpoint, then suspend
       const r1 = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
+        perform(@dvala.checkpoint, "step 1");
         let x = perform(@my.step);
         x
       `, { effectHandlers: handlers })
@@ -1684,8 +1684,8 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take two checkpoints, then suspend
       const r1 = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
         let x = perform(@my.step);
         perform(@my.check);
         x
@@ -1754,7 +1754,7 @@ describe('phase 4 — Suspension & Resume', () => {
 
       // Take a checkpoint, then suspend
       const r1 = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
+        perform(@dvala.checkpoint, "step 1");
         let x = perform(@my.step);
         let y = perform(@my.action);
         x + y
@@ -1790,7 +1790,7 @@ describe('phase 4 — Suspension & Resume', () => {
       ]
 
       const r1 = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
+        perform(@dvala.checkpoint, "step 1");
         let x = perform(@my.step);
         x + 1
       `, { effectHandlers: handlers })
@@ -1811,11 +1811,11 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should retain unlimited snapshots by default', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
-        perform(@dvala.checkpoint, "step 4", { step: 4 });
-        perform(@dvala.checkpoint, "step 5", { step: 5 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
+        perform(@dvala.checkpoint, "step 4");
+        perform(@dvala.checkpoint, "step 5");
         perform(@my.check)
       `, {
         effectHandlers: [
@@ -1831,10 +1831,10 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should evict oldest snapshot when maxSnapshots is exceeded', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
-        perform(@dvala.checkpoint, "step 4", { step: 4 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
+        perform(@dvala.checkpoint, "step 4");
         perform(@my.check)
       `, {
         maxSnapshots: 3,
@@ -1855,8 +1855,8 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should evict from host checkpoint when maxSnapshots is exceeded', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
         perform(@my.save);
         perform(@my.check)
       `, {
@@ -1882,9 +1882,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should fail gracefully when resumeFrom targets an evicted snapshot', async () => {
       let callCount = 0
       const result = await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
         perform(@my.action)
       `, {
         maxSnapshots: 2,
@@ -1922,9 +1922,9 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should work with maxSnapshots: 1', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
-        perform(@dvala.checkpoint, "step 1", { step: 1 });
-        perform(@dvala.checkpoint, "step 2", { step: 2 });
-        perform(@dvala.checkpoint, "step 3", { step: 3 });
+        perform(@dvala.checkpoint, "step 1");
+        perform(@dvala.checkpoint, "step 2");
+        perform(@dvala.checkpoint, "step 3");
         perform(@my.check)
       `, {
         maxSnapshots: 1,

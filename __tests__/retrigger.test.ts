@@ -27,7 +27,7 @@ describe('snapshot captures effectName and effectArg', () => {
 
   it('captures effectArg when handler suspends', async () => {
     const result = await dvala.runAsync(`
-      perform(@my.task, 1, "hello", true)
+      perform(@my.task, [1, "hello", true])
     `, {
       effectHandlers: [
         { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
@@ -36,7 +36,7 @@ describe('snapshot captures effectName and effectArg', () => {
     expect(result.type).toBe('suspended')
     if (result.type !== 'suspended')
       return
-    expect(result.snapshot.effectArg).toBe(1)
+    expect(result.snapshot.effectArg).toEqual([1, 'hello', true])
   })
 
   it('captures effectName from a suspending parallel branch', async () => {
@@ -109,7 +109,7 @@ describe('retrigger()', () => {
   it('passes original effectArg to the retriggered handler', async () => {
     let capturedArg: unknown
     const r1 = await dvala.runAsync(`
-      perform(@my.task, "foo", 42)
+      perform(@my.task, ["foo", 42])
     `, {
       effectHandlers: [
         { pattern: 'my.task', handler: async ({ suspend }) => { suspend() } },
@@ -127,7 +127,7 @@ describe('retrigger()', () => {
         } },
       ],
     })
-    expect(capturedArg).toBe('foo')
+    expect(capturedArg).toEqual(['foo', 42])
   })
 
   it('returns error when snapshot has no effectName', async () => {

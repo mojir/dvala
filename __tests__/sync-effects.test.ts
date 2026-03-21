@@ -15,12 +15,12 @@ describe('runSync with sync effect handlers', () => {
     })
 
     it('handler receives effect arg', () => {
-      const result = dvala.run('perform(@my.add, 3, 4)', {
+      const result = dvala.run('perform(@my.add, [3, 4])', {
         effectHandlers: [
-          { pattern: 'my.add', handler: ({ arg, resume }) => resume(arg as number) },
+          { pattern: 'my.add', handler: ({ arg, resume }) => { const [a, b] = arg as number[]; resume(a! + b!) } },
         ],
       })
-      expect(result).toBe(3)
+      expect(result).toBe(7)
     })
 
     it('handler receives effectName', () => {
