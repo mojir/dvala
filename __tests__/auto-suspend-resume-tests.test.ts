@@ -281,11 +281,10 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      do
+      handle
         perform(@dvala.checkpoint, "inside do-with");
         perform(@my.local, 5)
-      with
-        case @my.local then (v) -> v * 2
+      with [(eff, arg, nxt) -> if eff == @my.local then arg * 2 else nxt(eff, arg) end]
       end;
       let x = perform(@my.step);
       perform(@my.check);
@@ -313,7 +312,7 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     if (r2.type === 'completed') {
       expect(r2.value).toBe(99)
     }
-    // The checkpoint taken inside do/with should be preserved
+    // The checkpoint taken inside handle/with should be preserved
     expect(capturedSnapshots.length).toBe(1)
     expect((capturedSnapshots[0] as Snapshot).message).toBe('inside do-with')
   })
