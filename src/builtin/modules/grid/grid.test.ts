@@ -117,7 +117,7 @@ describe('grid', () => {
         [0, 0, 0],
         [0, 0, 0],
       ])
-      expect(runGrid('grid:generate(2, 4, -> $1 + $2)')).toEqual([
+      expect(runGrid('grid:generate(2, 4, -> $ + $2)')).toEqual([
         [0, 1, 2, 3],
         [1, 2, 3, 4],
       ])
@@ -268,7 +268,7 @@ describe('grid', () => {
   })
   describe('grid:cell-mapi', () => {
     it('should map the grid with index', () => {
-      expect(runGrid(`grid:cell-mapi(${exampleGrid1}, -> $1 ++ "(" ++ $2 ++ ", " ++ $3 ++ ")")`)).toEqual([
+      expect(runGrid(`grid:cell-mapi(${exampleGrid1}, -> $ ++ "(" ++ $2 ++ ", " ++ $3 ++ ")")`)).toEqual([
         ['Albert(0, 0)', 'father(0, 1)', '10(0, 2)'],
         ['Nina(1, 0)', 'mother(1, 1)', '20(1, 2)'],
         ['Kian(2, 0)', 'son(2, 1)', '30(2, 2)'],

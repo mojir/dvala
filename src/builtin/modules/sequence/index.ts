@@ -154,7 +154,7 @@ su.position(
       examples: [
         'let su = import(sequence); su.sort-by(["Albert", "Mojir", "Nina"], count)',
         'let su = import(sequence); su.sort-by(["Albert", "Mojir", "Nina"], count)',
-        'let su = import(sequence); su.sort-by("Albert", lower-case, -> $2 compare $1)',
+        'let su = import(sequence); su.sort-by("Albert", lower-case, -> $2 compare $)',
       ],
     },
   },

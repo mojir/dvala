@@ -794,7 +794,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { cell-mapi } = import(grid);\ncell-mapi([\n  ["Albert", "father", 10],\n  ["Nina", "mother", 20],\n  ["Kian", "son", 30],\n], -> $1 ++ "(" ++ $2 ++ ", " ++ $3 ++ ")")',
+      'let { cell-mapi } = import(grid);\ncell-mapi([\n  ["Albert", "father", 10],\n  ["Nina", "mother", 20],\n  ["Kian", "son", 30],\n], -> $ ++ "(" ++ $2 ++ ", " ++ $3 ++ ")")',
     ],
     seeAlso: ['grid.cell-map', 'grid.cell-reducei', 'map'],
   },

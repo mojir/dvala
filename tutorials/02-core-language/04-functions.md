@@ -49,14 +49,14 @@ sum-all(1, 2, 3, 4, 5)
 
 ## Short-hand Lambdas
 
-For quick one-liners, use `->` with `$` (or `$1`, `$2`, …) for positional arguments:
+For quick one-liners, use `->` with `$` (first argument) and `$2`, `$3`, ... for positional arguments:
 
 ```dvala
 map([1, 2, 3], -> $ * $)
 ```
 
 ```dvala
-map([1, 2, 3, 4], -> $1 + 10)
+map([1, 2, 3, 4], -> $ + 10)
 ```
 
 ## Recursion with self

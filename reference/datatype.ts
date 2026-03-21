@@ -96,7 +96,7 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
       'x -> x + 1',
       '(a, b, c) -> (a + b) * c',
       '() -> 42',
-      '-> $1 + $2',
+      '-> $ + $2',
     ],
   },
   '-type-integer': {

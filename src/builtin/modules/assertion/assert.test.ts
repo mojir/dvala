@@ -127,7 +127,7 @@ describe('assert functions', () => {
         expect(() => runWithAssert('a.assert-falsy({})')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assert-falsy(1)')).toThrowError(AssertionError)
         expect(() => runWithAssert('a.assert-falsy("hej")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy(-> $1 + $1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assert-falsy(-> $ + $)')).toThrowError(AssertionError)
         expect(runWithAssert('a.assert-falsy(false)')).toBeNull()
         expect(runWithAssert('a.assert-falsy(null, "Expected true")')).toBeNull()
         expect(runWithAssert('a.assert-falsy(0)')).toBeNull()

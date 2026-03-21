@@ -188,7 +188,7 @@ function isHandlerShorthand(ctx: ParserContext): boolean {
  * Handler signature order: (arg, eff, nxt) — matches the full handler contract.
  *
  * Forms:
- *   @effect -> body                    → ($1, $2, $3) -> if $2 == @effect then body else $3($2, $1) end
+ *   @effect -> body                    → ($, $2, $3) -> if $2 == @effect then body else $3($2, $) end
  *   @effect(x) -> body                → (x, eff·, nxt·) -> if eff· == @effect then body else nxt·(eff·, x) end
  *   @effect(x, e) -> body             → (x, e, nxt·) -> if e == @effect then body else nxt·(e, x) end
  *   @effect(x, e, n) -> body          → (x, e, n) -> if e == @effect then body else n(e, x) end
@@ -205,8 +205,8 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
   let nxtName: string
 
   if (isOperatorToken(ctx.tryPeek(), '->')) {
-    // Zero-param form: @effect -> body (uses $1, $2, $3)
-    argName = '$1'
+    // Zero-param form: @effect -> body (uses $, $2, $3)
+    argName = '$'
     effName = '$2'
     nxtName = '$3'
     ctx.advance() // skip ->

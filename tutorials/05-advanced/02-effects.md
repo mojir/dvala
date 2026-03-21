@@ -177,11 +177,11 @@ with [
 end
 ```
 
-A **zero-param** form uses `$1`, `$2`, `$3` (consistent with shorthand lambdas):
+A **zero-param** form uses `$`, `$2`, `$3` (consistent with shorthand lambdas):
 
 ```dvala
 handle perform(@my.eff, 21)
-with @my.eff -> $1 * 2
+with @my.eff -> $ * 2
 end
 ```
 

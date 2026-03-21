@@ -560,11 +560,11 @@ describe('sequence-Utils module functions', () => {
     describe('remove', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}su.remove([1, 2, 3, 1, 3, 5], even?)`)).toEqual([1, 3, 1, 3, 5])
-        expect(mdvala.run(`${imp}su.remove("Albert Mojir", -> contains?("aoueiyAOUEIY", $1))`)).toBe('lbrt Mjr')
+        expect(mdvala.run(`${imp}su.remove("Albert Mojir", -> contains?("aoueiyAOUEIY", $))`)).toBe('lbrt Mjr')
         expect(() => mdvala.run(`${imp}su.remove()`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.remove("Albert Mojir")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove(=> contains?("aoueiyAOUEIY", $1))`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains?("aoueiyAOUEIY", $1) "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.remove(=> contains?("aoueiyAOUEIY", $))`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains?("aoueiyAOUEIY", $) "Mojir")`)).toThrow(DvalaError)
       })
     })
 
@@ -610,20 +610,20 @@ describe('sequence-Utils module functions', () => {
 
     describe('split-with', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $1 < 3)`)).toEqual([
+        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ < 3)`)).toEqual([
           [1, 2],
           [3, 4, 5],
         ])
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $1 > 3)`)).toEqual([[], [1, 2, 3, 4, 5]])
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $1 < 10)`)).toEqual([[1, 2, 3, 4, 5], []])
+        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ > 3)`)).toEqual([[], [1, 2, 3, 4, 5]])
+        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ < 10)`)).toEqual([[1, 2, 3, 4, 5], []])
 
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $1 <= "Z")`)).toEqual(['A', 'lbert'])
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $1 > "Z")`)).toEqual(['', 'Albert'])
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $1 <= "z")`)).toEqual(['Albert', ''])
+        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ <= "Z")`)).toEqual(['A', 'lbert'])
+        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ > "Z")`)).toEqual(['', 'Albert'])
+        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ <= "z")`)).toEqual(['Albert', ''])
 
         expect(() => mdvala.run(`${imp}su.split-with()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-with(-> $1 <= "Z")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-with("Albert", -> $1 <= "Z", "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.split-with(-> $ <= "Z")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.split-with("Albert", -> $ <= "Z", "Mojir")`)).toThrow(DvalaError)
       })
     })
 
@@ -660,7 +660,7 @@ describe('sequence-Utils module functions', () => {
           Albert: [{ name: 'Albert' }, { name: 'Albert' }],
           Mojir: [{ name: 'Mojir' }],
         })
-        expect(mdvala.run(`${imp}su.group-by("Albert Mojir", -> if "aoueiAOUEI" contains? $1 then "vowel" else "other" end)`)).toEqual({
+        expect(mdvala.run(`${imp}su.group-by("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)`)).toEqual({
           other: ['l', 'b', 'r', 't', ' ', 'M', 'j', 'r'],
           vowel: ['A', 'e', 'o', 'i'],
         })
@@ -762,7 +762,7 @@ describe('sequence-Utils module functions', () => {
 
     describe('partition-by', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.partition-by([1, 2, 3, 4, 5], -> 3 == $1)`)).toEqual([[1, 2], [3], [4, 5]])
+        expect(mdvala.run(`${imp}su.partition-by([1, 2, 3, 4, 5], -> 3 == $)`)).toEqual([[1, 2], [3], [4, 5]])
         expect(mdvala.run(`${imp}su.partition-by([1, 1, 1, 2, 2, 3, 3], odd?)`)).toEqual([
           [1, 1, 1],
           [2, 2],

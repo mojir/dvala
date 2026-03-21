@@ -499,8 +499,8 @@ end;`))).toEqual(
   })
 
   it('shorthand lambda', () => {
-    expect(dvala.run('(-> $1 + $2 + $3)(2, 4, 6)')).toBe(12)
-    expect(dvala.run('(-> if $1 then $2 else $3 end)(2, 4, 6)')).toBe(4)
+    expect(dvala.run('(-> $ + $2 + $3)(2, 4, 6)')).toBe(12)
+    expect(dvala.run('(-> if $ then $2 else $3 end)(2, 4, 6)')).toBe(4)
     expect(dvala.run('((a, b, c) -> if a then b else c end)(0, 4, 6)')).toBe(6)
   })
 
