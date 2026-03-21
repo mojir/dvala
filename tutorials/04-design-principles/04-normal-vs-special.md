@@ -156,7 +156,6 @@ Dvala has **21** special expressions:
 * **Effects** — `@name`, `perform`
 * **Concurrency** — `parallel`, `race`
 * **Modules** — `import`
-* **Predicates** — `defined?`
 
 Everything else — `+`, `map`, `filter`, `str`, `inc`, `upper-case`, and hundreds more — is a normal expression that evaluates all arguments first.
 

@@ -113,7 +113,7 @@ export function getMetaNormalExpression(
         seeAlso: ['doc'],
         examples: [
           'arity(+)',
-          'arity(defined?)',
+          'arity(map)',
           'arity(@dvala.random.int)',
           `
 let add = (x, y = 0) -> do

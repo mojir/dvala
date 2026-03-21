@@ -671,29 +671,8 @@ foo(3)`)
     })
   })
 
-  describe('defined?', () => {
-    it('samples', () => {
-      expect(dvala.run('defined?(foo)')).toBe(false)
-      expect(dvala.run('let foo = "foo"; defined?(foo)')).toBe(true)
-      expect(dvala.run('defined?(+)')).toBe(true)
-      expect(dvala.run('let foo = null; defined?(foo)')).toBe(true)
-
-      expect(() => dvala.run('defined?()')).toThrow(DvalaError)
-      expect(() => dvala.run('defined?(foo, bar)')).toThrow(DvalaError)
-    })
-
-    describe('unresolvedIdentifiers', () => {
-      it('samples', () => {
-        expect((getUndefinedSymbols('defined?(x)'))).toEqual(new Set(['x']))
-      })
-    })
-  })
-
   describe('??', () => {
     it('samples', () => {
-      expect(dvala.run('??(foo)')).toBe(null)
-      expect(dvala.run('??(foo, 0)')).toBe(0)
-      expect(dvalaDebug.run('??(foo, 0)')).toBe(0)
       expect(dvalaDebug.run('??(0, 1)')).toBe(0)
       expect(dvala.run('??("")')).toBe('')
       expect(dvala.run('??(null)')).toBe(null)
@@ -701,8 +680,6 @@ foo(3)`)
       expect(dvala.run('??(false)')).toBe(false)
       expect(dvala.run('let foo = "foo"; ??(foo)')).toBe('foo')
       expect(dvala.run('??(null, null, 3)')).toBe(3)
-      expect(dvala.run('??(foo, bar)')).toBe(null)
-      expect(dvala.run('??(foo, bar, 42)')).toBe(42)
 
       expect(() => dvala.run('??()')).toThrow(DvalaError)
     })

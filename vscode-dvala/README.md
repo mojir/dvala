@@ -42,7 +42,7 @@ Then reload VS Code.
 
 ## Supported Tokens
 
-- **Special expressions**: `if`, `let`, `for`, `match`, `loop`, `block`, `doseq`, `import`, `effect`, `perform`, `parallel`, `race`, `recur`, `defined?`
+- **Special expressions**: `if`, `let`, `for`, `match`, `loop`, `block`, `doseq`, `import`, `effect`, `perform`, `parallel`, `race`, `recur`
 - **Reserved words**: `do`, `else`, `case`, `each`, `in`, `when`, `while`, `function`, `as`, `then`, `end`, `with`, `_`, `true`, `false`, `null`
 - **Numeric constants**: `PI`, `E`, `PHI`, `NaN`, `∞`, `π`, `ε`, `φ`, etc.
 - **Builtin functions**: `map`, `filter`, `reduce`, `sort`, `count`, `keys`, `vals`, etc.

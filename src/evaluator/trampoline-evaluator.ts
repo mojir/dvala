@@ -68,7 +68,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
-import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
+import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isObj } from '../typeGuards/dvala'
 import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
@@ -403,31 +403,9 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       if (nodes.length === 0) {
         return { type: 'Value', value: null, k }
       }
-      // Check if the first node is an undefined user symbol
       const firstNode = nodes[0]!
-      if (isUserDefinedSymbolNode(firstNode) && env.lookUp(firstNode) === null) {
-        // Undefined symbol — treat as null, skip to next
-        // Single-arg with undefined symbol — unreachable: ??(x) uses evaluateAsNormalExpression, infix requires 2+ operands
-        /* v8 ignore next 3 */
-        if (nodes.length === 1) {
-          return { type: 'Value', value: null, k }
-        }
-        const frame: QqFrame = {
-          type: 'Qq',
-          nodes,
-          index: 2,
-          env,
-          sourceCodeInfo,
-        }
-        const nextNode = nodes[1]!
-        if (isUserDefinedSymbolNode(nextNode) && env.lookUp(nextNode) === null) {
-          // Also undefined — continue skipping
-          return skipUndefinedQq(frame, k)
-        }
-        if (nodes.length === 2) {
-          return { type: 'Eval', node: nextNode, env, k }
-        }
-        return { type: 'Eval', node: nextNode, env, k: [frame, ...k] }
+      if (nodes.length === 1) {
+        return { type: 'Eval', node: firstNode, env, k }
       }
       const frame: QqFrame = {
         type: 'Qq',
@@ -435,11 +413,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         index: 1,
         env,
         sourceCodeInfo,
-      }
-      // Single-arg — unreachable: ??(x) uses evaluateAsNormalExpression, infix requires 2+ operands
-      /* v8 ignore next 3 */
-      if (nodes.length === 1) {
-        return { type: 'Eval', node: firstNode, env, k }
       }
       return { type: 'Eval', node: firstNode, env, k: [frame, ...k] }
     }
@@ -654,16 +627,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         docString: '',
       }
       return { type: 'Value', value: dvalaFunction, k }
-    }
-
-    // --- defined? ---
-    case specialExpressionTypes['defined?']: {
-      const symbolNode = node[1][1] as SymbolNode
-      if (!isUserDefinedSymbolNode(symbolNode)) {
-        return { type: 'Value', value: true, k }
-      }
-      const lookUpResult = env.lookUp(symbolNode)
-      return { type: 'Value', value: lookUpResult !== null, k }
     }
 
     // --- import ---
@@ -1416,40 +1379,16 @@ function applyQq(frame: QqFrame, value: Any, k: ContinuationStack): Step {
   if (value !== null) {
     return { type: 'Value', value, k }
   }
-  return advanceQq(frame, k)
-}
-
-/** Advance ?? to the next node, skipping undefined user symbols. */
-function advanceQq(frame: QqFrame, k: ContinuationStack): Step {
-  const { nodes, env } = frame
-  let { index } = frame
-
-  // Skip undefined user symbols
-  while (index < nodes.length) {
-    const node = nodes[index]!
-    if (isUserDefinedSymbolNode(node) && env.lookUp(node) === null) {
-      index++
-      continue
-    }
-    break
-  }
-
+  // Value is null — advance to next operand
+  const { nodes, index, env } = frame
   if (index >= nodes.length) {
     return { type: 'Value', value: null, k }
   }
-
   if (index === nodes.length - 1) {
-    // Last node — no need for frame
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
-
   const newFrame: QqFrame = { ...frame, index: index + 1 }
   return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
-}
-
-/** Skip undefined user symbols in ?? until we find one to evaluate. */
-function skipUndefinedQq(frame: QqFrame, k: ContinuationStack): Step {
-  return advanceQq(frame, k)
 }
 
 function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k: ContinuationStack): Step {

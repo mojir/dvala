@@ -394,22 +394,13 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return boolean for defined?', () => {
-      const node = parseFirst('defined?(x)')
-      const step = stepNodeSync(node, emptyEnv(), [])
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(false)
-      }
-    })
-
-    it('should return true for defined? on an existing symbol', () => {
-      const node = parseFirst('defined?(x)')
+    it('should return value for a symbol in scope', () => {
+      const node = parseFirst('x')
       const env = createContextStack({ globalContext: { x: { value: 42 } } })
       const step = stepNodeSync(node, env, [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toBe(true)
+        expect(step.value).toBe(42)
       }
     })
 
@@ -948,11 +939,6 @@ describe('trampoline integration', () => {
     const node = parseFirst('str("hello", " ", "world")')
     const step = stepNodeSync(node, emptyEnv(), [])
     expect(runTrampoline(step)).toBe('hello world')
-  })
-
-  it('should evaluate defined?', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('defined?(inc)'), emptyEnv(), []))).toBe(true)
-    expect(runTrampoline(stepNodeSync(parseFirst('defined?(xyz)'), emptyEnv(), []))).toBe(false)
   })
 
   it('should evaluate match expression', () => {

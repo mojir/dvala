@@ -28,9 +28,7 @@ const docs: FunctionDocs = {
 
 Evaluation is short-circuited — as soon as a non-\`null\` value is found, the remaining expressions are not evaluated.
 
-If all values are \`null\`, returns \`null\`.
-
-Also works with undefined symbols — if a symbol is undefined, it is treated as \`null\`.`,
+If all values are \`null\`, returns \`null\`.`,
   examples: [
     '1 ?? 2',
     'null ?? 2',
