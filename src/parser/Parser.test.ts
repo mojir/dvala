@@ -410,11 +410,11 @@ describe('parser', () => {
     })
   })
 
-  describe('unless expression', () => {
+  describe('negated if expression', () => {
     test('samples', () => {
-      expect(dvala.run('unless 1 < 2 then 1 else 2 end')).toBe(2)
-      expect(dvala.run('unless 1 < 2 then 1 end')).toBe(null)
-      expect(dvala.run('unless 1 > 2 then 1 else 2 end')).toBe(1)
+      expect(dvala.run('if not(1 < 2) then 1 else 2 end')).toBe(2)
+      expect(dvala.run('if not(1 < 2) then 1 end')).toBe(null)
+      expect(dvala.run('if not(1 > 2) then 1 else 2 end')).toBe(1)
     })
   })
 

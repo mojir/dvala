@@ -6,7 +6,6 @@ import { definedSpecialExpression } from './specialExpressions/defined'
 import { doSpecialExpression } from './specialExpressions/block'
 import { lambdaSpecialExpression } from './specialExpressions/functions'
 import { ifSpecialExpression } from './specialExpressions/if'
-import { unlessSpecialExpression } from './specialExpressions/unless'
 import { letSpecialExpression } from './specialExpressions/let'
 import { loopSpecialExpression } from './specialExpressions/loop'
 import { doseqSpecialExpression, forSpecialExpression } from './specialExpressions/loops'
@@ -39,7 +38,6 @@ export const specialExpressions = [
   objectSpecialExpression,
   recurSpecialExpression,
   matchSpecialExpression,
-  unlessSpecialExpression,
   importSpecialExpression,
   effectSpecialExpression,
   performSpecialExpression,
@@ -58,7 +56,6 @@ export type CommonSpecialExpressionType = [
   | typeof specialExpressionTypes['defined?']
   | typeof specialExpressionTypes['block']
   | typeof specialExpressionTypes['if']
-  | typeof specialExpressionTypes['unless']
   | typeof specialExpressionTypes['||']
   | typeof specialExpressionTypes['array']
   | typeof specialExpressionTypes['object']

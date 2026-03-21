@@ -75,7 +75,7 @@ describe('tick', () => {
 
   it('should apply top frame when ValueStep has non-empty k', () => {
     const thenNode: NumberNode = [NodeTypes.Number, 99]
-    const frame: IfBranchFrame = { type: 'IfBranch', thenNode, elseNode: undefined, inverted: false, env: emptyEnv() }
+    const frame: IfBranchFrame = { type: 'IfBranch', thenNode, elseNode: undefined, env: emptyEnv() }
     const step: Step = { type: 'Value', value: true, k: [frame] }
     const next = tick(step) as Step
     expect(next.type).toBe('Eval')
@@ -482,7 +482,6 @@ describe('applyFrame', () => {
         type: 'IfBranch',
         thenNode,
         elseNode,
-        inverted: false,
         env: emptyEnv(),
       }
       const step = applyFrameSync(frame, true, [])
@@ -499,7 +498,6 @@ describe('applyFrame', () => {
         type: 'IfBranch',
         thenNode,
         elseNode,
-        inverted: false,
         env: emptyEnv(),
       }
       const step = applyFrameSync(frame, false, [])
@@ -515,29 +513,10 @@ describe('applyFrame', () => {
         type: 'IfBranch',
         thenNode,
         elseNode: undefined,
-        inverted: false,
         env: emptyEnv(),
       }
       const step = applyFrameSync(frame, false, [])
       expect(step).toEqual({ type: 'Value', value: null, k: [] })
-    })
-
-    it('should invert condition for unless', () => {
-      const thenNode: NumberNode = [NodeTypes.Number, 1]
-      const elseNode: NumberNode = [NodeTypes.Number, 2]
-      const frame: IfBranchFrame = {
-        type: 'IfBranch',
-        thenNode,
-        elseNode,
-        inverted: true,
-        env: emptyEnv(),
-      }
-      // falsy inverted → truthy → evaluate thenNode
-      const step = applyFrameSync(frame, false, [])
-      expect(step.type).toBe('Eval')
-      if (step.type === 'Eval') {
-        expect(step.node).toBe(thenNode)
-      }
     })
   })
 
@@ -897,8 +876,8 @@ describe('trampoline integration', () => {
     expect(runTrampoline(step)).toBe(2)
   })
 
-  it('should evaluate unless expression', () => {
-    const node = parseFirst('unless true then 1 else 2 end')
+  it('should evaluate negated if expression', () => {
+    const node = parseFirst('if not(true) then 1 else 2 end')
     const step = stepNodeSync(node, emptyEnv(), [])
     expect(runTrampoline(step)).toBe(2)
   })

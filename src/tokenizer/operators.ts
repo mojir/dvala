@@ -64,7 +64,6 @@ const nonFunctionOperators = [
   'let',
   'loop',
   'recur',
-  'unless',
   'while',
 ]
 

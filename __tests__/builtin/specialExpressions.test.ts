@@ -204,39 +204,37 @@ describe('specialExpressions', () => {
     })
   })
 
-  describe('unless', () => {
+  describe('if not (negated condition)', () => {
     it('samples', () => {
-      expect(dvalaDebug.run('unless true then "A" else "B" end')).toBe('B')
-      expect(dvalaDebug.run('unless false then "A" else "B" end')).toBe('A')
-      expect(dvala.run('unless null then "A" else "B" end')).toBe('A')
-      expect(dvala.run('unless true then "A" end')).toBeNull()
-      expect(dvala.run('unless false then "A" end')).toBe('A')
-      expect(dvala.run('unless null then "A" end')).toBe('A')
-      expect(dvala.run('unless "" then "A" else "B" end')).toBe('A')
-      expect(dvala.run('unless "x" then "A" else "B" end')).toBe('B')
-      expect(dvala.run('unless 0 then "A" else "B" end')).toBe('A')
-      expect(dvala.run('unless 1 then "A" else "B" end')).toBe('B')
-      expect(dvala.run('unless -1 then "A" else "B" end')).toBe('B')
-      expect(dvala.run('unless [] then "A" else "B" end')).toBe('B')
-      expect(dvala.run('unless object() then "A" else "B" end')).toBe('B')
-      expect(() => dvala.run('unless')).toThrow(DvalaError)
-      expect(() => dvala.run('unless true then end')).toThrow(DvalaError)
+      expect(dvalaDebug.run('if not(true) then "A" else "B" end')).toBe('B')
+      expect(dvalaDebug.run('if not(false) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if not(null) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if not(true) then "A" end')).toBeNull()
+      expect(dvala.run('if not(false) then "A" end')).toBe('A')
+      expect(dvala.run('if not(null) then "A" end')).toBe('A')
+      expect(dvala.run('if not("") then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if not("x") then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if not(0) then "A" else "B" end')).toBe('A')
+      expect(dvala.run('if not(1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if not(0 - 1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if not([]) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if not(object()) then "A" else "B" end')).toBe('B')
     })
-    it('that special form \'unless\' only evaluate the correct path (true)', () => {
-      dvala.run('unless true then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
+    it('that if not(...) only evaluates the correct path (true)', () => {
+      dvala.run('if not(true) then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
       expect(logSpy).toHaveBeenCalledWith('B\n')
       expect(logSpy).not.toHaveBeenCalledWith('A\n')
     })
-    it('that special form \'unless\' only evaluate the correct path (false)', () => {
-      dvala.run('unless false then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
+    it('that if not(...) only evaluates the correct path (false)', () => {
+      dvala.run('if not(false) then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
       expect(logSpy).not.toHaveBeenCalledWith('B\n')
       expect(logSpy).toHaveBeenCalledWith('A\n')
     })
 
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((getUndefinedSymbols('unless a > b then a else b end'))).toEqual(new Set(['a', 'b']))
-        expect((getUndefinedSymbols('unless a > b then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
+        expect((getUndefinedSymbols('if not(a > b) then a else b end'))).toEqual(new Set(['a', 'b']))
+        expect((getUndefinedSymbols('if not(a > b) then c else d end'))).toEqual(new Set(['a', 'b', 'c', 'd']))
       })
     })
   })

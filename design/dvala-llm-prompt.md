@@ -177,7 +177,7 @@ let gt0  = <(0, _);   // partial: gt0(5) => true
 
 ## Special Expressions (Control Flow)
 
-### `if` / `unless`
+### `if`
 
 ```dvala
 if condition then
@@ -188,7 +188,7 @@ end
 
 if condition then expr end          // no else: returns null when false
 
-unless condition then expr end      // negated if
+if not(condition) then expr end     // negated condition
 ```
 
 ### `if/else if` (multi-branch)

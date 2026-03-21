@@ -71,7 +71,6 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       SpecialExpressionType,
       | typeof specialExpressionTypes.for
       | typeof specialExpressionTypes.if
-      | typeof specialExpressionTypes.unless
       | typeof specialExpressionTypes.match
       | typeof specialExpressionTypes.let
       | typeof specialExpressionTypes.block

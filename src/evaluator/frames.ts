@@ -52,17 +52,16 @@ export interface SequenceFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * Binary conditional branch — used by both `if` and `unless`.
+ * Conditional branch (`if`).
  *
  * Pushed when the condition expression is being evaluated. When the condition
  * value arrives, the trampoline picks `thenNode` or `elseNode` (or returns
- * `null` if there is no else branch). `inverted` flips the test for `unless`.
+ * `null` if there is no else branch).
  */
 export interface IfBranchFrame {
   type: 'IfBranch'
   thenNode: AstNode
   elseNode: AstNode | undefined
-  inverted: boolean // true for `unless`, false for `if`
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
