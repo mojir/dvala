@@ -1976,57 +1976,50 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
 function tryDispatchDvalaError(
   error: DvalaError,
   k: ContinuationStack,
-  handlers?: Handlers,
-  signal?: AbortSignal,
-  snapshotState?: SnapshotState,
-): Step | Promise<Step> | null {
+): Step | null {
   const effect = getEffectRef('dvala.error')
   const arg: Any = error.shortMessage
 
-  // Check local handlers (TryWithFrame and HandleWithFrame)
-  // Also follow EffectResumeFrame.resumeK to find handlers that set up the
-  // current handler chain — this allows handle...with handlers to catch errors
-  // from nxt() propagation (e.g., unhandled effect errors).
+  // Convert runtime error to a perform(@dvala.error, msg) if there's a
+  // handler that can catch it. Otherwise return null (caller re-throws).
+  //
+  // Walk k looking for handler frames (TryWith, HandleWith) or EffectResumeFrame
+  // (which points back to the handler scope via resumeK).
+  //
+  // When inside a handler (EffectResumeFrame found):
+  // - Error from handler body (frames above EffectResumeFrame): SKIP the
+  //   source HandleWithFrame to prevent infinite recursion
+  // - Error from nxt() propagation (EffectResumeFrame is first): do NOT skip,
+  //   the same scope's @dvala.error handler should catch it
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
-    if (frame.type === 'TryWith') {
-      for (const handler of frame.handlers) {
-        if (handlerMatchesEffect(handler, effect, frame.env, error.sourceCodeInfo)) {
-          return invokeMatchedHandler(handler, frame, arg, k, i, error.sourceCodeInfo)
-        }
-      }
-    }
-    if (frame.type === 'HandleWith') {
-      return invokeHandleWithChain(frame, effect, arg, k, i, error.sourceCodeInfo)
+    if (frame.type === 'TryWith' || frame.type === 'HandleWith') {
+      // Found a handler directly in k — use full k so body frames above
+      // the handler are preserved for proper resumption
+      return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
     }
     if (frame.type === 'EffectResume') {
-      // Follow resumeK to find the HandleWithFrame/TryWithFrame that set up
-      // this handler chain. This allows dvala.error to be caught by the same
-      // handle...with scope when nxt() propagation causes an error.
+      const fromHandlerBody = i > 0
       const resumeK = frame.resumeK
+      const skipFrame = fromHandlerBody ? frame.sourceHandleFrame : undefined
       for (let j = 0; j < resumeK.length; j++) {
         const rFrame = resumeK[j]!
-        if (rFrame.type === 'TryWith') {
-          for (const handler of rFrame.handlers) {
-            if (handlerMatchesEffect(handler, effect, rFrame.env, error.sourceCodeInfo)) {
-              return invokeMatchedHandler(handler, rFrame, arg, resumeK, j, error.sourceCodeInfo)
-            }
-          }
+        if (rFrame.type === 'HandleWith' && rFrame === skipFrame) {
+          // Error from handler body — skip this HandleWithFrame by splicing
+          // it out so dispatchPerform doesn't re-enter the same handler.
+          // Preserve body frames above for proper resumption.
+          const patchedK = [...resumeK.slice(0, j), ...resumeK.slice(j + 1)]
+          return { type: 'Perform', effect, arg, k: patchedK, sourceCodeInfo: error.sourceCodeInfo }
         }
-        if (rFrame.type === 'HandleWith') {
-          return invokeHandleWithChain(rFrame, effect, arg, resumeK, j, error.sourceCodeInfo)
+        if (rFrame.type === 'HandleWith' || rFrame.type === 'TryWith') {
+          // Found an outer handler — use full resumeK (body frames preserved)
+          return { type: 'Perform', effect, arg, k: resumeK, sourceCodeInfo: error.sourceCodeInfo }
         }
       }
+      return null // No handler found in resumeK
     }
   }
-
-  // Check host handlers for 'dvala.error' (supports wildcards like 'dvala.*' or '*')
-  const matchingHostHandlers = findMatchingHandlers('dvala.error', handlers)
-  if (matchingHostHandlers.length > 0) {
-    return dispatchHostHandler('dvala.error', matchingHostHandlers, arg, k, signal, error.sourceCodeInfo, snapshotState)
-  }
-
-  return null
+  return null // No handler found
 }
 
 function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
@@ -2381,6 +2374,7 @@ function invokeHandleWithChain(
   const effectResumeFrame: EffectResumeFrame = {
     type: 'EffectResume',
     resumeK,
+    sourceHandleFrame: frame,
     sourceCodeInfo,
   }
   const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
@@ -3850,8 +3844,8 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'Error': {
-        const effectStep = tryDispatchDvalaError(step.error, step.k, handlers, signal, snapshotState)
-        if (effectStep !== null) {
+        const effectStep = tryDispatchDvalaError(step.error, step.k)
+        if (effectStep) {
           return effectStep
         }
 
@@ -3879,12 +3873,10 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       const kForDispatch = step.type === 'Value'
         ? step.k.slice(1)
         : step.k
-      const effectStep = tryDispatchDvalaError(error, kForDispatch, handlers, signal, snapshotState)
-      if (effectStep !== null) {
-        return effectStep
-      }
+      const effectStep = tryDispatchDvalaError(error, kForDispatch)
+      if (effectStep) return effectStep
     }
-    // Fallback: no handler matched — re-throw the error as a JS exception.
+    // No handler matched — re-throw the error as a JS exception.
     throw error
   }
 }
