@@ -14,7 +14,7 @@ import { getPrecedence } from '../getPrecedence'
 import { parseDo } from './parseDo'
 import { parseHandle } from './parseHandle'
 import { parseForOrDoseq } from './parseForOrDoseq'
-import { parseIfOrUnless } from './parseIfOrUnless'
+import { parseIf } from './parseIf'
 import { parseLet } from './parseLet'
 import { parseLoop } from './parseLoop'
 import { parseOperand } from './parseOperand'
@@ -37,8 +37,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       case 'let':
         return parseLet(ctx, token)
       case 'if':
-      case 'unless':
-        left = parseIfOrUnless(ctx, token)
+        left = parseIf(ctx, token)
         break
       case 'match':
         left = parseMatch(ctx, token)

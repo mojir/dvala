@@ -267,8 +267,8 @@ describe('auto: effect + control flow', () => {
     expect(result).toBe('big')
   })
 
-  it('effect in unless-then branch', () => {
-    const result = dvala.run(wrap('unless false then perform(@test.eff, 4) else 0 end'))
+  it('effect in if-not-then branch', () => {
+    const result = dvala.run(wrap('if not(false) then perform(@test.eff, 4) else 0 end'))
     expect(result).toBe(40)
   })
 

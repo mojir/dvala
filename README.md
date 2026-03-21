@@ -594,9 +594,9 @@ end;
 if false then "never" end;
 // => null
 
-// Unless (inverted if)
+// Negated condition
 let y = 8;
-unless y > 10 then
+if not(y > 10) then
   "small"
 else
   "large"

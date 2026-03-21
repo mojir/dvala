@@ -346,15 +346,13 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
   const type = node[1][0]
 
   switch (type) {
-    // --- if / unless ---
-    case specialExpressionTypes.if:
-    case specialExpressionTypes.unless: {
+    // --- if ---
+    case specialExpressionTypes.if: {
       const [conditionNode, thenNode, elseNode] = node[1][1] as [AstNode, AstNode, AstNode?]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
         thenNode,
         elseNode,
-        inverted: type === specialExpressionTypes.unless,
         env,
         sourceCodeInfo,
       }
@@ -1327,9 +1325,8 @@ function applySequence(frame: SequenceFrame, _value: Any, k: ContinuationStack):
 }
 
 function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): Step {
-  const { thenNode, elseNode, inverted, env } = frame
-  const condition = inverted ? !value : value
-  if (condition) {
+  const { thenNode, elseNode, env } = frame
+  if (value) {
     return { type: 'Eval', node: thenNode, env, k }
   }
   if (elseNode) {

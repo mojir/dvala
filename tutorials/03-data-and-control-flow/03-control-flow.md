@@ -14,14 +14,6 @@ if 10 > 5 then "big" else "small" end
 if false then "nope" end
 ```
 
-## Unless
-
-`unless` is a negated `if` — the body runs when the condition is false:
-
-```dvala
-unless 3 > 10 then "as expected" end
-```
-
 ## If / Else If (Multi-branch)
 
 `if/else if` chains evaluate conditions in order and return the first match:
@@ -61,7 +53,7 @@ null || false || "found it"
 
 ## Nullish Coalescing
 
-`??` returns the left side unless it is `null`. Unlike `||`, it does not coalesce `false` or `0`:
+`??` returns the left side if it is not `null`. Unlike `||`, it does not coalesce `false` or `0`:
 
 ```dvala
 0 ?? "default"

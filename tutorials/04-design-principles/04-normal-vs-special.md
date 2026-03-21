@@ -144,10 +144,10 @@ end
 
 ## The Complete List
 
-Dvala has **22** special expressions:
+Dvala has **21** special expressions:
 
 * **Logic** — `&&`, `||`, `??`
-* **Conditionals** — `if`, `unless`, `match`
+* **Conditionals** — `if`, `match`
 * **Binding** — `let`
 * **Iteration** — `loop`, `recur`, `for`, `doseq`
 * **Grouping** — `do` (block)
