@@ -87,13 +87,12 @@ describe('frame types', () => {
       BindingSlot: true,
       MatchSlot: true,
       NanCheck: true,
-      DebugStep: true,
       ImportMerge: true,
       AutoCheckpoint: true,
       HandleWith: true,
       HandleSetup: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(41)
+    expect(Object.keys(frameTypes)).toHaveLength(40)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -143,7 +142,6 @@ describe('frame types', () => {
         case 'BindingSlot': return 'destructure'
         case 'MatchSlot': return 'destructure'
         case 'NanCheck': return 'post'
-        case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
         case 'AutoCheckpoint': return 'checkpoint'
         case 'HandleWith': return 'effect'
@@ -208,12 +206,11 @@ describe('frame types', () => {
       'BindingSlot',
       'MatchSlot',
       'NanCheck',
-      'DebugStep',
       'ImportMerge',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(37)
+    expect(uniqueTypes.size).toBe(36)
   })
 
   it('should export individual frame interfaces for typed access', () => {

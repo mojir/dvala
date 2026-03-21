@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { allBuiltinModules } from '../src/allModules'
-import { createDebugger } from '../src/debug'
 import { createDvala } from '../src/createDvala'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import { evaluateAsync, evaluateNode } from '../src/evaluator/trampoline-evaluator'
@@ -462,25 +461,6 @@ describe('async error wrapping', () => {
     ]
     const result = await dvala.runAsync('perform(@test.error)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Debug step
-// ---------------------------------------------------------------------------
-
-describe('debug step', () => {
-  it('should work when debug handler is provided', async () => {
-    const steps: unknown[] = []
-    const handlers: Handlers = [
-      { pattern: 'dvala.debug.step', handler: async ctx => {
-        steps.push(ctx.arg)
-        ctx.resume(ctx.arg!)
-      } },
-    ]
-    const d = createDvala({ debug: true })
-    await d.runAsync('1 + 2', { effectHandlers: handlers })
-    expect(steps.length).toBeGreaterThan(0)
   })
 })
 
@@ -989,26 +969,6 @@ describe('runEffectLoop — non-DvalaError propagation', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Debug step — error inside debug step handler
-// ---------------------------------------------------------------------------
-
-describe('debug step — error during evaluation', () => {
-  it('should handle debug step by resuming with value', async () => {
-    const handlers: Handlers = [
-      { pattern: 'dvala.debug.step', handler: async ctx => {
-        const stepInfo = ctx.arg as { value: unknown }
-        ctx.resume(stepInfo.value as never)
-      } },
-    ]
-    const d = createDvala({ debug: true })
-    const result = await d.runAsync('1 + 2', { effectHandlers: handlers })
-    expect(result.type).toBe('completed')
-    if (result.type === 'completed')
-      expect(result.value).toBe(3)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // for-loop evalLet phase
 // ---------------------------------------------------------------------------
 
@@ -1483,20 +1443,6 @@ describe('importMerge — dvala-only function path', () => {
 })
 
 // ---------------------------------------------------------------------------
-// DebugStep — location without sourceCodeInfo (line 2949)
-// ---------------------------------------------------------------------------
-
-describe('debug step — missing sourceCodeInfo', () => {
-  it('should handle step with location data', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('1 + 2')
-    expect(result.type).toBe('suspended')
-    expect(dbg.history.length).toBeGreaterThan(0)
-    expect(dbg.current!.step.value).toBe(3)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // getCollectionUtils — Expected collection error (line 3000)
 // ---------------------------------------------------------------------------
 
@@ -1955,42 +1901,6 @@ describe('trampoline — checkpoint and resumeFrom', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Debug — debugger error paths (debug.ts lines 245-250, 288-293)
-// ---------------------------------------------------------------------------
-
-describe('debugger — error handling', () => {
-  it('should return error for invalid syntax', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('(((')
-    expect(result.type).toBe('error')
-  })
-
-  it('should return error for stepForward with no history', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.stepForward()
-    expect(result.type).toBe('error')
-  })
-
-  it('should return error for stepBackward with no history', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.stepBackward()
-    expect(result.type).toBe('error')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Debug — resumeFromSnapshot error (debug.ts lines 245-250)
-// ---------------------------------------------------------------------------
-
-describe('debugger — resumeFromSnapshot error handling', () => {
-  it('should handle debugger with bindings', async () => {
-    const dbg = createDebugger({ bindings: { x: 10 } })
-    const result = await dbg.run('x + 1')
-    expect(result.type).toBe('suspended')
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Serialization — compound function type checks (lines 169-257)
 // ---------------------------------------------------------------------------
 
@@ -2149,46 +2059,6 @@ describe('dedupSubTrees — via suspend/resume', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Trampoline — applyDebugStep (lines 2658-2705, 3338-3339)
-// ---------------------------------------------------------------------------
-
-describe('debugger — DebugStep phases', () => {
-  it('should step through a compound expression', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('1 + 2')
-    expect(result.type).toBe('suspended')
-    expect(dbg.current).toBeDefined()
-    expect(dbg.current!.step.expression).toBeDefined()
-
-    // Step forward — may complete or suspend further
-    const next = await dbg.stepForward()
-    expect(['suspended', 'completed']).toContain(next.type)
-  })
-
-  it('should handle stepBackward and stepForward in timeline', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('let x = 1; let y = 2; x + y')
-    expect(result.type).toBe('suspended')
-
-    // Step forward several times to build history
-    let r = await dbg.stepForward()
-    while (r.type === 'suspended') {
-      r = await dbg.stepForward()
-    }
-    expect(r.type).toBe('completed')
-    expect(dbg.history.length).toBeGreaterThan(0)
-
-    // Step backward
-    const back = await dbg.stepBackward()
-    expect(back.type).toBe('suspended')
-
-    // Step forward again from replay
-    const forward = await dbg.stepForward()
-    expect(['suspended', 'completed']).toContain(forward.type)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Trampoline — onParentAbort in race (line 2658)
 // ---------------------------------------------------------------------------
 
@@ -2278,37 +2148,6 @@ describe('trampoline — function default parameter values', () => {
 
   it('should handle rest parameters in user-defined function', () => {
     expect(dvala.run('let f = (x, ...xs) -> xs; f(1, 2, 3)')).toEqual([2, 3])
-  })
-})
-
-// ---------------------------------------------------------------------------
-// debug.ts — buildDebugAst is already tested, but make sure missing branches
-// in processResult and various error paths are hit
-// ---------------------------------------------------------------------------
-
-describe('debugger — processResult completed branch', () => {
-  it('should handle program that completes without suspension', async () => {
-    const dbg = createDebugger()
-    // A literal completes immediately (no debug steps for leaf nodes)
-    const result = await dbg.run('42')
-    expect(result.type).toBe('completed')
-    if (result.type === 'completed') {
-      expect(result.value).toBe(42)
-    }
-  })
-
-  it('should step through to completion', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('1 + 2 + 3')
-    expect(result.type).toBe('suspended')
-    let r = result
-    while (r.type === 'suspended') {
-      r = await dbg.stepForward()
-    }
-    expect(r.type).toBe('completed')
-    if (r.type === 'completed') {
-      expect(r.value).toBe(6)
-    }
   })
 })
 
@@ -2610,49 +2449,6 @@ describe('effects — error handling in run and resume', () => {
 })
 
 // ---------------------------------------------------------------------------
-// debug.ts — error paths in debugger (lines 141-142, 245-250, 292-293)
-// ---------------------------------------------------------------------------
-
-describe('debug — error paths', () => {
-  it('stepForward without running first returns error', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.stepForward()
-    expect(result.type).toBe('error')
-  })
-
-  it('stepBackward at beginning returns error', async () => {
-    const dbg = createDebugger()
-    await dbg.run('1 + 2')
-    const result = await dbg.stepBackward()
-    expect(result.type).toBe('error')
-  })
-
-  it('debugger handles parse errors gracefully', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run('let x = ;')
-    expect(result.type).toBe('error')
-  })
-
-  it('resumeFromSnapshot error handling', async () => {
-    const dbg = createDebugger({
-      handlers: [
-        { pattern: 'dvala.io.print', handler: async ({ resume: doResume }) => doResume(null) },
-      ],
-    })
-    const result = await dbg.run('1 + 2 + 3')
-    // After running a simple expression, should have steps
-    if (result.type === 'suspended') {
-      // Step to end
-      let r: Awaited<ReturnType<typeof dbg.stepForward>> = result
-      while (r.type === 'suspended') {
-        r = await dbg.stepForward()
-      }
-      expect(r.type).toBe('completed')
-    }
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Dvala.ts — runBundle async error (lines 152-153)
 // ---------------------------------------------------------------------------
 
@@ -2775,109 +2571,6 @@ describe('effects.ts — resume catch non-DvalaError (line 219-221)', () => {
     // Pass null as snapshot to trigger a TypeError (cannot read properties of null)
     const result = await resume(null as never, null)
     expect(result.type).toBe('error')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// debug.ts — non-DvalaError catch in run and resumeFromSnapshot
-// ---------------------------------------------------------------------------
-
-describe('debug.ts — non-DvalaError catch in run', () => {
-  it('should wrap non-DvalaError from debugger run (line 291-293)', async () => {
-    const dbg = createDebugger()
-    const result = await dbg.run(null as unknown as string)
-    expect(result.type).toBe('error')
-  })
-})
-
-describe('debug.ts — catch paths in resumeFromSnapshot', () => {
-  it('should wrap non-DvalaError from resumeFromSnapshot (line 249)', async () => {
-    const dbg = createDebugger()
-    const r1 = await dbg.run('1 + 2')
-    expect(r1.type).toBe('suspended')
-
-    // Corrupt with null continuation → TypeError (not DvalaError)
-    const history = dbg.history as { snapshot: unknown }[]
-    if (history.length > 0) {
-      history[0]!.snapshot = { continuation: null }
-    }
-    const r2 = await dbg.stepForward()
-    if (r2.type === 'suspended') {
-      const r3 = await dbg.stepForward()
-      expect(r3.type).toBe('error')
-    } else {
-      expect(r2.type).toBe('error')
-    }
-  })
-
-  it('should catch DvalaError from resumeFromSnapshot (line 246-248)', async () => {
-    const dbg = createDebugger()
-    const r1 = await dbg.run('1 + 2')
-    expect(r1.type).toBe('suspended')
-
-    // Corrupt with wrong version → DvalaError from deserializeFromObject
-    const history = dbg.history as { snapshot: unknown }[]
-    if (history.length > 0) {
-      history[0]!.snapshot = { continuation: { version: 9999 } }
-    }
-    const r2 = await dbg.stepForward()
-    if (r2.type === 'suspended') {
-      const r3 = await dbg.stepForward()
-      expect(r3.type).toBe('error')
-    } else {
-      expect(r2.type).toBe('error')
-    }
-  })
-})
-
-describe('debug.ts — parseStepInfo with null/missing meta', () => {
-  it('should handle suspension with no meta (line 140, 207)', async () => {
-    const dbg = createDebugger({
-      handlers: [
-        { pattern: 'my.noMeta', handler: async ({ suspend }) => { suspend() } },
-      ],
-    })
-    const r1 = await dbg.run('perform(@my.noMeta)')
-    expect(r1.type).toBe('suspended')
-
-    let result = r1
-    let found = false
-    for (let i = 0; i < 20 && result.type === 'suspended'; i++) {
-      result = await dbg.stepForward()
-      if (result.type === 'suspended') {
-        const entry = dbg.current
-        if (entry) {
-          found = true
-          break
-        }
-      }
-    }
-    expect(found).toBe(true)
-  })
-
-  it('should handle suspension with incomplete meta (lines 146-152)', async () => {
-    const dbg = createDebugger({
-      handlers: [
-        { pattern: 'my.partialMeta', handler: async ({ suspend }) => { suspend({}) } },
-      ],
-    })
-    const r1 = await dbg.run('perform(@my.partialMeta)')
-    expect(r1.type).toBe('suspended')
-
-    let result = r1
-    let found = false
-    for (let i = 0; i < 20 && result.type === 'suspended'; i++) {
-      result = await dbg.stepForward()
-      if (result.type === 'suspended') {
-        const entry = dbg.current
-        if (entry) {
-          // This is the user suspend with incomplete meta → defaults used
-          found = true
-          break
-        }
-      }
-    }
-    expect(found).toBe(true)
   })
 })
 

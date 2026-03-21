@@ -122,23 +122,4 @@ export default defineConfig([
     ],
     plugins,
   },
-  // Debug bundle (time-travel debugger)
-  {
-    input: 'src/debug.ts',
-    output: [
-      {
-        file: 'dist/debug.esm.js',
-        format: 'esm',
-        sourcemap: true,
-        minify: true,
-      },
-      {
-        file: 'dist/debug.js',
-        format: 'cjs',
-        sourcemap: true,
-        minify: true,
-      },
-    ],
-    plugins,
-  },
 ])

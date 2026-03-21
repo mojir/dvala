@@ -41,7 +41,6 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
   'dvala.sleep',
   'dvala.error',
   'dvala.checkpoint',
-  'dvala.debug.step',
 ])
 
 export function parseOperand(ctx: ParserContext): AstNode {

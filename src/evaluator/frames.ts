@@ -815,31 +815,6 @@ export interface NanCheckFrame {
 }
 
 // ---------------------------------------------------------------------------
-// Debug
-// ---------------------------------------------------------------------------
-
-/**
- * Injected by the trampoline in debug mode (when a `dvala.debug.step` handler
- * is registered). Wraps compound expression evaluation to intercept the result
- * and produce a `PerformStep` for `dvala.debug.step`.
- *
- * Two-phase lifecycle:
- * 1. **awaitValue**: Pushed before evaluating a compound node. Receives the
- *    node's evaluation result, builds step info, and produces a `PerformStep`
- *    for `dvala.debug.step` with the step info as args.
- * 2. **awaitPerform**: The debug perform completed (handler resumed or
- *    suspension was resumed). Passes the value through to the next frame.
- *    For normal stepping, the debugger resumes with the original value.
- *    For `rerunFrom`, the debugger resumes with an alternate value.
- */
-export interface DebugStepFrame {
-  type: 'DebugStep'
-  phase: 'awaitValue' | 'awaitPerform'
-  sourceCodeInfo?: SourceCodeInfo
-  env: ContextStack
-}
-
-// ---------------------------------------------------------------------------
 // Frame union type
 // ---------------------------------------------------------------------------
 
@@ -860,7 +835,6 @@ export interface DebugStepFrame {
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: FnArgBindFrame, BindingSlotFrame, MatchSlotFrame
  * - **Post-processing**: NanCheckFrame
- * - **Debug**: DebugStepFrame
  */
 // ---------------------------------------------------------------------------
 // Module import
@@ -947,8 +921,6 @@ export type Frame =
   | MatchSlotFrame
   // Post-processing
   | NanCheckFrame
-  // Debug
-  | DebugStepFrame
   // Module import
   | ImportMergeFrame
   // Auto-checkpoint
