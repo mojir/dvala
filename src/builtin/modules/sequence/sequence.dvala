@@ -1,17 +1,15 @@
 {
   position: (seq, fn) -> do
-    let items = cond
-      case null?(seq) then null
-      case string?(seq) then for (i in range(count(seq))) -> nth(seq, i)
-      case true then seq
+    let items = if null?(seq) then null
+      else if string?(seq) then for (i in range(count(seq))) -> nth(seq, i)
+      else seq
     end;
     if null?(items) then null
     else
       loop (i = 0) ->
-        cond
-          case i >= count(items) then null
-          case fn(nth(items, i)) then i
-          case true then recur(i + 1)
+        if i >= count(items) then null
+        else if fn(nth(items, i)) then i
+        else recur(i + 1)
         end
     end
   end,
@@ -39,10 +37,9 @@
   split-with: (seq, fn) -> do
     let items = if string?(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
     let idx = loop (i = 0) ->
-      cond
-        case i >= count(items) then -1
-        case not(fn(nth(items, i))) then i
-        case true then recur(i + 1)
+      if i >= count(items) then -1
+      else if not(fn(nth(items, i))) then i
+      else recur(i + 1)
       end;
     if idx == -1 then
       [seq, if array?(seq) then [] else "" end]

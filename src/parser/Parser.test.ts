@@ -79,8 +79,8 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('let a = (b) -> do 1, end;')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('match 1 case 1 then 1; 2 end')).not.toThrow()
     expect(() => dvalaDebug.run('match 1 case 1 then 1, end end')).toThrow(DvalaError)
-    expect(() => dvalaDebug.run('cond case 1 then 1; 2 end')).not.toThrow()
-    expect(() => dvalaDebug.run('cond case 1 then 1, end end')).toThrow(DvalaError)
+    expect(() => dvalaDebug.run('if 1 then 1 end; 2')).not.toThrow()
+    expect(() => dvalaDebug.run('if 1 then 1 end,')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('if true then 1 else 1 end; 2')).not.toThrow()
     expect(() => dvalaDebug.run('if true then 1 else 1 end,')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('if true then 1 end; 2')).not.toThrow()
@@ -813,23 +813,21 @@ foo(1, 2)`)).toBe(3)
     })
   })
 
-  test('cond expression', () => {
+  test('if/else if expression', () => {
     expect(dvala.run(`
       let val = 8;
 
-      cond
-        case val < 5 then "S"
-        case val < 10 then "M"
-        case val < 15 then "L"
+      if val < 5 then "S"
+      else if val < 10 then "M"
+      else if val < 15 then "L"
       end ?? "No match"`)).toBe('M')
 
     expect(dvala.run(`
         let val = 20;
 
-        cond
-          case val < 5 then "S"
-          case val < 10 then "M"
-          case val < 15 then "L"
+        if val < 5 then "S"
+        else if val < 10 then "M"
+        else if val < 15 then "L"
         end ?? "No match"`)).toBe('No match')
   })
   test('match expression', () => {
@@ -1244,10 +1242,9 @@ foo(1, 2)`)).toBe(3)
     it('supports recursion via self', () => {
       expect(dvala.run(`
         let fib = (n, a = 0, b = 1) ->
-          cond
-            case n == 0 then a
-            case n == 1 then b
-            case true then self(n - 1, b, a + b)
+          if n == 0 then a
+          else if n == 1 then b
+          else self(n - 1, b, a + b)
           end;
 
         fib(10)`)).toBe(55)

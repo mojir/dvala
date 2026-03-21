@@ -290,16 +290,16 @@ describe('sequence functions', () => {
 
   describe('sort', () => {
     it('samples', () => {
-      expect(dvala.run('sort([3, 1, 2], (a, b) -> cond case a < b then -1 case a > b then 1 case true then 0 end)')).toEqual([1, 2, 3])
-      expect(dvala.run('sort([3, 1, 2], (a, b) -> cond case a > b then -1 case a < b then 1 case true then 0 end)')).toEqual([3, 2, 1])
-      expect(dvala.run('sort([], (a, b) -> cond case a > b then -1 case a < b then 1 case true then 0 end)')).toEqual([])
+      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a < b then -1 else if a > b then 1 else 0 end)')).toEqual([1, 2, 3])
+      expect(dvala.run('sort([3, 1, 2], (a, b) -> if a > b then -1 else if a < b then 1 else 0 end)')).toEqual([3, 2, 1])
+      expect(dvala.run('sort([], (a, b) -> if a > b then -1 else if a < b then 1 else 0 end)')).toEqual([])
 
-      expect(dvala.run('sort("Albert", (a, b) -> cond case a < b then 1 case a > b then -1 case true then 0 end)')).toBe('trlebA')
+      expect(dvala.run('sort("Albert", (a, b) -> if a < b then 1 else if a > b then -1 else 0 end)')).toBe('trlebA')
 
       expect(dvala.run('sort("Albert")')).toBe('Abelrt')
 
-      expect(() => dvala.run('sort(10, (a, b) -> cond case a > b then -1 case a < b then 1 case true then -1 end)')).toThrow(DvalaError)
-      expect(() => dvala.run('sort((a, b) -> cond case a > b then -1 case a < b then 1 case true then -1 end)')).toThrow(DvalaError)
+      expect(() => dvala.run('sort(10, (a, b) -> if a > b then -1 else if a < b then 1 else -1 end)')).toThrow(DvalaError)
+      expect(() => dvala.run('sort((a, b) -> if a > b then -1 else if a < b then 1 else -1 end)')).toThrow(DvalaError)
       expect(() => dvala.run('sort()')).toThrow(DvalaError)
     })
   })

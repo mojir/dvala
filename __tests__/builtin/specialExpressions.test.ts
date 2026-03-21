@@ -314,41 +314,37 @@ describe('specialExpressions', () => {
     })
   })
 
-  describe('cond', () => {
+  describe('if/else if chains (migrated from cond)', () => {
     it('samples', () => {
       expect(dvala.run(`
-cond
-  case true then 10
-  case true then 20
+if true then 10
+else 20
 end`)).toBe(10)
       expect(dvala.run(`
-cond
-  case false then 10
-  case false then 20
+if false then 10
+else if false then 20
 end`)).toBeNull()
-      expect(dvala.run('cond case true then 10 end')).toBe(10)
-      expect(dvala.run('cond case false then 20 case true then 5 + 5 end')).toBe(10)
+      expect(dvala.run('if true then 10 end')).toBe(10)
+      expect(dvala.run('if false then 20 else if true then 5 + 5 end')).toBe(10)
       expect(dvala.run(`
-cond
-  case 5 > 10 then 20
-  case 10 > 10 then 5 + 5
-  case 10 >= 10 then 5 + 5 + 5
+if 5 > 10 then 20
+else if 10 > 10 then 5 + 5
+else if 10 >= 10 then 5 + 5 + 5
 end`)).toBe(15)
     })
     it('middle condition true', () => {
       expect(
         dvala.run(`
-cond
-  case 5 > 10 then 20
-  case 10 >= 10 then 5 + 5
-  case 10 > 10 then 5 + 5 + 5
+if 5 > 10 then 20
+else if 10 >= 10 then 5 + 5
+else if 10 > 10 then 5 + 5 + 5
 end`),
       ).toBe(10)
       expect(logSpy).not.toHaveBeenCalled()
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
-        expect((getUndefinedSymbols('cond case true then a case false then b case a > 1 then c case true then d end'))).toEqual(
+        expect((getUndefinedSymbols('if true then a else if false then b else if a > 1 then c else d end'))).toEqual(
           new Set(['a', 'b', 'c', 'd']),
         )
       })

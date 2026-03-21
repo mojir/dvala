@@ -191,14 +191,14 @@ if condition then expr end          // no else: returns null when false
 unless condition then expr end      // negated if
 ```
 
-### `cond` (multi-branch)
+### `if/else if` (multi-branch)
 
 ```dvala
-cond
-  case condition1 then expr1
-  case condition2 then expr2
+if condition1 then expr1
+else if condition2 then expr2
+else default-expr
 end
-// returns null if no branch matches
+// returns null if no branch matches and no else
 ```
 
 ### `match` (pattern matching)

@@ -41,10 +41,10 @@ perform(@dvala.io.println, "Combined vault code: " ++ code ++ "\n");
 let correct1 = lower-case(trim(answer1)) == "map";
 let correct2 = lower-case(trim(answer2)) == "footsteps";
 
-let result = cond
-  case correct1 && correct2 then "🎉 BOTH CORRECT! The vault opens! You escape!"
-  case correct1              then "✓ Player 1 correct — but Player 2 missed it. The door is jammed."
-  case correct2              then "✓ Player 2 correct — but Player 1 missed it. The door is jammed."
-end ?? "❌ Neither answer correct. The vault stays locked.";
+let result = if correct1 && correct2 then "🎉 BOTH CORRECT! The vault opens! You escape!"
+  else if correct1 then "✓ Player 1 correct — but Player 2 missed it. The door is jammed."
+  else if correct2 then "✓ Player 2 correct — but Player 1 missed it. The door is jammed."
+  else "❌ Neither answer correct. The vault stays locked."
+end;
 
 perform(@dvala.io.println, result);

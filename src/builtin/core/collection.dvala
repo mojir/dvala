@@ -4,118 +4,115 @@
     let other-colls = slice(args, 0, count(args) - 1);
     let all-colls = [first-coll, ...other-colls];
 
-    cond
-      case object?(first-coll) then do
-        let expected-keys = keys(first-coll) |> sort;
-        doseq (obj in other-colls) -> do
-          if not(object?(obj)) then
-            perform(@dvala.error, "Expected object")
-          end;
-          let obj-keys = keys(obj) |> sort;
-          if not(obj-keys == expected-keys) then
-            perform(@dvala.error, ++(
-              "All objects must have the same keys. Expected: ",
-              join(expected-keys, ", "),
-              ". Found: ",
-              join(obj-keys, ", ")
-            ))
-          end
+    if object?(first-coll) then do
+      let expected-keys = keys(first-coll) |> sort;
+      doseq (obj in other-colls) -> do
+        if not(object?(obj)) then
+          perform(@dvala.error, "Expected object")
         end;
-        reduce(keys(first-coll), (acc, k) -> do
-          let a = for (coll in all-colls) -> coll(k);
-          assoc(acc, k, apply(fn, a))
-        end, {})
-      end
-
-      case string?(first-coll) then do
-        doseq (s in other-colls) -> do
-          if not(string?(s)) then
-            perform(@dvala.error, "Expected string")
-          end
-        end;
-        let len = reduce(other-colls, (m, s) -> min(m, count(s)), count(first-coll));
-        let mapped = for (i in range(len)) -> do
-          let a = for (coll in all-colls) -> nth(coll, i);
-          apply(fn, a)
-        end;
-        reduce(mapped, (acc, ch) -> do
-          if not(string?(ch)) then
-            perform(@dvala.error, "Expected string")
-          end;
-          ++(acc, ch)
-        end, "")
-      end
-
-      case true then do
-        doseq (x in other-colls) -> do
-          if not(array?(x)) then
-            perform(@dvala.error, "Expected array")
-          end
-        end;
-        let len = reduce(other-colls, (m, x) -> min(m, count(x)), count(first-coll));
-        for (i in range(len)) -> do
-          let a = for (coll in all-colls) -> nth(coll, i);
-          apply(fn, a)
+        let obj-keys = keys(obj) |> sort;
+        if not(obj-keys == expected-keys) then
+          perform(@dvala.error, ++(
+            "All objects must have the same keys. Expected: ",
+            join(expected-keys, ", "),
+            ". Found: ",
+            join(obj-keys, ", ")
+          ))
         end
+      end;
+      reduce(keys(first-coll), (acc, k) -> do
+        let a = for (coll in all-colls) -> coll(k);
+        assoc(acc, k, apply(fn, a))
+      end, {})
+    end
+
+    else if string?(first-coll) then do
+      doseq (s in other-colls) -> do
+        if not(string?(s)) then
+          perform(@dvala.error, "Expected string")
+        end
+      end;
+      let len = reduce(other-colls, (m, s) -> min(m, count(s)), count(first-coll));
+      let mapped = for (i in range(len)) -> do
+        let a = for (coll in all-colls) -> nth(coll, i);
+        apply(fn, a)
+      end;
+      reduce(mapped, (acc, ch) -> do
+        if not(string?(ch)) then
+          perform(@dvala.error, "Expected string")
+        end;
+        ++(acc, ch)
+      end, "")
+    end
+
+    else do
+      doseq (x in other-colls) -> do
+        if not(array?(x)) then
+          perform(@dvala.error, "Expected array")
+        end
+      end;
+      let len = reduce(other-colls, (m, x) -> min(m, count(x)), count(first-coll));
+      for (i in range(len)) -> do
+        let a = for (coll in all-colls) -> nth(coll, i);
+        apply(fn, a)
       end
+    end
     end
   end,
 
   filter: (coll, fn) -> do
-    cond
-      case array?(coll) then
-        reduce(coll, (acc, elem) -> if fn(elem) then [...acc, elem] else acc end, [])
+    if array?(coll) then
+      reduce(coll, (acc, elem) -> if fn(elem) then [...acc, elem] else acc end, [])
 
-      case string?(coll) then
-        reduce(coll, (acc, ch) -> if fn(ch) then ++(acc, ch) else acc end, "")
+    else if string?(coll) then
+      reduce(coll, (acc, ch) -> if fn(ch) then ++(acc, ch) else acc end, "")
 
-      case object?(coll) then
-        reduce(keys(coll), (acc, k) -> do
-          if fn(coll(k)) then
-            assoc(acc, k, coll(k))
-          else
-            acc
-          end
-        end, {})
+    else if object?(coll) then
+      reduce(keys(coll), (acc, k) -> do
+        if fn(coll(k)) then
+          assoc(acc, k, coll(k))
+        else
+          acc
+        end
+      end, {})
 
-      case true then
-        perform(@dvala.error, "Expected collection")
+    else
+      perform(@dvala.error, "Expected collection")
     end
   end,
 
   reduce: (coll, fn, initial) -> do
-    cond
-      case string?(coll) then
-        loop (acc = initial, i = 0) -> do
-          if i >= count(coll) then
-            acc
-          else
-            recur(fn(acc, nth(coll, i)), i + 1)
-          end
-        end
-
-      case array?(coll) then
-        loop (acc = initial, i = 0) -> do
-          if i >= count(coll) then
-            acc
-          else
-            recur(fn(acc, nth(coll, i)), i + 1)
-          end
-        end
-
-      case object?(coll) then do
-        let values = vals(coll);
-        loop (acc = initial, i = 0) -> do
-          if i >= count(values) then
-            acc
-          else
-            recur(fn(acc, nth(values, i)), i + 1)
-          end
+    if string?(coll) then
+      loop (acc = initial, i = 0) -> do
+        if i >= count(coll) then
+          acc
+        else
+          recur(fn(acc, nth(coll, i)), i + 1)
         end
       end
 
-      case true then
-        perform(@dvala.error, "Expected collection")
+    else if array?(coll) then
+      loop (acc = initial, i = 0) -> do
+        if i >= count(coll) then
+          acc
+        else
+          recur(fn(acc, nth(coll, i)), i + 1)
+        end
+      end
+
+    else if object?(coll) then do
+      let values = vals(coll);
+      loop (acc = initial, i = 0) -> do
+        if i >= count(values) then
+          acc
+        else
+          recur(fn(acc, nth(values, i)), i + 1)
+        end
+      end
+    end
+
+    else
+      perform(@dvala.error, "Expected collection")
     end
   end
 }

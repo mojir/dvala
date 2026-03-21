@@ -22,16 +22,15 @@ if false then "nope" end
 unless 3 > 10 then "as expected" end
 ```
 
-## Cond (Multi-branch)
+## If / Else If (Multi-branch)
 
-`cond` evaluates multiple conditions in order and returns the first match:
+`if/else if` chains evaluate conditions in order and return the first match:
 
 ```dvala
 let x = 12;
-cond
-  case x < 5 then "small"
-  case x < 15 then "medium"
-  case true then "large"
+if x < 5 then "small"
+else if x < 15 then "medium"
+else "large"
 end
 ```
 

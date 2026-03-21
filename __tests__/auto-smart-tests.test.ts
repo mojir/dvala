@@ -674,7 +674,7 @@ describe('auto: example determinism (modules)', () => {
 describe('auto: arg names validation (modules)', () => {
   // Module function arg names should not be builtin function names
   // that would shadow them in the scope
-  const reservedWords = new Set(['if', 'then', 'else', 'end', 'do', 'let', 'for', 'in', 'loop', 'recur', 'cond', 'case', 'try', 'catch', 'throw', 'import', 'as', 'true', 'false', 'null', 'and', 'or', 'not', 'when', 'unless', 'match', 'with', 'def', 'defined?'])
+  const reservedWords = new Set(['if', 'then', 'else', 'end', 'do', 'let', 'for', 'in', 'loop', 'recur', 'case', 'try', 'catch', 'throw', 'import', 'as', 'true', 'false', 'null', 'and', 'or', 'not', 'when', 'unless', 'match', 'with', 'def', 'defined?'])
 
   for (const mod of allBuiltinModules) {
     if (!mod.docs)

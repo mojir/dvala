@@ -49,9 +49,9 @@ describe('round-trip: tokenize → untokenize', () => {
     'let add = (a, b) -> a + b; add(1, 2)',
     'let f = -> $ * 2; f(21)',
 
-    // If / cond
+    // If / else if
     'if true then 1 else 2 end',
-    'cond case true then 1 case false then 2 end',
+    'if true then 1 else if false then 2 end',
 
     // Loop / for
     'loop(i = 0, acc = 0) -> if i >= 5 then acc else recur(i + 1, acc + i) end',
@@ -253,12 +253,11 @@ describe('type annotations / predicates', () => {
   it('type predicate results used in control flow', () => {
     expect(dvala.run(`
       let classify = (x) ->
-        cond
-          case vector?(x) then "vector"
-          case matrix?(x) then "matrix" 
-          case grid?(x) then "grid"
-          case array?(x) then "array"
-          case true then "other"
+        if vector?(x) then "vector"
+        else if matrix?(x) then "matrix"
+        else if grid?(x) then "grid"
+        else if array?(x) then "array"
+        else "other"
         end;
       [classify([1, 2]), classify([[1, 2], [3, 4]]), classify([["a"], ["b"]]), classify("hello")]
     `)).toEqual(['vector', 'matrix', 'grid', 'other'])
@@ -796,23 +795,20 @@ describe('parser edge cases', () => {
     `)).toEqual(['huge', 'big', 'medium', 'small', 'zero-or-negative'])
   })
 
-  it('cond with multiple cases', () => {
+  it('if/else if with multiple branches', () => {
     expect(dvala.run(`
       let x = 3;
-      cond
-        case x == 1 then "one"
-        case x == 2 then "two"
-        case x == 3 then "three"
-        case true then "other"
+      if x == 1 then "one"
+      else if x == 2 then "two"
+      else if x == 3 then "three"
+      else "other"
       end
     `)).toBe('three')
   })
 
-  it('cond with no matching case returns null', () => {
+  it('if with no matching branch returns null', () => {
     expect(dvala.run(`
-      cond
-        case false then "nope"
-      end
+      if false then "nope" end
     `)).toBeNull()
   })
 })

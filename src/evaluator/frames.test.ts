@@ -7,7 +7,6 @@ import type {
   CallFnFrame,
   ComplementFrame,
   CompFrame,
-  CondFrame,
   ContinuationStack,
   EffectResumeFrame,
   EvalArgsFrame,
@@ -54,7 +53,6 @@ describe('frame types', () => {
     const frameTypes: Record<Frame['type'], boolean> = {
       Sequence: true,
       IfBranch: true,
-      Cond: true,
       Match: true,
       And: true,
       Or: true,
@@ -95,7 +93,7 @@ describe('frame types', () => {
       HandleWith: true,
       HandleSetup: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(42)
+    expect(Object.keys(frameTypes)).toHaveLength(41)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -111,7 +109,6 @@ describe('frame types', () => {
       switch (frame.type) {
         case 'Sequence': return 'flow'
         case 'IfBranch': return 'branch'
-        case 'Cond': return 'branch'
         case 'Match': return 'branch'
         case 'And': return 'short-circuit'
         case 'Or': return 'short-circuit'
@@ -178,7 +175,6 @@ describe('frame types', () => {
     const types: Frame['type'][] = [
       'Sequence',
       'IfBranch',
-      'Cond',
       'Match',
       'And',
       'Or',
@@ -217,7 +213,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(38)
+    expect(uniqueTypes.size).toBe(37)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -225,7 +221,6 @@ describe('frame types', () => {
     // We use type assertions to verify the type field matches.
     const _sequence: SequenceFrame['type'] = 'Sequence'
     const _ifBranch: IfBranchFrame['type'] = 'IfBranch'
-    const _cond: CondFrame['type'] = 'Cond'
     const _match: MatchFrame['type'] = 'Match'
     const _and: AndFrame['type'] = 'And'
     const _or: OrFrame['type'] = 'Or'
@@ -264,7 +259,6 @@ describe('frame types', () => {
     // If any type field doesn't match, compilation fails.
     expect(_sequence).toBe('Sequence')
     expect(_ifBranch).toBe('IfBranch')
-    expect(_cond).toBe('Cond')
     expect(_match).toBe('Match')
     expect(_and).toBe('And')
     expect(_or).toBe('Or')
