@@ -480,6 +480,9 @@ export interface EvaluatedWithHandler {
 export interface EffectResumeFrame {
   type: 'EffectResume'
   resumeK: ContinuationStack
+  /** The HandleWithFrame that spawned this handler chain. Used by
+   *  tryDispatchDvalaError to skip re-entering the same handler on error. */
+  sourceHandleFrame?: HandleWithFrame
   sourceCodeInfo?: SourceCodeInfo
 }
 
