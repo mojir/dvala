@@ -3691,7 +3691,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       throw error
     }
     // Route DvalaError through the 'dvala.error' algebraic effect so that
-    // do...with handlers can intercept runtime errors.
+    // handle...with handlers can intercept runtime errors.
     if (error instanceof DvalaError) {
       // For Value steps, step.k[0] is the frame that was being applied when
       // the error was thrown (e.g. LetDestructFrame, etc.).
