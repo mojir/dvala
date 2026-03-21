@@ -1,0 +1,56 @@
+import { assertNumber } from '../../../typeGuards/number'
+import { assertString } from '../../../typeGuards/string'
+import { toFixedArity } from '../../../utils/arity'
+import type { BuiltinNormalExpressions } from '../../interface'
+import { moduleDocsFromFunctions } from '../interface'
+import type { DvalaModule } from '../interface'
+
+const timeFunctions: BuiltinNormalExpressions = {
+  'epoch->iso-date': {
+    evaluate: ([ms], sourceCodeInfo): string => {
+      assertNumber(ms, sourceCodeInfo)
+      return new Date(ms).toISOString()
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'time',
+      returns: { type: 'string' },
+      args: { ms: { type: 'number' } },
+      variants: [{ argumentNames: ['ms'] }],
+      description: 'Returns IOS date time string from `ms` (milliseconds elapsed since the UNIX epoch).',
+      seeAlso: ['time.iso-date->epoch'],
+      examples: [
+        'let { epoch->iso-date } = import(time);\nepoch->iso-date(1649756230899)',
+        'let { epoch->iso-date } = import(time);\nepoch->iso-date(0)',
+      ],
+    },
+  },
+  'iso-date->epoch': {
+    evaluate: ([dateTime], sourceCodeInfo): number => {
+      assertString(dateTime, sourceCodeInfo)
+      const ms = new Date(dateTime).valueOf()
+      assertNumber(ms, sourceCodeInfo, { finite: true })
+      return ms
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'time',
+      returns: { type: 'number' },
+      args: { iso: { type: 'string' } },
+      variants: [{ argumentNames: ['iso'] }],
+      description: 'Returns milliseconds elapsed since the UNIX epoch to `iso`.',
+      seeAlso: ['time.epoch->iso-date'],
+      examples: [
+        'let { iso-date->epoch } = import(time);\niso-date->epoch("2022-04-12T09:37:10.899Z")',
+        'let { iso-date->epoch } = import(time);\niso-date->epoch("1980-01-01")',
+      ],
+    },
+  },
+}
+
+export const timeModule: DvalaModule = {
+  name: 'time',
+  functions: timeFunctions,
+  source: '{}',
+  docs: moduleDocsFromFunctions(timeFunctions),
+}

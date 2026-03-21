@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, it, vitest } from 'vitest'
 import { createDvala } from '../../../src/createDvala'
+import { timeModule } from '../../../src/builtin/modules/time'
 import { DvalaError } from '../../../src/errors'
 
 describe('misc functions', () => {
@@ -15,38 +16,40 @@ describe('misc functions', () => {
   afterEach(() => {
     console.log = oldLog
   })
-  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
+  for (const dvala of [createDvala({ modules: [timeModule] }), createDvala({ modules: [timeModule], debug: true })]) {
     describe('epoch->iso-date', () => {
       it('samples', () => {
-        expect(dvala.run('epoch->iso-date(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')
-        expect(dvala.run('epoch->iso-date(-1649756230899)')).toBe('1917-09-21T14:22:49.101Z')
-        expect(dvala.run('epoch->iso-date(0)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(dvala.run('epoch->iso-date(0.999)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(dvala.run('epoch->iso-date(0.999)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(() => dvala.run('epoch->iso-date(1649756230899 1649756230899)')).toThrow(DvalaError)
-        expect(() => dvala.run('epoch->iso-date()')).toThrow(DvalaError)
-        expect(() => dvala.run('epoch->iso-date("1649756230899")')).toThrow(DvalaError)
-        expect(() => dvala.run('epoch->iso-date(null)')).toThrow(DvalaError)
-        expect(() => dvala.run('epoch->iso-date(true)')).toThrow(DvalaError)
+        expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')
+        expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(-1649756230899)')).toBe('1917-09-21T14:22:49.101Z')
+        expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(0)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(0.999)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(0.999)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(() => dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(1649756230899 1649756230899)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date("1649756230899")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epoch->iso-date } = import(time); epoch->iso-date(true)')).toThrow(DvalaError)
       })
     })
 
     describe('iso-date->epoch', () => {
       it('samples', () => {
-        expect(dvala.run('iso-date->epoch("2022-04-12T09:37:10.899Z")')).toBe(1649756230899)
-        expect(dvala.run('iso-date->epoch("2022-04-12")')).toBeGreaterThan(1649548800000)
+        expect(dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("2022-04-12T09:37:10.899Z")')).toBe(1649756230899)
+        expect(dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("2022-04-12")')).toBeGreaterThan(1649548800000)
         expect(() =>
-          dvala.run('iso-date->epoch("2022-04-12T09:37:10.899Z", "2022-04-12T09:37:10.899Z")'),
+          dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("2022-04-12T09:37:10.899Z", "2022-04-12T09:37:10.899Z")'),
         ).toThrow()
-        expect(() => dvala.run('iso-date->epoch()')).toThrow(DvalaError)
-        expect(() => dvala.run('iso-date->epoch(1649756230899)')).toThrow(DvalaError)
-        expect(() => dvala.run('iso-date->epoch(null)')).toThrow(DvalaError)
-        expect(() => dvala.run('iso-date->epoch(true)')).toThrow(DvalaError)
-        expect(() => dvala.run('iso-date->epoch("2022-04-1X")')).toThrow(DvalaError)
-        expect(() => dvala.run('iso-date->epoch("")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch(1649756230899)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("2022-04-1X")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { iso-date->epoch } = import(time); iso-date->epoch("")')).toThrow(DvalaError)
       })
     })
+  }
 
+  for (const dvala of [createDvala(), createDvala({ debug: true })]) {
     describe('!=', () => {
       it('samples', () => {
         expect(dvala.run('1 != 1')).toBe(!dvala.run('1 == 1'))

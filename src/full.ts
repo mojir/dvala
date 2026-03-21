@@ -23,6 +23,7 @@ export { numberTheoryModule } from './builtin/modules/number-theory'
 export { mathUtilsModule } from './builtin/modules/math'
 export { functionalUtilsModule } from './builtin/modules/functional'
 export { bitwiseUtilsModule } from './builtin/modules/bitwise'
+export { timeModule } from './builtin/modules/time'
 
 // Reference data and types
 export { apiReference, isCustomReference, isDatatypeReference, isFunctionReference, isShorthandReference } from '../reference'

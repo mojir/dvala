@@ -261,46 +261,6 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'epoch->iso-date': {
-    evaluate: ([ms], sourceCodeInfo): string => {
-      assertNumber(ms, sourceCodeInfo)
-      return new Date(ms).toISOString()
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'misc',
-      returns: { type: 'string' },
-      args: { ms: { type: 'number' } },
-      variants: [{ argumentNames: ['ms'] }],
-      description: 'Returns IOS date time string from `ms` (milliseconds elapsed since the UNIX epoch).',
-      seeAlso: ['iso-date->epoch'],
-      examples: [
-        'epoch->iso-date(1649756230899)',
-        'epoch->iso-date(0)',
-      ],
-    },
-  },
-  'iso-date->epoch': {
-    evaluate: ([dateTime], sourceCodeInfo): number => {
-      assertString(dateTime, sourceCodeInfo)
-      const ms = new Date(dateTime).valueOf()
-      assertNumber(ms, sourceCodeInfo, { finite: true })
-      return ms
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'misc',
-      returns: { type: 'number' },
-      args: { iso: { type: 'string' } },
-      variants: [{ argumentNames: ['iso'] }],
-      description: 'Returns milliseconds elapsed since the UNIX epoch to `iso`.',
-      seeAlso: ['epoch->iso-date'],
-      examples: [
-        'iso-date->epoch("2022-04-12T09:37:10.899Z")',
-        'iso-date->epoch("1980-01-01")',
-      ],
-    },
-  },
   'boolean': {
     evaluate: ([value]): boolean => {
       return !!value
