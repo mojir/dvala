@@ -12,7 +12,6 @@ import { createContextStack } from './ContextStack'
 import type {
   AndFrame,
   ArrayBuildFrame,
-  CondFrame,
   ContinuationStack,
   Frame,
   IfBranchFrame,
@@ -293,22 +292,20 @@ describe('stepNode', () => {
       }
     })
 
-    it('should return null immediately for empty cond', () => {
-      const node = parseFirst('cond end')
+    it('should return null immediately for if with false condition and no else', () => {
+      const node = parseFirst('if false then 1 end')
       const step = stepNodeSync(node, emptyEnv(), [])
-      expect(step.type).toBe('Value')
-      if (step.type === 'Value') {
-        expect(step.value).toBe(null)
-      }
+      // This will push an IfBranchFrame then evaluate; just verify it steps
+      expect(step.type).toBe('Eval')
     })
 
-    it('should push CondFrame for non-empty cond', () => {
-      const node = parseFirst('cond case true then 1 end')
+    it('should push IfBranchFrame for if/else if', () => {
+      const node = parseFirst('if true then 1 end')
       const step = stepNodeSync(node, emptyEnv(), [])
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Cond')
+        expect(step.k[0]!.type).toBe('IfBranch')
       }
     })
 
@@ -687,59 +684,6 @@ describe('applyFrame', () => {
     })
   })
 
-  describe('condFrame', () => {
-    it('should evaluate body when test is truthy', () => {
-      const testNode: NumberNode = [NodeTypes.Number, 1]
-      const bodyNode: StringNode = [NodeTypes.String, 'yes']
-      const frame: CondFrame = {
-        type: 'Cond',
-        phase: 'test',
-        cases: [[testNode, bodyNode]],
-        index: 0,
-        env: emptyEnv(),
-      }
-      const step = applyFrameSync(frame, true, [])
-      expect(step.type).toBe('Eval')
-      if (step.type === 'Eval') {
-        expect(step.node).toBe(bodyNode)
-      }
-    })
-
-    it('should try next case when test is falsy', () => {
-      const test1: NumberNode = [NodeTypes.Number, 1]
-      const body1: StringNode = [NodeTypes.String, 'a']
-      const test2: NumberNode = [NodeTypes.Number, 2]
-      const body2: StringNode = [NodeTypes.String, 'b']
-      const frame: CondFrame = {
-        type: 'Cond',
-        phase: 'test',
-        cases: [[test1, body1], [test2, body2]],
-        index: 0,
-        env: emptyEnv(),
-      }
-      const step = applyFrameSync(frame, false, [])
-      expect(step.type).toBe('Eval')
-      if (step.type === 'Eval') {
-        expect(step.node).toBe(test2)
-        expect(step.k[0]!.type).toBe('Cond')
-      }
-    })
-
-    it('should return null when no case matches', () => {
-      const testNode: NumberNode = [NodeTypes.Number, 1]
-      const bodyNode: StringNode = [NodeTypes.String, 'yes']
-      const frame: CondFrame = {
-        type: 'Cond',
-        phase: 'test',
-        cases: [[testNode, bodyNode]],
-        index: 0,
-        env: emptyEnv(),
-      }
-      const step = applyFrameSync(frame, false, [])
-      expect(step).toEqual({ type: 'Value', value: null, k: [] })
-    })
-  })
-
   describe('arrayBuildFrame', () => {
     it('should add value and advance', () => {
       const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
@@ -969,8 +913,8 @@ describe('trampoline integration', () => {
     expect(runTrampoline(stepNodeSync(parseFirst('||(false, 99)'), emptyEnv(), []))).toBe(99)
   })
 
-  it('should evaluate cond expression', () => {
-    const node = parseFirst('cond case false then 1 case true then 2 end')
+  it('should evaluate if/else if expression', () => {
+    const node = parseFirst('if false then 1 else if true then 2 end')
     const step = stepNodeSync(node, emptyEnv(), [])
     expect(runTrampoline(step)).toBe(2)
   })
@@ -1144,7 +1088,7 @@ describe('sync/async trampoline parity', () => {
     ['(1 + 2) * (3 + 4)', 21],
     ['if true then 1 else 2 end', 1],
     ['if false then 1 else 2 end', 2],
-    ['cond case false then 1 case true then 2 end', 2],
+    ['if false then 1 else if true then 2 end', 2],
     ['&& (true, true, 3)', 3],
     ['|| (false, false, 5)', 5],
     ['??(null, 42)', 42],

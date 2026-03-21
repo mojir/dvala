@@ -43,17 +43,16 @@ let describe = (n) ->
 describe(7)
 ```
 
-## cond Returns a Value
+## if/else if Returns a Value
 
 Multi-branch conditionals are also expressions:
 
 ```dvala
 let grade = (score) ->
-  cond
-    case score >= 90 then "A"
-    case score >= 80 then "B"
-    case score >= 70 then "C"
-    case true then "F"
+  if score >= 90 then "A"
+  else if score >= 80 then "B"
+  else if score >= 70 then "C"
+  else "F"
   end;
 grade(85)
 ```
@@ -119,10 +118,9 @@ map(
 ```dvala
 let classify = (xs) ->
   for (x in xs) ->
-    cond
-      case x < 0 then "negative"
-      case x == 0 then "zero"
-      case true then "positive"
+    if x < 0 then "negative"
+    else if x == 0 then "zero"
+    else "positive"
     end;
 classify([-3, 0, 5, -1, 7])
 ```

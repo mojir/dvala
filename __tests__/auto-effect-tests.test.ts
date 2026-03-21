@@ -6,7 +6,7 @@
  * 2. Standard effects seeAlso validity
  * 3. Standard effects arity enforcement
  * 4. effectNameMatchesPattern exhaustive coverage
- * 5. Effect + control flow interactions (if, cond, match, &&, ||, ??, for, loop)
+ * 5. Effect + control flow interactions (if, else if, match, &&, ||, ??, for, loop)
  * 6. Effect + higher-order function interactions (map, filter, reduce, etc.)
  * 7. Effect handler scoping (nesting levels)
  * 8. Effect identity semantics
@@ -272,21 +272,19 @@ describe('auto: effect + control flow', () => {
     expect(result).toBe(40)
   })
 
-  it('effect in cond test', () => {
+  it('effect in if/else if test', () => {
     const result = dvala.run(wrap(`
-      cond
-        case >(perform(@test.eff, 1), 5) then "big"
-        case true then "small"
+      if >(perform(@test.eff, 1), 5) then "big"
+      else "small"
       end
     `))
     expect(result).toBe('big')
   })
 
-  it('effect in cond result', () => {
+  it('effect in if/else if result', () => {
     const result = dvala.run(wrap(`
-      cond
-        case true then perform(@test.eff, 7)
-        case true then 0
+      if true then perform(@test.eff, 7)
+      else 0
       end
     `))
     expect(result).toBe(70)

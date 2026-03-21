@@ -745,14 +745,14 @@ let formatPhoneNumber = (data) -> do
     let phoneNumber = if data[0] == "+" then slice(data, 2) else data end;
     let length = count(phoneNumber);
 
-    cond
-      case length > 6 then
-        "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3, 6) ++ "-" ++ slice(phoneNumber, 6)
-      case length > 3 then
-        "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3)
-      case length > 0 then
-        "(" ++ slice(phoneNumber, 0)
-    end ?? ""
+    if length > 6 then
+      "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3, 6) ++ "-" ++ slice(phoneNumber, 6)
+    else if length > 3 then
+      "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3)
+    else if length > 0 then
+      "(" ++ slice(phoneNumber, 0)
+    else ""
+    end
   else
     ""
   end
@@ -791,10 +791,10 @@ factorial(5)
     code: `
 let l = [7, 39, 45, 0, 23, 1, 50, 100, 12, -5];
 let numberComparer = (a, b) -> do
-  cond
-    case a < b then -1
-    case a > b then 1
-  end ?? 0
+  if a < b then -1
+  else if a > b then 1
+  else 0
+  end
 end;
 
 sort(l, numberComparer)
@@ -884,7 +884,7 @@ labels-from-values(arr, ["name", "age"])
   {
     id: 'fizzbuzz',
     name: 'FizzBuzz',
-    description: 'The classic FizzBuzz challenge using a for comprehension with let bindings and cond.',
+    description: 'The classic FizzBuzz challenge using a for comprehension with let bindings and if/else if.',
     code: `
 // FizzBuzz: print numbers 1 to 30, but
 //   multiples of 3 → "Fizz"
@@ -895,11 +895,11 @@ let fizzbuzz = for (
   n in range(1, 31)
   let div3 = zero?(n mod 3)
   let div5 = zero?(n mod 5)
-) -> cond
-  case div3 && div5 then "FizzBuzz"
-  case div3 then "Fizz"
-  case div5 then "Buzz"
-end ?? str(n);
+) -> if div3 && div5 then "FizzBuzz"
+  else if div3 then "Fizz"
+  else if div5 then "Buzz"
+  else str(n)
+end;
 
 fizzbuzz join ", "
 `.trim(),

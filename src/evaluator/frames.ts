@@ -68,23 +68,6 @@ export interface IfBranchFrame {
 }
 
 /**
- * Multi-way conditional (`cond`).
- *
- * When `phase` is `'test'`: a test expression is being evaluated. If truthy,
- * transition to body evaluation. If falsy, advance to the next case.
- * When `phase` is `'body'`: the body expression is being evaluated. The
- * resulting value propagates up.
- */
-export interface CondFrame {
-  type: 'Cond'
-  phase: 'test' | 'body'
-  cases: [AstNode, AstNode][] // [test, body] pairs
-  index: number // current case (0-based)
-  env: ContextStack
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
  * Pattern matching (`match`).
  *
  * Phase `'matchValue'`: the match-value expression is being evaluated.
@@ -869,7 +852,7 @@ export interface DebugStepFrame {
  *
  * Frame categories:
  * - **Program flow**: SequenceFrame
- * - **Branching**: IfBranchFrame, CondFrame, MatchFrame
+ * - **Branching**: IfBranchFrame, MatchFrame
  * - **Short-circuit**: AndFrame, OrFrame, QqFrame
  * - **Collection construction**: ArrayBuildFrame, ObjectBuildFrame
  * - **Binding**: LetBindFrame, LoopBindFrame, LoopIterateFrame, ForLoopFrame
@@ -918,7 +901,7 @@ export type Frame =
   | SequenceFrame
   // Branching
   | IfBranchFrame
-  | CondFrame
+
   | MatchFrame
   // Short-circuit
   | AndFrame

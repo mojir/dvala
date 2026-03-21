@@ -1,7 +1,6 @@
 import type { Builtin } from './interface'
 import { allNormalExpressions, normalExpressions } from './normalExpressions'
 import { andSpecialExpression } from './specialExpressions/and'
-import { condSpecialExpression } from './specialExpressions/cond'
 import { matchSpecialExpression } from './specialExpressions/match'
 import { definedSpecialExpression } from './specialExpressions/defined'
 import { doSpecialExpression } from './specialExpressions/block'
@@ -29,7 +28,6 @@ export const specialExpressions = [
   andSpecialExpression,
   orSpecialExpression,
   arraySpecialExpression,
-  condSpecialExpression,
   definedSpecialExpression,
   doSpecialExpression,
   doseqSpecialExpression,
@@ -56,7 +54,6 @@ export type SpecialExpressionName = keyof typeof specialExpressionTypes
 export type CommonSpecialExpressionType = [
   | typeof specialExpressionTypes['??']
   | typeof specialExpressionTypes['&&']
-  | typeof specialExpressionTypes['cond']
   | typeof specialExpressionTypes['match']
   | typeof specialExpressionTypes['defined?']
   | typeof specialExpressionTypes['block']

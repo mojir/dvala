@@ -604,28 +604,26 @@ end;
 // => "small"
 ```
 
-#### Cond
+#### If / Else If
 
 ```dvala
 let x = 12;
 
 // Multi-branch conditional
-cond
-  case x < 5 then "small"
-  case x < 10 then "medium"
-  case x < 15 then "large"
-  case true then "extra large" // default case
+if x < 5 then "small"
+else if x < 10 then "medium"
+else if x < 15 then "large"
+else "extra large" // default case
 end;
 // => "large"
 
-// Cond with complex conditions
+// If/else if with complex conditions
 let urgent = true;
 let important = false;
-let priority = cond
-  case urgent && important then "critical"
-  case urgent then "high"
-  case important then "medium"
-  case true then "low"
+let priority = if urgent && important then "critical"
+  else if urgent then "high"
+  else if important then "medium"
+  else "low"
 end;
 // => "high"
 ```
@@ -815,10 +813,9 @@ let divide = (a, b) ->
 
 // Conditional error raising
 let validateAge = (age) ->
-  cond
-    case age < 0 then perform(@dvala.error, "Age cannot be negative")
-    case age > 150 then perform(@dvala.error, "Age seems unrealistic")
-    case true then age
+  if age < 0 then perform(@dvala.error, "Age cannot be negative")
+  else if age > 150 then perform(@dvala.error, "Age seems unrealistic")
+  else age
   end;
 ```
 

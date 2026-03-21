@@ -94,7 +94,6 @@ import type {
   CallFnFrame,
   ComplementFrame,
   CompFrame,
-  CondFrame,
   ContinuationStack,
   DebugStepFrame,
   EffectResumeFrame,
@@ -445,23 +444,6 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
         return { type: 'Eval', node: firstNode, env, k }
       }
       return { type: 'Eval', node: firstNode, env, k: [frame, ...k] }
-    }
-
-    // --- cond ---
-    case specialExpressionTypes.cond: {
-      const cases = node[1][1] as [AstNode, AstNode][]
-      if (cases.length === 0) {
-        return { type: 'Value', value: null, k }
-      }
-      const frame: CondFrame = {
-        type: 'Cond',
-        phase: 'test',
-        cases,
-        index: 0,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: cases[0]![0], env, k: [frame, ...k] }
     }
 
     // --- match ---
@@ -1217,8 +1199,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applySequence(frame, value, k)
     case 'IfBranch':
       return applyIfBranch(frame, value, k)
-    case 'Cond':
-      return applyCond(frame, value, k)
     case 'Match':
       return applyMatch(frame, value, k)
     case 'And':
@@ -1356,27 +1336,6 @@ function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): 
     return { type: 'Eval', node: elseNode, env, k }
   }
   return { type: 'Value', value: null, k }
-}
-
-function applyCond(frame: CondFrame, value: Any, k: ContinuationStack): Step {
-  const { cases, index, env } = frame
-
-  if (frame.phase === 'test') {
-    if (value) {
-      // Test is truthy — evaluate the body
-      return { type: 'Eval', node: cases[index]![1], env, k }
-    }
-    // Test is falsy — try next case
-    const nextIndex = index + 1
-    if (nextIndex >= cases.length) {
-      return { type: 'Value', value: null, k }
-    }
-    const newFrame: CondFrame = { ...frame, index: nextIndex }
-    return { type: 'Eval', node: cases[nextIndex]![0], env, k: [newFrame, ...k] }
-  }
-
-  // phase === 'body' — body has been evaluated
-  return { type: 'Value', value, k }
 }
 
 function applyMatch(frame: MatchFrame, value: Any, k: ContinuationStack): Step {

@@ -25,10 +25,9 @@ let saved-amount = sum(prices) - total |> _ round 2;
 
 perform(@dvala.io.println,
   `Total: $${str(total)} ` ++
-  cond
-    case saved-amount > 0 then
-      `(You saved $${str(saved-amount)})`
-    case true then
-      "(No discount applied)"
+  if saved-amount > 0 then
+    `(You saved $${str(saved-amount)})`
+  else
+    "(No discount applied)"
   end
 );

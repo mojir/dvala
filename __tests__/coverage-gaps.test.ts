@@ -244,16 +244,16 @@ describe('match edge cases', () => {
 })
 
 // ---------------------------------------------------------------------------
-// cond edge cases
+// if/else if edge cases (migrated from cond)
 // ---------------------------------------------------------------------------
 
-describe('cond edge cases', () => {
-  it('should handle empty cond', () => {
-    expect(dvala.run('cond end')).toBe(null)
+describe('if/else if edge cases', () => {
+  it('should return null when no branch matches and no else', () => {
+    expect(dvala.run('if false then 1 end')).toBe(null)
   })
 
-  it('should handle cond with all false cases', () => {
-    expect(dvala.run('cond case false then 1 case false then 2 end')).toBe(null)
+  it('should return null when all conditions false', () => {
+    expect(dvala.run('if false then 1 else if false then 2 end')).toBe(null)
   })
 })
 
@@ -741,24 +741,21 @@ describe('importMerge — module source with dvala-only functions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// applyCond — test body evaluation phase
+// if/else if — test body evaluation phase (migrated from applyCond)
 // ---------------------------------------------------------------------------
 
-describe('applyCond — body evaluation', () => {
-  it('should evaluate cond body when condition is true', () => {
+describe('if/else if — body evaluation', () => {
+  it('should evaluate if body when condition is true', () => {
     expect(dvala.run(`
-      cond
-        case true then 42
-      end
+      if true then 42 end
     `)).toBe(42)
   })
 
-  it('should evaluate cond with multiple cases, matching second', () => {
+  it('should evaluate if/else if with multiple branches, matching second', () => {
     expect(dvala.run(`
-      cond
-        case false then 1
-        case true then 2
-        case true then 3
+      if false then 1
+      else if true then 2
+      else 3
       end
     `)).toBe(2)
   })

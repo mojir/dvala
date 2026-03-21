@@ -1340,7 +1340,7 @@ describe('stress: runSync edge cases', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 15. Edge case: suspend inside cond/if/and/or
+// 15. Edge case: suspend inside if/and/or
 // ---------------------------------------------------------------------------
 
 describe('stress: suspend inside control flow', () => {
@@ -1365,16 +1365,15 @@ describe('stress: suspend inside control flow', () => {
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
 
-  it('suspend inside cond expression', async () => {
+  it('suspend inside if/else if expression', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
 
     const r1 = await dvala.runAsync(`
       let flag = true;
-      cond
-        case flag then perform(@my.wait)
-        case true then 0
+      if flag then perform(@my.wait)
+      else 0
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

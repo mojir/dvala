@@ -11,7 +11,6 @@ import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, ex
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
 import { getPrecedence } from '../getPrecedence'
-import { parseCond } from './parseCond'
 import { parseDo } from './parseDo'
 import { parseHandle } from './parseHandle'
 import { parseForOrDoseq } from './parseForOrDoseq'
@@ -40,9 +39,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       case 'if':
       case 'unless':
         left = parseIfOrUnless(ctx, token)
-        break
-      case 'cond':
-        left = parseCond(ctx, token)
         break
       case 'match':
         left = parseMatch(ctx, token)

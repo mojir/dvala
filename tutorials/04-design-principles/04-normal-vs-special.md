@@ -68,17 +68,16 @@ y * 2
 
 This requires special evaluation: `let` must bind `x` before evaluating `x + 5`.
 
-### cond — Multi-Branch Conditions
+### if/else if — Multi-Branch Conditions
 
-`cond` evaluates conditions top-to-bottom, stopping at the first true one:
+`if/else if` chains evaluate conditions top-to-bottom, stopping at the first true one:
 
 ```dvala
 let temp = 25;
-cond
-  case temp < 0 then "freezing"
-  case temp < 20 then "cold"
-  case temp < 30 then "pleasant"
-  case true then "hot"
+if temp < 0 then "freezing"
+else if temp < 20 then "cold"
+else if temp < 30 then "pleasant"
+else "hot"
 end
 ```
 
@@ -148,7 +147,7 @@ end
 Dvala has **22** special expressions:
 
 * **Logic** — `&&`, `||`, `??`
-* **Conditionals** — `if`, `unless`, `cond`, `match`
+* **Conditionals** — `if`, `unless`, `match`
 * **Binding** — `let`
 * **Iteration** — `loop`, `recur`, `for`, `doseq`
 * **Grouping** — `do` (block)
