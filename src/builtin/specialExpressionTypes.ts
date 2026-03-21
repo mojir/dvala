@@ -21,4 +21,5 @@ export const specialExpressionTypes = {
   'perform': 19,
   'parallel': 20,
   'race': 21,
+  'handle': 22,
 } as const

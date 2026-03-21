@@ -98,8 +98,10 @@ describe('frame types', () => {
       DebugStep: true,
       ImportMerge: true,
       AutoCheckpoint: true,
+      HandleWith: true,
+      HandleSetup: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(43)
+    expect(Object.keys(frameTypes)).toHaveLength(45)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -156,6 +158,8 @@ describe('frame types', () => {
         case 'DebugStep': return 'debug'
         case 'ImportMerge': return 'import'
         case 'AutoCheckpoint': return 'checkpoint'
+        case 'HandleWith': return 'effect'
+        case 'HandleSetup': return 'effect'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame

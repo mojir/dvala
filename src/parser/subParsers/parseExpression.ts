@@ -14,6 +14,7 @@ import type { AstNode, SymbolNode } from '../types'
 import { getPrecedence } from '../getPrecedence'
 import { parseCond } from './parseCond'
 import { parseDo } from './parseDo'
+import { parseHandle } from './parseHandle'
 import { parseForOrDoseq } from './parseForOrDoseq'
 import { parseIfOrUnless } from './parseIfOrUnless'
 import { parseLet } from './parseLet'
@@ -57,6 +58,8 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
     }
   } else if (isReservedSymbolToken(token, 'do')) {
     left = parseDo(ctx)
+  } else if (isReservedSymbolToken(token, 'handle')) {
+    left = parseHandle(ctx)
   }
 
   left ||= parseOperand(ctx)

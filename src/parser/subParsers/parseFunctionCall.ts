@@ -80,6 +80,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       | typeof specialExpressionTypes.doseq
       | typeof specialExpressionTypes.import
       | typeof specialExpressionTypes.effect
+      | typeof specialExpressionTypes.handle
     >
     const specialExpression: SpecialExpression = builtin.specialExpressions[type]
     assertNumberOfParams(specialExpression.arity, params.length, symbol[2])
