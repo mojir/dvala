@@ -23,8 +23,8 @@ const docs: CustomDocs = {
   examples: [
     `
 handle
-  perform(@dvala.io.println, "hello")
-with [(arg, eff, nxt) -> if eff == @dvala.io.println then arg else nxt(eff, arg) end]
+  perform(@dvala.io.print, "hello")
+with [(arg, eff, nxt) -> if eff == @dvala.io.print then arg else nxt(eff, arg) end]
 end
 `,
   ],

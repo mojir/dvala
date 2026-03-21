@@ -2,7 +2,7 @@
 
 ## Problem
 
-Effect names like `dvala.io.println` are dotted identifiers that only have meaning inside `effect(...)`. The tokenizer can't distinguish them from other dotted symbols (e.g. `string.split`), which makes syntax highlighting require context-scanning hacks. The `effect(...)` wrapper is verbose and adds ceremony without adding clarity.
+Effect names like `dvala.io.print` are dotted identifiers that only have meaning inside `effect(...)`. The tokenizer can't distinguish them from other dotted symbols (e.g. `string.split`), which makes syntax highlighting require context-scanning hacks. The `effect(...)` wrapper is verbose and adds ceremony without adding clarity.
 
 ## Proposal
 
@@ -10,16 +10,16 @@ Introduce `@` as a sigil prefix for effect names. An effect name becomes a first
 
 ### Before
 ```
-perform(effect(dvala.io.println), "hello")
-let e = effect(dvala.io.println)
+perform(effect(dvala.io.print), "hello")
+let e = effect(dvala.io.print)
 effect?(e)
 effect-name(e)
 ```
 
 ### After
 ```
-perform(@dvala.io.println, "hello")
-let e = @dvala.io.println
+perform(@dvala.io.print, "hello")
+let e = @dvala.io.print
 effect?(e)
 effect-name(e)
 ```
@@ -28,9 +28,9 @@ effect-name(e)
 
 - An effect name literal starts with `@` followed by a dotted identifier
 - At least one dot is required: `@foo` is invalid, `@foo.bar` is valid
-- Each segment follows normal symbol rules (alphanumeric, hyphens): `@dvala.io.read-line`
+- Each segment follows normal symbol rules (alphanumeric, hyphens): `@dvala.io.read`
 - No whitespace allowed between `@` and the name or around dots
-- The `@` prefix is not part of the name string — `@dvala.io.println` produces an effect ref whose name is `"dvala.io.println"`
+- The `@` prefix is not part of the name string — `@dvala.io.print` produces an effect ref whose name is `"dvala.io.print"`
 
 ## Changes required
 

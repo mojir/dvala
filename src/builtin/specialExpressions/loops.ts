@@ -114,7 +114,7 @@ const doseqDocs: CustomDocs = {
   description: 'Iterates over `bindings`, evaluates `body` for each `binding` and returns `null`. This is useful for side effects.',
   examples: [
     `
-doseq (i in [1, 2, 3]) -> perform(@dvala.io.println, i * 2)
+doseq (i in [1, 2, 3]) -> perform(@dvala.io.print, i * 2)
       `,
   ],
 }

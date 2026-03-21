@@ -143,18 +143,18 @@ describe('specialExpressions', () => {
     it('local variable', () => {
       const program = `
       let x = "A";
-      perform(@dvala.io.println, x);       // A
+      perform(@dvala.io.print, x);       // A
       do
         let x = "B";
-        perform(@dvala.io.println, x)      // B
+        perform(@dvala.io.print, x)      // B
       end;
         
-      perform(@dvala.io.println, x)        // A - global variable x
+      perform(@dvala.io.print, x)        // A - global variable x
       `
       dvala.run(program)
-      expect(logSpy).toHaveBeenNthCalledWith(1, 'A\n')
-      expect(logSpy).toHaveBeenNthCalledWith(2, 'B\n')
-      expect(logSpy).toHaveBeenNthCalledWith(3, 'A\n')
+      expect(logSpy).toHaveBeenNthCalledWith(1, 'A')
+      expect(logSpy).toHaveBeenNthCalledWith(2, 'B')
+      expect(logSpy).toHaveBeenNthCalledWith(3, 'A')
     })
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
@@ -186,14 +186,14 @@ describe('specialExpressions', () => {
       expect(() => dvala.run('if true then end')).toThrow(DvalaError)
     })
     it('that special form \'if\' only evaluate the correct path (true)', () => {
-      dvala.run('if true then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
-      expect(logSpy).toHaveBeenCalledWith('A\n')
-      expect(logSpy).not.toHaveBeenCalledWith('B\n')
+      dvala.run('if true then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+      expect(logSpy).toHaveBeenCalledWith('A')
+      expect(logSpy).not.toHaveBeenCalledWith('B')
     })
     it('that special form \'if\' only evaluate the correct path (false)', () => {
-      dvala.run('if false then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
-      expect(logSpy).not.toHaveBeenCalledWith('A\n')
-      expect(logSpy).toHaveBeenCalledWith('B\n')
+      dvala.run('if false then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+      expect(logSpy).not.toHaveBeenCalledWith('A')
+      expect(logSpy).toHaveBeenCalledWith('B')
     })
 
     describe('unresolvedIdentifiers', () => {
@@ -221,14 +221,14 @@ describe('specialExpressions', () => {
       expect(dvala.run('if not(object()) then "A" else "B" end')).toBe('B')
     })
     it('that if not(...) only evaluates the correct path (true)', () => {
-      dvala.run('if not(true) then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
-      expect(logSpy).toHaveBeenCalledWith('B\n')
-      expect(logSpy).not.toHaveBeenCalledWith('A\n')
+      dvala.run('if not(true) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+      expect(logSpy).toHaveBeenCalledWith('B')
+      expect(logSpy).not.toHaveBeenCalledWith('A')
     })
     it('that if not(...) only evaluates the correct path (false)', () => {
-      dvala.run('if not(false) then perform(@dvala.io.println, "A") else perform(@dvala.io.println, "B") end')
-      expect(logSpy).not.toHaveBeenCalledWith('B\n')
-      expect(logSpy).toHaveBeenCalledWith('A\n')
+      dvala.run('if not(false) then perform(@dvala.io.print, "A") else perform(@dvala.io.print, "B") end')
+      expect(logSpy).not.toHaveBeenCalledWith('B')
+      expect(logSpy).toHaveBeenCalledWith('A')
     })
 
     describe('unresolvedIdentifiers', () => {
@@ -524,16 +524,16 @@ end;`))).toEqual(
     it('should work with function', () => {
       dvala.run(`
 let foo = (n) -> do
-  perform(@dvala.io.println, n);
+  perform(@dvala.io.print, n);
   if not(zero?(n)) then
     recur(n - 1)
   end
 end;
 foo(3)`)
-      expect(logSpy).toHaveBeenNthCalledWith(1, '3\n')
-      expect(logSpy).toHaveBeenNthCalledWith(2, '2\n')
-      expect(logSpy).toHaveBeenNthCalledWith(3, '1\n')
-      expect(logSpy).toHaveBeenNthCalledWith(4, '0\n')
+      expect(logSpy).toHaveBeenNthCalledWith(1, '3')
+      expect(logSpy).toHaveBeenNthCalledWith(2, '2')
+      expect(logSpy).toHaveBeenNthCalledWith(3, '1')
+      expect(logSpy).toHaveBeenNthCalledWith(4, '0')
     })
     it('recur must be called with the right number of parameters', () => {
       expect(() => dvala.run('let foo = (n) -> do if not(zero?(n)) then recur() end end; foo(3)')).toThrow(DvalaError)
@@ -571,11 +571,11 @@ foo(3)`)
     })
 
     it('should work with recur', () => {
-      dvala.run('loop (n = 3) -> do perform(@dvala.io.println, n); if not(zero?(n)) then recur(n - 1) end end')
-      expect(logSpy).toHaveBeenNthCalledWith(1, '3\n')
-      expect(logSpy).toHaveBeenNthCalledWith(2, '2\n')
-      expect(logSpy).toHaveBeenNthCalledWith(3, '1\n')
-      expect(logSpy).toHaveBeenNthCalledWith(4, '0\n')
+      dvala.run('loop (n = 3) -> do perform(@dvala.io.print, n); if not(zero?(n)) then recur(n - 1) end end')
+      expect(logSpy).toHaveBeenNthCalledWith(1, '3')
+      expect(logSpy).toHaveBeenNthCalledWith(2, '2')
+      expect(logSpy).toHaveBeenNthCalledWith(3, '1')
+      expect(logSpy).toHaveBeenNthCalledWith(4, '0')
     })
     it('recur must be called with right number of parameters', () => {
       expect(() => dvalaDebug.run('loop (n = 3) -> if not(zero?(n)) then recur() end')).toThrow(DvalaError)
@@ -592,12 +592,12 @@ foo(3)`)
     describe('unresolvedIdentifiers', () => {
       it('samples', () => {
         expect(
-          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.println, str(n)); if not(zero?(n)) then recur(n - 1) end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(n)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set())
         expect(
-          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.println, str(x)); if not(zero?(n)) then recur(n - 1) end end')),
+          (getUndefinedSymbols('loop (n = 3) -> do perform(@dvala.io.print, str(x)); if not(zero?(n)) then recur(n - 1) end end')),
         ).toEqual(new Set(['x']))
-        expect(getUndefinedSymbols('loop (n = 3 + y) -> do perform(@dvala.io.println, str(n)); if not(zero?(x)) then recur(n - 1) end end'))
+        expect(getUndefinedSymbols('loop (n = 3 + y) -> do perform(@dvala.io.print, str(n)); if not(zero?(x)) then recur(n - 1) end end'))
           .toEqual(new Set(['x', 'y']))
       })
     })

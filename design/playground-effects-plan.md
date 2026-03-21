@@ -39,7 +39,7 @@ perform(effect(dvala.sleep), 500)  // use standard sleep
 | `playground.ui.showToast` | `message: string, level?: "info" \| "success" \| "warning" \| "error"` | `nil` | Show a toast notification |
 | `playground.ui.setTheme` | `theme: "light" \| "dark"` | `nil` | Switch theme |
 
-> **Note:** For output logging, use `dvala.io.println`. For interactive modals (prompts, confirmations, choices), use `dvala.io.*` effects (`read-line`, `confirm`, `pick`) — the playground already has handlers for these.
+> **Note:** For output logging, use `dvala.io.print`. For interactive modals (prompts, confirmations, choices), use `dvala.io.*` effects (`read-line`, `confirm`, `pick`) — the playground already has handlers for these.
 
 ### Editor (`playground.editor.*`)
 | Effect | Arguments | Returns | Description |
@@ -222,9 +222,9 @@ perform(effect(playground.ui.showToast), "Running...", "info")
 
 ### 2. Interactive tutorial
 ```dvala
-perform(effect(dvala.io.println), "Welcome! Let's learn Dvala!")
+perform(effect(dvala.io.print), "Welcome! Let's learn Dvala!")
 perform(effect(playground.editor.setContent), "// Try adding two numbers\n1 + 2")
-perform(effect(dvala.io.read-line), "Press Enter when ready...")  // waits for user
+perform(effect(dvala.io.read), "Press Enter when ready...")  // waits for user
 ```
 
 ### 3. Code generator

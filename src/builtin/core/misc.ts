@@ -406,7 +406,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         'type-of({ a: 1 })',
         'type-of((x) -> x + 1)',
         'type-of(regexp("^start"))',
-        'type-of(@dvala.io.println)',
+        'type-of(@dvala.io.print)',
       ],
     },
   },

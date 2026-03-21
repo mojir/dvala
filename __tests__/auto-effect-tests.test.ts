@@ -167,7 +167,7 @@ describe('auto: effectNameMatchesPattern exhaustive', () => {
   // Effect names to test against
   const effectNames = [
     'dvala.error',
-    'dvala.io.println',
+    'dvala.io.print',
     'dvala.io.print',
     'dvala.random',
     'dvala.random.int',
@@ -219,18 +219,18 @@ describe('auto: findMatchingHandlers registration order', () => {
     const handlers = [
       { pattern: 'dvala.*', handler: async () => {} },
       { pattern: 'dvala.io.*', handler: async () => {} },
-      { pattern: 'dvala.io.println', handler: async () => {} },
+      { pattern: 'dvala.io.print', handler: async () => {} },
       { pattern: '*', handler: async () => {} },
     ]
-    const matches = findMatchingHandlers('dvala.io.println', handlers)
-    expect(matches.map(([p]) => p)).toEqual(['dvala.*', 'dvala.io.*', 'dvala.io.println', '*'])
+    const matches = findMatchingHandlers('dvala.io.print', handlers)
+    expect(matches.map(([p]) => p)).toEqual(['dvala.*', 'dvala.io.*', 'dvala.io.print', '*'])
   })
 
   it('returns empty array for no match', () => {
     const handlers = [
       { pattern: 'llm.*', handler: async () => {} },
     ]
-    const matches = findMatchingHandlers('dvala.io.println', handlers)
+    const matches = findMatchingHandlers('dvala.io.print', handlers)
     expect(matches).toEqual([])
   })
 
@@ -528,7 +528,7 @@ describe('auto: effect handler scoping', () => {
 describe('auto: effect identity semantics', () => {
   const effectNames = [
     'dvala.error',
-    'dvala.io.println',
+    'dvala.io.print',
     'llm.complete',
     'com.myco.approve',
     'simple',
@@ -806,7 +806,7 @@ describe('auto: host handler patterns', () => {
   it('prefix wildcard handler matches subtree', async () => {
     const captured: string[] = []
     const result = await dvala.runAsync(`
-      perform(@dvala.io.println, "msg");
+      perform(@dvala.io.print, "msg");
       perform(@dvala.random)
     `, {
       effectHandlers: [
@@ -817,7 +817,7 @@ describe('auto: host handler patterns', () => {
       ],
     })
     expect(result.type).toBe('completed')
-    expect(captured).toEqual(['dvala.io.println', 'dvala.random'])
+    expect(captured).toEqual(['dvala.io.print', 'dvala.random'])
   })
 
   it('exact handler takes priority over wildcard (by registration order)', async () => {
@@ -966,12 +966,12 @@ describe('auto: effect-matcher wildcard patterns', () => {
   const patterns: { pattern: string; matches: string[]; nonMatches: string[] }[] = [
     {
       pattern: 'dvala.*',
-      matches: ['dvala.error', 'dvala.io.println', 'dvala.random', 'dvala.checkpoint'],
+      matches: ['dvala.error', 'dvala.io.print', 'dvala.random', 'dvala.checkpoint'],
       nonMatches: ['llm.complete', 'custom.foo', 'simple'],
     },
     {
       pattern: 'dvala.io.*',
-      matches: ['dvala.io.println', 'dvala.io.print', 'dvala.io.error'],
+      matches: ['dvala.io.print', 'dvala.io.print', 'dvala.io.error'],
       nonMatches: ['dvala.random', 'dvala.error', 'llm.complete'],
     },
     {
@@ -1093,7 +1093,7 @@ describe('auto: standard sync effects via runSync', () => {
   // I/O effects should work synchronously via runSync (they write to stdout/stderr)
   const ioEffects: { name: string; args: string }[] = [
     { name: 'dvala.io.print', args: '"test"' },
-    { name: 'dvala.io.println', args: '"test"' },
+    { name: 'dvala.io.print', args: '"test"' },
     { name: 'dvala.io.error', args: '"test"' },
   ]
 
@@ -1115,8 +1115,8 @@ describe('auto: standard effects return value semantics', () => {
     expect(result).toBe('hello')
   })
 
-  it('dvala.io.println returns the original value', () => {
-    const result = dvala.run('perform(@dvala.io.println, "hello")')
+  it('dvala.io.print returns the original value', () => {
+    const result = dvala.run('perform(@dvala.io.print, "hello")')
     expect(result).toBe('hello')
   })
 

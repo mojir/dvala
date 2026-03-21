@@ -2236,7 +2236,7 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     return dispatchHostHandler(effect.name, matchingHostHandlers, arg, k, signal, sourceCodeInfo, snapshotState)
   }
 
-  // No host handler — check standard effects (dvala.io.println, dvala.time.now, etc.).
+  // No host handler — check standard effects (dvala.io.print, dvala.time.now, etc.).
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(arg, k, sourceCodeInfo)

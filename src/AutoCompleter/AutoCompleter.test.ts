@@ -104,14 +104,14 @@ describe('autoCompleter', () => {
 
   describe('effect name suggestions', () => {
     const effectParams: AutoCompleterParams = {
-      effectNames: ['dvala.io.print', 'dvala.io.println', 'dvala.random', 'dvala.random.int'],
+      effectNames: ['dvala.io.print', 'dvala.io.read', 'dvala.random', 'dvala.random.int'],
     }
 
     it('should suggest full effect names when searching from start', () => {
       const completer = new AutoCompleter('@dvala', 6, effectParams)
       const suggestions = completer.getSuggestions()
       expect(suggestions).toContain('dvala.io.print')
-      expect(suggestions).toContain('dvala.io.println')
+      expect(suggestions).toContain('dvala.io.read')
       expect(suggestions).toContain('dvala.random')
       expect(suggestions).toContain('dvala.random.int')
     })
@@ -120,7 +120,7 @@ describe('autoCompleter', () => {
       const completer = new AutoCompleter('@dvala.io.print', 15, effectParams)
       const suggestions = completer.getSuggestions()
       expect(suggestions).toContain('print')
-      expect(suggestions).toContain('println')
+      expect(suggestions).toContain('read')
       expect(suggestions).not.toContain('dvala.io.print')
     })
 
@@ -135,7 +135,7 @@ describe('autoCompleter', () => {
       const completer = new AutoCompleter('@dvala.io.', 10, effectParams)
       const suggestions = completer.getSuggestions()
       expect(suggestions).toContain('print')
-      expect(suggestions).toContain('println')
+      expect(suggestions).toContain('read')
       // Regular commands should not appear
       expect(suggestions).not.toContain('if')
       expect(suggestions).not.toContain('let')

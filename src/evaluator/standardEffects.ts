@@ -10,7 +10,7 @@
  * mirroring the structure of builtin normal expressions and module functions.
  *
  * Sync effects work in both `runSync` and `run`.
- * Async effects (`dvala.sleep`, `dvala.io.read-line` in Node, `dvala.io.read-stdin`) only work in `run` —
+ * Async effects (`dvala.sleep`, `dvala.io.read` in Node, `dvala.io.read-stdin`) only work in `run` —
  * `runSync` will throw when a Promise surfaces.
  */
 
@@ -124,21 +124,6 @@ function printHandler(arg: Any, k: ContinuationStack): Step {
   return { type: 'Value', value, k }
 }
 
-function printlnHandler(arg: Any, k: ContinuationStack): Step {
-  const value = arg
-  const str = formatForOutput(value)
-  if (isNode()) {
-    process.stdout.write(`${str}\n`)
-  } else if (typeof globalThis.alert === 'function') {
-
-    globalThis.alert(str)
-  } else {
-    // eslint-disable-next-line no-console
-    console.log(str)
-  }
-  return { type: 'Value', value, k }
-}
-
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
     const random = Math.random() * 16 | 0
@@ -153,9 +138,8 @@ function generateUUID(): string {
 
 type StandardEffectName =
   | 'dvala.io.print'
-  | 'dvala.io.println'
   | 'dvala.io.error'
-  | 'dvala.io.read-line'
+  | 'dvala.io.read'
   | 'dvala.io.pick'
   | 'dvala.io.confirm'
   | 'dvala.io.read-stdin'
@@ -192,26 +176,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { code: 'perform(@dvala.io.print, "hello")', noRun: true },
         { code: 'perform(@dvala.io.print, 42)', noRun: true },
       ],
-      seeAlso: ['-effect-dvala.io.println', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
-    },
-  },
-
-  'dvala.io.println': {
-    handler: printlnHandler,
-    arity: toFixedArity(1),
-    docs: {
-      category: 'effect',
-      description: 'Writes a value to stdout followed by a newline. Accepts any value — strings are printed as-is, other values are auto-formatted. In Node.js uses `process.stdout.write(str + "\\n")`, in browsers uses `alert(str)`. Resumes with the original value (identity).',
-      returns: { type: 'any' },
-      args: {
-        value: { type: 'any', description: 'Value to print.' },
-      },
-      variants: [{ argumentNames: ['value'] }],
-      examples: [
-        { code: 'perform(@dvala.io.println, "hello")', noRun: true },
-        { code: 'perform(@dvala.io.println, [1, 2, 3])', noRun: true },
-      ],
-      seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.error', '-effect-dvala.io.read-line', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.error', '-effect-dvala.io.read', 'perform', 'effect'],
     },
   },
 
@@ -238,11 +203,11 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         { code: 'perform(@dvala.io.error, "something went wrong")', noRun: true },
       ],
-      seeAlso: ['-effect-dvala.io.print', '-effect-dvala.io.println', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.print', 'perform', 'effect'],
     },
   },
 
-  'dvala.io.read-line': {
+  'dvala.io.read': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
       const message = typeof arg === 'string' ? arg : ''
 
@@ -253,7 +218,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         return { type: 'Value', value: result ?? null, k }
       }
 
-      throw new DvalaError('dvala.io.read-line is not supported in this environment. In Node.js, register a "dvala.io.read-line" host handler.', sourceCodeInfo)
+      throw new DvalaError('dvala.io.read is not supported in this environment. In Node.js, register a "dvala.io.read" host handler.', sourceCodeInfo)
     },
     arity: { min: 0, max: 1 },
     docs: {
@@ -268,9 +233,9 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { argumentNames: ['message'] },
       ],
       examples: [
-        '@dvala.io.read-line',
+        '@dvala.io.read',
       ],
-      seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.println', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
   },
 
@@ -357,7 +322,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         '@dvala.io.pick',
       ],
-      seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.confirm', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.read', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
   },
 
@@ -404,7 +369,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         '@dvala.io.confirm',
       ],
-      seeAlso: ['-effect-dvala.io.read-line', '-effect-dvala.io.pick', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.read', '-effect-dvala.io.pick', 'perform', 'effect'],
     },
   },
 
@@ -432,7 +397,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         '@dvala.io.read-stdin',
       ],
-      seeAlso: ['-effect-dvala.io.read-line', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.read', 'perform', 'effect'],
     },
   },
 

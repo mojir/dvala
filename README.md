@@ -703,7 +703,7 @@ for (entry in { a: 1, b: 2 } let [key, value] = entry) -> key ++ ":" ++ str(valu
 
 ```dvala
 // For side effects only (returns null)
-doseq (x in [1, 2, 3]) -> perform(@dvala.io.println, x)
+doseq (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
 // Prints: 1 2 3, returns null
 ```
 
@@ -839,10 +839,10 @@ let loadData = () -> [1, 2, 3];
 let processData = (data) -> data map -> $ * 2;
 
 do
-  perform(@dvala.io.println, "Starting process...");
+  perform(@dvala.io.print, "Starting process...");
   let data = loadData();
   let processed = processData(data);
-  perform(@dvala.io.println, "Process completed");
+  perform(@dvala.io.print, "Process completed");
   processed
 end
 ```

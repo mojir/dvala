@@ -1,26 +1,26 @@
 // Human-in-the-loop Email Workflow
 //
 // Flow (repeats until approved):
-//   1. Author writes / revises draft        → dvala.io.read-line  (suspend + share)
+//   1. Author writes / revises draft        → dvala.io.read  (suspend + share)
 //   2. LLM polishes the draft               → llm.ask
 //   3. Approver reviews the polished text   → human.approve       (suspend + share)
 //   4a. Approved  → done
 //   4b. Rejected  → loop back to step 1 with LLM text + feedback
 
 let edit-draft = (previous, feedback, attempt) -> do
-  perform(@dvala.io.println, "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")");
+  perform(@dvala.io.print, "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")");
 
   if feedback != "" then
-    perform(@dvala.io.println, "Approver feedback: \"" ++ feedback ++ "\"");
-    perform(@dvala.io.println, "Previous version:\n" ++ previous ++ "\n");
+    perform(@dvala.io.print, "Approver feedback: \"" ++ feedback ++ "\"");
+    perform(@dvala.io.print, "Previous version:\n" ++ previous ++ "\n");
   end;
 
-  perform(@dvala.io.read-line, "Your draft:\n")
+  perform(@dvala.io.read, "Your draft:\n")
 end;
 
 let polish = (draft) -> do
-  perform(@dvala.io.println, "\n🤖 STEP 2 — LLM POLISH");
-  perform(@dvala.io.println, "Improving your draft...\n");
+  perform(@dvala.io.print, "\n🤖 STEP 2 — LLM POLISH");
+  perform(@dvala.io.print, "Improving your draft...\n");
 
   let polished = perform(@llm.ask,
     "Improve this email for a professional audience. "
@@ -29,13 +29,13 @@ let polish = (draft) -> do
     ++ draft
   );
 
-  perform(@dvala.io.println, polished);
+  perform(@dvala.io.print, polished);
   polished
 end;
 
 let request-approval = (text, attempt) -> do
-  perform(@dvala.io.println, "\n👤 STEP 3 — APPROVAL REQUEST");
-  perform(@dvala.io.println, "Waiting for approver...\n");
+  perform(@dvala.io.print, "\n👤 STEP 3 — APPROVAL REQUEST");
+  perform(@dvala.io.print, "Waiting for approver...\n");
 
   perform(@human.approve, { text: text, attempt: attempt })
 end;
@@ -46,16 +46,16 @@ let run = (previous, feedback, attempt) -> do
   let decision = request-approval(polished, attempt);
 
   if decision.approved then
-    perform(@dvala.io.println, "\n✅ APPROVED — sending email to all subscribers.");
-    perform(@dvala.io.println, "\nFinal email:\n" ++ polished);
+    perform(@dvala.io.print, "\n✅ APPROVED — sending email to all subscribers.");
+    perform(@dvala.io.print, "\nFinal email:\n" ++ polished);
     { sent: true, text: polished, attempts: attempt }
   else
-    perform(@dvala.io.println, "\n↩️  REJECTED — looping back to author.\n");
+    perform(@dvala.io.print, "\n↩️  REJECTED — looping back to author.\n");
     run(polished, decision.comment, attempt + 1)
   end
 end;
 
-perform(@dvala.io.println, "📧 EMAIL CAMPAIGN EDITOR");
-perform(@dvala.io.println, "Write a draft, let the LLM polish it, get it approved.\n");
+perform(@dvala.io.print, "📧 EMAIL CAMPAIGN EDITOR");
+perform(@dvala.io.print, "Write a draft, let the LLM polish it, get it approved.\n");
 
 run("", "", 1)

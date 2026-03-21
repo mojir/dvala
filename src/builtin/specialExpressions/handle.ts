@@ -25,11 +25,11 @@ const docs: CustomDocs = {
   examples: [
     `do
   let h = (arg, eff, nxt) ->
-    if eff == @dvala.io.println then "handled: " ++ arg
+    if eff == @dvala.io.print then "handled: " ++ arg
     else nxt(eff, arg)
     end;
   handle
-    perform(@dvala.io.println, "hello")
+    perform(@dvala.io.print, "hello")
   with [h]
   end
 end`,

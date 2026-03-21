@@ -137,7 +137,7 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       channel.append(str)
       ctx.resume(ctx.arg)
     } },
-    { pattern: 'dvala.io.println', handler: async (ctx) => {
+    { pattern: 'dvala.io.print', handler: async (ctx) => {
       const str = stringifyValue(ctx.arg, false)
       channel.appendLine(str)
       ctx.resume(ctx.arg)
@@ -147,7 +147,7 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       channel.appendLine(`[stderr] ${str}`)
       ctx.resume(ctx.arg)
     } },
-    { pattern: 'dvala.io.read-line', handler: async (ctx) => {
+    { pattern: 'dvala.io.read', handler: async (ctx) => {
       const prompt = typeof ctx.arg === 'string' ? ctx.arg : undefined
       const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
       if (result === undefined) {

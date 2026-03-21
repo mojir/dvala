@@ -4855,17 +4855,6 @@ function initExecutionControlBar() {
 }
 
 // ---------------------------------------------------------------------------
-// dvala.io.print handler — logs to output panel (no modal)
-// ---------------------------------------------------------------------------
-
-async function printHandler(ctx: EffectContext): Promise<void> {
-  const value = ctx.arg
-  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-  appendOutput(text, 'output')
-  ctx.resume(value)
-}
-
-// ---------------------------------------------------------------------------
 // Synchronous effect handlers (used in sync mode)
 // ---------------------------------------------------------------------------
 
@@ -4909,13 +4898,6 @@ function syncPrintlnHandler(ctx: EffectContext): void {
   ctx.resume(value)
 }
 
-function syncPrintHandler(ctx: EffectContext): void {
-  const value = ctx.arg
-  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-  appendOutput(text, 'output')
-  ctx.resume(value)
-}
-
 function syncDefaultEffectHandler(ctx: EffectContext): void {
   if (ctx.effectName === 'dvala.checkpoint') {
     ctx.next()
@@ -4953,9 +4935,8 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
   return [
     { pattern: 'dvala.io.pick', handler: syncIoPickHandler },
     { pattern: 'dvala.io.confirm', handler: syncIoConfirmHandler },
-    { pattern: 'dvala.io.read-line', handler: syncReadlineHandler },
-    { pattern: 'dvala.io.println', handler: syncPrintlnHandler },
-    { pattern: 'dvala.io.print', handler: syncPrintHandler },
+    { pattern: 'dvala.io.read', handler: syncReadlineHandler },
+    { pattern: 'dvala.io.print', handler: syncPrintlnHandler },
     ...(!getState('disable-playground-effects') ? getPlaygroundEffectHandlers() : []),
     { pattern: '*', handler: syncDefaultEffectHandler },
   ]
@@ -5010,12 +4991,10 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       effectHandlers.push({ pattern: 'dvala.io.pick', handler: ioPickHandler })
     if (!hasPattern('dvala.io.confirm'))
       effectHandlers.push({ pattern: 'dvala.io.confirm', handler: ioConfirmHandler })
-    if (!hasPattern('dvala.io.read-line'))
-      effectHandlers.push({ pattern: 'dvala.io.read-line', handler: readlineHandler })
-    if (!hasPattern('dvala.io.println'))
-      effectHandlers.push({ pattern: 'dvala.io.println', handler: printlnHandler })
+    if (!hasPattern('dvala.io.read'))
+      effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
     if (!hasPattern('dvala.io.print'))
-      effectHandlers.push({ pattern: 'dvala.io.print', handler: printHandler })
+      effectHandlers.push({ pattern: 'dvala.io.print', handler: printlnHandler })
 
     // Playground effects (playground.*)
     if (!getState('disable-playground-effects')) {

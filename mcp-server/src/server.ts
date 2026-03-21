@@ -340,7 +340,7 @@ server.tool(
 server.tool(
   'getDoc',
   'Get full documentation for a Dvala function, special expression, effect, shorthand, or datatype. Returns description, signatures, arguments, examples, and see-also references.',
-  { name: z.string().describe('The name of the function or expression, e.g. "map", "if", "grid.transpose", "dvala.io.println"') },
+  { name: z.string().describe('The name of the function or expression, e.g. "map", "if", "grid.transpose", "dvala.io.print"') },
   async ({ name }) => {
     // Try direct lookup
     let ref = allReference[name]

@@ -243,7 +243,7 @@ async function execute(expression: string, bindings: Record<string, unknown>, re
     const runResult = await _dvala.runAsync(expression, {
       bindings,
       effectHandlers: [
-        { pattern: 'dvala.io.read-line', handler: async ({ arg, resume }) => {
+        { pattern: 'dvala.io.read', handler: async ({ arg, resume }) => {
           const message = typeof arg === 'string' ? arg : ''
           const answer = await readLine(message)
           resume(answer)

@@ -492,8 +492,8 @@ describe('generateDocString edge cases', () => {
   it('should generate doc string for effect reference', () => {
     const d = createDvala()
     // Exercise the effect doc generation path
-    const result = d.run('@dvala.io.println')
-    expect(result).toHaveProperty('name', 'dvala.io.println')
+    const result = d.run('@dvala.io.print')
+    expect(result).toHaveProperty('name', 'dvala.io.print')
   })
 })
 
@@ -1543,7 +1543,7 @@ describe('effect-matcher — non-string/non-regexp argument', () => {
 
 describe('meta — doc and arity with effects', () => {
   it('should return doc for an effect', () => {
-    const result = dvala.run('doc(@dvala.io.println)')
+    const result = dvala.run('doc(@dvala.io.print)')
     expect(result).toBeTypeOf('string')
     expect((result as string).length).toBeGreaterThan(0)
   })
@@ -1555,7 +1555,7 @@ describe('meta — doc and arity with effects', () => {
   })
 
   it('should return arity for an effect', () => {
-    const result = dvala.run('arity(@dvala.io.println)')
+    const result = dvala.run('arity(@dvala.io.print)')
     expect(result).toEqual({ min: 1, max: 1 })
   })
 
@@ -1749,7 +1749,7 @@ describe('dvala — assertSerializableBindings', () => {
 
 describe('getStandardEffectDefinition', () => {
   it('should return definition for known effect', () => {
-    const def = getStandardEffectDefinition('dvala.io.println')
+    const def = getStandardEffectDefinition('dvala.io.print')
     expect(def).toBeDefined()
     expect(def!.arity).toEqual({ min: 1, max: 1 })
   })
@@ -1877,9 +1877,9 @@ describe('trampoline — async Promise wrapping', () => {
 describe('trampoline — effect execution via run()', () => {
   it('should handle print effect via run', async () => {
     const printed: string[] = []
-    const result = await dvala.runAsync('perform(@dvala.io.println, "hello")', {
+    const result = await dvala.runAsync('perform(@dvala.io.print, "hello")', {
       effectHandlers: [
-        { pattern: 'dvala.io.println', handler: async ({ arg, resume: doResume }) => {
+        { pattern: 'dvala.io.print', handler: async ({ arg, resume: doResume }) => {
           printed.push(String(arg))
           doResume(arg!)
         } },
@@ -2600,7 +2600,7 @@ describe('effects — error handling in run and resume', () => {
 
   it('resume catches errors gracefully', async () => {
     // Run and get a suspension, then resume with something that triggers an error
-    const result1 = await dvala.runAsync('perform(@dvala.io.println, "test")')
+    const result1 = await dvala.runAsync('perform(@dvala.io.print, "test")')
     if (result1.type === 'suspended') {
       // Resume normally should work
       const result2 = await resume(result1.snapshot, null)
@@ -2636,7 +2636,7 @@ describe('debug — error paths', () => {
   it('resumeFromSnapshot error handling', async () => {
     const dbg = createDebugger({
       handlers: [
-        { pattern: 'dvala.io.println', handler: async ({ resume: doResume }) => doResume(null) },
+        { pattern: 'dvala.io.print', handler: async ({ resume: doResume }) => doResume(null) },
       ],
     })
     const result = await dbg.run('1 + 2 + 3')
@@ -3389,7 +3389,7 @@ describe('?? single-arg edge cases', () => {
 // ---------------------------------------------------------------------------
 
 describe('wildcard handler with standard effect fallback', () => {
-  it('should fall through wildcard to standard handler for dvala.io.println', async () => {
+  it('should fall through wildcard to standard handler for dvala.io.print', async () => {
     const log: string[] = []
     const handlers: Handlers = [
       { pattern: '*', handler: async ctx => {
@@ -3397,13 +3397,13 @@ describe('wildcard handler with standard effect fallback', () => {
         ctx.next()
       } },
 
-      { pattern: 'dvala.io.println', handler: async ctx => {
+      { pattern: 'dvala.io.print', handler: async ctx => {
         // Intercept println to avoid console output
         log.push(`println: ${ctx.arg}`)
         ctx.resume(null)
       } },
     ]
-    const result = await dvala.runAsync('perform(@dvala.io.println, "hello")', { effectHandlers: handlers })
+    const result = await dvala.runAsync('perform(@dvala.io.print, "hello")', { effectHandlers: handlers })
     expect(result.type).toBe('completed')
   })
 
@@ -3413,8 +3413,8 @@ describe('wildcard handler with standard effect fallback', () => {
         ctx.next()
       } },
     ]
-    // dvala.io.println is a standard effect — wildcard next() should fall through to it
-    const result = await dvala.runAsync('perform(@dvala.io.println, "test")', { effectHandlers: handlers })
+    // dvala.io.print is a standard effect — wildcard next() should fall through to it
+    const result = await dvala.runAsync('perform(@dvala.io.print, "test")', { effectHandlers: handlers })
     expect(result.type).toBe('completed')
   })
 })

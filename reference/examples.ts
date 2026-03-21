@@ -50,13 +50,13 @@ perform(@dvala.io.print, [1, 2, 3][2]);
 let name = "Alice";
 let score = 42;
 
-perform(@dvala.io.println, \`Hello, \${name}!\`);
-perform(@dvala.io.println, \`Score: \${score}/100\`);
+perform(@dvala.io.print, \`Hello, \${name}!\`);
+perform(@dvala.io.print, \`Score: \${score}/100\`);
 
 // Any expression works inside \${...}
 let items = ["apple", "banana", "cherry"];
 for (i in range(count(items))) ->
-  perform(@dvala.io.println, \`\${i + 1}. \${items[i]}\`)
+  perform(@dvala.io.print, \`\${i + 1}. \${items[i]}\`)
     `.trim(),
   },
   {
@@ -144,7 +144,7 @@ doseq (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     },
     code: `
 // Interactive async example
-// Uses dvala.io.read-line for user input and host.fetch-* for API calls
+// Uses dvala.io.read for user input and host.fetch-* for API calls
 
 let lookup-user! = (id-str) -> do
   let id = number(id-str);
@@ -190,13 +190,13 @@ let main! = () -> do
 
   loop (continue? = true) ->
     if continue? then
-      let input = perform(@dvala.io.read-line, "Enter a user ID (1-10), or cancel to quit:");
+      let input = perform(@dvala.io.read, "Enter a user ID (1-10), or cancel to quit:");
       if null?(input) || input == "" then
         perform(@dvala.io.print, "Goodbye!");
       else
         let user = lookup-user!(input);
         if user then
-          let show = perform(@dvala.io.read-line, "Show todos for " ++ user.name ++ "? (yes/no)");
+          let show = perform(@dvala.io.read, "Show todos for " ++ user.name ++ "? (yes/no)");
           if show == "yes" then show-todos!(user) end;
         end;
         perform(@dvala.io.print, "");
@@ -539,7 +539,7 @@ end;
 
 // Game loop
 let game-loop = (state) -> do
-  let input = perform(@dvala.io.read-line, describe-location(state) ++ "\\nWhat do you do? ");
+  let input = perform(@dvala.io.read, describe-location(state) ++ "\\nWhat do you do? ");
   let command_result = parse-command(state, input);
   let new-state = first(command_result);
   let message = second(command_result);
@@ -918,7 +918,7 @@ perform(@playground.ui.show-toast, ["Welcome to Playground Effects!", "success"]
 
 // 2. Read the current editor content
 let original = perform(@playground.editor.get-content);
-perform(@dvala.io.println, "Editor has " ++ str(count(original)) ++ " characters");
+perform(@dvala.io.print, "Editor has " ++ str(count(original)) ++ " characters");
 
 // 3. Generate some code and write it to the editor
 let n = 5;
