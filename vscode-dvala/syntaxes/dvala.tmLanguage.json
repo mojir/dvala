@@ -227,7 +227,7 @@
         {
           "comment": "String, regexp, misc functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lower-case|upper-case|trim|join|split|regexp|re-match|replace|replace-all|not|boolean|compare|json-parse|json-stringify|type-of|doc|arity|effect-name|effect-matcher)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lower-case|upper-case|trim|join|split|regexp|re-match|replace|replace-all|not|boolean|compare|type-of|doc|arity|effect-name|effect-matcher)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Object functions",

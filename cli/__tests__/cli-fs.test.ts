@@ -101,7 +101,7 @@ describe('the cli-fs Integration Tests', () => {
 
   describe('directory Operations', () => {
     test('should list directory contents', () => {
-      const result = runDvala('let f = import(cli-fs); f.list-dir(".") |> json-stringify')
+      const result = runDvala('let { json-stringify } = import(json); let f = import(cli-fs); f.list-dir(".") |> json-stringify')
       const files = JSON.parse(result)
 
       expect(files).toEqual(expect.arrayContaining([
@@ -211,7 +211,7 @@ describe('the cli-fs Integration Tests', () => {
       expect(originalExists).toBe(false)
     })
     test('should get stats', () => {
-      const result = runDvala('let f = import(cli-fs); f.get-stats("test.txt") |> json-stringify(_, 2)')
+      const result = runDvala('let { json-stringify } = import(json); let f = import(cli-fs); f.get-stats("test.txt") |> json-stringify(_, 2)')
       const stats = JSON.parse(result)
 
       expect(stats).toHaveProperty('size')
