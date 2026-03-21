@@ -428,8 +428,7 @@ describe('auto: effect + higher-order functions', () => {
     expect(result).toEqual([1, 2, 3])
   })
 
-  it('effect in doseq / map equivalent', () => {
-    // doseq is side-effectful; use for comprehension to collect results instead
+  it('effect in for / map equivalent', () => {
     const result = dvala.run(wrap(`
       for (x in [1, 2, 3]) -> perform(@test.double, x)
     `))

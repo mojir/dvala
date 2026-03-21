@@ -504,22 +504,19 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       return { type: 'Eval', node: bindingNodes[0]![1][1], env, k: [frame, ...k] }
     }
 
-    // --- for / doseq ---
-    case specialExpressionTypes.for:
-    case specialExpressionTypes.doseq: {
+    // --- for ---
+    case specialExpressionTypes.for: {
       const loopBindings = node[1][1] as LoopBindingNode[]
       const body = node[1][2] as AstNode
-      const returnResult = type === specialExpressionTypes.for
       // Parser requires at least one loop binding — zero bindings is parser-prevented
       /* v8 ignore next 3 */
       if (loopBindings.length === 0) {
-        return { type: 'Value', value: returnResult ? [] : null, k }
+        return { type: 'Value', value: [], k }
       }
       const context: Context = {}
       const newEnv = env.create(context)
       const frame: ForLoopFrame = {
         type: 'ForLoop',
-        returnResult,
         bindingNodes: loopBindings,
         body,
         result: [],
@@ -1577,7 +1574,7 @@ function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationS
 }
 
 function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { returnResult, bindingNodes, result, env, sourceCodeInfo } = frame
+  const { bindingNodes, result, env, sourceCodeInfo } = frame
   const { asColl, isSeq } = getCollectionUtils()
 
   switch (frame.phase) {
@@ -1644,9 +1641,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
 
     case 'evalBody': {
       // Body has been evaluated
-      if (returnResult) {
-        result.push(value)
-      }
+      result.push(value)
       // Advance innermost binding to next element
       return advanceForElement(frame, k)
     }
@@ -1656,7 +1651,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
 
 /** Handle for-loop abort: no more elements at the outermost level. */
 function handleForAbort(frame: ForLoopFrame, k: ContinuationStack): Step {
-  return { type: 'Value', value: frame.returnResult ? frame.result : null, k }
+  return { type: 'Value', value: frame.result, k }
 }
 
 /** Advance to the next element at the current binding level. */

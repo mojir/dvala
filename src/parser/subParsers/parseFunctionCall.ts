@@ -74,7 +74,6 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       | typeof specialExpressionTypes.let
       | typeof specialExpressionTypes.block
       | typeof specialExpressionTypes.loop
-      | typeof specialExpressionTypes.doseq
       | typeof specialExpressionTypes.import
       | typeof specialExpressionTypes.effect
       | typeof specialExpressionTypes.handle

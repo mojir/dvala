@@ -850,11 +850,11 @@ foo(1, 2)`)).toBe(3)
       end`)).toBe(null)
   })
 
-  test('simple doseq.', () => {
+  test('simple for (formerly doseq).', () => {
     expect(dvala.run(`
-      doseq (x in "Al", y in [1, 2]) -> do
+      for (x in "Al", y in [1, 2]) -> do
         x repeat y
-      end`)).toBe(null)
+      end`)).toEqual([['A'], ['A', 'A'], ['l'], ['l', 'l']])
   })
 
   describe('for', () => {

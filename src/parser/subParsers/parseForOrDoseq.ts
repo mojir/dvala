@@ -1,5 +1,5 @@
 import { getAllBindingTargetNames } from '../../builtin/bindingNode'
-import type { DoSeqNode, ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
+import type { ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
@@ -15,8 +15,7 @@ import { parseSymbol } from './parseSymbol'
 
 type InternalLoopBindingDelimiter = 'let' | 'when' | 'while'
 
-export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): ForNode | DoSeqNode {
-  const isDoseq = firstToken[1] === 'doseq'
+export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): ForNode {
   ctx.advance()
 
   assertLParenToken(ctx.tryPeek())
@@ -45,9 +44,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 
   const expression = ctx.parseExpression()
 
-  return isDoseq
-    ? withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.doseq, forLoopBindings, expression]], firstToken[2]) satisfies DoSeqNode
-    : withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression]], firstToken[2]) satisfies ForNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression]], firstToken[2]) satisfies ForNode
 }
 
 function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {

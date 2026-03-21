@@ -11,12 +11,9 @@ import { toFixedArity } from '../../utils/arity'
 export type LoopBindingNode = [BindingNode, BindingNode[], AstNode?, AstNode?] // Binding, Let-Bindings, When, While
 
 export type ForNode = SpecialExpressionNode<[typeof specialExpressionTypes['for'], LoopBindingNode[], AstNode]> // LoopBindings, body
-export type DoSeqNode = SpecialExpressionNode<[typeof specialExpressionTypes['doseq'], LoopBindingNode[], AstNode]> // LoopBindings, body
-
-type LoopNode = ForNode | DoSeqNode
 
 function analyze(
-  loopNode: LoopNode,
+  loopNode: ForNode,
   contextStack: ContextStack,
   getUndefinedSymbols: GetUndefinedSymbols,
   builtin: Builtin,
@@ -93,34 +90,5 @@ for (
 export const forSpecialExpression: BuiltinSpecialExpression<Any, ForNode> = {
   arity: toFixedArity(1),
   docs: forDocs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => analyze(node, contextStack, getUndefinedSymbols, builtin),
-}
-
-const doseqDocs: CustomDocs = {
-  category: 'special-expression',
-  customVariants: ['doseq (...binding) -> body'],
-  details: [
-    ['binding', 'loop-var in collection [...let-binding] [where whereExpr] [while whileExp]', 'A doseq loop binding'],
-    ['loop-var', 'symbol', 'The name of the loop variable.'],
-    ['collection', 'any', 'The collection to iterate over.'],
-    ['let-binding', 'let binding', 'A let binding to create a local variable.'],
-    ['whereExpr', 'expression', 'An expression that must evaluate to truthy for the loop body to be executed.'],
-    ['whileExp', 'expression', 'An expression that must evaluate to truthy for the loop to continue.'],
-    ['body', 'expressions', 'The expressions to evaluate for each iteration of the loop.'],
-  ],
-  returns: {
-    type: 'null',
-  },
-  description: 'Iterates over `bindings`, evaluates `body` for each `binding` and returns `null`. This is useful for side effects.',
-  examples: [
-    `
-doseq (i in [1, 2, 3]) -> perform(@dvala.io.print, i * 2)
-      `,
-  ],
-}
-
-export const doseqSpecialExpression: BuiltinSpecialExpression<null, DoSeqNode> = {
-  arity: toFixedArity(1),
-  docs: doseqDocs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => analyze(node, contextStack, getUndefinedSymbols, builtin),
 }

@@ -7,7 +7,7 @@ import { lambdaSpecialExpression } from './specialExpressions/functions'
 import { ifSpecialExpression } from './specialExpressions/if'
 import { letSpecialExpression } from './specialExpressions/let'
 import { loopSpecialExpression } from './specialExpressions/loop'
-import { doseqSpecialExpression, forSpecialExpression } from './specialExpressions/loops'
+import { forSpecialExpression } from './specialExpressions/loops'
 import { orSpecialExpression } from './specialExpressions/or'
 import { qqSpecialExpression } from './specialExpressions/qq'
 import { recurSpecialExpression } from './specialExpressions/recur'
@@ -27,7 +27,6 @@ export const specialExpressions = [
   orSpecialExpression,
   arraySpecialExpression,
   doSpecialExpression,
-  doseqSpecialExpression,
   lambdaSpecialExpression,
   forSpecialExpression,
   ifSpecialExpression,

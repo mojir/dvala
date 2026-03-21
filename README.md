@@ -699,12 +699,12 @@ for (entry in { a: 1, b: 2 } let [key, value] = entry) -> key ++ ":" ++ str(valu
 // => ["a:1", "b:2"]
 ```
 
-#### Doseq (Side Effects)
+#### For with Side Effects
 
 ```dvala
-// For side effects only (returns null)
-doseq (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
-// Prints: 1 2 3, returns null
+// For can also be used for side effects
+for (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
+// Prints: 1 2 3, returns [null, null, null]
 ```
 
 #### Loop (Tail Recursion)

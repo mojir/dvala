@@ -170,10 +170,10 @@ describe('?? (nullish coalescing) edge cases', () => {
 })
 
 // ---------------------------------------------------------------------------
-// for/doseq edge cases
+// for edge cases
 // ---------------------------------------------------------------------------
 
-describe('for/doseq edge cases', () => {
+describe('for edge cases', () => {
   it('should handle for with when-guard', () => {
     expect(dvala.run('for (x in [1, 2, 3, 4, 5] when odd?(x)) -> x * 10')).toEqual([10, 30, 50])
   })
@@ -198,12 +198,12 @@ describe('for/doseq edge cases', () => {
     expect(dvala.run('for (x in [10, 20, 30] while x < 5) -> x')).toEqual([])
   })
 
-  it('should handle doseq with when and while guards', () => {
-    expect(dvala.run('doseq (x in [1, 2, 3] when odd?(x)) -> x')).toBe(null)
+  it('should handle for with when and while guards combined', () => {
+    expect(dvala.run('for (x in [1, 2, 3] when odd?(x)) -> x')).toEqual([1, 3])
   })
 
-  it('should handle doseq with while-guard', () => {
-    expect(dvala.run('doseq (x in [1, 2, 3] while x < 3) -> x')).toBe(null)
+  it('should handle for with while-guard stopping early', () => {
+    expect(dvala.run('for (x in [1, 2, 3] while x < 3) -> x')).toEqual([1, 2])
   })
 })
 
@@ -634,7 +634,7 @@ describe('recursive evaluator via module functions', () => {
 // loop with no bindings
 // ---------------------------------------------------------------------------
 
-// Note: loop/for/doseq with zero bindings are unreachable — the parser
+// Note: loop/for with zero bindings are unreachable — the parser
 // throws "Expected binding" before the evaluator sees these paths.
 // Lines 895-929 in trampoline.ts are dead code guarded by the parser.
 

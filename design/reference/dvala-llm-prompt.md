@@ -257,12 +257,6 @@ for (i in [1, 2], j in [10, 20]) -> i + j
 // => [11, 21, 12, 22]
 ```
 
-### `doseq` (iteration for side effects — returns `null`)
-
-```dvala
-doseq (x in [1, 2, 3]) -> perform(effect(dvala.io.print), x)
-```
-
 ### `loop` / `recur` (tail-recursive loop)
 
 ```dvala

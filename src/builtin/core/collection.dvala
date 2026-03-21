@@ -6,7 +6,7 @@
 
     if object?(first-coll) then do
       let expected-keys = keys(first-coll) |> sort;
-      doseq (obj in other-colls) -> do
+      for (obj in other-colls) -> do
         if not(object?(obj)) then
           perform(@dvala.error, "Expected object")
         end;
@@ -27,7 +27,7 @@
     end
 
     else if string?(first-coll) then do
-      doseq (s in other-colls) -> do
+      for (s in other-colls) -> do
         if not(string?(s)) then
           perform(@dvala.error, "Expected string")
         end
@@ -46,7 +46,7 @@
     end
 
     else do
-      doseq (x in other-colls) -> do
+      for (x in other-colls) -> do
         if not(array?(x)) then
           perform(@dvala.error, "Expected array")
         end
