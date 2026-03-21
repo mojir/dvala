@@ -1,6 +1,65 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
+  'sum': {
+    category: 'vector',
+    returns: { type: 'number' },
+    args: {
+      vector: { type: 'vector', description: 'The vector to sum.' },
+    },
+    variants: [{ argumentNames: ['vector'] }],
+    description: 'Returns the **sum** of all elements in the `vector`. Returns `0` for an empty vector.',
+    seeAlso: ['vector.prod', 'vector.mean', 'vector.median', 'vector.moving-sum', 'vector.centered-moving-sum', 'vector.running-sum', 'vector.cumsum'],
+    examples: [
+      'let { sum } = import(vector);\nsum([1, 2, 3, 4, 5])',
+      'let { sum } = import(vector);\nsum([1, -2, 3])',
+      'let { sum } = import(vector);\nsum([])',
+    ],
+  },
+  'prod': {
+    category: 'vector',
+    returns: { type: 'number' },
+    args: {
+      vector: { type: 'vector', description: 'The vector to multiply.' },
+    },
+    variants: [{ argumentNames: ['vector'] }],
+    description: 'Returns the **product** of all elements in the `vector`. Returns `1` for an empty vector.',
+    seeAlso: ['vector.sum', 'vector.mean', 'vector.median', 'vector.moving-prod', 'vector.centered-moving-prod', 'vector.running-prod', 'vector.cumprod'],
+    examples: [
+      'let { prod } = import(vector);\nprod([1, 2, 3, 4, 5])',
+      'let { prod } = import(vector);\nprod([1, -2, 3])',
+      'let { prod } = import(vector);\nprod([])',
+    ],
+  },
+  'mean': {
+    category: 'vector',
+    returns: { type: 'number' },
+    args: {
+      vector: { type: 'vector', description: 'The vector to calculate the mean of.' },
+    },
+    variants: [{ argumentNames: ['vector'] }],
+    description: 'Returns the arithmetic **mean** of all elements in the `vector`. Throws for an empty vector.',
+    seeAlso: ['vector.median', 'vector.sum', 'vector.prod', 'vector.moving-mean', 'vector.centered-moving-mean', 'vector.running-mean', 'vector.geometric-mean', 'vector.harmonic-mean', 'vector.rms', 'vector.mode'],
+    examples: [
+      'let { mean } = import(vector);\nmean([1, 2, 3, 4, 5])',
+      'let { mean } = import(vector);\nmean([1, -2, 3])',
+    ],
+  },
+  'median': {
+    category: 'vector',
+    returns: { type: 'number' },
+    args: {
+      vector: { type: 'vector', description: 'The vector to calculate the median of.' },
+    },
+    variants: [{ argumentNames: ['vector'] }],
+    description: 'Returns the **median** of all elements in the `vector`. For even-length vectors, returns the average of the two middle values. Throws for an empty vector.',
+    seeAlso: ['vector.mean', 'vector.sum', 'vector.prod', 'vector.moving-median', 'vector.centered-moving-median', 'vector.running-median', 'vector.mode', 'vector.quartiles', 'vector.percentile', 'vector.iqr', 'vector.medad'],
+    examples: [
+      'let { median } = import(vector);\nmedian([1, 2, 3, 4, 5])',
+      'let { median } = import(vector);\nmedian([1, 2, 3, 4])',
+      'let { median } = import(vector);\nmedian([3, 1, 4, 1, 5])',
+    ],
+  },
   'moving-mean': {
     category: 'vector',
     description: 'Returns the **moving mean** of the `vector` with a given window size.',
@@ -35,7 +94,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { moving-mean } = import(vector);\nmoving-mean([1, 2, 3, 4, 5], 3)',
       'let { moving-mean } = import(vector);\nmoving-mean([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['moving-fn', 'mean', 'vector.centered-moving-mean', 'vector.running-mean'],
+    seeAlso: ['moving-fn', 'vector.mean', 'vector.centered-moving-mean', 'vector.running-mean'],
   },
   'centered-moving-mean': {
     category: 'vector',
@@ -95,7 +154,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centered-moving-mean } = import(vector);\ncentered-moving-mean([1, 2, 3, 4, 5], 3, 0, 10)',
       'let { centered-moving-mean } = import(vector);\ncentered-moving-mean([1, 2, 3, 4, 5], 3, 10)',
     ],
-    seeAlso: ['mean', 'vector.moving-mean', 'vector.running-mean'],
+    seeAlso: ['vector.mean', 'vector.moving-mean', 'vector.running-mean'],
   },
   'running-mean': {
     category: 'vector',
@@ -119,7 +178,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     examples: [
       'let { running-mean } = import(vector);\nrunning-mean([1, 2, 3, 4, 5])',
     ],
-    seeAlso: ['running-fn', 'mean', 'vector.moving-mean', 'vector.centered-moving-mean'],
+    seeAlso: ['running-fn', 'vector.mean', 'vector.moving-mean', 'vector.centered-moving-mean'],
   },
   'geometric-mean': {
     category: 'vector',
@@ -144,7 +203,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { geometric-mean } = import(vector);\ngeometric-mean([1, 2, 3])',
       'let { geometric-mean } = import(vector);\ngeometric-mean([1, 2, 9])',
     ],
-    seeAlso: ['vector.moving-geometric-mean', 'vector.centered-moving-geometric-mean', 'vector.running-geometric-mean', 'mean', 'vector.harmonic-mean'],
+    seeAlso: ['vector.moving-geometric-mean', 'vector.centered-moving-geometric-mean', 'vector.running-geometric-mean', 'vector.mean', 'vector.harmonic-mean'],
   },
   'moving-geometric-mean': {
     category: 'vector',
@@ -289,7 +348,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { harmonic-mean } = import(vector);\nharmonic-mean([1, 2, 3])',
       'let { harmonic-mean } = import(vector);\nharmonic-mean([1, 2, 9])',
     ],
-    seeAlso: ['vector.moving-harmonic-mean', 'vector.centered-moving-harmonic-mean', 'vector.running-harmonic-mean', 'mean', 'vector.geometric-mean'],
+    seeAlso: ['vector.moving-harmonic-mean', 'vector.centered-moving-harmonic-mean', 'vector.running-harmonic-mean', 'vector.mean', 'vector.geometric-mean'],
   },
   'moving-harmonic-mean': {
     category: 'vector',
@@ -445,7 +504,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { moving-median } = import(vector);\nmoving-median([1, 2, 3, 4, 5], 3)',
       'let { moving-median } = import(vector);\nmoving-median([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['median', 'vector.centered-moving-median', 'vector.running-median'],
+    seeAlso: ['vector.median', 'vector.centered-moving-median', 'vector.running-median'],
   },
   'centered-moving-median': {
     category: 'vector',
@@ -505,7 +564,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centered-moving-median } = import(vector);\ncentered-moving-median([1, 2, 3, 4, 5], 3, 0, 10)',
       'let { centered-moving-median } = import(vector);\ncentered-moving-median([1, 2, 3, 4, 5], 3, 10)',
     ],
-    seeAlso: ['median', 'vector.moving-median', 'vector.running-median'],
+    seeAlso: ['vector.median', 'vector.moving-median', 'vector.running-median'],
   },
   'running-median': {
     category: 'vector',
@@ -529,7 +588,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     examples: [
       'let { running-median } = import(vector);\nrunning-median([1, 2, 3, 4, 5])',
     ],
-    seeAlso: ['median', 'vector.moving-median', 'vector.centered-moving-median'],
+    seeAlso: ['vector.median', 'vector.moving-median', 'vector.centered-moving-median'],
   },
   'variance': {
     category: 'vector',
@@ -1150,7 +1209,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { iqr } = import(vector);\niqr(map(range(1000), -> 1e6 / ($ + 1) ^ 2))',
       'let { iqr } = import(vector);\nlet { ln } = import(math);\niqr(map(range(1000), -> ln($ + 1)))',
     ],
-    seeAlso: ['vector.moving-iqr', 'vector.centered-moving-iqr', 'vector.running-iqr', 'vector.quartiles', 'median', 'vector.mad', 'vector.medad', 'vector.outliers?', 'vector.outliers'],
+    seeAlso: ['vector.moving-iqr', 'vector.centered-moving-iqr', 'vector.running-iqr', 'vector.quartiles', 'vector.median', 'vector.mad', 'vector.medad', 'vector.outliers?', 'vector.outliers'],
   },
   'moving-iqr': {
     category: 'vector',
@@ -1308,7 +1367,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { moving-sum } = import(vector);\nmoving-sum([1, 2, 3, 4, 5], 3)',
       'let { moving-sum } = import(vector);\nmoving-sum([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['sum', 'vector.centered-moving-sum', 'vector.running-sum'],
+    seeAlso: ['vector.sum', 'vector.centered-moving-sum', 'vector.running-sum'],
   },
   'centered-moving-sum': {
     category: 'vector',
@@ -1368,7 +1427,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centered-moving-sum } = import(vector);\ncentered-moving-sum([1, 2, 3, 4, 5], 3, 0, 0)',
       'let { centered-moving-sum } = import(vector);\ncentered-moving-sum([1, 2, 3, 4, 5], 3, 10)',
     ],
-    seeAlso: ['sum', 'vector.moving-sum', 'vector.running-sum'],
+    seeAlso: ['vector.sum', 'vector.moving-sum', 'vector.running-sum'],
   },
   'running-sum': {
     category: 'vector',
@@ -1393,7 +1452,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { running-sum } = import(vector);\nrunning-sum([1, 2, 3])',
       'let { running-sum } = import(vector);\nrunning-sum([1, -2, -3])',
     ],
-    seeAlso: ['sum', 'vector.moving-sum', 'vector.centered-moving-sum', 'vector.cumsum'],
+    seeAlso: ['vector.sum', 'vector.moving-sum', 'vector.centered-moving-sum', 'vector.cumsum'],
   },
   'moving-prod': {
     category: 'vector',
@@ -1429,7 +1488,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { moving-prod } = import(vector);\nmoving-prod([1, 2, 3, 4, 5], 3)',
       'let { moving-prod } = import(vector);\nmoving-prod([1, 2, 3, 4, 5], 5)',
     ],
-    seeAlso: ['prod', 'vector.centered-moving-prod', 'vector.running-prod'],
+    seeAlso: ['vector.prod', 'vector.centered-moving-prod', 'vector.running-prod'],
   },
   'centered-moving-prod': {
     category: 'vector',
@@ -1488,7 +1547,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { centered-moving-prod } = import(vector);\ncentered-moving-prod([1, 2, 3, 4, 5], 3)',
       'let { centered-moving-prod } = import(vector);\ncentered-moving-prod([1, 2, 3, 4, 5], 3, 0, 0)',
     ],
-    seeAlso: ['prod', 'vector.moving-prod', 'vector.running-prod'],
+    seeAlso: ['vector.prod', 'vector.moving-prod', 'vector.running-prod'],
   },
   'running-prod': {
     category: 'vector',
@@ -1513,7 +1572,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { running-prod } = import(vector);\nrunning-prod([1, 2, 3, 4, 5])',
       'let { running-prod } = import(vector);\nrunning-prod([1, -2, -3])',
     ],
-    seeAlso: ['prod', 'vector.moving-prod', 'vector.centered-moving-prod', 'vector.cumprod'],
+    seeAlso: ['vector.prod', 'vector.moving-prod', 'vector.centered-moving-prod', 'vector.cumprod'],
   },
   'span': {
     category: 'vector',
@@ -2551,7 +2610,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { rms } = import(vector);\nrms(map(range(1000), -> 1e6 / ($ + 1) ^ 2))',
       'let { rms } = import(vector);\nlet { ln } = import(math);\nrms(map(range(1000), -> ln($ + 1)))',
     ],
-    seeAlso: ['vector.moving-rms', 'vector.centered-moving-rms', 'vector.running-rms', 'mean', 'vector.stdev'],
+    seeAlso: ['vector.moving-rms', 'vector.centered-moving-rms', 'vector.running-rms', 'vector.mean', 'vector.stdev'],
   },
   'moving-rms': {
     category: 'vector',
@@ -2846,7 +2905,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { medad } = import(vector);\nmedad([1, 2, 3])',
       'let { medad } = import(vector);\nmedad([1, 2, -3])',
     ],
-    seeAlso: ['vector.moving-medad', 'vector.centered-moving-medad', 'vector.running-medad', 'vector.mad', 'median', 'vector.iqr'],
+    seeAlso: ['vector.moving-medad', 'vector.centered-moving-medad', 'vector.running-medad', 'vector.mad', 'vector.median', 'vector.iqr'],
   },
   'moving-medad': {
     category: 'vector',
@@ -3472,7 +3531,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { mode } = import(vector);\nmode([2, 2, 3, 3])',
       'let { mode } = import(vector);\nmode([1, 2, 3, 2, 1, 2])',
     ],
-    seeAlso: ['mean', 'median'],
+    seeAlso: ['vector.mean', 'vector.median'],
   },
   'min-index': {
     category: 'vector',
@@ -3649,7 +3708,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { cumsum } = import(vector);\ncumsum([1, 2, -3])',
       'let { cumsum } = import(vector);\ncumsum([])',
     ],
-    seeAlso: ['vector.cumprod', 'sum', 'vector.running-sum'],
+    seeAlso: ['vector.cumprod', 'vector.sum', 'vector.running-sum'],
   },
   'cumprod': {
     category: 'vector',
@@ -3676,7 +3735,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { cumprod } = import(vector);\ncumprod([1, 2, -3, 0, 10])',
       'let { cumprod } = import(vector);\ncumprod([])',
     ],
-    seeAlso: ['vector.cumsum', 'prod', 'vector.running-prod'],
+    seeAlso: ['vector.cumsum', 'vector.prod', 'vector.running-prod'],
   },
   'quartiles': {
     category: 'vector',
@@ -3705,7 +3764,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { quartiles } = import(vector);\nquartiles(map(range(1000), -> 1e6 / ($ + 1) ^ 2))',
       'let { quartiles } = import(vector);\nlet { ln } = import(math);\nquartiles(map(range(1000), -> ln($ + 1)))',
     ],
-    seeAlso: ['vector.percentile', 'vector.quantile', 'median', 'vector.iqr'],
+    seeAlso: ['vector.percentile', 'vector.quantile', 'vector.median', 'vector.iqr'],
   },
   'percentile': {
     category: 'vector',
@@ -3751,7 +3810,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { percentile } = import(vector);\npercentile(range(100) ^ 0.5, 90)',
       'let { percentile } = import(vector);\npercentile(range(100) ^ 0.5, 100)',
     ],
-    seeAlso: ['vector.quantile', 'vector.quartiles', 'median', 'vector.ecdf', 'vector.winsorize'],
+    seeAlso: ['vector.quantile', 'vector.quartiles', 'vector.median', 'vector.ecdf', 'vector.winsorize'],
   },
   'quantile': {
     category: 'vector',

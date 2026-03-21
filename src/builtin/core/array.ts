@@ -189,9 +189,9 @@ mapcat(
       description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
       seeAlso: ['running-fn', 'vector.moving-mean'],
       examples: [
-        'moving-fn([1, 2, 3], 2, sum)',
-        'moving-fn([1, 2, 3], 1, sum)',
-        'moving-fn([1, 2, 3], 3, sum)',
+        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 2, sum)',
+        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 1, sum)',
+        'let { sum } = import(vector);\nmoving-fn([1, 2, 3], 3, sum)',
       ],
     },
   },
@@ -209,7 +209,7 @@ mapcat(
       description: 'Returns the result of applying $b to each element of $a.',
       seeAlso: ['moving-fn', 'vector.running-mean'],
       examples: [
-        'running-fn([1, 2, 3], sum)',
+        'let { sum } = import(vector);\nrunning-fn([1, 2, 3], sum)',
         'running-fn([1, 2, 3], max)',
         'running-fn([1, 2, 3], min)',
       ],

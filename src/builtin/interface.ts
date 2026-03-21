@@ -76,7 +76,7 @@ export const categories = Object.keys(categoryRecord) as Category[]
 export const moduleCategories: Category[] = ['assertion', 'bitwise', 'collection', 'convert', 'functional', 'grid', 'linear-algebra', 'math', 'matrix', 'number-theory', 'sequence', 'string', 'vector']
 
 // Core categories (always available) — special-expression first, rest alphabetical
-export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'regular-expression', 'sequence', 'shorthand', 'string', 'vector']
+export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'regular-expression', 'sequence', 'shorthand', 'string']
 
 // --- FunctionDocs types ---
 

@@ -1,5 +1,6 @@
 // Your shopping cart
 let prices = [12.99, 5.49, 8.00, 22.50, 3.99];
+let { sum } = import(vector);
 
 // Pick a discount code via an effect (suspendable IO)
 let choice = perform(
