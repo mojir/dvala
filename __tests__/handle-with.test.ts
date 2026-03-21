@@ -314,4 +314,290 @@ describe('handle...with...end', () => {
       expect(result).toMatchObject({ type: 'completed', value: 'local caught' })
     })
   })
+
+  describe('handler shorthand', () => {
+    it('basic @effect(param) -> body shorthand', () => {
+      const result = dvala.run(`
+        handle
+          perform(@my.eff, 21)
+        with [@my.eff(x) -> x * 2]
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('catches @dvala.error with shorthand', () => {
+      const result = dvala.run(`
+        handle 0 / 0
+        with [@dvala.error(msg) -> "caught: " ++ msg]
+        end
+      `)
+      expect(result).toBe('caught: Number is NaN')
+    })
+
+    it('non-matching effect falls through to nxt', () => {
+      expect(() => dvala.run(`
+        handle perform(@other, "x")
+        with [@my.eff(x) -> x]
+        end
+      `)).toThrow('Unhandled effect')
+    })
+
+    it('shorthand as stored value', () => {
+      const result = dvala.run(`
+        let h = @my.eff(x) -> x + 1;
+        handle perform(@my.eff, 41) with [h] end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('multiple shorthand handlers in list', () => {
+      const result = dvala.run(`
+        handle
+          perform(@a, 10) + perform(@b, 20)
+        with [
+          @a(x) -> x * 2,
+          @b(x) -> x * 3
+        ]
+        end
+      `)
+      expect(result).toBe(80)
+    })
+
+    it('wildcard effect matching', () => {
+      const result = dvala.run(`
+        handle
+          perform(@dvala.io.println, "hi")
+        with [@dvala.io.*(arg) -> null]
+        end
+      `)
+      expect(result).toBe(null)
+    })
+
+    it('catch-all wildcard', () => {
+      const result = dvala.run(`
+        handle
+          perform(@anything, "data")
+        with [@*(arg) -> "caught: " ++ arg]
+        end
+      `)
+      expect(result).toBe('caught: data')
+    })
+
+    it('mixed shorthand and full handler', () => {
+      const result = dvala.run(`
+        handle
+          perform(@a, 10) + perform(@b, 20)
+        with [
+          @a(x) -> x * 2,
+          (eff, arg, nxt) -> if eff == @b then arg * 3 else nxt(eff, arg) end
+        ]
+        end
+      `)
+      expect(result).toBe(80)
+    })
+
+    it('shorthand with string payload', () => {
+      const result = dvala.run(`
+        handle perform(@greet, "world")
+        with [@greet(name) -> "hello, " ++ name]
+        end
+      `)
+      expect(result).toBe('hello, world')
+    })
+
+    it('shorthand with null payload', () => {
+      const result = dvala.run(`
+        handle perform(@tick, null)
+        with [@tick(x) -> 42]
+        end
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('shorthand with complex body expression', () => {
+      const result = dvala.run(`
+        handle perform(@calc, 5)
+        with [@calc(n) -> do
+          let doubled = n * 2;
+          let tripled = n * 3;
+          doubled + tripled
+        end]
+        end
+      `)
+      expect(result).toBe(25)
+    })
+
+    it('shorthand handler passed to function', () => {
+      const result = dvala.run(`
+        let run-with = (body-fn, handlers) ->
+          handle body-fn() with handlers end;
+        run-with(-> perform(@my.eff, 10), [@my.eff(x) -> x * 5])
+      `)
+      expect(result).toBe(50)
+    })
+
+    it('nested shorthand handlers', () => {
+      const result = dvala.run(`
+        handle
+          handle
+            perform(@inner, 10)
+          with [@inner(x) -> x + perform(@outer, x)]
+          end
+        with [@outer(x) -> x * 100]
+        end
+      `)
+      expect(result).toBe(1010)
+    })
+  })
+
+  describe('wildcard handler shorthand', () => {
+    it('@dvala.* matches dvala.io.println', () => {
+      const result = dvala.run(`
+        handle perform(@dvala.io.println, "hi")
+        with [@dvala.*(arg) -> "intercepted"]
+        end
+      `)
+      expect(result).toBe('intercepted')
+    })
+
+    it('@dvala.* matches dvala.error', () => {
+      const result = dvala.run(`
+        handle 0 / 0
+        with [@dvala.*(arg) -> "caught"]
+        end
+      `)
+      expect(result).toBe('caught')
+    })
+
+    it('@dvala.* matches dvala.io.read-line', () => {
+      const result = dvala.run(`
+        handle perform(@dvala.io.read-line, null)
+        with [@dvala.*(arg) -> "mocked"]
+        end
+      `)
+      expect(result).toBe('mocked')
+    })
+
+    it('@dvala.* catches dvala.error from unhandled non-dvala effects', () => {
+      // @my.custom is unhandled → produces @dvala.error → caught by @dvala.*
+      const result = dvala.run(`
+        handle perform(@my.custom, "data")
+        with [@dvala.*(arg) -> "caught: " ++ arg]
+        end
+      `)
+      expect(result).toBe("caught: Unhandled effect: 'my.custom'")
+    })
+
+    it('@dvala.io.* matches dvala.io.println but not dvala.error', () => {
+      const result = dvala.run(`
+        handle
+          perform(@dvala.io.println, "hi")
+        with [@dvala.io.*(arg) -> "io intercepted"]
+        end
+      `)
+      expect(result).toBe('io intercepted')
+    })
+
+    it('@dvala.io.* does not match dvala.error', () => {
+      expect(() => dvala.run(`
+        handle 0 / 0
+        with [@dvala.io.*(arg) -> "caught"]
+        end
+      `)).toThrow()
+    })
+
+    it('@* matches any effect', () => {
+      const result = dvala.run(`
+        handle perform(@anything.at.all, "data")
+        with [@*(arg) -> "universal catch"]
+        end
+      `)
+      expect(result).toBe('universal catch')
+    })
+
+    it('@* catches runtime errors via dvala.error', () => {
+      const result = dvala.run(`
+        handle 0 / 0
+        with [@*(arg) -> "caught all"]
+        end
+      `)
+      expect(result).toBe('caught all')
+    })
+
+    it('wildcard with multiple effects, first handler wins', () => {
+      const result = dvala.run(`
+        handle
+          perform(@my.a, "A") ++ perform(@my.b, "B")
+        with [@my.*(arg) -> lower-case(arg)]
+        end
+      `)
+      expect(result).toBe('ab')
+    })
+
+    it('specific handler takes priority over wildcard in chain', () => {
+      const result = dvala.run(`
+        handle
+          perform(@my.special, "data")
+        with [
+          @my.special(arg) -> "specific: " ++ arg,
+          @my.*(arg) -> "wildcard: " ++ arg
+        ]
+        end
+      `)
+      expect(result).toBe('specific: data')
+    })
+
+    it('wildcard catches what specific handler misses', () => {
+      const result = dvala.run(`
+        handle
+          perform(@my.other, "data")
+        with [
+          @my.special(arg) -> "specific: " ++ arg,
+          @my.*(arg) -> "wildcard: " ++ arg
+        ]
+        end
+      `)
+      expect(result).toBe('wildcard: data')
+    })
+
+    it('deeply nested wildcard matching', () => {
+      const result = dvala.run(`
+        handle perform(@com.myorg.service.action, "deep")
+        with [@com.myorg.*(arg) -> "org caught: " ++ arg]
+        end
+      `)
+      expect(result).toBe('org caught: deep')
+    })
+
+    it('@dvala.* does not directly match dvala-extra (no dot boundary)', () => {
+      // @dvala-extra doesn't match dvala.* (no dot boundary)
+      // But the unhandled effect produces @dvala.error which IS matched by @dvala.*
+      const result = dvala.run(`
+        handle perform(@dvala-extra, "data")
+        with [@dvala.*(arg) -> "caught: " ++ arg]
+        end
+      `)
+      expect(result).toBe("caught: Unhandled effect: 'dvala-extra'")
+    })
+
+    it('@my.* does not catch non-my effects even via dvala.error', () => {
+      // @other.eff is unhandled → @dvala.error → but @my.* doesn't match dvala.error
+      expect(() => dvala.run(`
+        handle perform(@other.eff, "data")
+        with [@my.*(arg) -> "caught"]
+        end
+      `)).toThrow()
+    })
+
+    it('wildcard stored as value', () => {
+      const result = dvala.run(`
+        let silence-io = @dvala.io.*(arg) -> null;
+        handle perform(@dvala.io.println, "hi")
+        with [silence-io]
+        end
+      `)
+      expect(result).toBe(null)
+    })
+  })
 })
