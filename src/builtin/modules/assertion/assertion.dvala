@@ -3,7 +3,7 @@
     let message = first(args);
     assert(function?(fn), "First argument must be a function");
     if not(null?(message)) then assert(string?(message), "Second argument must be a string") end;
-    let failed-sentinel = @dvala.assertion.failed;
+    let failed-sentinel = @assertion.failed;
     let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then failed-sentinel else nxt(eff, arg) end] end;
     if effect?(result) && result == failed-sentinel then
       null
@@ -17,7 +17,7 @@
     assert(function?(fn), "First argument must be a function");
     assert(string?(expected-error), "Second argument must be a string");
     if not(null?(message)) then assert(string?(message), "Third argument must be a string") end;
-    let failed-sentinel = @dvala.assertion.failed;
+    let failed-sentinel = @assertion.failed;
     let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then [failed-sentinel, arg] else nxt(eff, arg) end] end;
     if array?(result) && first(result) == failed-sentinel then do
       let actual-error = second(result);
@@ -36,7 +36,7 @@
     let message = first(args);
     assert(function?(fn), "First argument must be a function");
     if not(null?(message)) then assert(string?(message), "Second argument must be a string") end;
-    let failed-sentinel = @dvala.assertion.failed;
+    let failed-sentinel = @assertion.failed;
     let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then failed-sentinel else nxt(eff, arg) end] end;
     if effect?(result) && result == failed-sentinel then
       assert(false, message ?? "Expected function to succeed")

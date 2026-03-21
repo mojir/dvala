@@ -3940,9 +3940,9 @@ describe('host handler wildcard patterns', () => {
     })
 
     it('wildcard suffix matches deeply nested effects', async () => {
-      const result = await dvala.runAsync('perform(@dvala.log.verbose, "deep")', {
+      const result = await dvala.runAsync('perform(@app.log.verbose, "deep")', {
         effectHandlers: [
-          { pattern: 'dvala.*', handler: async ({ arg, resume }) => { resume(arg!) } },
+          { pattern: 'app.*', handler: async ({ arg, resume }) => { resume(arg!) } },
         ],
       })
       expect(result).toMatchObject({ type: 'completed', value: 'deep' })
