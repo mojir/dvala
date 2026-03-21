@@ -325,11 +325,10 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "outer");
-      do
+      handle
         let x = perform(@my.step);
         x + 1
-      with
-        case @my.local then (v) -> v
+      with [(eff, arg, nxt) -> if eff == @my.local then arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -347,10 +346,9 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let x = perform(@my.step);
-      do
+      handle
         perform(@my.double, x)
-      with
-        case @my.double then (v) -> v * 2
+      with [(eff, arg, nxt) -> if eff == @my.double then arg * 2 else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1209,11 +1207,10 @@ describe('auto: edge cases', () => {
 
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "step 1");
-      do
+      handle
         let x = perform(@my.step);
         perform(@dvala.error, "boom: " ++ x)
-      with
-        case @dvala.error then (msg) -> "caught: " ++ msg
+      with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

@@ -276,13 +276,12 @@ describe('phase 7 — Time-Travel Debugger', () => {
       }
     })
 
-    it('should work with local do/with handlers', async () => {
+    it('should work with local handle/with handlers', async () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
-        do
+        handle
           perform(@test.mock, "input")
-        with
-          case @test.mock then (arg) -> "mocked: " ++ arg
+        with [(eff, arg, nxt) -> if eff == @test.mock then "mocked: " ++ arg else nxt(eff, arg) end]
         end
       `)
       while (r.type === 'suspended') {
@@ -450,10 +449,9 @@ describe('phase 7 — Time-Travel Debugger', () => {
     it('should handle dvala.error handler in program', async () => {
       const dbg = createDebugger()
       let r = await dbg.run(`
-        do
+        handle
           perform(@dvala.error, "oops")
-        with
-          case @dvala.error then (msg) -> "caught: " ++ msg
+        with [(eff, arg, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
         end
       `)
       while (r.type === 'suspended') {

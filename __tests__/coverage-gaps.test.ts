@@ -338,10 +338,9 @@ describe('async trampoline operations', () => {
   it('should handle async run with effects', async () => {
     const d = createDvala()
     const result = await d.runAsync(`
-      do
+      handle
         perform(@my.effect, 5)
-      with
-        case @my.effect then (x) -> x * 10
+      with [(eff, arg, nxt) -> if eff == @my.effect then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result.type).toBe('completed')
@@ -1389,10 +1388,9 @@ describe('effect matching — function predicate handler', () => {
   it('should handle non-matching effect predicate', () => {
     // Use do...with...end where handler doesn't match the effect
     const result = dvala.run(`
-      do
+      handle
         42
-      with
-        case @no.match then (payload) -> 0
+      with [(eff, arg, nxt) -> if eff == @no.match then 0 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(42)
@@ -2604,10 +2602,9 @@ describe('stub evaluate — modules/grid/index.ts', () => {
 describe('parseFunction — do...with...end function body', () => {
   it('should handle function with do...with...end body', () => {
     const result = dvala.run(`
-      let f = () -> do
+      let f = () -> handle
         perform(@my.eff, "hello")
-      with
-        case @my.eff then (msg) -> upper-case(msg)
+      with [(eff, arg, nxt) -> if eff == @my.eff then upper-case(arg) else nxt(eff, arg) end]
       end;
       f()
     `)
@@ -2760,10 +2757,9 @@ describe('dvala.ts — effect binding in assertSerializable (line 271)', () => {
 describe('parseFunction — shorthand lambda with do...with...end', () => {
   it('should parse shorthand lambda containing do...with...end handlers', () => {
     const program = `
-      let f = -> do
+      let f = -> handle
         perform(@my.eff, $)
-      with
-        case @my.eff then (x) -> x * 2
+      with [(eff, arg, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end]
       end;
       f(21)
     `
