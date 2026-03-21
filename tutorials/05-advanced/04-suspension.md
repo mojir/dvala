@@ -37,7 +37,7 @@ Suspension is triggered by a **host handler** calling `suspend()`. The Dvala pro
 The Dvala program calls `perform` with a custom effect. From the program's perspective, this is just a function call that will eventually return a value:
 
 ```dvala no-run
-let decision = perform(effect(human.approve), "Q4 Report");
+let decision = perform(@human.approve, "Q4 Report");
 if decision then "Approved" else "Rejected" end
 ```
 
@@ -50,7 +50,7 @@ import { createDvala } from '@mojir/dvala/full'
 
 const dvala = createDvala()
 const result = await dvala.runAsync(`
-  let decision = perform(effect(human.approve), "Q4 Report");
+  let decision = perform(@human.approve, "Q4 Report");
   if decision then "Approved" else "Rejected" end
 `, {
   effectHandlers: [
@@ -110,8 +110,8 @@ const effectHandlers = [
 ]
 
 const r1 = await dvala.runAsync(`
-  let a = perform(effect(human.step), "Step 1: Enter amount");
-  let b = perform(effect(human.step), "Step 2: Confirm");
+  let a = perform(@human.step, "Step 1: Enter amount");
+  let b = perform(@human.step, "Step 2: Confirm");
   if b then "Transferred: " ++ str(a) else "Cancelled" end
 `, { effectHandlers })
 
@@ -132,14 +132,14 @@ Everything the program needs to continue:
 
 * **Local variables** — all `let` bindings in scope at the point of suspension
 * **Closures** — functions that capture variables from outer scopes
-* **Call stack** — nested function calls, `do...with` handler frames, loop state
+* **Call stack** — nested function calls, `handle...with` handler frames, loop state
 * **Partially evaluated expressions** — the exact position within a complex expression
 
 ```typescript
 const r1 = await dvala.runAsync(`
   let multiplier = 3;
   let scale = (x) -> x * multiplier;
-  let value = perform(effect(my.wait));
+  let value = perform(@my.wait);
   scale(value)
 `, {
   effectHandlers: [
@@ -164,7 +164,7 @@ With Dvala: write the workflow as a straight-line program. Each `perform` that n
 
 Traditional approach: expose a webhook endpoint, store request context in a database, match the callback to the original request, reconstruct enough context to continue.
 
-With Dvala: `perform(effect(human.approve), doc)`. The handler suspends, stores the snapshot, and resumes when the human responds. The program doesn't know or care that days passed.
+With Dvala: `perform(@human.approve, doc)`. The handler suspends, stores the snapshot, and resumes when the human responds. The program doesn't know or care that days passed.
 
 ### Crash Recovery
 
@@ -179,10 +179,10 @@ Traditional approach: orchestration frameworks (LangChain, Temporal, Step Functi
 With Dvala: the agent workflow is just a program:
 
 ```dvala no-run
-let report = perform(effect(llm.complete), "Generate Q4 report");
-let decision = perform(effect(human.approve), report);
+let report = perform(@llm.complete, "Generate Q4 report");
+let decision = perform(@human.approve, report);
 if decision.approved then
-  perform(effect(email.send), report)
+  perform(@email.send, report)
 else
   "Rejected: " ++ decision.reason
 end

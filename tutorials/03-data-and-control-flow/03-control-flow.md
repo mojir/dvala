@@ -95,11 +95,11 @@ end
 
 ## Error Handling
 
-Use `handle` / `with` to handle errors. `perform(effect(dvala.error), msg)` raises an error:
+Use `handle` / `with` to handle errors. `perform(@dvala.error, msg)` raises an error:
 
 ```dvala
 handle
-  perform(effect(dvala.error), "oops")
+  perform(@dvala.error, "oops")
 with [(eff, arg, nxt) ->
   if eff == @dvala.error then arg
   else nxt(eff, arg)

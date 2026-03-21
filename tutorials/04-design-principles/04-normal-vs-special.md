@@ -115,12 +115,12 @@ end
 for (x in [1, 2, 3] when x > 1) -> x * 10
 ```
 
-### effect / perform — Algebraic Effects
+### @name / perform — Algebraic Effects
 
-`effect` creates an effect reference. `perform` invokes it:
+`@name` creates an effect reference. `perform` invokes it:
 
 ```dvala
-let e = effect(my.double);
+let e = @my.double;
 handle
   perform(e, 21)
 with [(eff, arg, nxt) ->
@@ -154,7 +154,7 @@ Dvala has **22** special expressions:
 * **Grouping** — `do` (block)
 * **Functions** — `->` (lambda)
 * **Data** — `array`, `object`
-* **Effects** — `effect`, `perform`
+* **Effects** — `@name`, `perform`
 * **Concurrency** — `parallel`, `race`
 * **Modules** — `import`
 * **Predicates** — `defined?`
