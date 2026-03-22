@@ -73,7 +73,7 @@ not ok 2 sub
   message: "Expected 3 to deep equal -1."
   location: "${path.resolve(__dirname, 'one-success.test.dvala')}:12:1"
   code:
-    - "assert=(sub(one, 2), -1);"
+    - "assertEqual(sub(one, 2), -1);"
     - "^                        "
   ...
 `)
@@ -90,7 +90,7 @@ not ok 1 add
   message: "Expected -1 to deep equal 3."
   location: "${path.resolve(__dirname, 'failure-test.dvala')}:9:1"
   code:
-    - "assert=(add(one, 2), 3);"
+    - "assertEqual(add(one, 2), 3);"
     - "^                       "
   ...
 ok 2 sub # skip - Not matching testNamePattern /ad/
@@ -108,7 +108,7 @@ not ok 1 add
   message: "Expected -1 to deep equal 3."
   location: "${path.resolve(__dirname, 'failure-test.dvala')}:9:1"
   code:
-    - "assert=(add(one, 2), 3);"
+    - "assertEqual(add(one, 2), 3);"
     - "^                       "
   ...
 not ok 2 sub
@@ -117,7 +117,7 @@ not ok 2 sub
   message: "Expected 3 to deep equal -1."
   location: "${path.resolve(__dirname, 'failure-test.dvala')}:12:1"
   code:
-    - "assert=(sub(one, 2), -1);"
+    - "assertEqual(sub(one, 2), -1);"
     - "^                        "
   ...
 `)
@@ -161,7 +161,7 @@ not ok 1 equals
     }.
   location: "${path.resolve(__dirname, 'object-diff.test.dvala')}:7:1"
   code:
-    - "assert=(objA, objB);"
+    - "assertEqual(objA, objB);"
     - "^                   "
   ...
 `)

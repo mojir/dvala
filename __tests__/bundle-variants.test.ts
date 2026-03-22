@@ -53,7 +53,7 @@ describe('full entry point (src/full.ts)', () => {
 
   it('should have all modules available via allBuiltinModules', () => {
     const dvala = createDvalaFull({ modules: allBuiltinModules })
-    expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
+    expect(dvala.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
     expect(dvala.run('let nt = import(numberTheory); nt.isPrime(7)')).toBe(true)
@@ -80,7 +80,7 @@ describe('individual module entry points', () => {
   it('assertion module', () => {
     expect(assertModule.name).toBe('assertion')
     const dvala = createDvala({ modules: [assertModule] })
-    expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
+    expect(dvala.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
     expect(() => dvala.run('import(vector)')).toThrow()
   })
 

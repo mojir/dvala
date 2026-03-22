@@ -123,8 +123,8 @@ const skipReturnTypeExamples = new Set([
 const skipModuleReturnTypeExamples: Record<string, Set<string>> = {
   // Assertion examples are complete test programs, last expr isn't null
   assertion: new Set([
-    'assert=',
-    'assert!=',
+    'assertEqual',
+    'assertNotEqual',
     'assertGt',
     'assertGte',
     'assertLt',

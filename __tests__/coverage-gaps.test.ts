@@ -112,7 +112,7 @@ describe('recursive evaluator — compound function types (trampoline fallback)'
 
   describe('module function via trampoline dispatch', () => {
     it('should call module functions with callbacks', () => {
-      expect(dvalaFull.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
+      expect(dvalaFull.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
     })
   })
 
@@ -510,7 +510,7 @@ describe('recursive evaluator via module functions', () => {
     it('should trigger recursive user-defined with destructuring via module callback', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert=([1, 2, 3], [1, 2, 3])
+        a.assertEqual([1, 2, 3], [1, 2, 3])
       `)
       expect(result).toBe(null)
     })
