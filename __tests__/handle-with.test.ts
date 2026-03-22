@@ -442,8 +442,8 @@ describe('handle...with...end', () => {
 
     it('shorthand handler passed to function', () => {
       const result = dvala.run(`
-        let runWith = (body-fn, handlers) ->
-          handle body-fn() with handlers end;
+        let runWith = (bodyFn, handlers) ->
+          handle bodyFn() with handlers end;
         runWith(-> perform(@my.eff, 10), [@my.eff(x) -> x * 5])
       `)
       expect(result).toBe(50)
@@ -737,15 +737,15 @@ describe('handle...with...end', () => {
       expect(result).toBe('org caught: deep')
     })
 
-    it('@dvala.* does not directly match dvala-extra (no dot boundary)', () => {
-      // @dvala-extra doesn't match dvala.* (no dot boundary)
+    it('@dvala.* does not directly match dvalaExtra (no dot boundary)', () => {
+      // @dvalaExtra doesn't match dvala.* (no dot boundary)
       // But the unhandled effect produces @dvala.error which IS matched by @dvala.*
       const result = dvala.run(`
-        handle perform(@dvala-extra, "data")
+        handle perform(@dvalaExtra, "data")
         with [@dvala.*(arg) -> "caught: " ++ arg]
         end
       `)
-      expect(result).toBe("caught: Unhandled effect: 'dvala-extra'")
+      expect(result).toBe("caught: Unhandled effect: 'dvalaExtra'")
     })
 
     it('@my.* does not catch non-my effects even via dvala.error', () => {

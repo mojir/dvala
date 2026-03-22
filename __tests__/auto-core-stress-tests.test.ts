@@ -603,7 +603,7 @@ describe('error quality', () => {
   })
 
   it('undefined symbol error includes symbol name', () => {
-    expect(() => dvala.run('undefined-symbol-xyz')).toThrow('undefined-symbol-xyz')
+    expect(() => dvala.run('undefinedSymbolXyz')).toThrow('undefinedSymbolXyz')
   })
 
   it('arity error on too few args', () => {
@@ -700,7 +700,7 @@ describe('destructuring edge cases', () => {
   })
 
   it('destructuring result of function call', () => {
-    expect(dvala.run('let [min-val, max-val] = [min(3, 1, 2), max(3, 1, 2)]; [min-val, max-val]'))
+    expect(dvala.run('let [minVal, maxVal] = [min(3, 1, 2), max(3, 1, 2)]; [minVal, maxVal]'))
       .toEqual([1, 3])
   })
 })

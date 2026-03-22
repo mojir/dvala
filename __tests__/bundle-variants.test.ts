@@ -154,8 +154,8 @@ describe('individual module entry points', () => {
   it('convert module', () => {
     expect(convertModule.name).toBe('convert')
     const dvala = createDvala({ modules: [convertModule] })
-    expect(dvala.run('let c = import(convert); c.c->f(100)')).toBe(212)
-    expect(dvala.run('let c = import(convert); c.kg->lb(1)')).toBeCloseTo(2.20462, 4)
+    expect(dvala.run('let c = import(convert); c.cToF(100)')).toBe(212)
+    expect(dvala.run('let c = import(convert); c.kgToLb(1)')).toBeCloseTo(2.20462, 4)
   })
 
   it('should allow combining multiple modules', () => {

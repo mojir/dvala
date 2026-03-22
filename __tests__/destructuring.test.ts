@@ -359,8 +359,8 @@ describe('dvala Destructuring', () => {
   describe('builtin symbol names as property keys', () => {
     test('builtin symbol with "as" alias works', () => {
       expect(dvala.run(`
-        let { slice as my-slice } = { slice: 42 };
-        my-slice
+        let { slice as mySlice } = { slice: 42 };
+        mySlice
       `)).toBe(42)
     })
 
@@ -373,15 +373,15 @@ describe('dvala Destructuring', () => {
 
     test('builtin symbol from import with alias works', () => {
       expect(dvala.run(`
-        let { isCellEvery as my-every? } = import(grid);
-        my-every?([[1, 2], [3, 4]], isNumber)
+        let { isCellEvery as myEvery } = import(grid);
+        myEvery([[1, 2], [3, 4]], isNumber)
       `)).toBe(true)
     })
 
     test('builtin and user-defined symbols mixed', () => {
       expect(dvala.run(`
-        let { slice as my-slice, foo } = { slice: 10, foo: 20 };
-        my-slice + foo
+        let { slice as mySlice, foo } = { slice: 10, foo: 20 };
+        mySlice + foo
       `)).toBe(30)
     })
 
@@ -395,8 +395,8 @@ describe('dvala Destructuring', () => {
     test('special expression symbol with alias works', () => {
       // 'if', 'let', etc. are special expressions, but we can use them as keys
       expect(dvala.run(`
-        let { if as my-if } = { if: 99 };
-        my-if
+        let { if as myIf } = { if: 99 };
+        myIf
       `)).toBe(99)
     })
   })

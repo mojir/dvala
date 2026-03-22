@@ -1180,7 +1180,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     examples: [
       'let { fromPolar } = import(linearAlgebra);\nfromPolar([1, PI / 4])',
       'let { fromPolar } = import(linearAlgebra);\nfromPolar([1, 0])',
-      'let { fromPolar } = import(linearAlgebra);\nfromPolar([1, -PI / 2])',
+      'let { fromPolar } = import(linearAlgebra);\nfromPolar([1, (0 - PI) / 2])',
     ],
     seeAlso: ['linearAlgebra.toPolar'],
   },

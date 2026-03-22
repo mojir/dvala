@@ -231,8 +231,8 @@ handle perform(@my.double, 21) with doubleHandler end
 ```
 
 ```dvala
-let runWith = (body-fn, handler) ->
-  handle body-fn() with handler end;
+let runWith = (bodyFn, handler) ->
+  handle bodyFn() with handler end;
 runWith(-> perform(@my.eff, 10), @my.eff(x) -> x * 5)
 ```
 

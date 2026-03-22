@@ -28,9 +28,7 @@ describe('parser', () => {
   describe('const E', () => {
     it('samples', () => {
       expect(dvala.run('E')).toBe(Math.E)
-      expect(dvala.run('ε')).toBe(Math.E)
-      expect(dvala.run('-E')).toBe(-Math.E)
-      expect(dvala.run('-ε')).toBe(-Math.E)
+      expect(dvala.run('0 - E')).toBe(-Math.E)
     })
   })
 
@@ -161,7 +159,6 @@ describe('parser', () => {
   describe('const PI', () => {
     it('samples', () => {
       expect(dvala.run('PI')).toBe(Math.PI)
-      expect(dvala.run('π')).toBe(Math.PI)
     })
   })
 
@@ -949,7 +946,7 @@ foo(1, 2)`)).toBe(3)
     })
     describe('destructuring', () => {
       const values = {
-        'an-object': {
+        'anObject': {
           name: 'John Doe',
           age: 42,
           married: true,
@@ -974,17 +971,17 @@ foo(1, 2)`)).toBe(3)
           foo({ b: 1})
         `)).toBe(10)
         expect(dvala.run(`
-          let { children: [{ age as firstChildAge }] } = an-object;
+          let { children: [{ age as firstChildAge }] } = anObject;
           firstChildAge
         `, { bindings: values })).toBe(10)
 
         expect(dvala.run(`
-          let { children: [{ age as firstChildAge, name }] } = an-object;
+          let { children: [{ age as firstChildAge, name }] } = anObject;
           [firstChildAge, name]
         `, { bindings: values })).toEqual([10, 'Alice'])
 
         expect(dvala.run(`
-          let { children: [, { age, name }] } = an-object;
+          let { children: [, { age, name }] } = anObject;
           [age, name]
         `, { bindings: values })).toEqual([7, 'Bob'])
 
