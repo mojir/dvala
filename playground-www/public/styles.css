@@ -1444,6 +1444,17 @@ button:focus {
   color: var(--color-text-bright);
 }
 
+.button--danger {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.button--danger:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
 .settings-action-row .button {
   min-width: 7rem;
   flex-shrink: 0;
