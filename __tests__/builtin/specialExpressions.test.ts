@@ -129,7 +129,7 @@ describe('specialExpressions', () => {
       expect(dvala.run('let a = 10; do let a = 20; end; a')).toBe(10)
       expect(() => dvala.run('let true = false;')).toThrow(DvalaError)
       expect(() => dvala.run('let 1 = 10;')).toThrow(DvalaError)
-      expect(() => dvala.run('let x:x = 10;')).not.toThrow(DvalaError)
+      expect(() => dvala.run('let x:x = 10;')).toThrow(DvalaError)
       expect(() => dvala.run('let x: = 10;')).toThrow(DvalaError)
       expect(() => dvala.run('let null = 10;')).toThrow(DvalaError)
       expect(() => dvala.run('let false = 10;')).toThrow(DvalaError)
@@ -487,7 +487,7 @@ end;`))).toEqual(
         expect((getUndefinedSymbols('let foo = (a, b) -> do str(a, b, c) end; foo(x, y)'))).toEqual(
           new Set(['c', 'x', 'y']),
         )
-        expect((getUndefinedSymbols('let add = (a, b, ...the-rest) -> do a + b; [a](10) end;'))).toEqual(new Set())
+        expect((getUndefinedSymbols('let add = (a, b, ...theRest) -> do a + b; [a](10) end;'))).toEqual(new Set())
       })
     })
   })
@@ -504,7 +504,7 @@ end;`))).toEqual(
       expect((getUndefinedSymbols('let foo = (a, b) -> str(a, b, c); foo(1, x)'))).toEqual(
         new Set(['c', 'x']),
       )
-      expect((getUndefinedSymbols('(a, b, ...the-rest) -> do a + b; [a](10) end'))).toEqual(new Set())
+      expect((getUndefinedSymbols('(a, b, ...theRest) -> do a + b; [a](10) end'))).toEqual(new Set())
     })
   })
 

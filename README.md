@@ -379,15 +379,11 @@ Dvala provides predefined mathematical constants:
 
 ```dvala
 PI;    // => 3.141592653589793
-π;     // => 3.141592653589793 (Unicode alternative)
 E;     // => 2.718281828459045 (Euler's number)
-ε;     // => 2.718281828459045 (Unicode alternative)
 PHI;   // => 1.618033988749895 (Golden ratio)
-φ;     // => 1.618033988749895 (Unicode alternative)
 
 // Infinity values
 POSITIVE_INFINITY; // => Infinity
-∞;                 // => Infinity (Unicode alternative)
 NEGATIVE_INFINITY; // => -Infinity
 
 // Integer and float limits
@@ -987,110 +983,37 @@ let status = if isLoggedIn() && hasPermission() then "authorized" else "unauthor
 
 ## Variable Names
 
-Dvala is generous with variable naming conventions, allowing a wide range of characters that would be invalid in many other programming languages.
+Dvala uses JavaScript-style identifiers for variable names.
 
 ### Basic Rules
 
-Variable names in Dvala can contain almost any character except for a small set of reserved symbols. The only restrictions are:
+Variable names must match the pattern `[a-zA-Z_$][a-zA-Z0-9_$]*`:
 
-**Illegal characters anywhere in a variable name:**
-- Parentheses: `(` `)`
-- Brackets: `[` `]`
-- Braces: `{` `}`
-- Quotes: `'` `"` `` ` ``
-- Punctuation: `,` `.` `;`
-- Whitespace: spaces, newlines, tabs
-
-**Additional restrictions for the first character:**
-- Cannot start with digits `0-9`
-
-### Unicode and Emoji Support
-
-Beyond these minimal restrictions, Dvala supports Unicode characters, including emojis, in variable names:
+- **First character:** a letter (`a-z`, `A-Z`), underscore (`_`), or dollar sign (`$`)
+- **Subsequent characters:** letters, digits (`0-9`), underscores, or dollar signs
 
 ```dvala
-// Unicode characters are welcome
-let résultat = 42;
-let naïve = "simple approach";
-let coöperation = "working together";
-
-// Emojis work too!
-let 😅 = "grinning face with sweat";
-let 🚀 = "rocket ship";
-let result = 😅 ++ " " ++ 🚀;
-// => "grinning face with sweat rocket ship"
+let userName = "alice";
+let isValid = true;
+let _private = 42;
+let $special = "dollar";
+let counter2 = 0;
 ```
 
 ### Quoted Variable Names
 
-For cases where you need to use the normally illegal characters in variable names, Dvala supports quoted variable names using single quotes:
+For cases where you need characters outside the normal rules, Dvala supports quoted variable names using single quotes:
 
 ```dvala
 // Variables with spaces and special characters
 let 'A strange variable' = 42;
 let 'user.name' = "John Doe";
 let 'data[0]' = "first element";
-let 'function()' = "callable";
 
 // Access them the same way
 'A strange variable' + 8;
 // => 50
 ```
-
-### Practical Examples
-
-Here are some examples showcasing the flexibility of Dvala variable naming:
-
-```dvala
-// Mathematical notation with Greek letters (avoiding reserved symbols)
-let α = 0.5;
-let β = 1.2;
-let γ = 2.0;
-let Δ = β - α;
-
-// Descriptive names with special characters
-let userName = "alice";
-let isValid = true;
-let counter = 0;
-
-// Mixed styles
-let dataSet₁ = [1, 2, 3];
-let dataSet₂ = [4, 5, 6];
-let 🔧config = { debug: true };
-```
-
-### Important: Operator Spacing
-
-Due to Dvala' flexible variable naming, **operators must be separated by whitespace**. This is crucial to understand:
-
-```dvala
-// This is a variable name, NOT addition!
-let x+1 = 42;
-let result1 = x+1;  // => 42
-
-// To perform addition, use spaces
-let x = 5;
-let result2 = x + 1;  // => 6
-
-// More examples of what looks like operations but are actually variable names
-let aB = "subtraction variable";
-let c*d = "multiplication variable"; 
-let e/f = "division variable";
-let g<h = "comparison variable";
-
-// To use these as actual operations, add spaces
-let a = 10;
-let b = 3;
-let aSum = a + b;      // Addition
-let aDiff = a - b;     // Subtraction
-let aProd = a * b;     // Multiplication
-let aQuot = a / b;     // Division
-let aComp = a < b;     // Comparison
-```
-
-Without whitespace, Dvala treats the entire sequence as a single variable identifier. This applies to all operators, including comparison operators, logical operators, and arithmetic operators.
-
-This flexibility allows for expressive and readable code while maintaining the functional programming paradigm that Dvala embodies.
 ## Operators and Functions
 
 ### Algebraic Notation

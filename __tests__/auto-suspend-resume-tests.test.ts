@@ -598,12 +598,12 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
 
     await dvala.runAsync(`
       perform(@dvala.checkpoint, "source dvala-1");
-      perform(@my.host-save);
+      perform(@my.hostSave);
       perform(@dvala.checkpoint, "source dvala-2");
       perform(@my.check)
     `, {
       effectHandlers: [
-        { pattern: 'my.host-save', handler: async ({ checkpoint, resume: r }) => {
+        { pattern: 'my.hostSave', handler: async ({ checkpoint, resume: r }) => {
           checkpoint('source host', { source: 'host' })
           r(null)
         } },
@@ -627,7 +627,7 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
   it('host checkpoint taken then suspend preserves both in blob', async () => {
     let capturedSnapshots: readonly Snapshot[] = []
     const handlers: Handlers = [
-      { pattern: 'my.save-and-wait', handler: async ({ checkpoint, suspend }) => {
+      { pattern: 'my.saveAndWait', handler: async ({ checkpoint, suspend }) => {
         checkpoint('source host-before-suspend', { source: 'host-before-suspend' })
         suspend()
       } },
@@ -635,7 +635,7 @@ describe('auto: mixed dvala.checkpoint and ctx.checkpoint', () => {
 
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "source dvala");
-      let x = perform(@my.save-and-wait);
+      let x = perform(@my.saveAndWait);
       perform(@my.check);
       x
     `, { effectHandlers: [
@@ -1004,9 +1004,9 @@ describe('auto: ctx.checkpoint return value', () => {
   it('consecutive ctx.checkpoint("checkpoint") calls produce increasing indices', async () => {
     const snapshots: Snapshot[] = []
 
-    await dvala.runAsync('perform(@my.multi-save)', {
+    await dvala.runAsync('perform(@my.multiSave)', {
       effectHandlers: [
-        { pattern: 'my.multi-save', handler: async ({ checkpoint, resume: r }) => {
+        { pattern: 'my.multiSave', handler: async ({ checkpoint, resume: r }) => {
           snapshots.push(checkpoint('n 1', { n: 1 }))
           snapshots.push(checkpoint('n 2', { n: 2 }))
           snapshots.push(checkpoint('n 3', { n: 3 }))
@@ -1397,7 +1397,7 @@ describe('auto: complex workflow patterns', () => {
   it('multi-step wizard with suspend at each step', async () => {
     const steps: string[] = []
     const handlers: Handlers = [
-      { pattern: 'my.wizard-step', handler: async ({ arg, suspend }) => {
+      { pattern: 'my.wizardStep', handler: async ({ arg, suspend }) => {
         steps.push(arg as string)
         suspend({ step: arg })
       } },
@@ -1405,11 +1405,11 @@ describe('auto: complex workflow patterns', () => {
 
     const source = `
       perform(@dvala.checkpoint, "wizard start");
-      let name = perform(@my.wizard-step, "name");
+      let name = perform(@my.wizardStep, "name");
       perform(@dvala.checkpoint, "wizard after-name");
-      let email = perform(@my.wizard-step, "email");
+      let email = perform(@my.wizardStep, "email");
       perform(@dvala.checkpoint, "wizard after-email");
-      let phone = perform(@my.wizard-step, "phone");
+      let phone = perform(@my.wizardStep, "phone");
       { name: name, email: email, phone: phone }
     `
 
@@ -1438,17 +1438,17 @@ describe('auto: complex workflow patterns', () => {
   it('wizard with back-button via resumeFrom', async () => {
     let phoneCallCount = 0
     const handlers: Handlers = [
-      { pattern: 'my.wizard-step', handler: async ({ arg, suspend }) => {
+      { pattern: 'my.wizardStep', handler: async ({ arg, suspend }) => {
         suspend({ step: arg })
       } },
     ]
 
     const source = `
-      let name = perform(@my.wizard-step, "name");
+      let name = perform(@my.wizardStep, "name");
       perform(@dvala.checkpoint, "after name");
-      let email = perform(@my.wizard-step, "email");
+      let email = perform(@my.wizardStep, "email");
       perform(@dvala.checkpoint, "after email");
-      let phone = perform(@my.wizard-step, "phone");
+      let phone = perform(@my.wizardStep, "phone");
       { name: name, email: email, phone: phone }
     `
 
@@ -1467,7 +1467,7 @@ describe('auto: complex workflow patterns', () => {
     // Step 3: phone — user wants to go back to email
     const r3 = await resumeContinuation(r2.snapshot, 'alice@old.com', {
       handlers: [
-        { pattern: 'my.wizard-step', handler: async ({ arg, suspend, snapshots, resumeFrom }) => {
+        { pattern: 'my.wizardStep', handler: async ({ arg, suspend, snapshots, resumeFrom }) => {
           phoneCallCount++
           if (phoneCallCount === 1) {
             // User presses back — rollback to "after name" checkpoint

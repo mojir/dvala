@@ -810,14 +810,14 @@ let isIsoDateString = (data) -> do
 
   if m then
     let [year, month, day] = slice(m, 1) map number;
-    let leapYear = isZero(year mod 4) && (!zero?(year mod 100) || isZero(year mod 400));
+    let leapYear = isZero(year mod 4) && (not(isZero(year mod 100)) || isZero(year mod 400));
 
     let invalid = 
       (year < 1900 || year > 2100)
       || (month < 1 || month > 12)
       || (day < 1 || day > 31)
       || day > 30 && (month == 4 || month == 6 || month == 9 || month == 11)
-      || month == 2 && (leapYear && day > 29 || !leapYear && day > 28);
+      || month == 2 && (leapYear && day > 29 || not(leapYear) && day > 28);
 
     not(invalid)
   else

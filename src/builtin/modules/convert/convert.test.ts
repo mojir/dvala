@@ -229,7 +229,7 @@ describe('convert module', () => {
 
   describe('speed conversions', () => {
     it('should convert mps to kmh', () => {
-      expect(runConvert('convert:mpsToKm/h(1)')).toBeCloseTo(3.6, 4)
+      expect(runConvert('convert:mpsToKmh(1)')).toBeCloseTo(3.6, 4)
     })
 
     it('should convert kmh to mph', () => {
@@ -237,15 +237,15 @@ describe('convert module', () => {
     })
 
     it('should convert mph to mps', () => {
-      expect(runConvert('convert:mphToM/s(1)')).toBeCloseTo(0.44704, 4)
+      expect(runConvert('convert:mphToMps(1)')).toBeCloseTo(0.44704, 4)
     })
 
     it('should convert knots to kmh', () => {
-      expect(runConvert('convert:knToKm/h(1)')).toBeCloseTo(1.852, 3)
+      expect(runConvert('convert:knToKmh(1)')).toBeCloseTo(1.852, 3)
     })
 
     it('should convert fps to mps', () => {
-      expect(runConvert('convert:fpsToM/s(1)')).toBeCloseTo(0.3048, 4)
+      expect(runConvert('convert:fpsToMps(1)')).toBeCloseTo(0.3048, 4)
     })
   })
 

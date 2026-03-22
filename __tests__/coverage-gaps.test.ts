@@ -139,7 +139,7 @@ describe('recursive evaluator — user-defined function edge cases', () => {
   })
 
   it('should handle function with rest args', () => {
-    expect(dvala.run('let f = (a, ...the-rest) -> [a, the-rest]; f(1, 2, 3)')).toEqual([1, [2, 3]])
+    expect(dvala.run('let f = (a, ...theRest) -> [a, theRest]; f(1, 2, 3)')).toEqual([1, [2, 3]])
   })
 
   it('should handle function with destructuring', () => {
@@ -390,11 +390,11 @@ describe('effects API — host handler edge cases', () => {
 
   it('should handle host handler resuming with a promise value', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.async-resume', handler: async ctx => {
+      { pattern: 'test.asyncResume', handler: async ctx => {
         ctx.resume(Promise.resolve(99))
       } },
     ]
-    const result = await dvala.runAsync('perform(@test.async-resume)', { effectHandlers: handlers })
+    const result = await dvala.runAsync('perform(@test.asyncResume)', { effectHandlers: handlers })
     expect(result.type).toBe('completed')
     if (result.type === 'completed') {
       expect(result.value).toBe(99)
@@ -403,11 +403,11 @@ describe('effects API — host handler edge cases', () => {
 
   it('should handle host handler resuming with a rejected promise', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.async-fail', handler: async ctx => {
+      { pattern: 'test.asyncFail', handler: async ctx => {
         ctx.resume(Promise.reject(new Error('async fail')))
       } },
     ]
-    const result = await dvala.runAsync('perform(@test.async-fail)', { effectHandlers: handlers })
+    const result = await dvala.runAsync('perform(@test.asyncFail)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
   })
 })
@@ -502,7 +502,7 @@ describe('recursive evaluator via module functions', () => {
     it('should trigger recursive user-defined with rest args via module callback', () => {
       const result = dvalaFull.run(`
         let nt = import(numberTheory);
-        nt.arithmeticTakeWhile(1, 2, (val, ...rest-args) -> val < 10)
+        nt.arithmeticTakeWhile(1, 2, (val, ...restArgs) -> val < 10)
       `)
       expect(result).toEqual([1, 3, 5, 7, 9])
     })
@@ -676,7 +676,7 @@ describe('setupUserDefinedCall async fallbacks', () => {
   it('should handle function with rest args in async context', async () => {
     const d = createDvala()
     const result = await d.runAsync(`
-      let f = (a, ...the-rest) -> [a, the-rest];
+      let f = (a, ...theRest) -> [a, theRest];
       f(1, 2, 3)
     `)
     expect(result.type).toBe('completed')
@@ -959,11 +959,11 @@ describe('evaluateNode — exported function', () => {
 describe('runEffectLoop — non-DvalaError propagation', () => {
   it('should wrap non-DvalaError in RunResult', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.native-error', handler: async ctx => {
+      { pattern: 'test.nativeError', handler: async ctx => {
         ctx.resume(Promise.reject(new Error('plain string error')) as never)
       } },
     ]
-    const result = await dvala.runAsync('perform(@test.native-error)', { effectHandlers: handlers })
+    const result = await dvala.runAsync('perform(@test.nativeError)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
   })
 })
@@ -1162,7 +1162,7 @@ describe('recursive evaluator — builtin and module dispatch', () => {
     // arithmeticTakeWhile calls executeFunction so hits recursive path
     expect(dvalaFull.run(`
       let nt = import(numberTheory);
-      nt.arithmeticTakeWhile(1, 2, (val, ...rest-args) -> val < 10)
+      nt.arithmeticTakeWhile(1, 2, (val, ...restArgs) -> val < 10)
     `)).toEqual([1, 3, 5, 7, 9])
   })
 })
@@ -2964,12 +2964,12 @@ describe('dispatchHostHandler edge cases', () => {
   it('should handle sync handler that settles before async return', async () => {
     // Handler returns a promise but calls resume() synchronously before the promise resolves
     const handlers: Handlers = [
-      { pattern: 'test.sync-settle', handler: ctx => {
+      { pattern: 'test.syncSettle', handler: ctx => {
         ctx.resume(99)
         return Promise.resolve()
       } },
     ]
-    const result = await dvalaHost.runAsync('perform(@test.sync-settle)', { effectHandlers: handlers })
+    const result = await dvalaHost.runAsync('perform(@test.syncSettle)', { effectHandlers: handlers })
     expect(result.type).toBe('completed')
     if (result.type === 'completed')
       expect(result.value).toBe(99)
@@ -2977,11 +2977,11 @@ describe('dispatchHostHandler edge cases', () => {
 
   it('should handle async handler that does not call resume/fail/next', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.no-settle', handler: async () => {
+      { pattern: 'test.noSettle', handler: async () => {
         // Handler does nothing — should error
       } },
     ]
-    const result = await dvalaHost.runAsync('perform(@test.no-settle)', { effectHandlers: handlers })
+    const result = await dvalaHost.runAsync('perform(@test.noSettle)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
     if (result.type === 'error')
       expect(result.error.message).toContain('did not call')
@@ -2990,12 +2990,12 @@ describe('dispatchHostHandler edge cases', () => {
   it('should handle async handler that rejects with plain Error after settling', async () => {
     // Handler calls resume() synchronously, then the async part rejects
     const handlers: Handlers = [
-      { pattern: 'test.settle-then-reject', handler: ctx => {
+      { pattern: 'test.settleThenReject', handler: ctx => {
         ctx.resume(42)
         return Promise.reject(new Error('late rejection'))
       } },
     ]
-    const result = await dvalaHost.runAsync('perform(@test.settle-then-reject)', { effectHandlers: handlers })
+    const result = await dvalaHost.runAsync('perform(@test.settleThenReject)', { effectHandlers: handlers })
     expect(result.type).toBe('completed')
     if (result.type === 'completed')
       expect(result.value).toBe(42)
@@ -3003,11 +3003,11 @@ describe('dispatchHostHandler edge cases', () => {
 
   it('should handle async handler that rejects without settling', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.reject-no-settle', handler: async () => {
+      { pattern: 'test.rejectNoSettle', handler: async () => {
         throw new Error('handler rejected')
       } },
     ]
-    const result = await dvalaHost.runAsync('perform(@test.reject-no-settle)', { effectHandlers: handlers })
+    const result = await dvalaHost.runAsync('perform(@test.rejectNoSettle)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
     if (result.type === 'error')
       expect(result.error.message).toContain('handler rejected')
@@ -3133,12 +3133,12 @@ describe('async handler not-yet-settled path', () => {
 
   it('should handle truly async handler that calls fail()', async () => {
     const handlers: Handlers = [
-      { pattern: 'test.async-fail', handler: async ctx => {
+      { pattern: 'test.asyncFail', handler: async ctx => {
         await new Promise(resolve => setTimeout(resolve, 1))
         ctx.fail('async failure')
       } },
     ]
-    const result = await dvala.runAsync('perform(@test.async-fail)', { effectHandlers: handlers })
+    const result = await dvala.runAsync('perform(@test.asyncFail)', { effectHandlers: handlers })
     expect(result.type).toBe('error')
   })
 })

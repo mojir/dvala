@@ -568,7 +568,7 @@ sin(PI)
 
 **number-theory**: `isCoprime`, `isDivisibleBy`, `gcd`, `lcm`, `multinomial`, `isAmicable`, `eulerTotient`, `mobius`, `mertens`, `sigma`, `carmichaelLambda`, `cartesianProduct`, `perfectPower`, `modExp`, `modInv`, `extendedGcd`, `chineseRemainder`, `stirlingFirst`, `stirlingSecond`
 
-**assertion**: `assertEqual`, `assertNotEqual`, `assertGt`, `assertGte`, `assertLt`, `assertLte`, `assertTrue`, `assertFalse`, `assertTruthy`, `assertFalsy`, `assertNull`, `assert-throws`, `assert-throws-error`, `assert-not-throws`, `assertArray`, `assertBoolean`, `assertCollection`, `assertFunction`, `assertGrid`, `assertInteger`, `assertMatrix`, `assertNumber`, `assertObject`, `assertRegexp`, `assertSequence`, `assertString`, `assertVector`
+**assertion**: `assertEqual`, `assertNotEqual`, `assertGt`, `assertGte`, `assertLt`, `assertLte`, `assertTrue`, `assertFalse`, `assertTruthy`, `assertFalsy`, `assertNull`, `assertFails`, `assertFailsWith`, `assertSucceeds`, `assertArray`, `assertBoolean`, `assertCollection`, `assertFunction`, `assertGrid`, `assertInteger`, `assertMatrix`, `assertNumber`, `assertObject`, `assertRegexp`, `assertSequence`, `assertString`, `assertVector`
 
 ---
 
