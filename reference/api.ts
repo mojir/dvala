@@ -1061,6 +1061,10 @@ export const api = {
     'time.epochToIso-date',
     'time.iso-dateToEpoch',
   ] as const,
+  handler: [
+    'handler.retry',
+    'handler.fallback',
+  ] as const,
   shorthand: [
     '-short-regexp',
     '-short-fn',
@@ -1115,6 +1119,7 @@ export type FunctionalUtilsApiName = typeof api.functionalUtils[number]
 export type ConvertApiName = typeof api.convert[number]
 export type JsonApiName = typeof api.json[number]
 export type TimeApiName = typeof api.time[number]
+export type HandlerApiName = typeof api.handler[number]
 
 // Core functions - always available without import
 export type CoreNormalExpressionName
@@ -1149,6 +1154,7 @@ export type ModuleExpressionName
     | ConvertApiName
     | JsonApiName
     | TimeApiName
+    | HandlerApiName
 export type NormalExpressionName
   = | CoreNormalExpressionName
     | ModuleExpressionName

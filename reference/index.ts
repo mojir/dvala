@@ -27,6 +27,7 @@ import { collectionUtilsModule } from '../src/builtin/modules/collection'
 import { convertModule } from '../src/builtin/modules/convert'
 import { jsonModule } from '../src/builtin/modules/json'
 import { timeModule } from '../src/builtin/modules/time'
+import { handlerModule } from '../src/builtin/modules/handler'
 import { functionalUtilsModule } from '../src/builtin/modules/functional'
 import { gridModule } from '../src/builtin/modules/grid'
 import { linearAlgebraModule } from '../src/builtin/modules/linear-algebra'
@@ -255,6 +256,7 @@ export const moduleReference: Record<ModuleExpressionName, FunctionReference> = 
   ...moduledDocsToReference(convertModule),
   ...moduledDocsToReference(jsonModule),
   ...moduledDocsToReference(timeModule),
+  ...moduledDocsToReference(handlerModule),
 } as Record<ModuleExpressionName, FunctionReference>
 
 Object.entries(normalExpressionReference).forEach(([key, obj]) => {

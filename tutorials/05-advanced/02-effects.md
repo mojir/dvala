@@ -489,6 +489,65 @@ end
 
 ---
 
+## Handler Module
+
+The `handler` module provides reusable, parameterized handler functions for common patterns.
+
+```dvala
+let { retry, fallback } = import(handler)
+```
+
+### `fallback(value)`
+
+Catches `@dvala.error` and resumes with `value`:
+
+```dvala
+let { fallback } = import(handler);
+(0 / 0) ||> fallback(0)
+```
+
+The fallback value resumes the continuation at the error site — the computation continues with the fallback substituted:
+
+```dvala
+let { fallback } = import(handler);
+handle
+  let x = 0 / 0;
+  x + 1
+with fallback(0)
+end
+```
+
+### `retry(n)`
+
+Retries failing effects up to `n` times. Works by intercepting effects, dispatching them via `nxt`, and catching errors from the downstream handler:
+
+```dvala
+let { retry, fallback } = import(handler);
+perform(@my.eff, "data")
+  ||> [retry(2), @my.eff(x) -> x ++ "!", fallback("gave up")]
+```
+
+Key behaviors:
+- **Retries the effect**, not the whole expression — each retry re-dispatches the effect to the next handler in the chain
+- **Passes `@dvala.error` through** — runtime errors (like `0 / 0`) are not retried, only effect failures
+- **Propagates the original error** on final failure — the caller sees the real error message, not a wrapper
+
+### Composing `retry` and `fallback`
+
+Use a handler list `[...]` to put them in the same scope:
+
+```dvala
+let { retry, fallback } = import(handler);
+let httpHandler = @http.get(url) -> "response from " ++ url;
+perform(@http.get, "example.com") ||> [retry(3), httpHandler, fallback(null)]
+```
+
+This means: try `httpHandler` up to 3 times, fall back to `null` if all retries fail.
+
+Note: `||> retry(3) ||> fallback(null)` creates nested scopes — `fallback` catches errors that escape `retry`, but `retry` can't dispatch to `fallback` via `nxt`. Use the list form when handlers need to cooperate.
+
+---
+
 ## Host Handlers (JavaScript)
 
 When running Dvala from JavaScript/TypeScript, you register **host handlers** via `runAsync()`. Host handlers are async functions that receive a context object with four actions: `resume`, `fail`, `suspend`, and `next`.
@@ -613,3 +672,5 @@ const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
 | Full handler | `(arg, eff, nxt) -> ...` |
 | Error catching | `expr \|\|> @dvala.error(msg) -> default` |
 | Middleware | `expr \|\|> h1 \|\|> h2 \|\|> h3` |
+| Fallback | `expr \|\|> fallback(value)` |
+| Retry | `expr \|\|> [retry(n), handler]` |
