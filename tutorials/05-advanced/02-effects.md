@@ -494,7 +494,7 @@ end
 The `handler` module provides reusable, parameterized handler functions for common patterns.
 
 ```dvala
-let { retry, fallback } = import(handler)
+let { retry, fallback } = import(effectHandler)
 ```
 
 ### `fallback(value)`
@@ -502,14 +502,14 @@ let { retry, fallback } = import(handler)
 Catches `@dvala.error` and resumes with `value`:
 
 ```dvala
-let { fallback } = import(handler);
+let { fallback } = import(effectHandler);
 (0 / 0) ||> fallback(0)
 ```
 
 The fallback value resumes the continuation at the error site — the computation continues with the fallback substituted:
 
 ```dvala
-let { fallback } = import(handler);
+let { fallback } = import(effectHandler);
 handle
   let x = 0 / 0;
   x + 1
@@ -522,7 +522,7 @@ end
 Retries failing effects up to `n` times. Works by intercepting effects, dispatching them via `nxt`, and catching errors from the downstream handler:
 
 ```dvala
-let { retry, fallback } = import(handler);
+let { retry, fallback } = import(effectHandler);
 perform(@my.eff, "data")
   ||> [retry(2), @my.eff(x) -> x ++ "!", fallback("gave up")]
 ```
@@ -537,7 +537,7 @@ Key behaviors:
 Use a handler list `[...]` to put them in the same scope:
 
 ```dvala
-let { retry, fallback } = import(handler);
+let { retry, fallback } = import(effectHandler);
 let httpHandler = @http.get(url) -> "response from " ++ url;
 perform(@http.get, "example.com") ||> [retry(3), httpHandler, fallback(null)]
 ```
