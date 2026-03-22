@@ -141,7 +141,7 @@
       "patterns": [
         {
           "comment": "Effect name literal: @name or @dotted.name",
-          "match": "(@)([a-zA-Z][a-zA-Z0-9_?!-]*(?:\\.[a-zA-Z][a-zA-Z0-9_?!-]*)*)",
+          "match": "(@)([a-zA-Z_$][a-zA-Z0-9_$]*(?:\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*(?:\\.\\*)?)",
           "captures": {
             "1": { "name": "punctuation.definition.effect-name.dvala" },
             "2": { "name": "support.constant.effect-name.dvala" }
@@ -210,14 +210,14 @@
     "builtin-functions": {
       "patterns": [
         {
-          "comment": "Assertion & predicates",
+          "comment": "Predicates (is-prefix)",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|function\\?|string\\?|number\\?|integer\\?|boolean\\?|null\\?|zero\\?|pos\\?|neg\\?|even\\?|odd\\?|array\\?|collection\\?|sequence\\?|object\\?|regexp\\?|effect\\?|finite\\?|positive-infinity\\?|negative-infinity\\?|true\\?|false\\?|empty\\?|not-empty\\?|vector\\?|matrix\\?|grid\\?|blank\\?|identical\\?)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|isFunction|isString|isNumber|isInteger|isBoolean|isNull|isZero|isPos|isNeg|isEven|isOdd|isArray|isCollection|isSequence|isObject|isRegexp|isEffect|isFinite|isPositiveInfinity|isNegativeInfinity|isTrue|isFalse|isEmpty|isNotEmpty|isVector|isMatrix|isGrid|isBlank|identical)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Collection, array, sequence functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:filter|map|reduce|get|count|contains\\?|assoc|range|repeat|flatten|mapcat|moving-fn|running-fn|nth|first|last|pop|index-of|push|rest|next|reverse|second|slice|some|sort|take|take-last|drop|drop-last|take-while|drop-while)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:filter|map|reduce|get|count|contains|assoc|range|repeat|flatten|mapcat|movingFn|runningFn|nth|first|last|pop|indexOf|push|rest|next|reverse|second|slice|some|sort|take|takeLast|drop|dropLast|takeWhile|dropWhile)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Math functions",
@@ -227,12 +227,12 @@
         {
           "comment": "String, regexp, misc functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lower-case|upper-case|trim|join|split|regexp|re-match|replace|replace-all|not|boolean|compare|type-of|doc|arity|effect-name|effect-matcher)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lowerCase|upperCase|trim|join|split|regexp|reMatch|replace|replaceAll|not|boolean|compare|typeOf|doc|arity|effectName|effectMatcher)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Object functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:keys|vals|entries|find|dissoc|merge|merge-with|zipmap|select-keys)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:keys|vals|entries|find|dissoc|merge|mergeWith|zipmap|selectKeys)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Functional",
@@ -316,14 +316,9 @@
     "symbols": {
       "patterns": [
         {
-          "comment": "Quoted symbols like 'foo-bar'",
-          "name": "variable.other.quoted.dvala",
-          "match": "'(?:[^'\\\\]|\\\\.)*'"
-        },
-        {
-          "comment": "Regular identifiers (variable names, user-defined functions)",
+          "comment": "Regular identifiers (JS-style: letters, digits, _, $)",
           "name": "variable.other.dvala",
-          "match": "[a-zA-Z_%^?=!$<>+*/&|~-][\\w@%^?=!$<>+*/:&|~-]*"
+          "match": "[a-zA-Z_$][a-zA-Z0-9_$]*"
         }
       ]
     }
