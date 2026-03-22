@@ -7,6 +7,7 @@ import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget, NormalBuiltinSymbolNode, NormalExpressionNodeExpression, SpecialBuiltinSymbolNode, StringNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
+import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
 import type { SourceCodeInfo, StringToken, TemplateStringToken, TokenType } from '../../tokenizer/token'
 import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
@@ -97,6 +98,28 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     return expression
   } else if (isOperatorToken(token)) {
     const operatorName = token[1]
+
+    // Unary minus: -expr → (0 - expr)
+    // Only if next token is an operand (not comma, paren, bracket, etc.)
+    if (operatorName === '-') {
+      const nextToken = ctx.peekAhead(1)
+      const nextType = nextToken?.[0]
+      // Unary minus triggers on: -x, -3, -PI, -0xFF, -[...], -{...}
+      // NOT on -(  which is a prefix function call: -(a, b)
+      const isUnary = nextType === 'Number' || nextType === 'Symbol'
+        || (nextType === 'ReservedSymbol' && isNumberReservedSymbol(nextToken![1] as string))
+        || nextType === 'LBracket' || nextType === 'LBrace'
+        || nextType === 'string' || nextType === 'EffectName'
+        || nextType === 'BasePrefixedNumber'
+      if (isUnary) {
+        ctx.advance()
+        const operand = parseOperandPart(ctx)
+        const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0], token[2])
+        const minusSymbol: NormalBuiltinSymbolNode = withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['-']], token[2]) as NormalBuiltinSymbolNode
+        return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]]], token[2]) as NormalExpressionNodeExpression
+      }
+    }
+
     if (isBinaryOperator(operatorName)) {
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
