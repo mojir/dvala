@@ -66,7 +66,7 @@ for (i in range(count(items))) ->
     context: {
       bindings: { x: 15, y: 27 },
       effectHandlers: [
-        { pattern: 'host.plus', handler: 'async ({ args: [a, b], resume }) => { resume(a + b) }' },
+        { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
       ],
     },
     code: `
@@ -79,21 +79,21 @@ perform(@host.plus, [x, y])
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     context: {
       effectHandlers: [
-        { pattern: 'host.fetchUser', handler: `async ({ args: [id], resume, fail }) => {
+        { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     const user = await response.json();
     resume({ name: user.name, email: user.email, city: user.address.city });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetchPosts', handler: `async ({ args: [userId], resume, fail }) => {
+        { pattern: 'host.fetchPosts', handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
     const posts = await response.json();
     resume(posts.slice(0, 3).map(p => ({ title: p.title, body: p.body })));
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.delay', handler: `async ({ args: [ms], resume }) => {
+        { pattern: 'host.delay', handler: `async ({ arg: ms, resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
 }` },
@@ -125,7 +125,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     context: {
       effectHandlers: [
-        { pattern: 'host.fetchUser', handler: `async ({ args: [id], resume, fail }) => {
+        { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     if (!response.ok) { resume(null); return; }
@@ -133,7 +133,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetchTodos', handler: `async ({ args: [userId], resume, fail }) => {
+        { pattern: 'host.fetchTodos', handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
     const todos = await response.json();
