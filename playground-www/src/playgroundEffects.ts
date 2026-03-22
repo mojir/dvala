@@ -2,21 +2,13 @@ import type { ExampleEntry } from '../../src/builtin/interface'
 import type { EffectReference } from '../../reference'
 import type { PlaygroundAPI } from './playgroundAPI'
 
-// Derive kebab-case effect names from PlaygroundAPI at the type level
-type ToKebab<S extends string> = S extends `${infer Head}${infer Tail}`
-  ? Head extends Uppercase<Head>
-    ? Head extends Lowercase<Head>
-      ? `${Head}${ToKebab<Tail>}`
-      : `-${Lowercase<Head>}${ToKebab<Tail>}`
-    : `${Head}${ToKebab<Tail>}`
-  : S
-
+// Derive camelCase effect names from PlaygroundAPI at the type level
 type LeafPaths<T, Prefix extends string = ''> = {
   [K in keyof T & string]:
   T[K] extends (...args: never[]) => unknown
-    ? `${Prefix}${ToKebab<K>}`
+    ? `${Prefix}${K}`
     : T[K] extends object
-      ? LeafPaths<T[K], `${Prefix}${ToKebab<K>}.`>
+      ? LeafPaths<T[K], `${Prefix}${K}.`>
       : never
 }[keyof T & string]
 
@@ -49,7 +41,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
   const effects = definePlaygroundEffects([
     // ── UI ──
     {
-      name: 'playground.ui.show-toast',
+      name: 'playground.ui.showToast',
       group: 'UI',
       description: 'Show a toast notification. Rate-limited to one per 200 ms.',
       args: {
@@ -59,24 +51,24 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'level'] }],
       examples: [
-        { code: 'perform(@playground.ui.show-toast, "Hello!")', noRun: true },
-        { code: 'perform(@playground.ui.show-toast, ["Saved!", "success"])', noRun: true },
+        { code: 'perform(@playground.ui.showToast, "Hello!")', noRun: true },
+        { code: 'perform(@playground.ui.showToast, ["Saved!", "success"])', noRun: true },
       ],
     },
     // ── Editor ──
     {
-      name: 'playground.editor.get-content',
+      name: 'playground.editor.getContent',
       group: 'Editor',
       description: 'Get the current editor text.',
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let code = perform(@playground.editor.get-content)', noRun: true },
+        { code: 'let code = perform(@playground.editor.getContent)', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.set-content',
+      name: 'playground.editor.setContent',
       group: 'Editor',
       description: 'Replace the editor content.',
       args: {
@@ -85,11 +77,11 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['code'] }],
       examples: [
-        { code: 'perform(@playground.editor.set-content, "1 + 2")', noRun: true },
+        { code: 'perform(@playground.editor.setContent, "1 + 2")', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.insert-text',
+      name: 'playground.editor.insertText',
       group: 'Editor',
       description: 'Insert text at a position (defaults to cursor).',
       args: {
@@ -99,12 +91,12 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'position'] }],
       examples: [
-        { code: 'perform(@playground.editor.insert-text, "; hello")', noRun: true },
-        { code: 'perform(@playground.editor.insert-text, ["prefix ", 0])', noRun: true },
+        { code: 'perform(@playground.editor.insertText, "; hello")', noRun: true },
+        { code: 'perform(@playground.editor.insertText, ["prefix ", 0])', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.type-text',
+      name: 'playground.editor.typeText',
       group: 'Editor',
       description: 'Simulate typing into the editor character by character.',
       args: {
@@ -114,23 +106,23 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['text'] }, { argumentNames: ['text', 'delayMs'] }],
       examples: [
-        { code: 'perform(@playground.editor.type-text, "Hello!")', noRun: true },
-        { code: 'perform(@playground.editor.type-text, ["Hello!", 50])', noRun: true },
+        { code: 'perform(@playground.editor.typeText, "Hello!")', noRun: true },
+        { code: 'perform(@playground.editor.typeText, ["Hello!", 50])', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.get-selection',
+      name: 'playground.editor.getSelection',
       group: 'Editor',
       description: 'Get the currently selected text in the editor.',
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let sel = perform(@playground.editor.get-selection)', noRun: true },
+        { code: 'let sel = perform(@playground.editor.getSelection)', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.set-selection',
+      name: 'playground.editor.setSelection',
       group: 'Editor',
       description: 'Set the editor selection range.',
       args: {
@@ -140,22 +132,22 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['start', 'end'] }],
       examples: [
-        { code: 'perform(@playground.editor.set-selection, [0, 10])', noRun: true },
+        { code: 'perform(@playground.editor.setSelection, [0, 10])', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.get-cursor',
+      name: 'playground.editor.getCursor',
       group: 'Editor',
       description: 'Get the current cursor position.',
       args: {},
       returns: { type: 'integer' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let pos = perform(@playground.editor.get-cursor)', noRun: true },
+        { code: 'let pos = perform(@playground.editor.getCursor)', noRun: true },
       ],
     },
     {
-      name: 'playground.editor.set-cursor',
+      name: 'playground.editor.setCursor',
       group: 'Editor',
       description: 'Move the cursor to a position.',
       args: {
@@ -164,24 +156,24 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['position'] }],
       examples: [
-        { code: 'perform(@playground.editor.set-cursor, 0)', noRun: true },
+        { code: 'perform(@playground.editor.setCursor, 0)', noRun: true },
       ],
     },
 
     // ── Context ──
     {
-      name: 'playground.context.get-content',
+      name: 'playground.context.getContent',
       group: 'Context',
       description: 'Get the context panel JSON text.',
       args: {},
       returns: { type: 'string' },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let ctx = perform(@playground.context.get-content)', noRun: true },
+        { code: 'let ctx = perform(@playground.context.getContent)', noRun: true },
       ],
     },
     {
-      name: 'playground.context.set-content',
+      name: 'playground.context.setContent',
       group: 'Context',
       description: 'Replace the context panel content.',
       args: {
@@ -190,7 +182,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       returns: { type: 'null' },
       variants: [{ argumentNames: ['json'] }],
       examples: [
-        { code: 'perform(@playground.context.set-content, "{}")', noRun: true },
+        { code: 'perform(@playground.context.setContent, "{}")', noRun: true },
       ],
     },
 

@@ -9,21 +9,18 @@ function isApiLeaf(value: unknown): value is ApiLeaf {
   return typeof value === 'function'
 }
 
-function toKebab(str: string): string {
-  return str.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
-}
-
 export function createEffectHandlers(api: PlaygroundAPI): HandlerRegistration[] {
   const handlers: HandlerRegistration[] = []
 
   function walk(obj: Record<string, unknown>, prefix: string) {
     for (const [key, value] of Object.entries(obj)) {
-      const effectName = `${prefix}.${toKebab(key)}`
+      const effectName = `${prefix}.${key}`
       if (isApiLeaf(value)) {
         const fn = value
         const handler: EffectHandler = (ctx): void | Promise<void> => {
           try {
-            const result = fn(ctx.arg as never)
+            const args = Array.isArray(ctx.arg) ? ctx.arg : [ctx.arg]
+            const result = (fn as (...a: unknown[]) => unknown)(...args)
             if (result instanceof Promise) {
               return result.then(r => ctx.resume((r ?? null) as Any)).catch(e => ctx.fail((e as Error).message))
             }
