@@ -443,7 +443,7 @@ describe('contextStack — shadowing builtin', () => {
 describe('import with Dvala source', () => {
   it('should import module with dvala source functions', () => {
     // The number-theory module has Dvala source that gets parsed into multiple nodes
-    const result = dvalaFull.run('let { gcd } = import(number-theory); gcd(12, 8)')
+    const result = dvalaFull.run('let { gcd } = import(numberTheory); gcd(12, 8)')
     expect(result).toBe(4)
   })
 })
@@ -485,7 +485,7 @@ describe('recursive evaluator via module functions', () => {
   describe('executeUserDefinedRecursive — user closure via module callback', () => {
     it('should trigger recursive user-defined evaluation via arithmeticTakeWhile', () => {
       const result = dvalaFull.run(`
-        let nt = import(number-theory);
+        let nt = import(numberTheory);
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> val < 6)
       `)
       expect(result).toEqual([1, 2, 3, 4, 5])
@@ -493,7 +493,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger recursive user-defined with default params via module callback', () => {
       const result = dvalaFull.run(`
-        let nt = import(number-theory);
+        let nt = import(numberTheory);
         nt.arithmeticTakeWhile(0, 1, (val, idx = 0) -> val < 3)
       `)
       expect(result).toEqual([0, 1, 2])
@@ -501,7 +501,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger recursive user-defined with rest args via module callback', () => {
       const result = dvalaFull.run(`
-        let nt = import(number-theory);
+        let nt = import(numberTheory);
         nt.arithmeticTakeWhile(1, 2, (val, ...rest-args) -> val < 10)
       `)
       expect(result).toEqual([1, 3, 5, 7, 9])
@@ -521,7 +521,7 @@ describe('recursive evaluator via module functions', () => {
       // arithmeticTakeWhile calls executeFunction with the predicate
       // passing a builtin like isEven triggers executeBuiltinRecursive
       const result = dvalaFull.run(`
-        let nt = import(number-theory);
+        let nt = import(numberTheory);
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> val < 5 && isNumber(val))
       `)
       expect(result).toEqual([1, 2, 3, 4])
@@ -559,7 +559,7 @@ describe('recursive evaluator via module functions', () => {
       // When a user function called from a module callback calls a builtin,
       // that goes through evaluateNormalExpressionRecursive
       const result = dvalaFull.run(`
-        let nt = import(number-theory);
+        let nt = import(numberTheory);
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> do
           let doubled = val * 2;
           doubled < 12
@@ -1161,7 +1161,7 @@ describe('recursive evaluator — builtin and module dispatch', () => {
     // Rest args in recursive evaluator via module callback
     // arithmeticTakeWhile calls executeFunction so hits recursive path
     expect(dvalaFull.run(`
-      let nt = import(number-theory);
+      let nt = import(numberTheory);
       nt.arithmeticTakeWhile(1, 2, (val, ...rest-args) -> val < 10)
     `)).toEqual([1, 3, 5, 7, 9])
   })
@@ -1463,7 +1463,7 @@ describe('recursive evaluator — recur in callback function', () => {
     // Use arithmeticTakeWhile which calls executeFunction on a predicate
     // The callback is a user-defined function
     expect(dvalaFull.run(`
-      let nt = import(number-theory);
+      let nt = import(numberTheory);
       nt.arithmeticTakeWhile(1, 1, (n) -> n < 5)
     `)).toEqual([1, 2, 3, 4])
   })

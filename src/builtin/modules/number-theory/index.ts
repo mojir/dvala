@@ -466,7 +466,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 }
 
 export const numberTheoryModule: DvalaModule = {
-  name: 'number-theory',
+  name: 'numberTheory',
   functions: combinatoricalNormalExpression,
   source: numberTheoryModuleSource,
   docs: moduleDocs,

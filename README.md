@@ -194,7 +194,7 @@ A vector is simply a non-empty array containing only numbers. The `vec` module p
 ```dvala
 // Import vector and linear algebra modules
 let vec = import(vector);
-let lin = import(linear-algebra);
+let lin = import(linearAlgebra);
 
 // Vectors are just number arrays
 [1, 2, 3, 4, 5];              // This is a vector

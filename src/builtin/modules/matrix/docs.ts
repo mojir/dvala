@@ -77,7 +77,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { inv } = import(matrix);\ninv([[1, 2], [3, 4]])',
       'let { inv } = import(matrix);\ninv([[1, 2, 3], [4, 5, 7], [7, 8, 10]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.adj', 'matrix.isInvertible', 'linear-algebra.solve', 'matrix.mul', 'matrix.isOrthogonalMatrix'],
+    seeAlso: ['matrix.det', 'matrix.adj', 'matrix.isInvertible', 'linearAlgebra.solve', 'matrix.mul', 'matrix.isOrthogonalMatrix'],
   },
   'adj': {
     category: 'matrix',
@@ -367,7 +367,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isOrthogonalMatrix } = import(matrix);\nisOrthogonalMatrix([[1, 0], [0, -1]])',
       'let { isOrthogonalMatrix } = import(matrix);\nisOrthogonalMatrix([[1, 2], [3, 4]])',
     ],
-    seeAlso: ['matrix.isSymmetric', 'matrix.inv', 'matrix.isIdentity', 'linear-algebra.isOrthogonal'],
+    seeAlso: ['matrix.isSymmetric', 'matrix.inv', 'matrix.isIdentity', 'linearAlgebra.isOrthogonal'],
   },
   'isIdentity': {
     category: 'matrix',
@@ -565,7 +565,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { rank } = import(matrix);\nrank([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
       'let { rank } = import(matrix);\nrank([[2, 4, 6], [3, 6, 9], [4, 8, 12]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.isInvertible', 'linear-algebra.rref'],
+    seeAlso: ['matrix.det', 'matrix.isInvertible', 'linearAlgebra.rref'],
   },
   'frobeniusNorm': {
     category: 'matrix',

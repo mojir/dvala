@@ -5,41 +5,8 @@ import { reservedSymbolRecord } from './reservedNames'
 
 type Tokenizer<T extends Token> = (input: string, position: number) => TokenDescriptor<T | ErrorToken>
 
-const illegalSymbolCharacters = [
-  '(',
-  ')',
-  '[',
-  ']',
-  '{',
-  '}',
-  '\'',
-  '"',
-  '`',
-  ',',
-  '.',
-  ';',
-  ' ',
-  '\n',
-  '\r',
-  '\t',
-]
-const illegalFirstSymbolCharacters = [
-  '0',
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '@',
-  ...illegalSymbolCharacters,
-]
-const illegalSymbolCharacterSet = new Set(illegalSymbolCharacters)
-const illegalFirstSymbolCharacterSet = new Set(illegalFirstSymbolCharacters)
-
+const jsIdentifierFirstCharRegExp = /[a-zA-Z_$]/
+const jsIdentifierCharRegExp = /[a-zA-Z0-9_$]/
 const whitespaceRegExp = /\s/
 
 export const NO_MATCH: TokenDescriptor<never> = [0]
@@ -269,12 +236,12 @@ export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) 
 
   let i = position + 1
 
-  // Parse first segment
+  // Parse first segment (JS identifier rules, plus * for wildcards)
   const firstChar = input[i]
-  if (!firstChar || illegalFirstSymbolCharacterSet.has(firstChar)) return NO_MATCH
+  if (!firstChar || (!jsIdentifierFirstCharRegExp.test(firstChar) && firstChar !== '*')) return NO_MATCH
 
   let name = ''
-  while (i < input.length && !illegalSymbolCharacterSet.has(input[i]!)) {
+  while (i < input.length && (jsIdentifierCharRegExp.test(input[i]!) || input[i] === '*')) {
     name += input[i]
     i++
   }
@@ -283,12 +250,12 @@ export const tokenizeEffectName: Tokenizer<EffectNameToken> = (input, position) 
   while (i < input.length && input[i] === '.') {
     const dotPos = i
     i++ // skip dot
-    const segStart = i
-    if (i >= input.length || illegalFirstSymbolCharacterSet.has(input[i]!)) {
+    if (i >= input.length || (!jsIdentifierFirstCharRegExp.test(input[i]!) && input[i] !== '*')) {
       i = dotPos
       break
     }
-    while (i < input.length && !illegalSymbolCharacterSet.has(input[i]!)) {
+    const segStart = i
+    while (i < input.length && (jsIdentifierCharRegExp.test(input[i]!) || input[i] === '*')) {
       i++
     }
     name += `.${input.slice(segStart, i)}`
@@ -324,21 +291,18 @@ export const tokenizeSymbol: Tokenizer<SymbolToken> = (input, position) => {
     return [length + 1, ['Symbol', value]]
   }
 
-  if (!illegalFirstSymbolCharacterSet.has(value)) {
+  if (jsIdentifierFirstCharRegExp.test(value)) {
     const initialPosition = position
     position += 1
     let char = input[position]
 
-    while (char && !illegalSymbolCharacterSet.has(char)) {
+    while (char && jsIdentifierCharRegExp.test(char)) {
       value += char
       position += 1
       char = input[position]
     }
 
-    // : can be used as symbol character, but it must not be the last character
-    return value.endsWith(':')
-      ? [position - initialPosition - 1, ['Symbol', value.slice(0, -1)]]
-      : [position - initialPosition, ['Symbol', value]]
+    return [position - initialPosition, ['Symbol', value]]
   }
 
   return NO_MATCH

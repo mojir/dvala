@@ -231,7 +231,7 @@ All 3 assertion HOF functions migrated to `assertion.dvala`:
 
 All follow the same "generate values while predicate holds" pattern.
 
-**Implemented in `number-theory.dvala` (29):** ✅
+**Implemented in `numberTheory.dvala` (29):** ✅
 
 | Function | Notes |
 |----------|-------|

@@ -67,7 +67,7 @@ vec.cumsum([1, 2, 3, 4])
 Vector math — dot products, distances, normalization:
 
 ```dvala
-let lin = import(linear-algebra);
+let lin = import(linearAlgebra);
 lin.dot([1, 2, 3], [4, 5, 6])
 ```
 
@@ -94,6 +94,6 @@ s.padLeft("42", 5, "0")
 GCD, LCM, primality-related functions:
 
 ```dvala
-let nt = import(number-theory);
+let nt = import(numberTheory);
 nt.gcd(24, 36)
 ```

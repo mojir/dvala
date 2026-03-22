@@ -704,7 +704,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 }
 
 export const linearAlgebraModule: DvalaModule = {
-  name: 'linear-algebra',
+  name: 'linearAlgebra',
   functions: linearAlgebraNormalExpression,
   source: linearAlgebraModuleSource,
   docs: moduleDocs,

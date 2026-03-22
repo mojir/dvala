@@ -646,7 +646,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { variance } = import(vector);\nvariance([1, 2, 3])',
       'let { variance } = import(vector);\nvariance([1, 2, -3])',
     ],
-    seeAlso: ['linear-algebra.cov', 'vector.movingVariance', 'vector.centeredMovingVariance', 'vector.runningVariance', 'vector.stdev', 'vector.sampleVariance', 'vector.mad'],
+    seeAlso: ['linearAlgebra.cov', 'vector.movingVariance', 'vector.centeredMovingVariance', 'vector.runningVariance', 'vector.stdev', 'vector.sampleVariance', 'vector.mad'],
   },
   'movingVariance': {
     category: 'vector',

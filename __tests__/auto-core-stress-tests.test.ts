@@ -142,7 +142,7 @@ describe('module system edge cases', () => {
   })
 
   it('module function call works', () => {
-    const result = dvala.run('let m = import(number-theory); m.gcd(12, 8)')
+    const result = dvala.run('let m = import(numberTheory); m.gcd(12, 8)')
     expect(result).toBe(4)
   })
 

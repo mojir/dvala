@@ -22,8 +22,8 @@ const corePageExamples = [
 ]
 
 const moduleExamples = [
-  'let { dot } = import(linear-algebra);\ndot([1, 2, 3], [4, 5, 6])',
-  'let lin = import(linear-algebra);\n{\n "Cross product": lin.cross([1, 0, 0], [0, 1, 0]),\n  "Distance": lin.euclideanDistance([1, 1], [4, 5])\n}',
+  'let { dot } = import(linearAlgebra);\ndot([1, 2, 3], [4, 5, 6])',
+  'let lin = import(linearAlgebra);\n{\n "Cross product": lin.cross([1, 0, 0], [0, 1, 0]),\n  "Distance": lin.euclideanDistance([1, 1], [4, 5])\n}',
 ]
 
 const dvala = createDvala({ modules: allBuiltinModules })

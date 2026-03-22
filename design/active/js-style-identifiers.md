@@ -74,19 +74,27 @@ No renames needed — all already valid JS identifiers
 
 ## Implementation Order
 
-### Step 1: Rename function definitions in source
-- `src/builtin/core/*.ts` — rename the string keys in expression objects
-- `src/builtin/modules/*/index.ts` — rename module function keys
-- `src/builtin/modules/*/*.dvala` — rename function keys in dvala source
-- `src/builtin/modules/*/docs.ts` — rename doc keys
-- `reference/api.ts` — rename API name lists
+### Phase 1: Core function renames ✅
+- Renamed 44 core function keys and all usages
 
-### Step 2: Rename effect names
-- `src/evaluator/standardEffects.ts` — rename `dvala.io.read-stdin`
-- `src/parser/subParsers/parseOperand.ts` — update validDvalaEffects
-- Update all references
+### Phase 2: Module function renames ✅
+- Renamed ~270 module function keys across all modules
 
-### Step 3: Update tokenizer
+### Phase 3: Effect name renames ✅
+- Renamed `dvala.io.read-stdin` → `dvala.io.readStdin`
+- Renamed user-defined kebab-case variables in .dvala files and tests
+
+### Phase 4a: Sequence renames ✅
+- Renamed all number-theory sequence names (*-seq → *Seq, *-nth → *Nth, etc.)
+- Updated TS template types and runtime key generation
+
+### Phase 4b: Update tokenizer — DEFERRED
+Rejecting `-`, `?`, `!` in identifiers via illegalSymbolCharacters breaks too much:
+- `-` is used in `->` arrow, `-` operator, module names (`number-theory`)
+- Needs a more nuanced approach (e.g., context-aware tokenizer rules)
+- Old-style names still parse but all definitions use new JS-style names
+
+### Step 5 (remaining): Update tokenizer
 - `src/tokenizer/tokenizers.ts` — add `-`, `?`, `!` to illegalSymbolCharacters
 - `src/tokenizer/reservedNames.ts` — no changes needed (all reserved words are valid JS ids)
 - Update effect name tokenizer to use new rules for segments

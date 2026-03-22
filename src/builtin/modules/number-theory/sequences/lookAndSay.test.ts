@@ -5,7 +5,7 @@ import { numberTheoryModule } from '..'
 const dvala = createDvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return dvala.run(`let nt = import(number-theory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import(numberTheory); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('lookAndSay', () => {
   it('should return the correct sequence', () => {
