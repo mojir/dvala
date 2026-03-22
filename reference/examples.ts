@@ -146,10 +146,10 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
 // Interactive async example
 // Uses dvala.io.read for user input and host.fetch-* for API calls
 
-let lookupUser = (id-str) -> do
-  let id = number(id-str);
+let lookupUser = (idStr) -> do
+  let id = number(idStr);
   if not(isNumber(id)) || id < 1 || id > 10 then
-    perform(@dvala.io.print, "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
+    perform(@dvala.io.print, "Invalid user ID: " ++ idStr ++ ". Please enter 1-10.");
   else
     perform(@dvala.io.print, "Fetching user " ++ str(id) ++ "...");
     let user = perform(@host.fetchUser, id);
@@ -188,8 +188,8 @@ end;
 let main = () -> do
   perform(@dvala.io.print, "=== User Lookup Tool ===\\n");
 
-  loop (continue? = true) ->
-    if continue? then
+  loop (cont = true) ->
+    if cont then
       let input = perform(@dvala.io.read, "Enter a user ID (1-10), or cancel to quit:");
       if isNull(input) || input == "" then
         perform(@dvala.io.print, "Goodbye!");
@@ -260,12 +260,12 @@ let locations = {
 
 // Define game state
 let initialState = {
-  current-location: "forest",
+  currentLocation: "forest",
   inventory: [],
   visited: {},
-  game-over: false,
+  gameOver: false,
   moves: 0,
-  light-source: false
+  lightSource: false
 };
 
 // Helper functions
@@ -278,11 +278,11 @@ let isLocationHasItem = (location, item) -> do
 end;
 
 let describeLocation = (state) -> do
-  let location = get(locations, state.current-location);
+  let location = get(locations, state.currentLocation);
   let description = location.description;
 
   // Add visited status
-  let visitedStatus = if get(state.visited, state.current-location, 0) > 1 then
+  let visitedStatus = if get(state.visited, state.currentLocation, 0) > 1 then
     "You've been here before."
   else
     "This is your first time here."
@@ -304,13 +304,13 @@ let describeLocation = (state) -> do
 end;
 
 let getLocationItems = (state) -> do
-  let location = get(locations, state.current-location);
+  let location = get(locations, state.currentLocation);
   get(location, "items", [])
 end;
 
 // Game actions
 let move = (state, direction) -> do
-  let location = get(locations, state.current-location);
+  let location = get(locations, state.currentLocation);
   let exits = get(location, "exits", {});
 
   // Check if direction is valid
@@ -319,7 +319,7 @@ let move = (state, direction) -> do
     let isDark = newLocation == "tunnel" || newLocation == "treasure room";
 
     // Check if player has light source for dark areas
-    if isDark && not(state.light-source) then
+    if isDark && not(state.lightSource) then
       [state, "It's too dark to go that way without a light source."]
     else
       let newVisited = assoc(
@@ -329,7 +329,7 @@ let move = (state, direction) -> do
       );
       let newState = assoc(
         assoc(
-          assoc(state, "current-location", newLocation),
+          assoc(state, "currentLocation", newLocation),
           "visited",
           newVisited
         ),
@@ -348,26 +348,26 @@ let takeFn = (state, item) -> do
   let items = getLocationItems(state);
 
   if contains(items, item) then
-    let location = get(locations, state.current-location);
+    let location = get(locations, state.currentLocation);
     let newLocationItems = filter(items, -> $ != item);
     let newInventory = push(state.inventory, item);
 
     // Update game state
     let newLocations = assoc(
       locations, 
-      state.current-location,
+      state.currentLocation,
       assoc(location, "items", newLocationItems)
     );
 
     // Special case for torch
-    let hasLight = item == "torch" || state.light-source;
+    let hasLight = item == "torch" || state.lightSource;
 
     // Update locations and state
     let locations = newLocations;
     let newState = assoc(
       assoc(
         assoc(state, "inventory", newInventory),
-        "light-source", hasLight
+        "lightSource", hasLight
       ),
       "moves",
       state.moves + 1
@@ -380,7 +380,7 @@ end;
 
 let dropFn = (state, item) -> do
   if isHasItem(state, item) then
-    let location = get(locations, state.current-location);
+    let location = get(locations, state.currentLocation);
     let locationItems = get(location, "items", []);
     let newLocationItems = push(locationItems, item);
     let newInventory = filter(-> $ != item, state.inventory);
@@ -390,13 +390,13 @@ let dropFn = (state, item) -> do
 
     // Update locations and state
     let newLocation = assoc(location, "items", newLocationItems);
-    let locations = assoc(locations, state.current-location, newLocation);
+    let locations = assoc(locations, state.currentLocation, newLocation);
 
     let newState = assoc(
       assoc(
         assoc(
           state, "inventory", newInventory),
-          "light-source",
+          "lightSource",
           stillHasLight
         ),
         "moves",
@@ -419,7 +419,7 @@ end;
 let use = (state, item) -> do
   match item
     case "fishing rod" then
-      if state.current-location == "river" then
+      if state.currentLocation == "river" then
         [assoc(state, "moves", state.moves + 1), "You catch a small fish, but it slips away."]
       else
         [state, "There's no place to use a fishing rod here."]
@@ -427,17 +427,17 @@ let use = (state, item) -> do
     case "torch" then
       if isHasItem(state, item) then
         [
-          assoc(assoc(state, "light-source", true), "moves", state.moves + 1),
+          assoc(assoc(state, "lightSource", true), "moves", state.moves + 1),
           "The torch illuminates the area with a warm glow."
         ]
       else
         [state, "You don't have a torch."]
       end
     case "gold key" then
-      if isHasItem(state, item) && state.current-location == "treasure room" then
+      if isHasItem(state, item) && state.currentLocation == "treasure room" then
         [
           assoc(
-            assoc(state, "game-over", true),
+            assoc(state, "gameOver", true),
             "moves",
             state.moves + 1
           ),
@@ -531,7 +531,7 @@ let parseCommand = (state, input) -> do
     case "help" then
       [state, "Commands then go [direction], north, south, east, west, take [item], drop [item], inventory, look, use [item], help, quit"]
     case "quit" then
-      [assoc(state, "game-over", true), "Thanks for playing!"]
+      [assoc(state, "gameOver", true), "Thanks for playing!"]
   end ?? [state, "I don't understand that command. Type 'help' for a list of commands."];
 
   result
@@ -546,7 +546,7 @@ let gameLoop = (state) -> do
 
   perform(@dvala.io.print, "\\n" ++ message ++ "\\n");
 
-  if newState.game-over then
+  if newState.gameOver then
     perform(@dvala.io.print, "\\nGame over! You made " ++ str(newState.moves) ++ " moves.");
     newState
   else
