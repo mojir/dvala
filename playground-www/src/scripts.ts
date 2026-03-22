@@ -1613,6 +1613,7 @@ function populateSidebarApiSections(): void {
   for (const moduleName of data.moduleCategories) {
     const fns = byModule[moduleName]
     if (!fns || fns.length === 0) continue
+    fns.sort((a, b) => a.fnName.localeCompare(b.fnName))
     const sanitized = moduleName.replace(/\s+/g, '-')
     const fnLinks = fns.map(e => {
       const encodedKey = encodeURIComponent(e.key)
@@ -4282,6 +4283,8 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
     focusDvalaCode()
   }
 
+  const failEffect = makeFailHelper(ctx, resolve)
+
   return {
     ctx,
     title: 'Checkpoint',
@@ -4313,13 +4316,22 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
       }
     },
     renderFooter(el) {
+      if (failEffect.renderFooterOverride(el))
+        return
+      const failBtn = document.createElement('button')
+      failBtn.className = 'button button--danger'
+      failBtn.textContent = 'Fail…'
+      failBtn.addEventListener('click', failEffect.enter)
       const btn = document.createElement('button')
       btn.className = 'button button--primary'
       btn.textContent = 'Resume'
       btn.addEventListener('click', submit)
+      el.appendChild(failBtn)
       el.appendChild(btn)
     },
     onKeyDown(evt) {
+      if (failEffect.onKeyDown(evt))
+        return true
       if (evt.key === 'Enter') {
         evt.preventDefault()
         submit()
@@ -4329,6 +4341,101 @@ function makeCheckpointEffect(ctx: EffectContext, snapshot: Snapshot, resolve: (
     },
     resolve,
   }
+}
+
+/**
+ * Reusable fail-input helper for standard effect modals.
+ * Call `enter()` to switch to the fail-input UI, and delegate `renderFooterOverride` / `onKeyDown` from the host entry.
+ */
+function makeFailHelper(ctx: EffectContext, resolve: () => void) {
+  let active = false
+  let inputEl: HTMLTextAreaElement | null = null
+
+  const rerender = () => {
+    if (!effectPanelFooterEl)
+      return
+    effectPanelFooterEl.innerHTML = ''
+    const current = pendingEffects[pendingEffects.length - 1]
+    current?.renderFooter(effectPanelFooterEl)
+    if (active)
+      void Promise.resolve().then(() => inputEl?.focus())
+  }
+
+  const enter = () => {
+    active = true
+    rerender()
+  }
+
+  const cancel = () => {
+    active = false
+    inputEl = null
+    rerender()
+  }
+
+  const confirm = () => {
+    const raw = inputEl?.value.trim() ?? ''
+    ctx.fail(raw || undefined)
+    resolve()
+    resolveCurrentEffect()
+  }
+
+  /** If active, renders the fail-input UI into `el` and returns true. Otherwise returns false. */
+  const renderFooterOverride = (el: HTMLElement): boolean => {
+    if (!active) {
+      el.style.flexDirection = ''
+      el.style.alignItems = ''
+      return false
+    }
+    el.style.flexDirection = 'column'
+    el.style.alignItems = 'stretch'
+
+    const label = document.createElement('label')
+    label.className = 'effect-modal__input-label'
+    label.textContent = 'Error message (optional)'
+
+    inputEl = document.createElement('textarea')
+    inputEl.rows = 4
+    inputEl.className = 'effect-modal__textarea'
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        confirm()
+      }
+    })
+
+    const cancelBtn = document.createElement('button')
+    cancelBtn.className = 'button'
+    cancelBtn.textContent = 'Cancel'
+    cancelBtn.addEventListener('click', cancel)
+
+    const confirmBtn = document.createElement('button')
+    confirmBtn.className = 'button button--danger'
+    confirmBtn.textContent = 'Confirm'
+    confirmBtn.addEventListener('click', confirm)
+
+    const btnRow = document.createElement('div')
+    btnRow.className = 'modal-btn-row'
+    btnRow.style.marginTop = 'var(--space-2)'
+    btnRow.style.alignSelf = 'flex-end'
+    btnRow.appendChild(cancelBtn)
+    btnRow.appendChild(confirmBtn)
+
+    el.appendChild(label)
+    el.appendChild(inputEl)
+    el.appendChild(btnRow)
+    return true
+  }
+
+  const onKeyDown = (evt: KeyboardEvent): boolean => {
+    if (active && evt.key === 'Escape') {
+      evt.preventDefault()
+      cancel()
+      return true
+    }
+    return false
+  }
+
+  return { enter, renderFooterOverride, onKeyDown }
 }
 
 function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEffect {
@@ -4428,11 +4535,16 @@ function makeUnhandledEffect(ctx: EffectContext, resolve: () => void): PendingEf
         ignoreBtn.className = 'button'
         ignoreBtn.textContent = 'Ignore'
         ignoreBtn.addEventListener('click', ignore)
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', () => enterInputMode('fail'))
         const mockBtn = document.createElement('button')
         mockBtn.className = 'button button--primary'
         mockBtn.textContent = 'Mock response…'
         mockBtn.addEventListener('click', () => enterInputMode('resume'))
         el.appendChild(ignoreBtn)
+        el.appendChild(failBtn)
         el.appendChild(mockBtn)
       } else {
         el.style.flexDirection = 'column'
@@ -4512,6 +4624,8 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
       focusDvalaCode()
     }
 
+    const failEffect = makeFailHelper(ctx, resolve)
+
     registerPendingEffect({
       ctx,
       title: 'Input',
@@ -4531,13 +4645,22 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
         void Promise.resolve().then(() => textarea.focus())
       },
       renderFooter(el) {
+        if (failEffect.renderFooterOverride(el))
+          return
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', failEffect.enter)
         const btn = document.createElement('button')
         btn.className = 'button button--primary'
         btn.textContent = 'Submit'
         btn.addEventListener('click', submit)
+        el.appendChild(failBtn)
         el.appendChild(btn)
       },
       onKeyDown(evt) {
+        if (failEffect.onKeyDown(evt))
+          return true
         if (evt.key === 'Enter' && !evt.shiftKey && !evt.ctrlKey && !evt.metaKey && !evt.altKey) {
           evt.preventDefault()
           evt.stopPropagation()
@@ -4563,6 +4686,8 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
       focusDvalaCode()
     }
 
+    const failEffect = makeFailHelper(ctx, resolve)
+
     registerPendingEffect({
       ctx,
       title: 'Output',
@@ -4581,13 +4706,22 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
         el.appendChild(outputWrap)
       },
       renderFooter(el) {
+        if (failEffect.renderFooterOverride(el))
+          return
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', failEffect.enter)
         const btn = document.createElement('button')
         btn.className = 'button button--primary'
         btn.textContent = 'OK'
         btn.addEventListener('click', submit)
+        el.appendChild(failBtn)
         el.appendChild(btn)
       },
       onKeyDown(evt) {
+        if (failEffect.onKeyDown(evt))
+          return true
         if (evt.key === 'Enter' || evt.key === 'Escape') {
           evt.preventDefault()
           submit()
@@ -4626,6 +4760,8 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
       focusDvalaCode()
     }
 
+    const failEffect = makeFailHelper(ctx, resolve)
+
     registerPendingEffect({
       ctx,
       title: promptText,
@@ -4646,8 +4782,18 @@ function ioPickHandler(ctx: EffectContext): Promise<void> {
         })
         setFocus(focusedIndex)
       },
-      renderFooter(_el) { /* no footer buttons — items are clickable */ },
+      renderFooter(el) {
+        if (failEffect.renderFooterOverride(el))
+          return
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', failEffect.enter)
+        el.appendChild(failBtn)
+      },
       onKeyDown(evt) {
+        if (failEffect.onKeyDown(evt))
+          return true
         if (evt.key === 'ArrowDown') {
           evt.preventDefault()
           setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, items.length - 1))
@@ -4698,6 +4844,8 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
       focusDvalaCode()
     }
 
+    const failEffect = makeFailHelper(ctx, resolve)
+
     registerPendingEffect({
       ctx,
       title: question,
@@ -4718,8 +4866,18 @@ function ioConfirmHandler(ctx: EffectContext): Promise<void> {
         })
         setFocus(focusedIndex)
       },
-      renderFooter(_el) { /* no footer buttons */ },
+      renderFooter(el) {
+        if (failEffect.renderFooterOverride(el))
+          return
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', failEffect.enter)
+        el.appendChild(failBtn)
+      },
       onKeyDown(evt) {
+        if (failEffect.onKeyDown(evt))
+          return true
         if (evt.key === 'ArrowDown') {
           evt.preventDefault()
           setFocus(focusedIndex === null ? 0 : Math.min(focusedIndex + 1, 1))

@@ -109,7 +109,8 @@ function renderModuleSections(data: ReferenceData, currentPath: string): string 
   }
 
   const sections: string[] = []
-  for (const [moduleName, fns] of Object.entries(byModule)) {
+  for (const [moduleName, fns] of Object.entries(byModule).sort(([a], [b]) => a.localeCompare(b))) {
+    fns.sort((a, b) => a.fn.localeCompare(b.fn))
     sections.push(`
 <div class="sidebar__group" id="sidebar-group-module-${moduleName}">
   <div class="sidebar__group-header">${escapeHtml(moduleName)}</div>

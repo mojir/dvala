@@ -27,7 +27,9 @@ export function renderModulesPage(): string {
     byModule[moduleName].push({ key, fn: key.slice(dotIdx + 1), description: shortDesc })
   }
 
-  const sections = Object.entries(byModule).map(([moduleName, fns]) => `
+  const sections = Object.entries(byModule).sort(([a], [b]) => a.localeCompare(b)).map(([moduleName, fns]) => {
+    fns.sort((a, b) => a.fn.localeCompare(b.fn))
+    return `
 <section class="content-page__group">
   <h2 class="content-page__group-title">${escapeHtml(moduleName)}</h2>
   <ul class="content-page__entry-list">
@@ -37,7 +39,8 @@ export function renderModulesPage(): string {
       ${e.description ? `<span class="content-page__entry-desc">${escapeHtml(e.description)}</span>` : ''}
     </li>`).join('')}
   </ul>
-</section>`).join('\n')
+</section>`
+  }).join('\n')
 
   return `
 <div class="content-page">
