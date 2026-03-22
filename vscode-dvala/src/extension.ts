@@ -137,11 +137,6 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
       channel.append(str)
       ctx.resume(ctx.arg)
     } },
-    { pattern: 'dvala.io.print', handler: async (ctx) => {
-      const str = stringifyValue(ctx.arg, false)
-      channel.appendLine(str)
-      ctx.resume(ctx.arg)
-    } },
     { pattern: 'dvala.io.error', handler: async (ctx) => {
       const str = stringifyValue(ctx.arg, false)
       channel.appendLine(`[stderr] ${str}`)
@@ -150,13 +145,19 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
     { pattern: 'dvala.io.read', handler: async (ctx) => {
       const prompt = typeof ctx.arg === 'string' ? ctx.arg : undefined
       const result = await vscode.window.showInputBox({ prompt, ignoreFocusOut: true })
-      if (result === undefined) {
-        // User cancelled — resume with null (same as browser prompt cancel)
-        ctx.resume(null)
-      }
-      else {
-        ctx.resume(result)
-      }
+      ctx.resume(result ?? null)
+    } },
+    { pattern: 'dvala.io.pick', handler: async (ctx) => {
+      const arg = ctx.arg as { message?: string; options: string[] }
+      const options = Array.isArray(arg) ? arg : arg.options
+      const message = Array.isArray(arg) ? undefined : arg.message
+      const result = await vscode.window.showQuickPick(options, { placeHolder: message, ignoreFocusOut: true })
+      ctx.resume(result ?? null)
+    } },
+    { pattern: 'dvala.io.confirm', handler: async (ctx) => {
+      const message = typeof ctx.arg === 'string' ? ctx.arg : 'Confirm?'
+      const result = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: message, ignoreFocusOut: true })
+      ctx.resume(result === 'Yes')
     } },
     { pattern: '*', handler: async (ctx) => {
       // Pass through to standard handlers for standard effects
