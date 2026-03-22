@@ -79,14 +79,14 @@ perform(@host.plus, [x, y])
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     context: {
       effectHandlers: [
-        { pattern: 'host.fetch-user', handler: `async ({ args: [id], resume, fail }) => {
+        { pattern: 'host.fetchUser', handler: `async ({ args: [id], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     const user = await response.json();
     resume({ name: user.name, email: user.email, city: user.address.city });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetch-posts', handler: `async ({ args: [userId], resume, fail }) => {
+        { pattern: 'host.fetchPosts', handler: `async ({ args: [userId], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
     const posts = await response.json();
@@ -108,13 +108,13 @@ perform(@host.delay, 500);
 perform(@dvala.io.print, "Done waiting!");
 
 // Fetch a user from a REST API
-let user = perform(@host.fetch-user, 1);
+let user = perform(@host.fetchUser, 1);
 perform(@dvala.io.print, "User: " ++ user.name);
 perform(@dvala.io.print, "Email: " ++ user.email);
 perform(@dvala.io.print, "City: " ++ user.city);
 
 // Fetch their posts
-let posts = perform(@host.fetch-posts, 1);
+let posts = perform(@host.fetchPosts, 1);
 perform(@dvala.io.print, "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
 for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     `.trim(),
@@ -125,7 +125,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     context: {
       effectHandlers: [
-        { pattern: 'host.fetch-user', handler: `async ({ args: [id], resume, fail }) => {
+        { pattern: 'host.fetchUser', handler: `async ({ args: [id], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     if (!response.ok) { resume(null); return; }
@@ -133,7 +133,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetch-todos', handler: `async ({ args: [userId], resume, fail }) => {
+        { pattern: 'host.fetchTodos', handler: `async ({ args: [userId], resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
     const todos = await response.json();
@@ -152,7 +152,7 @@ let lookupUser = (id-str) -> do
     perform(@dvala.io.print, "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
   else
     perform(@dvala.io.print, "Fetching user " ++ str(id) ++ "...");
-    let user = perform(@host.fetch-user, id);
+    let user = perform(@host.fetchUser, id);
     if isNull(user) then
       perform(@dvala.io.print, "User not found.");
     else
@@ -167,7 +167,7 @@ end;
 
 let showTodos = (user) -> do
   perform(@dvala.io.print, "\\nFetching todos for " ++ user.name ++ "...");
-  let todos = perform(@host.fetch-todos, user.id);
+  let todos = perform(@host.fetchTodos, user.id);
   let done = filter(todos, -> $.completed);
   let pending = filter(todos, -> not($.completed));
 
@@ -689,11 +689,11 @@ let matrixMultiply = (matrixA, matrixB) -> do
   let colsB = count(first(matrixB));
 
   // Check if all rows have consistent length
-  if not(isEvery(matrixA, row -> isArray(row) && count(row) == colsA)) then
+  if some(matrixA, row -> not(isArray(row)) || count(row) != colsA) then
     perform(@dvala.error, "First matrix has inconsistent row lengths")
   end;
 
-  if not(isEvery(matrixB, row -> isArray(row) && count(row) == colsB)) then
+  if some(matrixB, row -> not(isArray(row)) || count(row) != colsB) then
     perform(@dvala.error, "Second matrix has inconsistent row lengths")
   end;
 
