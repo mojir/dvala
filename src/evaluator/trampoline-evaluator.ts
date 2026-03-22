@@ -1917,6 +1917,21 @@ function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step |
 }
 
 /**
+ * Check if a FnBodyFrame at position `fnBodyIndex` belongs to an effect handler.
+ * Handler bodies have an EffectResumeFrame in their outer continuation
+ * (between the FnBody and the next structural frame like LoopIterate or HandleWith).
+ */
+function hasEffectResumeBelow(k: ContinuationStack, fnBodyIndex: number): boolean {
+  for (let j = fnBodyIndex + 1; j < k.length; j++) {
+    const f = k[j]!
+    if (f.type === 'EffectResume') return true
+    // Stop searching at structural boundaries that a handler wouldn't cross
+    if (f.type === 'LoopIterate' || f.type === 'FnBody' || f.type === 'HandleWith') return false
+  }
+  return false
+}
+
+/**
  * Handle recur by searching the continuation stack for the nearest
  * LoopIterateFrame or FnBodyFrame, rebinding parameters, and restarting.
  * Uses frame-based slot binding for proper suspension support.
@@ -1942,6 +1957,10 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
     }
 
     if (frame.type === 'FnBody') {
+      // Skip handler function bodies — recur should target the enclosing loop,
+      // not the handler function. A handler body is identified by an
+      // EffectResumeFrame nearby in the outer continuation.
+      if (hasEffectResumeBelow(k, i)) continue
       // Found function body frame — restart with new params
       const { fn, outerEnv } = frame
       const remainingK = k.slice(i + 1)
