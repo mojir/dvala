@@ -13,15 +13,15 @@ describe('contextStack', () => {
 
     expect(() => contextStack.addValues({ recur: 'bar' }, undefined)).toThrow()
   })
-  it('should throw if storing normal expression', () => {
+  it('should allow shadowing normal builtins', () => {
     const contextStack = createContextStack()
 
-    expect(() => contextStack.addValues({ reduce: 'bar' }, undefined)).toThrow()
+    expect(() => contextStack.addValues({ reduce: 'bar' }, undefined)).not.toThrow()
   })
-  it('should throw if storing self', () => {
+  it('should allow shadowing self', () => {
     const contextStack = createContextStack()
 
-    expect(() => contextStack.addValues({ self: 'bar' }, undefined)).toThrow()
+    expect(() => contextStack.addValues({ self: 'bar' }, undefined)).not.toThrow()
   })
   it('should accept contexts parameter', () => {
     const contextStack = createContextStack({ contexts: [{ x: { value: 42 } }] })

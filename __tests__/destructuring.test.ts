@@ -385,11 +385,11 @@ describe('dvala Destructuring', () => {
       `)).toBe(30)
     })
 
-    test('builtin symbol without alias should fail', () => {
-      expect(() => dvala.run(`
+    test('builtin symbol without alias can be shadowed', () => {
+      expect(dvala.run(`
         let { slice } = { slice: 42 };
         slice
-      `)).toThrow(DvalaError)
+      `)).toBe(42)
     })
 
     test('special expression symbol with alias works', () => {
