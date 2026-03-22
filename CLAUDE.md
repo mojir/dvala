@@ -31,7 +31,8 @@ Create .md files inside /design
 - **`if/else if` chains need only one `end`**: `if A then B else if C then D else E end` — the entire chain is closed by a single `end`.
 - **`loop` has no `end`**: the body is a single expression; the loop is terminated by its body expression's own `end` (or by the enclosing `do...end` block). Never add a bare `end` for the loop itself.
 - **`do...end` always needs explicit `end`**: `do let x = 1; x + 1 end`.
-- **Unary minus doesn't work**: `-x` is parsed as a function call. Use `(0 - x)` instead.
+- **Unary minus works**: `-x`, `-3`, `-PI` are all valid. But `-(a, b)` is a prefix function call (subtraction).
+- **JS-style identifiers only**: letters, digits, `_`, `$`. No hyphens, `?`, or `!`. Use camelCase: `isArray`, `dropWhile`, `mergeWith`.
 - **Reserved keywords**: `next`, `in` (and others) cannot be used as variable names — use e.g. `nxt`, `inArr`.
 - **Built-in names cannot be shadowed**: avoid variable names like `min`, `max`, `count`, `push`, etc.
 

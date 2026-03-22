@@ -6,11 +6,12 @@ You are generating code in **Dvala** — a pure functional programming language 
 
 ## Critical Rules (Read Before Writing Any Code)
 
-1. **Operators REQUIRE whitespace.** `x+1` is a *variable name*, not an expression. Always write `x + 1`.
-2. **Semicolons are separators, not terminators.** In a sequence of expressions, `;` goes *between* them. The last expression in a block is its return value — no trailing semicolon needed.
-3. **`let` bindings are immutable.** You cannot reassign a variable. Build new values instead.
-4. **Use `self` to recurse inside a lambda.** `self(args)` calls the immediately enclosing function.
-5. **Comments:** `// single line` or `/* multi-line */`.
+1. **Identifiers follow JavaScript rules:** letters, digits, `_`, `$`. No hyphens, `?`, or `!` in names. Use camelCase: `isArray`, `dropWhile`, `mergeWith`.
+2. **Unary minus works:** `-x`, `-3`, `-PI` all work. But `-(a, b)` is still a prefix function call (subtraction).
+3. **Semicolons are separators, not terminators.** In a sequence of expressions, `;` goes *between* them. The last expression in a block is its return value — no trailing semicolon needed.
+4. **`let` bindings are immutable.** You cannot reassign a variable. Build new values instead.
+5. **Use `self` to recurse inside a lambda.** `self(args)` calls the immediately enclosing function.
+6. **Comments:** `// single line` or `/* multi-line */`.
 
 ---
 
