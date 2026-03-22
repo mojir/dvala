@@ -22,7 +22,7 @@ describe('module registration', () => {
       const dvala = createDvala({ modules: allBuiltinModules })
       expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
       expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
-      expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
+      expect(dvala.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
     })
   })
 
@@ -43,7 +43,7 @@ describe('module registration', () => {
     it('should support multiple selected modules', () => {
       const dvala = createDvala({ modules: [gridModule, assertModule] })
       expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
-      expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
+      expect(dvala.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
     })
   })
 

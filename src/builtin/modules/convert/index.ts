@@ -96,14 +96,14 @@ const areaUnits: UnitCategory = {
 }
 
 const speedUnits: UnitCategory = {
-  baseUnit: 'm/s',
+  baseUnit: 'mps',
   description: 'speed',
   units: {
-    'm/s': 1,
-    'km/h': 1 / 3.6,
+    'mps': 1,
+    'kmh': 1 / 3.6,
     'mph': 0.44704,
     'kn': 0.514444,
-    'ft/s': 0.3048,
+    'fps': 0.3048,
   },
 }
 
@@ -251,11 +251,11 @@ const unitDescriptions: Record<string, string> = {
   'acre': 'acres',
   'hectare': 'hectares',
   // Speed
-  'm/s': 'meters per second',
-  'km/h': 'kilometers per hour',
+  'mps': 'meters per second',
+  'kmh': 'kilometers per hour',
   'mph': 'miles per hour',
   'kn': 'knots',
-  'ft/s': 'feet per second',
+  'fps': 'feet per second',
   // Data
   'b': 'bytes',
   'kb': 'kilobytes',

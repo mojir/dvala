@@ -11,7 +11,7 @@ import assertionModuleSource from './assertion.dvala'
 import { moduleDocs } from './docs'
 
 const assertNormalExpression: BuiltinNormalExpressions = {
-  'assert=': {
+  'assertEqual': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -28,7 +28,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert!=': {
+  'assertNotEqual': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)

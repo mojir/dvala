@@ -23,22 +23,22 @@ describe('assert functions', () => {
         expect(dvala.run('assert("0")')).toBe('0')
       })
     })
-    describe('assert=', () => {
+    describe('assertEqual', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert=(1, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert=({ a: 1 }, { a: 2 })')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert=({ a: 1 }, { a: 2 }, "Expected deep equal")')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert=({ a: 1 }, { a: 1 })')).toBeNull()
+        expect(() => runWithAssert('a.assertEqual(1, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertEqual({ a: 1 }, { a: 2 })')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertEqual({ a: 1 }, { a: 2 }, "Expected deep equal")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertEqual({ a: 1 }, { a: 1 })')).toBeNull()
       })
     })
-    describe('assert!=', () => {
+    describe('assertNotEqual', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert!=(0, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert!=({ a: 2 }, { a: 2 })')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert!=({ a: 2 }, { a: 2 }, "Expected not deep equal")')).toThrowError(
+        expect(() => runWithAssert('a.assertNotEqual(0, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNotEqual({ a: 2 }, { a: 2 })')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNotEqual({ a: 2 }, { a: 2 }, "Expected not deep equal")')).toThrowError(
           AssertionError,
         )
-        expect(runWithAssert('a.assert!=({ a: 2 }, { a: 1 })')).toBeNull()
+        expect(runWithAssert('a.assertNotEqual({ a: 2 }, { a: 1 })')).toBeNull()
       })
     })
     describe('assertGt', () => {

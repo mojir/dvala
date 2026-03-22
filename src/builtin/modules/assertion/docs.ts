@@ -1,7 +1,7 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'assert!=': {
+  'assertNotEqual': {
     category: 'assertion',
     description: 'If $a is the same as $b it throws `AssertionError`.',
     returns: {
@@ -34,15 +34,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert!= } = import(assertion);\nhandle assert!=(0, 0, "Expected different values") with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
-      'let { assert!= } = import(assertion);\nhandle assert!=(0, 0) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
-      'let { assert!= } = import(assertion);\nhandle 0 assert!= 0 with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
-      'let { assert!= } = import(assertion);\nhandle assert!=(0, 1) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertNotEqual } = import(assertion);\nhandle assertNotEqual(0, 0, "Expected different values") with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertNotEqual } = import(assertion);\nhandle assertNotEqual(0, 0) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertNotEqual } = import(assertion);\nhandle 0 assertNotEqual 0 with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertNotEqual } = import(assertion);\nhandle assertNotEqual(0, 1) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
     ],
-    seeAlso: ['assertion.assert='],
+    seeAlso: ['assertion.assertEqual'],
     hideOperatorForm: true,
   },
-  'assert=': {
+  'assertEqual': {
     category: 'assertion',
     description: 'If $a is not structural equal to $b it throws `AssertionError`.',
     returns: {
@@ -75,11 +75,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { assert= } = import(assertion);\nhandle assert=({ "a": 1 }, { "a": 2 }, "Expected equal values") with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
-      'let { assert= } = import(assertion);\nhandle assert=({ "a": 1 }, { "a": 2 }) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
-      'let { assert= } = import(assertion);\nhandle assert=({ "a": 1 }, { "a": 1 }) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertEqual } = import(assertion);\nhandle assertEqual({ "a": 1 }, { "a": 2 }, "Expected equal values") with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertEqual } = import(assertion);\nhandle assertEqual({ "a": 1 }, { "a": 2 }) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
+      'let { assertEqual } = import(assertion);\nhandle assertEqual({ "a": 1 }, { "a": 1 }) with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end] end',
     ],
-    seeAlso: ['assertion.assert!='],
+    seeAlso: ['assertion.assertNotEqual'],
     hideOperatorForm: true,
   },
   'assertGt': {
