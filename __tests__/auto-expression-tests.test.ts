@@ -194,6 +194,8 @@ const skipModuleExampleIndices: Record<string, Set<number>> = {
   'assertion.assertFails': new Set([1]), // failure case returns string
   'assertion.assertFailsWith': new Set([1]),
   'assertion.assertSucceeds': new Set([1]),
+  'handler.retry': new Set([1, 2]),
+  'handler.fallback': new Set([1, 2]),
 }
 
 // =========================================================================
