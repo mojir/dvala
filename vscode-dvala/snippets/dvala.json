@@ -53,16 +53,6 @@
     ],
     "description": "Pattern match expression"
   },
-  "Cond": {
-    "prefix": "cond",
-    "body": [
-      "cond",
-      "\tcase $1 then $2",
-      "\tcase $3 then $4",
-      "end"
-    ],
-    "description": "Cond expression"
-  },
   "Loop": {
     "prefix": "loop",
     "body": [
@@ -85,15 +75,29 @@
     ],
     "description": "Do block"
   },
-  "Do-with (effect handler)": {
-    "prefix": "dow",
+  "Handle-with": {
+    "prefix": "handle",
     "body": [
-      "do",
+      "handle",
       "\t$1",
-      "with",
-      "\tcase effect($2) then ($3) -> $4",
+      "with $2",
       "end"
     ],
-    "description": "Do-with effect handler"
+    "description": "Handle-with effect handler"
+  },
+  "Effect pipe": {
+    "prefix": "||>",
+    "body": ["||> $1"],
+    "description": "Effect pipe operator"
+  },
+  "Handler shorthand": {
+    "prefix": "@",
+    "body": ["@$1($2) -> $3"],
+    "description": "Handler shorthand: @effect(param) -> body"
+  },
+  "Perform": {
+    "prefix": "perf",
+    "body": ["perform(@$1, $2)"],
+    "description": "Perform an effect"
   }
 }
