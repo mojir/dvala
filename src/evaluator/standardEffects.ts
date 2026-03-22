@@ -241,9 +241,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.io.pick': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const argObj = arg as UnknownRecord
-      const items = argObj?.['items']
-      const options = argObj?.['options']
+      const items = Array.isArray(arg) ? arg : (arg as UnknownRecord)?.['items']
+      const options = Array.isArray(arg) ? undefined : (arg as UnknownRecord)?.['options']
 
       if (!Array.isArray(items)) {
         throw new DvalaError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)

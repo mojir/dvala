@@ -4736,9 +4736,9 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
 
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
-    const argObj = ctx.arg as { items: string[]; options?: { prompt?: string; default?: number } }
-    const items = argObj.items
-    const options = argObj.options
+    const argRaw = ctx.arg
+    const items: string[] = Array.isArray(argRaw) ? argRaw as string[] : (argRaw as { items: string[] }).items
+    const options = Array.isArray(argRaw) ? undefined : (argRaw as { options?: { prompt?: string; default?: number } }).options
     const promptText = options?.prompt ?? 'Choose an item:'
     const defaultIndex = options?.default ?? null
     let focusedIndex: number | null = defaultIndex
