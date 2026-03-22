@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { examples } from '../reference/examples'
+import { tokenizeSource, parseTokenStream } from '../src/tooling'
 import type { HandlerRegistration } from '../src/evaluator/effectTypes'
 
 /**
@@ -85,7 +86,17 @@ function getMockHandlers(): HandlerRegistration[] {
   ]
 }
 
-describe('examples', () => {
+describe('examples — tokenize and parse', () => {
+  for (const example of examples) {
+    it(`tokenizes and parses: ${example.name} (${example.id})`, () => {
+      const tokens = tokenizeSource(example.code, true)
+      const ast = parseTokenStream(tokens)
+      expect(ast.body.length).toBeGreaterThan(0)
+    })
+  }
+})
+
+describe('examples — run', () => {
   const dvala = createDvala({ modules: allBuiltinModules })
 
   // Examples that require interactive input loops — the mock read handler
