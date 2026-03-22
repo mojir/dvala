@@ -945,4 +945,41 @@ describe('effect pipe ||>', () => {
       expect(result).toBe(41)
     })
   })
+
+  describe('recur inside handler body', () => {
+    it('recur inside handle...with handler should target enclosing loop', () => {
+      const result = dvala.run(`
+        loop (remaining = 3) ->
+          handle perform(@my.eff, remaining)
+          with @dvala.error(msg) ->
+            if remaining > 0 then recur(remaining - 1)
+            else "gave up"
+            end
+          end
+      `)
+      expect(result).toBe('gave up')
+    })
+
+    it('recur inside nxt error handler should target enclosing loop', () => {
+      const result = dvala.run(`
+        handle
+          perform(@my.eff, "go")
+        with [(arg, eff, nxt) ->
+          if eff == @dvala.error then nxt(eff, arg)
+          else
+            loop (remaining = 2) ->
+              handle nxt(eff, arg)
+              with @dvala.error(msg) ->
+                if remaining > 0 then recur(remaining - 1)
+                else "gave up after retries"
+                end
+              end
+          end,
+          @my.eff(x) -> perform(@dvala.error, "boom")
+        ]
+        end
+      `)
+      expect(result).toBe('gave up after retries')
+    })
+  })
 })
