@@ -618,7 +618,7 @@ let determinant = (matrix) -> do
         (acc, j) -> do
           let minor = getMinor(matrix, 0, j);
           let cofactor = determinant(minor);
-          let signFactor = if isEven(j) then 1 else (0 - 1) end;
+          let signFactor = if isEven(j) then 1 else -1 end;
           let term = signFactor * matrix[0][j] * cofactor;
           
           acc + term;

@@ -54,7 +54,7 @@ let determinant = matrix -> do
         (acc, j) -> do
           let minor = getMinor(matrix, 0, j);
           let cofactor = determinant(minor);
-          let signFactor = if isEven(j) then 1 else (0 - 1) end; // Sign factor based on column index
+          let signFactor = if isEven(j) then 1 else -1 end; // Sign factor based on column index
           let term = signFactor * get(get(matrix, 0), j) * cofactor;
           acc + term;
         end,
