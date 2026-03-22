@@ -3,7 +3,7 @@ import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken,
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
-type Tokenizer<T extends Token> = (input: string, position: number) => TokenDescriptor<T | ErrorToken>
+type Tokenizer<T extends Token> = (input: string, position: number, prevToken?: Token) => TokenDescriptor<T | ErrorToken>
 
 const jsIdentifierFirstCharRegExp = /[a-zA-Z_$]/
 const jsIdentifierCharRegExp = /[a-zA-Z0-9_$]/
@@ -113,12 +113,20 @@ const decimalNumberRegExp = /\d/
 const octalNumberRegExp = /[0-7]/
 const hexNumberRegExp = /[0-9a-f]/i
 const binaryNumberRegExp = /[01]/
-const postNumberRegExp = /[\s)\]}(,;]/
+const postNumberRegExp = /[\s)\]}(,;+\-*/%^<>=!&|.?~:#]/
 
-export const tokenizeNumber: Tokenizer<NumberToken> = (input, position) => {
+export const tokenizeNumber: Tokenizer<NumberToken> = (input, position, prevToken) => {
   let i: number
   const negate = input[position] === '-'
   const plusPrefix = input[position] === '+'
+  // Only allow -/+ prefix when NOT after an expression (number, symbol, closing bracket)
+  if ((negate || plusPrefix) && prevToken) {
+    const prevType = prevToken[0]
+    if (prevType === 'Number' || prevType === 'BasePrefixedNumber' || prevType === 'Symbol'
+      || prevType === 'ReservedSymbol' || prevType === 'RParen' || prevType === 'RBracket' || prevType === 'RBrace') {
+      return NO_MATCH
+    }
+  }
   const start = negate || plusPrefix ? position + 1 : position
   let hasDecimalPoint = false
   let hasExponent = false

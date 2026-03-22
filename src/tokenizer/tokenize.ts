@@ -15,12 +15,14 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
     hasDebugData: debug,
   }
 
+  let prevToken: Token | undefined
+
   while (position < input.length) {
     const sourceCodeInfo: SourceCodeInfo | undefined = debug
       ? createSourceCodeInfo(input, position, filePath)
       : undefined
 
-    const tokenDescriptor = getCurrentToken(input, position)
+    const tokenDescriptor = getCurrentToken(input, position, prevToken)
 
     const [count, token] = tokenDescriptor
 
@@ -33,6 +35,9 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
       }
 
       tokenStream.tokens.push(token)
+      if (token[0] !== 'Whitespace') {
+        prevToken = token
+      }
     }
   }
 
@@ -60,7 +65,7 @@ function createSourceCodeInfo(input: string, position: number, filePath?: string
   }
 }
 
-function getCurrentToken(input: string, position: number): TokenDescriptor<Token> {
+function getCurrentToken(input: string, position: number, prevToken: Token | undefined): TokenDescriptor<Token> {
   const initialPosition = position
 
   if (position === 0) {
@@ -72,7 +77,7 @@ function getCurrentToken(input: string, position: number): TokenDescriptor<Token
   }
 
   for (const tokenizer of tokenizers) {
-    const [nbrOfCharacters, token] = tokenizer(input, position)
+    const [nbrOfCharacters, token] = tokenizer(input, position, prevToken)
     position += nbrOfCharacters
     if (nbrOfCharacters === 0) {
       continue

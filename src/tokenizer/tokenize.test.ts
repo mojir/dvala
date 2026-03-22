@@ -13,6 +13,22 @@ describe('tokenenizers', () => {
     expect(tokenize('/* ', false, undefined).tokens[0]).toEqual(['Error', '/*', undefined, 'Unclosed multi-line comment at position 0'])
     expect(tokenize('\' ', false, undefined).tokens[0]).toEqual(['Error', '\' ', undefined, 'Unclosed quoted symbol at position 0'])
   })
+  test('numbers followed by operators without spaces', () => {
+    const tokens0div1 = tokenize('0/1', false, undefined).tokens
+    expect(tokens0div1[0]).toEqual(['Number', '0'])
+    expect(tokens0div1[1]).toEqual(['Operator', '/'])
+    expect(tokens0div1[2]).toEqual(['Number', '1'])
+
+    const tokens2minus1 = tokenize('2-1', false, undefined).tokens
+    expect(tokens2minus1[0]).toEqual(['Number', '2'])
+    expect(tokens2minus1[1]).toEqual(['Operator', '-'])
+    expect(tokens2minus1[2]).toEqual(['Number', '1'])
+
+    const tokens5star3 = tokenize('5*3', false, undefined).tokens
+    expect(tokens5star3[0]).toEqual(['Number', '5'])
+    expect(tokens5star3[1]).toEqual(['Operator', '*'])
+    expect(tokens5star3[2]).toEqual(['Number', '3'])
+  })
   test('tokenize shebang', () => {
     expect(tokenize('#!...\n10', false, undefined).tokens.length).toBe(3)
     expect(tokenize('#!...', false, undefined).tokens.length).toBe(1)
