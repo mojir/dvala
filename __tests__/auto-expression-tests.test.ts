@@ -259,7 +259,7 @@ end`
 // 3. MODULE EXPRESSIONS — arity + return type
 // =========================================================================
 for (const mod of allBuiltinModules) {
-  if (!mod.docs)
+  if (!mod.docs || Object.keys(mod.functions).length === 0)
     continue
 
   describe(`auto: arity enforcement (${mod.name})`, () => {

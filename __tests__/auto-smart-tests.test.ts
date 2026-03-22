@@ -353,6 +353,11 @@ describe('auto: docs metadata consistency (modules)', () => {
     if (!mod.docs)
       continue
 
+    // Skip modules where no docs entries have corresponding TS functions
+    const hasTsFunctions = Object.keys(mod.docs).some(fnName => mod.functions[fnName])
+    if (!hasTsFunctions)
+      continue
+
     describe(mod.name, () => {
       for (const [fnName, docs] of Object.entries(mod.docs!)) {
         const expr = mod.functions[fnName]
