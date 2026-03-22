@@ -82,13 +82,13 @@ function jsFnToExpression(jsFn: JsFunction): BuiltinNormalExpressions[string] {
 
 export function getProcModule(): DvalaModule {
   return {
-    name: 'cli-proc',
+    name: 'cliProc',
     functions: {
-      'get-cwd': jsFnToExpression(getCwd),
+      'getCwd': jsFnToExpression(getCwd),
       'exit': jsFnToExpression(exit),
-      'get-pid': jsFnToExpression(getPid),
-      'set-umask': jsFnToExpression(setUmask),
-      'get-umask': jsFnToExpression(getUmask),
+      'getPid': jsFnToExpression(getPid),
+      'setUmask': jsFnToExpression(setUmask),
+      'getUmask': jsFnToExpression(getUmask),
     },
   }
 }
