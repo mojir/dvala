@@ -256,7 +256,7 @@ async function execute(expression: string, bindings: Record<string, unknown>, re
           }
           const answer = await readLine(`${message} (1-${options.length}): `)
           const idx = parseInt(answer) - 1
-          resume(idx >= 0 && idx < options.length ? options[idx] : null)
+          resume(idx >= 0 && idx < options.length ? options[idx]! : null)
         } },
         { pattern: 'dvala.io.confirm', handler: async ({ arg, resume }) => {
           const message = typeof arg === 'string' ? arg : 'Confirm?'
