@@ -1050,8 +1050,8 @@ let Δ = β - α;
 
 // Descriptive names with special characters
 let userName = "alice";
-let isIsValid = true;
-let counter! = 0;
+let isValid = true;
+let counter = 0;
 
 // Mixed styles
 let dataSet₁ = [1, 2, 3];

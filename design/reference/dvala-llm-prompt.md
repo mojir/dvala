@@ -505,8 +505,8 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 |----------|-------------|
 | `jsonParse(s)` | Parse JSON string |
 | `jsonStringify(x, indent?)` | Serialize to JSON string |
-| `epoch->iso-date(ms)` | Milliseconds to ISO date string |
-| `iso-date->epoch(s)` | ISO date string to milliseconds |
+| `epochToIso-date(ms)` | Milliseconds to ISO date string |
+| `iso-dateToEpoch(s)` | ISO date string to milliseconds |
 | `import(path)` | Import module or function (see Modules) |
 | `doc(fn)` | Return documentation string |
 | `arity(fn)` | Return `{min, max}` arity object |

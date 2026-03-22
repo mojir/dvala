@@ -146,7 +146,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
 // Interactive async example
 // Uses dvala.io.read for user input and host.fetch-* for API calls
 
-let lookupUser! = (id-str) -> do
+let lookupUser = (id-str) -> do
   let id = number(id-str);
   if not(isNumber(id)) || id < 1 || id > 10 then
     perform(@dvala.io.print, "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
@@ -165,7 +165,7 @@ let lookupUser! = (id-str) -> do
   end
 end;
 
-let showTodos! = (user) -> do
+let showTodos = (user) -> do
   perform(@dvala.io.print, "\\nFetching todos for " ++ user.name ++ "...");
   let todos = perform(@host.fetch-todos, user.id);
   let done = filter(todos, -> $.completed);
@@ -185,7 +185,7 @@ let showTodos! = (user) -> do
 end;
 
 // Main interaction loop
-let main! = () -> do
+let main = () -> do
   perform(@dvala.io.print, "=== User Lookup Tool ===\\n");
 
   loop (continue? = true) ->
@@ -194,10 +194,10 @@ let main! = () -> do
       if isNull(input) || input == "" then
         perform(@dvala.io.print, "Goodbye!");
       else
-        let user = lookupUser!(input);
+        let user = lookupUser(input);
         if user then
           let show = perform(@dvala.io.read, "Show todos for " ++ user.name ++ "? (yes/no)");
-          if show == "yes" then showTodos!(user) end;
+          if show == "yes" then showTodos(user) end;
         end;
         perform(@dvala.io.print, "");
         recur(true)
@@ -206,7 +206,7 @@ let main! = () -> do
     else null end
 end;
 
-main!()
+main()
     `.trim(),
   },
   {
@@ -344,7 +344,7 @@ let move = (state, direction) -> do
   end
 end;
 
-let take! = (state, item) -> do
+let takeFn = (state, item) -> do
   let items = getLocationItems(state);
 
   if contains(items, item) then
@@ -378,7 +378,7 @@ let take! = (state, item) -> do
   end
 end;
 
-let drop! = (state, item) -> do
+let dropFn = (state, item) -> do
   if isHasItem(state, item) then
     let location = get(locations, state.current-location);
     let locationItems = get(location, "items", []);
@@ -517,9 +517,9 @@ let parseCommand = (state, input) -> do
     case "west" then
       move(state, "west")
     case "take" then
-      take!(state, args)
+      takeFn(state, args)
     case "drop" then
-      drop!(state, args)
+      dropFn(state, args)
     case "inventory" then
       inventory(state)
     case "i" then

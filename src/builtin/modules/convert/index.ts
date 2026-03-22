@@ -299,6 +299,10 @@ const unitDescriptions: Record<string, string> = {
   'k': 'Kelvin',
 }
 
+function convertFnName(from: string, to: string): string {
+  return `${from}To${to.charAt(0).toUpperCase()}${to.slice(1)}`
+}
+
 // --- Generate linear conversion functions ---
 
 function generateLinearConversions(category: UnitCategory): BuiltinNormalExpressions {
@@ -313,15 +317,15 @@ function generateLinearConversions(category: UnitCategory): BuiltinNormalExpress
       const fromFactor = category.units[from]!
       const toFactor = category.units[to]!
       const conversionFactor = fromFactor / toFactor
-      const fnName = `${from}->${to}`
+      const fnName = `${from}To${to.charAt(0).toUpperCase()}${to.slice(1)}`
       const fromDesc = unitDescriptions[from]!
       const toDesc = unitDescriptions[to]!
 
       const seeAlso = [
-        `convert.${to}->${from}`,
+        `convert.${convertFnName(to, from)}`,
         ...unitNames
           .filter(u => u !== from && u !== to)
-          .map(u => `convert.${from}->${u}`),
+          .map(u => `convert.${convertFnName(from, u)}`),
       ]
 
       result[fnName] = {
@@ -360,15 +364,15 @@ function generateTemperatureConversions(): BuiltinNormalExpressions {
       if (from === to)
         continue
 
-      const fnName = `${from}->${to}`
+      const fnName = `${from}To${to.charAt(0).toUpperCase()}${to.slice(1)}`
       const fromDesc = unitDescriptions[from]!
       const toDesc = unitDescriptions[to]!
 
       const seeAlso = [
-        `convert.${to}->${from}`,
+        `convert.${convertFnName(to, from)}`,
         ...temperatureUnits
           .filter(u => u !== from && u !== to)
-          .map(u => `convert.${from}->${u}`),
+          .map(u => `convert.${convertFnName(from, u)}`),
       ]
 
       result[fnName] = {
