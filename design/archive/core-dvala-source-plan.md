@@ -235,42 +235,42 @@ All follow the same "generate values while predicate holds" pattern.
 
 | Function | Notes |
 |----------|-------|
-| `arithmetic-take-while` | `(start, step, fn)` — arithmetic progression |
-| `geometric-take-while` | `(start, ratio, fn)` — geometric progression |
-| `polygonal-take-while` | `(sides, fn)` — polygonal numbers |
-| `fibonacci-take-while` | Inline recurrence: a=0, b=1 |
-| `tribonacci-take-while` | Inline recurrence: a=0, b=1, c=1 |
-| `lucas-take-while` | Inline recurrence: a=2, b=1 |
-| `pell-take-while` | Inline recurrence: a=1, b=2 |
-| `padovan-take-while` | Inline recurrence: a=1, b=1, c=1 |
-| `factorial-take-while` | Inline: fact *= (i+1) |
-| `prime-take-while` | Uses `isPrime` helper |
-| `composite-take-while` | Uses `isComposite` helper |
-| `abundant-take-while` | Uses `isAbundant` helper |
-| `deficient-take-while` | Uses `isDeficient` helper |
-| `perfect-square-take-while` | Direct: `i * i` |
-| `perfect-cube-take-while` | Direct: `i * i * i` |
-| `happy-take-while` | Uses `isHappy` helper |
-| `look-and-say-take-while` | Full Dvala implementation with `nextTerm` helper |
-| `bell-take-while` | Precomputed `bellNumbers` constant (50 values) |
-| `catalan-take-while` | Precomputed `catalanNumbers` constant (50 values) |
-| `mersenne-take-while` | Precomputed `mersenneNumbers` constant |
-| `partition-take-while` | Precomputed `partitionNumbers` constant (100 values) |
-| `perfect-take-while` | Precomputed `perfectNumbers` constant |
-| `sylvester-take-while` | Precomputed `sylvesterNumbers` constant |
-| `lucky-take-while` | Precomputed `luckyNumbers` constant (3100 values); limit ~31,429 |
-| `bernoulli-take-while` | Inline rational recurrence using `binom` helper |
-| `golomb-take-while` | Self-referential, fully in Dvala |
-| `perfect-power-take-while` | Uses `isPerfectPower` helper (loop-based, no `log2`) |
-| `recaman-take-while` | Self-referential, fully in Dvala |
-| `thue-morse-take-while` | Uses `countBits` helper |
+| `arithmeticTakeWhile` | `(start, step, fn)` — arithmetic progression |
+| `geometricTakeWhile` | `(start, ratio, fn)` — geometric progression |
+| `polygonalTakeWhile` | `(sides, fn)` — polygonal numbers |
+| `fibonacciTakeWhile` | Inline recurrence: a=0, b=1 |
+| `tribonacciTakeWhile` | Inline recurrence: a=0, b=1, c=1 |
+| `lucasTakeWhile` | Inline recurrence: a=2, b=1 |
+| `pellTakeWhile` | Inline recurrence: a=1, b=2 |
+| `padovanTakeWhile` | Inline recurrence: a=1, b=1, c=1 |
+| `factorialTakeWhile` | Inline: fact *= (i+1) |
+| `primeTakeWhile` | Uses `isPrime` helper |
+| `compositeTakeWhile` | Uses `isComposite` helper |
+| `abundantTakeWhile` | Uses `isAbundant` helper |
+| `deficientTakeWhile` | Uses `isDeficient` helper |
+| `perfectSquareTakeWhile` | Direct: `i * i` |
+| `perfectCubeTakeWhile` | Direct: `i * i * i` |
+| `happyTakeWhile` | Uses `isHappy` helper |
+| `lookAndSayTakeWhile` | Full Dvala implementation with `nextTerm` helper |
+| `bellTakeWhile` | Precomputed `bellNumbers` constant (50 values) |
+| `catalanTakeWhile` | Precomputed `catalanNumbers` constant (50 values) |
+| `mersenneTakeWhile` | Precomputed `mersenneNumbers` constant |
+| `partitionTakeWhile` | Precomputed `partitionNumbers` constant (100 values) |
+| `perfectTakeWhile` | Precomputed `perfectNumbers` constant |
+| `sylvesterTakeWhile` | Precomputed `sylvesterNumbers` constant |
+| `luckyTakeWhile` | Precomputed `luckyNumbers` constant (3100 values); limit ~31,429 |
+| `bernoulliTakeWhile` | Inline rational recurrence using `binom` helper |
+| `golombTakeWhile` | Self-referential, fully in Dvala |
+| `perfectPowerTakeWhile` | Uses `isPerfectPower` helper (loop-based, no `log2`) |
+| `recamanTakeWhile` | Self-referential, fully in Dvala |
+| `thueMorseTakeWhile` | Uses `countBits` helper |
 
 **Kept in TypeScript (2):**
 
 | Function | Reason |
 |----------|--------|
-| `collatz-take-while` | Single-value sequence (parameterised start n) |
-| `juggler-take-while` | Single-value sequence (parameterised start n) |
+| `collatzTakeWhile` | Single-value sequence (parameterised start n) |
+| `jugglerTakeWhile` | Single-value sequence (parameterised start n) |
 
 ### Summary
 

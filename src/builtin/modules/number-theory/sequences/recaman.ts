@@ -30,6 +30,6 @@ export function generateRecamanSequence(n: number): number[] {
 }
 
 export const recamanSequence: SequenceDefinition<'recaman'> = {
-  'recaman-seq': length => generateRecamanSequence(length),
-  'recaman?': () => true,
+  'recamanSeq': length => generateRecamanSequence(length),
+  'isRecaman': () => true,
 }

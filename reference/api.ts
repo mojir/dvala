@@ -1,13 +1,13 @@
 export { categories, categoryRecord, coreCategories, isDataType, moduleCategories } from '../src/builtin/interface'
 export type { Category, DataType } from '../src/builtin/interface'
 
-function getNumberTheorySequenceNames<T extends string>(name: T): [`number-theory.${T}-seq`, `number-theory.${T}-nth`, `number-theory.${T}-take-while`, `number-theory.${T}?`] {
-  return [`number-theory.${name}-seq`, `number-theory.${name}-nth`, `number-theory.${name}-take-while`, `number-theory.${name}?`]
+function getNumberTheorySequenceNames<T extends string>(name: T): [`number-theory.${T}Seq`, `number-theory.${T}Nth`, `number-theory.${T}TakeWhile`, `number-theory.is${Capitalize<T>}`] {
+  return [`number-theory.${name}Seq`, `number-theory.${name}Nth`, `number-theory.${name}TakeWhile`, `number-theory.is${name.charAt(0).toUpperCase()}${name.slice(1)}` as `number-theory.is${Capitalize<T>}`]
 }
 
-function getVectorReductionNames<T extends string>(name: T): [`vector.${T}`, `vector.moving-${string}`, `vector.centered-moving-${string}`, `vector.running-${string}`] {
-  const baseName = name.replace(/^/, '')
-  return [`vector.${name}`, `vector.moving-${baseName}`, `vector.centered-moving-${baseName}`, `vector.running-${baseName}`]
+function getVectorReductionNames<T extends string>(name: T): [`vector.${T}`, `vector.moving${Capitalize<T>}`, `vector.centeredMoving${Capitalize<T>}`, `vector.running${Capitalize<T>}`] {
+  const capName = name.charAt(0).toUpperCase() + name.slice(1)
+  return [`vector.${name}`, `vector.moving${capName}`, `vector.centeredMoving${capName}`, `vector.running${capName}`] as [`vector.${T}`, `vector.moving${Capitalize<T>}`, `vector.centeredMoving${Capitalize<T>}`, `vector.running${Capitalize<T>}`]
 }
 
 function getVectorMovingNames<T extends string>(name: T): [`vector.moving-${string}`, `vector.centered-moving-${string}`, `vector.running-${string}`] {
@@ -479,11 +479,11 @@ export const api = {
     ...getNumberTheorySequenceNames('sylvester'),
     ...getNumberTheorySequenceNames('thueMorse'),
     ...getNumberTheorySequenceNames('tribonacci'),
-    'number-theory.collatz-seq',
-    'number-theory.juggler-seq',
-    'number-theory.bernoulli-seq',
-    'number-theory.bernoulli-take-while',
-    'number-theory.bernoulli-nth',
+    'number-theory.collatzSeq',
+    'number-theory.jugglerSeq',
+    'number-theory.bernoulliSeq',
+    'number-theory.bernoulliTakeWhile',
+    'number-theory.bernoulliNth',
     'number-theory.combinations',
     'number-theory.countCombinations',
     'number-theory.derangements',

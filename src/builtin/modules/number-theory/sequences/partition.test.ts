@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('partition', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:partition-seq(1)')).toEqual([1])
-    expect(runNth('nth:partition-seq(2)')).toEqual([1, 2])
-    expect(runNth('nth:partition-seq(3)')).toEqual([1, 2, 3])
-    expect(runNth('nth:partition-seq(4)')).toEqual([1, 2, 3, 5])
-    expect(runNth('nth:partition-seq(299)')).toEqual([
+    expect(runNth('nth:partitionSeq(1)')).toEqual([1])
+    expect(runNth('nth:partitionSeq(2)')).toEqual([1, 2])
+    expect(runNth('nth:partitionSeq(3)')).toEqual([1, 2, 3])
+    expect(runNth('nth:partitionSeq(4)')).toEqual([1, 2, 3, 5])
+    expect(runNth('nth:partitionSeq(299)')).toEqual([
       1,
       2,
       3,
@@ -315,34 +315,34 @@ describe('partition', () => {
       8030248384943040,
       8620496275465025,
     ])
-    expect(() => runNth('nth:partition-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:partition-seq(300)')).toThrow(DvalaError)
+    expect(() => runNth('nth:partitionSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:partitionSeq(300)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:partition-nth(1)')).toBe(1)
-    expect(runNth('nth:partition-nth(2)')).toBe(2)
-    expect(runNth('nth:partition-nth(3)')).toBe(3)
-    expect(runNth('nth:partition-nth(4)')).toBe(5)
-    expect(runNth('nth:partition-nth(299)')).toBe(8620496275465025)
+    expect(runNth('nth:partitionNth(1)')).toBe(1)
+    expect(runNth('nth:partitionNth(2)')).toBe(2)
+    expect(runNth('nth:partitionNth(3)')).toBe(3)
+    expect(runNth('nth:partitionNth(4)')).toBe(5)
+    expect(runNth('nth:partitionNth(299)')).toBe(8620496275465025)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:partition-take-while(-> $ < 100)')).toEqual([1, 2, 3, 5, 7, 11, 15, 22, 30, 42, 56, 77])
+    expect(runNth('nth:partitionTakeWhile(-> $ < 100)')).toEqual([1, 2, 3, 5, 7, 11, 15, 22, 30, 42, 56, 77])
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:partition?(0)')).toEqual(false)
-    expect(runNth('nth:partition?(1)')).toEqual(true)
-    expect(runNth('nth:partition?(2)')).toEqual(true)
-    expect(runNth('nth:partition?(3)')).toEqual(true)
-    expect(runNth('nth:partition?(4)')).toEqual(false)
-    expect(runNth('nth:partition?(5)')).toEqual(true)
-    expect(runNth('nth:partition?(6)')).toEqual(false)
-    expect(runNth('nth:partition?(7)')).toEqual(true)
-    expect(runNth('nth:partition?(8)')).toEqual(false)
-    expect(runNth('nth:partition?(9)')).toEqual(false)
-    expect(runNth('nth:partition?(8620496275465025)')).toEqual(true)
-    expect(runNth('nth:partition?(8620496275465026)')).toEqual(false)
+    expect(runNth('nth:isPartition(0)')).toEqual(false)
+    expect(runNth('nth:isPartition(1)')).toEqual(true)
+    expect(runNth('nth:isPartition(2)')).toEqual(true)
+    expect(runNth('nth:isPartition(3)')).toEqual(true)
+    expect(runNth('nth:isPartition(4)')).toEqual(false)
+    expect(runNth('nth:isPartition(5)')).toEqual(true)
+    expect(runNth('nth:isPartition(6)')).toEqual(false)
+    expect(runNth('nth:isPartition(7)')).toEqual(true)
+    expect(runNth('nth:isPartition(8)')).toEqual(false)
+    expect(runNth('nth:isPartition(9)')).toEqual(false)
+    expect(runNth('nth:isPartition(8620496275465025)')).toEqual(true)
+    expect(runNth('nth:isPartition(8620496275465026)')).toEqual(false)
   })
 })

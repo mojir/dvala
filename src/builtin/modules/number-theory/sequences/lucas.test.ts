@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('lucas', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:lucas-seq(1)')).toEqual([2])
-    expect(runNth('nth:lucas-seq(2)')).toEqual([2, 1])
-    expect(runNth('nth:lucas-seq(3)')).toEqual([2, 1, 3])
-    expect(runNth('nth:lucas-seq(4)')).toEqual([2, 1, 3, 4])
-    expect(runNth('nth:lucas-seq(77)')).toEqual([
+    expect(runNth('nth:lucasSeq(1)')).toEqual([2])
+    expect(runNth('nth:lucasSeq(2)')).toEqual([2, 1])
+    expect(runNth('nth:lucasSeq(3)')).toEqual([2, 1, 3])
+    expect(runNth('nth:lucasSeq(4)')).toEqual([2, 1, 3, 4])
+    expect(runNth('nth:lucasSeq(77)')).toEqual([
       2,
       1,
       3,
@@ -93,37 +93,37 @@ describe('lucas', () => {
       4721424167835364,
       7639424778862807,
     ])
-    expect(() => runNth('nth:lucas-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:lucas-seq(78)')).toThrow(DvalaError)
+    expect(() => runNth('nth:lucasSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:lucasSeq(78)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:lucas-nth(1)')).toEqual(2)
-    expect(runNth('nth:lucas-nth(2)')).toEqual(1)
-    expect(runNth('nth:lucas-nth(3)')).toEqual(3)
-    expect(runNth('nth:lucas-nth(4)')).toEqual(4)
-    expect(runNth('nth:lucas-nth(5)')).toEqual(7)
-    expect(runNth('nth:lucas-nth(6)')).toEqual(11)
-    expect(runNth('nth:lucas-nth(7)')).toEqual(18)
-    expect(runNth('nth:lucas-nth(8)')).toEqual(29)
-    expect(runNth('nth:lucas-nth(77)')).toEqual(7639424778862807)
+    expect(runNth('nth:lucasNth(1)')).toEqual(2)
+    expect(runNth('nth:lucasNth(2)')).toEqual(1)
+    expect(runNth('nth:lucasNth(3)')).toEqual(3)
+    expect(runNth('nth:lucasNth(4)')).toEqual(4)
+    expect(runNth('nth:lucasNth(5)')).toEqual(7)
+    expect(runNth('nth:lucasNth(6)')).toEqual(11)
+    expect(runNth('nth:lucasNth(7)')).toEqual(18)
+    expect(runNth('nth:lucasNth(8)')).toEqual(29)
+    expect(runNth('nth:lucasNth(77)')).toEqual(7639424778862807)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:lucas-take-while(-> $ < 50)')).toEqual([2, 1, 3, 4, 7, 11, 18, 29, 47])
+    expect(runNth('nth:lucasTakeWhile(-> $ < 50)')).toEqual([2, 1, 3, 4, 7, 11, 18, 29, 47])
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:lucas?(0)')).toEqual(false)
-    expect(runNth('nth:lucas?(1)')).toEqual(true)
-    expect(runNth('nth:lucas?(2)')).toEqual(true)
-    expect(runNth('nth:lucas?(3)')).toEqual(true)
-    expect(runNth('nth:lucas?(4)')).toEqual(true)
-    expect(runNth('nth:lucas?(5)')).toEqual(false)
-    expect(runNth('nth:lucas?(6)')).toEqual(false)
-    expect(runNth('nth:lucas?(7)')).toEqual(true)
-    expect(runNth('nth:lucas?(8)')).toEqual(false)
-    expect(runNth('nth:lucas?(9349)')).toEqual(true)
-    expect(runNth('nth:lucas?(9350)')).toEqual(false)
+    expect(runNth('nth:isLucas(0)')).toEqual(false)
+    expect(runNth('nth:isLucas(1)')).toEqual(true)
+    expect(runNth('nth:isLucas(2)')).toEqual(true)
+    expect(runNth('nth:isLucas(3)')).toEqual(true)
+    expect(runNth('nth:isLucas(4)')).toEqual(true)
+    expect(runNth('nth:isLucas(5)')).toEqual(false)
+    expect(runNth('nth:isLucas(6)')).toEqual(false)
+    expect(runNth('nth:isLucas(7)')).toEqual(true)
+    expect(runNth('nth:isLucas(8)')).toEqual(false)
+    expect(runNth('nth:isLucas(9349)')).toEqual(true)
+    expect(runNth('nth:isLucas(9350)')).toEqual(false)
   })
 })

@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('pell', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:pell-seq(1)')).toEqual([1])
-    expect(runNth('nth:pell-seq(2)')).toEqual([1, 2])
-    expect(runNth('nth:pell-seq(3)')).toEqual([1, 2, 5])
-    expect(runNth('nth:pell-seq(4)')).toEqual([1, 2, 5, 12])
-    expect(runNth('nth:pell-seq(42)')).toEqual([
+    expect(runNth('nth:pellSeq(1)')).toEqual([1])
+    expect(runNth('nth:pellSeq(2)')).toEqual([1, 2])
+    expect(runNth('nth:pellSeq(3)')).toEqual([1, 2, 5])
+    expect(runNth('nth:pellSeq(4)')).toEqual([1, 2, 5, 12])
+    expect(runNth('nth:pellSeq(42)')).toEqual([
       1,
       2,
       5,
@@ -58,33 +58,33 @@ describe('pell', () => {
       1746860020068409,
       4217293152016490,
     ])
-    expect(() => runNth('nth:pell-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:pell-seq(43)')).toThrow(DvalaError)
+    expect(() => runNth('nth:pellSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:pellSeq(43)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:pell-nth(1)')).toEqual(1)
-    expect(runNth('nth:pell-nth(2)')).toEqual(2)
-    expect(runNth('nth:pell-nth(3)')).toEqual(5)
-    expect(runNth('nth:pell-nth(4)')).toEqual(12)
-    expect(runNth('nth:pell-nth(31)')).toEqual(259717522849)
-    expect(runNth('nth:pell-nth(42)')).toEqual(4217293152016490)
+    expect(runNth('nth:pellNth(1)')).toEqual(1)
+    expect(runNth('nth:pellNth(2)')).toEqual(2)
+    expect(runNth('nth:pellNth(3)')).toEqual(5)
+    expect(runNth('nth:pellNth(4)')).toEqual(12)
+    expect(runNth('nth:pellNth(31)')).toEqual(259717522849)
+    expect(runNth('nth:pellNth(42)')).toEqual(4217293152016490)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:pell-take-while(-> $ < 1000)')).toEqual([1, 2, 5, 12, 29, 70, 169, 408, 985])
+    expect(runNth('nth:pellTakeWhile(-> $ < 1000)')).toEqual([1, 2, 5, 12, 29, 70, 169, 408, 985])
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:pell?(0)')).toEqual(false)
-    expect(runNth('nth:pell?(1)')).toEqual(true)
-    expect(runNth('nth:pell?(2)')).toEqual(true)
-    expect(runNth('nth:pell?(3)')).toEqual(false)
-    expect(runNth('nth:pell?(4)')).toEqual(false)
-    expect(runNth('nth:pell?(5)')).toEqual(true)
-    expect(runNth('nth:pell?(6)')).toEqual(false)
-    expect(runNth('nth:pell?(7)')).toEqual(false)
-    expect(runNth('nth:pell?(8)')).toEqual(false)
-    expect(runNth('nth:pell?(9)')).toEqual(false)
+    expect(runNth('nth:isPell(0)')).toEqual(false)
+    expect(runNth('nth:isPell(1)')).toEqual(true)
+    expect(runNth('nth:isPell(2)')).toEqual(true)
+    expect(runNth('nth:isPell(3)')).toEqual(false)
+    expect(runNth('nth:isPell(4)')).toEqual(false)
+    expect(runNth('nth:isPell(5)')).toEqual(true)
+    expect(runNth('nth:isPell(6)')).toEqual(false)
+    expect(runNth('nth:isPell(7)')).toEqual(false)
+    expect(runNth('nth:isPell(8)')).toEqual(false)
+    expect(runNth('nth:isPell(9)')).toEqual(false)
   })
 })

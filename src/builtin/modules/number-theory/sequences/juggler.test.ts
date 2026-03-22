@@ -10,7 +10,7 @@ function runNth(code: string) {
 }
 describe('juggler', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:juggler-seq(10)')).toEqual([
+    expect(runNth('nth:jugglerSeq(10)')).toEqual([
       10,
       3,
       5,
@@ -20,7 +20,7 @@ describe('juggler', () => {
       2,
       1,
     ])
-    expect(() => runNth('nth:juggler-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:juggler-seq(58025)')).toThrow(DvalaError)
+    expect(() => runNth('nth:jugglerSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:jugglerSeq(58025)')).toThrow(DvalaError)
   })
 })

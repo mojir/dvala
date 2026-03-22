@@ -79,7 +79,7 @@ function isInGeometricSequence(
   return approxEqual(calculatedValue, number)
 }
 export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> = {
-  'geometric-seq': {
+  'geometricSeq': {
     evaluate: ([start, ratio, length], sourceCodeInfo): number[] => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(ratio, sourceCodeInfo, { finite: true })
@@ -89,12 +89,12 @@ export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> 
     },
     arity: toFixedArity(3),
   },
-  'geometric-take-while': {
+  'geometricTakeWhile': {
     /* v8 ignore next 1 */
     evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: toFixedArity(3),
   },
-  'geometric-nth': {
+  'geometricNth': {
     evaluate: ([start, ratio, n], sourceCodeInfo): number => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(ratio, sourceCodeInfo, { finite: true })
@@ -103,7 +103,7 @@ export const geometricNormalExpressions: SequenceNormalExpressions<'geometric'> 
     },
     arity: toFixedArity(3),
   },
-  'geometric?': {
+  'isGeometric': {
     evaluate: ([start, ratio, n], sourceCodeInfo): boolean => {
       assertNumber(n, sourceCodeInfo)
       assertNumber(start, sourceCodeInfo, { finite: true })

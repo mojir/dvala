@@ -15,15 +15,15 @@ function getBernoulliSeq(length: number): number[] {
   return bernoulli
 }
 
-export const bernoulliNormalExpressions: Omit<SequenceNormalExpressions<'bernoulli'>, 'bernoulli?'> = {
-  'bernoulli-seq': {
+export const bernoulliNormalExpressions: Omit<SequenceNormalExpressions<'bernoulli'>, 'isBernoulli'> = {
+  'bernoulliSeq': {
     evaluate: ([length], sourceCodeInfo): number[] => {
       assertNumber(length, sourceCodeInfo, { integer: true, positive: true })
       return getBernoulliSeq(length)
     },
     arity: toFixedArity(1),
   },
-  'bernoulli-nth': {
+  'bernoulliNth': {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       const bernoulli = getBernoulliSeq(n)
@@ -31,7 +31,7 @@ export const bernoulliNormalExpressions: Omit<SequenceNormalExpressions<'bernoul
     },
     arity: toFixedArity(1),
   },
-  'bernoulli-take-while': {
+  'bernoulliTakeWhile': {
     /* v8 ignore next 1 */
     evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: toFixedArity(1),

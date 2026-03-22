@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('fibonacci', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:fibonacci-seq(1)')).toEqual([0])
-    expect(runNth('nth:fibonacci-seq(2)')).toEqual([0, 1])
-    expect(runNth('nth:fibonacci-seq(3)')).toEqual([0, 1, 1])
-    expect(runNth('nth:fibonacci-seq(4)')).toEqual([0, 1, 1, 2])
-    expect(runNth('nth:fibonacci-seq(79)')).toEqual([
+    expect(runNth('nth:fibonacciSeq(1)')).toEqual([0])
+    expect(runNth('nth:fibonacciSeq(2)')).toEqual([0, 1])
+    expect(runNth('nth:fibonacciSeq(3)')).toEqual([0, 1, 1])
+    expect(runNth('nth:fibonacciSeq(4)')).toEqual([0, 1, 1, 2])
+    expect(runNth('nth:fibonacciSeq(79)')).toEqual([
       0,
       1,
       1,
@@ -95,32 +95,32 @@ describe('fibonacci', () => {
       5527939700884757,
       8944394323791464,
     ])
-    expect(() => runNth('nth:fibonacci-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:fibonacci-seq(80)')).toThrow(DvalaError)
+    expect(() => runNth('nth:fibonacciSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:fibonacciSeq(80)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:fibonacci-nth(1)')).toEqual(0)
-    expect(runNth('nth:fibonacci-nth(2)')).toEqual(1)
-    expect(runNth('nth:fibonacci-nth(3)')).toEqual(1)
-    expect(runNth('nth:fibonacci-nth(4)')).toEqual(2)
-    expect(runNth('nth:fibonacci-nth(11)')).toEqual(55)
+    expect(runNth('nth:fibonacciNth(1)')).toEqual(0)
+    expect(runNth('nth:fibonacciNth(2)')).toEqual(1)
+    expect(runNth('nth:fibonacciNth(3)')).toEqual(1)
+    expect(runNth('nth:fibonacciNth(4)')).toEqual(2)
+    expect(runNth('nth:fibonacciNth(11)')).toEqual(55)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:fibonacci-take-while(-> $ < 100)')).toEqual([0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89])
+    expect(runNth('nth:fibonacciTakeWhile(-> $ < 100)')).toEqual([0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89])
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:fibonacci?(0)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(1)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(2)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(3)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(4)')).toEqual(false)
-    expect(runNth('nth:fibonacci?(5)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(6)')).toEqual(false)
-    expect(runNth('nth:fibonacci?(7)')).toEqual(false)
-    expect(runNth('nth:fibonacci?(8)')).toEqual(true)
-    expect(runNth('nth:fibonacci?(9)')).toEqual(false)
+    expect(runNth('nth:isFibonacci(0)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(1)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(2)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(3)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(4)')).toEqual(false)
+    expect(runNth('nth:isFibonacci(5)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(6)')).toEqual(false)
+    expect(runNth('nth:isFibonacci(7)')).toEqual(false)
+    expect(runNth('nth:isFibonacci(8)')).toEqual(true)
+    expect(runNth('nth:isFibonacci(9)')).toEqual(false)
   })
 })

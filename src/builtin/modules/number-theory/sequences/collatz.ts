@@ -1,7 +1,7 @@
 import type { SequenceDefinition } from '.'
 
-export const collatzSequence: Omit<SequenceDefinition<'collatz'>, 'collatz?'> = {
-  'collatz-seq': start => {
+export const collatzSequence: Omit<SequenceDefinition<'collatz'>, 'isCollatz'> = {
+  'collatzSeq': start => {
     let x = start
     const collatz = [x]
     while (x !== 1) {

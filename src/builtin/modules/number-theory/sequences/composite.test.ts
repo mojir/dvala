@@ -10,22 +10,22 @@ function runNth(code: string) {
 }
 describe('composite', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:composite-seq(1)')).toEqual([4])
-    expect(runNth('nth:composite-seq(2)')).toEqual([4, 6])
-    expect(runNth('nth:composite-seq(3)')).toEqual([4, 6, 8])
-    expect(runNth('nth:composite-seq(4)')).toEqual([4, 6, 8, 9])
-    expect(() => runNth('nth:composite-seq(0)')).toThrow(DvalaError)
+    expect(runNth('nth:compositeSeq(1)')).toEqual([4])
+    expect(runNth('nth:compositeSeq(2)')).toEqual([4, 6])
+    expect(runNth('nth:compositeSeq(3)')).toEqual([4, 6, 8])
+    expect(runNth('nth:compositeSeq(4)')).toEqual([4, 6, 8, 9])
+    expect(() => runNth('nth:compositeSeq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:composite-nth(1)')).toEqual(4)
-    expect(runNth('nth:composite-nth(2)')).toEqual(6)
-    expect(runNth('nth:composite-nth(3)')).toEqual(8)
-    expect(runNth('nth:composite-nth(4)')).toEqual(9)
+    expect(runNth('nth:compositeNth(1)')).toEqual(4)
+    expect(runNth('nth:compositeNth(2)')).toEqual(6)
+    expect(runNth('nth:compositeNth(3)')).toEqual(8)
+    expect(runNth('nth:compositeNth(4)')).toEqual(9)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:composite-take-while(-> $ < 20)')).toEqual([
+    expect(runNth('nth:compositeTakeWhile(-> $ < 20)')).toEqual([
       4,
       6,
       8,
@@ -40,17 +40,17 @@ describe('composite', () => {
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:composite?(0)')).toEqual(false)
-    expect(runNth('nth:composite?(1)')).toEqual(false)
-    expect(runNth('nth:composite?(2)')).toEqual(false)
-    expect(runNth('nth:composite?(3)')).toEqual(false)
-    expect(runNth('nth:composite?(4)')).toEqual(true)
-    expect(runNth('nth:composite?(5)')).toEqual(false)
-    expect(runNth('nth:composite?(6)')).toEqual(true)
-    expect(runNth('nth:composite?(7)')).toEqual(false)
-    expect(runNth('nth:composite?(8)')).toEqual(true)
-    expect(runNth('nth:composite?(9)')).toEqual(true)
-    expect(runNth('nth:composite?(997)')).toEqual(false)
-    expect(runNth('nth:composite?(1001)')).toEqual(true)
+    expect(runNth('nth:isComposite(0)')).toEqual(false)
+    expect(runNth('nth:isComposite(1)')).toEqual(false)
+    expect(runNth('nth:isComposite(2)')).toEqual(false)
+    expect(runNth('nth:isComposite(3)')).toEqual(false)
+    expect(runNth('nth:isComposite(4)')).toEqual(true)
+    expect(runNth('nth:isComposite(5)')).toEqual(false)
+    expect(runNth('nth:isComposite(6)')).toEqual(true)
+    expect(runNth('nth:isComposite(7)')).toEqual(false)
+    expect(runNth('nth:isComposite(8)')).toEqual(true)
+    expect(runNth('nth:isComposite(9)')).toEqual(true)
+    expect(runNth('nth:isComposite(997)')).toEqual(false)
+    expect(runNth('nth:isComposite(1001)')).toEqual(true)
   })
 })

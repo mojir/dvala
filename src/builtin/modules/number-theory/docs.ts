@@ -1,7 +1,7 @@
 import type { FunctionDocs } from '../../interface'
 
 export const moduleDocs: Record<string, FunctionDocs> = {
-  'abundant-seq': {
+  'abundantSeq': {
     category: 'number-theory',
     description: 'Generates the abundant numbers up to a specified length.',
     returns: {
@@ -22,12 +22,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { abundant-seq } = import(number-theory);\nabundant-seq(1)',
-      'let { abundant-seq } = import(number-theory);\nabundant-seq(5)',
+      'let { abundantSeq } = import(number-theory);\nabundantSeq(1)',
+      'let { abundantSeq } = import(number-theory);\nabundantSeq(5)',
     ],
-    seeAlso: ['number-theory.abundant-nth', 'number-theory.abundant-take-while', 'number-theory.abundant?', 'number-theory.deficient-seq', 'number-theory.perfect-seq'],
+    seeAlso: ['number-theory.abundantNth', 'number-theory.abundantTakeWhile', 'number-theory.isAbundant', 'number-theory.deficientSeq', 'number-theory.perfectSeq'],
   },
-  'abundant-take-while': {
+  'abundantTakeWhile': {
     category: 'number-theory',
     description: 'Generates the abundant numbers while a condition is met.',
     returns: {
@@ -48,11 +48,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { abundant-take-while } = import(number-theory);\nabundant-take-while(-> $ < 100)',
+      'let { abundantTakeWhile } = import(number-theory);\nabundantTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.abundant-seq', 'number-theory.abundant-nth', 'number-theory.abundant?'],
+    seeAlso: ['number-theory.abundantSeq', 'number-theory.abundantNth', 'number-theory.isAbundant'],
   },
-  'abundant-nth': {
+  'abundantNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the abundant numbers.',
     returns: {
@@ -72,12 +72,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { abundant-nth } = import(number-theory);\nabundant-nth(1)',
-      'let { abundant-nth } = import(number-theory);\nabundant-nth(5)',
+      'let { abundantNth } = import(number-theory);\nabundantNth(1)',
+      'let { abundantNth } = import(number-theory);\nabundantNth(5)',
     ],
-    seeAlso: ['number-theory.abundant-seq', 'number-theory.abundant-take-while', 'number-theory.abundant?'],
+    seeAlso: ['number-theory.abundantSeq', 'number-theory.abundantTakeWhile', 'number-theory.isAbundant'],
   },
-  'abundant?': {
+  'isAbundant': {
     category: 'number-theory',
     description: 'Checks if a number is abundant.',
     returns: {
@@ -97,12 +97,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { abundant? } = import(number-theory);\nabundant?(12)',
-      'let { abundant? } = import(number-theory);\nabundant?(15)',
+      'let { isAbundant } = import(number-theory);\nisAbundant(12)',
+      'let { isAbundant } = import(number-theory);\nisAbundant(15)',
     ],
-    seeAlso: ['number-theory.abundant-seq', 'number-theory.abundant-nth', 'number-theory.deficient?', 'number-theory.perfect?', 'number-theory.sigma', 'number-theory.divisors', 'number-theory.abundant-take-while'],
+    seeAlso: ['number-theory.abundantSeq', 'number-theory.abundantNth', 'number-theory.isDeficient', 'number-theory.isPerfect', 'number-theory.sigma', 'number-theory.divisors', 'number-theory.abundantTakeWhile'],
   },
-  'arithmetic-seq': {
+  'arithmeticSeq': {
     category: 'number-theory',
     description: 'Generates the arithmetic sequence for a given $start, $step, and $length.',
     returns: {
@@ -133,14 +133,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { arithmetic-seq } = import(number-theory);\narithmetic-seq(3, 2, 2)',
-      'let { arithmetic-seq } = import(number-theory);\narithmetic-seq(2, 3, 2)',
-      'let { arithmetic-seq } = import(number-theory);\narithmetic-seq(1, 2, 2)',
-      'let { arithmetic-seq } = import(number-theory);\narithmetic-seq(1, 1.5, 12)',
+      'let { arithmeticSeq } = import(number-theory);\narithmeticSeq(3, 2, 2)',
+      'let { arithmeticSeq } = import(number-theory);\narithmeticSeq(2, 3, 2)',
+      'let { arithmeticSeq } = import(number-theory);\narithmeticSeq(1, 2, 2)',
+      'let { arithmeticSeq } = import(number-theory);\narithmeticSeq(1, 1.5, 12)',
     ],
-    seeAlso: ['number-theory.arithmetic-nth', 'number-theory.arithmetic-take-while', 'number-theory.arithmetic?', 'number-theory.geometric-seq'],
+    seeAlso: ['number-theory.arithmeticNth', 'number-theory.arithmeticTakeWhile', 'number-theory.isArithmetic', 'number-theory.geometricSeq'],
   },
-  'arithmetic-take-while': {
+  'arithmeticTakeWhile': {
     category: 'number-theory',
     description: 'Generates the arithmetic sequence while a condition is met.',
     returns: {
@@ -171,11 +171,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { arithmetic-take-while } = import(number-theory);\narithmetic-take-while(1, 0.25, -> $ < 3)',
+      'let { arithmeticTakeWhile } = import(number-theory);\narithmeticTakeWhile(1, 0.25, -> $ < 3)',
     ],
-    seeAlso: ['number-theory.arithmetic-seq', 'number-theory.arithmetic-nth', 'number-theory.arithmetic?'],
+    seeAlso: ['number-theory.arithmeticSeq', 'number-theory.arithmeticNth', 'number-theory.isArithmetic'],
   },
-  'arithmetic-nth': {
+  'arithmeticNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the arithmetic sequence.',
     returns: {
@@ -205,14 +205,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { arithmetic-nth } = import(number-theory);\narithmetic-nth(3, 2, 2)',
-      'let { arithmetic-nth } = import(number-theory);\narithmetic-nth(2, 3, 2)',
-      'let { arithmetic-nth } = import(number-theory);\narithmetic-nth(1, 2, 2)',
-      'let { arithmetic-nth } = import(number-theory);\narithmetic-nth(1, 1.5, 12)',
+      'let { arithmeticNth } = import(number-theory);\narithmeticNth(3, 2, 2)',
+      'let { arithmeticNth } = import(number-theory);\narithmeticNth(2, 3, 2)',
+      'let { arithmeticNth } = import(number-theory);\narithmeticNth(1, 2, 2)',
+      'let { arithmeticNth } = import(number-theory);\narithmeticNth(1, 1.5, 12)',
     ],
-    seeAlso: ['number-theory.arithmetic-seq', 'number-theory.arithmetic-take-while', 'number-theory.arithmetic?'],
+    seeAlso: ['number-theory.arithmeticSeq', 'number-theory.arithmeticTakeWhile', 'number-theory.isArithmetic'],
   },
-  'arithmetic?': {
+  'isArithmetic': {
     category: 'number-theory',
     description: 'Checks if a number is part of the arithmetic sequence.',
     returns: {
@@ -242,14 +242,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { arithmetic? } = import(number-theory);\narithmetic?(3, 2, 2)',
-      'let { arithmetic? } = import(number-theory);\narithmetic?(2, 3, 2)',
-      'let { arithmetic? } = import(number-theory);\narithmetic?(1, 2, 2)',
-      'let { arithmetic? } = import(number-theory);\narithmetic?(1, 1.5, 12)',
+      'let { isArithmetic } = import(number-theory);\nisArithmetic(3, 2, 2)',
+      'let { isArithmetic } = import(number-theory);\nisArithmetic(2, 3, 2)',
+      'let { isArithmetic } = import(number-theory);\nisArithmetic(1, 2, 2)',
+      'let { isArithmetic } = import(number-theory);\nisArithmetic(1, 1.5, 12)',
     ],
-    seeAlso: ['number-theory.arithmetic-seq', 'number-theory.arithmetic-nth', 'number-theory.geometric?', 'number-theory.arithmetic-take-while'],
+    seeAlso: ['number-theory.arithmeticSeq', 'number-theory.arithmeticNth', 'number-theory.isGeometric', 'number-theory.arithmeticTakeWhile'],
   },
-  'bell-seq': {
+  'bellSeq': {
     category: 'number-theory',
     description: 'Generates the Bell sequence up to a specified length.',
     returns: {
@@ -273,13 +273,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bell-seq } = import(number-theory);\nbell-seq(5)',
-      'let { bell-seq } = import(number-theory);\nbell-seq(10)',
-      'let { bell-seq } = import(number-theory);\nbell-seq()',
+      'let { bellSeq } = import(number-theory);\nbellSeq(5)',
+      'let { bellSeq } = import(number-theory);\nbellSeq(10)',
+      'let { bellSeq } = import(number-theory);\nbellSeq()',
     ],
-    seeAlso: ['number-theory.bell-nth', 'number-theory.bell-take-while', 'number-theory.bell?', 'number-theory.catalan-seq', 'number-theory.stirlingSecond', 'number-theory.stirlingFirst'],
+    seeAlso: ['number-theory.bellNth', 'number-theory.bellTakeWhile', 'number-theory.isBell', 'number-theory.catalanSeq', 'number-theory.stirlingSecond', 'number-theory.stirlingFirst'],
   },
-  'bell-take-while': {
+  'bellTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Bell sequence while a condition is met.',
     returns: {
@@ -300,11 +300,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bell-take-while } = import(number-theory);\nbell-take-while(-> $ < 1000)',
+      'let { bellTakeWhile } = import(number-theory);\nbellTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.bell-seq', 'number-theory.bell-nth', 'number-theory.bell?'],
+    seeAlso: ['number-theory.bellSeq', 'number-theory.bellNth', 'number-theory.isBell'],
   },
-  'bell-nth': {
+  'bellNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Bell sequence.',
     returns: {
@@ -324,12 +324,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bell-nth } = import(number-theory);\nbell-nth(5)',
-      'let { bell-nth } = import(number-theory);\nbell-nth(10)',
+      'let { bellNth } = import(number-theory);\nbellNth(5)',
+      'let { bellNth } = import(number-theory);\nbellNth(10)',
     ],
-    seeAlso: ['number-theory.bell-seq', 'number-theory.bell-take-while', 'number-theory.bell?'],
+    seeAlso: ['number-theory.bellSeq', 'number-theory.bellTakeWhile', 'number-theory.isBell'],
   },
-  'bell?': {
+  'isBell': {
     category: 'number-theory',
     description: 'Checks if a number is in the Bell sequence.',
     returns: {
@@ -349,13 +349,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bell? } = import(number-theory);\nbell?(1)',
-      'let { bell? } = import(number-theory);\nbell?(27644437)',
-      'let { bell? } = import(number-theory);\nbell?(27644436)',
+      'let { isBell } = import(number-theory);\nisBell(1)',
+      'let { isBell } = import(number-theory);\nisBell(27644437)',
+      'let { isBell } = import(number-theory);\nisBell(27644436)',
     ],
-    seeAlso: ['number-theory.bell-seq', 'number-theory.bell-nth', 'number-theory.catalan?', 'number-theory.bell-take-while'],
+    seeAlso: ['number-theory.bellSeq', 'number-theory.bellNth', 'number-theory.isCatalan', 'number-theory.bellTakeWhile'],
   },
-  'bernoulli-seq': {
+  'bernoulliSeq': {
     category: 'number-theory',
     description: 'Generates the Bernoulli sequence up to a specified length.',
     returns: {
@@ -376,12 +376,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bernoulli-seq } = import(number-theory);\nbernoulli-seq(5)',
-      'let { bernoulli-seq } = import(number-theory);\nbernoulli-seq(10)',
+      'let { bernoulliSeq } = import(number-theory);\nbernoulliSeq(5)',
+      'let { bernoulliSeq } = import(number-theory);\nbernoulliSeq(10)',
     ],
-    seeAlso: ['number-theory.bernoulli-nth', 'number-theory.bernoulli-take-while'],
+    seeAlso: ['number-theory.bernoulliNth', 'number-theory.bernoulliTakeWhile'],
   },
-  'bernoulli-take-while': {
+  'bernoulliTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Bernoulli sequence while a condition is met.',
     returns: {
@@ -402,11 +402,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bernoulli-take-while } = import(number-theory);\nbernoulli-take-while(-> abs($) < 100)',
+      'let { bernoulliTakeWhile } = import(number-theory);\nbernoulliTakeWhile(-> abs($) < 100)',
     ],
-    seeAlso: ['number-theory.bernoulli-seq', 'number-theory.bernoulli-nth'],
+    seeAlso: ['number-theory.bernoulliSeq', 'number-theory.bernoulliNth'],
   },
-  'bernoulli-nth': {
+  'bernoulliNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Bernoulli sequence.',
     returns: {
@@ -426,13 +426,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { bernoulli-nth } = import(number-theory);\nbernoulli-nth(5)',
-      'let { bernoulli-nth } = import(number-theory);\nbernoulli-nth(10)',
-      'let { bernoulli-nth } = import(number-theory);\nbernoulli-nth(23)',
+      'let { bernoulliNth } = import(number-theory);\nbernoulliNth(5)',
+      'let { bernoulliNth } = import(number-theory);\nbernoulliNth(10)',
+      'let { bernoulliNth } = import(number-theory);\nbernoulliNth(23)',
     ],
-    seeAlso: ['number-theory.bernoulli-seq', 'number-theory.bernoulli-take-while'],
+    seeAlso: ['number-theory.bernoulliSeq', 'number-theory.bernoulliTakeWhile'],
   },
-  'catalan-seq': {
+  'catalanSeq': {
     category: 'number-theory',
     description: 'Generates the Catalan sequence up to a specified length.',
     returns: {
@@ -456,13 +456,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { catalan-seq } = import(number-theory);\ncatalan-seq(5)',
-      'let { catalan-seq } = import(number-theory);\ncatalan-seq(10)',
-      'let { catalan-seq } = import(number-theory);\ncatalan-seq()',
+      'let { catalanSeq } = import(number-theory);\ncatalanSeq(5)',
+      'let { catalanSeq } = import(number-theory);\ncatalanSeq(10)',
+      'let { catalanSeq } = import(number-theory);\ncatalanSeq()',
     ],
-    seeAlso: ['number-theory.catalan-nth', 'number-theory.catalan-take-while', 'number-theory.catalan?', 'number-theory.bell-seq'],
+    seeAlso: ['number-theory.catalanNth', 'number-theory.catalanTakeWhile', 'number-theory.isCatalan', 'number-theory.bellSeq'],
   },
-  'catalan-take-while': {
+  'catalanTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Catalan sequence while a condition is met.',
     returns: {
@@ -483,11 +483,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { catalan-take-while } = import(number-theory);\ncatalan-take-while(-> $ < 1000)',
+      'let { catalanTakeWhile } = import(number-theory);\ncatalanTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.catalan-seq', 'number-theory.catalan-nth', 'number-theory.catalan?'],
+    seeAlso: ['number-theory.catalanSeq', 'number-theory.catalanNth', 'number-theory.isCatalan'],
   },
-  'catalan-nth': {
+  'catalanNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Catalan sequence.',
     returns: {
@@ -507,12 +507,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { catalan-nth } = import(number-theory);\ncatalan-nth(5)',
-      'let { catalan-nth } = import(number-theory);\ncatalan-nth(10)',
+      'let { catalanNth } = import(number-theory);\ncatalanNth(5)',
+      'let { catalanNth } = import(number-theory);\ncatalanNth(10)',
     ],
-    seeAlso: ['number-theory.catalan-seq', 'number-theory.catalan-take-while', 'number-theory.catalan?'],
+    seeAlso: ['number-theory.catalanSeq', 'number-theory.catalanTakeWhile', 'number-theory.isCatalan'],
   },
-  'catalan?': {
+  'isCatalan': {
     category: 'number-theory',
     description: 'Determines if a number is in the Catalan sequence.',
     returns: {
@@ -532,12 +532,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { catalan? } = import(number-theory);\ncatalan?(5)',
-      'let { catalan? } = import(number-theory);\ncatalan?(10)',
+      'let { isCatalan } = import(number-theory);\nisCatalan(5)',
+      'let { isCatalan } = import(number-theory);\nisCatalan(10)',
     ],
-    seeAlso: ['number-theory.catalan-seq', 'number-theory.catalan-nth', 'number-theory.bell?', 'number-theory.catalan-take-while'],
+    seeAlso: ['number-theory.catalanSeq', 'number-theory.catalanNth', 'number-theory.isBell', 'number-theory.catalanTakeWhile'],
   },
-  'collatz-seq': {
+  'collatzSeq': {
     category: 'number-theory',
     description: 'Generates the collatz sequence starting from a given integer.',
     returns: {
@@ -558,12 +558,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { collatz-seq } = import(number-theory);\ncollatz-seq(3)',
-      'let { collatz-seq } = import(number-theory);\ncollatz-seq(11)',
+      'let { collatzSeq } = import(number-theory);\ncollatzSeq(3)',
+      'let { collatzSeq } = import(number-theory);\ncollatzSeq(11)',
     ],
-    seeAlso: ['number-theory.juggler-seq'],
+    seeAlso: ['number-theory.jugglerSeq'],
   },
-  'composite-seq': {
+  'compositeSeq': {
     category: 'number-theory',
     description: 'Generates the composite sequence up to a specified length.',
     returns: {
@@ -584,13 +584,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { composite-seq } = import(number-theory);\ncomposite-seq(1)',
-      'let { composite-seq } = import(number-theory);\ncomposite-seq(2)',
-      'let { composite-seq } = import(number-theory);\ncomposite-seq(10)',
+      'let { compositeSeq } = import(number-theory);\ncompositeSeq(1)',
+      'let { compositeSeq } = import(number-theory);\ncompositeSeq(2)',
+      'let { compositeSeq } = import(number-theory);\ncompositeSeq(10)',
     ],
-    seeAlso: ['number-theory.composite-nth', 'number-theory.composite-take-while', 'number-theory.composite?', 'number-theory.prime-seq'],
+    seeAlso: ['number-theory.compositeNth', 'number-theory.compositeTakeWhile', 'number-theory.isComposite', 'number-theory.primeSeq'],
   },
-  'composite-take-while': {
+  'compositeTakeWhile': {
     category: 'number-theory',
     description: 'Generates the composite sequence while a condition is met.',
     returns: {
@@ -611,11 +611,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { composite-take-while } = import(number-theory);\ncomposite-take-while(-> $ < 50)',
+      'let { compositeTakeWhile } = import(number-theory);\ncompositeTakeWhile(-> $ < 50)',
     ],
-    seeAlso: ['number-theory.composite-seq', 'number-theory.composite-nth', 'number-theory.composite?'],
+    seeAlso: ['number-theory.compositeSeq', 'number-theory.compositeNth', 'number-theory.isComposite'],
   },
-  'composite-nth': {
+  'compositeNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the composite sequence.',
     returns: {
@@ -635,13 +635,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { composite-nth } = import(number-theory);\ncomposite-nth(1)',
-      'let { composite-nth } = import(number-theory);\ncomposite-nth(2)',
-      'let { composite-nth } = import(number-theory);\ncomposite-nth(10)',
+      'let { compositeNth } = import(number-theory);\ncompositeNth(1)',
+      'let { compositeNth } = import(number-theory);\ncompositeNth(2)',
+      'let { compositeNth } = import(number-theory);\ncompositeNth(10)',
     ],
-    seeAlso: ['number-theory.composite-seq', 'number-theory.composite-take-while', 'number-theory.composite?'],
+    seeAlso: ['number-theory.compositeSeq', 'number-theory.compositeTakeWhile', 'number-theory.isComposite'],
   },
-  'composite?': {
+  'isComposite': {
     category: 'number-theory',
     description: 'Determines if a number is composite.',
     returns: {
@@ -661,13 +661,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { composite? } = import(number-theory);\ncomposite?(4)',
-      'let { composite? } = import(number-theory);\ncomposite?(5)',
-      'let { composite? } = import(number-theory);\ncomposite?(11)',
+      'let { isComposite } = import(number-theory);\nisComposite(4)',
+      'let { isComposite } = import(number-theory);\nisComposite(5)',
+      'let { isComposite } = import(number-theory);\nisComposite(11)',
     ],
-    seeAlso: ['number-theory.composite-seq', 'number-theory.composite-nth', 'number-theory.prime?', 'number-theory.primeFactors', 'number-theory.composite-take-while'],
+    seeAlso: ['number-theory.compositeSeq', 'number-theory.compositeNth', 'number-theory.isPrime', 'number-theory.primeFactors', 'number-theory.compositeTakeWhile'],
   },
-  'deficient-seq': {
+  'deficientSeq': {
     category: 'number-theory',
     description: 'Generates the deficient numbers up to a specified length.',
     returns: {
@@ -688,12 +688,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { deficient-seq } = import(number-theory);\ndeficient-seq(1)',
-      'let { deficient-seq } = import(number-theory);\ndeficient-seq(5)',
+      'let { deficientSeq } = import(number-theory);\ndeficientSeq(1)',
+      'let { deficientSeq } = import(number-theory);\ndeficientSeq(5)',
     ],
-    seeAlso: ['number-theory.deficient-nth', 'number-theory.deficient-take-while', 'number-theory.deficient?', 'number-theory.abundant-seq', 'number-theory.perfect-seq'],
+    seeAlso: ['number-theory.deficientNth', 'number-theory.deficientTakeWhile', 'number-theory.isDeficient', 'number-theory.abundantSeq', 'number-theory.perfectSeq'],
   },
-  'deficient-take-while': {
+  'deficientTakeWhile': {
     category: 'number-theory',
     description: 'Generates the deficient numbers while a condition is met.',
     returns: {
@@ -714,11 +714,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { deficient-take-while } = import(number-theory);\ndeficient-take-while(-> $ < 100)',
+      'let { deficientTakeWhile } = import(number-theory);\ndeficientTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.deficient-seq', 'number-theory.deficient-nth', 'number-theory.deficient?'],
+    seeAlso: ['number-theory.deficientSeq', 'number-theory.deficientNth', 'number-theory.isDeficient'],
   },
-  'deficient-nth': {
+  'deficientNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the deficient numbers.',
     returns: {
@@ -738,12 +738,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { deficient-nth } = import(number-theory);\ndeficient-nth(5)',
-      'let { deficient-nth } = import(number-theory);\ndeficient-nth(12)',
+      'let { deficientNth } = import(number-theory);\ndeficientNth(5)',
+      'let { deficientNth } = import(number-theory);\ndeficientNth(12)',
     ],
-    seeAlso: ['number-theory.deficient-seq', 'number-theory.deficient-take-while', 'number-theory.deficient?'],
+    seeAlso: ['number-theory.deficientSeq', 'number-theory.deficientTakeWhile', 'number-theory.isDeficient'],
   },
-  'deficient?': {
+  'isDeficient': {
     category: 'number-theory',
     description: 'Checks if a number is deficient.',
     returns: {
@@ -763,12 +763,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { deficient? } = import(number-theory);\ndeficient?(12)',
-      'let { deficient? } = import(number-theory);\ndeficient?(15)',
+      'let { isDeficient } = import(number-theory);\nisDeficient(12)',
+      'let { isDeficient } = import(number-theory);\nisDeficient(15)',
     ],
-    seeAlso: ['number-theory.deficient-seq', 'number-theory.deficient-nth', 'number-theory.abundant?', 'number-theory.perfect?', 'number-theory.sigma', 'number-theory.divisors', 'number-theory.deficient-take-while'],
+    seeAlso: ['number-theory.deficientSeq', 'number-theory.deficientNth', 'number-theory.isAbundant', 'number-theory.isPerfect', 'number-theory.sigma', 'number-theory.divisors', 'number-theory.deficientTakeWhile'],
   },
-  'factorial-seq': {
+  'factorialSeq': {
     category: 'number-theory',
     description: 'Generates the factorial sequence up to a specified length.',
     returns: {
@@ -792,16 +792,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(1)',
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(2)',
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(3)',
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(4)',
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(5)',
-      'let { factorial-seq } = import(number-theory);\nfactorial-seq(10)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(1)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(2)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(3)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(4)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(5)',
+      'let { factorialSeq } = import(number-theory);\nfactorialSeq(10)',
     ],
-    seeAlso: ['number-theory.factorial-nth', 'number-theory.factorial-take-while', 'number-theory.factorial?', 'number-theory.factorial'],
+    seeAlso: ['number-theory.factorialNth', 'number-theory.factorialTakeWhile', 'number-theory.isFactorial', 'number-theory.factorial'],
   },
-  'factorial-take-while': {
+  'factorialTakeWhile': {
     category: 'number-theory',
     description: 'Generates the factorial sequence while a condition is met.',
     returns: {
@@ -822,11 +822,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { factorial-take-while } = import(number-theory);\nfactorial-take-while(-> $ < 1000)',
+      'let { factorialTakeWhile } = import(number-theory);\nfactorialTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-nth', 'number-theory.factorial?'],
+    seeAlso: ['number-theory.factorialSeq', 'number-theory.factorialNth', 'number-theory.isFactorial'],
   },
-  'factorial-nth': {
+  'factorialNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the factorial sequence.',
     returns: {
@@ -846,16 +846,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(1)',
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(2)',
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(3)',
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(4)',
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(5)',
-      'let { factorial-nth } = import(number-theory);\nfactorial-nth(10)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(1)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(2)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(3)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(4)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(5)',
+      'let { factorialNth } = import(number-theory);\nfactorialNth(10)',
     ],
-    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-take-while', 'number-theory.factorial?', 'number-theory.factorial'],
+    seeAlso: ['number-theory.factorialSeq', 'number-theory.factorialTakeWhile', 'number-theory.isFactorial', 'number-theory.factorial'],
   },
-  'factorial?': {
+  'isFactorial': {
     category: 'number-theory',
     description: 'Checks if a number is in the factorial sequence.',
     returns: {
@@ -875,20 +875,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { factorial? } = import(number-theory);\nfactorial?(1)',
-      'let { factorial? } = import(number-theory);\nfactorial?(2)',
-      'let { factorial? } = import(number-theory);\nfactorial?(3)',
-      'let { factorial? } = import(number-theory);\nfactorial?(4)',
-      'let { factorial? } = import(number-theory);\nfactorial?(5)',
-      'let { factorial? } = import(number-theory);\nfactorial?(6)',
-      'let { factorial? } = import(number-theory);\nfactorial?(7)',
-      'let { factorial? } = import(number-theory);\nfactorial?(8)',
-      'let { factorial? } = import(number-theory);\nfactorial?(9)',
-      'let { factorial? } = import(number-theory);\nfactorial?(3628800)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(1)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(2)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(3)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(4)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(5)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(6)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(7)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(8)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(9)',
+      'let { isFactorial } = import(number-theory);\nisFactorial(3628800)',
     ],
-    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-nth', 'number-theory.factorial', 'number-theory.factorial-take-while'],
+    seeAlso: ['number-theory.factorialSeq', 'number-theory.factorialNth', 'number-theory.factorial', 'number-theory.factorialTakeWhile'],
   },
-  'fibonacci-seq': {
+  'fibonacciSeq': {
     category: 'number-theory',
     description: 'Generates the fibonacci sequence up to a specified length.',
     returns: {
@@ -912,13 +912,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { fibonacci-seq } = import(number-theory);\nfibonacci-seq(1)',
-      'let { fibonacci-seq } = import(number-theory);\nfibonacci-seq(2)',
-      'let { fibonacci-seq } = import(number-theory);\nfibonacci-seq()',
+      'let { fibonacciSeq } = import(number-theory);\nfibonacciSeq(1)',
+      'let { fibonacciSeq } = import(number-theory);\nfibonacciSeq(2)',
+      'let { fibonacciSeq } = import(number-theory);\nfibonacciSeq()',
     ],
-    seeAlso: ['number-theory.fibonacci-nth', 'number-theory.fibonacci-take-while', 'number-theory.fibonacci?', 'number-theory.lucas-seq', 'number-theory.tribonacci-seq', 'number-theory.pell-seq', 'number-theory.padovan-seq'],
+    seeAlso: ['number-theory.fibonacciNth', 'number-theory.fibonacciTakeWhile', 'number-theory.isFibonacci', 'number-theory.lucasSeq', 'number-theory.tribonacciSeq', 'number-theory.pellSeq', 'number-theory.padovanSeq'],
   },
-  'fibonacci-take-while': {
+  'fibonacciTakeWhile': {
     category: 'number-theory',
     description: 'Generates the fibonacci sequence while a condition is met.',
     returns: {
@@ -939,11 +939,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { fibonacci-take-while } = import(number-theory);\nfibonacci-take-while(-> $ < 100)',
+      'let { fibonacciTakeWhile } = import(number-theory);\nfibonacciTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.fibonacci-seq', 'number-theory.fibonacci-nth', 'number-theory.fibonacci?'],
+    seeAlso: ['number-theory.fibonacciSeq', 'number-theory.fibonacciNth', 'number-theory.isFibonacci'],
   },
-  'fibonacci-nth': {
+  'fibonacciNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the fibonacci sequence.',
     returns: {
@@ -963,12 +963,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { fibonacci-nth } = import(number-theory);\nfibonacci-nth(5)',
-      'let { fibonacci-nth } = import(number-theory);\nfibonacci-nth(50)',
+      'let { fibonacciNth } = import(number-theory);\nfibonacciNth(5)',
+      'let { fibonacciNth } = import(number-theory);\nfibonacciNth(50)',
     ],
-    seeAlso: ['number-theory.fibonacci-seq', 'number-theory.fibonacci-take-while', 'number-theory.fibonacci?'],
+    seeAlso: ['number-theory.fibonacciSeq', 'number-theory.fibonacciTakeWhile', 'number-theory.isFibonacci'],
   },
-  'fibonacci?': {
+  'isFibonacci': {
     category: 'number-theory',
     description: 'Determines if a number is in the fibonacci sequence.',
     returns: {
@@ -988,20 +988,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(0)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(1)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(2)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(3)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(4)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(5)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(6)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(7)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(8)',
-      'let { fibonacci? } = import(number-theory);\nfibonacci?(9)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(0)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(1)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(2)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(3)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(4)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(5)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(6)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(7)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(8)',
+      'let { isFibonacci } = import(number-theory);\nisFibonacci(9)',
     ],
-    seeAlso: ['number-theory.fibonacci-seq', 'number-theory.fibonacci-nth', 'number-theory.lucas?', 'number-theory.fibonacci-take-while', 'number-theory.tribonacci?', 'number-theory.padovan?', 'number-theory.pell?'],
+    seeAlso: ['number-theory.fibonacciSeq', 'number-theory.fibonacciNth', 'number-theory.isLucas', 'number-theory.fibonacciTakeWhile', 'number-theory.isTribonacci', 'number-theory.isPadovan', 'number-theory.isPell'],
   },
-  'geometric-seq': {
+  'geometricSeq': {
     category: 'number-theory',
     description: 'Generates the geometric sequence for a given $start, $ratio, and $length.',
     returns: {
@@ -1032,14 +1032,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { geometric-seq } = import(number-theory);\ngeometric-seq(3, 2, 2)',
-      'let { geometric-seq } = import(number-theory);\ngeometric-seq(2, 3, 2)',
-      'let { geometric-seq } = import(number-theory);\ngeometric-seq(1, 2, 2)',
-      'let { geometric-seq } = import(number-theory);\ngeometric-seq(1, 1.5, 12)',
+      'let { geometricSeq } = import(number-theory);\ngeometricSeq(3, 2, 2)',
+      'let { geometricSeq } = import(number-theory);\ngeometricSeq(2, 3, 2)',
+      'let { geometricSeq } = import(number-theory);\ngeometricSeq(1, 2, 2)',
+      'let { geometricSeq } = import(number-theory);\ngeometricSeq(1, 1.5, 12)',
     ],
-    seeAlso: ['number-theory.geometric-nth', 'number-theory.geometric-take-while', 'number-theory.geometric?', 'number-theory.arithmetic-seq'],
+    seeAlso: ['number-theory.geometricNth', 'number-theory.geometricTakeWhile', 'number-theory.isGeometric', 'number-theory.arithmeticSeq'],
   },
-  'geometric-take-while': {
+  'geometricTakeWhile': {
     category: 'number-theory',
     description: 'Generates the geometric sequence while a condition is met.',
     returns: {
@@ -1070,11 +1070,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { geometric-take-while } = import(number-theory);\ngeometric-take-while(1, 1.5, -> $ < 10)',
+      'let { geometricTakeWhile } = import(number-theory);\ngeometricTakeWhile(1, 1.5, -> $ < 10)',
     ],
-    seeAlso: ['number-theory.geometric-seq', 'number-theory.geometric-nth', 'number-theory.geometric?'],
+    seeAlso: ['number-theory.geometricSeq', 'number-theory.geometricNth', 'number-theory.isGeometric'],
   },
-  'geometric-nth': {
+  'geometricNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the geometric sequence.',
     returns: {
@@ -1104,14 +1104,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { geometric-nth } = import(number-theory);\ngeometric-nth(3, 2, 2)',
-      'let { geometric-nth } = import(number-theory);\ngeometric-nth(2, 3, 2)',
-      'let { geometric-nth } = import(number-theory);\ngeometric-nth(1, 2, 2)',
-      'let { geometric-nth } = import(number-theory);\ngeometric-nth(1, 1.5, 4)',
+      'let { geometricNth } = import(number-theory);\ngeometricNth(3, 2, 2)',
+      'let { geometricNth } = import(number-theory);\ngeometricNth(2, 3, 2)',
+      'let { geometricNth } = import(number-theory);\ngeometricNth(1, 2, 2)',
+      'let { geometricNth } = import(number-theory);\ngeometricNth(1, 1.5, 4)',
     ],
-    seeAlso: ['number-theory.geometric-seq', 'number-theory.geometric-take-while', 'number-theory.geometric?'],
+    seeAlso: ['number-theory.geometricSeq', 'number-theory.geometricTakeWhile', 'number-theory.isGeometric'],
   },
-  'geometric?': {
+  'isGeometric': {
     category: 'number-theory',
     description: 'Checks if a number is in the geometric sequence.',
     returns: {
@@ -1141,15 +1141,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { geometric? } = import(number-theory);\ngeometric?(1, 2, 1)',
-      'let { geometric? } = import(number-theory);\ngeometric?(2, 3, 2)',
-      'let { geometric? } = import(number-theory);\ngeometric?(3, 2, 2)',
-      'let { geometric? } = import(number-theory);\ngeometric?(1, 1.5, 2.25)',
-      'let { geometric? } = import(number-theory);\ngeometric?(1, 1.5, -4)',
+      'let { isGeometric } = import(number-theory);\nisGeometric(1, 2, 1)',
+      'let { isGeometric } = import(number-theory);\nisGeometric(2, 3, 2)',
+      'let { isGeometric } = import(number-theory);\nisGeometric(3, 2, 2)',
+      'let { isGeometric } = import(number-theory);\nisGeometric(1, 1.5, 2.25)',
+      'let { isGeometric } = import(number-theory);\nisGeometric(1, 1.5, -4)',
     ],
-    seeAlso: ['number-theory.geometric-seq', 'number-theory.geometric-nth', 'number-theory.arithmetic?', 'number-theory.geometric-take-while'],
+    seeAlso: ['number-theory.geometricSeq', 'number-theory.geometricNth', 'number-theory.isArithmetic', 'number-theory.geometricTakeWhile'],
   },
-  'golomb-seq': {
+  'golombSeq': {
     category: 'number-theory',
     description: 'Generates the Golomb sequence up to a specified length.',
     returns: {
@@ -1170,12 +1170,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { golomb-seq } = import(number-theory);\ngolomb-seq(5)',
-      'let { golomb-seq } = import(number-theory);\ngolomb-seq(20)',
+      'let { golombSeq } = import(number-theory);\ngolombSeq(5)',
+      'let { golombSeq } = import(number-theory);\ngolombSeq(20)',
     ],
-    seeAlso: ['number-theory.golomb-nth', 'number-theory.golomb-take-while', 'number-theory.golomb?', 'number-theory.recaman-seq'],
+    seeAlso: ['number-theory.golombNth', 'number-theory.golombTakeWhile', 'number-theory.isGolomb', 'number-theory.recamanSeq'],
   },
-  'golomb-take-while': {
+  'golombTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Golomb sequence while a condition is met.',
     returns: {
@@ -1196,11 +1196,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { golomb-take-while } = import(number-theory);\ngolomb-take-while(-> $ <= 10)',
+      'let { golombTakeWhile } = import(number-theory);\ngolombTakeWhile(-> $ <= 10)',
     ],
-    seeAlso: ['number-theory.golomb-seq', 'number-theory.golomb-nth', 'number-theory.golomb?'],
+    seeAlso: ['number-theory.golombSeq', 'number-theory.golombNth', 'number-theory.isGolomb'],
   },
-  'golomb-nth': {
+  'golombNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Golomb sequence.',
     returns: {
@@ -1220,12 +1220,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { golomb-nth } = import(number-theory);\ngolomb-nth(5)',
-      'let { golomb-nth } = import(number-theory);\ngolomb-nth(1000)',
+      'let { golombNth } = import(number-theory);\ngolombNth(5)',
+      'let { golombNth } = import(number-theory);\ngolombNth(1000)',
     ],
-    seeAlso: ['number-theory.golomb-seq', 'number-theory.golomb-take-while', 'number-theory.golomb?'],
+    seeAlso: ['number-theory.golombSeq', 'number-theory.golombTakeWhile', 'number-theory.isGolomb'],
   },
-  'golomb?': {
+  'isGolomb': {
     category: 'number-theory',
     description: 'Checks if a number is in the Golomb sequence.',
     returns: {
@@ -1245,14 +1245,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { golomb? } = import(number-theory);\ngolomb?(1)',
-      'let { golomb? } = import(number-theory);\ngolomb?(2)',
-      'let { golomb? } = import(number-theory);\ngolomb?(3345)',
-      'let { golomb? } = import(number-theory);\ngolomb?(67867864)',
+      'let { isGolomb } = import(number-theory);\nisGolomb(1)',
+      'let { isGolomb } = import(number-theory);\nisGolomb(2)',
+      'let { isGolomb } = import(number-theory);\nisGolomb(3345)',
+      'let { isGolomb } = import(number-theory);\nisGolomb(67867864)',
     ],
-    seeAlso: ['number-theory.golomb-seq', 'number-theory.golomb-nth', 'number-theory.golomb-take-while'],
+    seeAlso: ['number-theory.golombSeq', 'number-theory.golombNth', 'number-theory.golombTakeWhile'],
   },
-  'happy-seq': {
+  'happySeq': {
     category: 'number-theory',
     description: 'Generates the happy sequence up to a specified length.',
     returns: {
@@ -1273,13 +1273,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { happy-seq } = import(number-theory);\nhappy-seq(1)',
-      'let { happy-seq } = import(number-theory);\nhappy-seq(2)',
-      'let { happy-seq } = import(number-theory);\nhappy-seq(20)',
+      'let { happySeq } = import(number-theory);\nhappySeq(1)',
+      'let { happySeq } = import(number-theory);\nhappySeq(2)',
+      'let { happySeq } = import(number-theory);\nhappySeq(20)',
     ],
-    seeAlso: ['number-theory.happy-nth', 'number-theory.happy-take-while', 'number-theory.happy?', 'number-theory.lucky-seq'],
+    seeAlso: ['number-theory.happyNth', 'number-theory.happyTakeWhile', 'number-theory.isHappy', 'number-theory.luckySeq'],
   },
-  'happy-take-while': {
+  'happyTakeWhile': {
     category: 'number-theory',
     description: 'Generates the happy sequence while a condition is met.',
     returns: {
@@ -1300,11 +1300,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { happy-take-while } = import(number-theory);\nhappy-take-while(-> $ < 100)',
+      'let { happyTakeWhile } = import(number-theory);\nhappyTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.happy-seq', 'number-theory.happy-nth', 'number-theory.happy?'],
+    seeAlso: ['number-theory.happySeq', 'number-theory.happyNth', 'number-theory.isHappy'],
   },
-  'happy-nth': {
+  'happyNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the happy sequence.',
     returns: {
@@ -1324,13 +1324,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { happy-nth } = import(number-theory);\nhappy-nth(1)',
-      'let { happy-nth } = import(number-theory);\nhappy-nth(2)',
-      'let { happy-nth } = import(number-theory);\nhappy-nth(20)',
+      'let { happyNth } = import(number-theory);\nhappyNth(1)',
+      'let { happyNth } = import(number-theory);\nhappyNth(2)',
+      'let { happyNth } = import(number-theory);\nhappyNth(20)',
     ],
-    seeAlso: ['number-theory.happy-seq', 'number-theory.happy-take-while', 'number-theory.happy?'],
+    seeAlso: ['number-theory.happySeq', 'number-theory.happyTakeWhile', 'number-theory.isHappy'],
   },
-  'happy?': {
+  'isHappy': {
     category: 'number-theory',
     description: 'Determines if a number is a happy number.',
     returns: {
@@ -1350,13 +1350,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { happy? } = import(number-theory);\nhappy?(1)',
-      'let { happy? } = import(number-theory);\nhappy?(2)',
-      'let { happy? } = import(number-theory);\nhappy?(100)',
+      'let { isHappy } = import(number-theory);\nisHappy(1)',
+      'let { isHappy } = import(number-theory);\nisHappy(2)',
+      'let { isHappy } = import(number-theory);\nisHappy(100)',
     ],
-    seeAlso: ['number-theory.happy-seq', 'number-theory.happy-nth', 'number-theory.happy-take-while'],
+    seeAlso: ['number-theory.happySeq', 'number-theory.happyNth', 'number-theory.happyTakeWhile'],
   },
-  'juggler-seq': {
+  'jugglerSeq': {
     category: 'number-theory',
     description: 'Generates the Juggler sequence starting from a given integer.',
     returns: {
@@ -1377,12 +1377,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { juggler-seq } = import(number-theory);\njuggler-seq(3)',
-      'let { juggler-seq } = import(number-theory);\njuggler-seq(5)',
+      'let { jugglerSeq } = import(number-theory);\njugglerSeq(3)',
+      'let { jugglerSeq } = import(number-theory);\njugglerSeq(5)',
     ],
-    seeAlso: ['number-theory.collatz-seq'],
+    seeAlso: ['number-theory.collatzSeq'],
   },
-  'look-and-say-seq': {
+  'lookAndSaySeq': {
     category: 'number-theory',
     description: 'Generates the Look-and-Say sequence up to a specified length.',
     returns: {
@@ -1403,11 +1403,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { look-and-say-seq } = import(number-theory);\nlook-and-say-seq(5)',
+      'let { lookAndSaySeq } = import(number-theory);\nlookAndSaySeq(5)',
     ],
-    seeAlso: ['number-theory.look-and-say-nth', 'number-theory.look-and-say-take-while', 'number-theory.look-and-say?'],
+    seeAlso: ['number-theory.lookAndSayNth', 'number-theory.lookAndSayTakeWhile', 'number-theory.isLookAndSay'],
   },
-  'look-and-say-take-while': {
+  'lookAndSayTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Look-and-Say sequence while a condition is met.',
     returns: {
@@ -1428,12 +1428,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { look-and-say-take-while } = import(number-theory);\nlook-and-say-take-while((term, index) -> count(term) < 10)',
-      'let { look-and-say-take-while } = import(number-theory);\nlook-and-say-take-while(-> $2 <= 10)',
+      'let { lookAndSayTakeWhile } = import(number-theory);\nlookAndSayTakeWhile((term, index) -> count(term) < 10)',
+      'let { lookAndSayTakeWhile } = import(number-theory);\nlookAndSayTakeWhile(-> $2 <= 10)',
     ],
-    seeAlso: ['number-theory.look-and-say-seq', 'number-theory.look-and-say-nth', 'number-theory.look-and-say?'],
+    seeAlso: ['number-theory.lookAndSaySeq', 'number-theory.lookAndSayNth', 'number-theory.isLookAndSay'],
   },
-  'look-and-say-nth': {
+  'lookAndSayNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Look-and-Say sequence.',
     returns: {
@@ -1453,11 +1453,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { look-and-say-nth } = import(number-theory);\nlook-and-say-nth(5)',
+      'let { lookAndSayNth } = import(number-theory);\nlookAndSayNth(5)',
     ],
-    seeAlso: ['number-theory.look-and-say-seq', 'number-theory.look-and-say-take-while', 'number-theory.look-and-say?'],
+    seeAlso: ['number-theory.lookAndSaySeq', 'number-theory.lookAndSayTakeWhile', 'number-theory.isLookAndSay'],
   },
-  'look-and-say?': {
+  'isLookAndSay': {
     category: 'number-theory',
     description: 'Checks if a string is a valid Look-and-Say term.',
     returns: {
@@ -1477,12 +1477,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { look-and-say? } = import(number-theory);\nlook-and-say?("111221")',
-      'let { look-and-say? } = import(number-theory);\nlook-and-say?("123")',
+      'let { isLookAndSay } = import(number-theory);\nisLookAndSay("111221")',
+      'let { isLookAndSay } = import(number-theory);\nisLookAndSay("123")',
     ],
-    seeAlso: ['number-theory.look-and-say-seq', 'number-theory.look-and-say-nth', 'number-theory.look-and-say-take-while'],
+    seeAlso: ['number-theory.lookAndSaySeq', 'number-theory.lookAndSayNth', 'number-theory.lookAndSayTakeWhile'],
   },
-  'lucas-seq': {
+  'lucasSeq': {
     category: 'number-theory',
     description: 'Generates the lucas sequence up to a specified length.',
     returns: {
@@ -1506,13 +1506,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucas-seq } = import(number-theory);\nlucas-seq(1)',
-      'let { lucas-seq } = import(number-theory);\nlucas-seq(2)',
-      'let { lucas-seq } = import(number-theory);\nlucas-seq()',
+      'let { lucasSeq } = import(number-theory);\nlucasSeq(1)',
+      'let { lucasSeq } = import(number-theory);\nlucasSeq(2)',
+      'let { lucasSeq } = import(number-theory);\nlucasSeq()',
     ],
-    seeAlso: ['number-theory.lucas-nth', 'number-theory.lucas-take-while', 'number-theory.lucas?', 'number-theory.fibonacci-seq'],
+    seeAlso: ['number-theory.lucasNth', 'number-theory.lucasTakeWhile', 'number-theory.isLucas', 'number-theory.fibonacciSeq'],
   },
-  'lucas-take-while': {
+  'lucasTakeWhile': {
     category: 'number-theory',
     description: 'Generates the lucas sequence while a condition is met.',
     returns: {
@@ -1533,11 +1533,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucas-take-while } = import(number-theory);\nlucas-take-while(-> $ < 100)',
+      'let { lucasTakeWhile } = import(number-theory);\nlucasTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.lucas-seq', 'number-theory.lucas-nth', 'number-theory.lucas?'],
+    seeAlso: ['number-theory.lucasSeq', 'number-theory.lucasNth', 'number-theory.isLucas'],
   },
-  'lucas-nth': {
+  'lucasNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the lucas sequence.',
     returns: {
@@ -1557,13 +1557,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucas-nth } = import(number-theory);\nlucas-nth(1)',
-      'let { lucas-nth } = import(number-theory);\nlucas-nth(2)',
-      'let { lucas-nth } = import(number-theory);\nlucas-nth(10)',
+      'let { lucasNth } = import(number-theory);\nlucasNth(1)',
+      'let { lucasNth } = import(number-theory);\nlucasNth(2)',
+      'let { lucasNth } = import(number-theory);\nlucasNth(10)',
     ],
-    seeAlso: ['number-theory.lucas-seq', 'number-theory.lucas-take-while', 'number-theory.lucas?'],
+    seeAlso: ['number-theory.lucasSeq', 'number-theory.lucasTakeWhile', 'number-theory.isLucas'],
   },
-  'lucas?': {
+  'isLucas': {
     category: 'number-theory',
     description: 'Determines if a number is in the lucas sequence.',
     returns: {
@@ -1583,13 +1583,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucas? } = import(number-theory);\nlucas?(1)',
-      'let { lucas? } = import(number-theory);\nlucas?(2)',
-      'let { lucas? } = import(number-theory);\nlucas?(10)',
+      'let { isLucas } = import(number-theory);\nisLucas(1)',
+      'let { isLucas } = import(number-theory);\nisLucas(2)',
+      'let { isLucas } = import(number-theory);\nisLucas(10)',
     ],
-    seeAlso: ['number-theory.lucas-seq', 'number-theory.lucas-nth', 'number-theory.fibonacci?', 'number-theory.lucas-take-while'],
+    seeAlso: ['number-theory.lucasSeq', 'number-theory.lucasNth', 'number-theory.isFibonacci', 'number-theory.lucasTakeWhile'],
   },
-  'lucky-seq': {
+  'luckySeq': {
     category: 'number-theory',
     description: 'Generates the lucky sequence up to a specified length.',
     returns: {
@@ -1610,13 +1610,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucky-seq } = import(number-theory);\nlucky-seq(1)',
-      'let { lucky-seq } = import(number-theory);\nlucky-seq(2)',
-      'let { lucky-seq } = import(number-theory);\nlucky-seq(20)',
+      'let { luckySeq } = import(number-theory);\nluckySeq(1)',
+      'let { luckySeq } = import(number-theory);\nluckySeq(2)',
+      'let { luckySeq } = import(number-theory);\nluckySeq(20)',
     ],
-    seeAlso: ['number-theory.lucky-nth', 'number-theory.lucky-take-while', 'number-theory.lucky?', 'number-theory.happy-seq', 'number-theory.prime-seq'],
+    seeAlso: ['number-theory.luckyNth', 'number-theory.luckyTakeWhile', 'number-theory.isLucky', 'number-theory.happySeq', 'number-theory.primeSeq'],
   },
-  'lucky-take-while': {
+  'luckyTakeWhile': {
     category: 'number-theory',
     description: 'Generates the lucky sequence while a condition is met.',
     returns: {
@@ -1637,11 +1637,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucky-take-while } = import(number-theory);\nlucky-take-while(-> $ < 100)',
+      'let { luckyTakeWhile } = import(number-theory);\nluckyTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.lucky-seq', 'number-theory.lucky-nth', 'number-theory.lucky?'],
+    seeAlso: ['number-theory.luckySeq', 'number-theory.luckyNth', 'number-theory.isLucky'],
   },
-  'lucky-nth': {
+  'luckyNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the lucky sequence.',
     returns: {
@@ -1661,13 +1661,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucky-nth } = import(number-theory);\nlucky-nth(1)',
-      'let { lucky-nth } = import(number-theory);\nlucky-nth(2)',
-      'let { lucky-nth } = import(number-theory);\nlucky-nth(20)',
+      'let { luckyNth } = import(number-theory);\nluckyNth(1)',
+      'let { luckyNth } = import(number-theory);\nluckyNth(2)',
+      'let { luckyNth } = import(number-theory);\nluckyNth(20)',
     ],
-    seeAlso: ['number-theory.lucky-seq', 'number-theory.lucky-take-while', 'number-theory.lucky?'],
+    seeAlso: ['number-theory.luckySeq', 'number-theory.luckyTakeWhile', 'number-theory.isLucky'],
   },
-  'lucky?': {
+  'isLucky': {
     category: 'number-theory',
     description: 'Checks if a number is a lucky number.',
     returns: {
@@ -1687,13 +1687,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lucky? } = import(number-theory);\nlucky?(4)',
-      'let { lucky? } = import(number-theory);\nlucky?(7)',
-      'let { lucky? } = import(number-theory);\nlucky?(33)',
+      'let { isLucky } = import(number-theory);\nisLucky(4)',
+      'let { isLucky } = import(number-theory);\nisLucky(7)',
+      'let { isLucky } = import(number-theory);\nisLucky(33)',
     ],
-    seeAlso: ['number-theory.lucky-seq', 'number-theory.lucky-nth', 'number-theory.prime?', 'number-theory.lucky-take-while'],
+    seeAlso: ['number-theory.luckySeq', 'number-theory.luckyNth', 'number-theory.isPrime', 'number-theory.luckyTakeWhile'],
   },
-  'mersenne-seq': {
+  'mersenneSeq': {
     category: 'number-theory',
     description: 'Generates the Mersenne sequence up to a specified length.',
     returns: {
@@ -1717,13 +1717,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mersenne-seq } = import(number-theory);\nmersenne-seq(1)',
-      'let { mersenne-seq } = import(number-theory);\nmersenne-seq(5)',
-      'let { mersenne-seq } = import(number-theory);\nmersenne-seq()',
+      'let { mersenneSeq } = import(number-theory);\nmersenneSeq(1)',
+      'let { mersenneSeq } = import(number-theory);\nmersenneSeq(5)',
+      'let { mersenneSeq } = import(number-theory);\nmersenneSeq()',
     ],
-    seeAlso: ['number-theory.mersenne-nth', 'number-theory.mersenne-take-while', 'number-theory.mersenne?', 'number-theory.prime-seq'],
+    seeAlso: ['number-theory.mersenneNth', 'number-theory.mersenneTakeWhile', 'number-theory.isMersenne', 'number-theory.primeSeq'],
   },
-  'mersenne-take-while': {
+  'mersenneTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Mersenne sequence while a condition is met.',
     returns: {
@@ -1744,11 +1744,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mersenne-take-while } = import(number-theory);\nmersenne-take-while(-> $ < 1000)',
+      'let { mersenneTakeWhile } = import(number-theory);\nmersenneTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.mersenne-seq', 'number-theory.mersenne-nth', 'number-theory.mersenne?'],
+    seeAlso: ['number-theory.mersenneSeq', 'number-theory.mersenneNth', 'number-theory.isMersenne'],
   },
-  'mersenne-nth': {
+  'mersenneNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Mersenne sequence.',
     returns: {
@@ -1768,12 +1768,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mersenne-nth } = import(number-theory);\nmersenne-nth(1)',
-      'let { mersenne-nth } = import(number-theory);\nmersenne-nth(5)',
+      'let { mersenneNth } = import(number-theory);\nmersenneNth(1)',
+      'let { mersenneNth } = import(number-theory);\nmersenneNth(5)',
     ],
-    seeAlso: ['number-theory.mersenne-seq', 'number-theory.mersenne-take-while', 'number-theory.mersenne?'],
+    seeAlso: ['number-theory.mersenneSeq', 'number-theory.mersenneTakeWhile', 'number-theory.isMersenne'],
   },
-  'mersenne?': {
+  'isMersenne': {
     category: 'number-theory',
     description: 'Checks if a number is in the Mersenne sequence.',
     returns: {
@@ -1793,13 +1793,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mersenne? } = import(number-theory);\nmersenne?(3)',
-      'let { mersenne? } = import(number-theory);\nmersenne?(4)',
-      'let { mersenne? } = import(number-theory);\nmersenne?(7)',
+      'let { isMersenne } = import(number-theory);\nisMersenne(3)',
+      'let { isMersenne } = import(number-theory);\nisMersenne(4)',
+      'let { isMersenne } = import(number-theory);\nisMersenne(7)',
     ],
-    seeAlso: ['number-theory.mersenne-seq', 'number-theory.mersenne-nth', 'number-theory.prime?', 'number-theory.mersenne-take-while'],
+    seeAlso: ['number-theory.mersenneSeq', 'number-theory.mersenneNth', 'number-theory.isPrime', 'number-theory.mersenneTakeWhile'],
   },
-  'padovan-seq': {
+  'padovanSeq': {
     category: 'number-theory',
     description: 'Generates the Padovan sequence up to a specified length.',
     returns: {
@@ -1820,13 +1820,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { padovan-seq } = import(number-theory);\npadovan-seq(5)',
-      'let { padovan-seq } = import(number-theory);\npadovan-seq(10)',
-      'let { padovan-seq } = import(number-theory);\npadovan-seq(20)',
+      'let { padovanSeq } = import(number-theory);\npadovanSeq(5)',
+      'let { padovanSeq } = import(number-theory);\npadovanSeq(10)',
+      'let { padovanSeq } = import(number-theory);\npadovanSeq(20)',
     ],
-    seeAlso: ['number-theory.padovan-nth', 'number-theory.padovan-take-while', 'number-theory.padovan?', 'number-theory.fibonacci-seq'],
+    seeAlso: ['number-theory.padovanNth', 'number-theory.padovanTakeWhile', 'number-theory.isPadovan', 'number-theory.fibonacciSeq'],
   },
-  'padovan-take-while': {
+  'padovanTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Padovan sequence while a condition is met.',
     returns: {
@@ -1847,11 +1847,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { padovan-take-while } = import(number-theory);\npadovan-take-while(-> $ < 1000)',
+      'let { padovanTakeWhile } = import(number-theory);\npadovanTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.padovan-seq', 'number-theory.padovan-nth', 'number-theory.padovan?'],
+    seeAlso: ['number-theory.padovanSeq', 'number-theory.padovanNth', 'number-theory.isPadovan'],
   },
-  'padovan-nth': {
+  'padovanNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Padovan sequence.',
     returns: {
@@ -1871,13 +1871,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { padovan-nth } = import(number-theory);\npadovan-nth(5)',
-      'let { padovan-nth } = import(number-theory);\npadovan-nth(10)',
-      'let { padovan-nth } = import(number-theory);\npadovan-nth(20)',
+      'let { padovanNth } = import(number-theory);\npadovanNth(5)',
+      'let { padovanNth } = import(number-theory);\npadovanNth(10)',
+      'let { padovanNth } = import(number-theory);\npadovanNth(20)',
     ],
-    seeAlso: ['number-theory.padovan-seq', 'number-theory.padovan-take-while', 'number-theory.padovan?'],
+    seeAlso: ['number-theory.padovanSeq', 'number-theory.padovanTakeWhile', 'number-theory.isPadovan'],
   },
-  'padovan?': {
+  'isPadovan': {
     category: 'number-theory',
     description: 'Checks if a number is in the Padovan sequence.',
     returns: {
@@ -1897,13 +1897,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { padovan? } = import(number-theory);\npadovan?(1)',
-      'let { padovan? } = import(number-theory);\npadovan?(265)',
-      'let { padovan? } = import(number-theory);\npadovan?(6)',
+      'let { isPadovan } = import(number-theory);\nisPadovan(1)',
+      'let { isPadovan } = import(number-theory);\nisPadovan(265)',
+      'let { isPadovan } = import(number-theory);\nisPadovan(6)',
     ],
-    seeAlso: ['number-theory.padovan-seq', 'number-theory.padovan-nth', 'number-theory.fibonacci?', 'number-theory.padovan-take-while'],
+    seeAlso: ['number-theory.padovanSeq', 'number-theory.padovanNth', 'number-theory.isFibonacci', 'number-theory.padovanTakeWhile'],
   },
-  'partition-seq': {
+  'partitionSeq': {
     category: 'number-theory',
     description: 'Generates the partition numbers up to a specified length. If no length is provided, it defaults to 299 (the maximum length of the pre-calculated partition numbers).',
     returns: {
@@ -1927,13 +1927,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { partition-seq } = import(number-theory);\npartition-seq(1)',
-      'let { partition-seq } = import(number-theory);\npartition-seq(10)',
-      'let { partition-seq } = import(number-theory);\npartition-seq()',
+      'let { partitionSeq } = import(number-theory);\npartitionSeq(1)',
+      'let { partitionSeq } = import(number-theory);\npartitionSeq(10)',
+      'let { partitionSeq } = import(number-theory);\npartitionSeq()',
     ],
-    seeAlso: ['number-theory.partition-nth', 'number-theory.partition-take-while', 'number-theory.partition?', 'number-theory.partitions', 'number-theory.countPartitions'],
+    seeAlso: ['number-theory.partitionNth', 'number-theory.partitionTakeWhile', 'number-theory.isPartition', 'number-theory.partitions', 'number-theory.countPartitions'],
   },
-  'partition-take-while': {
+  'partitionTakeWhile': {
     category: 'number-theory',
     description: 'Generates the partition numbers while a condition is met.',
     returns: {
@@ -1954,11 +1954,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { partition-take-while } = import(number-theory);\npartition-take-while(-> $ < 1000)',
+      'let { partitionTakeWhile } = import(number-theory);\npartitionTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.partition-seq', 'number-theory.partition-nth', 'number-theory.partition?'],
+    seeAlso: ['number-theory.partitionSeq', 'number-theory.partitionNth', 'number-theory.isPartition'],
   },
-  'partition-nth': {
+  'partitionNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the partition numbers.',
     returns: {
@@ -1978,12 +1978,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { partition-nth } = import(number-theory);\npartition-nth(1)',
-      'let { partition-nth } = import(number-theory);\npartition-nth(5)',
+      'let { partitionNth } = import(number-theory);\npartitionNth(1)',
+      'let { partitionNth } = import(number-theory);\npartitionNth(5)',
     ],
-    seeAlso: ['number-theory.partition-seq', 'number-theory.partition-take-while', 'number-theory.partition?'],
+    seeAlso: ['number-theory.partitionSeq', 'number-theory.partitionTakeWhile', 'number-theory.isPartition'],
   },
-  'partition?': {
+  'isPartition': {
     category: 'number-theory',
     description: 'Checks if a number is in the partition numbers.',
     returns: {
@@ -2003,16 +2003,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { partition? } = import(number-theory);\npartition?(0)',
-      'let { partition? } = import(number-theory);\npartition?(1)',
-      'let { partition? } = import(number-theory);\npartition?(2)',
-      'let { partition? } = import(number-theory);\npartition?(3)',
-      'let { partition? } = import(number-theory);\npartition?(4)',
-      'let { partition? } = import(number-theory);\npartition?(5)',
+      'let { isPartition } = import(number-theory);\nisPartition(0)',
+      'let { isPartition } = import(number-theory);\nisPartition(1)',
+      'let { isPartition } = import(number-theory);\nisPartition(2)',
+      'let { isPartition } = import(number-theory);\nisPartition(3)',
+      'let { isPartition } = import(number-theory);\nisPartition(4)',
+      'let { isPartition } = import(number-theory);\nisPartition(5)',
     ],
-    seeAlso: ['number-theory.partition-seq', 'number-theory.partition-nth', 'number-theory.partitions', 'number-theory.partition-take-while'],
+    seeAlso: ['number-theory.partitionSeq', 'number-theory.partitionNth', 'number-theory.partitions', 'number-theory.partitionTakeWhile'],
   },
-  'pell-seq': {
+  'pellSeq': {
     category: 'number-theory',
     description: 'Generates the Pell sequence up to a specified length.',
     returns: {
@@ -2036,13 +2036,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { pell-seq } = import(number-theory);\npell-seq(5)',
-      'let { pell-seq } = import(number-theory);\npell-seq(10)',
-      'let { pell-seq } = import(number-theory);\npell-seq()',
+      'let { pellSeq } = import(number-theory);\npellSeq(5)',
+      'let { pellSeq } = import(number-theory);\npellSeq(10)',
+      'let { pellSeq } = import(number-theory);\npellSeq()',
     ],
-    seeAlso: ['number-theory.pell-nth', 'number-theory.pell-take-while', 'number-theory.pell?', 'number-theory.fibonacci-seq'],
+    seeAlso: ['number-theory.pellNth', 'number-theory.pellTakeWhile', 'number-theory.isPell', 'number-theory.fibonacciSeq'],
   },
-  'pell-take-while': {
+  'pellTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Pell sequence while a condition is met.',
     returns: {
@@ -2063,11 +2063,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { pell-take-while } = import(number-theory);\npell-take-while(-> $ < 1000)',
+      'let { pellTakeWhile } = import(number-theory);\npellTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.pell-seq', 'number-theory.pell-nth', 'number-theory.pell?'],
+    seeAlso: ['number-theory.pellSeq', 'number-theory.pellNth', 'number-theory.isPell'],
   },
-  'pell-nth': {
+  'pellNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Pell sequence.',
     returns: {
@@ -2087,13 +2087,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { pell-nth } = import(number-theory);\npell-nth(5)',
-      'let { pell-nth } = import(number-theory);\npell-nth(10)',
-      'let { pell-nth } = import(number-theory);\npell-nth(20)',
+      'let { pellNth } = import(number-theory);\npellNth(5)',
+      'let { pellNth } = import(number-theory);\npellNth(10)',
+      'let { pellNth } = import(number-theory);\npellNth(20)',
     ],
-    seeAlso: ['number-theory.pell-seq', 'number-theory.pell-take-while', 'number-theory.pell?'],
+    seeAlso: ['number-theory.pellSeq', 'number-theory.pellTakeWhile', 'number-theory.isPell'],
   },
-  'pell?': {
+  'isPell': {
     category: 'number-theory',
     description: 'Checks if a number is a Pell number.',
     returns: {
@@ -2113,13 +2113,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { pell? } = import(number-theory);\npell?(1)',
-      'let { pell? } = import(number-theory);\npell?(470832)',
-      'let { pell? } = import(number-theory);\npell?(10)',
+      'let { isPell } = import(number-theory);\nisPell(1)',
+      'let { isPell } = import(number-theory);\nisPell(470832)',
+      'let { isPell } = import(number-theory);\nisPell(10)',
     ],
-    seeAlso: ['number-theory.pell-seq', 'number-theory.pell-nth', 'number-theory.fibonacci?', 'number-theory.pell-take-while'],
+    seeAlso: ['number-theory.pellSeq', 'number-theory.pellNth', 'number-theory.isFibonacci', 'number-theory.pellTakeWhile'],
   },
-  'perfect-seq': {
+  'perfectSeq': {
     category: 'number-theory',
     description: 'Generates the perfect numbers up to a specified length.',
     returns: {
@@ -2143,13 +2143,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-seq } = import(number-theory);\nperfect-seq(1)',
-      'let { perfect-seq } = import(number-theory);\nperfect-seq(5)',
-      'let { perfect-seq } = import(number-theory);\nperfect-seq()',
+      'let { perfectSeq } = import(number-theory);\nperfectSeq(1)',
+      'let { perfectSeq } = import(number-theory);\nperfectSeq(5)',
+      'let { perfectSeq } = import(number-theory);\nperfectSeq()',
     ],
-    seeAlso: ['number-theory.perfect-nth', 'number-theory.perfect-take-while', 'number-theory.perfect?', 'number-theory.abundant-seq', 'number-theory.deficient-seq', 'number-theory.isAmicable'],
+    seeAlso: ['number-theory.perfectNth', 'number-theory.perfectTakeWhile', 'number-theory.isPerfect', 'number-theory.abundantSeq', 'number-theory.deficientSeq', 'number-theory.isAmicable'],
   },
-  'perfect-take-while': {
+  'perfectTakeWhile': {
     category: 'number-theory',
     description: 'Generates the perfect numbers while a condition is met.',
     returns: {
@@ -2170,11 +2170,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-take-while } = import(number-theory);\nperfect-take-while(-> $ < 1000)',
+      'let { perfectTakeWhile } = import(number-theory);\nperfectTakeWhile(-> $ < 1000)',
     ],
-    seeAlso: ['number-theory.perfect-seq', 'number-theory.perfect-nth', 'number-theory.perfect?'],
+    seeAlso: ['number-theory.perfectSeq', 'number-theory.perfectNth', 'number-theory.isPerfect'],
   },
-  'perfect-nth': {
+  'perfectNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the perfect numbers.',
     returns: {
@@ -2194,12 +2194,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-nth } = import(number-theory);\nperfect-nth(1)',
-      'let { perfect-nth } = import(number-theory);\nperfect-nth(5)',
+      'let { perfectNth } = import(number-theory);\nperfectNth(1)',
+      'let { perfectNth } = import(number-theory);\nperfectNth(5)',
     ],
-    seeAlso: ['number-theory.perfect-seq', 'number-theory.perfect-take-while', 'number-theory.perfect?'],
+    seeAlso: ['number-theory.perfectSeq', 'number-theory.perfectTakeWhile', 'number-theory.isPerfect'],
   },
-  'perfect?': {
+  'isPerfect': {
     category: 'number-theory',
     description: 'Checks if a number is in the perfect numbers.',
     returns: {
@@ -2219,20 +2219,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect? } = import(number-theory);\nperfect?(0)',
-      'let { perfect? } = import(number-theory);\nperfect?(1)',
-      'let { perfect? } = import(number-theory);\nperfect?(2)',
-      'let { perfect? } = import(number-theory);\nperfect?(3)',
-      'let { perfect? } = import(number-theory);\nperfect?(4)',
-      'let { perfect? } = import(number-theory);\nperfect?(5)',
-      'let { perfect? } = import(number-theory);\nperfect?(6)',
-      'let { perfect? } = import(number-theory);\nperfect?(7)',
-      'let { perfect? } = import(number-theory);\nperfect?(8)',
-      'let { perfect? } = import(number-theory);\nperfect?(9)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(0)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(1)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(2)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(3)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(4)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(5)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(6)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(7)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(8)',
+      'let { isPerfect } = import(number-theory);\nisPerfect(9)',
     ],
-    seeAlso: ['number-theory.perfect-seq', 'number-theory.perfect-nth', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.sigma', 'number-theory.perfect-take-while', 'number-theory.isAmicable', 'number-theory.properDivisors'],
+    seeAlso: ['number-theory.perfectSeq', 'number-theory.perfectNth', 'number-theory.isAbundant', 'number-theory.isDeficient', 'number-theory.sigma', 'number-theory.perfectTakeWhile', 'number-theory.isAmicable', 'number-theory.properDivisors'],
   },
-  'perfect-square-seq': {
+  'perfectSquareSeq': {
     category: 'number-theory',
     description: 'Generates the perfect square numbers up to a specified length.',
     returns: {
@@ -2253,12 +2253,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-square-seq } = import(number-theory);\nperfect-square-seq(5)',
-      'let { perfect-square-seq } = import(number-theory);\nperfect-square-seq(20)',
+      'let { perfectSquareSeq } = import(number-theory);\nperfectSquareSeq(5)',
+      'let { perfectSquareSeq } = import(number-theory);\nperfectSquareSeq(20)',
     ],
-    seeAlso: ['number-theory.perfect-square-nth', 'number-theory.perfect-square-take-while', 'number-theory.perfect-square?', 'number-theory.perfect-cube-seq', 'number-theory.perfect-power-seq', 'number-theory.polygonal-seq'],
+    seeAlso: ['number-theory.perfectSquareNth', 'number-theory.perfectSquareTakeWhile', 'number-theory.isPerfectSquare', 'number-theory.perfectCubeSeq', 'number-theory.perfectPowerSeq', 'number-theory.polygonalSeq'],
   },
-  'perfect-square-take-while': {
+  'perfectSquareTakeWhile': {
     category: 'number-theory',
     description: 'Generates the perfect square numbers while a condition is met.',
     returns: {
@@ -2279,11 +2279,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-square-take-while } = import(number-theory);\nperfect-square-take-while(-> $ <= 100)',
+      'let { perfectSquareTakeWhile } = import(number-theory);\nperfectSquareTakeWhile(-> $ <= 100)',
     ],
-    seeAlso: ['number-theory.perfect-square-seq', 'number-theory.perfect-square-nth', 'number-theory.perfect-square?'],
+    seeAlso: ['number-theory.perfectSquareSeq', 'number-theory.perfectSquareNth', 'number-theory.isPerfectSquare'],
   },
-  'perfect-square-nth': {
+  'perfectSquareNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the perfect square numbers.',
     returns: {
@@ -2303,12 +2303,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-square-nth } = import(number-theory);\nperfect-square-nth(1)',
-      'let { perfect-square-nth } = import(number-theory);\nperfect-square-nth(5)',
+      'let { perfectSquareNth } = import(number-theory);\nperfectSquareNth(1)',
+      'let { perfectSquareNth } = import(number-theory);\nperfectSquareNth(5)',
     ],
-    seeAlso: ['number-theory.perfect-square-seq', 'number-theory.perfect-square-take-while', 'number-theory.perfect-square?'],
+    seeAlso: ['number-theory.perfectSquareSeq', 'number-theory.perfectSquareTakeWhile', 'number-theory.isPerfectSquare'],
   },
-  'perfect-square?': {
+  'isPerfectSquare': {
     category: 'number-theory',
     description: 'Checks if a number is a perfect square.',
     returns: {
@@ -2328,12 +2328,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-square? } = import(number-theory);\nperfect-square?(16)',
-      'let { perfect-square? } = import(number-theory);\nperfect-square?(20)',
+      'let { isPerfectSquare } = import(number-theory);\nisPerfectSquare(16)',
+      'let { isPerfectSquare } = import(number-theory);\nisPerfectSquare(20)',
     ],
-    seeAlso: ['number-theory.perfect-square-seq', 'number-theory.perfect-square-nth', 'number-theory.perfect-cube?', 'number-theory.perfect-power?', 'number-theory.perfect-square-take-while', 'number-theory.perfectPower', 'number-theory.polygonal?'],
+    seeAlso: ['number-theory.perfectSquareSeq', 'number-theory.perfectSquareNth', 'number-theory.isPerfectCube', 'number-theory.isPerfectPower', 'number-theory.perfectSquareTakeWhile', 'number-theory.perfectPower', 'number-theory.isPolygonal'],
   },
-  'perfect-cube-seq': {
+  'perfectCubeSeq': {
     category: 'number-theory',
     description: 'Generates the perfect cube numbers up to a specified length.',
     returns: {
@@ -2354,12 +2354,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-cube-seq } = import(number-theory);\nperfect-cube-seq(5)',
-      'let { perfect-cube-seq } = import(number-theory);\nperfect-cube-seq(20)',
+      'let { perfectCubeSeq } = import(number-theory);\nperfectCubeSeq(5)',
+      'let { perfectCubeSeq } = import(number-theory);\nperfectCubeSeq(20)',
     ],
-    seeAlso: ['number-theory.perfect-cube-nth', 'number-theory.perfect-cube-take-while', 'number-theory.perfect-cube?', 'number-theory.perfect-square-seq', 'number-theory.perfect-power-seq'],
+    seeAlso: ['number-theory.perfectCubeNth', 'number-theory.perfectCubeTakeWhile', 'number-theory.isPerfectCube', 'number-theory.perfectSquareSeq', 'number-theory.perfectPowerSeq'],
   },
-  'perfect-cube-take-while': {
+  'perfectCubeTakeWhile': {
     category: 'number-theory',
     description: 'Generates the perfect cube numbers while a condition is met.',
     returns: {
@@ -2380,11 +2380,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-cube-take-while } = import(number-theory);\nperfect-cube-take-while(-> $ <= 100)',
+      'let { perfectCubeTakeWhile } = import(number-theory);\nperfectCubeTakeWhile(-> $ <= 100)',
     ],
-    seeAlso: ['number-theory.perfect-cube-seq', 'number-theory.perfect-cube-nth', 'number-theory.perfect-cube?'],
+    seeAlso: ['number-theory.perfectCubeSeq', 'number-theory.perfectCubeNth', 'number-theory.isPerfectCube'],
   },
-  'perfect-cube-nth': {
+  'perfectCubeNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the perfect cube numbers.',
     returns: {
@@ -2404,12 +2404,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-cube-nth } = import(number-theory);\nperfect-cube-nth(1)',
-      'let { perfect-cube-nth } = import(number-theory);\nperfect-cube-nth(5)',
+      'let { perfectCubeNth } = import(number-theory);\nperfectCubeNth(1)',
+      'let { perfectCubeNth } = import(number-theory);\nperfectCubeNth(5)',
     ],
-    seeAlso: ['number-theory.perfect-cube-seq', 'number-theory.perfect-cube-take-while', 'number-theory.perfect-cube?'],
+    seeAlso: ['number-theory.perfectCubeSeq', 'number-theory.perfectCubeTakeWhile', 'number-theory.isPerfectCube'],
   },
-  'perfect-cube?': {
+  'isPerfectCube': {
     category: 'number-theory',
     description: 'Checks if a number is in the perfect cube numbers.',
     returns: {
@@ -2429,13 +2429,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-cube? } = import(number-theory);\nperfect-cube?(7)',
-      'let { perfect-cube? } = import(number-theory);\nperfect-cube?(8)',
-      'let { perfect-cube? } = import(number-theory);\nperfect-cube?(9)',
+      'let { isPerfectCube } = import(number-theory);\nisPerfectCube(7)',
+      'let { isPerfectCube } = import(number-theory);\nisPerfectCube(8)',
+      'let { isPerfectCube } = import(number-theory);\nisPerfectCube(9)',
     ],
-    seeAlso: ['number-theory.perfect-cube-seq', 'number-theory.perfect-cube-nth', 'number-theory.perfect-square?', 'number-theory.perfect-power?', 'number-theory.perfect-cube-take-while', 'number-theory.perfectPower'],
+    seeAlso: ['number-theory.perfectCubeSeq', 'number-theory.perfectCubeNth', 'number-theory.isPerfectSquare', 'number-theory.isPerfectPower', 'number-theory.perfectCubeTakeWhile', 'number-theory.perfectPower'],
   },
-  'perfect-power-seq': {
+  'perfectPowerSeq': {
     category: 'number-theory',
     description: 'Generates the perfect power numbers up to a specified length.',
     returns: {
@@ -2456,12 +2456,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-power-seq } = import(number-theory);\nperfect-power-seq(5)',
-      'let { perfect-power-seq } = import(number-theory);\nperfect-power-seq(20)',
+      'let { perfectPowerSeq } = import(number-theory);\nperfectPowerSeq(5)',
+      'let { perfectPowerSeq } = import(number-theory);\nperfectPowerSeq(20)',
     ],
-    seeAlso: ['number-theory.perfect-power-nth', 'number-theory.perfect-power-take-while', 'number-theory.perfect-power?', 'number-theory.perfectPower', 'number-theory.perfect-square-seq', 'number-theory.perfect-cube-seq'],
+    seeAlso: ['number-theory.perfectPowerNth', 'number-theory.perfectPowerTakeWhile', 'number-theory.isPerfectPower', 'number-theory.perfectPower', 'number-theory.perfectSquareSeq', 'number-theory.perfectCubeSeq'],
   },
-  'perfect-power-take-while': {
+  'perfectPowerTakeWhile': {
     category: 'number-theory',
     description: 'Generates the perfect power numbers while a condition is met.',
     returns: {
@@ -2482,11 +2482,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-power-take-while } = import(number-theory);\nperfect-power-take-while(-> $ <= 100)',
+      'let { perfectPowerTakeWhile } = import(number-theory);\nperfectPowerTakeWhile(-> $ <= 100)',
     ],
-    seeAlso: ['number-theory.perfect-power-seq', 'number-theory.perfect-power-nth', 'number-theory.perfect-power?'],
+    seeAlso: ['number-theory.perfectPowerSeq', 'number-theory.perfectPowerNth', 'number-theory.isPerfectPower'],
   },
-  'perfect-power-nth': {
+  'perfectPowerNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the perfect power numbers.',
     returns: {
@@ -2506,12 +2506,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-power-nth } = import(number-theory);\nperfect-power-nth(3)',
-      'let { perfect-power-nth } = import(number-theory);\nperfect-power-nth(15)',
+      'let { perfectPowerNth } = import(number-theory);\nperfectPowerNth(3)',
+      'let { perfectPowerNth } = import(number-theory);\nperfectPowerNth(15)',
     ],
-    seeAlso: ['number-theory.perfect-power-seq', 'number-theory.perfect-power-take-while', 'number-theory.perfect-power?'],
+    seeAlso: ['number-theory.perfectPowerSeq', 'number-theory.perfectPowerTakeWhile', 'number-theory.isPerfectPower'],
   },
-  'perfect-power?': {
+  'isPerfectPower': {
     category: 'number-theory',
     description: 'Checks if a number is in the perfect power numbers.',
     returns: {
@@ -2531,14 +2531,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-power? } = import(number-theory);\nperfect-power?(7)',
-      'let { perfect-power? } = import(number-theory);\nperfect-power?(8)',
-      'let { perfect-power? } = import(number-theory);\nperfect-power?(9)',
-      'let { perfect-power? } = import(number-theory);\nperfect-power?(10)',
+      'let { isPerfectPower } = import(number-theory);\nisPerfectPower(7)',
+      'let { isPerfectPower } = import(number-theory);\nisPerfectPower(8)',
+      'let { isPerfectPower } = import(number-theory);\nisPerfectPower(9)',
+      'let { isPerfectPower } = import(number-theory);\nisPerfectPower(10)',
     ],
-    seeAlso: ['number-theory.perfect-power-seq', 'number-theory.perfect-power-nth', 'number-theory.perfectPower', 'number-theory.perfect-square?', 'number-theory.perfect-cube?', 'number-theory.perfect-power-take-while'],
+    seeAlso: ['number-theory.perfectPowerSeq', 'number-theory.perfectPowerNth', 'number-theory.perfectPower', 'number-theory.isPerfectSquare', 'number-theory.isPerfectCube', 'number-theory.perfectPowerTakeWhile'],
   },
-  'polygonal-seq': {
+  'polygonalSeq': {
     category: 'number-theory',
     description: 'Generates the polygonal sequence for a given number of sides and length.',
     returns: {
@@ -2570,15 +2570,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { polygonal-seq } = import(number-theory);\npolygonal-seq(3, 2)',
-      'let { polygonal-seq } = import(number-theory);\npolygonal-seq(4, 2)',
-      'let { polygonal-seq } = import(number-theory);\npolygonal-seq(5, 3)',
-      'let { polygonal-seq } = import(number-theory);\npolygonal-seq(6, 5)',
-      'let { polygonal-seq } = import(number-theory);\npolygonal-seq(100, 10)',
+      'let { polygonalSeq } = import(number-theory);\npolygonalSeq(3, 2)',
+      'let { polygonalSeq } = import(number-theory);\npolygonalSeq(4, 2)',
+      'let { polygonalSeq } = import(number-theory);\npolygonalSeq(5, 3)',
+      'let { polygonalSeq } = import(number-theory);\npolygonalSeq(6, 5)',
+      'let { polygonalSeq } = import(number-theory);\npolygonalSeq(100, 10)',
     ],
-    seeAlso: ['number-theory.polygonal-nth', 'number-theory.polygonal-take-while', 'number-theory.polygonal?', 'number-theory.perfect-square-seq'],
+    seeAlso: ['number-theory.polygonalNth', 'number-theory.polygonalTakeWhile', 'number-theory.isPolygonal', 'number-theory.perfectSquareSeq'],
   },
-  'polygonal-take-while': {
+  'polygonalTakeWhile': {
     category: 'number-theory',
     description: 'Generates the polygonal sequence while a condition is met.',
     returns: {
@@ -2610,11 +2610,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { polygonal-take-while } = import(number-theory);\npolygonal-take-while(15, -> $ < 1000)',
+      'let { polygonalTakeWhile } = import(number-theory);\npolygonalTakeWhile(15, -> $ < 1000)',
     ],
-    seeAlso: ['number-theory.polygonal-seq', 'number-theory.polygonal-nth', 'number-theory.polygonal?'],
+    seeAlso: ['number-theory.polygonalSeq', 'number-theory.polygonalNth', 'number-theory.isPolygonal'],
   },
-  'polygonal-nth': {
+  'polygonalNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the polygonal sequence.',
     returns: {
@@ -2645,13 +2645,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { polygonal-nth } = import(number-theory);\npolygonal-nth(3, 9)',
-      'let { polygonal-nth } = import(number-theory);\npolygonal-nth(4, 5)',
-      'let { polygonal-nth } = import(number-theory);\npolygonal-nth(5, 5)',
+      'let { polygonalNth } = import(number-theory);\npolygonalNth(3, 9)',
+      'let { polygonalNth } = import(number-theory);\npolygonalNth(4, 5)',
+      'let { polygonalNth } = import(number-theory);\npolygonalNth(5, 5)',
     ],
-    seeAlso: ['number-theory.polygonal-seq', 'number-theory.polygonal-take-while', 'number-theory.polygonal?'],
+    seeAlso: ['number-theory.polygonalSeq', 'number-theory.polygonalTakeWhile', 'number-theory.isPolygonal'],
   },
-  'polygonal?': {
+  'isPolygonal': {
     category: 'number-theory',
     description: 'Checks if a number is in the polygonal sequence.',
     returns: {
@@ -2682,15 +2682,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { polygonal? } = import(number-theory);\npolygonal?(3, 10)',
-      'let { polygonal? } = import(number-theory);\npolygonal?(3, 9)',
-      'let { polygonal? } = import(number-theory);\npolygonal?(4, 10000)',
-      'let { polygonal? } = import(number-theory);\npolygonal?(4, 1000)',
-      'let { polygonal? } = import(number-theory);\npolygonal?(6, 45)',
+      'let { isPolygonal } = import(number-theory);\nisPolygonal(3, 10)',
+      'let { isPolygonal } = import(number-theory);\nisPolygonal(3, 9)',
+      'let { isPolygonal } = import(number-theory);\nisPolygonal(4, 10000)',
+      'let { isPolygonal } = import(number-theory);\nisPolygonal(4, 1000)',
+      'let { isPolygonal } = import(number-theory);\nisPolygonal(6, 45)',
     ],
-    seeAlso: ['number-theory.polygonal-seq', 'number-theory.polygonal-nth', 'number-theory.perfect-square?', 'number-theory.polygonal-take-while'],
+    seeAlso: ['number-theory.polygonalSeq', 'number-theory.polygonalNth', 'number-theory.isPerfectSquare', 'number-theory.polygonalTakeWhile'],
   },
-  'prime-seq': {
+  'primeSeq': {
     category: 'number-theory',
     description: 'Generates the prime sequence up to a specified length.',
     returns: {
@@ -2711,13 +2711,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { prime-seq } = import(number-theory);\nprime-seq(1)',
-      'let { prime-seq } = import(number-theory);\nprime-seq(2)',
-      'let { prime-seq } = import(number-theory);\nprime-seq(10)',
+      'let { primeSeq } = import(number-theory);\nprimeSeq(1)',
+      'let { primeSeq } = import(number-theory);\nprimeSeq(2)',
+      'let { primeSeq } = import(number-theory);\nprimeSeq(10)',
     ],
-    seeAlso: ['number-theory.prime-nth', 'number-theory.prime-take-while', 'number-theory.prime?', 'number-theory.composite-seq', 'number-theory.mersenne-seq', 'number-theory.lucky-seq'],
+    seeAlso: ['number-theory.primeNth', 'number-theory.primeTakeWhile', 'number-theory.isPrime', 'number-theory.compositeSeq', 'number-theory.mersenneSeq', 'number-theory.luckySeq'],
   },
-  'prime-take-while': {
+  'primeTakeWhile': {
     category: 'number-theory',
     description: 'Generates the prime sequence while a condition is met.',
     returns: {
@@ -2738,11 +2738,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { prime-take-while } = import(number-theory);\nprime-take-while(-> $ < 50)',
+      'let { primeTakeWhile } = import(number-theory);\nprimeTakeWhile(-> $ < 50)',
     ],
-    seeAlso: ['number-theory.prime-seq', 'number-theory.prime-nth', 'number-theory.prime?'],
+    seeAlso: ['number-theory.primeSeq', 'number-theory.primeNth', 'number-theory.isPrime'],
   },
-  'prime-nth': {
+  'primeNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the prime sequence.',
     returns: {
@@ -2762,13 +2762,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { prime-nth } = import(number-theory);\nprime-nth(1)',
-      'let { prime-nth } = import(number-theory);\nprime-nth(2)',
-      'let { prime-nth } = import(number-theory);\nprime-nth(10)',
+      'let { primeNth } = import(number-theory);\nprimeNth(1)',
+      'let { primeNth } = import(number-theory);\nprimeNth(2)',
+      'let { primeNth } = import(number-theory);\nprimeNth(10)',
     ],
-    seeAlso: ['number-theory.prime-seq', 'number-theory.prime-take-while', 'number-theory.prime?'],
+    seeAlso: ['number-theory.primeSeq', 'number-theory.primeTakeWhile', 'number-theory.isPrime'],
   },
-  'prime?': {
+  'isPrime': {
     category: 'number-theory',
     description: 'Determines if a number is prime.',
     returns: {
@@ -2788,16 +2788,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { prime? } = import(number-theory);\nprime?(1)',
-      'let { prime? } = import(number-theory);\nprime?(2)',
-      'let { prime? } = import(number-theory);\nprime?(3)',
-      'let { prime? } = import(number-theory);\nprime?(4)',
-      'let { prime? } = import(number-theory);\nprime?(997)',
-      'let { prime? } = import(number-theory);\nprime?(1001)',
+      'let { isPrime } = import(number-theory);\nisPrime(1)',
+      'let { isPrime } = import(number-theory);\nisPrime(2)',
+      'let { isPrime } = import(number-theory);\nisPrime(3)',
+      'let { isPrime } = import(number-theory);\nisPrime(4)',
+      'let { isPrime } = import(number-theory);\nisPrime(997)',
+      'let { isPrime } = import(number-theory);\nisPrime(1001)',
     ],
-    seeAlso: ['number-theory.prime-seq', 'number-theory.prime-nth', 'number-theory.composite?', 'number-theory.primeFactors', 'number-theory.mersenne?', 'number-theory.prime-take-while', 'number-theory.lucky?'],
+    seeAlso: ['number-theory.primeSeq', 'number-theory.primeNth', 'number-theory.isComposite', 'number-theory.primeFactors', 'number-theory.isMersenne', 'number-theory.primeTakeWhile', 'number-theory.isLucky'],
   },
-  'recaman-seq': {
+  'recamanSeq': {
     category: 'number-theory',
     description: 'Generates the Recaman sequence up to a specified length.',
     returns: {
@@ -2818,13 +2818,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { recaman-seq } = import(number-theory);\nrecaman-seq(5)',
-      'let { recaman-seq } = import(number-theory);\nrecaman-seq(10)',
-      'let { recaman-seq } = import(number-theory);\nrecaman-seq(20)',
+      'let { recamanSeq } = import(number-theory);\nrecamanSeq(5)',
+      'let { recamanSeq } = import(number-theory);\nrecamanSeq(10)',
+      'let { recamanSeq } = import(number-theory);\nrecamanSeq(20)',
     ],
-    seeAlso: ['number-theory.recaman-nth', 'number-theory.recaman-take-while', 'number-theory.recaman?', 'number-theory.golomb-seq'],
+    seeAlso: ['number-theory.recamanNth', 'number-theory.recamanTakeWhile', 'number-theory.isRecaman', 'number-theory.golombSeq'],
   },
-  'recaman-take-while': {
+  'recamanTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Recaman sequence while a condition is met.',
     returns: {
@@ -2845,11 +2845,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { recaman-take-while } = import(number-theory);\nrecaman-take-while(-> $ < 10)',
+      'let { recamanTakeWhile } = import(number-theory);\nrecamanTakeWhile(-> $ < 10)',
     ],
-    seeAlso: ['number-theory.recaman-seq', 'number-theory.recaman-nth', 'number-theory.recaman?'],
+    seeAlso: ['number-theory.recamanSeq', 'number-theory.recamanNth', 'number-theory.isRecaman'],
   },
-  'recaman-nth': {
+  'recamanNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Recaman sequence.',
     returns: {
@@ -2869,13 +2869,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { recaman-nth } = import(number-theory);\nrecaman-nth(5)',
-      'let { recaman-nth } = import(number-theory);\nrecaman-nth(10)',
-      'let { recaman-nth } = import(number-theory);\nrecaman-nth(20)',
+      'let { recamanNth } = import(number-theory);\nrecamanNth(5)',
+      'let { recamanNth } = import(number-theory);\nrecamanNth(10)',
+      'let { recamanNth } = import(number-theory);\nrecamanNth(20)',
     ],
-    seeAlso: ['number-theory.recaman-seq', 'number-theory.recaman-take-while', 'number-theory.recaman?'],
+    seeAlso: ['number-theory.recamanSeq', 'number-theory.recamanTakeWhile', 'number-theory.isRecaman'],
   },
-  'recaman?': {
+  'isRecaman': {
     category: 'number-theory',
     description: 'Checks if a number is in the Recaman sequence.',
     returns: {
@@ -2895,13 +2895,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { recaman? } = import(number-theory);\nrecaman?(5)',
-      'let { recaman? } = import(number-theory);\nrecaman?(10)',
-      'let { recaman? } = import(number-theory);\nrecaman?(20)',
+      'let { isRecaman } = import(number-theory);\nisRecaman(5)',
+      'let { isRecaman } = import(number-theory);\nisRecaman(10)',
+      'let { isRecaman } = import(number-theory);\nisRecaman(20)',
     ],
-    seeAlso: ['number-theory.recaman-seq', 'number-theory.recaman-nth', 'number-theory.recaman-take-while'],
+    seeAlso: ['number-theory.recamanSeq', 'number-theory.recamanNth', 'number-theory.recamanTakeWhile'],
   },
-  'sylvester-seq': {
+  'sylvesterSeq': {
     category: 'number-theory',
     description: 'Generates the Sylvester sequence up to a specified length.',
     returns: {
@@ -2925,13 +2925,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { sylvester-seq } = import(number-theory);\nsylvester-seq(5)',
-      'let { sylvester-seq } = import(number-theory);\nsylvester-seq()',
-      'let { sylvester-seq } = import(number-theory);\nsylvester-seq()',
+      'let { sylvesterSeq } = import(number-theory);\nsylvesterSeq(5)',
+      'let { sylvesterSeq } = import(number-theory);\nsylvesterSeq()',
+      'let { sylvesterSeq } = import(number-theory);\nsylvesterSeq()',
     ],
-    seeAlso: ['number-theory.sylvester-nth', 'number-theory.sylvester-take-while', 'number-theory.sylvester?'],
+    seeAlso: ['number-theory.sylvesterNth', 'number-theory.sylvesterTakeWhile', 'number-theory.isSylvester'],
   },
-  'sylvester-take-while': {
+  'sylvesterTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Sylvester sequence while a condition is met.',
     returns: {
@@ -2952,11 +2952,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { sylvester-take-while } = import(number-theory);\nsylvester-take-while(-> $ < 100000)',
+      'let { sylvesterTakeWhile } = import(number-theory);\nsylvesterTakeWhile(-> $ < 100000)',
     ],
-    seeAlso: ['number-theory.sylvester-seq', 'number-theory.sylvester-nth', 'number-theory.sylvester?'],
+    seeAlso: ['number-theory.sylvesterSeq', 'number-theory.sylvesterNth', 'number-theory.isSylvester'],
   },
-  'sylvester-nth': {
+  'sylvesterNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Sylvester sequence.',
     returns: {
@@ -2976,12 +2976,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { sylvester-nth } = import(number-theory);\nsylvester-nth(1)',
-      'let { sylvester-nth } = import(number-theory);\nsylvester-nth(5)',
+      'let { sylvesterNth } = import(number-theory);\nsylvesterNth(1)',
+      'let { sylvesterNth } = import(number-theory);\nsylvesterNth(5)',
     ],
-    seeAlso: ['number-theory.sylvester-seq', 'number-theory.sylvester-take-while', 'number-theory.sylvester?'],
+    seeAlso: ['number-theory.sylvesterSeq', 'number-theory.sylvesterTakeWhile', 'number-theory.isSylvester'],
   },
-  'sylvester?': {
+  'isSylvester': {
     category: 'number-theory',
     description: 'Checks if a number is in the Sylvester sequence.',
     returns: {
@@ -3001,13 +3001,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { sylvester? } = import(number-theory);\nsylvester?(2)',
-      'let { sylvester? } = import(number-theory);\nsylvester?(3)',
-      'let { sylvester? } = import(number-theory);\nsylvester?(6)',
+      'let { isSylvester } = import(number-theory);\nisSylvester(2)',
+      'let { isSylvester } = import(number-theory);\nisSylvester(3)',
+      'let { isSylvester } = import(number-theory);\nisSylvester(6)',
     ],
-    seeAlso: ['number-theory.sylvester-seq', 'number-theory.sylvester-nth', 'number-theory.sylvester-take-while'],
+    seeAlso: ['number-theory.sylvesterSeq', 'number-theory.sylvesterNth', 'number-theory.sylvesterTakeWhile'],
   },
-  'thue-morse-seq': {
+  'thueMorseSeq': {
     category: 'number-theory',
     description: 'Generates the Thue-Morse sequence up to a specified length.',
     returns: {
@@ -3028,13 +3028,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { thue-morse-seq } = import(number-theory);\nthue-morse-seq(5)',
-      'let { thue-morse-seq } = import(number-theory);\nthue-morse-seq(10)',
-      'let { thue-morse-seq } = import(number-theory);\nthue-morse-seq(20)',
+      'let { thueMorseSeq } = import(number-theory);\nthueMorseSeq(5)',
+      'let { thueMorseSeq } = import(number-theory);\nthueMorseSeq(10)',
+      'let { thueMorseSeq } = import(number-theory);\nthueMorseSeq(20)',
     ],
-    seeAlso: ['number-theory.thue-morse-nth', 'number-theory.thue-morse-take-while', 'number-theory.thue-morse?'],
+    seeAlso: ['number-theory.thueMorseNth', 'number-theory.thueMorseTakeWhile', 'number-theory.isThueMorse'],
   },
-  'thue-morse-take-while': {
+  'thueMorseTakeWhile': {
     category: 'number-theory',
     description: 'Generates the Thue-Morse sequence while a condition is met.',
     returns: {
@@ -3055,11 +3055,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { thue-morse-take-while } = import(number-theory);\nthue-morse-take-while(-> $2 < 10)',
+      'let { thueMorseTakeWhile } = import(number-theory);\nthueMorseTakeWhile(-> $2 < 10)',
     ],
-    seeAlso: ['number-theory.thue-morse-seq', 'number-theory.thue-morse-nth', 'number-theory.thue-morse?'],
+    seeAlso: ['number-theory.thueMorseSeq', 'number-theory.thueMorseNth', 'number-theory.isThueMorse'],
   },
-  'thue-morse-nth': {
+  'thueMorseNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the Thue-Morse sequence.',
     returns: {
@@ -3079,13 +3079,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { thue-morse-nth } = import(number-theory);\nthue-morse-nth(5)',
-      'let { thue-morse-nth } = import(number-theory);\nthue-morse-nth(10)',
-      'let { thue-morse-nth } = import(number-theory);\nthue-morse-nth(20)',
+      'let { thueMorseNth } = import(number-theory);\nthueMorseNth(5)',
+      'let { thueMorseNth } = import(number-theory);\nthueMorseNth(10)',
+      'let { thueMorseNth } = import(number-theory);\nthueMorseNth(20)',
     ],
-    seeAlso: ['number-theory.thue-morse-seq', 'number-theory.thue-morse-take-while', 'number-theory.thue-morse?'],
+    seeAlso: ['number-theory.thueMorseSeq', 'number-theory.thueMorseTakeWhile', 'number-theory.isThueMorse'],
   },
-  'thue-morse?': {
+  'isThueMorse': {
     category: 'number-theory',
     description: 'Checks if a number is part of the Thue-Morse sequence.',
     returns: {
@@ -3105,12 +3105,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { thue-morse? } = import(number-theory);\nthue-morse?(1)',
-      'let { thue-morse? } = import(number-theory);\nthue-morse?(2)',
+      'let { isThueMorse } = import(number-theory);\nisThueMorse(1)',
+      'let { isThueMorse } = import(number-theory);\nisThueMorse(2)',
     ],
-    seeAlso: ['number-theory.thue-morse-seq', 'number-theory.thue-morse-nth', 'number-theory.thue-morse-take-while'],
+    seeAlso: ['number-theory.thueMorseSeq', 'number-theory.thueMorseNth', 'number-theory.thueMorseTakeWhile'],
   },
-  'tribonacci-seq': {
+  'tribonacciSeq': {
     category: 'number-theory',
     description: 'Generates the tribonacci sequence up to a specified length.',
     returns: {
@@ -3131,13 +3131,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { tribonacci-seq } = import(number-theory);\ntribonacci-seq(1)',
-      'let { tribonacci-seq } = import(number-theory);\ntribonacci-seq(2)',
-      'let { tribonacci-seq } = import(number-theory);\ntribonacci-seq(10)',
+      'let { tribonacciSeq } = import(number-theory);\ntribonacciSeq(1)',
+      'let { tribonacciSeq } = import(number-theory);\ntribonacciSeq(2)',
+      'let { tribonacciSeq } = import(number-theory);\ntribonacciSeq(10)',
     ],
-    seeAlso: ['number-theory.tribonacci-nth', 'number-theory.tribonacci-take-while', 'number-theory.tribonacci?', 'number-theory.fibonacci-seq'],
+    seeAlso: ['number-theory.tribonacciNth', 'number-theory.tribonacciTakeWhile', 'number-theory.isTribonacci', 'number-theory.fibonacciSeq'],
   },
-  'tribonacci-take-while': {
+  'tribonacciTakeWhile': {
     category: 'number-theory',
     description: 'Generates the tribonacci sequence while a condition is met.',
     returns: {
@@ -3158,11 +3158,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { tribonacci-take-while } = import(number-theory);\ntribonacci-take-while(-> $ < 100)',
+      'let { tribonacciTakeWhile } = import(number-theory);\ntribonacciTakeWhile(-> $ < 100)',
     ],
-    seeAlso: ['number-theory.tribonacci-seq', 'number-theory.tribonacci-nth', 'number-theory.tribonacci?'],
+    seeAlso: ['number-theory.tribonacciSeq', 'number-theory.tribonacciNth', 'number-theory.isTribonacci'],
   },
-  'tribonacci-nth': {
+  'tribonacciNth': {
     category: 'number-theory',
     description: 'Generates the nth term of the tribonacci sequence.',
     returns: {
@@ -3182,13 +3182,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { tribonacci-nth } = import(number-theory);\ntribonacci-nth(1)',
-      'let { tribonacci-nth } = import(number-theory);\ntribonacci-nth(2)',
-      'let { tribonacci-nth } = import(number-theory);\ntribonacci-nth(10)',
+      'let { tribonacciNth } = import(number-theory);\ntribonacciNth(1)',
+      'let { tribonacciNth } = import(number-theory);\ntribonacciNth(2)',
+      'let { tribonacciNth } = import(number-theory);\ntribonacciNth(10)',
     ],
-    seeAlso: ['number-theory.tribonacci-seq', 'number-theory.tribonacci-take-while', 'number-theory.tribonacci?'],
+    seeAlso: ['number-theory.tribonacciSeq', 'number-theory.tribonacciTakeWhile', 'number-theory.isTribonacci'],
   },
-  'tribonacci?': {
+  'isTribonacci': {
     category: 'number-theory',
     description: 'Determines if a number is in the tribonacci sequence.',
     returns: {
@@ -3208,19 +3208,19 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(0)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(1)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(2)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(3)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(4)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(5)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(6)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(7)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(8)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(9)',
-      'let { tribonacci? } = import(number-theory);\ntribonacci?(10)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(0)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(1)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(2)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(3)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(4)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(5)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(6)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(7)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(8)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(9)',
+      'let { isTribonacci } = import(number-theory);\nisTribonacci(10)',
     ],
-    seeAlso: ['number-theory.tribonacci-seq', 'number-theory.tribonacci-nth', 'number-theory.fibonacci?', 'number-theory.tribonacci-take-while'],
+    seeAlso: ['number-theory.tribonacciSeq', 'number-theory.tribonacciNth', 'number-theory.isFibonacci', 'number-theory.tribonacciTakeWhile'],
   },
   'countCombinations': {
     category: 'number-theory',
@@ -3368,7 +3368,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { divisors } = import(number-theory);\ndivisors(100)',
       'let { divisors } = import(number-theory);\ndivisors(37)',
     ],
-    seeAlso: ['number-theory.countDivisors', 'number-theory.properDivisors', 'number-theory.sigma', 'number-theory.primeFactors', 'number-theory.isDivisibleBy', 'number-theory.lcm', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.countProperDivisors'],
+    seeAlso: ['number-theory.countDivisors', 'number-theory.properDivisors', 'number-theory.sigma', 'number-theory.primeFactors', 'number-theory.isDivisibleBy', 'number-theory.lcm', 'number-theory.isAbundant', 'number-theory.isDeficient', 'number-theory.countProperDivisors'],
   },
   'countDivisors': {
     category: 'number-theory',
@@ -3421,7 +3421,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { properDivisors } = import(number-theory);\nproperDivisors(100)',
       'let { properDivisors } = import(number-theory);\nproperDivisors(37)',
     ],
-    seeAlso: ['number-theory.countProperDivisors', 'number-theory.divisors', 'number-theory.isAmicable', 'number-theory.perfect?'],
+    seeAlso: ['number-theory.countProperDivisors', 'number-theory.divisors', 'number-theory.isAmicable', 'number-theory.isPerfect'],
   },
   'countProperDivisors': {
     category: 'number-theory',
@@ -3474,7 +3474,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { factorial } = import(number-theory);\nfactorial(10)',
       'let { factorial } = import(number-theory);\nfactorial(20)',
     ],
-    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-nth', 'number-theory.factorial?', 'number-theory.countCombinations', 'number-theory.countPermutations', 'number-theory.multinomial', 'number-theory.countDerangements'],
+    seeAlso: ['number-theory.factorialSeq', 'number-theory.factorialNth', 'number-theory.isFactorial', 'number-theory.countCombinations', 'number-theory.countPermutations', 'number-theory.multinomial', 'number-theory.countDerangements'],
   },
   'partitions': {
     category: 'number-theory',
@@ -3500,7 +3500,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { partitions } = import(number-theory);\npartitions(4)',
       'let { partitions } = import(number-theory);\npartitions(8)',
     ],
-    seeAlso: ['number-theory.countPartitions', 'number-theory.partition-seq', 'number-theory.combinations', 'number-theory.partition?'],
+    seeAlso: ['number-theory.countPartitions', 'number-theory.partitionSeq', 'number-theory.combinations', 'number-theory.isPartition'],
   },
   'countPartitions': {
     category: 'number-theory',
@@ -3526,7 +3526,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { countPartitions } = import(number-theory);\ncountPartitions(8)',
       'let { countPartitions } = import(number-theory);\ncountPartitions(15)',
     ],
-    seeAlso: ['number-theory.partitions', 'number-theory.partition-seq', 'number-theory.countCombinations'],
+    seeAlso: ['number-theory.partitions', 'number-theory.partitionSeq', 'number-theory.countCombinations'],
   },
   'permutations': {
     category: 'number-theory',
@@ -3670,7 +3670,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { primeFactors } = import(number-theory);\nprimeFactors(100)',
       'let { primeFactors } = import(number-theory);\nprimeFactors(37)',
     ],
-    seeAlso: ['number-theory.countPrimeFactors', 'number-theory.distinctPrimeFactors', 'number-theory.prime?', 'number-theory.divisors', 'number-theory.eulerTotient', 'number-theory.mobius', 'number-theory.composite?', 'number-theory.countDistinctPrimeFactors'],
+    seeAlso: ['number-theory.countPrimeFactors', 'number-theory.distinctPrimeFactors', 'number-theory.isPrime', 'number-theory.divisors', 'number-theory.eulerTotient', 'number-theory.mobius', 'number-theory.isComposite', 'number-theory.countDistinctPrimeFactors'],
   },
   'countPrimeFactors': {
     category: 'number-theory',
@@ -3936,7 +3936,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { isAmicable } = import(number-theory);\nisAmicable(5020, 5564)',
       'let { isAmicable } = import(number-theory);\nisAmicable(6232, 6368)',
     ],
-    seeAlso: ['number-theory.properDivisors', 'number-theory.perfect?', 'number-theory.sigma', 'number-theory.perfect-seq'],
+    seeAlso: ['number-theory.properDivisors', 'number-theory.isPerfect', 'number-theory.sigma', 'number-theory.perfectSeq'],
   },
   'eulerTotient': {
     category: 'number-theory',
@@ -4053,7 +4053,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { sigma } = import(number-theory);\nsigma(12)',
       'let { sigma } = import(number-theory);\nsigma(30)',
     ],
-    seeAlso: ['number-theory.divisors', 'number-theory.perfect?', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.isAmicable', 'number-theory.countDivisors'],
+    seeAlso: ['number-theory.divisors', 'number-theory.isPerfect', 'number-theory.isAbundant', 'number-theory.isDeficient', 'number-theory.isAmicable', 'number-theory.countDivisors'],
   },
   'carmichaelLambda': {
     category: 'number-theory',
@@ -4147,7 +4147,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfectPower } = import(number-theory);\nperfectPower(16)',
       'let { perfectPower } = import(number-theory);\nperfectPower(19)',
     ],
-    seeAlso: ['number-theory.perfect-power?', 'number-theory.perfect-power-seq', 'number-theory.perfect-square?', 'number-theory.perfect-cube?'],
+    seeAlso: ['number-theory.isPerfectPower', 'number-theory.perfectPowerSeq', 'number-theory.isPerfectSquare', 'number-theory.isPerfectCube'],
   },
   'modExp': {
     category: 'number-theory',
@@ -4315,7 +4315,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { stirlingFirst } = import(number-theory);\nstirlingFirst(7, 4)',
       'let { stirlingFirst } = import(number-theory);\nstirlingFirst(8, 5)',
     ],
-    seeAlso: ['number-theory.stirlingSecond', 'number-theory.bell-seq', 'number-theory.countPermutations'],
+    seeAlso: ['number-theory.stirlingSecond', 'number-theory.bellSeq', 'number-theory.countPermutations'],
   },
   'stirlingSecond': {
     category: 'number-theory',
@@ -4348,6 +4348,6 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { stirlingSecond } = import(number-theory);\nstirlingSecond(7, 4)',
       'let { stirlingSecond } = import(number-theory);\nstirlingSecond(8, 5)',
     ],
-    seeAlso: ['number-theory.stirlingFirst', 'number-theory.bell-seq', 'number-theory.countCombinations'],
+    seeAlso: ['number-theory.stirlingFirst', 'number-theory.bellSeq', 'number-theory.countCombinations'],
   },
 }

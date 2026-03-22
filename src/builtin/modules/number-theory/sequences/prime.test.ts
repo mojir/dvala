@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('prime', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:prime-seq(1)')).toEqual([2])
-    expect(runNth('nth:prime-seq(2)')).toEqual([2, 3])
-    expect(runNth('nth:prime-seq(3)')).toEqual([2, 3, 5])
-    expect(runNth('nth:prime-seq(4)')).toEqual([2, 3, 5, 7])
-    expect(runNth('nth:prime-seq(168)')).toEqual([
+    expect(runNth('nth:primeSeq(1)')).toEqual([2])
+    expect(runNth('nth:primeSeq(2)')).toEqual([2, 3])
+    expect(runNth('nth:primeSeq(3)')).toEqual([2, 3, 5])
+    expect(runNth('nth:primeSeq(4)')).toEqual([2, 3, 5, 7])
+    expect(runNth('nth:primeSeq(168)')).toEqual([
       2,
       3,
       5,
@@ -184,19 +184,19 @@ describe('prime', () => {
       991,
       997,
     ])
-    expect(() => runNth('nth:prime-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:primeSeq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:prime-nth(1)')).toEqual(2)
-    expect(runNth('nth:prime-nth(2)')).toEqual(3)
-    expect(runNth('nth:prime-nth(3)')).toEqual(5)
-    expect(runNth('nth:prime-nth(4)')).toEqual(7)
-    expect(runNth('nth:prime-nth(100)')).toEqual(541)
+    expect(runNth('nth:primeNth(1)')).toEqual(2)
+    expect(runNth('nth:primeNth(2)')).toEqual(3)
+    expect(runNth('nth:primeNth(3)')).toEqual(5)
+    expect(runNth('nth:primeNth(4)')).toEqual(7)
+    expect(runNth('nth:primeNth(100)')).toEqual(541)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:prime-take-while(-> $ < 100)')).toEqual([
+    expect(runNth('nth:primeTakeWhile(-> $ < 100)')).toEqual([
       2,
       3,
       5,
@@ -226,17 +226,17 @@ describe('prime', () => {
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:prime?(0)')).toEqual(false)
-    expect(runNth('nth:prime?(1)')).toEqual(false)
-    expect(runNth('nth:prime?(2)')).toEqual(true)
-    expect(runNth('nth:prime?(3)')).toEqual(true)
-    expect(runNth('nth:prime?(4)')).toEqual(false)
-    expect(runNth('nth:prime?(5)')).toEqual(true)
-    expect(runNth('nth:prime?(6)')).toEqual(false)
-    expect(runNth('nth:prime?(7)')).toEqual(true)
-    expect(runNth('nth:prime?(8)')).toEqual(false)
-    expect(runNth('nth:prime?(9)')).toEqual(false)
-    expect(runNth('nth:prime?(997)')).toEqual(true)
-    expect(runNth('nth:prime?(1001)')).toEqual(false)
+    expect(runNth('nth:isPrime(0)')).toEqual(false)
+    expect(runNth('nth:isPrime(1)')).toEqual(false)
+    expect(runNth('nth:isPrime(2)')).toEqual(true)
+    expect(runNth('nth:isPrime(3)')).toEqual(true)
+    expect(runNth('nth:isPrime(4)')).toEqual(false)
+    expect(runNth('nth:isPrime(5)')).toEqual(true)
+    expect(runNth('nth:isPrime(6)')).toEqual(false)
+    expect(runNth('nth:isPrime(7)')).toEqual(true)
+    expect(runNth('nth:isPrime(8)')).toEqual(false)
+    expect(runNth('nth:isPrime(9)')).toEqual(false)
+    expect(runNth('nth:isPrime(997)')).toEqual(true)
+    expect(runNth('nth:isPrime(1001)')).toEqual(false)
   })
 })

@@ -59,9 +59,9 @@ function getNextLookAndSayTerm(term: string): string {
   return result
 }
 
-export const lookAndSaySequence: SequenceDefinition<'look-and-say', string> = {
+export const lookAndSaySequence: SequenceDefinition<'lookAndSay', string> = {
   'string': true,
-  'look-and-say-seq': length => {
+  'lookAndSaySeq': length => {
     const lookAndSay = ['1']
     for (let i = 1; i < length; i += 1) {
       const prev = lookAndSay[i - 1]!
@@ -70,5 +70,5 @@ export const lookAndSaySequence: SequenceDefinition<'look-and-say', string> = {
     }
     return lookAndSay
   },
-  'look-and-say?': n => isLookAndSay(n),
+  'isLookAndSay': n => isLookAndSay(n),
 }

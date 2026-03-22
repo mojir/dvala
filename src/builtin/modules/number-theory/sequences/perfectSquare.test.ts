@@ -10,24 +10,24 @@ function runNth(code: string) {
 }
 describe('perfect-square', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:perfect-square-seq(1)')).toEqual([1])
-    expect(runNth('nth:perfect-square-seq(2)')).toEqual([1, 4])
-    expect(runNth('nth:perfect-square-seq(3)')).toEqual([1, 4, 9])
-    expect(runNth('nth:perfect-square-seq(4)')).toEqual([1, 4, 9, 16])
-    expect(() => runNth('nth:perfect-square-seq(0)')).toThrow(DvalaError)
+    expect(runNth('nth:perfectSquareSeq(1)')).toEqual([1])
+    expect(runNth('nth:perfectSquareSeq(2)')).toEqual([1, 4])
+    expect(runNth('nth:perfectSquareSeq(3)')).toEqual([1, 4, 9])
+    expect(runNth('nth:perfectSquareSeq(4)')).toEqual([1, 4, 9, 16])
+    expect(() => runNth('nth:perfectSquareSeq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:perfect-square-nth(1)')).toEqual(1)
-    expect(runNth('nth:perfect-square-nth(2)')).toEqual(4)
-    expect(runNth('nth:perfect-square-nth(3)')).toEqual(9)
-    expect(runNth('nth:perfect-square-nth(4)')).toEqual(16)
-    expect(runNth('nth:perfect-square-nth(5)')).toEqual(25)
-    expect(runNth('nth:perfect-square-nth(100)')).toEqual(10000)
+    expect(runNth('nth:perfectSquareNth(1)')).toEqual(1)
+    expect(runNth('nth:perfectSquareNth(2)')).toEqual(4)
+    expect(runNth('nth:perfectSquareNth(3)')).toEqual(9)
+    expect(runNth('nth:perfectSquareNth(4)')).toEqual(16)
+    expect(runNth('nth:perfectSquareNth(5)')).toEqual(25)
+    expect(runNth('nth:perfectSquareNth(100)')).toEqual(10000)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:perfect-square-take-while(-> $ < 100)')).toEqual([
+    expect(runNth('nth:perfectSquareTakeWhile(-> $ < 100)')).toEqual([
       1,
       4,
       9,
@@ -41,17 +41,17 @@ describe('perfect-square', () => {
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:perfect-square?(0)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(1)')).toEqual(true)
-    expect(runNth('nth:perfect-square?(2)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(3)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(4)')).toEqual(true)
-    expect(runNth('nth:perfect-square?(5)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(6)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(7)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(8)')).toEqual(false)
-    expect(runNth('nth:perfect-square?(9)')).toEqual(true)
-    expect(runNth('nth:perfect-square?(100)')).toEqual(true)
-    expect(runNth('nth:perfect-square?(1000)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(0)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(1)')).toEqual(true)
+    expect(runNth('nth:isPerfectSquare(2)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(3)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(4)')).toEqual(true)
+    expect(runNth('nth:isPerfectSquare(5)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(6)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(7)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(8)')).toEqual(false)
+    expect(runNth('nth:isPerfectSquare(9)')).toEqual(true)
+    expect(runNth('nth:isPerfectSquare(100)')).toEqual(true)
+    expect(runNth('nth:isPerfectSquare(1000)')).toEqual(false)
   })
 })
