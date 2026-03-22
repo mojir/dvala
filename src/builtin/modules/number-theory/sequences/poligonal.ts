@@ -3,7 +3,7 @@ import { toFixedArity } from '../../../../utils/arity'
 import type { SequenceNormalExpressions } from '.'
 
 export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> = {
-  'polygonal-seq': {
+  'polygonalSeq': {
     evaluate: ([sides, n], sourceCodeInfo): number[] => {
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
@@ -16,12 +16,12 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
     },
     arity: toFixedArity(2),
   },
-  'polygonal-take-while': {
+  'polygonalTakeWhile': {
     /* v8 ignore next 1 */
     evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
     arity: toFixedArity(2),
   },
-  'polygonal-nth': {
+  'polygonalNth': {
     evaluate: ([sides, n], sourceCodeInfo): number => {
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
@@ -29,7 +29,7 @@ export const poligonalNormalExpressions: SequenceNormalExpressions<'polygonal'> 
     },
     arity: toFixedArity(2),
   },
-  'polygonal?': {
+  'isPolygonal': {
     evaluate: ([sides, n], sourceCodeInfo): boolean => {
       assertNumber(n, sourceCodeInfo, { integer: true })
       assertNumber(sides, sourceCodeInfo, { integer: true, gte: 3 })

@@ -10,24 +10,24 @@ function runNth(code: string) {
 }
 describe('perfect-power', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:perfect-power-seq(1)')).toEqual([1])
-    expect(runNth('nth:perfect-power-seq(2)')).toEqual([1, 4])
-    expect(runNth('nth:perfect-power-seq(3)')).toEqual([1, 4, 8])
-    expect(runNth('nth:perfect-power-seq(10)')).toEqual([1, 4, 8, 9, 16, 25, 27, 32, 36, 49])
-    expect(() => runNth('nth:perfect-power-seq(0)')).toThrow(DvalaError)
+    expect(runNth('nth:perfectPowerSeq(1)')).toEqual([1])
+    expect(runNth('nth:perfectPowerSeq(2)')).toEqual([1, 4])
+    expect(runNth('nth:perfectPowerSeq(3)')).toEqual([1, 4, 8])
+    expect(runNth('nth:perfectPowerSeq(10)')).toEqual([1, 4, 8, 9, 16, 25, 27, 32, 36, 49])
+    expect(() => runNth('nth:perfectPowerSeq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:perfect-power-nth(1)')).toEqual(1)
-    expect(runNth('nth:perfect-power-nth(2)')).toEqual(4)
-    expect(runNth('nth:perfect-power-nth(3)')).toEqual(8)
-    expect(runNth('nth:perfect-power-nth(4)')).toEqual(9)
-    expect(runNth('nth:perfect-power-nth(5)')).toEqual(16)
-    expect(runNth('nth:perfect-power-nth(6)')).toEqual(25)
+    expect(runNth('nth:perfectPowerNth(1)')).toEqual(1)
+    expect(runNth('nth:perfectPowerNth(2)')).toEqual(4)
+    expect(runNth('nth:perfectPowerNth(3)')).toEqual(8)
+    expect(runNth('nth:perfectPowerNth(4)')).toEqual(9)
+    expect(runNth('nth:perfectPowerNth(5)')).toEqual(16)
+    expect(runNth('nth:perfectPowerNth(6)')).toEqual(25)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:perfect-power-take-while(-> $ <= 100)')).toEqual([
+    expect(runNth('nth:perfectPowerTakeWhile(-> $ <= 100)')).toEqual([
       1,
       4,
       8,
@@ -45,17 +45,17 @@ describe('perfect-power', () => {
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:perfect-power?(0)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(1)')).toEqual(true)
-    expect(runNth('nth:perfect-power?(2)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(3)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(4)')).toEqual(true)
-    expect(runNth('nth:perfect-power?(5)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(6)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(7)')).toEqual(false)
-    expect(runNth('nth:perfect-power?(8)')).toEqual(true)
-    expect(runNth('nth:perfect-power?(9)')).toEqual(true)
-    expect(runNth('nth:perfect-power?(100)')).toEqual(true)
+    expect(runNth('nth:isPerfectPower(0)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(1)')).toEqual(true)
+    expect(runNth('nth:isPerfectPower(2)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(3)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(4)')).toEqual(true)
+    expect(runNth('nth:isPerfectPower(5)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(6)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(7)')).toEqual(false)
+    expect(runNth('nth:isPerfectPower(8)')).toEqual(true)
+    expect(runNth('nth:isPerfectPower(9)')).toEqual(true)
+    expect(runNth('nth:isPerfectPower(100)')).toEqual(true)
   })
 
   it('should return tuple with base and exponent', () => {

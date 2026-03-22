@@ -36,7 +36,7 @@ function getSumOfSquaredDigits(n: number): number {
 }
 
 export const happySequence: SequenceDefinition<'happy'> = {
-  'happy-seq': length => {
+  'happySeq': length => {
     const happyNumbers: number[] = []
     for (let i = 1; happyNumbers.length < length; i++) {
       let n = i
@@ -52,5 +52,5 @@ export const happySequence: SequenceDefinition<'happy'> = {
     }
     return happyNumbers
   },
-  'happy?': n => isHappyNumber(n),
+  'isHappy': n => isHappyNumber(n),
 }

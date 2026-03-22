@@ -56,7 +56,7 @@ describe('full entry point (src/full.ts)', () => {
     expect(dvala.run('let a = import(assertion); a.assert=(1, 1)')).toBe(null)
     expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     expect(dvala.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
-    expect(dvala.run('let nt = import(number-theory); nt.prime?(7)')).toBe(true)
+    expect(dvala.run('let nt = import(number-theory); nt.isPrime(7)')).toBe(true)
   })
 
   it('should have reference data loaded (doc returns non-empty)', () => {
@@ -111,7 +111,7 @@ describe('individual module entry points', () => {
   it('numberTheory module', () => {
     expect(numberTheoryModule.name).toBe('number-theory')
     const dvala = createDvala({ modules: [numberTheoryModule] })
-    expect(dvala.run('let nt = import(number-theory); nt.prime?(7)')).toBe(true)
+    expect(dvala.run('let nt = import(number-theory); nt.isPrime(7)')).toBe(true)
   })
 
   it('stringUtils module', () => {

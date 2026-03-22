@@ -95,37 +95,37 @@ do
     // FINITE SEQUENCES — generate inline
     // =========================================================================
 
-    fibonacci-take-while: (fn) -> do
+    fibonacciTakeWhile: (fn) -> do
       loop (result = [], a = 0, b = 1, i = 0) ->
         if fn(a, i) then recur(push(result, a), b, a + b, i + 1)
         else result end
     end,
 
-    tribonacci-take-while: (fn) -> do
+    tribonacciTakeWhile: (fn) -> do
       loop (result = [], a = 0, b = 1, c = 1, i = 0) ->
         if fn(a, i) then recur(push(result, a), b, c, a + b + c, i + 1)
         else result end
     end,
 
-    lucas-take-while: (fn) -> do
+    lucasTakeWhile: (fn) -> do
       loop (result = [], a = 2, b = 1, i = 0) ->
         if fn(a, i) then recur(push(result, a), b, a + b, i + 1)
         else result end
     end,
 
-    pell-take-while: (fn) -> do
+    pellTakeWhile: (fn) -> do
       loop (result = [], a = 1, b = 2, i = 0) ->
         if fn(a, i) then recur(push(result, a), b, 2 * b + a, i + 1)
         else result end
     end,
 
-    padovan-take-while: (fn) -> do
+    padovanTakeWhile: (fn) -> do
       loop (result = [], a = 1, b = 1, c = 1, i = 0) ->
         if fn(a, i) then recur(push(result, a), b, c, a + b, i + 1)
         else result end
     end,
 
-    factorial-take-while: (fn) -> do
+    factorialTakeWhile: (fn) -> do
       loop (result = [], fact = 1, i = 0) ->
         if fn(fact, i) then recur(push(result, fact), fact * (i + 1), i + 1)
         else result end
@@ -137,7 +137,7 @@ do
     // PREDICATE SEQUENCES — use inline predicates
     // =========================================================================
 
-    prime-take-while: (fn) -> do
+    primeTakeWhile: (fn) -> do
       loop (result = [], n = 2) ->
         if isPrime(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -145,7 +145,7 @@ do
         else recur(result, n + 1) end
     end,
 
-    composite-take-while: (fn) -> do
+    compositeTakeWhile: (fn) -> do
       loop (result = [], n = 4) ->
         if isComposite(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -153,7 +153,7 @@ do
         else recur(result, n + 1) end
     end,
 
-    abundant-take-while: (fn) -> do
+    abundantTakeWhile: (fn) -> do
       loop (result = [], n = 12) ->
         if isAbundant(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -161,7 +161,7 @@ do
         else recur(result, n + 1) end
     end,
 
-    deficient-take-while: (fn) -> do
+    deficientTakeWhile: (fn) -> do
       loop (result = [], n = 1) ->
         if isDeficient(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -169,7 +169,7 @@ do
         else recur(result, n + 1) end
     end,
 
-    perfect-square-take-while: (fn) -> do
+    perfectSquareTakeWhile: (fn) -> do
       loop (result = [], i = 1) -> do
         let val = i * i;
         if fn(val, i - 1) then recur(push(result, val), i + 1)
@@ -177,7 +177,7 @@ do
       end
     end,
 
-    perfect-cube-take-while: (fn) -> do
+    perfectCubeTakeWhile: (fn) -> do
       loop (result = [], i = 1) -> do
         let val = i * i * i;
         if fn(val, i - 1) then recur(push(result, val), i + 1)
@@ -185,7 +185,7 @@ do
       end
     end,
 
-    happy-take-while: (fn) -> do
+    happyTakeWhile: (fn) -> do
       loop (result = [], n = 1) ->
         if isHappy(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -197,7 +197,7 @@ do
     // PARAMETERIZED SEQUENCES
     // =========================================================================
 
-    arithmetic-take-while: (start, step, fn) -> do
+    arithmeticTakeWhile: (start, step, fn) -> do
       loop (result = [], i = 0) -> do
         let val = start + i * step;
         if fn(val, i) then recur(push(result, val), i + 1)
@@ -205,7 +205,7 @@ do
       end
     end,
 
-    geometric-take-while: (start, ratio, fn) -> do
+    geometricTakeWhile: (start, ratio, fn) -> do
       loop (result = [], i = 0) -> do
         let val = start * (ratio ^ i);
         if fn(val, i) then recur(push(result, val), i + 1)
@@ -213,7 +213,7 @@ do
       end
     end,
 
-    polygonal-take-while: (sides, fn) -> do
+    polygonalTakeWhile: (sides, fn) -> do
       loop (result = [], n = 1) -> do
         let val = (sides - 2) * n * (n - 1) / 2 + n;
         if fn(val, n - 1) then recur(push(result, val), n + 1)
@@ -221,7 +221,7 @@ do
       end
     end,
 
-    look-and-say-take-while: (fn) -> do
+    lookAndSayTakeWhile: (fn) -> do
       let nextTerm = (s) -> do
         loop (result = "", i = 0) ->
           if i >= count(s) then result
@@ -243,42 +243,42 @@ do
     // FINITE SEQUENCES — iterate precomputed arrays
     // =========================================================================
 
-    bell-take-while: (fn) -> do
+    bellTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(bellNumbers) then result
         else if fn(nth(bellNumbers, i), i) then recur(push(result, nth(bellNumbers, i)), i + 1)
         else result end
     end,
 
-    catalan-take-while: (fn) -> do
+    catalanTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(catalanNumbers) then result
         else if fn(nth(catalanNumbers, i), i) then recur(push(result, nth(catalanNumbers, i)), i + 1)
         else result end
     end,
 
-    mersenne-take-while: (fn) -> do
+    mersenneTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(mersenneNumbers) then result
         else if fn(nth(mersenneNumbers, i), i) then recur(push(result, nth(mersenneNumbers, i)), i + 1)
         else result end
     end,
 
-    partition-take-while: (fn) -> do
+    partitionTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(partitionNumbers) then result
         else if fn(nth(partitionNumbers, i), i) then recur(push(result, nth(partitionNumbers, i)), i + 1)
         else result end
     end,
 
-    perfect-take-while: (fn) -> do
+    perfectTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(perfectNumbers) then result
         else if fn(nth(perfectNumbers, i), i) then recur(push(result, nth(perfectNumbers, i)), i + 1)
         else result end
     end,
 
-    sylvester-take-while: (fn) -> do
+    sylvesterTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(sylvesterNumbers) then result
         else if fn(nth(sylvesterNumbers, i), i) then recur(push(result, nth(sylvesterNumbers, i)), i + 1)
@@ -289,7 +289,7 @@ do
     // DYNAMIC SEQUENCES — generate on-the-fly
     // =========================================================================
 
-    bernoulli-take-while: (fn) -> do
+    bernoulliTakeWhile: (fn) -> do
       // bArr accumulates all Bernoulli numbers computed so far; B(0)=1 is always included
       loop (bArr = [1], n = 1) -> do
         let bn = if n > 1 && n % 2 == 1 then 0
@@ -304,7 +304,7 @@ do
       end
     end,
 
-    golomb-take-while: (fn) -> do
+    golombTakeWhile: (fn) -> do
       // gArr is 0-indexed: gArr[i] = g(i+1). g(1)=1, g(n)=1+g(n-g(g(n-1)))
       if not(fn(1, 0)) then []
       else do
@@ -319,14 +319,14 @@ do
       end
     end,
 
-    lucky-take-while: (fn) -> do
+    luckyTakeWhile: (fn) -> do
       loop (result = [], i = 0) ->
         if i >= count(luckyNumbers) then result
         else if fn(nth(luckyNumbers, i), i) then recur(push(result, nth(luckyNumbers, i)), i + 1)
         else result end
     end,
 
-    perfect-power-take-while: (fn) -> do
+    perfectPowerTakeWhile: (fn) -> do
       loop (result = [], n = 1) ->
         if isPerfectPower(n) then
           if fn(n, count(result)) then recur(push(result, n), n + 1)
@@ -334,7 +334,7 @@ do
         else recur(result, n + 1) end
     end,
 
-    recaman-take-while: (fn) -> do
+    recamanTakeWhile: (fn) -> do
       let inArr = (arr, val) ->
         loop (i = 0) ->
           if i >= count(arr) then false
@@ -355,7 +355,7 @@ do
       end
     end,
 
-    thue-morse-take-while: (fn) -> do
+    thueMorseTakeWhile: (fn) -> do
       loop (result = [], i = 0) -> do
         let val = countBits(i) % 2;
         if fn(val, i) then recur(push(result, val), i + 1)

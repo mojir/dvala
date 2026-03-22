@@ -10,7 +10,7 @@ function runNth(code: string) {
 }
 describe('collatz', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:collatz-seq(11)')).toEqual([
+    expect(runNth('nth:collatzSeq(11)')).toEqual([
       11,
       34,
       17,
@@ -27,6 +27,6 @@ describe('collatz', () => {
       2,
       1,
     ])
-    expect(() => runNth('nth:collatz-seq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:collatzSeq(0)')).toThrow(DvalaError)
   })
 })

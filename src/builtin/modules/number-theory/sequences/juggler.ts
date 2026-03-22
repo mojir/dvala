@@ -1,7 +1,7 @@
 import type { SequenceDefinition } from '.'
 
-export const jugglerSequence: Omit<SequenceDefinition<'juggler'>, 'juggler?'> = {
-  'juggler-seq': start => {
+export const jugglerSequence: Omit<SequenceDefinition<'juggler'>, 'isJuggler'> = {
+  'jugglerSeq': start => {
     let next = start
     const juggler = [next]
 

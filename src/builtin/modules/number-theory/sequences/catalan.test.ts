@@ -10,11 +10,11 @@ function runNth(code: string) {
 }
 describe('catalan', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:catalan-seq(1)')).toEqual([1])
-    expect(runNth('nth:catalan-seq(2)')).toEqual([1, 2])
-    expect(runNth('nth:catalan-seq(3)')).toEqual([1, 2, 5])
-    expect(runNth('nth:catalan-seq(4)')).toEqual([1, 2, 5, 14])
-    expect(runNth('nth:catalan-seq(30)')).toEqual([
+    expect(runNth('nth:catalanSeq(1)')).toEqual([1])
+    expect(runNth('nth:catalanSeq(2)')).toEqual([1, 2])
+    expect(runNth('nth:catalanSeq(3)')).toEqual([1, 2, 5])
+    expect(runNth('nth:catalanSeq(4)')).toEqual([1, 2, 5, 14])
+    expect(runNth('nth:catalanSeq(30)')).toEqual([
       1,
       2,
       5,
@@ -46,34 +46,34 @@ describe('catalan', () => {
       1002242216651368,
       3814986502092304,
     ])
-    expect(() => runNth('nth:catalan-seq(0)')).toThrow(DvalaError)
-    expect(() => runNth('nth:catalan-seq(32)')).toThrow(DvalaError)
+    expect(() => runNth('nth:catalanSeq(0)')).toThrow(DvalaError)
+    expect(() => runNth('nth:catalanSeq(32)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:catalan-nth(1)')).toEqual(1)
-    expect(runNth('nth:catalan-nth(2)')).toEqual(2)
-    expect(runNth('nth:catalan-nth(3)')).toEqual(5)
-    expect(runNth('nth:catalan-nth(4)')).toEqual(14)
-    expect(runNth('nth:catalan-nth(30)')).toEqual(3814986502092304)
+    expect(runNth('nth:catalanNth(1)')).toEqual(1)
+    expect(runNth('nth:catalanNth(2)')).toEqual(2)
+    expect(runNth('nth:catalanNth(3)')).toEqual(5)
+    expect(runNth('nth:catalanNth(4)')).toEqual(14)
+    expect(runNth('nth:catalanNth(30)')).toEqual(3814986502092304)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:catalan-take-while(-> $ < 1000)')).toEqual([1, 2, 5, 14, 42, 132, 429])
+    expect(runNth('nth:catalanTakeWhile(-> $ < 1000)')).toEqual([1, 2, 5, 14, 42, 132, 429])
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:catalan?(0)')).toEqual(false)
-    expect(runNth('nth:catalan?(1)')).toEqual(true)
-    expect(runNth('nth:catalan?(2)')).toEqual(true)
-    expect(runNth('nth:catalan?(3)')).toEqual(false)
-    expect(runNth('nth:catalan?(4)')).toEqual(false)
-    expect(runNth('nth:catalan?(5)')).toEqual(true)
-    expect(runNth('nth:catalan?(6)')).toEqual(false)
-    expect(runNth('nth:catalan?(7)')).toEqual(false)
-    expect(runNth('nth:catalan?(8)')).toEqual(false)
-    expect(runNth('nth:catalan?(9)')).toEqual(false)
-    expect(runNth('nth:catalan?(3814986502092303)')).toEqual(false)
-    expect(runNth('nth:catalan?(3814986502092304)')).toEqual(true)
+    expect(runNth('nth:isCatalan(0)')).toEqual(false)
+    expect(runNth('nth:isCatalan(1)')).toEqual(true)
+    expect(runNth('nth:isCatalan(2)')).toEqual(true)
+    expect(runNth('nth:isCatalan(3)')).toEqual(false)
+    expect(runNth('nth:isCatalan(4)')).toEqual(false)
+    expect(runNth('nth:isCatalan(5)')).toEqual(true)
+    expect(runNth('nth:isCatalan(6)')).toEqual(false)
+    expect(runNth('nth:isCatalan(7)')).toEqual(false)
+    expect(runNth('nth:isCatalan(8)')).toEqual(false)
+    expect(runNth('nth:isCatalan(9)')).toEqual(false)
+    expect(runNth('nth:isCatalan(3814986502092303)')).toEqual(false)
+    expect(runNth('nth:isCatalan(3814986502092304)')).toEqual(true)
   })
 })

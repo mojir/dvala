@@ -34,8 +34,8 @@ export function perfectPower(n: number): [number, number] | null {
   return null // Not a perfect power
 }
 
-export const perfectPowerSequence: SequenceDefinition<'perfect-power'> = {
-  'perfect-power-seq': length => {
+export const perfectPowerSequence: SequenceDefinition<'perfectPower'> = {
+  'perfectPowerSeq': length => {
     const perfectPowers: number[] = []
     for (let i = 1; perfectPowers.length < length; i++) {
       if (perfectPower(i)) {
@@ -44,5 +44,5 @@ export const perfectPowerSequence: SequenceDefinition<'perfect-power'> = {
     }
     return perfectPowers
   },
-  'perfect-power?': n => perfectPower(n) !== null,
+  'isPerfectPower': n => perfectPower(n) !== null,
 }

@@ -10,23 +10,23 @@ function runNth(code: string) {
 }
 describe('deficient', () => {
   it('should return the correct sequence', () => {
-    expect(runNth('nth:deficient-seq(1)')).toEqual([1])
-    expect(runNth('nth:deficient-seq(2)')).toEqual([1, 2])
-    expect(runNth('nth:deficient-seq(3)')).toEqual([1, 2, 3])
-    expect(runNth('nth:deficient-seq(18)')).toEqual([1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 19, 21, 22])
-    expect(() => runNth('nth:deficient-seq(0)')).toThrow(DvalaError)
+    expect(runNth('nth:deficientSeq(1)')).toEqual([1])
+    expect(runNth('nth:deficientSeq(2)')).toEqual([1, 2])
+    expect(runNth('nth:deficientSeq(3)')).toEqual([1, 2, 3])
+    expect(runNth('nth:deficientSeq(18)')).toEqual([1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 19, 21, 22])
+    expect(() => runNth('nth:deficientSeq(0)')).toThrow(DvalaError)
   })
 
   it('should return the correct nth term', () => {
-    expect(runNth('nth:deficient-nth(1)')).toEqual(1)
-    expect(runNth('nth:deficient-nth(2)')).toEqual(2)
-    expect(runNth('nth:deficient-nth(3)')).toEqual(3)
-    expect(runNth('nth:deficient-nth(4)')).toEqual(4)
-    expect(runNth('nth:deficient-nth(20)')).toEqual(25)
+    expect(runNth('nth:deficientNth(1)')).toEqual(1)
+    expect(runNth('nth:deficientNth(2)')).toEqual(2)
+    expect(runNth('nth:deficientNth(3)')).toEqual(3)
+    expect(runNth('nth:deficientNth(4)')).toEqual(4)
+    expect(runNth('nth:deficientNth(20)')).toEqual(25)
   })
 
   it('should return the correct takeWhile sequence', () => {
-    expect(runNth('nth:deficient-take-while(-> $ < 20)')).toEqual([
+    expect(runNth('nth:deficientTakeWhile(-> $ < 20)')).toEqual([
       1,
       2,
       3,
@@ -47,12 +47,12 @@ describe('deficient', () => {
   })
 
   it('should determine if numbers are in the sequence', () => {
-    expect(runNth('nth:deficient?(0)')).toEqual(false)
-    expect(runNth('nth:deficient?(1)')).toEqual(true)
-    expect(runNth('nth:deficient?(2)')).toEqual(true)
-    expect(runNth('nth:deficient?(3)')).toEqual(true)
-    expect(runNth('nth:deficient?(12)')).toEqual(false)
-    expect(runNth('nth:deficient?(15)')).toEqual(true)
-    expect(runNth('nth:deficient?(18)')).toEqual(false)
+    expect(runNth('nth:isDeficient(0)')).toEqual(false)
+    expect(runNth('nth:isDeficient(1)')).toEqual(true)
+    expect(runNth('nth:isDeficient(2)')).toEqual(true)
+    expect(runNth('nth:isDeficient(3)')).toEqual(true)
+    expect(runNth('nth:isDeficient(12)')).toEqual(false)
+    expect(runNth('nth:isDeficient(15)')).toEqual(true)
+    expect(runNth('nth:isDeficient(18)')).toEqual(false)
   })
 })

@@ -36,10 +36,10 @@ import { sylvesterNumbers } from './sylvester'
 import { thueMorseSequence } from './thueMorse'
 import { tribonacciNumbers } from './tribonacci'
 
-type SeqKey<T extends string> = `${T}-seq`
-type TakeWhileKey<T extends string> = `${T}-take-while`
-type NthKey<T extends string> = `${T}-nth`
-type PredKey<T extends string> = `${T}?`
+type SeqKey<T extends string> = `${T}Seq`
+type TakeWhileKey<T extends string> = `${T}TakeWhile`
+type NthKey<T extends string> = `${T}Nth`
+type PredKey<T extends string> = `is${Capitalize<T>}`
 
 type SeqFunction<Type extends number | string> = (length: number, sourceCodeInfo: SourceCodeInfo | undefined) => Type[]
 type PredFunction<Type extends number | string> = (n: Type, sourceCodeInfo: SourceCodeInfo | undefined) => boolean
@@ -117,10 +117,10 @@ function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
 
 function getFiniteNumberSequence<T extends string>(name: T, sequence: number[]): SequenceNormalExpressions<T> {
   return {
-    [`${name}-seq`]: createSeqNormalExpression(length => sequence.slice(0, length), sequence.length),
-    [`${name}-take-while`]: createTakeWhileNormalExpression(sequence.length),
-    [`${name}-nth`]: createNthNormalExpression(() => sequence, sequence.length),
-    [`${name}?`]: createNumberPredNormalExpression(n => sequence.includes(n)),
+    [`${name}Seq`]: createSeqNormalExpression(length => sequence.slice(0, length), sequence.length),
+    [`${name}TakeWhile`]: createTakeWhileNormalExpression(sequence.length),
+    [`${name}Nth`]: createNthNormalExpression(() => sequence, sequence.length),
+    [`is${name.charAt(0).toUpperCase()}${name.slice(1)}`]: createNumberPredNormalExpression(n => sequence.includes(n)),
   } as unknown as SequenceNormalExpressions<T>
 }
 
@@ -130,15 +130,15 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
     if (sequenceNormalExpressions[key]) {
       throw new Error(`Duplicate normal expression key found: ${key}`)
     }
-    if (key.endsWith('seq')) {
+    if (key.endsWith('Seq')) {
       sequenceNormalExpressions[key] = createSeqNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
       if (!sequence.noNth) {
-        sequenceNormalExpressions[key.replace(/seq$/, 'nth')] = createNthNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
+        sequenceNormalExpressions[key.replace(/Seq$/, 'Nth')] = createNthNormalExpression(value as SeqFunction<Type>, sequence.maxLength)
       }
       if (!sequence.noTakeWhile) {
-        sequenceNormalExpressions[key.replace(/seq$/, 'take-while')] = createTakeWhileNormalExpression(sequence.maxLength)
+        sequenceNormalExpressions[key.replace(/Seq$/, 'TakeWhile')] = createTakeWhileNormalExpression(sequence.maxLength)
       }
-    } else if (key.endsWith('?')) {
+    } else if (key.startsWith('is')) {
       if (sequence.string) {
         sequenceNormalExpressions[key] = createStringPredNormalExpression(value as PredFunction<string>)
       } else {
