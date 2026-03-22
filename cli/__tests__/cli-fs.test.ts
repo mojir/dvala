@@ -70,38 +70,38 @@ describe('the cli-fs Integration Tests', () => {
 
   describe('file Reading Operations', () => {
     test('should read file content', () => {
-      const result = runDvala('let f = import(cli-fs); f.read-file("test.txt")')
+      const result = runDvala('let f = import(cliFs); f.readFile("test.txt")')
       expect(result).toBe('Hello, World!')
     })
 
     test('should read JSON file', () => {
-      const result = runDvala('let f = import(cli-fs); f.read-json("config.json") |> "name"')
+      const result = runDvala('let f = import(cliFs); f.readJson("config.json") |> "name"')
       expect(result).toBe('test')
     })
 
     test('should check if file exists', () => {
-      const existsResult = runDvala('let f = import(cli-fs); f.exists?("test.txt")')
+      const existsResult = runDvala('let f = import(cliFs); f.exists("test.txt")')
       expect(existsResult).toBe('true')
 
-      const notExistsResult = runDvala('let f = import(cli-fs); f.exists?("nonexistent.txt")')
+      const notExistsResult = runDvala('let f = import(cliFs); f.exists("nonexistent.txt")')
       expect(notExistsResult).toBe('false')
     })
 
     test('should check if path is file or directory', () => {
-      const isFileResult = runDvala('let f = import(cli-fs); f.file?("test.txt")')
+      const isFileResult = runDvala('let f = import(cliFs); f.isFile("test.txt")')
       expect(isFileResult).toBe('true')
 
-      const isDirResult = runDvala('let f = import(cli-fs); f.directory?("subdir")')
+      const isDirResult = runDvala('let f = import(cliFs); f.isDirectory("subdir")')
       expect(isDirResult).toBe('true')
 
-      const fileIsNotDirResult = runDvala('let f = import(cli-fs); f.directory?("test.txt")')
+      const fileIsNotDirResult = runDvala('let f = import(cliFs); f.isDirectory("test.txt")')
       expect(fileIsNotDirResult).toBe('false')
     })
   })
 
   describe('directory Operations', () => {
     test('should list directory contents', () => {
-      const result = runDvala('let { jsonStringify } = import(json); let f = import(cli-fs); f.list-dir(".") |> jsonStringify')
+      const result = runDvala('let { jsonStringify } = import(json); let f = import(cliFs); f.listDir(".") |> jsonStringify')
       const files = JSON.parse(result)
 
       expect(files).toEqual(expect.arrayContaining([
@@ -114,7 +114,7 @@ describe('the cli-fs Integration Tests', () => {
     })
 
     test('should create new directory', () => {
-      runDvala('let f = import(cli-fs); f.mkdir("new-dir")')
+      runDvala('let f = import(cliFs); f.mkdir("new-dir")')
 
       const exists = fs.existsSync(path.join(testDir, 'new-dir'))
       expect(exists).toBe(true)
@@ -124,7 +124,7 @@ describe('the cli-fs Integration Tests', () => {
     })
 
     test('should create nested directories', () => {
-      runDvala('let f = import(cli-fs); f.mkdir("very/deep/nested/dir")')
+      runDvala('let f = import(cliFs); f.mkdir("very/deep/nested/dir")')
 
       const exists = fs.existsSync(path.join(testDir, 'very', 'deep', 'nested', 'dir'))
       expect(exists).toBe(true)
@@ -133,21 +133,21 @@ describe('the cli-fs Integration Tests', () => {
 
   describe('file Writing Operations', () => {
     test('should write file content', () => {
-      runDvala('let f = import(cli-fs); f.write-file("New content", "output.txt")')
+      runDvala('let f = import(cliFs); f.writeFile("New content", "output.txt")')
 
       const content = fs.readFileSync(path.join(testDir, 'output.txt'), 'utf8')
       expect(content).toBe('New content')
     })
 
     test('should append to file', () => {
-      runDvala('let f = import(cli-fs); f.append-file( " Additional text", "test.txt")')
+      runDvala('let f = import(cliFs); f.appendFile( " Additional text", "test.txt")')
 
       const content = fs.readFileSync(path.join(testDir, 'test.txt'), 'utf8')
       expect(content).toBe('Hello, World! Additional text')
     })
 
     test('should write JSON file', () => {
-      runDvala('let f = import(cli-fs); f.write-json({name: "new-test", value: 42}, "new-config.json")')
+      runDvala('let f = import(cliFs); f.writeJson({name: "new-test", value: 42}, "new-config.json")')
 
       const content = fs.readFileSync(path.join(testDir, 'new-config.json'), 'utf8')
       const parsed = JSON.parse(content)
@@ -157,20 +157,20 @@ describe('the cli-fs Integration Tests', () => {
 
   describe('file Operations', () => {
     test('should remove file', () => {
-      runDvala('let f = import(cli-fs); f.remove("test.txt")')
+      runDvala('let f = import(cliFs); f.remove("test.txt")')
 
       const exists = fs.existsSync(path.join(testDir, 'test.txt'))
       expect(exists).toBe(false)
     })
 
     test('should remove directory recursively', () => {
-      runDvala('let f = import(cli-fs); f.remove("nested")')
+      runDvala('let f = import(cliFs); f.remove("nested")')
 
       const exists = fs.existsSync(path.join(testDir, 'nested'))
       expect(exists).toBe(false)
     })
     test('should copy file', () => {
-      runDvala('let f = import(cli-fs); f.copy("test.txt", "test_copy.txt")')
+      runDvala('let f = import(cliFs); f.copy("test.txt", "test_copy.txt")')
 
       const exists = fs.existsSync(path.join(testDir, 'test_copy.txt'))
       expect(exists).toBe(true)
@@ -179,7 +179,7 @@ describe('the cli-fs Integration Tests', () => {
       expect(content).toBe('Hello, World!')
     })
     test('should copy directory recursively', () => {
-      runDvala('let f = import(cli-fs); f.copy("subdir", "subdir_copy")')
+      runDvala('let f = import(cliFs); f.copy("subdir", "subdir_copy")')
 
       const exists = fs.existsSync(path.join(testDir, 'subdir_copy', 'nested.txt'))
       expect(exists).toBe(true)
@@ -187,7 +187,7 @@ describe('the cli-fs Integration Tests', () => {
       expect(content).toBe('Nested content')
     })
     test('should move file', () => {
-      runDvala('let f = import(cli-fs); f.move("test.txt", "test_moved.txt")')
+      runDvala('let f = import(cliFs); f.move("test.txt", "test_moved.txt")')
 
       const exists = fs.existsSync(path.join(testDir, 'test_moved.txt'))
       expect(exists).toBe(true)
@@ -200,7 +200,7 @@ describe('the cli-fs Integration Tests', () => {
       expect(originalExists).toBe(false)
     })
     test('should move directory recursively', () => {
-      runDvala('let f = import(cli-fs); f.move("subdir", "subdir_moved")')
+      runDvala('let f = import(cliFs); f.move("subdir", "subdir_moved")')
 
       const exists = fs.existsSync(path.join(testDir, 'subdir_moved', 'nested.txt'))
       expect(exists).toBe(true)
@@ -211,7 +211,7 @@ describe('the cli-fs Integration Tests', () => {
       expect(originalExists).toBe(false)
     })
     test('should get stats', () => {
-      const result = runDvala('let { jsonStringify } = import(json); let f = import(cli-fs); f.get-stats("test.txt") |> jsonStringify(_, 2)')
+      const result = runDvala('let { jsonStringify } = import(json); let f = import(cliFs); f.getStats("test.txt") |> jsonStringify(_, 2)')
       const stats = JSON.parse(result)
 
       expect(stats).toHaveProperty('size')
@@ -225,12 +225,12 @@ describe('the cli-fs Integration Tests', () => {
   // describe('complex File Operations', () => {
   //   test('should process multiple files with Dvala pipeline', () => {
   //     const dvalaScript = `
-  //       let files = let f = import(cli-fs); f.listDir(".")
+  //       let files = let f = import(cliFs); f.listDir(".")
   //         |> filter (f -> Cli.path.extname(f) == ".txt")
   //         |> map (f -> {
   //             name: f,
-  //             content: let f = import(cli-fs); f.readFile(f),
-  //             size: let f = import(cli-fs); f.size(f)
+  //             content: let f = import(cliFs); f.readFile(f),
+  //             size: let f = import(cliFs); f.size(f)
   //           });
   //
   //       files |> count
@@ -246,15 +246,15 @@ describe('the cli-fs Integration Tests', () => {
   //       let backup = original ++ ".backup";
   //
   //       // Create backup
-  //       let f = import(cli-fs); f.copy(original, backup);
+  //       let f = import(cliFs); f.copy(original, backup);
   //
   //       // Modify original
-  //       let content = let f = import(cli-fs); f.readFile(original);
+  //       let content = let f = import(cliFs); f.readFile(original);
   //       let modified = content ++ " - Modified";
-  //       let f = import(cli-fs); f.writeFile(original, modified);
+  //       let f = import(cliFs); f.writeFile(original, modified);
   //
   //       // Verify both exist
-  //       [let f = import(cli-fs); f.exists(original), let f = import(cli-fs); f.exists(backup)]
+  //       [let f = import(cliFs); f.exists(original), let f = import(cliFs); f.exists(backup)]
   //     `
   //
   //     const result = runDvala(dvalaScript)
@@ -272,13 +272,13 @@ describe('the cli-fs Integration Tests', () => {
   describe('error Handling', () => {
     test('should handle reading non-existent file', () => {
       expect(() => {
-        runDvala('let f = import(cli-fs); f.read-file("does-not-exist.txt")')
+        runDvala('let f = import(cliFs); f.readFile("does-not-exist.txt")')
       }).toThrow()
     })
 
     test('should handle removing non-existent file', () => {
       expect(() => {
-        runDvala('let f = import(cli-fs); f.remove("does-not-exist.txt")')
+        runDvala('let f = import(cliFs); f.remove("does-not-exist.txt")')
       }).toThrow()
     })
   })
