@@ -7,8 +7,8 @@ import { allBuiltinModules } from '../../src/allModules'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
 
-// Dvala identifier pattern: kebab-case names, predicate suffixes (?), module-qualified (grid.foo)
-const DVALA_WORD_PATTERN = /[a-zA-Z_][a-zA-Z0-9_?!-]*(?:\.[a-zA-Z_][a-zA-Z0-9_?!-]*)*/
+// Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
+const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
 
 // Index allReference by title as well (needed for effects whose key !== title)
 const referenceByTitle: Record<string, Reference> = {}

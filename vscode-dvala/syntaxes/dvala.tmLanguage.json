@@ -201,9 +201,9 @@
     "special-expressions": {
       "patterns": [
         {
-          "comment": "Special expressions: if, let, for, cond, match, loop, block, import, perform, parallel, race, recur",
+          "comment": "Special expressions: if, let, for, match, loop, block, import, perform, handle, with, parallel, race, recur",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|cond|match|loop|block|import|perform|parallel|race|recur)(?=[\\s(\\[{)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|match|loop|block|import|perform|handle|with|parallel|race|recur)(?=[\\s(\\[{)\\]},;]|$)"
         }
       ]
     },
@@ -212,17 +212,17 @@
         {
           "comment": "Predicates (is-prefix)",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|isFunction|isString|isNumber|isInteger|isBoolean|isNull|isZero|isPos|isNeg|isEven|isOdd|isArray|isCollection|isSequence|isObject|isRegexp|isEffect|isFinite|isPositiveInfinity|isNegativeInfinity|isTrue|isFalse|isEmpty|isNotEmpty|isVector|isMatrix|isGrid|isBlank|identical)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:assert|isFunction|isString|isNumber|isInteger|isBoolean|isNull|isZero|isPos|isNeg|isEven|isOdd|isArray|isCollection|isSequence|isObject|isRegexp|isEffect|isFinite|isPositiveInfinity|isNegativeInfinity|isTrue|isFalse|isEmpty|isNotEmpty|isVector|isMatrix|isGrid|isBlank)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Collection, array, sequence functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:filter|map|reduce|get|count|contains|assoc|range|repeat|flatten|mapcat|movingFn|runningFn|nth|first|last|pop|indexOf|push|rest|next|reverse|second|slice|some|sort|take|takeLast|drop|dropLast|takeWhile|dropWhile)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:filter|map|reduce|get|count|contains|assoc|range|repeat|flatten|nth|first|last|pop|indexOf|push|rest|next|reverse|second|slice|some|sort|take|takeLast|drop|dropLast|takeWhile|dropWhile)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Math functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:inc|dec|quot|mod|sqrt|cbrt|round|trunc|floor|ceil|min|max|abs|sign|sum|prod|mean|median)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:inc|dec|quot|mod|sqrt|cbrt|round|trunc|floor|ceil|min|max|abs|sign)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "String, regexp, misc functions",
@@ -249,7 +249,7 @@
         },
         {
           "name": "keyword.operator.pipe.dvala",
-          "match": "\\|>"
+          "match": "\\|\\|>|\\|>"
         },
         {
           "name": "keyword.operator.spread.dvala",
