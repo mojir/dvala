@@ -20,9 +20,9 @@ describe('linalg functions', () => {
       // Basic case
       expect(deepEqual(runLin('lin:rotate2d([1, 0], PI / 2)'), [0, 1])).toBeTruthy()
       // Case with negative angle
-      expect(deepEqual(runLin('lin:rotate2d([1, 0], (0 - PI) / 2)'), [0, -1])).toBeTruthy()
+      expect(deepEqual(runLin('lin:rotate2d([1, 0], -PI / 2)'), [0, -1])).toBeTruthy()
       // zero vector
-      expect(deepEqual(runLin('lin:rotate2d([0, 0], (0 - PI) / 2)'), [0, 0])).toBeTruthy()
+      expect(deepEqual(runLin('lin:rotate2d([0, 0], -PI / 2)'), [0, 0])).toBeTruthy()
       // Case with zero angle
       expect(runLin('lin:rotate2d([1, 0], 0)')).toEqual([1, 0])
       // Case with empty vector (should throw an error)
@@ -38,7 +38,7 @@ describe('linalg functions', () => {
       // Basic case
       expect(deepEqual(runLin('lin:rotate3d([1, 0, 0], [0, 1, 0], PI / 2)'), [0, 0, -1])).toBeTruthy()
       // Case with negative angle
-      expect(deepEqual(runLin('lin:rotate3d([1, 0, 0], [0, 1, 0], (0 - PI) / 2)'), [0, 0, 1])).toBeTruthy()
+      expect(deepEqual(runLin('lin:rotate3d([1, 0, 0], [0, 1, 0], -PI / 2)'), [0, 0, 1])).toBeTruthy()
       // Case with zero angle
       expect(runLin('lin:rotate3d([1, 0, 0], [0, 1, 0], 0)')).toEqual([1, 0, 0])
       // Case with zero vector
@@ -876,12 +876,12 @@ describe('linalg functions', () => {
         3.5355339059327373,
       ])
       // Case with negative numbers
-      expect(runLin('lin:fromPolar([5, (0 - PI) / 8])')).toEqual([
+      expect(runLin('lin:fromPolar([5, -PI / 8])')).toEqual([
         4.619397662556434,
         -1.913417161825449,
       ])
 
-      expect(runLin('lin:fromPolar([0, (0 - PI) / 8])')).toEqual([
+      expect(runLin('lin:fromPolar([0, -PI / 8])')).toEqual([
         0,
         0,
       ])

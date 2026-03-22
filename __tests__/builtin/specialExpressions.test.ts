@@ -216,7 +216,7 @@ describe('specialExpressions', () => {
       expect(dvala.run('if not("x") then "A" else "B" end')).toBe('B')
       expect(dvala.run('if not(0) then "A" else "B" end')).toBe('A')
       expect(dvala.run('if not(1) then "A" else "B" end')).toBe('B')
-      expect(dvala.run('if not(0 - 1) then "A" else "B" end')).toBe('B')
+      expect(dvala.run('if not(-1) then "A" else "B" end')).toBe('B')
       expect(dvala.run('if not([]) then "A" else "B" end')).toBe('B')
       expect(dvala.run('if not(object()) then "A" else "B" end')).toBe('B')
     })

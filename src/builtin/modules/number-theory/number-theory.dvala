@@ -297,7 +297,7 @@ do
             let s = loop (k = 0, acc = 0) ->
               if k >= n then acc
               else recur(k + 1, acc + binom(n + 1, k) * nth(bArr, k)) end;
-            (0 - s) / (n + 1)
+            -s / (n + 1)
           end end;
         if fn(bn, n) then recur(push(bArr, bn), n + 1)
         else bArr end
