@@ -14,7 +14,7 @@ import { bitwiseUtilsModule } from './builtin/modules/bitwise'
 import { convertModule } from './builtin/modules/convert'
 import { jsonModule } from './builtin/modules/json'
 import { timeModule } from './builtin/modules/time'
-import { handlerModule } from './builtin/modules/handler'
+import { handlerModule } from './builtin/modules/effectHandler'
 
 export const allBuiltinModules: DvalaModule[] = [
   assertModule,
