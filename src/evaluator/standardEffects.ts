@@ -175,6 +175,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         { code: 'perform(@dvala.io.print, "hello")', noRun: true },
         { code: 'perform(@dvala.io.print, 42)', noRun: true },
+        { code: 'perform(@dvala.io.print, {name: "Alice", age: 30})', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.error', '-effect-dvala.io.read', 'perform', 'effect'],
     },
@@ -202,6 +203,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       variants: [{ argumentNames: ['value'] }],
       examples: [
         { code: 'perform(@dvala.io.error, "something went wrong")', noRun: true },
+        { code: 'perform(@dvala.io.error, {code: 500, message: "Internal error"})', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.print', 'perform', 'effect'],
     },
@@ -233,7 +235,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { argumentNames: ['message'] },
       ],
       examples: [
-        '@dvala.io.read',
+        { code: 'let name = perform(@dvala.io.read, "What is your name?"); "Hello, " ++ name', noRun: true },
+        { code: 'let input = perform(@dvala.io.read); input ?? "no input"', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.readStdin', '-effect-dvala.io.print', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
@@ -308,10 +311,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     arity: { min: 1, max: 2 },
     docs: {
       category: 'effect',
-      description: 'Presents a numbered list of items and asks the user to choose one. In browsers uses `window.prompt()`. In Node.js, register a host handler. Resumes with the index of the chosen item, or `null` if the user cancels.',
+      description: 'Presents a list of items and asks the user to choose one. Accepts either a plain array of strings or an object with `items` and optional `options`. Resumes with the index of the chosen item, or `null` if the user cancels.',
       returns: { type: ['integer', 'null'] },
       args: {
-        items: { type: 'array', description: 'Non-empty array of strings to display.' },
+        items: { type: 'array', description: 'Non-empty array of strings to display. Can be passed directly as the arg.' },
         options: { type: 'object', description: 'Optional settings: `prompt` (string label) and `default` (integer index to use when the user submits an empty input).' },
       },
       variants: [
@@ -319,7 +322,9 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { argumentNames: ['items', 'options'] },
       ],
       examples: [
-        '@dvala.io.pick',
+        { code: 'let choice = perform(@dvala.io.pick, ["Red", "Green", "Blue"])', noRun: true },
+        { code: 'let choice = perform(@dvala.io.pick, {items: ["Red", "Green", "Blue"], options: {prompt: "Pick a color:", default: 0}})', noRun: true },
+        { code: 'do\n  let colors = ["Red", "Green", "Blue"];\n  let idx = perform(@dvala.io.pick, colors);\n  if idx != null then nth(colors, idx) else "No selection" end\nend', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.read', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
@@ -366,7 +371,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { argumentNames: ['question', 'options'] },
       ],
       examples: [
-        '@dvala.io.confirm',
+        { code: 'if perform(@dvala.io.confirm, "Delete all files?") then "Deleted" else "Cancelled" end', noRun: true },
+        { code: 'perform(@dvala.io.confirm, {question: "Continue?", options: {default: true}})', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.read', '-effect-dvala.io.pick', 'perform', 'effect'],
     },
@@ -394,7 +400,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        '@dvala.io.readStdin',
+        { code: 'let input = perform(@dvala.io.readStdin); count(input)', noRun: true },
       ],
       seeAlso: ['-effect-dvala.io.read', 'perform', 'effect'],
     },
@@ -614,7 +620,8 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       },
       variants: [{ argumentNames: ['ms'] }],
       examples: [
-        '@dvala.sleep',
+        { code: 'do perform(@dvala.sleep, 1000); "awake!" end', noRun: true },
+        { code: 'do perform(@dvala.io.print, "waiting..."); perform(@dvala.sleep, 500); perform(@dvala.io.print, "done!") end', noRun: true },
       ],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
     },
