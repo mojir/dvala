@@ -1,8 +1,8 @@
 import { DvalaError } from '../../errors'
-import type { AstNode, BindingTarget } from '../types'
+import type { AstNode, BindingTarget, SymbolNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
-import { asUserDefinedSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { isSpecialBuiltinSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { NodeTypes } from '../../constants/constants'
@@ -10,6 +10,24 @@ import { parseSymbol } from './parseSymbol'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'
 import { parseTemplateString } from './parseTemplateString'
+import type { SourceCodeInfo } from '../../tokenizer/token'
+
+/**
+ * Convert any symbol to a UserDefinedSymbol for use in binding targets.
+ * Normal builtins (map, filter, etc.) are allowed — they can be shadowed.
+ * Special expressions (if, let, for, etc.) cannot be used as variable names.
+ */
+function toUserDefinedSymbol(symbol: SymbolNode, sourceCodeInfo: SourceCodeInfo | undefined): UserDefinedSymbolNode {
+  if (isSpecialBuiltinSymbolNode(symbol)) {
+    throw new DvalaError('Expected user defined symbol', sourceCodeInfo)
+  }
+  if (isUserDefinedSymbolNode(symbol)) {
+    return symbol
+  }
+  // NormalBuiltinSymbol → convert to UserDefinedSymbol using its string name
+  const name = getSymbolName(symbol)
+  return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) satisfies UserDefinedSymbolNode
+}
 
 export interface ParseBindingTargetOptions {
   requireDefaultValue?: true
@@ -61,10 +79,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
 
   // Symbol
   if (isSymbolToken(firstToken)) {
-    const symbol = parseSymbol(ctx)
-    if (!isUserDefinedSymbolNode(symbol)) {
-      throw new DvalaError('Expected user defined symbol', firstToken[2])
-    }
+    const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2])
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
@@ -80,7 +95,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       throw new DvalaError('Rest element not allowed', firstToken[2])
     }
     ctx.advance()
-    const symbol = asUserDefinedSymbolNode(parseSymbol(ctx))
+    const symbol = toUserDefinedSymbol(parseSymbol(ctx), firstToken[2])
     if (isOperatorToken(ctx.tryPeek(), '=')) {
       throw new DvalaError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
     }
@@ -153,14 +168,14 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
           throw new DvalaError('Rest argument can not have alias', token[2])
         }
         ctx.advance()
-        const name = asUserDefinedSymbolNode(parseSymbol(ctx))
+        const name = toUserDefinedSymbol(parseSymbol(ctx), token[2])
         if (elements[name[1]]) {
           throw new DvalaError(`Duplicate binding name: ${name}`, token[2])
         }
         elements[keyName] = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)]], firstToken[2])
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
-        // Without 'as' alias, the key becomes the binding name - must be user-defined symbol
-        const key = asUserDefinedSymbolNode(keySymbol, keySymbol[2])
+        // Without 'as' alias, the key becomes the binding name
+        const key = toUserDefinedSymbol(keySymbol, keySymbol[2])
         if (elements[key[1]]) {
           throw new DvalaError(`Duplicate binding name: ${key}`, token[2])
         }

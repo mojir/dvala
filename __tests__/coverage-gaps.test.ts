@@ -427,12 +427,16 @@ describe('anonymous function expression with placeholders', () => {
 // ---------------------------------------------------------------------------
 
 describe('contextStack — shadowing builtin', () => {
-  it('should throw when trying to shadow a builtin function', () => {
-    expect(() => dvala.run('let inc = 5; inc')).toThrow()
+  it('should allow shadowing a builtin function', () => {
+    expect(dvala.run('let inc = 5; inc')).toBe(5)
   })
 
-  it('should throw when trying to shadow a builtin value', () => {
-    expect(() => dvala.run('let self = 5; self')).toThrow()
+  it('should allow shadowing self', () => {
+    expect(dvala.run('let self = 5; self')).toBe(5)
+  })
+
+  it('should still throw when trying to shadow a special expression', () => {
+    expect(() => dvala.run('let if = 5; if')).toThrow()
   })
 })
 
@@ -1516,8 +1520,12 @@ describe('meta — doc and arity with effects', () => {
 // ---------------------------------------------------------------------------
 
 describe('contextStack — shadowing builtin via bindings', () => {
-  it('should throw when trying to shadow a builtin value via bindings', () => {
-    expect(() => createDvala().run('1', { bindings: { self: 42 } }))
+  it('should allow shadowing a builtin value via bindings', () => {
+    expect(createDvala().run('self', { bindings: { self: 42 } })).toBe(42)
+  })
+
+  it('should throw when trying to shadow a special expression via bindings', () => {
+    expect(() => createDvala().run('1', { bindings: { for: 42 } }))
       .toThrow('Cannot shadow')
   })
 })

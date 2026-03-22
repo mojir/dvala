@@ -1,5 +1,5 @@
 import type { SpecialExpression } from '../builtin'
-import { builtin, normalExpressionKeys, specialExpressionKeys } from '../builtin'
+import { builtin, specialExpressionKeys } from '../builtin'
 import { allNormalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { DvalaError, UndefinedSymbolError } from '../errors'
@@ -160,9 +160,9 @@ export class ContextStackImpl {
       if (currentContext[name]) {
         throw new DvalaError(`Cannot redefine value "${name}"`, sourceCodeInfo)
       }
-      const shadowedName = getShadowedBuiltinName(name)
-      if (shadowedName) {
-        throw new DvalaError(`Cannot shadow ${shadowedName}`, sourceCodeInfo)
+      // Special expressions (if, let, for, etc.) cannot be shadowed — they're keywords
+      if (specialExpressionKeys.includes(name)) {
+        throw new DvalaError(`Cannot shadow special expression "${name}"`, sourceCodeInfo)
       }
       currentContext[name] = { value: toAny(value) }
     }
@@ -179,14 +179,16 @@ export class ContextStackImpl {
   }
 
   public lookUp(node: UserDefinedSymbolNode): LookUpResult {
-    const value = node[1]
+    return this.lookUpByName(node[1])
+  }
 
+  public lookUpByName(name: string): LookUpResult {
     for (const context of this._contexts) {
-      const contextEntry = context[value]
+      const contextEntry = context[name]
       if (contextEntry)
         return contextEntry
     }
-    const hostValue = this.values?.[value]
+    const hostValue = this.values?.[name]
     if (hostValue !== undefined) {
       return {
         value: toAny(hostValue),
@@ -220,9 +222,13 @@ export class ContextStackImpl {
       }
     }
     if (isNormalBuiltinSymbolNode(node)) {
+      // Check user context first — builtins can be shadowed
       const type = node[1]
       const normalExpression = allNormalExpressions[type]!
       const name = normalExpression.name!
+      const userValue = this.lookUpByName(name)
+      if (isContextEntry(userValue))
+        return userValue.value
       return {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Builtin',
@@ -241,20 +247,9 @@ export class ContextStackImpl {
   }
 }
 
-function getShadowedBuiltinName(name: string): string | null {
-  if (specialExpressionKeys.includes(name))
-    return `special expression "${name}"`
-  if (normalExpressionKeys.includes(name))
-    return `builtin function "${name}"`
-  if (name === 'self')
-    return `builtin value "${name}"`
-  return null
-}
-
-function assertNotShadowingBuiltin(name: string): void {
-  const shadowedName = getShadowedBuiltinName(name)
-  if (shadowedName) {
-    throw new DvalaError(`Cannot shadow ${shadowedName}`, undefined)
+function assertNotShadowingKeyword(name: string): void {
+  if (specialExpressionKeys.includes(name)) {
+    throw new DvalaError(`Cannot shadow special expression "${name}"`, undefined)
   }
 }
 
@@ -270,7 +265,7 @@ export function createContextStack(params: CreateContextStackParams = {}, module
       if (identifier.includes('.')) {
         throw new DvalaError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
       }
-      assertNotShadowingBuiltin(identifier)
+      assertNotShadowingKeyword(identifier)
       if (!hostValues) {
         hostValues = {}
       }
