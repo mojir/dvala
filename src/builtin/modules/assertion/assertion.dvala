@@ -1,5 +1,5 @@
 {
-  assert-fails: (fn, ...args) -> do
+  assertFails: (fn, ...args) -> do
     let message = first(args);
     assert(function?(fn), "First argument must be a function");
     if not(null?(message)) then assert(string?(message), "Second argument must be a string") end;
@@ -12,7 +12,7 @@
     end
   end,
 
-  assert-fails-with: (fn, expected-error, ...args) -> do
+  assertFailsWith: (fn, expected-error, ...args) -> do
     let message = first(args);
     assert(function?(fn), "First argument must be a function");
     assert(string?(expected-error), "Second argument must be a string");
@@ -32,7 +32,7 @@
     end
   end,
 
-  assert-succeeds: (fn, ...args) -> do
+  assertSucceeds: (fn, ...args) -> do
     let message = first(args);
     assert(function?(fn), "First argument must be a function");
     if not(null?(message)) then assert(string?(message), "Second argument must be a string") end;

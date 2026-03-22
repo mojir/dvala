@@ -67,17 +67,17 @@ export const kurtosisReductionFunction: ReductionFunctionDefinition<'kurtosis'> 
   minLength: 4,
 }
 
-export const eccessKurtosisReductionFunction: ReductionFunctionDefinition<'excess-kurtosis'> = {
-  'excess-kurtosis': vector => excessKurtosis(vector),
+export const eccessKurtosisReductionFunction: ReductionFunctionDefinition<'excessKurtosis'> = {
+  'excessKurtosis': vector => excessKurtosis(vector),
   'minLength': 4,
 }
 
-export const sampleKurtosisReductionFunction: ReductionFunctionDefinition<'sample-kurtosis'> = {
-  'sample-kurtosis': vector => sampleKurtosis(vector),
+export const sampleKurtosisReductionFunction: ReductionFunctionDefinition<'sampleKurtosis'> = {
+  'sampleKurtosis': vector => sampleKurtosis(vector),
   'minLength': 4,
 }
 
-export const sampleExcessKurtosisReductionFunction: ReductionFunctionDefinition<'sample-excess-kurtosis'> = {
-  'sample-excess-kurtosis': vector => sampleExcessKurtosis(vector),
+export const sampleExcessKurtosisReductionFunction: ReductionFunctionDefinition<'sampleExcessKurtosis'> = {
+  'sampleExcessKurtosis': vector => sampleExcessKurtosis(vector),
   'minLength': 4,
 }

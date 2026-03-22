@@ -689,11 +689,11 @@ let matrixMultiply = (matrixA, matrixB) -> do
   let colsB = count(first(matrixB));
 
   // Check if all rows have consistent length
-  if not(every?(matrixA, row -> array?(row) && count(row) == colsA)) then
+  if not(isEvery(matrixA, row -> array?(row) && count(row) == colsA)) then
     perform(@dvala.error, "First matrix has inconsistent row lengths")
   end;
 
-  if not(every?(matrixB, row -> array?(row) && count(row) == colsB)) then
+  if not(isEvery(matrixB, row -> array?(row) && count(row) == colsB)) then
     perform(@dvala.error, "Second matrix has inconsistent row lengths")
   end;
 

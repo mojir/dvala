@@ -20,9 +20,9 @@ import { giniCoefficientReductionFunction } from './giniCoefficient'
 import { entropyReductionFunction } from './entropy'
 
 type VectorReductionKey<T extends string> = `${T}`
-type VectorMovingWindowKey<T extends string> = `moving-${T}`
-type VectorCenteredMovingWindowKey<T extends string> = `centered-moving-${T}`
-type VectorRunningKey<T extends string> = `running-${T}`
+type VectorMovingWindowKey<T extends string> = `moving${Capitalize<T>}`
+type VectorCenteredMovingWindowKey<T extends string> = `centeredMoving${Capitalize<T>}`
+type VectorRunningKey<T extends string> = `running${Capitalize<T>}`
 
 export type VectorReductionKeys<T extends string> = VectorReductionKey<T> | VectorMovingWindowKey<T> | VectorCenteredMovingWindowKey<T> | VectorRunningKey<T>
 
@@ -76,9 +76,10 @@ function addReductionFunctions<T extends string>(fns: ReductionFunctionDefinitio
     if (key !== 'minLength' && key !== 'padding' && typeof value === 'function') {
       const reductionFn = value as ReductionFunction
       const baseKey = key.replace(/^/, '')
-      const movingKey = `moving-${baseKey}` as VectorMovingWindowKey<T>
-      const centeredMovingKey = `centered-moving-${baseKey}` as VectorCenteredMovingWindowKey<T>
-      const runningKey = `running-${baseKey}` as VectorRunningKey<T>
+      const capKey = baseKey.charAt(0).toUpperCase() + baseKey.slice(1)
+      const movingKey = `moving${capKey}` as VectorMovingWindowKey<T>
+      const centeredMovingKey = `centeredMoving${capKey}` as VectorCenteredMovingWindowKey<T>
+      const runningKey = `running${capKey}` as VectorRunningKey<T>
       const minLength = fns.minLength ?? 1
       assertNumber(minLength, undefined, { integer: true, finite: true, gte: 0 })
       reductionFunctionNormalExpressions[key] = createReductionNormalExpression(reductionFn, minLength)

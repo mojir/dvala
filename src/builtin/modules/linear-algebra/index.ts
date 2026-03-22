@@ -166,7 +166,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'normalize-minmax': {
+  'normalizeMinmax': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -185,7 +185,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'normalize-robust': {
+  'normalizeRobust': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -203,7 +203,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'normalize-zscore': {
+  'normalizeZscore': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -218,7 +218,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'normalize-l1': {
+  'normalizeL1': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length === 0) {
@@ -234,14 +234,14 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'normalize-l2': {
+  'normalizeL2': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
       return getUnit(vector, sourceCodeInfo)
     },
     arity: toFixedArity(1),
   },
-  'normalize-log': {
+  'normalizeLog': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -298,7 +298,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'orthogonal?': {
+  'isOrthogonal': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -312,7 +312,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'parallel?': {
+  'isParallel': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -325,7 +325,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'collinear?': {
+  'isCollinear': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -338,7 +338,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'cosine-similarity': {
+  'cosineSimilarity': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -358,7 +358,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'euclidean-distance': {
+  'euclideanDistance': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -371,7 +371,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'euclidean-norm': {
+  'euclideanNorm': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
 
@@ -379,7 +379,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'manhattan-distance': {
+  'manhattanDistance': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -392,7 +392,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'manhattan-norm': {
+  'manhattanNorm': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
 
@@ -400,7 +400,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'hamming-distance': {
+  'hammingDistance': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -413,14 +413,14 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'hamming-norm': {
+  'hammingNorm': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
       return vector.reduce((acc, val) => acc + (val !== 0 ? 1 : 0), 0)
     },
     arity: toFixedArity(1),
   },
-  'chebyshev-distance': {
+  'chebyshevDistance': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -433,14 +433,14 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'chebyshev-norm': {
+  'chebyshevNorm': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
       return Math.max(...vector.map(val => Math.abs(val)))
     },
     arity: toFixedArity(1),
   },
-  'minkowski-distance': {
+  'minkowskiDistance': {
     evaluate: ([vectorA, vectorB, p], sourceCodeInfo): number => {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
@@ -454,7 +454,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'minkowski-norm': {
+  'minkowskiNorm': {
     evaluate: ([vector, p], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
       assertNumber(p, sourceCodeInfo, { finite: true, positive: true })
@@ -503,7 +503,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'spearman-corr': {
+  'spearmanCorr': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertVector(vectorA, sourceCodeInfo)
       assertVector(vectorB, sourceCodeInfo)
@@ -527,13 +527,13 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'pearson-corr': {
+  'pearsonCorr': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertVector(vectorA, sourceCodeInfo)
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
-        throw new DvalaError('Vectors must have at least 2 elements for pearson-corr', sourceCodeInfo)
+        throw new DvalaError('Vectors must have at least 2 elements for pearsonCorr', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
@@ -548,13 +548,13 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'kendall-tau': {
+  'kendallTau': {
     evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
       assertVector(vectorA, sourceCodeInfo)
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length < 2) {
-        throw new DvalaError('Vectors must have at least 2 elements for kendall-tau', sourceCodeInfo)
+        throw new DvalaError('Vectors must have at least 2 elements for kendallTau', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
@@ -619,7 +619,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
 
-  'cross-correlation': {
+  'crossCorrelation': {
     evaluate: ([vectorA, vectorB, lag], sourceCodeInfo): number => {
       assertVector(vectorA, sourceCodeInfo)
       assertVector(vectorB, sourceCodeInfo)
@@ -671,7 +671,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'to-polar': {
+  'toPolar': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assert2dVector(vector, sourceCodeInfo)
       if (isZeroVector(vector)) {
@@ -683,7 +683,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'from-polar': {
+  'fromPolar': {
     evaluate: ([polar], sourceCodeInfo): number[] => {
       assert2dVector(polar, sourceCodeInfo)
       const [r, theta] = polar

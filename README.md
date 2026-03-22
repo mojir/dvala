@@ -210,9 +210,9 @@ repeat(3.14, 4);               // => [3.14, 3.14, 3.14, 3.14]
 
 // Vector mathematical operations (use lin module for vector math)
 lin.dot([1, 2, 3], [4, 5, 6]);      // => 32 (dot product)
-lin.euclidean-norm([3, 4]);         // => 5.0 (Euclidean norm/magnitude)
-lin.normalize-l2([3, 4]);           // => [0.6, 0.8] (unit vector)
-lin.euclidean-distance([0, 0], [3, 4]); // => 5.0 (Euclidean distance)
+lin.euclideanNorm([3, 4]);         // => 5.0 (Euclidean norm/magnitude)
+lin.normalizeL2([3, 4]);           // => [0.6, 0.8] (unit vector)
+lin.euclideanDistance([0, 0], [3, 4]); // => 5.0 (Euclidean distance)
 
 // Vector statistical operations (in the vector module)
 vec.sum([1, 2, 3, 4]);         // => 10
@@ -224,16 +224,16 @@ vec.variance([1, 2, 3, 4]);    // => 1.67... (variance)
 // Vector analysis (min and max are core built-ins)
 min([3, 1, 4, 1, 5]); // => 1
 max([3, 1, 4, 1, 5]); // => 5
-vec.min-index([3, 1, 4]);      // => 1 (index of minimum)
-vec.max-index([3, 1, 4]);      // => 2 (index of maximum)
+vec.minIndex([3, 1, 4]);      // => 1 (index of minimum)
+vec.maxIndex([3, 1, 4]);      // => 2 (index of maximum)
 
 // Cumulative operations
 vec.cumsum([1, 2, 3, 4]);      // => [1, 3, 6, 10]
 vec.cumprod([1, 2, 3, 4]);     // => [1, 2, 6, 24]
 
 // Vector predicates
-vec.increasing?([1, 1, 2, 3, 4]);          // => true
-vec.strictly-increasing?([1, 1, 2, 3, 4]); // => false
+vec.isIncreasing([1, 1, 2, 3, 4]);          // => true
+vec.isStrictlyIncreasing([1, 1, 2, 3, 4]); // => false
 
 // Structural equality works with all vectors
 [1, 2, 3] == [1, 2, 3];       // => true
@@ -270,20 +270,20 @@ mat.vandermonde([1, 2, 3]);    // => Vandermonde matrix from vector
 mat.band(4, 1, 1);             // => 4x4 band matrix
 
 // Matrix properties and predicates
-mat.symmetric?([[1, 2], [2, 1]]);    // => true
-mat.invertible?([[1, 2], [3, 4]]);   // => true
-mat.square?([[1, 2], [3, 4]]);       // => true
-mat.diagonal?([[1, 0], [0, 2]]);     // => true
-mat.identity?([[1, 0], [0, 1]]);     // => true
+mat.isSymmetric([[1, 2], [2, 1]]);    // => true
+mat.isInvertible([[1, 2], [3, 4]]);   // => true
+mat.isSquare([[1, 2], [3, 4]]);       // => true
+mat.isDiagonal([[1, 0], [0, 2]]);     // => true
+mat.isIdentity([[1, 0], [0, 1]]);     // => true
 
 // Advanced matrix operations
 mat.adj(matrixA);              // => [[4, -2], [-3, 1]] (adjugate)
 mat.cofactor(matrixA);         // => cofactor matrix
 mat.minor(matrixA, 0, 1);      // => minor by removing row 0, col 1
-mat.frobenius-norm(matrixA);   // => Frobenius norm
-mat.one-norm(matrixA);         // => 1-norm (max column sum)
-mat.inf-norm(matrixA);         // => infinity norm (max row sum)
-mat.max-norm(matrixA);         // => max norm (largest absolute element)
+mat.frobeniusNorm(matrixA);   // => Frobenius norm
+mat.oneNorm(matrixA);         // => 1-norm (max column sum)
+mat.infNorm(matrixA);         // => infinity norm (max row sum)
+mat.maxNorm(matrixA);         // => max norm (largest absolute element)
 
 // Matrix analysis
 mat.rank(matrixA);             // => matrix rank
@@ -1484,7 +1484,7 @@ let users = [
 ];
 
 // Group by department and get average age
-let grouped = users |> su.group-by(_, "department");
+let grouped = users |> su.groupBy(_, "department");
 let departmentAges = grouped
   |> entries(_)
   |> map(_, ([dept, people]) -> do

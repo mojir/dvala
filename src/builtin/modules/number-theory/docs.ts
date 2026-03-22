@@ -277,7 +277,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { bell-seq } = import(number-theory);\nbell-seq(10)',
       'let { bell-seq } = import(number-theory);\nbell-seq()',
     ],
-    seeAlso: ['number-theory.bell-nth', 'number-theory.bell-take-while', 'number-theory.bell?', 'number-theory.catalan-seq', 'number-theory.stirling-second', 'number-theory.stirling-first'],
+    seeAlso: ['number-theory.bell-nth', 'number-theory.bell-take-while', 'number-theory.bell?', 'number-theory.catalan-seq', 'number-theory.stirlingSecond', 'number-theory.stirlingFirst'],
   },
   'bell-take-while': {
     category: 'number-theory',
@@ -665,7 +665,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { composite? } = import(number-theory);\ncomposite?(5)',
       'let { composite? } = import(number-theory);\ncomposite?(11)',
     ],
-    seeAlso: ['number-theory.composite-seq', 'number-theory.composite-nth', 'number-theory.prime?', 'number-theory.prime-factors', 'number-theory.composite-take-while'],
+    seeAlso: ['number-theory.composite-seq', 'number-theory.composite-nth', 'number-theory.prime?', 'number-theory.primeFactors', 'number-theory.composite-take-while'],
   },
   'deficient-seq': {
     category: 'number-theory',
@@ -1931,7 +1931,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { partition-seq } = import(number-theory);\npartition-seq(10)',
       'let { partition-seq } = import(number-theory);\npartition-seq()',
     ],
-    seeAlso: ['number-theory.partition-nth', 'number-theory.partition-take-while', 'number-theory.partition?', 'number-theory.partitions', 'number-theory.count-partitions'],
+    seeAlso: ['number-theory.partition-nth', 'number-theory.partition-take-while', 'number-theory.partition?', 'number-theory.partitions', 'number-theory.countPartitions'],
   },
   'partition-take-while': {
     category: 'number-theory',
@@ -2147,7 +2147,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect-seq } = import(number-theory);\nperfect-seq(5)',
       'let { perfect-seq } = import(number-theory);\nperfect-seq()',
     ],
-    seeAlso: ['number-theory.perfect-nth', 'number-theory.perfect-take-while', 'number-theory.perfect?', 'number-theory.abundant-seq', 'number-theory.deficient-seq', 'number-theory.amicable?'],
+    seeAlso: ['number-theory.perfect-nth', 'number-theory.perfect-take-while', 'number-theory.perfect?', 'number-theory.abundant-seq', 'number-theory.deficient-seq', 'number-theory.isAmicable'],
   },
   'perfect-take-while': {
     category: 'number-theory',
@@ -2230,7 +2230,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect? } = import(number-theory);\nperfect?(8)',
       'let { perfect? } = import(number-theory);\nperfect?(9)',
     ],
-    seeAlso: ['number-theory.perfect-seq', 'number-theory.perfect-nth', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.sigma', 'number-theory.perfect-take-while', 'number-theory.amicable?', 'number-theory.proper-divisors'],
+    seeAlso: ['number-theory.perfect-seq', 'number-theory.perfect-nth', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.sigma', 'number-theory.perfect-take-while', 'number-theory.isAmicable', 'number-theory.properDivisors'],
   },
   'perfect-square-seq': {
     category: 'number-theory',
@@ -2331,7 +2331,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect-square? } = import(number-theory);\nperfect-square?(16)',
       'let { perfect-square? } = import(number-theory);\nperfect-square?(20)',
     ],
-    seeAlso: ['number-theory.perfect-square-seq', 'number-theory.perfect-square-nth', 'number-theory.perfect-cube?', 'number-theory.perfect-power?', 'number-theory.perfect-square-take-while', 'number-theory.perfect-power', 'number-theory.polygonal?'],
+    seeAlso: ['number-theory.perfect-square-seq', 'number-theory.perfect-square-nth', 'number-theory.perfect-cube?', 'number-theory.perfect-power?', 'number-theory.perfect-square-take-while', 'number-theory.perfectPower', 'number-theory.polygonal?'],
   },
   'perfect-cube-seq': {
     category: 'number-theory',
@@ -2433,7 +2433,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect-cube? } = import(number-theory);\nperfect-cube?(8)',
       'let { perfect-cube? } = import(number-theory);\nperfect-cube?(9)',
     ],
-    seeAlso: ['number-theory.perfect-cube-seq', 'number-theory.perfect-cube-nth', 'number-theory.perfect-square?', 'number-theory.perfect-power?', 'number-theory.perfect-cube-take-while', 'number-theory.perfect-power'],
+    seeAlso: ['number-theory.perfect-cube-seq', 'number-theory.perfect-cube-nth', 'number-theory.perfect-square?', 'number-theory.perfect-power?', 'number-theory.perfect-cube-take-while', 'number-theory.perfectPower'],
   },
   'perfect-power-seq': {
     category: 'number-theory',
@@ -2459,7 +2459,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect-power-seq } = import(number-theory);\nperfect-power-seq(5)',
       'let { perfect-power-seq } = import(number-theory);\nperfect-power-seq(20)',
     ],
-    seeAlso: ['number-theory.perfect-power-nth', 'number-theory.perfect-power-take-while', 'number-theory.perfect-power?', 'number-theory.perfect-power', 'number-theory.perfect-square-seq', 'number-theory.perfect-cube-seq'],
+    seeAlso: ['number-theory.perfect-power-nth', 'number-theory.perfect-power-take-while', 'number-theory.perfect-power?', 'number-theory.perfectPower', 'number-theory.perfect-square-seq', 'number-theory.perfect-cube-seq'],
   },
   'perfect-power-take-while': {
     category: 'number-theory',
@@ -2536,7 +2536,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { perfect-power? } = import(number-theory);\nperfect-power?(9)',
       'let { perfect-power? } = import(number-theory);\nperfect-power?(10)',
     ],
-    seeAlso: ['number-theory.perfect-power-seq', 'number-theory.perfect-power-nth', 'number-theory.perfect-power', 'number-theory.perfect-square?', 'number-theory.perfect-cube?', 'number-theory.perfect-power-take-while'],
+    seeAlso: ['number-theory.perfect-power-seq', 'number-theory.perfect-power-nth', 'number-theory.perfectPower', 'number-theory.perfect-square?', 'number-theory.perfect-cube?', 'number-theory.perfect-power-take-while'],
   },
   'polygonal-seq': {
     category: 'number-theory',
@@ -2795,7 +2795,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { prime? } = import(number-theory);\nprime?(997)',
       'let { prime? } = import(number-theory);\nprime?(1001)',
     ],
-    seeAlso: ['number-theory.prime-seq', 'number-theory.prime-nth', 'number-theory.composite?', 'number-theory.prime-factors', 'number-theory.mersenne?', 'number-theory.prime-take-while', 'number-theory.lucky?'],
+    seeAlso: ['number-theory.prime-seq', 'number-theory.prime-nth', 'number-theory.composite?', 'number-theory.primeFactors', 'number-theory.mersenne?', 'number-theory.prime-take-while', 'number-theory.lucky?'],
   },
   'recaman-seq': {
     category: 'number-theory',
@@ -3222,7 +3222,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['number-theory.tribonacci-seq', 'number-theory.tribonacci-nth', 'number-theory.fibonacci?', 'number-theory.tribonacci-take-while'],
   },
-  'count-combinations': {
+  'countCombinations': {
     category: 'number-theory',
     description: 'Calculates the number of combinations of n items taken k at a time.',
     returns: {
@@ -3245,10 +3245,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-combinations } = import(number-theory);\ncount-combinations(5, 3)',
-      'let { count-combinations } = import(number-theory);\ncount-combinations(10, 2)',
+      'let { countCombinations } = import(number-theory);\ncountCombinations(5, 3)',
+      'let { countCombinations } = import(number-theory);\ncountCombinations(10, 2)',
     ],
-    seeAlso: ['number-theory.combinations', 'number-theory.count-permutations', 'number-theory.factorial', 'number-theory.multinomial', 'number-theory.stirling-second', 'number-theory.count-partitions', 'number-theory.count-power-set'],
+    seeAlso: ['number-theory.combinations', 'number-theory.countPermutations', 'number-theory.factorial', 'number-theory.multinomial', 'number-theory.stirlingSecond', 'number-theory.countPartitions', 'number-theory.countPowerSet'],
   },
   'combinations': {
     category: 'number-theory',
@@ -3289,9 +3289,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { combinations } = import(number-theory);\ncombinations([1, 2, 3], 1)',
       'let { combinations } = import(number-theory);\ncombinations([1, 2, 3], 3)',
     ],
-    seeAlso: ['number-theory.count-combinations', 'number-theory.permutations', 'number-theory.power-set', 'number-theory.cartesian-product', 'number-theory.partitions'],
+    seeAlso: ['number-theory.countCombinations', 'number-theory.permutations', 'number-theory.powerSet', 'number-theory.cartesianProduct', 'number-theory.partitions'],
   },
-  'count-derangements': {
+  'countDerangements': {
     category: 'number-theory',
     description: 'Calculates the number of derangements (permutations where no element appears in its original position) of n items.',
     returns: {
@@ -3311,10 +3311,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-derangements } = import(number-theory);\ncount-derangements(4)',
-      'let { count-derangements } = import(number-theory);\ncount-derangements(5)',
+      'let { countDerangements } = import(number-theory);\ncountDerangements(4)',
+      'let { countDerangements } = import(number-theory);\ncountDerangements(5)',
     ],
-    seeAlso: ['number-theory.derangements', 'number-theory.count-permutations', 'number-theory.factorial'],
+    seeAlso: ['number-theory.derangements', 'number-theory.countPermutations', 'number-theory.factorial'],
   },
   'derangements': {
     category: 'number-theory',
@@ -3341,7 +3341,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { derangements } = import(number-theory);\nderangements([1, 2, 3, 4])',
       'let { derangements } = import(number-theory);\nderangements(["a", "b", "c"])',
     ],
-    seeAlso: ['number-theory.count-derangements', 'number-theory.permutations'],
+    seeAlso: ['number-theory.countDerangements', 'number-theory.permutations'],
   },
   'divisors': {
     category: 'number-theory',
@@ -3368,9 +3368,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { divisors } = import(number-theory);\ndivisors(100)',
       'let { divisors } = import(number-theory);\ndivisors(37)',
     ],
-    seeAlso: ['number-theory.count-divisors', 'number-theory.proper-divisors', 'number-theory.sigma', 'number-theory.prime-factors', 'number-theory.divisible-by?', 'number-theory.lcm', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.count-proper-divisors'],
+    seeAlso: ['number-theory.countDivisors', 'number-theory.properDivisors', 'number-theory.sigma', 'number-theory.primeFactors', 'number-theory.isDivisibleBy', 'number-theory.lcm', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.countProperDivisors'],
   },
-  'count-divisors': {
+  'countDivisors': {
     category: 'number-theory',
     description: 'Returns the number of divisors of a number.',
     returns: {
@@ -3390,13 +3390,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-divisors } = import(number-theory);\ncount-divisors(12)',
-      'let { count-divisors } = import(number-theory);\ncount-divisors(100)',
-      'let { count-divisors } = import(number-theory);\ncount-divisors(37)',
+      'let { countDivisors } = import(number-theory);\ncountDivisors(12)',
+      'let { countDivisors } = import(number-theory);\ncountDivisors(100)',
+      'let { countDivisors } = import(number-theory);\ncountDivisors(37)',
     ],
-    seeAlso: ['number-theory.divisors', 'number-theory.count-proper-divisors', 'number-theory.sigma'],
+    seeAlso: ['number-theory.divisors', 'number-theory.countProperDivisors', 'number-theory.sigma'],
   },
-  'proper-divisors': {
+  'properDivisors': {
     category: 'number-theory',
     description: 'Returns the proper divisors of a number.',
     returns: {
@@ -3417,13 +3417,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { proper-divisors } = import(number-theory);\nproper-divisors(12)',
-      'let { proper-divisors } = import(number-theory);\nproper-divisors(100)',
-      'let { proper-divisors } = import(number-theory);\nproper-divisors(37)',
+      'let { properDivisors } = import(number-theory);\nproperDivisors(12)',
+      'let { properDivisors } = import(number-theory);\nproperDivisors(100)',
+      'let { properDivisors } = import(number-theory);\nproperDivisors(37)',
     ],
-    seeAlso: ['number-theory.count-proper-divisors', 'number-theory.divisors', 'number-theory.amicable?', 'number-theory.perfect?'],
+    seeAlso: ['number-theory.countProperDivisors', 'number-theory.divisors', 'number-theory.isAmicable', 'number-theory.perfect?'],
   },
-  'count-proper-divisors': {
+  'countProperDivisors': {
     category: 'number-theory',
     description: 'Returns the number of proper divisors of a number.',
     returns: {
@@ -3443,11 +3443,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-proper-divisors } = import(number-theory);\ncount-proper-divisors(12)',
-      'let { count-proper-divisors } = import(number-theory);\ncount-proper-divisors(100)',
-      'let { count-proper-divisors } = import(number-theory);\ncount-proper-divisors(37)',
+      'let { countProperDivisors } = import(number-theory);\ncountProperDivisors(12)',
+      'let { countProperDivisors } = import(number-theory);\ncountProperDivisors(100)',
+      'let { countProperDivisors } = import(number-theory);\ncountProperDivisors(37)',
     ],
-    seeAlso: ['number-theory.proper-divisors', 'number-theory.count-divisors', 'number-theory.divisors'],
+    seeAlso: ['number-theory.properDivisors', 'number-theory.countDivisors', 'number-theory.divisors'],
   },
   'factorial': {
     category: 'number-theory',
@@ -3474,7 +3474,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { factorial } = import(number-theory);\nfactorial(10)',
       'let { factorial } = import(number-theory);\nfactorial(20)',
     ],
-    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-nth', 'number-theory.factorial?', 'number-theory.count-combinations', 'number-theory.count-permutations', 'number-theory.multinomial', 'number-theory.count-derangements'],
+    seeAlso: ['number-theory.factorial-seq', 'number-theory.factorial-nth', 'number-theory.factorial?', 'number-theory.countCombinations', 'number-theory.countPermutations', 'number-theory.multinomial', 'number-theory.countDerangements'],
   },
   'partitions': {
     category: 'number-theory',
@@ -3500,9 +3500,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { partitions } = import(number-theory);\npartitions(4)',
       'let { partitions } = import(number-theory);\npartitions(8)',
     ],
-    seeAlso: ['number-theory.count-partitions', 'number-theory.partition-seq', 'number-theory.combinations', 'number-theory.partition?'],
+    seeAlso: ['number-theory.countPartitions', 'number-theory.partition-seq', 'number-theory.combinations', 'number-theory.partition?'],
   },
-  'count-partitions': {
+  'countPartitions': {
     category: 'number-theory',
     description: 'Returns the number of partitions of a number.',
     returns: {
@@ -3522,11 +3522,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-partitions } = import(number-theory);\ncount-partitions(4)',
-      'let { count-partitions } = import(number-theory);\ncount-partitions(8)',
-      'let { count-partitions } = import(number-theory);\ncount-partitions(15)',
+      'let { countPartitions } = import(number-theory);\ncountPartitions(4)',
+      'let { countPartitions } = import(number-theory);\ncountPartitions(8)',
+      'let { countPartitions } = import(number-theory);\ncountPartitions(15)',
     ],
-    seeAlso: ['number-theory.partitions', 'number-theory.partition-seq', 'number-theory.count-combinations'],
+    seeAlso: ['number-theory.partitions', 'number-theory.partition-seq', 'number-theory.countCombinations'],
   },
   'permutations': {
     category: 'number-theory',
@@ -3557,9 +3557,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { permutations } = import(number-theory);\npermutations([1])',
       'let { permutations } = import(number-theory);\npermutations([])',
     ],
-    seeAlso: ['number-theory.count-permutations', 'number-theory.combinations', 'number-theory.derangements', 'number-theory.cartesian-product'],
+    seeAlso: ['number-theory.countPermutations', 'number-theory.combinations', 'number-theory.derangements', 'number-theory.cartesianProduct'],
   },
-  'count-permutations': {
+  'countPermutations': {
     category: 'number-theory',
     description: 'Returns the number of permutations of n items taken k at a time.',
     returns: {
@@ -3582,15 +3582,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-permutations } = import(number-theory);\ncount-permutations(5, 3)',
-      'let { count-permutations } = import(number-theory);\ncount-permutations(10, 2)',
-      'let { count-permutations } = import(number-theory);\ncount-permutations(10, 10)',
-      'let { count-permutations } = import(number-theory);\ncount-permutations(10, 0)',
-      'let { count-permutations } = import(number-theory);\ncount-permutations(10, 1)',
+      'let { countPermutations } = import(number-theory);\ncountPermutations(5, 3)',
+      'let { countPermutations } = import(number-theory);\ncountPermutations(10, 2)',
+      'let { countPermutations } = import(number-theory);\ncountPermutations(10, 10)',
+      'let { countPermutations } = import(number-theory);\ncountPermutations(10, 0)',
+      'let { countPermutations } = import(number-theory);\ncountPermutations(10, 1)',
     ],
-    seeAlso: ['number-theory.permutations', 'number-theory.count-combinations', 'number-theory.factorial', 'number-theory.multinomial', 'number-theory.stirling-first', 'number-theory.count-derangements'],
+    seeAlso: ['number-theory.permutations', 'number-theory.countCombinations', 'number-theory.factorial', 'number-theory.multinomial', 'number-theory.stirlingFirst', 'number-theory.countDerangements'],
   },
-  'power-set': {
+  'powerSet': {
     category: 'number-theory',
     description: 'Generates the power set of a collection.',
     returns: {
@@ -3612,14 +3612,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { power-set } = import(number-theory);\npower-set(["a", "b", "c"])',
-      'let { power-set } = import(number-theory);\npower-set([1, 2])',
-      'let { power-set } = import(number-theory);\npower-set([1])',
-      'let { power-set } = import(number-theory);\npower-set([])',
+      'let { powerSet } = import(number-theory);\npowerSet(["a", "b", "c"])',
+      'let { powerSet } = import(number-theory);\npowerSet([1, 2])',
+      'let { powerSet } = import(number-theory);\npowerSet([1])',
+      'let { powerSet } = import(number-theory);\npowerSet([])',
     ],
-    seeAlso: ['number-theory.count-power-set', 'number-theory.combinations', 'number-theory.cartesian-product'],
+    seeAlso: ['number-theory.countPowerSet', 'number-theory.combinations', 'number-theory.cartesianProduct'],
   },
-  'count-power-set': {
+  'countPowerSet': {
     category: 'number-theory',
     description: 'Returns the number of subsets of a set.',
     returns: {
@@ -3639,13 +3639,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-power-set } = import(number-theory);\ncount-power-set(3)',
-      'let { count-power-set } = import(number-theory);\ncount-power-set(5)',
-      'let { count-power-set } = import(number-theory);\ncount-power-set(10)',
+      'let { countPowerSet } = import(number-theory);\ncountPowerSet(3)',
+      'let { countPowerSet } = import(number-theory);\ncountPowerSet(5)',
+      'let { countPowerSet } = import(number-theory);\ncountPowerSet(10)',
     ],
-    seeAlso: ['number-theory.power-set', 'number-theory.count-combinations'],
+    seeAlso: ['number-theory.powerSet', 'number-theory.countCombinations'],
   },
-  'prime-factors': {
+  'primeFactors': {
     category: 'number-theory',
     description: 'Returns the prime factors of a number.',
     returns: {
@@ -3666,13 +3666,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { prime-factors } = import(number-theory);\nprime-factors(12)',
-      'let { prime-factors } = import(number-theory);\nprime-factors(100)',
-      'let { prime-factors } = import(number-theory);\nprime-factors(37)',
+      'let { primeFactors } = import(number-theory);\nprimeFactors(12)',
+      'let { primeFactors } = import(number-theory);\nprimeFactors(100)',
+      'let { primeFactors } = import(number-theory);\nprimeFactors(37)',
     ],
-    seeAlso: ['number-theory.count-prime-factors', 'number-theory.distinct-prime-factors', 'number-theory.prime?', 'number-theory.divisors', 'number-theory.euler-totient', 'number-theory.mobius', 'number-theory.composite?', 'number-theory.count-distinct-prime-factors'],
+    seeAlso: ['number-theory.countPrimeFactors', 'number-theory.distinctPrimeFactors', 'number-theory.prime?', 'number-theory.divisors', 'number-theory.eulerTotient', 'number-theory.mobius', 'number-theory.composite?', 'number-theory.countDistinctPrimeFactors'],
   },
-  'count-prime-factors': {
+  'countPrimeFactors': {
     category: 'number-theory',
     description: 'Returns the number of prime factors of a number.',
     returns: {
@@ -3692,13 +3692,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-prime-factors } = import(number-theory);\ncount-prime-factors(12)',
-      'let { count-prime-factors } = import(number-theory);\ncount-prime-factors(100)',
-      'let { count-prime-factors } = import(number-theory);\ncount-prime-factors(37)',
+      'let { countPrimeFactors } = import(number-theory);\ncountPrimeFactors(12)',
+      'let { countPrimeFactors } = import(number-theory);\ncountPrimeFactors(100)',
+      'let { countPrimeFactors } = import(number-theory);\ncountPrimeFactors(37)',
     ],
-    seeAlso: ['number-theory.prime-factors', 'number-theory.distinct-prime-factors', 'number-theory.count-distinct-prime-factors'],
+    seeAlso: ['number-theory.primeFactors', 'number-theory.distinctPrimeFactors', 'number-theory.countDistinctPrimeFactors'],
   },
-  'distinct-prime-factors': {
+  'distinctPrimeFactors': {
     category: 'number-theory',
     description: 'Returns the distinct prime factors of a number.',
     returns: {
@@ -3719,13 +3719,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { distinct-prime-factors } = import(number-theory);\ndistinct-prime-factors(12)',
-      'let { distinct-prime-factors } = import(number-theory);\ndistinct-prime-factors(100)',
-      'let { distinct-prime-factors } = import(number-theory);\ndistinct-prime-factors(37)',
+      'let { distinctPrimeFactors } = import(number-theory);\ndistinctPrimeFactors(12)',
+      'let { distinctPrimeFactors } = import(number-theory);\ndistinctPrimeFactors(100)',
+      'let { distinctPrimeFactors } = import(number-theory);\ndistinctPrimeFactors(37)',
     ],
-    seeAlso: ['number-theory.prime-factors', 'number-theory.count-distinct-prime-factors', 'number-theory.count-prime-factors'],
+    seeAlso: ['number-theory.primeFactors', 'number-theory.countDistinctPrimeFactors', 'number-theory.countPrimeFactors'],
   },
-  'count-distinct-prime-factors': {
+  'countDistinctPrimeFactors': {
     category: 'number-theory',
     description: 'Returns the number of distinct prime factors of a number.',
     returns: {
@@ -3745,13 +3745,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { count-distinct-prime-factors } = import(number-theory);\ncount-distinct-prime-factors(12)',
-      'let { count-distinct-prime-factors } = import(number-theory);\ncount-distinct-prime-factors(100)',
-      'let { count-distinct-prime-factors } = import(number-theory);\ncount-distinct-prime-factors(37)',
+      'let { countDistinctPrimeFactors } = import(number-theory);\ncountDistinctPrimeFactors(12)',
+      'let { countDistinctPrimeFactors } = import(number-theory);\ncountDistinctPrimeFactors(100)',
+      'let { countDistinctPrimeFactors } = import(number-theory);\ncountDistinctPrimeFactors(37)',
     ],
-    seeAlso: ['number-theory.distinct-prime-factors', 'number-theory.prime-factors', 'number-theory.count-prime-factors'],
+    seeAlso: ['number-theory.distinctPrimeFactors', 'number-theory.primeFactors', 'number-theory.countPrimeFactors'],
   },
-  'coprime?': {
+  'isCoprime': {
     category: 'number-theory',
     description: 'Checks if two numbers are coprime (i.e., their GCD is 1).',
     returns: {
@@ -3774,20 +3774,20 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { coprime? } = import(number-theory);\ncoprime?(12, 8)',
-      'let { coprime? } = import(number-theory);\ncoprime?(12, 5)',
-      'let { coprime? } = import(number-theory);\ncoprime?(37, 1)',
-      'let { coprime? } = import(number-theory);\ncoprime?(0, 0)',
-      'let { coprime? } = import(number-theory);\ncoprime?(0, 5)',
-      'let { coprime? } = import(number-theory);\ncoprime?(5, 0)',
-      'let { coprime? } = import(number-theory);\ncoprime?(1, 0)',
-      'let { coprime? } = import(number-theory);\ncoprime?(0, 1)',
-      'let { coprime? } = import(number-theory);\ncoprime?(1, 1)',
-      'let { coprime? } = import(number-theory);\ncoprime?(2, 3)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(12, 8)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(12, 5)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(37, 1)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(0, 0)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(0, 5)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(5, 0)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(1, 0)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(0, 1)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(1, 1)',
+      'let { isCoprime } = import(number-theory);\nisCoprime(2, 3)',
     ],
-    seeAlso: ['number-theory.gcd', 'number-theory.euler-totient', 'number-theory.divisible-by?', 'number-theory.lcm', 'number-theory.carmichael-lambda'],
+    seeAlso: ['number-theory.gcd', 'number-theory.eulerTotient', 'number-theory.isDivisibleBy', 'number-theory.lcm', 'number-theory.carmichaelLambda'],
   },
-  'divisible-by?': {
+  'isDivisibleBy': {
     category: 'number-theory',
     description: 'Checks if a number is divisible by another number.',
     returns: {
@@ -3810,14 +3810,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(12, 4)',
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(12, 5)',
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(37, 1)',
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(0, 0)',
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(0, 5)',
-      'let { divisible-by? } = import(number-theory);\ndivisible-by?(5, 0)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(12, 4)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(12, 5)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(37, 1)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(0, 0)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(0, 5)',
+      'let { isDivisibleBy } = import(number-theory);\nisDivisibleBy(5, 0)',
     ],
-    seeAlso: ['number-theory.divisors', 'number-theory.gcd', 'number-theory.coprime?'],
+    seeAlso: ['number-theory.divisors', 'number-theory.gcd', 'number-theory.isCoprime'],
   },
   'gcd': {
     category: 'number-theory',
@@ -3848,7 +3848,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { gcd } = import(number-theory);\ngcd(0, 5)',
       'let { gcd } = import(number-theory);\ngcd(5, 0)',
     ],
-    seeAlso: ['number-theory.lcm', 'number-theory.extended-gcd', 'number-theory.coprime?', 'number-theory.divisible-by?'],
+    seeAlso: ['number-theory.lcm', 'number-theory.extendedGcd', 'number-theory.isCoprime', 'number-theory.isDivisibleBy'],
   },
   'lcm': {
     category: 'number-theory',
@@ -3878,7 +3878,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { lcm } = import(number-theory);\nlcm(0, 5)',
       'let { lcm } = import(number-theory);\nlcm(5, 0)',
     ],
-    seeAlso: ['number-theory.gcd', 'number-theory.divisors', 'number-theory.coprime?'],
+    seeAlso: ['number-theory.gcd', 'number-theory.divisors', 'number-theory.isCoprime'],
   },
   'multinomial': {
     category: 'number-theory',
@@ -3904,10 +3904,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { multinomial } = import(number-theory);\nmultinomial(5, 2, 3)',
       'let { multinomial } = import(number-theory);\nmultinomial(10, 2, 3, 5)',
     ],
-    seeAlso: ['number-theory.count-combinations', 'number-theory.factorial', 'number-theory.count-permutations'],
+    seeAlso: ['number-theory.countCombinations', 'number-theory.factorial', 'number-theory.countPermutations'],
     hideOperatorForm: true,
   },
-  'amicable?': {
+  'isAmicable': {
     category: 'number-theory',
     description: 'Checks if two numbers are amicable (i.e., the sum of the proper divisors of each number equals the other number).',
     returns: {
@@ -3930,15 +3930,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { amicable? } = import(number-theory);\namicable?(220, 284)',
-      'let { amicable? } = import(number-theory);\namicable?(1184, 1210)',
-      'let { amicable? } = import(number-theory);\namicable?(2620, 2924)',
-      'let { amicable? } = import(number-theory);\namicable?(5020, 5564)',
-      'let { amicable? } = import(number-theory);\namicable?(6232, 6368)',
+      'let { isAmicable } = import(number-theory);\nisAmicable(220, 284)',
+      'let { isAmicable } = import(number-theory);\nisAmicable(1184, 1210)',
+      'let { isAmicable } = import(number-theory);\nisAmicable(2620, 2924)',
+      'let { isAmicable } = import(number-theory);\nisAmicable(5020, 5564)',
+      'let { isAmicable } = import(number-theory);\nisAmicable(6232, 6368)',
     ],
-    seeAlso: ['number-theory.proper-divisors', 'number-theory.perfect?', 'number-theory.sigma', 'number-theory.perfect-seq'],
+    seeAlso: ['number-theory.properDivisors', 'number-theory.perfect?', 'number-theory.sigma', 'number-theory.perfect-seq'],
   },
-  'euler-totient': {
+  'eulerTotient': {
     category: 'number-theory',
     description: 'Calculates the Euler\'s totient function (φ(n)) of a number, which counts the integers up to n that are coprime to n.',
     returns: {
@@ -3958,12 +3958,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { euler-totient } = import(number-theory);\neuler-totient(1)',
-      'let { euler-totient } = import(number-theory);\neuler-totient(2)',
-      'let { euler-totient } = import(number-theory);\neuler-totient(10)',
-      'let { euler-totient } = import(number-theory);\neuler-totient(20)',
+      'let { eulerTotient } = import(number-theory);\neulerTotient(1)',
+      'let { eulerTotient } = import(number-theory);\neulerTotient(2)',
+      'let { eulerTotient } = import(number-theory);\neulerTotient(10)',
+      'let { eulerTotient } = import(number-theory);\neulerTotient(20)',
     ],
-    seeAlso: ['number-theory.coprime?', 'number-theory.carmichael-lambda', 'number-theory.mobius', 'number-theory.prime-factors', 'number-theory.mertens'],
+    seeAlso: ['number-theory.isCoprime', 'number-theory.carmichaelLambda', 'number-theory.mobius', 'number-theory.primeFactors', 'number-theory.mertens'],
   },
   'mobius': {
     category: 'number-theory',
@@ -3993,7 +3993,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { mobius } = import(number-theory);\nmobius(12)',
       'let { mobius } = import(number-theory);\nmobius(30)',
     ],
-    seeAlso: ['number-theory.mertens', 'number-theory.euler-totient', 'number-theory.prime-factors'],
+    seeAlso: ['number-theory.mertens', 'number-theory.eulerTotient', 'number-theory.primeFactors'],
   },
   'mertens': {
     category: 'number-theory',
@@ -4023,7 +4023,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { mobius } = import(number-theory);\nmobius(12)',
       'let { mobius } = import(number-theory);\nmobius(30)',
     ],
-    seeAlso: ['number-theory.mobius', 'number-theory.euler-totient'],
+    seeAlso: ['number-theory.mobius', 'number-theory.eulerTotient'],
   },
   'sigma': {
     category: 'number-theory',
@@ -4053,9 +4053,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { sigma } = import(number-theory);\nsigma(12)',
       'let { sigma } = import(number-theory);\nsigma(30)',
     ],
-    seeAlso: ['number-theory.divisors', 'number-theory.perfect?', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.amicable?', 'number-theory.count-divisors'],
+    seeAlso: ['number-theory.divisors', 'number-theory.perfect?', 'number-theory.abundant?', 'number-theory.deficient?', 'number-theory.isAmicable', 'number-theory.countDivisors'],
   },
-  'carmichael-lambda': {
+  'carmichaelLambda': {
     category: 'number-theory',
     description: 'Calculates the Carmichael function (λ(n)) of a number, which is the smallest positive integer m such that a^m ≡ 1 (mod n) for all integers a coprime to n.',
     returns: {
@@ -4075,17 +4075,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(1)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(2)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(3)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(4)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(6)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(12)',
-      'let { carmichael-lambda } = import(number-theory);\ncarmichael-lambda(30)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(1)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(2)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(3)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(4)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(6)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(12)',
+      'let { carmichaelLambda } = import(number-theory);\ncarmichaelLambda(30)',
     ],
-    seeAlso: ['number-theory.euler-totient', 'number-theory.mod-exp', 'number-theory.coprime?'],
+    seeAlso: ['number-theory.eulerTotient', 'number-theory.modExp', 'number-theory.isCoprime'],
   },
-  'cartesian-product': {
+  'cartesianProduct': {
     category: 'number-theory',
     description: 'Calculates the Cartesian product of two or more sets.',
     returns: {
@@ -4113,13 +4113,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { cartesian-product } = import(number-theory);\ncartesian-product([1, 2], ["a", "b"])',
-      'let { cartesian-product } = import(number-theory);\ncartesian-product([1, 2], ["a", "b"], [true, false])',
-      'let { cartesian-product } = import(number-theory);\ncartesian-product([1, 2, 3], ["x", "y", "z"])',
+      'let { cartesianProduct } = import(number-theory);\ncartesianProduct([1, 2], ["a", "b"])',
+      'let { cartesianProduct } = import(number-theory);\ncartesianProduct([1, 2], ["a", "b"], [true, false])',
+      'let { cartesianProduct } = import(number-theory);\ncartesianProduct([1, 2, 3], ["x", "y", "z"])',
     ],
-    seeAlso: ['number-theory.combinations', 'number-theory.power-set', 'number-theory.permutations'],
+    seeAlso: ['number-theory.combinations', 'number-theory.powerSet', 'number-theory.permutations'],
   },
-  'perfect-power': {
+  'perfectPower': {
     category: 'number-theory',
     description: 'Returns a tuple of the base and exponent if the number is a perfect power, otherwise returns null.',
     returns: {
@@ -4139,17 +4139,17 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { perfect-power } = import(number-theory);\nperfect-power(1)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(2)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(4)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(8)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(9)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(16)',
-      'let { perfect-power } = import(number-theory);\nperfect-power(19)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(1)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(2)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(4)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(8)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(9)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(16)',
+      'let { perfectPower } = import(number-theory);\nperfectPower(19)',
     ],
     seeAlso: ['number-theory.perfect-power?', 'number-theory.perfect-power-seq', 'number-theory.perfect-square?', 'number-theory.perfect-cube?'],
   },
-  'mod-exp': {
+  'modExp': {
     category: 'number-theory',
     description: 'Calculates the modular exponentiation of a base raised to an exponent modulo a modulus.',
     returns: {
@@ -4176,14 +4176,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mod-exp } = import(number-theory);\nmod-exp(2, 3, 5)',
-      'let { mod-exp } = import(number-theory);\nmod-exp(3, 4, 7)',
-      'let { mod-exp } = import(number-theory);\nmod-exp(5, 6, 11)',
-      'let { mod-exp } = import(number-theory);\nmod-exp(7, 8, 13)',
+      'let { modExp } = import(number-theory);\nmodExp(2, 3, 5)',
+      'let { modExp } = import(number-theory);\nmodExp(3, 4, 7)',
+      'let { modExp } = import(number-theory);\nmodExp(5, 6, 11)',
+      'let { modExp } = import(number-theory);\nmodExp(7, 8, 13)',
     ],
-    seeAlso: ['number-theory.mod-inv', 'number-theory.carmichael-lambda', 'number-theory.chinese-remainder'],
+    seeAlso: ['number-theory.modInv', 'number-theory.carmichaelLambda', 'number-theory.chineseRemainder'],
   },
-  'mod-inv': {
+  'modInv': {
     category: 'number-theory',
     description: 'Calculates the modular multiplicative inverse of a number modulo another number.',
     returns: {
@@ -4206,14 +4206,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { mod-inv } = import(number-theory);\nmod-inv(3, 11)',
-      'let { mod-inv } = import(number-theory);\nmod-inv(10, 17)',
-      'let { mod-inv } = import(number-theory);\nmod-inv(5, 13)',
-      'let { mod-inv } = import(number-theory);\nmod-inv(7, 19)',
+      'let { modInv } = import(number-theory);\nmodInv(3, 11)',
+      'let { modInv } = import(number-theory);\nmodInv(10, 17)',
+      'let { modInv } = import(number-theory);\nmodInv(5, 13)',
+      'let { modInv } = import(number-theory);\nmodInv(7, 19)',
     ],
-    seeAlso: ['number-theory.mod-exp', 'number-theory.extended-gcd', 'number-theory.chinese-remainder'],
+    seeAlso: ['number-theory.modExp', 'number-theory.extendedGcd', 'number-theory.chineseRemainder'],
   },
-  'extended-gcd': {
+  'extendedGcd': {
     category: 'number-theory',
     description: 'Calculates the extended greatest common divisor (GCD) of two numbers, returning the GCD and the coefficients of Bézout\'s identity.',
     returns: {
@@ -4237,14 +4237,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { extended-gcd } = import(number-theory);\nextended-gcd(30, 12)',
-      'let { extended-gcd } = import(number-theory);\nextended-gcd(56, 98)',
-      'let { extended-gcd } = import(number-theory);\nextended-gcd(101, 10)',
-      'let { extended-gcd } = import(number-theory);\nextended-gcd(17, 13)',
+      'let { extendedGcd } = import(number-theory);\nextendedGcd(30, 12)',
+      'let { extendedGcd } = import(number-theory);\nextendedGcd(56, 98)',
+      'let { extendedGcd } = import(number-theory);\nextendedGcd(101, 10)',
+      'let { extendedGcd } = import(number-theory);\nextendedGcd(17, 13)',
     ],
-    seeAlso: ['number-theory.gcd', 'number-theory.mod-inv', 'number-theory.chinese-remainder'],
+    seeAlso: ['number-theory.gcd', 'number-theory.modInv', 'number-theory.chineseRemainder'],
   },
-  'chinese-remainder': {
+  'chineseRemainder': {
     category: 'number-theory',
     description: 'Solves a system of simultaneous congruences using the Chinese Remainder Theorem.',
     returns: {
@@ -4277,14 +4277,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { chinese-remainder } = import(number-theory);\nchinese-remainder([2, 3], [3, 5])',
-      'let { chinese-remainder } = import(number-theory);\nchinese-remainder([1, 2], [3, 4])',
-      'let { chinese-remainder } = import(number-theory);\nchinese-remainder([0, 1], [2, 3])',
-      'let { chinese-remainder } = import(number-theory);\nchinese-remainder([1, 2, 3], [4, 5, 7])',
+      'let { chineseRemainder } = import(number-theory);\nchineseRemainder([2, 3], [3, 5])',
+      'let { chineseRemainder } = import(number-theory);\nchineseRemainder([1, 2], [3, 4])',
+      'let { chineseRemainder } = import(number-theory);\nchineseRemainder([0, 1], [2, 3])',
+      'let { chineseRemainder } = import(number-theory);\nchineseRemainder([1, 2, 3], [4, 5, 7])',
     ],
-    seeAlso: ['number-theory.mod-exp', 'number-theory.mod-inv', 'number-theory.extended-gcd'],
+    seeAlso: ['number-theory.modExp', 'number-theory.modInv', 'number-theory.extendedGcd'],
   },
-  'stirling-first': {
+  'stirlingFirst': {
     category: 'number-theory',
     description: 'Calculates the Stirling numbers of the first kind, which count the number of permutations of n elements with k cycles.',
     returns: {
@@ -4309,15 +4309,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { stirling-first } = import(number-theory);\nstirling-first(5, 2)',
-      'let { stirling-first } = import(number-theory);\nstirling-first(4, 3)',
-      'let { stirling-first } = import(number-theory);\nstirling-first(6, 1)',
-      'let { stirling-first } = import(number-theory);\nstirling-first(7, 4)',
-      'let { stirling-first } = import(number-theory);\nstirling-first(8, 5)',
+      'let { stirlingFirst } = import(number-theory);\nstirlingFirst(5, 2)',
+      'let { stirlingFirst } = import(number-theory);\nstirlingFirst(4, 3)',
+      'let { stirlingFirst } = import(number-theory);\nstirlingFirst(6, 1)',
+      'let { stirlingFirst } = import(number-theory);\nstirlingFirst(7, 4)',
+      'let { stirlingFirst } = import(number-theory);\nstirlingFirst(8, 5)',
     ],
-    seeAlso: ['number-theory.stirling-second', 'number-theory.bell-seq', 'number-theory.count-permutations'],
+    seeAlso: ['number-theory.stirlingSecond', 'number-theory.bell-seq', 'number-theory.countPermutations'],
   },
-  'stirling-second': {
+  'stirlingSecond': {
     category: 'number-theory',
     description: 'Calculates the Stirling numbers of the second kind, which count the number of ways to partition n elements into k non-empty subsets.',
     returns: {
@@ -4342,12 +4342,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { stirling-second } = import(number-theory);\nstirling-second(5, 2)',
-      'let { stirling-second } = import(number-theory);\nstirling-second(4, 3)',
-      'let { stirling-second } = import(number-theory);\nstirling-second(6, 1)',
-      'let { stirling-second } = import(number-theory);\nstirling-second(7, 4)',
-      'let { stirling-second } = import(number-theory);\nstirling-second(8, 5)',
+      'let { stirlingSecond } = import(number-theory);\nstirlingSecond(5, 2)',
+      'let { stirlingSecond } = import(number-theory);\nstirlingSecond(4, 3)',
+      'let { stirlingSecond } = import(number-theory);\nstirlingSecond(6, 1)',
+      'let { stirlingSecond } = import(number-theory);\nstirlingSecond(7, 4)',
+      'let { stirlingSecond } = import(number-theory);\nstirlingSecond(8, 5)',
     ],
-    seeAlso: ['number-theory.stirling-first', 'number-theory.bell-seq', 'number-theory.count-combinations'],
+    seeAlso: ['number-theory.stirlingFirst', 'number-theory.bell-seq', 'number-theory.countCombinations'],
   },
 }

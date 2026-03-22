@@ -842,9 +842,9 @@ describe('higher-order function edge cases', () => {
     expect(dvala.run('apply(+, [1, 2])')).toBe(3)
   })
 
-  it('every? with predicate', () => {
-    expect(dvala.run('let { every? } = import(collection); every?([2, 4, 6], even?)')).toBe(true)
-    expect(dvala.run('let { every? } = import(collection); every?([2, 4, 5], even?)')).toBe(false)
+  it('isEvery with predicate', () => {
+    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 6], even?)')).toBe(true)
+    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 5], even?)')).toBe(false)
   })
 
   it('some with predicate returns element', () => {
@@ -852,13 +852,13 @@ describe('higher-order function edge cases', () => {
     expect(dvala.run('some([1, 3, 5], even?)')).toBeNull()
   })
 
-  it('sort-by with key function', () => {
-    expect(dvala.run('let { sort-by } = import(sequence); sort-by([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)'))
+  it('sortBy with key function', () => {
+    expect(dvala.run('let { sortBy } = import(sequence); sortBy([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)'))
       .toEqual([{ n: 1 }, { n: 2 }, { n: 3 }])
   })
 
-  it('group-by', () => {
-    expect(dvala.run('let { group-by } = import(sequence); group-by([1, 2, 3, 4, 5], -> if even?($) then "even" else "odd" end)'))
+  it('groupBy', () => {
+    expect(dvala.run('let { groupBy } = import(sequence); groupBy([1, 2, 3, 4, 5], -> if even?($) then "even" else "odd" end)'))
       .toEqual({ odd: [1, 3, 5], even: [2, 4] })
   })
 
@@ -1010,9 +1010,9 @@ describe('string operation edge cases', () => {
     expect(dvala.run('trim("  hello  ")')).toBe('hello')
   })
 
-  it('starts-with? and ends-with?', () => {
-    expect(dvala.run('let { starts-with?, ends-with? } = import(sequence); starts-with?("hello world", "hello")')).toBe(true)
-    expect(dvala.run('let { starts-with?, ends-with? } = import(sequence); ends-with?("hello world", "world")')).toBe(true)
+  it('isStartsWith and isEndsWith', () => {
+    expect(dvala.run('let { isStartsWith, isEndsWith } = import(sequence); isStartsWith("hello world", "hello")')).toBe(true)
+    expect(dvala.run('let { isStartsWith, isEndsWith } = import(sequence); isEndsWith("hello world", "world")')).toBe(true)
   })
 
   it('contains? on string', () => {
@@ -1025,13 +1025,13 @@ describe('string operation edge cases', () => {
     expect(dvala.run('join(["a", "b", "c"], "-")')).toBe('a-b-c')
   })
 
-  it('string-repeat', () => {
-    expect(dvala.run('let { string-repeat } = import(string); string-repeat("ha", 3)')).toBe('hahaha')
+  it('stringRepeat', () => {
+    expect(dvala.run('let { stringRepeat } = import(string); stringRepeat("ha", 3)')).toBe('hahaha')
   })
 
-  it('pad-left and pad-right', () => {
-    expect(dvala.run('let { pad-left, pad-right } = import(string); pad-left("42", 5, "0")')).toBe('00042')
-    expect(dvala.run('let { pad-left, pad-right } = import(string); pad-right("42", 5, "0")')).toBe('42000')
+  it('padLeft and padRight', () => {
+    expect(dvala.run('let { padLeft, padRight } = import(string); padLeft("42", 5, "0")')).toBe('00042')
+    expect(dvala.run('let { padLeft, padRight } = import(string); padRight("42", 5, "0")')).toBe('42000')
   })
 
   it('slice for substring', () => {
@@ -1071,10 +1071,10 @@ describe('collection operation edge cases', () => {
     expect(dvala.run('reduce([["a", 1], ["b", 2]], (acc, pair) -> assoc(acc, nth(pair, 0), nth(pair, 1)), {})')).toEqual({ a: 1, b: 2 })
   })
 
-  it('get and get-in', () => {
+  it('get and getIn', () => {
     expect(dvala.run('get({ a: 1 }, "a")')).toBe(1)
     expect(dvala.run('get({ a: 1 }, "b")')).toBeNull()
-    expect(dvala.run('let { get-in } = import(collection); get-in({ a: { b: { c: 42 } } }, ["a", "b", "c"])')).toBe(42)
+    expect(dvala.run('let { getIn } = import(collection); getIn({ a: { b: { c: 42 } } }, ["a", "b", "c"])')).toBe(42)
   })
 
   it('assoc and dissoc', () => {

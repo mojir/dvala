@@ -45,7 +45,7 @@ export const skewnessReductionFunction: ReductionFunctionDefinition<'skewness'> 
   minLength: 3,
 }
 
-export const sampleSkewnessReductionFunction: ReductionFunctionDefinition<'sample-skewness'> = {
-  'sample-skewness': vector => sampleSkewness(vector),
+export const sampleSkewnessReductionFunction: ReductionFunctionDefinition<'sampleSkewness'> = {
+  'sampleSkewness': vector => sampleSkewness(vector),
   'minLength': 3,
 }

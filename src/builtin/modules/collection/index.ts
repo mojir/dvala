@@ -84,7 +84,7 @@ function cloneAndGetMeta(
 }
 
 const collectionUtilsFunctions: BuiltinNormalExpressions = {
-  'get-in': {
+  'getIn': {
     evaluate: (params, sourceCodeInfo): Any => {
       let coll = toAny(params[0])
       const keys = params[1] ?? [] // null behaves as empty array
@@ -111,30 +111,30 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
       args: {
         'a': { type: 'collection' },
         'b': { type: 'array' },
-        'not-found': { type: 'any' },
+        'notFound': { type: 'any' },
       },
       variants: [
         { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'not-found'] },
+        { argumentNames: ['a', 'b', 'notFound'] },
       ],
       description: 'Returns the value in a nested collection, where $b is an array of keys. Returns $not-found if the key is not present. If $not-found is not set, `null` is returned.',
-      seeAlso: ['get', 'collection.assoc-in', 'collection.update-in'],
+      seeAlso: ['get', 'collection.assocIn', 'collection.updateIn'],
       examples: [
         `
 let cu = import(collection);
-cu.get-in(
+cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "a", 0]
 )`,
         `
 let cu = import(collection);
-cu.get-in(
+cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "b", 0]
 )`,
         `
 let cu = import(collection);
-cu.get-in(
+cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "b", 0],
   "Lisa"
@@ -142,7 +142,7 @@ cu.get-in(
       ],
     },
   },
-  'assoc-in': {
+  'assocIn': {
     evaluate: ([originalColl, keys, value], sourceCodeInfo): Coll => {
       assertColl(originalColl, sourceCodeInfo)
       assertArray(keys, sourceCodeInfo)
@@ -182,25 +182,25 @@ cu.get-in(
 Associates a value in the nested collection $coll, where $ks is an array of keys and $value is the new value.
 
 If any levels do not exist, objects will be created - and the corresponding keys must be of type string.`,
-      seeAlso: ['assoc', 'collection.get-in', 'collection.update-in'],
+      seeAlso: ['assoc', 'collection.getIn', 'collection.updateIn'],
       examples: [
         `
 let cu = import(collection);
-cu.assoc-in(
+cu.assocIn(
   {},
   ["a", "b", "c"],
   "Albert"
 )`,
         `
 let cu = import(collection);
-cu.assoc-in(
+cu.assocIn(
   [1, 2, [1, 2, 3]],
   [2, 1],
   "Albert"
 )`,
         `
 let cu = import(collection);
-cu.assoc-in(
+cu.assocIn(
   [1, 2, { name: "albert" }],
   [2, "name", 0],
   "A"
@@ -218,18 +218,18 @@ cu.assoc-in(
         'coll': { type: 'collection' },
         'key': { type: ['string', 'number'] },
         'fun': { type: 'function' },
-        'fun-args': { type: 'any', rest: true },
+        'funArgs': { type: 'any', rest: true },
       },
       variants: [
         { argumentNames: ['coll', 'key', 'fun'] },
-        { argumentNames: ['coll', 'key', 'fun', 'fun-args'] },
+        { argumentNames: ['coll', 'key', 'fun', 'funArgs'] },
       ],
       description: `
 Updates a value in the $coll collection, where $key is a key. $fun is a function
 that will take the old value and any supplied $fun-args and
 return the new value.
 If the key does not exist, \`null\` is passed as the old value.`,
-      seeAlso: ['collection.update-in', 'assoc'],
+      seeAlso: ['collection.updateIn', 'assoc'],
       examples: [
         `
 let cu = import(collection);
@@ -246,8 +246,8 @@ cu.update(
       ],
     },
   },
-  'update-in': {
-    evaluate: () => { throw new Error('update-in: Dvala implementation should be used instead') },
+  'updateIn': {
+    evaluate: () => { throw new Error('updateIn: Dvala implementation should be used instead') },
     arity: { min: 3 },
     docs: {
       category: 'collection',
@@ -256,42 +256,42 @@ cu.update(
         'coll': { type: 'collection' },
         'ks': { type: 'array' },
         'fun': { type: 'function' },
-        'fun-args': { type: 'any', rest: true },
+        'funArgs': { type: 'any', rest: true },
       },
       variants: [
         { argumentNames: ['coll', 'ks', 'fun'] },
-        { argumentNames: ['coll', 'ks', 'fun', 'fun-args'] },
+        { argumentNames: ['coll', 'ks', 'fun', 'funArgs'] },
       ],
       description: `Updates a value in the $coll collection, where $ks is an array of
 keys and $fun is a function that will take the old value and
 any supplied $fun-args and return the new value. If any levels do not exist,
 objects will be created - and the corresponding keys must be of type string.`,
-      seeAlso: ['collection.update', 'collection.assoc-in', 'collection.get-in'],
+      seeAlso: ['collection.update', 'collection.assocIn', 'collection.getIn'],
       examples: [
         `
 let cu = import(collection);
-cu.update-in(
+cu.updateIn(
   { a: [1, 2, 3] },
   ["a", 1],
   -> if null?($) then 0 else inc($) end
 )`,
         `
 let cu = import(collection);
-cu.update-in(
+cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "foo"],
   -> if null?($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
-cu.update-in(
+cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "baz"],
   -> if null?($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
-cu.update-in(
+cu.updateIn(
   { a: [1, 2, 3] },
   ["a", 1],
   *,
@@ -369,7 +369,7 @@ cu.update-in(
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
       description: 'Runs $fun function on each element of the $coll, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
-      seeAlso: ['reduce', 'collection.reducei-right', 'collection.reductionsi'],
+      seeAlso: ['reduce', 'collection.reduceiRight', 'collection.reductionsi'],
       examples: [
         'let cu = import(collection); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
         'let cu = import(collection); cu.reducei("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
@@ -377,8 +377,8 @@ cu.update-in(
       ],
     },
   },
-  'reduce-right': {
-    evaluate: () => { throw new Error('reduce-right: Dvala implementation should be used instead') },
+  'reduceRight': {
+    evaluate: () => { throw new Error('reduceRight: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -390,15 +390,15 @@ cu.update-in(
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
       description: 'Runs $fun function on each element of the $coll (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value.',
-      seeAlso: ['reduce', 'collection.reducei-right'],
+      seeAlso: ['reduce', 'collection.reduceiRight'],
       examples: [
-        'let cu = import(collection); cu.reduce-right(["A", "B", "C"], str, "")',
-        'let cu = import(collection); cu.reduce-right({ a: 1, b: 2 }, +, 0)',
+        'let cu = import(collection); cu.reduceRight(["A", "B", "C"], str, "")',
+        'let cu = import(collection); cu.reduceRight({ a: 1, b: 2 }, +, 0)',
       ],
     },
   },
-  'reducei-right': {
-    evaluate: () => { throw new Error('reducei-right: Dvala implementation should be used instead') },
+  'reduceiRight': {
+    evaluate: () => { throw new Error('reduceiRight: Dvala implementation should be used instead') },
     arity: toFixedArity(3),
     docs: {
       category: 'collection',
@@ -416,11 +416,11 @@ cu.update-in(
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
       description: 'Runs $fun function on each element of the $coll (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
-      seeAlso: ['collection.reducei', 'collection.reduce-right'],
+      seeAlso: ['collection.reducei', 'collection.reduceRight'],
       examples: [
-        'let cu = import(collection); cu.reducei-right([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
-        'let cu = import(collection); cu.reducei-right("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reducei-right({ a: 1, b: 2 }, -> $ ++ $3, "")',
+        'let cu = import(collection); cu.reduceiRight([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
+        'let cu = import(collection); cu.reduceiRight("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
+        'let cu = import(collection); cu.reduceiRight({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -480,7 +480,7 @@ cu.reductions(
       ],
     },
   },
-  'not-empty': {
+  'notEmpty': {
     evaluate: ([coll], sourceCodeInfo): Coll | null => {
       if (coll === null)
         return null
@@ -505,18 +505,18 @@ cu.reductions(
       description: 'Returns `null` if $coll is empty or `null`, otherwise $coll.',
       seeAlso: ['empty?', 'not-empty?'],
       examples: [
-        'let cu = import(collection); cu.not-empty([])',
-        'let cu = import(collection); cu.not-empty([1, 2, 3])',
-        'let cu = import(collection); cu.not-empty({})',
-        'let cu = import(collection); cu.not-empty({ a: 2 })',
-        'let cu = import(collection); cu.not-empty("")',
-        'let cu = import(collection); cu.not-empty("Albert")',
-        'let cu = import(collection); cu.not-empty(null)',
+        'let cu = import(collection); cu.notEmpty([])',
+        'let cu = import(collection); cu.notEmpty([1, 2, 3])',
+        'let cu = import(collection); cu.notEmpty({})',
+        'let cu = import(collection); cu.notEmpty({ a: 2 })',
+        'let cu = import(collection); cu.notEmpty("")',
+        'let cu = import(collection); cu.notEmpty("Albert")',
+        'let cu = import(collection); cu.notEmpty(null)',
       ],
     },
   },
-  'every?': {
-    evaluate: () => { throw new Error('every?: Dvala implementation should be used instead') },
+  'isEvery': {
+    evaluate: () => { throw new Error('isEvery: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -527,42 +527,42 @@ cu.reductions(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if all entries in $a pass the test implemented by $b, otherwise returns `false`.',
-      seeAlso: ['collection.any?', 'collection.not-every?', 'collection.not-any?', 'functional.every-pred', 'grid.cell-every?'],
+      seeAlso: ['collection.isAny', 'collection.notEvery', 'collection.notAny', 'functional.everyPred', 'grid.isCellEvery'],
       examples: [
-        'let cu = import(collection); cu.every?([1, 2, 3], number?)',
-        'let cu = import(collection); cu.every?([1, 2, 3], even?)',
+        'let cu = import(collection); cu.isEvery([1, 2, 3], number?)',
+        'let cu = import(collection); cu.isEvery([1, 2, 3], even?)',
         `
 let cu = import(collection);
-cu.every?(
+cu.isEvery(
   ["Albert", "Mojir", 160, [1, 2]],
   string?,
 )`,
         `
 let cu = import(collection);
-cu.every?(
+cu.isEvery(
   [50, 100, 150, 200],
   -> $ > 10,
 )`,
-        'let cu = import(collection); cu.every?([], number?)',
-        'let cu = import(collection); cu.every?("", number?)',
-        'let cu = import(collection); cu.every?({}, number?)',
+        'let cu = import(collection); cu.isEvery([], number?)',
+        'let cu = import(collection); cu.isEvery("", number?)',
+        'let cu = import(collection); cu.isEvery({}, number?)',
         `
 let cu = import(collection);
-cu.every?(
+cu.isEvery(
   { a: 2, b: 4},
   -> even?(second($))
 )`,
         `
 let cu = import(collection);
-cu.every?(
+cu.isEvery(
   { a: 2, b: 3 },
   -> even?(second($))
 )`,
       ],
     },
   },
-  'any?': {
-    evaluate: () => { throw new Error('any?: Dvala implementation should be used instead') },
+  'isAny': {
+    evaluate: () => { throw new Error('isAny: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -573,40 +573,40 @@ cu.every?(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if any element in $a pass the test implemented by $b, otherwise returns `false`.',
-      seeAlso: ['collection.every?', 'collection.not-any?', 'collection.not-every?', 'functional.some-pred', 'some', 'grid.some?'],
+      seeAlso: ['collection.isEvery', 'collection.notAny', 'collection.notEvery', 'functional.somePred', 'some', 'grid.isSome'],
       examples: [
         `
 let cu = import(collection);
-cu.any?(
+cu.isAny(
   ["Albert", "Mojir", 160, [1, 2]],
   string?
 )`,
         `
 let cu = import(collection);
-cu.any?(
+cu.isAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.any?([], number?)',
-        'let cu = import(collection); cu.any?("", number?)',
-        'let cu = import(collection); cu.any?({}, number?)',
+        'let cu = import(collection); cu.isAny([], number?)',
+        'let cu = import(collection); cu.isAny("", number?)',
+        'let cu = import(collection); cu.isAny({}, number?)',
         `
 let cu = import(collection);
-cu.any?(
+cu.isAny(
   { a: 2, b: 3 },
   -> even?(second($))
 )`,
         `
 let cu = import(collection);
-cu.any?(
+cu.isAny(
   { a: 1, b: 3 },
   -> even?(second($))
 )`,
       ],
     },
   },
-  'not-any?': {
-    evaluate: () => { throw new Error('not-any?: Dvala implementation should be used instead') },
+  'notAny': {
+    evaluate: () => { throw new Error('notAny: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -617,40 +617,40 @@ cu.any?(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `false` if any element in $a pass the test implemented by $b, otherwise returns `true`.',
-      seeAlso: ['collection.any?', 'collection.every?', 'collection.not-every?'],
+      seeAlso: ['collection.isAny', 'collection.isEvery', 'collection.notEvery'],
       examples: [
         `
 let cu = import(collection);
-cu.not-any?(
+cu.notAny(
   ["Albert", "Mojir", 160, [1, 2]],
   string?
 )`,
         `
 let cu = import(collection);
-cu.not-any?(
+cu.notAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.not-any?([], number?)',
-        'let cu = import(collection); cu.not-any?("", number?)',
-        'let cu = import(collection); cu.not-any?({}, number?)',
+        'let cu = import(collection); cu.notAny([], number?)',
+        'let cu = import(collection); cu.notAny("", number?)',
+        'let cu = import(collection); cu.notAny({}, number?)',
         `
 let cu = import(collection);
-cu.not-any?(
+cu.notAny(
   { a: 2, b: 3 },
   -> even?(second($))
 )`,
         `
 let cu = import(collection);
-cu.not-any?(
+cu.notAny(
   { a: 1, b: 3 },
   -> even?(second($))
 )`,
       ],
     },
   },
-  'not-every?': {
-    evaluate: () => { throw new Error('not-every?: Dvala implementation should be used instead') },
+  'notEvery': {
+    evaluate: () => { throw new Error('notEvery: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'collection',
@@ -661,32 +661,32 @@ cu.not-any?(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if at least one element in $a does not pass the test implemented by $b, otherwise returns `false`.',
-      seeAlso: ['collection.every?', 'collection.any?', 'collection.not-any?'],
+      seeAlso: ['collection.isEvery', 'collection.isAny', 'collection.notAny'],
       examples: [
         `
 let cu = import(collection);
-cu.not-every?(
+cu.notEvery(
   ["Albert", "Mojir", 160, [1, 2]],
   string?
 )`,
         `
 let cu = import(collection);
-cu.not-every?(
+cu.notEvery(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.not-every?([], number?)',
-        'let cu = import(collection); cu.not-every?("", number?)',
-        'let cu = import(collection); cu.not-every?({}, number?)',
+        'let cu = import(collection); cu.notEvery([], number?)',
+        'let cu = import(collection); cu.notEvery("", number?)',
+        'let cu = import(collection); cu.notEvery({}, number?)',
         `
 let cu = import(collection);
-cu.not-every?(
+cu.notEvery(
   { a: 2, b: 4 },
   -> even?(second($))
 )`,
         `
 let cu = import(collection);
-cu.not-every?(
+cu.notEvery(
   { a: 2, b: 3 },
   -> even?(second($))
 )`,

@@ -12,7 +12,7 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 import stringModuleSource from './string.dvala'
 
 const stringUtilsFunctions: BuiltinNormalExpressions = {
-  'string-repeat': {
+  'stringRepeat': {
     evaluate: ([str, count], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -33,17 +33,17 @@ const stringUtilsFunctions: BuiltinNormalExpressions = {
       description: 'Repeates $s $n times.',
       seeAlso: ['str', 'repeat'],
       examples: [
-        `let { string-repeat } = import(string);
-"*" string-repeat 10`,
-        `let { string-repeat } = import(string);
-string-repeat("*", 10)`,
-        `let { string-repeat } = import(string);
-string-repeat("***", 0)`,
+        `let { stringRepeat } = import(string);
+"*" stringRepeat 10`,
+        `let { stringRepeat } = import(string);
+stringRepeat("*", 10)`,
+        `let { stringRepeat } = import(string);
+stringRepeat("***", 0)`,
       ],
     },
   },
 
-  'from-char-code': {
+  'fromCharCode': {
     evaluate: ([num], sourceCodeInfo): string => {
       assertNumber(num, sourceCodeInfo, { finite: true })
       const int = toNonNegativeInteger(num)
@@ -60,17 +60,17 @@ string-repeat("***", 0)`,
       args: { code: { type: 'number' } },
       variants: [{ argumentNames: ['code'] }],
       description: 'Return character for code point $code.',
-      seeAlso: ['string.to-char-code'],
+      seeAlso: ['string.toCharCode'],
       examples: [
-        `let { from-char-code } = import(string);
-from-char-code(65)`,
-        `let { from-char-code } = import(string);
-from-char-code(0)`,
+        `let { fromCharCode } = import(string);
+fromCharCode(65)`,
+        `let { fromCharCode } = import(string);
+fromCharCode(0)`,
       ],
     },
   },
 
-  'to-char-code': {
+  'toCharCode': {
     evaluate: ([str], sourceCodeInfo): number => {
       assertString(str, sourceCodeInfo, { nonEmpty: true })
       return asNonUndefined(str.codePointAt(0), sourceCodeInfo)
@@ -82,17 +82,17 @@ from-char-code(0)`,
       args: { c: { type: 'string' } },
       variants: [{ argumentNames: ['c'] }],
       description: 'Return code point for first character in $c.',
-      seeAlso: ['string.from-char-code'],
+      seeAlso: ['string.fromCharCode'],
       examples: [
-        `let { to-char-code } = import(string);
-to-char-code("A")`,
-        `let { to-char-code } = import(string);
-to-char-code("Albert")`,
+        `let { toCharCode } = import(string);
+toCharCode("A")`,
+        `let { toCharCode } = import(string);
+toCharCode("Albert")`,
       ],
     },
   },
 
-  'trim-left': {
+  'trimLeft': {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.replace(/^\s+/, '')
@@ -104,19 +104,19 @@ to-char-code("Albert")`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a new string with leading whitespaces removed.',
-      seeAlso: ['trim', 'string.trim-right'],
+      seeAlso: ['trim', 'string.trimRight'],
       examples: [
-        `let { trim-left } = import(string);
-trim-left("  Albert  ")`,
-        `let { trim-left } = import(string);
-trim-left("   ")`,
-        `let { trim-left } = import(string);
-trim-left("")`,
+        `let { trimLeft } = import(string);
+trimLeft("  Albert  ")`,
+        `let { trimLeft } = import(string);
+trimLeft("   ")`,
+        `let { trimLeft } = import(string);
+trimLeft("")`,
       ],
     },
   },
 
-  'trim-right': {
+  'trimRight': {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.replace(/\s+$/, '')
@@ -128,19 +128,19 @@ trim-left("")`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a new string with trailing whitespaces removed.',
-      seeAlso: ['trim', 'string.trim-left'],
+      seeAlso: ['trim', 'string.trimLeft'],
       examples: [
-        `let { trim-right } = import(string);
-trim-right("  Albert  ")`,
-        `let { trim-right } = import(string);
-trim-right("   ")`,
-        `let { trim-right } = import(string);
-trim-right("")`,
+        `let { trimRight } = import(string);
+trimRight("  Albert  ")`,
+        `let { trimRight } = import(string);
+trimRight("   ")`,
+        `let { trimRight } = import(string);
+trimRight("")`,
       ],
     },
   },
 
-  'split-lines': {
+  'splitLines': {
     evaluate: ([str], sourceCodeInfo): string[] => {
       assertString(str, sourceCodeInfo)
       return str.split((/\r\n|\n|\r/)).filter(line => line !== '')
@@ -154,19 +154,19 @@ trim-right("")`,
       description: 'Divides $s into an array of substrings, each representing a line.',
       seeAlso: ['split'],
       examples: [
-        `let { split-lines } = import(string);
-split-lines("Albert\nMojir\n")`,
-        `let { split-lines } = import(string);
-split-lines("Albert\n\nMojir")`,
-        `let { split-lines } = import(string);
-split-lines("Albert\nMojir\n\n")`,
-        `let { split-lines } = import(string);
-split-lines("")`,
+        `let { splitLines } = import(string);
+splitLines("Albert\nMojir\n")`,
+        `let { splitLines } = import(string);
+splitLines("Albert\n\nMojir")`,
+        `let { splitLines } = import(string);
+splitLines("Albert\nMojir\n\n")`,
+        `let { splitLines } = import(string);
+splitLines("")`,
       ],
     },
   },
 
-  'pad-left': {
+  'padLeft': {
     evaluate: ([str, length, padString], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(length, sourceCodeInfo, { integer: true })
@@ -192,23 +192,23 @@ split-lines("")`,
         { argumentNames: ['s', 'length', 'padString'] },
       ],
       description: 'Pads from the start of $s with `padString` (multiple times, if needed) until the resulting string reaches the given $length.',
-      seeAlso: ['string.pad-right'],
+      seeAlso: ['string.padRight'],
       examples: [
-        `let { pad-left } = import(string);
-"Albert" pad-left 20`,
-        `let { pad-left } = import(string);
-pad-left("Albert", 20)`,
-        `let { pad-left } = import(string);
-pad-left("Albert", 20, "-*-")`,
-        `let { pad-left } = import(string);
-pad-left("Albert", 5)`,
-        `let { pad-left } = import(string);
-pad-left("Albert", -1)`,
+        `let { padLeft } = import(string);
+"Albert" padLeft 20`,
+        `let { padLeft } = import(string);
+padLeft("Albert", 20)`,
+        `let { padLeft } = import(string);
+padLeft("Albert", 20, "-*-")`,
+        `let { padLeft } = import(string);
+padLeft("Albert", 5)`,
+        `let { padLeft } = import(string);
+padLeft("Albert", -1)`,
       ],
     },
   },
 
-  'pad-right': {
+  'padRight': {
     evaluate: ([str, length, padString], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       assertNumber(length, sourceCodeInfo, { integer: true })
@@ -234,18 +234,18 @@ pad-left("Albert", -1)`,
         { argumentNames: ['s', 'length', 'padString'] },
       ],
       description: 'Pads from the start of $s with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
-      seeAlso: ['string.pad-left'],
+      seeAlso: ['string.padLeft'],
       examples: [
-        `let { pad-right } = import(string);
-"Albert" pad-right 20`,
-        `let { pad-right } = import(string);
-pad-right("Albert", 20)`,
-        `let { pad-right } = import(string);
-pad-right("Albert", 20, "-*-")`,
-        `let { pad-right } = import(string);
-pad-right("Albert", 5)`,
-        `let { pad-right } = import(string);
-pad-right("Albert", -1)`,
+        `let { padRight } = import(string);
+"Albert" padRight 20`,
+        `let { padRight } = import(string);
+padRight("Albert", 20)`,
+        `let { padRight } = import(string);
+padRight("Albert", 20, "-*-")`,
+        `let { padRight } = import(string);
+padRight("Albert", 5)`,
+        `let { padRight } = import(string);
+padRight("Albert", -1)`,
       ],
     },
   },
@@ -321,7 +321,7 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
     },
   },
 
-  'encode-base64': {
+  'encodeBase64': {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       return btoa(
@@ -338,15 +338,15 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a Base64 encoded string from $s.',
-      seeAlso: ['string.decode-base64'],
+      seeAlso: ['string.decodeBase64'],
       examples: [
-        `let { encode-base64 } = import(string);
-encode-base64("Albert")`,
+        `let { encodeBase64 } = import(string);
+encodeBase64("Albert")`,
       ],
     },
   },
 
-  'decode-base64': {
+  'decodeBase64': {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       try {
@@ -369,15 +369,15 @@ encode-base64("Albert")`,
       args: { base64string: { type: 'string' } },
       variants: [{ argumentNames: ['base64string'] }],
       description: 'Returns a Base64 decoded string from $base64string.',
-      seeAlso: ['string.encode-base64'],
+      seeAlso: ['string.encodeBase64'],
       examples: [
-        `let { decode-base64 } = import(string);
-decode-base64("QWxiZXJ0IPCfkLs=")`,
+        `let { decodeBase64 } = import(string);
+decodeBase64("QWxiZXJ0IPCfkLs=")`,
       ],
     },
   },
 
-  'encode-uri-component': {
+  'encodeUriComponent': {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       return encodeURIComponent(value)
@@ -389,15 +389,15 @@ decode-base64("QWxiZXJ0IPCfkLs=")`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns an escaped `URI` string.',
-      seeAlso: ['string.decode-uri-component'],
+      seeAlso: ['string.decodeUriComponent'],
       examples: [
-        `let { encode-uri-component } = import(string);
-encode-uri-component("Hi everyone!?")`,
+        `let { encodeUriComponent } = import(string);
+encodeUriComponent("Hi everyone!?")`,
       ],
     },
   },
 
-  'decode-uri-component': {
+  'decodeUriComponent': {
     evaluate: ([value], sourceCodeInfo): string => {
       assertString(value, sourceCodeInfo)
       try {
@@ -413,10 +413,10 @@ encode-uri-component("Hi everyone!?")`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns an un-escaped `URI` string.',
-      seeAlso: ['string.encode-uri-component'],
+      seeAlso: ['string.encodeUriComponent'],
       examples: [
-        `let { decode-uri-component } = import(string);
-decode-uri-component("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
+        `let { decodeUriComponent } = import(string);
+decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
       ],
     },
   },

@@ -13,39 +13,39 @@ import { fromArray } from './fromArray'
 import { transpose } from './transpose'
 
 const gridFunctions: BuiltinNormalExpressions = {
-  'cell-every?': {
+  'isCellEvery': {
     evaluate: () => {
-      throw new Error('cell-every?: Dvala implementation should be used instead')
+      throw new Error('isCellEvery: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'some?': {
+  'isSome': {
     evaluate: () => {
-      throw new Error('some?: Dvala implementation should be used instead')
+      throw new Error('isSome: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'every-row?': {
+  'isEveryRow': {
     evaluate: () => {
-      throw new Error('every-row?: Dvala implementation should be used instead')
+      throw new Error('isEveryRow: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'some-row?': {
+  'isSomeRow': {
     evaluate: () => {
-      throw new Error('some-row?: Dvala implementation should be used instead')
+      throw new Error('isSomeRow: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'every-col?': {
+  'isEveryCol': {
     evaluate: () => {
-      throw new Error('every-col?: Dvala implementation should be used instead')
+      throw new Error('isEveryCol: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'some-col?': {
+  'isSomeCol': {
     evaluate: () => {
-      throw new Error('some-col?: Dvala implementation should be used instead')
+      throw new Error('isSomeCol: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
@@ -125,14 +125,14 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'flip-h': {
+  'flipH': {
     evaluate: ([grid], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       return grid.map(row => row.reverse())
     },
     arity: toFixedArity(1),
   },
-  'flip-v': {
+  'flipV': {
     evaluate: ([grid], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       return grid.reverse()
@@ -221,7 +221,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'slice-rows': {
+  'sliceRows': {
     evaluate: ([grid, rowStart, rowEnd], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
 
@@ -242,7 +242,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'slice-cols': {
+  'sliceCols': {
     evaluate: ([grid, colStart, colEnd], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       const trMatrix = transpose(grid)
@@ -264,7 +264,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'splice-rows': {
+  'spliceRows': {
     evaluate: ([grid, rowStart, rowDeleteCount, ...rows], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       assertNumber(rowStart, sourceCodeInfo, { integer: true, nonNegative: true, lte: grid.length })
@@ -294,7 +294,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 3 },
   },
-  'splice-cols': {
+  'spliceCols': {
     evaluate: ([grid, colStart, colDeleteCount, ...cols], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       const trMatrix = transpose(grid)
@@ -324,7 +324,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 3 },
   },
-  'concat-rows': {
+  'concatRows': {
     evaluate: (params, sourceCodeInfo): Any[][] => {
       assertArray(params, sourceCodeInfo)
       params.every(grid => assertGrid(grid, sourceCodeInfo))
@@ -346,7 +346,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
   },
-  'concat-cols': {
+  'concatCols': {
     evaluate: (params, sourceCodeInfo): Any[][] => {
       assertArray(params, sourceCodeInfo)
       params.every(grid => assertGrid(grid, sourceCodeInfo))
@@ -370,31 +370,31 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
   },
-  'cell-map': {
+  'cellMap': {
     evaluate: () => {
-      throw new Error('cell-map: Dvala implementation should be used instead')
+      throw new Error('cellMap: Dvala implementation should be used instead')
     },
     arity: { min: 2 },
   },
-  'cell-mapi': {
+  'cellMapi': {
     evaluate: () => {
-      throw new Error('cell-mapi: Dvala implementation should be used instead')
+      throw new Error('cellMapi: Dvala implementation should be used instead')
     },
     arity: toFixedArity(2),
   },
-  'cell-reduce': {
+  'cellReduce': {
     evaluate: () => {
-      throw new Error('cell-reduce: Dvala implementation should be used instead')
+      throw new Error('cellReduce: Dvala implementation should be used instead')
     },
     arity: toFixedArity(3),
   },
-  'cell-reducei': {
+  'cellReducei': {
     evaluate: () => {
-      throw new Error('cell-reducei: Dvala implementation should be used instead')
+      throw new Error('cellReducei: Dvala implementation should be used instead')
     },
     arity: toFixedArity(3),
   },
-  'push-rows': {
+  'pushRows': {
     evaluate: ([grid, ...rows], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(rows, sourceCodeInfo)
@@ -405,7 +405,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
   },
-  'unshift-rows': {
+  'unshiftRows': {
     evaluate: ([grid, ...rows], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(rows, sourceCodeInfo)
@@ -416,7 +416,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
   },
-  'pop-row': {
+  'popRow': {
     evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
       assertGrid(grid, sourceCodeInfo)
       if (grid.length === 1) {
@@ -427,7 +427,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
 
   },
-  'shift-row': {
+  'shiftRow': {
     evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
       assertGrid(grid, sourceCodeInfo)
       if (grid.length === 1) {
@@ -437,7 +437,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'push-cols': {
+  'pushCols': {
     evaluate: ([grid, ...cols], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(cols, sourceCodeInfo)
@@ -459,7 +459,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
   },
-  'unshift-cols': {
+  'unshiftCols': {
     evaluate: ([grid, ...cols], sourceCodeInfo): Any[][] => {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(cols, sourceCodeInfo)
@@ -481,7 +481,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: { min: 2 },
   },
-  'pop-col': {
+  'popCol': {
     evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
       assertGrid(grid, sourceCodeInfo)
       if (grid[0]!.length === 1) {
@@ -491,7 +491,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'shift-col': {
+  'shiftCol': {
     evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
       assertGrid(grid, sourceCodeInfo)
       if (grid[0]!.length === 1) {
@@ -501,7 +501,7 @@ const gridFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'from-array': {
+  'fromArray': {
     evaluate: ([array, rows], sourceCodeInfo): unknown[][] => {
       assertArray(array, sourceCodeInfo)
       assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })

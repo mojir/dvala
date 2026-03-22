@@ -90,7 +90,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
       args: { fun: { type: 'function' } },
       variants: [{ argumentNames: ['fun'] }],
       description: 'Takes a function $fun and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
-      seeAlso: ['comp', 'functional.every-pred', 'functional.some-pred'],
+      seeAlso: ['comp', 'functional.everyPred', 'functional.somePred'],
       examples: [
         'let { complement } = import(functional);\ncomplement(>)(1, 3)',
         'let { complement } = import(functional);\ncomplement(<)(1, 3)',
@@ -100,7 +100,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
     },
   },
 
-  'every-pred': {
+  'everyPred': {
     evaluate: (params, sourceCodeInfo): EveryPredFunction => {
       return {
         [FUNCTION_SYMBOL]: true,
@@ -125,15 +125,15 @@ juxt(+, *, min, max) apply range(1, 11)`,
       description: `
 Takes a number of predicates and returns a function that returns \`true\` if all predicates
 return a truthy value against all of its arguments, else it returns \`false\`.`,
-      seeAlso: ['functional.some-pred', 'functional.complement', 'collection.every?'],
+      seeAlso: ['functional.somePred', 'functional.complement', 'collection.isEvery'],
       examples: [
-        `let { every-pred } = import(functional);
-every-pred(string?, -> count($) > 3)(
+        `let { everyPred } = import(functional);
+everyPred(string?, -> count($) > 3)(
   "Albert",
   "Mojir"
 )`,
-        `let { every-pred } = import(functional);
-(string? every-pred -> count($) > 3)(
+        `let { everyPred } = import(functional);
+(string? everyPred -> count($) > 3)(
   "Albert",
   "M"
 )`,
@@ -142,7 +142,7 @@ every-pred(string?, -> count($) > 3)(
     },
   },
 
-  'some-pred': {
+  'somePred': {
     evaluate: (params, sourceCodeInfo): SomePredFunction => {
       return {
         [FUNCTION_SYMBOL]: true,
@@ -165,12 +165,12 @@ every-pred(string?, -> count($) > 3)(
         { argumentNames: ['fun', 'fns'] },
       ],
       description: 'Takes a number of `predicates` and returns a function that returns `true` if at least one of the `predicates` return a truthy `true` value against at least one of its arguments, else it returns `false`.',
-      seeAlso: ['functional.every-pred', 'functional.complement', 'collection.any?'],
+      seeAlso: ['functional.everyPred', 'functional.complement', 'collection.isAny'],
       examples: [
-        'let { some-pred } = import(functional);\nsome-pred(string?, -> count($) > 3)("Albert", "Mojir")',
-        'let { some-pred } = import(functional);\nsome-pred(string?, -> count($) > 3)("a", "M")',
-        'let { some-pred } = import(functional);\nsome-pred(string?, -> count($) > 3)("a", [1, 2, 3])',
-        'let { some-pred } = import(functional);\nsome-pred(string?, -> count($) > 3)([1, 2, 3], [2])',
+        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("Albert", "Mojir")',
+        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("a", "M")',
+        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("a", [1, 2, 3])',
+        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)([1, 2, 3], [2])',
       ],
       hideOperatorForm: true,
     },

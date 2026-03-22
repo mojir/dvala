@@ -174,7 +174,7 @@ case 'Builtin': {
 Migrated core looping HOFs:
 - ✅ `map`, `filter`, `reduce` → `collection.dvala`
 - ✅ `sort`, `some`, `take-while`, `drop-while` → `sequence.dvala`
-- ✅ `mapcat`, `moving-fn`, `running-fn` → `array.dvala`
+- ✅ `mapcat`, `movingFn`, `runningFn` → `array.dvala`
 - ✅ `merge-with` → `object.dvala`
 - ✅ `|>` → `functional.dvala`
 - ⏭️ `apply` — left in TS (primitive, requires spread semantics)
@@ -205,27 +205,27 @@ Every module function that currently receives `{ executeFunction }` must be reim
 ### 5.2 Module: `collection` ✅ (13 functions)
 
 All 13 functions migrated to `collection.dvala`:
-- `update`, `update-in`, `filteri`, `mapi`, `reducei`
-- `reduce-right`, `reducei-right`, `reductions`, `reductionsi`
-- `every?`, `any?`, `not-any?`, `not-every?`
+- `update`, `updateIn`, `filteri`, `mapi`, `reducei`
+- `reduceRight`, `reduceiRight`, `reductions`, `reductionsi`
+- `isEvery`, `isAny`, `notAny`, `notEvery`
 
 ### 5.3 Module: `sequence` ✅ (6 functions)
 
 All 6 functions migrated to `sequence.dvala`:
-- `position`, `sort-by`, `remove`, `split-with`, `group-by`, `partition-by`
+- `position`, `sortBy`, `remove`, `splitWith`, `groupBy`, `partitionBy`
 
 ### 5.4 Module: `grid` ✅ (11 functions)
 
 All 11 functions migrated to `grid.dvala`:
-- `cell-every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`
-- `generate`, `cell-map`, `cell-mapi`, `cell-reduce`, `cell-reducei`
+- `isCellEvery`, `isSome`, `isEveryRow`, `isSomeRow`, `isEveryCol`, `isSomeCol`
+- `generate`, `cellMap`, `cellMapi`, `cellReduce`, `cellReducei`
 
 ### 5.5 Module: `assertion` ✅ (3 functions)
 
 All 3 assertion HOF functions migrated to `assertion.dvala`:
-- `assert-fails` — Call fn, expect error. Uses `try...with case effect(dvala.error)`
-- `assert-fails-with` — Call fn, expect specific error message
-- `assert-succeeds` — Call fn, expect no error
+- `assertFails` — Call fn, expect error. Uses `try...with case effect(dvala.error)`
+- `assertFailsWith` — Call fn, expect specific error message
+- `assertSucceeds` — Call fn, expect no error
 
 ### 5.6 Module: `number-theory` (31 `*-take-while` functions)
 
@@ -280,7 +280,7 @@ All follow the same "generate values while predicate holds" pattern.
 | Module `collection` | 13 HOF functions | 13 | ✅ |
 | Module `sequence` | 6 HOF functions | 6 | ✅ |
 | Module `grid` | 11 HOF functions | 11 | ✅ |
-| Module `assertion` | `assert-fails`, `assert-fails-with`, `assert-succeeds` | 3 | ✅ |
+| Module `assertion` | `assertFails`, `assertFailsWith`, `assertSucceeds` | 3 | ✅ |
 | Module `number-theory` | 29 in Dvala + 2 kept in TS | 31 | ✅ (29 migrated) |
 | **Total** | | **66** | **64 migrated to Dvala** |
 

@@ -96,7 +96,7 @@ range(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns an array with $a repeated $b times.',
-      seeAlso: ['range', 'string.string-repeat'],
+      seeAlso: ['range', 'string.stringRepeat'],
       examples: [
         'repeat(10, 3)',
         'repeat(10, 0)',

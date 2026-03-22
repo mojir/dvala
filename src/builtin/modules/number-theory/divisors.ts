@@ -33,21 +33,21 @@ export const divisorsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'count-divisors': {
+  'countDivisors': {
     evaluate: ([number], sourceCodeInfo): number => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return calcUnsortedDivisors(number).length
     },
     arity: toFixedArity(1),
   },
-  'proper-divisors': {
+  'properDivisors': {
     evaluate: ([number], sourceCodeInfo): number[] => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return getProperDivisors(number)
     },
     arity: toFixedArity(1),
   },
-  'count-proper-divisors': {
+  'countProperDivisors': {
     evaluate: ([number], sourceCodeInfo): number => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
       return calcUnsortedDivisors(number).length - 1 // Exclude the number itself

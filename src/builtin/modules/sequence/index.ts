@@ -87,7 +87,7 @@ su.position(
       ],
     },
   },
-  'last-index-of': {
+  'lastIndexOf': {
     evaluate: ([seq, value], sourceCodeInfo): number | null => {
       assertAny(value, sourceCodeInfo)
       if (seq === null)
@@ -117,11 +117,11 @@ su.position(
       description: 'Returns the last index of $x in $seq. If element is not present in $seq `null` is returned.',
       seeAlso: ['index-of'],
       examples: [
-        'let su = import(sequence); su.last-index-of([[1], [2], [1], [2]], [1])',
-        'let su = import(sequence); su.last-index-of(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
-        'let su = import(sequence); su.last-index-of([5, 10, 15, 20, 15], 15)',
-        'let su = import(sequence); su.last-index-of([5, 10, 15, 20], 1)',
-        'let su = import(sequence); su.last-index-of(null, 1)',
+        'let su = import(sequence); su.lastIndexOf([[1], [2], [1], [2]], [1])',
+        'let su = import(sequence); su.lastIndexOf(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
+        'let su = import(sequence); su.lastIndexOf([5, 10, 15, 20, 15], 15)',
+        'let su = import(sequence); su.lastIndexOf([5, 10, 15, 20], 1)',
+        'let su = import(sequence); su.lastIndexOf(null, 1)',
       ],
     },
   },
@@ -156,7 +156,7 @@ su.position(
         { argumentNames: ['seq', 'start', 'deleteCount', 'items'] },
       ],
       description: 'Returns a a spliced array. Removes $deleteCount elements from $seq starting at $start and replaces them with $items. If $start is negative, it is counting from the end of the array.',
-      seeAlso: ['slice', 'sequence.remove-at'],
+      seeAlso: ['slice', 'sequence.removeAt'],
       examples: [
         'let su = import(sequence); su.splice([1, 2, 3, 4, 5], 2, 2, "x")',
         'let su = import(sequence); su.splice([1, 2, 3, 4, 5], -2, 1, "x")',
@@ -164,8 +164,8 @@ su.position(
       ],
     },
   },
-  'sort-by': {
-    evaluate: () => { throw new Error('sort-by: Dvala implementation should be used instead') },
+  'sortBy': {
+    evaluate: () => { throw new Error('sortBy: Dvala implementation should be used instead') },
     arity: { min: 2, max: 3 },
     docs: {
       category: 'sequence',
@@ -184,9 +184,9 @@ su.position(
       description: 'Returns a sorted sequence of the items in $seq, where the sort order is determined by comparing `(keyfn item)`. If no $comparer is supplied, uses builtin `compare`.',
       seeAlso: ['sort', 'compare'],
       examples: [
-        'let su = import(sequence); su.sort-by(["Albert", "Mojir", "Nina"], count)',
-        'let su = import(sequence); su.sort-by(["Albert", "Mojir", "Nina"], count)',
-        'let su = import(sequence); su.sort-by("Albert", lower-case, -> $2 compare $)',
+        'let su = import(sequence); su.sortBy(["Albert", "Mojir", "Nina"], count)',
+        'let su = import(sequence); su.sortBy(["Albert", "Mojir", "Nina"], count)',
+        'let su = import(sequence); su.sortBy("Albert", lower-case, -> $2 compare $)',
       ],
     },
   },
@@ -274,7 +274,7 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns a new sequence of items in $seq for witch `pred(item)` returns a falsy value.',
-      seeAlso: ['filter', 'sequence.remove-at'],
+      seeAlso: ['filter', 'sequence.removeAt'],
       examples: [
         'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], odd?)',
         'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], even?)',
@@ -282,7 +282,7 @@ l`,
       ],
     },
   },
-  'remove-at': {
+  'removeAt': {
     evaluate: ([input, index], sourceCodeInfo): Seq => {
       assertNumber(index, sourceCodeInfo, { integer: true })
       assertSeq(input, sourceCodeInfo)
@@ -310,15 +310,15 @@ l`,
       description: 'Returns a new sequence of all items in $seq except item at position $n. If $n is negative, it is counting from the end of the sequence.',
       seeAlso: ['sequence.remove', 'sequence.splice'],
       examples: [
-        'let su = import(sequence); su.remove-at([1, 2, 3, 1, 3, 5], 2)',
-        'let su = import(sequence); su.remove-at("Albert", -2)',
-        'let su = import(sequence); su.remove-at([1, 2, 3, 1, 3, 5], 0)',
-        'let su = import(sequence); su.remove-at([1, 2, 3, 1, 3, 5], -1)',
-        'let su = import(sequence); su.remove-at("Albert Mojir", 6)',
+        'let su = import(sequence); su.removeAt([1, 2, 3, 1, 3, 5], 2)',
+        'let su = import(sequence); su.removeAt("Albert", -2)',
+        'let su = import(sequence); su.removeAt([1, 2, 3, 1, 3, 5], 0)',
+        'let su = import(sequence); su.removeAt([1, 2, 3, 1, 3, 5], -1)',
+        'let su = import(sequence); su.removeAt("Albert Mojir", 6)',
       ],
     },
   },
-  'split-at': {
+  'splitAt': {
     evaluate: ([seq, pos], sourceCodeInfo): Seq => {
       assertNumber(pos, sourceCodeInfo, { integer: true })
       assertSeq(seq, sourceCodeInfo)
@@ -338,18 +338,18 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Returns a pair of sequence `[take(pos input), drop(pos input)]`.',
-      seeAlso: ['sequence.split-with', 'take', 'drop'],
+      seeAlso: ['sequence.splitWith', 'take', 'drop'],
       examples: [
-        'let su = import(sequence); su.split-at([1, 2, 3, 4, 5], 2)',
-        'let su = import(sequence); su.split-at("Albert", -2)',
-        'let su = import(sequence); su.split-at([1, 2, 3, 4, 5], -2)',
-        'let su = import(sequence); su.split-at("Albert", 2)',
+        'let su = import(sequence); su.splitAt([1, 2, 3, 4, 5], 2)',
+        'let su = import(sequence); su.splitAt("Albert", -2)',
+        'let su = import(sequence); su.splitAt([1, 2, 3, 4, 5], -2)',
+        'let su = import(sequence); su.splitAt("Albert", 2)',
       ],
     },
   },
 
-  'split-with': {
-    evaluate: () => { throw new Error('split-with: Dvala implementation should be used instead') },
+  'splitWith': {
+    evaluate: () => { throw new Error('splitWith: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -362,11 +362,11 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns a pair of sequences `[take-while(input, fun), drop-while(input, fun)]`.',
-      seeAlso: ['sequence.split-at', 'take-while', 'drop-while'],
+      seeAlso: ['sequence.splitAt', 'take-while', 'drop-while'],
       examples: [
-        'let su = import(sequence); su.split-with([1, 2, 3, 4, 5], odd?)',
-        'let su = import(sequence); su.split-with([1, 2, 3, 4, 5], -> $ > 3)',
-        'let su = import(sequence); su.split-with("Albert", -> $ <= "o")',
+        'let su = import(sequence); su.splitWith([1, 2, 3, 4, 5], odd?)',
+        'let su = import(sequence); su.splitWith([1, 2, 3, 4, 5], -> $ > 3)',
+        'let su = import(sequence); su.splitWith("Albert", -> $ <= "o")',
       ],
     },
   },
@@ -394,7 +394,7 @@ l`,
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
       description: 'Returns an object from distinct items in $seq to the number of times they appear. Note that all items in $seq must be valid object keys i.e. strings.',
-      seeAlso: ['sequence.group-by', 'sequence.distinct', 'vector.count-values'],
+      seeAlso: ['sequence.groupBy', 'sequence.distinct', 'vector.countValues'],
       examples: [
         'let su = import(sequence); su.frequencies(["Albert", "Mojir", "Nina", "Mojir"])',
         'let su = import(sequence); su.frequencies("Pneumonoultramicroscopicsilicovolcanoconiosis")',
@@ -402,8 +402,8 @@ l`,
     },
   },
 
-  'group-by': {
-    evaluate: () => { throw new Error('group-by: Dvala implementation should be used instead') },
+  'groupBy': {
+    evaluate: () => { throw new Error('groupBy: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -416,11 +416,11 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns an object of the elements of $seq keyed by the result of $fun on each element. The value at each key will be an array of the corresponding elements.',
-      seeAlso: ['sequence.frequencies', 'sequence.partition-by'],
+      seeAlso: ['sequence.frequencies', 'sequence.partitionBy'],
       examples: [
-        'let su = import(sequence); su.group-by([{ name: "Albert" }, { name: "Albert" }, { name: "Mojir" }], "name")',
-        'let su = import(sequence); su.group-by([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")',
-        'let su = import(sequence); su.group-by("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)',
+        'let su = import(sequence); su.groupBy([{ name: "Albert" }, { name: "Albert" }, { name: "Mojir" }], "name")',
+        'let su = import(sequence); su.groupBy([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")',
+        'let su = import(sequence); su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)',
       ],
     },
   },
@@ -454,7 +454,7 @@ l`,
         { argumentNames: ['seq', 'n', 'step', 'pad'] },
       ],
       description: 'Returns an array of sequences of $n items each, at offsets $step apart. If $step is not supplied, defaults to $n. If a $pad array is supplied, use its elements as necessary to complete last partition upto $n items. In case there are not enough padding elements, return a partition with less than $n items.',
-      seeAlso: ['sequence.partition-all', 'sequence.partition-by'],
+      seeAlso: ['sequence.partitionAll', 'sequence.partitionBy'],
       examples: [
         'let su = import(sequence); su.partition(range(20), 4)',
         'let su = import(sequence); su.partition(range(20), 4)',
@@ -476,7 +476,7 @@ l`,
     },
   },
 
-  'partition-all': {
+  'partitionAll': {
     evaluate: (params, sourceCodeInfo): Seq => {
       const seq = asSeq(params[0], sourceCodeInfo)
       const n = toNonNegativeInteger(asNumber(params[1], sourceCodeInfo))
@@ -500,18 +500,18 @@ l`,
         { argumentNames: ['seq', 'n', 'step'] },
       ],
       description: 'Returns an array of sequences like partition, but may include partitions with fewer than n items at the end.',
-      seeAlso: ['sequence.partition', 'sequence.partition-by'],
+      seeAlso: ['sequence.partition', 'sequence.partitionBy'],
       examples: [
-        'let su = import(sequence); su.partition-all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
-        'let su = import(sequence); su.partition-all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
+        'let su = import(sequence); su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
+        'let su = import(sequence); su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
         'let su = import(sequence); su.partition([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)',
-        'let su = import(sequence); su.partition-all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 4)',
+        'let su = import(sequence); su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 4)',
       ],
     },
   },
 
-  'partition-by': {
-    evaluate: () => { throw new Error('partition-by: Dvala implementation should be used instead') },
+  'partitionBy': {
+    evaluate: () => { throw new Error('partitionBy: Dvala implementation should be used instead') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -524,16 +524,16 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Applies $fun to each value in $seq, splitting it each time $fun returns a new value. Returns an array of sequences.',
-      seeAlso: ['sequence.partition', 'sequence.partition-all', 'sequence.group-by'],
+      seeAlso: ['sequence.partition', 'sequence.partitionAll', 'sequence.groupBy'],
       examples: [
-        'let su = import(sequence); su.partition-by([1, 2, 3, 4, 5], odd?)',
-        'let su = import(sequence); su.partition-by([1, 2, 3, 4, 5], -> $ == 3)',
-        'let su = import(sequence); su.partition-by([1, 1, 1, 2, 2, 3, 3], odd?)',
-        'let su = import(sequence); su.partition-by("Leeeeeerrroyyy", identity)',
+        'let su = import(sequence); su.partitionBy([1, 2, 3, 4, 5], odd?)',
+        'let su = import(sequence); su.partitionBy([1, 2, 3, 4, 5], -> $ == 3)',
+        'let su = import(sequence); su.partitionBy([1, 1, 1, 2, 2, 3, 3], odd?)',
+        'let su = import(sequence); su.partitionBy("Leeeeeerrroyyy", identity)',
       ],
     },
   },
-  'ends-with?': {
+  'isEndsWith': {
     evaluate: ([str, search], sourceCodeInfo): boolean => {
       assertSeq(str, sourceCodeInfo)
 
@@ -556,18 +556,18 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'suffix'] }],
       description: 'Returns `true` if $seq ends with $suffix, otherwise `false`.',
-      seeAlso: ['sequence.starts-with?'],
+      seeAlso: ['sequence.isStartsWith'],
       examples: [
-        'let su = import(sequence); su.ends-with?([[1], [2], [3], [4], [5]], [5])',
-        'let su = import(sequence); su.ends-with?([[1], [2], [3], [4], [5]], 5)',
-        'let su = import(sequence); su.ends-with?([1, 2, 3, 4, 5], 5)',
-        'let su = import(sequence); su.ends-with?([1, 2, 3, 4, 5], [5])',
-        'let su = import(sequence); su.ends-with?("Albert", "rt")',
-        'let su = import(sequence); su.ends-with?("Albert", "RT")',
+        'let su = import(sequence); su.isEndsWith([[1], [2], [3], [4], [5]], [5])',
+        'let su = import(sequence); su.isEndsWith([[1], [2], [3], [4], [5]], 5)',
+        'let su = import(sequence); su.isEndsWith([1, 2, 3, 4, 5], 5)',
+        'let su = import(sequence); su.isEndsWith([1, 2, 3, 4, 5], [5])',
+        'let su = import(sequence); su.isEndsWith("Albert", "rt")',
+        'let su = import(sequence); su.isEndsWith("Albert", "RT")',
       ],
     },
   },
-  'starts-with?': {
+  'isStartsWith': {
     evaluate: ([seq, search], sourceCodeInfo): boolean => {
       assertSeq(seq, sourceCodeInfo)
 
@@ -590,13 +590,13 @@ l`,
       },
       variants: [{ argumentNames: ['seq', 'prefix'] }],
       description: 'Returns `true` if $seq starts with $prefix, otherwise `false`.',
-      seeAlso: ['sequence.ends-with?'],
+      seeAlso: ['sequence.isEndsWith'],
       examples: [
-        'let su = import(sequence); su.starts-with?([[1], [2], [3], [4], [5]], [1])',
-        'let su = import(sequence); su.starts-with?([1, 2, 3, 4, 5], 1)',
-        'let su = import(sequence); su.starts-with?([1, 2, 3, 4, 5], [1])',
-        'let su = import(sequence); su.starts-with?("Albert", "Al")',
-        'let su = import(sequence); su.starts-with?("Albert", "al")',
+        'let su = import(sequence); su.isStartsWith([[1], [2], [3], [4], [5]], [1])',
+        'let su = import(sequence); su.isStartsWith([1, 2, 3, 4, 5], 1)',
+        'let su = import(sequence); su.isStartsWith([1, 2, 3, 4, 5], [1])',
+        'let su = import(sequence); su.isStartsWith("Albert", "Al")',
+        'let su = import(sequence); su.isStartsWith("Albert", "al")',
       ],
     },
   },

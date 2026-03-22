@@ -1,5 +1,5 @@
 {
-  moving-fn: (arr, window-size, fn) -> do
+  movingFn: (arr, window-size, fn) -> do
     if window-size > count(arr) then
       perform(@dvala.error, "Expected window-size <= array length")
     end;
@@ -8,7 +8,7 @@
     end
   end,
 
-  running-fn: (arr, fn) -> do
+  runningFn: (arr, fn) -> do
     for (i in range(count(arr))) -> do
       fn(slice(arr, 0, i + 1))
     end

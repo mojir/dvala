@@ -31,7 +31,7 @@ let { ln, log10 } = import(math);
 
 ## Sequence Module
 
-Extended sequence operations — `sort-by`, `distinct`, `group-by`, and more:
+Extended sequence operations — `sortBy`, `distinct`, `groupBy`, and more:
 
 ```dvala
 let seq = import(sequence);
@@ -40,7 +40,7 @@ seq.distinct([1, 2, 2, 3, 3, 3])
 
 ```dvala
 let seq = import(sequence);
-seq.sort-by(["banana", "fig", "apple"], count)
+seq.sortBy(["banana", "fig", "apple"], count)
 ```
 
 ## Collection Module
@@ -50,7 +50,7 @@ Deep access and advanced aggregation:
 ```dvala
 let col = import(collection);
 let data = { user: { name: "Alice" } };
-col.get-in(data, ["user", "name"])
+col.getIn(data, ["user", "name"])
 ```
 
 ## Vector Module
@@ -86,7 +86,7 @@ Additional string utilities:
 
 ```dvala
 let s = import(string);
-s.pad-left("42", 5, "0")
+s.padLeft("42", 5, "0")
 ```
 
 ## Number Theory Module

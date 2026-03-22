@@ -492,18 +492,18 @@ describe('sequence-Utils module functions', () => {
       })
     })
 
-    describe('last-index-of', () => {
+    describe('lastIndexOf', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.last-index-of(["1", "2", 3], "2")`)).toEqual(1)
-        expect(mdvala.run(`${imp}su.last-index-of(["1", "2", "3"], "4")`)).toBeNull()
-        expect(mdvala.run(`${imp}su.last-index-of([], 1)`)).toBeNull()
-        expect(mdvala.run(`${imp}su.last-index-of(null, 1)`)).toBeNull()
-        expect(mdvala.run(`${imp}su.last-index-of("AlbertAlbert", "l")`)).toBe(7)
-        expect(mdvala.run(`${imp}su.last-index-of("Albert", "ert")`)).toBe(3)
-        expect(mdvala.run(`${imp}su.last-index-of("Albert", "z")`)).toBeNull()
-        expect(mdvala.run(`${imp}su.last-index-of([1], 2)`)).toBeNull()
-        expect(() => mdvala.run(`${imp}su.last-index-of(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.last-index-of()`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}su.lastIndexOf(["1", "2", 3], "2")`)).toEqual(1)
+        expect(mdvala.run(`${imp}su.lastIndexOf(["1", "2", "3"], "4")`)).toBeNull()
+        expect(mdvala.run(`${imp}su.lastIndexOf([], 1)`)).toBeNull()
+        expect(mdvala.run(`${imp}su.lastIndexOf(null, 1)`)).toBeNull()
+        expect(mdvala.run(`${imp}su.lastIndexOf("AlbertAlbert", "l")`)).toBe(7)
+        expect(mdvala.run(`${imp}su.lastIndexOf("Albert", "ert")`)).toBe(3)
+        expect(mdvala.run(`${imp}su.lastIndexOf("Albert", "z")`)).toBeNull()
+        expect(mdvala.run(`${imp}su.lastIndexOf([1], 2)`)).toBeNull()
+        expect(() => mdvala.run(`${imp}su.lastIndexOf(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.lastIndexOf()`)).toThrow(DvalaError)
       })
     })
 
@@ -527,22 +527,22 @@ describe('sequence-Utils module functions', () => {
       })
     })
 
-    describe('sort-by', () => {
+    describe('sortBy', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.sort-by(["Albert", "Mojir", "Nina"], count)`)).toEqual(['Nina', 'Mojir', 'Albert'])
-        expect(mdvala.run(`${imp}su.sort-by(["Albert", "Mojir", "Nina"], count, (a, b) -> b - a)`)).toEqual([
+        expect(mdvala.run(`${imp}su.sortBy(["Albert", "Mojir", "Nina"], count)`)).toEqual(['Nina', 'Mojir', 'Albert'])
+        expect(mdvala.run(`${imp}su.sortBy(["Albert", "Mojir", "Nina"], count, (a, b) -> b - a)`)).toEqual([
           'Albert',
           'Mojir',
           'Nina',
         ])
-        expect(mdvala.run(`${imp}su.sort-by("Albert", lower-case)`)).toEqual('Abelrt')
-        expect(mdvala.run(`${imp}su.sort-by("Albert", lower-case, (a, b) -> compare(b, a))`)).toEqual(
+        expect(mdvala.run(`${imp}su.sortBy("Albert", lower-case)`)).toEqual('Abelrt')
+        expect(mdvala.run(`${imp}su.sortBy("Albert", lower-case, (a, b) -> compare(b, a))`)).toEqual(
           'trlebA',
         )
-        expect(() => mdvala.run(`${imp}su.sort-by()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.sort-by("a")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.sort-by({} "a")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.sort-by(3 "a")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.sortBy()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.sortBy("a")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.sortBy({} "a")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.sortBy(3 "a")`)).toThrow(DvalaError)
       })
     })
 
@@ -568,62 +568,62 @@ describe('sequence-Utils module functions', () => {
       })
     })
 
-    describe('remove-at', () => {
+    describe('removeAt', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.remove-at([1, 2, 3, 4, 5], -1)`)).toEqual([1, 2, 3, 4])
-        expect(mdvala.run(`${imp}su.remove-at([1, 2, 3, 4, 5], 0)`)).toEqual([2, 3, 4, 5])
-        expect(mdvala.run(`${imp}su.remove-at([1, 2, 3, 4, 5], 2)`)).toEqual([1, 2, 4, 5])
-        expect(mdvala.run(`${imp}su.remove-at([1, 2, 3, 4, 5], 4)`)).toEqual([1, 2, 3, 4])
-        expect(mdvala.run(`${imp}su.remove-at([1, 2, 3, 4, 5], 5)`)).toEqual([1, 2, 3, 4, 5])
-        expect(mdvala.run(`${imp}su.remove-at("Mojir", -1)`)).toEqual('Moji')
-        expect(mdvala.run(`${imp}su.remove-at("Mojir", 0)`)).toEqual('ojir')
-        expect(mdvala.run(`${imp}su.remove-at("Mojir", 2)`)).toEqual('Moir')
-        expect(mdvala.run(`${imp}su.remove-at("Mojir", 4)`)).toEqual('Moji')
-        expect(mdvala.run(`${imp}su.remove-at("Mojir", 5)`)).toEqual('Mojir')
-        expect(() => mdvala.run(`${imp}su.remove-at()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove-at("Albert Mojir")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove-at(1)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove-at("Albert", 1, 2`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}su.removeAt([1, 2, 3, 4, 5], -1)`)).toEqual([1, 2, 3, 4])
+        expect(mdvala.run(`${imp}su.removeAt([1, 2, 3, 4, 5], 0)`)).toEqual([2, 3, 4, 5])
+        expect(mdvala.run(`${imp}su.removeAt([1, 2, 3, 4, 5], 2)`)).toEqual([1, 2, 4, 5])
+        expect(mdvala.run(`${imp}su.removeAt([1, 2, 3, 4, 5], 4)`)).toEqual([1, 2, 3, 4])
+        expect(mdvala.run(`${imp}su.removeAt([1, 2, 3, 4, 5], 5)`)).toEqual([1, 2, 3, 4, 5])
+        expect(mdvala.run(`${imp}su.removeAt("Mojir", -1)`)).toEqual('Moji')
+        expect(mdvala.run(`${imp}su.removeAt("Mojir", 0)`)).toEqual('ojir')
+        expect(mdvala.run(`${imp}su.removeAt("Mojir", 2)`)).toEqual('Moir')
+        expect(mdvala.run(`${imp}su.removeAt("Mojir", 4)`)).toEqual('Moji')
+        expect(mdvala.run(`${imp}su.removeAt("Mojir", 5)`)).toEqual('Mojir')
+        expect(() => mdvala.run(`${imp}su.removeAt()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.removeAt("Albert Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.removeAt(1)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.removeAt("Albert", 1, 2`)).toThrow(DvalaError)
       })
     })
 
-    describe('split-at', () => {
+    describe('splitAt', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.split-at([1, 2, 3, 4, 5], 2)`)).toEqual([
+        expect(mdvala.run(`${imp}su.splitAt([1, 2, 3, 4, 5], 2)`)).toEqual([
           [1, 2],
           [3, 4, 5],
         ])
-        expect(mdvala.run(`${imp}su.split-at([1, 2, 3, 4, 5], 0)`)).toEqual([[], [1, 2, 3, 4, 5]])
-        expect(mdvala.run(`${imp}su.split-at([1, 2, 3, 4, 5], -1)`)).toEqual([[1, 2, 3, 4], [5]])
-        expect(mdvala.run(`${imp}su.split-at([1, 2, 3, 4, 5], 100)`)).toEqual([[1, 2, 3, 4, 5], []])
-        expect(mdvala.run(`${imp}su.split-at("Albert", 2)`)).toEqual(['Al', 'bert'])
-        expect(mdvala.run(`${imp}su.split-at("Albert", 0)`)).toEqual(['', 'Albert'])
-        expect(mdvala.run(`${imp}su.split-at("Albert", -2)`)).toEqual(['Albe', 'rt'])
-        expect(mdvala.run(`${imp}su.split-at("Albert", 100)`)).toEqual(['Albert', ''])
+        expect(mdvala.run(`${imp}su.splitAt([1, 2, 3, 4, 5], 0)`)).toEqual([[], [1, 2, 3, 4, 5]])
+        expect(mdvala.run(`${imp}su.splitAt([1, 2, 3, 4, 5], -1)`)).toEqual([[1, 2, 3, 4], [5]])
+        expect(mdvala.run(`${imp}su.splitAt([1, 2, 3, 4, 5], 100)`)).toEqual([[1, 2, 3, 4, 5], []])
+        expect(mdvala.run(`${imp}su.splitAt("Albert", 2)`)).toEqual(['Al', 'bert'])
+        expect(mdvala.run(`${imp}su.splitAt("Albert", 0)`)).toEqual(['', 'Albert'])
+        expect(mdvala.run(`${imp}su.splitAt("Albert", -2)`)).toEqual(['Albe', 'rt'])
+        expect(mdvala.run(`${imp}su.splitAt("Albert", 100)`)).toEqual(['Albert', ''])
 
-        expect(() => mdvala.run(`${imp}su.split-at([1, 2, 3, 4, 5], 0.01)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-at()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-at(3)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-at("Albert", 3 "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitAt([1, 2, 3, 4, 5], 0.01)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitAt()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitAt(3)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitAt("Albert", 3 "Mojir")`)).toThrow(DvalaError)
       })
     })
 
-    describe('split-with', () => {
+    describe('splitWith', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ < 3)`)).toEqual([
+        expect(mdvala.run(`${imp}su.splitWith([1, 2, 3, 4, 5], -> $ < 3)`)).toEqual([
           [1, 2],
           [3, 4, 5],
         ])
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ > 3)`)).toEqual([[], [1, 2, 3, 4, 5]])
-        expect(mdvala.run(`${imp}su.split-with([1, 2, 3, 4, 5], -> $ < 10)`)).toEqual([[1, 2, 3, 4, 5], []])
+        expect(mdvala.run(`${imp}su.splitWith([1, 2, 3, 4, 5], -> $ > 3)`)).toEqual([[], [1, 2, 3, 4, 5]])
+        expect(mdvala.run(`${imp}su.splitWith([1, 2, 3, 4, 5], -> $ < 10)`)).toEqual([[1, 2, 3, 4, 5], []])
 
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ <= "Z")`)).toEqual(['A', 'lbert'])
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ > "Z")`)).toEqual(['', 'Albert'])
-        expect(mdvala.run(`${imp}su.split-with("Albert", -> $ <= "z")`)).toEqual(['Albert', ''])
+        expect(mdvala.run(`${imp}su.splitWith("Albert", -> $ <= "Z")`)).toEqual(['A', 'lbert'])
+        expect(mdvala.run(`${imp}su.splitWith("Albert", -> $ > "Z")`)).toEqual(['', 'Albert'])
+        expect(mdvala.run(`${imp}su.splitWith("Albert", -> $ <= "z")`)).toEqual(['Albert', ''])
 
-        expect(() => mdvala.run(`${imp}su.split-with()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-with(-> $ <= "Z")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.split-with("Albert", -> $ <= "Z", "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitWith()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitWith(-> $ <= "Z")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.splitWith("Albert", -> $ <= "Z", "Mojir")`)).toThrow(DvalaError)
       })
     })
 
@@ -654,21 +654,21 @@ describe('sequence-Utils module functions', () => {
       })
     })
 
-    describe('group-by', () => {
+    describe('groupBy', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.group-by([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")`)).toEqual({
+        expect(mdvala.run(`${imp}su.groupBy([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")`)).toEqual({
           Albert: [{ name: 'Albert' }, { name: 'Albert' }],
           Mojir: [{ name: 'Mojir' }],
         })
-        expect(mdvala.run(`${imp}su.group-by("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)`)).toEqual({
+        expect(mdvala.run(`${imp}su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)`)).toEqual({
           other: ['l', 'b', 'r', 't', ' ', 'M', 'j', 'r'],
           vowel: ['A', 'e', 'o', 'i'],
         })
-        expect(() => mdvala.run(`${imp}su.group-by()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.group-by("a")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.group-by("a" {})`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.group-by("a" 3)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.group-by("", "a", "")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.groupBy()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.groupBy("a")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.groupBy("a" {})`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.groupBy("a" 3)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.groupBy("", "a", "")`)).toThrow(DvalaError)
       })
     })
 
@@ -743,70 +743,70 @@ describe('sequence-Utils module functions', () => {
       })
     })
 
-    describe('partition-all', () => {
+    describe('partitionAll', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.partition-all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)`)).toEqual([
+        expect(mdvala.run(`${imp}su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 4)`)).toEqual([
           [0, 1, 2, 3],
           [4, 5, 6, 7],
           [8, 9],
         ])
-        expect(mdvala.run(`${imp}su.partition-all([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 4)`)).toEqual([
+        expect(mdvala.run(`${imp}su.partitionAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 4)`)).toEqual([
           [0, 1],
           [4, 5],
           [8, 9],
         ])
-        expect(() => mdvala.run(`${imp}su.partition-all(1)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.partition-all([1])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.partitionAll(1)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.partitionAll([1])`)).toThrow(DvalaError)
       })
     })
 
-    describe('partition-by', () => {
+    describe('partitionBy', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.partition-by([1, 2, 3, 4, 5], -> 3 == $)`)).toEqual([[1, 2], [3], [4, 5]])
-        expect(mdvala.run(`${imp}su.partition-by([1, 1, 1, 2, 2, 3, 3], odd?)`)).toEqual([
+        expect(mdvala.run(`${imp}su.partitionBy([1, 2, 3, 4, 5], -> 3 == $)`)).toEqual([[1, 2], [3], [4, 5]])
+        expect(mdvala.run(`${imp}su.partitionBy([1, 1, 1, 2, 2, 3, 3], odd?)`)).toEqual([
           [1, 1, 1],
           [2, 2],
           [3, 3],
         ])
-        expect(mdvala.run(`${imp}su.partition-by("Leeeeeerrroyyy", identity)`)).toEqual(['L', 'eeeeee', 'rrr', 'o', 'yyy'])
-        expect(() => mdvala.run(`${imp}su.partition-by(odd?)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.partition-by([1, 2, 3])`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}su.partitionBy("Leeeeeerrroyyy", identity)`)).toEqual(['L', 'eeeeee', 'rrr', 'o', 'yyy'])
+        expect(() => mdvala.run(`${imp}su.partitionBy(odd?)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.partitionBy([1, 2, 3])`)).toThrow(DvalaError)
       })
     })
 
-    describe('starts-with?', () => {
+    describe('isStartsWith', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.starts-with?([1, 2, 3], 1)`)).toBe(true)
-        expect(mdvala.run(`${imp}su.starts-with?([1, 2, 3], 2)`)).toBe(false)
-        expect(mdvala.run(`${imp}su.starts-with?([1, 2, 3], [1])`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isStartsWith([1, 2, 3], 1)`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isStartsWith([1, 2, 3], 2)`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isStartsWith([1, 2, 3], [1])`)).toBe(false)
 
-        expect(mdvala.run(`${imp}su.starts-with?("Albert", "Al")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.starts-with?("Albert", "al")`)).toBe(false)
-        expect(mdvala.run(`${imp}su.starts-with?("Albert", "")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.starts-with?("", "")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.starts-with?("Albert", "Albert")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.starts-with?("Albert", "Albert ")`)).toBe(false)
-        expect(() => mdvala.run(`${imp}su.starts-with?("Albert", "foo", 2)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.starts-with?("Albert")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.starts-with?(`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}su.isStartsWith("Albert", "Al")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isStartsWith("Albert", "al")`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isStartsWith("Albert", "")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isStartsWith("", "")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isStartsWith("Albert", "Albert")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isStartsWith("Albert", "Albert ")`)).toBe(false)
+        expect(() => mdvala.run(`${imp}su.isStartsWith("Albert", "foo", 2)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.isStartsWith("Albert")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.isStartsWith(`)).toThrow(DvalaError)
       })
     })
 
-    describe('ends-with?', () => {
+    describe('isEndsWith', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.ends-with?([1, 2, 3], 3)`)).toBe(true)
-        expect(mdvala.run(`${imp}su.ends-with?([1, 2, 3], 2)`)).toBe(false)
-        expect(mdvala.run(`${imp}su.ends-with?([1, 2, 3], [3])`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isEndsWith([1, 2, 3], 3)`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isEndsWith([1, 2, 3], 2)`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isEndsWith([1, 2, 3], [3])`)).toBe(false)
 
-        expect(mdvala.run(`${imp}su.ends-with?("Albert", "rt")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.ends-with?("Albert", "RT")`)).toBe(false)
-        expect(mdvala.run(`${imp}su.ends-with?("Albert", "")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.ends-with?("", "")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.ends-with?("Albert", "Albert")`)).toBe(true)
-        expect(mdvala.run(`${imp}su.ends-with?("Albert", ", Albert")`)).toBe(false)
-        expect(() => mdvala.run(`${imp}su.ends-with?("Albert", "foo", 2)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.ends-with?("Albert")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.ends-with?()`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}su.isEndsWith("Albert", "rt")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isEndsWith("Albert", "RT")`)).toBe(false)
+        expect(mdvala.run(`${imp}su.isEndsWith("Albert", "")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isEndsWith("", "")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isEndsWith("Albert", "Albert")`)).toBe(true)
+        expect(mdvala.run(`${imp}su.isEndsWith("Albert", ", Albert")`)).toBe(false)
+        expect(() => mdvala.run(`${imp}su.isEndsWith("Albert", "foo", 2)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.isEndsWith("Albert")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.isEndsWith()`)).toThrow(DvalaError)
       })
     })
     describe('interleave', () => {

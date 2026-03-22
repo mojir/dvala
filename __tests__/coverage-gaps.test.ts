@@ -72,17 +72,17 @@ describe('recursive evaluator — compound function types (trampoline fallback)'
     })
   })
 
-  describe('every-pred function via trampoline dispatch', () => {
-    it('should handle every-pred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.every-pred(number?, odd?)(5)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.every-pred(number?, odd?)(4)')).toBe(false)
+  describe('everyPred function via trampoline dispatch', () => {
+    it('should handle everyPred', () => {
+      expect(dvalaFull.run('let f = import(functional); f.everyPred(number?, odd?)(5)')).toBe(true)
+      expect(dvalaFull.run('let f = import(functional); f.everyPred(number?, odd?)(4)')).toBe(false)
     })
   })
 
-  describe('some-pred function via trampoline dispatch', () => {
-    it('should handle some-pred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.some-pred(zero?, even?)(0)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.some-pred(zero?, even?)(5)')).toBe(false)
+  describe('somePred function via trampoline dispatch', () => {
+    it('should handle somePred', () => {
+      expect(dvalaFull.run('let f = import(functional); f.somePred(zero?, even?)(0)')).toBe(true)
+      expect(dvalaFull.run('let f = import(functional); f.somePred(zero?, even?)(5)')).toBe(false)
     })
   })
 
@@ -532,23 +532,23 @@ describe('recursive evaluator via module functions', () => {
     it('should trigger module recursive path via assertion module', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-fails(() -> throw("test error"))
+        a.assertFails(() -> throw("test error"))
       `)
       expect(result).toBe(null)
     })
 
-    it('should trigger assert-fails-with recursive path', () => {
+    it('should trigger assertFailsWith recursive path', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-fails-with(() -> assert(false, "test error"), "test error")
+        a.assertFailsWith(() -> assert(false, "test error"), "test error")
       `)
       expect(result).toBe(null)
     })
 
-    it('should trigger assert-succeeds recursive path', () => {
+    it('should trigger assertSucceeds recursive path', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> 42)
+        a.assertSucceeds(() -> 42)
       `)
       expect(result).toBe(null)
     })
@@ -571,10 +571,10 @@ describe('recursive evaluator via module functions', () => {
 
   describe('executeFunctionRecursive non-DvalaFunction branches', () => {
     it('should handle array-as-function in module callback context', () => {
-      // Use assert-fails to call a function that uses array-as-function
+      // Use assertFails to call a function that uses array-as-function
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> do
+        a.assertSucceeds(() -> do
           let arr = [10, 20, 30];
           arr(1)
         end)
@@ -585,7 +585,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle object-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> do
+        a.assertSucceeds(() -> do
           let obj = { a: 1, b: 2 };
           obj("a")
         end)
@@ -596,7 +596,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle string-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> do
+        a.assertSucceeds(() -> do
           let s = "hello";
           s(1)
         end)
@@ -607,7 +607,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle number-as-function in module callback context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> do
+        a.assertSucceeds(() -> do
           let n = 0;
           n([10, 20, 30])
         end)
@@ -620,7 +620,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle special builtin in recursive context', () => {
       const result = dvalaFull.run(`
         let a = import(assertion);
-        a.assert-succeeds(() -> do
+        a.assertSucceeds(() -> do
           let f = &&;
           f(true, 42)
         end)
@@ -1076,66 +1076,66 @@ describe('?? — null coalescing with multiple null args', () => {
 describe('recursive evaluator — specific code paths via assertion module', () => {
   it('should hit NaN check in recursive evaluator (lines 145-146)', () => {
     // 0 / 0 produces NaN → evaluateNodeRecursive NaN check throws
-    // assert-fails catches the error
+    // assertFails catches the error
     expect(dvalaFull.run(`
-      let { assert-fails } = import(assertion);
-      assert-fails(() -> 0 / 0)
+      let { assertFails } = import(assertion);
+      assertFails(() -> 0 / 0)
     `)).toBe(null)
   })
 
   it('should hit evaluateParamsRecursive spread handling (lines 180-183)', () => {
     // Spread args in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> do let arr = [1, 2]; +(...arr) end)
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> do let arr = [1, 2]; +(...arr) end)
     `)).toBe(null)
   })
 
   it('should hit evaluateParamsRecursive placeholder handling (line 190)', () => {
     // Placeholder in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> do let f = +(_, 1); f(5) end)
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> do let f = +(_, 1); f(5) end)
     `)).toBe(null)
   })
 
   it('should hit evaluateNormalExpressionRecursive partial (lines 207-220)', () => {
     // Partial application (named function with placeholder) in recursive path
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> do let f = *(_, 2); f(5) end)
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> do let f = *(_, 2); f(5) end)
     `)).toBe(null)
   })
 
   it('should hit anonymous function expression in recursive path (lines 240-258)', () => {
     // Anonymous function call in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> ((x) -> x + 1)(5))
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> ((x) -> x + 1)(5))
     `)).toBe(null)
   })
 
   it('should hit arity error in recursive path (lines 325-326)', () => {
     // Wrong arity in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-fails } = import(assertion);
-      assert-fails(() -> do let f = (x, y) -> x + y; f(1) end)
+      let { assertFails } = import(assertion);
+      assertFails(() -> do let f = (x, y) -> x + y; f(1) end)
     `)).toBe(null)
   })
 
   it('should hit default values in recursive path (lines 353-366)', () => {
     // Function with default parameter value in recursive evaluator
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> do let f = (x, y = 10) -> x + y; f(5) end)
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> do let f = (x, y = 10) -> x + y; f(5) end)
     `)).toBe(null)
   })
 
   it('should hit anonymous function with partial in recursive path (lines 244-254)', () => {
     // Anonymous function expression with placeholders in recursive path
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> do let add = (a, b) -> a + b; add(_, 10)(5) end)
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> do let add = (a, b) -> a + b; add(_, 10)(5) end)
     `)).toBe(null)
   })
 })
@@ -1150,10 +1150,10 @@ describe('recursive evaluator — specific code paths via assertion module', () 
 describe('recursive evaluator — builtin and module dispatch', () => {
   it('should hit executeBuiltinRecursive dvalaImpl path (line 494-495)', () => {
     // When a builtin with dvalaImpl is called inside a recursive evaluator path,
-    // e.g., calling map inside an assert-succeeds callback
+    // e.g., calling map inside an assertSucceeds callback
     expect(dvalaFull.run(`
-      let { assert-succeeds } = import(assertion);
-      assert-succeeds(() -> map([1, 2, 3], inc))
+      let { assertSucceeds } = import(assertion);
+      assertSucceeds(() -> map([1, 2, 3], inc))
     `)).toBe(null)
   })
 
@@ -1423,7 +1423,7 @@ describe('setupUserDefinedCall — async binding fallbacks', () => {
 
 describe('importMerge — dvala-only function path', () => {
   it('should access dvala-defined functions from collection module', () => {
-    // collection.dvala defines update, update-in, etc.
+    // collection.dvala defines update, updateIn, etc.
     // These override TS functions via dvalaImpl
     const result = dvalaFull.run(`
       let c = import(collection);
@@ -1436,7 +1436,7 @@ describe('importMerge — dvala-only function path', () => {
     // grid.dvala defines functions that may be dvala-only
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-every?([[1, 2], [3, 4]], number?)
+      g.isCellEvery([[1, 2], [3, 4]], number?)
     `)
     expect(result).toBe(true)
   })
@@ -1780,7 +1780,7 @@ describe('trampoline — import module with single expression', () => {
     // grid module has dvala source; imports trigger the merge path
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-every?([[1, 2], [3, 4]], number?)
+      g.isCellEvery([[1, 2], [3, 4]], number?)
     `)
     expect(result).toBe(true)
   })
@@ -1972,10 +1972,10 @@ describe('serialization — compound function types in continuations', () => {
     expect(result.type).toBe('suspended')
   })
 
-  it('should serialize continuation with every-pred', async () => {
+  it('should serialize continuation with everyPred', async () => {
     const result = await dvalaFull.runAsync(`
-      let { every-pred } = import(functional);
-      let f = every-pred(number?, odd?);
+      let { everyPred } = import(functional);
+      let f = everyPred(number?, odd?);
       perform(@test.pause);
       f(5)
     `, {
@@ -1986,10 +1986,10 @@ describe('serialization — compound function types in continuations', () => {
     expect(result.type).toBe('suspended')
   })
 
-  it('should serialize continuation with some-pred', async () => {
+  it('should serialize continuation with somePred', async () => {
     const result = await dvalaFull.runAsync(`
-      let { some-pred } = import(functional);
-      let f = some-pred(number?, string?);
+      let { somePred } = import(functional);
+      let f = somePred(number?, string?);
       perform(@test.pause);
       f(5)
     `, {
@@ -2156,50 +2156,50 @@ describe('trampoline — function default parameter values', () => {
 // ---------------------------------------------------------------------------
 
 describe('grid module — dvala-implemented functions', () => {
-  it('should execute cell-map via dvala implementation', () => {
+  it('should execute cellMap via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-map([[1, 2], [3, 4]], inc)
+      g.cellMap([[1, 2], [3, 4]], inc)
     `)
     expect(result).toEqual([[2, 3], [4, 5]])
   })
 
-  it('should execute some? via dvala implementation', () => {
+  it('should execute isSome via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.some?([[1, 2], [3, 4]], (x) -> x > 3)
+      g.isSome([[1, 2], [3, 4]], (x) -> x > 3)
     `)
     expect(result).toBe(true)
   })
 
-  it('should execute every-row? via dvala implementation', () => {
+  it('should execute isEveryRow via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.every-row?([[1, 2], [3, 4]], (row) -> count(row) == 2)
+      g.isEveryRow([[1, 2], [3, 4]], (row) -> count(row) == 2)
     `)
     expect(result).toBe(true)
   })
 
-  it('should execute some-row? via dvala implementation', () => {
+  it('should execute isSomeRow via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.some-row?([[1, 2], [3, 4]], (row) -> first(row) > 2)
+      g.isSomeRow([[1, 2], [3, 4]], (row) -> first(row) > 2)
     `)
     expect(result).toBe(true)
   })
 
-  it('should execute every-col? via dvala implementation', () => {
+  it('should execute isEveryCol via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.every-col?([[1, 2], [3, 4]], (col) -> count(col) == 2)
+      g.isEveryCol([[1, 2], [3, 4]], (col) -> count(col) == 2)
     `)
     expect(result).toBe(true)
   })
 
-  it('should execute some-col? via dvala implementation', () => {
+  it('should execute isSomeCol via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.some-col?([[1, 2], [3, 4]], (col) -> first(col) > 0)
+      g.isSomeCol([[1, 2], [3, 4]], (col) -> first(col) > 0)
     `)
     expect(result).toBe(true)
   })
@@ -2212,26 +2212,26 @@ describe('grid module — dvala-implemented functions', () => {
     expect(result).toEqual([[0, 1], [2, 3]])
   })
 
-  it('should execute cell-mapi via dvala implementation', () => {
+  it('should execute cellMapi via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-mapi([[10, 20], [30, 40]], (val, row, col) -> row * 10 + col)
+      g.cellMapi([[10, 20], [30, 40]], (val, row, col) -> row * 10 + col)
     `)
     expect(result).toEqual([[0, 1], [10, 11]])
   })
 
-  it('should execute cell-reduce via dvala implementation', () => {
+  it('should execute cellReduce via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-reduce([[1, 2], [3, 4]], (acc, val) -> acc + val, 0)
+      g.cellReduce([[1, 2], [3, 4]], (acc, val) -> acc + val, 0)
     `)
     expect(result).toBe(10)
   })
 
-  it('should execute cell-reducei via dvala implementation', () => {
+  it('should execute cellReducei via dvala implementation', () => {
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.cell-reducei([[1, 2], [3, 4]], (acc, val, row, col) -> acc + val, 0)
+      g.cellReducei([[1, 2], [3, 4]], (acc, val, row, col) -> acc + val, 0)
     `)
     expect(result).toBe(10)
   })
@@ -2252,12 +2252,12 @@ describe('stub evaluate — sequence module (mapcat)', () => {
   })
 })
 
-describe('stub evaluate — vector module (moving-fn, running-fn)', () => {
-  it('moving-fn evaluate throws', () => {
-    expect(() => vectorModule.functions['moving-fn']!.evaluate([], undefined, undefined!)).toThrow('moving-fn is implemented in Dvala')
+describe('stub evaluate — vector module (movingFn, runningFn)', () => {
+  it('movingFn evaluate throws', () => {
+    expect(() => vectorModule.functions['movingFn']!.evaluate([], undefined, undefined!)).toThrow('movingFn is implemented in Dvala')
   })
-  it('running-fn evaluate throws', () => {
-    expect(() => vectorModule.functions['running-fn']!.evaluate([], undefined, undefined!)).toThrow('running-fn is implemented in Dvala')
+  it('runningFn evaluate throws', () => {
+    expect(() => vectorModule.functions['runningFn']!.evaluate([], undefined, undefined!)).toThrow('runningFn is implemented in Dvala')
   })
 })
 
@@ -2303,20 +2303,20 @@ describe('stub evaluate — modules/sequence/index.ts', () => {
   it('position evaluate throws', () => {
     expect(() => fns.position!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('sort-by evaluate throws', () => {
-    expect(() => fns['sort-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('sortBy evaluate throws', () => {
+    expect(() => fns['sortBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('remove evaluate throws', () => {
     expect(() => fns.remove!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('split-with evaluate throws', () => {
-    expect(() => fns['split-with']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('splitWith evaluate throws', () => {
+    expect(() => fns['splitWith']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('group-by evaluate throws', () => {
-    expect(() => fns['group-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('groupBy evaluate throws', () => {
+    expect(() => fns['groupBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('partition-by evaluate throws', () => {
-    expect(() => fns['partition-by']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('partitionBy evaluate throws', () => {
+    expect(() => fns['partitionBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2325,8 +2325,8 @@ describe('stub evaluate — modules/collection/index.ts', () => {
   it('update evaluate throws', () => {
     expect(() => fns.update!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('update-in evaluate throws', () => {
-    expect(() => fns['update-in']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('updateIn evaluate throws', () => {
+    expect(() => fns['updateIn']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('filteri evaluate throws', () => {
     expect(() => fns.filteri!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
@@ -2337,11 +2337,11 @@ describe('stub evaluate — modules/collection/index.ts', () => {
   it('reducei evaluate throws', () => {
     expect(() => fns.reducei!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('reduce-right evaluate throws', () => {
-    expect(() => fns['reduce-right']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('reduceRight evaluate throws', () => {
+    expect(() => fns['reduceRight']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('reducei-right evaluate throws', () => {
-    expect(() => fns['reducei-right']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('reduceiRight evaluate throws', () => {
+    expect(() => fns['reduceiRight']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reductions evaluate throws', () => {
     expect(() => fns.reductions!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
@@ -2349,17 +2349,17 @@ describe('stub evaluate — modules/collection/index.ts', () => {
   it('reductionsi evaluate throws', () => {
     expect(() => fns.reductionsi!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('every? evaluate throws', () => {
-    expect(() => fns['every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isEvery evaluate throws', () => {
+    expect(() => fns['isEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('any? evaluate throws', () => {
-    expect(() => fns['any?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isAny evaluate throws', () => {
+    expect(() => fns['isAny']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('not-any? evaluate throws', () => {
-    expect(() => fns['not-any?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('notAny evaluate throws', () => {
+    expect(() => fns['notAny']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('not-every? evaluate throws', () => {
-    expect(() => fns['not-every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('notEvery evaluate throws', () => {
+    expect(() => fns['notEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2369,38 +2369,38 @@ describe('stub evaluate — modules/collection/index.ts', () => {
 
 describe('stub evaluate — modules/grid/index.ts', () => {
   const fns = gridModule.functions
-  it('cell-every? evaluate throws', () => {
-    expect(() => fns['cell-every?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isCellEvery evaluate throws', () => {
+    expect(() => fns['isCellEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('some? evaluate throws', () => {
-    expect(() => fns['some?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isSome evaluate throws', () => {
+    expect(() => fns['isSome']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('every-row? evaluate throws', () => {
-    expect(() => fns['every-row?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isEveryRow evaluate throws', () => {
+    expect(() => fns['isEveryRow']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('some-row? evaluate throws', () => {
-    expect(() => fns['some-row?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isSomeRow evaluate throws', () => {
+    expect(() => fns['isSomeRow']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('every-col? evaluate throws', () => {
-    expect(() => fns['every-col?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isEveryCol evaluate throws', () => {
+    expect(() => fns['isEveryCol']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('some-col? evaluate throws', () => {
-    expect(() => fns['some-col?']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('isSomeCol evaluate throws', () => {
+    expect(() => fns['isSomeCol']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('generate evaluate throws', () => {
     expect(() => fns.generate!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('cell-map evaluate throws', () => {
-    expect(() => fns['cell-map']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('cellMap evaluate throws', () => {
+    expect(() => fns['cellMap']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('cell-mapi evaluate throws', () => {
-    expect(() => fns['cell-mapi']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('cellMapi evaluate throws', () => {
+    expect(() => fns['cellMapi']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('cell-reduce evaluate throws', () => {
-    expect(() => fns['cell-reduce']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('cellReduce evaluate throws', () => {
+    expect(() => fns['cellReduce']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
-  it('cell-reducei evaluate throws', () => {
-    expect(() => fns['cell-reducei']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+  it('cellReducei evaluate throws', () => {
+    expect(() => fns['cellReducei']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2817,8 +2817,8 @@ describe('trampoline.ts — evaluateNode export (line 3184)', () => {
 
 describe('trampoline.ts — module function with dvalaImpl (line 1316)', () => {
   it('should dispatch module function with dvalaImpl through trampoline', () => {
-    // Import module and call sort-by via module reference
-    const result = dvalaFull.run('let su = import(sequence); su.sort-by([3, 1, 2], identity)')
+    // Import module and call sortBy via module reference
+    const result = dvalaFull.run('let su = import(sequence); su.sortBy([3, 1, 2], identity)')
     expect(result).toEqual([1, 2, 3])
   })
 })

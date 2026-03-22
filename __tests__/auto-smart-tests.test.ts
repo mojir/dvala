@@ -147,7 +147,7 @@ const skipWrongTypeTests = new Set([
   'drop-while', // flexible input
   'reverse', // flexible input
   'index-of', // flexible input
-  'last-index-of', // flexible input
+  'lastIndexOf', // flexible input
   'first', // flexible input
   'second', // flexible input
   'last', // flexible input

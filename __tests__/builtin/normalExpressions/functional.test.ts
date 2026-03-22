@@ -121,23 +121,23 @@ let foo = comp(not, odd?);
       })
     })
 
-    describe('every-pred.', () => {
+    describe('everyPred.', () => {
       it('samples.', () => {
-        expect(dvala.run('let { every-pred } = import(functional); every-pred(string?, -> count($) > 3)("Albert")')).toBe(true)
-        expect(dvala.run('let { every-pred } = import(functional); every-pred(string?, -> count($) > 3)("Albert", "Mojir")')).toBe(true)
-        expect(dvala.run('let { every-pred } = import(functional); every-pred(string?, -> count($) > 3)("Albert", "L", "Mojir")')).toBe(false)
-        expect(dvala.run('let { every-pred } = import(functional); every-pred(string?, -> count($) > 3)("Albert", [1, 2, 3, 4])')).toBe(false)
-        expect(() => dvala.run('let { every-pred } = import(functional); every-pred()')).toThrow(DvalaError)
+        expect(dvala.run('let { everyPred } = import(functional); everyPred(string?, -> count($) > 3)("Albert")')).toBe(true)
+        expect(dvala.run('let { everyPred } = import(functional); everyPred(string?, -> count($) > 3)("Albert", "Mojir")')).toBe(true)
+        expect(dvala.run('let { everyPred } = import(functional); everyPred(string?, -> count($) > 3)("Albert", "L", "Mojir")')).toBe(false)
+        expect(dvala.run('let { everyPred } = import(functional); everyPred(string?, -> count($) > 3)("Albert", [1, 2, 3, 4])')).toBe(false)
+        expect(() => dvala.run('let { everyPred } = import(functional); everyPred()')).toThrow(DvalaError)
       })
     })
 
-    describe('some-pred.', () => {
+    describe('somePred.', () => {
       it('samples.', () => {
-        expect(dvala.run('let { some-pred } = import(functional); some-pred(string?, -> count($) > 3)("Albert", "M")')).toBe(true)
-        expect(dvala.run('let { some-pred } = import(functional); some-pred(string?, -> count($) > 3)("A", "M")')).toBe(true)
-        expect(dvala.run('let { some-pred } = import(functional); some-pred(string?, -> count($) > 3)([10, 20], [20, 10])')).toBe(false)
-        expect(dvala.run('let { some-pred } = import(functional); some-pred(string?, -> count($) > 3)("Albert", [10, 20])')).toBe(true)
-        expect(() => dvala.run('let { some-pred } = import(functional); some-pred()')).toThrow(DvalaError)
+        expect(dvala.run('let { somePred } = import(functional); somePred(string?, -> count($) > 3)("Albert", "M")')).toBe(true)
+        expect(dvala.run('let { somePred } = import(functional); somePred(string?, -> count($) > 3)("A", "M")')).toBe(true)
+        expect(dvala.run('let { somePred } = import(functional); somePred(string?, -> count($) > 3)([10, 20], [20, 10])')).toBe(false)
+        expect(dvala.run('let { somePred } = import(functional); somePred(string?, -> count($) > 3)("Albert", [10, 20])')).toBe(true)
+        expect(() => dvala.run('let { somePred } = import(functional); somePred()')).toThrow(DvalaError)
       })
     })
 

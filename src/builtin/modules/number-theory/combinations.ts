@@ -50,7 +50,7 @@ export const combinationsNormalExpressions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'count-combinations': {
+  'countCombinations': {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       assertNumber(k, sourceCodeInfo, { integer: true, nonNegative: true, lte: n })

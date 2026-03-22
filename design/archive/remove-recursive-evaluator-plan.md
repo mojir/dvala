@@ -374,7 +374,7 @@ Converted `tryMatch` callback-based API to frame-based using slot linearization.
 
 Phase 5 is complete. The recursive evaluator is only used by:
 - `executeUserDefinedRecursive` - called from `evaluateNormalExpressionRecursive` for Dvala-implemented functions
-- `executeFunctionRecursive` - compound function helpers (complement, comp, juxt, every-pred, some-pred, fnull, partial)
+- `executeFunctionRecursive` - compound function helpers (complement, comp, juxt, everyPred, somePred, fnull, partial)
 - `handlerMatchesEffect` - effect handler predicate function evaluation
 
 These paths are used when evaluating binding defaults via the old `evaluateBindingNodeValues` callback pattern. Since all binding sites now use frame-based slot processing, these recursive paths may be dead code.

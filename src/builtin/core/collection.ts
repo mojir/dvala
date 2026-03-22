@@ -89,7 +89,7 @@ filter(
       },
       variants: [{ argumentNames: ['colls', 'fun'] }],
       description: 'Creates a new collection populated with the results of calling $fun on every element in $colls.',
-      seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cell-map', 'grid.cell-mapi'],
+      seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cellMap', 'grid.cellMapi'],
       examples: [
         '[1, 2, 3] map -',
         '[1, 2, 3] map -> -($)',
@@ -114,7 +114,7 @@ filter(
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
       description: 'Runs $fun function on each element of the $coll, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value.',
-      seeAlso: ['collection.reduce-right', 'collection.reducei', 'collection.reductions', 'map', 'grid.cell-reduce', 'grid.cell-reducei'],
+      seeAlso: ['collection.reduceRight', 'collection.reducei', 'collection.reductions', 'map', 'grid.cellReduce', 'grid.cellReducei'],
       examples: [
         'reduce([1, 2, 3], +, 0)',
         'reduce([], +, 0)',
@@ -146,14 +146,14 @@ reduce(
       args: {
         'a': { type: 'collection' },
         'b': { type: ['string', 'integer'] },
-        'not-found': { type: 'any', description: 'Default value to return if $b is not found.' },
+        'notFound': { type: 'any', description: 'Default value to return if $b is not found.' },
       },
       variants: [
         { argumentNames: ['a', 'b'] },
-        { argumentNames: ['a', 'b', 'not-found'] },
+        { argumentNames: ['a', 'b', 'notFound'] },
       ],
       description: 'Returns value in $a mapped at $b.',
-      seeAlso: ['collection.get-in', 'contains?', 'find', 'nth'],
+      seeAlso: ['collection.getIn', 'contains?', 'find', 'nth'],
       examples: [
         '[1, 2, 3] get 1',
         '{ a: 1 } get "a"',
@@ -322,7 +322,7 @@ contains?(
       description: `
 Add or replace the value of element $key to $value in $coll. Repeated for all key-value pairs in $kvs.
 If $coll is an 'array', $key must be \`number\` satisfying \`0 <=\` $key \`<= length\`.`,
-      seeAlso: ['collection.assoc-in', 'dissoc', 'merge', 'collection.update'],
+      seeAlso: ['collection.assocIn', 'dissoc', 'merge', 'collection.update'],
       examples: [
         `
 assoc(

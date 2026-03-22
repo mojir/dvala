@@ -153,7 +153,7 @@ function chineseRemainder(remainders: number[], moduli: number[]): number {
 }
 
 export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
-  'coprime?': {
+  'isCoprime': {
     evaluate: ([a, b], sourceCodeInfo): boolean => {
       assertNumber(a, sourceCodeInfo, { integer: true })
       assertNumber(b, sourceCodeInfo, { integer: true })
@@ -161,7 +161,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'divisible-by?': {
+  'isDivisibleBy': {
     evaluate: ([value, divisor], sourceCodeInfo): boolean => {
       assertNumber(value, sourceCodeInfo, { integer: true })
       assertNumber(divisor, sourceCodeInfo, { integer: true })
@@ -199,7 +199,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
   },
-  'amicable?': {
+  'isAmicable': {
     evaluate: ([a, b], sourceCodeInfo): boolean => {
       assertNumber(a, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(b, sourceCodeInfo, { integer: true, positive: true })
@@ -209,7 +209,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'euler-totient': {
+  'eulerTotient': {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       let result = n
@@ -266,7 +266,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'carmichael-lambda': {
+  'carmichaelLambda': {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       if (n === 1) {
@@ -304,7 +304,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'cartesian-product': {
+  'cartesianProduct': {
     evaluate: (params, sourceCodeInfo): Arr[] => {
       params.forEach(set => {
         assertArray(set, sourceCodeInfo)
@@ -322,7 +322,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1 },
   },
-  'perfect-power': {
+  'perfectPower': {
     evaluate: ([n], sourceCodeInfo): [number, number] | null => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       const result = perfectPower(n)
@@ -330,7 +330,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'mod-exp': {
+  'modExp': {
     evaluate: ([base, exponent, modulus], sourceCodeInfo): number => {
       assertNumber(base, sourceCodeInfo, { finite: true })
       assertNumber(exponent, sourceCodeInfo, { integer: true, positive: true })
@@ -340,7 +340,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(3),
   },
-  'mod-inv': {
+  'modInv': {
     evaluate: ([a, m], sourceCodeInfo): number => {
       assertNumber(a, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(m, sourceCodeInfo, { integer: true, positive: true })
@@ -353,7 +353,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'extended-gcd': {
+  'extendedGcd': {
     evaluate: ([a, b], sourceCodeInfo): [number, number, number] => {
       assertNumber(a, sourceCodeInfo, { integer: true })
       assertNumber(b, sourceCodeInfo, { integer: true })
@@ -362,7 +362,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'chinese-remainder': {
+  'chineseRemainder': {
     evaluate: ([remainders, moduli], sourceCodeInfo): number => {
       assertVector(remainders, sourceCodeInfo)
       assertVector(moduli, sourceCodeInfo)
@@ -377,7 +377,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'stirling-first': {
+  'stirlingFirst': {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(k, sourceCodeInfo, { integer: true, positive: true, lte: n })
@@ -399,7 +399,7 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'stirling-second': {
+  'stirlingSecond': {
     evaluate: ([n, k], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(k, sourceCodeInfo, { integer: true, positive: true, lte: n })

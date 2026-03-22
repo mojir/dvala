@@ -650,7 +650,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['vector'] },
       ],
       description: 'Returns the smallest value. Accepts either multiple numbers or a single vector of numbers.',
-      seeAlso: ['max', 'vector.span', 'vector.min-index'],
+      seeAlso: ['max', 'vector.span', 'vector.minIndex'],
       examples: [
         '2 min 3',
         'min(2, 0, 1)',
@@ -689,7 +689,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['vector'] },
       ],
       description: 'Returns the largest value. Accepts either multiple numbers or a single vector of numbers.',
-      seeAlso: ['min', 'vector.span', 'vector.max-index'],
+      seeAlso: ['min', 'vector.span', 'vector.maxIndex'],
       examples: [
         '2 max 3',
         'max(2, 0, 1)',

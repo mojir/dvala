@@ -819,7 +819,7 @@ creating an alternate execution timeline.
 
 ## Higher-Order Built-ins — Deferred Decision
 
-Built-ins like `map`, `filter`, `reduce`, `apply`, `sort-by` call Dvala functions internally.
+Built-ins like `map`, `filter`, `reduce`, `apply`, `sortBy` call Dvala functions internally.
 
 **For async effects (Phases 3–4)**: These work without changes if they await each function
 call result. The `MaybePromise` pattern already handles this.

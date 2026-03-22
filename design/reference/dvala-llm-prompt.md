@@ -503,8 +503,8 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 
 | Function | Description |
 |----------|-------------|
-| `json-parse(s)` | Parse JSON string |
-| `json-stringify(x, indent?)` | Serialize to JSON string |
+| `jsonParse(s)` | Parse JSON string |
+| `jsonStringify(x, indent?)` | Serialize to JSON string |
 | `epoch->iso-date(ms)` | Milliseconds to ISO date string |
 | `iso-date->epoch(s)` | ISO date string to milliseconds |
 | `import(path)` | Import module or function (see Modules) |
@@ -546,29 +546,29 @@ sin(PI)
 
 ### Available Modules
 
-**math**: `sin`, `asin`, `sinh`, `asinh`, `cos`, `acos`, `cosh`, `acosh`, `tan`, `atan`, `tanh`, `atanh`, `ln`, `log2`, `log10`, `to-rad`, `to-deg`
+**math**: `sin`, `asin`, `sinh`, `asinh`, `cos`, `acos`, `cosh`, `acosh`, `tan`, `atan`, `tanh`, `atanh`, `ln`, `log2`, `log10`, `toRad`, `toDeg`
 
-**vector**: `moving-fn`, `running-fn`, `monotonic?`, `strictly-monotonic?`, `increasing?`, `decreasing?`, `strictly-increasing?`, `strictly-decreasing?`, `mode`, `min-index`, `max-index`, `sort-indices`, `count-values`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `outliers?`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
+**vector**: `movingFn`, `runningFn`, `isMonotonic`, `isStrictlyMonotonic`, `isIncreasing`, `isDecreasing`, `isStrictlyIncreasing`, `isStrictlyDecreasing`, `mode`, `minIndex`, `maxIndex`, `sortIndices`, `countValues`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `isOutliers`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
 
-**sequence**: `mapcat`, `position`, `last-index-of`, `shift`, `splice`, `sort-by`, `take`, `take-last`, `take-while`, `drop`, `drop-last`, `drop-while`, `unshift`, `distinct`, `remove`, `remove-at`, `split-at`, `split-with`, `frequencies`, `group-by`, `partition`, `partition-all`, `partition-by`, `ends-with?`, `starts-with?`, `interleave`, `interpose`
+**sequence**: `mapcat`, `position`, `lastIndexOf`, `shift`, `splice`, `sortBy`, `take`, `take-last`, `take-while`, `drop`, `drop-last`, `drop-while`, `unshift`, `distinct`, `remove`, `removeAt`, `splitAt`, `splitWith`, `frequencies`, `groupBy`, `partition`, `partitionAll`, `partitionBy`, `isEndsWith`, `isStartsWith`, `interleave`, `interpose`
 
-**collection**: `get-in`, `assoc-in`, `update`, `update-in`, `filteri`, `mapi`, `reducei`, `reduce-right`, `reducei-right`, `reductions`, `reductionsi`, `not-empty`, `every?`, `any?`, `not-any?`, `not-every?`
+**collection**: `getIn`, `assocIn`, `update`, `updateIn`, `filteri`, `mapi`, `reducei`, `reduceRight`, `reduceiRight`, `reductions`, `reductionsi`, `notEmpty`, `isEvery`, `isAny`, `notAny`, `notEvery`
 
-**functional**: `juxt`, `complement`, `every-pred`, `some-pred`, `fnull`
+**functional**: `juxt`, `complement`, `everyPred`, `somePred`, `fnull`
 
-**string**: `string-repeat`, `from-char-code`, `to-char-code`, `trim-left`, `trim-right`, `split-lines`, `pad-left`, `pad-right`, `template`, `encode-base64`, `decode-base64`, `encode-uri-component`, `decode-uri-component`, `capitalize`
+**string**: `stringRepeat`, `fromCharCode`, `toCharCode`, `trimLeft`, `trimRight`, `splitLines`, `padLeft`, `padRight`, `template`, `encodeBase64`, `decodeBase64`, `encodeUriComponent`, `decodeUriComponent`, `capitalize`
 
-**bitwise**: `bit-not`, `bit-and-not`, `bit-flip`, `bit-set`, `bit-clear`, `bit-test`
+**bitwise**: `bitNot`, `bitAndNot`, `bitFlip`, `bitSet`, `bitClear`, `bitTest`
 
-**grid**: `every?`, `some?`, `every-row?`, `some-row?`, `every-col?`, `some-col?`, `row`, `col`, `shape`, `fill`, `generate`, `reshape`, `transpose`, `flip-h`, `flip-v`, `rotate`, `reverse-rows`, `reverse-cols`, `slice`, `slice-rows`, `slice-cols`, `splice-rows`, `splice-cols`, `concat-rows`, `concat-cols`, `map`, `mapi`, `reduce`, `reducei`, `push-rows`, `unshift-rows`, `pop-row`, `shift-row`, `push-cols`, `unshift-cols`, `pop-col`, `shift-col`, `from-array`
+**grid**: `isEvery`, `isSome`, `isEveryRow`, `isSomeRow`, `isEveryCol`, `isSomeCol`, `row`, `col`, `shape`, `fill`, `generate`, `reshape`, `transpose`, `flipH`, `flipV`, `rotate`, `reverse-rows`, `reverse-cols`, `slice`, `sliceRows`, `sliceCols`, `spliceRows`, `spliceCols`, `concatRows`, `concatCols`, `map`, `mapi`, `reduce`, `reducei`, `pushRows`, `unshiftRows`, `popRow`, `shiftRow`, `pushCols`, `unshiftCols`, `popCol`, `shiftCol`, `fromArray`
 
-**matrix**: `mul`, `det`, `inv`, `adj`, `cofactor`, `minor`, `trace`, `symmetric?`, `triangular?`, `upper-triangular?`, `lower-triangular?`, `diagonal?`, `square?`, `orthogonal?`, `identity?`, `invertible?`, `hilbert`, `vandermonde`, `band`, `banded?`, `rank`, `frobenius-norm`, `one-norm`, `inf-norm`, `max-norm`
+**matrix**: `mul`, `det`, `inv`, `adj`, `cofactor`, `minor`, `trace`, `isSymmetric`, `isTriangular`, `isUpperTriangular`, `isLowerTriangular`, `isDiagonal`, `isSquare`, `isOrthogonal`, `isIdentity`, `isInvertible`, `hilbert`, `vandermonde`, `band`, `isBanded`, `rank`, `frobeniusNorm`, `oneNorm`, `infNorm`, `maxNorm`
 
-**linear-algebra**: `rotate2d`, `rotate3d`, `reflect`, `refract`, `lerp`, `dot`, `cross`, `normalize-minmax`, `normalize-robust`, `normalize-zscore`, `normalize-l1`, `normalize-l2`, `normalize-log`, `angle`, `projection`, `orthogonal?`, `parallel?`, `collinear?`, `cosine-similarity`, `euclidean-distance`, `euclidean-norm`, `manhattan-distance`, `manhattan-norm`, `hamming-distance`, `hamming-norm`, `chebyshev-distance`, `chebyshev-norm`, `minkowski-distance`, `minkowski-norm`, `cov`, `corr`, `spearman-corr`, `pearson-corr`, `kendall-tau`, `autocorrelation`, `cross-correlation`, `rref`, `solve`, `to-polar`, `from-polar`
+**linear-algebra**: `rotate2d`, `rotate3d`, `reflect`, `refract`, `lerp`, `dot`, `cross`, `normalizeMinmax`, `normalizeRobust`, `normalizeZscore`, `normalizeL1`, `normalizeL2`, `normalizeLog`, `angle`, `projection`, `isOrthogonal`, `isParallel`, `isCollinear`, `cosineSimilarity`, `euclideanDistance`, `euclideanNorm`, `manhattanDistance`, `manhattanNorm`, `hammingDistance`, `hammingNorm`, `chebyshevDistance`, `chebyshevNorm`, `minkowskiDistance`, `minkowskiNorm`, `cov`, `corr`, `spearmanCorr`, `pearsonCorr`, `kendallTau`, `autocorrelation`, `crossCorrelation`, `rref`, `solve`, `toPolar`, `fromPolar`
 
-**number-theory**: `coprime?`, `divisible-by?`, `gcd`, `lcm`, `multinomial`, `amicable?`, `euler-totient`, `mobius`, `mertens`, `sigma`, `carmichael-lambda`, `cartesian-product`, `perfect-power`, `mod-exp`, `mod-inv`, `extended-gcd`, `chinese-remainder`, `stirling-first`, `stirling-second`
+**number-theory**: `isCoprime`, `isDivisibleBy`, `gcd`, `lcm`, `multinomial`, `isAmicable`, `eulerTotient`, `mobius`, `mertens`, `sigma`, `carmichaelLambda`, `cartesianProduct`, `perfectPower`, `modExp`, `modInv`, `extendedGcd`, `chineseRemainder`, `stirlingFirst`, `stirlingSecond`
 
-**assertion**: `assert=`, `assert!=`, `assert-gt`, `assert-gte`, `assert-lt`, `assert-lte`, `assert-true`, `assert-false`, `assert-truthy`, `assert-falsy`, `assert-null`, `assert-throws`, `assert-throws-error`, `assert-not-throws`, `assert-array`, `assert-boolean`, `assert-collection`, `assert-function`, `assert-grid`, `assert-integer`, `assert-matrix`, `assert-number`, `assert-object`, `assert-regexp`, `assert-sequence`, `assert-string`, `assert-vector`
+**assertion**: `assert=`, `assert!=`, `assertGt`, `assertGte`, `assertLt`, `assertLte`, `assertTrue`, `assertFalse`, `assertTruthy`, `assertFalsy`, `assertNull`, `assert-throws`, `assert-throws-error`, `assert-not-throws`, `assertArray`, `assertBoolean`, `assertCollection`, `assertFunction`, `assertGrid`, `assertInteger`, `assertMatrix`, `assertNumber`, `assertObject`, `assertRegexp`, `assertSequence`, `assertString`, `assertVector`
 
 ---
 

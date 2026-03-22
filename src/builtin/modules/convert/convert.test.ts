@@ -141,7 +141,7 @@ describe('convert module', () => {
     })
 
     it('should convert fluid ounces to milliliters', () => {
-      expect(runConvert('convert:fl-oz->ml(1)')).toBeCloseTo(29.5735, 3)
+      expect(runConvert('convert:flOz->ml(1)')).toBeCloseTo(29.5735, 3)
     })
 
     it('should convert tablespoons to teaspoons', () => {

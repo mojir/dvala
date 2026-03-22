@@ -52,7 +52,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { det } = import(matrix);\ndet([[1, 2], [3, 4]])',
       'let { det } = import(matrix);\ndet([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.inv', 'matrix.cofactor', 'matrix.adj', 'matrix.trace', 'matrix.rank', 'matrix.invertible?', 'matrix.mul', 'matrix.minor'],
+    seeAlso: ['matrix.inv', 'matrix.cofactor', 'matrix.adj', 'matrix.trace', 'matrix.rank', 'matrix.isInvertible', 'matrix.mul', 'matrix.minor'],
   },
   'inv': {
     category: 'matrix',
@@ -77,7 +77,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { inv } = import(matrix);\ninv([[1, 2], [3, 4]])',
       'let { inv } = import(matrix);\ninv([[1, 2, 3], [4, 5, 7], [7, 8, 10]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.adj', 'matrix.invertible?', 'linear-algebra.solve', 'matrix.mul', 'matrix.orthogonal-matrix?'],
+    seeAlso: ['matrix.det', 'matrix.adj', 'matrix.isInvertible', 'linear-algebra.solve', 'matrix.mul', 'matrix.isOrthogonalMatrix'],
   },
   'adj': {
     category: 'matrix',
@@ -189,9 +189,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { trace } = import(matrix);\ntrace([[1, 2], [3, 4]])',
       'let { trace } = import(matrix);\ntrace([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.diagonal?'],
+    seeAlso: ['matrix.det', 'matrix.isDiagonal'],
   },
-  'symmetric?': {
+  'isSymmetric': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **symmetric**.',
     returns: {
@@ -211,12 +211,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { symmetric? } = import(matrix);\nsymmetric?([[1, 2], [2, 1]])',
-      'let { symmetric? } = import(matrix);\nsymmetric?([[1, 2, 3], [2, 1, 4], [3, 4, 1]])',
+      'let { isSymmetric } = import(matrix);\nisSymmetric([[1, 2], [2, 1]])',
+      'let { isSymmetric } = import(matrix);\nisSymmetric([[1, 2, 3], [2, 1, 4], [3, 4, 1]])',
     ],
-    seeAlso: ['matrix.orthogonal-matrix?', 'matrix.diagonal?', 'matrix.square?', 'matrix.hilbert'],
+    seeAlso: ['matrix.isOrthogonalMatrix', 'matrix.isDiagonal', 'matrix.isSquare', 'matrix.hilbert'],
   },
-  'triangular?': {
+  'isTriangular': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **triangular**.',
     returns: {
@@ -236,12 +236,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { triangular? } = import(matrix);\ntriangular?([[2, 0], [0, 1]])',
-      'let { triangular? } = import(matrix);\ntriangular?([[1, 2, 3], [0, 4, 5], [0, 0, 6]])',
+      'let { isTriangular } = import(matrix);\nisTriangular([[2, 0], [0, 1]])',
+      'let { isTriangular } = import(matrix);\nisTriangular([[1, 2, 3], [0, 4, 5], [0, 0, 6]])',
     ],
-    seeAlso: ['matrix.upper-triangular?', 'matrix.lower-triangular?', 'matrix.diagonal?', 'matrix.banded?'],
+    seeAlso: ['matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.isDiagonal', 'matrix.isBanded'],
   },
-  'upper-triangular?': {
+  'isUpperTriangular': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **upper triangular**.',
     returns: {
@@ -261,12 +261,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { upper-triangular? } = import(matrix);\nupper-triangular?([[1, 2], [0, 3]])',
-      'let { upper-triangular? } = import(matrix);\nupper-triangular?([[1, 2, 3], [0, 4, 5], [0, 0, 6]])',
+      'let { isUpperTriangular } = import(matrix);\nisUpperTriangular([[1, 2], [0, 3]])',
+      'let { isUpperTriangular } = import(matrix);\nisUpperTriangular([[1, 2, 3], [0, 4, 5], [0, 0, 6]])',
     ],
-    seeAlso: ['matrix.lower-triangular?', 'matrix.triangular?', 'matrix.diagonal?'],
+    seeAlso: ['matrix.isLowerTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
-  'lower-triangular?': {
+  'isLowerTriangular': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **lower triangular**.',
     returns: {
@@ -286,12 +286,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { lower-triangular? } = import(matrix);\nlower-triangular?([[1, 0], [2, 3]])',
-      'let { lower-triangular? } = import(matrix);\nlower-triangular?([[1, 0, 0], [2, 3, 0], [4, 5, 6]])',
+      'let { isLowerTriangular } = import(matrix);\nisLowerTriangular([[1, 0], [2, 3]])',
+      'let { isLowerTriangular } = import(matrix);\nisLowerTriangular([[1, 0, 0], [2, 3, 0], [4, 5, 6]])',
     ],
-    seeAlso: ['matrix.upper-triangular?', 'matrix.triangular?', 'matrix.diagonal?'],
+    seeAlso: ['matrix.isUpperTriangular', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
-  'diagonal?': {
+  'isDiagonal': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **diagonal**.',
     returns: {
@@ -311,13 +311,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { diagonal? } = import(matrix);\ndiagonal?([[1, 0], [0, 2]])',
-      'let { diagonal? } = import(matrix);\ndiagonal?([[1, 0, 0], [0, 2, 0], [0, 0, 3]])',
-      'let { diagonal? } = import(matrix);\ndiagonal?([[1, 0, 0], [2, 2, 2], [0, 0, 3]])',
+      'let { isDiagonal } = import(matrix);\nisDiagonal([[1, 0], [0, 2]])',
+      'let { isDiagonal } = import(matrix);\nisDiagonal([[1, 0, 0], [0, 2, 0], [0, 0, 3]])',
+      'let { isDiagonal } = import(matrix);\nisDiagonal([[1, 0, 0], [2, 2, 2], [0, 0, 3]])',
     ],
-    seeAlso: ['matrix.identity?', 'matrix.symmetric?', 'matrix.triangular?', 'matrix.trace', 'matrix.upper-triangular?', 'matrix.lower-triangular?', 'matrix.band', 'matrix.banded?'],
+    seeAlso: ['matrix.isIdentity', 'matrix.isSymmetric', 'matrix.isTriangular', 'matrix.trace', 'matrix.isUpperTriangular', 'matrix.isLowerTriangular', 'matrix.band', 'matrix.isBanded'],
   },
-  'square?': {
+  'isSquare': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **square**.',
     returns: {
@@ -337,13 +337,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { square? } = import(matrix);\nsquare?([[1, 2], [3, 4]])',
-      'let { square? } = import(matrix);\nsquare?([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
-      'let { square? } = import(matrix);\nsquare?([[1, 2, 3], [4, 5, 6]])',
+      'let { isSquare } = import(matrix);\nisSquare([[1, 2], [3, 4]])',
+      'let { isSquare } = import(matrix);\nisSquare([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { isSquare } = import(matrix);\nisSquare([[1, 2, 3], [4, 5, 6]])',
     ],
-    seeAlso: ['matrix.symmetric?', 'matrix.identity?', 'matrix.invertible?'],
+    seeAlso: ['matrix.isSymmetric', 'matrix.isIdentity', 'matrix.isInvertible'],
   },
-  'orthogonal-matrix?': {
+  'isOrthogonalMatrix': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **orthogonal**.',
     returns: {
@@ -363,13 +363,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { orthogonal-matrix? } = import(matrix);\northogonal-matrix?([[1, 0], [0, 1]])',
-      'let { orthogonal-matrix? } = import(matrix);\northogonal-matrix?([[1, 0], [0, -1]])',
-      'let { orthogonal-matrix? } = import(matrix);\northogonal-matrix?([[1, 2], [3, 4]])',
+      'let { isOrthogonalMatrix } = import(matrix);\nisOrthogonalMatrix([[1, 0], [0, 1]])',
+      'let { isOrthogonalMatrix } = import(matrix);\nisOrthogonalMatrix([[1, 0], [0, -1]])',
+      'let { isOrthogonalMatrix } = import(matrix);\nisOrthogonalMatrix([[1, 2], [3, 4]])',
     ],
-    seeAlso: ['matrix.symmetric?', 'matrix.inv', 'matrix.identity?', 'linear-algebra.orthogonal?'],
+    seeAlso: ['matrix.isSymmetric', 'matrix.inv', 'matrix.isIdentity', 'linear-algebra.isOrthogonal'],
   },
-  'identity?': {
+  'isIdentity': {
     category: 'matrix',
     description: 'Checks if a `matrix` is an **identity matrix**.',
     returns: {
@@ -389,13 +389,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { identity? } = import(matrix);\nidentity?([[1, 0], [0, 1]])',
-      'let { identity? } = import(matrix);\nidentity?([[1, 0, 0], [0, 1, 0], [0, 0, 1]])',
-      'let { identity? } = import(matrix);\nidentity?([[1, 0, 0], [0, 1, 0], [0, 0, 0]])',
+      'let { isIdentity } = import(matrix);\nisIdentity([[1, 0], [0, 1]])',
+      'let { isIdentity } = import(matrix);\nisIdentity([[1, 0, 0], [0, 1, 0], [0, 0, 1]])',
+      'let { isIdentity } = import(matrix);\nisIdentity([[1, 0, 0], [0, 1, 0], [0, 0, 0]])',
     ],
-    seeAlso: ['matrix.diagonal?', 'matrix.square?', 'matrix.orthogonal-matrix?'],
+    seeAlso: ['matrix.isDiagonal', 'matrix.isSquare', 'matrix.isOrthogonalMatrix'],
   },
-  'invertible?': {
+  'isInvertible': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **invertible**.',
     returns: {
@@ -415,11 +415,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { invertible? } = import(matrix);\ninvertible?([[1, 2], [3, 4]])',
-      'let { invertible? } = import(matrix);\ninvertible?([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
-      'let { invertible? } = import(matrix);\ninvertible?([[1, 2], [2, 4]])',
+      'let { isInvertible } = import(matrix);\nisInvertible([[1, 2], [3, 4]])',
+      'let { isInvertible } = import(matrix);\nisInvertible([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { isInvertible } = import(matrix);\nisInvertible([[1, 2], [2, 4]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.inv', 'matrix.rank', 'matrix.square?'],
+    seeAlso: ['matrix.det', 'matrix.inv', 'matrix.rank', 'matrix.isSquare'],
   },
   'hilbert': {
     category: 'matrix',
@@ -444,7 +444,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { hilbert } = import(matrix);\nhilbert(3)',
       'let { hilbert } = import(matrix);\nhilbert(4)',
     ],
-    seeAlso: ['matrix.vandermonde', 'matrix.symmetric?'],
+    seeAlso: ['matrix.vandermonde', 'matrix.isSymmetric'],
   },
   'vandermonde': {
     category: 'matrix',
@@ -504,9 +504,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { band } = import(matrix);\nband(3, 1, 1)',
       'let { band } = import(matrix);\nband(4, 1, 2)',
     ],
-    seeAlso: ['matrix.banded?', 'matrix.diagonal?', 'matrix.vandermonde'],
+    seeAlso: ['matrix.isBanded', 'matrix.isDiagonal', 'matrix.vandermonde'],
   },
-  'banded?': {
+  'isBanded': {
     category: 'matrix',
     description: 'Checks if a `matrix` is **banded** with lower band index `lband` and upper band index `uband`.',
     returns: {
@@ -536,10 +536,10 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { banded? } = import(matrix);\nbanded?([\n  [1, 1, 1, 0],\n  [1, 1, 1, 1],\n  [1, 1, 1, 1],\n  [0, 1, 1, 1],\n], 2, 2)',
-      'let { banded? } = import(matrix);\nbanded?([\n  [1, 1, 1, 0],\n  [1, 1, 1, 1],\n  [1, 1, 1, 1],\n  [0, 1, 1, 1],\n], 1, 1)',
+      'let { isBanded } = import(matrix);\nisBanded([\n  [1, 1, 1, 0],\n  [1, 1, 1, 1],\n  [1, 1, 1, 1],\n  [0, 1, 1, 1],\n], 2, 2)',
+      'let { isBanded } = import(matrix);\nisBanded([\n  [1, 1, 1, 0],\n  [1, 1, 1, 1],\n  [1, 1, 1, 1],\n  [0, 1, 1, 1],\n], 1, 1)',
     ],
-    seeAlso: ['matrix.band', 'matrix.triangular?', 'matrix.diagonal?'],
+    seeAlso: ['matrix.band', 'matrix.isTriangular', 'matrix.isDiagonal'],
   },
   'rank': {
     category: 'matrix',
@@ -565,9 +565,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { rank } = import(matrix);\nrank([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
       'let { rank } = import(matrix);\nrank([[2, 4, 6], [3, 6, 9], [4, 8, 12]])',
     ],
-    seeAlso: ['matrix.det', 'matrix.invertible?', 'linear-algebra.rref'],
+    seeAlso: ['matrix.det', 'matrix.isInvertible', 'linear-algebra.rref'],
   },
-  'frobenius-norm': {
+  'frobeniusNorm': {
     category: 'matrix',
     description: 'Calculates the **Frobenius norm** of a matrix.',
     returns: {
@@ -587,21 +587,21 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { frobenius-norm } = import(matrix);\nfrobenius-norm([[1, 2], [3, 4]])',
-      'let { frobenius-norm } = import(matrix);\nfrobenius-norm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { frobeniusNorm } = import(matrix);\nfrobeniusNorm([[1, 2], [3, 4]])',
+      'let { frobeniusNorm } = import(matrix);\nfrobeniusNorm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.one-norm', 'matrix.inf-norm', 'matrix.max-norm'],
+    seeAlso: ['matrix.oneNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
-  'one-norm': {
+  'oneNorm': {
     category: 'matrix',
-    description: 'Calculates the **one-norm** (column norm) of a matrix.',
+    description: 'Calculates the **oneNorm** (column norm) of a matrix.',
     returns: {
       type: 'number',
     },
     args: {
       m: {
         type: 'matrix',
-        description: 'The `matrix` to calculate the one-norm of.',
+        description: 'The `matrix` to calculate the oneNorm of.',
       },
     },
     variants: [
@@ -612,12 +612,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { one-norm } = import(matrix);\none-norm([[1, 2], [3, 4]])',
-      'let { one-norm } = import(matrix);\none-norm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { oneNorm } = import(matrix);\noneNorm([[1, 2], [3, 4]])',
+      'let { oneNorm } = import(matrix);\noneNorm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.frobenius-norm', 'matrix.inf-norm', 'matrix.max-norm'],
+    seeAlso: ['matrix.frobeniusNorm', 'matrix.infNorm', 'matrix.maxNorm'],
   },
-  'inf-norm': {
+  'infNorm': {
     category: 'matrix',
     description: 'Calculates the **infinity norm** of a matrix.',
     returns: {
@@ -637,12 +637,12 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { inf-norm } = import(matrix);\ninf-norm([[1, 2], [3, 4]])',
-      'let { inf-norm } = import(matrix);\ninf-norm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { infNorm } = import(matrix);\ninfNorm([[1, 2], [3, 4]])',
+      'let { infNorm } = import(matrix);\ninfNorm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.frobenius-norm', 'matrix.one-norm', 'matrix.max-norm'],
+    seeAlso: ['matrix.frobeniusNorm', 'matrix.oneNorm', 'matrix.maxNorm'],
   },
-  'max-norm': {
+  'maxNorm': {
     category: 'matrix',
     description: 'Calculates the **max norm** of a matrix.',
     returns: {
@@ -662,9 +662,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { max-norm } = import(matrix);\nmax-norm([[1, 2], [3, 4]])',
-      'let { max-norm } = import(matrix);\nmax-norm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
+      'let { maxNorm } = import(matrix);\nmaxNorm([[1, 2], [3, 4]])',
+      'let { maxNorm } = import(matrix);\nmaxNorm([[1, 2, 3], [4, 5, 6], [7, 8, 9]])',
     ],
-    seeAlso: ['matrix.frobenius-norm', 'matrix.one-norm', 'matrix.inf-norm'],
+    seeAlso: ['matrix.frobeniusNorm', 'matrix.oneNorm', 'matrix.infNorm'],
   },
 }

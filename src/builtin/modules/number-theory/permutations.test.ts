@@ -30,14 +30,14 @@ describe('permutations', () => {
       ])
     })
   })
-  describe('nth:count-permutations', () => {
+  describe('nth:countPermutations', () => {
     it('should return the number of permutations from n, k', () => {
-      expect(runNth('nth:count-permutations(2, 2)')).toEqual(2)
-      expect(runNth('nth:count-permutations(3, 2)')).toEqual(6)
-      expect(runNth('nth:count-permutations(4, 2)')).toEqual(12)
-      expect(runNth('nth:count-permutations(5, 3)')).toEqual(60)
-      expect(runNth('nth:count-permutations(6, 4)')).toEqual(360)
-      expect(runNth('nth:count-permutations(7, 5)')).toEqual(2520)
+      expect(runNth('nth:countPermutations(2, 2)')).toEqual(2)
+      expect(runNth('nth:countPermutations(3, 2)')).toEqual(6)
+      expect(runNth('nth:countPermutations(4, 2)')).toEqual(12)
+      expect(runNth('nth:countPermutations(5, 3)')).toEqual(60)
+      expect(runNth('nth:countPermutations(6, 4)')).toEqual(360)
+      expect(runNth('nth:countPermutations(7, 5)')).toEqual(2520)
     })
   })
 })

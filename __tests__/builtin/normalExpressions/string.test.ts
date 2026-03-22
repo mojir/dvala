@@ -96,68 +96,68 @@ describe('string functions', () => {
 describe('string-Utils module functions', () => {
   const imp = 'let su = import(string); '
   for (const dvala of [createDvala({ modules: [stringUtilsModule] }), createDvala({ modules: [stringUtilsModule], debug: true })]) {
-    describe('trim-left', () => {
+    describe('trimLeft', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.trim-left("  Albert!  ")`)).toBe('Albert!  ')
-        expect(dvala.run(`${imp}su.trim-left(" ")`)).toBe('')
-        expect(dvala.run(`${imp}su.trim-left("")`)).toBe('')
-        expect(() => dvala.run(`${imp}su.trim-left()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.trim-left("First", "Second")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.trimLeft("  Albert!  ")`)).toBe('Albert!  ')
+        expect(dvala.run(`${imp}su.trimLeft(" ")`)).toBe('')
+        expect(dvala.run(`${imp}su.trimLeft("")`)).toBe('')
+        expect(() => dvala.run(`${imp}su.trimLeft()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.trimLeft("First", "Second")`)).toThrow(DvalaError)
       })
     })
 
-    describe('trim-right', () => {
+    describe('trimRight', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.trim-right("  Albert!  ")`)).toBe('  Albert!')
-        expect(dvala.run(`${imp}su.trim-right(" ")`)).toBe('')
-        expect(dvala.run(`${imp}su.trim-right("")`)).toBe('')
-        expect(() => dvala.run(`${imp}su.trim-right()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.trim-right("First", "Second")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.trimRight("  Albert!  ")`)).toBe('  Albert!')
+        expect(dvala.run(`${imp}su.trimRight(" ")`)).toBe('')
+        expect(dvala.run(`${imp}su.trimRight("")`)).toBe('')
+        expect(() => dvala.run(`${imp}su.trimRight()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.trimRight("First", "Second")`)).toThrow(DvalaError)
       })
     })
 
-    describe('pad-left', () => {
+    describe('padLeft', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.pad-left("Albert", 10)`)).toBe('    Albert')
-        expect(dvala.run(`${imp}su.pad-left("Albert", 10, "*")`)).toBe('****Albert')
-        expect(dvala.run(`${imp}su.pad-left("Albert", 10, "123")`)).toBe('1231Albert')
-        expect(dvala.run(`${imp}su.pad-left("Albert", 5)`)).toBe('Albert')
-        expect(dvala.run(`${imp}su.pad-left("Albert", -1)`)).toBe('Albert')
-        expect(() => dvala.run(`${imp}su.pad-left()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.pad-left("First", "Second")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.padLeft("Albert", 10)`)).toBe('    Albert')
+        expect(dvala.run(`${imp}su.padLeft("Albert", 10, "*")`)).toBe('****Albert')
+        expect(dvala.run(`${imp}su.padLeft("Albert", 10, "123")`)).toBe('1231Albert')
+        expect(dvala.run(`${imp}su.padLeft("Albert", 5)`)).toBe('Albert')
+        expect(dvala.run(`${imp}su.padLeft("Albert", -1)`)).toBe('Albert')
+        expect(() => dvala.run(`${imp}su.padLeft()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.padLeft("First", "Second")`)).toThrow(DvalaError)
       })
     })
 
-    describe('pad-right', () => {
+    describe('padRight', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.pad-right("Albert", 10)`)).toBe('Albert    ')
-        expect(dvala.run(`${imp}su.pad-right("Albert", 10, "*")`)).toBe('Albert****')
-        expect(dvala.run(`${imp}su.pad-right("Albert", 10, "123")`)).toBe('Albert1231')
-        expect(dvala.run(`${imp}su.pad-right("Albert", 5)`)).toBe('Albert')
-        expect(dvala.run(`${imp}su.pad-right("Albert", -1)`)).toBe('Albert')
-        expect(() => dvala.run(`${imp}su.pad-right()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.pad-right("First", "Second")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.padRight("Albert", 10)`)).toBe('Albert    ')
+        expect(dvala.run(`${imp}su.padRight("Albert", 10, "*")`)).toBe('Albert****')
+        expect(dvala.run(`${imp}su.padRight("Albert", 10, "123")`)).toBe('Albert1231')
+        expect(dvala.run(`${imp}su.padRight("Albert", 5)`)).toBe('Albert')
+        expect(dvala.run(`${imp}su.padRight("Albert", -1)`)).toBe('Albert')
+        expect(() => dvala.run(`${imp}su.padRight()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.padRight("First", "Second")`)).toThrow(DvalaError)
       })
     })
 
-    describe('split-lines', () => {
+    describe('splitLines', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.split-lines("Albert\\nMojir")`)).toEqual(['Albert', 'Mojir'])
-        expect(dvala.run(`${imp}su.split-lines("Albert\\nMojir\\n")`)).toEqual(['Albert', 'Mojir'])
-        expect(dvala.run(`${imp}su.split-lines("\\n\\nAlbert\\n\\n\\nMojir\\n")`)).toEqual(['Albert', 'Mojir'])
+        expect(dvala.run(`${imp}su.splitLines("Albert\\nMojir")`)).toEqual(['Albert', 'Mojir'])
+        expect(dvala.run(`${imp}su.splitLines("Albert\\nMojir\\n")`)).toEqual(['Albert', 'Mojir'])
+        expect(dvala.run(`${imp}su.splitLines("\\n\\nAlbert\\n\\n\\nMojir\\n")`)).toEqual(['Albert', 'Mojir'])
       })
     })
 
-    describe('string-repeat', () => {
+    describe('stringRepeat', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.string-repeat("*", 10)`)).toBe('**********')
-        expect(dvala.run(`${imp}su.string-repeat("*", 0)`)).toBe('')
-        expect(dvala.run(`${imp}su.string-repeat("Hello, ", 3)`)).toBe('Hello, Hello, Hello, ')
-        expect(() => dvala.run(`${imp}su.string-repeat()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.string-repeat("Hello, ")`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.string-repeat("Hello, ", 3, 3)`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.string-repeat("Hello, ", "3")`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.string-repeat(true, 1)`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.stringRepeat("*", 10)`)).toBe('**********')
+        expect(dvala.run(`${imp}su.stringRepeat("*", 0)`)).toBe('')
+        expect(dvala.run(`${imp}su.stringRepeat("Hello, ", 3)`)).toBe('Hello, Hello, Hello, ')
+        expect(() => dvala.run(`${imp}su.stringRepeat()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.stringRepeat("Hello, ")`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.stringRepeat("Hello, ", 3, 3)`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.stringRepeat("Hello, ", "3")`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.stringRepeat(true, 1)`)).toThrow(DvalaError)
       })
     })
 
@@ -232,57 +232,57 @@ describe('string-Utils module functions', () => {
       })
     })
 
-    describe('to-char-code', () => {
+    describe('toCharCode', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.to-char-code("a")`)).toBe(97)
-        expect(dvala.run(`${imp}su.to-char-code("abc")`)).toBe(97)
-        expect(() => dvala.run(`${imp}su.to-char-code()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.to-char-code("A" "B")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.toCharCode("a")`)).toBe(97)
+        expect(dvala.run(`${imp}su.toCharCode("abc")`)).toBe(97)
+        expect(() => dvala.run(`${imp}su.toCharCode()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.toCharCode("A" "B")`)).toThrow(DvalaError)
       })
     })
 
-    describe('from-char-code', () => {
+    describe('fromCharCode', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.from-char-code(97)`)).toBe('a')
-        expect(() => dvala.run(`${imp}su.from-char-code(9700000)`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.from-char-code()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.from-char-code(65, 66)`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.fromCharCode(97)`)).toBe('a')
+        expect(() => dvala.run(`${imp}su.fromCharCode(9700000)`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.fromCharCode()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.fromCharCode(65, 66)`)).toThrow(DvalaError)
       })
     })
 
-    describe('encode-base64', () => {
+    describe('encodeBase64', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.encode-base64("Albert")`)).toBe('QWxiZXJ0')
-        expect(dvala.run(`${imp}su.encode-base64("Albert is a 🐻")`)).toBe('QWxiZXJ0IGlzIGEg8J+Quw==')
-        expect(() => dvala.run(`${imp}su.encode-base64()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.encode-base64("X" "Y")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.encodeBase64("Albert")`)).toBe('QWxiZXJ0')
+        expect(dvala.run(`${imp}su.encodeBase64("Albert is a 🐻")`)).toBe('QWxiZXJ0IGlzIGEg8J+Quw==')
+        expect(() => dvala.run(`${imp}su.encodeBase64()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.encodeBase64("X" "Y")`)).toThrow(DvalaError)
       })
     })
 
-    describe('decode-base64', () => {
+    describe('decodeBase64', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.decode-base64("QWxiZXJ0")`)).toBe('Albert')
-        expect(dvala.run(`${imp}su.decode-base64("QWxiZXJ0IGlzIGEg8J+Quw==")`)).toBe('Albert is a 🐻')
-        expect(() => dvala.run(`${imp}su.decode-base64("Illegal string ~")`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.decode-base64()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.decode-base64("X" "Y")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.decodeBase64("QWxiZXJ0")`)).toBe('Albert')
+        expect(dvala.run(`${imp}su.decodeBase64("QWxiZXJ0IGlzIGEg8J+Quw==")`)).toBe('Albert is a 🐻')
+        expect(() => dvala.run(`${imp}su.decodeBase64("Illegal string ~")`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.decodeBase64()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.decodeBase64("X" "Y")`)).toThrow(DvalaError)
       })
     })
 
-    describe('encode-uri-component', () => {
+    describe('encodeUriComponent', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.encode-uri-component("a string")`)).toBe('a%20string')
-        expect(() => dvala.run(`${imp}su.encode-uri-component()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.encode-uri-component("X" "Y")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.encodeUriComponent("a string")`)).toBe('a%20string')
+        expect(() => dvala.run(`${imp}su.encodeUriComponent()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.encodeUriComponent("X" "Y")`)).toThrow(DvalaError)
       })
     })
 
-    describe('decode-uri-component', () => {
+    describe('decodeUriComponent', () => {
       it('samples', () => {
-        expect(dvala.run(`${imp}su.decode-uri-component("a%20string")`)).toBe('a string')
-        expect(() => dvala.run(`${imp}su.decode-uri-component("a%AFc")`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.decode-uri-component()`)).toThrow(DvalaError)
-        expect(() => dvala.run(`${imp}su.decode-uri-component("X" "Y")`)).toThrow(DvalaError)
+        expect(dvala.run(`${imp}su.decodeUriComponent("a%20string")`)).toBe('a string')
+        expect(() => dvala.run(`${imp}su.decodeUriComponent("a%AFc")`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.decodeUriComponent()`)).toThrow(DvalaError)
+        expect(() => dvala.run(`${imp}su.decodeUriComponent("X" "Y")`)).toThrow(DvalaError)
       })
     })
 
