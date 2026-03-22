@@ -34,7 +34,7 @@ const docs: CustomDocs = {
   end
 end`,
   ],
-  seeAlso: ['perform', 'effect?'],
+  seeAlso: ['perform', 'isEffect'],
 }
 
 export const handleSpecialExpression: BuiltinSpecialExpression<Any, HandleNode> = {

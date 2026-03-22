@@ -3,7 +3,7 @@
 ## Syntax
 
 ```
-@effect-name(param) -> body
+@effectName(param) -> body
 ```
 
 ## Desugaring
@@ -23,7 +23,7 @@ becomes:
   end
 ```
 
-When effect name contains `*` (wildcard), use `effect-matcher` instead of `==`:
+When effect name contains `*` (wildcard), use `effectMatcher` instead of `==`:
 
 ```
 @dvala.*(param) -> body
@@ -33,7 +33,7 @@ becomes:
 
 ```
 (arg, eff, nxt) ->
-  if effect-matcher("dvala.*")(eff) then
+  if effectMatcher("dvala.*")(eff) then
     let param = arg;
     body
   else nxt(eff, arg)

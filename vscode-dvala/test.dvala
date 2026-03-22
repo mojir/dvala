@@ -2,8 +2,8 @@ let robotify = (input) -> do
   let words = split(input, " ");
 
   let stutter = (word) -> do
-    let c = upper-case(word[0]);
-    str(c, "-", c, "-", upper-case(word))
+    let c = upperCase(word[0]);
+    str(c, "-", c, "-", upperCase(word))
   end;
 
   let stuttered = map(words, stutter);

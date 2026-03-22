@@ -146,14 +146,14 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
 // Interactive async example
 // Uses dvala.io.read for user input and host.fetch-* for API calls
 
-let lookup-user! = (id-str) -> do
+let lookupUser! = (id-str) -> do
   let id = number(id-str);
-  if not(number?(id)) || id < 1 || id > 10 then
+  if not(isNumber(id)) || id < 1 || id > 10 then
     perform(@dvala.io.print, "Invalid user ID: " ++ id-str ++ ". Please enter 1-10.");
   else
     perform(@dvala.io.print, "Fetching user " ++ str(id) ++ "...");
     let user = perform(@host.fetch-user, id);
-    if null?(user) then
+    if isNull(user) then
       perform(@dvala.io.print, "User not found.");
     else
       perform(@dvala.io.print, "Name:    " ++ user.name);
@@ -165,7 +165,7 @@ let lookup-user! = (id-str) -> do
   end
 end;
 
-let show-todos! = (user) -> do
+let showTodos! = (user) -> do
   perform(@dvala.io.print, "\\nFetching todos for " ++ user.name ++ "...");
   let todos = perform(@host.fetch-todos, user.id);
   let done = filter(todos, -> $.completed);
@@ -191,13 +191,13 @@ let main! = () -> do
   loop (continue? = true) ->
     if continue? then
       let input = perform(@dvala.io.read, "Enter a user ID (1-10), or cancel to quit:");
-      if null?(input) || input == "" then
+      if isNull(input) || input == "" then
         perform(@dvala.io.print, "Goodbye!");
       else
-        let user = lookup-user!(input);
+        let user = lookupUser!(input);
         if user then
           let show = perform(@dvala.io.read, "Show todos for " ++ user.name ++ "? (yes/no)");
-          if show == "yes" then show-todos!(user) end;
+          if show == "yes" then showTodos!(user) end;
         end;
         perform(@dvala.io.print, "");
         recur(true)
@@ -259,7 +259,7 @@ let locations = {
 };
 
 // Define game state
-let initial-state = {
+let initialState = {
   current-location: "forest",
   inventory: [],
   visited: {},
@@ -269,27 +269,27 @@ let initial-state = {
 };
 
 // Helper functions
-let has-item? = (state, item) -> do
-  contains?(state.inventory, item);
+let isHasItem = (state, item) -> do
+  contains(state.inventory, item);
 end;
 
-let location-has-item? = (location, item) -> do
-  contains?(get(location, "items", []), item);
+let isLocationHasItem = (location, item) -> do
+  contains(get(location, "items", []), item);
 end;
 
-let describe-location = (state) -> do
+let describeLocation = (state) -> do
   let location = get(locations, state.current-location);
   let description = location.description;
 
   // Add visited status
-  let visited-status = if get(state.visited, state.current-location, 0) > 1 then
+  let visitedStatus = if get(state.visited, state.current-location, 0) > 1 then
     "You've been here before."
   else
     "This is your first time here."
   end;
 
   // Check if location has items
-  let items-desc = if not(empty?(get(location, "items", []))) then
+  let itemsDesc = if not(isEmpty(get(location, "items", []))) then
     "You see: " ++ join(location.items, ", ")
   else
     ""
@@ -297,13 +297,13 @@ let describe-location = (state) -> do
 
   // Describe exits
   let exits = keys(location.exits) join ", ";
-  let exits-desc = "Exits: " ++ exits;
+  let exitsDesc = "Exits: " ++ exits;
 
   // Join all descriptions
-  filter([description, visited-status, items-desc, exits-desc], -> not(empty?($))) join "\\n"
+  filter([description, visitedStatus, itemsDesc, exitsDesc], -> not(isEmpty($))) join "\\n"
 end;
 
-let get-location-items = (state) -> do
+let getLocationItems = (state) -> do
   let location = get(locations, state.current-location);
   get(location, "items", [])
 end;
@@ -314,30 +314,30 @@ let move = (state, direction) -> do
   let exits = get(location, "exits", {});
 
   // Check if direction is valid
-  if contains?(exits, direction) then
-    let new-location = get(exits, direction);
-    let is-dark = new-location == "tunnel" || new-location == "treasure room";
+  if contains(exits, direction) then
+    let newLocation = get(exits, direction);
+    let isDark = newLocation == "tunnel" || newLocation == "treasure room";
 
     // Check if player has light source for dark areas
-    if is-dark && not(state.light-source) then
+    if isDark && not(state.light-source) then
       [state, "It's too dark to go that way without a light source."]
     else
-      let new-visited = assoc(
+      let newVisited = assoc(
         state.visited,
-        new-location,
-        inc(state.visited["new-location"] ?? 0)
+        newLocation,
+        inc(state.visited["newLocation"] ?? 0)
       );
-      let new-state = assoc(
+      let newState = assoc(
         assoc(
-          assoc(state, "current-location", new-location),
+          assoc(state, "current-location", newLocation),
           "visited",
-          new-visited
+          newVisited
         ),
         "moves",
         state.moves + 1
       );
 
-      [new-state, "You move " ++ direction ++ " to the " ++ new-location ++ "."]
+      [newState, "You move " ++ direction ++ " to the " ++ newLocation ++ "."]
     end
   else
     [state, "You can't go that way."]
@@ -345,71 +345,71 @@ let move = (state, direction) -> do
 end;
 
 let take! = (state, item) -> do
-  let items = get-location-items(state);
+  let items = getLocationItems(state);
 
-  if contains?(items, item) then
+  if contains(items, item) then
     let location = get(locations, state.current-location);
-    let new-location-items = filter(items, -> $ != item);
-    let new-inventory = push(state.inventory, item);
+    let newLocationItems = filter(items, -> $ != item);
+    let newInventory = push(state.inventory, item);
 
     // Update game state
-    let new-locations = assoc(
+    let newLocations = assoc(
       locations, 
       state.current-location,
-      assoc(location, "items", new-location-items)
+      assoc(location, "items", newLocationItems)
     );
 
     // Special case for torch
-    let has-light = item == "torch" || state.light-source;
+    let hasLight = item == "torch" || state.light-source;
 
     // Update locations and state
-    let locations = new-locations;
-    let new-state = assoc(
+    let locations = newLocations;
+    let newState = assoc(
       assoc(
-        assoc(state, "inventory", new-inventory),
-        "light-source", has-light
+        assoc(state, "inventory", newInventory),
+        "light-source", hasLight
       ),
       "moves",
       state.moves + 1
     );
-    [new-state, "You take the " ++ item ++ "."]
+    [newState, "You take the " ++ item ++ "."]
   else
     [state, "There is no " ++ item ++ " here."]
   end
 end;
 
 let drop! = (state, item) -> do
-  if has-item?(state, item) then
+  if isHasItem(state, item) then
     let location = get(locations, state.current-location);
-    let location-items = get(location, "items", []);
-    let new-location-items = push(location-items, item);
-    let new-inventory = filter(-> $ != item, state.inventory);
+    let locationItems = get(location, "items", []);
+    let newLocationItems = push(locationItems, item);
+    let newInventory = filter(-> $ != item, state.inventory);
 
     // Special case for torch
-    let still-has-light = not(item == "torch") || contains?(new-inventory, "torch");
+    let stillHasLight = not(item == "torch") || contains(newInventory, "torch");
 
     // Update locations and state
-    let new-location = assoc(location, "items", new-location-items);
-    let locations = assoc(locations, state.current-location, new-location);
+    let newLocation = assoc(location, "items", newLocationItems);
+    let locations = assoc(locations, state.current-location, newLocation);
 
-    let new-state = assoc(
+    let newState = assoc(
       assoc(
         assoc(
-          state, "inventory", new-inventory),
+          state, "inventory", newInventory),
           "light-source",
-          still-has-light
+          stillHasLight
         ),
         "moves",
         state.moves + 1
       );
-    [new-state, "You drop the " ++ item ++ "."]
+    [newState, "You drop the " ++ item ++ "."]
   else
     [state, "You don't have a " ++ item ++ " in your inventory."]
   end
 end;
 
 let inventory = (state) -> do
-  if empty?(state.inventory) then
+  if isEmpty(state.inventory) then
     [state, "Your inventory is empty."]
   else
     [state, "Inventory: " ++ join(state.inventory, ", ")]
@@ -425,7 +425,7 @@ let use = (state, item) -> do
         [state, "There's no place to use a fishing rod here."]
       end
     case "torch" then
-      if has-item?(state, item) then
+      if isHasItem(state, item) then
         [
           assoc(assoc(state, "light-source", true), "moves", state.moves + 1),
           "The torch illuminates the area with a warm glow."
@@ -434,7 +434,7 @@ let use = (state, item) -> do
         [state, "You don't have a torch."]
       end
     case "gold key" then
-      if has-item?(state, item) && state.current-location == "treasure room" then
+      if isHasItem(state, item) && state.current-location == "treasure room" then
         [
           assoc(
             assoc(state, "game-over", true),
@@ -447,11 +447,11 @@ let use = (state, item) -> do
         [state, "The key doesn't fit anything here."]
       end
     case "bread" then
-      if has-item?(state, item) then
-        let new-inventory = filter(state.inventory, -> $ != item);
+      if isHasItem(state, item) then
+        let newInventory = filter(state.inventory, -> $ != item);
         [
           assoc(
-            assoc(state, "inventory", new-inventory),
+            assoc(state, "inventory", newInventory),
             "moves",
             state.moves + 1
           ),
@@ -461,7 +461,7 @@ let use = (state, item) -> do
         [state, "You don't have any bread."]
       end
     case "shiny stone" then
-      if has-item?(state, item) then
+      if isHasItem(state, item) then
         [
           assoc(state, "moves", state.moves + 1),
           "The stone glows with a faint blue light. It seems magical but you're not sure how to use it yet."
@@ -470,7 +470,7 @@ let use = (state, item) -> do
         [state, "You don't have a shiny stone."]
       end
     case "flowers" then
-      if has-item?(state, item) then
+      if isHasItem(state, item) then
         [
           assoc(state, "moves", state.moves + 1),
           "You smell the flowers. They have a sweet, calming fragrance."
@@ -479,7 +479,7 @@ let use = (state, item) -> do
         [state, "You don't have any flowers."]
       end
     case "ancient map" then
-      if has-item?(state, item) then
+      if isHasItem(state, item) then
         [
           assoc(state, "moves", state.moves + 1),
           "The map shows the layout of the area. All locations are now marked as visited."
@@ -488,7 +488,7 @@ let use = (state, item) -> do
         [state, "You don't have a map."]
       end
     case "jeweled crown" then
-      if has-item?(state, item) then
+      if isHasItem(state, item) then
         [
           assoc(state, "moves", state.moves + 1),
           "You place the crown on your head. You feel very regal."
@@ -500,8 +500,8 @@ let use = (state, item) -> do
 end;
 
 // Command parser
-let parse-command = (state, input) -> do
-  let tokens = lower-case(input) split " ";
+let parseCommand = (state, input) -> do
+  let tokens = lowerCase(input) split " ";
   let command = first(tokens);
   let args = rest(tokens) join " ";
 
@@ -525,7 +525,7 @@ let parse-command = (state, input) -> do
     case "i" then
       inventory(state)
     case "look" then
-      [assoc(state, "moves", state.moves + 1), describe-location(state)]
+      [assoc(state, "moves", state.moves + 1), describeLocation(state)]
     case "use" then
       use(state, args)
     case "help" then
@@ -538,30 +538,30 @@ let parse-command = (state, input) -> do
 end;
 
 // Game loop
-let game-loop = (state) -> do
-  let input = perform(@dvala.io.read, describe-location(state) ++ "\\nWhat do you do? ");
-  let command_result = parse-command(state, input);
-  let new-state = first(command_result);
+let gameLoop = (state) -> do
+  let input = perform(@dvala.io.read, describeLocation(state) ++ "\\nWhat do you do? ");
+  let command_result = parseCommand(state, input);
+  let newState = first(command_result);
   let message = second(command_result);
 
   perform(@dvala.io.print, "\\n" ++ message ++ "\\n");
 
-  if new-state.game-over then
-    perform(@dvala.io.print, "\\nGame over! You made " ++ str(new-state.moves) ++ " moves.");
-    new-state
+  if newState.game-over then
+    perform(@dvala.io.print, "\\nGame over! You made " ++ str(newState.moves) ++ " moves.");
+    newState
   else
-    game-loop(new-state)
+    gameLoop(newState)
   end
 end;
 
 // Start game
-let start-game = () -> do
+let startGame = () -> do
   perform(@dvala.io.print, "=== Dvala Adventure Game ===\\n" ++ "Type 'help' for a list of commands.\\n\\n");
-  game-loop(initial-state)
+  gameLoop(initialState)
 end;
 
 // Call the function to start the game
-start-game()    
+startGame()    
     `.trim(),
   },
   {
@@ -572,12 +572,12 @@ start-game()
 // Determinant function for square matrices
 let determinant = (matrix) -> do
   // Check if input is an array
-  if not(array?(matrix)) then
+  if not(isArray(matrix)) then
     perform(@dvala.error, "Input must be an array");
   end;
 
   // Check if matrix is empty
-  if empty?(matrix) then
+  if isEmpty(matrix) then
     perform(@dvala.error, "Matrix cannot be empty");
   end;
 
@@ -587,7 +587,7 @@ let determinant = (matrix) -> do
   let firstRow = first(matrix);
   
   // Check if first row is an array
-  if not(array?(firstRow)) then
+  if not(isArray(firstRow)) then
     perform(@dvala.error, "Input must be a 2D array");
   end;
   
@@ -618,7 +618,7 @@ let determinant = (matrix) -> do
         (acc, j) -> do
           let minor = getMinor(matrix, 0, j);
           let cofactor = determinant(minor);
-          let signFactor = if even?(j) then 1 else (0 - 1) end;
+          let signFactor = if isEven(j) then 1 else (0 - 1) end;
           let term = signFactor * matrix[0][j] * cofactor;
           
           acc + term;
@@ -672,15 +672,15 @@ determinant(matrix4x4);
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
   // Check if inputs are arrays
-  if not(array?(matrixA)) then perform(@dvala.error, "First input must be an array") end;
-  if not(array?(matrixB)) then perform(@dvala.error, "Second input must be an array") end;
+  if not(isArray(matrixA)) then perform(@dvala.error, "First input must be an array") end;
+  if not(isArray(matrixB)) then perform(@dvala.error, "Second input must be an array") end;
 
   // Check if matrices are not empty
-  if empty?(matrixA) || empty?(matrixB) then perform(@dvala.error, "Matrices cannot be empty") end;
+  if isEmpty(matrixA) || isEmpty(matrixB) then perform(@dvala.error, "Matrices cannot be empty") end;
 
   // Check if matrices are 2D arrays
-  if not(array?(first(matrixA))) then perform(@dvala.error, "First input must be a 2D array") end;
-  if not(array?(first(matrixB))) then perform(@dvala.error, "Second input must be a 2D array") end;
+  if not(isArray(first(matrixA))) then perform(@dvala.error, "First input must be a 2D array") end;
+  if not(isArray(first(matrixB))) then perform(@dvala.error, "Second input must be a 2D array") end;
 
   // Get dimensions
   let rowsA = count(matrixA);
@@ -689,11 +689,11 @@ let matrixMultiply = (matrixA, matrixB) -> do
   let colsB = count(first(matrixB));
 
   // Check if all rows have consistent length
-  if not(isEvery(matrixA, row -> array?(row) && count(row) == colsA)) then
+  if not(isEvery(matrixA, row -> isArray(row) && count(row) == colsA)) then
     perform(@dvala.error, "First matrix has inconsistent row lengths")
   end;
 
-  if not(isEvery(matrixB, row -> array?(row) && count(row) == colsB)) then
+  if not(isEvery(matrixB, row -> isArray(row) && count(row) == colsB)) then
     perform(@dvala.error, "Second matrix has inconsistent row lengths")
   end;
 
@@ -741,7 +741,7 @@ matrixMultiply(matrixA, matrixB);
     description: 'Pretty prints a US phone number.',
     code: `
 let formatPhoneNumber = (data) -> do
-  if string?(data) then
+  if isString(data) then
     let phoneNumber = if data[0] == "+" then slice(data, 2) else data end;
     let length = count(phoneNumber);
 
@@ -805,12 +805,12 @@ sort(l, numberComparer)
     name: 'Is ISO date string',
     description: 'Check if string is formatted as an ISO date string.',
     code: `
-let isoDateString? = (data) -> do
-  let m = data re-match #"^(\\d{4})-(\\d{2})-(\\d{2})$";
+let isIsoDateString = (data) -> do
+  let m = data reMatch #"^(\\d{4})-(\\d{2})-(\\d{2})$";
 
   if m then
     let [year, month, day] = slice(m, 1) map number;
-    let leapYear = zero?(year mod 4) && (!zero?(year mod 100) || zero?(year mod 400));
+    let leapYear = isZero(year mod 4) && (!zero?(year mod 100) || isZero(year mod 400));
 
     let invalid = 
       (year < 1900 || year > 2100)
@@ -825,17 +825,17 @@ let isoDateString? = (data) -> do
   end
 end;
 
-perform(@dvala.io.print, isoDateString?("1978-12-21"));
-perform(@dvala.io.print, isoDateString?("197-12-21"));
+perform(@dvala.io.print, isIsoDateString("1978-12-21"));
+perform(@dvala.io.print, isIsoDateString("197-12-21"));
   `.trim(),
   },
 
   {
-    id: 'label-from-value',
-    name: 'label-from-value',
+    id: 'labelFromValue',
+    name: 'labelFromValue',
     description: 'Find label to corresponding value in array of { label, value }-objects.',
     code: `
-let label-from-value = (items, value) -> do
+let labelFromValue = (items, value) -> do
   let entry = items some (-> value == $["value"]);
   if entry == null then
     null
@@ -850,15 +850,15 @@ let items = [
   { label: "Age", value: "age" }
 ];
 
-label-from-value(items, "name");
+labelFromValue(items, "name");
   `.trim(),
   },
   {
-    id: 'labels-from-values',
-    name: 'labels-from-values',
+    id: 'labelsFromValues',
+    name: 'labelsFromValues',
     description: 'Find labels to corresponding values in array of { label, value }-objects.',
     code: `
-let labels-from-values = ($array, $values) -> do
+let labelsFromValues = ($array, $values) -> do
   for (
     value in $values
     let label = do
@@ -878,7 +878,7 @@ let arr = [
   { label: "Email", value: "email" },
 ];
 
-labels-from-values(arr, ["name", "age"])
+labelsFromValues(arr, ["name", "age"])
 `.trim(),
   },
   {
@@ -893,8 +893,8 @@ labels-from-values(arr, ["name", "age"])
 
 let fizzbuzz = for (
   n in range(1, 31)
-  let div3 = zero?(n mod 3)
-  let div5 = zero?(n mod 5)
+  let div3 = isZero(n mod 3)
+  let div5 = isZero(n mod 5)
 ) -> if div3 && div5 then "FizzBuzz"
   else if div3 then "Fizz"
   else if div5 then "Buzz"

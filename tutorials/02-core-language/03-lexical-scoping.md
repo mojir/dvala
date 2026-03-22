@@ -43,15 +43,15 @@ result
 A **closure** is a function that captures variables from its enclosing scope. The captured bindings travel with the function, even after the enclosing scope has returned:
 
 ```dvala
-let make-adder = (n) -> do
+let makeAdder = (n) -> do
   let add = (x) -> n + x;
   add
 end;
-let add-ten = make-adder(10);
-add-ten(5)
+let addTen = makeAdder(10);
+addTen(5)
 ```
 
-Here `add` captures `n` from `make-adder`'s scope. When `add-ten` is called later, it still has access to `n = 10`.
+Here `add` captures `n` from `makeAdder`'s scope. When `addTen` is called later, it still has access to `n = 10`.
 
 ## Variable Shadowing
 
@@ -74,15 +74,15 @@ A function always refers to the environment where it was **defined**, not where 
 
 ```dvala
 let x = 10;
-let add-x = y -> x + y;
+let addX = y -> x + y;
 let result = do
   let x = 20;
-  add-x(5)
+  addX(5)
 end;
 result
 ```
 
-Even though `x` is shadowed to 20 in the `do` block, `add-x` uses its own captured `x = 10`. The result is 15, not 25.
+Even though `x` is shadowed to 20 in the `do` block, `addX` uses its own captured `x = 10`. The result is 15, not 25.
 
 ## Function Parameters Shadow
 
@@ -101,7 +101,7 @@ The parameter `x` shadows the outer `x = 100`. The function returns 14.
 Each call to a closure-creating function produces an independent closure with its own captured state:
 
 ```dvala
-let make-counter = () -> do
+let makeCounter = () -> do
   let n = 0;
   let step = () -> do
     let n = n + 1;
@@ -109,8 +109,8 @@ let make-counter = () -> do
   end;
   step
 end;
-let c1 = make-counter();
-let c2 = make-counter();
+let c1 = makeCounter();
+let c2 = makeCounter();
 [c1(), c1(), c2()]
 ```
 

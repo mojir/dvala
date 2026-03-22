@@ -15,7 +15,7 @@ for (x in [1, 2, 3, 4]) -> x * 2
 Use `when` to skip elements that don't match a condition:
 
 ```dvala
-for (x in range(10) when odd?(x)) -> x * x
+for (x in range(10) when isOdd(x)) -> x * x
 ```
 
 ## Early Exit with while

@@ -552,30 +552,30 @@ describe('auto: effect identity semantics', () => {
 
   // Effect? predicate
   for (const name of effectNames) {
-    it(`effect?(effect(${name})) is true`, () => {
-      expect(dvala.run(`effect?(effect(${name}))`)).toBe(true)
+    it(`isEffect(effect(${name})) is true`, () => {
+      expect(dvala.run(`isEffect(effect(${name}))`)).toBe(true)
     })
   }
 
   // Non-effects → false
   const nonEffects = ['42', '"hello"', 'true', 'null', '[]', '{}', '(-> 1)']
   for (const val of nonEffects) {
-    it(`effect?(${val}) is false`, () => {
-      expect(dvala.run(`effect?(${val})`)).toBe(false)
+    it(`isEffect(${val}) is false`, () => {
+      expect(dvala.run(`isEffect(${val})`)).toBe(false)
     })
   }
 
-  // effect-name returns the correct string
+  // effectName returns the correct string
   for (const name of effectNames) {
-    it(`effect-name(effect(${name})) === "${name}"`, () => {
-      expect(dvala.run(`effect-name(effect(${name}))`)).toBe(name)
+    it(`effectName(effect(${name})) === "${name}"`, () => {
+      expect(dvala.run(`effectName(effect(${name}))`)).toBe(name)
     })
   }
 
-  // type-of returns "effect"
+  // typeOf returns "effect"
   for (const name of effectNames) {
-    it(`type-of(effect(${name})) === "effect"`, () => {
-      expect(dvala.run(`type-of(effect(${name}))`)).toBe('effect')
+    it(`typeOf(effect(${name})) === "effect"`, () => {
+      expect(dvala.run(`typeOf(effect(${name}))`)).toBe('effect')
     })
   }
 })
@@ -959,9 +959,9 @@ describe('auto: runSync constraints', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 15. effect-matcher Wildcard Patterns
+// 15. effectMatcher Wildcard Patterns
 // ---------------------------------------------------------------------------
-describe('auto: effect-matcher wildcard patterns', () => {
+describe('auto: effectMatcher wildcard patterns', () => {
   const patterns: { pattern: string; matches: string[]; nonMatches: string[] }[] = [
     {
       pattern: 'dvala.*',
@@ -987,9 +987,9 @@ describe('auto: effect-matcher wildcard patterns', () => {
 
   for (const { pattern, matches, nonMatches } of patterns) {
     for (const name of matches) {
-      it(`effect-matcher("${pattern}") matches effect(${name})`, () => {
+      it(`effectMatcher("${pattern}") matches effect(${name})`, () => {
         const result = dvala.run(`
-          let pred = effect-matcher("${pattern}");
+          let pred = effectMatcher("${pattern}");
           pred(effect(${name}))
         `)
         expect(result).toBe(true)
@@ -997,9 +997,9 @@ describe('auto: effect-matcher wildcard patterns', () => {
     }
 
     for (const name of nonMatches) {
-      it(`effect-matcher("${pattern}") does NOT match effect(${name})`, () => {
+      it(`effectMatcher("${pattern}") does NOT match effect(${name})`, () => {
         const result = dvala.run(`
-          let pred = effect-matcher("${pattern}");
+          let pred = effectMatcher("${pattern}");
           pred(effect(${name}))
         `)
         expect(result).toBe(false)
@@ -1012,36 +1012,36 @@ describe('auto: effect-matcher wildcard patterns', () => {
 // 16. Effect Predicate in do/with — handler matching via predicates
 // ---------------------------------------------------------------------------
 describe('auto: predicate-based handler matching', () => {
-  it('effect-matcher in handle...with handler', () => {
+  it('effectMatcher in handle...with handler', () => {
     const result = dvala.run(`
-      let io-match = effect-matcher("test.io.*");
+      let ioMatch = effectMatcher("test.io.*");
       handle
         perform(@test.io.println, "msg")
-      with [(arg, eff, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if ioMatch(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('handled: msg')
   })
 
-  it('effect-matcher does not match non-matching effect', () => {
+  it('effectMatcher does not match non-matching effect', () => {
     expect(() => dvala.run(`
-      let io-match = effect-matcher("test.io.*");
+      let ioMatch = effectMatcher("test.io.*");
       handle
         perform(@test.other, "msg")
-      with [(arg, eff, nxt) -> if io-match(eff) then "handled: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if ioMatch(eff) then "handled: " ++ arg else nxt(eff, arg) end]
       end
     `)).toThrow('Unhandled effect')
   })
 
   it('multiple predicate handlers checked in order', () => {
     const result = dvala.run(`
-      let all-match = effect-matcher("*");
-      let io-match = effect-matcher("test.io.*");
+      let allMatch = effectMatcher("*");
+      let ioMatch = effectMatcher("test.io.*");
       handle
         perform(@test.io.println, "msg")
       with [(arg, eff, nxt) ->
-        if io-match(eff) then "io: " ++ arg
-        else if all-match(eff) then "all: " ++ arg
+        if ioMatch(eff) then "io: " ++ arg
+        else if allMatch(eff) then "all: " ++ arg
         else nxt(eff, arg)
         end
       ]
@@ -1050,10 +1050,10 @@ describe('auto: predicate-based handler matching', () => {
     expect(result).toBe('io: msg')
   })
 
-  it('effect-matcher with regexp', () => {
+  it('effectMatcher with regexp', () => {
     const result = dvala.run(`
       let re = regexp("^test\\\\.io");
-      let pred = effect-matcher(re);
+      let pred = effectMatcher(re);
       handle
         perform(@test.io.println, "data")
       with [(arg, eff, nxt) -> if pred(eff) then "matched: " ++ arg else nxt(eff, arg) end]
@@ -1230,8 +1230,8 @@ describe('auto: effect + closures', () => {
   it('nested closures with effects', () => {
     const result = dvala.run(`
       handle
-        let make-adder = (n) -> (x) -> perform(@test.eff, n + x);
-        let add10 = make-adder(10);
+        let makeAdder = (n) -> (x) -> perform(@test.eff, n + x);
+        let add10 = makeAdder(10);
         add10(5)
       with [(arg, eff, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
@@ -1247,8 +1247,8 @@ describe('auto: effect + recursion', () => {
   it('recursive function with effects', () => {
     const result = dvala.run(`
       handle
-        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
-        my-sum(3)
+        let mySum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), mySum(-(n, 1))) end;
+        mySum(3)
       with [(arg, eff, nxt) -> if eff == @test.eff then arg else nxt(eff, arg) end]
       end
     `)
@@ -1258,8 +1258,8 @@ describe('auto: effect + recursion', () => {
   it('effect handler return modifies recursive computation', () => {
     const result = dvala.run(`
       handle
-        let my-sum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), my-sum(-(n, 1))) end;
-        my-sum(3)
+        let mySum = (n) -> if ==(n, 0) then 0 else +(perform(@test.eff, n), mySum(-(n, 1))) end;
+        mySum(3)
       with [(arg, eff, nxt) -> if eff == @test.eff then arg * 2 else nxt(eff, arg) end]
       end
     `)

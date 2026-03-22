@@ -46,20 +46,20 @@ export function getMetaNormalExpression(
         args: { value: { type: ['function', 'effect'] } },
         variants: [{ argumentNames: ['value'] }],
         description: 'Returns documentation string of the $value. Works on functions and effects.',
-        seeAlso: ['arity', 'with-doc'],
+        seeAlso: ['arity', 'withDoc'],
         examples: [
           'doc(+)',
           'doc(@dvala.io.print)',
-          'let add = (x, y) -> x + y with-doc "Adds two numbers.";\ndoc(add)',
+          'let add = (x, y) -> x + y withDoc "Adds two numbers.";\ndoc(add)',
         ],
       },
     },
-    'with-doc': {
+    'withDoc': {
       evaluate: ([fn, docString], sourceCodeInfo): Any => {
         assertFunctionLike(fn, sourceCodeInfo)
         assertString(docString, sourceCodeInfo)
         if (!isDvalaFunction(fn) || fn.functionType !== 'UserDefined') {
-          throw new Error('with-doc can only be used with user-defined functions')
+          throw new Error('withDoc can only be used with user-defined functions')
         }
         return {
           ...fn,
@@ -79,8 +79,8 @@ export function getMetaNormalExpression(
         description: 'Returns a new function with the documentation string $b attached. The original function is not modified.',
         seeAlso: ['doc'],
         examples: [
-          '((x, y) -> x + y) with-doc "Adds two numbers."',
-          'let add = (x, y) -> x + y;\nadd with-doc "Adds x and y."',
+          '((x, y) -> x + y) withDoc "Adds two numbers."',
+          'let add = (x, y) -> x + y;\nadd withDoc "Adds x and y."',
         ],
       },
     },

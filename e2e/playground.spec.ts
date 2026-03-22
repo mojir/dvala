@@ -853,7 +853,7 @@ test.describe('playground effects', () => {
   })
 
   test('editor.getCursor returns a number', async ({ page }) => {
-    await setDvalaCode(page, 'number?(perform(@playground.editor.get-cursor))')
+    await setDvalaCode(page, 'isNumber(perform(@playground.editor.get-cursor))')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)

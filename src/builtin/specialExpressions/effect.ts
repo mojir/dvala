@@ -19,7 +19,7 @@ const docs: CustomDocs = {
     '@dvala.io.print',
     '==(@llm.complete, @llm.complete)',
   ],
-  seeAlso: ['effect?'],
+  seeAlso: ['isEffect'],
 }
 
 export const effectSpecialExpression: BuiltinSpecialExpression<EffectRef, EffectNode> = {

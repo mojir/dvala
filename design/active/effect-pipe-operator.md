@@ -74,8 +74,8 @@ risky() ||> @dvala.error(msg) -> 0
 handle risky() with @dvala.error(msg) -> 0 end
 
 ;; Reusable handler
-let safe-div = @dvala.error(msg) -> 0; (a / b) ||> safe-div
-let safe-div = @dvala.error(msg) -> 0; handle a / b with safe-div end
+let safeDiv = @dvala.error(msg) -> 0; (a / b) ||> safeDiv
+let safeDiv = @dvala.error(msg) -> 0; handle a / b with safeDiv end
 ```
 
 ### 5. Documentation

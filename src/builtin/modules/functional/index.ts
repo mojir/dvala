@@ -128,12 +128,12 @@ return a truthy value against all of its arguments, else it returns \`false\`.`,
       seeAlso: ['functional.somePred', 'functional.complement', 'collection.isEvery'],
       examples: [
         `let { everyPred } = import(functional);
-everyPred(string?, -> count($) > 3)(
+everyPred(isString, -> count($) > 3)(
   "Albert",
   "Mojir"
 )`,
         `let { everyPred } = import(functional);
-(string? everyPred -> count($) > 3)(
+(isString everyPred -> count($) > 3)(
   "Albert",
   "M"
 )`,
@@ -167,10 +167,10 @@ everyPred(string?, -> count($) > 3)(
       description: 'Takes a number of `predicates` and returns a function that returns `true` if at least one of the `predicates` return a truthy `true` value against at least one of its arguments, else it returns `false`.',
       seeAlso: ['functional.everyPred', 'functional.complement', 'collection.isAny'],
       examples: [
-        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("Albert", "Mojir")',
-        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("a", "M")',
-        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)("a", [1, 2, 3])',
-        'let { somePred } = import(functional);\nsomePred(string?, -> count($) > 3)([1, 2, 3], [2])',
+        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("Albert", "Mojir")',
+        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("a", "M")',
+        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("a", [1, 2, 3])',
+        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)([1, 2, 3], [2])',
       ],
       hideOperatorForm: true,
     },

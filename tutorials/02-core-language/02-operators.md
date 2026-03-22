@@ -130,7 +130,7 @@ Any two-argument function can be used as an infix operator:
 ```
 
 ```dvala
-[1, 2, 3, 4] filter odd?
+[1, 2, 3, 4] filter isOdd
 ```
 
 ## Partial Application

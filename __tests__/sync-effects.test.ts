@@ -194,7 +194,7 @@ describe('runSync with sync effect handlers', () => {
       const result = dvala.run(`
         handle
           perform(@my.effect, "local")
-        with [(arg, eff, nxt) -> if eff == @my.effect then upper-case(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.effect then upperCase(arg) else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [

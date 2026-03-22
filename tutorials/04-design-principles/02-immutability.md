@@ -34,10 +34,10 @@ The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new bindi
 
 ```dvala
 let x = 10;
-let get-x = () -> x;
+let getX = () -> x;
 do
   let x = 99;
-  get-x()
+  getX()
 end
 ```
 
@@ -81,7 +81,7 @@ Dvala programs transform data through **pipelines** of pure functions. Each step
 
 ```dvala
 [1, 2, 3, 4, 5, 6, 7, 8]
-  |> filter(_, even?)
+  |> filter(_, isEven)
   |> map(_, -> $ * $)
   |> reverse
 ```

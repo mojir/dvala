@@ -215,7 +215,7 @@ end`)).toBe('two: 1, 2')
     describe('practical examples', () => {
       it('should handle http response matching', () => {
         const prog = `
-let handle-response = (response) ->
+let handleResponse = (response) ->
   match response
     case { status: 200, body } then "OK: " ++ body
     case { status: 404 } then "Not found"
@@ -223,25 +223,25 @@ let handle-response = (response) ->
     case _ then "Unknown"
   end;
 
-handle-response({ status: 200, body: "Hello" })`
+handleResponse({ status: 200, body: "Hello" })`
         expect(l.run(prog)).toBe('OK: Hello')
       })
 
       it('should handle recursive list processing', () => {
         const prog = `
-let sum-list = (lst) ->
+let sumList = (lst) ->
   match lst
     case [] then 0
-    case [x, ...xs] then x + sum-list(xs)
+    case [x, ...xs] then x + sumList(xs)
   end;
 
-sum-list([1, 2, 3, 4, 5])`
+sumList([1, 2, 3, 4, 5])`
         expect(l.run(prog)).toBe(15)
       })
 
       it('should handle point/coordinate matching', () => {
         const prog = `
-let describe-point = (point) ->
+let describePoint = (point) ->
   match point
     case [0, 0] then "origin"
     case [0, y] then "y-axis"
@@ -249,7 +249,7 @@ let describe-point = (point) ->
     case [x, y] then "point at " ++ str(x) ++ ", " ++ str(y)
   end;
 
-[describe-point([0, 0]), describe-point([0, 5]), describe-point([3, 0]), describe-point([3, 4])]`
+[describePoint([0, 0]), describePoint([0, 5]), describePoint([3, 0]), describePoint([3, 4])]`
         expect(l.run(prog)).toEqual(['origin', 'y-axis', 'x-axis', 'point at 3, 4'])
       })
     })

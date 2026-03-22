@@ -173,9 +173,9 @@ case 'Builtin': {
 
 Migrated core looping HOFs:
 - ✅ `map`, `filter`, `reduce` → `collection.dvala`
-- ✅ `sort`, `some`, `take-while`, `drop-while` → `sequence.dvala`
+- ✅ `sort`, `some`, `takeWhile`, `dropWhile` → `sequence.dvala`
 - ✅ `mapcat`, `movingFn`, `runningFn` → `array.dvala`
-- ✅ `merge-with` → `object.dvala`
+- ✅ `mergeWith` → `object.dvala`
 - ✅ `|>` → `functional.dvala`
 - ⏭️ `apply` — left in TS (primitive, requires spread semantics)
 
@@ -244,26 +244,26 @@ All follow the same "generate values while predicate holds" pattern.
 | `pell-take-while` | Inline recurrence: a=1, b=2 |
 | `padovan-take-while` | Inline recurrence: a=1, b=1, c=1 |
 | `factorial-take-while` | Inline: fact *= (i+1) |
-| `prime-take-while` | Uses `is-prime` helper |
-| `composite-take-while` | Uses `is-composite` helper |
-| `abundant-take-while` | Uses `is-abundant` helper |
-| `deficient-take-while` | Uses `is-deficient` helper |
+| `prime-take-while` | Uses `isPrime` helper |
+| `composite-take-while` | Uses `isComposite` helper |
+| `abundant-take-while` | Uses `isAbundant` helper |
+| `deficient-take-while` | Uses `isDeficient` helper |
 | `perfect-square-take-while` | Direct: `i * i` |
 | `perfect-cube-take-while` | Direct: `i * i * i` |
-| `happy-take-while` | Uses `is-happy` helper |
-| `look-and-say-take-while` | Full Dvala implementation with `next-term` helper |
-| `bell-take-while` | Precomputed `bell-numbers` constant (50 values) |
-| `catalan-take-while` | Precomputed `catalan-numbers` constant (50 values) |
-| `mersenne-take-while` | Precomputed `mersenne-numbers` constant |
-| `partition-take-while` | Precomputed `partition-numbers` constant (100 values) |
-| `perfect-take-while` | Precomputed `perfect-numbers` constant |
-| `sylvester-take-while` | Precomputed `sylvester-numbers` constant |
-| `lucky-take-while` | Precomputed `lucky-numbers` constant (3100 values); limit ~31,429 |
+| `happy-take-while` | Uses `isHappy` helper |
+| `look-and-say-take-while` | Full Dvala implementation with `nextTerm` helper |
+| `bell-take-while` | Precomputed `bellNumbers` constant (50 values) |
+| `catalan-take-while` | Precomputed `catalanNumbers` constant (50 values) |
+| `mersenne-take-while` | Precomputed `mersenneNumbers` constant |
+| `partition-take-while` | Precomputed `partitionNumbers` constant (100 values) |
+| `perfect-take-while` | Precomputed `perfectNumbers` constant |
+| `sylvester-take-while` | Precomputed `sylvesterNumbers` constant |
+| `lucky-take-while` | Precomputed `luckyNumbers` constant (3100 values); limit ~31,429 |
 | `bernoulli-take-while` | Inline rational recurrence using `binom` helper |
 | `golomb-take-while` | Self-referential, fully in Dvala |
-| `perfect-power-take-while` | Uses `is-perfect-power` helper (loop-based, no `log2`) |
+| `perfect-power-take-while` | Uses `isPerfectPower` helper (loop-based, no `log2`) |
 | `recaman-take-while` | Self-referential, fully in Dvala |
-| `thue-morse-take-while` | Uses `count-bits` helper |
+| `thue-morse-take-while` | Uses `countBits` helper |
 
 **Kept in TypeScript (2):**
 
@@ -293,7 +293,7 @@ All HOF functions that required `executeFunction` have been migrated to Dvala.
 1. ✅ Removed `executeFunction` parameter from `NormalExpressionEvaluator` type in `src/builtin/interface.ts`
 2. ✅ Removed `ExecuteFunction` type from `src/evaluator/interface.ts`
 3. ✅ Removed `{ executeFunction: executeFunctionRecursive }` from 5 trampoline call sites
-4. ✅ Stubbed take-while `evaluate` bodies in arithmetic, geometric, bernoulli, polygonal TS files
+4. ✅ Stubbed takeWhile `evaluate` bodies in arithmetic, geometric, bernoulli, polygonal TS files
 5. ✅ Stubbed `createTakeWhileNormalExpression` factory evaluate body
 6. ✅ Updated coverage-gaps test and meta test to match new 3-arg signature
 7. ✅ All tests pass

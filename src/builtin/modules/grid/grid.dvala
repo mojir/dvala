@@ -58,7 +58,7 @@ let _transpose = (g) ->
 
   "cellMap": (...params) -> do
     let fn = last(params);
-    let grids = drop-last(params, 1);
+    let grids = dropLast(params, 1);
     let rows = count(first(grids));
     let cols = count(first(first(grids)));
     map(range(rows), (i) ->

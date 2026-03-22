@@ -51,7 +51,7 @@ const confirmHandler: HandlerRegistration = {
 }
 
 const readStdinHandler: HandlerRegistration = {
-  pattern: 'dvala.io.read-stdin',
+  pattern: 'dvala.io.readStdin',
   handler: interactiveEffectHandler,
 }
 

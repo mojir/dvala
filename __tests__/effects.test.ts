@@ -60,7 +60,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@my.effect, "hello")
-        with [(arg, eff, nxt) -> if eff == @my.effect then upper-case(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.effect then upperCase(arg) else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('HELLO')
@@ -103,10 +103,10 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should use effect references from variables', () => {
       const result = dvala.run(`
         do
-          let my-eff = @my.effect;
+          let myEff = @my.effect;
           handle
-            perform(my-eff, "world")
-          with [(arg, eff, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
+            perform(myEff, "world")
+          with [(arg, eff, nxt) -> if eff == myEff then "hello " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -133,10 +133,10 @@ describe('phase 2 — Local Effect Handling', () => {
     it('should use the first matching handler', () => {
       const result = dvala.run(`
         do
-          let my-eff = @my.eff;
+          let myEff = @my.eff;
           handle
-            perform(my-eff, "test")
-          with [(arg, eff, nxt) -> if eff == my-eff then "first: " ++ arg else nxt(eff, arg) end]
+            perform(myEff, "test")
+          with [(arg, eff, nxt) -> if eff == myEff then "first: " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -277,7 +277,7 @@ describe('phase 2 — Local Effect Handling', () => {
         handle
           perform(@my.eff, "hello")
         with [(arg, eff, nxt) ->
-          if eff == @my.eff then upper-case(arg)
+          if eff == @my.eff then upperCase(arg)
           else if eff == @dvala.error then "caught: " ++ arg
           else nxt(eff, arg)
           end
@@ -316,12 +316,12 @@ describe('phase 2 — Local Effect Handling', () => {
   describe('2e: effects as first-class values', () => {
     it('should pass effect references as function arguments', () => {
       const result = dvala.run(`
-        let handle-it = (my-eff, value) ->
+        let handleIt = (myEff, value) ->
           handle
-            perform(my-eff, value)
-          with [(arg, eff, nxt) -> if eff == my-eff then arg * 2 else nxt(eff, arg) end]
+            perform(myEff, value)
+          with [(arg, eff, nxt) -> if eff == myEff then arg * 2 else nxt(eff, arg) end]
           end;
-        handle-it(@my.eff, 21)
+        handleIt(@my.eff, 21)
       `)
       expect(result).toBe(42)
     })
@@ -770,12 +770,12 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         do
           let llm = @llm.complete;
-          let log-eff = @my.log;
+          let logEff = @my.log;
 
           handle
             let msg = perform(llm, "prompt");
-            perform(log-eff, msg)
-          with [(arg, eff, nxt) -> if eff == log-eff then "logged: " ++ arg else nxt(eff, arg) end]
+            perform(logEff, msg)
+          with [(arg, eff, nxt) -> if eff == logEff then "logged: " ++ arg else nxt(eff, arg) end]
           end
         end
       `, {
@@ -2206,7 +2206,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should resume with null value', async () => {
       const r1 = await dvala.runAsync(`
         let x = perform(@my.wait);
-        null?(x)
+        isNull(x)
       `, {
         effectHandlers: [
           { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
@@ -2547,7 +2547,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let x = perform(@my.wait);
         handle
           perform(@my.local, x)
-        with [(arg, eff, nxt) -> if eff == @my.local then upper-case(arg) else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.local then upperCase(arg) else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -2564,8 +2564,8 @@ describe('phase 4 — Suspension & Resume', () => {
 
     it('should preserve deep nesting and closures across resume', async () => {
       const r1 = await dvala.runAsync(`
-        let make-adder = (n) -> (x) -> n + x;
-        let add5 = make-adder(5);
+        let makeAdder = (n) -> (x) -> n + x;
+        let add5 = makeAdder(5);
         let input = perform(@my.wait);
         add5(input)
       `, {
@@ -2798,7 +2798,7 @@ describe('phase 5 — Standard Effects', () => {
             let t = perform(@dvala.time.now);
             let r = perform(@dvala.random);
             perform(@dvala.io.print, "Done");
-            { time: number?(t), random: number?(r) }
+            { time: isNumber(t), random: isNumber(r) }
           end
         `)
         expect(result.type).toBe('completed')
@@ -2870,7 +2870,7 @@ describe('phase 5 — Standard Effects', () => {
             perform(@dvala.io.print, "sync log");
             let t = perform(@dvala.time.now);
             let r = perform(@dvala.random);
-            number?(t) && number?(r)
+            isNumber(t) && isNumber(r)
           end
         `)
         expect(result).toBe(true)
@@ -3535,10 +3535,10 @@ describe('step 1 — handle...with...end', () => {
     it('should work with effect references from variables', () => {
       const result = dvala.run(`
         do
-          let my-eff = @my.eff;
+          let myEff = @my.eff;
           handle
-            perform(my-eff, "world")
-          with [(arg, eff, nxt) -> if eff == my-eff then "hello " ++ arg else nxt(eff, arg) end]
+            perform(myEff, "world")
+          with [(arg, eff, nxt) -> if eff == myEff then "hello " ++ arg else nxt(eff, arg) end]
           end
         end
       `)
@@ -3695,25 +3695,25 @@ describe('step 2 — dvala.error standard effect', () => {
   })
 })
 
-describe('step 9 — effect-name accessor', () => {
+describe('step 9 — effectName accessor', () => {
   it('should return the name of an effect', () => {
-    expect(dvala.run('effect-name(@dvala.error)')).toBe('dvala.error')
+    expect(dvala.run('effectName(@dvala.error)')).toBe('dvala.error')
   })
 
   it('should work with dotted names', () => {
-    expect(dvala.run('effect-name(@llm.complete)')).toBe('llm.complete')
+    expect(dvala.run('effectName(@llm.complete)')).toBe('llm.complete')
   })
 
   it('should work with deeply dotted names', () => {
-    expect(dvala.run('effect-name(@com.myco.foo.bar)')).toBe('com.myco.foo.bar')
+    expect(dvala.run('effectName(@com.myco.foo.bar)')).toBe('com.myco.foo.bar')
   })
 
   it('should work with effect stored in variable', () => {
-    expect(dvala.run('let e = @dvala.io.print; effect-name(e)')).toBe('dvala.io.print')
+    expect(dvala.run('let e = @dvala.io.print; effectName(e)')).toBe('dvala.io.print')
   })
 
   it('should throw on non-effect argument', () => {
-    expect(() => dvala.run('effect-name("not an effect")')).toThrow()
+    expect(() => dvala.run('effectName("not an effect")')).toThrow()
   })
 })
 
@@ -3722,7 +3722,7 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.io.print" then "logged: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectName(eff) == "dvala.io.print" then "logged: " ++ arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('logged: hello')
@@ -3733,8 +3733,8 @@ describe('step 10 — predicate-based handler matching', () => {
       handle
         perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) ->
-        if effect-name(eff) == "dvala.error" then "error handler"
-        else if effect-name(eff) == "dvala.io.print" then "log handler"
+        if effectName(eff) == "dvala.error" then "error handler"
+        else if effectName(eff) == "dvala.io.print" then "log handler"
         else nxt(eff, arg)
         end
       ]
@@ -3749,7 +3749,7 @@ describe('step 10 — predicate-based handler matching', () => {
         perform(@dvala.io.print, "hello")
       with [(arg, eff, nxt) ->
         if eff == @dvala.error then "error handler"
-        else if effect-name(eff) == "dvala.io.print" then "log handler"
+        else if effectName(eff) == "dvala.io.print" then "log handler"
         else nxt(eff, arg)
         end
       ]
@@ -3762,17 +3762,17 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@com.myco.foo, "data")
-      with [(arg, eff, nxt) -> if slice(effect-name(eff), 0, 8) == "com.myco" then "matched prefix" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if slice(effectName(eff), 0, 8) == "com.myco" then "matched prefix" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched prefix')
   })
 
-  it('should support regex matching via re-match', () => {
+  it('should support regex matching via reMatch', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.print, "data")
-      with [(arg, eff, nxt) -> if not(null?(re-match(effect-name(eff), #"^dvala\\."))) then "matched regex" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if not(isNull(reMatch(effectName(eff), #"^dvala\\."))) then "matched regex" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched regex')
@@ -3780,10 +3780,10 @@ describe('step 10 — predicate-based handler matching', () => {
 
   it('should work with predicate stored in variable', () => {
     const result = dvala.run(`
-      let is-log? = (e) -> effect-name(e) == "dvala.io.print";
+      let isIsLog = (e) -> effectName(e) == "dvala.io.print";
       handle
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if is-log?(eff) then "matched" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if isIsLog(eff) then "matched" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched')
@@ -3802,76 +3802,76 @@ describe('step 10 — predicate-based handler matching', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.error, "oops")
-      with [(arg, eff, nxt) -> if effect-name(eff) == "dvala.error" then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectName(eff) == "dvala.error" then arg else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('oops')
   })
 
-  it('should support effect-matcher with wildcard suffix', () => {
+  it('should support effectMatcher with wildcard suffix', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if effect-matcher("dvala.*")(eff) then "matched dvala wildcard" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher("dvala.*")(eff) then "matched dvala wildcard" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched dvala wildcard')
   })
 
-  it('effect-matcher exact string should match exact name only', () => {
+  it('effectMatcher exact string should match exact name only', () => {
     const result = dvala.run(`
       handle
         perform(@dvala, "hello")
-      with [(arg, eff, nxt) -> if effect-matcher("dvala")(eff) then "matched" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher("dvala")(eff) then "matched" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched')
   })
 
-  it('effect-matcher exact string should NOT match children', () => {
+  it('effectMatcher exact string should NOT match children', () => {
     // "dvala" (no wildcard) is exact match only — does NOT match dvala.error
-    expect(dvala.run('let pred = effect-matcher("dvala"); pred(@dvala.error)')).toBe(false)
-    expect(dvala.run('let pred = effect-matcher("dvala"); pred(@dvala)')).toBe(true)
+    expect(dvala.run('let pred = effectMatcher("dvala"); pred(@dvala.error)')).toBe(false)
+    expect(dvala.run('let pred = effectMatcher("dvala"); pred(@dvala)')).toBe(true)
   })
 
-  it('effect-matcher wildcard should enforce dot boundary', () => {
-    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(@dvala.error)')).toBe(false)
-    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(@custom.foo)')).toBe(true)
-    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(@customXXX)')).toBe(false)
-    expect(dvala.run('let pred = effect-matcher("custom.*"); pred(@custom)')).toBe(true)
+  it('effectMatcher wildcard should enforce dot boundary', () => {
+    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@dvala.error)')).toBe(false)
+    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@custom.foo)')).toBe(true)
+    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@customXXX)')).toBe(false)
+    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@custom)')).toBe(true)
   })
 
-  it('effect-matcher catch-all * should match everything', () => {
-    expect(dvala.run('let pred = effect-matcher("*"); pred(@anything)')).toBe(true)
-    expect(dvala.run('let pred = effect-matcher("*"); pred(@a.b.c)')).toBe(true)
+  it('effectMatcher catch-all * should match everything', () => {
+    expect(dvala.run('let pred = effectMatcher("*"); pred(@anything)')).toBe(true)
+    expect(dvala.run('let pred = effectMatcher("*"); pred(@a.b.c)')).toBe(true)
   })
 
-  it('should support effect-matcher with regexp', () => {
+  it('should support effectMatcher with regexp', () => {
     const result = dvala.run(`
       handle
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "matched regex" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher(#"^dvala\\.")(eff) then "matched regex" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('matched regex')
   })
 
-  it('effect-matcher regexp should work as wildcard catch-all', () => {
+  it('effectMatcher regexp should work as wildcard catch-all', () => {
     const result = dvala.run(`
       handle
         perform(@anything.goes, "data")
-      with [(arg, eff, nxt) -> if effect-matcher(#".*")(eff) then "catch-all" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher(#".*")(eff) then "catch-all" else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('catch-all')
   })
 
-  it('effect-matcher predicate should be serializable across suspend/resume', async () => {
+  it('effectMatcher predicate should be serializable across suspend/resume', async () => {
     const r1 = await dvala.runAsync(`
       handle
         let result = perform(@my.wait);
         result
-      with [(arg, eff, nxt) -> if effect-matcher("dvala.*")(eff) then "caught dvala" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher("dvala.*")(eff) then "caught dvala" else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -3886,12 +3886,12 @@ describe('step 10 — predicate-based handler matching', () => {
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
 
-  it('effect-matcher regexp predicate should be serializable across suspend/resume', async () => {
+  it('effectMatcher regexp predicate should be serializable across suspend/resume', async () => {
     const r1 = await dvala.runAsync(`
       handle
         let result = perform(@my.wait);
         result
-      with [(arg, eff, nxt) -> if effect-matcher(#"^dvala\\.")(eff) then "caught dvala" else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher(#"^dvala\\.")(eff) then "caught dvala" else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [

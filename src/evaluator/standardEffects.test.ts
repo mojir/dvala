@@ -16,7 +16,7 @@ describe('standardEffects', () => {
         'dvala.io.read',
         'dvala.io.pick',
         'dvala.io.confirm',
-        'dvala.io.read-stdin',
+        'dvala.io.readStdin',
         'dvala.random',
         'dvala.random.uuid',
         'dvala.random.int',
@@ -37,7 +37,7 @@ describe('standardEffects', () => {
       expect(getStandardEffectHandler('dvala.io.read')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.io.pick')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.io.confirm')).toBeTypeOf('function')
-      expect(getStandardEffectHandler('dvala.io.read-stdin')).toBeTypeOf('function')
+      expect(getStandardEffectHandler('dvala.io.readStdin')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.random')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.random.uuid')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.random.int')).toBeTypeOf('function')
@@ -428,9 +428,9 @@ describe('standardEffects', () => {
     })
   })
 
-  describe('dvala.io.read-stdin handler', () => {
+  describe('dvala.io.readStdin handler', () => {
     it('should resolve with concatenated stdin chunks', async () => {
-      const handler = getStandardEffectHandler('dvala.io.read-stdin')!
+      const handler = getStandardEffectHandler('dvala.io.readStdin')!
       const mockStdin = {
         setEncoding: vi.fn(),
         on: vi.fn(),
@@ -458,7 +458,7 @@ describe('standardEffects', () => {
     })
 
     it('should reject when stdin emits an error', async () => {
-      const handler = getStandardEffectHandler('dvala.io.read-stdin')!
+      const handler = getStandardEffectHandler('dvala.io.readStdin')!
       const mockStdin = {
         setEncoding: vi.fn(),
         on: vi.fn(),
@@ -478,7 +478,7 @@ describe('standardEffects', () => {
     })
 
     it('should throw when stdin is not available', () => {
-      const handler = getStandardEffectHandler('dvala.io.read-stdin')!
+      const handler = getStandardEffectHandler('dvala.io.readStdin')!
       const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(null as unknown as typeof process.stdin)
       try {
         expect(() => handler(null, emptyK)).toThrow('not supported in this environment')

@@ -157,7 +157,7 @@ Dvala has **20** special expressions:
 * **Concurrency** — `parallel`, `race`
 * **Modules** — `import`
 
-Everything else — `+`, `map`, `filter`, `str`, `inc`, `upper-case`, and hundreds more — is a normal expression that evaluates all arguments first.
+Everything else — `+`, `map`, `filter`, `str`, `inc`, `upperCase`, and hundreds more — is a normal expression that evaluates all arguments first.
 
 ## Why This Matters
 

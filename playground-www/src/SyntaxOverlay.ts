@@ -22,7 +22,7 @@ const colors = {
   effectConstruct: 'var(--syntax-effect-construct)',
 }
 
-const effectConstructs = new Set(['perform', 'effect-matcher', 'effect-name'])
+const effectConstructs = new Set(['perform', 'effectMatcher', 'effectName'])
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

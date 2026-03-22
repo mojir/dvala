@@ -117,19 +117,19 @@ describe('handle...with...end', () => {
   describe('nested handle blocks', () => {
     it('should support nested handle blocks', () => {
       const result = dvala.run(`do
-        let h-outer = (arg, eff, nxt) ->
+        let hOuter = (arg, eff, nxt) ->
           if eff == @my.outer then "outer:" ++ arg
           else nxt(eff, arg)
           end;
-        let h-inner = (arg, eff, nxt) ->
+        let hInner = (arg, eff, nxt) ->
           if eff == @my.inner then "inner:" ++ arg
           else nxt(eff, arg)
           end;
         handle
           handle
             perform(@my.inner, "a") ++ " " ++ perform(@my.outer, "b")
-          with [h-inner] end
-        with [h-outer] end
+          with [hInner] end
+        with [hOuter] end
       end`)
       expect(result).toBe('inner:a outer:b')
     })
@@ -400,13 +400,13 @@ describe('handle...with...end', () => {
     it('shorthand does not shadow outer variables named eff or nxt', () => {
       const result = dvala.run(`
         let eff = "outer-eff";
-        let nxt = "outer-nxt";
+        let nxt = "outerNxt";
         handle
           perform(@my.eff, 1)
         with [@my.eff(x) -> eff ++ " " ++ nxt]
         end
       `)
-      expect(result).toBe('outer-eff outer-nxt')
+      expect(result).toBe('outer-eff outerNxt')
     })
 
     it('shorthand with string payload', () => {
@@ -442,9 +442,9 @@ describe('handle...with...end', () => {
 
     it('shorthand handler passed to function', () => {
       const result = dvala.run(`
-        let run-with = (body-fn, handlers) ->
+        let runWith = (body-fn, handlers) ->
           handle body-fn() with handlers end;
-        run-with(-> perform(@my.eff, 10), [@my.eff(x) -> x * 5])
+        runWith(-> perform(@my.eff, 10), [@my.eff(x) -> x * 5])
       `)
       expect(result).toBe(50)
     })
@@ -476,7 +476,7 @@ describe('handle...with...end', () => {
     it('$2 is the effect reference', () => {
       const result = dvala.run(`
         handle perform(@my.eff, "hello")
-        with [@my.eff -> effect-name($2)]
+        with [@my.eff -> effectName($2)]
         end
       `)
       expect(result).toBe('my.eff')
@@ -516,7 +516,7 @@ describe('handle...with...end', () => {
     it('second param is the effect reference', () => {
       const result = dvala.run(`
         handle perform(@my.eff, "hello")
-        with [@my.eff(x, e) -> x ++ ":" ++ effect-name(e)]
+        with [@my.eff(x, e) -> x ++ ":" ++ effectName(e)]
         end
       `)
       expect(result).toBe('hello:my.eff')
@@ -525,7 +525,7 @@ describe('handle...with...end', () => {
     it('wildcard with effect inspection', () => {
       const result = dvala.run(`
         handle perform(@my.custom.action, "data")
-        with [@my.*(x, e) -> effect-name(e) ++ "=" ++ x]
+        with [@my.*(x, e) -> effectName(e) ++ "=" ++ x]
         end
       `)
       expect(result).toBe('my.custom.action=data')
@@ -533,9 +533,9 @@ describe('handle...with...end', () => {
 
     it('nxt is not accessible with 2 params', () => {
       const result = dvala.run(`
-        let outer-nxt = "safe";
+        let outerNxt = "safe";
         handle perform(@my.eff, 1)
-        with [@my.eff(x, e) -> outer-nxt]
+        with [@my.eff(x, e) -> outerNxt]
         end
       `)
       expect(result).toBe('safe')
@@ -582,7 +582,7 @@ describe('handle...with...end', () => {
     it('all three params with named variables', () => {
       const result = dvala.run(`
         handle perform(@my.eff, "val")
-        with [@my.eff(arg, eff, nxt) -> arg ++ ":" ++ effect-name(eff)]
+        with [@my.eff(arg, eff, nxt) -> arg ++ ":" ++ effectName(eff)]
         end
       `)
       expect(result).toBe('val:my.eff')
@@ -696,7 +696,7 @@ describe('handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@my.a, "A") ++ perform(@my.b, "B")
-        with [@my.*(arg) -> lower-case(arg)]
+        with [@my.*(arg) -> lowerCase(arg)]
         end
       `)
       expect(result).toBe('ab')
@@ -759,9 +759,9 @@ describe('handle...with...end', () => {
 
     it('wildcard stored as value', () => {
       const result = dvala.run(`
-        let silence-io = @dvala.io.*(arg) -> null;
+        let silenceIo = @dvala.io.*(arg) -> null;
         handle perform(@dvala.io.print, "hi")
-        with [silence-io]
+        with [silenceIo]
         end
       `)
       expect(result).toBe(null)
@@ -893,12 +893,12 @@ describe('effect pipe ||>', () => {
 
     it('reusable handler pipe equals handle...with', () => {
       const pipe = dvala.run(`
-        let safe-div = @dvala.error(msg) -> 0;
-        (0 / 0) ||> safe-div
+        let safeDiv = @dvala.error(msg) -> 0;
+        (0 / 0) ||> safeDiv
       `)
       const block = dvala.run(`
-        let safe-div = @dvala.error(msg) -> 0;
-        handle 0 / 0 with safe-div end
+        let safeDiv = @dvala.error(msg) -> 0;
+        handle 0 / 0 with safeDiv end
       `)
       expect(pipe).toBe(block)
     })

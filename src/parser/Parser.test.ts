@@ -56,7 +56,7 @@ describe('parser', () => {
     expect(() => dvalaDebug.run('let x;')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('0..1')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('1e2e2')).toThrow(DvalaError)
-    expect(() => dvalaDebug.run('re-match("Albert", #"as(d")')).toThrow(DvalaError)
+    expect(() => dvalaDebug.run('reMatch("Albert", #"as(d")')).toThrow(DvalaError)
     expect(() => dvalaDebug.run('let _0 = 0;')).not.toThrow()
     expect(() => getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
     expect(() => getUndefinedSymbols('let foo = ([,,a,...a]) -> a; foo([1, 2, 3])')).toThrow(DvalaError)
@@ -420,8 +420,8 @@ describe('parser', () => {
 
   test('misc', () => {
     expect(dvala.run('3;2;1;')).toBe(1)
-    expect(dvala.run('empty?([1, 2 ,3] filter -> $ > 10)')).toBe(true)
-    expect(dvala.run('empty?([1, 2 ,3] filter -> $ > 1)')).toBe(false)
+    expect(dvala.run('isEmpty([1, 2 ,3] filter -> $ > 10)')).toBe(true)
+    expect(dvala.run('isEmpty([1, 2 ,3] filter -> $ > 1)')).toBe(false)
   })
 
   describe('debug', () => {
@@ -921,13 +921,13 @@ foo(1, 2)`)).toBe(3)
     })
     test('with when conditions', () => {
       expect(dvala.run(`
-        for (x in [0, 1, 2, 3, 4, 5] let a = x * 3 let y = a when even?(y) while y < 10) -> do
+        for (x in [0, 1, 2, 3, 4, 5] let a = x * 3 let y = a when isEven(y) while y < 10) -> do
           y
         end`)).toEqual([0, 6])
     })
     test('with while conditions (early termination)', () => {
       expect(dvala.run(`
-        for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while even?(y)) -> do
+        for (x in [0, 1, 2, 3, 4, 5] let y = x * 3 while isEven(y)) -> do
           y
         end`)).toEqual([0])
     })
@@ -1084,7 +1084,7 @@ foo(1, 2)`)).toBe(3)
           // Start with main products
           mainProduct in products
           let isInStock = mainProduct.stockLevel > 0
-          let isPreferredCategory = contains?(customerPreferences.preferredCategories, mainProduct.category)
+          let isPreferredCategory = contains(customerPreferences.preferredCategories, mainProduct.category)
           let isPriceOk = mainProduct.price <= customerPreferences.priceLimit * 0.8
           when (isInStock && isPreferredCategory && isPriceOk),
             
@@ -1093,7 +1093,7 @@ foo(1, 2)`)).toBe(3)
           accessory in products
           let isCompatible = mainProduct.id != accessory.id && accessory.stockLevel > 0
           let totalPrice = mainProduct.price + accessory.price
-          let isRecentlyViewed = contains?(customerPreferences.recentViews, accessory.id)
+          let isRecentlyViewed = contains(customerPreferences.recentViews, accessory.id)
           when (isCompatible && totalPrice <= customerPreferences.priceLimit)
           while totalPrice <= customerPreferences.priceLimit * 0.9,
         
@@ -1103,7 +1103,7 @@ foo(1, 2)`)).toBe(3)
           let finalPrice = mainProduct.price + accessory.price + complItem.price
           let discount = if finalPrice > 500 then 0.1 else 0.05 end
           let discountedPrice = finalPrice * (1 - discount)
-          let matchesPreferences = contains?(customerPreferences.preferredCategories, complItem.category)
+          let matchesPreferences = contains(customerPreferences.preferredCategories, complItem.category)
           when (isValid && finalPrice <= customerPreferences.priceLimit && matchesPreferences)
           while discountedPrice <= customerPreferences.priceLimit
         ) -> do
@@ -1202,8 +1202,8 @@ foo(1, 2)`)).toBe(3)
     })
 
     test('regexp shorthands', () => {
-      expect(dvala.run('"abc" re-match #"a"')).toBeTruthy()
-      expect(dvala.run('"abc" re-match #"d"')).toBeNull()
+      expect(dvala.run('"abc" reMatch #"a"')).toBeTruthy()
+      expect(dvala.run('"abc" reMatch #"d"')).toBeNull()
     })
 
     it('handles super complex arithmetic expressions', () => {

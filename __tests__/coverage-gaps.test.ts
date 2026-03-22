@@ -67,22 +67,22 @@ describe('recursive evaluator — compound function types (trampoline fallback)'
 
   describe('complement function via trampoline dispatch', () => {
     it('should handle complement', () => {
-      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(odd?); f(3)')).toBe(false)
-      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(odd?); f(4)')).toBe(true)
+      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(isOdd); f(3)')).toBe(false)
+      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(isOdd); f(4)')).toBe(true)
     })
   })
 
   describe('everyPred function via trampoline dispatch', () => {
     it('should handle everyPred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.everyPred(number?, odd?)(5)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.everyPred(number?, odd?)(4)')).toBe(false)
+      expect(dvalaFull.run('let f = import(functional); f.everyPred(isNumber, isOdd)(5)')).toBe(true)
+      expect(dvalaFull.run('let f = import(functional); f.everyPred(isNumber, isOdd)(4)')).toBe(false)
     })
   })
 
   describe('somePred function via trampoline dispatch', () => {
     it('should handle somePred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.somePred(zero?, even?)(0)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.somePred(zero?, even?)(5)')).toBe(false)
+      expect(dvalaFull.run('let f = import(functional); f.somePred(isZero, isEven)(0)')).toBe(true)
+      expect(dvalaFull.run('let f = import(functional); f.somePred(isZero, isEven)(5)')).toBe(false)
     })
   })
 
@@ -175,7 +175,7 @@ describe('?? (nullish coalescing) edge cases', () => {
 
 describe('for edge cases', () => {
   it('should handle for with when-guard', () => {
-    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when odd?(x)) -> x * 10')).toEqual([10, 30, 50])
+    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when isOdd(x)) -> x * 10')).toEqual([10, 30, 50])
   })
 
   it('should handle for with while-guard', () => {
@@ -199,7 +199,7 @@ describe('for edge cases', () => {
   })
 
   it('should handle for with when and while guards combined', () => {
-    expect(dvala.run('for (x in [1, 2, 3] when odd?(x)) -> x')).toEqual([1, 3])
+    expect(dvala.run('for (x in [1, 2, 3] when isOdd(x)) -> x')).toEqual([1, 3])
   })
 
   it('should handle for with while-guard stopping early', () => {
@@ -251,10 +251,10 @@ describe('if/else if edge cases', () => {
 describe('effect matching with function predicate', () => {
   it('should match effects with a wildcard matcher', () => {
     const result = dvala.run(`
-      let pred = effect-matcher("my.*");
+      let pred = effectMatcher("my.*");
       handle
         perform(@my.feature.test, "hello")
-      with [(arg, eff, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then upperCase(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('HELLO')
@@ -262,7 +262,7 @@ describe('effect matching with function predicate', () => {
 
   it('should match effects with regexp matcher', () => {
     const result = dvala.run(`
-      let pred = effect-matcher(#"data\\..*");
+      let pred = effectMatcher(#"data\\..*");
       handle
         perform(@data.fetch, 42)
       with [(arg, eff, nxt) -> if pred(eff) then arg + 1 else nxt(eff, arg) end]
@@ -519,10 +519,10 @@ describe('recursive evaluator via module functions', () => {
   describe('executeBuiltinRecursive — builtin as callback to module', () => {
     it('should trigger recursive built-in path via module function', () => {
       // arithmetic-take-while calls executeFunction with the predicate
-      // passing a builtin like even? triggers executeBuiltinRecursive
+      // passing a builtin like isEven triggers executeBuiltinRecursive
       const result = dvalaFull.run(`
         let nt = import(number-theory);
-        nt.arithmetic-take-while(1, 1, (val, idx) -> val < 5 && number?(val))
+        nt.arithmetic-take-while(1, 1, (val, idx) -> val < 5 && isNumber(val))
       `)
       expect(result).toEqual([1, 2, 3, 4])
     })
@@ -694,7 +694,7 @@ describe('importMerge — module source with dvala-only functions', () => {
     // functional module has source that adds functions not in the TS definition
     const result = dvalaFull.run(`
       let f = import(functional);
-      object?(f)
+      isObject(f)
     `)
     expect(result).toBe(true)
   })
@@ -770,10 +770,10 @@ describe('advanceQq — ?? after evaluating first to null', () => {
 describe('effect matching — dvala function handler predicate', () => {
   it('should match effect using a dvala function predicate in do...with', () => {
     const result = dvala.run(`
-      let pred = effect-matcher("my.test.*");
+      let pred = effectMatcher("my.test.*");
       handle
         perform(@my.test.effect, "data")
-      with [(arg, eff, nxt) -> if pred(eff) then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if pred(eff) then upperCase(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('DATA')
@@ -980,7 +980,7 @@ describe('for-loop evalLet and guard phases', () => {
 
   it('should handle for with when AND while guards', () => {
     const result = dvala.run(`
-      for (x in [1, 2, 3, 4, 5, 6] when odd?(x) while x < 5) -> x
+      for (x in [1, 2, 3, 4, 5, 6] when isOdd(x) while x < 5) -> x
     `)
     expect(result).toEqual([1, 3])
   })
@@ -995,7 +995,7 @@ describe('import module with dvala source — multi-node parse path', () => {
     // The collection module has dvala source that provides extra functions
     const result = dvalaFull.run(`
       let c = import(collection);
-      object?(c)
+      isObject(c)
     `)
     expect(result).toBe(true)
   })
@@ -1013,7 +1013,7 @@ describe('builtin with dvalaImpl — trampoline dispatch', () => {
   })
 
   it('should dispatch filter with dvalaImpl', () => {
-    const result = dvala.run('filter([1, 2, 3, 4, 5], odd?)')
+    const result = dvala.run('filter([1, 2, 3, 4, 5], isOdd)')
     expect(result).toEqual([1, 3, 5])
   })
 
@@ -1177,7 +1177,7 @@ describe('import — multi-node module source', () => {
     // This triggers the SequenceFrame path in import
     const result = dvalaFull.run(`
       let g = import(grid);
-      object?(g)
+      isObject(g)
     `)
     expect(result).toBe(true)
   })
@@ -1436,7 +1436,7 @@ describe('importMerge — dvala-only function path', () => {
     // grid.dvala defines functions that may be dvala-only
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.isCellEvery([[1, 2], [3, 4]], number?)
+      g.isCellEvery([[1, 2], [3, 4]], isNumber)
     `)
     expect(result).toBe(true)
   })
@@ -1470,16 +1470,16 @@ describe('recursive evaluator — recur in callback function', () => {
 })
 
 // ---------------------------------------------------------------------------
-// effect-matcher with non-string/non-regexp argument (misc.ts line 472)
+// effectMatcher with non-string/non-regexp argument (misc.ts line 472)
 // ---------------------------------------------------------------------------
 
-describe('effect-matcher — non-string/non-regexp argument', () => {
+describe('effectMatcher — non-string/non-regexp argument', () => {
   it('should throw when given a number', () => {
-    expect(() => dvala.run('effect-matcher(42)')).toThrow('effect-matcher expects a string or regexp pattern')
+    expect(() => dvala.run('effectMatcher(42)')).toThrow('effectMatcher expects a string or regexp pattern')
   })
 
   it('should throw when given an array', () => {
-    expect(() => dvala.run('effect-matcher([1, 2])')).toThrow('effect-matcher expects a string or regexp pattern')
+    expect(() => dvala.run('effectMatcher([1, 2])')).toThrow('effectMatcher expects a string or regexp pattern')
   })
 })
 
@@ -1578,7 +1578,7 @@ describe('maybePromise — async some with truthy first element', () => {
   it('should short-circuit when async callback returns truthy', async () => {
     const result = await dvala.runAsync(`
       let x = perform(@dvala.random);
-      some([1, 2, 3], number?)
+      some([1, 2, 3], isNumber)
     `, {
       effectHandlers: [
         { pattern: 'dvala.random', handler: async ({ resume: doResume }) => { doResume(0.5) } },
@@ -1780,7 +1780,7 @@ describe('trampoline — import module with single expression', () => {
     // grid module has dvala source; imports trigger the merge path
     const result = dvalaFull.run(`
       let g = import(grid);
-      g.isCellEvery([[1, 2], [3, 4]], number?)
+      g.isCellEvery([[1, 2], [3, 4]], isNumber)
     `)
     expect(result).toBe(true)
   })
@@ -1934,7 +1934,7 @@ describe('serialization — compound function types in continuations', () => {
   it('should serialize continuation with complement function', async () => {
     const result = await dvalaFull.runAsync(`
       let { complement } = import(functional);
-      let f = complement(odd?);
+      let f = complement(isOdd);
       perform(@test.pause);
       f(3)
     `, {
@@ -1975,7 +1975,7 @@ describe('serialization — compound function types in continuations', () => {
   it('should serialize continuation with everyPred', async () => {
     const result = await dvalaFull.runAsync(`
       let { everyPred } = import(functional);
-      let f = everyPred(number?, odd?);
+      let f = everyPred(isNumber, isOdd);
       perform(@test.pause);
       f(5)
     `, {
@@ -1989,7 +1989,7 @@ describe('serialization — compound function types in continuations', () => {
   it('should serialize continuation with somePred', async () => {
     const result = await dvalaFull.runAsync(`
       let { somePred } = import(functional);
-      let f = somePred(number?, string?);
+      let f = somePred(isNumber, isString);
       perform(@test.pause);
       f(5)
     `, {
@@ -2262,8 +2262,8 @@ describe('stub evaluate — vector module (movingFn, runningFn)', () => {
 })
 
 describe('stub evaluate — core/object.ts', () => {
-  it('merge-with evaluate throws', () => {
-    expect(() => objectNormalExpression['merge-with']!.evaluate([], undefined, undefined!)).toThrow('merge-with is implemented in Dvala')
+  it('mergeWith evaluate throws', () => {
+    expect(() => objectNormalExpression['mergeWith']!.evaluate([], undefined, undefined!)).toThrow('mergeWith is implemented in Dvala')
   })
 })
 
@@ -2286,11 +2286,11 @@ describe('stub evaluate — core/sequence.ts', () => {
   it('sort evaluate throws', () => {
     expect(() => sequenceNormalExpression.sort!.evaluate([], undefined, undefined!)).toThrow('sort is implemented in Dvala')
   })
-  it('take-while evaluate throws', () => {
-    expect(() => sequenceNormalExpression['take-while']!.evaluate([], undefined, undefined!)).toThrow('take-while is implemented in Dvala')
+  it('takeWhile evaluate throws', () => {
+    expect(() => sequenceNormalExpression['takeWhile']!.evaluate([], undefined, undefined!)).toThrow('takeWhile is implemented in Dvala')
   })
-  it('drop-while evaluate throws', () => {
-    expect(() => sequenceNormalExpression['drop-while']!.evaluate([], undefined, undefined!)).toThrow('drop-while is implemented in Dvala')
+  it('dropWhile evaluate throws', () => {
+    expect(() => sequenceNormalExpression['dropWhile']!.evaluate([], undefined, undefined!)).toThrow('dropWhile is implemented in Dvala')
   })
 })
 
@@ -2413,7 +2413,7 @@ describe('parseFunction — do...with...end function body', () => {
     const result = dvala.run(`
       let f = () -> handle
         perform(@my.eff, "hello")
-      with [(arg, eff, nxt) -> if eff == @my.eff then upper-case(arg) else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @my.eff then upperCase(arg) else nxt(eff, arg) end]
       end;
       f()
     `)
@@ -2799,7 +2799,7 @@ describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)
     const result = dvala.run(`
       handle
         perform(@test.pred, 99)
-      with [(arg, eff, nxt) -> if effect-name(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectName(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(100)

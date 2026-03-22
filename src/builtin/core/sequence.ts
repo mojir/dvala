@@ -134,7 +134,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'index-of': {
+  'indexOf': {
     evaluate: ([seq, value], sourceCodeInfo): number | null => {
       assertAny(value, sourceCodeInfo)
       if (seq === null)
@@ -162,13 +162,13 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['seq', 'x'] }],
       description: 'Returns the index of $x in $seq. If element is not present in $seq `null` is returned.',
-      seeAlso: ['sequence.lastIndexOf', 'sequence.position', 'contains?'],
+      seeAlso: ['sequence.lastIndexOf', 'sequence.position', 'contains'],
       examples: [
-        '[[1], [2], [1], [2]] index-of [1]',
-        'index-of(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
-        'index-of([5, 10, 15, 20], 15)',
-        'index-of([5, 10, 15, 20], 1)',
-        'index-of(null, 1)',
+        '[[1], [2], [1], [2]] indexOf [1]',
+        'indexOf(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
+        'indexOf([5, 10, 15, 20], 15)',
+        'indexOf([5, 10, 15, 20], 1)',
+        'indexOf(null, 1)',
       ],
     },
   },
@@ -384,7 +384,7 @@ For string $seq returns all but the first characters in $seq.`,
         `
 some(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 some(
@@ -462,7 +462,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array/string with the $n first elements from $seq.',
-      seeAlso: ['take-last', 'take-while', 'drop', 'slice', 'sequence.splitAt'],
+      seeAlso: ['takeLast', 'takeWhile', 'drop', 'slice', 'sequence.splitAt'],
       examples: [
         'take([1, 2, 3, 4, 5], 3)',
         '[1, 2, 3, 4, 5] take 3',
@@ -472,7 +472,7 @@ sort(
       ],
     },
   },
-  'take-last': {
+  'takeLast': {
     evaluate: ([array, n], sourceCodeInfo): Seq => {
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
@@ -492,11 +492,11 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array with the $n last elements from $seq.',
-      seeAlso: ['take', 'drop-last'],
+      seeAlso: ['take', 'dropLast'],
       examples: [
-        'take-last([1, 2, 3, 4, 5], 3)',
-        '[1, 2, 3, 4, 5] take-last 3',
-        'take-last([1, 2, 3, 4, 5], 0)',
+        'takeLast([1, 2, 3, 4, 5], 3)',
+        '[1, 2, 3, 4, 5] takeLast 3',
+        'takeLast([1, 2, 3, 4, 5], 0)',
       ],
     },
   },
@@ -519,7 +519,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array/string with the $n first elements dropped from $seq.',
-      seeAlso: ['drop-last', 'drop-while', 'take', 'slice', 'sequence.splitAt'],
+      seeAlso: ['dropLast', 'dropWhile', 'take', 'slice', 'sequence.splitAt'],
       examples: [
         'drop([1, 2, 3, 4, 5], 3)',
         '[1, 2, 3, 4, 5] drop 0',
@@ -528,7 +528,7 @@ sort(
       ],
     },
   },
-  'drop-last': {
+  'dropLast': {
     evaluate: ([array, n], sourceCodeInfo): Seq => {
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
@@ -548,16 +548,16 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array with the $n last elements dropped from $seq.',
-      seeAlso: ['drop', 'take-last'],
+      seeAlso: ['drop', 'takeLast'],
       examples: [
-        'drop-last([1, 2, 3, 4, 5], 3)',
-        '[1, 2, 3, 4, 5] drop-last 3',
-        'drop-last([1, 2, 3, 4, 5], 0)',
+        'dropLast([1, 2, 3, 4, 5], 3)',
+        '[1, 2, 3, 4, 5] dropLast 3',
+        'dropLast([1, 2, 3, 4, 5], 0)',
       ],
     },
   },
-  'take-while': {
-    evaluate: () => { throw new Error('take-while is implemented in Dvala') },
+  'takeWhile': {
+    evaluate: () => { throw new Error('takeWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -570,21 +570,21 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the members of $seq in order, stopping before the first one for which `predicate` returns a falsy value.',
-      seeAlso: ['take', 'drop-while', 'sequence.splitWith'],
+      seeAlso: ['take', 'dropWhile', 'sequence.splitWith'],
       examples: [
-        `take-while(
+        `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
 )`,
-        `take-while(
+        `takeWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
 )`,
       ],
     },
   },
-  'drop-while': {
-    evaluate: () => { throw new Error('drop-while is implemented in Dvala') },
+  'dropWhile': {
+    evaluate: () => { throw new Error('dropWhile is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'sequence',
@@ -597,13 +597,13 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the members of $seq in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
-      seeAlso: ['drop', 'take-while', 'sequence.splitWith'],
+      seeAlso: ['drop', 'takeWhile', 'sequence.splitWith'],
       examples: [
-        `drop-while(
+        `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ < 3
 )`,
-        `drop-while(
+        `dropWhile(
   [1, 2, 3, 2, 1],
   -> $ > 3
 )`,

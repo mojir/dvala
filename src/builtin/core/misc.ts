@@ -270,7 +270,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Coerces $x to boolean.',
-      seeAlso: ['not', 'boolean?', 'true?', 'false?'],
+      seeAlso: ['not', 'isBoolean', 'isTrue', 'isFalse'],
       examples: [
         'boolean(0)',
         'boolean(1)',
@@ -304,7 +304,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'effect-name': {
+  'effectName': {
     evaluate: ([first], sourceCodeInfo): string => {
       return asEffect(first, sourceCodeInfo).name
     },
@@ -317,14 +317,14 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['e'] }],
       description: 'Returns the name of an effect reference as a string.',
-      seeAlso: ['effect-matcher', 'effect?'],
+      seeAlso: ['effectMatcher', 'isEffect'],
       examples: [
-        'effect-name(@dvala.error)',
-        'effect-name(@llm.complete)',
+        'effectName(@dvala.error)',
+        'effectName(@llm.complete)',
       ],
     },
   },
-  'effect-matcher': {
+  'effectMatcher': {
     evaluate: ([pattern], sourceCodeInfo): EffectMatcherFunction => {
       if (typeof pattern === 'string') {
         return {
@@ -348,7 +348,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
           arity: toFixedArity(1),
         }
       }
-      throw new DvalaError('effect-matcher expects a string or regexp pattern', sourceCodeInfo)
+      throw new DvalaError('effectMatcher expects a string or regexp pattern', sourceCodeInfo)
     },
     arity: toFixedArity(1),
     docs: {
@@ -359,15 +359,15 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['pattern'] }],
       description: 'Returns a predicate function that matches effects by name. If $pattern is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If $pattern is a regexp, tests the effect name against the regexp.',
-      seeAlso: ['effect-name', 'effect?'],
+      seeAlso: ['effectName', 'isEffect'],
       examples: [
-        'let pred = effect-matcher("dvala.*"); pred(@dvala.error)',
-        'let pred = effect-matcher("dvala.*"); pred(@custom.foo)',
-        'let pred = effect-matcher("*"); pred(@anything)',
+        'let pred = effectMatcher("dvala.*"); pred(@dvala.error)',
+        'let pred = effectMatcher("dvala.*"); pred(@custom.foo)',
+        'let pred = effectMatcher("*"); pred(@anything)',
       ],
     },
   },
-  'type-of': {
+  'typeOf': {
     evaluate: ([value]): string => {
       if (value === null || value === undefined)
         return 'null'
@@ -396,17 +396,17 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns a string representing the type of $x. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"regexp"`, and `"effect"`.',
-      seeAlso: ['number?', 'string?', 'boolean?', 'null?', 'array?', 'object?', 'function?', 'regexp?', 'effect?'],
+      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isFunction', 'isRegexp', 'isEffect'],
       examples: [
-        'type-of(42)',
-        'type-of("hello")',
-        'type-of(true)',
-        'type-of(null)',
-        'type-of([1, 2, 3])',
-        'type-of({ a: 1 })',
-        'type-of((x) -> x + 1)',
-        'type-of(regexp("^start"))',
-        'type-of(@dvala.io.print)',
+        'typeOf(42)',
+        'typeOf("hello")',
+        'typeOf(true)',
+        'typeOf(null)',
+        'typeOf([1, 2, 3])',
+        'typeOf({ a: 1 })',
+        'typeOf((x) -> x + 1)',
+        'typeOf(regexp("^start"))',
+        'typeOf(@dvala.io.print)',
       ],
     },
   },

@@ -60,7 +60,7 @@ export const collectionNormalExpression: BuiltinNormalExpressions = {
         `
 filter(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 filter(
@@ -70,7 +70,7 @@ filter(
         `
 filter(
   { a: 1, b: 2 },
-  odd?
+  isOdd
 )`,
       ],
     },
@@ -122,7 +122,7 @@ filter(
         `
 reduce(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  (result, value) -> result + (if even?(value) then value else 0 end),
+  (result, value) -> result + (if isEven(value) then value else 0 end),
   0)`,
       ],
     },
@@ -153,7 +153,7 @@ reduce(
         { argumentNames: ['a', 'b', 'notFound'] },
       ],
       description: 'Returns value in $a mapped at $b.',
-      seeAlso: ['collection.getIn', 'contains?', 'find', 'nth'],
+      seeAlso: ['collection.getIn', 'contains', 'find', 'nth'],
       examples: [
         '[1, 2, 3] get 1',
         '{ a: 1 } get "a"',
@@ -227,7 +227,7 @@ get(
       },
       variants: [{ argumentNames: ['coll'] }],
       description: 'Returns number of elements in $coll.',
-      seeAlso: ['empty?'],
+      seeAlso: ['isEmpty'],
       examples: [
         'count([1, 2, 3])',
         'count([])',
@@ -238,7 +238,7 @@ get(
       ],
     },
   },
-  'contains?': {
+  'contains': {
     evaluate: ([coll, key], sourceCodeInfo): boolean => {
       if (coll === null)
         return false
@@ -265,33 +265,33 @@ get(
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns `true` if $a contains $b, otherwise returns `false`. For strings, it checks if substring is included.',
-      seeAlso: ['get', 'find', 'index-of'],
+      seeAlso: ['get', 'find', 'indexOf'],
       examples: [
-        '[1, 2, 3] contains? 1',
-        'null contains? 1',
-        '{ a: 1, b: 2 } contains? "a"',
+        '[1, 2, 3] contains 1',
+        'null contains 1',
+        '{ a: 1, b: 2 } contains "a"',
         `
-contains?(
+contains(
   [],
   1
 )`,
         `
-contains?(
+contains(
   [1],
   1
 )`,
         `
-contains?(
+contains(
   [1, 2, 3],
   1
 )`,
         `
-contains?(
+contains(
   {},
   "a"
 )`,
         `
-contains?(
+contains(
   { a: 1, b: 2 },
   "a"
 )`,

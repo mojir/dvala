@@ -119,7 +119,7 @@ No effects, no async. Use `runSync` for deterministic, synchronous programs. Syn
 
 ```typescript
 const result = runSync(`
-  [1, 2, 3, 4, 5] |> filter(_, odd?) |> map(_, -> $ * $) |> reduce(_, +, 0)
+  [1, 2, 3, 4, 5] |> filter(_, isOdd) |> map(_, -> $ * $) |> reduce(_, +, 0)
 `)
 // => 35
 ```
@@ -185,7 +185,7 @@ The `do/with` construct overrides effects within a lexical scope. The handler's 
 do
   perform(llm, "prompt")
 with
-  case llm then ([prompt]) -> upper-case(prompt)   // mock the LLM
+  case llm then ([prompt]) -> upperCase(prompt)   // mock the LLM
 end
 ```
 
@@ -198,8 +198,8 @@ do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) ->
-    if empty?(prompt) then perform(effect(dvala.error), "Empty prompt")
-    else upper-case(prompt)
+    if isEmpty(prompt) then perform(effect(dvala.error), "Empty prompt")
+    else upperCase(prompt)
     end
   case effect(dvala.error) then ([msg]) -> "Failed: " ++ msg  // only handles errors from the body, not handlers
 end

@@ -1,34 +1,34 @@
 {
-  update: (coll, key, fn, ...extra-params) ->
-    assoc(coll, key, apply(fn, [get(coll, key), ...extra-params])),
+  update: (coll, key, fn, ...extraParams) ->
+    assoc(coll, key, apply(fn, [get(coll, key), ...extraParams])),
 
-  updateIn: (coll, ks, fn, ...extra-params) -> do
+  updateIn: (coll, ks, fn, ...extraParams) -> do
     let k = first(ks);
     if count(ks) == 1 then
-      assoc(coll, k, apply(fn, [get(coll, k), ...extra-params]))
+      assoc(coll, k, apply(fn, [get(coll, k), ...extraParams]))
     else
       let inner = get(coll, k);
-      let inner-coll = if null?(inner) then {} else inner end;
-      assoc(coll, k, apply(self, [inner-coll, slice(ks, 1), fn, ...extra-params]))
+      let innerColl = if isNull(inner) then {} else inner end;
+      assoc(coll, k, apply(self, [innerColl, slice(ks, 1), fn, ...extraParams]))
     end
   end,
 
   filteri: (coll, fn) -> do
-    if array?(coll) then
+    if isArray(coll) then
       reduce(
         for (i in range(count(coll))) -> [nth(coll, i), i],
         (acc, pair) -> if fn(first(pair), second(pair)) then [...acc, first(pair)] else acc end,
         []
       )
 
-    else if string?(coll) then
+    else if isString(coll) then
       reduce(
         for (i in range(count(coll))) -> [nth(coll, i), i],
         (acc, pair) -> if fn(first(pair), second(pair)) then ++(acc, first(pair)) else acc end,
         ""
       )
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(keys(coll), (acc, k) ->
         if fn(coll(k), k) then assoc(acc, k, coll(k)) else acc end,
         {}
@@ -40,17 +40,17 @@
   end,
 
   mapi: (coll, fn) -> do
-    if array?(coll) then
+    if isArray(coll) then
       for (i in range(count(coll))) -> fn(nth(coll, i), i)
 
-    else if string?(coll) then
+    else if isString(coll) then
       reduce(
         for (i in range(count(coll))) -> fn(nth(coll, i), i),
         (acc, ch) -> ++(acc, ch),
         ""
       )
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(keys(coll), (acc, k) ->
         assoc(acc, k, fn(coll(k), k)),
         {}
@@ -62,7 +62,7 @@
   end,
 
   reducei: (coll, fn, initial) -> do
-    if string?(coll) then
+    if isString(coll) then
       loop (acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
@@ -71,7 +71,7 @@
         end
       end
 
-    else if array?(coll) then
+    else if isArray(coll) then
       loop (acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
@@ -80,7 +80,7 @@
         end
       end
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(keys(coll), (acc, k) -> fn(acc, coll(k), k), initial)
 
     else
@@ -89,13 +89,13 @@
   end,
 
   reduceRight: (coll, fn, initial) -> do
-    if string?(coll) then
+    if isString(coll) then
       reduce(reverse(coll), fn, initial)
 
-    else if array?(coll) then
+    else if isArray(coll) then
       reduce(reverse(coll), fn, initial)
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(reverse(keys(coll)), (acc, k) -> fn(acc, coll(k)), initial)
 
     else
@@ -104,7 +104,7 @@
   end,
 
   reduceiRight: (coll, fn, initial) -> do
-    if string?(coll) then
+    if isString(coll) then
       let len = count(coll);
       loop (acc = initial, i = len - 1) -> do
         if i < 0 then
@@ -114,7 +114,7 @@
         end
       end
 
-    else if array?(coll) then
+    else if isArray(coll) then
       let len = count(coll);
       loop (acc = initial, i = len - 1) -> do
         if i < 0 then
@@ -124,7 +124,7 @@
         end
       end
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(reverse(keys(coll)), (acc, k) -> fn(acc, coll(k), k), initial)
 
     else
@@ -133,12 +133,12 @@
   end,
 
   reductions: (coll, fn, initial) -> do
-    let items = if string?(coll) then
+    let items = if isString(coll) then
       if count(coll) == 0 then [] else for (i in range(count(coll))) -> nth(coll, i) end
 
-    else if array?(coll) then coll
+    else if isArray(coll) then coll
 
-    else if object?(coll) then
+    else if isObject(coll) then
       for (k in keys(coll)) -> coll(k)
 
     else
@@ -155,7 +155,7 @@
   end,
 
   reductionsi: (coll, fn, initial) -> do
-    if string?(coll) then do
+    if isString(coll) then do
       if count(coll) == 0 then
         [initial]
       else
@@ -170,7 +170,7 @@
       end
     end
 
-    else if array?(coll) then do
+    else if isArray(coll) then do
       if count(coll) == 0 then
         [initial]
       else
@@ -185,7 +185,7 @@
       end
     end
 
-    else if object?(coll) then do
+    else if isObject(coll) then do
       let ks = keys(coll);
       if count(ks) == 0 then
         [initial]
@@ -203,9 +203,9 @@
   end,
 
   "isEvery": (coll, fn) -> do
-    let items = if array?(coll) then coll
-      else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
-      else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
+    let items = if isArray(coll) then coll
+      else if isString(coll) then for (i in range(count(coll))) -> nth(coll, i)
+      else if isObject(coll) then for (k in keys(coll)) -> [k, coll(k)]
       else perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
@@ -216,9 +216,9 @@
   end,
 
   "isAny": (coll, fn) -> do
-    let items = if array?(coll) then coll
-      else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
-      else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
+    let items = if isArray(coll) then coll
+      else if isString(coll) then for (i in range(count(coll))) -> nth(coll, i)
+      else if isObject(coll) then for (k in keys(coll)) -> [k, coll(k)]
       else perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
@@ -229,9 +229,9 @@
   end,
 
   "notAny": (coll, fn) -> do
-    let items = if array?(coll) then coll
-      else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
-      else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
+    let items = if isArray(coll) then coll
+      else if isString(coll) then for (i in range(count(coll))) -> nth(coll, i)
+      else if isObject(coll) then for (k in keys(coll)) -> [k, coll(k)]
       else perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->
@@ -242,9 +242,9 @@
   end,
 
   "notEvery": (coll, fn) -> do
-    let items = if array?(coll) then coll
-      else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
-      else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
+    let items = if isArray(coll) then coll
+      else if isString(coll) then for (i in range(count(coll))) -> nth(coll, i)
+      else if isObject(coll) then for (k in keys(coll)) -> [k, coll(k)]
       else perform(@dvala.error, "Expected collection")
     end;
     loop (i = 0) ->

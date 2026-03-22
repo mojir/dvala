@@ -82,7 +82,7 @@ let double = -> $ * 2;
 let hyp    = -> $ ^ 2 + $2 ^ 2;
 
 // Rest parameters
-let sum-all = (...nums) -> reduce(nums, +, 0);
+let sumAll = (...nums) -> reduce(nums, +, 0);
 
 // Default parameter values
 let greet = (name = "World") -> "Hello, " ++ name;
@@ -162,7 +162,7 @@ people map "name"    // => ["Alice", "Bob"]
 ```dvala
 [1, 2, 3]
   |> map(_, -> $ ^ 2)
-  |> filter(_, odd?)
+  |> filter(_, isOdd)
   |> reduce(_, +, 0)
 ```
 
@@ -296,7 +296,7 @@ a ?? b            // returns a if a != null, else b
 ```dvala
 let countdown = n -> do
   perform(effect(dvala.io.print), n);
-  if !(zero?(n)) then recur(n - 1) end
+  if !(isZero(n)) then recur(n - 1) end
 end;
 countdown(3)
 ```
@@ -388,12 +388,12 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 |----------|-------------|
 | `str(a, b, ...)` | Concatenate to string (null → "") |
 | `number(s)` | Parse string to number |
-| `lower-case(s)` | Lowercase |
-| `upper-case(s)` | Uppercase |
+| `lowerCase(s)` | Lowercase |
+| `upperCase(s)` | Uppercase |
 | `trim(s)` | Remove leading/trailing whitespace |
 | `split(s, delimiter, limit?)` | Split into array |
 | `join(arr, delimiter)` | Join array into string |
-| `blank?(s)` | True if null or whitespace-only |
+| `isBlank(s)` | True if null or whitespace-only |
 
 ### Sequence (arrays and strings)
 
@@ -410,7 +410,7 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `pop(seq)` | Remove last (returns new) |
 | `reverse(seq)` | Reversed sequence |
 | `sort(seq, comparator?)` | Sorted (default: `compare`) |
-| `index-of(seq, value)` | Index of value, or null |
+| `indexOf(seq, value)` | Index of value, or null |
 | `some(seq, fn)` | First element passing fn, or null |
 
 ### Array-specific
@@ -429,9 +429,9 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `filter(coll, fn)` | Keep elements passing fn |
 | `reduce(coll, fn, initial)` | Fold to single value |
 | `count(coll)` | Number of elements |
-| `empty?(coll)` | True if empty or null |
-| `not-empty?(coll)` | True if not empty and not null |
-| `contains?(coll, key)` | True if key/index/substring exists |
+| `isEmpty(coll)` | True if empty or null |
+| `isNotEmpty(coll)` | True if not empty and not null |
+| `contains(coll, key)` | True if key/index/substring exists |
 | `get(coll, key, not-found?)` | Value at key (with optional default) |
 | `assoc(coll, key, value, ...)` | Set key to value (returns new) |
 | `++(a, b, ...)` | Concatenate collections |
@@ -446,9 +446,9 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `find(obj, key)` | [key, value] pair or null |
 | `dissoc(obj, key)` | Copy without key |
 | `merge(obj, ...)` | Merge objects (right wins) |
-| `merge-with(obj, ..., fn)` | Merge with conflict resolver fn |
+| `mergeWith(obj, ..., fn)` | Merge with conflict resolver fn |
 | `zipmap(keys, vals)` | Build object from two arrays |
-| `select-keys(obj, keys)` | Keep only specified keys |
+| `selectKeys(obj, keys)` | Keep only specified keys |
 
 ### Functional
 
@@ -463,41 +463,41 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 
 | Function | Description |
 |----------|-------------|
-| `number?(x)` | Is x a number? |
-| `integer?(x)` | Is x an integer? |
-| `string?(x)` | Is x a string? |
-| `boolean?(x)` | Is x a boolean? |
-| `null?(x)` | Is x null? |
-| `function?(x)` | Is x a function? |
-| `array?(x)` | Is x an array? |
-| `object?(x)` | Is x an object (map)? |
-| `sequence?(x)` | Is x an array or string? |
-| `collection?(x)` | Is x an array, object, or string? |
-| `regexp?(x)` | Is x a regexp? |
-| `vector?(x)` | Is x a vector (array of numbers)? |
-| `matrix?(x)` | Is x a matrix (2D array of numbers)? |
-| `grid?(x)` | Is x a grid (2D array, uniform row lengths)? |
-| `empty?(x)` | Is x empty or null? |
-| `not-empty?(x)` | Is x non-empty and non-null? |
-| `zero?(x)` | Is x zero? |
-| `pos?(x)` | Is x > 0? |
-| `neg?(x)` | Is x < 0? |
-| `even?(x)` | Is x even? |
-| `odd?(x)` | Is x odd? |
-| `finite?(x)` | Is x finite? |
-| `true?(x)` | Is x exactly true? |
-| `false?(x)` | Is x exactly false? |
-| `positive-infinity?(x)` | Is x +Infinity? |
-| `negative-infinity?(x)` | Is x -Infinity? |
+| `isNumber(x)` | Is x a isNumber |
+| `isInteger(x)` | Is x an isInteger |
+| `isString(x)` | Is x a isString |
+| `isBoolean(x)` | Is x a isBoolean |
+| `isNull(x)` | Is x isNull |
+| `isFunction(x)` | Is x a isFunction |
+| `isArray(x)` | Is x an isArray |
+| `isObject(x)` | Is x an object (map)? |
+| `isSequence(x)` | Is x an array or isString |
+| `isCollection(x)` | Is x an array, object, or isString |
+| `isRegexp(x)` | Is x a isRegexp |
+| `isVector(x)` | Is x a vector (array of numbers)? |
+| `isMatrix(x)` | Is x a matrix (2D array of numbers)? |
+| `isGrid(x)` | Is x a grid (2D array, uniform row lengths)? |
+| `isEmpty(x)` | Is x empty or isNull |
+| `isNotEmpty(x)` | Is x non-empty and non-null? |
+| `isZero(x)` | Is x isZero |
+| `isPos(x)` | Is x > 0? |
+| `isNeg(x)` | Is x < 0? |
+| `isEven(x)` | Is x isEven |
+| `isOdd(x)` | Is x isOdd |
+| `isFinite(x)` | Is x isFinite |
+| `isTrue(x)` | Is x exactly isTrue |
+| `isFalse(x)` | Is x exactly isFalse |
+| `isPositiveInfinity(x)` | Is x +Infinity? |
+| `isNegativeInfinity(x)` | Is x -Infinity? |
 
 ### Regular Expressions
 
 | Function | Description |
 |----------|-------------|
 | `regexp(pattern, flags?)` | Create regexp |
-| `re-match(text, regexp)` | Returns match array or null |
+| `reMatch(text, regexp)` | Returns match array or null |
 | `replace(s, regexp, replacement)` | Replace first match |
-| `replace-all(s, regexp, replacement)` | Replace all matches |
+| `replaceAll(s, regexp, replacement)` | Replace all matches |
 
 ### Misc
 
@@ -550,7 +550,7 @@ sin(PI)
 
 **vector**: `movingFn`, `runningFn`, `isMonotonic`, `isStrictlyMonotonic`, `isIncreasing`, `isDecreasing`, `isStrictlyIncreasing`, `isStrictlyDecreasing`, `mode`, `minIndex`, `maxIndex`, `sortIndices`, `countValues`, `linspace`, `ones`, `zeros`, `fill`, `generate`, `cumsum`, `cumprod`, `quartiles`, `percentile`, `quantile`, `histogram`, `ecdf`, `isOutliers`, `outliers`, `bincount`, `winsorize`, `mse`, `rmse`, `mae`, `smape`
 
-**sequence**: `mapcat`, `position`, `lastIndexOf`, `shift`, `splice`, `sortBy`, `take`, `take-last`, `take-while`, `drop`, `drop-last`, `drop-while`, `unshift`, `distinct`, `remove`, `removeAt`, `splitAt`, `splitWith`, `frequencies`, `groupBy`, `partition`, `partitionAll`, `partitionBy`, `isEndsWith`, `isStartsWith`, `interleave`, `interpose`
+**sequence**: `mapcat`, `position`, `lastIndexOf`, `shift`, `splice`, `sortBy`, `take`, `takeLast`, `takeWhile`, `drop`, `dropLast`, `dropWhile`, `unshift`, `distinct`, `remove`, `removeAt`, `splitAt`, `splitWith`, `frequencies`, `groupBy`, `partition`, `partitionAll`, `partitionBy`, `isEndsWith`, `isStartsWith`, `interleave`, `interpose`
 
 **collection**: `getIn`, `assocIn`, `update`, `updateIn`, `filteri`, `mapi`, `reducei`, `reduceRight`, `reduceiRight`, `reductions`, `reductionsi`, `notEmpty`, `isEvery`, `isAny`, `notAny`, `notEvery`
 
@@ -600,7 +600,7 @@ loop (n = 5, acc = 1) ->
 ```dvala
 range(10)
   |> map(_, -> $ ^ 2)
-  |> filter(_, odd?)
+  |> filter(_, isOdd)
   |> reduce(_, +, 0)
 // => 1 + 9 + 25 + 49 + 81 = 165
 ```

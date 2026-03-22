@@ -1,44 +1,44 @@
 {
-  map: (first-coll, ...args) -> do
+  map: (firstColl, ...args) -> do
     let fn = last(args);
-    let other-colls = slice(args, 0, count(args) - 1);
-    let all-colls = [first-coll, ...other-colls];
+    let otherColls = slice(args, 0, count(args) - 1);
+    let allColls = [firstColl, ...otherColls];
 
-    if object?(first-coll) then do
-      let expected-keys = keys(first-coll) |> sort;
-      for (obj in other-colls) -> do
-        if not(object?(obj)) then
+    if isObject(firstColl) then do
+      let expectedKeys = keys(firstColl) |> sort;
+      for (obj in otherColls) -> do
+        if not(isObject(obj)) then
           perform(@dvala.error, "Expected object")
         end;
-        let obj-keys = keys(obj) |> sort;
-        if not(obj-keys == expected-keys) then
+        let objKeys = keys(obj) |> sort;
+        if not(objKeys == expectedKeys) then
           perform(@dvala.error, ++(
             "All objects must have the same keys. Expected: ",
-            join(expected-keys, ", "),
+            join(expectedKeys, ", "),
             ". Found: ",
-            join(obj-keys, ", ")
+            join(objKeys, ", ")
           ))
         end
       end;
-      reduce(keys(first-coll), (acc, k) -> do
-        let a = for (coll in all-colls) -> coll(k);
+      reduce(keys(firstColl), (acc, k) -> do
+        let a = for (coll in allColls) -> coll(k);
         assoc(acc, k, apply(fn, a))
       end, {})
     end
 
-    else if string?(first-coll) then do
-      for (s in other-colls) -> do
-        if not(string?(s)) then
+    else if isString(firstColl) then do
+      for (s in otherColls) -> do
+        if not(isString(s)) then
           perform(@dvala.error, "Expected string")
         end
       end;
-      let len = reduce(other-colls, (m, s) -> min(m, count(s)), count(first-coll));
+      let len = reduce(otherColls, (m, s) -> min(m, count(s)), count(firstColl));
       let mapped = for (i in range(len)) -> do
-        let a = for (coll in all-colls) -> nth(coll, i);
+        let a = for (coll in allColls) -> nth(coll, i);
         apply(fn, a)
       end;
       reduce(mapped, (acc, ch) -> do
-        if not(string?(ch)) then
+        if not(isString(ch)) then
           perform(@dvala.error, "Expected string")
         end;
         ++(acc, ch)
@@ -46,14 +46,14 @@
     end
 
     else do
-      for (x in other-colls) -> do
-        if not(array?(x)) then
+      for (x in otherColls) -> do
+        if not(isArray(x)) then
           perform(@dvala.error, "Expected array")
         end
       end;
-      let len = reduce(other-colls, (m, x) -> min(m, count(x)), count(first-coll));
+      let len = reduce(otherColls, (m, x) -> min(m, count(x)), count(firstColl));
       for (i in range(len)) -> do
-        let a = for (coll in all-colls) -> nth(coll, i);
+        let a = for (coll in allColls) -> nth(coll, i);
         apply(fn, a)
       end
     end
@@ -61,13 +61,13 @@
   end,
 
   filter: (coll, fn) -> do
-    if array?(coll) then
+    if isArray(coll) then
       reduce(coll, (acc, elem) -> if fn(elem) then [...acc, elem] else acc end, [])
 
-    else if string?(coll) then
+    else if isString(coll) then
       reduce(coll, (acc, ch) -> if fn(ch) then ++(acc, ch) else acc end, "")
 
-    else if object?(coll) then
+    else if isObject(coll) then
       reduce(keys(coll), (acc, k) -> do
         if fn(coll(k)) then
           assoc(acc, k, coll(k))
@@ -82,7 +82,7 @@
   end,
 
   reduce: (coll, fn, initial) -> do
-    if string?(coll) then
+    if isString(coll) then
       loop (acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
@@ -91,7 +91,7 @@
         end
       end
 
-    else if array?(coll) then
+    else if isArray(coll) then
       loop (acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
@@ -100,7 +100,7 @@
         end
       end
 
-    else if object?(coll) then do
+    else if isObject(coll) then do
       let values = vals(coll);
       loop (acc = initial, i = 0) -> do
         if i >= count(values) then

@@ -28,7 +28,7 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
   'dvala.io.print',
   'dvala.io.error',
   'dvala.io.read',
-  'dvala.io.read-stdin',
+  'dvala.io.readStdin',
   'dvala.io.pick',
   'dvala.io.confirm',
   'dvala.random',
@@ -220,7 +220,7 @@ function isHandlerShorthand(ctx: ParserContext): boolean {
  *   @effect(x, e) -> body             → (x, e, nxt·) -> if e == @effect then body else nxt·(e, x) end
  *   @effect(x, e, n) -> body          → (x, e, n) -> if e == @effect then body else n(e, x) end
  *
- * For wildcard effects (containing *), uses effect-matcher instead of ==.
+ * For wildcard effects (containing *), uses effectMatcher instead of ==.
  */
 function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCodeInfo: SourceCodeInfo | undefined): AstNode {
   const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) as UserDefinedSymbolNode
@@ -265,11 +265,11 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
   const effSym = mkSymbol(effName)
   const nxtSym = mkSymbol(nxtName)
 
-  // Build condition: eff == @effect (or effect-matcher("pattern")(eff) for wildcards)
+  // Build condition: eff == @effect (or effectMatcher("pattern")(eff) for wildcards)
   let condition: AstNode
   if (effectName.includes('*')) {
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['effect-matcher']], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['effectMatcher']], sourceCodeInfo),
       [withSourceCodeInfo([NodeTypes.String, effectName], sourceCodeInfo)],
     ]], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]]], sourceCodeInfo)

@@ -22,7 +22,7 @@ describe('async support', () => {
     })
 
     it('should handle filter with sync functions', async () => {
-      expect(value(await dvala.runAsync('filter([1, 2, 3, 4, 5], odd?)'))).toEqual([1, 3, 5])
+      expect(value(await dvala.runAsync('filter([1, 2, 3, 4, 5], isOdd)'))).toEqual([1, 3, 5])
     })
 
     it('should handle reduce with sync functions', async () => {

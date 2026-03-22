@@ -87,18 +87,18 @@ describe('sequence functions', () => {
     })
   })
 
-  describe('index-of', () => {
+  describe('indexOf', () => {
     it('samples', () => {
-      expect(dvala.run('index-of(["1", "2", 3], "2")')).toEqual(1)
-      expect(dvala.run('index-of(["1", "2", "3"], "4")')).toBeNull()
-      expect(dvala.run('index-of([], 1)')).toBeNull()
-      expect(dvala.run('index-of(null, 1)')).toBeNull()
-      expect(dvala.run('index-of("AlbertAlbert", "l")')).toBe(1)
-      expect(dvala.run('index-of("Albert", "ert")')).toBe(3)
-      expect(dvala.run('index-of("Albert", "z")')).toBeNull()
-      expect(dvala.run('index-of([1], 2)')).toBeNull()
-      expect(() => dvala.run('index-of(+)')).toThrow(DvalaError)
-      expect(() => dvala.run('index-of()')).toThrow(DvalaError)
+      expect(dvala.run('indexOf(["1", "2", 3], "2")')).toEqual(1)
+      expect(dvala.run('indexOf(["1", "2", "3"], "4")')).toBeNull()
+      expect(dvala.run('indexOf([], 1)')).toBeNull()
+      expect(dvala.run('indexOf(null, 1)')).toBeNull()
+      expect(dvala.run('indexOf("AlbertAlbert", "l")')).toBe(1)
+      expect(dvala.run('indexOf("Albert", "ert")')).toBe(3)
+      expect(dvala.run('indexOf("Albert", "z")')).toBeNull()
+      expect(dvala.run('indexOf([1], 2)')).toBeNull()
+      expect(() => dvala.run('indexOf(+)')).toThrow(DvalaError)
+      expect(() => dvala.run('indexOf()')).toThrow(DvalaError)
     })
   })
 
@@ -106,18 +106,18 @@ describe('sequence functions', () => {
     it('samples', () => {
       expect(dvala.run('some("Albert", -> "l" == $)')).toBe('l')
 
-      expect(dvala.run('some(null, number?)')).toBeNull()
-      expect(dvala.run('some(["1", "2", 3], number?)')).toBe(3)
-      expect(dvala.run('some(["1", "2", "3"], number?)')).toBeNull()
-      expect(dvala.run('some([], number?)')).toBeNull()
-      expect(dvala.run('some([1, 2, 3, 4, 5, 6, 7], -> zero?($ mod 3))')).toBe(3)
+      expect(dvala.run('some(null, isNumber)')).toBeNull()
+      expect(dvala.run('some(["1", "2", 3], isNumber)')).toBe(3)
+      expect(dvala.run('some(["1", "2", "3"], isNumber)')).toBeNull()
+      expect(dvala.run('some([], isNumber)')).toBeNull()
+      expect(dvala.run('some([1, 2, 3, 4, 5, 6, 7], -> isZero($ mod 3))')).toBe(3)
 
       expect(dvala.run('some("Aa", -> $ >= "a")')).toBe('a')
       expect(dvala.run('some("Aa", -> $ >= "z")')).toBeNull()
 
       expect(() => dvala.run('some(+)')).toThrow(DvalaError)
       expect(() => dvala.run('some()')).toThrow(DvalaError)
-      expect(() => dvala.run('some([1], number? 2)')).toThrow(DvalaError)
+      expect(() => dvala.run('some([1], isNumber 2)')).toThrow(DvalaError)
     })
   })
 
@@ -344,27 +344,27 @@ describe('sequence functions', () => {
     })
   })
 
-  describe('take-last', () => {
+  describe('takeLast', () => {
     it('samples', () => {
-      expect(dvala.run('take-last([1, 2, 3], 2)')).toEqual([2, 3])
-      expect(dvala.run('take-last([1, 2, 3], 20)')).toEqual([1, 2, 3])
-      expect(dvala.run('take-last([1, 2, 3], 0)')).toEqual([])
-      expect(dvala.run('take-last([1, 2, 3], 0.01)')).toEqual([3])
+      expect(dvala.run('takeLast([1, 2, 3], 2)')).toEqual([2, 3])
+      expect(dvala.run('takeLast([1, 2, 3], 20)')).toEqual([1, 2, 3])
+      expect(dvala.run('takeLast([1, 2, 3], 0)')).toEqual([])
+      expect(dvala.run('takeLast([1, 2, 3], 0.01)')).toEqual([3])
 
-      expect(() => dvala.run('take-last(object())')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last(null)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last(true)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last(false)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last("1")')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last()')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last([1, 2, 3])')).toThrow(DvalaError)
-      expect(() => dvala.run('take-last([1, 2, 3], 1, 2)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast(object())')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast(null)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast(true)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast(false)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast("1")')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast()')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast([1, 2, 3])')).toThrow(DvalaError)
+      expect(() => dvala.run('takeLast([1, 2, 3], 1, 2)')).toThrow(DvalaError)
     })
 
     it('new array created', () => {
       const program = `
         let l1 = [1, 2, 3];
-        let l2 = take-last(l1, 2);
+        let l2 = takeLast(l1, 2);
         l1 != l2
       `
       expect(dvala.run(program)).toBe(true)
@@ -400,73 +400,73 @@ describe('sequence functions', () => {
     })
   })
 
-  describe('drop-last', () => {
+  describe('dropLast', () => {
     it('samples', () => {
-      expect(dvala.run('drop-last([1, 2, 3], 2)')).toEqual([1])
-      expect(dvala.run('drop-last([1, 2, 3], 20)')).toEqual([])
-      expect(dvala.run('drop-last([1, 2, 3], 0)')).toEqual([1, 2, 3])
-      expect(dvala.run('drop-last("Albert", 2)')).toEqual('Albe')
-      expect(dvala.run('drop-last([1, 2, 3], 0.5)')).toEqual([1, 2])
-      expect(dvala.run('drop-last("Albert", -2)')).toEqual('Albert')
+      expect(dvala.run('dropLast([1, 2, 3], 2)')).toEqual([1])
+      expect(dvala.run('dropLast([1, 2, 3], 20)')).toEqual([])
+      expect(dvala.run('dropLast([1, 2, 3], 0)')).toEqual([1, 2, 3])
+      expect(dvala.run('dropLast("Albert", 2)')).toEqual('Albe')
+      expect(dvala.run('dropLast([1, 2, 3], 0.5)')).toEqual([1, 2])
+      expect(dvala.run('dropLast("Albert", -2)')).toEqual('Albert')
 
-      expect(() => dvala.run('drop-last({},)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last(null, 1)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last(true 1)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last(false 1)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last("Hej", "1")')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last()')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last([1, 2, 3])')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-last([1, 2, 3], 1, 2)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast({},)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast(null, 1)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast(true 1)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast(false 1)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast("Hej", "1")')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast()')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast([1, 2, 3])')).toThrow(DvalaError)
+      expect(() => dvala.run('dropLast([1, 2, 3], 1, 2)')).toThrow(DvalaError)
     })
   })
 
-  describe('take-while', () => {
+  describe('takeWhile', () => {
     it('samples', () => {
-      expect(dvala.run('take-while([1, 2, 3, 2, 1], -> $ < 3)')).toEqual([1, 2])
-      expect(dvala.run('take-while([1, 2, 3, 2, 1], -> $ > 3)')).toEqual([])
-      expect(dvala.run('take-while("abcdabcd", -> $ <= "c")')).toEqual('abc')
-      expect(dvala.run('take-while([1, 2, 3], -> $ < 10)')).toEqual([1, 2, 3])
+      expect(dvala.run('takeWhile([1, 2, 3, 2, 1], -> $ < 3)')).toEqual([1, 2])
+      expect(dvala.run('takeWhile([1, 2, 3, 2, 1], -> $ > 3)')).toEqual([])
+      expect(dvala.run('takeWhile("abcdabcd", -> $ <= "c")')).toEqual('abc')
+      expect(dvala.run('takeWhile([1, 2, 3], -> $ < 10)')).toEqual([1, 2, 3])
 
-      expect(() => dvala.run('take-while({}, -> $ < 3))')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while(null, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while(true, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while(false, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while([1, 2, 3], 10)')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while()')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while([1, 2, 3])')).toThrow(DvalaError)
-      expect(() => dvala.run('take-while([1, 2, 3], -> $ < 3 1)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile({}, -> $ < 3))')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile(null, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile(true, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile(false, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile([1, 2, 3], 10)')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile()')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile([1, 2, 3])')).toThrow(DvalaError)
+      expect(() => dvala.run('takeWhile([1, 2, 3], -> $ < 3 1)')).toThrow(DvalaError)
     })
     it('new array created', () => {
       const program = `
         let l1 = [1, 2, 3];
-        let l2 = take-while(l1, -> $ < 3);
+        let l2 = takeWhile(l1, -> $ < 3);
         l1 != l2
       `
       expect(dvala.run(program)).toBe(true)
     })
   })
 
-  describe('drop-while', () => {
+  describe('dropWhile', () => {
     it('samples', () => {
-      expect(dvala.run('drop-while([1, 2, 3, 2, 1], -> $ < 3)')).toEqual([3, 2, 1])
-      expect(dvala.run('drop-while([1, 2, 3, 2, 1], -> $ > 3)')).toEqual([1, 2, 3, 2, 1])
-      expect(dvala.run('drop-while("abcdab", -> $ <= "c")')).toEqual('dab')
-      expect(dvala.run('drop-while([1, 2, 3], -> $ < 10)')).toEqual([])
-      expect(dvala.run('drop-while("abc", -> true)')).toEqual('')
+      expect(dvala.run('dropWhile([1, 2, 3, 2, 1], -> $ < 3)')).toEqual([3, 2, 1])
+      expect(dvala.run('dropWhile([1, 2, 3, 2, 1], -> $ > 3)')).toEqual([1, 2, 3, 2, 1])
+      expect(dvala.run('dropWhile("abcdab", -> $ <= "c")')).toEqual('dab')
+      expect(dvala.run('dropWhile([1, 2, 3], -> $ < 10)')).toEqual([])
+      expect(dvala.run('dropWhile("abc", -> true)')).toEqual('')
 
-      expect(() => dvala.run('drop-while({}, -> $ < 3))')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while(null, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while(true, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while(false, -> $ < 3)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while([1, 2, 3], 10)')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while()')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while([1, 2, 3])')).toThrow(DvalaError)
-      expect(() => dvala.run('drop-while([1, 2, 3], -> $ < 3 1)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile({}, -> $ < 3))')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile(null, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile(true, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile(false, -> $ < 3)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile([1, 2, 3], 10)')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile()')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile([1, 2, 3])')).toThrow(DvalaError)
+      expect(() => dvala.run('dropWhile([1, 2, 3], -> $ < 3 1)')).toThrow(DvalaError)
     })
     it('new array created', () => {
       const program = `
         let l1 = [1, 2, 3];
-        let l2 = take-while(l1, -> $ < 3);
+        let l2 = takeWhile(l1, -> $ < 3);
         l1 != l2
       `
       expect(dvala.run(program)).toBe(true)
@@ -479,16 +479,16 @@ describe('sequence-Utils module functions', () => {
   for (const mdvala of [createDvala({ modules: [sequenceUtilsModule] }), createDvala({ modules: [sequenceUtilsModule], debug: true })]) {
     describe('position', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.position(["1", "2", 3], number?)`)).toEqual(2)
-        expect(mdvala.run(`${imp}su.position(["1", "2", "3"], number?)`)).toBeNull()
-        expect(mdvala.run(`${imp}su.position([], number?)`)).toBeNull()
-        expect(mdvala.run(`${imp}su.position(null, number?)`)).toBeNull()
-        expect(mdvala.run(`${imp}su.position([1, 2, 3, 4, 5, 6, 7], -> zero?($ mod 3))`)).toEqual(2)
+        expect(mdvala.run(`${imp}su.position(["1", "2", 3], isNumber)`)).toEqual(2)
+        expect(mdvala.run(`${imp}su.position(["1", "2", "3"], isNumber)`)).toBeNull()
+        expect(mdvala.run(`${imp}su.position([], isNumber)`)).toBeNull()
+        expect(mdvala.run(`${imp}su.position(null, isNumber)`)).toBeNull()
+        expect(mdvala.run(`${imp}su.position([1, 2, 3, 4, 5, 6, 7], -> isZero($ mod 3))`)).toEqual(2)
         expect(mdvala.run(`${imp}su.position("Aa", -> $ >= "a")`)).toBe(1)
         expect(mdvala.run(`${imp}su.position("Aa", -> $ == "z")`)).toBeNull()
         expect(() => mdvala.run(`${imp}su.position(+)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.position()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.position([1], number? 2)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.position([1], isNumber 2)`)).toThrow(DvalaError)
       })
     })
 
@@ -535,8 +535,8 @@ describe('sequence-Utils module functions', () => {
           'Mojir',
           'Nina',
         ])
-        expect(mdvala.run(`${imp}su.sortBy("Albert", lower-case)`)).toEqual('Abelrt')
-        expect(mdvala.run(`${imp}su.sortBy("Albert", lower-case, (a, b) -> compare(b, a))`)).toEqual(
+        expect(mdvala.run(`${imp}su.sortBy("Albert", lowerCase)`)).toEqual('Abelrt')
+        expect(mdvala.run(`${imp}su.sortBy("Albert", lowerCase, (a, b) -> compare(b, a))`)).toEqual(
           'trlebA',
         )
         expect(() => mdvala.run(`${imp}su.sortBy()`)).toThrow(DvalaError)
@@ -559,12 +559,12 @@ describe('sequence-Utils module functions', () => {
 
     describe('remove', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}su.remove([1, 2, 3, 1, 3, 5], even?)`)).toEqual([1, 3, 1, 3, 5])
-        expect(mdvala.run(`${imp}su.remove("Albert Mojir", -> contains?("aoueiyAOUEIY", $))`)).toBe('lbrt Mjr')
+        expect(mdvala.run(`${imp}su.remove([1, 2, 3, 1, 3, 5], isEven)`)).toEqual([1, 3, 1, 3, 5])
+        expect(mdvala.run(`${imp}su.remove("Albert Mojir", -> contains("aoueiyAOUEIY", $))`)).toBe('lbrt Mjr')
         expect(() => mdvala.run(`${imp}su.remove()`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.remove("Albert Mojir")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove(=> contains?("aoueiyAOUEIY", $))`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains?("aoueiyAOUEIY", $) "Mojir")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.remove(=> contains("aoueiyAOUEIY", $))`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.remove("Albert", => contains("aoueiyAOUEIY", $) "Mojir")`)).toThrow(DvalaError)
       })
     })
 
@@ -660,7 +660,7 @@ describe('sequence-Utils module functions', () => {
           Albert: [{ name: 'Albert' }, { name: 'Albert' }],
           Mojir: [{ name: 'Mojir' }],
         })
-        expect(mdvala.run(`${imp}su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)`)).toEqual({
+        expect(mdvala.run(`${imp}su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains $ then "vowel" else "other" end)`)).toEqual({
           other: ['l', 'b', 'r', 't', ' ', 'M', 'j', 'r'],
           vowel: ['A', 'e', 'o', 'i'],
         })
@@ -763,13 +763,13 @@ describe('sequence-Utils module functions', () => {
     describe('partitionBy', () => {
       it('samples', () => {
         expect(mdvala.run(`${imp}su.partitionBy([1, 2, 3, 4, 5], -> 3 == $)`)).toEqual([[1, 2], [3], [4, 5]])
-        expect(mdvala.run(`${imp}su.partitionBy([1, 1, 1, 2, 2, 3, 3], odd?)`)).toEqual([
+        expect(mdvala.run(`${imp}su.partitionBy([1, 1, 1, 2, 2, 3, 3], isOdd)`)).toEqual([
           [1, 1, 1],
           [2, 2],
           [3, 3],
         ])
         expect(mdvala.run(`${imp}su.partitionBy("Leeeeeerrroyyy", identity)`)).toEqual(['L', 'eeeeee', 'rrr', 'o', 'yyy'])
-        expect(() => mdvala.run(`${imp}su.partitionBy(odd?)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}su.partitionBy(isOdd)`)).toThrow(DvalaError)
         expect(() => mdvala.run(`${imp}su.partitionBy([1, 2, 3])`)).toThrow(DvalaError)
       })
     })

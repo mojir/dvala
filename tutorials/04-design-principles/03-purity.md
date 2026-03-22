@@ -52,7 +52,7 @@ Higher-order functions preserve purity. When you pass a pure function to `map`, 
 ```dvala
 let transform = (xs) ->
   xs
-  |> filter(_, even?)
+  |> filter(_, isEven)
   |> map(_, -> $ * $)
   |> reduce(_, +, 0);
 transform([1, 2, 3, 4, 5, 6])

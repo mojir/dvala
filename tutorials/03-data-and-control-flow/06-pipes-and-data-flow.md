@@ -8,7 +8,7 @@ Use `|>` to pass a value through a chain of transformations. Use `_` to mark whe
 
 ```dvala
 [1, 2, 3, 4, 5, 6]
-  |> filter(_, odd?)
+  |> filter(_, isOdd)
   |> map(_, -> $ * $)
   |> reduce(_, +, 0)
 ```
@@ -19,7 +19,7 @@ When piping to a single-argument function, no placeholder is needed:
 
 ```dvala
 "hello world"
-  |> upper-case
+  |> upperCase
   |> split(_, " ")
   |> reverse
   |> join(_, "-")
@@ -30,7 +30,7 @@ When piping to a single-argument function, no placeholder is needed:
 Any two-argument function can be used as an infix operator. The left value becomes the first argument:
 
 ```dvala
-[1, 2, 3, 4] filter odd?
+[1, 2, 3, 4] filter isOdd
 ```
 
 ```dvala
@@ -42,7 +42,7 @@ Any two-argument function can be used as an infix operator. The left value becom
 Chain multiple operator-style calls for a fluent reading:
 
 ```dvala
-[1, 2, 3, 4, 5, 6] filter even? map -> $ * $
+[1, 2, 3, 4, 5, 6] filter isEven map -> $ * $
 ```
 
 ## Arrays as Functions

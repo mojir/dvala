@@ -28,7 +28,7 @@ map([1, 2, 3, 4], -> $ * $)
 ```
 
 ```dvala
-filter([1, 2, 3, 4, 5, 6], even?)
+filter([1, 2, 3, 4, 5, 6], isEven)
 ```
 
 ```dvala
@@ -106,11 +106,11 @@ merge({ a: 1, b: 2 }, { b: 3, c: 4 })
 Test properties of collections:
 
 ```dvala
-empty?([])
+isEmpty([])
 ```
 
 ```dvala
-contains?([1, 2, 3], 1)
+contains([1, 2, 3], 1)
 ```
 
 ```dvala

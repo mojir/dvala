@@ -124,23 +124,23 @@ describe('object functions', () => {
         expect(() => dvala.run('merge((array))')).toThrow(DvalaError)
       })
 
-      describe('merge-with', () => {
+      describe('mergeWith', () => {
         it('samples', () => {
-          expect(dvala.run('merge-with(object("x", 10), object("y", 20), +)')).toEqual({
+          expect(dvala.run('mergeWith(object("x", 10), object("y", 20), +)')).toEqual({
             x: 10,
             y: 20,
           })
-          expect(dvala.run('merge-with(object("x", 10), object("x", 15, "y", 20), +)')).toEqual({
+          expect(dvala.run('mergeWith(object("x", 10), object("x", 15, "y", 20), +)')).toEqual({
             x: 25,
             y: 20,
           })
-          expect(dvala.run('merge-with(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual({
+          expect(dvala.run('mergeWith(object("x", 10), object("x", 20), object("x", 30), object("x", 40), -)')).toEqual({
             x: -80,
           })
-          expect(() => dvala.run('merge-with(+)')).toThrow(DvalaError)
-          expect(() => dvala.run('merge-with()')).toThrow(DvalaError)
-          expect(() => dvala.run('merge-with(+, "kjh")')).toThrow(DvalaError)
-          expect(() => dvala.run('merge-with(+, [1, 2, 3])')).toThrow(DvalaError)
+          expect(() => dvala.run('mergeWith(+)')).toThrow(DvalaError)
+          expect(() => dvala.run('mergeWith()')).toThrow(DvalaError)
+          expect(() => dvala.run('mergeWith(+, "kjh")')).toThrow(DvalaError)
+          expect(() => dvala.run('mergeWith(+, [1, 2, 3])')).toThrow(DvalaError)
         })
       })
 
@@ -169,13 +169,13 @@ describe('object functions', () => {
       })
     })
 
-    describe('select-keys', () => {
+    describe('selectKeys', () => {
       it('samples', () => {
-        expect(dvala.run('select-keys({a: 1, b: 2, c: 3}, ["a", "b"])')).toEqual({ a: 1, b: 2 })
-        expect(dvala.run('select-keys({a: 1}, ["a", "b"])')).toEqual({ a: 1 })
-        expect(() => dvala.run('select-keys({a: 1})')).toThrow(DvalaError)
-        expect(() => dvala.run('select-keys({a: 1}, "a")')).toThrow(DvalaError)
-        expect(() => dvala.run('select-keys({a: 1}, ["a"], ["a"])')).toThrow(DvalaError)
+        expect(dvala.run('selectKeys({a: 1, b: 2, c: 3}, ["a", "b"])')).toEqual({ a: 1, b: 2 })
+        expect(dvala.run('selectKeys({a: 1}, ["a", "b"])')).toEqual({ a: 1 })
+        expect(() => dvala.run('selectKeys({a: 1})')).toThrow(DvalaError)
+        expect(() => dvala.run('selectKeys({a: 1}, "a")')).toThrow(DvalaError)
+        expect(() => dvala.run('selectKeys({a: 1}, ["a"], ["a"])')).toThrow(DvalaError)
       })
     })
   }

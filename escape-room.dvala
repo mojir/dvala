@@ -31,15 +31,15 @@ let answer2 = perform(@dvala.io.read, "Your answer: ");
 perform(@dvala.io.print, "\nGot it! Now suspend and share the link back to Player 1.\n");
 
 // --- Final reveal ---
-let code = upper-case(slice(answer1, 0, 3)) ++ "-" ++ upper-case(slice(answer2, 0, 3));
+let code = upperCase(slice(answer1, 0, 3)) ++ "-" ++ upperCase(slice(answer2, 0, 3));
 
 perform(@dvala.io.print, "=== THE VAULT ===");
 perform(@dvala.io.print, "Player 1 answered: \"" ++ answer1 ++ "\"");
 perform(@dvala.io.print, "Player 2 answered: \"" ++ answer2 ++ "\"");
 perform(@dvala.io.print, "Combined vault code: " ++ code ++ "\n");
 
-let correct1 = lower-case(trim(answer1)) == "map";
-let correct2 = lower-case(trim(answer2)) == "footsteps";
+let correct1 = lowerCase(trim(answer1)) == "map";
+let correct2 = lowerCase(trim(answer2)) == "footsteps";
 
 let result = if correct1 && correct2 then "🎉 BOTH CORRECT! The vault opens! You escape!"
   else if correct1 then "✓ Player 1 correct — but Player 2 missed it. The door is jammed."

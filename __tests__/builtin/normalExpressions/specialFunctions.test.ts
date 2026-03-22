@@ -38,7 +38,7 @@ describe('specialFunctions', () => {
 
     describe('array as function', () => {
       it('samples', () => {
-        expect(dvala.run('let name-array = ["Albert", "Mojir"]; name-array(0)')).toBe('Albert')
+        expect(dvala.run('let nameArray = ["Albert", "Mojir"]; nameArray(0)')).toBe('Albert')
         expect(dvala.run('["Albert", "Mojir"](0)')).toBe('Albert')
         expect(dvala.run('push([1], 2, 3)(1)')).toBe(2)
         expect(dvala.run('"Albert"(0)')).toBe('A')
@@ -51,7 +51,7 @@ describe('specialFunctions', () => {
 
     describe('number as function', () => {
       it('samples', () => {
-        expect(dvala.run('let name-array = ["Albert", "Mojir"]; 0(name-array)')).toBe('Albert')
+        expect(dvala.run('let nameArray = ["Albert", "Mojir"]; 0(nameArray)')).toBe('Albert')
         expect(dvala.run('0(["Albert", "Mojir"])')).toBe('Albert')
         expect(dvala.run('3(["Albert", "Mojir"])')).toBeNull()
         expect(dvala.run('1(push([1], 2, 3))')).toBe(2)

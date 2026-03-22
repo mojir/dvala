@@ -29,7 +29,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
 1 |> inc |> inc`,
         `range(10)
   |> map(_, -> $ ^ 2) // [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
-  |> filter(_, odd?)  // [1, 9, 25, 49, 81]
+  |> filter(_, isOdd)  // [1, 9, 25, 49, 81]
   |> reduce(_, +, 0)  // 165
   |> sqrt             // 12.84523257866513
   |> round(_, 2)`,
@@ -110,8 +110,8 @@ apply(
       seeAlso: ['|>', 'functional.juxt', 'functional.complement'],
       examples: [
         `
-let negative-quotient = comp(-, /);
-negative-quotient(9, 3)`,
+let negativeQuotient = comp(-, /);
+negativeQuotient(9, 3)`,
         `
 let x = { bar: { foo: 42 } };
 comp("foo", "bar")(x)`,
@@ -139,8 +139,8 @@ comp("foo", "bar")(x)`,
       seeAlso: ['identity', 'functional.fnull'],
       examples: [
         `
-let always-true = constantly(true);
-always-true(9, 3)`,
+let alwaysTrue = constantly(true);
+alwaysTrue(9, 3)`,
       ],
     },
   },

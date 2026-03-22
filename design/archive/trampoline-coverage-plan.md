@@ -80,7 +80,7 @@ trigger from Dvala code today.
 
 | Lines | Function / Context | What's uncovered | Action |
 |-------|-------------------|-----------------|--------|
-| 2255–2260 | `handlerMatchesEffect` | DvalaFunction predicate + async predicate check | **Test** — use `effect-matcher` with a function predicate in `try/with` |
+| 2255–2260 | `handlerMatchesEffect` | DvalaFunction predicate + async predicate check | **Test** — use `effectMatcher` with a function predicate in `try/with` |
 | 2357 | `dispatchPerform` | Some branch in local effect dispatch | Read code to determine |
 | 2415 | `dispatchHostHandler` | `effectSignal.aborted` pre-check | **v8 ignore** — only reachable in parallel/race timing edge case |
 | 2426 | `dispatchHostHandler` | `pattern === '*'` catch-all before standard handler | ✅ **Done** — test in coverage-gaps.test.ts |
