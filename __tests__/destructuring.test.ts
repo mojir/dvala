@@ -373,7 +373,7 @@ describe('dvala Destructuring', () => {
 
     test('builtin symbol from import with alias works', () => {
       expect(dvala.run(`
-        let { cell-every? as my-every? } = import(grid);
+        let { isCellEvery as my-every? } = import(grid);
         my-every?([[1, 2], [3, 4]], number?)
       `)).toBe(true)
     })

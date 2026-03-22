@@ -58,122 +58,122 @@ describe('matrix', () => {
       expect(runMat('mat:trace([[1, 0, 0], [0, 1, 0], [0, 0, 1]])')).toEqual(3)
     })
   })
-  describe('mat:symmetric?', () => {
+  describe('mat:isSymmetric', () => {
     it('should return true for symmetric matrices', () => {
-      expect(runMat('mat:symmetric?([[1, 2], [2, 1]])')).toEqual(true)
-      expect(runMat('mat:symmetric?([[1, 0], [0, 1]])')).toEqual(true)
-      expect(runMat('mat:symmetric?([[1, 0], [0, 2]])')).toEqual(true)
+      expect(runMat('mat:isSymmetric([[1, 2], [2, 1]])')).toEqual(true)
+      expect(runMat('mat:isSymmetric([[1, 0], [0, 1]])')).toEqual(true)
+      expect(runMat('mat:isSymmetric([[1, 0], [0, 2]])')).toEqual(true)
     })
     it('should return false for non-symmetric matrices', () => {
-      expect(runMat('mat:symmetric?([[1, 2], [3, 4]])')).toEqual(false)
+      expect(runMat('mat:isSymmetric([[1, 2], [3, 4]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:symmetric?([[1, 2, 3], [4, 5, 6]])')).toEqual(false)
-      expect(runMat('mat:symmetric?([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
+      expect(runMat('mat:isSymmetric([[1, 2, 3], [4, 5, 6]])')).toEqual(false)
+      expect(runMat('mat:isSymmetric([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
     })
   })
-  describe('mat:triangular?', () => {
+  describe('mat:isTriangular', () => {
     it('should return true for upper triangular matrices', () => {
-      expect(runMat('mat:triangular?([[1, 2], [0, 3]])')).toEqual(true)
-      expect(runMat('mat:triangular?([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(true)
-      expect(runMat('mat:triangular?([[1, 2], [0, -3]])')).toEqual(true)
+      expect(runMat('mat:isTriangular([[1, 2], [0, 3]])')).toEqual(true)
+      expect(runMat('mat:isTriangular([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(true)
+      expect(runMat('mat:isTriangular([[1, 2], [0, -3]])')).toEqual(true)
     })
     it('should return true for lower triangular matrices', () => {
-      expect(runMat('mat:triangular?([[1, 0], [2, 3]])')).toEqual(true)
-      expect(runMat('mat:triangular?([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(true)
+      expect(runMat('mat:isTriangular([[1, 0], [2, 3]])')).toEqual(true)
+      expect(runMat('mat:isTriangular([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(true)
     })
     it('should return false for non-triangular matrices', () => {
-      expect(runMat('mat:triangular?([[1, 2], [3, 4]])')).toEqual(false)
+      expect(runMat('mat:isTriangular([[1, 2], [3, 4]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:triangular?([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
-      expect(runMat('mat:triangular?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isTriangular([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
+      expect(runMat('mat:isTriangular([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:upper-triangular?', () => {
+  describe('mat:isUpperTriangular', () => {
     it('should return true for upper triangular matrices', () => {
-      expect(runMat('mat:upper-triangular?([[1, 2], [0, 3]])')).toEqual(true)
-      expect(runMat('mat:upper-triangular?([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(true)
-      expect(runMat('mat:upper-triangular?([[1, 2], [0, -3]])')).toEqual(true)
+      expect(runMat('mat:isUpperTriangular([[1, 2], [0, 3]])')).toEqual(true)
+      expect(runMat('mat:isUpperTriangular([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(true)
+      expect(runMat('mat:isUpperTriangular([[1, 2], [0, -3]])')).toEqual(true)
     })
     it('should return false for lower triangular matrices', () => {
-      expect(runMat('mat:upper-triangular?([[1, 0], [2, 3]])')).toEqual(false)
-      expect(runMat('mat:upper-triangular?([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(false)
+      expect(runMat('mat:isUpperTriangular([[1, 0], [2, 3]])')).toEqual(false)
+      expect(runMat('mat:isUpperTriangular([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:upper-triangular?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isUpperTriangular([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:lower-triangular?', () => {
+  describe('mat:isLowerTriangular', () => {
     it('should return true for lower triangular matrices', () => {
-      expect(runMat('mat:lower-triangular?([[1, 0], [2, 3]])')).toEqual(true)
-      expect(runMat('mat:lower-triangular?([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(true)
+      expect(runMat('mat:isLowerTriangular([[1, 0], [2, 3]])')).toEqual(true)
+      expect(runMat('mat:isLowerTriangular([[1, 0, 0], [2, 3, 0], [4, 5, 6]])')).toEqual(true)
     })
     it('should return false for upper triangular matrices', () => {
-      expect(runMat('mat:lower-triangular?([[1, 2], [0, 3]])')).toEqual(false)
-      expect(runMat('mat:lower-triangular?([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(false)
+      expect(runMat('mat:isLowerTriangular([[1, 2], [0, 3]])')).toEqual(false)
+      expect(runMat('mat:isLowerTriangular([[1, 2, 3], [0, 4, 5], [0, 0, 6]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:lower-triangular?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isLowerTriangular([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:diagonal?', () => {
+  describe('mat:isDiagonal', () => {
     it('should return true for diagonal matrices', () => {
-      expect(runMat('mat:diagonal?([[1, 0], [0, 2]])')).toEqual(true)
-      expect(runMat('mat:diagonal?([[3, 0, 0], [0, 4, 0], [0, 0, 5]])')).toEqual(true)
+      expect(runMat('mat:isDiagonal([[1, 0], [0, 2]])')).toEqual(true)
+      expect(runMat('mat:isDiagonal([[3, 0, 0], [0, 4, 0], [0, 0, 5]])')).toEqual(true)
     })
     it('should return false for non-diagonal matrices', () => {
-      expect(runMat('mat:diagonal?([[1, 2], [3, 4]])')).toEqual(false)
+      expect(runMat('mat:isDiagonal([[1, 2], [3, 4]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:diagonal?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isDiagonal([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:square?', () => {
+  describe('mat:isSquare', () => {
     it('should return true for square matrices', () => {
-      expect(runMat('mat:square?([[1, 2], [3, 4]])')).toEqual(true)
-      expect(runMat('mat:square?([[1, 2, 3], [4, 5, 6], [7, 8, 9]])')).toEqual(true)
+      expect(runMat('mat:isSquare([[1, 2], [3, 4]])')).toEqual(true)
+      expect(runMat('mat:isSquare([[1, 2, 3], [4, 5, 6], [7, 8, 9]])')).toEqual(true)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:square?([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
-      expect(runMat('mat:square?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isSquare([[1, 2], [3, 4], [5, 6]])')).toEqual(false)
+      expect(runMat('mat:isSquare([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:orthogonal-matrix?', () => {
+  describe('mat:isOrthogonalMatrix', () => {
     it('should return true for orthogonal matrices', () => {
-      expect(runMat('mat:orthogonal-matrix?([[1, 0], [0, 1.00000000001]])')).toEqual(true)
-      expect(runMat('mat:orthogonal-matrix?([[0, 1], [-1, 0]])')).toEqual(true)
-      expect(runMat('mat:orthogonal-matrix?([[0, 0], [0, 0]])')).toEqual(false)
+      expect(runMat('mat:isOrthogonalMatrix([[1, 0], [0, 1.00000000001]])')).toEqual(true)
+      expect(runMat('mat:isOrthogonalMatrix([[0, 1], [-1, 0]])')).toEqual(true)
+      expect(runMat('mat:isOrthogonalMatrix([[0, 0], [0, 0]])')).toEqual(false)
     })
     it('should return false for non-orthogonal matrices', () => {
-      expect(runMat('mat:orthogonal-matrix?([[1, 2], [3, 4]])')).toEqual(false)
+      expect(runMat('mat:isOrthogonalMatrix([[1, 2], [3, 4]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:orthogonal-matrix?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isOrthogonalMatrix([[1], [2]])')).toEqual(false)
     })
   })
-  describe('mat:identity?', () => {
+  describe('mat:isIdentity', () => {
     it('should return true for identity matrices', () => {
-      expect(runMat('mat:identity?([[1, 0], [0, 1]])')).toEqual(true)
-      expect(runMat('mat:identity?([[1, 0, 0], [0, 1, 0], [0, 0, 1]])')).toEqual(true)
+      expect(runMat('mat:isIdentity([[1, 0], [0, 1]])')).toEqual(true)
+      expect(runMat('mat:isIdentity([[1, 0, 0], [0, 1, 0], [0, 0, 1]])')).toEqual(true)
     })
     it('should return false for non-identity matrices', () => {
-      expect(runMat('mat:identity?([[1, 2], [3, 4]])')).toEqual(false)
+      expect(runMat('mat:isIdentity([[1, 2], [3, 4]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:identity?([[1, 2]])')).toEqual(false)
+      expect(runMat('mat:isIdentity([[1, 2]])')).toEqual(false)
     })
   })
-  describe('mat:invertible?', () => {
+  describe('mat:isInvertible', () => {
     it('should return true for invertible matrices', () => {
-      expect(runMat('mat:invertible?([[1, 2], [3, 4]])')).toEqual(true)
+      expect(runMat('mat:isInvertible([[1, 2], [3, 4]])')).toEqual(true)
     })
     it('should return false for non-invertible matrices', () => {
-      expect(runMat('mat:invertible?([[1, 2], [2, 4]])')).toEqual(false)
-      expect(runMat('mat:invertible?([[0, 0], [0, 0]])')).toEqual(false)
+      expect(runMat('mat:isInvertible([[1, 2], [2, 4]])')).toEqual(false)
+      expect(runMat('mat:isInvertible([[0, 0], [0, 0]])')).toEqual(false)
     })
     it('should return false for non-square matrices', () => {
-      expect(runMat('mat:invertible?([[1], [2]])')).toEqual(false)
+      expect(runMat('mat:isInvertible([[1], [2]])')).toEqual(false)
     })
   })
   describe('mat:hilbert', () => {
@@ -233,20 +233,20 @@ describe('matrix', () => {
       expect(() => runMat('mat:band(3, 4)')).toThrow(DvalaError)
     })
   })
-  describe('mat:banded?', () => {
+  describe('mat:isBanded', () => {
     it('should return true for banded matrices', () => {
-      expect(runMat(`mat:banded?([
+      expect(runMat(`mat:isBanded([
         [1, 1, 1, 0],
         [1, 1, 1, 1],
         [1, 1, 1, 1],
         [0, 1, 1, 1],
       ], 1, 1)`)).toEqual(false)
-      expect(runMat(`mat:banded?([
+      expect(runMat(`mat:isBanded([
         [1, 1, 0],
         [1, 1, 1],
         [0, 1, 1],
       ], 1, 1)`)).toEqual(true)
-      expect(runMat(`mat:banded?([
+      expect(runMat(`mat:isBanded([
         [1, 1, 1, 0],
         [1, 1, 1, 1],
         [1, 1, 1, 1],
@@ -294,28 +294,28 @@ describe('matrix', () => {
       expect(() => runMat('mat:rank([])')).toThrowError(DvalaError)
     })
   })
-  describe('mat:frobenius-norm', () => {
+  describe('mat:frobeniusNorm', () => {
     it('should return the Frobenius norm of a matrix', () => {
-      expect(runMat('mat:frobenius-norm([[1, 2], [3, 4]])')).toEqual(5.477225575051661)
-      expect(runMat('mat:frobenius-norm([[1, 0], [0, 1]])')).toEqual(1.4142135623730951)
+      expect(runMat('mat:frobeniusNorm([[1, 2], [3, 4]])')).toEqual(5.477225575051661)
+      expect(runMat('mat:frobeniusNorm([[1, 0], [0, 1]])')).toEqual(1.4142135623730951)
     })
   })
-  describe('mat:one-norm', () => {
-    it('should return the one-norm of a matrix', () => {
-      expect(runMat('mat:one-norm([[1, 2], [3, 4]])')).toEqual(6)
-      expect(runMat('mat:one-norm([[1, 0], [0, 1]])')).toEqual(1)
+  describe('mat:oneNorm', () => {
+    it('should return the oneNorm of a matrix', () => {
+      expect(runMat('mat:oneNorm([[1, 2], [3, 4]])')).toEqual(6)
+      expect(runMat('mat:oneNorm([[1, 0], [0, 1]])')).toEqual(1)
     })
   })
-  describe('mat:inf-norm', () => {
+  describe('mat:infNorm', () => {
     it('should return the infinity norm of a matrix', () => {
-      expect(runMat('mat:inf-norm([[1, 2], [3, 4]])')).toEqual(7)
-      expect(runMat('mat:inf-norm([[1, 0], [0, 1]])')).toEqual(1)
+      expect(runMat('mat:infNorm([[1, 2], [3, 4]])')).toEqual(7)
+      expect(runMat('mat:infNorm([[1, 0], [0, 1]])')).toEqual(1)
     })
   })
-  describe('mat:max-norm', () => {
+  describe('mat:maxNorm', () => {
     it('should return the max norm of a matrix', () => {
-      expect(runMat('mat:max-norm([[1, 2], [3, 4]])')).toEqual(4)
-      expect(runMat('mat:max-norm([[1, 0], [0, 1]])')).toEqual(1)
+      expect(runMat('mat:maxNorm([[1, 2], [3, 4]])')).toEqual(4)
+      expect(runMat('mat:maxNorm([[1, 0], [0, 1]])')).toEqual(1)
     })
   })
 })

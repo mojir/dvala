@@ -30,7 +30,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { values: { type: 'any', rest: true } },
       variants: [{ argumentNames: ['values'] }],
       description: 'Concatenats $values into one string. If `value` equals `null` empty string is returned.',
-      seeAlso: ['++', 'join', 'string.template', 'string.string-repeat', 'number'],
+      seeAlso: ['++', 'join', 'string.template', 'string.stringRepeat', 'number'],
       examples: [
         'str("A string", ", and another string", " ...and more")',
         'str("Just one string")',
@@ -118,7 +118,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a new string with leading and trailing whitespaces removed.',
-      seeAlso: ['string.trim-left', 'string.trim-right', 'blank?'],
+      seeAlso: ['string.trimLeft', 'string.trimRight', 'blank?'],
       examples: [
         'trim("  Albert  ")',
         'trim("   ")',
@@ -186,7 +186,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['s', 'delimiter', 'limit'] },
       ],
       description: 'Divides $s into an array of substrings. The division is done by searching for `delimiter`. If `limit` as provided, at most `limit` number of substrings are returned.',
-      seeAlso: ['join', 'string.split-lines'],
+      seeAlso: ['join', 'string.splitLines'],
       examples: [
         '"Albert Mojir" split " "',
         'split("Albert Mojir", " ")',

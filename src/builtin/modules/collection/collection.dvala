@@ -2,7 +2,7 @@
   update: (coll, key, fn, ...extra-params) ->
     assoc(coll, key, apply(fn, [get(coll, key), ...extra-params])),
 
-  update-in: (coll, ks, fn, ...extra-params) -> do
+  updateIn: (coll, ks, fn, ...extra-params) -> do
     let k = first(ks);
     if count(ks) == 1 then
       assoc(coll, k, apply(fn, [get(coll, k), ...extra-params]))
@@ -88,7 +88,7 @@
     end
   end,
 
-  reduce-right: (coll, fn, initial) -> do
+  reduceRight: (coll, fn, initial) -> do
     if string?(coll) then
       reduce(reverse(coll), fn, initial)
 
@@ -103,7 +103,7 @@
     end
   end,
 
-  reducei-right: (coll, fn, initial) -> do
+  reduceiRight: (coll, fn, initial) -> do
     if string?(coll) then
       let len = count(coll);
       loop (acc = initial, i = len - 1) -> do
@@ -202,7 +202,7 @@
     end
   end,
 
-  "every?": (coll, fn) -> do
+  "isEvery": (coll, fn) -> do
     let items = if array?(coll) then coll
       else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
@@ -215,7 +215,7 @@
       end
   end,
 
-  "any?": (coll, fn) -> do
+  "isAny": (coll, fn) -> do
     let items = if array?(coll) then coll
       else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
@@ -228,7 +228,7 @@
       end
   end,
 
-  "not-any?": (coll, fn) -> do
+  "notAny": (coll, fn) -> do
     let items = if array?(coll) then coll
       else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]
@@ -241,7 +241,7 @@
       end
   end,
 
-  "not-every?": (coll, fn) -> do
+  "notEvery": (coll, fn) -> do
     let items = if array?(coll) then coll
       else if string?(coll) then for (i in range(count(coll))) -> nth(coll, i)
       else if object?(coll) then for (k in keys(coll)) -> [k, coll(k)]

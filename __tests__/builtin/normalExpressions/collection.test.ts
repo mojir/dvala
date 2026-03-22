@@ -325,44 +325,44 @@ describe('collection-Utils module functions', () => {
       })
     })
 
-    describe('reduce-right', () => {
+    describe('reduceRight', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.reduce-right([1, 2, 3, 4, 5], +, 0)`)).toBe(15)
-        expect(mdvala.run(`${imp}cu.reduce-right([], +, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reduce-right([1], +, 0)`)).toBe(1)
-        expect(mdvala.run(`${imp}cu.reduce-right([1, 2], +, 0)`)).toBe(3)
-        expect(mdvala.run(`${imp}cu.reduce-right([1, 2, 3], +, 0)`)).toBe(6)
-        expect(mdvala.run(`${imp}cu.reduce-right([], +, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reduce-right([], +, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reduce-right(["1", "2", "3"], str, "")`)).toBe('321')
+        expect(mdvala.run(`${imp}cu.reduceRight([1, 2, 3, 4, 5], +, 0)`)).toBe(15)
+        expect(mdvala.run(`${imp}cu.reduceRight([], +, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reduceRight([1], +, 0)`)).toBe(1)
+        expect(mdvala.run(`${imp}cu.reduceRight([1, 2], +, 0)`)).toBe(3)
+        expect(mdvala.run(`${imp}cu.reduceRight([1, 2, 3], +, 0)`)).toBe(6)
+        expect(mdvala.run(`${imp}cu.reduceRight([], +, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reduceRight([], +, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reduceRight(["1", "2", "3"], str, "")`)).toBe('321')
 
-        expect(mdvala.run(`${imp}cu.reduce-right("Albert", (x, y) -> ++(x, "-", y), "")`)).toBe('-t-r-e-b-l-A')
-        expect(mdvala.run(`${imp}cu.reduce-right("Albert", (x, y) -> ++(x, "-", y), ">")`)).toBe('>-t-r-e-b-l-A')
-        expect(mdvala.run(`${imp}cu.reduce-right("", (x, y) -> ++(x, "-", y), ">")`)).toBe('>')
+        expect(mdvala.run(`${imp}cu.reduceRight("Albert", (x, y) -> ++(x, "-", y), "")`)).toBe('-t-r-e-b-l-A')
+        expect(mdvala.run(`${imp}cu.reduceRight("Albert", (x, y) -> ++(x, "-", y), ">")`)).toBe('>-t-r-e-b-l-A')
+        expect(mdvala.run(`${imp}cu.reduceRight("", (x, y) -> ++(x, "-", y), ">")`)).toBe('>')
 
-        expect(mdvala.run(`${imp}cu.reduce-right({ a: 1, b: 2 }, +, 0)`)).toBe(3)
-        expect(mdvala.run(`${imp}cu.reduce-right({}, +, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reduceRight({ a: 1, b: 2 }, +, 0)`)).toBe(3)
+        expect(mdvala.run(`${imp}cu.reduceRight({}, +, 0)`)).toBe(0)
 
-        expect(() => mdvala.run(`${imp}cu.reduce-right(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reduce-right()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reduce-right(1, +, 2)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reduce-right([1, 2], +)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceRight(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceRight()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceRight(1, +, 2)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceRight([1, 2], +)`)).toThrow(DvalaError)
       })
     })
 
-    describe('reducei-right', () => {
+    describe('reduceiRight', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.reducei-right([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
-        expect(mdvala.run(`${imp}cu.reducei-right([], -> $ + $3, 0)`)).toBe(0)
-        expect(mdvala.run(`${imp}cu.reducei-right("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('5t4r3e2b1l0A')
-        expect(mdvala.run(`${imp}cu.reducei-right("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
-        expect(mdvala.run(`${imp}cu.reducei-right({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ba')
-        expect(mdvala.run(`${imp}cu.reducei-right({}, -> $ ++ $3, "")`)).toBe('')
+        expect(mdvala.run(`${imp}cu.reduceiRight([1, 2, 3, 4, 5], -> $ + $3, 0)`)).toBe(10)
+        expect(mdvala.run(`${imp}cu.reduceiRight([], -> $ + $3, 0)`)).toBe(0)
+        expect(mdvala.run(`${imp}cu.reduceiRight("Albert", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('5t4r3e2b1l0A')
+        expect(mdvala.run(`${imp}cu.reduceiRight("", (acc, char, index) -> acc ++ index ++ char, "")`)).toBe('')
+        expect(mdvala.run(`${imp}cu.reduceiRight({ a: 1, b: 2 }, -> $ ++ $3, "")`)).toBe('ba')
+        expect(mdvala.run(`${imp}cu.reduceiRight({}, -> $ ++ $3, "")`)).toBe('')
 
-        expect(() => mdvala.run(`${imp}cu.reducei-right([1, 2, 3], +)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reducei-right(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reducei-right()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.reducei-right(1, +2)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceiRight([1, 2, 3], +)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceiRight(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceiRight()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.reduceiRight(1, +2)`)).toThrow(DvalaError)
       })
     })
 
@@ -427,185 +427,185 @@ describe('collection-Utils module functions', () => {
       })
     })
 
-    describe('get-in', () => {
+    describe('getIn', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 0])`)).toBe('Albert')
-        expect(mdvala.run(`${imp}cu.get-in([1, 2, 3], [1])`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 0])`)).toBe('Albert')
+        expect(mdvala.run(`${imp}cu.getIn([1, 2, 3], [1])`)).toBe(2)
 
-        expect(mdvala.run(`${imp}cu.get-in([], [1])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in([1], [1])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in([1, 2, 3], [1])`)).toBe(2)
-        expect(mdvala.run(`${imp}cu.get-in([[1, 2, 3], [4, {a: 2}, 6]], [1, 1, "a"])`)).toBe(2)
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 0])`)).toBe('Albert')
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 0, 5])`)).toBe('t')
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 0, 5, 0, 0, 0, 0, 0, 0])`)).toBe('t')
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 2], "DEFAULT")`)).toBe('DEFAULT')
-        expect(mdvala.run(`${imp}cu.get-in({a: ["Albert", "Mojir"]}, ["a", 2, "x"], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn([], [1])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn([1], [1])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn([1, 2, 3], [1])`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn([[1, 2, 3], [4, {a: 2}, 6]], [1, 1, "a"])`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 0])`)).toBe('Albert')
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 0, 5])`)).toBe('t')
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 0, 5, 0, 0, 0, 0, 0, 0])`)).toBe('t')
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 2], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn({a: ["Albert", "Mojir"]}, ["a", 2, "x"], "DEFAULT")`)).toBe('DEFAULT')
 
-        expect(mdvala.run(`${imp}cu.get-in(null, [], "DEFAULT")`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in(null, [1], "DEFAULT")`)).toBe('DEFAULT')
-        expect(mdvala.run(`${imp}cu.get-in([], [], "DEFAULT")`)).toEqual([])
-        expect(mdvala.run(`${imp}cu.get-in([1, 2], [1], "DEFAULT")`)).toBe(2)
-        expect(mdvala.run(`${imp}cu.get-in([1, 2], [1, 2], "DEFAULT")`)).toBe('DEFAULT')
-        expect(mdvala.run(`${imp}cu.get-in([], [1], "DEFAULT")`)).toBe('DEFAULT')
-        expect(mdvala.run(`${imp}cu.get-in(2, [1], "DEFAULT")`)).toBe('DEFAULT')
-        expect(mdvala.run(`${imp}cu.get-in(2, [], "DEFAULT")`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn(null, [], "DEFAULT")`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn(null, [1], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn([], [], "DEFAULT")`)).toEqual([])
+        expect(mdvala.run(`${imp}cu.getIn([1, 2], [1], "DEFAULT")`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn([1, 2], [1, 2], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn([], [1], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn(2, [1], "DEFAULT")`)).toBe('DEFAULT')
+        expect(mdvala.run(`${imp}cu.getIn(2, [], "DEFAULT")`)).toBe(2)
 
-        expect(mdvala.run(`${imp}cu.get-in(null, [])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in(null, [1])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in([], [])`)).toEqual([])
-        expect(mdvala.run(`${imp}cu.get-in([1, 2], [1])`)).toBe(2)
-        expect(mdvala.run(`${imp}cu.get-in([1, 2], [1, 2])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in([], [1])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in(2, [1])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.get-in(2, [])`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn(null, [])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn(null, [1])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn([], [])`)).toEqual([])
+        expect(mdvala.run(`${imp}cu.getIn([1, 2], [1])`)).toBe(2)
+        expect(mdvala.run(`${imp}cu.getIn([1, 2], [1, 2])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn([], [1])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn(2, [1])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn(2, [])`)).toBe(2)
 
-        expect(mdvala.run(`${imp}cu.get-in("Albert", [])`)).toBe('Albert')
-        expect(mdvala.run(`${imp}cu.get-in("Albert", [0])`)).toBe('A')
-        expect(mdvala.run(`${imp}cu.get-in("Albert", ["0"])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.getIn("Albert", [])`)).toBe('Albert')
+        expect(mdvala.run(`${imp}cu.getIn("Albert", [0])`)).toBe('A')
+        expect(mdvala.run(`${imp}cu.getIn("Albert", ["0"])`)).toBeNull()
 
-        expect(mdvala.run(`${imp}cu.get-in("Albert", null, "DEFAULT")`)).toBe('Albert')
+        expect(mdvala.run(`${imp}cu.getIn("Albert", null, "DEFAULT")`)).toBe('Albert')
 
-        expect(() => mdvala.run(`${imp}cu.get-in()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.get-in([])`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.get-in(12)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.get-in(false)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.get-in(true)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.get-in(null)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn([])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn(12)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn(false)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn(true)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.getIn(null)`)).toThrow(DvalaError)
       })
     })
 
-    describe('assoc-in', () => {
+    describe('assocIn', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.assoc-in("Albert", [0], "a")`)).toEqual('albert')
-        expect(mdvala.run(`${imp}cu.assoc-in("Albert", [6], "!")`)).toEqual('Albert!')
-        expect(() => mdvala.run(`${imp}cu.assoc-in("Albert", [7], "!")`)).toThrow(DvalaError)
-        expect(mdvala.run(`${imp}cu.assoc-in({}, ["a", "b", "c"], "Albert")`)).toEqual({ a: { b: { c: 'Albert' } } })
-        expect(mdvala.run(`${imp}cu.assoc-in([1, 2, 3], [0], "1")`)).toEqual(['1', 2, 3])
-        expect(mdvala.run(`${imp}cu.assoc-in([1, 2, [1, 2, 3]], [2, 1], "2")`)).toEqual([1, 2, [1, '2', 3]])
-        expect(mdvala.run(`${imp}cu.assoc-in([1, 2, "albert"], [2, 0], "A")`)).toEqual([1, 2, 'Albert'])
-        expect(mdvala.run(`${imp}cu.assoc-in([1, 2, {name: "albert"}], [2, "name"], "A")`)).toEqual([1, 2, { name: 'A' }])
-        expect(mdvala.run(`${imp}cu.assoc-in([1, 2, {name: "albert"}], [2, "name", 0], "A")`)).toEqual([1, 2, { name: 'Albert' }])
-        expect(() => mdvala.run(`${imp}cu.assoc-in([1, 2, {name: "albert"}], ["2", "name", 0], "A")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.assoc-in([1, 2, {name: "albert"}], [2, 1, 0], "A")`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.assoc-in([1, 2, {name: "albert"}], [2, "name", "a"], "A")`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.assocIn("Albert", [0], "a")`)).toEqual('albert')
+        expect(mdvala.run(`${imp}cu.assocIn("Albert", [6], "!")`)).toEqual('Albert!')
+        expect(() => mdvala.run(`${imp}cu.assocIn("Albert", [7], "!")`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.assocIn({}, ["a", "b", "c"], "Albert")`)).toEqual({ a: { b: { c: 'Albert' } } })
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, 3], [0], "1")`)).toEqual(['1', 2, 3])
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, [1, 2, 3]], [2, 1], "2")`)).toEqual([1, 2, [1, '2', 3]])
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, "albert"], [2, 0], "A")`)).toEqual([1, 2, 'Albert'])
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name"], "A")`)).toEqual([1, 2, { name: 'A' }])
+        expect(mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", 0], "A")`)).toEqual([1, 2, { name: 'Albert' }])
+        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], ["2", "name", 0], "A")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, 1, 0], "A")`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.assocIn([1, 2, {name: "albert"}], [2, "name", "a"], "A")`)).toThrow(DvalaError)
       })
     })
 
-    describe('not-empty', () => {
+    describe('notEmpty', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.not-empty([])`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.not-empty([0])`)).toEqual([0])
-        expect(mdvala.run(`${imp}cu.not-empty({})`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.not-empty({a: 2})`)).toEqual({ a: 2 })
-        expect(mdvala.run(`${imp}cu.not-empty("")`)).toBeNull()
-        expect(mdvala.run(`${imp}cu.not-empty("Albert")`)).toEqual('Albert')
+        expect(mdvala.run(`${imp}cu.notEmpty([])`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.notEmpty([0])`)).toEqual([0])
+        expect(mdvala.run(`${imp}cu.notEmpty({})`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.notEmpty({a: 2})`)).toEqual({ a: 2 })
+        expect(mdvala.run(`${imp}cu.notEmpty("")`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.notEmpty("Albert")`)).toEqual('Albert')
 
-        expect(mdvala.run(`${imp}cu.not-empty(null)`)).toBeNull()
+        expect(mdvala.run(`${imp}cu.notEmpty(null)`)).toBeNull()
 
-        expect(() => mdvala.run(`${imp}cu.not-empty()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-empty(true)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-empty(false)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-empty(10)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-empty((regexp "^start"))`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEmpty()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEmpty(true)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEmpty(false)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEmpty(10)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEmpty((regexp "^start"))`)).toThrow(DvalaError)
       })
     })
 
-    describe('every?', () => {
+    describe('isEvery', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.every?([1, 2, 3], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?("abc", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery([1, 2, 3], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery("abc", x -> x >= "a")`)).toBe(true)
 
-        expect(mdvala.run(`${imp}cu.every?([1, 2, 3], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?(["1", "2", "3"], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.every?([], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?("", number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?({}, number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?([2, 4, 6], (x -> zero?(x mod 2)))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery([1, 2, 3], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery(["1", "2", "3"], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isEvery([], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery("", number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery({}, number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery([2, 4, 6], (x -> zero?(x mod 2)))`)).toBe(true)
 
-        expect(mdvala.run(`${imp}cu.every?("abc", x -> x >= "a")`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?("abC", x -> x >= "a")`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.every?({a: 2, b: 4}, -> even?(second($)))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.every?({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.every?({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
-        expect(() => mdvala.run(`${imp}cu.every?(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.every?([])`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.every?()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.every?([1], number?, 2)`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.isEvery("abc", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery("abC", x -> x >= "a")`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isEvery({a: 2, b: 4}, -> even?(second($)))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isEvery({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isEvery({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
+        expect(() => mdvala.run(`${imp}cu.isEvery(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isEvery([])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isEvery()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isEvery([1], number?, 2)`)).toThrow(DvalaError)
       })
     })
 
-    describe('not-every?', () => {
+    describe('notEvery', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.not-every?(["1", "2", "3"], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-every?(["1", 2, "3"], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notEvery(["1", "2", "3"], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notEvery(["1", 2, "3"], number?)`)).toBe(true)
 
-        expect(mdvala.run(`${imp}cu.not-every?([1, 2, 3], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?(["1", "2", "3"], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-every?([], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?("", number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?({}, number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?([2, 4, 6], x -> zero?(x mod 2))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?("abc", x -> x >= "a")`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?("abC", x -> x >= "a")`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-every?({a: 2, b: 4}, -> even?(second($)))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-every?({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-every?({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
-        expect(() => mdvala.run(`${imp}cu.not-every?(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-every?([])`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-every?()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-every?([1], number?, 2)`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.notEvery([1, 2, 3], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery(["1", "2", "3"], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notEvery([], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery("", number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery({}, number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery([2, 4, 6], x -> zero?(x mod 2))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery("abc", x -> x >= "a")`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery("abC", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notEvery({a: 2, b: 4}, -> even?(second($)))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notEvery({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notEvery({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
+        expect(() => mdvala.run(`${imp}cu.notEvery(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEvery([])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEvery()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notEvery([1], number?, 2)`)).toThrow(DvalaError)
       })
     })
 
-    describe('any?', () => {
+    describe('isAny', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.any?([1, "2", 3], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny([1, "2", 3], number?)`)).toBe(true)
 
-        expect(mdvala.run(`${imp}cu.any?([1, 2, 3], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?([1, "2", 3], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?(["1", "2", "3"], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?([], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?("", number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?({}, number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?([1, 3, 6], x -> zero?(x mod 2))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?([1, 3, 5], x -> zero?(x mod 2))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?("abc", x -> x >= "a")`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?("abC", x -> x >= "a")`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?("ABC", x -> x >= "a")`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.any?({a: 2, b: 4}, -> even?(second($)))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.any?({a: 1, b: 3}, -> even?(second($)))`)).toBe(false)
-        expect(() => mdvala.run(`${imp}cu.any?(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.any?([])`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.any?()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.any?([1], number?, 2)`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.isAny([1, 2, 3], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny([1, "2", 3], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny(["1", "2", "3"], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny([], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny("", number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny({}, number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny([1, 3, 6], x -> zero?(x mod 2))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny([1, 3, 5], x -> zero?(x mod 2))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny("abc", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny("abC", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny("ABC", x -> x >= "a")`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.isAny({a: 2, b: 4}, -> even?(second($)))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny({a: 2, b: 3}, -> even?(second($)))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.isAny({a: 1, b: 3}, -> even?(second($)))`)).toBe(false)
+        expect(() => mdvala.run(`${imp}cu.isAny(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isAny([])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isAny()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.isAny([1], number?, 2)`)).toThrow(DvalaError)
       })
     })
 
-    describe('not-any?', () => {
+    describe('notAny', () => {
       it('samples', () => {
-        expect(mdvala.run(`${imp}cu.not-any?(["1", "2", "3"], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?(["1", "2", 3], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny(["1", "2", "3"], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny(["1", "2", 3], number?)`)).toBe(false)
 
-        expect(mdvala.run(`${imp}cu.not-any?([1, 2, 3], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?([1, "2", 3], number?)`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?(["1", "2", "3"], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?([], number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?("", number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?({}, number?)`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?([1, 3, 6], x -> zero?(x mod 2))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?([1, 3, 5], x -> zero?(x mod 2))`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?("abc", x -> x >= "a")`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?("abC", x -> x >= "a")`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?("ABC", x -> x >= "a")`)).toBe(true)
-        expect(mdvala.run(`${imp}cu.not-any?({a: 2, b: 4}, -> even?(second($)))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
-        expect(mdvala.run(`${imp}cu.not-any?({a: 1, b: 3}, -> even?(second($)))`)).toBe(true)
-        expect(() => mdvala.run(`${imp}cu.not-any?(+)`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-any?([])`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-any?()`)).toThrow(DvalaError)
-        expect(() => mdvala.run(`${imp}cu.not-any?([1], number?, 2)`)).toThrow(DvalaError)
+        expect(mdvala.run(`${imp}cu.notAny([1, 2, 3], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny([1, "2", 3], number?)`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny(["1", "2", "3"], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny([], number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny("", number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny({}, number?)`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny([1, 3, 6], x -> zero?(x mod 2))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny([1, 3, 5], x -> zero?(x mod 2))`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny("abc", x -> x >= "a")`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny("abC", x -> x >= "a")`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny("ABC", x -> x >= "a")`)).toBe(true)
+        expect(mdvala.run(`${imp}cu.notAny({a: 2, b: 4}, -> even?(second($)))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny({a: 2, b: 3}, -> even?(second($)))`)).toBe(false)
+        expect(mdvala.run(`${imp}cu.notAny({a: 1, b: 3}, -> even?(second($)))`)).toBe(true)
+        expect(() => mdvala.run(`${imp}cu.notAny(+)`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notAny([])`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notAny()`)).toThrow(DvalaError)
+        expect(() => mdvala.run(`${imp}cu.notAny([1], number?, 2)`)).toThrow(DvalaError)
       })
     })
 
@@ -642,44 +642,44 @@ describe('collection-Utils module functions', () => {
       })
     })
 
-    describe('update-in', () => {
+    describe('updateIn', () => {
       it('samples', () => {
         expect(
           mdvala.run(
-            `${imp}let x = "Albert"; cu.update-in(x, [3], val -> if null?(val) then "!" else upper-case(val) end)`,
+            `${imp}let x = "Albert"; cu.updateIn(x, [3], val -> if null?(val) then "!" else upper-case(val) end)`,
           ),
         ).toEqual('AlbErt')
         expect(
           mdvala.run(
-            `${imp}let x = "Albert"; cu.update-in(x, [6], val -> if null?(val) then "!" else upper-case(val) end)`,
+            `${imp}let x = "Albert"; cu.updateIn(x, [6], val -> if null?(val) then "!" else upper-case(val) end)`,
           ),
         ).toEqual('Albert!')
 
-        expect(mdvala.run(`${imp}let x = [0, 1, 2, 3]; cu.update-in(x, [3], inc)`)).toEqual([0, 1, 2, 4])
-        expect(mdvala.run(`${imp}let x = [0, 1, 2, 3]; cu.update-in(x, [4], identity)`)).toEqual([0, 1, 2, 3, null])
+        expect(mdvala.run(`${imp}let x = [0, 1, 2, 3]; cu.updateIn(x, [3], inc)`)).toEqual([0, 1, 2, 4])
+        expect(mdvala.run(`${imp}let x = [0, 1, 2, 3]; cu.updateIn(x, [4], identity)`)).toEqual([0, 1, 2, 3, null])
 
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update-in(x, ["a"], inc)`)).toEqual({ a: 2, b: 2 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update-in(x, ["a"], +, 10)`)).toEqual({ a: 11, b: 2 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update-in(x, ["a"], val -> if even?(val) then 0 else inc(val) end)`)).toEqual({
+        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], inc)`)).toEqual({ a: 2, b: 2 })
+        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], +, 10)`)).toEqual({ a: 11, b: 2 })
+        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["a"], val -> if even?(val) then 0 else inc(val) end)`)).toEqual({
           a: 2,
           b: 2,
         })
-        expect(mdvala.run(`${imp}cu.update-in({}, ["a"], val -> if null?(val) then 0 end)`)).toEqual({ a: 0 })
-        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.update-in(x, ["c"], val -> if null?(val) then 0 else inc(val) end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({}, ["a"], val -> if null?(val) then 0 end)`)).toEqual({ a: 0 })
+        expect(mdvala.run(`${imp}let x = {a: 1, b: 2}; cu.updateIn(x, ["c"], val -> if null?(val) then 0 else inc(val) end)`)).toEqual({
           a: 1,
           b: 2,
           c: 0,
         })
-        expect(mdvala.run(`${imp}cu.update-in({a: [1, 2, 3]}, ["a", 1], val -> if null?(val) then 0 end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, 2, 3]}, ["a", 1], val -> if null?(val) then 0 end)`)).toEqual({
           a: [1, null, 3],
         })
-        expect(mdvala.run(`${imp}cu.update-in({a: [1, null, 3]}, ["a", 1], val -> if null?(val) then 0 end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, null, 3]}, ["a", 1], val -> if null?(val) then 0 end)`)).toEqual({
           a: [1, 0, 3],
         })
-        expect(mdvala.run(`${imp}cu.update-in({a: [1, "Albert", 3]}, ["a", 1, 0], val -> if null?(val) then "?" else "!" end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, "Albert", 3]}, ["a", 1, 0], val -> if null?(val) then "?" else "!" end)`)).toEqual({
           a: [1, '!lbert', 3],
         })
-        expect(mdvala.run(`${imp}cu.update-in({a: [1, "", 3]}, ["a", 1, 0], val -> if null?(val) then "?" else "!" end)`)).toEqual({
+        expect(mdvala.run(`${imp}cu.updateIn({a: [1, "", 3]}, ["a", 1, 0], val -> if null?(val) then "?" else "!" end)`)).toEqual({
           a: [1, '?', 3],
         })
       })

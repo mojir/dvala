@@ -35,11 +35,11 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         'b': { type: 'integer' },
         'seq': { type: ['sequence', 'null'] },
         'n': { type: 'integer' },
-        'not-found': { type: 'any' },
+        'notFound': { type: 'any' },
       },
       variants: [
         { argumentNames: ['seq', 'n'] },
-        { argumentNames: ['seq', 'n', 'not-found'] },
+        { argumentNames: ['seq', 'n', 'notFound'] },
       ],
       description: 'Accesses element $n of $seq. Accessing out-of-bounds indices returns $not-found, if present, else `null`.',
       seeAlso: ['first', 'second', 'last', 'get', 'slice'],
@@ -162,7 +162,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['seq', 'x'] }],
       description: 'Returns the index of $x in $seq. If element is not present in $seq `null` is returned.',
-      seeAlso: ['sequence.last-index-of', 'sequence.position', 'contains?'],
+      seeAlso: ['sequence.lastIndexOf', 'sequence.position', 'contains?'],
       examples: [
         '[[1], [2], [1], [2]] index-of [1]',
         'index-of(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
@@ -379,7 +379,7 @@ For string $seq returns all but the first characters in $seq.`,
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the first element that passes the test implemented by $fun. I no element was found, `null` is returned.',
-      seeAlso: ['sequence.position', 'collection.any?', 'find'],
+      seeAlso: ['sequence.position', 'collection.isAny', 'find'],
       examples: [
         `
 some(
@@ -426,7 +426,7 @@ some(
         { argumentNames: ['seq', 'fun'] },
       ],
       description: 'Returns a new sequence with the elements from $seq sorted according to $fun. If no $fun is supplied, builtin `compare` will be used.',
-      seeAlso: ['sequence.sort-by', 'compare', 'reverse', 'vector.sort-indices'],
+      seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
       examples: [
         '[3, 1, 2] sort (a, b) -> b - a',
         'sort([3, 1, 2])',
@@ -462,7 +462,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array/string with the $n first elements from $seq.',
-      seeAlso: ['take-last', 'take-while', 'drop', 'slice', 'sequence.split-at'],
+      seeAlso: ['take-last', 'take-while', 'drop', 'slice', 'sequence.splitAt'],
       examples: [
         'take([1, 2, 3, 4, 5], 3)',
         '[1, 2, 3, 4, 5] take 3',
@@ -519,7 +519,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
       description: 'Constructs a new array/string with the $n first elements dropped from $seq.',
-      seeAlso: ['drop-last', 'drop-while', 'take', 'slice', 'sequence.split-at'],
+      seeAlso: ['drop-last', 'drop-while', 'take', 'slice', 'sequence.splitAt'],
       examples: [
         'drop([1, 2, 3, 4, 5], 3)',
         '[1, 2, 3, 4, 5] drop 0',
@@ -570,7 +570,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the members of $seq in order, stopping before the first one for which `predicate` returns a falsy value.',
-      seeAlso: ['take', 'drop-while', 'sequence.split-with'],
+      seeAlso: ['take', 'drop-while', 'sequence.splitWith'],
       examples: [
         `take-while(
   [1, 2, 3, 2, 1],
@@ -597,7 +597,7 @@ sort(
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the members of $seq in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
-      seeAlso: ['drop', 'take-while', 'sequence.split-with'],
+      seeAlso: ['drop', 'take-while', 'sequence.splitWith'],
       examples: [
         `drop-while(
   [1, 2, 3, 2, 1],

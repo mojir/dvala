@@ -27,14 +27,14 @@ describe('derangements', () => {
       ])
     })
   })
-  describe('nth:count-derangements', () => {
+  describe('nth:countDerangements', () => {
     it('should return the number of derangements from n', () => {
-      expect(runNth('nth:count-derangements(1)')).toEqual(0)
-      expect(runNth('nth:count-derangements(2)')).toEqual(1)
-      expect(runNth('nth:count-derangements(3)')).toEqual(2)
-      expect(runNth('nth:count-derangements(4)')).toEqual(9)
-      expect(runNth('nth:count-derangements(5)')).toEqual(44)
-      expect(runNth('nth:count-derangements(6)')).toEqual(265)
+      expect(runNth('nth:countDerangements(1)')).toEqual(0)
+      expect(runNth('nth:countDerangements(2)')).toEqual(1)
+      expect(runNth('nth:countDerangements(3)')).toEqual(2)
+      expect(runNth('nth:countDerangements(4)')).toEqual(9)
+      expect(runNth('nth:countDerangements(5)')).toEqual(44)
+      expect(runNth('nth:countDerangements(6)')).toEqual(265)
     })
   })
 })

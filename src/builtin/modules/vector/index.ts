@@ -23,8 +23,8 @@ function calcMedian(vector: number[]): number {
 }
 
 const vectorFunctions: BuiltinNormalExpressions = {
-  'moving-fn': {
-    evaluate: () => { throw new Error('moving-fn is implemented in Dvala') },
+  'movingFn': {
+    evaluate: () => { throw new Error('movingFn is implemented in Dvala') },
     arity: toFixedArity(3),
     docs: {
       category: 'vector',
@@ -36,16 +36,16 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
       description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
-      seeAlso: ['vector.running-fn', 'vector.moving-mean'],
+      seeAlso: ['vector.runningFn', 'vector.movingMean'],
       examples: [
-        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 2, sum)',
-        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 1, sum)',
-        'let { sum, moving-fn } = import(vector);\nmoving-fn([1, 2, 3], 3, sum)',
+        'let { sum, movingFn } = import(vector);\nmovingFn([1, 2, 3], 2, sum)',
+        'let { sum, movingFn } = import(vector);\nmovingFn([1, 2, 3], 1, sum)',
+        'let { sum, movingFn } = import(vector);\nmovingFn([1, 2, 3], 3, sum)',
       ],
     },
   },
-  'running-fn': {
-    evaluate: () => { throw new Error('running-fn is implemented in Dvala') },
+  'runningFn': {
+    evaluate: () => { throw new Error('runningFn is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'vector',
@@ -56,11 +56,11 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Returns the result of applying $b to each element of $a.',
-      seeAlso: ['vector.moving-fn', 'vector.running-mean'],
+      seeAlso: ['vector.movingFn', 'vector.runningMean'],
       examples: [
-        'let { sum, running-fn } = import(vector);\nrunning-fn([1, 2, 3], sum)',
-        'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], max)',
-        'let { running-fn } = import(vector);\nrunning-fn([1, 2, 3], min)',
+        'let { sum, runningFn } = import(vector);\nrunningFn([1, 2, 3], sum)',
+        'let { runningFn } = import(vector);\nrunningFn([1, 2, 3], max)',
+        'let { runningFn } = import(vector);\nrunningFn([1, 2, 3], min)',
       ],
     },
   },
@@ -78,7 +78,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['vector'] }],
       description: 'Returns the **sum** of all elements in the `vector`. Returns `0` for an empty vector.',
-      seeAlso: ['vector.prod', 'vector.mean', 'vector.median', 'vector.moving-sum', 'vector.centered-moving-sum', 'vector.running-sum', 'vector.cumsum'],
+      seeAlso: ['vector.prod', 'vector.mean', 'vector.median', 'vector.movingSum', 'vector.centeredMovingSum', 'vector.runningSum', 'vector.cumsum'],
       examples: [
         'let { sum } = import(vector);\nsum([1, 2, 3, 4, 5])',
         'let { sum } = import(vector);\nsum([1, -2, 3])',
@@ -100,7 +100,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['vector'] }],
       description: 'Returns the **product** of all elements in the `vector`. Returns `1` for an empty vector.',
-      seeAlso: ['vector.sum', 'vector.mean', 'vector.median', 'vector.moving-prod', 'vector.centered-moving-prod', 'vector.running-prod', 'vector.cumprod'],
+      seeAlso: ['vector.sum', 'vector.mean', 'vector.median', 'vector.movingProd', 'vector.centeredMovingProd', 'vector.runningProd', 'vector.cumprod'],
       examples: [
         'let { prod } = import(vector);\nprod([1, 2, 3, 4, 5])',
         'let { prod } = import(vector);\nprod([1, -2, 3])',
@@ -122,7 +122,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['vector'] }],
       description: 'Returns the arithmetic **mean** of all elements in the `vector`. Throws for an empty vector.',
-      seeAlso: ['vector.median', 'vector.sum', 'vector.prod', 'vector.moving-mean', 'vector.centered-moving-mean', 'vector.running-mean', 'vector.geometric-mean', 'vector.harmonic-mean', 'vector.rms', 'vector.mode'],
+      seeAlso: ['vector.median', 'vector.sum', 'vector.prod', 'vector.movingMean', 'vector.centeredMovingMean', 'vector.runningMean', 'vector.geometricMean', 'vector.harmonicMean', 'vector.rms', 'vector.mode'],
       examples: [
         'let { mean } = import(vector);\nmean([1, 2, 3, 4, 5])',
         'let { mean } = import(vector);\nmean([1, -2, 3])',
@@ -143,7 +143,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['vector'] }],
       description: 'Returns the **median** of all elements in the `vector`. For even-length vectors, returns the average of the two middle values. Throws for an empty vector.',
-      seeAlso: ['vector.mean', 'vector.sum', 'vector.prod', 'vector.moving-median', 'vector.centered-moving-median', 'vector.running-median', 'vector.mode', 'vector.quartiles', 'vector.percentile', 'vector.iqr', 'vector.medad'],
+      seeAlso: ['vector.mean', 'vector.sum', 'vector.prod', 'vector.movingMedian', 'vector.centeredMovingMedian', 'vector.runningMedian', 'vector.mode', 'vector.quartiles', 'vector.percentile', 'vector.iqr', 'vector.medad'],
       examples: [
         'let { median } = import(vector);\nmedian([1, 2, 3, 4, 5])',
         'let { median } = import(vector);\nmedian([1, 2, 3, 4])',
@@ -151,7 +151,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
       ],
     },
   },
-  'monotonic?': {
+  'isMonotonic': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val >= vector[i - 1]!)
@@ -159,7 +159,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'strictly-monotonic?': {
+  'isStrictlyMonotonic': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val > vector[i - 1]!)
@@ -167,28 +167,28 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'increasing?': {
+  'isIncreasing': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val >= vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
-  'decreasing?': {
+  'isDecreasing': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val <= vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
-  'strictly-increasing?': {
+  'isStrictlyIncreasing': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val > vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
-  'strictly-decreasing?': {
+  'isStrictlyDecreasing': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val < vector[i - 1]!)
@@ -202,7 +202,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'min-index': {
+  'minIndex': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
 
@@ -210,7 +210,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'max-index': {
+  'maxIndex': {
     evaluate: ([vector], sourceCodeInfo): number => {
       assertNonEmptyVector(vector, sourceCodeInfo)
 
@@ -218,7 +218,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'sort-indices': {
+  'sortIndices': {
     evaluate: ([vector], sourceCodeInfo): number[] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -226,7 +226,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(1),
   },
-  'count-values': {
+  'countValues': {
     evaluate: ([vector], sourceCodeInfo): [number, number][] => {
       assertVector(vector, sourceCodeInfo)
 
@@ -333,7 +333,7 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
     arity: toFixedArity(2),
   },
-  'outliers?': {
+  'isOutliers': {
     evaluate: ([vector], sourceCodeInfo): boolean => {
       assertVector(vector, sourceCodeInfo)
       return hasOutliers(vector)

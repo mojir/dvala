@@ -16,14 +16,14 @@ function powerSet(set: Arr): Arr[] {
 }
 
 export const powerSetNormalExpressions: BuiltinNormalExpressions = {
-  'power-set': {
+  'powerSet': {
     evaluate: ([set], sourceCodeInfo): Arr[] => {
       assertArray(set, sourceCodeInfo)
       return powerSet(set)
     },
     arity: toFixedArity(1),
   },
-  'count-power-set': {
+  'countPowerSet': {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
       if (n >= 53) {

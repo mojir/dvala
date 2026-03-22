@@ -13,63 +13,63 @@ function runVec(code: string): unknown {
 }
 
 describe('vector functions', () => {
-  describe('vec:monotonic?', () => {
+  describe('vec:isMonotonic', () => {
     it('should determine if a vector is monotonic', () => {
-      expect(runVec('vec:monotonic?([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:monotonic?([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:monotonic?([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:monotonic?([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:monotonic?([4, 3, 2, 1, 1, 1])')).toEqual(true)
-      expect(runVec('vec:monotonic?([])')).toEqual(true)
+      expect(runVec('vec:isMonotonic([1, 2, 3])')).toEqual(true)
+      expect(runVec('vec:isMonotonic([1, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isMonotonic([1, 2, 3, 4])')).toEqual(true)
+      expect(runVec('vec:isMonotonic([4, 3, 2, 1])')).toEqual(true)
+      expect(runVec('vec:isMonotonic([4, 3, 2, 1, 1, 1])')).toEqual(true)
+      expect(runVec('vec:isMonotonic([])')).toEqual(true)
     })
   })
-  describe('vec:strictly-monotonic?', () => {
+  describe('vec:isStrictlyMonotonic', () => {
     it('should determine if a vector is monotonic', () => {
-      expect(runVec('vec:strictly-monotonic?([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:strictly-monotonic?([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:strictly-monotonic?([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:strictly-monotonic?([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:strictly-monotonic?([4, 3, 2, 1, 1, 1])')).toEqual(false)
-      expect(runVec('vec:strictly-monotonic?([])')).toEqual(true)
+      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3])')).toEqual(true)
+      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isStrictlyMonotonic([1, 2, 3, 4])')).toEqual(true)
+      expect(runVec('vec:isStrictlyMonotonic([4, 3, 2, 1])')).toEqual(true)
+      expect(runVec('vec:isStrictlyMonotonic([4, 3, 2, 1, 1, 1])')).toEqual(false)
+      expect(runVec('vec:isStrictlyMonotonic([])')).toEqual(true)
     })
   })
-  describe('vec:increasing?', () => {
+  describe('vec:isIncreasing', () => {
     it('should determine if a vector is monotonic increasing', () => {
-      expect(runVec('vec:increasing?([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:increasing?([1, 2, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:increasing?([1, 2, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:increasing?([4, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:increasing?([])')).toEqual(true)
+      expect(runVec('vec:isIncreasing([1, 2, 3])')).toEqual(true)
+      expect(runVec('vec:isIncreasing([1, 2, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isIncreasing([1, 2, 2, 3, 4])')).toEqual(true)
+      expect(runVec('vec:isIncreasing([4, 3, 2, 1])')).toEqual(false)
+      expect(runVec('vec:isIncreasing([])')).toEqual(true)
     })
   })
-  describe('vec:decreasing?', () => {
+  describe('vec:isDecreasing', () => {
     it('should determine if a vector is monotonic decreasing', () => {
-      expect(runVec('vec:decreasing?([1, 2, 2, 3])')).toEqual(false)
-      expect(runVec('vec:decreasing?([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:decreasing?([1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:decreasing?([4, 3, 2, 2, 1])')).toEqual(true)
-      expect(runVec('vec:decreasing?([4, 4, 3, 2, 2, 1])')).toEqual(true)
-      expect(runVec('vec:decreasing?([])')).toEqual(true)
+      expect(runVec('vec:isDecreasing([1, 2, 2, 3])')).toEqual(false)
+      expect(runVec('vec:isDecreasing([1, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isDecreasing([1, 2, 3, 4])')).toEqual(false)
+      expect(runVec('vec:isDecreasing([4, 3, 2, 2, 1])')).toEqual(true)
+      expect(runVec('vec:isDecreasing([4, 4, 3, 2, 2, 1])')).toEqual(true)
+      expect(runVec('vec:isDecreasing([])')).toEqual(true)
     })
   })
-  describe('vec:strictly-increasing?', () => {
+  describe('vec:isStrictlyIncreasing', () => {
     it('should determine if a vector is strictly monotonic increasing', () => {
-      expect(runVec('vec:strictly-increasing?([1, 2, 3])')).toEqual(true)
-      expect(runVec('vec:strictly-increasing?([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:strictly-increasing?([1, 2, 3, 4])')).toEqual(true)
-      expect(runVec('vec:strictly-increasing?([1, 1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:strictly-increasing?([4, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:strictly-increasing?([])')).toEqual(true)
+      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3])')).toEqual(true)
+      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isStrictlyIncreasing([1, 2, 3, 4])')).toEqual(true)
+      expect(runVec('vec:isStrictlyIncreasing([1, 1, 2, 3, 4])')).toEqual(false)
+      expect(runVec('vec:isStrictlyIncreasing([4, 3, 2, 1])')).toEqual(false)
+      expect(runVec('vec:isStrictlyIncreasing([])')).toEqual(true)
     })
   })
-  describe('vec:strictly-decreasing?', () => {
+  describe('vec:isStrictlyDecreasing', () => {
     it('should determine if a vector is strictly monotonic decreasing', () => {
-      expect(runVec('vec:strictly-decreasing?([1, 2, 3])')).toEqual(false)
-      expect(runVec('vec:strictly-decreasing?([1, 2, 3, 2])')).toEqual(false)
-      expect(runVec('vec:strictly-decreasing?([1, 2, 3, 4])')).toEqual(false)
-      expect(runVec('vec:strictly-decreasing?([4, 3, 2, 1])')).toEqual(true)
-      expect(runVec('vec:strictly-decreasing?([4, 3, 3, 2, 1])')).toEqual(false)
-      expect(runVec('vec:strictly-decreasing?([])')).toEqual(true)
+      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3])')).toEqual(false)
+      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3, 2])')).toEqual(false)
+      expect(runVec('vec:isStrictlyDecreasing([1, 2, 3, 4])')).toEqual(false)
+      expect(runVec('vec:isStrictlyDecreasing([4, 3, 2, 1])')).toEqual(true)
+      expect(runVec('vec:isStrictlyDecreasing([4, 3, 3, 2, 1])')).toEqual(false)
+      expect(runVec('vec:isStrictlyDecreasing([])')).toEqual(true)
     })
   })
   describe('vec:mode', () => {
@@ -80,37 +80,37 @@ describe('vector functions', () => {
       expect(() => runVec('vec:mode([])')).toThrowError(DvalaError)
     })
   })
-  describe('vec:min-index', () => {
+  describe('vec:minIndex', () => {
     it('should find the index of the minimum value in a vector', () => {
-      expect(runVec('vec:min-index([1, 2, 3])')).toEqual(0)
-      expect(runVec('vec:min-index([3, 2, 1])')).toEqual(2)
-      expect(runVec('vec:min-index([0])')).toEqual(0)
-      expect(() => runVec('vec:min-index([])')).toThrowError(DvalaError)
+      expect(runVec('vec:minIndex([1, 2, 3])')).toEqual(0)
+      expect(runVec('vec:minIndex([3, 2, 1])')).toEqual(2)
+      expect(runVec('vec:minIndex([0])')).toEqual(0)
+      expect(() => runVec('vec:minIndex([])')).toThrowError(DvalaError)
     })
   })
-  describe('vec:max-index', () => {
+  describe('vec:maxIndex', () => {
     it('should find the index of the maximum value in a vector', () => {
-      expect(runVec('vec:max-index([1, 2, 3])')).toEqual(2)
-      expect(runVec('vec:max-index([3, 2, 1])')).toEqual(0)
-      expect(runVec('vec:max-index([0])')).toEqual(0)
-      expect(() => runVec('vec:max-index([])')).toThrowError(DvalaError)
+      expect(runVec('vec:maxIndex([1, 2, 3])')).toEqual(2)
+      expect(runVec('vec:maxIndex([3, 2, 1])')).toEqual(0)
+      expect(runVec('vec:maxIndex([0])')).toEqual(0)
+      expect(() => runVec('vec:maxIndex([])')).toThrowError(DvalaError)
     })
   })
-  describe('vec:sort-indices', () => {
+  describe('vec:sortIndices', () => {
     it('should sort the indices of a vector', () => {
-      expect(runVec('vec:sort-indices([1, 2, 3])')).toEqual([0, 1, 2])
-      expect(runVec('vec:sort-indices([3, 2, 1])')).toEqual([2, 1, 0])
-      expect(runVec('vec:sort-indices([0])')).toEqual([0])
-      expect(runVec('vec:sort-indices([])')).toEqual([])
+      expect(runVec('vec:sortIndices([1, 2, 3])')).toEqual([0, 1, 2])
+      expect(runVec('vec:sortIndices([3, 2, 1])')).toEqual([2, 1, 0])
+      expect(runVec('vec:sortIndices([0])')).toEqual([0])
+      expect(runVec('vec:sortIndices([])')).toEqual([])
     })
   })
-  describe('vec:count-values', () => {
+  describe('vec:countValues', () => {
     it('should count the occurrences of each value in a vector', () => {
-      expect(runVec('vec:count-values([1, 2, 3])')).toEqual([[1, 1], [2, 1], [3, 1]])
-      expect(runVec('vec:count-values([1, 2, 2, 3])')).toEqual([[2, 2], [1, 1], [3, 1]])
-      expect(runVec('vec:count-values([0])')).toEqual([[0, 1]])
-      expect(runVec('vec:count-values([])')).toEqual([])
-      expect(runVec('vec:count-values([1, 2, 3, 1])')).toEqual([[1, 2], [2, 1], [3, 1]])
+      expect(runVec('vec:countValues([1, 2, 3])')).toEqual([[1, 1], [2, 1], [3, 1]])
+      expect(runVec('vec:countValues([1, 2, 2, 3])')).toEqual([[2, 2], [1, 1], [3, 1]])
+      expect(runVec('vec:countValues([0])')).toEqual([[0, 1]])
+      expect(runVec('vec:countValues([])')).toEqual([])
+      expect(runVec('vec:countValues([1, 2, 3, 1])')).toEqual([[1, 2], [2, 1], [3, 1]])
     })
   })
   describe('vec:linspace', () => {
@@ -312,13 +312,13 @@ describe('vector functions', () => {
       expect(() => runVec('vec:ecdf([], 1)')).toThrow(DvalaError)
     })
   })
-  describe('vec:outliers?', () => {
+  describe('vec:isOutliers', () => {
     it('should check if a vector has no extreme outliers', () => {
-      expect(runVec('vec:outliers?([1, 2, 3])')).toEqual(false)
-      expect(runVec('vec:outliers?([1, 2, 3, 4, 2, 1, 100])')).toEqual(true)
-      expect(runVec('vec:outliers?([1, 2, 0, 2, -100])')).toEqual(true)
-      expect(runVec('vec:outliers?([1])')).toEqual(false)
-      expect(runVec('vec:outliers?([])')).toBe(false)
+      expect(runVec('vec:isOutliers([1, 2, 3])')).toEqual(false)
+      expect(runVec('vec:isOutliers([1, 2, 3, 4, 2, 1, 100])')).toEqual(true)
+      expect(runVec('vec:isOutliers([1, 2, 0, 2, -100])')).toEqual(true)
+      expect(runVec('vec:isOutliers([1])')).toEqual(false)
+      expect(runVec('vec:isOutliers([])')).toBe(false)
     })
   })
   describe('vec:outliers', () => {

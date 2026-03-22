@@ -295,7 +295,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Compares two values. Returns `-1` if $a < $b, `1` if $a > $b and `0` if $a and $b have the same sort order.',
-      seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sort-by'],
+      seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sortBy'],
       examples: [
         'compare(0, 1)',
         'compare(0, 0)',

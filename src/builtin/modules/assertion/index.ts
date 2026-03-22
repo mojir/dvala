@@ -45,7 +45,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert-gt': {
+  'assertGt': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -61,7 +61,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert-gte': {
+  'assertGte': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -77,7 +77,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert-lt': {
+  'assertLt': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -93,7 +93,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert-lte': {
+  'assertLte': {
     evaluate: ([first, second, message], sourceCodeInfo): null => {
       assertStringOrNumber(first, sourceCodeInfo)
       assertStringOrNumber(second, sourceCodeInfo)
@@ -109,7 +109,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 2, max: 3 },
   },
-  'assert-true': {
+  'assertTrue': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -123,7 +123,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-false': {
+  'assertFalse': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -137,7 +137,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-truthy': {
+  'assertTruthy': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -151,7 +151,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-falsy': {
+  'assertFalsy': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -165,7 +165,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-null': {
+  'assertNull': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -181,22 +181,22 @@ const assertNormalExpression: BuiltinNormalExpressions = {
   },
   // Implemented in assertion.dvala - these stubs provide arity checking
   // The evaluate functions are placeholders; actual execution uses dvalaImpl
-  'assert-fails': {
+  'assertFails': {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
-  'assert-fails-with': {
+  'assertFailsWith': {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 2, max: 3 },
   },
-  'assert-succeeds': {
+  'assertSucceeds': {
     /* v8 ignore next 1 */
     evaluate: () => null,
     arity: { min: 1, max: 2 },
   },
-  'assert-array': {
+  'assertArray': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -210,7 +210,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-boolean': {
+  'assertBoolean': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -224,7 +224,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-collection': {
+  'assertCollection': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -238,7 +238,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-function': {
+  'assertFunction': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -252,7 +252,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-grid': {
+  'assertGrid': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -266,7 +266,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-integer': {
+  'assertInteger': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -280,7 +280,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-matrix': {
+  'assertMatrix': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -294,7 +294,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-number': {
+  'assertNumber': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -308,7 +308,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-object': {
+  'assertObject': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -322,7 +322,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-regexp': {
+  'assertRegexp': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -336,7 +336,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-sequence': {
+  'assertSequence': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -350,7 +350,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-string': {
+  'assertString': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)
@@ -364,7 +364,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
     },
     arity: { min: 1, max: 2 },
   },
-  'assert-vector': {
+  'assertVector': {
     evaluate: ([first, message], sourceCodeInfo): null => {
       if (message !== undefined) {
         assertString(message, sourceCodeInfo)

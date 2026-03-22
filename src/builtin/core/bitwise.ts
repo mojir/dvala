@@ -98,7 +98,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b', 'c'] },
       ],
       description: 'Returns bitwise `and` of all arguments.',
-      seeAlso: ['|', 'xor', 'bitwise.bit-not', 'bitwise.bit-and-not'],
+      seeAlso: ['|', 'xor', 'bitwise.bitNot', 'bitwise.bitAndNot'],
       examples: [
         '0b0011 & 0b0110',
         '&(0b0011, 0b0110)',
@@ -128,7 +128,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b', 'c'] },
       ],
       description: 'Returns bitwise `or` of all arguments.',
-      seeAlso: ['&', 'xor', 'bitwise.bit-not', 'bitwise.bit-and-not'],
+      seeAlso: ['&', 'xor', 'bitwise.bitNot', 'bitwise.bitAndNot'],
       examples: [
         '0b0011 | 0b0110',
         '|(0b0011, 0b0110)',
@@ -158,7 +158,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b', 'c'] },
       ],
       description: 'Returns bitwise `xor` of all arguments.',
-      seeAlso: ['&', '|', 'bitwise.bit-not', 'bitwise.bit-and-not'],
+      seeAlso: ['&', '|', 'bitwise.bitNot', 'bitwise.bitAndNot'],
       examples: [
         '0b0011 xor 0b0110',
         'xor(0b0011, 0b0110)',

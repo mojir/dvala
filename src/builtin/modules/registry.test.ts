@@ -49,7 +49,7 @@ describe('module registration', () => {
 
   describe('user-defined module', () => {
     const temperatureFunctions: BuiltinNormalExpressions = {
-      'c-to-f': {
+      'cToF': {
         evaluate: ([celsius], sourceCodeInfo): number => {
           if (typeof celsius !== 'number') {
             throw new TypeError(`Expected a number${sourceCodeInfo ? ` at ${sourceCodeInfo}` : ''}`)
@@ -58,7 +58,7 @@ describe('module registration', () => {
         },
         arity: { min: 1, max: 1 },
       },
-      'f-to-c': {
+      'fToC': {
         evaluate: ([fahrenheit], sourceCodeInfo): number => {
           if (typeof fahrenheit !== 'number') {
             throw new TypeError(`Expected a number${sourceCodeInfo ? ` at ${sourceCodeInfo}` : ''}`)
@@ -76,20 +76,20 @@ describe('module registration', () => {
 
     it('should register and use a custom module', () => {
       const dvala = createDvala({ modules: [temperatureModule] })
-      expect(dvala.run('let t = import(temperature); t.c-to-f(0)')).toBe(32)
-      expect(dvala.run('let t = import(temperature); t.c-to-f(100)')).toBe(212)
-      expect(dvala.run('let t = import(temperature); t.f-to-c(32)')).toBe(0)
-      expect(dvala.run('let t = import(temperature); t.f-to-c(212)')).toBe(100)
+      expect(dvala.run('let t = import(temperature); t.cToF(0)')).toBe(32)
+      expect(dvala.run('let t = import(temperature); t.cToF(100)')).toBe(212)
+      expect(dvala.run('let t = import(temperature); t.fToC(32)')).toBe(0)
+      expect(dvala.run('let t = import(temperature); t.fToC(212)')).toBe(100)
     })
 
     it('should work with destructuring import', () => {
       const dvala = createDvala({ modules: [temperatureModule] })
-      expect(dvala.run('let { c-to-f, f-to-c } = import(temperature); c-to-f(f-to-c(72))')).toBe(72)
+      expect(dvala.run('let { cToF, fToC } = import(temperature); cToF(fToC(72))')).toBe(72)
     })
 
     it('should work alongside built-in modules', () => {
       const dvala = createDvala({ modules: [temperatureModule, vectorModule] })
-      expect(dvala.run('let t = import(temperature); t.c-to-f(0)')).toBe(32)
+      expect(dvala.run('let t = import(temperature); t.cToF(0)')).toBe(32)
       expect(dvala.run('let v = import(vector); v.stdev([1, 2, 3])')).toBeCloseTo(0.8165, 3)
     })
 

@@ -49,15 +49,15 @@ describe('misc functions', () => {
       })
     })
 
-    describe('json-stringify', () => {
+    describe('jsonStringify', () => {
       it('samples', () => {
-        expect(dvala.run('let { json-stringify } = import(json); json-stringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
-        expect(dvala.run('let { json-stringify } = import(json); json-stringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
+        expect(dvala.run('let { jsonStringify } = import(json); jsonStringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
+        expect(dvala.run('let { jsonStringify } = import(json); jsonStringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
       })
     })
-    describe('json-parse', () => {
+    describe('jsonParse', () => {
       it('samples', () => {
-        expect(dvala.run('let { json-parse } = import(json); json-parse("[1,2,3]")')).toEqual([1, 2, 3])
+        expect(dvala.run('let { jsonParse } = import(json); jsonParse("[1,2,3]")')).toEqual([1, 2, 3])
       })
     })
   }

@@ -41,274 +41,274 @@ describe('assert functions', () => {
         expect(runWithAssert('a.assert!=({ a: 2 }, { a: 1 })')).toBeNull()
       })
     })
-    describe('assert-gt', () => {
+    describe('assertGt', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-gt(0, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-gt(0, 1)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-gt("Albert", "albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-gt("Albert", "albert", "Expected greater than")')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-gt(1, 0)')).toBeNull()
-        expect(runWithAssert('a.assert-gt("albert", "Albert")')).toBeNull()
+        expect(() => runWithAssert('a.assertGt(0, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGt(0, 1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGt("Albert", "albert")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGt("Albert", "albert", "Expected greater than")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertGt(1, 0)')).toBeNull()
+        expect(runWithAssert('a.assertGt("albert", "Albert")')).toBeNull()
       })
     })
-    describe('assert-lt', () => {
+    describe('assertLt', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-lt(0, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-lt(1, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-lt("albert", "Albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-lt("albert", "Albert", "Expected less than")')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-lt(0, 1)')).toBeNull()
-        expect(runWithAssert('a.assert-lt("Albert", "albert")')).toBeNull()
+        expect(() => runWithAssert('a.assertLt(0, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLt(1, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLt("albert", "Albert")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLt("albert", "Albert", "Expected less than")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertLt(0, 1)')).toBeNull()
+        expect(runWithAssert('a.assertLt("Albert", "albert")')).toBeNull()
       })
     })
-    describe('assert-gte', () => {
+    describe('assertGte', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-gte(0, 1)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-gte("Albert", "albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-gte("Albert", "albert", "Expected greater than or equal")')).toThrowError(
+        expect(() => runWithAssert('a.assertGte(0, 1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGte("Albert", "albert")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGte("Albert", "albert", "Expected greater than or equal")')).toThrowError(
           AssertionError,
         )
-        expect(runWithAssert('a.assert-gte(1, 0)')).toBeNull()
-        expect(runWithAssert('a.assert-gte(1, 1)')).toBeNull()
-        expect(runWithAssert('a.assert-gte("albert", "albert")')).toBeNull()
-        expect(runWithAssert('a.assert-gte("albert", "Albert")')).toBeNull()
+        expect(runWithAssert('a.assertGte(1, 0)')).toBeNull()
+        expect(runWithAssert('a.assertGte(1, 1)')).toBeNull()
+        expect(runWithAssert('a.assertGte("albert", "albert")')).toBeNull()
+        expect(runWithAssert('a.assertGte("albert", "Albert")')).toBeNull()
       })
     })
-    describe('assert-lte', () => {
+    describe('assertLte', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-lte(1, 0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-lte("albert", "Albert")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-lte("albert", "Albert", "Expected less than or equal")')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-lte(0, 1)')).toBeNull()
-        expect(runWithAssert('a.assert-lte(1, 1)')).toBeNull()
-        expect(runWithAssert('a.assert-lte("albert", "albert")')).toBeNull()
-        expect(runWithAssert('a.assert-lte("Albert", "albert")')).toBeNull()
+        expect(() => runWithAssert('a.assertLte(1, 0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLte("albert", "Albert")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertLte("albert", "Albert", "Expected less than or equal")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertLte(0, 1)')).toBeNull()
+        expect(runWithAssert('a.assertLte(1, 1)')).toBeNull()
+        expect(runWithAssert('a.assertLte("albert", "albert")')).toBeNull()
+        expect(runWithAssert('a.assertLte("Albert", "albert")')).toBeNull()
       })
     })
-    describe('assert-true', () => {
+    describe('assertTrue', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-true(false)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-true(false, "Expected false")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-true(1)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-true(null)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-true("x")')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-true(true)')).toBeNull()
+        expect(() => runWithAssert('a.assertTrue(false)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTrue(false, "Expected false")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTrue(1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTrue(null)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTrue("x")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertTrue(true)')).toBeNull()
       })
     })
-    describe('assert-false', () => {
+    describe('assertFalse', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-false(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-false(true, "Expected false")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-false(null)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-false(0)')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-false(false)')).toBeNull()
-      })
-    })
-
-    describe('assert-truthy', () => {
-      it('samples', () => {
-        expect(runWithAssert('a.assert-truthy(true)')).toBeNull()
-        expect(runWithAssert('a.assert-truthy([])')).toBeNull()
-        expect(runWithAssert('a.assert-truthy({})')).toBeNull()
-        expect(runWithAssert('a.assert-truthy(1)')).toBeNull()
-        expect(runWithAssert('a.assert-truthy("hej")')).toBeNull()
-        expect(runWithAssert('a.assert-truthy(-> $ + $)')).toBeNull()
-        expect(() => runWithAssert('a.assert-truthy(false)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-truthy(null, "Expected true")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-truthy(0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-truthy("")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalse(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalse(true, "Expected false")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalse(null)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalse(0)')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertFalse(false)')).toBeNull()
       })
     })
 
-    describe('assert-falsy', () => {
+    describe('assertTruthy', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-falsy(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy([])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy({})')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy(1)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy("hej")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-falsy(-> $ + $)')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-falsy(false)')).toBeNull()
-        expect(runWithAssert('a.assert-falsy(null, "Expected true")')).toBeNull()
-        expect(runWithAssert('a.assert-falsy(0)')).toBeNull()
-        expect(runWithAssert('a.assert-falsy("")')).toBeNull()
+        expect(runWithAssert('a.assertTruthy(true)')).toBeNull()
+        expect(runWithAssert('a.assertTruthy([])')).toBeNull()
+        expect(runWithAssert('a.assertTruthy({})')).toBeNull()
+        expect(runWithAssert('a.assertTruthy(1)')).toBeNull()
+        expect(runWithAssert('a.assertTruthy("hej")')).toBeNull()
+        expect(runWithAssert('a.assertTruthy(-> $ + $)')).toBeNull()
+        expect(() => runWithAssert('a.assertTruthy(false)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTruthy(null, "Expected true")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTruthy(0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertTruthy("")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-null', () => {
+    describe('assertFalsy', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-null(false)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null(0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null("")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null("hej")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null([])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null({})')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-null(-> $ + $)')).toThrowError(AssertionError)
-        expect(runWithAssert('a.assert-null(null, "Should be null")')).toBeNull()
+        expect(() => runWithAssert('a.assertFalsy(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalsy([])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalsy({})')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalsy(1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalsy("hej")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFalsy(-> $ + $)')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertFalsy(false)')).toBeNull()
+        expect(runWithAssert('a.assertFalsy(null, "Expected true")')).toBeNull()
+        expect(runWithAssert('a.assertFalsy(0)')).toBeNull()
+        expect(runWithAssert('a.assertFalsy("")')).toBeNull()
       })
     })
 
-    describe('assert-fails', () => {
+    describe('assertNull', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-fails(-> identity("X"), "Should fail")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-fails(-> perform(@dvala.error, "X"))')).not.toThrow()
-        expect(() => runWithAssert('a.assert-fails(-> perform(@dvala.error, "X"), "I knew it")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-fails(-> perform(@dvala.error, "X"), 10)')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertNull(false)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull(0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull("")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull("hej")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull([])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull({})')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNull(-> $ + $)')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertNull(null, "Should be null")')).toBeNull()
       })
     })
 
-    describe('assert-succeeds', () => {
+    describe('assertFails', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-succeeds(-> identity("X"), "Should succeed")')).not.toThrow()
-        expect(() => runWithAssert('a.assert-succeeds(-> perform(@dvala.error, "X"))')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFails(-> identity("X"), "Should fail")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFails(-> perform(@dvala.error, "X"))')).not.toThrow()
+        expect(() => runWithAssert('a.assertFails(-> perform(@dvala.error, "X"), "I knew it")')).not.toThrow()
+        expect(() => runWithAssert('a.assertFails(-> perform(@dvala.error, "X"), 10)')).toThrow(DvalaError)
       })
     })
 
-    describe('assert-fails-with', () => {
+    describe('assertSucceeds', () => {
       it('samples', () => {
-        expect(() => runWithAssert('a.assert-fails-with(-> identity("X"), "X", "Should fail with X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-fails-with(-> perform(@dvala.error, "Y"), "X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assert-fails-with(-> perform(@dvala.error, "X"), "X")')).not.toThrow()
+        expect(() => runWithAssert('a.assertSucceeds(-> identity("X"), "Should succeed")')).not.toThrow()
+        expect(() => runWithAssert('a.assertSucceeds(-> perform(@dvala.error, "X"))')).toThrow(DvalaError)
       })
     })
 
-    describe('assert-array', () => {
+    describe('assertFailsWith', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-array([])')).toBeNull()
-        expect(runWithAssert('a.assert-array([1, 2, 3])')).toBeNull()
-        expect(() => runWithAssert('a.assert-array("string")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-array(42)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-array(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-array(null)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-array({}, "Expected an array")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFailsWith(-> identity("X"), "X", "Should fail with X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, "Y"), "X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, "X"), "X")')).not.toThrow()
       })
     })
 
-    describe('assert-boolean', () => {
+    describe('assertArray', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-boolean(true)')).toBeNull()
-        expect(runWithAssert('a.assert-boolean(false)')).toBeNull()
-        expect(() => runWithAssert('a.assert-boolean(1)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-boolean(0)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-boolean("true")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-boolean(null)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-boolean([], "Expected a boolean")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertArray([])')).toBeNull()
+        expect(runWithAssert('a.assertArray([1, 2, 3])')).toBeNull()
+        expect(() => runWithAssert('a.assertArray("string")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertArray(42)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertArray(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertArray(null)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertArray({}, "Expected an array")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-collection', () => {
+    describe('assertBoolean', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-collection([])')).toBeNull()
-        expect(runWithAssert('a.assert-collection([1, 2])')).toBeNull()
-        expect(runWithAssert('a.assert-collection({})')).toBeNull()
-        expect(runWithAssert('a.assert-collection({ a: 1 })')).toBeNull()
-        expect(runWithAssert('a.assert-collection("hello")')).toBeNull()
-        expect(() => runWithAssert('a.assert-collection(42)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-collection(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-collection(null, "Expected a collection")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertBoolean(true)')).toBeNull()
+        expect(runWithAssert('a.assertBoolean(false)')).toBeNull()
+        expect(() => runWithAssert('a.assertBoolean(1)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertBoolean(0)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertBoolean("true")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertBoolean(null)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertBoolean([], "Expected a boolean")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-function', () => {
+    describe('assertCollection', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-function(-> $ + 1)')).toBeNull()
-        expect(runWithAssert('a.assert-function((x, y) -> x + y)')).toBeNull()
-        expect(() => runWithAssert('a.assert-function(42)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-function("string")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-function([], "Expected a function")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertCollection([])')).toBeNull()
+        expect(runWithAssert('a.assertCollection([1, 2])')).toBeNull()
+        expect(runWithAssert('a.assertCollection({})')).toBeNull()
+        expect(runWithAssert('a.assertCollection({ a: 1 })')).toBeNull()
+        expect(runWithAssert('a.assertCollection("hello")')).toBeNull()
+        expect(() => runWithAssert('a.assertCollection(42)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertCollection(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertCollection(null, "Expected a collection")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-grid', () => {
+    describe('assertFunction', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-grid([[1, 2], [3, 4]])')).toBeNull()
-        expect(runWithAssert('a.assert-grid([["a", "b"], ["c", "d"]])')).toBeNull()
-        expect(() => runWithAssert('a.assert-grid([[1, 2], [3]])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-grid([1, 2])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-grid(42, "Expected a grid")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertFunction(-> $ + 1)')).toBeNull()
+        expect(runWithAssert('a.assertFunction((x, y) -> x + y)')).toBeNull()
+        expect(() => runWithAssert('a.assertFunction(42)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFunction("string")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertFunction([], "Expected a function")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-integer', () => {
+    describe('assertGrid', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-integer(42)')).toBeNull()
-        expect(runWithAssert('a.assert-integer(0)')).toBeNull()
-        expect(runWithAssert('a.assert-integer(-7)')).toBeNull()
-        expect(() => runWithAssert('a.assert-integer(3.14)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-integer("42")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-integer(true, "Expected an integer")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertGrid([[1, 2], [3, 4]])')).toBeNull()
+        expect(runWithAssert('a.assertGrid([["a", "b"], ["c", "d"]])')).toBeNull()
+        expect(() => runWithAssert('a.assertGrid([[1, 2], [3]])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGrid([1, 2])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertGrid(42, "Expected a grid")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-matrix', () => {
+    describe('assertInteger', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-matrix([[1, 2], [3, 4]])')).toBeNull()
-        expect(() => runWithAssert('a.assert-matrix([["a", "b"], ["c", "d"]])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-matrix([[1, 2], [3]])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-matrix([1, 2])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-matrix(42, "Expected a matrix")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertInteger(42)')).toBeNull()
+        expect(runWithAssert('a.assertInteger(0)')).toBeNull()
+        expect(runWithAssert('a.assertInteger(-7)')).toBeNull()
+        expect(() => runWithAssert('a.assertInteger(3.14)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertInteger("42")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertInteger(true, "Expected an integer")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-number', () => {
+    describe('assertMatrix', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-number(42)')).toBeNull()
-        expect(runWithAssert('a.assert-number(3.14)')).toBeNull()
-        expect(runWithAssert('a.assert-number(0)')).toBeNull()
-        expect(runWithAssert('a.assert-number(-1)')).toBeNull()
-        expect(() => runWithAssert('a.assert-number("42")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-number(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-number(null, "Expected a number")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertMatrix([[1, 2], [3, 4]])')).toBeNull()
+        expect(() => runWithAssert('a.assertMatrix([["a", "b"], ["c", "d"]])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertMatrix([[1, 2], [3]])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertMatrix([1, 2])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertMatrix(42, "Expected a matrix")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-object', () => {
+    describe('assertNumber', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-object({})')).toBeNull()
-        expect(runWithAssert('a.assert-object({ a: 1 })')).toBeNull()
-        expect(() => runWithAssert('a.assert-object([])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-object("string")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-object(42, "Expected an object")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertNumber(42)')).toBeNull()
+        expect(runWithAssert('a.assertNumber(3.14)')).toBeNull()
+        expect(runWithAssert('a.assertNumber(0)')).toBeNull()
+        expect(runWithAssert('a.assertNumber(-1)')).toBeNull()
+        expect(() => runWithAssert('a.assertNumber("42")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNumber(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertNumber(null, "Expected a number")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-regexp', () => {
+    describe('assertObject', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-regexp(#"^start")')).toBeNull()
-        expect(runWithAssert('a.assert-regexp(regexp("test"))')).toBeNull()
-        expect(() => runWithAssert('a.assert-regexp("string")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-regexp(42, "Expected a regexp")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertObject({})')).toBeNull()
+        expect(runWithAssert('a.assertObject({ a: 1 })')).toBeNull()
+        expect(() => runWithAssert('a.assertObject([])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertObject("string")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertObject(42, "Expected an object")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-sequence', () => {
+    describe('assertRegexp', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-sequence([])')).toBeNull()
-        expect(runWithAssert('a.assert-sequence([1, 2])')).toBeNull()
-        expect(runWithAssert('a.assert-sequence("hello")')).toBeNull()
-        expect(() => runWithAssert('a.assert-sequence({})')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-sequence(42)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-sequence(null, "Expected a sequence")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertRegexp(#"^start")')).toBeNull()
+        expect(runWithAssert('a.assertRegexp(regexp("test"))')).toBeNull()
+        expect(() => runWithAssert('a.assertRegexp("string")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertRegexp(42, "Expected a regexp")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-string', () => {
+    describe('assertSequence', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-string("")')).toBeNull()
-        expect(runWithAssert('a.assert-string("hello")')).toBeNull()
-        expect(() => runWithAssert('a.assert-string(42)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-string(true)')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-string([], "Expected a string")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertSequence([])')).toBeNull()
+        expect(runWithAssert('a.assertSequence([1, 2])')).toBeNull()
+        expect(runWithAssert('a.assertSequence("hello")')).toBeNull()
+        expect(() => runWithAssert('a.assertSequence({})')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertSequence(42)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertSequence(null, "Expected a sequence")')).toThrowError(AssertionError)
       })
     })
 
-    describe('assert-vector', () => {
+    describe('assertString', () => {
       it('samples', () => {
-        expect(runWithAssert('a.assert-vector([])')).toBeNull()
-        expect(runWithAssert('a.assert-vector([1, 2, 3])')).toBeNull()
-        expect(() => runWithAssert('a.assert-vector(["a", "b"])')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-vector("string")')).toThrowError(AssertionError)
-        expect(() => runWithAssert('a.assert-vector(42, "Expected a vector")')).toThrowError(AssertionError)
+        expect(runWithAssert('a.assertString("")')).toBeNull()
+        expect(runWithAssert('a.assertString("hello")')).toBeNull()
+        expect(() => runWithAssert('a.assertString(42)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertString(true)')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertString([], "Expected a string")')).toThrowError(AssertionError)
+      })
+    })
+
+    describe('assertVector', () => {
+      it('samples', () => {
+        expect(runWithAssert('a.assertVector([])')).toBeNull()
+        expect(runWithAssert('a.assertVector([1, 2, 3])')).toBeNull()
+        expect(() => runWithAssert('a.assertVector(["a", "b"])')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertVector("string")')).toThrowError(AssertionError)
+        expect(() => runWithAssert('a.assertVector(42, "Expected a vector")')).toThrowError(AssertionError)
       })
     })
   }

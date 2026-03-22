@@ -29,12 +29,12 @@ describe('combinations', () => {
       ])
     })
   })
-  describe('nth:count-combinations', () => {
+  describe('nth:countCombinations', () => {
     it('should return the number of combinations from n, k', () => {
-      expect(runNth('nth:count-combinations(2, 2)')).toEqual(1)
-      expect(runNth('nth:count-combinations(3, 2)')).toEqual(3)
-      expect(runNth('nth:count-combinations(4, 2)')).toEqual(6)
-      expect(runNth('nth:count-combinations(5, 3)')).toEqual(10)
+      expect(runNth('nth:countCombinations(2, 2)')).toEqual(1)
+      expect(runNth('nth:countCombinations(3, 2)')).toEqual(3)
+      expect(runNth('nth:countCombinations(4, 2)')).toEqual(6)
+      expect(runNth('nth:countCombinations(5, 3)')).toEqual(10)
     })
   })
 })

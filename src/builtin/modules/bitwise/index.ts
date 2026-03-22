@@ -10,7 +10,7 @@ function getOperatorArgs(a: 'integer', b: 'integer'): Record<string, Argument> {
 }
 
 const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
-  'bit-not': {
+  'bitNot': {
     evaluate: ([num], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       return ~num
@@ -22,14 +22,14 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       args: { a: { type: 'integer' } },
       variants: [{ argumentNames: ['a'] }],
       description: 'Returns bitwise `not` of $a.',
-      seeAlso: ['&', '|', 'xor', 'bitwise.bit-and-not'],
+      seeAlso: ['&', '|', 'xor', 'bitwise.bitAndNot'],
       examples: [
-        'let { bit-not } = import(bitwise);\nbit-not(0)',
-        'let { bit-not } = import(bitwise);\nbit-not(255)',
+        'let { bitNot } = import(bitwise);\nbitNot(0)',
+        'let { bitNot } = import(bitwise);\nbitNot(255)',
       ],
     },
   },
-  'bit-and-not': {
+  'bitAndNot': {
     evaluate: ([first, ...rest], sourceCodeInfo): number => {
       assertNumber(first, sourceCodeInfo, { integer: true })
 
@@ -51,15 +51,15 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b', 'c'] },
       ],
       description: 'Returns bitwise `and` with complement.',
-      seeAlso: ['&', '|', 'xor', 'bitwise.bit-not'],
+      seeAlso: ['&', '|', 'xor', 'bitwise.bitNot'],
       examples: [
-        'let { bit-and-not } = import(bitwise);\n0b0011 bit-and-not 0b0110',
-        'let { bit-and-not } = import(bitwise);\nbit-and-not(0b0011, 0b0110)',
-        'let { bit-and-not } = import(bitwise);\nbit-and-not(0b0011, 0b0110, 0b1001)',
+        'let { bitAndNot } = import(bitwise);\n0b0011 bitAndNot 0b0110',
+        'let { bitAndNot } = import(bitwise);\nbitAndNot(0b0011, 0b0110)',
+        'let { bitAndNot } = import(bitwise);\nbitAndNot(0b0011, 0b0110, 0b1001)',
       ],
     },
   },
-  'bit-flip': {
+  'bitFlip': {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -74,15 +74,15 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Flips bit number $b.',
-      seeAlso: ['bitwise.bit-set', 'bitwise.bit-clear', 'bitwise.bit-test'],
+      seeAlso: ['bitwise.bitSet', 'bitwise.bitClear', 'bitwise.bitTest'],
       examples: [
-        'let { bit-flip } = import(bitwise);\n0b0011 bit-flip 1',
-        'let { bit-flip } = import(bitwise);\nbit-flip(0b0011, 1)',
-        'let { bit-flip } = import(bitwise);\nbit-flip(0b1100, 1)',
+        'let { bitFlip } = import(bitwise);\n0b0011 bitFlip 1',
+        'let { bitFlip } = import(bitwise);\nbitFlip(0b0011, 1)',
+        'let { bitFlip } = import(bitwise);\nbitFlip(0b1100, 1)',
       ],
     },
   },
-  'bit-set': {
+  'bitSet': {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -97,15 +97,15 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Sets bit number $b.',
-      seeAlso: ['bitwise.bit-flip', 'bitwise.bit-clear', 'bitwise.bit-test'],
+      seeAlso: ['bitwise.bitFlip', 'bitwise.bitClear', 'bitwise.bitTest'],
       examples: [
-        'let { bit-set } = import(bitwise);\n0b0010 bit-set 1',
-        'let { bit-set } = import(bitwise);\nbit-set(0b0011, 1)',
-        'let { bit-set } = import(bitwise);\nbit-set(0b1100, 1)',
+        'let { bitSet } = import(bitwise);\n0b0010 bitSet 1',
+        'let { bitSet } = import(bitwise);\nbitSet(0b0011, 1)',
+        'let { bitSet } = import(bitwise);\nbitSet(0b1100, 1)',
       ],
     },
   },
-  'bit-clear': {
+  'bitClear': {
     evaluate: ([num, index], sourceCodeInfo): number => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -120,15 +120,15 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Clears bit number $b.',
-      seeAlso: ['bitwise.bit-flip', 'bitwise.bit-set', 'bitwise.bit-test'],
+      seeAlso: ['bitwise.bitFlip', 'bitwise.bitSet', 'bitwise.bitTest'],
       examples: [
-        'let { bit-clear } = import(bitwise);\n0b0011 bit-clear 1',
-        'let { bit-clear } = import(bitwise);\nbit-clear(0b0011, 1)',
-        'let { bit-clear } = import(bitwise);\nbit-clear(0b1100, 1)',
+        'let { bitClear } = import(bitwise);\n0b0011 bitClear 1',
+        'let { bitClear } = import(bitwise);\nbitClear(0b0011, 1)',
+        'let { bitClear } = import(bitwise);\nbitClear(0b1100, 1)',
       ],
     },
   },
-  'bit-test': {
+  'bitTest': {
     evaluate: ([num, index], sourceCodeInfo): boolean => {
       assertNumber(num, sourceCodeInfo, { integer: true })
       assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
@@ -143,11 +143,11 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
       description: 'Checks if bit number $b is set.',
-      seeAlso: ['bitwise.bit-flip', 'bitwise.bit-set', 'bitwise.bit-clear'],
+      seeAlso: ['bitwise.bitFlip', 'bitwise.bitSet', 'bitwise.bitClear'],
       examples: [
-        'let { bit-test } = import(bitwise);\n0b0011 bit-test 1',
-        'let { bit-test } = import(bitwise);\nbit-test(0b0011, 1)',
-        'let { bit-test } = import(bitwise);\nbit-test(0b1100, 1)',
+        'let { bitTest } = import(bitwise);\n0b0011 bitTest 1',
+        'let { bitTest } = import(bitwise);\nbitTest(0b0011, 1)',
+        'let { bitTest } = import(bitwise);\nbitTest(0b1100, 1)',
       ],
     },
   },

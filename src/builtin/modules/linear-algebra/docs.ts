@@ -196,7 +196,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { dot } = import(linear-algebra);\ndot([1, 2], [3, 4])',
       'let { dot } = import(linear-algebra);\ndot([1, 2, 3], [4, 5, 6])',
     ],
-    seeAlso: ['linear-algebra.cross', 'linear-algebra.cosine-similarity', 'linear-algebra.angle', 'linear-algebra.projection', 'linear-algebra.orthogonal?'],
+    seeAlso: ['linear-algebra.cross', 'linear-algebra.cosineSimilarity', 'linear-algebra.angle', 'linear-algebra.projection', 'linear-algebra.isOrthogonal'],
   },
   'cross': {
     category: 'linear-algebra',
@@ -231,7 +231,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linear-algebra.dot'],
   },
-  'normalize-minmax': {
+  'normalizeMinmax': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using min-max normalization. The result is a vector with values between 0 and 1.',
     returns: {
@@ -252,15 +252,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-minmax } = import(linear-algebra);\nnormalize-minmax([1, 2, 3])',
-      'let { normalize-minmax } = import(linear-algebra);\nnormalize-minmax([1, 2, -3])',
-      'let { normalize-minmax } = import(linear-algebra);\nnormalize-minmax([1, 2, 3, 4])',
-      'let { normalize-minmax } = import(linear-algebra);\nnormalize-minmax([1, 2, -3, 4])',
-      'let { normalize-minmax } = import(linear-algebra);\nnormalize-minmax([1, 2, 3, 40, 50])',
+      'let { normalizeMinmax } = import(linear-algebra);\nnormalizeMinmax([1, 2, 3])',
+      'let { normalizeMinmax } = import(linear-algebra);\nnormalizeMinmax([1, 2, -3])',
+      'let { normalizeMinmax } = import(linear-algebra);\nnormalizeMinmax([1, 2, 3, 4])',
+      'let { normalizeMinmax } = import(linear-algebra);\nnormalizeMinmax([1, 2, -3, 4])',
+      'let { normalizeMinmax } = import(linear-algebra);\nnormalizeMinmax([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-zscore', 'linear-algebra.normalize-robust', 'linear-algebra.normalize-l1', 'linear-algebra.normalize-l2', 'linear-algebra.normalize-log'],
+    seeAlso: ['linear-algebra.normalizeZscore', 'linear-algebra.normalizeRobust', 'linear-algebra.normalizeL1', 'linear-algebra.normalizeL2', 'linear-algebra.normalizeLog'],
   },
-  'normalize-zscore': {
+  'normalizeZscore': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using z-score normalization. The result is a vector with mean 0 and standard deviation 1.',
     returns: {
@@ -281,15 +281,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-zscore } = import(linear-algebra);\nnormalize-zscore([1, 2, 3])',
-      'let { normalize-zscore } = import(linear-algebra);\nnormalize-zscore([1, 2, -3])',
-      'let { normalize-zscore } = import(linear-algebra);\nnormalize-zscore([1, 2, 3, 4])',
-      'let { normalize-zscore } = import(linear-algebra);\nnormalize-zscore([1, 2, -3, 4])',
-      'let { normalize-zscore } = import(linear-algebra);\nnormalize-zscore([1, 2, 3, 40, 50])',
+      'let { normalizeZscore } = import(linear-algebra);\nnormalizeZscore([1, 2, 3])',
+      'let { normalizeZscore } = import(linear-algebra);\nnormalizeZscore([1, 2, -3])',
+      'let { normalizeZscore } = import(linear-algebra);\nnormalizeZscore([1, 2, 3, 4])',
+      'let { normalizeZscore } = import(linear-algebra);\nnormalizeZscore([1, 2, -3, 4])',
+      'let { normalizeZscore } = import(linear-algebra);\nnormalizeZscore([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-minmax', 'linear-algebra.normalize-robust', 'linear-algebra.normalize-l1', 'linear-algebra.normalize-l2', 'linear-algebra.normalize-log'],
+    seeAlso: ['linear-algebra.normalizeMinmax', 'linear-algebra.normalizeRobust', 'linear-algebra.normalizeL1', 'linear-algebra.normalizeL2', 'linear-algebra.normalizeLog'],
   },
-  'normalize-robust': {
+  'normalizeRobust': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using robust normalization. The result is a vector with median 0 and median absolute deviation 1.',
     returns: {
@@ -310,15 +310,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-robust } = import(linear-algebra);\nnormalize-robust([1, 2, 3])',
-      'let { normalize-robust } = import(linear-algebra);\nnormalize-robust([1, 2, -3])',
-      'let { normalize-robust } = import(linear-algebra);\nnormalize-robust([1, 2, 3, 4])',
-      'let { normalize-robust } = import(linear-algebra);\nnormalize-robust([1, 2, -3, 4])',
-      'let { normalize-robust } = import(linear-algebra);\nnormalize-robust([1, 2, 3, 40, 50])',
+      'let { normalizeRobust } = import(linear-algebra);\nnormalizeRobust([1, 2, 3])',
+      'let { normalizeRobust } = import(linear-algebra);\nnormalizeRobust([1, 2, -3])',
+      'let { normalizeRobust } = import(linear-algebra);\nnormalizeRobust([1, 2, 3, 4])',
+      'let { normalizeRobust } = import(linear-algebra);\nnormalizeRobust([1, 2, -3, 4])',
+      'let { normalizeRobust } = import(linear-algebra);\nnormalizeRobust([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-minmax', 'linear-algebra.normalize-zscore'],
+    seeAlso: ['linear-algebra.normalizeMinmax', 'linear-algebra.normalizeZscore'],
   },
-  'normalize-l1': {
+  'normalizeL1': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using L1 normalization. The result is a vector with L1 norm equal to 1.',
     returns: {
@@ -339,15 +339,15 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-l1 } = import(linear-algebra);\nnormalize-l1([1, 2, 3])',
-      'let { normalize-l1 } = import(linear-algebra);\nnormalize-l1([1, 2, -3])',
-      'let { normalize-l1 } = import(linear-algebra);\nnormalize-l1([1, 2, 3, 4])',
-      'let { normalize-l1 } = import(linear-algebra);\nnormalize-l1([1, 2, -3, 4])',
-      'let { normalize-l1 } = import(linear-algebra);\nnormalize-l1([1, 2, 3, 40, 50])',
+      'let { normalizeL1 } = import(linear-algebra);\nnormalizeL1([1, 2, 3])',
+      'let { normalizeL1 } = import(linear-algebra);\nnormalizeL1([1, 2, -3])',
+      'let { normalizeL1 } = import(linear-algebra);\nnormalizeL1([1, 2, 3, 4])',
+      'let { normalizeL1 } = import(linear-algebra);\nnormalizeL1([1, 2, -3, 4])',
+      'let { normalizeL1 } = import(linear-algebra);\nnormalizeL1([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-l2', 'linear-algebra.normalize-minmax', 'linear-algebra.manhattan-norm', 'linear-algebra.normalize-zscore'],
+    seeAlso: ['linear-algebra.normalizeL2', 'linear-algebra.normalizeMinmax', 'linear-algebra.manhattanNorm', 'linear-algebra.normalizeZscore'],
   },
-  'normalize-l2': {
+  'normalizeL2': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using L2 normalization. The result is a vector with L2 norm equal to 1.',
     returns: {
@@ -368,16 +368,16 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, 3])',
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, 3])',
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, -3])',
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, 3, 4])',
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, -3, 4])',
-      'let { normalize-l2 } = import(linear-algebra);\nnormalize-l2([1, 2, 3, 40, 50])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, 3])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, 3])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, -3])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, 3, 4])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, -3, 4])',
+      'let { normalizeL2 } = import(linear-algebra);\nnormalizeL2([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-l1', 'linear-algebra.normalize-minmax', 'linear-algebra.euclidean-norm', 'linear-algebra.normalize-zscore'],
+    seeAlso: ['linear-algebra.normalizeL1', 'linear-algebra.normalizeMinmax', 'linear-algebra.euclideanNorm', 'linear-algebra.normalizeZscore'],
   },
-  'normalize-log': {
+  'normalizeLog': {
     category: 'linear-algebra',
     description: 'Normalizes the vector using natural log normalization. The result is a vector with log-transformed values.',
     returns: {
@@ -398,11 +398,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { normalize-log } = import(linear-algebra);\nnormalize-log([1, 2, 3])',
-      'let { normalize-log } = import(linear-algebra);\nnormalize-log([1, 2, 3, 4])',
-      'let { normalize-log } = import(linear-algebra);\nnormalize-log([1, 2, 3, 40, 50])',
+      'let { normalizeLog } = import(linear-algebra);\nnormalizeLog([1, 2, 3])',
+      'let { normalizeLog } = import(linear-algebra);\nnormalizeLog([1, 2, 3, 4])',
+      'let { normalizeLog } = import(linear-algebra);\nnormalizeLog([1, 2, 3, 40, 50])',
     ],
-    seeAlso: ['linear-algebra.normalize-minmax', 'linear-algebra.normalize-zscore'],
+    seeAlso: ['linear-algebra.normalizeMinmax', 'linear-algebra.normalizeZscore'],
   },
   'angle': {
     category: 'linear-algebra',
@@ -430,7 +430,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { angle } = import(linear-algebra);\nangle([1, 0], [0, 1])',
       'let { angle } = import(linear-algebra);\nangle([1, 0, 1], [0, 1, 0])',
     ],
-    seeAlso: ['linear-algebra.dot', 'linear-algebra.collinear?', 'linear-algebra.orthogonal?', 'linear-algebra.rotate2d', 'linear-algebra.rotate3d', 'linear-algebra.parallel?', 'linear-algebra.cosine-similarity', 'linear-algebra.to-polar'],
+    seeAlso: ['linear-algebra.dot', 'linear-algebra.isCollinear', 'linear-algebra.isOrthogonal', 'linear-algebra.rotate2d', 'linear-algebra.rotate3d', 'linear-algebra.isParallel', 'linear-algebra.cosineSimilarity', 'linear-algebra.toPolar'],
   },
   'projection': {
     category: 'linear-algebra',
@@ -460,7 +460,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
     ],
     seeAlso: ['linear-algebra.dot', 'linear-algebra.reflect', 'linear-algebra.lerp'],
   },
-  'collinear?': {
+  'isCollinear': {
     category: 'linear-algebra',
     description: 'Checks if two vectors are **collinear**.',
     returns: {
@@ -483,13 +483,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { collinear? } = import(linear-algebra);\ncollinear?([1, 2], [2, 4])',
-      'let { collinear? } = import(linear-algebra);\ncollinear?([1, 2], [-2, -4])',
-      'let { collinear? } = import(linear-algebra);\ncollinear?([1, 2, 3], [2, 4, 6])',
+      'let { isCollinear } = import(linear-algebra);\nisCollinear([1, 2], [2, 4])',
+      'let { isCollinear } = import(linear-algebra);\nisCollinear([1, 2], [-2, -4])',
+      'let { isCollinear } = import(linear-algebra);\nisCollinear([1, 2, 3], [2, 4, 6])',
     ],
-    seeAlso: ['linear-algebra.parallel?', 'linear-algebra.orthogonal?', 'linear-algebra.angle'],
+    seeAlso: ['linear-algebra.isParallel', 'linear-algebra.isOrthogonal', 'linear-algebra.angle'],
   },
-  'parallel?': {
+  'isParallel': {
     category: 'linear-algebra',
     description: 'Checks if two vectors are **parallel**.',
     returns: {
@@ -512,14 +512,14 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { parallel? } = import(linear-algebra);\nparallel?([1, 2], [2, 4])',
-      'let { parallel? } = import(linear-algebra);\nparallel?([1, 2], [-2, -4])',
-      'let { parallel? } = import(linear-algebra);\nparallel?([1, 2, 3], [2, 4, 6])',
-      'let { parallel? } = import(linear-algebra);\nparallel?([1, 2], [3, 4])',
+      'let { isParallel } = import(linear-algebra);\nisParallel([1, 2], [2, 4])',
+      'let { isParallel } = import(linear-algebra);\nisParallel([1, 2], [-2, -4])',
+      'let { isParallel } = import(linear-algebra);\nisParallel([1, 2, 3], [2, 4, 6])',
+      'let { isParallel } = import(linear-algebra);\nisParallel([1, 2], [3, 4])',
     ],
-    seeAlso: ['linear-algebra.collinear?', 'linear-algebra.orthogonal?', 'linear-algebra.angle'],
+    seeAlso: ['linear-algebra.isCollinear', 'linear-algebra.isOrthogonal', 'linear-algebra.angle'],
   },
-  'orthogonal?': {
+  'isOrthogonal': {
     category: 'linear-algebra',
     description: 'Checks if two vectors are **orthogonal**.',
     returns: {
@@ -542,13 +542,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { orthogonal? } = import(linear-algebra);\northogonal?([1, 0], [0, 1])',
-      'let { orthogonal? } = import(linear-algebra);\northogonal?([1, 0, 1], [0, 1, 0])',
-      'let { orthogonal? } = import(linear-algebra);\northogonal?([1, 2], [2, -1])',
+      'let { isOrthogonal } = import(linear-algebra);\nisOrthogonal([1, 0], [0, 1])',
+      'let { isOrthogonal } = import(linear-algebra);\nisOrthogonal([1, 0, 1], [0, 1, 0])',
+      'let { isOrthogonal } = import(linear-algebra);\nisOrthogonal([1, 2], [2, -1])',
     ],
-    seeAlso: ['linear-algebra.collinear?', 'linear-algebra.parallel?', 'linear-algebra.dot', 'matrix.orthogonal-matrix?', 'linear-algebra.angle'],
+    seeAlso: ['linear-algebra.isCollinear', 'linear-algebra.isParallel', 'linear-algebra.dot', 'matrix.isOrthogonalMatrix', 'linear-algebra.angle'],
   },
-  'cosine-similarity': {
+  'cosineSimilarity': {
     category: 'linear-algebra',
     description: 'Calculates the **cosine similarity** between two vectors. The result is a value between -1 and 1.',
     returns: {
@@ -571,13 +571,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { cosine-similarity } = import(linear-algebra);\ncosine-similarity([1, 2], [3, 4])',
-      'let { cosine-similarity } = import(linear-algebra);\ncosine-similarity([1, 2, 3], [4, 5, 6])',
-      'let { cosine-similarity } = import(linear-algebra);\ncosine-similarity([1, 0], [0, 1])',
+      'let { cosineSimilarity } = import(linear-algebra);\ncosineSimilarity([1, 2], [3, 4])',
+      'let { cosineSimilarity } = import(linear-algebra);\ncosineSimilarity([1, 2, 3], [4, 5, 6])',
+      'let { cosineSimilarity } = import(linear-algebra);\ncosineSimilarity([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.dot', 'linear-algebra.angle', 'linear-algebra.euclidean-distance'],
+    seeAlso: ['linear-algebra.dot', 'linear-algebra.angle', 'linear-algebra.euclideanDistance'],
   },
-  'euclidean-distance': {
+  'euclideanDistance': {
     category: 'linear-algebra',
     description: 'Calculates the **Euclidean distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -600,13 +600,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { euclidean-distance } = import(linear-algebra);\neuclidean-distance([1, 2], [3, 4])',
-      'let { euclidean-distance } = import(linear-algebra);\neuclidean-distance([1, 2, 3], [4, 5, 6])',
-      'let { euclidean-distance } = import(linear-algebra);\neuclidean-distance([1, 0], [0, 1])',
+      'let { euclideanDistance } = import(linear-algebra);\neuclideanDistance([1, 2], [3, 4])',
+      'let { euclideanDistance } = import(linear-algebra);\neuclideanDistance([1, 2, 3], [4, 5, 6])',
+      'let { euclideanDistance } = import(linear-algebra);\neuclideanDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.manhattan-distance', 'linear-algebra.chebyshev-distance', 'linear-algebra.minkowski-distance', 'linear-algebra.euclidean-norm', 'linear-algebra.cosine-similarity', 'linear-algebra.hamming-distance'],
+    seeAlso: ['linear-algebra.manhattanDistance', 'linear-algebra.chebyshevDistance', 'linear-algebra.minkowskiDistance', 'linear-algebra.euclideanNorm', 'linear-algebra.cosineSimilarity', 'linear-algebra.hammingDistance'],
   },
-  'euclidean-norm': {
+  'euclideanNorm': {
     category: 'linear-algebra',
     description: 'Calculates the **Euclidean norm** (L2 norm) of a vector. The result is a non-negative number.',
     returns: {
@@ -626,13 +626,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { euclidean-norm } = import(linear-algebra);\neuclidean-norm([1, 2])',
-      'let { euclidean-norm } = import(linear-algebra);\neuclidean-norm([3, 4])',
-      'let { euclidean-norm } = import(linear-algebra);\neuclidean-norm([1, 2, 3])',
+      'let { euclideanNorm } = import(linear-algebra);\neuclideanNorm([1, 2])',
+      'let { euclideanNorm } = import(linear-algebra);\neuclideanNorm([3, 4])',
+      'let { euclideanNorm } = import(linear-algebra);\neuclideanNorm([1, 2, 3])',
     ],
-    seeAlso: ['linear-algebra.manhattan-norm', 'linear-algebra.chebyshev-norm', 'linear-algebra.minkowski-norm', 'linear-algebra.euclidean-distance', 'linear-algebra.normalize-l2', 'linear-algebra.hamming-norm'],
+    seeAlso: ['linear-algebra.manhattanNorm', 'linear-algebra.chebyshevNorm', 'linear-algebra.minkowskiNorm', 'linear-algebra.euclideanDistance', 'linear-algebra.normalizeL2', 'linear-algebra.hammingNorm'],
   },
-  'manhattan-distance': {
+  'manhattanDistance': {
     category: 'linear-algebra',
     description: 'Calculates the **Manhattan distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -655,13 +655,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { manhattan-distance } = import(linear-algebra);\nmanhattan-distance([1, 2], [3, 4])',
-      'let { manhattan-distance } = import(linear-algebra);\nmanhattan-distance([1, 2, 3], [4, 5, 6])',
-      'let { manhattan-distance } = import(linear-algebra);\nmanhattan-distance([1, 0], [0, 1])',
+      'let { manhattanDistance } = import(linear-algebra);\nmanhattanDistance([1, 2], [3, 4])',
+      'let { manhattanDistance } = import(linear-algebra);\nmanhattanDistance([1, 2, 3], [4, 5, 6])',
+      'let { manhattanDistance } = import(linear-algebra);\nmanhattanDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.euclidean-distance', 'linear-algebra.chebyshev-distance', 'linear-algebra.minkowski-distance', 'linear-algebra.manhattan-norm', 'linear-algebra.hamming-distance'],
+    seeAlso: ['linear-algebra.euclideanDistance', 'linear-algebra.chebyshevDistance', 'linear-algebra.minkowskiDistance', 'linear-algebra.manhattanNorm', 'linear-algebra.hammingDistance'],
   },
-  'manhattan-norm': {
+  'manhattanNorm': {
     category: 'linear-algebra',
     description: 'Calculates the **Manhattan norm** (L1 norm) of a vector. The result is a non-negative number.',
     returns: {
@@ -681,13 +681,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { manhattan-norm } = import(linear-algebra);\nmanhattan-norm([1, 2])',
-      'let { manhattan-norm } = import(linear-algebra);\nmanhattan-norm([3, 4])',
-      'let { manhattan-norm } = import(linear-algebra);\nmanhattan-norm([1, 2, 3])',
+      'let { manhattanNorm } = import(linear-algebra);\nmanhattanNorm([1, 2])',
+      'let { manhattanNorm } = import(linear-algebra);\nmanhattanNorm([3, 4])',
+      'let { manhattanNorm } = import(linear-algebra);\nmanhattanNorm([1, 2, 3])',
     ],
-    seeAlso: ['linear-algebra.euclidean-norm', 'linear-algebra.chebyshev-norm', 'linear-algebra.minkowski-norm', 'linear-algebra.manhattan-distance', 'linear-algebra.normalize-l1', 'linear-algebra.hamming-norm'],
+    seeAlso: ['linear-algebra.euclideanNorm', 'linear-algebra.chebyshevNorm', 'linear-algebra.minkowskiNorm', 'linear-algebra.manhattanDistance', 'linear-algebra.normalizeL1', 'linear-algebra.hammingNorm'],
   },
-  'hamming-distance': {
+  'hammingDistance': {
     category: 'linear-algebra',
     description: 'Calculates the **Hamming distance** between two vectors. The result is a non-negative integer.',
     returns: {
@@ -710,13 +710,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { hamming-distance } = import(linear-algebra);\nhamming-distance([1, 2], [3, 4])',
-      'let { hamming-distance } = import(linear-algebra);\nhamming-distance([1, 2, 3], [4, 5, 6])',
-      'let { hamming-distance } = import(linear-algebra);\nhamming-distance([1, 0], [0, 1])',
+      'let { hammingDistance } = import(linear-algebra);\nhammingDistance([1, 2], [3, 4])',
+      'let { hammingDistance } = import(linear-algebra);\nhammingDistance([1, 2, 3], [4, 5, 6])',
+      'let { hammingDistance } = import(linear-algebra);\nhammingDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.euclidean-distance', 'linear-algebra.manhattan-distance', 'linear-algebra.hamming-norm'],
+    seeAlso: ['linear-algebra.euclideanDistance', 'linear-algebra.manhattanDistance', 'linear-algebra.hammingNorm'],
   },
-  'hamming-norm': {
+  'hammingNorm': {
     category: 'linear-algebra',
     description: 'Calculates the **Hamming norm** of a vector. The result is a non-negative integer.',
     returns: {
@@ -736,13 +736,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { hamming-norm } = import(linear-algebra);\nhamming-norm([1, 2])',
-      'let { hamming-norm } = import(linear-algebra);\nhamming-norm([3, 4])',
-      'let { hamming-norm } = import(linear-algebra);\nhamming-norm([1, 2, 3])',
+      'let { hammingNorm } = import(linear-algebra);\nhammingNorm([1, 2])',
+      'let { hammingNorm } = import(linear-algebra);\nhammingNorm([3, 4])',
+      'let { hammingNorm } = import(linear-algebra);\nhammingNorm([1, 2, 3])',
     ],
-    seeAlso: ['linear-algebra.euclidean-norm', 'linear-algebra.manhattan-norm', 'linear-algebra.hamming-distance'],
+    seeAlso: ['linear-algebra.euclideanNorm', 'linear-algebra.manhattanNorm', 'linear-algebra.hammingDistance'],
   },
-  'chebyshev-distance': {
+  'chebyshevDistance': {
     category: 'linear-algebra',
     description: 'Calculates the **Chebyshev distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -765,13 +765,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { chebyshev-distance } = import(linear-algebra);\nchebyshev-distance([1, 2], [3, 4])',
-      'let { chebyshev-distance } = import(linear-algebra);\nchebyshev-distance([1, 2, 3], [4, 5, 6])',
-      'let { chebyshev-distance } = import(linear-algebra);\nchebyshev-distance([1, 0], [0, 1])',
+      'let { chebyshevDistance } = import(linear-algebra);\nchebyshevDistance([1, 2], [3, 4])',
+      'let { chebyshevDistance } = import(linear-algebra);\nchebyshevDistance([1, 2, 3], [4, 5, 6])',
+      'let { chebyshevDistance } = import(linear-algebra);\nchebyshevDistance([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.euclidean-distance', 'linear-algebra.manhattan-distance', 'linear-algebra.minkowski-distance', 'linear-algebra.chebyshev-norm'],
+    seeAlso: ['linear-algebra.euclideanDistance', 'linear-algebra.manhattanDistance', 'linear-algebra.minkowskiDistance', 'linear-algebra.chebyshevNorm'],
   },
-  'chebyshev-norm': {
+  'chebyshevNorm': {
     category: 'linear-algebra',
     description: 'Calculates the **Chebyshev norm** of a vector. The result is a non-negative number.',
     returns: {
@@ -791,13 +791,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { chebyshev-norm } = import(linear-algebra);\nchebyshev-norm([1, 2])',
-      'let { chebyshev-norm } = import(linear-algebra);\nchebyshev-norm([3, 4])',
-      'let { chebyshev-norm } = import(linear-algebra);\nchebyshev-norm([1, 2, 3])',
+      'let { chebyshevNorm } = import(linear-algebra);\nchebyshevNorm([1, 2])',
+      'let { chebyshevNorm } = import(linear-algebra);\nchebyshevNorm([3, 4])',
+      'let { chebyshevNorm } = import(linear-algebra);\nchebyshevNorm([1, 2, 3])',
     ],
-    seeAlso: ['linear-algebra.euclidean-norm', 'linear-algebra.manhattan-norm', 'linear-algebra.minkowski-norm', 'linear-algebra.chebyshev-distance'],
+    seeAlso: ['linear-algebra.euclideanNorm', 'linear-algebra.manhattanNorm', 'linear-algebra.minkowskiNorm', 'linear-algebra.chebyshevDistance'],
   },
-  'minkowski-distance': {
+  'minkowskiDistance': {
     category: 'linear-algebra',
     description: 'Calculates the **Minkowski distance** between two vectors. The result is a non-negative number.',
     returns: {
@@ -825,13 +825,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { minkowski-distance } = import(linear-algebra);\nminkowski-distance([1, 2], [3, 4], 2)',
-      'let { minkowski-distance } = import(linear-algebra);\nminkowski-distance([1, 2, 3], [4, 5, 6], 3)',
-      'let { minkowski-distance } = import(linear-algebra);\nminkowski-distance([1, 0], [0, 1], 1)',
+      'let { minkowskiDistance } = import(linear-algebra);\nminkowskiDistance([1, 2], [3, 4], 2)',
+      'let { minkowskiDistance } = import(linear-algebra);\nminkowskiDistance([1, 2, 3], [4, 5, 6], 3)',
+      'let { minkowskiDistance } = import(linear-algebra);\nminkowskiDistance([1, 0], [0, 1], 1)',
     ],
-    seeAlso: ['linear-algebra.euclidean-distance', 'linear-algebra.manhattan-distance', 'linear-algebra.chebyshev-distance', 'linear-algebra.minkowski-norm'],
+    seeAlso: ['linear-algebra.euclideanDistance', 'linear-algebra.manhattanDistance', 'linear-algebra.chebyshevDistance', 'linear-algebra.minkowskiNorm'],
   },
-  'minkowski-norm': {
+  'minkowskiNorm': {
     category: 'linear-algebra',
     description: 'Calculates the **Minkowski norm** of a vector. The result is a non-negative number.',
     returns: {
@@ -856,11 +856,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { minkowski-norm } = import(linear-algebra);\nminkowski-norm([1, 2], 2)',
-      'let { minkowski-norm } = import(linear-algebra);\nminkowski-norm([3, 4], 3)',
-      'let { minkowski-norm } = import(linear-algebra);\nminkowski-norm([1, 2, 3], 4)',
+      'let { minkowskiNorm } = import(linear-algebra);\nminkowskiNorm([1, 2], 2)',
+      'let { minkowskiNorm } = import(linear-algebra);\nminkowskiNorm([3, 4], 3)',
+      'let { minkowskiNorm } = import(linear-algebra);\nminkowskiNorm([1, 2, 3], 4)',
     ],
-    seeAlso: ['linear-algebra.euclidean-norm', 'linear-algebra.manhattan-norm', 'linear-algebra.chebyshev-norm', 'linear-algebra.minkowski-distance'],
+    seeAlso: ['linear-algebra.euclideanNorm', 'linear-algebra.manhattanNorm', 'linear-algebra.chebyshevNorm', 'linear-algebra.minkowskiDistance'],
   },
   'cov': {
     category: 'linear-algebra',
@@ -889,7 +889,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { cov } = import(linear-algebra);\ncov([1, 2, 3], [4, 5, 6])',
       'let { cov } = import(linear-algebra);\ncov([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.corr', 'linear-algebra.pearson-corr', 'vector.variance'],
+    seeAlso: ['linear-algebra.corr', 'linear-algebra.pearsonCorr', 'vector.variance'],
   },
   'corr': {
     category: 'linear-algebra',
@@ -918,9 +918,9 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { corr } = import(linear-algebra);\ncorr([1, 2, 3], [4, 5, 6])',
       'let { corr } = import(linear-algebra);\ncorr([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.cov', 'linear-algebra.pearson-corr', 'linear-algebra.spearman-corr', 'linear-algebra.kendall-tau', 'linear-algebra.autocorrelation', 'linear-algebra.cross-correlation'],
+    seeAlso: ['linear-algebra.cov', 'linear-algebra.pearsonCorr', 'linear-algebra.spearmanCorr', 'linear-algebra.kendallTau', 'linear-algebra.autocorrelation', 'linear-algebra.crossCorrelation'],
   },
-  'spearman-corr': {
+  'spearmanCorr': {
     category: 'linear-algebra',
     description: 'Calculates the **Spearman rank correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -943,13 +943,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { spearman-corr } = import(linear-algebra);\nspearman-corr([1, 2], [3, 4])',
-      'let { spearman-corr } = import(linear-algebra);\nspearman-corr([1, 2, 3], [4, 5, 6])',
-      'let { spearman-corr } = import(linear-algebra);\nspearman-corr([1, 0], [0, 1])',
+      'let { spearmanCorr } = import(linear-algebra);\nspearmanCorr([1, 2], [3, 4])',
+      'let { spearmanCorr } = import(linear-algebra);\nspearmanCorr([1, 2, 3], [4, 5, 6])',
+      'let { spearmanCorr } = import(linear-algebra);\nspearmanCorr([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.pearson-corr', 'linear-algebra.kendall-tau', 'linear-algebra.corr'],
+    seeAlso: ['linear-algebra.pearsonCorr', 'linear-algebra.kendallTau', 'linear-algebra.corr'],
   },
-  'pearson-corr': {
+  'pearsonCorr': {
     category: 'linear-algebra',
     description: 'Calculates the **Pearson correlation** between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -972,13 +972,13 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { pearson-corr } = import(linear-algebra);\npearson-corr([1, 2], [3, 4])',
-      'let { pearson-corr } = import(linear-algebra);\npearson-corr([1, 2, 3], [4, 5, 6])',
-      'let { pearson-corr } = import(linear-algebra);\npearson-corr([1, 0], [0, 1])',
+      'let { pearsonCorr } = import(linear-algebra);\npearsonCorr([1, 2], [3, 4])',
+      'let { pearsonCorr } = import(linear-algebra);\npearsonCorr([1, 2, 3], [4, 5, 6])',
+      'let { pearsonCorr } = import(linear-algebra);\npearsonCorr([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.spearman-corr', 'linear-algebra.kendall-tau', 'linear-algebra.corr', 'linear-algebra.cov'],
+    seeAlso: ['linear-algebra.spearmanCorr', 'linear-algebra.kendallTau', 'linear-algebra.corr', 'linear-algebra.cov'],
   },
-  'kendall-tau': {
+  'kendallTau': {
     category: 'linear-algebra',
     description: 'Calculates the **Kendall Tau** rank correlation coefficient between two vectors. The result is a number between -1 and 1.',
     returns: {
@@ -1001,11 +1001,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { kendall-tau } = import(linear-algebra);\nkendall-tau([1, 2], [3, 4])',
-      'let { kendall-tau } = import(linear-algebra);\nkendall-tau([1, 2, 3], [4, 5, 6])',
-      'let { kendall-tau } = import(linear-algebra);\nkendall-tau([1, 0], [0, 1])',
+      'let { kendallTau } = import(linear-algebra);\nkendallTau([1, 2], [3, 4])',
+      'let { kendallTau } = import(linear-algebra);\nkendallTau([1, 2, 3], [4, 5, 6])',
+      'let { kendallTau } = import(linear-algebra);\nkendallTau([1, 0], [0, 1])',
     ],
-    seeAlso: ['linear-algebra.spearman-corr', 'linear-algebra.pearson-corr', 'linear-algebra.corr'],
+    seeAlso: ['linear-algebra.spearmanCorr', 'linear-algebra.pearsonCorr', 'linear-algebra.corr'],
   },
   'autocorrelation': {
     category: 'linear-algebra',
@@ -1038,11 +1038,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       'let { autocorrelation } = import(linear-algebra);\nautocorrelation([1, 2, 3], 1)',
       'let { autocorrelation } = import(linear-algebra);\nautocorrelation([1, 2, 3], 2)',
     ],
-    seeAlso: ['linear-algebra.cross-correlation', 'linear-algebra.corr'],
+    seeAlso: ['linear-algebra.crossCorrelation', 'linear-algebra.corr'],
   },
-  'cross-correlation': {
+  'crossCorrelation': {
     category: 'linear-algebra',
-    description: 'Calculates the **cross-correlation** between two vectors. The result is a vector of cross-correlation coefficients.',
+    description: 'Calculates the **crossCorrelation** between two vectors. The result is a vector of crossCorrelation coefficients.',
     returns: {
       type: 'number',
     },
@@ -1055,7 +1055,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
       lag: {
         type: 'integer',
-        description: 'Lag value for the cross-correlation.',
+        description: 'Lag value for the crossCorrelation.',
       },
     },
     variants: [
@@ -1068,11 +1068,11 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { cross-correlation } = import(linear-algebra);\ncross-correlation([1, 2, 3], [4, 5, 6], -2)',
-      'let { cross-correlation } = import(linear-algebra);\ncross-correlation([1, 2, 3], [4, 5, 6], -1)',
-      'let { cross-correlation } = import(linear-algebra);\ncross-correlation([1, 2, 3], [4, 5, 6], 0)',
-      'let { cross-correlation } = import(linear-algebra);\ncross-correlation([1, 2, 3], [4, 5, 6], 1)',
-      'let { cross-correlation } = import(linear-algebra);\ncross-correlation([1, 2, 3], [4, 5, 6], 2)',
+      'let { crossCorrelation } = import(linear-algebra);\ncrossCorrelation([1, 2, 3], [4, 5, 6], -2)',
+      'let { crossCorrelation } = import(linear-algebra);\ncrossCorrelation([1, 2, 3], [4, 5, 6], -1)',
+      'let { crossCorrelation } = import(linear-algebra);\ncrossCorrelation([1, 2, 3], [4, 5, 6], 0)',
+      'let { crossCorrelation } = import(linear-algebra);\ncrossCorrelation([1, 2, 3], [4, 5, 6], 1)',
+      'let { crossCorrelation } = import(linear-algebra);\ncrossCorrelation([1, 2, 3], [4, 5, 6], 2)',
     ],
     seeAlso: ['linear-algebra.autocorrelation', 'linear-algebra.corr'],
   },
@@ -1133,7 +1133,7 @@ solve([[2, 3], [1, -1]], [8, 2])`,
     ],
     seeAlso: ['linear-algebra.rref', 'matrix.inv'],
   },
-  'to-polar': {
+  'toPolar': {
     category: 'linear-algebra',
     description: 'Converts a 2D vector to polar coordinates.',
     returns: {
@@ -1153,12 +1153,12 @@ solve([[2, 3], [1, -1]], [8, 2])`,
       },
     ],
     examples: [
-      'let { to-polar } = import(linear-algebra);\nto-polar([1, 2])',
-      'let { to-polar } = import(linear-algebra);\nto-polar([3, 4])',
+      'let { toPolar } = import(linear-algebra);\ntoPolar([1, 2])',
+      'let { toPolar } = import(linear-algebra);\ntoPolar([3, 4])',
     ],
-    seeAlso: ['linear-algebra.from-polar', 'linear-algebra.angle'],
+    seeAlso: ['linear-algebra.fromPolar', 'linear-algebra.angle'],
   },
-  'from-polar': {
+  'fromPolar': {
     category: 'linear-algebra',
     description: 'Converts polar coordinates to a 2D vector.',
     returns: {
@@ -1178,10 +1178,10 @@ solve([[2, 3], [1, -1]], [8, 2])`,
       },
     ],
     examples: [
-      'let { from-polar } = import(linear-algebra);\nfrom-polar([1, PI / 4])',
-      'let { from-polar } = import(linear-algebra);\nfrom-polar([1, 0])',
-      'let { from-polar } = import(linear-algebra);\nfrom-polar([1, -PI / 2])',
+      'let { fromPolar } = import(linear-algebra);\nfromPolar([1, PI / 4])',
+      'let { fromPolar } = import(linear-algebra);\nfromPolar([1, 0])',
+      'let { fromPolar } = import(linear-algebra);\nfromPolar([1, -PI / 2])',
     ],
-    seeAlso: ['linear-algebra.to-polar'],
+    seeAlso: ['linear-algebra.toPolar'],
   },
 }

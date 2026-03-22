@@ -56,7 +56,7 @@ const mathUtilsFunctions: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['x'] }],
       description: 'The `sin` function computes the sine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the sine of each element while preserving the original structure.',
-      seeAlso: ['math.asin', 'math.sinh', 'math.cos', 'math.tan', 'math.to-rad'],
+      seeAlso: ['math.asin', 'math.sinh', 'math.cos', 'math.tan', 'math.toRad'],
       examples: [
         `let { sin } = import(math);
 sin(0)`,
@@ -162,7 +162,7 @@ asinh([[10, 20], [30, 40]])`,
       },
       variants: [{ argumentNames: ['x'] }],
       description: 'The `cos` function computes the cosine of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the cosine of each element while preserving the original structure.',
-      seeAlso: ['math.acos', 'math.cosh', 'math.sin', 'math.tan', 'math.to-rad'],
+      seeAlso: ['math.acos', 'math.cosh', 'math.sin', 'math.tan', 'math.toRad'],
       examples: [
         `let { cos } = import(math);
 cos(0)`,
@@ -270,7 +270,7 @@ acosh([[1, 2], [3, 4]])`,
       },
       variants: [{ argumentNames: ['x'] }],
       description: 'The `tan` function computes the tangent of an angle (in radians), working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it returns the tangent of each element while preserving the original structure.',
-      seeAlso: ['math.atan', 'math.tanh', 'math.sin', 'math.cos', 'math.to-rad'],
+      seeAlso: ['math.atan', 'math.tanh', 'math.sin', 'math.cos', 'math.toRad'],
       examples: [
         `let { tan } = import(math);
 tan(0)`,
@@ -441,7 +441,7 @@ log10([[1, 2], [3, 4]])`,
       ],
     },
   },
-  'to-rad': {
+  'toRad': {
     evaluate: unaryMathOp(val => (val * Math.PI) / 180),
     arity: toFixedArity(1),
     docs: {
@@ -451,25 +451,25 @@ log10([[1, 2], [3, 4]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `to-rad` function converts an angle from degrees to radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
-      seeAlso: ['math.to-deg', 'math.sin', 'math.cos', 'math.tan'],
+      description: 'The `toRad` function converts an angle from degrees to radians, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
+      seeAlso: ['math.toDeg', 'math.sin', 'math.cos', 'math.tan'],
       examples: [
-        `let { to-rad } = import(math);
-to-rad(0)`,
-        `let { to-rad } = import(math);
-to-rad(90)`,
-        `let { to-rad } = import(math);
-to-rad(180)`,
-        `let { to-rad } = import(math);
-to-rad(360)`,
-        `let { to-rad } = import(math);
-to-rad([0, 90, 180])`,
-        `let { to-rad } = import(math);
-to-rad([[0, 90], [180, 360]])`,
+        `let { toRad } = import(math);
+toRad(0)`,
+        `let { toRad } = import(math);
+toRad(90)`,
+        `let { toRad } = import(math);
+toRad(180)`,
+        `let { toRad } = import(math);
+toRad(360)`,
+        `let { toRad } = import(math);
+toRad([0, 90, 180])`,
+        `let { toRad } = import(math);
+toRad([[0, 90], [180, 360]])`,
       ],
     },
   },
-  'to-deg': {
+  'toDeg': {
     evaluate: unaryMathOp(val => (val * 180) / Math.PI),
     arity: toFixedArity(1),
     docs: {
@@ -479,21 +479,21 @@ to-rad([[0, 90], [180, 360]])`,
         x: { type: ['number', 'vector', 'matrix'] },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'The `to-deg` function converts an angle from radians to degrees, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
-      seeAlso: ['math.to-rad'],
+      description: 'The `toDeg` function converts an angle from radians to degrees, working on `numbers` and element-wise on `vectors` and `matrices`. When applied to collections, it converts each element while preserving the original structure.',
+      seeAlso: ['math.toRad'],
       examples: [
-        `let { to-deg } = import(math);
-to-deg(0)`,
-        `let { to-deg } = import(math);
-to-deg(PI)`,
-        `let { to-deg } = import(math);
-to-deg(PI / 2)`,
-        `let { to-deg } = import(math);
-to-deg(3 * PI / 2)`,
-        `let { to-deg } = import(math);
-to-deg([0, PI, PI / 2])`,
-        `let { to-deg } = import(math);
-to-deg([[0, PI], [PI / 2, 3 * PI / 2]])`,
+        `let { toDeg } = import(math);
+toDeg(0)`,
+        `let { toDeg } = import(math);
+toDeg(PI)`,
+        `let { toDeg } = import(math);
+toDeg(PI / 2)`,
+        `let { toDeg } = import(math);
+toDeg(3 * PI / 2)`,
+        `let { toDeg } = import(math);
+toDeg([0, PI, PI / 2])`,
+        `let { toDeg } = import(math);
+toDeg([[0, PI], [PI / 2, 3 * PI / 2]])`,
       ],
     },
   },

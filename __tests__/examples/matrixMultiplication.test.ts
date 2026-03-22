@@ -6,7 +6,7 @@ const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {
   it('should compile', () => {
     expect(dvala.run(`
-let { every? } = import(collection);
+let { isEvery } = import(collection);
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
   // Check if inputs are arrays
@@ -27,8 +27,8 @@ let matrixMultiply = (matrixA, matrixB) -> do
   let colsB = count(first(matrixB));
 
   // Check if all rows have consistent length
-  if not(every?(matrixA, row -> array?(row) && count(row) == colsA)) then perform(@dvala.error, "First matrix has inconsistent row lengths") end;
-  if not(every?(matrixB, row -> array?(row) && count(row) == colsB)) then perform(@dvala.error, "Second matrix has inconsistent row lengths") end;
+  if not(isEvery(matrixA, row -> array?(row) && count(row) == colsA)) then perform(@dvala.error, "First matrix has inconsistent row lengths") end;
+  if not(isEvery(matrixB, row -> array?(row) && count(row) == colsB)) then perform(@dvala.error, "Second matrix has inconsistent row lengths") end;
 
   // Check if matrices can be multiplied
   if not(colsA == rowsB) then perform(@dvala.error, "Matrix dimensions mismatch: first matrix columns must equal second matrix rows") end;

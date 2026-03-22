@@ -8,7 +8,7 @@ import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 
 const jsonFunctions: BuiltinNormalExpressions = {
-  'json-parse': {
+  'jsonParse': {
     evaluate: ([first], sourceCodeInfo): Any => {
       assertString(first, sourceCodeInfo)
 
@@ -21,13 +21,13 @@ const jsonFunctions: BuiltinNormalExpressions = {
       args: { x: { type: 'string' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `JSON.parse(`$x`)`.',
-      seeAlso: ['json.json-stringify'],
+      seeAlso: ['json.jsonStringify'],
       examples: [
-        'let { json-parse } = import(json);\njson-parse("[1, 2, 3]")',
+        'let { jsonParse } = import(json);\njsonParse("[1, 2, 3]")',
       ],
     },
   },
-  'json-stringify': {
+  'jsonStringify': {
     evaluate: ([first, second], sourceCodeInfo): string => {
       assertAny(first, sourceCodeInfo)
       if (second === undefined)
@@ -49,10 +49,10 @@ const jsonFunctions: BuiltinNormalExpressions = {
         { argumentNames: ['x', 'indent'] },
       ],
       description: 'Returns `JSON.stringify(`$x`)`. If second argument is provided, returns `JSON.stringify(`$x`, null, `$indent`)`.',
-      seeAlso: ['json.json-parse'],
+      seeAlso: ['json.jsonParse'],
       examples: [
-        'let { json-stringify } = import(json);\njson-stringify([1, 2, 3])',
-        'let { json-stringify } = import(json);\njson-stringify({ a: { b: 10 }}, 2)',
+        'let { jsonStringify } = import(json);\njsonStringify([1, 2, 3])',
+        'let { jsonStringify } = import(json);\njsonStringify({ a: { b: 10 }}, 2)',
       ],
       hideOperatorForm: true,
     },

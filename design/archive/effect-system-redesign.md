@@ -175,7 +175,7 @@ Add `match-effect` as a library helper:
 ```
 let match-effect = (pattern) ->
   if string?(pattern)
-    then (e) -> starts-with?(effect-name(e), pattern)
+    then (e) -> isStartsWith(effect-name(e), pattern)
     else (e) -> regexp-test(pattern, effect-name(e))
 ```
 

@@ -18,7 +18,7 @@
     end
   end,
 
-  sort-by: (seq, keyfn, ...args) -> do
+  sortBy: (seq, keyfn, ...args) -> do
     let items = if string?(seq) then for (i in range(count(seq))) -> nth(seq, i) else [...seq] end;
     let keyed = map(items, (elem) -> [keyfn(elem), elem]);
     let sorted = if count(args) == 0 then
@@ -38,7 +38,7 @@
     if string?(seq) then join(result, "") else result end
   end,
 
-  split-with: (seq, fn) -> do
+  splitWith: (seq, fn) -> do
     let items = if string?(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
     let idx = loop (i = 0) ->
       if i >= count(items) then -1
@@ -52,7 +52,7 @@
     end
   end,
 
-  group-by: (seq, fn) -> do
+  groupBy: (seq, fn) -> do
     let items = if string?(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
     reduce(items, (result, val) -> do
       let key = fn(val);
@@ -61,7 +61,7 @@
     end, {})
   end,
 
-  partition-by: (seq, fn) -> do
+  partitionBy: (seq, fn) -> do
     let items = if string?(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
     if count(items) == 0 then
       []
