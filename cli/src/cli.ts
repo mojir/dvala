@@ -248,6 +248,21 @@ async function execute(expression: string, bindings: Record<string, unknown>, re
           const answer = await readLine(message)
           resume(answer)
         } },
+        { pattern: 'dvala.io.pick', handler: async ({ arg, resume }) => {
+          const options = Array.isArray(arg) ? arg as string[] : (arg as { options: string[] }).options
+          const message = Array.isArray(arg) ? 'Pick one:' : (arg as { message?: string }).message ?? 'Pick one:'
+          for (let i = 0; i < options.length; i++) {
+            console.log(`  ${i + 1}) ${options[i]}`)
+          }
+          const answer = await readLine(`${message} (1-${options.length}): `)
+          const idx = parseInt(answer) - 1
+          resume(idx >= 0 && idx < options.length ? options[idx] : null)
+        } },
+        { pattern: 'dvala.io.confirm', handler: async ({ arg, resume }) => {
+          const message = typeof arg === 'string' ? arg : 'Confirm?'
+          const answer = await readLine(`${message} (y/n): `)
+          resume(answer.toLowerCase().startsWith('y'))
+        } },
       ],
     })
     if (runResult.type === 'error')
