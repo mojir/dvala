@@ -30,13 +30,13 @@ describe('regexp functions', () => {
         expect(
           dvala.run(
             `
-          let email? = (string) -> do
+          let isEmail = (string) -> do
             boolean(
-              re-match(
+              reMatch(
                 string,
                 #"^(?:[a-z0-9!#$%&'*+/=?^_\`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_\`{|}~-]+)*|'(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*')@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])$"))
           end;
-          email?("albert.mojir@gmail.com");
+          isEmail("albert.mojir@gmail.com");
           `,
           ),
         ).toBe(true)
@@ -45,48 +45,48 @@ describe('regexp functions', () => {
         expect(
           dvala.run(
             `
-          let dot? = (string) -> do
-            boolean(re-match(string, #"^\\.$"))
+          let isDot = (string) -> do
+            boolean(reMatch(string, #"^\\.$"))
           end;
-          [dot?("."), dot?(",")];
+          [isDot("."), isDot(",")];
           `,
           ),
         ).toEqual([true, false])
       })
     })
 
-    describe('re-match', () => {
+    describe('reMatch', () => {
       it('samples', () => {
-        expect(dvala.run('re-match("abc", regexp("^abc$"))')).toEqual(['abc'])
-        expect(dvala.run('re-match("abx", regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match("abc", regexp("^(a)bc$"))')).toEqual(['abc', 'a'])
-        expect(dvala.run('re-match("abc", regexp("^(A)BC$", "i"))')).toEqual(['abc', 'a'])
-        expect(dvala.run('re-match(null, regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match(1, regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match(true, regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match(false, regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match([], regexp("^abc$"))')).toBeNull()
-        expect(dvala.run('re-match(object(), regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch("abc", regexp("^abc$"))')).toEqual(['abc'])
+        expect(dvala.run('reMatch("abx", regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch("abc", regexp("^(a)bc$"))')).toEqual(['abc', 'a'])
+        expect(dvala.run('reMatch("abc", regexp("^(A)BC$", "i"))')).toEqual(['abc', 'a'])
+        expect(dvala.run('reMatch(null, regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch(1, regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch(true, regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch(false, regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch([], regexp("^abc$"))')).toBeNull()
+        expect(dvala.run('reMatch(object(), regexp("^abc$"))')).toBeNull()
 
-        expect(() => dvala.run('re-match(regexp("^abc$"))')).toThrow(DvalaError)
-        expect(() => dvala.run('re-match("asd")')).toThrow(DvalaError)
-        expect(() => dvala.run('re-match("x" regexp("^abc$") "x")')).toThrow(DvalaError)
+        expect(() => dvala.run('reMatch(regexp("^abc$"))')).toThrow(DvalaError)
+        expect(() => dvala.run('reMatch("asd")')).toThrow(DvalaError)
+        expect(() => dvala.run('reMatch("x" regexp("^abc$") "x")')).toThrow(DvalaError)
       })
     })
 
-    describe('replace-all', () => {
+    describe('replaceAll', () => {
       it('samples', () => {
-        expect(dvala.run('replace-all("abcabcABCABC", "abc", "ABC")')).toEqual('ABCABCABCABC')
-        expect(dvala.run('replace-all("abcabcABCABC", regexp("^abc"), "ABC")')).toEqual('ABCabcABCABC')
-        expect(dvala.run('replace-all("abcabcABCABC", regexp("a"), "A")')).toEqual('AbcAbcABCABC')
-        expect(dvala.run('replace-all("abcabcABCABC", regexp("a", "g"), "A")')).toEqual('AbcAbcABCABC')
-        expect(dvala.run('replace-all("abcabcABCABC", regexp("a", "gi"), "-")')).toEqual('-bc-bc-BC-BC')
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), 1)')).toThrow(DvalaError)
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), null)')).toThrow(DvalaError)
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), true)')).toThrow(DvalaError)
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), false)')).toThrow(DvalaError)
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), [])')).toThrow(DvalaError)
-        expect(() => dvala.run('replace-all("abcabcABCABC", regexp("^abc$"), {})')).toThrow(DvalaError)
+        expect(dvala.run('replaceAll("abcabcABCABC", "abc", "ABC")')).toEqual('ABCABCABCABC')
+        expect(dvala.run('replaceAll("abcabcABCABC", regexp("^abc"), "ABC")')).toEqual('ABCabcABCABC')
+        expect(dvala.run('replaceAll("abcabcABCABC", regexp("a"), "A")')).toEqual('AbcAbcABCABC')
+        expect(dvala.run('replaceAll("abcabcABCABC", regexp("a", "g"), "A")')).toEqual('AbcAbcABCABC')
+        expect(dvala.run('replaceAll("abcabcABCABC", regexp("a", "gi"), "-")')).toEqual('-bc-bc-BC-BC')
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), 1)')).toThrow(DvalaError)
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), null)')).toThrow(DvalaError)
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), true)')).toThrow(DvalaError)
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), false)')).toThrow(DvalaError)
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), [])')).toThrow(DvalaError)
+        expect(() => dvala.run('replaceAll("abcabcABCABC", regexp("^abc$"), {})')).toThrow(DvalaError)
       })
     })
     describe('replace', () => {

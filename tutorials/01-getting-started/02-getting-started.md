@@ -91,7 +91,7 @@ $ dvala
 $ dvala eval "5 + 3"
 8
 
-$ dvala eval "[1, 2, 3, 4] filter odd? map inc"
+$ dvala eval "[1, 2, 3, 4] filter isOdd map inc"
 [2, 4]
 ```
 

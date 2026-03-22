@@ -408,7 +408,7 @@ These two frame types are independent and stack correctly.
 try
   perform(effect(llm.complete), "prompt")
 with
-  case effect(llm.complete) then ([prompt]) -> upper-case(prompt)
+  case effect(llm.complete) then ([prompt]) -> upperCase(prompt)
 end
 ```
 

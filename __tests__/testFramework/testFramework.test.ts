@@ -161,8 +161,8 @@ not ok 1 equals
     }.
   location: "${path.resolve(__dirname, 'object-diff.test.dvala')}:7:1"
   code:
-    - "assert=(obj-a, obj-b);"
-    - "^                     "
+    - "assert=(objA, objB);"
+    - "^                   "
   ...
 `)
   })

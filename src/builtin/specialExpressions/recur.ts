@@ -12,7 +12,7 @@ const docs: CustomDocs = {
   examples: [
     `
 let foo = (n) -> do
-  if zero?(n) then
+  if isZero(n) then
     0
   else
     n + recur(n - 1)
@@ -21,7 +21,7 @@ end;
 foo(3)`,
     `
 ((n) -> do
-  if zero?(n) then
+  if isZero(n) then
     0
   else
     n + recur(n - 1)
@@ -29,7 +29,7 @@ foo(3)`,
 end)(3)`,
     `
 loop (n = 3, acc = 0) -> do
-  if zero?(n) then
+  if isZero(n) then
     acc
   else
     recur(n - 1, acc + n)

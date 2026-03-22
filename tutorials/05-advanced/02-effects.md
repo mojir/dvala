@@ -65,7 +65,7 @@ Dvala provides built-in effects that are always available without explicit handl
 * `dvala.io.print` — writes a string to stdout with newline, resumes with the string
 * `dvala.io.error` — writes a string to stderr with newline, resumes with the string
 * `dvala.io.read` — reads one line of user input, resumes with the input string or `null`
-* `dvala.io.read-stdin` — reads all of stdin until EOF (Node.js only), resumes with the string
+* `dvala.io.readStdin` — reads all of stdin until EOF (Node.js only), resumes with the string
 
 **Random:**
 * `dvala.random` — resumes with a random number in [0, 1)
@@ -161,7 +161,7 @@ The **2-param form** is useful with wildcards to inspect which specific effect m
 ```dvala
 handle
   perform(@my.action, "data")
-with @my.*(x, e) -> effect-name(e) ++ ": " ++ x
+with @my.*(x, e) -> effectName(e) ++ ": " ++ x
 end
 ```
 
@@ -226,14 +226,14 @@ end
 Handler shorthands produce regular functions. They can be stored, passed, and composed:
 
 ```dvala
-let double-handler = @my.double(x) -> x * 2;
-handle perform(@my.double, 21) with double-handler end
+let doubleHandler = @my.double(x) -> x * 2;
+handle perform(@my.double, 21) with doubleHandler end
 ```
 
 ```dvala
-let run-with = (body-fn, handler) ->
+let runWith = (body-fn, handler) ->
   handle body-fn() with handler end;
-run-with(-> perform(@my.eff, 10), @my.eff(x) -> x * 5)
+runWith(-> perform(@my.eff, 10), @my.eff(x) -> x * 5)
 ```
 
 ---
@@ -261,8 +261,8 @@ handle expr with handler end
 **With a stored handler:**
 
 ```dvala
-let safe-div = @dvala.error(msg) -> 0;
-(0 / 0) ||> safe-div
+let safeDiv = @dvala.error(msg) -> 0;
+(0 / 0) ||> safeDiv
 ```
 
 **With a list of handlers:**
@@ -328,7 +328,7 @@ The 2-param form lets you inspect which specific effect matched a wildcard:
 ```dvala
 handle
   perform(@my.custom.action, "data")
-with @my.*(x, e) -> effect-name(e) ++ "=" ++ x
+with @my.*(x, e) -> effectName(e) ++ "=" ++ x
 end
 ```
 
@@ -399,7 +399,7 @@ Handlers are scoped. Inner handlers take precedence. Unmatched effects propagate
 handle
   handle
     perform(@my.inner, "hi")
-  with @my.inner(x) -> upper-case(x)
+  with @my.inner(x) -> upperCase(x)
   end
 with @my.outer(x) -> x
 end
@@ -408,7 +408,7 @@ end
 With the pipe operator, nesting reads left-to-right:
 
 ```dvala
-perform(@my.inner, "hi") ||> @my.inner(x) -> upper-case(x) ||> @my.outer(x) -> x
+perform(@my.inner, "hi") ||> @my.inner(x) -> upperCase(x) ||> @my.outer(x) -> x
 ```
 
 ---
@@ -423,7 +423,7 @@ Using the 3-param shorthand to access `nxt`:
 
 ```dvala
 let logger = @*(x, e, n) -> do
-  perform(@dvala.io.print, "effect: " ++ effect-name(e));
+  perform(@dvala.io.print, "effect: " ++ effectName(e));
   n(e, x)
 end;
 perform(@my.eff, 42) ||> logger ||> @my.eff(x) -> x * 2
@@ -459,27 +459,27 @@ handle perform(@my.eff, 21) with [wrapper, handler] end
 
 ## Effect Matchers
 
-`effect-matcher` creates a predicate function that matches effects by name pattern. This is the function behind wildcard shorthand handlers:
+`effectMatcher` creates a predicate function that matches effects by name pattern. This is the function behind wildcard shorthand handlers:
 
 ```dvala
-let pred = effect-matcher("dvala.*");
+let pred = effectMatcher("dvala.*");
 pred(@dvala.error)
 ```
 
 ```dvala
-let pred = effect-matcher("dvala.*");
+let pred = effectMatcher("dvala.*");
 pred(@custom.foo)
 ```
 
 ```dvala
-let pred = effect-matcher("*");
+let pred = effectMatcher("*");
 pred(@anything)
 ```
 
-You can use `effect-matcher` with regexp for more complex patterns:
+You can use `effectMatcher` with regexp for more complex patterns:
 
 ```dvala
-let pred = effect-matcher(#"^my\.(read|write)$");
+let pred = effectMatcher(#"^my\.(read|write)$");
 handle perform(@my.read, null) with (arg, eff, nxt) ->
   if pred(eff) then "matched"
   else nxt(eff, arg)

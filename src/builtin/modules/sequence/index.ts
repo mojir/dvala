@@ -39,7 +39,7 @@ mapcat([1, 2, 3], foo)`,
 let { mapcat } = import(sequence);
 mapcat(
   [[1, 2], [2, 2], [2, 3]],
-  -> $ filter odd?
+  -> $ filter isOdd
 )`,
       ],
     },
@@ -58,13 +58,13 @@ mapcat(
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
       description: 'Returns the index of the first elements that passes the test implemented by $fun. If no element was found, `null` is returned.',
-      seeAlso: ['index-of', 'some', 'find'],
+      seeAlso: ['indexOf', 'some', 'find'],
       examples: [
         `
 let su = import(sequence);
 su.position(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 let su = import(sequence);
@@ -115,7 +115,7 @@ su.position(
       },
       variants: [{ argumentNames: ['seq', 'x'] }],
       description: 'Returns the last index of $x in $seq. If element is not present in $seq `null` is returned.',
-      seeAlso: ['index-of'],
+      seeAlso: ['indexOf'],
       examples: [
         'let su = import(sequence); su.lastIndexOf([[1], [2], [1], [2]], [1])',
         'let su = import(sequence); su.lastIndexOf(["Albert", "Mojir", 160, [1, 2]], "Mojir")',
@@ -186,7 +186,7 @@ su.position(
       examples: [
         'let su = import(sequence); su.sortBy(["Albert", "Mojir", "Nina"], count)',
         'let su = import(sequence); su.sortBy(["Albert", "Mojir", "Nina"], count)',
-        'let su = import(sequence); su.sortBy("Albert", lower-case, -> $2 compare $)',
+        'let su = import(sequence); su.sortBy("Albert", lowerCase, -> $2 compare $)',
       ],
     },
   },
@@ -276,9 +276,9 @@ l`,
       description: 'Returns a new sequence of items in $seq for witch `pred(item)` returns a falsy value.',
       seeAlso: ['filter', 'sequence.removeAt'],
       examples: [
-        'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], odd?)',
-        'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], even?)',
-        'let su = import(sequence); su.remove("Albert Mojir", -> "aoueiyAOUEIY" contains? $)',
+        'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], isOdd)',
+        'let su = import(sequence); su.remove([1, 2, 3, 1, 3, 5], isEven)',
+        'let su = import(sequence); su.remove("Albert Mojir", -> "aoueiyAOUEIY" contains $)',
       ],
     },
   },
@@ -361,10 +361,10 @@ l`,
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns a pair of sequences `[take-while(input, fun), drop-while(input, fun)]`.',
-      seeAlso: ['sequence.splitAt', 'take-while', 'drop-while'],
+      description: 'Returns a pair of sequences `[takeWhile(input, fun), dropWhile(input, fun)]`.',
+      seeAlso: ['sequence.splitAt', 'takeWhile', 'dropWhile'],
       examples: [
-        'let su = import(sequence); su.splitWith([1, 2, 3, 4, 5], odd?)',
+        'let su = import(sequence); su.splitWith([1, 2, 3, 4, 5], isOdd)',
         'let su = import(sequence); su.splitWith([1, 2, 3, 4, 5], -> $ > 3)',
         'let su = import(sequence); su.splitWith("Albert", -> $ <= "o")',
       ],
@@ -420,7 +420,7 @@ l`,
       examples: [
         'let su = import(sequence); su.groupBy([{ name: "Albert" }, { name: "Albert" }, { name: "Mojir" }], "name")',
         'let su = import(sequence); su.groupBy([{name: "Albert"}, {name: "Albert"}, {name: "Mojir"}], "name")',
-        'let su = import(sequence); su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains? $ then "vowel" else "other" end)',
+        'let su = import(sequence); su.groupBy("Albert Mojir", -> if "aoueiAOUEI" contains $ then "vowel" else "other" end)',
       ],
     },
   },
@@ -526,9 +526,9 @@ l`,
       description: 'Applies $fun to each value in $seq, splitting it each time $fun returns a new value. Returns an array of sequences.',
       seeAlso: ['sequence.partition', 'sequence.partitionAll', 'sequence.groupBy'],
       examples: [
-        'let su = import(sequence); su.partitionBy([1, 2, 3, 4, 5], odd?)',
+        'let su = import(sequence); su.partitionBy([1, 2, 3, 4, 5], isOdd)',
         'let su = import(sequence); su.partitionBy([1, 2, 3, 4, 5], -> $ == 3)',
-        'let su = import(sequence); su.partitionBy([1, 1, 1, 2, 2, 3, 3], odd?)',
+        'let su = import(sequence); su.partitionBy([1, 1, 1, 2, 2, 3, 3], isOdd)',
         'let su = import(sequence); su.partitionBy("Leeeeeerrroyyy", identity)',
       ],
     },

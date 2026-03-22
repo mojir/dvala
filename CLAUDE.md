@@ -32,7 +32,7 @@ Create .md files inside /design
 - **`loop` has no `end`**: the body is a single expression; the loop is terminated by its body expression's own `end` (or by the enclosing `do...end` block). Never add a bare `end` for the loop itself.
 - **`do...end` always needs explicit `end`**: `do let x = 1; x + 1 end`.
 - **Unary minus doesn't work**: `-x` is parsed as a function call. Use `(0 - x)` instead.
-- **Reserved keywords**: `next`, `in` (and others) cannot be used as variable names — use e.g. `nxt`, `in-arr`.
+- **Reserved keywords**: `next`, `in` (and others) cannot be used as variable names — use e.g. `nxt`, `inArr`.
 - **Built-in names cannot be shadowed**: avoid variable names like `min`, `max`, `count`, `push`, etc.
 
 ## MCP Tools

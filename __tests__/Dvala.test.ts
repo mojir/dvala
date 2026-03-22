@@ -52,9 +52,9 @@ describe('all tests', () => {
 
     it('a variable - again.', () => {
       const bindings = dvala.run(`
-    let zip? = (input) -> do boolean(re-match(input, #"^\\d{5}$")) end;
+    let isZip = (input) -> do boolean(reMatch(input, #"^\\d{5}$")) end;
     let NAME_LENGTH = 100;
-    {zip?: zip?, NAME_LENGTH: NAME_LENGTH}
+    {isZip: isZip, NAME_LENGTH: NAME_LENGTH}
     `) as Record<string, unknown>
       expect(dvala.run('NAME_LENGTH', { bindings })).toBe(100)
     })

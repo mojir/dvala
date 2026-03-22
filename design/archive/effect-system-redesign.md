@@ -24,11 +24,11 @@ let e = effect(dvala.error)
 perform(e, "something went wrong")
 ```
 
-### `effect-name` Accessor
+### `effectName` Accessor
 Effects are opaque values. Access the name via a dedicated function (not `.name`):
 
 ```
-effect-name(effect(dvala.log))   ; => "dvala.log"
+effectName(effect(dvala.log))   ; => "dvala.log"
 ```
 
 ### `with` Clause Matching
@@ -158,12 +158,12 @@ let throw = (msg) -> perform(effect(dvala.error), msg)
 No runtime enforcement of the reverse DNS naming scheme.
 Document the convention. Tooling (linter, analyser) can warn about violations.
 
-### Step 9 — Add `effect-name` accessor
-Implement `effect-name(e)` as a built-in function returning the effect's
+### Step 9 — Add `effectName` accessor
+Implement `effectName(e)` as a built-in function returning the effect's
 name string. Effects remain opaque values.
 
 ```
-effect-name(effect(dvala.log))   ; => "dvala.log"
+effectName(effect(dvala.log))   ; => "dvala.log"
 ```
 
 ### Step 10 — Extend `with` case semantics
@@ -174,8 +174,8 @@ Allow `case` to accept either:
 Add `match-effect` as a library helper:
 ```
 let match-effect = (pattern) ->
-  if string?(pattern)
-    then (e) -> isStartsWith(effect-name(e), pattern)
-    else (e) -> regexp-test(pattern, effect-name(e))
+  if isString(pattern)
+    then (e) -> isStartsWith(effectName(e), pattern)
+    else (e) -> regexp-test(pattern, effectName(e))
 ```
 

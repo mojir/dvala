@@ -222,7 +222,7 @@ function getPlaygroundPanel(): string {
             <span class="snapshot-panel__section-label">Effect</span>
             <div class="snapshot-panel__field">
               <span class="snapshot-panel__field-label">Name</span>
-              <code data-ref="effect-name" class="snapshot-panel__effect-name"></code>
+              <code data-ref="effectName" class="snapshot-panel__effect-name"></code>
             </div>
             <div data-ref="effect-args" class="snapshot-panel__effect-args fancy-scroll"></div>
           </div>

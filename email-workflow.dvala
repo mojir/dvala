@@ -7,7 +7,7 @@
 //   4a. Approved  → done
 //   4b. Rejected  → loop back to step 1 with LLM text + feedback
 
-let edit-draft = (previous, feedback, attempt) -> do
+let editDraft = (previous, feedback, attempt) -> do
   perform(@dvala.io.print, "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")");
 
   if feedback != "" then
@@ -33,7 +33,7 @@ let polish = (draft) -> do
   polished
 end;
 
-let request-approval = (text, attempt) -> do
+let requestApproval = (text, attempt) -> do
   perform(@dvala.io.print, "\n👤 STEP 3 — APPROVAL REQUEST");
   perform(@dvala.io.print, "Waiting for approver...\n");
 
@@ -41,9 +41,9 @@ let request-approval = (text, attempt) -> do
 end;
 
 let run = (previous, feedback, attempt) -> do
-  let draft    = edit-draft(previous, feedback, attempt);
+  let draft    = editDraft(previous, feedback, attempt);
   let polished = polish(draft);
-  let decision = request-approval(polished, attempt);
+  let decision = requestApproval(polished, attempt);
 
   if decision.approved then
     perform(@dvala.io.print, "\n✅ APPROVED — sending email to all subscribers.");

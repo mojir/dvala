@@ -41,7 +41,7 @@ $ dvala
 
 # Evaluate Dvala code directly
 $ dvala eval "5 + 3"
-$ dvala eval "[1, 2, 3, 4] filter odd? map inc"
+$ dvala eval "[1, 2, 3, 4] filter isOdd map inc"
 
 # Run a Dvala file
 $ dvala run script.dvala
@@ -184,7 +184,7 @@ rest(numbers);                 // => [2, 3, 4, 5]
 
 // Functional array operations
 numbers map -> $ * 2;      // => [2, 4, 6, 8, 10]
-numbers filter odd?;           // => [1, 3, 5]
+numbers filter isOdd;           // => [1, 3, 5]
 ```
 
 #### Vectors (Number Arrays)
@@ -320,33 +320,33 @@ Dvala provides predicate functions to check data types at runtime:
 
 ```dvala
 // Basic type predicates
-number?(42);                   // => true
-string?("hello");              // => true
-boolean?(true);                // => true
-function?(x -> x * 2);         // => true
-regexp?(#"[a-z]+");            // => true
-array?([1, 2, 3]);             // => true
-object?({name: "Alice"});      // => true
-null?(null);                   // => true
+isNumber(42);                   // => true
+isString("hello");              // => true
+isBoolean(true);                // => true
+isFunction(x -> x * 2);         // => true
+isRegexp(#"[a-z]+");            // => true
+isArray([1, 2, 3]);             // => true
+isObject({name: "Alice"});      // => true
+isNull(null);                   // => true
 
 // Specialized array predicates
-vector?([1, 2, 3]);            // => true (non-empty number array)
-vector?([1, "hello", 3]);      // => false (mixed types)
-vector?([]);                   // => false (empty)
+isVector([1, 2, 3]);            // => true (non-empty number array)
+isVector([1, "hello", 3]);      // => false (mixed types)
+isVector([]);                   // => false (empty)
 
-matrix?([[1, 2], [3, 4]]);     // => true (2D number array, consistent rows)
-matrix?([[1, 2], [3]]);        // => false (inconsistent row lengths)
-matrix?([[]]);                 // => false (contains empty row)
+isMatrix([[1, 2], [3, 4]]);     // => true (2D number array, consistent rows)
+isMatrix([[1, 2], [3]]);        // => false (inconsistent row lengths)
+isMatrix([[]]);                 // => false (contains empty row)
 
 // Collection predicates
-sequence?([1, 2, 3]);           // => true (sequences: strings and arrays)
-sequence?("hello");             // => true
-sequence?({a: 1});              // => false
+isSequence([1, 2, 3]);           // => true (sequences: strings and arrays)
+isSequence("hello");             // => true
+isSequence({a: 1});              // => false
 
-collection?([1, 2, 3]);         // => true (collections: strings, arrays, objects)
-collection?("hello");           // => true
-collection?({a: 1});            // => true
-collection?(42);                // => false
+isCollection([1, 2, 3]);         // => true (collections: strings, arrays, objects)
+isCollection("hello");           // => true
+isCollection({a: 1});            // => true
+isCollection(42);                // => false
 ```
 
 #### Type Hierarchy
@@ -356,19 +356,19 @@ The type predicates follow a logical hierarchy:
 ```dvala
 // If something is a matrix, it's also a vector and an array
 let mat = [[1, 2], [3, 4]];
-matrix?(mat);                  // => true
-vector?(mat);                  // => true (matrix is a special vector)
-array?(mat);                   // => true (vector is a special array)
+isMatrix(mat);                  // => true
+isVector(mat);                  // => true (matrix is a special vector)
+isArray(mat);                   // => true (vector is a special array)
 
 // If something is a vector, it's also an array
 let vec = [1, 2, 3];
-vector?(vec);                  // => true
-array?(vec);                   // => true
+isVector(vec);                  // => true
+isArray(vec);                   // => true
 
 // But not all arrays are vectors
 let arr = [1, "hello", 3];
-array?(arr);                   // => true
-vector?(arr);                  // => false (contains non-numbers)
+isArray(arr);                   // => true
+isVector(arr);                  // => false (contains non-numbers)
 ```
 
 Each data type is immutable by design - operations return new values rather than modifying existing ones, ensuring predictable behavior and easier reasoning about code.
@@ -562,10 +562,10 @@ let square = x -> x * x;
 let constant = () -> 42;
 
 // Positional arguments
-let add-v2 = -> $ + $2;
+let addV2 = -> $ + $2;
 
 // Single positional argument
-let square-v2 = -> $ * $;
+let squareV2 = -> $ * $;
 
 // Self-reference for recursion
 let factorial = n ->
@@ -665,7 +665,7 @@ for (x in [1, 2, 3, 4]) -> x * 2;
 // => [2, 4, 6, 8]
 
 // With filtering (when clause)
-for (x in [1, 2, 3, 4] when odd?(x)) -> x * 2;
+for (x in [1, 2, 3, 4] when isOdd(x)) -> x * 2;
 // => [2, 6]
 
 // With early termination (while clause)
@@ -712,7 +712,7 @@ for (x in [1, 2, 3]) -> perform(@dvala.io.print, x)
 ```dvala
 // Loop with recur for tail recursion
 loop (n = 5, acc = 1) -> do
-  if zero?(n) then
+  if isZero(n) then
     acc
   else
     recur(n - 1, acc * n)
@@ -722,7 +722,7 @@ end;
 
 // Complex loop with multiple variables
 loop (items = [1, 2, 3, 4, 5], acc = 0, cnt = 0) -> do
-  if empty?(items) then
+  if isEmpty(items) then
     { sum: acc, average: acc / cnt }
   else
     recur(rest(items), acc + first(items), cnt + 1)
@@ -746,7 +746,7 @@ end;
 
 // Tail-recursive function
 let sumToN = (n, acc = 0) -> do
-  if zero?(n) then
+  if isZero(n) then
     acc
   else
     recur(n - 1, acc + n)
@@ -805,7 +805,7 @@ with [(arg, eff, nxt) ->
 
 // Custom error messages in functions
 let divide = (a, b) ->
-  if zero?(b) then
+  if isZero(b) then
     perform(@dvala.error, "Cannot divide by zero")
   else
     a / b
@@ -859,8 +859,8 @@ end
 array(1, 2, 3, 4);
 
 // With spread
-let small-set = [3, 4, 5];
-[1, 2, ...small-set, 6];
+let smallSet = [3, 4, 5];
+[1, 2, ...smallSet, 6];
 // => [1, 2, 3, 4, 5, 6]
 ```
 
@@ -1049,8 +1049,8 @@ let γ = 2.0;
 let Δ = β - α;
 
 // Descriptive names with special characters
-let user-name = "alice";
-let is-valid? = true;
+let userName = "alice";
+let isIsValid = true;
 let counter! = 0;
 
 // Mixed styles
@@ -1073,7 +1073,7 @@ let x = 5;
 let result2 = x + 1;  // => 6
 
 // More examples of what looks like operations but are actually variable names
-let a-b = "subtraction variable";
+let aB = "subtraction variable";
 let c*d = "multiplication variable"; 
 let e/f = "division variable";
 let g<h = "comparison variable";
@@ -1081,11 +1081,11 @@ let g<h = "comparison variable";
 // To use these as actual operations, add spaces
 let a = 10;
 let b = 3;
-let a-sum = a + b;      // Addition
-let a-diff = a - b;     // Subtraction
-let a-prod = a * b;     // Multiplication
-let a-quot = a / b;     // Division
-let a-comp = a < b;     // Comparison
+let aSum = a + b;      // Addition
+let aDiff = a - b;     // Subtraction
+let aProd = a * b;     // Multiplication
+let aQuot = a / b;     // Division
+let aComp = a < b;     // Comparison
 ```
 
 Without whitespace, Dvala treats the entire sequence as a single variable identifier. This applies to all operators, including comparison operators, logical operators, and arithmetic operators.
@@ -1253,10 +1253,10 @@ Dvala favors subject-first parameter order for better operator chaining:
 
 ```dvala
 // Function style
-filter([1, 2, 3, 4], odd?);  // => [1, 3]
+filter([1, 2, 3, 4], isOdd);  // => [1, 3]
 
 // Operator style (more readable)
-[1, 2, 3, 4] filter odd?;    // => [1, 3]
+[1, 2, 3, 4] filter isOdd;    // => [1, 3]
 ```
 
 ### Pipe Operator
@@ -1265,18 +1265,18 @@ The pipe operator `|>` passes the result of the left expression as the first arg
 
 ```dvala
 // Without pipe operator
-reduce(map(filter([1, 2, 3, 4, 5, 6], odd?), -> $ * $), +, 0);
+reduce(map(filter([1, 2, 3, 4, 5, 6], isOdd), -> $ * $), +, 0);
 
 // With pipe operator (much more readable)
 [1, 2, 3, 4, 5, 6]
-  |> filter(_, odd?)
+  |> filter(_, isOdd)
   |> map(_, -> $ * $)
   |> reduce(_, +, 0);
 // => 35
 
 // Simple transformations
 "hello world"
-  |> upper-case
+  |> upperCase
   |> split(_, " ")
   |> reverse
   |> join(_, "-");
@@ -1292,7 +1292,7 @@ reduce(map(filter([1, 2, 3, 4, 5, 6], odd?), -> $ * $), +, 0);
 // Data processing pipeline
 { numbers: [1, 2, 3, 4, 5], multiplier: 3 }
   |> get(_, "numbers")
-  |> filter(_, even?)
+  |> filter(_, isEven)
   |> map(_, *(_, 3))
   |> reduce(_, +, 0);
 // => 18 (even numbers [2, 4] -> [6, 12] -> sum = 18)
@@ -1443,13 +1443,13 @@ let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 // Get even numbers squared
 let evenSquares = numbers
-  |> filter(_, even?)
+  |> filter(_, isEven)
   |> map(_, -> $ * $);
 // => [4, 16, 36, 64, 100]
 
 // Sum of odd numbers
 let oddSum = numbers
-  |> filter(_, odd?)
+  |> filter(_, isOdd)
   |> reduce(_, +, 0);
 // => 25
 ```
@@ -1469,7 +1469,7 @@ let wordCount = text
 let longWords = text
   |> split(_, #"\s+")
   |> filter(_, -> count($) > 4)
-  |> map(_, upper-case);
+  |> map(_, upperCase);
 // => ["HELLO,", "WORLD!", "TODAY?"]
 ```
 

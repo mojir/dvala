@@ -241,7 +241,7 @@ let x = { a: 1, b: 2 };
 cu.update(
   x,
   "c",
-  val -> if null?(val) then 0 else inc(val) end
+  val -> if isNull(val) then 0 else inc(val) end
 )`,
       ],
     },
@@ -273,21 +273,21 @@ let cu = import(collection);
 cu.updateIn(
   { a: [1, 2, 3] },
   ["a", 1],
-  -> if null?($) then 0 else inc($) end
+  -> if isNull($) then 0 else inc($) end
 )`,
         `
 let cu = import(collection);
 cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "foo"],
-  -> if null?($) then "?" else "!" end
+  -> if isNull($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
 cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "baz"],
-  -> if null?($) then "?" else "!" end
+  -> if isNull($) then "?" else "!" end
 )`,
         `
 let cu = import(collection);
@@ -447,7 +447,7 @@ cu.updateIn(
 let cu = import(collection);
 cu.reductions(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  (result, value) -> result + (if even?(value) then value else 0 end),
+  (result, value) -> result + (if isEven(value) then value else 0 end),
   0
 )`,
       ],
@@ -503,7 +503,7 @@ cu.reductions(
       },
       variants: [{ argumentNames: ['coll'] }],
       description: 'Returns `null` if $coll is empty or `null`, otherwise $coll.',
-      seeAlso: ['empty?', 'not-empty?'],
+      seeAlso: ['isEmpty', 'isNotEmpty'],
       examples: [
         'let cu = import(collection); cu.notEmpty([])',
         'let cu = import(collection); cu.notEmpty([1, 2, 3])',
@@ -529,13 +529,13 @@ cu.reductions(
       description: 'Returns `true` if all entries in $a pass the test implemented by $b, otherwise returns `false`.',
       seeAlso: ['collection.isAny', 'collection.notEvery', 'collection.notAny', 'functional.everyPred', 'grid.isCellEvery'],
       examples: [
-        'let cu = import(collection); cu.isEvery([1, 2, 3], number?)',
-        'let cu = import(collection); cu.isEvery([1, 2, 3], even?)',
+        'let cu = import(collection); cu.isEvery([1, 2, 3], isNumber)',
+        'let cu = import(collection); cu.isEvery([1, 2, 3], isEven)',
         `
 let cu = import(collection);
 cu.isEvery(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?,
+  isString,
 )`,
         `
 let cu = import(collection);
@@ -543,20 +543,20 @@ cu.isEvery(
   [50, 100, 150, 200],
   -> $ > 10,
 )`,
-        'let cu = import(collection); cu.isEvery([], number?)',
-        'let cu = import(collection); cu.isEvery("", number?)',
-        'let cu = import(collection); cu.isEvery({}, number?)',
+        'let cu = import(collection); cu.isEvery([], isNumber)',
+        'let cu = import(collection); cu.isEvery("", isNumber)',
+        'let cu = import(collection); cu.isEvery({}, isNumber)',
         `
 let cu = import(collection);
 cu.isEvery(
   { a: 2, b: 4},
-  -> even?(second($))
+  -> isEven(second($))
 )`,
         `
 let cu = import(collection);
 cu.isEvery(
   { a: 2, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
       ],
     },
@@ -579,7 +579,7 @@ cu.isEvery(
 let cu = import(collection);
 cu.isAny(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 let cu = import(collection);
@@ -587,20 +587,20 @@ cu.isAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.isAny([], number?)',
-        'let cu = import(collection); cu.isAny("", number?)',
-        'let cu = import(collection); cu.isAny({}, number?)',
+        'let cu = import(collection); cu.isAny([], isNumber)',
+        'let cu = import(collection); cu.isAny("", isNumber)',
+        'let cu = import(collection); cu.isAny({}, isNumber)',
         `
 let cu = import(collection);
 cu.isAny(
   { a: 2, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
         `
 let cu = import(collection);
 cu.isAny(
   { a: 1, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
       ],
     },
@@ -623,7 +623,7 @@ cu.isAny(
 let cu = import(collection);
 cu.notAny(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 let cu = import(collection);
@@ -631,20 +631,20 @@ cu.notAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.notAny([], number?)',
-        'let cu = import(collection); cu.notAny("", number?)',
-        'let cu = import(collection); cu.notAny({}, number?)',
+        'let cu = import(collection); cu.notAny([], isNumber)',
+        'let cu = import(collection); cu.notAny("", isNumber)',
+        'let cu = import(collection); cu.notAny({}, isNumber)',
         `
 let cu = import(collection);
 cu.notAny(
   { a: 2, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
         `
 let cu = import(collection);
 cu.notAny(
   { a: 1, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
       ],
     },
@@ -667,7 +667,7 @@ cu.notAny(
 let cu = import(collection);
 cu.notEvery(
   ["Albert", "Mojir", 160, [1, 2]],
-  string?
+  isString
 )`,
         `
 let cu = import(collection);
@@ -675,20 +675,20 @@ cu.notEvery(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.notEvery([], number?)',
-        'let cu = import(collection); cu.notEvery("", number?)',
-        'let cu = import(collection); cu.notEvery({}, number?)',
+        'let cu = import(collection); cu.notEvery([], isNumber)',
+        'let cu = import(collection); cu.notEvery("", isNumber)',
+        'let cu = import(collection); cu.notEvery({}, isNumber)',
         `
 let cu = import(collection);
 cu.notEvery(
   { a: 2, b: 4 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
         `
 let cu = import(collection);
 cu.notEvery(
   { a: 2, b: 3 },
-  -> even?(second($))
+  -> isEven(second($))
 )`,
       ],
     },

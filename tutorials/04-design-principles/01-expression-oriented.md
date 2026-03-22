@@ -84,7 +84,7 @@ squares
 Even `handle...with` error handling returns a value:
 
 ```dvala
-let safe-sqrt = (x) ->
+let safeSqrt = (x) ->
   handle
     sqrt(x)
   with [(arg, eff, nxt) ->
@@ -93,7 +93,7 @@ let safe-sqrt = (x) ->
     end
   ]
   end;
-[safe-sqrt(16), safe-sqrt(-1)]
+[safeSqrt(16), safeSqrt(-1)]
 ```
 
 ## No Statements, No Void
@@ -111,7 +111,7 @@ Because everything is an expression, constructs compose freely. You can nest any
 ```dvala
 map(
   [1, 2, 3, 4, 5],
-  x -> if odd?(x) then x * x else x end
+  x -> if isOdd(x) then x * x else x end
 )
 ```
 

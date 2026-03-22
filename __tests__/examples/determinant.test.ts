@@ -8,12 +8,12 @@ describe('determinant.', () => {
 // Determinant function for square matrices
 let determinant = matrix -> do
   // Check if input is an array
-  if not(array?(matrix)) then
+  if not(isArray(matrix)) then
     perform(@dvala.error, "Input must be an array");
   end;
 
   // Check if matrix is empty
-  if empty?(matrix) then
+  if isEmpty(matrix) then
     perform(@dvala.error, "Matrix cannot be empty");
   end;
 
@@ -23,7 +23,7 @@ let determinant = matrix -> do
   let firstRow = first(matrix);
   
   // Check if first row is an array
-  if not(array?(firstRow)) then
+  if not(isArray(firstRow)) then
     perform(@dvala.error, "Input must be a 2D array");
   end;
   
@@ -54,7 +54,7 @@ let determinant = matrix -> do
         (acc, j) -> do
           let minor = getMinor(matrix, 0, j);
           let cofactor = determinant(minor);
-          let signFactor = if even?(j) then 1 else (0 - 1) end; // Sign factor based on column index
+          let signFactor = if isEven(j) then 1 else (0 - 1) end; // Sign factor based on column index
           let term = signFactor * get(get(matrix, 0), j) * cofactor;
           acc + term;
         end,

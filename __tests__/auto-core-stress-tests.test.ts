@@ -6,7 +6,7 @@
  *
  *  1. Round-trip fidelity (tokenize → untokenize)
  *  2. Module system & file module edge cases
- *  3. Type annotations / predicates (vector?, matrix?, grid?)
+ *  3. Type annotations / predicates (isVector, isMatrix, isGrid)
  *  4. Pattern matching + closures / scoping edge cases
  *  5. Scoping, shadowing, closure edge cases
  *  6. Pure mode enforcement
@@ -56,7 +56,7 @@ describe('round-trip: tokenize → untokenize', () => {
     // Loop / for
     'loop(i = 0, acc = 0) -> if i >= 5 then acc else recur(i + 1, acc + i) end',
     'for (x in [1, 2, 3]) -> x * 2',
-    'for (x in [1, 2, 3] when odd?(x)) -> x',
+    'for (x in [1, 2, 3] when isOdd(x)) -> x',
 
     // Match
     'match x case 1 then "one" case _ then "other" end',
@@ -85,7 +85,7 @@ describe('round-trip: tokenize → untokenize', () => {
 
     // Complex expressions
     'let fib = (n) -> if n <= 1 then n else fib(n - 1) + fib(n - 2) end; fib(10)',
-    'map(filter([1, 2, 3, 4, 5], odd?), -> $ * 2)',
+    'map(filter([1, 2, 3, 4, 5], isOdd), -> $ * 2)',
     'reduce([1, 2, 3], +, 0)',
 
     // Comments should be stripped but code preserved
@@ -152,124 +152,124 @@ describe('module system edge cases', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 3. Type annotations / predicates (vector?, matrix?, grid?)
+// 3. Type annotations / predicates (isVector, isMatrix, isGrid)
 // ---------------------------------------------------------------------------
 
 describe('type annotations / predicates', () => {
-  it('vector? on numeric array is true', () => {
-    expect(dvala.run('vector?([1, 2, 3])')).toBe(true)
+  it('isVector on numeric array is true', () => {
+    expect(dvala.run('isVector([1, 2, 3])')).toBe(true)
   })
 
-  it('vector? on empty array is true', () => {
-    expect(dvala.run('vector?([])')).toBe(true)
+  it('isVector on empty array is true', () => {
+    expect(dvala.run('isVector([])')).toBe(true)
   })
 
-  it('vector? on mixed array is false', () => {
-    expect(dvala.run('vector?([1, "two", 3])')).toBe(false)
+  it('isVector on mixed array is false', () => {
+    expect(dvala.run('isVector([1, "two", 3])')).toBe(false)
   })
 
-  it('vector? on non-array is false', () => {
-    expect(dvala.run('vector?(42)')).toBe(false)
-    expect(dvala.run('vector?("hello")')).toBe(false)
-    expect(dvala.run('vector?({ a: 1 })')).toBe(false)
+  it('isVector on non-array is false', () => {
+    expect(dvala.run('isVector(42)')).toBe(false)
+    expect(dvala.run('isVector("hello")')).toBe(false)
+    expect(dvala.run('isVector({ a: 1 })')).toBe(false)
   })
 
-  it('matrix? on 2d numeric array is true', () => {
-    expect(dvala.run('matrix?([[1, 2], [3, 4]])')).toBe(true)
+  it('isMatrix on 2d numeric array is true', () => {
+    expect(dvala.run('isMatrix([[1, 2], [3, 4]])')).toBe(true)
   })
 
-  it('matrix? on non-rectangular array is false', () => {
-    expect(dvala.run('matrix?([[1, 2], [3]])')).toBe(false)
+  it('isMatrix on non-rectangular array is false', () => {
+    expect(dvala.run('isMatrix([[1, 2], [3]])')).toBe(false)
   })
 
-  it('matrix? on 2d non-numeric array is false', () => {
-    expect(dvala.run('matrix?([["a", "b"], ["c", "d"]])')).toBe(false)
+  it('isMatrix on 2d non-numeric array is false', () => {
+    expect(dvala.run('isMatrix([["a", "b"], ["c", "d"]])')).toBe(false)
   })
 
-  it('matrix? on 1d array is false', () => {
-    expect(dvala.run('matrix?([1, 2, 3])')).toBe(false)
+  it('isMatrix on 1d array is false', () => {
+    expect(dvala.run('isMatrix([1, 2, 3])')).toBe(false)
   })
 
-  it('grid? on 2d array is true', () => {
-    expect(dvala.run('grid?([["a", "b"], ["c", "d"]])')).toBe(true)
+  it('isGrid on 2d array is true', () => {
+    expect(dvala.run('isGrid([["a", "b"], ["c", "d"]])')).toBe(true)
   })
 
-  it('grid? on 2d numeric array (matrix) is also true', () => {
-    expect(dvala.run('grid?([[1, 2], [3, 4]])')).toBe(true)
+  it('isGrid on 2d numeric array (matrix) is also true', () => {
+    expect(dvala.run('isGrid([[1, 2], [3, 4]])')).toBe(true)
   })
 
-  it('grid? on empty array is false', () => {
-    expect(dvala.run('grid?([])')).toBe(false)
+  it('isGrid on empty array is false', () => {
+    expect(dvala.run('isGrid([])')).toBe(false)
   })
 
-  it('grid? on 1d array is false', () => {
-    expect(dvala.run('grid?([1, 2, 3])')).toBe(false)
+  it('isGrid on 1d array is false', () => {
+    expect(dvala.run('isGrid([1, 2, 3])')).toBe(false)
   })
 
-  it('grid? on non-rectangular 2d array is false', () => {
-    expect(dvala.run('grid?([["a", "b"], ["c"]])')).toBe(false)
+  it('isGrid on non-rectangular 2d array is false', () => {
+    expect(dvala.run('isGrid([["a", "b"], ["c"]])')).toBe(false)
   })
 
   it('type predicates on results of operations', () => {
-    expect(dvala.run('vector?(map([1, 2, 3], inc))')).toBe(true)
-    expect(dvala.run('vector?(map([1, 2, 3], str))')).toBe(false)
-    expect(dvala.run('matrix?(map([[1, 2], [3, 4]], -> map($, inc)))')).toBe(true)
+    expect(dvala.run('isVector(map([1, 2, 3], inc))')).toBe(true)
+    expect(dvala.run('isVector(map([1, 2, 3], str))')).toBe(false)
+    expect(dvala.run('isMatrix(map([[1, 2], [3, 4]], -> map($, inc)))')).toBe(true)
   })
 
-  it('grid? on grid module results', () => {
-    expect(dvala.run('let g = import(grid); grid?(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
+  it('isGrid on grid module results', () => {
+    expect(dvala.run('let g = import(grid); isGrid(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
   })
 
-  it('matrix? on grid module results with numeric data', () => {
-    expect(dvala.run('let g = import(grid); matrix?(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
+  it('isMatrix on grid module results with numeric data', () => {
+    expect(dvala.run('let g = import(grid); isMatrix(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
   })
 
-  it('vector? on vector module results', () => {
-    expect(dvala.run('let v = import(vector); vector?(v.mode([1, 2, 2, 3]))')).toBe(true)
+  it('isVector on vector module results', () => {
+    expect(dvala.run('let v = import(vector); isVector(v.mode([1, 2, 2, 3]))')).toBe(true)
   })
 
   it('type predicates are consistent between debug and non-debug mode', () => {
     const programs = [
-      'vector?([1, 2, 3])',
-      'matrix?([[1, 2], [3, 4]])',
-      'grid?([["a", "b"], ["c", "d"]])',
-      'vector?([1, "two", 3])',
-      'matrix?([[1, 2], [3]])',
+      'isVector([1, 2, 3])',
+      'isMatrix([[1, 2], [3, 4]])',
+      'isGrid([["a", "b"], ["c", "d"]])',
+      'isVector([1, "two", 3])',
+      'isMatrix([[1, 2], [3]])',
     ]
     for (const prog of programs) {
       expect(dvalaDebug.run(prog)).toBe(dvala.run(prog))
     }
   })
 
-  it('array? on various types', () => {
-    expect(dvala.run('array?([1, 2, 3])')).toBe(true)
-    expect(dvala.run('array?([])')).toBe(true)
-    expect(dvala.run('array?("hello")')).toBe(false)
-    expect(dvala.run('array?(42)')).toBe(false)
-    expect(dvala.run('array?(null)')).toBe(false)
-    expect(dvala.run('array?({ a: 1 })')).toBe(false)
+  it('isArray on various types', () => {
+    expect(dvala.run('isArray([1, 2, 3])')).toBe(true)
+    expect(dvala.run('isArray([])')).toBe(true)
+    expect(dvala.run('isArray("hello")')).toBe(false)
+    expect(dvala.run('isArray(42)')).toBe(false)
+    expect(dvala.run('isArray(null)')).toBe(false)
+    expect(dvala.run('isArray({ a: 1 })')).toBe(false)
   })
 
   it('type predicate results used in control flow', () => {
     expect(dvala.run(`
       let classify = (x) ->
-        if vector?(x) then "vector"
-        else if matrix?(x) then "matrix"
-        else if grid?(x) then "grid"
-        else if array?(x) then "array"
+        if isVector(x) then "vector"
+        else if isMatrix(x) then "matrix"
+        else if isGrid(x) then "grid"
+        else if isArray(x) then "array"
         else "other"
         end;
       [classify([1, 2]), classify([[1, 2], [3, 4]]), classify([["a"], ["b"]]), classify("hello")]
     `)).toEqual(['vector', 'matrix', 'grid', 'other'])
   })
 
-  it('vector? after map-then-filter with numeric pipeline', () => {
-    expect(dvala.run('vector?(filter(map([1, 2, 3, 4, 5], -> $ * 2), -> $ > 4))')).toBe(true)
+  it('isVector after map-then-filter with numeric pipeline', () => {
+    expect(dvala.run('isVector(filter(map([1, 2, 3, 4, 5], -> $ * 2), -> $ > 4))')).toBe(true)
   })
 
-  it('grid? on array with empty inner arrays is false', () => {
+  it('isGrid on array with empty inner arrays is false', () => {
     // Inner arrays must have length > 0
-    expect(dvala.run('grid?([[], []])')).toBe(false)
+    expect(dvala.run('isGrid([[], []])')).toBe(false)
   })
 })
 
@@ -290,9 +290,9 @@ describe('pattern matching edge cases', () => {
 
   it('match with guard clause using function', () => {
     expect(dvala.run(`
-      let is-big = (x) -> x > 100;
+      let isBig = (x) -> x > 100;
       match 42
-        case x when is-big(x) then "big"
+        case x when isBig(x) then "big"
         case _ then "small"
       end
     `)).toBe('small')
@@ -354,15 +354,15 @@ describe('pattern matching edge cases', () => {
 
   it('match inside loop', () => {
     expect(dvala.run(`
-      let classify-all = (items) ->
+      let classifyAll = (items) ->
         map(items, (item) ->
           match item
-            case n when number?(n) then "num"
-            case s when string?(s) then "str"
+            case n when isNumber(n) then "num"
+            case s when isString(s) then "str"
             case _ then "other"
           end
         );
-      classify-all([1, "hello", null, 42, "world"])
+      classifyAll([1, "hello", null, 42, "world"])
     `)).toEqual(['num', 'str', 'other', 'num', 'str'])
   })
 })
@@ -386,8 +386,8 @@ describe('scoping edge cases', () => {
 
   it('closure captures enclosing scope variable', () => {
     expect(dvala.run(`
-      let make-counter = (start) -> (step) -> start + step;
-      let from10 = make-counter(10);
+      let makeCounter = (start) -> (step) -> start + step;
+      let from10 = makeCounter(10);
       [from10(1), from10(5), from10(10)]
     `)).toEqual([11, 15, 20])
   })
@@ -448,9 +448,9 @@ describe('scoping edge cases', () => {
 
   it('mutual recursion via lets', () => {
     expect(dvala.run(`
-      let is-even = (n) -> if n == 0 then true else is-odd(n - 1) end;
-      let is-odd = (n) -> if n == 0 then false else is-even(n - 1) end;
-      [is-even(4), is-odd(5), is-even(3)]
+      let myEven = (n) -> if n == 0 then true else myOdd(n - 1) end;
+      let myOdd = (n) -> if n == 0 then false else myEven(n - 1) end;
+      [myEven(4), myOdd(5), myEven(3)]
     `)).toEqual([true, true, false])
   })
 
@@ -476,12 +476,12 @@ describe('pure mode enforcement', () => {
   })
 
   it('pure string operations work', () => {
-    expect(dvala.run('upper-case("hello")', { pure: true })).toBe('HELLO')
+    expect(dvala.run('upperCase("hello")', { pure: true })).toBe('HELLO')
   })
 
   it('pure array operations work', () => {
     expect(dvala.run('map([1, 2, 3], inc)', { pure: true })).toEqual([2, 3, 4])
-    expect(dvala.run('filter([1, 2, 3, 4, 5], even?)', { pure: true })).toEqual([2, 4])
+    expect(dvala.run('filter([1, 2, 3, 4, 5], isEven)', { pure: true })).toEqual([2, 4])
     expect(dvala.run('reduce([1, 2, 3], +, 0)', { pure: true })).toBe(6)
   })
 
@@ -501,7 +501,7 @@ describe('pure mode enforcement', () => {
   })
 
   it('pure for works', () => {
-    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when odd?(x)) -> x * x', { pure: true }))
+    expect(dvala.run('for (x in [1, 2, 3, 4, 5] when isOdd(x)) -> x * x', { pure: true }))
       .toEqual([1, 9, 25])
   })
 
@@ -778,7 +778,7 @@ describe('parser edge cases', () => {
   })
 
   it('chained method-style calls', () => {
-    expect(dvala.run('reduce(map(filter([1, 2, 3, 4, 5], odd?), -> $ * 2), +, 0)'))
+    expect(dvala.run('reduce(map(filter([1, 2, 3, 4, 5], isOdd), -> $ * 2), +, 0)'))
       .toBe(18) // (1+3+5)*2 = 18
   })
 
@@ -823,7 +823,7 @@ describe('higher-order function edge cases', () => {
   })
 
   it('filter with predicate', () => {
-    expect(dvala.run('filter([1, 2, 3, 4, 5], even?)')).toEqual([2, 4])
+    expect(dvala.run('filter([1, 2, 3, 4, 5], isEven)')).toEqual([2, 4])
   })
 
   it('reduce with operator', () => {
@@ -843,13 +843,13 @@ describe('higher-order function edge cases', () => {
   })
 
   it('isEvery with predicate', () => {
-    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 6], even?)')).toBe(true)
-    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 5], even?)')).toBe(false)
+    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 6], isEven)')).toBe(true)
+    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 5], isEven)')).toBe(false)
   })
 
   it('some with predicate returns element', () => {
-    expect(dvala.run('some([1, 3, 4], even?)')).toBe(4)
-    expect(dvala.run('some([1, 3, 5], even?)')).toBeNull()
+    expect(dvala.run('some([1, 3, 4], isEven)')).toBe(4)
+    expect(dvala.run('some([1, 3, 5], isEven)')).toBeNull()
   })
 
   it('sortBy with key function', () => {
@@ -858,7 +858,7 @@ describe('higher-order function edge cases', () => {
   })
 
   it('groupBy', () => {
-    expect(dvala.run('let { groupBy } = import(sequence); groupBy([1, 2, 3, 4, 5], -> if even?($) then "even" else "odd" end)'))
+    expect(dvala.run('let { groupBy } = import(sequence); groupBy([1, 2, 3, 4, 5], -> if isEven($) then "even" else "odd" end)'))
       .toEqual({ odd: [1, 3, 5], even: [2, 4] })
   })
 
@@ -871,9 +871,9 @@ describe('higher-order function edge cases', () => {
     expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
   })
 
-  it('take-while / drop-while', () => {
-    expect(dvala.run('take-while([1, 2, 3, 4, 5], -> $ < 4)')).toEqual([1, 2, 3])
-    expect(dvala.run('drop-while([1, 2, 3, 4, 5], -> $ < 4)')).toEqual([4, 5])
+  it('takeWhile / dropWhile', () => {
+    expect(dvala.run('takeWhile([1, 2, 3, 4, 5], -> $ < 4)')).toEqual([1, 2, 3])
+    expect(dvala.run('dropWhile([1, 2, 3, 4, 5], -> $ < 4)')).toEqual([4, 5])
   })
 
   it('map-indexed', () => {
@@ -889,7 +889,7 @@ describe('higher-order function edge cases', () => {
   it('nested HOFs', () => {
     expect(dvala.run(`
       let data = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-      map(data, (row) -> filter(row, even?))
+      map(data, (row) -> filter(row, isEven))
     `)).toEqual([[2], [4, 6], [8]])
   })
 
@@ -963,29 +963,29 @@ describe('dvala API edge cases', () => {
 // ---------------------------------------------------------------------------
 
 describe('regex edge cases', () => {
-  it('re-match basic', () => {
-    expect(dvala.run('re-match("hello 42 world", #"(\\d+)")')).toEqual(['42', '42'])
+  it('reMatch basic', () => {
+    expect(dvala.run('reMatch("hello 42 world", #"(\\d+)")')).toEqual(['42', '42'])
   })
 
-  it('re-match no match returns null', () => {
-    expect(dvala.run('re-match("hello world", #"\\d+")')).toBeNull()
+  it('reMatch no match returns null', () => {
+    expect(dvala.run('reMatch("hello world", #"\\d+")')).toBeNull()
   })
 
   it('replace with regex', () => {
     expect(dvala.run('replace("hello 42", #"\\d+", "XX")')).toBe('hello XX')
   })
 
-  it('replace-all with regex', () => {
-    expect(dvala.run('replace-all("a1 b2 c3", #"\\d", "X")')).toBe('aX bX cX')
+  it('replaceAll with regex', () => {
+    expect(dvala.run('replaceAll("a1 b2 c3", #"\\d", "X")')).toBe('aX bX cX')
   })
 
   it('split with regex', () => {
     expect(dvala.run('split("a1b2c3", #"\\d")')).toEqual(['a', 'b', 'c', ''])
   })
 
-  it('re-match with no match check via null?', () => {
-    expect(dvala.run('null?(re-match("hello", #"\\d+"))')).toBe(true)
-    expect(dvala.run('null?(re-match("hello 42", #"(\\d+)"))')).toBe(false)
+  it('reMatch with no match check via isNull', () => {
+    expect(dvala.run('isNull(reMatch("hello", #"\\d+"))')).toBe(true)
+    expect(dvala.run('isNull(reMatch("hello 42", #"(\\d+)"))')).toBe(false)
   })
 })
 
@@ -1001,9 +1001,9 @@ describe('string operation edge cases', () => {
     expect(dvala.run('str([1, 2, 3])')).toBe('[1,2,3]')
   })
 
-  it('upper-case and lower-case', () => {
-    expect(dvala.run('upper-case("hello")')).toBe('HELLO')
-    expect(dvala.run('lower-case("HELLO")')).toBe('hello')
+  it('upperCase and lowerCase', () => {
+    expect(dvala.run('upperCase("hello")')).toBe('HELLO')
+    expect(dvala.run('lowerCase("HELLO")')).toBe('hello')
   })
 
   it('trim', () => {
@@ -1015,9 +1015,9 @@ describe('string operation edge cases', () => {
     expect(dvala.run('let { isStartsWith, isEndsWith } = import(sequence); isEndsWith("hello world", "world")')).toBe(true)
   })
 
-  it('contains? on string', () => {
-    expect(dvala.run('contains?("hello world", "lo wo")')).toBe(true)
-    expect(dvala.run('contains?("hello world", "xyz")')).toBe(false)
+  it('contains on string', () => {
+    expect(dvala.run('contains("hello world", "lo wo")')).toBe(true)
+    expect(dvala.run('contains("hello world", "xyz")')).toBe(false)
   })
 
   it('split and join', () => {
@@ -1123,14 +1123,14 @@ describe('collection operation edge cases', () => {
     expect(dvala.run('range(0, 10, 3)')).toEqual([0, 3, 6, 9])
   })
 
-  it('contains? on array', () => {
-    expect(dvala.run('contains?([1, 2, 3], 2)')).toBe(true)
-    expect(dvala.run('contains?([1, 2, 3], 4)')).toBe(false)
+  it('contains on array', () => {
+    expect(dvala.run('contains([1, 2, 3], 2)')).toBe(true)
+    expect(dvala.run('contains([1, 2, 3], 4)')).toBe(false)
   })
 
-  it('index-of', () => {
-    expect(dvala.run('index-of([10, 20, 30], 20)')).toBe(1)
-    expect(dvala.run('index-of([10, 20, 30], 99)')).toBeNull()
+  it('indexOf', () => {
+    expect(dvala.run('indexOf([10, 20, 30], 20)')).toBe(1)
+    expect(dvala.run('indexOf([10, 20, 30], 99)')).toBeNull()
   })
 })
 
@@ -1176,12 +1176,12 @@ describe('math operation edge cases', () => {
   })
 
   it('number predicates', () => {
-    expect(dvala.run('zero?(0)')).toBe(true)
-    expect(dvala.run('zero?(1)')).toBe(false)
-    expect(dvala.run('pos?(1)')).toBe(true)
-    expect(dvala.run('neg?(-1)')).toBe(true)
-    expect(dvala.run('even?(4)')).toBe(true)
-    expect(dvala.run('odd?(3)')).toBe(true)
+    expect(dvala.run('isZero(0)')).toBe(true)
+    expect(dvala.run('isZero(1)')).toBe(false)
+    expect(dvala.run('isPos(1)')).toBe(true)
+    expect(dvala.run('isNeg(-1)')).toBe(true)
+    expect(dvala.run('isEven(4)')).toBe(true)
+    expect(dvala.run('isOdd(3)')).toBe(true)
   })
 })
 
@@ -1206,9 +1206,9 @@ describe('complex real-world patterns', () => {
         if count(arr) <= 1 then arr
         else do
           let pivot = first(arr);
-          let rest-arr = rest(arr);
-          let lesser = filter(rest-arr, -> $ < pivot);
-          let greater = filter(rest-arr, -> $ >= pivot);
+          let restArr = rest(arr);
+          let lesser = filter(restArr, -> $ < pivot);
+          let greater = filter(restArr, -> $ >= pivot);
           qsort(lesser) ++ [pivot] ++ qsort(greater)
         end end;
       qsort([3, 6, 8, 10, 1, 2, 1])
@@ -1217,16 +1217,16 @@ describe('complex real-world patterns', () => {
 
   it('tree traversal via pattern matching', () => {
     expect(dvala.run(`
-      let tree-sum = (tree) ->
+      let treeSum = (tree) ->
         match tree
-          case n when number?(n) then n
-          case { val, left, right } then val + tree-sum(left) + tree-sum(right)
-          case { val, left } then val + tree-sum(left)
-          case { val, right } then val + tree-sum(right)
+          case n when isNumber(n) then n
+          case { val, left, right } then val + treeSum(left) + treeSum(right)
+          case { val, left } then val + treeSum(left)
+          case { val, right } then val + treeSum(right)
           case { val } then val
           case _ then 0
         end;
-      tree-sum({
+      treeSum({
         val: 1,
         left: { val: 2, left: 3, right: 4 },
         right: { val: 5, right: 6 }
@@ -1286,7 +1286,7 @@ describe('complex real-world patterns', () => {
           { name: "charlie", tags: ["admin", "moderator"] }
         ]
       };
-      let admins = map(filter(data.users, -> contains?($.tags, "admin")), -> $.name);
+      let admins = map(filter(data.users, -> contains($.tags, "admin")), -> $.name);
       admins
     `)).toEqual(['alice', 'charlie'])
   })

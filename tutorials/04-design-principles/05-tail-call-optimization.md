@@ -55,11 +55,11 @@ The key technique is to add an **accumulator** parameter that carries the runnin
 Naive recursion:
 
 ```dvala
-let add-up = n ->
+let addUp = n ->
   if n <= 0 then 0
   else n + self(n - 1)
   end;
-add-up(100)
+addUp(100)
 ```
 
 With loop/recur:
@@ -100,11 +100,11 @@ loop (n = 10, a = 0, b = 1) ->
 
 ```dvala
 loop (xs = [1, 2, 3, 4, 5], acc = []) ->
-  if empty?(xs) then
+  if isEmpty(xs) then
     acc
   else
     recur(
-      drop-last(xs, 1),
+      dropLast(xs, 1),
       push(acc, last(xs))
     )
   end
@@ -116,7 +116,7 @@ For naturally recursive problems with small depth, `self` provides simple recurs
 
 ```dvala
 let depth = (node) ->
-  if not(object?(node)) then 0
+  if not(isObject(node)) then 0
   else
     1 + max(
       self(get(node, "left", 0)),
@@ -134,7 +134,7 @@ Many problems that seem recursive are actually iterations. Dvala's `for` compreh
 
 ```dvala
 // Sum of squares of odd numbers under 10
-for (x in range(10) when odd?(x)) -> x * x
+for (x in range(10) when isOdd(x)) -> x * x
 ```
 
 ```dvala

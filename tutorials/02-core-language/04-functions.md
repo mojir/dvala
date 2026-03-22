@@ -43,8 +43,8 @@ greet()
 Collect remaining arguments with the rest (`...`) syntax:
 
 ```dvala
-let sum-all = (...nums) -> reduce(nums, +, 0);
-sum-all(1, 2, 3, 4, 5)
+let sumAll = (...nums) -> reduce(nums, +, 0);
+sumAll(1, 2, 3, 4, 5)
 ```
 
 ## Short-hand Lambdas

@@ -123,7 +123,7 @@ describe('individual module entry points', () => {
   it('collectionUtils module', () => {
     expect(collectionUtilsModule.name).toBe('collection')
     const dvala = createDvala({ modules: [collectionUtilsModule] })
-    expect(dvala.run('let cu = import(collection); cu.isEvery([1, 2, 3], number?)')).toBe(true)
+    expect(dvala.run('let cu = import(collection); cu.isEvery([1, 2, 3], isNumber)')).toBe(true)
   })
 
   it('sequenceUtils module', () => {
@@ -141,7 +141,7 @@ describe('individual module entry points', () => {
   it('functionalUtils module', () => {
     expect(functionalUtilsModule.name).toBe('functional')
     const dvala = createDvala({ modules: [functionalUtilsModule] })
-    expect(dvala.run('let f = import(functional); (f.complement(zero?))(1)')).toBe(true)
+    expect(dvala.run('let f = import(functional); (f.complement(isZero))(1)')).toBe(true)
   })
 
   it('mathUtils module', () => {

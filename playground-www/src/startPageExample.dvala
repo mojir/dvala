@@ -22,12 +22,12 @@ let total = prices
   |> _ round 2;
 
 // Calculate how much was saved for display
-let saved-amount = sum(prices) - total |> _ round 2;
+let savedAmount = sum(prices) - total |> _ round 2;
 
 perform(@dvala.io.print,
   `Total: $${str(total)} ` ++
-  if saved-amount > 0 then
-    `(You saved $${str(saved-amount)})`
+  if savedAmount > 0 then
+    `(You saved $${str(savedAmount)})`
   else
     "(No discount applied)"
   end

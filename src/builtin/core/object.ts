@@ -19,7 +19,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       args: { obj: { type: 'object' } },
       variants: [{ argumentNames: ['obj'] }],
       description: 'Returns array of all keys in $obj.',
-      seeAlso: ['vals', 'entries', 'zipmap', 'select-keys'],
+      seeAlso: ['vals', 'entries', 'zipmap', 'selectKeys'],
       examples: [
         'keys({})',
         'keys({ x: 10, y: true, z: "A string" })',
@@ -91,7 +91,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['obj', 'key'] }],
       description: 'Returns entry (key-value pair) for $key, or `null` if $key not present in $obj.',
-      seeAlso: ['get', 'contains?', 'entries', 'sequence.position', 'some'],
+      seeAlso: ['get', 'contains', 'entries', 'sequence.position', 'some'],
       examples: [
         '{ a: 1, "b": 2 } find "a"',
         'find(object("a", 1, "b", 2), "b")',
@@ -120,7 +120,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['obj', 'key'] }],
       description: 'Return shallow copy of $obj with $key deleted.',
-      seeAlso: ['assoc', 'select-keys'],
+      seeAlso: ['assoc', 'selectKeys'],
       examples: [
         '{ x: 10, y: 20 } dissoc "y"',
         'dissoc({ x: 10, y: 20 }, "x")',
@@ -163,7 +163,7 @@ o`,
 
 If two keys appears in more than one object the value from the last object is used.
 If no arguments are provided \`null\` is returned.`,
-      seeAlso: ['merge-with', 'assoc'],
+      seeAlso: ['mergeWith', 'assoc'],
       examples: [
         '{ x: 10 } merge { y: 20 }',
         'merge(object("x", 10), object("y", 20))',
@@ -172,8 +172,8 @@ If no arguments are provided \`null\` is returned.`,
     },
   },
 
-  'merge-with': {
-    evaluate: () => { throw new Error('merge-with is implemented in Dvala') },
+  'mergeWith': {
+    evaluate: () => { throw new Error('mergeWith is implemented in Dvala') },
     arity: { min: 2 },
     docs: {
       category: 'object',
@@ -190,9 +190,9 @@ If two keys appears in more than one object $fun is used to calculate the new va
 If no arguments are provided \`null\` is returned.`,
       seeAlso: ['merge'],
       examples: [
-        'merge-with(object("x", 10), object("y", 20), +)',
-        'merge-with(object("x", 10), object("x", 15, "y", 20), +)',
-        'merge-with({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)',
+        'mergeWith(object("x", 10), object("y", 20), +)',
+        'mergeWith(object("x", 10), object("x", 15, "y", 20), +)',
+        'mergeWith({ x: 10 }, { x: 20 }, { x: 30 }, { x: 40 }, -)',
       ],
       hideOperatorForm: true,
     },
@@ -233,7 +233,7 @@ If no arguments are provided \`null\` is returned.`,
     },
   },
 
-  'select-keys': {
+  'selectKeys': {
     evaluate: ([obj, keys], sourceCodeInfo): Any => {
       assertStringArray(keys, sourceCodeInfo)
       assertObj(obj, sourceCodeInfo)
@@ -257,9 +257,9 @@ If no arguments are provided \`null\` is returned.`,
       description: 'Returns an object containing only those entries in $a whose key is in $b.',
       seeAlso: ['dissoc', 'keys'],
       examples: [
-        '{ a: 1, b: 2, c: 3 } select-keys ["a", "b"]',
-        'select-keys({ a: 1, b: 2, c: 3 }, ["a", "b"])',
-        'select-keys({ a: 1 }, ["a", "b"])',
+        '{ a: 1, b: 2, c: 3 } selectKeys ["a", "b"]',
+        'selectKeys({ a: 1, b: 2, c: 3 }, ["a", "b"])',
+        'selectKeys({ a: 1 }, ["a", "b"])',
       ],
     },
   },

@@ -1255,8 +1255,8 @@ describe('auto: edge cases', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let make-adder = (n) -> (x) -> n + x;
-      let add10 = make-adder(10);
+      let makeAdder = (n) -> (x) -> n + x;
+      let add10 = makeAdder(10);
       perform(@dvala.checkpoint, "label pre-suspend");
       let input = perform(@my.step);
       add10(input)

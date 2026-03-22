@@ -22,7 +22,7 @@ describe('tokenizers', () => {
       expect(tokenizeSymbol('symbol', 0)).toEqual([6, ['Symbol', 'symbol']])
       expect(tokenizeSymbol('A:B', 0)).toEqual([3, ['Symbol', 'A:B']])
       expect(tokenizeSymbol('Grid1!A:B', 0)).toEqual([9, ['Symbol', 'Grid1!A:B']])
-      expect(tokenizeSymbol('number?', 0)).toEqual([7, ['Symbol', 'number?']])
+      expect(tokenizeSymbol('isNumber', 0)).toEqual([8, ['Symbol', 'isNumber']])
       expect(tokenizeSymbol('... A-B', 4)).toEqual([3, ['Symbol', 'A-B']])
       expect(tokenizeSymbol('... \'A B\'', 4)).toEqual([5, ['Symbol', '\'A B\'']])
       expect(tokenizeSymbol('... \'A\\\'B\'', 4)).toEqual([6, ['Symbol', '\'A\\\'B\'']])

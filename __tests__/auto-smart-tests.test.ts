@@ -117,7 +117,7 @@ const skipWrongTypeTests = new Set([
   'boolean', // conflicts with reserved word
   'number', // conflicts with reserved word
   'compare', // accepts any types for comparison
-  'type-of', // accepts any
+  'typeOf', // accepts any
   'not', // coerces any to boolean
   'hash', // accepts any
   '=', // accepts any
@@ -132,7 +132,7 @@ const skipWrongTypeTests = new Set([
   'constantly', // wraps any value
   'count', // accepts sequence (string or array) and also objects
   'get', // accepts collection
-  'contains?', // accepts collection
+  'contains', // accepts collection
   'assoc', // accepts collection
   'map', // first arg is collection but also handles objects
   'filter', // first arg is collection but also handles objects
@@ -142,11 +142,11 @@ const skipWrongTypeTests = new Set([
   'sorted?', // flexible input
   'sort', // flexible input
   'take', // flexible input
-  'take-while', // flexible input
+  'takeWhile', // flexible input
   'drop', // flexible input
-  'drop-while', // flexible input
+  'dropWhile', // flexible input
   'reverse', // flexible input
-  'index-of', // flexible input
+  'indexOf', // flexible input
   'lastIndexOf', // flexible input
   'first', // flexible input
   'second', // flexible input
@@ -156,18 +156,18 @@ const skipWrongTypeTests = new Set([
   'slice', // flexible input
   'distinct', // flexible input
   'flat-map', // flexible input
-  'merge-with', // flexible input
+  'mergeWith', // flexible input
   'concat', // flexible input
   'keys', // flexible input
   'vals', // flexible input
   'entries', // flexible input
   'from-entries', // flexible input
   'merge', // flexible input
-  'select-keys', // flexible input
+  'selectKeys', // flexible input
   'dissoc', // flexible input
   'zipmap', // flexible input
   'doc', // meta function
-  'effect-matcher', // returns function
+  'effectMatcher', // returns function
   'arity', // numbers/collections are function-like in Dvala, so arity(42) is valid
 ])
 

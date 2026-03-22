@@ -3031,7 +3031,7 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   const suspendedEffectSection = ref('suspended-effect-section')
   if (snapshot.effectName) {
     suspendedEffectSection.style.display = 'flex'
-    ref('effect-name').textContent = snapshot.effectName
+    ref('effectName').textContent = snapshot.effectName
 
     // Effect args
     const argsEl = ref('effect-args')

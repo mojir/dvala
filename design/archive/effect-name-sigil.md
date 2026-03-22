@@ -12,16 +12,16 @@ Introduce `@` as a sigil prefix for effect names. An effect name becomes a first
 ```
 perform(effect(dvala.io.print), "hello")
 let e = effect(dvala.io.print)
-effect?(e)
-effect-name(e)
+isEffect(e)
+effectName(e)
 ```
 
 ### After
 ```
 perform(@dvala.io.print, "hello")
 let e = @dvala.io.print
-effect?(e)
-effect-name(e)
+isEffect(e)
+effectName(e)
 ```
 
 ## Syntax rules
@@ -53,8 +53,8 @@ effect-name(e)
 
 ### Built-ins (`src/builtin/`)
 - Remove `effect` special expression (`src/builtin/specialExpressions/effect.ts`)
-- Keep `effect?` predicate (works on values, not syntax)
-- Keep `effect-name` function (works on values, not syntax)
+- Keep `isEffect` predicate (works on values, not syntax)
+- Keep `effectName` function (works on values, not syntax)
 - `perform` first argument is now directly an `EffectRef` value (no change needed — it already expects an EffectRef)
 
 ### Syntax highlighting (`playground-www/src/SyntaxOverlay.ts`)

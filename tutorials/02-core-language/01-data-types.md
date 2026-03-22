@@ -120,7 +120,7 @@ let defaults = { theme: "dark", lang: "en" };
 Regexp literals start with `#"`. No need to escape backslashes:
 
 ```dvala
-re-match("abc123", #"[a-z]+(\d+)")
+reMatch("abc123", #"[a-z]+(\d+)")
 ```
 
 ## Type Predicates
@@ -128,19 +128,19 @@ re-match("abc123", #"[a-z]+(\d+)")
 Check the type of a value with predicate functions that end in `?`:
 
 ```dvala
-number?(42)
+isNumber(42)
 ```
 
 ```dvala
-string?("hello")
+isString("hello")
 ```
 
 ```dvala
-array?([1, 2, 3])
+isArray([1, 2, 3])
 ```
 
 ```dvala
-object?({ a: 1 })
+isObject({ a: 1 })
 ```
 
 ## Structural Equality

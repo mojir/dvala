@@ -78,7 +78,7 @@ describe('array functions', () => {
       expect(dvala.run('let { mapcat } = import(sequence); mapcat([[3, 2, 1, 0], [6, 5, 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
       expect(dvala.run('let { mapcat } = import(sequence); mapcat([[3, 2, 1, 0], [6, [5], 4], [9, 8, 7]], reverse)')).toEqual([0, 1, 2, 3, 4, [5], 6, 7, 8, 9])
       expect(dvala.run('let { mapcat } = import(sequence); let foo = (n) -> do [-(n, 1), n, +(n, 1)] end; mapcat([1, 2, 3], foo)')).toEqual([0, 1, 2, 1, 2, 3, 2, 3, 4])
-      expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [2, 2], [2, 3]], -> $ filter odd?)')).toEqual([1, 3])
+      expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [2, 2], [2, 3]], -> $ filter isOdd)')).toEqual([1, 3])
     })
   })
 

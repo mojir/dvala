@@ -210,19 +210,19 @@ end
 ### Recursive List Sum
 
 ```dvala
-let sum-list = (lst) ->
+let sumList = (lst) ->
   match lst
     case [] then 0
-    case [x, ...xs] then x + sum-list(xs)
+    case [x, ...xs] then x + sumList(xs)
   end;
 
-sum-list([1, 2, 3, 4, 5])
+sumList([1, 2, 3, 4, 5])
 ```
 
 ### Coordinate Classification
 
 ```dvala
-let describe-point = (point) ->
+let describePoint = (point) ->
   match point
     case [0, 0] then "origin"
     case [0, y] then "y-axis"
@@ -230,13 +230,13 @@ let describe-point = (point) ->
     case [x, y] then "point at " ++ str(x) ++ ", " ++ str(y)
   end;
 
-[describe-point([0, 0]), describe-point([0, 5]), describe-point([3, 0]), describe-point([3, 4])]
+[describePoint([0, 0]), describePoint([0, 5]), describePoint([3, 0]), describePoint([3, 4])]
 ```
 
 ### HTTP Response Handling
 
 ```dvala
-let handle-response = (response) ->
+let handleResponse = (response) ->
   match response
     case { status: 200, body } then "OK: " ++ body
     case { status: 404 } then "Not found"
@@ -244,5 +244,5 @@ let handle-response = (response) ->
     case _ then "Unknown"
   end;
 
-handle-response({ status: 200, body: "Hello" })
+handleResponse({ status: 200, body: "Hello" })
 ```

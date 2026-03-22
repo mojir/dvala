@@ -42,21 +42,21 @@ describe('string functions', () => {
       })
     })
 
-    describe('lower-case', () => {
+    describe('lowerCase', () => {
       it('samples', () => {
-        expect(dvala.run('lower-case("Albert!")')).toBe('albert!')
-        expect(dvala.run('lower-case("")')).toBe('')
-        expect(() => dvala.run('lower-case()')).toThrow(DvalaError)
-        expect(() => dvala.run('lower-case("First", "Second")')).toThrow(DvalaError)
+        expect(dvala.run('lowerCase("Albert!")')).toBe('albert!')
+        expect(dvala.run('lowerCase("")')).toBe('')
+        expect(() => dvala.run('lowerCase()')).toThrow(DvalaError)
+        expect(() => dvala.run('lowerCase("First", "Second")')).toThrow(DvalaError)
       })
     })
 
-    describe('upper-case', () => {
+    describe('upperCase', () => {
       it('samples', () => {
-        expect(dvala.run('upper-case("Albert!")')).toBe('ALBERT!')
-        expect(dvala.run('upper-case("")')).toBe('')
-        expect(() => dvala.run('upper-case()')).toThrow(DvalaError)
-        expect(() => dvala.run('upper-case("First", "Second")')).toThrow(DvalaError)
+        expect(dvala.run('upperCase("Albert!")')).toBe('ALBERT!')
+        expect(dvala.run('upperCase("")')).toBe('')
+        expect(() => dvala.run('upperCase()')).toThrow(DvalaError)
+        expect(() => dvala.run('upperCase("First", "Second")')).toThrow(DvalaError)
       })
     })
 
@@ -70,24 +70,24 @@ describe('string functions', () => {
       })
     })
 
-    describe('blank?', () => {
+    describe('isBlank', () => {
       it('samples', () => {
-        expect(dvala.run('blank?("")')).toBe(true)
-        expect(dvala.run('blank?(" ")')).toBe(true)
-        expect(dvala.run('blank?("\n")')).toBe(true)
-        expect(dvala.run('blank?("  ")')).toBe(true)
-        expect(dvala.run('blank?("  a")')).toBe(false)
-        expect(dvala.run('blank?("a  ")')).toBe(false)
-        expect(dvala.run('blank?(" a ")')).toBe(false)
-        expect(dvala.run('blank?(" a b ")')).toBe(false)
-        expect(dvala.run('blank?(null)')).toBe(true)
-        expect(() => dvala.run('blank?(true)')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?(false)')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?(0)')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?([])')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?({})')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?()')).toThrow(DvalaError)
-        expect(() => dvala.run('blank?("a", "b")')).toThrow(DvalaError)
+        expect(dvala.run('isBlank("")')).toBe(true)
+        expect(dvala.run('isBlank(" ")')).toBe(true)
+        expect(dvala.run('isBlank("\n")')).toBe(true)
+        expect(dvala.run('isBlank("  ")')).toBe(true)
+        expect(dvala.run('isBlank("  a")')).toBe(false)
+        expect(dvala.run('isBlank("a  ")')).toBe(false)
+        expect(dvala.run('isBlank(" a ")')).toBe(false)
+        expect(dvala.run('isBlank(" a b ")')).toBe(false)
+        expect(dvala.run('isBlank(null)')).toBe(true)
+        expect(() => dvala.run('isBlank(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank(false)')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank(0)')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank([])')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank({})')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank()')).toThrow(DvalaError)
+        expect(() => dvala.run('isBlank("a", "b")')).toThrow(DvalaError)
       })
     })
   }

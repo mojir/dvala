@@ -112,7 +112,7 @@ describe('stress: parallel + checkpoints', () => {
         perform(@my.fast),
         perform(@my.slow)
       );
-      map(results, -> upper-case($))
+      map(results, -> upperCase($))
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -497,13 +497,13 @@ describe('stress: local + host handler priority with suspend', () => {
     expect(r2).toEqual({ type: 'completed', value: 'L3:deep' })
   })
 
-  it('effect-matcher predicate in handle/with survives suspend/resume', async () => {
+  it('effectMatcher predicate in handle/with survives suspend/resume', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
 
     const r1 = await dvala.runAsync(`
-      let pred = effect-matcher("custom.*");
+      let pred = effectMatcher("custom.*");
       handle
         let x = perform(@my.wait);
         perform(@custom.foo, x)
@@ -530,8 +530,8 @@ describe('stress: deep closures + effects + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let make-adder = (a) -> (b) -> (c) -> a + b + c;
-      let add10 = make-adder(10);
+      let makeAdder = (a) -> (b) -> (c) -> a + b + c;
+      let add10 = makeAdder(10);
       let add10and20 = add10(20);
       let x = perform(@my.wait);
       add10and20(x)
@@ -610,8 +610,8 @@ describe('stress: deep closures + effects + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let make-scaler = (factor) -> (arr) -> map(arr, (x) -> x * factor);
-      let scale3 = make-scaler(3);
+      let makeScaler = (factor) -> (arr) -> map(arr, (x) -> x * factor);
+      let scale3 = makeScaler(3);
       let data = perform(@my.wait);
       scale3(data)
     `, { effectHandlers: handlers })
@@ -877,13 +877,13 @@ describe('stress: deeply nested do/with + suspend', () => {
 // 9. Effect-matcher predicates across complex flows
 // ---------------------------------------------------------------------------
 
-describe('stress: effect-matcher in complex flows', () => {
-  it('effect-matcher with wildcard string in nested do/with', () => {
+describe('stress: effectMatcher in complex flows', () => {
+  it('effectMatcher with wildcard string in nested do/with', () => {
     const result = dvala.run(`
       handle
         handle
           perform(@custom.thing, "data")
-        with [(arg, eff, nxt) -> if effect-matcher("custom.*")(eff) then "matched: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if effectMatcher("custom.*")(eff) then "matched: " ++ arg else nxt(eff, arg) end]
         end
       with [(arg, eff, nxt) -> if eff == @dvala.error then "error: " ++ arg else nxt(eff, arg) end]
       end
@@ -891,7 +891,7 @@ describe('stress: effect-matcher in complex flows', () => {
     expect(result).toBe('matched: data')
   })
 
-  it('effect-matcher with regex survives suspend/resume + JSON round-trip', async () => {
+  it('effectMatcher with regex survives suspend/resume + JSON round-trip', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
@@ -900,7 +900,7 @@ describe('stress: effect-matcher in complex flows', () => {
       handle
         let x = perform(@my.wait);
         perform(@app.transform, x)
-      with [(arg, eff, nxt) -> if effect-matcher(#"^app\\.")(eff) then "transformed: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if effectMatcher(#"^app\\.")(eff) then "transformed: " ++ arg else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -915,8 +915,8 @@ describe('stress: effect-matcher in complex flows', () => {
 
   it('multiple effect-matchers in handle/with, first match wins', () => {
     const result = dvala.run(`
-      let pred1 = effect-matcher("custom.*");
-      let pred2 = effect-matcher(#".*");
+      let pred1 = effectMatcher("custom.*");
+      let pred2 = effectMatcher(#".*");
       handle
         perform(@custom.foo, "data")
       with [
@@ -928,12 +928,12 @@ describe('stress: effect-matcher in complex flows', () => {
     expect(result).toBe('wildcard: data')
   })
 
-  it('effect-matcher predicate stored in variable works', () => {
+  it('effectMatcher predicate stored in variable works', () => {
     const result = dvala.run(`
-      let is-custom = effect-matcher("custom.*");
+      let isCustom = effectMatcher("custom.*");
       handle
         perform(@custom.bar, 42)
-      with [(arg, eff, nxt) -> if is-custom(eff) then arg * 2 else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if isCustom(eff) then arg * 2 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(84)
@@ -983,9 +983,9 @@ describe('stress: dedup pool with many checkpoints', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let make-fn = (n) -> (x) -> n + x;
-      let f1 = make-fn(1);
-      let f2 = make-fn(2);
+      let makeFn = (n) -> (x) -> n + x;
+      let f1 = makeFn(1);
+      let f2 = makeFn(2);
       perform(@dvala.checkpoint, "fn f1");
       perform(@dvala.checkpoint, "fn f2");
       let input = perform(@my.wait);
@@ -1270,7 +1270,7 @@ describe('stress: complex data through suspend/resume', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      let greet = (name) -> "Hello, " ++ upper-case(name) ++ "!";
+      let greet = (name) -> "Hello, " ++ upperCase(name) ++ "!";
       let name = perform(@my.wait);
       greet(name)
     `, { effectHandlers: handlers })
@@ -1290,7 +1290,7 @@ describe('stress: complex data through suspend/resume', () => {
     const r1 = await dvala.runAsync(`
       let pattern = #"(\\d+)";
       let input = perform(@my.wait);
-      first(re-match(input, pattern))
+      first(reMatch(input, pattern))
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -1544,8 +1544,8 @@ describe('stress: complex end-to-end patterns', () => {
   it('filter with effect predicate', async () => {
     const result = await dvala.runAsync(`
       handle
-        filter([1, 2, 3, 4, 5, 6], (x) -> perform(@my.even?, x))
-      with [(arg, eff, nxt) -> if eff == @my.even? then arg % 2 == 0 else nxt(eff, arg) end]
+        filter([1, 2, 3, 4, 5, 6], (x) -> perform(@my.isEven, x))
+      with [(arg, eff, nxt) -> if eff == @my.isEven then arg % 2 == 0 else nxt(eff, arg) end]
       end
     `)
     expect(result).toMatchObject({ type: 'completed', value: [2, 4, 6] })

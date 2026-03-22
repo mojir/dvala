@@ -32,44 +32,44 @@ function runGrid(code: string): unknown {
 describe('grid', () => {
   describe('grid:isCellEvery', () => {
     it('should check if every element in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isCellEvery(${exampleGrid1}, string?)`)).toBe(false)
-      expect(runGrid(`grid:isCellEvery(${exampleGrid2}, string?)`)).toBe(true)
-      expect(runGrid(`grid:isCellEvery(${exampleGrid3}, string?)`)).toBe(false)
+      expect(runGrid(`grid:isCellEvery(${exampleGrid1}, isString)`)).toBe(false)
+      expect(runGrid(`grid:isCellEvery(${exampleGrid2}, isString)`)).toBe(true)
+      expect(runGrid(`grid:isCellEvery(${exampleGrid3}, isString)`)).toBe(false)
     })
   })
   describe('grid:isSome', () => {
     it('should check if some element in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isSome(${exampleGrid1}, string?)`)).toBe(true)
-      expect(runGrid(`grid:isSome(${exampleGrid2}, string?)`)).toBe(true)
-      expect(runGrid(`grid:isSome(${exampleGrid3}, string?)`)).toBe(false)
+      expect(runGrid(`grid:isSome(${exampleGrid1}, isString)`)).toBe(true)
+      expect(runGrid(`grid:isSome(${exampleGrid2}, isString)`)).toBe(true)
+      expect(runGrid(`grid:isSome(${exampleGrid3}, isString)`)).toBe(false)
     })
   })
   describe('grid:isEveryRow', () => {
     it('should check if every row in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isEveryRow(${exampleGrid1}, -> string?($[0]))`)).toBe(true)
-      expect(runGrid(`grid:isEveryRow(${exampleGrid2}, -> string?($[0]))`)).toBe(true)
-      expect(runGrid(`grid:isEveryRow(${exampleGrid3}, -> string?($[0]))`)).toBe(false)
+      expect(runGrid(`grid:isEveryRow(${exampleGrid1}, -> isString($[0]))`)).toBe(true)
+      expect(runGrid(`grid:isEveryRow(${exampleGrid2}, -> isString($[0]))`)).toBe(true)
+      expect(runGrid(`grid:isEveryRow(${exampleGrid3}, -> isString($[0]))`)).toBe(false)
     })
   })
   describe('grid:isSomeRow', () => {
     it('should check if some row in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isSomeRow(${exampleGrid1}, -> $ contains? "Albert")`)).toBe(true)
-      expect(runGrid(`grid:isSomeRow(${exampleGrid2}, -> $ contains? "Albert")`)).toBe(true)
-      expect(runGrid(`grid:isSomeRow(${exampleGrid3}, -> $ contains? "Albert")`)).toBe(false)
+      expect(runGrid(`grid:isSomeRow(${exampleGrid1}, -> $ contains "Albert")`)).toBe(true)
+      expect(runGrid(`grid:isSomeRow(${exampleGrid2}, -> $ contains "Albert")`)).toBe(true)
+      expect(runGrid(`grid:isSomeRow(${exampleGrid3}, -> $ contains "Albert")`)).toBe(false)
     })
   })
   describe('grid:isEveryCol', () => {
     it('should check if every column in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isEveryCol(${exampleGrid1}, -> string?($[0]))`)).toBe(false)
-      expect(runGrid(`grid:isEveryCol(${exampleGrid2}, -> string?($[0]))`)).toBe(true)
-      expect(runGrid(`grid:isEveryCol(${exampleGrid3}, -> string?($[0]))`)).toBe(false)
+      expect(runGrid(`grid:isEveryCol(${exampleGrid1}, -> isString($[0]))`)).toBe(false)
+      expect(runGrid(`grid:isEveryCol(${exampleGrid2}, -> isString($[0]))`)).toBe(true)
+      expect(runGrid(`grid:isEveryCol(${exampleGrid3}, -> isString($[0]))`)).toBe(false)
     })
   })
   describe('grid:isSomeCol', () => {
     it('should check if some column in the grid satisfies the predicate', () => {
-      expect(runGrid(`grid:isSomeCol(${exampleGrid1}, -> $ contains? "Albert")`)).toBe(true)
-      expect(runGrid(`grid:isSomeCol(${exampleGrid2}, -> $ contains? "Albert")`)).toBe(true)
-      expect(runGrid(`grid:isSomeCol(${exampleGrid3}, -> $ contains? "Albert")`)).toBe(false)
+      expect(runGrid(`grid:isSomeCol(${exampleGrid1}, -> $ contains "Albert")`)).toBe(true)
+      expect(runGrid(`grid:isSomeCol(${exampleGrid2}, -> $ contains "Albert")`)).toBe(true)
+      expect(runGrid(`grid:isSomeCol(${exampleGrid3}, -> $ contains "Albert")`)).toBe(false)
     })
   })
   describe('grid:row', () => {

@@ -16,7 +16,7 @@ import type { Any } from '../src/interface'
 
 const corePageExamples = [
   '1 + 2 + 3',
-  'upper-case("hello, world!")',
+  'upperCase("hello, world!")',
   'map([1, 2, 3], inc)',
   'if 3 > 2 then "yes" else "no" end',
 ]
@@ -300,7 +300,7 @@ describe('tutorialExamples', () => {
     { pattern: 'dvala.io.read', handler: ctx => ctx.resume('test-input') },
     { pattern: 'dvala.io.pick', handler: ctx => ctx.resume((ctx.arg as Any[])[0]!) },
     { pattern: 'dvala.io.confirm', handler: ctx => ctx.resume(true) },
-    { pattern: 'dvala.io.read-stdin', handler: ctx => ctx.resume('') },
+    { pattern: 'dvala.io.readStdin', handler: ctx => ctx.resume('') },
     { pattern: '*', handler: ctx => ctx.next() },
   ]
 

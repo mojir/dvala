@@ -10,7 +10,7 @@
  * mirroring the structure of builtin normal expressions and module functions.
  *
  * Sync effects work in both `runSync` and `run`.
- * Async effects (`dvala.sleep`, `dvala.io.read` in Node, `dvala.io.read-stdin`) only work in `run` —
+ * Async effects (`dvala.sleep`, `dvala.io.read` in Node, `dvala.io.readStdin`) only work in `run` —
  * `runSync` will throw when a Promise surfaces.
  */
 
@@ -142,7 +142,7 @@ type StandardEffectName =
   | 'dvala.io.read'
   | 'dvala.io.pick'
   | 'dvala.io.confirm'
-  | 'dvala.io.read-stdin'
+  | 'dvala.io.readStdin'
   | 'dvala.random'
   | 'dvala.random.uuid'
   | 'dvala.random.int'
@@ -235,7 +235,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       examples: [
         '@dvala.io.read',
       ],
-      seeAlso: ['-effect-dvala.io.read-stdin', '-effect-dvala.io.print', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
+      seeAlso: ['-effect-dvala.io.readStdin', '-effect-dvala.io.print', '-effect-dvala.io.pick', '-effect-dvala.io.confirm', 'perform', 'effect'],
     },
   },
 
@@ -373,10 +373,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     },
   },
 
-  'dvala.io.read-stdin': {
+  'dvala.io.readStdin': {
     handler: (_arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       if (!isNode() || !process.stdin) {
-        throw new DvalaError('dvala.io.read-stdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
+        throw new DvalaError('dvala.io.readStdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
       }
       return new Promise<Step>((resolve, reject) => {
         const chunks: string[] = []
@@ -395,7 +395,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       args: {},
       variants: [{ argumentNames: [] }],
       examples: [
-        '@dvala.io.read-stdin',
+        '@dvala.io.readStdin',
       ],
       seeAlso: ['-effect-dvala.io.read', 'perform', 'effect'],
     },

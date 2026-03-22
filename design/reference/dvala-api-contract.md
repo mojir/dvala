@@ -204,7 +204,7 @@ perform(effect(dvala.log), "hello")
 do
   perform(llm, "prompt")
 with
-  case llm then ([prompt]) -> upper-case(prompt)
+  case llm then ([prompt]) -> upperCase(prompt)
 end
 
 // do/with — error handling via dvala.error effect
@@ -219,10 +219,10 @@ do
   perform(llm, "prompt")
 with
   case llm then ([prompt]) ->
-    if empty?(prompt) then
+    if isEmpty(prompt) then
       perform(effect(dvala.error), "Empty prompt")  // propagates to OUTER do/with
     else
-      upper-case(prompt)
+      upperCase(prompt)
     end
   case effect(dvala.error) then ([msg]) -> "Body failed: " ++ msg // only sees errors from body, not handlers
 end
@@ -498,7 +498,7 @@ import { createDebugger }       from '@mojir/dvala/debug'
 ```typescript
 const value = runSync(`
   [1, 2, 3, 4, 5]
-    |> filter(_, odd?)
+    |> filter(_, isOdd)
     |> map(_, -> $ * $)
     |> reduce(_, +, 0)
 `)

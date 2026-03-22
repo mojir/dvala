@@ -22,21 +22,21 @@ const dvala = createDvala({ modules: allBuiltinModules, disableAutoCheckpoint: t
 // DataType → Dvala predicate name mapping
 // ---------------------------------------------------------------------------
 const typeToCheck: Record<string, string | null> = {
-  number: 'number?',
-  string: 'string?',
-  boolean: 'boolean?',
-  array: 'array?',
-  object: 'object?',
-  function: 'function?',
-  null: 'null?',
-  integer: 'integer?',
-  regexp: 'regexp?',
-  collection: 'collection?',
-  sequence: 'sequence?',
-  vector: 'vector?',
-  matrix: 'matrix?',
-  grid: 'grid?',
-  effect: 'effect?',
+  number: 'isNumber',
+  string: 'isString',
+  boolean: 'isBoolean',
+  array: 'isArray',
+  object: 'isObject',
+  function: 'isFunction',
+  null: 'isNull',
+  integer: 'isInteger',
+  regexp: 'isRegexp',
+  collection: 'isCollection',
+  sequence: 'isSequence',
+  vector: 'isVector',
+  matrix: 'isMatrix',
+  grid: 'isGrid',
+  effect: 'isEffect',
   any: null, // anything is valid
   never: null, // should throw, not return
 }
@@ -46,12 +46,12 @@ const typeToCheck: Record<string, string | null> = {
  * declared return type.  Returns null for 'any' / 'never' (skip check).
  *
  * Handles `array: true` — when the docs declare e.g. `{ type: 'number', array: true }`,
- * the actual return value is an array (of numbers), so we check `array?` instead.
+ * the actual return value is an array (of numbers), so we check `isArray` instead.
  */
 function generateTypeCheck(varName: string, returnType: TypedValue): string | null {
   // If the return type is flagged as array, the value is an array regardless of element type
   if (returnType.array) {
-    return `array?(${varName})`
+    return `isArray(${varName})`
   }
 
   const types = Array.isArray(returnType.type) ? returnType.type : [returnType.type]
@@ -113,7 +113,7 @@ const skipReturnTypeExamples = new Set([
   // the returned function) so the result is not a function.
   'comp',
   'constantly',
-  'effect-matcher',
+  'effectMatcher',
 ])
 
 /**

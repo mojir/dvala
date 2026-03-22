@@ -224,9 +224,9 @@ A handler is just a function with the signature `(eff, arg, next) -> value`:
 
 ```
 let log-all-effects = (eff, arg, next) ->
-  println("[EFFECT] " ++ effect-name(eff) ++ " " ++ str(arg))
+  println("[EFFECT] " ++ effectName(eff) ++ " " ++ str(arg))
   let result = next(eff, arg)
-  println("[RESULT] " ++ effect-name(eff) ++ " -> " ++ str(result))
+  println("[RESULT] " ++ effectName(eff) ++ " -> " ++ str(result))
   result
 
 let logging = (eff, arg, next) ->

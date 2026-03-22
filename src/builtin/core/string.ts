@@ -57,7 +57,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Parses $s to a number.',
-      seeAlso: ['str', 'number?', 'integer?'],
+      seeAlso: ['str', 'isNumber', 'isInteger'],
       examples: [
         'number("10")',
         'number("010")',
@@ -66,7 +66,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
     },
   },
 
-  'lower-case': {
+  'lowerCase': {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.toLowerCase()
@@ -78,15 +78,15 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns $s converted to lower case.',
-      seeAlso: ['upper-case', 'string.capitalize'],
+      seeAlso: ['upperCase', 'string.capitalize'],
       examples: [
-        'lower-case("Albert")',
-        'lower-case("")',
+        'lowerCase("Albert")',
+        'lowerCase("")',
       ],
     },
   },
 
-  'upper-case': {
+  'upperCase': {
     evaluate: ([str], sourceCodeInfo): string => {
       assertString(str, sourceCodeInfo)
       return str.toUpperCase()
@@ -98,10 +98,10 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns $s converted to upper case.',
-      seeAlso: ['lower-case', 'string.capitalize'],
+      seeAlso: ['lowerCase', 'string.capitalize'],
       examples: [
-        'upper-case("Albert")',
-        'upper-case("")',
+        'upperCase("Albert")',
+        'upperCase("")',
       ],
     },
   },
@@ -118,7 +118,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns a new string with leading and trailing whitespaces removed.',
-      seeAlso: ['string.trimLeft', 'string.trimRight', 'blank?'],
+      seeAlso: ['string.trimLeft', 'string.trimRight', 'isBlank'],
       examples: [
         'trim("  Albert  ")',
         'trim("   ")',
@@ -196,7 +196,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
-  'blank?': {
+  'isBlank': {
     evaluate: ([value], sourceCodeInfo): boolean => {
       if (value === null) {
         return true
@@ -211,13 +211,13 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       args: { s: { type: ['string', 'null'] } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns true if $s is null or only contains whitespace characters.',
-      seeAlso: ['trim', 'empty?', 'string?'],
+      seeAlso: ['trim', 'isEmpty', 'isString'],
       examples: [
-        'blank?("")',
-        'blank?(null)',
-        'blank?("\n")',
-        'blank?(" ")',
-        'blank?(".")',
+        'isBlank("")',
+        'isBlank(null)',
+        'isBlank("\n")',
+        'isBlank(" ")',
+        'isBlank(".")',
       ],
     },
   },

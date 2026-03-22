@@ -433,7 +433,7 @@ decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
       description: 'Returns $s with the first character converted to uppercase and the rest to lowercase.',
-      seeAlso: ['lower-case', 'upper-case'],
+      seeAlso: ['lowerCase', 'upperCase'],
       examples: [
         `let { capitalize } = import(string);
 capitalize("albert")`,

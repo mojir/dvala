@@ -91,7 +91,7 @@ end
 ```
 
 ```dvala
-let safe-div = (a, b) ->
+let safeDiv = (a, b) ->
   handle
     a / b
   with [(arg, eff, nxt) ->
@@ -100,5 +100,5 @@ let safe-div = (a, b) ->
     end
   ]
   end;
-safe-div(10, 0)
+safeDiv(10, 0)
 ```

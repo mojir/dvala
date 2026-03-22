@@ -85,8 +85,8 @@ greet({ name: "Pat" })
 ```
 
 ```dvala
-let sum-pair = ([a, b]) -> a + b;
-sum-pair([3, 7])
+let sumPair = ([a, b]) -> a + b;
+sumPair([3, 7])
 ```
 
 ## Combining Patterns
