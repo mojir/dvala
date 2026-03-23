@@ -1329,67 +1329,118 @@ let allPrev = [
 let vec = import(vector);
 let la = import(linearAlgebra);
 let matMod = import(matrix);
-let rnd3 = (x) -> round(x * 1000) / 1000;
+let r3 = (x) -> round(x * 1000) / 1000;
+let bar = (val, mx, w) -> do
+  let len = max(round(val / mx * w), 0);
+  join(repeat("\\u2588", len), "") ++ join(repeat("\\u2591", w - len), "")
+end;
 
 let nums = filter(flatten(allPrev), isNumber);
-let statsResult = {
-  n: count(nums),
-  sum: vec.sum(nums),
-  mean: rnd3(vec.mean(nums)),
-  median: vec.median(nums),
-  stdev: rnd3(vec.stdev(nums)),
-  iqr: vec.iqr(nums),
-  quartiles: vec.quartiles(nums),
-  skewness: rnd3(vec.skewness(nums)),
-  rms: rnd3(vec.rms(nums)),
-  histogram: vec.histogram(nums, 4),
-  cumsum5: vec.cumsum(take(nums, 5)),
-  runMean5: map(vec.runningMean(take(nums, 5)), rnd3),
-};
+let mn = vec.mean(nums);
+let sd = vec.stdev(nums);
+let q = vec.quartiles(nums);
+let hist = vec.histogram(nums, 5);
+let histMax = max(...map(hist, last));
 
 let v1 = [3, 4, 0];
 let v2 = [0, 4, 3];
-let geoResult = {
-  dot: la.dot(v1, v2),
-  cross: la.cross(v1, v2),
-  angle: rnd3(la.angle(v1, v2)),
-  cosine: rnd3(la.cosineSimilarity(v1, v2)),
-  eucDist: rnd3(la.euclideanDistance(v1, v2)),
-  norm: la.euclideanNorm(v1),
-  isOrtho: la.isOrthogonal([1, 0], [0, 1]),
-  rotate: map(la.rotate2d([1, 0], 3.14159265 / 2), rnd3),
-  lerp: la.lerp([0, 0], [10, 20], 0.5),
-  proj: la.projection([3, 4], [1, 0]),
-};
-
+let m1 = [[1, 2], [3, 4]];
+let mInv = matMod.inv(m1);
 let xs = for (i in range(10)) -> i * 1.0;
 let ys = for (i in range(10)) -> i * 2.0 + 1;
-let corrResult = {
-  pearson: la.pearsonCorr(xs, ys),
-  spearman: la.spearmanCorr(xs, ys),
-  cov: rnd3(la.cov(xs, ys)),
+
+let analysis = {
+  distribution: {
+    n: count(nums),
+    range: [min(...nums), max(...nums)],
+    span: vec.span(nums),
+    mean: r3(mn),
+    median: vec.median(nums),
+    stdev: r3(sd),
+    skewness: r3(vec.skewness(nums)),
+    rms: r3(vec.rms(nums)),
+    quartiles: map(q, r3),
+    iqr: r3(vec.iqr(nums)),
+    histogram: map(hist, (row) -> {
+      lo: r3(first(row)),
+      hi: r3(second(row)),
+      count: last(row),
+    }),
+    runningMean: map(vec.runningMean(take(nums, 8)), r3),
+    cumulativeSum: vec.cumsum(take(nums, 6)),
+  },
+  geometry: {
+    v1: v1,
+    v2: v2,
+    dot: la.dot(v1, v2),
+    cross: la.cross(v1, v2),
+    angle: r3(la.angle(v1, v2)),
+    cosineSimilarity: r3(la.cosineSimilarity(v1, v2)),
+    euclideanDistance: r3(la.euclideanDistance(v1, v2)),
+    euclideanNorm: la.euclideanNorm(v1),
+    orthogonalCheck: la.isOrthogonal([1, 0], [0, 1]),
+    rotate90: map(la.rotate2d([1, 0], 3.14159265 / 2), r3),
+    lerp: la.lerp([0, 0], [10, 20], 0.5),
+    projection: la.projection([3, 4], [1, 0]),
+  },
+  correlation: {
+    xs: xs,
+    ys: ys,
+    pearson: la.pearsonCorr(xs, ys),
+    spearman: la.spearmanCorr(xs, ys),
+    covariance: r3(la.cov(xs, ys)),
+    normMinmax: la.normalizeMinmax([10, 20, 30, 40, 50]),
+    normL2: map(la.normalizeL2([10, 20, 30, 40, 50]), r3),
+  },
+  matrix: {
+    m: m1,
+    product: matMod.mul(m1, [[5, 6], [7, 8]]),
+    determinant: matMod.det(m1),
+    trace: matMod.trace(m1),
+    inverse: map(mInv, (row) -> map(row, r3)),
+    rank: matMod.rank(m1),
+    frobeniusNorm: r3(matMod.frobeniusNorm(m1)),
+    hilbert3: matMod.hilbert(3),
+    verifyInverse: r3(matMod.det(matMod.mul(m1, mInv))),
+  },
+  linearSystem: {
+    equations: "2x + y = 5,  x + 3y = 10",
+    solution: la.solve([[2, 1], [1, 3]], [5, 10]),
+  },
+  display: [
+    "======================================",
+    "       STATISTICAL ANALYSIS           ",
+    "======================================",
+    \`  n=\${count(nums)}  range=\${min(...nums)}..\${max(...nums)}  span=\${vec.span(nums)}\`,
+    \`  mean=\${r3(mn)}  median=\${vec.median(nums)}  stdev=\${r3(sd)}\`,
+    \`  skewness=\${r3(vec.skewness(nums))}  rms=\${r3(vec.rms(nums))}\`,
+    \`  Q1=\${r3(q[0])}  Q2=\${r3(q[1])}  Q3=\${r3(q[2])}  IQR=\${r3(vec.iqr(nums))}\`,
+    "--- histogram ---",
+    ...map(hist, (row) -> do
+      let ct = last(row);
+      \`  \${bar(ct, histMax, 16)}  \${ct}  [\${r3(first(row))}, \${r3(second(row))})\`
+    end),
+    "--- running mean (first 8) ---",
+    \`  \${join(map(vec.runningMean(take(nums, 8)), r3), " > ")}\`,
+    "======================================",
+    "       VECTOR GEOMETRY                ",
+    "======================================",
+    \`  v1=[\${join(v1, ",")}]  v2=[\${join(v2, ",")}]\`,
+    \`  dot=\${la.dot(v1, v2)}  cross=[\${join(la.cross(v1, v2), ",")}]\`,
+    \`  angle=\${r3(la.angle(v1, v2))}rad  cosine=\${r3(la.cosineSimilarity(v1, v2))}\`,
+    \`  norm(v1)=\${la.euclideanNorm(v1)}  dist=\${r3(la.euclideanDistance(v1, v2))}\`,
+    \`  rotate [1,0] by pi/2 = [\${join(map(la.rotate2d([1, 0], 3.14159265 / 2), r3), ",")}]\`,
+    "======================================",
+    "       CORRELATION & MATRIX           ",
+    "======================================",
+    \`  pearson=\${la.pearsonCorr(xs, ys)}  spearman=\${la.spearmanCorr(xs, ys)}  cov=\${r3(la.cov(xs, ys))}\`,
+    \`  M=[[\${m1[0][0]},\${m1[0][1]}],[\${m1[1][0]},\${m1[1][1]}]]  det=\${matMod.det(m1)}  trace=\${matMod.trace(m1)}  rank=\${matMod.rank(m1)}\`,
+    \`  solve 2x+y=5, x+3y=10 => [\${join(map(la.solve([[2, 1], [1, 3]], [5, 10]), r3), ", ")}]\`,
+    "======================================",
+  ],
 };
 
-let normResult = {
-  minmax: la.normalizeMinmax([10, 20, 30, 40, 50]),
-  l2: map(la.normalizeL2([10, 20, 30, 40, 50]), rnd3),
-};
-
-let m1 = [[1, 2], [3, 4]];
-let matResult = {
-  mul: matMod.mul(m1, [[5, 6], [7, 8]]),
-  det: matMod.det(m1),
-  trace: matMod.trace(m1),
-  inv: map(matMod.inv(m1), (row) -> map(row, rnd3)),
-  rank: matMod.rank(m1),
-  frobNorm: rnd3(matMod.frobeniusNorm(m1)),
-  isSquare: matMod.isSquare(m1),
-  hilbert2: matMod.hilbert(2),
-};
-
-let linearSolve = la.solve([[2, 1], [1, 3]], [5, 10]);
-
-let s30 = [statsResult, geoResult, corrResult, normResult, matResult, linearSolve];
+let s30 = [analysis];
 
 // --- Assemble ---
 let allResults = [...allPrev, ...s30];
