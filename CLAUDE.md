@@ -26,6 +26,8 @@ Run `npm run check` after any medium or larger code change.
 I encurage you to structurize bigger tasks by creating .md plans.
 Create .md files inside /design
 
+Prefix all design document filenames with the creation date in ISO format: `YYYY-MM-DD_<name>.md` (e.g. `2026-01-02_my-design.md`).
+
 ## Dvala Syntax Notes
 
 - **`if/else if` chains need only one `end`**: `if A then B else if C then D else E end` — the entire chain is closed by a single `end`.
