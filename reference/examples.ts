@@ -1310,12 +1310,80 @@ let s29 = [
   perform(@dvala.sleep, 0),
 ];
 
-// --- Assemble ---
-let allResults = [
+// --- 30: Stats, linear algebra & matrices on collected numeric data ---
+let allPrev = [
   ...s1, ...s2, ...s3, ...s4, ...s5, ...s6, ...s7, ...s8, ...s9, ...s10,
   ...s11, ...s12, ...s13, ...s14, ...s15, ...s16, ...s17, ...s18, ...s19, ...s20,
   ...s21, ...s22, ...s23, ...s24, ...s25, ...s26, ...s27, ...s28, ...s29,
 ];
+
+let vec = import(vector);
+let la = import(linearAlgebra);
+let matMod = import(matrix);
+let rnd3 = (x) -> round(x * 1000) / 1000;
+
+let nums = filter(flatten(allPrev), isNumber);
+let statsResult = {
+  n: count(nums),
+  sum: vec.sum(nums),
+  mean: rnd3(vec.mean(nums)),
+  median: vec.median(nums),
+  stdev: rnd3(vec.stdev(nums)),
+  iqr: vec.iqr(nums),
+  quartiles: vec.quartiles(nums),
+  skewness: rnd3(vec.skewness(nums)),
+  rms: rnd3(vec.rms(nums)),
+  histogram: vec.histogram(nums, 4),
+  cumsum5: vec.cumsum(take(nums, 5)),
+  runMean5: map(vec.runningMean(take(nums, 5)), rnd3),
+};
+
+let v1 = [3, 4, 0];
+let v2 = [0, 4, 3];
+let geoResult = {
+  dot: la.dot(v1, v2),
+  cross: la.cross(v1, v2),
+  angle: rnd3(la.angle(v1, v2)),
+  cosine: rnd3(la.cosineSimilarity(v1, v2)),
+  eucDist: rnd3(la.euclideanDistance(v1, v2)),
+  norm: la.euclideanNorm(v1),
+  isOrtho: la.isOrthogonal([1, 0], [0, 1]),
+  rotate: map(la.rotate2d([1, 0], 3.14159265 / 2), rnd3),
+  lerp: la.lerp([0, 0], [10, 20], 0.5),
+  proj: la.projection([3, 4], [1, 0]),
+};
+
+let xs = for (i in range(10)) -> i * 1.0;
+let ys = for (i in range(10)) -> i * 2.0 + 1;
+let corrResult = {
+  pearson: la.pearsonCorr(xs, ys),
+  spearman: la.spearmanCorr(xs, ys),
+  cov: rnd3(la.cov(xs, ys)),
+};
+
+let normResult = {
+  minmax: la.normalizeMinmax([10, 20, 30, 40, 50]),
+  l2: map(la.normalizeL2([10, 20, 30, 40, 50]), rnd3),
+};
+
+let m1 = [[1, 2], [3, 4]];
+let matResult = {
+  mul: matMod.mul(m1, [[5, 6], [7, 8]]),
+  det: matMod.det(m1),
+  trace: matMod.trace(m1),
+  inv: map(matMod.inv(m1), (row) -> map(row, rnd3)),
+  rank: matMod.rank(m1),
+  frobNorm: rnd3(matMod.frobeniusNorm(m1)),
+  isSquare: matMod.isSquare(m1),
+  hilbert2: matMod.hilbert(2),
+};
+
+let linearSolve = la.solve([[2, 1], [1, 3]], [5, 10]);
+
+let s30 = [statsResult, geoResult, corrResult, normResult, matResult, linearSolve];
+
+// --- Assemble ---
+let allResults = [...allPrev, ...s30];
 { results: allResults, totalResults: count(allResults) }
     `.trim(),
   },

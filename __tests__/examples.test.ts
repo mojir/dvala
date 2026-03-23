@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Any } from '../src/interface'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
 import { examples } from '../reference/examples'
@@ -83,7 +84,7 @@ function getMockHandlers(): HandlerRegistration[] {
       pattern: 'dvala.io.pick',
       handler: ctx => {
         const items = Array.isArray(ctx.arg) ? ctx.arg : (ctx.arg as Record<string, unknown>)?.['items'] as unknown[]
-        ctx.resume(items?.[0] ?? null)
+        ctx.resume((items?.[0] ?? null) as Any)
       },
     },
     {
@@ -118,7 +119,7 @@ function getMockHandlers(): HandlerRegistration[] {
     },
     {
       pattern: 'dvala.random.item',
-      handler: ctx => ctx.resume((ctx.arg as unknown[])[0]),
+      handler: ctx => ctx.resume((ctx.arg as unknown[])[0] as Any),
     },
     {
       pattern: 'dvala.random.shuffle',
