@@ -4,9 +4,9 @@ export const NodeTypes = {
   NormalExpression: 'NormalExpression',
   SpecialExpression: 'SpecialExpression',
   UserDefinedSymbol: 'UserDefinedSymbol',
-  NormalBuiltinSymbol: 'NormalBuiltinSymbol',
-  SpecialBuiltinSymbol: 'SpecialBuiltinSymbol',
-  ReservedSymbol: 'ReservedSymbol',
+  Builtin: 'Builtin',
+  Special: 'Special',
+  Reserved: 'Reserved',
   Binding: 'Binding',
   Spread: 'Spread',
   TemplateString: 'TemplateString',
@@ -16,10 +16,6 @@ export const NodeTypes = {
 const NodeTypesSet = new Set<string>(Object.values(NodeTypes))
 
 export type NodeType = typeof NodeTypes[keyof typeof NodeTypes]
-
-export function getNodeTypeName(type: NodeType): keyof typeof NodeTypes {
-  return type as keyof typeof NodeTypes
-}
 
 export function isNodeType(type: unknown): type is NodeType {
   return typeof type === 'string' && NodeTypesSet.has(type)

@@ -27,7 +27,7 @@ export const specialExpressions = {
   [specialExpressionTypes['||']]: orSpecialExpression,
   [specialExpressionTypes.array]: arraySpecialExpression,
   [specialExpressionTypes.block]: doSpecialExpression,
-  [specialExpressionTypes['0_lambda']]: lambdaSpecialExpression,
+  [specialExpressionTypes['function']]: lambdaSpecialExpression,
   [specialExpressionTypes.for]: forSpecialExpression,
   [specialExpressionTypes.if]: ifSpecialExpression,
   [specialExpressionTypes.let]: letSpecialExpression,

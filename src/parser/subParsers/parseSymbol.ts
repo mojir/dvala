@@ -1,10 +1,10 @@
 import { DvalaError } from '../../errors'
-import type { NormalBuiltinSymbolNode, SpecialBuiltinSymbolNode, SymbolNode } from '../types'
+import type { BuiltinSymbolNode, SpecialSymbolNode, SymbolNode } from '../types'
 import { isSymbolToken } from '../../tokenizer/token'
 import { stringFromQuotedSymbol, stringToSymbolNode } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
-export function parseSymbol(ctx: ParserContext): SymbolNode | NormalBuiltinSymbolNode | SpecialBuiltinSymbolNode {
+export function parseSymbol(ctx: ParserContext): SymbolNode | BuiltinSymbolNode | SpecialSymbolNode {
   const token = ctx.peek()
   ctx.advance()
   if (!isSymbolToken(token)) {

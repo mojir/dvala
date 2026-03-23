@@ -16,7 +16,7 @@ import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { AstNode, NormalExpressionNodeExpression } from '../types'
 import { isOperatorToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
-import { isNormalBuiltinSymbolNode, isSpecialBuiltinSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { isBuiltinSymbolNode, isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { assertNumberOfParams } from '../../utils/arity'
 import { createNamedNormalExpressionNode, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -25,7 +25,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   ctx.advance()
 
   // Handle @dotted.name — custom parsing for dotted identifier argument
-  if (isSpecialBuiltinSymbolNode(symbol) && symbol[1] === specialExpressionTypes.effect) {
+  if (isSpecialSymbolNode(symbol) && symbol[1] === specialExpressionTypes.effect) {
     return parseEffectArgs(ctx, symbol)
   }
 
@@ -50,7 +50,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   }
   ctx.advance()
 
-  if (isSpecialBuiltinSymbolNode(symbol)) { // Named function
+  if (isSpecialSymbolNode(symbol)) { // Named function
     const specialExpressionType = symbol[1]
 
     // Handle import specially — extract module name as a string from the symbol argument
@@ -101,13 +101,13 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies ParallelNode
       case specialExpressionTypes.race:
         return withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params]], symbol[2]) satisfies RaceNode
-      case specialExpressionTypes['0_lambda']:
+      case specialExpressionTypes['function']:
         throw new DvalaError(`${type} is not allowed`, symbol[2])
       /* v8 ignore next 2 */
       default:
         throw new DvalaError(`Unknown special expression: ${type satisfies never}`, symbol[2])
     }
-  } else if (isNormalBuiltinSymbolNode(symbol) || isUserDefinedSymbolNode(symbol)) {
+  } else if (isBuiltinSymbolNode(symbol) || isUserDefinedSymbolNode(symbol)) {
     return createNamedNormalExpressionNode(symbol, params, symbol[2])
   } else {
     return withSourceCodeInfo([NodeTypes.NormalExpression, [symbol, params]], symbol[2]) satisfies NormalExpressionNodeExpression

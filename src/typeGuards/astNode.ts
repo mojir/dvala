@@ -2,10 +2,10 @@ import { NodeTypes } from '../constants/constants'
 import type {
   AstNode,
   ExpressionNode,
-  NormalBuiltinSymbolNode,
+  BuiltinSymbolNode,
   NormalExpressionNode,
   NormalExpressionNodeWithName,
-  SpecialBuiltinSymbolNode,
+  SpecialSymbolNode,
   SpreadNode,
   SymbolNode,
   UserDefinedSymbolNode,
@@ -16,8 +16,8 @@ import { getAssertionError } from '../utils/getAssertionError'
 export function isSymbolNode(node: AstNode): node is SymbolNode {
   const nodeType = node[0]
   return NodeTypes.UserDefinedSymbol === nodeType
-    || NodeTypes.NormalBuiltinSymbol === nodeType
-    || NodeTypes.SpecialBuiltinSymbol === nodeType
+    || NodeTypes.Builtin === nodeType
+    || NodeTypes.Special === nodeType
 }
 export function asSymbolNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): SymbolNode {
   assertSymbolNode(node, sourceCodeInfo)
@@ -40,12 +40,12 @@ function assertUserDefinedSymbolNode(node: AstNode, sourceCodeInfo?: SourceCodeI
     throw getAssertionError('UserDefinedSymbolNode', node, sourceCodeInfo)
 }
 
-export function isNormalBuiltinSymbolNode(node: AstNode): node is NormalBuiltinSymbolNode {
-  return NodeTypes.NormalBuiltinSymbol === node[0]
+export function isBuiltinSymbolNode(node: AstNode): node is BuiltinSymbolNode {
+  return NodeTypes.Builtin === node[0]
 }
 
-export function isSpecialBuiltinSymbolNode(node: AstNode): node is SpecialBuiltinSymbolNode {
-  return NodeTypes.SpecialBuiltinSymbol === node[0]
+export function isSpecialSymbolNode(node: AstNode): node is SpecialSymbolNode {
+  return NodeTypes.Special === node[0]
 }
 
 export function isNormalExpressionNode(node: AstNode): node is NormalExpressionNode {

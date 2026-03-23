@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import { NodeTypes, getNodeTypeName } from '../constants/constants'
+import { NodeTypes } from '../constants/constants'
 import { DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
@@ -53,7 +53,7 @@ import type {
   NormalExpressionNode,
   NumberNode,
   PartialFunction,
-  ReservedSymbolNode,
+  ReservedNode,
   SpecialExpressionNode,
   StringNode,
   SymbolNode,
@@ -68,7 +68,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
-import { isNormalBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode } from '../typeGuards/astNode'
+import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isObj } from '../typeGuards/dvala'
 import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
@@ -184,7 +184,7 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
 // Reserved symbol evaluation
 // ---------------------------------------------------------------------------
 
-function evaluateReservedSymbol(node: ReservedSymbolNode): Any {
+function evaluateReservedSymbol(node: ReservedNode): Any {
   const reservedName = node[1]
   if (!['true', 'false', 'null'].includes(reservedName)) {
     throw new DvalaError(`Reserved symbol ${reservedName} cannot be evaluated`, node[2])
@@ -235,12 +235,12 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: (node as NumberNode)[1], k }
     case NodeTypes.String:
       return { type: 'Value', value: (node as StringNode)[1], k }
-    case NodeTypes.NormalBuiltinSymbol:
-    case NodeTypes.SpecialBuiltinSymbol:
+    case NodeTypes.Builtin:
+    case NodeTypes.Special:
     case NodeTypes.UserDefinedSymbol:
       return { type: 'Value', value: env.evaluateSymbol(node as SymbolNode), k }
-    case NodeTypes.ReservedSymbol:
-      return { type: 'Value', value: evaluateReservedSymbol(node as ReservedSymbolNode), k }
+    case NodeTypes.Reserved:
+      return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode), k }
     case NodeTypes.NormalExpression:
       return stepNormalExpression(node as NormalExpressionNode, env, k)
     case NodeTypes.SpecialExpression:
@@ -251,7 +251,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: getEffectRef(node[1] as string), k }
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`${getNodeTypeName(node[0])}-node cannot be evaluated`, node[2])
+      throw new DvalaError(`${node[0]}-node cannot be evaluated`, node[2])
   }
 }
 
@@ -309,7 +309,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
   let startIndex = 0
   while (startIndex < argNodes.length) {
     const arg = argNodes[startIndex]!
-    if (arg[0] === NodeTypes.ReservedSymbol && arg[1] === '_') {
+    if (arg[0] === NodeTypes.Reserved && arg[1] === '_') {
       evalArgsFrame.placeholders.push(evalArgsFrame.params.length)
       startIndex++
     } else {
@@ -607,7 +607,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
     }
 
     // --- lambda (fn / ->) ---
-    case specialExpressionTypes['0_lambda']: {
+    case specialExpressionTypes['function']: {
       const fn = node[1][1] as [BindingTarget[], AstNode[], ...unknown[]]
       const evaluatedFunc = evaluateFunction(fn, env)
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
@@ -763,7 +763,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
     }
 
     // --- Named builtin ---
-    if (isNormalBuiltinSymbolNode(nameSymbol)) {
+    if (isBuiltinSymbolNode(nameSymbol)) {
       const builtinName = nameSymbol[1]
       const normalExpression = builtin.normalExpressions[builtinName]!
       if (env.pure && normalExpression.pure === false) {
@@ -2820,7 +2820,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   let nextIndex = frame.index + 1
   while (nextIndex < argNodes.length) {
     const nextArg = argNodes[nextIndex]!
-    if (nextArg[0] === NodeTypes.ReservedSymbol && nextArg[1] === '_') {
+    if (nextArg[0] === NodeTypes.Reserved && nextArg[1] === '_') {
       placeholders.push(params.length)
       nextIndex++
     } else {

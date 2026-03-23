@@ -2,7 +2,7 @@ import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { AstNode, BindingTarget, NormalBuiltinSymbolNode, NormalExpressionNodeExpression, SpecialBuiltinSymbolNode, StringNode, UserDefinedSymbolNode } from '../types'
+import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExpression, SpecialSymbolNode, StringNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
@@ -113,7 +113,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         ctx.advance()
         const operand = parseOperandPart(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0], token[2])
-        const minusSymbol: NormalBuiltinSymbolNode = withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, '-'], token[2]) as NormalBuiltinSymbolNode
+        const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-'], token[2]) as BuiltinSymbolNode
         return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]]], token[2]) as NormalExpressionNodeExpression
       }
     }
@@ -121,9 +121,9 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     if (isBinaryOperator(operatorName)) {
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
-        return withSourceCodeInfo([NodeTypes.SpecialBuiltinSymbol, specialExpressionTypes[operatorName as SpecialExpressionName]], token[2]) satisfies SpecialBuiltinSymbolNode
+        return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName]], token[2]) satisfies SpecialSymbolNode
       }
-      return withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, operatorName], token[2]) satisfies NormalBuiltinSymbolNode
+      return withSourceCodeInfo([NodeTypes.Builtin, operatorName], token[2]) satisfies BuiltinSymbolNode
     }
 
     if (operatorName === '->') {
@@ -200,7 +200,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 }
 
 function createAccessorNode(left: AstNode, right: AstNode, sourceCodeInfo: SourceCodeInfo | undefined): NormalExpressionNodeExpression {
-  return withSourceCodeInfo([NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, 'get'], [left, right]]], sourceCodeInfo)
+  return withSourceCodeInfo([NodeTypes.NormalExpression, [[NodeTypes.Builtin, 'get'], [left, right]]], sourceCodeInfo)
 }
 
 /**
@@ -290,14 +290,14 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
   let condition: AstNode
   if (effectName.includes('*')) {
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, 'effectMatcher'], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher'], sourceCodeInfo),
       [withSourceCodeInfo([NodeTypes.String, effectName], sourceCodeInfo)],
     ]], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]]], sourceCodeInfo)
   } else {
     const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, '=='], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.Builtin, '=='], sourceCodeInfo),
       [effSym, effectNode],
     ]], sourceCodeInfo)
   }
@@ -310,5 +310,5 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
 
   // Build lambda: (arg, eff, nxt) -> ifExpr
   const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['0_lambda'], [args, [ifExpr]]]], sourceCodeInfo)
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]]], sourceCodeInfo)
 }

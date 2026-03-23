@@ -419,8 +419,8 @@ end;
 add(1, 2)`)).toBe(3)
       expect(dvala.run('let add = () -> do 10 end; add()')).toBe(10)
       expect(() => dvala.run('let add = (...x = []) -> do x end;')).toThrow(DvalaError)
-      expect(() => dvala.run('let \' = 0_lambda\'() -> do 10 end;')).toThrow(DvalaError)
-      expect(() => dvala.run('\'0_lambda\'();')).toThrow(DvalaError)
+      expect(() => dvala.run('let \' = function\'() -> do 10 end;')).toThrow(DvalaError)
+      expect(() => dvala.run('\'function\'();')).toThrow(DvalaError)
     })
 
     test('default argument', () => {

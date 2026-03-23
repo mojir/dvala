@@ -5,7 +5,7 @@ import { DvalaError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
 import { isA_BinaryOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
-import { isSpecialBuiltinSymbolNode } from '../../typeGuards/astNode'
+import { isSpecialSymbolNode } from '../../typeGuards/astNode'
 import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
@@ -68,8 +68,8 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         break
       }
       const symbol: SymbolNode = specialExpressionTypes[name as SpecialExpressionName]
-        ? withSourceCodeInfo([NodeTypes.SpecialBuiltinSymbol, specialExpressionTypes[name as SpecialExpressionName]], operator[2])
-        : withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, name], operator[2])
+        ? withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName]], operator[2])
+        : withSourceCodeInfo([NodeTypes.Builtin, name], operator[2])
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
       left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2])
@@ -83,7 +83,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       }
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
-      if (isSpecialBuiltinSymbolNode(operatorSymbol)) {
+      if (isSpecialSymbolNode(operatorSymbol)) {
         throw new DvalaError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2])

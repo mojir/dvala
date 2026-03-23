@@ -120,7 +120,7 @@ export class AutoCompleter {
   }
 
   private generateSuggestions(params: AutoCompleterParams): string[] {
-    const blacklist = new Set<string>(['0_defn', '0_lambda'])
+    const blacklist = new Set<string>(['0_defn', 'function'])
     const fullSearch = this.dotPrefix + this.searchString
 
     if (this.dotPrefix) {

@@ -15,7 +15,7 @@ describe('parser', () => {
       expect(parseTokenStream(tokenizeSource('as'))).toEqual({
         body: [
           [
-            NodeTypes.ReservedSymbol,
+            NodeTypes.Reserved,
             'as',
           ],
         ],
