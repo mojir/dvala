@@ -2865,3 +2865,150 @@ h2.discrete {
   }
 }
 
+/* ============================================================
+   AST Tree Viewer
+   ============================================================ */
+
+.ast-tree-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ast-tree__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ast-tree__search {
+  flex: 1;
+  min-width: 140px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+.ast-tree__search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.ast-tree__search::placeholder {
+  color: var(--color-text-dim);
+}
+
+.ast-tree__count {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.ast-tree__btn {
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ast-tree__btn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.ast-tree {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding-bottom: var(--space-4);
+}
+
+.ast-tree__node {
+  display: flex;
+  align-items: baseline;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: default;
+  white-space: nowrap;
+}
+.ast-tree__node:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.ast-tree__node--selected {
+  background: rgba(86, 156, 214, 0.15);
+}
+.ast-tree__node--match {
+  outline: 1px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.ast-tree__arrow {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  font-size: 0.65em;
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+  user-select: none;
+}
+.ast-tree__arrow--open {
+  color: var(--color-text-secondary);
+}
+
+.ast-tree__label {
+  color: var(--color-text-dim);
+  margin-right: 2px;
+}
+
+.ast-tree__type {
+  font-weight: 600;
+}
+
+.ast-tree__summary {
+  color: var(--color-text-secondary);
+  margin-left: 0.5ch;
+}
+
+.ast-tree__id {
+  color: var(--color-text-dim);
+  font-size: 0.75em;
+  opacity: 0.5;
+  margin-left: 0.75ch;
+}
+
+.ast-tree__empty {
+  padding: var(--space-4);
+  color: var(--color-text-dim);
+  text-align: center;
+  font-style: italic;
+}
+
+.ast-tree__toast {
+  position: absolute;
+  right: 8px;
+  top: -2px;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  pointer-events: none;
+  animation: ast-toast-fade 1.2s ease forwards;
+}
+@keyframes ast-toast-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+

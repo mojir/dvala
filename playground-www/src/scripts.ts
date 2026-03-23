@@ -3,6 +3,7 @@ import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
 import { getLinkName, makeLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
+import type { Ast } from '../../src/parser/types'
 import { createDvala } from '../../src/createDvala'
 import type { EffectContext, EffectHandler, HandlerRegistration, Snapshot } from '../../src/evaluator/effectTypes'
 import { extractCheckpointSnapshots } from '../../src/evaluator/suspension'
@@ -14,6 +15,7 @@ import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
+import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import { copyIcon, hamburgerIcon } from './icons'
 import { renderShell } from './shell'
@@ -2753,28 +2755,66 @@ export function analyze() {
 }
 
 export function parse() {
-  addOutputSeparator()
-
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Parse selection' : 'Parse'
 
-  appendOutput(`${title}${getState('debug') ? ' (debug):' : ':'} ${truncateCode(code)}`, 'comment')
-
-  const hijacker = hijackConsole()
   try {
-    const tokens = tokenizeSource(code, getState('debug'))
-    const result = parseTokenStream(tokens)
-    const content = JSON.stringify(result, null, 2)
-    appendOutput(content, 'parse')
-    hijacker.releaseConsole()
-    console.log(result)
+    const tokens = tokenizeSource(code, true) // always debug for source map positions
+    const ast = parseTokenStream(tokens)
+    console.log(ast)
+    showAstTreeModal(ast, title)
   } catch (error) {
+    addOutputSeparator()
+    appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
     appendOutput(error, 'error')
-    hijacker.releaseConsole()
-  } finally {
     focusDvalaCode()
   }
+}
+
+function showAstTreeModal(ast: Ast, title: string) {
+  const { panel, body } = createModalPanel({
+    hamburgerItems: [
+      {
+        label: 'Copy JSON',
+        action: () => {
+          void navigator.clipboard.writeText(JSON.stringify(ast, null, 2))
+          showToast('AST copied to clipboard')
+        },
+      },
+    ],
+  })
+
+  const treeViewer = createAstTreeViewer({
+    ast,
+    onSelectNode: (nodeId, sourceMap) => {
+      const pos = sourceMap.positions[nodeId]
+      if (!pos) return
+      const [line, col] = pos.start
+      const source = sourceMap.sources[pos.source]
+      if (!source) return
+      // Highlight the source range in the editor
+      const lines = source.content.split('\n')
+      let offset = 0
+      for (let i = 0; i < line; i++) offset += (lines[i]?.length ?? 0) + 1
+      offset += col
+      const textarea = elements.dvalaTextArea
+      textarea.focus()
+      textarea.setSelectionRange(offset, offset + 1)
+    },
+  })
+
+  body.style.minHeight = '0'
+  body.appendChild(treeViewer)
+
+  // Remove the empty footer
+  const footer = panel.querySelector('.modal-panel__footer')
+  if (footer) footer.remove()
+
+  // Wider panel for tree readability
+  panel.style.maxWidth = '1200px'
+
+  pushPanel(panel, title)
 }
 
 export function tokenize() {
