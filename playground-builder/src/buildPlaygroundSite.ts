@@ -445,6 +445,7 @@ function writeIndexPage() {
     <meta name="keywords" content="Dvala, functional programming, suspendable, resumable, algebraic effects, time-travel, JavaScript, interpreter">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8">
+    <meta name="google-site-verification" content="TB5G9QHF-Tl5gJeF1OJ1nk25ReJwGkTRN9pjjKFaSdE">
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://mojir.github.io/dvala/">
