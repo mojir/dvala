@@ -34,7 +34,7 @@ Create .md files inside /design
 - **Unary minus works**: `-x`, `-3`, `-PI` are all valid. But `-(a, b)` is a prefix function call (subtraction).
 - **JS-style identifiers only**: letters, digits, `_`, `$`. No hyphens, `?`, or `!`. Use camelCase: `isArray`, `dropWhile`, `mergeWith`.
 - **Reserved keywords**: `next`, `in` (and others) cannot be used as variable names — use e.g. `nxt`, `inArr`.
-- **Built-in names cannot be shadowed**: avoid variable names like `min`, `max`, `count`, `push`, etc.
+- **Built-in names can be shadowed**: `let take = take([1, 2, 3], 2)` works — the RHS resolves in the outer scope before the binding takes effect.
 
 ## MCP Tools
 
