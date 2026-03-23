@@ -143,7 +143,6 @@ export class SyntaxOverlay {
     this.lineNumbers = document.createElement('div')
     this.lineNumbers.className = 'syntax-overlay-line-numbers'
 
-    // Selection highlight layer — sits behind the syntax pre
     this.selectionLayer = document.createElement('pre')
     this.selectionLayer.className = 'syntax-overlay-selection'
 
@@ -159,6 +158,8 @@ export class SyntaxOverlay {
     textarea.style.height = ''
 
     this.textarea = textarea
+    textarea.addEventListener('mousedown', () => { this.selectionLayer.innerHTML = '' })
+    textarea.addEventListener('keydown', () => { this.selectionLayer.innerHTML = '' })
 
     // Keep textarea sized to match the pre content area
     const resizeObserver = new ResizeObserver(() => this.syncSize())
@@ -196,31 +197,21 @@ export class SyntaxOverlay {
     this.textarea.style.width = ''
 
     this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
+    this.selectionLayer.innerHTML = ''
     this.updateLineNumbers(code)
     this.syncSize()
   }
 
-  /**
-   * Highlight a character range in the syntax overlay.
-   * Renders on a separate background layer behind the syntax text,
-   * so text colors are fully preserved.
-   */
-  highlightRange(start: number, end: number): void {
+  /** Render a selection background for a character range. */
+  setSelection(start: number, end: number): void {
     const code = this.textarea.value
     if (start < 0 || end <= start || start >= code.length) {
       this.selectionLayer.innerHTML = ''
       return
     }
-    // Render the same text layout but with transparent text,
-    // and a background highlight on the selected range.
     const before = escapeHtml(code.slice(0, start))
     const selected = escapeHtml(code.slice(start, end))
     const after = escapeHtml(code.slice(end))
     this.selectionLayer.innerHTML = `${before}<span class="syntax-highlight-range">${selected}</span>${after}\n`
-  }
-
-  /** Clear any active highlight. */
-  clearHighlight(): void {
-    this.selectionLayer.innerHTML = ''
   }
 }

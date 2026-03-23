@@ -1709,15 +1709,14 @@ button:focus {
   background: var(--color-selection);
 }
 
+
 .syntax-overlay-selection {
   color: transparent;
   pointer-events: none;
-  position: relative;
   z-index: 1;
 }
 
-.syntax-overlay-container pre.syntax-overlay-highlight {
-  position: relative;
+.syntax-overlay-highlight {
   z-index: 2;
 }
 
@@ -1730,7 +1729,6 @@ button:focus {
   color: var(--color-text);
   overflow: visible;
   pointer-events: none;
-  position: relative;
   height: max-content;
   width: max-content;
   min-height: 100%;
@@ -2985,7 +2983,7 @@ h2.discrete {
 
 .ast-tree__label {
   color: var(--color-text-dim);
-  margin-right: 2px;
+  margin-right: 0.5ch;
 }
 
 .ast-tree__type {
