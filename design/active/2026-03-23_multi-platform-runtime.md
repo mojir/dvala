@@ -196,18 +196,34 @@ The playground, CLI, MCP server, and VS Code extension currently import from int
 3. Refactor consumers to import from public API entry points, not internal paths
 4. This also informs the KMP module structure (`commonMain` public API)
 
-### Phase 2 — GraalJS Prototype (days)
-Load the existing IIFE bundle in GraalJS to validate the JVM embedding API. Learn what the host-facing API should look like. This is throwaway — a design exercise, not a shipping product.
+### Phase 2 — JVM-only Vertical Slice (learning phase)
+
+Before tackling the full KMP port, build a minimal end-to-end Dvala evaluator on JVM only — no multiplatform, no serialization, no modules. The goal is to learn Kotlin idioms on familiar ground.
+
+**Scope:**
+1. Tokenizer — port just enough to handle numbers, strings, identifiers, operators
+2. Parser — `let`, `if`, arithmetic, function definitions/calls
+3. Frame types — a handful of sealed classes (SequenceFrame, IfFrame, LetFrame, FunctionCallFrame)
+4. Trampoline evaluator — minimal version that can step through the above
+5. A few core builtins — `+`, `-`, `*`, `/`, `==`, `not`, `isNumber`
+
+**Target:** Evaluate `let double = (x) -> x * 2; double(21)` → `42` on JVM.
+
+**Why this matters:**
+- Learn Kotlin's type system, sealed classes, `when` expressions, null safety on a problem you fully understand
+- Discover friction points (Gradle, project structure, testing) before they compound with KMP complexity
+- The code written here feeds directly into Phase 3 — it's not throwaway
 
 ### Phase 3 — KMP Core (2-3 months)
-Port the runtime to KMP `commonMain`:
-1. Port tokenizer + parser
-2. Port frame types and step types (sealed classes)
-3. Port trampoline evaluator (~4K lines, the core)
-4. Port core builtins (math, string, array, object, predicates)
-5. Port JSON continuation serialization — **must be wire-compatible with TS version**
-6. Platform-specific `expect/actual` for UUID, regex, console I/O
-7. Validate against existing test suite (run TS tests against KMP via JS target)
+Expand the Phase 2 JVM prototype to full KMP `commonMain`:
+1. Migrate JVM project to KMP project structure
+2. Port remaining tokenizer + parser
+3. Port all frame types and step types (sealed classes)
+4. Port full trampoline evaluator (~4K lines, the core)
+5. Port core builtins (math, string, array, object, predicates)
+6. Port JSON continuation serialization — **must be wire-compatible with TS version**
+7. Platform-specific `expect/actual` for UUID, regex, console I/O
+8. Validate against existing test suite (run TS tests against KMP via JS target)
 
 **Wire compatibility is the critical constraint.** A JSON continuation blob produced by the TS runtime must deserialize and resume correctly on the KMP runtime, and vice versa. This is what makes "suspend on server, resume on mobile" work.
 
@@ -240,21 +256,7 @@ Before deciding on the TS codebase, evaluate the KMP JS output:
 
 **Decide after Phase 3, not before.**
 
-## Alternative: GraalJS for JVM-only
-
-If iOS/Android priority drops, GraalJS is a zero-effort JVM solution:
-- Load the 139KB IIFE bundle, thin Java wrapper, done in days
-- ~50MB dependency, but zero rewrite
-- No path to iOS — only viable if JVM is the only non-JS target
-
 ## Resources
-
-### GraalJS
-- [GraalJS Reference Manual](https://www.graalvm.org/latest/reference-manual/js/) — overview, ES compatibility, configuration
-- [Embedding Languages (Polyglot API)](https://www.graalvm.org/latest/reference-manual/embed-languages/) — how to embed JS in a Java app via `org.graalvm.polyglot.Context`
-- [Java Interoperability](https://www.graalvm.org/latest/reference-manual/js/JavaInteroperability/) — passing Java objects/callbacks to JS and vice versa
-- [GraalJS GitHub](https://github.com/oracle/graaljs) — source, Maven coordinates, examples
-- [Running on stock JDK](https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md) — how to use GraalJS without a full GraalVM installation
 
 ### Kotlin Multiplatform (KMP)
 - [KMP Quickstart](https://kotlinlang.org/docs/multiplatform/quickstart.html) — official getting-started guide
