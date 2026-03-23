@@ -24,9 +24,12 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
     throw new DvalaError('Expected expression', ctx.peekSourceCodeInfo())
   }
 
-  return nodes.length === 1
-    ? nodes[0]!
-    : withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, nodes, undefined], 0], ctx.peekDebugInfo(), ctx) as DoNode
+  if (nodes.length === 1) {
+    return nodes[0]!
+  }
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, nodes, undefined], 0], ctx.peekDebugInfo(), ctx) as DoNode
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 function assertImplicitBlockEnd(ctx: ParserContext, ends: ImplicitBlockEnd[]): void {

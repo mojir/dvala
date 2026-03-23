@@ -58,5 +58,7 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   assertRBraceToken(ctx.tryPeek())
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.object, params], 0], firstToken[2], ctx) as ObjectNode
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.object, params], 0], firstToken[2], ctx) as ObjectNode
+  ctx.setNodeEnd(node[2])
+  return node
 }

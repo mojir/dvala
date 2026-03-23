@@ -39,5 +39,7 @@ export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.match, valueExpression, params], 0], token[2], ctx) as MatchNode
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.match, valueExpression, params], 0], token[2], ctx) as MatchNode
+  ctx.setNodeEnd(node[2])
+  return node
 }

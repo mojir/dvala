@@ -37,9 +37,11 @@ export function parseHandle(ctx: ParserContext): HandleNode {
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
 
-  return withSourceCodeInfo(
+  const node = withSourceCodeInfo(
     [NodeTypes.SpecialExpression, [specialExpressionTypes.handle, expressions, handlersExpr], 0],
     token[2],
     ctx,
   ) as HandleNode
+  ctx.setNodeEnd(node[2])
+  return node
 }

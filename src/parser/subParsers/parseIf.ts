@@ -28,7 +28,9 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
 
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 /**
@@ -53,5 +55,7 @@ function parseElseIf(ctx: ParserContext): IfNode {
     }
   }
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  ctx.setNodeEnd(node[2])
+  return node
 }

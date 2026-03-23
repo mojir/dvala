@@ -44,7 +44,9 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 
   const expression = ctx.parseExpression()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression], 0], firstToken[2], ctx) as ForNode
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression], 0], firstToken[2], ctx) as ForNode
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
@@ -126,6 +128,7 @@ function parseBinding(ctx: ParserContext): BindingNode {
     firstToken[2],
     ctx,
   )
+  ctx.setNodeEnd(node[2])
   return node
 }
 
