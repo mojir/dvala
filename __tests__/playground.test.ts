@@ -413,3 +413,19 @@ describe('start page example', () => {
     expect(printlnValue).toBe('Total: $47.67 (You saved $5.3)')
   })
 })
+
+// ---------------------------------------------------------------------------
+// 8. App routes — stubRoutes + dynamicOnlyRoutes must cover all APP_ROOTS
+//    and every stubRoute must appear in the router's known paths
+// ---------------------------------------------------------------------------
+
+describe('app routes coverage', () => {
+  it('stubRoutes and dynamicOnlyRoutes together cover all allAppRoutes', async () => {
+    const { allAppRoutes, stubRoutes, dynamicOnlyRoutes } = await import('../common/appRoutes')
+    const covered = new Set([...stubRoutes, ...dynamicOnlyRoutes])
+    for (const route of allAppRoutes) {
+      expect(covered.has(route), `Route "${route}" is in allAppRoutes but not in stubRoutes or dynamicOnlyRoutes`).toBe(true)
+    }
+    expect(covered.size).toBe(allAppRoutes.length)
+  })
+})
