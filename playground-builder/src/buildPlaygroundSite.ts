@@ -1,19 +1,32 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import { apiReference, effectReference, getLinkName, moduleReference } from '../../reference'
+import { apiReference, effectReference, getLinkName, isFunctionReference, isCustomReference, isEffectReference, moduleReference } from '../../reference'
+import type { Reference } from '../../reference'
 import { moduleCategories, coreCategories } from '../../reference/api'
 import { examples } from '../../reference/examples'
-import { tutorials } from '../../reference/tutorials'
+import { isTutorialFolder, tutorials, tutorialItems } from '../../reference/tutorials'
+import { allAppRoutes } from '../../common/appRoutes'
 import type { ReferenceData, SearchEntry } from '../../common/referenceData'
 import { version } from '../../package.json'
 
 const DOC_DIR = path.resolve(__dirname, '../../docs')
 const BASE_URL = 'https://mojir.github.io/dvala'
 
+// All references lookup (for seeAlso links in stub pages)
+const allRefs: Record<string, Reference> = {
+  ...apiReference,
+  ...moduleReference,
+}
+for (const [key, ref] of Object.entries(effectReference)) {
+  allRefs[key] = ref
+  allRefs[ref.title] = ref
+}
+
 setupDocDir()
 copyAssets()
 writeIndexPage()
 write404Page()
+writeStubPages()
 writeSitemap()
 
 // ---------------------------------------------------------------------------
@@ -55,6 +68,349 @@ function buildReferenceData(): ReferenceData {
 }
 
 // ---------------------------------------------------------------------------
+// Minimal markdown → HTML (for tutorial bodies in stub pages)
+// ---------------------------------------------------------------------------
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function markdownToHtml(md: string): string {
+  const lines = md.split('\n')
+  const out: string[] = []
+  let inCode = false
+  let inParagraph = false
+
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      if (inCode) {
+        out.push('</code></pre>')
+        inCode = false
+      } else {
+        out.push('<pre><code>')
+        inCode = true
+      }
+      continue
+    }
+    if (inCode) {
+      out.push(escapeHtml(line))
+      continue
+    }
+
+    // Headings
+    const headingMatch = /^(#{1,4})\s+(.+)$/.exec(line)
+    if (headingMatch) {
+      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      const level = headingMatch[1]!.length
+      out.push(`<h${level}>${escapeHtml(headingMatch[2]!)}</h${level}>`)
+      continue
+    }
+
+    // Empty line — close paragraph
+    if (line.trim() === '') {
+      if (inParagraph) { out.push('</p>'); inParagraph = false }
+      continue
+    }
+
+    // Text line — open paragraph if needed
+    if (!inParagraph) {
+      out.push('<p>')
+      inParagraph = true
+    }
+    // Inline formatting
+    let html = escapeHtml(line)
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    out.push(html)
+  }
+  if (inParagraph) out.push('</p>')
+  if (inCode) out.push('</code></pre>')
+  return out.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Stub page helpers
+// ---------------------------------------------------------------------------
+
+function shortDescription(description: string): string {
+  const match = /(.*?) {2}\n|\n\n|$/.exec(description)
+  return (match?.[1] ?? description)
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\*\*([^*]*)\*\*/g, '$1')
+    .replace(/\*([^*]*)\*/g, '$1')
+    .slice(0, 200)
+}
+
+function stubPage(opts: { route: string; title: string; description: string; body: string; nav?: string }): string {
+  const canonicalUrl = `${BASE_URL}${opts.route}`
+  const desc = escapeHtml(opts.description.slice(0, 160))
+  const navHtml = opts.nav ?? defaultNav()
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${escapeHtml(opts.title)} - Dvala</title>
+    <meta name="description" content="${desc}">
+    <link rel="canonical" href="${canonicalUrl}">
+    <meta property="og:title" content="${escapeHtml(opts.title)} - Dvala">
+    <meta property="og:description" content="${desc}">
+    <meta property="og:url" content="${canonicalUrl}">
+    <meta property="og:image" content="${BASE_URL}/images/dvala-logo.webp">
+    <style>body{font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:1rem;color:#e0e0e0;background:#1a1a1a}a{color:#6cb6ff}pre{background:#2d2d2d;padding:1rem;overflow-x:auto;border-radius:4px}code{font-family:monospace}nav{margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid #333}nav a{margin-right:1rem}h1,h2,h3{color:#fff}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:0.5rem;border-bottom:1px solid #333}</style>
+  </head>
+  <body>
+    ${navHtml}
+    <main>
+      ${opts.body}
+    </main>
+    <footer style="margin-top:3rem;padding-top:1rem;border-top:1px solid #333;font-size:0.85rem">
+      <p><a href="${BASE_URL}/">Dvala Playground</a> &mdash; a suspendable, time-traveling functional language for JavaScript with algebraic effects.</p>
+    </footer>
+  </body>
+</html>
+`
+}
+
+function defaultNav(): string {
+  return `<nav>
+      <a href="${BASE_URL}/">Home</a>
+      <a href="${BASE_URL}/about/">About</a>
+      <a href="${BASE_URL}/tutorials/">Tutorials</a>
+      <a href="${BASE_URL}/examples/">Examples</a>
+      <a href="${BASE_URL}/core/">Core API</a>
+      <a href="${BASE_URL}/modules/">Modules</a>
+    </nav>`
+}
+
+function writeStubFile(route: string, content: string) {
+  const dir = path.join(DOC_DIR, route)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'index.html'), content, { encoding: 'utf-8' })
+}
+
+// ---------------------------------------------------------------------------
+// Reference rendering helpers
+// ---------------------------------------------------------------------------
+
+function renderRefBody(ref: Reference): string {
+  const parts: string[] = []
+  parts.push(`<h1>${escapeHtml(ref.title)}</h1>`)
+  parts.push(`<p><strong>Category:</strong> ${escapeHtml(ref.category)}</p>`)
+  parts.push(`<div>${markdownToHtml(ref.description)}</div>`)
+
+  if (isFunctionReference(ref) || isEffectReference(ref)) {
+    // Args
+    const argEntries = Object.entries(ref.args)
+    if (argEntries.length > 0) {
+      parts.push('<h2>Arguments</h2><table><tr><th>Name</th><th>Type</th><th>Description</th></tr>')
+      for (const [name, arg] of argEntries) {
+        const type = Array.isArray(arg.type) ? arg.type.join(' | ') : arg.type
+        parts.push(`<tr><td><code>${escapeHtml(name)}</code></td><td>${escapeHtml(type)}</td><td>${escapeHtml(arg.description ?? '')}</td></tr>`)
+      }
+      parts.push('</table>')
+    }
+
+    // Returns
+    const retType = Array.isArray(ref.returns.type) ? ref.returns.type.join(' | ') : ref.returns.type
+    parts.push(`<p><strong>Returns:</strong> ${escapeHtml(retType)}</p>`)
+
+    // Variants
+    if (ref.variants.length > 0) {
+      parts.push('<h2>Usage</h2>')
+      for (const v of ref.variants) {
+        parts.push(`<p><code>${escapeHtml(ref.title)}(${v.argumentNames.join(', ')})</code></p>`)
+      }
+    }
+  }
+
+  if (isCustomReference(ref)) {
+    if (ref.customVariants.length > 0) {
+      parts.push('<h2>Syntax</h2>')
+      for (const v of ref.customVariants) {
+        parts.push(`<p><code>${escapeHtml(v)}</code></p>`)
+      }
+    }
+    if (ref.details) {
+      parts.push('<h2>Details</h2><table><tr><th>Form</th><th>Description</th></tr>')
+      for (const [form, desc] of ref.details) {
+        parts.push(`<tr><td><code>${escapeHtml(form)}</code></td><td>${escapeHtml(desc)}</td></tr>`)
+      }
+      parts.push('</table>')
+    }
+  }
+
+  // Examples
+  if (ref.examples.length > 0) {
+    parts.push('<h2>Examples</h2>')
+    for (const ex of ref.examples) {
+      const code = typeof ex === 'string' ? ex : ex.code
+      parts.push(`<pre><code>${escapeHtml(code)}</code></pre>`)
+    }
+  }
+
+  // See also
+  if (ref.seeAlso && ref.seeAlso.length > 0) {
+    const links = ref.seeAlso.map(name => {
+      const target = allRefs[name]
+      if (target) {
+        return `<a href="${BASE_URL}/ref/${getLinkName(target)}/">${escapeHtml(name)}</a>`
+      }
+      return escapeHtml(name)
+    })
+    parts.push(`<p><strong>See also:</strong> ${links.join(', ')}</p>`)
+  }
+
+  return parts.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Stub page generation
+// ---------------------------------------------------------------------------
+
+function writeStubPages() {
+  // --- About ---
+  writeStubFile('about', stubPage({
+    route: '/about/',
+    title: 'About Dvala',
+    description: 'Dvala is a suspendable, time-traveling functional language for JavaScript with algebraic effects.',
+    body: `<h1>About Dvala</h1>
+<p>Dvala is a pure functional language that runs on JavaScript. It features algebraic effects,
+suspendable and resumable execution, and time-travel debugging.</p>
+<h2>Key Features</h2>
+<ul>
+  <li><strong>Algebraic Effects</strong> &mdash; structured side-effect handling with <code>perform</code> and <code>handle...with</code></li>
+  <li><strong>Suspendable &amp; Resumable</strong> &mdash; pause execution and resume later, even across different runtimes</li>
+  <li><strong>Time-Travel Debugging</strong> &mdash; step forward and backward through program execution</li>
+  <li><strong>Pure Functional</strong> &mdash; immutable data, no side effects in the language core</li>
+  <li><strong>JavaScript Interop</strong> &mdash; embed Dvala in any JavaScript environment</li>
+</ul>
+<p>Learn more in the <a href="${BASE_URL}/tutorials/">tutorials</a> or explore the <a href="${BASE_URL}/core/">core API</a>.</p>`,
+  }))
+
+  // --- Tutorials index ---
+  const tutorialListHtml = tutorialItems.map(item => {
+    if (isTutorialFolder(item)) {
+      const entries = item.entries.map(e =>
+        `<li><a href="${BASE_URL}/tutorials/${e.id}/">${escapeHtml(e.title)}</a></li>`,
+      ).join('\n')
+      return `<h3>${escapeHtml(item.title)}</h3>\n<ul>${entries}</ul>`
+    }
+    return `<ul><li><a href="${BASE_URL}/tutorials/${item.id}/">${escapeHtml(item.title)}</a></li></ul>`
+  }).join('\n')
+
+  writeStubFile('tutorials', stubPage({
+    route: '/tutorials/',
+    title: 'Tutorials',
+    description: 'Learn Dvala step by step — from basics to advanced topics like algebraic effects and concurrency.',
+    body: `<h1>Dvala Tutorials</h1>\n<p>Step-by-step guides to learning Dvala.</p>\n${tutorialListHtml}`,
+  }))
+
+  // --- Individual tutorial pages ---
+  for (const tutorial of tutorials) {
+    const bodyHtml = markdownToHtml(tutorial.body)
+    writeStubFile(`tutorials/${tutorial.id}`, stubPage({
+      route: `/tutorials/${tutorial.id}/`,
+      title: tutorial.title,
+      description: `Dvala tutorial: ${tutorial.title}`,
+      body: `<h1>${escapeHtml(tutorial.title)}</h1>\n${bodyHtml}`,
+    }))
+  }
+
+  // --- Examples index ---
+  const exampleListHtml = examples.map(ex =>
+    `<li><strong>${escapeHtml(ex.name)}</strong> &mdash; ${escapeHtml(ex.description)}</li>`,
+  ).join('\n')
+
+  writeStubFile('examples', stubPage({
+    route: '/examples/',
+    title: 'Examples',
+    description: 'Example programs written in Dvala — from simple arithmetic to games and matrix math.',
+    body: `<h1>Dvala Examples</h1>\n<p>Example programs showcasing Dvala features.</p>\n<ul>${exampleListHtml}</ul>`,
+  }))
+
+  // --- Core API index ---
+  const coreByCategory: Record<string, { title: string; linkName: string; description: string }[]> = {}
+  for (const ref of Object.values(apiReference)) {
+    const cat = ref.category
+    if (!coreByCategory[cat]) coreByCategory[cat] = []
+    coreByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
+  }
+  const coreSections = (coreCategories as string[]).map(cat => {
+    const items = coreByCategory[cat]
+    if (!items) return ''
+    const listItems = items.map(i =>
+      `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
+    ).join('\n')
+    return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
+  }).join('\n')
+
+  writeStubFile('core', stubPage({
+    route: '/core/',
+    title: 'Core API',
+    description: 'Dvala core built-in functions — math, string, collection, array, and more.',
+    body: `<h1>Core API Reference</h1>\n<p>Built-in functions and special expressions available in every Dvala program.</p>\n${coreSections}`,
+  }))
+
+  // --- Modules index ---
+  const modulesByCategory: Record<string, { title: string; linkName: string; description: string }[]> = {}
+  for (const ref of Object.values(moduleReference)) {
+    const cat = ref.category
+    if (!modulesByCategory[cat]) modulesByCategory[cat] = []
+    modulesByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
+  }
+  const moduleSections = (moduleCategories as string[]).map(cat => {
+    const items = modulesByCategory[cat]
+    if (!items) return ''
+    const listItems = items.map(i =>
+      `<li><a href="${BASE_URL}/ref/${i.linkName}/">${escapeHtml(i.title)}</a> &mdash; ${escapeHtml(i.description)}</li>`,
+    ).join('\n')
+    return `<h3>${escapeHtml(cat)}</h3>\n<ul>${listItems}</ul>`
+  }).join('\n')
+
+  writeStubFile('modules', stubPage({
+    route: '/modules/',
+    title: 'Modules',
+    description: 'Dvala module library — grid, vector, linear algebra, number theory, and more.',
+    body: `<h1>Module Reference</h1>\n<p>Optional modules that extend Dvala with additional functionality.</p>\n${moduleSections}`,
+  }))
+
+  // --- Ref index (lists all references for crawler discovery) ---
+  const allRefEntries = [
+    ...Object.values(apiReference),
+    ...Object.values(moduleReference),
+    ...Object.values(effectReference),
+  ]
+  const refListHtml = allRefEntries.map(ref => {
+    const linkName = getLinkName(ref)
+    return `<li><a href="${BASE_URL}/ref/${linkName}/">${escapeHtml(ref.title)}</a> (${escapeHtml(ref.category)})</li>`
+  }).join('\n')
+  writeStubFile('ref', stubPage({
+    route: '/ref/',
+    title: 'All References',
+    description: 'Complete Dvala reference — all functions, modules, effects, and datatypes.',
+    body: `<h1>All References</h1>\n<p>Complete index of all Dvala functions, modules, effects, and datatypes.</p>\n<ul>${refListHtml}</ul>`,
+  }))
+
+  // --- Individual reference pages (API, modules, effects) ---
+  for (const ref of allRefEntries) {
+    const linkName = getLinkName(ref)
+    const desc = shortDescription(ref.description)
+    writeStubFile(`ref/${linkName}`, stubPage({
+      route: `/ref/${linkName}/`,
+      title: ref.title,
+      description: `${ref.title} — ${desc}`,
+      body: renderRefBody(ref),
+    }))
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Generated ${7 + tutorials.length + allRefEntries.length} stub pages`)
+}
+
+// ---------------------------------------------------------------------------
 // Page writers
 // ---------------------------------------------------------------------------
 
@@ -72,7 +428,7 @@ function writeIndexPage() {
       // For a local dev server (served at /), base is '/'.
       // For GitHub Pages (served at /dvala/), base is '/dvala/'.
       ;(function() {
-        var APP_ROOTS = ['about','tutorials','examples','core','modules','ref','saved','snapshots','settings']
+        var APP_ROOTS = ${JSON.stringify([...allAppRoutes])}
         var segs = location.pathname.split('/').filter(Boolean)
         var base = document.createElement('base')
         if (segs.length === 0 || APP_ROOTS.indexOf(segs[0]) !== -1) {
@@ -153,11 +509,12 @@ function write404Page() {
 <html lang="en">
   <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex">
     <title>Dvala Playground</title>
     <script>
       // GitHub Pages SPA routing: encode the path as a query param and redirect to index.html
       // pathSegmentsToKeep=1 keeps the /dvala/ repo prefix on GitHub Pages
-      var appRoutes = ['about','tutorials','examples','core','modules','ref','saved','snapshots','settings']
+      var appRoutes = ${JSON.stringify([...allAppRoutes])}
       var firstSeg = window.location.pathname.split('/').filter(Boolean)[0]
       var pathSegmentsToKeep = (firstSeg && appRoutes.indexOf(firstSeg) !== -1) ? 0 : 1
       var l = window.location
@@ -213,21 +570,21 @@ function writeSitemap() {
   // Static pages
   const staticPages = [
     '/',
-    '/about',
-    '/tutorials',
-    '/examples',
-    '/core',
-    '/modules',
+    '/about/',
+    '/tutorials/',
+    '/examples/',
+    '/core/',
+    '/modules/',
   ]
 
   // Tutorial pages
-  const tutorialPages = tutorials.map(t => `/tutorials/${t.id}`)
+  const tutorialPages = tutorials.map(t => `/tutorials/${t.id}/`)
 
   // Reference pages (API, modules, effects)
   const refPages = [
-    ...Object.values(apiReference).map(ref => `/ref/${getLinkName(ref)}`),
-    ...Object.values(moduleReference).map(ref => `/ref/${getLinkName(ref)}`),
-    ...Object.values(effectReference).map(ref => `/ref/${getLinkName(ref)}`),
+    ...Object.values(apiReference).map(ref => `/ref/${getLinkName(ref)}/`),
+    ...Object.values(moduleReference).map(ref => `/ref/${getLinkName(ref)}/`),
+    ...Object.values(effectReference).map(ref => `/ref/${getLinkName(ref)}/`),
   ]
 
   const allPages = [...staticPages, ...tutorialPages, ...refPages]
