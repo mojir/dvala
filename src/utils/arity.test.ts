@@ -135,56 +135,49 @@ describe('arity utilities', () => {
 
   describe('assertNumberOfParams', () => {
     const createTestNode = (params: number[]): NormalExpressionNodeWithName => {
-      const symbolNode: BuiltinSymbolNode = [NodeTypes.Builtin, '+']
-      const paramNodes: NumberNode[] = params.map(p => [NodeTypes.Number, p])
-      const sourceCodeInfo = {
-        position: {
-          line: 1,
-          column: 1,
-        },
-        code: 'test',
-      } as const
-      return [NodeTypes.NormalExpression, [symbolNode, paramNodes], sourceCodeInfo]
+      const symbolNode: BuiltinSymbolNode = [NodeTypes.Builtin, '+', 0]
+      const paramNodes: NumberNode[] = params.map(p => [NodeTypes.Number, p, 0])
+      return [NodeTypes.NormalExpression, [symbolNode, paramNodes], 0]
     }
 
     it('should not throw when number of params matches fixed count', () => {
       const node = createTestNode([1, 2])
-      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, node[2])).not.toThrow()
+      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, undefined)).not.toThrow()
     })
 
     it('should throw when number of params does not match fixed count', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, node[2])).toThrow(DvalaError)
+      expect(() => assertNumberOfParams(toFixedArity(2), node[1][1].length, undefined)).toThrow(DvalaError)
     })
 
     it('should throw when number of params is less than minimum', () => {
       const node = createTestNode([1])
-      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
+      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, undefined)).toThrow(DvalaError)
     })
 
     it('should throw when number of params is more than maximum', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
+      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, undefined)).toThrow(DvalaError)
     })
 
     it('should throw when min is greater than max', () => {
       const node = createTestNode([1, 2])
-      expect(() => assertNumberOfParams({ min: 3, max: 2 }, node[1][1].length, node[2])).toThrow(DvalaError)
+      expect(() => assertNumberOfParams({ min: 3, max: 2 }, node[1][1].length, undefined)).toThrow(DvalaError)
     })
 
     it('should throw when max is less than min', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams({ min: 2, max: 1 }, node[1][1].length, node[2])).toThrow(DvalaError)
+      expect(() => assertNumberOfParams({ min: 2, max: 1 }, node[1][1].length, undefined)).toThrow(DvalaError)
     })
 
     it('should throw with correct error message when params are less than min', () => {
       const node = createTestNode([1])
-      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, node[2])).toThrow()
+      expect(() => assertNumberOfParams({ min: 2 }, node[1][1].length, undefined)).toThrow()
     })
 
     it('should throw with correct error message when params are more than max', () => {
       const node = createTestNode([1, 2, 3])
-      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, node[2])).toThrow()
+      expect(() => assertNumberOfParams({ max: 2 }, node[1][1].length, undefined)).toThrow()
     })
   })
 })

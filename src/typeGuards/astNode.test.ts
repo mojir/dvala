@@ -28,12 +28,12 @@ import {
 } from './astNode'
 
 describe('node type guards', () => {
-  const specialExpressionNode: QqNode = [NodeTypes.SpecialExpression, [specialExpressionTypes['??'], [[NodeTypes.Reserved, null], [NodeTypes.Reserved, null]]]]
-  const symbolNode: SymbolNode = [NodeTypes.UserDefinedSymbol, 'A name']
-  const numberNode: NumberNode = [NodeTypes.Number, 12]
-  const stringNode: StringNode = [NodeTypes.String, 'foo']
-  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.NormalExpression, [[NodeTypes.Builtin, '+'], []]]
-  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.NormalExpression, [stringNode, [numberNode]]]
+  const specialExpressionNode: QqNode = [NodeTypes.SpecialExpression, [specialExpressionTypes['??'], [[NodeTypes.Reserved, null, 0], [NodeTypes.Reserved, null, 0]]], 0]
+  const symbolNode: SymbolNode = [NodeTypes.UserDefinedSymbol, 'A name', 0]
+  const numberNode: NumberNode = [NodeTypes.Number, 12, 0]
+  const stringNode: StringNode = [NodeTypes.String, 'foo', 0]
+  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.NormalExpression, [[NodeTypes.Builtin, '+', 0], []], 0]
+  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.NormalExpression, [stringNode, [numberNode]], 0]
 
   const expressionNodes: ExpressionNode[] = [
     normalExpressionNodeWithName,

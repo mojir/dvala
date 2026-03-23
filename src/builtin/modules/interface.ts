@@ -1,4 +1,5 @@
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../builtin/interface'
+import type { AstNode } from '../../parser/types'
 
 /**
  * Represents a Dvala module that can be imported dynamically.
@@ -21,6 +22,8 @@ export interface DvalaModule {
    * function names and documentation. Not required for user-defined modules.
    */
   docs?: Record<string, FunctionDocs>
+  /** @internal Cached parsed AST nodes for the module source. */
+  _cachedNodes?: AstNode[]
 }
 
 /**

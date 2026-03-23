@@ -5,7 +5,7 @@ import type { HandleNode } from '../builtin/specialExpressions/handle'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
-import type { OperatorToken, SourceCodeInfo } from '../tokenizer/token'
+import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'
 import { assertNumberOfParams } from '../utils/arity'
@@ -15,21 +15,23 @@ import type { ParserContext } from './ParserContext'
 export const exponentiationPrecedence = 12
 export const binaryFunctionalOperatorPrecedence = 3
 
-export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, sourceCodeInfo: SourceCodeInfo | undefined): T {
-  if (sourceCodeInfo) {
-    node[2] = sourceCodeInfo
-  }
+/**
+ * Assign a node ID from the parser context. When debug mode is active,
+ * the source position is recorded in the source map.
+ */
+export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): T {
+  node[2] = ctx.allocateNodeId(debugInfo)
   return node
 }
 
-export function stringToSymbolNode(value: string, sourceCodeInfo: SourceCodeInfo | undefined): SymbolNode {
+export function stringToSymbolNode(value: string, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): SymbolNode {
   if (specialExpressionTypes[value as SpecialExpressionName] !== undefined && value !== 'fn' && value !== 'defn') {
-    return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName]], sourceCodeInfo) satisfies SymbolNode
+    return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName], 0], debugInfo, ctx) satisfies SymbolNode
   }
   if (normalExpressionTypes.has(value)) {
-    return withSourceCodeInfo([NodeTypes.Builtin, value], sourceCodeInfo) satisfies SymbolNode
+    return withSourceCodeInfo([NodeTypes.Builtin, value, 0], debugInfo, ctx) satisfies SymbolNode
   }
-  return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value], sourceCodeInfo) satisfies SymbolNode
+  return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value, 0], debugInfo, ctx) satisfies SymbolNode
 }
 
 export function stringFromQuotedSymbol(value: string): string {
@@ -61,11 +63,11 @@ export function getSymbolName(symbol: SymbolNode): string {
   return symbol[1]
 }
 
-export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], sourceCodeInfo: SourceCodeInfo | undefined): NormalExpressionNodeWithName {
-  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.NormalExpression, [symbolNode, params]], sourceCodeInfo)
+export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): NormalExpressionNodeWithName {
+  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.NormalExpression, [symbolNode, params], 0], debugInfo, ctx)
 
   if (isBuiltinSymbolNode(symbolNode)) {
-    assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, sourceCodeInfo)
+    assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, ctx.resolveTokenDebugInfo(debugInfo))
   }
 
   return node
@@ -85,7 +87,7 @@ export function isAtExpressionEnd(ctx: ParserContext): boolean {
   return false
 }
 
-export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: SymbolNode, left: AstNode, right: AstNode, sourceCodeInfo: SourceCodeInfo | undefined): AstNode {
+export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: SymbolNode, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): AstNode {
   const operatorName = operator[1]
 
   switch (operatorName) {
@@ -111,14 +113,14 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case 'xor':
     case '|':
     case '|>':
-      return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], sourceCodeInfo)
+      return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], debugInfo, ctx)
     case '&&':
     case '||':
     case '??':
-      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]]] as AndNode, sourceCodeInfo)
+      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]], 0] as AndNode, debugInfo, ctx)
     case '||>':
       // Effect pipe: expr ||> handler  →  handle expr with handler end
-      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right]], sourceCodeInfo) as HandleNode
+      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right], 0], debugInfo, ctx) as HandleNode
     /* v8 ignore next 11 */
     case '.':
     case ';':
@@ -127,10 +129,10 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case ',':
     case '->':
     case '...':
-      throw new DvalaError(`Unknown binary operator: ${operatorName}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown binary operator: ${operatorName}`, ctx.resolveTokenDebugInfo(debugInfo))
     // Exhaustive check: all operator cases are handled above
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`Unknown binary operator: ${operatorName satisfies never}`, sourceCodeInfo)
+      throw new DvalaError(`Unknown binary operator: ${operatorName satisfies never}`, ctx.resolveTokenDebugInfo(debugInfo))
   }
 }

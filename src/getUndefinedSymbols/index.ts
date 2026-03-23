@@ -12,7 +12,7 @@ export type UndefinedSymbols = Set<string>
 export const getUndefinedSymbols: GetUndefinedSymbols = (ast, contextStack, builtin) => {
   const nodes: AstNode[] = Array.isArray(ast)
     ? ast
-    : [[NodeTypes.SpecialExpression, [specialExpressionTypes.block, ast.body, undefined]] satisfies DoNode]
+    : [[NodeTypes.SpecialExpression, [specialExpressionTypes.block, ast.body, undefined], 0] satisfies DoNode]
 
   const unresolvedSymbols = new Set<string>()
 
@@ -89,6 +89,6 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
 
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`Unhandled node type: ${nodeType satisfies never}`, node[2])
+      throw new DvalaError(`Unhandled node type: ${nodeType satisfies never}`, undefined)
   }
 }

@@ -5,7 +5,8 @@ import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { DvalaError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
-import type { NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
+import type { NormalBuiltinFunction, SourceMap, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
+import { resolveSourceCodeInfo } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
@@ -30,18 +31,21 @@ export class ContextStackImpl {
   private modules: Map<string, DvalaModule>
   private valueModules: Map<string, unknown>
   public pure: boolean
+  public sourceMap?: SourceMap
   constructor({
     contexts,
     values: hostValues,
     modules,
     valueModules,
     pure,
+    sourceMap,
   }: {
     contexts: Context[]
     values?: Record<string, unknown>
     modules?: Map<string, DvalaModule>
     valueModules?: Map<string, unknown>
     pure?: boolean
+    sourceMap?: SourceMap
   }) {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
@@ -49,6 +53,11 @@ export class ContextStackImpl {
     this.modules = modules ?? new Map<string, DvalaModule>()
     this.valueModules = valueModules ?? new Map<string, unknown>()
     this.pure = pure ?? false
+    this.sourceMap = sourceMap
+  }
+
+  public resolve(nodeId: number): SourceCodeInfo | undefined {
+    return resolveSourceCodeInfo(nodeId, this.sourceMap)
   }
 
   // -- Serialization support (Phase 4) --
@@ -143,6 +152,7 @@ export class ContextStackImpl {
       modules: this.modules,
       valueModules: this.valueModules,
       pure: this.pure,
+      sourceMap: this.sourceMap,
     })
     contextStack.globalContext = globalContext
     return contextStack
@@ -151,7 +161,7 @@ export class ContextStackImpl {
   public new(context: Context): ContextStack {
     const contexts = [{}, context]
 
-    return new ContextStackImpl({ contexts, modules: this.modules, valueModules: this.valueModules, pure: this.pure })
+    return new ContextStackImpl({ contexts, modules: this.modules, valueModules: this.valueModules, pure: this.pure, sourceMap: this.sourceMap })
   }
 
   public addValues(values: Record<string, Any>, sourceCodeInfo: SourceCodeInfo | undefined) {
@@ -208,17 +218,17 @@ export class ContextStackImpl {
         case specialExpressionTypes.object:
         case specialExpressionTypes.recur:
         case specialExpressionTypes['??']: {
-          const specialExpression: SpecialExpression = asNonUndefined(builtin.specialExpressions[functionType], node[2])
+          const specialExpression: SpecialExpression = asNonUndefined(builtin.specialExpressions[functionType], this.resolve(node[2]))
           return {
             [FUNCTION_SYMBOL]: true,
             functionType: 'SpecialBuiltin',
             specialBuiltinSymbolType: functionType,
-            sourceCodeInfo: node[2],
+            sourceCodeInfo: this.resolve(node[2]),
             arity: specialExpression.arity,
           } satisfies SpecialBuiltinFunction
         }
         default:
-          throw new DvalaError(`Unknown special builtin symbol type: ${functionType}`, node[2])
+          throw new DvalaError(`Unknown special builtin symbol type: ${functionType}`, this.resolve(node[2]))
       }
     }
     if (isBuiltinSymbolNode(node)) {
@@ -232,7 +242,7 @@ export class ContextStackImpl {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Builtin',
         normalBuiltinSymbolType: name,
-        sourceCodeInfo: node[2],
+        sourceCodeInfo: this.resolve(node[2]),
         arity: normalExpression.arity,
         name,
       } satisfies NormalBuiltinFunction
@@ -242,7 +252,7 @@ export class ContextStackImpl {
     if (isContextEntry(lookUpResult))
       return lookUpResult.value
 
-    throw new UndefinedSymbolError(node[1], node[2])
+    throw new UndefinedSymbolError(node[1], this.resolve(node[2]))
   }
 }
 
@@ -252,7 +262,7 @@ function assertNotShadowingKeyword(name: string): void {
   }
 }
 
-export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean): ContextStack {
+export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
@@ -277,6 +287,7 @@ export function createContextStack(params: CreateContextStackParams = {}, module
     values: hostValues,
     modules,
     pure,
+    sourceMap,
   })
   return params.globalModuleScope ? contextStack : contextStack.create({})
 }

@@ -15,7 +15,7 @@ import type { DvalaModule } from './builtin/modules/interface'
 import { tokenize } from './tokenizer/tokenize'
 import type { TokenStream } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
-import { parse } from './parser'
+import { parseToAst } from './parser'
 import type { Ast } from './parser/types'
 import { transformSymbolTokens } from './transformer'
 import { untokenize } from './untokenizer'
@@ -36,7 +36,7 @@ export function tokenizeSource(source: string, debug = false, filePath?: string)
  */
 export function parseTokenStream(tokenStream: TokenStream): Ast {
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-  return { body: parse(minified), hasDebugData: tokenStream.hasDebugData }
+  return parseToAst(minified)
 }
 
 /**
@@ -69,7 +69,7 @@ export function getUndefinedSymbols(
   const contextStack = createContextStack({ bindings: options?.bindings }, modulesMap)
   const tokenStream = tokenize(source, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-  const ast: Ast = { body: parse(minified), hasDebugData: false }
+  const ast: Ast = parseToAst(minified)
   return getUndefinedSymbolsInternal(ast, contextStack, builtin)
 }
 

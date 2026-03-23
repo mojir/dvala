@@ -22,7 +22,7 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
     const value = target[1][1]!
     target[1][1] = undefined
 
-    bindingNodes.push(withSourceCodeInfo([NodeTypes.Binding, [target, value]], target[2]) satisfies BindingNode)
+    bindingNodes.push(withSourceCodeInfo([NodeTypes.Binding, [target, value], 0], token?.[2], ctx) as BindingNode)
 
     if (isOperatorToken(ctx.tryPeek(), ',')) {
       ctx.advance()
@@ -41,5 +41,5 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
 
   const expression = ctx.parseExpression()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.loop, bindingNodes, expression]], firstToken[2]) satisfies LoopNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.loop, bindingNodes, expression], 0], firstToken[2], ctx) as LoopNode
 }

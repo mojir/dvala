@@ -41,5 +41,5 @@ export function parseString(ctx: ParserContext, token: StringToken): StringNode 
       },
     )
 
-  return withSourceCodeInfo([NodeTypes.String, value], token[2]) satisfies StringNode
+  return withSourceCodeInfo([NodeTypes.String, value, 0], token[2], ctx) as StringNode
 }

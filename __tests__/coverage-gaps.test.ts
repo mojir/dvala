@@ -2932,7 +2932,7 @@ describe('evaluateAsync — direct call', () => {
     const program = '1 + 2'
     const tokens = tokenize(program, true, undefined)
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const ast = { body: parse(minified), hasDebugData: false }
+    const ast = { body: parse(minified) }
     const result = await evaluateAsync(ast, createContextStack())
     expect(result).toBe(3)
   })

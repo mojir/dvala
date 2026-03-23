@@ -141,7 +141,7 @@ export type DvalaFunctionType = DvalaFunction['functionType']
 
 export type FunctionLike = DvalaFunction | Coll | number
 
-export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payload] | [T, Payload, SourceCodeInfo]
+export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payload, number]
 
 export type SpreadNode = AstNode<typeof NodeTypes.Spread, AstNode> // Payload should be array or object depending on context
 export type NumberNode = AstNode<typeof NodeTypes.Number, number>
@@ -171,7 +171,7 @@ export const bindingTargetTypes = {
 
 export type BindingTargetType = typeof bindingTargetTypes[keyof typeof bindingTargetTypes]
 
-type GenericTarget<T extends BindingTargetType, Payload extends unknown[]> = [T, Payload] | [T, Payload, SourceCodeInfo]
+type GenericTarget<T extends BindingTargetType, Payload extends unknown[]> = [T, Payload, number]
 
 export type SymbolBindingTarget = GenericTarget<typeof bindingTargetTypes.symbol, [SymbolNode, AstNode | undefined /* default value */]>
 export type RestBindingTarget = GenericTarget<typeof bindingTargetTypes.rest, [string, AstNode | undefined /* default value */]>
@@ -184,8 +184,34 @@ export type BindingTarget = SymbolBindingTarget | RestBindingTarget | ObjectBind
 
 export type BindingNode = AstNode<typeof NodeTypes.Binding, [BindingTarget, AstNode]> // [target, value]
 
+export interface SourceMapPosition {
+  source: number // index into sources[]
+  start: [number, number] // [line, column], 0-based
+  end: [number, number] // [line, column], 0-based
+}
+
+export interface SourceMap {
+  sources: { path: string; content: string }[]
+  positions: (SourceMapPosition | undefined)[] // indexed by node ID
+}
+
+export function resolveSourceCodeInfo(nodeId: number, sourceMap: SourceMap | undefined): SourceCodeInfo | undefined {
+  if (!sourceMap) return undefined
+  const pos = sourceMap.positions[nodeId]
+  if (!pos) return undefined
+  const source = sourceMap.sources[pos.source]
+  if (!source) return undefined
+  const line = pos.start[0]
+  const lines = source.content.split('\n')
+  return {
+    position: { line: line + 1, column: pos.start[1] + 1 }, // convert back to 1-based
+    code: lines[line] ?? '',
+    filePath: source.path === '<anonymous>' ? undefined : source.path,
+  }
+}
+
 type AstBody = AstNode[]
 export interface Ast {
   body: AstBody // body
-  hasDebugData: boolean
+  sourceMap?: SourceMap // present when debug mode is on
 }

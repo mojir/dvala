@@ -27,9 +27,12 @@ export const tokenTypes = [
 
 export type TokenType = typeof tokenTypes[number]
 
-type GenericToken<T extends TokenType, V extends string = string> = [T, V] | [T, V, SourceCodeInfo]
+/** Debug position carried by tokens in debug mode: [line, column] (0-based). */
+export type TokenDebugInfo = [line: number, column: number]
 
-export type ErrorToken = ['Error', string, SourceCodeInfo | undefined, string]
+type GenericToken<T extends TokenType, V extends string = string> = [T, V] | [T, V, TokenDebugInfo]
+
+export type ErrorToken = ['Error', string, TokenDebugInfo | undefined, string]
 
 export type LBraceToken = GenericToken<'LBrace', '{'>
 export type LBracketToken = GenericToken<'LBracket', '['>
@@ -337,7 +340,27 @@ export function asTemplateStringToken(token: Token | undefined): TemplateStringT
   return token
 }
 
+/** Convert lightweight token debug info to SourceCodeInfo for error reporting. */
+export function debugInfoToSourceCodeInfo(debugInfo: TokenDebugInfo | undefined, source?: string, filePath?: string): SourceCodeInfo | undefined {
+  if (!debugInfo) return undefined
+  const [line, column] = debugInfo
+  const code = source ? (source.split('\n')[line] ?? '') : ''
+  return {
+    position: { line: line + 1, column: column + 1 },
+    code,
+    filePath,
+  }
+}
+
+/** Extract TokenDebugInfo from SourceCodeInfo (inverse of debugInfoToSourceCodeInfo). */
+export function sourceCodeInfoToDebugInfo(sci: SourceCodeInfo | undefined): TokenDebugInfo | undefined {
+  if (!sci) return undefined
+  return [sci.position.line - 1, sci.position.column - 1]
+}
+
 function throwUnexpectedToken(expected: TokenType, expectedValue: string | undefined, actual: Token | undefined): never {
   const actualOutput = actual ? `${actual[0]} '${actual[1]}'` : 'end of input'
-  throw new DvalaError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, actual?.[2])
+  // Minimal location info from token debug info (no source text available here)
+  const sourceCodeInfo = actual?.[2] ? debugInfoToSourceCodeInfo(actual[2]) : undefined
+  throw new DvalaError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, sourceCodeInfo)
 }

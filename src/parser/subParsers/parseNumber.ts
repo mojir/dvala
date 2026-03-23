@@ -10,5 +10,5 @@ export function parseNumber(ctx: ParserContext): NumberNode {
   const value = token[1]
   const negative = value[0] === '-'
   const numberString = (negative ? value.substring(1) : value).replace(/_/g, '')
-  return withSourceCodeInfo([NodeTypes.Number, negative ? -Number(numberString) : Number(numberString)], token[2]) satisfies NumberNode
+  return withSourceCodeInfo([NodeTypes.Number, negative ? -Number(numberString) : Number(numberString), 0], token[2], ctx) as NumberNode
 }

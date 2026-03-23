@@ -10,7 +10,6 @@
 import type { Any, Arr } from '../interface'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
-import type { SourceCodeInfo } from '../tokenizer/token'
 import { isUnknownRecord } from '../typeGuards'
 import { asAny } from '../typeGuards/dvala'
 import type { BindingPathStep } from './bindingSlot'
@@ -58,8 +57,8 @@ export interface MatchSlot {
   /** For array rest: starting index */
   restIndex?: number
 
-  /** Source info for error reporting */
-  sourceCodeInfo?: SourceCodeInfo
+  /** Node ID for error reporting (resolve via source map) */
+  nodeId?: number
 }
 
 /**
@@ -110,7 +109,7 @@ function flattenMatchTarget(
         kind: 'literal',
         path: [...path],
         literalNode,
-        sourceCodeInfo: target[2],
+        nodeId: target[2],
       })
       break
     }
@@ -124,7 +123,7 @@ function flattenMatchTarget(
         name,
         path: [...path],
         defaultNode,
-        sourceCodeInfo: target[2],
+        nodeId: target[2],
       })
       break
     }
@@ -137,7 +136,7 @@ function flattenMatchTarget(
         name,
         path: [...path],
         defaultNode,
-        sourceCodeInfo: target[2],
+        nodeId: target[2],
       })
       break
     }
@@ -149,7 +148,7 @@ function flattenMatchTarget(
           kind: 'typeCheck',
           path: [...path],
           requiredType: 'object',
-          sourceCodeInfo: target[2],
+          nodeId: target[2],
         })
       }
 
@@ -175,7 +174,7 @@ function flattenMatchTarget(
           name: restElement[1][0] as string,
           path: [...path],
           restKeys: capturedKeys,
-          sourceCodeInfo: restElement[2],
+          nodeId: restElement[2],
         })
       }
       break
@@ -188,7 +187,7 @@ function flattenMatchTarget(
           kind: 'typeCheck',
           path: [...path],
           requiredType: 'array',
-          sourceCodeInfo: target[2],
+          nodeId: target[2],
         })
       }
 
@@ -206,7 +205,7 @@ function flattenMatchTarget(
             name: element[1][0],
             path: [...path],
             restIndex: i,
-            sourceCodeInfo: element[2],
+            nodeId: element[2],
           })
           break
         }

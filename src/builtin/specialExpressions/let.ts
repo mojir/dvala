@@ -34,7 +34,7 @@ export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {
     walkDefaults(target, defaultNode => {
       addToSet(bindingResult, getUndefinedSymbols([defaultNode], contextStack, builtin))
     })
-    contextStack.addValues(getAllBindingTargetNames(target), target[2])
+    contextStack.addValues(getAllBindingTargetNames(target), contextStack.resolve(target[2]))
     return bindingResult
   },
 }
