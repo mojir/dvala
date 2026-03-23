@@ -81,8 +81,8 @@ JSON continuation serialization via `kotlinx.serialization` — multiplatform, s
 | Suspension/serialization | ~400 | ~600 |
 | Core builtins | ~3,000 | ~5,000 |
 | Module builtins | ~5,000 | ~8,000 |
-| Tokenizer + parser | ~2,000 | ~3,000 |
-| **Total** | **~16,000** | **~25,000** |
+| AST deserializer | ~300 | ~500 |
+| **Total** | **~14,300** | **~22,500** |
 
 ## Cross-Platform Architectural Decisions
 
@@ -153,13 +153,15 @@ JS, Java, and iOS regex engines differ in syntax, flags, and edge-case behavior.
 
 Dependency: `org.jetbrains.kotlinx:kotlinx-coroutines-core` (~200KB, multiplatform).
 
-### Modules: parser required on all platforms
+### Modules: precompiled AST, no parser in runtime
 
-14 built-in modules already have `.dvala` source files, and this pattern is growing — modules written in Dvala will become more common over time. This means:
+14 built-in modules already have `.dvala` source files, and this pattern is growing. Rather than porting the parser to every platform, the bundler (TS/Node) precompiles all `.dvala` sources to AST at build time. The published runtime artifact embeds these ASTs.
 
-- **The parser must be ported to KMP `commonMain`** — it cannot be skipped or deferred
-- Every platform needs to parse Dvala source at module initialization time
-- The bundle format is still useful for distributing user programs (skip re-parsing), but the runtime itself always needs a parser
+This means:
+- **The parser stays in the TS codebase** — it is a build-time/tooling dependency, not a runtime dependency
+- **The KMP runtime only needs an AST deserializer** — significantly smaller scope than porting the full parser (~2,000 TS lines)
+- **Programs and continuations both use AST** — a bundle is AST + metadata, a continuation is AST + frame stack + runtime state. The AST representation is the common foundation
+- **The TS codebase never fully retires** — it remains the canonical toolchain (parsing, bundling, playground, CLI), while KMP is the portable runtime
 
 ### Other concerns
 
@@ -217,13 +219,14 @@ Before tackling the full KMP port, build a minimal end-to-end Dvala evaluator on
 ### Phase 3 — KMP Core (2-3 months)
 Expand the Phase 2 JVM prototype to full KMP `commonMain`:
 1. Migrate JVM project to KMP project structure
-2. Port remaining tokenizer + parser
-3. Port all frame types and step types (sealed classes)
-4. Port full trampoline evaluator (~4K lines, the core)
-5. Port core builtins (math, string, array, object, predicates)
+2. Port all frame types and step types (sealed classes)
+3. Port full trampoline evaluator (~4K lines, the core)
+4. Port core builtins (math, string, array, object, predicates)
+5. AST deserializer — load precompiled AST bundles produced by the TS bundler
 6. Port JSON continuation serialization — **must be wire-compatible with TS version**
 7. Platform-specific `expect/actual` for UUID, regex, console I/O
-8. Validate against existing test suite (run TS tests against KMP via JS target)
+8. Build-time step: TS bundler precompiles all `.dvala` module sources to AST JSON, embedded in the KMP artifact
+9. Validate against existing test suite (run TS tests against KMP via JS target)
 
 **Wire compatibility is the critical constraint.** A JSON continuation blob produced by the TS runtime must deserialize and resume correctly on the KMP runtime, and vice versa. This is what makes "suspend on server, resume on mobile" work.
 
@@ -243,16 +246,16 @@ Before deciding on the TS codebase, evaluate the KMP JS output:
 
 ### Phase 6 — TS Codebase Decision
 
+The TS codebase remains the canonical toolchain (parser, bundler, playground, CLI, MCP server, VS Code extension). The question is whether the KMP JS target can replace TS as the *runtime* in web contexts.
+
 **If KMP JS target is good enough** (reasonable bundle size, no behavioral quirks):
-- Migrate playground, VS Code extension, MCP server, CLI to KMP JS output
-- Retire the TypeScript implementation entirely
-- One codebase, all platforms
+- Playground and VS Code extension use KMP JS for evaluation
+- TS codebase focuses on tooling: parsing, bundling, introspection, syntax highlighting
 
 **If KMP JS target is too large or rough**:
-- Keep TS for the web/npm ecosystem (battle-tested, 139KB, rich tooling)
-- KMP is the canonical implementation (source of truth for semantics)
-- TS tracks KMP behavior
-- Wire compatibility ensures cross-platform continuations still work
+- TS remains the web/Node runtime as well (battle-tested, 139KB)
+- KMP is the runtime for JVM, mobile, and edge
+- Wire compatibility ensures cross-platform continuations work regardless
 
 **Decide after Phase 3, not before.**
 
