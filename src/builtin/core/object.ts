@@ -18,7 +18,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
       variants: [{ argumentNames: ['obj'] }],
-      description: 'Returns array of all keys in $obj.',
+      description: 'Returns array of all keys in `obj`.',
       seeAlso: ['vals', 'entries', 'zipmap', 'selectKeys'],
       examples: [
         'keys({})',
@@ -39,7 +39,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'any', array: true },
       args: { obj: { type: 'object' } },
       variants: [{ argumentNames: ['obj'] }],
-      description: 'Returns array of all values in $obj.',
+      description: 'Returns array of all values in `obj`.',
       seeAlso: ['keys', 'entries', 'zipmap'],
       examples: [
         'vals({})',
@@ -60,7 +60,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'array' },
       args: { obj: { type: 'object' } },
       variants: [{ argumentNames: ['obj'] }],
-      description: 'Returns nested array of all key - value pairs in $obj.',
+      description: 'Returns nested array of all key - value pairs in `obj`.',
       seeAlso: ['keys', 'vals', 'zipmap', 'find'],
       examples: [
         'entries({})',
@@ -90,7 +90,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
         key: { type: 'string' },
       },
       variants: [{ argumentNames: ['obj', 'key'] }],
-      description: 'Returns entry (key-value pair) for $key, or `null` if $key not present in $obj.',
+      description: 'Returns entry (key-value pair) for `key`, or `null` if `key` not present in `obj`.',
       seeAlso: ['get', 'contains', 'entries', 'sequence.position', 'some'],
       examples: [
         '{ a: 1, "b": 2 } find "a"',
@@ -119,7 +119,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
         key: { type: 'string' },
       },
       variants: [{ argumentNames: ['obj', 'key'] }],
-      description: 'Return shallow copy of $obj with $key deleted.',
+      description: 'Return shallow copy of `obj` with `key` deleted.',
       seeAlso: ['assoc', 'selectKeys'],
       examples: [
         '{ x: 10, y: 20 } dissoc "y"',
@@ -185,7 +185,7 @@ If no arguments are provided \`null\` is returned.`,
       variants: [{ argumentNames: ['objs', 'fun'] }],
       description: `
 Returns a new object created by merging together all arguments.
-If two keys appears in more than one object $fun is used to calculate the new value.
+If two keys appears in more than one object \`fun\` is used to calculate the new value.
 
 If no arguments are provided \`null\` is returned.`,
       seeAlso: ['merge'],
@@ -222,7 +222,7 @@ If no arguments are provided \`null\` is returned.`,
         b: { type: 'array' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns a new object created by mapping $a to $b.',
+      description: 'Returns a new object created by mapping `a` to `b`.',
       seeAlso: ['entries', 'keys', 'vals', 'sequence.interleave'],
       examples: [
         '["a", "b", "c"] zipmap [1, 2, 3]',
@@ -254,7 +254,7 @@ If no arguments are provided \`null\` is returned.`,
         b: { type: 'array' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns an object containing only those entries in $a whose key is in $b.',
+      description: 'Returns an object containing only those entries in `a` whose key is in `b`.',
       seeAlso: ['dissoc', 'keys'],
       examples: [
         '{ a: 1, b: 2, c: 3 } selectKeys ["a", "b"]',

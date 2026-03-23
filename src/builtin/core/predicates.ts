@@ -15,7 +15,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a function, otherwise `false`.',
+      description: 'Returns `true` if `x` is a function, otherwise `false`.',
       seeAlso: ['isString', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
       examples: [
         'isFunction(+)',
@@ -36,7 +36,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a string, otherwise `false`.',
+      description: 'Returns `true` if `x` is a string, otherwise `false`.',
       seeAlso: ['isBlank', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'isFunction', 'isCollection', 'isSequence', 'typeOf'],
       examples: [
         'isString("")',
@@ -57,7 +57,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a number, otherwise `false`.',
+      description: 'Returns `true` if `x` is a number, otherwise `false`.',
       seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'isFinite', 'number', 'isString', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isNumber(0)',
@@ -78,7 +78,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is an integer, otherwise `false`.',
+      description: 'Returns `true` if `x` is an integer, otherwise `false`.',
       seeAlso: ['isNumber', 'number', 'isEven', 'isOdd'],
       examples: [
         'isInteger(0)',
@@ -101,7 +101,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a `boolean`, otherwise `false`.',
+      description: 'Returns `true` if `x` is a `boolean`, otherwise `false`.',
       seeAlso: ['isTrue', 'isFalse', 'boolean', 'isString', 'isNumber', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isBoolean(true)',
@@ -121,7 +121,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is `null`, otherwise `false`.',
+      description: 'Returns `true` if `x` is `null`, otherwise `false`.',
       seeAlso: ['isEmpty', 'isNotEmpty', 'isString', 'isNumber', 'isBoolean', 'isFunction', 'typeOf'],
       examples: [
         'isNull(null)',
@@ -144,7 +144,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is `0`, otherwise `false`.',
+      description: 'Returns `true` if `x` is `0`, otherwise `false`.',
       seeAlso: ['isPos', 'isNeg', 'isEven', 'isNumber'],
       examples: [
         'isZero(0)',
@@ -166,7 +166,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is greater than `0`, otherwise `false`.',
+      description: 'Returns `true` if `x` is greater than `0`, otherwise `false`.',
       seeAlso: ['isNeg', 'isZero', 'isNumber'],
       examples: [
         'isPos(0)',
@@ -188,7 +188,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is less than `0`, otherwise `false`.',
+      description: 'Returns `true` if `x` is less than `0`, otherwise `false`.',
       seeAlso: ['isPos', 'isZero', 'isNumber'],
       examples: [
         'isNeg(0)',
@@ -210,7 +210,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is even, otherwise `false`.',
+      description: 'Returns `true` if `x` is even, otherwise `false`.',
       seeAlso: ['isOdd', 'isInteger', 'isZero'],
       examples: [
         'isEven(0)',
@@ -232,7 +232,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is odd, otherwise `false`.',
+      description: 'Returns `true` if `x` is odd, otherwise `false`.',
       seeAlso: ['isEven', 'isInteger'],
       examples: [
         'isOdd(1.0)',
@@ -253,7 +253,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is an array, otherwise `false`.',
+      description: 'Returns `true` if `x` is an array, otherwise `false`.',
       seeAlso: ['isSequence', 'isCollection', 'isObject', 'isString', 'isVector', 'isMatrix', 'isGrid', 'isFunction', 'typeOf'],
       examples: [
         'isArray([])',
@@ -276,7 +276,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a collection i.e. an array, an object or a string, otherwise `false`.',
+      description: 'Returns `true` if `x` is a collection i.e. an array, an object or a string, otherwise `false`.',
       seeAlso: ['isSequence', 'isArray', 'isObject', 'isString'],
       examples: [
         'isCollection([])',
@@ -300,7 +300,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a sequence i.e. an array or a string, otherwise `false`.',
+      description: 'Returns `true` if `x` is a sequence i.e. an array or a string, otherwise `false`.',
       seeAlso: ['isCollection', 'isArray', 'isString'],
       examples: [
         'isSequence([])',
@@ -322,7 +322,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is an object, otherwise `false`.',
+      description: 'Returns `true` if `x` is an object, otherwise `false`.',
       seeAlso: ['isCollection', 'isArray', 'isString', 'isFunction', 'typeOf'],
       examples: [
         'isObject(object("a", 10))',
@@ -344,7 +344,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is a regexp, otherwise `false`.',
+      description: 'Returns `true` if `x` is a regexp, otherwise `false`.',
       seeAlso: ['regexp', 'reMatch', 'isString', 'isFunction', 'typeOf'],
       examples: [
         'isRegexp(regexp("^start"))',
@@ -368,7 +368,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is an effect, otherwise `false`.',
+      description: 'Returns `true` if `x` is an effect, otherwise `false`.',
       seeAlso: ['effect', 'effectName', 'effectMatcher', 'perform', 'handle', 'typeOf'],
       examples: [
         'isEffect(@dvala.io.print)',
@@ -392,7 +392,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is finite, otherwise `false`.',
+      description: 'Returns `true` if `x` is finite, otherwise `false`.',
       seeAlso: ['isPositiveInfinity', 'isNegativeInfinity', 'isNumber'],
       examples: [
         'isFinite(1.0)',
@@ -413,7 +413,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x equals positive infinity, otherwise `false`.',
+      description: 'Returns `true` if `x` equals positive infinity, otherwise `false`.',
       seeAlso: ['isNegativeInfinity', 'isFinite'],
       examples: [
         'isPositiveInfinity(1.0)',
@@ -434,7 +434,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'number' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x equals negative infinity, otherwise `false`.',
+      description: 'Returns `true` if `x` equals negative infinity, otherwise `false`.',
       seeAlso: ['isPositiveInfinity', 'isFinite'],
       examples: [
         'isNegativeInfinity(1.0)',
@@ -454,7 +454,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is `true`, otherwise `false`.',
+      description: 'Returns `true` if `x` is `true`, otherwise `false`.',
       seeAlso: ['isFalse', 'isBoolean', 'boolean'],
       examples: [
         'isTrue(false)',
@@ -475,7 +475,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is `true`, otherwise `false`.',
+      description: 'Returns `true` if `x` is `true`, otherwise `false`.',
       seeAlso: ['isTrue', 'isBoolean', 'boolean'],
       examples: [
         'isFalse(false)',
@@ -506,7 +506,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: ['collection', 'string', 'null'] } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if $x is empty or `null`, otherwise `false`.',
+      description: 'Returns `true` if `x` is empty or `null`, otherwise `false`.',
       seeAlso: ['isNotEmpty', 'collection.notEmpty', 'isNull', 'isBlank', 'count'],
       examples: [
         'isEmpty([])',
@@ -539,7 +539,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: ['collection', 'string', 'null'] } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `false` if $x is empty or `null`, otherwise `true`.',
+      description: 'Returns `false` if `x` is empty or `null`, otherwise `true`.',
       seeAlso: ['isEmpty', 'collection.notEmpty', 'isNull'],
       examples: [
         'isNotEmpty([])',

@@ -20,7 +20,7 @@ const jsonFunctions: BuiltinNormalExpressions = {
       returns: { type: 'any' },
       args: { x: { type: 'string' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `JSON.parse(`$x`)`.',
+      description: 'Returns `JSON.parse(``x``)`.',
       seeAlso: ['json.jsonStringify'],
       examples: [
         'let { jsonParse } = import(json);\njsonParse("[1, 2, 3]")',
@@ -48,7 +48,7 @@ const jsonFunctions: BuiltinNormalExpressions = {
         { argumentNames: ['x'] },
         { argumentNames: ['x', 'indent'] },
       ],
-      description: 'Returns `JSON.stringify(`$x`)`. If second argument is provided, returns `JSON.stringify(`$x`, null, `$indent`)`.',
+      description: 'Returns `JSON.stringify(``x``)`. If second argument is provided, returns `JSON.stringify(``x``, null, ``indent``)`.',
       seeAlso: ['json.jsonParse'],
       examples: [
         'let { jsonStringify } = import(json);\njsonStringify([1, 2, 3])',

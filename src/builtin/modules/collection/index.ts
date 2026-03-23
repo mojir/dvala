@@ -117,7 +117,7 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b'] },
         { argumentNames: ['a', 'b', 'notFound'] },
       ],
-      description: 'Returns the value in a nested collection, where $b is an array of keys. Returns $not-found if the key is not present. If $not-found is not set, `null` is returned.',
+      description: 'Returns the value in a nested collection, where `b` is an array of keys. Returns `not-found` if the key is not present. If `not-found` is not set, `null` is returned.',
       seeAlso: ['get', 'collection.assocIn', 'collection.updateIn'],
       examples: [
         `
@@ -179,7 +179,7 @@ cu.getIn(
       },
       variants: [{ argumentNames: ['coll', 'ks', 'value'] }],
       description: `
-Associates a value in the nested collection $coll, where $ks is an array of keys and $value is the new value.
+Associates a value in the nested collection \`coll\`, where \`ks\` is an array of keys and \`value\` is the new value.
 
 If any levels do not exist, objects will be created - and the corresponding keys must be of type string.`,
       seeAlso: ['assoc', 'collection.getIn', 'collection.updateIn'],
@@ -225,8 +225,8 @@ cu.assocIn(
         { argumentNames: ['coll', 'key', 'fun', 'funArgs'] },
       ],
       description: `
-Updates a value in the $coll collection, where $key is a key. $fun is a function
-that will take the old value and any supplied $fun-args and
+Updates a value in the \`coll\` collection, where \`key\` is a key. \`fun\` is a function
+that will take the old value and any supplied \`fun-args\` and
 return the new value.
 If the key does not exist, \`null\` is passed as the old value.`,
       seeAlso: ['collection.updateIn', 'assoc'],
@@ -262,9 +262,9 @@ cu.update(
         { argumentNames: ['coll', 'ks', 'fun'] },
         { argumentNames: ['coll', 'ks', 'fun', 'funArgs'] },
       ],
-      description: `Updates a value in the $coll collection, where $ks is an array of
-keys and $fun is a function that will take the old value and
-any supplied $fun-args and return the new value. If any levels do not exist,
+      description: `Updates a value in the \`coll\` collection, where \`ks\` is an array of
+keys and \`fun\` is a function that will take the old value and
+any supplied \`fun-args\` and return the new value. If any levels do not exist,
 objects will be created - and the corresponding keys must be of type string.`,
       seeAlso: ['collection.update', 'collection.assocIn', 'collection.getIn'],
       examples: [
@@ -316,7 +316,7 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Creates a new collection with all elements that pass the test implemented by $b. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
+      description: 'Creates a new collection with all elements that pass the test implemented by `b`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['filter', 'collection.mapi'],
       examples: [
         'let cu = import(collection); cu.filteri([1, 2, 3], (x, i) -> i % 2 == 0)',
@@ -339,7 +339,7 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Creates a new collection populated with the results of calling $b on every element in $a. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
+      description: 'Creates a new collection populated with the results of calling `b` on every element in `a`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['map', 'collection.filteri'],
       examples: [
         'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x + i)',
@@ -368,7 +368,7 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs $fun function on each element of the $coll, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['reduce', 'collection.reduceiRight', 'collection.reductionsi'],
       examples: [
         'let cu = import(collection); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -389,7 +389,7 @@ cu.updateIn(
         initial: { type: 'any' },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs $fun function on each element of the $coll (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value.',
+      description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['reduce', 'collection.reduceiRight'],
       examples: [
         'let cu = import(collection); cu.reduceRight(["A", "B", "C"], str, "")',
@@ -415,7 +415,7 @@ cu.updateIn(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs $fun function on each element of the $coll (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reducei', 'collection.reduceRight'],
       examples: [
         'let cu = import(collection); cu.reduceiRight([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -436,7 +436,7 @@ cu.updateIn(
         initial: { type: 'any' },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of $coll by $fun.',
+      description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`.',
       seeAlso: ['reduce', 'collection.reductionsi'],
       examples: [
         'let cu = import(collection); cu.reductions([1, 2, 3], +, 0)',
@@ -471,7 +471,7 @@ cu.reductions(
         },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of $coll by $fun. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
+      description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reductions', 'collection.reducei'],
       examples: [
         'let cu = import(collection); cu.reductionsi([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
@@ -502,7 +502,7 @@ cu.reductions(
         coll: { type: ['collection', 'null'] },
       },
       variants: [{ argumentNames: ['coll'] }],
-      description: 'Returns `null` if $coll is empty or `null`, otherwise $coll.',
+      description: 'Returns `null` if `coll` is empty or `null`, otherwise `coll`.',
       seeAlso: ['isEmpty', 'isNotEmpty'],
       examples: [
         'let cu = import(collection); cu.notEmpty([])',
@@ -526,7 +526,7 @@ cu.reductions(
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if all entries in $a pass the test implemented by $b, otherwise returns `false`.',
+      description: 'Returns `true` if all entries in `a` pass the test implemented by `b`, otherwise returns `false`.',
       seeAlso: ['collection.isAny', 'collection.notEvery', 'collection.notAny', 'functional.everyPred', 'grid.isCellEvery'],
       examples: [
         'let cu = import(collection); cu.isEvery([1, 2, 3], isNumber)',
@@ -572,7 +572,7 @@ cu.isEvery(
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if any element in $a pass the test implemented by $b, otherwise returns `false`.',
+      description: 'Returns `true` if any element in `a` pass the test implemented by `b`, otherwise returns `false`.',
       seeAlso: ['collection.isEvery', 'collection.notAny', 'collection.notEvery', 'functional.somePred', 'some', 'grid.isSome'],
       examples: [
         `
@@ -616,7 +616,7 @@ cu.isAny(
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `false` if any element in $a pass the test implemented by $b, otherwise returns `true`.',
+      description: 'Returns `false` if any element in `a` pass the test implemented by `b`, otherwise returns `true`.',
       seeAlso: ['collection.isAny', 'collection.isEvery', 'collection.notEvery'],
       examples: [
         `
@@ -660,7 +660,7 @@ cu.notAny(
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if at least one element in $a does not pass the test implemented by $b, otherwise returns `false`.',
+      description: 'Returns `true` if at least one element in `a` does not pass the test implemented by `b`, otherwise returns `false`.',
       seeAlso: ['collection.isEvery', 'collection.isAny', 'collection.notAny'],
       examples: [
         `

@@ -45,7 +45,7 @@ export function getMetaNormalExpression(
         returns: { type: 'string' },
         args: { value: { type: ['function', 'effect'] } },
         variants: [{ argumentNames: ['value'] }],
-        description: 'Returns documentation string of the $value. Works on functions and effects.',
+        description: 'Returns documentation string of the `value`. Works on functions and effects.',
         seeAlso: ['arity', 'withDoc'],
         examples: [
           'doc(+)',
@@ -76,7 +76,7 @@ export function getMetaNormalExpression(
           b: { type: 'string' },
         },
         variants: [{ argumentNames: ['a', 'b'] }],
-        description: 'Returns a new function with the documentation string $b attached. The original function is not modified.',
+        description: 'Returns a new function with the documentation string `b` attached. The original function is not modified.',
         seeAlso: ['doc'],
         examples: [
           '((x, y) -> x + y) withDoc "Adds two numbers."',
@@ -109,7 +109,7 @@ export function getMetaNormalExpression(
         returns: { type: 'object' },
         args: { value: { type: ['function', 'effect'] } },
         variants: [{ argumentNames: ['value'] }],
-        description: 'Returns arity of the $value. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
+        description: 'Returns arity of the `value`. The arity is an object with the properties: `min` and `max`. If the function has fixed arity, `min` and `max` are equal to the number of required parameters. If no restrictions apply, empty object is returned. Also works on effects.',
         seeAlso: ['doc'],
         examples: [
           'arity(+)',

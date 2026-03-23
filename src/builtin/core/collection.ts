@@ -54,7 +54,7 @@ export const collectionNormalExpression: BuiltinNormalExpressions = {
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['coll', 'fun'] }],
-      description: 'Creates a new collection with all elements that pass the test implemented by $fun.',
+      description: 'Creates a new collection with all elements that pass the test implemented by `fun`.',
       seeAlso: ['collection.filteri', 'map', 'sequence.remove'],
       examples: [
         `
@@ -88,7 +88,7 @@ filter(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['colls', 'fun'] }],
-      description: 'Creates a new collection populated with the results of calling $fun on every element in $colls.',
+      description: 'Creates a new collection populated with the results of calling `fun` on every element in `colls`.',
       seeAlso: ['collection.mapi', 'filter', 'reduce', 'sequence.mapcat', 'grid.cellMap', 'grid.cellMapi'],
       examples: [
         '[1, 2, 3] map -',
@@ -113,7 +113,7 @@ filter(
         initial: { type: 'any' },
       },
       variants: [{ argumentNames: ['coll', 'fun', 'initial'] }],
-      description: 'Runs $fun function on each element of the $coll, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the $coll is a single value.',
+      description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['collection.reduceRight', 'collection.reducei', 'collection.reductions', 'map', 'grid.cellReduce', 'grid.cellReducei'],
       examples: [
         'reduce([1, 2, 3], +, 0)',
@@ -146,13 +146,13 @@ reduce(
       args: {
         'a': { type: 'collection' },
         'b': { type: ['string', 'integer'] },
-        'notFound': { type: 'any', description: 'Default value to return if $b is not found.' },
+        'notFound': { type: 'any', description: 'Default value to return if `b` is not found.' },
       },
       variants: [
         { argumentNames: ['a', 'b'] },
         { argumentNames: ['a', 'b', 'notFound'] },
       ],
-      description: 'Returns value in $a mapped at $b.',
+      description: 'Returns value in `a` mapped at `b`.',
       seeAlso: ['collection.getIn', 'contains', 'find', 'nth'],
       examples: [
         '[1, 2, 3] get 1',
@@ -226,7 +226,7 @@ get(
         coll: { type: ['collection', 'null'] },
       },
       variants: [{ argumentNames: ['coll'] }],
-      description: 'Returns number of elements in $coll.',
+      description: 'Returns number of elements in `coll`.',
       seeAlso: ['isEmpty'],
       examples: [
         'count([1, 2, 3])',
@@ -264,7 +264,7 @@ get(
         b: { type: ['string', 'integer'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns `true` if $a contains $b, otherwise returns `false`. For strings, it checks if substring is included.',
+      description: 'Returns `true` if `a` contains `b`, otherwise returns `false`. For strings, it checks if substring is included.',
       seeAlso: ['get', 'find', 'indexOf'],
       examples: [
         '[1, 2, 3] contains 1',
@@ -320,8 +320,8 @@ contains(
         { argumentNames: ['coll', 'key', 'value', 'kvs'] },
       ],
       description: `
-Add or replace the value of element $key to $value in $coll. Repeated for all key-value pairs in $kvs.
-If $coll is an 'array', $key must be \`number\` satisfying \`0 <=\` $key \`<= length\`.`,
+Add or replace the value of element \`key\` to \`value\` in \`coll\`. Repeated for all key-value pairs in \`kvs\`.
+If \`coll\` is an 'array', \`key\` must be \`number\` satisfying \`0 <=\` \`key\` \`<= length\`.`,
       seeAlso: ['collection.assocIn', 'dissoc', 'merge', 'collection.update'],
       examples: [
         `

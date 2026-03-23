@@ -3,7 +3,7 @@ import type { FunctionDocs } from '../../interface'
 export const moduleDocs: Record<string, FunctionDocs> = {
   'assertNotEqual': {
     category: 'assertion',
-    description: 'If $a is the same as $b it throws `AssertionError`.',
+    description: 'If `a` is the same as `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -44,7 +44,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertEqual': {
     category: 'assertion',
-    description: 'If $a is not structural equal to $b it throws `AssertionError`.',
+    description: 'If `a` is not structural equal to `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -84,7 +84,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertGt': {
     category: 'assertion',
-    description: 'If $a is not greater than $b it throws `AssertionError`.',
+    description: 'If `a` is not greater than `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -124,7 +124,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertLt': {
     category: 'assertion',
-    description: 'If $a is not less than $b it throws `AssertionError`.',
+    description: 'If `a` is not less than `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -164,7 +164,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertGte': {
     category: 'assertion',
-    description: 'If $a is less than $b it throws `AssertionError`.',
+    description: 'If `a` is less than `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -204,7 +204,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertLte': {
     category: 'assertion',
-    description: 'If $a is grater than $b it throws `AssertionError`.',
+    description: 'If `a` is grater than `b` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -244,7 +244,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertTrue': {
     category: 'assertion',
-    description: 'If $value is not `true` it throws `AssertionError`.',
+    description: 'If `value` is not `true` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -279,7 +279,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertFalse': {
     category: 'assertion',
-    description: 'If $value is not `false` it throws `AssertionError`.',
+    description: 'If `value` is not `false` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -314,7 +314,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertTruthy': {
     category: 'assertion',
-    description: 'If $value is not `truthy` it throws `AssertionError`.',
+    description: 'If `value` is not `truthy` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -356,7 +356,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertFalsy': {
     category: 'assertion',
-    description: 'If $value is not `falsy` it throws `AssertionError`.',
+    description: 'If `value` is not `falsy` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -397,7 +397,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertNull': {
     category: 'assertion',
-    description: 'If $value is not `null` it throws `AssertionError`.',
+    description: 'If `value` is not `null` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -438,7 +438,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertFails': {
     category: 'assertion',
-    description: 'If $fun does not fail (perform `dvala.error`), it throws `AssertionError`.',
+    description: 'If `fun` does not fail (perform `dvala.error`), it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -472,7 +472,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertFailsWith': {
     category: 'assertion',
-    description: 'If $fun does not fail with $error-message, it throws `AssertionError`.',
+    description: 'If `fun` does not fail with `error-message`, it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -511,7 +511,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertSucceeds': {
     category: 'assertion',
-    description: 'If $fun fails (performs `dvala.error`), it throws `AssertionError`.',
+    description: 'If `fun` fails (performs `dvala.error`), it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -545,7 +545,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertArray': {
     category: 'assertion',
-    description: 'If $value is not an `array` it throws `AssertionError`.',
+    description: 'If `value` is not an `array` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -580,7 +580,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertBoolean': {
     category: 'assertion',
-    description: 'If $value is not a `boolean` it throws `AssertionError`.',
+    description: 'If `value` is not a `boolean` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -615,7 +615,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertCollection': {
     category: 'assertion',
-    description: 'If $value is not a `collection` (array, object, or string) it throws `AssertionError`.',
+    description: 'If `value` is not a `collection` (array, object, or string) it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -651,7 +651,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertFunction': {
     category: 'assertion',
-    description: 'If $value is not a `function` it throws `AssertionError`.',
+    description: 'If `value` is not a `function` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -685,7 +685,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertGrid': {
     category: 'assertion',
-    description: 'If $value is not a `grid` it throws `AssertionError`.',
+    description: 'If `value` is not a `grid` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -719,7 +719,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertInteger': {
     category: 'assertion',
-    description: 'If $value is not an `integer` it throws `AssertionError`.',
+    description: 'If `value` is not an `integer` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -753,7 +753,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertMatrix': {
     category: 'assertion',
-    description: 'If $value is not a `matrix` it throws `AssertionError`.',
+    description: 'If `value` is not a `matrix` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -787,7 +787,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertNumber': {
     category: 'assertion',
-    description: 'If $value is not a `number` it throws `AssertionError`.',
+    description: 'If `value` is not a `number` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -821,7 +821,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertObject': {
     category: 'assertion',
-    description: 'If $value is not an `object` it throws `AssertionError`.',
+    description: 'If `value` is not an `object` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -855,7 +855,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertRegexp': {
     category: 'assertion',
-    description: 'If $value is not a `regexp` it throws `AssertionError`.',
+    description: 'If `value` is not a `regexp` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -889,7 +889,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertSequence': {
     category: 'assertion',
-    description: 'If $value is not a `sequence` (array or string) it throws `AssertionError`.',
+    description: 'If `value` is not a `sequence` (array or string) it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -924,7 +924,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertString': {
     category: 'assertion',
-    description: 'If $value is not a `string` it throws `AssertionError`.',
+    description: 'If `value` is not a `string` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },
@@ -958,7 +958,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'assertVector': {
     category: 'assertion',
-    description: 'If $value is not a `vector` it throws `AssertionError`.',
+    description: 'If `value` is not a `vector` it throws `AssertionError`.',
     returns: {
       type: 'null',
     },

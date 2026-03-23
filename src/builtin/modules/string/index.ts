@@ -30,7 +30,7 @@ const stringUtilsFunctions: BuiltinNormalExpressions = {
         n: { type: 'integer' },
       },
       variants: [{ argumentNames: ['s', 'n'] }],
-      description: 'Repeates $s $n times.',
+      description: 'Repeates `s` `n` times.',
       seeAlso: ['str', 'repeat'],
       examples: [
         `let { stringRepeat } = import(string);
@@ -59,7 +59,7 @@ stringRepeat("***", 0)`,
       returns: { type: 'string' },
       args: { code: { type: 'number' } },
       variants: [{ argumentNames: ['code'] }],
-      description: 'Return character for code point $code.',
+      description: 'Return character for code point `code`.',
       seeAlso: ['string.toCharCode'],
       examples: [
         `let { fromCharCode } = import(string);
@@ -81,7 +81,7 @@ fromCharCode(0)`,
       returns: { type: 'number' },
       args: { c: { type: 'string' } },
       variants: [{ argumentNames: ['c'] }],
-      description: 'Return code point for first character in $c.',
+      description: 'Return code point for first character in `c`.',
       seeAlso: ['string.fromCharCode'],
       examples: [
         `let { toCharCode } = import(string);
@@ -151,7 +151,7 @@ trimRight("")`,
       returns: { type: 'string', array: true },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Divides $s into an array of substrings, each representing a line.',
+      description: 'Divides `s` into an array of substrings, each representing a line.',
       seeAlso: ['split'],
       examples: [
         `let { splitLines } = import(string);
@@ -191,7 +191,7 @@ splitLines("")`,
         { argumentNames: ['s', 'length'] },
         { argumentNames: ['s', 'length', 'padString'] },
       ],
-      description: 'Pads from the start of $s with `padString` (multiple times, if needed) until the resulting string reaches the given $length.',
+      description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padRight'],
       examples: [
         `let { padLeft } = import(string);
@@ -233,7 +233,7 @@ padLeft("Albert", -1)`,
         { argumentNames: ['s', 'length'] },
         { argumentNames: ['s', 'length', 'padString'] },
       ],
-      description: 'Pads from the start of $s with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
+      description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padLeft'],
       examples: [
         `let { padRight } = import(string);
@@ -337,7 +337,7 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Returns a Base64 encoded string from $s.',
+      description: 'Returns a Base64 encoded string from `s`.',
       seeAlso: ['string.decodeBase64'],
       examples: [
         `let { encodeBase64 } = import(string);
@@ -368,7 +368,7 @@ encodeBase64("Albert")`,
       returns: { type: 'string' },
       args: { base64string: { type: 'string' } },
       variants: [{ argumentNames: ['base64string'] }],
-      description: 'Returns a Base64 decoded string from $base64string.',
+      description: 'Returns a Base64 decoded string from `base64string`.',
       seeAlso: ['string.encodeBase64'],
       examples: [
         `let { decodeBase64 } = import(string);
@@ -432,7 +432,7 @@ decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Returns $s with the first character converted to uppercase and the rest to lowercase.',
+      description: 'Returns `s` with the first character converted to uppercase and the rest to lowercase.',
       seeAlso: ['lowerCase', 'upperCase'],
       examples: [
         `let { capitalize } = import(string);

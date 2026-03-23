@@ -89,7 +89,7 @@ juxt(+, *, min, max) apply range(1, 11)`,
       returns: { type: 'function' },
       args: { fun: { type: 'function' } },
       variants: [{ argumentNames: ['fun'] }],
-      description: 'Takes a function $fun and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
+      description: 'Takes a function `fun` and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
       seeAlso: ['comp', 'functional.everyPred', 'functional.somePred'],
       examples: [
         'let { complement } = import(functional);\ncomplement(>)(1, 3)',
@@ -203,7 +203,7 @@ everyPred(isString, -> count($) > 3)(
         { argumentNames: ['fun', 'arg'] },
         { argumentNames: ['fun', 'arg', 'args'] },
       ],
-      description: 'Takes a function $fun, and returns a function that calls $fun, replacing a null argument to the corresponding argument.',
+      description: 'Takes a function `fun`, and returns a function that calls `fun`, replacing a null argument to the corresponding argument.',
       seeAlso: ['identity', 'constantly'],
       examples: [
         'let { fnull } = import(functional);\nfnull(inc, 0)(1)',

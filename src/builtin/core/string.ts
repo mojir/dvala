@@ -29,7 +29,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'string' },
       args: { values: { type: 'any', rest: true } },
       variants: [{ argumentNames: ['values'] }],
-      description: 'Concatenats $values into one string. If `value` equals `null` empty string is returned.',
+      description: 'Concatenats `values` into one string. If `value` equals `null` empty string is returned.',
       seeAlso: ['++', 'join', 'string.template', 'string.stringRepeat', 'number'],
       examples: [
         'str("A string", ", and another string", " ...and more")',
@@ -56,7 +56,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'number' },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Parses $s to a number.',
+      description: 'Parses `s` to a number.',
       seeAlso: ['str', 'isNumber', 'isInteger'],
       examples: [
         'number("10")',
@@ -77,7 +77,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Returns $s converted to lower case.',
+      description: 'Returns `s` converted to lower case.',
       seeAlso: ['upperCase', 'string.capitalize'],
       examples: [
         'lowerCase("Albert")',
@@ -97,7 +97,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'string' },
       args: { s: { type: 'string' } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Returns $s converted to upper case.',
+      description: 'Returns `s` converted to upper case.',
       seeAlso: ['lowerCase', 'string.capitalize'],
       examples: [
         'upperCase("Albert")',
@@ -145,7 +145,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         delimiter: { type: 'string' },
       },
       variants: [{ argumentNames: ['arr', 'delimiter'] }],
-      description: 'Returns a new string by concatenating all of the elements in $arr, separated by $delimiter.',
+      description: 'Returns a new string by concatenating all of the elements in `arr`, separated by `delimiter`.',
       seeAlso: ['split', 'str', '++', 'sequence.interpose'],
       examples: [
         'map([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], str) join ", "',
@@ -185,7 +185,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['s', 'delimiter'] },
         { argumentNames: ['s', 'delimiter', 'limit'] },
       ],
-      description: 'Divides $s into an array of substrings. The division is done by searching for `delimiter`. If `limit` as provided, at most `limit` number of substrings are returned.',
+      description: 'Divides `s` into an array of substrings. The division is done by searching for `delimiter`. If `limit` as provided, at most `limit` number of substrings are returned.',
       seeAlso: ['join', 'string.splitLines'],
       examples: [
         '"Albert Mojir" split " "',
@@ -210,7 +210,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { s: { type: ['string', 'null'] } },
       variants: [{ argumentNames: ['s'] }],
-      description: 'Returns true if $s is null or only contains whitespace characters.',
+      description: 'Returns true if `s` is null or only contains whitespace characters.',
       seeAlso: ['trim', 'isEmpty', 'isString'],
       examples: [
         'isBlank("")',
