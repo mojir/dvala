@@ -1453,7 +1453,7 @@ import { matrixModule } from '@mojir/dvala/modules/matrix';
 const dvala = new Dvala({ modules: [vectorModule, matrixModule] });
 
 // Now you can use import(vector) and import(matrix) in Dvala code
-dvala.run('let v = import(vector); v.dot([1, 2, 3], [4, 5, 6])'); // => 32
+dvala.run('let la = import(linearAlgebra); la.dot([1, 2, 3], [4, 5, 6])'); // => 32
 ```
 
 ### Using Dvala in JavaScript
