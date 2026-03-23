@@ -1,29 +1,28 @@
 export const NodeTypes = {
-  Number: 1,
-  String: 2,
-  NormalExpression: 3,
-  SpecialExpression: 4,
-  UserDefinedSymbol: 5,
-  NormalBuiltinSymbol: 6,
-  SpecialBuiltinSymbol: 7,
-  ReservedSymbol: 8,
-  Binding: 9,
-  Spread: 10,
-  TemplateString: 11,
-  EffectName: 12,
+  Number: 'Number',
+  String: 'String',
+  NormalExpression: 'NormalExpression',
+  SpecialExpression: 'SpecialExpression',
+  UserDefinedSymbol: 'UserDefinedSymbol',
+  NormalBuiltinSymbol: 'NormalBuiltinSymbol',
+  SpecialBuiltinSymbol: 'SpecialBuiltinSymbol',
+  ReservedSymbol: 'ReservedSymbol',
+  Binding: 'Binding',
+  Spread: 'Spread',
+  TemplateString: 'TemplateString',
+  EffectName: 'EffectName',
 } as const
 
-const NodeTypesSet = new Set(Object.values(NodeTypes))
+const NodeTypesSet = new Set<string>(Object.values(NodeTypes))
 
 export type NodeType = typeof NodeTypes[keyof typeof NodeTypes]
 
 export function getNodeTypeName(type: NodeType): keyof typeof NodeTypes {
-  return Object.keys(NodeTypes).find(key => NodeTypes[key as keyof typeof NodeTypes] === type) as keyof typeof NodeTypes
+  return type as keyof typeof NodeTypes
 }
 
-// TODO, is this needed?
 export function isNodeType(type: unknown): type is NodeType {
-  return typeof type === 'number' && NodeTypesSet.has(type as NodeType)
+  return typeof type === 'string' && NodeTypesSet.has(type)
 }
 
 const functionTypes = [

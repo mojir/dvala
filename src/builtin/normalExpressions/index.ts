@@ -1,5 +1,4 @@
-import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../interface'
-import type { Any } from '../../interface'
+import type { BuiltinNormalExpressions } from '../interface'
 import type { EffectReference, FunctionReference } from '../../../reference'
 import type { CoreNormalExpressionName } from '../../../reference/api'
 
@@ -54,10 +53,4 @@ export const normalExpressions: BuiltinNormalExpressions = {
   ...expressions,
 }
 
-export const normalExpressionTypes: Record<string, number> = {}
-export const allNormalExpressions: BuiltinNormalExpression<Any>[] = []
-
-Object.entries(normalExpressions).forEach(([key, value], index) => {
-  normalExpressionTypes[key] = index
-  allNormalExpressions.push(value)
-})
+export const normalExpressionTypes = new Set<string>(Object.keys(normalExpressions))

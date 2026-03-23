@@ -1,6 +1,4 @@
-import type { NormalExpressionName } from '../../../reference/api'
 import type { SpecialExpressionName } from '../../builtin'
-import { normalExpressionTypes } from '../../builtin/normalExpressions'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
@@ -115,7 +113,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         ctx.advance()
         const operand = parseOperandPart(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0], token[2])
-        const minusSymbol: NormalBuiltinSymbolNode = withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['-']], token[2]) as NormalBuiltinSymbolNode
+        const minusSymbol: NormalBuiltinSymbolNode = withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, '-'], token[2]) as NormalBuiltinSymbolNode
         return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]]], token[2]) as NormalExpressionNodeExpression
       }
     }
@@ -125,7 +123,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
         return withSourceCodeInfo([NodeTypes.SpecialBuiltinSymbol, specialExpressionTypes[operatorName as SpecialExpressionName]], token[2]) satisfies SpecialBuiltinSymbolNode
       }
-      return withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes[operatorName as NormalExpressionName] as number], token[2]) satisfies NormalBuiltinSymbolNode
+      return withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, operatorName], token[2]) satisfies NormalBuiltinSymbolNode
     }
 
     if (operatorName === '->') {
@@ -202,7 +200,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 }
 
 function createAccessorNode(left: AstNode, right: AstNode, sourceCodeInfo: SourceCodeInfo | undefined): NormalExpressionNodeExpression {
-  return withSourceCodeInfo([NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, normalExpressionTypes.get], [left, right]]], sourceCodeInfo)
+  return withSourceCodeInfo([NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, 'get'], [left, right]]], sourceCodeInfo)
 }
 
 /**
@@ -292,14 +290,14 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
   let condition: AstNode
   if (effectName.includes('*')) {
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['effectMatcher']], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, 'effectMatcher'], sourceCodeInfo),
       [withSourceCodeInfo([NodeTypes.String, effectName], sourceCodeInfo)],
     ]], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]]], sourceCodeInfo)
   } else {
     const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName], sourceCodeInfo)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['==']], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, '=='], sourceCodeInfo),
       [effSym, effectNode],
     ]], sourceCodeInfo)
   }

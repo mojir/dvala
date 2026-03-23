@@ -1,5 +1,5 @@
 import type { Builtin } from './interface'
-import { allNormalExpressions, normalExpressions } from './normalExpressions'
+import { normalExpressions } from './normalExpressions'
 import { andSpecialExpression } from './specialExpressions/and'
 import { matchSpecialExpression } from './specialExpressions/match'
 import { doSpecialExpression } from './specialExpressions/block'
@@ -21,30 +21,30 @@ import { handleSpecialExpression } from './specialExpressions/handle'
 import { raceSpecialExpression } from './specialExpressions/race'
 import { specialExpressionTypes } from './specialExpressionTypes'
 
-export const specialExpressions = [
-  qqSpecialExpression,
-  andSpecialExpression,
-  orSpecialExpression,
-  arraySpecialExpression,
-  doSpecialExpression,
-  lambdaSpecialExpression,
-  forSpecialExpression,
-  ifSpecialExpression,
-  letSpecialExpression,
-  loopSpecialExpression,
-  objectSpecialExpression,
-  recurSpecialExpression,
-  matchSpecialExpression,
-  importSpecialExpression,
-  effectSpecialExpression,
-  performSpecialExpression,
-  parallelSpecialExpression,
-  raceSpecialExpression,
-  handleSpecialExpression,
-] as const
+export const specialExpressions = {
+  [specialExpressionTypes['??']]: qqSpecialExpression,
+  [specialExpressionTypes['&&']]: andSpecialExpression,
+  [specialExpressionTypes['||']]: orSpecialExpression,
+  [specialExpressionTypes.array]: arraySpecialExpression,
+  [specialExpressionTypes.block]: doSpecialExpression,
+  [specialExpressionTypes['0_lambda']]: lambdaSpecialExpression,
+  [specialExpressionTypes.for]: forSpecialExpression,
+  [specialExpressionTypes.if]: ifSpecialExpression,
+  [specialExpressionTypes.let]: letSpecialExpression,
+  [specialExpressionTypes.loop]: loopSpecialExpression,
+  [specialExpressionTypes.object]: objectSpecialExpression,
+  [specialExpressionTypes.recur]: recurSpecialExpression,
+  [specialExpressionTypes.match]: matchSpecialExpression,
+  [specialExpressionTypes.import]: importSpecialExpression,
+  [specialExpressionTypes.effect]: effectSpecialExpression,
+  [specialExpressionTypes.perform]: performSpecialExpression,
+  [specialExpressionTypes.parallel]: parallelSpecialExpression,
+  [specialExpressionTypes.race]: raceSpecialExpression,
+  [specialExpressionTypes.handle]: handleSpecialExpression,
+} as const
 
 export type SpecialExpressions = typeof specialExpressions
-export type SpecialExpression = SpecialExpressions[number]
+export type SpecialExpression = SpecialExpressions[keyof SpecialExpressions]
 export type SpecialExpressionName = keyof typeof specialExpressionTypes
 export type CommonSpecialExpressionType = [
   | typeof specialExpressionTypes['??']
@@ -66,7 +66,6 @@ export type SpecialExpressionType = typeof specialExpressionTypes[SpecialExpress
 export const builtin: Builtin = {
   normalExpressions,
   specialExpressions,
-  allNormalExpressions,
 }
 
 export const normalExpressionKeys = Object.keys(normalExpressions)

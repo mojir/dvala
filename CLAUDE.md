@@ -42,12 +42,28 @@ Prefix all design document filenames with the creation date in ISO format: `YYYY
 
 When working with Dvala code or answering questions about the language, use the MCP tools rather than reading source files:
 
+### Reference & documentation
 - `mcp__dvala__listModules` — list all modules
 - `mcp__dvala__listModuleExpressions` — list functions in a module
 - `mcp__dvala__listCoreExpressions` — list core built-in functions
 - `mcp__dvala__getDoc` — get documentation for a function or special expression
-- `mcp__dvala__runCode` — execute Dvala code
 - `mcp__dvala__getExamples` — get example programs
 - `mcp__dvala__listDatatypes` — list datatypes
+
+### Execution
+- `mcp__dvala__runCode` — execute Dvala code
+- `mcp__dvala__runCodeDebug` — execute Dvala code with debug mode (source positions in error messages)
+
+### Tokenizer & parser
+- `mcp__dvala__tokenizeCode` — tokenize source into a JSON token stream
+- `mcp__dvala__tokenizeCodeDebug` — tokenize with debug source positions
+- `mcp__dvala__parseCode` — tokenize + parse in one step, returns AST as JSON
+- `mcp__dvala__parseCodeDebug` — tokenize + parse with debug source positions
+- `mcp__dvala__parseTokenStream` — parse a JSON token stream (from `tokenizeCode`) into an AST
+- `mcp__dvala__parseTokenStreamDebug` — parse a debug token stream (from `tokenizeCodeDebug`) into an AST
+
+Each `*Debug` variant enables debug mode which captures source positions in tokens/AST nodes, producing richer error messages at the cost of larger output.
+
+`parseTokenStream` / `parseTokenStreamDebug` expect the full `{ tokens, hasDebugData }` object returned by the tokenizer — not just the `tokens` array.
 
 Before suggesting Dvala code to the user, verify it works by running it with `mcp__dvala__runCode`.

@@ -1,6 +1,6 @@
 import type { SpecialExpression } from '../builtin'
 import { builtin, specialExpressionKeys } from '../builtin'
-import { allNormalExpressions } from '../builtin/normalExpressions'
+import { normalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { DvalaError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
@@ -223,16 +223,15 @@ export class ContextStackImpl {
     }
     if (isNormalBuiltinSymbolNode(node)) {
       // Check user context first — builtins can be shadowed
-      const type = node[1]
-      const normalExpression = allNormalExpressions[type]!
-      const name = normalExpression.name!
+      const name = node[1]
+      const normalExpression = normalExpressions[name]!
       const userValue = this.lookUpByName(name)
       if (isContextEntry(userValue))
         return userValue.value
       return {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Builtin',
-        normalBuiltinSymbolType: type,
+        normalBuiltinSymbolType: name,
         sourceCodeInfo: node[2],
         arity: normalExpression.arity,
         name,

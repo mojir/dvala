@@ -117,7 +117,7 @@ function flattenMatchTarget(
 
     case bindingTargetTypes.symbol: {
       const symbolNode = target[1][0]
-      const name = symbolNode[1] as string
+      const name = symbolNode[1]
       const defaultNode = target[1][1]
       slots.push({
         kind: 'bind',

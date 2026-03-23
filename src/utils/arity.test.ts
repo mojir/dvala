@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../errors'
 import type { FunctionLike, NormalBuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
-import { normalExpressionTypes } from '../builtin/normalExpressions'
 import { arityAccepts, arityAcceptsMin, assertNumberOfParams, getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from './arity'
 import { FUNCTION_SYMBOL } from './symbols'
 
@@ -136,7 +135,7 @@ describe('arity utilities', () => {
 
   describe('assertNumberOfParams', () => {
     const createTestNode = (params: number[]): NormalExpressionNodeWithName => {
-      const symbolNode: NormalBuiltinSymbolNode = [NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['+']!]
+      const symbolNode: NormalBuiltinSymbolNode = [NodeTypes.NormalBuiltinSymbol, '+']
       const paramNodes: NumberNode[] = params.map(p => [NodeTypes.Number, p])
       const sourceCodeInfo = {
         position: {

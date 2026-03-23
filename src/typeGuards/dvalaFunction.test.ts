@@ -2,7 +2,6 @@ import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
 import type { DvalaFunction } from '../parser/types'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
-import { normalExpressionTypes } from '../builtin/normalExpressions'
 import {
   asDvalaFunction,
   asUserDefinedFunction,
@@ -25,7 +24,7 @@ describe('dvalaFunction type guards', () => {
   const lf2: DvalaFunction = {
     [FUNCTION_SYMBOL]: true,
     functionType: 'Builtin',
-    normalBuiltinSymbolType: normalExpressionTypes['+'] as number,
+    normalBuiltinSymbolType: '+',
     arity: {},
     name: '+',
   }

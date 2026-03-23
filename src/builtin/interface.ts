@@ -144,8 +144,6 @@ export interface BuiltinNormalExpression<T> {
 }
 
 export type BuiltinNormalExpressions = Record<string, BuiltinNormalExpression<Any>>
-type BuiltinAllNormalExpressions = BuiltinNormalExpression<Any>[]
-
 interface EvaluateHelpers {
   evaluateNode: EvaluateNode
   builtin: Builtin
@@ -165,6 +163,5 @@ export interface BuiltinSpecialExpression<T, N extends SpecialExpressionNode> {
 
 export interface Builtin {
   normalExpressions: BuiltinNormalExpressions
-  allNormalExpressions: BuiltinAllNormalExpressions
   specialExpressions: SpecialExpressions
 }

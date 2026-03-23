@@ -7,6 +7,7 @@ import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import '../../src/initReferenceData'
 import { stringifyValue } from '../../common/utils'
+import { parseTokenStream, tokenizeSource } from '../../src/tooling'
 import {
   type CustomReference,
   type DatatypeReference,
@@ -26,7 +27,8 @@ import {
 import { specialExpressionTypes } from '../../src/builtin/specialExpressionTypes'
 import { examples } from '../../reference/examples'
 
-const dvala = createDvala({ modules: allBuiltinModules, debug: true })
+const dvala = createDvala({ modules: allBuiltinModules, debug: false })
+const dvalaDebug = createDvala({ modules: allBuiltinModules, debug: true })
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -390,6 +392,158 @@ server.tool(
     try {
       const result = dvala.run(code, bindings ? { bindings } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: runCodeDebug ---
+server.tool(
+  'runCodeDebug',
+  'Execute Dvala code with debug mode enabled (captures source positions for better error messages). Otherwise identical to runCode.',
+  {
+    code: z.string().describe('Dvala source code to execute'),
+    bindings: z.record(z.string(), z.unknown()).optional().describe('Optional variable bindings available in the code, e.g. {"x": 42}'),
+  },
+  async ({ code, bindings }) => {
+    try {
+      const result = dvalaDebug.run(code, bindings ? { bindings } : undefined)
+      return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: tokenizeCode ---
+server.tool(
+  'tokenizeCode',
+  'Tokenize Dvala source code into a token stream (JSON). Returns the raw token array without debug source positions.',
+  {
+    code: z.string().describe('Dvala source code to tokenize'),
+  },
+  async ({ code }) => {
+    try {
+      const tokenStream = tokenizeSource(code, false)
+      return { content: [{ type: 'text', text: JSON.stringify(tokenStream, null, 2) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: tokenizeCodeDebug ---
+server.tool(
+  'tokenizeCodeDebug',
+  'Tokenize Dvala source code with debug mode enabled (captures source positions). Returns the token stream as JSON.',
+  {
+    code: z.string().describe('Dvala source code to tokenize'),
+  },
+  async ({ code }) => {
+    try {
+      const tokenStream = tokenizeSource(code, true)
+      return { content: [{ type: 'text', text: JSON.stringify(tokenStream, null, 2) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: parseCode ---
+server.tool(
+  'parseCode',
+  'Parse Dvala source code into an AST (tokenize + parse in one step). Returns the AST as JSON.',
+  {
+    code: z.string().describe('Dvala source code to parse'),
+  },
+  async ({ code }) => {
+    try {
+      const tokenStream = tokenizeSource(code, false)
+      const ast = parseTokenStream(tokenStream)
+      return { content: [{ type: 'text', text: JSON.stringify(ast, null, 2) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: parseCodeDebug ---
+server.tool(
+  'parseCodeDebug',
+  'Parse Dvala source code into an AST with debug mode enabled (source positions in tokens). Returns the AST as JSON.',
+  {
+    code: z.string().describe('Dvala source code to parse'),
+  },
+  async ({ code }) => {
+    try {
+      const tokenStream = tokenizeSource(code, true)
+      const ast = parseTokenStream(tokenStream)
+      return { content: [{ type: 'text', text: JSON.stringify(ast, null, 2) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: parseTokenStream ---
+server.tool(
+  'parseTokenStream',
+  'Parse a previously tokenized token stream (JSON) into an AST. Use with the output of tokenizeCode.',
+  {
+    tokenStream: z.string().describe('Token stream as JSON string (output of tokenizeCode or tokenizeCodeDebug)'),
+  },
+  async ({ tokenStream: tokenStreamJson }) => {
+    try {
+      const tokenStream = JSON.parse(tokenStreamJson)
+      const ast = parseTokenStream(tokenStream)
+      return { content: [{ type: 'text', text: JSON.stringify(ast, null, 2) }] }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      }
+    }
+  },
+)
+
+// --- Tool: parseTokenStreamDebug ---
+server.tool(
+  'parseTokenStreamDebug',
+  'Parse a previously tokenized debug token stream (JSON) into an AST. Use with the output of tokenizeCodeDebug.',
+  {
+    tokenStream: z.string().describe('Debug token stream as JSON string (output of tokenizeCodeDebug)'),
+  },
+  async ({ tokenStream: tokenStreamJson }) => {
+    try {
+      const tokenStream = JSON.parse(tokenStreamJson)
+      const ast = parseTokenStream(tokenStream)
+      return { content: [{ type: 'text', text: JSON.stringify(ast, null, 2) }] }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return {

@@ -1,4 +1,3 @@
-import { normalExpressionTypes } from '../../builtin/normalExpressions'
 import { NodeTypes } from '../../constants/constants'
 import type { NormalExpressionNodeWithName, StringNode } from '../types'
 import { withSourceCodeInfo } from '../helpers'
@@ -18,7 +17,7 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
   const node: NormalExpressionNodeWithName = withSourceCodeInfo([
     NodeTypes.NormalExpression,
     [
-      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes.regexp as number], token[2]),
+      withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, 'regexp'], token[2]),
       [stringNode, optionsNode],
     ],
   ], token[2])

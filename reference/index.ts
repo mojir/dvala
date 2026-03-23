@@ -111,8 +111,8 @@ const stringRef = docsToReference(stringNormalExpression) as Record<StringApiNam
 
 function specialExpressionDocsToReference(): Record<string, FunctionReference<'special-expression'> | CustomReference<'special-expression'>> {
   const result: Record<string, FunctionReference<'special-expression'> | CustomReference<'special-expression'>> = {}
-  for (const [name, index] of Object.entries(specialExpressionTypes)) {
-    const expr = specialExpressions[index]
+  for (const [name, type] of Object.entries(specialExpressionTypes)) {
+    const expr = specialExpressions[type]
     const docs: SpecialExpressionDocs | undefined = expr?.docs
     if (!docs) {
       continue // skip undocumented special expressions
