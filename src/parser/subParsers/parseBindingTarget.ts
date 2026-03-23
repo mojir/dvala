@@ -153,15 +153,17 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       }
       token = ctx.peek()
     }
-    ctx.advance()
+    ctx.advance() // consume ']'
+
+    // Create node now so setNodeEnd captures ']' as the end
+    const target = withSourceCodeInfo([bindingTargetTypes.array, [elements, undefined], 0], firstToken[2], ctx)
+    ctx.setNodeEnd(target[2])
 
     const defaultValue = parseOptionalDefaulValue(ctx)
     if (requireDefaultValue && !defaultValue) {
       throw new DvalaError('Expected assignment', ctx.peekSourceCodeInfo())
     }
-
-    const target = withSourceCodeInfo([bindingTargetTypes.array, [elements, defaultValue], 0], firstToken[2], ctx)
-    ctx.setNodeEnd(target[2])
+    ;(target[1] as unknown[])[1] = defaultValue
     return target
   }
 
@@ -192,10 +194,14 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         if (elements[name[1]]) {
           throw new DvalaError(`Duplicate binding name: ${name}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
         }
-        elements[keyName] = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0], firstToken[2], ctx)
+        const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, parseOptionalDefaulValue(ctx)], 0], token[2] as TokenDebugInfo, ctx)
+        ctx.setNodeEnd(symTarget[2])
+        elements[keyName] = symTarget
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
         // Without 'as' alias, the key becomes the binding name
-        const key = toUserDefinedSymbol(keySymbol, firstToken[2], ctx)
+        const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions[keySymbol[2]] : undefined
+        const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo ? [keyDebugInfo.start[0], keyDebugInfo.start[1]] : undefined
+        const key = toUserDefinedSymbol(keySymbol, keyTokenDebug, ctx)
         if (elements[key[1]]) {
           throw new DvalaError(`Duplicate binding name: ${key}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
         }
@@ -203,9 +209,15 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
           throw new DvalaError('Rest argument can not have default value', ctx.peekSourceCodeInfo())
         }
 
-        elements[key[1]] = rest
-          ? withSourceCodeInfo([bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)], 0], firstToken[2], ctx)
-          : withSourceCodeInfo([bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)], 0], firstToken[2], ctx)
+        if (rest) {
+          const restTarget = withSourceCodeInfo([bindingTargetTypes.rest, [key[1], parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
+          ctx.setNodeEnd(restTarget[2])
+          elements[key[1]] = restTarget
+        } else {
+          const symTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [key, parseOptionalDefaulValue(ctx)], 0], keyTokenDebug, ctx)
+          ctx.setNodeEnd(symTarget[2])
+          elements[key[1]] = symTarget
+        }
       } else if (isOperatorToken(token, ':')) {
         ctx.advance()
         token = ctx.peek()
@@ -228,7 +240,12 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       }
       token = ctx.peek()
     }
-    ctx.advance()
+    ctx.advance() // consume '}'
+
+    // Create node now so setNodeEnd captures '}' as the end
+    const target = withSourceCodeInfo([bindingTargetTypes.object, [elements, undefined], 0], firstToken[2] as TokenDebugInfo, ctx)
+    ctx.setNodeEnd(target[2])
+
     token = ctx.peek()
 
     const defaultValue = parseOptionalDefaulValue(ctx)
@@ -236,8 +253,8 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
       throw new DvalaError('Expected assignment', ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
     }
 
-    const target = withSourceCodeInfo([bindingTargetTypes.object, [elements, defaultValue], 0], firstToken[2], ctx)
-    ctx.setNodeEnd(target[2])
+    // Patch in the default value (parsed after end position was recorded)
+    ;(target[1] as unknown[])[1] = defaultValue
     return target
   }
 

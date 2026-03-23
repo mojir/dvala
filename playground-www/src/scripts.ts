@@ -2783,11 +2783,7 @@ function showAstTreeModal(ast: Ast, title: string) {
         },
       },
     ],
-    onClose: () => {
-      popModal()
-      syntaxOverlay.clearHighlight()
-      focusDvalaCode()
-    },
+    onClose: () => { popModal(); focusDvalaCode() },
   })
 
   const treeViewer = createAstTreeViewer({
@@ -2805,7 +2801,8 @@ function showAstTreeModal(ast: Ast, title: string) {
       }
       const startOffset = toOffset(pos.start[0], pos.start[1])
       const endOffset = toOffset(pos.end[0], pos.end[1])
-      syntaxOverlay.highlightRange(startOffset, endOffset)
+      elements.dvalaTextArea.setSelectionRange(startOffset, endOffset)
+      syntaxOverlay.setSelection(startOffset, endOffset)
     },
   })
 

@@ -11,6 +11,9 @@
 
 import type { Ast, AstNode, SourceMap } from '../../../src/parser/types'
 
+/** A tree node — either an AstNode or a BindingTarget (same [type, payload, id] shape). */
+type TreeNode = [string, unknown, number]
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -37,6 +40,13 @@ const nodeColorMap: Record<string, string> = {
   Binding: 'var(--syntax-keyword)',
   Spread: 'var(--syntax-punctuation)',
   EffectName: 'var(--syntax-effect)',
+  // Binding target types
+  symbol: 'var(--syntax-symbol)',
+  object: 'var(--syntax-punctuation)',
+  array: 'var(--syntax-punctuation)',
+  rest: 'var(--syntax-symbol)',
+  wildcard: 'var(--syntax-keyword)',
+  literal: 'var(--syntax-number)',
 }
 
 function getNodeColor(nodeType: string): string {
@@ -47,7 +57,7 @@ function getNodeColor(nodeType: string): string {
 // Summary text for a node (shown on the collapsed line)
 // ---------------------------------------------------------------------------
 
-function getNodeSummary(node: AstNode): string {
+function getNodeSummary(node: TreeNode): string {
   const [type, payload] = node
 
   switch (type) {
@@ -57,9 +67,7 @@ function getNodeSummary(node: AstNode): string {
       return `"${truncate(payload as string, 40)}"`
     case 'UserDefinedSymbol':
     case 'Builtin':
-      return `${payload}`
     case 'Special':
-      return `${payload}`
     case 'Reserved':
       return `${payload}`
     case 'EffectName':
@@ -79,11 +87,27 @@ function getNodeSummary(node: AstNode): string {
       const segments = payload as unknown[]
       return `\`...\` (${segments.length} segment${segments.length !== 1 ? 's' : ''})`
     }
-    case 'Binding': {
-      return 'let'
-    }
+    case 'Binding':
+      return ''
     case 'Spread':
       return '...'
+    // Binding target types
+    case 'symbol': {
+      const [symbolNode] = payload as [AstNode]
+      return `${symbolNode[1]}`
+    }
+    case 'object':
+      return '{...}'
+    case 'array':
+      return '[...]'
+    case 'rest': {
+      const [name] = payload as [string]
+      return `...${name}`
+    }
+    case 'wildcard':
+      return '_'
+    case 'literal':
+      return ''
     default:
       return ''
   }
@@ -97,7 +121,7 @@ function truncate(s: string, maxLen: number): string {
 // Check if a node is a leaf (no expandable children)
 // ---------------------------------------------------------------------------
 
-function isLeafNode(node: AstNode): boolean {
+function isLeafNode(node: TreeNode): boolean {
   const type = node[0]
   return type === 'Number'
     || type === 'String'
@@ -106,6 +130,9 @@ function isLeafNode(node: AstNode): boolean {
     || type === 'Special'
     || type === 'Reserved'
     || type === 'EffectName'
+    || type === 'symbol'
+    || type === 'rest'
+    || type === 'wildcard'
 }
 
 // ---------------------------------------------------------------------------
@@ -114,31 +141,10 @@ function isLeafNode(node: AstNode): boolean {
 
 interface ChildEntry {
   label: string | null
-  node: AstNode
+  node: TreeNode
 }
 
-/** Labels for SpecialExpression children by expression name. */
-const specialExpressionLabels: Record<string, string[] | null> = {
-  'if': ['condition', 'then', 'else'],
-  'handle': ['body', 'handler'],
-  'perform': ['effect'],
-  'let': null, // single Binding child, no label needed
-  'block': null, // sequence of body nodes
-  'function': null,
-  'for': null,
-  'loop': null,
-  'match': null,
-  'defn': null,
-  '&&': null,
-  '||': null,
-  '??': null,
-  'array': null,
-  'object': null,
-  'recur': null,
-  'import': null,
-}
-
-function getChildren(node: AstNode): ChildEntry[] {
+function getChildren(node: TreeNode): ChildEntry[] {
   const [type, payload] = node
   const children: ChildEntry[] = []
 
@@ -149,56 +155,217 @@ function getChildren(node: AstNode): ChildEntry[] {
       args.forEach((arg, i) => children.push({ label: args.length > 1 ? `arg${i}` : 'arg', node: arg }))
       break
     }
-    case 'SpecialExpression': {
-      const parts = payload as [string, ...unknown[]]
-      const exprName = parts[0]
-      const labels = specialExpressionLabels[exprName]
-      let labelIndex = 0
-
-      for (let i = 1; i < parts.length; i++) {
-        const part = parts[i]
-        if (part === null || part === undefined) continue
-        if (Array.isArray(part) && part.length > 0) {
-          if (isAstNode(part)) {
-            children.push({ label: labels?.[labelIndex++] ?? null, node: part as AstNode })
-          } else {
-            ;(part as unknown[]).forEach(child => {
-              if (isAstNode(child)) {
-                children.push({ label: labels?.[labelIndex++] ?? null, node: child as AstNode })
-              }
-            })
-          }
-        }
-      }
+    case 'SpecialExpression':
+      getSpecialExpressionChildren(payload as [string, ...unknown[]], children)
       break
-    }
     case 'TemplateString': {
       const segments = payload as AstNode[]
       segments.forEach(seg => children.push({ label: null, node: seg }))
       break
     }
     case 'Binding': {
-      const [_target, value] = payload as [unknown, AstNode]
+      const [target, value] = payload as [BindingTargetTuple, AstNode]
+      addBindingTarget(target, children, null)
       children.push({ label: 'value', node: value })
       break
     }
     case 'Spread':
       children.push({ label: null, node: payload as AstNode })
       break
+    // Binding target types
+    case 'object':
+    case 'array':
+    case 'literal':
+      return getBindingTargetNodeChildren(node as unknown as BindingTargetTuple)
   }
 
   return children
 }
 
+function getSpecialExpressionChildren(parts: [string, ...unknown[]], children: ChildEntry[]): void {
+  const name = parts[0]
+
+  switch (name) {
+    case 'if': {
+      // ["if", [condition, then, else?]]
+      const [cond, thenBranch, elseBranch] = parts[1] as [AstNode, AstNode, AstNode?]
+      children.push({ label: 'condition', node: cond })
+      children.push({ label: 'then', node: thenBranch })
+      if (elseBranch) children.push({ label: 'else', node: elseBranch })
+      break
+    }
+    case 'let': {
+      // ["let", BindingNode]
+      const binding = parts[1] as AstNode
+      children.push({ label: null, node: binding })
+      break
+    }
+    case 'block': {
+      // ["block", AstNode[], null]
+      const bodyExprs = parts[1] as AstNode[]
+      bodyExprs.forEach(expr => children.push({ label: null, node: expr }))
+      break
+    }
+    case 'function': {
+      // ["function", [BindingTarget[], AstNode[]]]
+      const [params, body] = parts[1] as [BindingTargetTuple[], AstNode[]]
+      params.forEach(p => addBindingTarget(p, children, 'param'))
+      body.forEach((expr, i) => children.push({ label: body.length > 1 ? `body${i}` : 'body', node: expr }))
+      break
+    }
+    case 'handle': {
+      // ["handle", [AstNode[]], AstNode]
+      const bodyExprs = parts[1] as AstNode[]
+      const handler = parts[2] as AstNode
+      bodyExprs.forEach(expr => children.push({ label: 'body', node: expr }))
+      children.push({ label: 'handler', node: handler })
+      break
+    }
+    case 'perform': {
+      // ["perform", effectExpr, argExpr?]
+      const effectExpr = parts[1] as AstNode
+      const argExpr = parts[2] as AstNode | undefined
+      children.push({ label: 'effect', node: effectExpr })
+      if (argExpr) children.push({ label: 'arg', node: argExpr })
+      break
+    }
+    case 'loop': {
+      // ["loop", BindingNode[], bodyExpr]
+      const bindings = parts[1] as TreeNode[]
+      const body = parts[2] as TreeNode
+      bindings.forEach(b => children.push({ label: 'binding', node: b }))
+      children.push({ label: 'body', node: body })
+      break
+    }
+    case 'for': {
+      // ["for", LoopBindingNode[], bodyExpr]
+      // LoopBindingNode = [BindingNode, BindingNode[], when?, while?]
+      const loopBindings = parts[1] as unknown[][]
+      const body = parts[2] as TreeNode
+      for (const lb of loopBindings) {
+        const binding = lb[0]
+        if (isAstNode(binding)) children.push({ label: 'binding', node: binding as TreeNode })
+        const letBindings = lb[1] as TreeNode[]
+        if (letBindings) letBindings.forEach(b => { if (isAstNode(b)) children.push({ label: 'let', node: b }) })
+        const whenClause = lb[2] as TreeNode | undefined
+        if (whenClause && isAstNode(whenClause)) children.push({ label: 'when', node: whenClause })
+        const whileClause = lb[3] as TreeNode | undefined
+        if (whileClause && isAstNode(whileClause)) children.push({ label: 'while', node: whileClause })
+      }
+      children.push({ label: 'body', node: body })
+      break
+    }
+    case 'match': {
+      // ["match", valueExpr, [MatchCase...]]
+      // MatchCase = [BindingTarget, bodyExpr, guard?]
+      const value = parts[1] as TreeNode
+      const cases = parts[2] as unknown[][]
+      children.push({ label: 'value', node: value })
+      cases.forEach((c, i) => {
+        const pattern = c[0] as BindingTargetTuple
+        const body = c[1] as AstNode
+        const guard = c[2] as AstNode | undefined
+        const caseLabel = `case${cases.length > 1 ? i : ''}`
+        addBindingTarget(pattern, children, null)
+        if (guard && isAstNode(guard)) children.push({ label: `${caseLabel}.guard`, node: guard })
+        children.push({ label: `${caseLabel}.body`, node: body })
+      })
+      break
+    }
+    case 'object': {
+      // ["object", AstNode[]] — alternating key, value pairs (or spread nodes)
+      const entries = parts[1] as AstNode[]
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i]!
+        if (entry[0] === 'Spread') {
+          children.push({ label: null, node: entry })
+        } else {
+          children.push({ label: 'key', node: entry })
+          i++
+          if (i < entries.length) children.push({ label: 'value', node: entries[i]! })
+        }
+      }
+      break
+    }
+    // Simple list-of-nodes expressions
+    case '&&':
+    case '||':
+    case '??':
+    case 'array':
+    case 'recur':
+    case 'parallel':
+    case 'race': {
+      const nodes = parts[1] as AstNode[]
+      nodes.forEach(n => children.push({ label: null, node: n }))
+      break
+    }
+    // Leaf special expressions (no AST children)
+    case 'import':
+    case 'effect':
+      break
+    default: {
+      // Fallback: walk payload for any AstNodes
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i]
+        if (part === null || part === undefined) continue
+        if (isAstNode(part)) {
+          children.push({ label: null, node: part as AstNode })
+        } else if (Array.isArray(part)) {
+          for (const child of part as unknown[]) {
+            if (isAstNode(child)) children.push({ label: null, node: child as AstNode })
+          }
+        }
+      }
+    }
+  }
+}
+
+type BindingTargetTuple = [string, unknown[], number]
+
 function isAstNode(value: unknown): boolean {
   return Array.isArray(value) && value.length === 3 && typeof value[0] === 'string' && typeof value[2] === 'number'
+}
+
+/** Push the binding target itself as a visible node in the tree. */
+function addBindingTarget(target: BindingTargetTuple, children: ChildEntry[], label: string | null): void {
+  // Binding targets have the same [type, payload, nodeId] shape as AstNodes
+  children.push({ label, node: target as unknown as TreeNode })
+}
+
+/** Get children OF a binding target node (for expansion). */
+function getBindingTargetNodeChildren(target: BindingTargetTuple): ChildEntry[] {
+  const [targetType, payload] = target
+  const children: ChildEntry[] = []
+  switch (targetType) {
+    case 'array': {
+      const [elements] = payload as [(BindingTargetTuple | null)[]]
+      elements.forEach(el => {
+        if (el) addBindingTarget(el, children, null)
+      })
+      break
+    }
+    case 'object': {
+      const [entries] = payload as [Record<string, BindingTargetTuple>]
+      for (const [key, val] of Object.entries(entries)) {
+        addBindingTarget(val, children, key)
+      }
+      break
+    }
+    case 'literal': {
+      const [expr] = payload as [AstNode]
+      children.push({ label: null, node: expr })
+      break
+    }
+    // symbol, rest, wildcard: leaf nodes
+  }
+  return children
 }
 
 // ---------------------------------------------------------------------------
 // Search matching
 // ---------------------------------------------------------------------------
 
-function nodeMatchesSearch(node: AstNode, query: string, label?: string | null): boolean {
+function nodeMatchesSearch(node: TreeNode, query: string, label?: string | null): boolean {
   const [type, payload] = node
   const lowerQuery = query.toLowerCase()
   if (label && label.toLowerCase().includes(lowerQuery)) return true
@@ -216,7 +383,7 @@ function nodeMatchesSearch(node: AstNode, query: string, label?: string | null):
   return false
 }
 
-function treeContainsMatch(node: AstNode, query: string, label?: string | null): boolean {
+function treeContainsMatch(node: TreeNode, query: string, label?: string | null): boolean {
   if (nodeMatchesSearch(node, query, label)) return true
   return getChildren(node).some(c => treeContainsMatch(c.node, query, c.label))
 }
@@ -226,12 +393,19 @@ function treeContainsMatch(node: AstNode, query: string, label?: string | null):
 // ---------------------------------------------------------------------------
 
 function renderNode(
-  node: AstNode,
+  node: TreeNode,
   label: string | null,
   depth: number,
   options: TreeViewerOptions,
   searchQuery: string,
 ): HTMLElement {
+  if (!Array.isArray(node) || node.length < 2) {
+    const el = document.createElement('div')
+    el.textContent = `[invalid node: ${JSON.stringify(node)}]`
+    el.style.color = 'var(--syntax-error)'
+    return el
+  }
+
   const row = document.createElement('div')
   row.className = 'ast-tree__node'
   row.style.paddingLeft = `${depth * 16}px`
