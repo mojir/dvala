@@ -1336,10 +1336,12 @@ let bar = (val, mx, w) -> do
 end;
 
 let nums = filter(flatten(allPrev), isNumber);
-let mn = vec.mean(nums);
-let sd = vec.stdev(nums);
-let q = vec.quartiles(nums);
-let hist = vec.histogram(nums, 5);
+let outliers = vec.outliers(nums);
+let clean = filter(nums, (x) -> not(contains(outliers, x)));
+let mn = vec.mean(clean);
+let sd = vec.stdev(clean);
+let q = vec.quartiles(clean);
+let hist = vec.histogram(clean, 6);
 let histMax = max(...map(hist, last));
 
 let v1 = [3, 4, 0];
@@ -1351,23 +1353,25 @@ let ys = for (i in range(10)) -> i * 2.0 + 1;
 
 let analysis = {
   distribution: {
-    n: count(nums),
-    range: [min(...nums), max(...nums)],
-    span: vec.span(nums),
+    nRaw: count(nums),
+    outliers: outliers,
+    nClean: count(clean),
+    range: [min(...clean), max(...clean)],
+    span: vec.span(clean),
     mean: r3(mn),
-    median: vec.median(nums),
+    median: vec.median(clean),
     stdev: r3(sd),
-    skewness: r3(vec.skewness(nums)),
-    rms: r3(vec.rms(nums)),
+    skewness: r3(vec.skewness(clean)),
+    rms: r3(vec.rms(clean)),
     quartiles: map(q, r3),
-    iqr: r3(vec.iqr(nums)),
+    iqr: r3(vec.iqr(clean)),
     histogram: map(hist, (row) -> {
       lo: r3(first(row)),
       hi: r3(second(row)),
       count: last(row),
     }),
-    runningMean: map(vec.runningMean(take(nums, 8)), r3),
-    cumulativeSum: vec.cumsum(take(nums, 6)),
+    runningMean: map(vec.runningMean(take(clean, 8)), r3),
+    cumulativeSum: vec.cumsum(take(clean, 6)),
   },
   geometry: {
     v1: v1,
@@ -1411,17 +1415,19 @@ let analysis = {
     "======================================",
     "       STATISTICAL ANALYSIS           ",
     "======================================",
-    \`  n=\${count(nums)}  range=\${min(...nums)}..\${max(...nums)}  span=\${vec.span(nums)}\`,
-    \`  mean=\${r3(mn)}  median=\${vec.median(nums)}  stdev=\${r3(sd)}\`,
-    \`  skewness=\${r3(vec.skewness(nums))}  rms=\${r3(vec.rms(nums))}\`,
-    \`  Q1=\${r3(q[0])}  Q2=\${r3(q[1])}  Q3=\${r3(q[2])}  IQR=\${r3(vec.iqr(nums))}\`,
-    "--- histogram ---",
+    \`  n=\${count(nums)} raw, \${count(outliers)} outliers removed, \${count(clean)} clean\`,
+    \`  outliers: [\${join(map(outliers, str), ", ")}]\`,
+    \`  range=\${min(...clean)}..\${max(...clean)}  span=\${vec.span(clean)}\`,
+    \`  mean=\${r3(mn)}  median=\${vec.median(clean)}  stdev=\${r3(sd)}\`,
+    \`  skewness=\${r3(vec.skewness(clean))}  rms=\${r3(vec.rms(clean))}\`,
+    \`  Q1=\${r3(q[0])}  Q2=\${r3(q[1])}  Q3=\${r3(q[2])}  IQR=\${r3(vec.iqr(clean))}\`,
+    "--- histogram (outliers removed) ---",
     ...map(hist, (row) -> do
       let ct = last(row);
-      \`  \${bar(ct, histMax, 16)}  \${ct}  [\${r3(first(row))}, \${r3(second(row))})\`
+      \`  \${bar(ct, histMax, 20)}  \${ct}  [\${r3(first(row))}, \${r3(second(row))})\`
     end),
     "--- running mean (first 8) ---",
-    \`  \${join(map(vec.runningMean(take(nums, 8)), r3), " > ")}\`,
+    \`  \${join(map(vec.runningMean(take(clean, 8)), r3), " > ")}\`,
     "======================================",
     "       VECTOR GEOMETRY                ",
     "======================================",
