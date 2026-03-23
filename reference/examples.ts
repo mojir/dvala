@@ -934,4 +934,357 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
 "Done!"
 `.trim(),
   },
+  {
+    id: 'ast-coverage',
+    name: 'AST node coverage',
+    description: 'Exercises all special expressions, operators, destructuring, effects, and node types. Useful for testing the AST tree viewer.',
+    code: `
+// === AST Node Coverage ===
+// Covers: all special expressions, key operators, effects, destructuring, spreading
+
+// --- Primitives: Number, String, Reserved ---
+let num = 42;
+let str1 = "hello";
+let flag = true;
+let nothing = null;
+
+// --- Template strings ---
+let greeting = \`\${str1} world #\${num}\`;
+
+// --- Operators: arithmetic, comparison, logical, bitwise ---
+let math1 = (10 + 3) * 2 - 1 / 2 ^ 2;
+let modResult = 17 % 5;
+let concatResult = "a" ++ "b" ++ "c";
+let cmp = [1 < 2, 2 > 1, 3 <= 3, 4 >= 4, 5 == 5, 6 != 7];
+let logic = [true && false, true || false, null ?? "default"];
+let bits = [(5 & 3), (5 | 3), (5 xor 3), (1 << 3), (16 >> 2), (16 >>> 2)];
+
+// --- Pipe operator ---
+let piped = 5 |> inc |> (x -> x * 2);
+
+// --- Array and Object literals ---
+let arr = [1, 2, 3];
+let obj = { a: 1, b: "two", c: [3] };
+
+// --- Spread ---
+let arr2 = [0, ...arr, 4];
+let obj2 = { ...obj, d: 4 };
+
+// --- Destructuring: array with rest ---
+let [dx, dy, ...dzs] = [10, 20, 30, 40];
+
+// --- Destructuring: object ---
+let { a, b, c } = obj;
+
+// --- Destructuring: object with alias ---
+let { a as aVal } = obj;
+
+// --- Destructuring: nested ---
+let nested = { user: { name: "Alice", scores: [95, 87] } };
+let { user: { name, scores: [firstScore, ...restScores] } } = nested;
+
+// --- Destructuring: default value ---
+let [dp = 0, dq = 99] = [7];
+
+// --- Block (do...end) ---
+let blockResult = do
+  let tmp = 10;
+  tmp + 1
+end;
+
+// --- If / else if / else ---
+let grade = if num > 90 then "A"
+  else if num > 80 then "B"
+  else if num > 40 then "C"
+  else "F"
+end;
+
+// --- Function (lambda) ---
+let myAdd = (a, b) -> a + b;
+let myDouble = (n) -> n * 2;
+
+// --- Function with body block ---
+let factorial = (n) -> do
+  if n <= 1 then 1
+  else n * self(n - 1)
+  end
+end;
+
+// --- Loop with recur ---
+let loopSum = loop (i = 0, acc = 0) ->
+  if i >= 10 then acc
+  else recur(i + 1, acc + i)
+  end;
+
+// --- For comprehension with let, when ---
+let fizz = for (
+  n in range(1, 16)
+  let div3 = isZero(n % 3)
+  let div5 = isZero(n % 5)
+  when div3 || div5
+) -> if div3 && div5 then "FizzBuzz"
+  else if div3 then "Fizz"
+  else "Buzz"
+end;
+
+// --- Match with literal patterns ---
+let describe = (val) -> match val
+  case 0 then "zero"
+  case 1 then "one"
+  case _ then "other"
+end;
+
+// --- Match with guard ---
+let classify = (n) -> match n
+  case x when x < 0 then "negative"
+  case 0 then "zero"
+  case x then "positive"
+end;
+
+// --- Match with destructuring ---
+let getShape = (point) -> match point
+  case { x, y } then \`(\${x}, \${y})\`
+  case [a, b] then \`[\${a}, \${b}]\`
+  case _ then "unknown"
+end;
+
+// --- Effect name ---
+let eff = @dvala.io.pick;
+
+// --- Effect handling: handle/perform ---
+let { fallback } = import(effectHandler);
+let handled = handle
+  let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
+  color ++ " was chosen"
+with fallback("Green") end;
+
+// --- Effect pipe operator (||>) ---
+let piped2 = perform(@dvala.io.pick, [1, 2, 3]) ||> fallback(1);
+
+// --- Import ---
+let mathMod = import(math);
+
+// --- Regexp shorthand ---
+let reResult = "hello-world" reMatch #"(\\w+)-(\\w+)";
+
+// --- Unary minus ---
+let neg = -num;
+
+// --- Collect all results as array ---
+[
+  num, str1, flag, nothing, greeting, math1, modResult, concatResult,
+  cmp, logic, bits, piped,
+  arr, obj, arr2, obj2,
+  dx, dy, dzs, a, b, c, aVal,
+  name, firstScore, restScores, dp, dq,
+  blockResult, grade,
+  myAdd(1, 2), myDouble(5), factorial(5),
+  loopSum, fizz,
+  describe(0), describe(1), describe(99),
+  classify(-5), classify(0), classify(7),
+  getShape({ x: 1, y: 2 }), getShape([3, 4]), getShape("?"),
+  handled, piped2,
+  mathMod.sin(0), mathMod.cos(0),
+  reResult, neg
+]
+    `.trim(),
+  },
+  {
+    id: 'ast-coverage-extended',
+    name: 'AST coverage (extended)',
+    description: 'Comprehensive test: 194 results covering all operators, destructuring variants, function forms, arity, effects with handlers, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',
+    code: `
+// === AST Node Coverage (Extended) ===
+// 28 sections, 194 results — baseline for e2e and performance tests.
+
+// --- 1: Primitives & Templates ---
+let s1 = [42, 3.14, "hello", true, false, null, \`tmpl \${1 + 2}\`, \`\${"a"}\${"b"}\`];
+
+// --- 2: Arithmetic ---
+let s2 = [10 + 3, 10 - 3, 10 * 3, 10 / 4, 2 ^ 10, 17 % 5, -42, -(3 + 4)];
+
+// --- 3: Comparison ---
+let s3 = [1 < 2, 2 > 1, 3 <= 3, 4 >= 4, 5 == 5, 5 != 6];
+
+// --- 4: Logical & Nullish ---
+let s4 = [true && 42, false || "fb", null ?? "def", null ?? null ?? "x", true && true && 99];
+
+// --- 5: Bitwise ---
+let s5 = [5 & 3, 5 | 3, 5 xor 3, 1 << 3, 16 >> 2, -1 >>> 28];
+
+// --- 6: Concat & Pipe ---
+let s6 = ["a" ++ "b" ++ "c", [1, 2] ++ [3], 5 |> inc, 5 |> inc |> (x -> x * 2), [3, 1, 2] |> sort |> first];
+
+// --- 7: Array & Object & Spread ---
+let baseArr = [1, 2, 3];
+let baseObj = { x: 1, y: 2 };
+let s7 = [[], [1, 2, 3], {}, { a: 1, b: "two" }, [0, ...baseArr, 4], { ...baseObj, z: 3 }];
+
+// --- 8: Destructuring - array ---
+let [da, db] = [10, 20];
+let [, skipped] = [1, 2, 3];
+let [dHead, ...dTail] = [1, 2, 3, 4];
+let [dp = 0, dq = 99] = [7];
+let s8 = [da, db, skipped, dHead, dTail, dp, dq];
+
+// --- 9: Destructuring - object ---
+let objSrc = { a: 1, b: 2, c: 3 };
+let { a, b, c } = objSrc;
+let { a as aliased } = objSrc;
+let { ...objRest } = { x: 1, y: 2 };
+let s9 = [a + b + c, aliased, objRest];
+
+// --- 10: Destructuring - nested ---
+let deepObj = { user: { name: "Alice", tags: ["admin", "dev"] } };
+let { user: { name, tags: [firstTag, ...otherTags] } } = deepObj;
+let s10 = [name, firstTag, otherTags];
+
+// --- 11: Block ---
+let s11 = [do let t = 10; t + 1 end, do let v1 = 1; let v2 = 2; v1 + v2 end];
+
+// --- 12: If / else if ---
+let s12 = [
+  if true then "yes" else "no" end,
+  if false then 1 else if false then 2 else 3 end,
+  if false then "x" end,
+];
+
+// --- 13: Functions - all forms ---
+let fId = (x) -> x;
+let fAdd = (a, b) -> a + b;
+let fNone = () -> 99;
+let fShort = -> $ + 1;
+let fShort2 = -> $ + $2;
+let fDef = (a, b = 10) -> a + b;
+let fRest = (h, ...t) -> [h, count(t)];
+let fBlock = (n) -> do let d = n * 2; d + n end;
+let s13 = [fId(1), fAdd(2, 3), fNone(), fShort(10), fShort2(3, 4), fDef(5), fDef(5, 20), fRest(1, 2, 3), fBlock(10)];
+
+// --- 14: Higher order ---
+let s14 = [
+  map([1, 2, 3], (x) -> x * x),
+  filter([1, 2, 3, 4, 5], isOdd),
+  reduce([1, 2, 3, 4], +, 0),
+  apply(fAdd, [10, 20]),
+];
+
+// --- 15: Composition & meta ---
+let fNeg = (x) -> -x;
+let fDbl = (x) -> x * 2;
+let negDbl = comp(fNeg, fDbl);
+let always42 = constantly(42);
+let documented = fAdd withDoc "Adds two numbers";
+let s15 = [negDbl(5), always42("x"), identity(99), doc(documented)];
+
+// --- 16: Arity ---
+let s16 = [arity(fAdd), arity(fDef), arity(fRest), arity(fNone), arity(+)];
+
+// --- 17: Self-recursion ---
+let factorial = (n) -> if n <= 1 then 1 else n * self(n - 1) end;
+let s17 = [factorial(10), factorial(1), factorial(0)];
+
+// --- 18: Loop / recur ---
+let s18 = [
+  loop (i = 0, acc = 0) -> if i >= 100 then acc else recur(i + 1, acc + i) end,
+  loop (n = 20, fa = 0, fb = 1) -> if n == 0 then fa else recur(n - 1, fb, fa + fb) end,
+  loop (s = "a") -> if count(s) >= 5 then s else recur(s ++ "a") end,
+];
+
+// --- 19: For - variants ---
+let s19 = [
+  for (x in [1, 2, 3]) -> x * 10,
+  for (x in range(5)) -> x ^ 2,
+  for (x in [1, 2, 3, 4, 5] let sq = x ^ 2) -> sq,
+  for (x in range(1, 20) when isEven(x)) -> x,
+  for (x in range(100) while x < 5) -> x,
+  for (x in [1, 2], y in [10, 20]) -> x + y,
+  for (n in range(1, 30) let sq = n ^ 2 when isOdd(n) while sq < 200) -> sq,
+];
+
+// --- 20: Match ---
+let mLit = (v) -> match v case 0 then "zero" case 1 then "one" case "hi" then "greet" case true then "yes" case null then "nil" case _ then "other" end;
+let mGuard = (n) -> match n case x when x < 0 then "neg" case 0 then "zero" case x when x > 100 then "big" case x then "pos" end;
+let mDestr = (s) -> match s case { x, y, z } then "3d" case { x, y } then "2d" case [a, b, c] then "triple" case [a, b] then "pair" case _ then "?" end;
+let s20 = [
+  [mLit(0), mLit(1), mLit("hi"), mLit(true), mLit(null), mLit(42)],
+  [mGuard(-5), mGuard(0), mGuard(200), mGuard(7)],
+  [mDestr({ x: 1, y: 2 }), mDestr({ x: 1, y: 2, z: 3 }), mDestr([1, 2]), mDestr([1, 2, 3]), mDestr("?")],
+];
+
+// --- 21: Effects & Handlers ---
+let { fallback, retry } = import(effectHandler);
+let s21 = [
+  effectName(@dvala.io.print), isEffect(@dvala.io.print),
+  handle perform(@dvala.io.pick, ["a", "b"]) with fallback("a") end,
+  handle perform(@dvala.io.pick, [10, 20]) with [fallback(0)] end,
+  perform(@dvala.io.pick, [1, 2]) ||> fallback(1),
+  (0 / 0) ||> fallback(0),
+  handle let v = perform(@custom.eff, 5); v * 10 with @custom.eff(x) -> x + 1 end,
+  handle perform(@custom.eff, "hello") with [retry(2), @custom.eff(x) -> x ++ "!"] end,
+];
+
+// --- 22: Import ---
+let { sin, cos } = import(math);
+let s22 = [sin(0), cos(0), sin(0) + cos(0)];
+
+// --- 23: Regexp ---
+let s23 = ["abc123" reMatch #"(\\w+?)(\\d+)", replace("hello world", #"world", "dvala")];
+
+// --- 24: Type predicates ---
+let s24 = [
+  isNumber(42), isString("x"), isBoolean(true), isNull(null),
+  isArray([]), isObject({}), isFunction(inc), isEffect(@dvala.io.print),
+  isInteger(3), isInteger(3.5), isEven(4), isOdd(3),
+  isZero(0), isPos(1), isNeg(-1), isEmpty([]), isNotEmpty([1]),
+  isFinite(42), isFinite(1 / 0),
+];
+
+// --- 25: Collection ops ---
+let s25 = [
+  sort([3, 1, 4, 1, 5]), reverse([1, 2, 3]),
+  take([1, 2, 3, 4, 5], 3), takeLast([1, 2, 3, 4, 5], 2),
+  drop([1, 2, 3, 4, 5], 2), dropLast([1, 2, 3, 4, 5], 2),
+  takeWhile([1, 2, 3, 4, 1], (x) -> x < 4), dropWhile([1, 2, 3, 4, 1], (x) -> x < 3),
+  flatten([[1, 2], [3, [4, 5]]]),
+  nth([10, 20, 30], 1), first([10, 20, 30]), last([10, 20, 30]), second([10, 20, 30]),
+  pop([1, 2, 3]), rest([1, 2, 3]), next([1, 2, 3]),
+  some([1, 2, 3, 4], isEven), indexOf([10, 20, 30], 20),
+  contains([1, 2, 3], 2), count([1, 2, 3]),
+  push([1, 2], 3), repeat("x", 3), range(3),
+  assoc({ a: 1 }, "b", 2), dissoc({ a: 1, b: 2 }, "a"),
+  merge({ a: 1 }, { b: 2 }), mergeWith({ a: 1, b: 2 }, { a: 10, c: 3 }, +),
+  keys({ x: 1, y: 2 }), vals({ x: 1, y: 2 }), entries({ x: 1, y: 2 }),
+  zipmap(["a", "b"], [1, 2]), selectKeys({ a: 1, b: 2, c: 3 }, ["a", "c"]),
+  find({ a: 1, b: 2 }, "a"),
+];
+
+// --- 26: Partial application ---
+let add10 = +(_, 10);
+let s26 = [add10(5), map([1, 2, 3], +(_, 100))];
+
+// --- 27: String operations ---
+let s27 = [
+  str(42), number("42"), lowerCase("HELLO"), upperCase("hello"), trim("  hi  "),
+  join(["a", "b", "c"], "-"), split("a-b-c", "-"),
+  count("hello"), contains("hello", "ell"), slice("abcdef", 1, 4),
+  isBlank(""), isBlank("  "), isBlank("x"),
+];
+
+// --- 28: Math ---
+let s28 = [
+  abs(-5), sign(-3), sign(0), sign(7),
+  min(3, 1, 4), max(3, 1, 4),
+  round(3.7), floor(3.7), ceil(3.2), trunc(3.7),
+  sqrt(16), cbrt(27), inc(5), dec(5),
+];
+
+// --- Assemble ---
+let allResults = [
+  ...s1, ...s2, ...s3, ...s4, ...s5, ...s6, ...s7, ...s8, ...s9, ...s10,
+  ...s11, ...s12, ...s13, ...s14, ...s15, ...s16, ...s17, ...s18, ...s19, ...s20,
+  ...s21, ...s22, ...s23, ...s24, ...s25, ...s26, ...s27, ...s28,
+];
+{ results: allResults, totalResults: count(allResults) }
+    `.trim(),
+  },
 ]

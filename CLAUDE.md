@@ -28,15 +28,134 @@ Create .md files inside /design
 
 Prefix all design document filenames with the creation date in ISO format: `YYYY-MM-DD_<name>.md` (e.g. `2026-01-02_my-design.md`).
 
-## Dvala Syntax Notes
+## Dvala Language Reference
 
-- **`if/else if` chains need only one `end`**: `if A then B else if C then D else E end` — the entire chain is closed by a single `end`.
-- **`loop` has no `end`**: the body is a single expression; the loop is terminated by its body expression's own `end` (or by the enclosing `do...end` block). Never add a bare `end` for the loop itself.
-- **`do...end` always needs explicit `end`**: `do let x = 1; x + 1 end`.
-- **Unary minus works**: `-x`, `-3`, `-PI` are all valid. But `-(a, b)` is a prefix function call (subtraction).
-- **JS-style identifiers only**: letters, digits, `_`, `$`. No hyphens, `?`, or `!`. Use camelCase: `isArray`, `dropWhile`, `mergeWith`.
-- **Reserved keywords**: `next`, `in` (and others) cannot be used as variable names — use e.g. `nxt`, `inArr`.
-- **Built-in names can be shadowed**: `let take = take([1, 2, 3], 2)` works — the RHS resolves in the outer scope before the binding takes effect.
+### Expressions & Blocks
+
+- Statements are separated by `;`. The last expression's value is the result.
+- **`do...end`** block: `do let x = 1; x + 1 end` — always needs explicit `end`.
+- **`if/else if`** chains need only one `end`: `if A then B else if C then D else E end`.
+- If without else returns `null` when the condition is false.
+
+### Let Bindings
+
+```dvala
+let x = 42;
+let [a, b, ...rest] = [1, 2, 3, 4];        // array destructuring + rest
+let [a = 0, b = 99] = [7];                  // defaults
+let { name, age } = person;                  // object destructuring
+let { name as n } = person;                  // alias (NOT colon — use `as`)
+let { user: { name, tags: [first] } } = d;  // nested
+let { ...rest } = obj;                       // object rest
+```
+
+**Gotcha**: Object shorthand `{ x }` does NOT work in object literals. Always use `{ x: x }`.
+Builtin names (e.g. `sin`, `count`) need explicit `key: value` in object literals.
+
+### Functions
+
+```dvala
+let f = (a, b) -> a + b;          // basic lambda
+let g = () -> 42;                  // no params
+let h = -> $ + 1;                  // shorthand ($ = first arg, $2 = second, etc.)
+let i = -> $ + $2;                 // shorthand two args
+let j = (a, b = 10) -> a + b;     // default parameter
+let k = (first, ...rest) -> rest;  // rest parameter
+let l = (n) -> do                  // body block
+  let x = n * 2;
+  x + 1
+end;
+```
+
+- `self` refers to the current function (anonymous recursion).
+- Partial application: `+(_, 10)` creates a function that adds 10.
+- Higher-order: `map`, `filter`, `reduce`, `sort`, `some`, `apply`, `comp`, `constantly`, `identity`.
+- Meta: `arity(fn)` returns `{ min, max }`, `doc(fn)` returns docstring, `fn withDoc "..."`.
+
+### Loop & Recur
+
+```dvala
+loop (i = 0, acc = 0) ->
+  if i >= 10 then acc
+  else recur(i + 1, acc + i)
+  end
+```
+
+**`loop` has no `end`** — the body is a single expression. Use `do...end` for multi-statement bodies.
+
+### For Comprehension
+
+```dvala
+for (x in [1, 2, 3]) -> x * 2
+for (x in range(10) let sq = x ^ 2 when isOdd(x) while sq < 100) -> sq
+for (x in [1, 2], y in [10, 20]) -> x + y   // nested
+```
+
+Clauses after the collection: `let` (local binding), `when` (filter), `while` (stop condition).
+
+### Match
+
+```dvala
+match value
+  case 0 then "zero"                         // literal
+  case x when x < 0 then "negative"          // guard
+  case { x, y } then `(${x}, ${y})`          // object destructuring
+  case [a, b] then "pair"                     // array destructuring
+  case _ then "other"                         // wildcard
+end
+```
+
+### Effects & Handlers
+
+```dvala
+perform(@dvala.io.print, "hello");            // invoke effect
+let v = perform(@dvala.io.pick, [1, 2, 3]);   // effect with return value
+
+// handle...with block
+handle
+  perform(@my.eff, arg)
+with @my.eff(x) -> x * 2 end
+
+// effect pipe (shorthand for handle...with)
+perform(@dvala.io.pick, choices) ||> fallback(0)
+
+// handler module
+let { fallback, retry } = import(effectHandler);
+(0 / 0) ||> fallback(0)                       // catch errors
+perform(@eff, x) ||> [retry(2), fallback(0)]   // handler chain
+```
+
+### Operators
+
+Arithmetic: `+`, `-`, `*`, `/`, `^` (power), `%` (remainder), `mod`
+Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
+Logical: `&&`, `||`, `not(x)`
+Nullish: `??` (first non-null)
+Bitwise: `&`, `|`, `xor`, `<<`, `>>`, `>>>`
+Concat: `++` (strings and arrays)
+Pipe: `|>` (value pipe), `||>` (effect pipe)
+Unary: `-x` (negation)
+
+### Import
+
+```dvala
+let { sin, cos } = import(math);
+let m = import(collection);
+m.frequencies([1, 1, 2])
+```
+
+### Identifiers
+
+- **JS-style only**: letters, digits, `_`, `$`. No hyphens, `?`, or `!`. Use camelCase.
+- **Reserved keywords**: `next`, `in`, `true`, `false`, `null`, `end`, `then`, `else`, `case`, `when`, `while`, `do`, `let`, `fn` — cannot be used as variable names.
+- **Built-in names can be shadowed**: `let take = take([1, 2, 3], 2)` works.
+
+### Misc
+
+- Regexp shorthand: `#"pattern"` (creates a regexp, e.g. `"abc" reMatch #"\d+"`)
+- Template strings: `` `hello ${expr}` ``
+- Spread in arrays: `[...arr, 4]` / objects: `{ ...obj, key: val }`
+- Comments: `// single line` or `/* multi line */`
 
 ## MCP Tools
 
