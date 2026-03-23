@@ -40,7 +40,7 @@
   --color-overlay-heavy:  #1e1e1ef2;
   --color-shadow:         #171717;
   --color-shadow-deep:    #00000066;
-  --color-selection:      #96969680;
+  --color-selection:      #264f78;
 
   /* Toggle */
   --color-toggle-on:      #3b82f6;
@@ -1709,11 +1709,28 @@ button:focus {
   background: var(--color-selection);
 }
 
+.syntax-overlay-selection {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+
+.syntax-overlay-container pre.syntax-overlay-highlight {
+  position: relative;
+  z-index: 2;
+}
+
+.syntax-highlight-range {
+  background-color: var(--color-selection);
+  border-radius: 2px;
+}
+
 .syntax-overlay-container pre {
-  background-color: var(--color-code-bg);
   color: var(--color-text);
   overflow: visible;
   pointer-events: none;
+  position: relative;
   height: max-content;
   width: max-content;
   min-height: 100%;

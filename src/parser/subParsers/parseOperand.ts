@@ -73,6 +73,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       token = ctx.tryPeek()
     }
   }
+  ctx.setNodeEnd(operand[2])
   return operand
 }
 
@@ -93,6 +94,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
     }
     ctx.advance()
+    ctx.setNodeEnd(expression[2])
     return expression
   } else if (isOperatorToken(token)) {
     const operatorName = token[1]
@@ -114,16 +116,22 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         const operand = parseOperandPart(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
-        return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        const node = withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        ctx.setNodeEnd(node[2])
+        return node
       }
     }
 
     if (isBinaryOperator(operatorName)) {
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
-        return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0], token[2], ctx) as SpecialSymbolNode
+        const node = withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0], token[2], ctx) as SpecialSymbolNode
+        ctx.setNodeEnd(node[2])
+        return node
       }
-      return withSourceCodeInfo([NodeTypes.Builtin, operatorName, 0], token[2], ctx) as BuiltinSymbolNode
+      const node = withSourceCodeInfo([NodeTypes.Builtin, operatorName, 0], token[2], ctx) as BuiltinSymbolNode
+      ctx.setNodeEnd(node[2])
+      return node
     }
 
     if (operatorName === '->') {
@@ -189,9 +197,13 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       ctx.advance()
       // Check for handler shorthand: @effect -> body, @effect(params...) -> body
       if (isHandlerShorthand(ctx)) {
-        return parseHandlerShorthand(ctx, effectName, token[2] as TokenDebugInfo)
+        const node = parseHandlerShorthand(ctx, effectName, token[2] as TokenDebugInfo)
+        ctx.setNodeEnd(node[2])
+        return node
       }
-      return withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], token[2], ctx)
+      const node = withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], token[2], ctx)
+      ctx.setNodeEnd(node[2])
+      return node
     }
 
     default:
@@ -200,7 +212,9 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 }
 
 function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
-  return withSourceCodeInfo([NodeTypes.NormalExpression, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+  const node = withSourceCodeInfo([NodeTypes.NormalExpression, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 /**
@@ -310,5 +324,7 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo
 
   // Build lambda: (arg, eff, nxt) -> ifExpr
   const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]], 0], debugInfo, ctx)
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]], 0], debugInfo, ctx)
+  ctx.setNodeEnd(node[2])
+  return node
 }

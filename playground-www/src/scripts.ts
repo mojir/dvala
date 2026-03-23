@@ -2783,6 +2783,11 @@ function showAstTreeModal(ast: Ast, title: string) {
         },
       },
     ],
+    onClose: () => {
+      popModal()
+      syntaxOverlay.clearHighlight()
+      focusDvalaCode()
+    },
   })
 
   const treeViewer = createAstTreeViewer({
@@ -2790,17 +2795,17 @@ function showAstTreeModal(ast: Ast, title: string) {
     onSelectNode: (nodeId, sourceMap) => {
       const pos = sourceMap.positions[nodeId]
       if (!pos) return
-      const [line, col] = pos.start
       const source = sourceMap.sources[pos.source]
       if (!source) return
-      // Highlight the source range in the editor
       const lines = source.content.split('\n')
-      let offset = 0
-      for (let i = 0; i < line; i++) offset += (lines[i]?.length ?? 0) + 1
-      offset += col
-      const textarea = elements.dvalaTextArea
-      textarea.focus()
-      textarea.setSelectionRange(offset, offset + 1)
+      const toOffset = (line: number, col: number) => {
+        let off = 0
+        for (let i = 0; i < line; i++) off += (lines[i]?.length ?? 0) + 1
+        return off + col
+      }
+      const startOffset = toOffset(pos.start[0], pos.start[1])
+      const endOffset = toOffset(pos.end[0], pos.end[1])
+      syntaxOverlay.highlightRange(startOffset, endOffset)
     },
   })
 

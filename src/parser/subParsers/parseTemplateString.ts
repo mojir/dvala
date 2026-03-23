@@ -180,10 +180,14 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
   // Empty template: ``, or single literal with no interpolation: `hello`
   if (segments.length === 0) {
-    return withSourceCodeInfo([NodeTypes.String, '', 0], debugInfo, ctx) as StringNode
+    const node = withSourceCodeInfo([NodeTypes.String, '', 0], debugInfo, ctx) as StringNode
+    ctx.setNodeEnd(node[2])
+    return node
   }
   if (segments.length === 1 && segments[0]!.type === 'literal') {
-    return withSourceCodeInfo([NodeTypes.String, segments[0]!.value, 0], debugInfo, ctx) as StringNode
+    const node = withSourceCodeInfo([NodeTypes.String, segments[0]!.value, 0], debugInfo, ctx) as StringNode
+    ctx.setNodeEnd(node[2])
+    return node
   }
 
   // Build segment AST nodes
@@ -214,5 +218,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
     }
   }
 
-  return withSourceCodeInfo([NodeTypes.TemplateString, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
+  const node = withSourceCodeInfo([NodeTypes.TemplateString, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
+  ctx.setNodeEnd(node[2])
+  return node
 }

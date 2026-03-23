@@ -12,8 +12,12 @@ export function parseSymbol(ctx: ParserContext): SymbolNode | BuiltinSymbolNode 
     throw new DvalaError(`Expected symbol token, got ${token[0]}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
   }
   if (token[1][0] === '\'') {
-    return stringToSymbolNode(stringFromQuotedSymbol(token[1]), token[2], ctx)
+    const node = stringToSymbolNode(stringFromQuotedSymbol(token[1]), token[2], ctx)
+    ctx.setNodeEnd(node[2])
+    return node
   } else {
-    return stringToSymbolNode(token[1], token[2], ctx)
+    const node = stringToSymbolNode(token[1], token[2], ctx)
+    ctx.setNodeEnd(node[2])
+    return node
   }
 }

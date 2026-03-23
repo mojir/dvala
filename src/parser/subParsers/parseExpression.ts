@@ -94,5 +94,6 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
     operator = ctx.tryPeek()
   }
 
+  ctx.setNodeEnd(left[2])
   return left
 }

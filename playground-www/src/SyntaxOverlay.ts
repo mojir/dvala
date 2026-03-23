@@ -125,6 +125,7 @@ export function tokenizeToHtml(code: string): string {
 export class SyntaxOverlay {
   private textarea: HTMLTextAreaElement
   private highlight: HTMLPreElement
+  private selectionLayer: HTMLPreElement
   private lineNumbers: HTMLDivElement
   readonly scrollContainer: HTMLDivElement
   private lastCode: string | null = null
@@ -142,10 +143,16 @@ export class SyntaxOverlay {
     this.lineNumbers = document.createElement('div')
     this.lineNumbers.className = 'syntax-overlay-line-numbers'
 
+    // Selection highlight layer — sits behind the syntax pre
+    this.selectionLayer = document.createElement('pre')
+    this.selectionLayer.className = 'syntax-overlay-selection'
+
     this.highlight = document.createElement('pre')
+    this.highlight.className = 'syntax-overlay-highlight'
 
     textarea.parentNode!.insertBefore(this.scrollContainer, textarea)
     this.scrollContainer.appendChild(this.lineNumbers)
+    this.scrollContainer.appendChild(this.selectionLayer)
     this.scrollContainer.appendChild(this.highlight)
     this.scrollContainer.appendChild(textarea)
 
@@ -191,5 +198,29 @@ export class SyntaxOverlay {
     this.highlight.innerHTML = `${tokenizeToHtml(code)}\n`
     this.updateLineNumbers(code)
     this.syncSize()
+  }
+
+  /**
+   * Highlight a character range in the syntax overlay.
+   * Renders on a separate background layer behind the syntax text,
+   * so text colors are fully preserved.
+   */
+  highlightRange(start: number, end: number): void {
+    const code = this.textarea.value
+    if (start < 0 || end <= start || start >= code.length) {
+      this.selectionLayer.innerHTML = ''
+      return
+    }
+    // Render the same text layout but with transparent text,
+    // and a background highlight on the selected range.
+    const before = escapeHtml(code.slice(0, start))
+    const selected = escapeHtml(code.slice(start, end))
+    const after = escapeHtml(code.slice(end))
+    this.selectionLayer.innerHTML = `${before}<span class="syntax-highlight-range">${selected}</span>${after}\n`
+  }
+
+  /** Clear any active highlight. */
+  clearHighlight(): void {
+    this.selectionLayer.innerHTML = ''
   }
 }

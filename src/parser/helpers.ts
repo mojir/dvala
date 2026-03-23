@@ -26,12 +26,18 @@ export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, d
 
 export function stringToSymbolNode(value: string, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): SymbolNode {
   if (specialExpressionTypes[value as SpecialExpressionName] !== undefined && value !== 'fn' && value !== 'defn') {
-    return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName], 0], debugInfo, ctx) satisfies SymbolNode
+    const node = withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[value as SpecialExpressionName], 0], debugInfo, ctx) satisfies SymbolNode
+    ctx.setNodeEnd(node[2])
+    return node
   }
   if (normalExpressionTypes.has(value)) {
-    return withSourceCodeInfo([NodeTypes.Builtin, value, 0], debugInfo, ctx) satisfies SymbolNode
+    const node = withSourceCodeInfo([NodeTypes.Builtin, value, 0], debugInfo, ctx) satisfies SymbolNode
+    ctx.setNodeEnd(node[2])
+    return node
   }
-  return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value, 0], debugInfo, ctx) satisfies SymbolNode
+  const node = withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value, 0], debugInfo, ctx) satisfies SymbolNode
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 export function stringFromQuotedSymbol(value: string): string {
@@ -70,6 +76,7 @@ export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | 
     assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, ctx.resolveTokenDebugInfo(debugInfo))
   }
 
+  ctx.setNodeEnd(node[2])
   return node
 }
 
@@ -116,11 +123,17 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
       return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], debugInfo, ctx)
     case '&&':
     case '||':
-    case '??':
-      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]], 0] as AndNode, debugInfo, ctx)
-    case '||>':
+    case '??': {
+      const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]], 0] as AndNode, debugInfo, ctx)
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    case '||>': {
       // Effect pipe: expr ||> handler  →  handle expr with handler end
-      return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right], 0], debugInfo, ctx) as HandleNode
+      const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right], 0], debugInfo, ctx) as HandleNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
     /* v8 ignore next 11 */
     case '.':
     case ';':

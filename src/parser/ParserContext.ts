@@ -47,11 +47,30 @@ export class ParserContext {
       const position: SourceMapPosition = {
         source: 0, // single source for now
         start: [debugInfo[0], debugInfo[1]], // already 0-based
-        end: [debugInfo[0], debugInfo[1]], // same as start for now
+        end: [debugInfo[0], debugInfo[1]], // placeholder — updated by setNodeEnd()
       }
       this.sourceMap.positions[id] = position
     }
     return id
+  }
+
+  /**
+   * Update the end position of a node after it has been fully parsed.
+   * Uses the debug info of the last consumed token (i.e. the token
+   * just before the current position).
+   */
+  public setNodeEnd(nodeId: number): void {
+    if (!this.sourceMap) return
+    const pos = this.sourceMap.positions[nodeId]
+    if (!pos) return
+    // The last consumed token is at position - 1
+    const lastToken = this.tokens[this.position - 1]
+    const debugInfo = lastToken?.[2]
+    if (debugInfo) {
+      // End is after the last token: same line, column + token value length
+      const tokenLen = lastToken[1].length
+      pos.end = [debugInfo[0], debugInfo[1] + tokenLen]
+    }
   }
 
   public advance(): void {

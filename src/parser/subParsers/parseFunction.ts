@@ -40,7 +40,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
       nodes = [ctx.parseExpression()]
     }
 
-    return withSourceCodeInfo([
+    const node = withSourceCodeInfo([
       NodeTypes.SpecialExpression,
       [
         specialExpressionTypes['function'],
@@ -51,6 +51,8 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
       ],
       0,
     ], firstToken[2], ctx) as LambdaNode
+    ctx.setNodeEnd(node[2])
+    return node
   } catch {
     return null
   }
@@ -148,5 +150,6 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     nodes,
   ]], 0], firstToken[2], ctx) as LambdaNode
 
+  ctx.setNodeEnd(node[2])
   return node
 }

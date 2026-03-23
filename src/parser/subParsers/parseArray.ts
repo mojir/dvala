@@ -30,5 +30,7 @@ export function parseArray(ctx: ParserContext): ArrayNode {
   assertRBracketToken(ctx.tryPeek())
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.array, params], 0], firstToken[2], ctx)
+  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.array, params], 0], firstToken[2], ctx)
+  ctx.setNodeEnd(node[2])
+  return node
 }

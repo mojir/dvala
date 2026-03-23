@@ -23,5 +23,6 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
     0,
   ], token[2], ctx) as NormalExpressionNodeWithName
 
+  ctx.setNodeEnd(node[2])
   return node
 }
