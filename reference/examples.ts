@@ -1095,16 +1095,25 @@ let neg = -num;
     description: 'Comprehensive test covering all operators, destructuring variants, function forms, arity, all standard effects, handler chains, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',
     context: {
       effectHandlers: [
+        // I/O — deterministic, no console output
+        { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
+        { pattern: 'dvala.io.error', handler: '({ arg, resume }) => { resume(arg) }' },
         { pattern: 'dvala.io.read', handler: '({ resume }) => { resume("test-input") }' },
         { pattern: 'dvala.io.pick', handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }' },
         { pattern: 'dvala.io.confirm', handler: '({ resume }) => { resume(true) }' },
         { pattern: 'dvala.io.readStdin', handler: '({ resume }) => { resume("stdin-line") }' },
+        // Random — deterministic stubs
         { pattern: 'dvala.random', handler: '({ resume }) => { resume(0.42) }' },
         { pattern: 'dvala.random.uuid', handler: '({ resume }) => { resume("00000000-0000-0000-0000-000000000042") }' },
         { pattern: 'dvala.random.int', handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }' },
         { pattern: 'dvala.random.shuffle', handler: '({ arg, resume }) => { resume([...arg].reverse()) }' },
         { pattern: 'dvala.random.item', handler: '({ arg, resume }) => { resume(arg[0]) }' },
+        // Time — deterministic
+        { pattern: 'dvala.time.now', handler: '({ resume }) => { resume(1700000000000) }' },
+        { pattern: 'dvala.time.zone', handler: '({ resume }) => { resume("UTC") }' },
+        // Misc
         { pattern: 'dvala.sleep', handler: '({ resume }) => { resume(null) }' },
+        { pattern: 'dvala.checkpoint', handler: '({ resume }) => { resume(null) }' },
       ],
     },
     code: `
