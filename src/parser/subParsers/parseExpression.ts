@@ -60,7 +60,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
   while (!isAtExpressionEnd(ctx)) {
     if (isA_BinaryOperatorToken(operator)) {
       const name = operator[1]
-      const newPrecedece = getPrecedence(name, operator[2])
+      const newPrecedece = getPrecedence(name, ctx.resolveTokenDebugInfo(operator[2]))
       if (
         newPrecedece <= precedence
         // ^ (exponentiation) is right associative
@@ -68,11 +68,11 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         break
       }
       const symbol: SymbolNode = specialExpressionTypes[name as SpecialExpressionName]
-        ? withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName]], operator[2])
-        : withSourceCodeInfo([NodeTypes.Builtin, name], operator[2])
+        ? withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName], 0], operator[2], ctx)
+        : withSourceCodeInfo([NodeTypes.Builtin, name, 0], operator[2], ctx)
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
-      left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2])
+      left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2], ctx)
     } else if (isSymbolToken(operator)) {
       if (!isFunctionOperator(operator[1])) {
         break
@@ -84,9 +84,9 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
       if (isSpecialSymbolNode(operatorSymbol)) {
-        throw new DvalaError('Special expressions are not allowed in binary functional operators', operatorSymbol[2])
+        throw new DvalaError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
       }
-      left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2])
+      left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx)
     } else {
       break
     }

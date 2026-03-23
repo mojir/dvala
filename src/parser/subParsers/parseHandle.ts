@@ -38,7 +38,8 @@ export function parseHandle(ctx: ParserContext): HandleNode {
   ctx.advance()
 
   return withSourceCodeInfo(
-    [NodeTypes.SpecialExpression, [specialExpressionTypes.handle, expressions, handlersExpr]],
+    [NodeTypes.SpecialExpression, [specialExpressionTypes.handle, expressions, handlersExpr], 0],
     token[2],
-  ) satisfies HandleNode
+    ctx,
+  ) as HandleNode
 }

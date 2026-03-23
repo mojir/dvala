@@ -5,13 +5,13 @@ import { checkTypeAtPath, extractMatchArrayRest, extractMatchObjectRest, extract
 
 describe('flattenMatchPattern', () => {
   it('rest at top level', () => {
-    const slots = flattenMatchPattern([bindingTargetTypes.rest, ['xs', undefined]])
+    const slots = flattenMatchPattern([bindingTargetTypes.rest, ['xs', undefined], 0])
     expect(slots).toEqual([{
       kind: 'rest',
       name: 'xs',
       path: [],
       defaultNode: undefined,
-      sourceCodeInfo: undefined,
+      nodeId: 0,
     }])
   })
 })

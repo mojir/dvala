@@ -74,7 +74,7 @@ export interface BindingSlot {
   restKeys?: Set<string> // for object rest: keys captured by other bindings
   restIndex?: number // for array rest: starting index
   nestedTarget?: BindingTarget // for intermediate defaults: nested binding to process
-  sourceCodeInfo?: SourceCodeInfo
+  nodeId: number
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ function flattenTarget(
   path: BindingPathStep[],
   slots: BindingSlot[],
 ): void {
-  const sourceCodeInfo = target[2]
+  const nodeId = target[2]
 
   switch (target[0]) {
     case bindingTargetTypes.symbol: {
@@ -112,7 +112,7 @@ function flattenTarget(
         name: symbolNode[1],
         path: [...path],
         defaultNode,
-        sourceCodeInfo,
+        nodeId,
       })
       break
     }
@@ -129,7 +129,7 @@ function flattenTarget(
         path: [...path],
         defaultNode,
         isRest: true,
-        sourceCodeInfo,
+        nodeId,
       })
       break
     }
@@ -158,7 +158,7 @@ function flattenTarget(
             path: newPath,
             defaultNode: element[1][1],
             nestedTarget: element,
-            sourceCodeInfo: element[2],
+            nodeId: element[2],
           })
         } else {
           flattenTarget(element, newPath, slots)
@@ -174,7 +174,7 @@ function flattenTarget(
             path: [...path],
             isRest: true,
             restKeys: capturedKeys,
-            sourceCodeInfo: element[2],
+            nodeId: element[2],
           })
           break
         }
@@ -197,7 +197,7 @@ function flattenTarget(
             path: [...path],
             isRest: true,
             restIndex: i,
-            sourceCodeInfo: element[2],
+            nodeId: element[2],
           })
           break
         }
@@ -215,7 +215,7 @@ function flattenTarget(
             path: newPath,
             defaultNode: element[1][1],
             nestedTarget: element,
-            sourceCodeInfo: element[2],
+            nodeId: element[2],
           })
         } else {
           flattenTarget(element, newPath, slots)

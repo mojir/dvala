@@ -5,7 +5,7 @@ import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { AstNode, BindingNode } from '../types'
 import { bindingTargetTypes } from '../types'
-import type { SymbolToken, Token } from '../../tokenizer/token'
+import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
 import { asSymbolToken, assertLParenToken, assertOperatorToken, assertRParenToken, assertReservedSymbolToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { asUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { withSourceCodeInfo } from '../helpers'
@@ -28,7 +28,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
     const existingBoundNames = forLoopBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0][1][0])))
     const newBoundNames = getAllBindingTargetNames(loopBinding[0][1][0])
     if (Object.keys(newBoundNames).some(n => existingBoundNames.includes(n))) {
-      throw new DvalaError('Duplicate binding', loopBinding[0][2])
+      throw new DvalaError('Duplicate binding', undefined)
     }
     forLoopBindings.push(loopBinding)
     if (isOperatorToken(ctx.tryPeek(), ',')) {
@@ -44,7 +44,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 
   const expression = ctx.parseExpression()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression]], firstToken[2]) satisfies ForNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.for, forLoopBindings, expression], 0], firstToken[2], ctx) as ForNode
 }
 
 function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
@@ -53,7 +53,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
   const modifiers: ('&let' | '&when' | '&while')[] = []
   let token = ctx.peek()
 
-  assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'])
+  assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'], ctx.peekSourceCodeInfo())
 
   const letBindings: BindingNode[] = []
   if (token[1] === 'let') {
@@ -63,12 +63,12 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
       const existingBoundNames = letBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[1][0])))
       const newBoundNames = Object.keys(getAllBindingTargetNames(letNode[1][1][1][0]))
       if (newBoundNames.some(n => existingBoundNames.includes(n))) {
-        throw new DvalaError('Duplicate binding', letNode[1][1][2])
+        throw new DvalaError('Duplicate binding', undefined)
       }
 
       letBindings.push(letNode[1][1])
       token = ctx.peek()
-      assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'])
+      assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'], ctx.peekSourceCodeInfo())
       token = ctx.peek()
     }
   }
@@ -96,11 +96,11 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
         ? ['while']
         : ['when']
 
-    assertInternalLoopBindingDelimiter(token, symbols)
+    assertInternalLoopBindingDelimiter(token, symbols, ctx.peekSourceCodeInfo())
     token = ctx.peek()
   }
 
-  assertInternalLoopBindingDelimiter(token, [])
+  assertInternalLoopBindingDelimiter(token, [], ctx.peekSourceCodeInfo())
 
   return [bindingNode, letBindings, whenNode, whileNode] satisfies LoopBindingNode
 }
@@ -118,19 +118,21 @@ function parseBinding(ctx: ParserContext): BindingNode {
     [
       NodeTypes.Binding,
       [
-        withSourceCodeInfo([bindingTargetTypes.symbol, [name, undefined]], firstToken[2]),
+        withSourceCodeInfo([bindingTargetTypes.symbol, [name, undefined], 0], firstToken[2], ctx),
         value,
       ],
+      0,
     ],
     firstToken[2],
+    ctx,
   )
   return node
 }
 
-function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[]): void {
+function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[], sourceCodeInfo?: SourceCodeInfo): void {
   if (!isInternalLoopBindingDelimiter(token, symbols)) {
     const symbolsString = `${[...symbols, ','].map(symbol => `"${symbol}"`).join(', ')} or ")"`
-    throw new DvalaError(`Expected symbol ${symbolsString}`, token[2])
+    throw new DvalaError(`Expected symbol ${symbolsString}`, sourceCodeInfo)
   }
 }
 

@@ -6,8 +6,9 @@ import { createContextStack } from './evaluator/ContextStack'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evaluator/trampoline-evaluator'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
-import { parse } from './parser'
-import type { Ast } from './parser/types'
+import { parseToAst } from './parser'
+import { resetNodeIdCounter } from './parser/ParserContext'
+import type { Ast, SourceMap } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
@@ -86,6 +87,7 @@ function assertSerializable(val: unknown, path: string): void {
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
+  resetNodeIdCounter()
   initCoreDvalaSources()
 
   const modules = options?.modules
@@ -95,19 +97,41 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryEffectHandlers = options?.effectHandlers
   const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
   const debug = options?.debug ?? false
-  const cache = options?.cache ? new Cache(options.cache) : null
+  // Always use an internal AST cache to ensure deterministic node IDs
+  // when the same source is run multiple times.
+  const cache = new Cache(options?.cache ?? 100)
+  // Accumulated source map across all run() calls (debug mode only).
+  // Global node IDs ensure no collisions between files.
+  let accumulatedSourceMap: SourceMap | undefined
 
   function buildAst(source: string, filePath?: string): Ast {
-    if (!filePath && cache) {
+    if (!filePath) {
       const cached = cache.get(source)
       if (cached)
         return cached
     }
     const tokenStream = tokenize(source, debug, filePath)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-    const ast: Ast = { body: parse(minified), hasDebugData: debug }
+    const ast: Ast = parseToAst(minified)
+    // Accumulate source map from each parsed file
+    if (ast.sourceMap) {
+      if (!accumulatedSourceMap) {
+        accumulatedSourceMap = { sources: [...ast.sourceMap.sources], positions: [...ast.sourceMap.positions] }
+      } else {
+        const sourceOffset = accumulatedSourceMap.sources.length
+        accumulatedSourceMap.sources.push(...ast.sourceMap.sources)
+        for (let i = 0; i < ast.sourceMap.positions.length; i++) {
+          const pos = ast.sourceMap.positions[i]
+          if (pos) {
+            accumulatedSourceMap.positions[i] = { ...pos, source: pos.source + sourceOffset }
+          }
+        }
+      }
+      // Point ast's sourceMap to the accumulated one so evaluate() uses it
+      ast.sourceMap = accumulatedSourceMap
+    }
     if (!filePath)
-      cache?.set(source, ast)
+      cache.set(source, ast)
     return ast
   }
 

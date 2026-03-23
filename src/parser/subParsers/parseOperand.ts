@@ -6,7 +6,7 @@ import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExp
 import { bindingTargetTypes } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
-import type { SourceCodeInfo, StringToken, TemplateStringToken, TokenType } from '../../tokenizer/token'
+import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
 import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -53,8 +53,8 @@ export function parseOperand(ctx: ParserContext): AstNode {
       if (!isSymbolToken(symbolToken)) {
         throw new DvalaError('Expected symbol', ctx.peekSourceCodeInfo())
       }
-      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.String, symbolToken[1]], symbolToken[2])
-      operand = createAccessorNode(operand, stringNode, token[2])
+      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.String, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
+      operand = createAccessorNode(ctx, operand, stringNode, token[2])
       ctx.advance()
       token = ctx.tryPeek()
     } else if (isLBracketToken(token)) {
@@ -63,7 +63,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       if (!isRBracketToken(ctx.tryPeek())) {
         throw new DvalaError('Expected closing bracket', ctx.peekSourceCodeInfo())
       }
-      operand = createAccessorNode(operand, expression, token[2])
+      operand = createAccessorNode(ctx, operand, expression, token[2])
       ctx.advance()
       token = ctx.tryPeek()
     // Defensive: function call chaining is always preceded by accessor or direct call
@@ -112,24 +112,24 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       if (isUnary) {
         ctx.advance()
         const operand = parseOperandPart(ctx)
-        const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0], token[2])
-        const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-'], token[2]) as BuiltinSymbolNode
-        return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]]], token[2]) as NormalExpressionNodeExpression
+        const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0, 0], token[2], ctx)
+        const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
+        return withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
       }
     }
 
     if (isBinaryOperator(operatorName)) {
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
-        return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName]], token[2]) satisfies SpecialSymbolNode
+        return withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0], token[2], ctx) as SpecialSymbolNode
       }
-      return withSourceCodeInfo([NodeTypes.Builtin, operatorName], token[2]) satisfies BuiltinSymbolNode
+      return withSourceCodeInfo([NodeTypes.Builtin, operatorName, 0], token[2], ctx) as BuiltinSymbolNode
     }
 
     if (operatorName === '->') {
       return parseShorthandLambdaFunction(ctx)
     } else {
-      throw new DvalaError(`Illegal operator: ${operatorName}`, token[2])
+      throw new DvalaError(`Illegal operator: ${operatorName}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
     }
   }
 
@@ -184,23 +184,23 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       // Validate dvala.* effect names — only known standard effects are allowed.
       // Wildcards (containing *) are exempt since they're patterns, not literal names.
       if (effectName.startsWith('dvala.') && !effectName.includes('*') && !validDvalaEffects.has(effectName)) {
-        throw new DvalaError(`Unknown dvala effect: '${effectName}'`, token[2])
+        throw new DvalaError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
       }
       ctx.advance()
       // Check for handler shorthand: @effect -> body, @effect(params...) -> body
       if (isHandlerShorthand(ctx)) {
-        return parseHandlerShorthand(ctx, effectName, token[2])
+        return parseHandlerShorthand(ctx, effectName, token[2] as TokenDebugInfo)
       }
-      return withSourceCodeInfo([NodeTypes.EffectName, effectName], token[2])
+      return withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], token[2], ctx)
     }
 
     default:
-      throw new DvalaError(`Unknown token type: ${tokenType}`, token[2])
+      throw new DvalaError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
   }
 }
 
-function createAccessorNode(left: AstNode, right: AstNode, sourceCodeInfo: SourceCodeInfo | undefined): NormalExpressionNodeExpression {
-  return withSourceCodeInfo([NodeTypes.NormalExpression, [[NodeTypes.Builtin, 'get'], [left, right]]], sourceCodeInfo)
+function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
+  return withSourceCodeInfo([NodeTypes.NormalExpression, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
 }
 
 /**
@@ -243,9 +243,9 @@ function isHandlerShorthand(ctx: ParserContext): boolean {
  *
  * For wildcard effects (containing *), uses effectMatcher instead of ==.
  */
-function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCodeInfo: SourceCodeInfo | undefined): AstNode {
-  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) as UserDefinedSymbolNode
-  const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined]]
+function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo: TokenDebugInfo | undefined): AstNode {
+  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name, 0], debugInfo, ctx) as UserDefinedSymbolNode
+  const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined], ctx.allocateNodeId(debugInfo)]
 
   // Parse parameter names (0-3)
   let argName: string
@@ -290,25 +290,25 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, sourceCod
   let condition: AstNode
   if (effectName.includes('*')) {
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher'], sourceCodeInfo),
-      [withSourceCodeInfo([NodeTypes.String, effectName], sourceCodeInfo)],
-    ]], sourceCodeInfo)
-    condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]]], sourceCodeInfo)
+      withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher', 0], debugInfo, ctx),
+      [withSourceCodeInfo([NodeTypes.String, effectName, 0], debugInfo, ctx)],
+    ], 0], debugInfo, ctx)
+    condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]], 0], debugInfo, ctx)
   } else {
-    const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName], sourceCodeInfo)
+    const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], debugInfo, ctx)
     condition = withSourceCodeInfo([NodeTypes.NormalExpression, [
-      withSourceCodeInfo([NodeTypes.Builtin, '=='], sourceCodeInfo),
+      withSourceCodeInfo([NodeTypes.Builtin, '==', 0], debugInfo, ctx),
       [effSym, effectNode],
-    ]], sourceCodeInfo)
+    ], 0], debugInfo, ctx)
   }
 
   // Build else: nxt(eff, arg)
-  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, argSym]]], sourceCodeInfo)
+  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, argSym]], 0], debugInfo, ctx)
 
   // Build if: if condition then body else nxt(eff, arg) end
-  const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, body, elseExpr]]], sourceCodeInfo)
+  const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, body, elseExpr]], 0], debugInfo, ctx)
 
   // Build lambda: (arg, eff, nxt) -> ifExpr
   const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]]], sourceCodeInfo)
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]], 0], debugInfo, ctx)
 }

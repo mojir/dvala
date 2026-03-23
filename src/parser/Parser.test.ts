@@ -12,15 +12,11 @@ const dvalaWithMathUtils = createDvala({ modules: [mathUtilsModule] })
 describe('parser', () => {
   describe('reserved symbol _', () => {
     it('should parse reserved symbol _', () => {
-      expect(parseTokenStream(tokenizeSource('as'))).toEqual({
-        body: [
-          [
-            NodeTypes.Reserved,
-            'as',
-          ],
-        ],
-        hasDebugData: false,
-      })
+      const result = parseTokenStream(tokenizeSource('as'))
+      expect(result.body).toHaveLength(1)
+      expect(result.body[0]![0]).toBe(NodeTypes.Reserved)
+      expect(result.body[0]![1]).toBe('as')
+      expect(result.sourceMap).toBeUndefined()
     })
     expect(() => dvala.run('_')).toThrow(DvalaError)
     expect(() => dvala.run('let _ = 1;')).toThrow(DvalaError)
@@ -428,57 +424,27 @@ describe('parser', () => {
         [
           'Number',
           '2',
-          {
-            code: '2 + 3',
-            position: {
-              column: 1,
-              line: 1,
-            },
-          },
+          [0, 0],
         ],
         [
           'Whitespace',
           ' ',
-          {
-            code: '2 + 3',
-            position: {
-              column: 2,
-              line: 1,
-            },
-          },
+          [0, 1],
         ],
         [
           'Operator',
           '+',
-          {
-            code: '2 + 3',
-            position: {
-              column: 3,
-              line: 1,
-            },
-          },
+          [0, 2],
         ],
         [
           'Whitespace',
           ' ',
-          {
-            code: '2 + 3',
-            position: {
-              column: 4,
-              line: 1,
-            },
-          },
+          [0, 3],
         ],
         [
           'Number',
           '3',
-          {
-            code: '2 + 3',
-            position: {
-              column: 5,
-              line: 1,
-            },
-          },
+          [0, 4],
         ],
       ])
       expect(dvalaDebug.run('-2')).toBe(-2)
@@ -486,13 +452,7 @@ describe('parser', () => {
         [
           'Number',
           '-2',
-          {
-            code: '-2',
-            position: {
-              column: 1,
-              line: 1,
-            },
-          },
+          [0, 0],
         ],
       ])
     })

@@ -74,7 +74,7 @@ describe('tick', () => {
   })
 
   it('should apply top frame when ValueStep has non-empty k', () => {
-    const thenNode: NumberNode = [NodeTypes.Number, 99]
+    const thenNode: NumberNode = [NodeTypes.Number, 99, 0]
     const frame: IfBranchFrame = { type: 'IfBranch', thenNode, elseNode: undefined, env: emptyEnv() }
     const step: Step = { type: 'Value', value: true, k: [frame] }
     const next = tick(step) as Step
@@ -467,8 +467,8 @@ describe('stepNode', () => {
 describe('applyFrame', () => {
   describe('ifBranchFrame', () => {
     it('should evaluate then-branch when condition is truthy', () => {
-      const thenNode: NumberNode = [NodeTypes.Number, 1]
-      const elseNode: NumberNode = [NodeTypes.Number, 2]
+      const thenNode: NumberNode = [NodeTypes.Number, 1, 0]
+      const elseNode: NumberNode = [NodeTypes.Number, 2, 0]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
         thenNode,
@@ -483,8 +483,8 @@ describe('applyFrame', () => {
     })
 
     it('should evaluate else-branch when condition is falsy', () => {
-      const thenNode: NumberNode = [NodeTypes.Number, 1]
-      const elseNode: NumberNode = [NodeTypes.Number, 2]
+      const thenNode: NumberNode = [NodeTypes.Number, 1, 0]
+      const elseNode: NumberNode = [NodeTypes.Number, 2, 0]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
         thenNode,
@@ -499,7 +499,7 @@ describe('applyFrame', () => {
     })
 
     it('should return null when condition is falsy and no else-branch', () => {
-      const thenNode: NumberNode = [NodeTypes.Number, 1]
+      const thenNode: NumberNode = [NodeTypes.Number, 1, 0]
       const frame: IfBranchFrame = {
         type: 'IfBranch',
         thenNode,
@@ -513,7 +513,7 @@ describe('applyFrame', () => {
 
   describe('sequenceFrame', () => {
     it('should return value when all nodes evaluated', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -525,7 +525,7 @@ describe('applyFrame', () => {
     })
 
     it('should evaluate next node when more remain', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2], [NodeTypes.Number, 3]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0], [NodeTypes.Number, 3, 0]]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -540,7 +540,7 @@ describe('applyFrame', () => {
     })
 
     it('should not push frame for last node', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: SequenceFrame = {
         type: 'Sequence',
         nodes,
@@ -557,7 +557,7 @@ describe('applyFrame', () => {
 
   describe('andFrame', () => {
     it('should short-circuit on falsy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: AndFrame = {
         type: 'And',
         nodes,
@@ -569,7 +569,7 @@ describe('applyFrame', () => {
     })
 
     it('should continue on truthy value with more nodes', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2], [NodeTypes.Number, 3]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0], [NodeTypes.Number, 3, 0]]
       const frame: AndFrame = {
         type: 'And',
         nodes,
@@ -584,7 +584,7 @@ describe('applyFrame', () => {
     })
 
     it('should return value when all truthy and at last node', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0]]
       const frame: AndFrame = {
         type: 'And',
         nodes,
@@ -598,7 +598,7 @@ describe('applyFrame', () => {
 
   describe('orFrame', () => {
     it('should short-circuit on truthy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: OrFrame = {
         type: 'Or',
         nodes,
@@ -610,7 +610,7 @@ describe('applyFrame', () => {
     })
 
     it('should continue on falsy value', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2], [NodeTypes.Number, 3]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0], [NodeTypes.Number, 3, 0]]
       const frame: OrFrame = {
         type: 'Or',
         nodes,
@@ -627,7 +627,7 @@ describe('applyFrame', () => {
 
   describe('qqFrame', () => {
     it('should return value if non-null', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: QqFrame = {
         type: 'Qq',
         nodes,
@@ -639,7 +639,7 @@ describe('applyFrame', () => {
     })
 
     it('should advance when value is null', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: QqFrame = {
         type: 'Qq',
         nodes,
@@ -656,7 +656,7 @@ describe('applyFrame', () => {
 
   describe('arrayBuildFrame', () => {
     it('should add value and advance', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: ArrayBuildFrame = {
         type: 'ArrayBuild',
         nodes,
@@ -673,7 +673,7 @@ describe('applyFrame', () => {
     })
 
     it('should return result when all elements are done', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0]]
       const result = [10]
       const frame: ArrayBuildFrame = {
         type: 'ArrayBuild',
@@ -691,7 +691,7 @@ describe('applyFrame', () => {
     })
 
     it('should spread array values', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0]]
       const frame: ArrayBuildFrame = {
         type: 'ArrayBuild',
         nodes,
@@ -710,8 +710,8 @@ describe('applyFrame', () => {
 
   describe('objectBuildFrame', () => {
     it('should store key and evaluate value', () => {
-      const keyNode: StringNode = [NodeTypes.String, 'a']
-      const valueNode: NumberNode = [NodeTypes.Number, 1]
+      const keyNode: StringNode = [NodeTypes.String, 'a', 0]
+      const valueNode: NumberNode = [NodeTypes.Number, 1, 0]
       const frame: ObjectBuildFrame = {
         type: 'ObjectBuild',
         nodes: [keyNode, valueNode],
@@ -732,8 +732,8 @@ describe('applyFrame', () => {
     })
 
     it('should store value and return object when done', () => {
-      const keyNode: StringNode = [NodeTypes.String, 'a']
-      const valueNode: NumberNode = [NodeTypes.Number, 1]
+      const keyNode: StringNode = [NodeTypes.String, 'a', 0]
+      const valueNode: NumberNode = [NodeTypes.Number, 1, 0]
       const frame: ObjectBuildFrame = {
         type: 'ObjectBuild',
         nodes: [keyNode, valueNode],
@@ -753,7 +753,7 @@ describe('applyFrame', () => {
 
   describe('recurFrame', () => {
     it('should throw DvalaError when recur has no target frame', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0]]
       const frame: RecurFrame = {
         type: 'Recur',
         nodes,
@@ -765,7 +765,7 @@ describe('applyFrame', () => {
     })
 
     it('should continue collecting when more params remain', () => {
-      const nodes: NumberNode[] = [[NodeTypes.Number, 1], [NodeTypes.Number, 2]]
+      const nodes: NumberNode[] = [[NodeTypes.Number, 1, 0], [NodeTypes.Number, 2, 0]]
       const frame: RecurFrame = {
         type: 'Recur',
         nodes,
@@ -803,7 +803,7 @@ describe('applyFrame', () => {
       const env = emptyEnv()
       const frame: LetBindFrame = {
         type: 'LetBind',
-        target: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x'], undefined]],
+        target: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x', 0], undefined], 0],
         env,
       }
       // applyLetBind now returns a step with LetBindCompleteFrame on the stack

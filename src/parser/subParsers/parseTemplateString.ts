@@ -170,7 +170,8 @@ export function splitSegments(raw: string): Segment[] {
 
 export function parseTemplateString(ctx: ParserContext, token: TemplateStringToken): StringNode | TemplateStringNode {
   ctx.advance()
-  const sourceCodeInfo = token[2]
+  const debugInfo = token[2]
+  const resolvedSci = ctx.resolveTokenDebugInfo(debugInfo)
 
   // Strip surrounding backticks
   const raw = token[1].slice(1, -1)
@@ -179,10 +180,10 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
   // Empty template: ``, or single literal with no interpolation: `hello`
   if (segments.length === 0) {
-    return withSourceCodeInfo([NodeTypes.String, ''], sourceCodeInfo) satisfies StringNode
+    return withSourceCodeInfo([NodeTypes.String, '', 0], debugInfo, ctx) as StringNode
   }
   if (segments.length === 1 && segments[0]!.type === 'literal') {
-    return withSourceCodeInfo([NodeTypes.String, segments[0]!.value], sourceCodeInfo) satisfies StringNode
+    return withSourceCodeInfo([NodeTypes.String, segments[0]!.value, 0], debugInfo, ctx) as StringNode
   }
 
   // Build segment AST nodes
@@ -192,18 +193,18 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
     if (segment.type === 'literal') {
       if (segment.value.length === 0)
         continue
-      segmentNodes.push(withSourceCodeInfo([NodeTypes.String, segment.value], sourceCodeInfo) satisfies StringNode)
+      segmentNodes.push(withSourceCodeInfo([NodeTypes.String, segment.value, 0], debugInfo, ctx) as StringNode)
     } else {
       if (segment.value.trim().length === 0) {
-        throw new DvalaError('Empty interpolation in template string', sourceCodeInfo)
+        throw new DvalaError('Empty interpolation in template string', resolvedSci)
       }
       // Re-tokenize and re-parse the expression
-      const innerStream = tokenize(segment.value, false, sourceCodeInfo?.filePath)
+      const innerStream = tokenize(segment.value, false, resolvedSci?.filePath)
       const minified = minifyTokenStream(innerStream, { removeWhiteSpace: true })
 
       for (const t of minified.tokens) {
         if (t[0] === 'Error') {
-          throw new DvalaError(`Template string interpolation error: ${t[3]}`, sourceCodeInfo)
+          throw new DvalaError(`Template string interpolation error: ${t[3]}`, resolvedSci)
         }
       }
 
@@ -213,5 +214,5 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
     }
   }
 
-  return withSourceCodeInfo([NodeTypes.TemplateString, segmentNodes], sourceCodeInfo) satisfies TemplateStringNode
+  return withSourceCodeInfo([NodeTypes.TemplateString, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
 }

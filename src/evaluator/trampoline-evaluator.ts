@@ -50,15 +50,16 @@ import type {
   EffectRef,
   EvaluatedFunction,
   FunctionLike,
+  HandleNextFunction,
   NormalExpressionNode,
   NumberNode,
   PartialFunction,
   ReservedNode,
+  SourceMap,
   SpecialExpressionNode,
   StringNode,
   SymbolNode,
   TemplateStringNode,
-  HandleNextFunction,
   UserDefinedFunction,
 } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
@@ -184,13 +185,13 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
 // Reserved symbol evaluation
 // ---------------------------------------------------------------------------
 
-function evaluateReservedSymbol(node: ReservedNode): Any {
+function evaluateReservedSymbol(node: ReservedNode, env: ContextStack): Any {
   const reservedName = node[1]
   if (!['true', 'false', 'null'].includes(reservedName)) {
-    throw new DvalaError(`Reserved symbol ${reservedName} cannot be evaluated`, node[2])
+    throw new DvalaError(`Reserved symbol ${reservedName} cannot be evaluated`, env.resolve(node[2]))
   }
   const value = reservedSymbolRecord[reservedName]
-  return asNonUndefined(value, node[2])
+  return asNonUndefined(value, env.resolve(node[2]))
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +241,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.UserDefinedSymbol:
       return { type: 'Value', value: env.evaluateSymbol(node as SymbolNode), k }
     case NodeTypes.Reserved:
-      return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode), k }
+      return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode, env), k }
     case NodeTypes.NormalExpression:
       return stepNormalExpression(node as NormalExpressionNode, env, k)
     case NodeTypes.SpecialExpression:
@@ -251,7 +252,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: getEffectRef(node[1] as string), k }
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`${node[0]}-node cannot be evaluated`, node[2])
+      throw new DvalaError(`${node[0]}-node cannot be evaluated`, env.resolve(node[2]))
   }
 }
 
@@ -261,7 +262,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
 
 function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: ContinuationStack): Step {
   const segments = node[1]
-  const sourceCodeInfo = node[2]
+  const sourceCodeInfo = env.resolve(node[2])
 
   if (segments.length === 0) {
     return { type: 'Value', value: '', k }
@@ -289,7 +290,7 @@ function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: Cont
  */
 function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
   const argNodes = node[1][1]
-  const sourceCodeInfo = node[2]
+  const sourceCodeInfo = env.resolve(node[2])
 
   // NaN guard wraps the final result
   const nanFrame: NanCheckFrame = { type: 'NanCheck', sourceCodeInfo }
@@ -341,7 +342,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
  * and return an EvalStep for the first sub-expression.
  */
 function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
-  const sourceCodeInfo = node[2]
+  const sourceCodeInfo = env.resolve(node[2])
   const type = node[1][0]
 
   switch (type) {
@@ -615,7 +616,7 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       const arity = { min: min > 0 ? min : undefined, max }
       const dvalaFunction: DvalaFunction = {
         [FUNCTION_SYMBOL]: true,
-        sourceCodeInfo: node[2],
+        sourceCodeInfo: env.resolve(node[2]),
         functionType: 'UserDefined',
         name: undefined,
         evaluatedfunction: evaluatedFunc,
@@ -653,7 +654,11 @@ function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k
       // and modules with .source are resolved before reaching this trampoline path
       /* v8 ignore start */
       if (dvalaModule.source) {
-        const nodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
+        // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
+        if (!dvalaModule._cachedNodes) {
+          dvalaModule._cachedNodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
+        }
+        const nodes = dvalaModule._cachedNodes
         const sourceEnv = env.create({})
         const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
         if (nodes.length === 1) {
@@ -2809,7 +2814,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   // Process the completed value
   if (isSpreadNode(currentArgNode)) {
     if (!Array.isArray(value)) {
-      throw new DvalaError(`Spread operator requires an array, got ${valueToString(value)}`, currentArgNode[2])
+      throw new DvalaError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
     }
     params.push(...value)
   } else {
@@ -3068,7 +3073,7 @@ function continueBindingSlots(
       // Push a new context for the nested structure
       // The nested target is already stripped of its default (we used the resolved value)
       const nestedSlots = flattenBindingPatternWithoutDefault(slot.nestedTarget)
-      validateBindingRootType(slot.nestedTarget, resolvedValue, slot.sourceCodeInfo)
+      validateBindingRootType(slot.nestedTarget, resolvedValue, sourceCodeInfo)
       contexts.push({ slots: nestedSlots, index: 0, rootValue: resolvedValue })
       ctx.index++ // advance parent context past this slot
       continue
@@ -3111,7 +3116,7 @@ function applyBindingSlot(frame: BindingSlotFrame, value: Any, k: ContinuationSt
   if (slot.nestedTarget) {
     // Push a new context for the nested structure
     const nestedSlots = flattenBindingPatternWithoutDefault(slot.nestedTarget)
-    validateBindingRootType(slot.nestedTarget, resolvedValue, slot.sourceCodeInfo)
+    validateBindingRootType(slot.nestedTarget, resolvedValue, sourceCodeInfo)
     contexts.push({ slots: nestedSlots, index: 0, rootValue: resolvedValue })
     ctx.index++ // advance parent context past this slot
   } else {
@@ -3621,11 +3626,38 @@ function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
 }
 
 /**
+ * Merge an AST's source map into the context stack's accumulated source map.
+ * With global node IDs, each AST's positions are at non-overlapping indices,
+ * so we just copy positions and add new source entries.
+ */
+function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undefined): void {
+  if (!sourceMap) return
+  if (!contextStack.sourceMap) {
+    contextStack.sourceMap = { sources: [...sourceMap.sources], positions: [...sourceMap.positions] }
+    return
+  }
+  // Merge sources: offset source indices in new positions
+  const sourceOffset = contextStack.sourceMap.sources.length
+  contextStack.sourceMap.sources.push(...sourceMap.sources)
+  // Copy positions with adjusted source index
+  for (let i = 0; i < sourceMap.positions.length; i++) {
+    const pos = sourceMap.positions[i]
+    if (pos) {
+      contextStack.sourceMap.positions[i] = {
+        ...pos,
+        source: pos.source + sourceOffset,
+      }
+    }
+  }
+}
+
+/**
  * Evaluate an AST using the trampoline.
  * Returns the final value synchronously, or a Promise if async operations
  * are involved (e.g., native JS functions returning Promises).
  */
 export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any> {
+  mergeSourceMap(contextStack, ast.sourceMap)
   const initial = buildInitialStep(ast.body, contextStack)
   // Try synchronous first; if a Promise surfaces, switch to async
   try {
@@ -3649,6 +3681,7 @@ export function evaluate(ast: Ast, contextStack: ContextStack): MaybePromise<Any
  * which can cause side effects to be executed twice.
  */
 export function evaluateAsync(ast: Ast, contextStack: ContextStack): Promise<Any> {
+  mergeSourceMap(contextStack, ast.sourceMap)
   const initial = buildInitialStep(ast.body, contextStack)
   return runAsyncTrampoline(initial)
 }
@@ -3698,6 +3731,7 @@ export async function evaluateWithEffects(
   autoCheckpoint?: boolean,
   terminalSnapshot?: boolean,
 ): Promise<RunResult> {
+  mergeSourceMap(contextStack, ast.sourceMap)
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
@@ -3718,6 +3752,7 @@ export function evaluateWithSyncEffects(
   contextStack: ContextStack,
   effectHandlers?: Handlers,
 ): Any {
+  mergeSourceMap(contextStack, ast.sourceMap)
   const initial = buildInitialStep(ast.body, contextStack)
   try {
     return runSyncTrampoline(initial, effectHandlers)

@@ -17,19 +17,19 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   while (!ctx.isAtEnd() && !isRBraceToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
-      params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
+      params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
     } else {
       const token = ctx.tryPeek()
       if (isTemplateStringToken(token)) {
         params.push(parseTemplateString(ctx, token))
       } else if (isStringToken(token)) {
         const stringNode = parseString(ctx, token)
-        params.push(withSourceCodeInfo([NodeTypes.String, stringNode[1]], token[2]))
+        params.push(withSourceCodeInfo([NodeTypes.String, stringNode[1], 0], token[2], ctx))
       } else if (isSymbolToken(token)) {
         const value = token[1].startsWith('\'')
           ? stringFromQuotedSymbol(token[1])
           : token[1]
-        params.push(withSourceCodeInfo([NodeTypes.String, value], token[2]))
+        params.push(withSourceCodeInfo([NodeTypes.String, value, 0], token[2], ctx))
         ctx.advance()
       } else if (isLBracketToken(token)) {
         ctx.advance()
@@ -58,5 +58,5 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   assertRBraceToken(ctx.tryPeek())
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.object, params]], firstToken[2])
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.object, params], 0], firstToken[2], ctx) as ObjectNode
 }

@@ -1,10 +1,12 @@
 import { tokenizeShebang, tokenizers } from './tokenizers'
-import type { SourceCodeInfo, Token, TokenDescriptor } from './token'
+import type { Token, TokenDebugInfo, TokenDescriptor } from './token'
 
 export interface TokenStream {
   tokens: Token[]
-  hasDebugData: boolean
   filePath?: string
+  /** Full source text — present when debug mode is enabled. Its presence
+   *  replaces the old `hasDebugData` flag. */
+  source?: string
 }
 
 export function tokenize(input: string, debug: boolean, filePath: string | undefined): TokenStream {
@@ -12,14 +14,14 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
   const tokenStream: TokenStream = {
     tokens: [],
     filePath,
-    hasDebugData: debug,
+    source: debug ? input : undefined,
   }
 
   let prevToken: Token | undefined
 
   while (position < input.length) {
-    const sourceCodeInfo: SourceCodeInfo | undefined = debug
-      ? createSourceCodeInfo(input, position, filePath)
+    const debugInfo: TokenDebugInfo | undefined = debug
+      ? createDebugInfo(input, position)
       : undefined
 
     const tokenDescriptor = getCurrentToken(input, position, prevToken)
@@ -28,10 +30,10 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
 
     position += count
     if (token) {
-      // Defensive: sourceCodeInfo is always created when debug is enabled
+      // Defensive: debugInfo is always created when debug is enabled
       /* v8 ignore next 3 */
-      if (sourceCodeInfo) {
-        token[2] = sourceCodeInfo
+      if (debugInfo) {
+        token[2] = debugInfo
       }
 
       tokenStream.tokens.push(token)
@@ -44,25 +46,13 @@ export function tokenize(input: string, debug: boolean, filePath: string | undef
   return tokenStream
 }
 
-function getSourceCodeLine(input: string, lineNbr: number): string {
-  return input.split(/\r\n|\r|\n/)[lineNbr] as string
-}
-
-function createSourceCodeInfo(input: string, position: number, filePath?: string): SourceCodeInfo {
+/** Create a 0-based [line, column] debug position from a character offset. */
+function createDebugInfo(input: string, position: number): TokenDebugInfo {
   const lines = input.substring(0, position + 1).split(/\r\n|\r|\n/)
   const lastLine = lines[lines.length - 1] as string
-
-  const code = getSourceCodeLine(input, lines.length - 1)
-  const line = lines.length
-  const column = lastLine.length
-  return {
-    code,
-    position: {
-      line,
-      column,
-    },
-    filePath,
-  }
+  const line = lines.length - 1 // 0-based
+  const column = lastLine.length - 1 // 0-based
+  return [line, column]
 }
 
 function getCurrentToken(input: string, position: number, prevToken: Token | undefined): TokenDescriptor<Token> {

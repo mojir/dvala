@@ -2,8 +2,9 @@ import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { AstNode, BindingTarget } from '../types'
+import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
+import type { TokenDebugInfo } from '../../tokenizer/token'
 import { assertLParenToken, isLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -48,7 +49,8 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
           nodes,
         ],
       ],
-    ], firstToken[2]) satisfies LambdaNode
+      0,
+    ], firstToken[2], ctx) as LambdaNode
   } catch {
     return null
   }
@@ -57,7 +59,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
 function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   const firstToken = ctx.peek()
   if (isSymbolToken(firstToken)) {
-    return [withSourceCodeInfo([bindingTargetTypes.symbol, [parseSymbol(ctx), undefined]], firstToken[2])]
+    return [withSourceCodeInfo([bindingTargetTypes.symbol, [parseSymbol(ctx), undefined], 0], firstToken[2], ctx)]
   }
 
   assertLParenToken(firstToken)
@@ -125,11 +127,11 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
       if (match) {
         const number = match[1] ?? '1'
         if (match[1] === '1') {
-          throw new DvalaError('Use $ instead of $1 for the first argument', firstToken[2])
+          throw new DvalaError('Use $ instead of $1 for the first argument', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
         }
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
-          throw new DvalaError('Can\'t specify more than 20 arguments', firstToken[2])
+          throw new DvalaError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
       }
     }
   }
@@ -138,13 +140,13 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const functionArguments: BindingTarget[] = []
   for (let i = 1; i <= arity; i += 1) {
     const name = i === 1 ? '$' : `$${i}`
-    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, name], undefined]], firstToken[2]))
+    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, name, 0] as UserDefinedSymbolNode, undefined], 0], firstToken[2], ctx))
   }
 
   const node: LambdaNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [
     functionArguments,
     nodes,
-  ]]], firstToken[2])
+  ]], 0], firstToken[2], ctx) as LambdaNode
 
   return node
 }

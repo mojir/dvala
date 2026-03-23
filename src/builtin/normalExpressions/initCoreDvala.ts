@@ -1,7 +1,7 @@
 import { createContextStack } from '../../evaluator/ContextStack'
 import { evaluate } from '../../evaluator/trampoline-evaluator'
 import type { Any } from '../../interface'
-import { parse } from '../../parser'
+import { parseToAst } from '../../parser'
 import type { UserDefinedFunction } from '../../parser/types'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import { tokenize } from '../../tokenizer/tokenize'
@@ -30,8 +30,7 @@ export function initCoreDvalaSources(): void {
   for (const [, source] of Object.entries(coreDvalaSources)) {
     const tokens = tokenize(source, false, undefined)
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
-    const body = parse(minified)
-    const ast = { body, hasDebugData: false }
+    const ast = parseToAst(minified)
     const contextStack = createContextStack()
     const result = evaluate(ast, contextStack) as Any
 

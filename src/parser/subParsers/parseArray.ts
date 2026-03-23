@@ -14,7 +14,7 @@ export function parseArray(ctx: ParserContext): ArrayNode {
   while (!ctx.isAtEnd() && !isRBracketToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
-      params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression()], ctx.peekSourceCodeInfo()))
+      params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
     } else {
       params.push(ctx.parseExpression())
     }
@@ -30,5 +30,5 @@ export function parseArray(ctx: ParserContext): ArrayNode {
   assertRBracketToken(ctx.tryPeek())
   ctx.advance()
 
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.array, params]], firstToken[2])
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.array, params], 0], firstToken[2], ctx)
 }

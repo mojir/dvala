@@ -23,5 +23,5 @@ export function parseDo(ctx: ParserContext): DoNode {
 
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, expressions, undefined]], token[2]) satisfies DoNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, expressions, undefined], 0], token[2], ctx) as DoNode
 }

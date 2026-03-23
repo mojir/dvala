@@ -15,6 +15,6 @@ export function parseLet(ctx: ParserContext, token: SymbolToken): LetNode {
   const value = target[1][1]!
   target[1][1] = undefined
 
-  const bindingTarget: BindingNode = withSourceCodeInfo([NodeTypes.Binding, [target, value]], token[2])
-  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.let, bindingTarget]], token[2]) satisfies LetNode
+  const bindingTarget: BindingNode = withSourceCodeInfo([NodeTypes.Binding, [target, value], 0], token[2], ctx) as BindingNode
+  return withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.let, bindingTarget], 0], token[2], ctx) as LetNode
 }
