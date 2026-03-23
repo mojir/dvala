@@ -177,7 +177,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'row': {
     category: 'grid',
-    description: 'Returns the row at index $a in the grid $b.',
+    description: 'Returns the row at index `a` in the grid `b`.',
     returns: {
       type: 'any',
     },
@@ -206,7 +206,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'col': {
     category: 'grid',
-    description: 'Returns the column at index $a in the grid $b.',
+    description: 'Returns the column at index `a` in the grid `b`.',
     returns: {
       type: 'any',
     },

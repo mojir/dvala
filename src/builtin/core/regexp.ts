@@ -38,7 +38,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['pattern'] },
         { argumentNames: ['pattern', 'flags'] },
       ],
-      description: 'Creates a RegExp from $pattern and $flags.',
+      description: 'Creates a RegExp from `pattern` and `flags`.',
       examples: [
         'regexp("^\\s*(.*)$")',
         '#"^\\s*(.*)$"',
@@ -71,8 +71,8 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
         b: { type: 'string' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: `Matches $b against regular expression $a.
-If $b is a string and matches the regular expression, a \`reMatch\`-array is returned, otherwise \`null\` is returned.`,
+      description: `Matches \`b\` against regular expression \`a\`.
+If \`b\` is a string and matches the regular expression, a \`reMatch\`-array is returned, otherwise \`null\` is returned.`,
       seeAlso: ['regexp', 'replace', 'replaceAll', '-short-regexp', 'isRegexp'],
       examples: [
         'reMatch("  A string", regexp("^\\\\s*(.*)$"))',
@@ -104,7 +104,7 @@ If $b is a string and matches the regular expression, a \`reMatch\`-array is ret
         x: { type: 'string' },
       },
       variants: [{ argumentNames: ['a', 'b', 'x'] }],
-      description: 'Returns a new string with first match of regular expression $b replaced by $x.',
+      description: 'Returns a new string with first match of regular expression `b` replaced by `x`.',
       seeAlso: ['replaceAll', 'regexp', 'reMatch', '-short-regexp'],
       examples: [
         'replace("Duck duck", "u", "i")',
@@ -134,7 +134,7 @@ If $b is a string and matches the regular expression, a \`reMatch\`-array is ret
         x: { type: 'string' },
       },
       variants: [{ argumentNames: ['a', 'b', 'x'] }],
-      description: 'Returns a new string with all matches of regular expression $b replaced by $x.',
+      description: 'Returns a new string with all matches of regular expression `b` replaced by `x`.',
       seeAlso: ['replace', 'regexp', 'reMatch', '-short-regexp'],
       examples: [
         'replaceAll("Duck duck", "u", "i")',

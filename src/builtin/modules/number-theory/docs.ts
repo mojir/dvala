@@ -104,7 +104,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'arithmeticSeq': {
     category: 'numberTheory',
-    description: 'Generates the arithmetic sequence for a given $start, $step, and $length.',
+    description: 'Generates the arithmetic sequence for a given `start`, `step`, and `length`.',
     returns: {
       type: 'integer',
       array: true,
@@ -1003,7 +1003,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'geometricSeq': {
     category: 'numberTheory',
-    description: 'Generates the geometric sequence for a given $start, $ratio, and $length.',
+    description: 'Generates the geometric sequence for a given `start`, `ratio`, and `length`.',
     returns: {
       type: 'integer',
       array: true,

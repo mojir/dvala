@@ -22,7 +22,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
         b: { type: 'function' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Takes a value $a and a function $b, and returns the result of applying $b to $a.',
+      description: 'Takes a value `a` and a function `b`, and returns the result of applying `b` to `a`.',
       seeAlso: ['apply', 'comp'],
       examples: [
         `
@@ -49,7 +49,7 @@ export const functionalNormalExpression: BuiltinNormalExpressions = {
         args: { type: 'array' },
       },
       variants: [{ argumentNames: ['fun', 'args'] }],
-      description: 'Call supplied function $fun with specified arguments $args.',
+      description: 'Call supplied function `fun` with specified arguments `args`.',
       seeAlso: ['|>'],
       examples: [
         `
@@ -75,7 +75,7 @@ apply(
       returns: { type: 'any' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns $x.',
+      description: 'Returns `x`.',
       seeAlso: ['constantly', 'functional.fnull'],
       examples: ['identity(1)', 'identity("Albert")', 'identity({ a: 1 })', 'identity(null)'],
     },
@@ -135,7 +135,7 @@ comp("foo", "bar")(x)`,
       returns: { type: 'function' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns a function that takes any number of arguments and always returns $x.',
+      description: 'Returns a function that takes any number of arguments and always returns `x`.',
       seeAlso: ['identity', 'functional.fnull'],
       examples: [
         `

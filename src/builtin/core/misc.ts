@@ -115,7 +115,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x'] },
         { argumentNames: ['x', 'ys'] },
       ],
-      description: 'Returns `true` if $x and $ys are in decreasing order, `false` otherwise.',
+      description: 'Returns `true` if `x` and `ys` are in decreasing order, `false` otherwise.',
       seeAlso: ['<', '>=', '<=', 'compare'],
       examples: [
         '>(1, 0)',
@@ -152,7 +152,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x'] },
         { argumentNames: ['x', 'ys'] },
       ],
-      description: 'Returns `true` if $x and $ys are in increasing order, `false` otherwise.',
+      description: 'Returns `true` if `x` and `ys` are in increasing order, `false` otherwise.',
       seeAlso: ['>', '>=', '<=', 'compare'],
       examples: [
         '<(0, 1)',
@@ -188,7 +188,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x'] },
         { argumentNames: ['x', 'ys'] },
       ],
-      description: 'Returns `true` if $x and $ys are in non increasing order, `false` otherwise.',
+      description: 'Returns `true` if `x` and `ys` are in non increasing order, `false` otherwise.',
       seeAlso: ['>', '<', '<=', 'compare'],
       examples: [
         '1 >= 1',
@@ -226,7 +226,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['x'] },
         { argumentNames: ['x', 'ys'] },
       ],
-      description: 'Returns `true` if $x and $ys are in non decreasing order, `false` otherwise.',
+      description: 'Returns `true` if `x` and `ys` are in non decreasing order, `false` otherwise.',
       seeAlso: ['>', '<', '>=', 'compare'],
       examples: [
         '1 <= 1',
@@ -246,7 +246,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Computes logical negation. Note that any other $x than `false`, `0`, `null` and `\'\'` is truthy.',
+      description: 'Computes logical negation. Note that any other `x` than `false`, `0`, `null` and `\'\'` is truthy.',
       seeAlso: ['boolean'],
       examples: [
         'not(3)',
@@ -269,7 +269,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Coerces $x to boolean.',
+      description: 'Coerces `x` to boolean.',
       seeAlso: ['not', 'isBoolean', 'isTrue', 'isFalse'],
       examples: [
         'boolean(0)',
@@ -294,7 +294,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         b: { type: ['number', 'string'] },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Compares two values. Returns `-1` if $a < $b, `1` if $a > $b and `0` if $a and $b have the same sort order.',
+      description: 'Compares two values. Returns `-1` if `a` < `b`, `1` if `a` > `b` and `0` if `a` and `b` have the same sort order.',
       seeAlso: ['<', '>', '<=', '>=', 'sort', 'sequence.sortBy'],
       examples: [
         'compare(0, 1)',
@@ -358,7 +358,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against effect names.' },
       },
       variants: [{ argumentNames: ['pattern'] }],
-      description: 'Returns a predicate function that matches effects by name. If $pattern is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If $pattern is a regexp, tests the effect name against the regexp.',
+      description: 'Returns a predicate function that matches effects by name. If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the effect name against the regexp.',
       seeAlso: ['effectName', 'isEffect'],
       examples: [
         'let pred = effectMatcher("dvala.*"); pred(@dvala.error)',
@@ -395,7 +395,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any', description: 'The value to inspect.' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns a string representing the type of $x. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"regexp"`, and `"effect"`.',
+      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"regexp"`, and `"effect"`.',
       seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isFunction', 'isRegexp', 'isEffect'],
       examples: [
         'typeOf(42)',

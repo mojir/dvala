@@ -20,7 +20,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Shifts $a arithmetically left by $b bit positions.',
+      description: 'Shifts `a` arithmetically left by `b` bit positions.',
       seeAlso: ['>>', '>>>'],
       examples: [
         '1 << 10',
@@ -42,7 +42,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Shifts $a arithmetically right by $b bit positions.',
+      description: 'Shifts `a` arithmetically right by `b` bit positions.',
       seeAlso: ['<<', '>>>'],
       examples: [
         '2048 >> 10',
@@ -65,7 +65,7 @@ export const bitwiseNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Shifts $a arithmetically right by $b bit positions without sign extension.',
+      description: 'Shifts `a` arithmetically right by `b` bit positions without sign extension.',
       seeAlso: ['<<', '>>'],
       examples: [
         '-16 >>> 2',

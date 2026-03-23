@@ -8,7 +8,7 @@ const handlerDocs: Record<string, FunctionDocs> = {
     returns: { type: 'function' },
     args: { n: { type: 'integer' } },
     variants: [{ argumentNames: ['n'] }],
-    description: 'Returns a handler function that retries failing effects up to `$n` times. On final failure, propagates the original error. Passes `@dvala.error` through unchanged.',
+    description: 'Returns a handler function that retries failing effects up to ``n`` times. On final failure, propagates the original error. Passes `@dvala.error` through unchanged.',
     examples: [
       'let { retry } = import(effectHandler); retry(3)',
       'let { retry, fallback } = import(effectHandler);\nperform(@my.eff, "data") ||> [retry(2), @my.eff(x) -> x ++ "!", fallback("gave up")]',
@@ -20,7 +20,7 @@ const handlerDocs: Record<string, FunctionDocs> = {
     returns: { type: 'function' },
     args: { value: { type: 'any' } },
     variants: [{ argumentNames: ['value'] }],
-    description: 'Returns a handler function that catches `@dvala.error` and returns `$value` instead.',
+    description: 'Returns a handler function that catches `@dvala.error` and returns ``value`` instead.',
     examples: [
       'let { fallback } = import(effectHandler); fallback(0)',
       'let { fallback } = import(effectHandler);\n(0 / 0) ||> fallback(0)',

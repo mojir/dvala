@@ -13,7 +13,7 @@ const docs: CustomDocs = {
     ['true-expr', 'expression', 'The expression to evaluate if the test is truthy.'],
     ['false-expr', 'expression', 'The expression to evaluate if the test is falsy.'],
   ],
-  description: 'Either `true-expr` or `false-expr` branch is taken. `true-expr` is selected when $test is truthy. If $test is falsy `false-expr` is executed, if no `false-expr` exists, `null` is returned.',
+  description: 'Either `true-expr` or `false-expr` branch is taken. `true-expr` is selected when `test` is truthy. If `test` is falsy `false-expr` is executed, if no `false-expr` exists, `null` is returned.',
   examples: [
     `
 if true then

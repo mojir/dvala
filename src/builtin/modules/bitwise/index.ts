@@ -21,7 +21,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { a: { type: 'integer' } },
       variants: [{ argumentNames: ['a'] }],
-      description: 'Returns bitwise `not` of $a.',
+      description: 'Returns bitwise `not` of `a`.',
       seeAlso: ['&', '|', 'xor', 'bitwise.bitAndNot'],
       examples: [
         'let { bitNot } = import(bitwise);\nbitNot(0)',
@@ -73,7 +73,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Flips bit number $b.',
+      description: 'Flips bit number `b`.',
       seeAlso: ['bitwise.bitSet', 'bitwise.bitClear', 'bitwise.bitTest'],
       examples: [
         'let { bitFlip } = import(bitwise);\n0b0011 bitFlip 1',
@@ -96,7 +96,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Sets bit number $b.',
+      description: 'Sets bit number `b`.',
       seeAlso: ['bitwise.bitFlip', 'bitwise.bitClear', 'bitwise.bitTest'],
       examples: [
         'let { bitSet } = import(bitwise);\n0b0010 bitSet 1',
@@ -119,7 +119,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'integer' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Clears bit number $b.',
+      description: 'Clears bit number `b`.',
       seeAlso: ['bitwise.bitFlip', 'bitwise.bitSet', 'bitwise.bitTest'],
       examples: [
         'let { bitClear } = import(bitwise);\n0b0011 bitClear 1',
@@ -142,7 +142,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'boolean' },
       args: { ...getOperatorArgs('integer', 'integer') },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Checks if bit number $b is set.',
+      description: 'Checks if bit number `b` is set.',
       seeAlso: ['bitwise.bitFlip', 'bitwise.bitSet', 'bitwise.bitClear'],
       examples: [
         'let { bitTest } = import(bitwise);\n0b0011 bitTest 1',

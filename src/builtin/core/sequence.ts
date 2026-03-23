@@ -41,7 +41,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['seq', 'n'] },
         { argumentNames: ['seq', 'n', 'notFound'] },
       ],
-      description: 'Accesses element $n of $seq. Accessing out-of-bounds indices returns $not-found, if present, else `null`.',
+      description: 'Accesses element `n` of `seq`. Accessing out-of-bounds indices returns `not-found`, if present, else `null`.',
       seeAlso: ['first', 'second', 'last', 'get', 'slice'],
       examples: [
         '[1, 2, 3] nth 1',
@@ -75,7 +75,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns the first element of $seq. If $seq is empty or `null`, `null` is returned.',
+      description: 'Returns the first element of `seq`. If `seq` is empty or `null`, `null` is returned.',
       seeAlso: ['second', 'last', 'nth', 'rest', 'next'],
       examples: [
         'first(["Albert", "Mojir", 160, [1, 2]])',
@@ -100,7 +100,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns the last element of $seq. If $seq is empty, `null` is returned.',
+      description: 'Returns the last element of `seq`. If `seq` is empty, `null` is returned.',
       seeAlso: ['first', 'second', 'nth', 'pop'],
       examples: [
         'last(["Albert", "Mojir", 160, [1, 2]])',
@@ -126,7 +126,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
       returns: { type: ['sequence', 'null'], rest: true },
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns a copy of $seq with last element removed. If $seq is empty `null` is returned.',
+      description: 'Returns a copy of `seq` with last element removed. If `seq` is empty `null` is returned.',
       seeAlso: ['push', 'last'],
       examples: [
         'pop([1, 2, 3])',
@@ -161,7 +161,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any' },
       },
       variants: [{ argumentNames: ['seq', 'x'] }],
-      description: 'Returns the index of $x in $seq. If element is not present in $seq `null` is returned.',
+      description: 'Returns the index of `x` in `seq`. If element is not present in `seq` `null` is returned.',
       seeAlso: ['sequence.lastIndexOf', 'sequence.position', 'contains'],
       examples: [
         '[[1], [2], [1], [2]] indexOf [1]',
@@ -193,7 +193,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         values: { type: 'any', rest: true, description: 'At least one.' },
       },
       variants: [{ argumentNames: ['seq', 'values'] }],
-      description: 'Returns copy of $seq with $values added to the end of it.',
+      description: 'Returns copy of `seq` with `values` added to the end of it.',
       seeAlso: ['sequence.unshift', 'pop', '++'],
       examples: [
         '[1, 2, 3] push 4',
@@ -224,9 +224,9 @@ l`,
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
-      description: `If $seq is an array, returns a new array with all but the first element from $seq.
-If $seq has less than two elements, an empty array is returned.
-For string $seq returns all but the first characters in $seq.`,
+      description: `If \`seq\` is an array, returns a new array with all but the first element from \`seq\`.
+If \`seq\` has less than two elements, an empty array is returned.
+For string \`seq\` returns all but the first characters in \`seq\`.`,
       seeAlso: ['next', 'first'],
       examples: [
         'rest(["Albert", "Mojir", 160, [1, 2]])',
@@ -258,7 +258,7 @@ For string $seq returns all but the first characters in $seq.`,
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: 'sequence' } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'If $seq is an array, returns a new array with all but the first element from $seq. If $seq has less than two elements, `null` is returned. For string $seq returns all but the first characters in $seq. If length of string $seq is less than two, `null` is returned.',
+      description: 'If `seq` is an array, returns a new array with all but the first element from `seq`. If `seq` has less than two elements, `null` is returned. For string `seq` returns all but the first characters in `seq`. If length of string `seq` is less than two, `null` is returned.',
       seeAlso: ['rest', 'first'],
       examples: [
         'next(["Albert", "Mojir", 160, [1, 2]])',
@@ -288,7 +288,7 @@ For string $seq returns all but the first characters in $seq.`,
       returns: { type: ['sequence', 'null'] },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'If $seq is an array, creates a new array with the elements from $seq in reversed order. If $seq is a string, returns new reversed string.',
+      description: 'If `seq` is an array, creates a new array with the elements from `seq` in reversed order. If `seq` is a string, returns new reversed string.',
       seeAlso: ['sort'],
       examples: [
         'reverse(["Albert", "Mojir", 160, [1, 2]])',
@@ -312,7 +312,7 @@ For string $seq returns all but the first characters in $seq.`,
       returns: { type: 'any' },
       args: { seq: { type: ['sequence', 'null'] } },
       variants: [{ argumentNames: ['seq'] }],
-      description: 'Returns the second element of $seq. If $seq has less than two elements or is `null`, `null` is returned.',
+      description: 'Returns the second element of `seq`. If `seq` has less than two elements or is `null`, `null` is returned.',
       seeAlso: ['first', 'last', 'nth'],
       examples: [
         'second(["Albert", "Mojir", 160, [1, 2]])',
@@ -356,7 +356,7 @@ For string $seq returns all but the first characters in $seq.`,
         { argumentNames: ['seq', 'start'] },
         { argumentNames: ['seq', 'start', 'stop'] },
       ],
-      description: 'Returns a copy of a portion of $seq from index $start (inclusive) to $stop (exclusive).',
+      description: 'Returns a copy of a portion of `seq` from index `start` (inclusive) to `stop` (exclusive).',
       seeAlso: ['take', 'drop', 'sequence.splice', 'nth'],
       examples: [
         '[1, 2, 3, 4, 5] slice 2',
@@ -378,7 +378,7 @@ For string $seq returns all but the first characters in $seq.`,
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the first element that passes the test implemented by $fun. I no element was found, `null` is returned.',
+      description: 'Returns the first element that passes the test implemented by `fun`. I no element was found, `null` is returned.',
       seeAlso: ['sequence.position', 'collection.isAny', 'find'],
       examples: [
         `
@@ -425,7 +425,7 @@ some(
         { argumentNames: ['seq'] },
         { argumentNames: ['seq', 'fun'] },
       ],
-      description: 'Returns a new sequence with the elements from $seq sorted according to $fun. If no $fun is supplied, builtin `compare` will be used.',
+      description: 'Returns a new sequence with the elements from `seq` sorted according to `fun`. If no `fun` is supplied, builtin `compare` will be used.',
       seeAlso: ['sequence.sortBy', 'compare', 'reverse', 'vector.sortIndices'],
       examples: [
         '[3, 1, 2] sort (a, b) -> b - a',
@@ -461,7 +461,7 @@ sort(
         seq: { type: 'sequence' },
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
-      description: 'Constructs a new array/string with the $n first elements from $seq.',
+      description: 'Constructs a new array/string with the `n` first elements from `seq`.',
       seeAlso: ['takeLast', 'takeWhile', 'drop', 'slice', 'sequence.splitAt'],
       examples: [
         'take([1, 2, 3, 4, 5], 3)',
@@ -491,7 +491,7 @@ sort(
         seq: { type: 'sequence' },
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
-      description: 'Constructs a new array with the $n last elements from $seq.',
+      description: 'Constructs a new array with the `n` last elements from `seq`.',
       seeAlso: ['take', 'dropLast'],
       examples: [
         'takeLast([1, 2, 3, 4, 5], 3)',
@@ -518,7 +518,7 @@ sort(
         n: { type: 'integer' },
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
-      description: 'Constructs a new array/string with the $n first elements dropped from $seq.',
+      description: 'Constructs a new array/string with the `n` first elements dropped from `seq`.',
       seeAlso: ['dropLast', 'dropWhile', 'take', 'slice', 'sequence.splitAt'],
       examples: [
         'drop([1, 2, 3, 4, 5], 3)',
@@ -547,7 +547,7 @@ sort(
         n: { type: 'integer' },
       },
       variants: [{ argumentNames: ['seq', 'n'] }],
-      description: 'Constructs a new array with the $n last elements dropped from $seq.',
+      description: 'Constructs a new array with the `n` last elements dropped from `seq`.',
       seeAlso: ['drop', 'takeLast'],
       examples: [
         'dropLast([1, 2, 3, 4, 5], 3)',
@@ -569,7 +569,7 @@ sort(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the members of $seq in order, stopping before the first one for which `predicate` returns a falsy value.',
+      description: 'Returns the members of `seq` in order, stopping before the first one for which `predicate` returns a falsy value.',
       seeAlso: ['take', 'dropWhile', 'sequence.splitWith'],
       examples: [
         `takeWhile(
@@ -596,7 +596,7 @@ sort(
         fun: { type: 'function' },
       },
       variants: [{ argumentNames: ['seq', 'fun'] }],
-      description: 'Returns the members of $seq in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
+      description: 'Returns the members of `seq` in order, skipping the fist elements for witch the `predicate` returns a truethy value.',
       seeAlso: ['drop', 'takeWhile', 'sequence.splitWith'],
       examples: [
         `dropWhile(

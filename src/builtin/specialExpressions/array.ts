@@ -21,7 +21,7 @@ const docs: FunctionDocs = {
   variants: [
     { argumentNames: ['values'] },
   ],
-  description: 'Makes new array from $values.',
+  description: 'Makes new array from `values`.',
   examples: [
     'array(1, 2, 3)',
     'array(array(null, false, true))',

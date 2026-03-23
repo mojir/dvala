@@ -57,10 +57,10 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
         { argumentNames: ['a', 'b'] },
         { argumentNames: ['a', 'b', 'step'] },
       ],
-      description: `$range creates an array with a range of numbers from $a to $b (exclusive), by $step.
+      description: `\`range\` creates an array with a range of numbers from \`a\` to \`b\` (exclusive), by \`step\`.
 
-$a defaults to 0.
-$step defaults to 1.`,
+\`a\` defaults to 0.
+\`step\` defaults to 1.`,
       seeAlso: ['repeat', 'vector.linspace'],
       examples: [
         'range(4)',
@@ -95,7 +95,7 @@ range(
         b: { type: 'integer' },
       },
       variants: [{ argumentNames: ['a', 'b'] }],
-      description: 'Returns an array with $a repeated $b times.',
+      description: 'Returns an array with `a` repeated `b` times.',
       seeAlso: ['range', 'string.stringRepeat'],
       examples: [
         'repeat(10, 3)',
@@ -120,11 +120,11 @@ range(
       category: 'array',
       returns: { type: 'any', array: true },
       args: {
-        x: { type: ['array', 'any'], description: 'If $x is not an array, `[ ]` is returned.' },
+        x: { type: ['array', 'any'], description: 'If `x` is not an array, `[ ]` is returned.' },
         depth: { type: 'integer', description: 'The depth level specifying how deep a nested array structure should be flattened. Defaults to `Infinity`.' },
       },
       variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'depth'] }],
-      description: 'Takes a nested array $x and flattens it.',
+      description: 'Takes a nested array `x` and flattens it.',
       seeAlso: ['sequence.mapcat'],
       examples: [
         'flatten([1, 2, [3, 4], 5])',

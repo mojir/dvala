@@ -10,7 +10,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       fn: { type: 'function' },
     },
     variants: [{ argumentNames: ['arr', 'windowSize', 'fn'] }],
-    description: 'Returns the result of applying $fn to each moving window of size $windowSize in $arr.',
+    description: 'Returns the result of applying `fn` to each moving window of size `windowSize` in `arr`.',
     seeAlso: ['vector.runningFn', 'vector.movingMean'],
     examples: [
       'let { sum, movingFn } = import(vector);\nmovingFn([1, 2, 3], 2, sum)',
@@ -26,7 +26,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       b: { type: 'function' },
     },
     variants: [{ argumentNames: ['a', 'b'] }],
-    description: 'Returns the result of applying $b to each element of $a.',
+    description: 'Returns the result of applying `b` to each element of `a`.',
     seeAlso: ['vector.movingFn', 'vector.runningMean'],
     examples: [
       'let { sum, runningFn } = import(vector);\nrunningFn([1, 2, 3], sum)',
