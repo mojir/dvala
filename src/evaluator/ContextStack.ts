@@ -8,7 +8,7 @@ import type { DvalaModule } from '../builtin/modules/interface'
 import type { NormalBuiltinFunction, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
-import { isNormalBuiltinSymbolNode, isSpecialBuiltinSymbolNode } from '../typeGuards/astNode'
+import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
 import { toAny } from '../utils'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { Context, LookUpResult } from './interface'
@@ -199,7 +199,7 @@ export class ContextStackImpl {
   }
 
   public evaluateSymbol(node: SymbolNode): Any {
-    if (isSpecialBuiltinSymbolNode(node)) {
+    if (isSpecialSymbolNode(node)) {
       const functionType = node[1]
       switch (functionType) {
         case specialExpressionTypes['&&']:
@@ -221,7 +221,7 @@ export class ContextStackImpl {
           throw new DvalaError(`Unknown special builtin symbol type: ${functionType}`, node[2])
       }
     }
-    if (isNormalBuiltinSymbolNode(node)) {
+    if (isBuiltinSymbolNode(node)) {
       // Check user context first — builtins can be shadowed
       const name = node[1]
       const normalExpression = normalExpressions[name]!

@@ -2,7 +2,7 @@ import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget, SymbolNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { type Token, assertOperatorToken, isBasePrefixedNumberToken, isLBraceToken, isLBracketToken, isNumberToken, isOperatorToken, isRBraceToken, isRBracketToken, isReservedSymbolToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
-import { isSpecialBuiltinSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { getSymbolName, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { NodeTypes } from '../../constants/constants'
@@ -18,13 +18,13 @@ import type { SourceCodeInfo } from '../../tokenizer/token'
  * Special expressions (if, let, for, etc.) cannot be used as variable names.
  */
 function toUserDefinedSymbol(symbol: SymbolNode, sourceCodeInfo: SourceCodeInfo | undefined): UserDefinedSymbolNode {
-  if (isSpecialBuiltinSymbolNode(symbol)) {
+  if (isSpecialSymbolNode(symbol)) {
     throw new DvalaError('Expected user defined symbol', sourceCodeInfo)
   }
   if (isUserDefinedSymbolNode(symbol)) {
     return symbol
   }
-  // NormalBuiltinSymbol → convert to UserDefinedSymbol using its string name
+  // Builtin → convert to UserDefinedSymbol using its string name
   const name = getSymbolName(symbol)
   return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name], sourceCodeInfo) satisfies UserDefinedSymbolNode
 }
@@ -60,19 +60,19 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
     }
     if (isReservedSymbolToken(firstToken, 'true')) {
       ctx.advance()
-      const node: AstNode = withSourceCodeInfo([NodeTypes.ReservedSymbol, 'true'], firstToken[2])
+      const node: AstNode = withSourceCodeInfo([NodeTypes.Reserved, 'true'], firstToken[2])
       return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
     }
     if (isReservedSymbolToken(firstToken, 'false')) {
       ctx.advance()
-      const node: AstNode = withSourceCodeInfo([NodeTypes.ReservedSymbol, 'false'], firstToken[2])
+      const node: AstNode = withSourceCodeInfo([NodeTypes.Reserved, 'false'], firstToken[2])
       return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
     }
     // Defensive: null literal in binding target is parsed but rarely used
     /* v8 ignore next 5 */
     if (isReservedSymbolToken(firstToken, 'null')) {
       ctx.advance()
-      const node: AstNode = withSourceCodeInfo([NodeTypes.ReservedSymbol, 'null'], firstToken[2])
+      const node: AstNode = withSourceCodeInfo([NodeTypes.Reserved, 'null'], firstToken[2])
       return withSourceCodeInfo([bindingTargetTypes.literal, [node]], firstToken[2])
     }
   }

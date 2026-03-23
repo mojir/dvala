@@ -190,7 +190,7 @@ describe('parseObject', () => {
       const ctx = createCtx('{ a: true }')
       const result = parseObject(ctx)
       const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.ReservedSymbol)
+      expect(params[1]![0]).toBe(NodeTypes.Reserved)
       expect(params[1]![1]).toBe('true')
     })
 
@@ -198,7 +198,7 @@ describe('parseObject', () => {
       const ctx = createCtx('{ a: null }')
       const result = parseObject(ctx)
       const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.ReservedSymbol)
+      expect(params[1]![0]).toBe(NodeTypes.Reserved)
       expect(params[1]![1]).toBe('null')
     })
 

@@ -1,4 +1,4 @@
-import { getNodeTypeName, isFunctionType, isNodeType } from '../../constants/constants'
+import { isFunctionType, isNodeType } from '../../constants/constants'
 import type { AstNode, DvalaFunction } from '../../parser/types'
 import { FUNCTION_SYMBOL } from '../symbols'
 
@@ -21,7 +21,7 @@ export function valueToString(value: unknown): string {
     return `<function ${(value as any).name || '\u03BB'}>`
 
   if (isNode(value))
-    return `${getNodeTypeName(value[0])}-node`
+    return `${value[0]}-node`
 
   if (value === null)
     return 'null'

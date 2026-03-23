@@ -4,7 +4,7 @@ export const specialExpressionTypes = {
   '||': '||',
   'array': 'array',
   'block': 'block',
-  '0_lambda': '0_lambda',
+  'function': 'function',
   'for': 'for',
   'if': 'if',
   'let': 'let',

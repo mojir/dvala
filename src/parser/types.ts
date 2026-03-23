@@ -150,14 +150,14 @@ export type TemplateStringNode = AstNode<typeof NodeTypes.TemplateString, (Strin
 
 export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.UserDefinedSymbol, string>
-export type NormalBuiltinSymbolNode = AstNode<typeof NodeTypes.NormalBuiltinSymbol, string>
-export type SpecialBuiltinSymbolNode = AstNode<typeof NodeTypes.SpecialBuiltinSymbol, SpecialExpressionType>
-export type SymbolNode = UserDefinedSymbolNode | NormalBuiltinSymbolNode | SpecialBuiltinSymbolNode
-export type ReservedSymbolNode = AstNode<typeof NodeTypes.ReservedSymbol, ReservedSymbol>
+export type BuiltinSymbolNode = AstNode<typeof NodeTypes.Builtin, string>
+export type SpecialSymbolNode = AstNode<typeof NodeTypes.Special, SpecialExpressionType>
+export type SymbolNode = UserDefinedSymbolNode | BuiltinSymbolNode | SpecialSymbolNode
+export type ReservedNode = AstNode<typeof NodeTypes.Reserved, ReservedSymbol>
 export type EffectNameNode = AstNode<typeof NodeTypes.EffectName, string>
 export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
-export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.NormalExpression, [NormalBuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]
+export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.NormalExpression, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]
 export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.NormalExpression, [AstNode, AstNode[]]> // [name, node as function] node can be string number object or array
 export type NormalExpressionNode = NormalExpressionNodeWithName | NormalExpressionNodeExpression
 export const bindingTargetTypes = {
