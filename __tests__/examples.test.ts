@@ -78,6 +78,53 @@ function getMockHandlers(): HandlerRegistration[] {
       },
     },
 
+    // I/O: pick returns first item, confirm returns true, readStdin returns canned line
+    {
+      pattern: 'dvala.io.pick',
+      handler: ctx => {
+        const items = Array.isArray(ctx.arg) ? ctx.arg : (ctx.arg as Record<string, unknown>)?.['items'] as unknown[]
+        ctx.resume(items?.[0] ?? null)
+      },
+    },
+    {
+      pattern: 'dvala.io.confirm',
+      handler: ctx => ctx.resume(true),
+    },
+    {
+      pattern: 'dvala.io.readStdin',
+      handler: ctx => ctx.resume('stdin-line'),
+    },
+    {
+      pattern: 'dvala.io.error',
+      handler: ctx => ctx.resume(ctx.arg),
+    },
+
+    // Random: deterministic stubs
+    {
+      pattern: 'dvala.random',
+      handler: ctx => ctx.resume(0.42),
+    },
+    {
+      pattern: 'dvala.random.uuid',
+      handler: ctx => ctx.resume('00000000-0000-0000-0000-000000000042'),
+    },
+    {
+      pattern: 'dvala.random.int',
+      handler: ctx => {
+        const arg = ctx.arg as number[] | number
+        const lo = Array.isArray(arg) ? arg[0]! : 0
+        ctx.resume(lo)
+      },
+    },
+    {
+      pattern: 'dvala.random.item',
+      handler: ctx => ctx.resume((ctx.arg as unknown[])[0]),
+    },
+    {
+      pattern: 'dvala.random.shuffle',
+      handler: ctx => ctx.resume([...(ctx.arg as unknown[])].reverse()),
+    },
+
     // Playground effects: no-ops
     {
       pattern: 'playground.*',

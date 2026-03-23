@@ -1092,10 +1092,24 @@ let neg = -num;
   {
     id: 'ast-coverage-extended',
     name: 'AST coverage (extended)',
-    description: 'Comprehensive test: 194 results covering all operators, destructuring variants, function forms, arity, effects with handlers, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',
+    description: 'Comprehensive test covering all operators, destructuring variants, function forms, arity, all standard effects, handler chains, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',
+    context: {
+      effectHandlers: [
+        { pattern: 'dvala.io.read', handler: '({ resume }) => { resume("test-input") }' },
+        { pattern: 'dvala.io.pick', handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }' },
+        { pattern: 'dvala.io.confirm', handler: '({ resume }) => { resume(true) }' },
+        { pattern: 'dvala.io.readStdin', handler: '({ resume }) => { resume("stdin-line") }' },
+        { pattern: 'dvala.random', handler: '({ resume }) => { resume(0.42) }' },
+        { pattern: 'dvala.random.uuid', handler: '({ resume }) => { resume("00000000-0000-0000-0000-000000000042") }' },
+        { pattern: 'dvala.random.int', handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }' },
+        { pattern: 'dvala.random.shuffle', handler: '({ arg, resume }) => { resume([...arg].reverse()) }' },
+        { pattern: 'dvala.random.item', handler: '({ arg, resume }) => { resume(arg[0]) }' },
+        { pattern: 'dvala.sleep', handler: '({ resume }) => { resume(null) }' },
+      ],
+    },
     code: `
 // === AST Node Coverage (Extended) ===
-// 28 sections, 194 results — baseline for e2e and performance tests.
+// 29 sections — baseline for e2e and performance tests.
 
 // --- 1: Primitives & Templates ---
 let s1 = [42, 3.14, "hello", true, false, null, \`tmpl \${1 + 2}\`, \`\${"a"}\${"b"}\`];
@@ -1278,11 +1292,29 @@ let s28 = [
   sqrt(16), cbrt(27), inc(5), dec(5),
 ];
 
+// --- 29: All standard effects (deterministic via host handlers) ---
+let s29 = [
+  perform(@dvala.io.print, "hello"),
+  perform(@dvala.io.error, "err"),
+  perform(@dvala.io.read, "prompt?"),
+  perform(@dvala.io.pick, ["alpha", "beta", "gamma"]),
+  perform(@dvala.io.confirm, "ok?"),
+  perform(@dvala.io.readStdin),
+  perform(@dvala.random),
+  perform(@dvala.random.uuid),
+  perform(@dvala.random.int, [1, 100]),
+  perform(@dvala.random.item, ["a", "b", "c"]),
+  perform(@dvala.random.shuffle, [1, 2, 3]),
+  perform(@dvala.time.now),
+  perform(@dvala.time.zone),
+  perform(@dvala.sleep, 0),
+];
+
 // --- Assemble ---
 let allResults = [
   ...s1, ...s2, ...s3, ...s4, ...s5, ...s6, ...s7, ...s8, ...s9, ...s10,
   ...s11, ...s12, ...s13, ...s14, ...s15, ...s16, ...s17, ...s18, ...s19, ...s20,
-  ...s21, ...s22, ...s23, ...s24, ...s25, ...s26, ...s27, ...s28,
+  ...s21, ...s22, ...s23, ...s24, ...s25, ...s26, ...s27, ...s28, ...s29,
 ];
 { results: allResults, totalResults: count(allResults) }
     `.trim(),
