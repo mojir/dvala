@@ -1332,7 +1332,7 @@ let matMod = import(matrix);
 let r3 = (x) -> round(x * 1000) / 1000;
 let bar = (val, mx, w) -> do
   let len = max(round(val / mx * w), 0);
-  join(repeat("\\u2588", len), "") ++ join(repeat("\\u2591", w - len), "")
+  join(repeat("\u2588", len), "") ++ join(repeat("\u2591", w - len), "")
 end;
 
 let nums = filter(flatten(allPrev), isNumber);
