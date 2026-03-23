@@ -1,5 +1,4 @@
 import type { SpecialExpressionName } from '../../builtin'
-import { normalExpressionTypes } from '../../builtin/normalExpressions'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
@@ -70,7 +69,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       }
       const symbol: SymbolNode = specialExpressionTypes[name as SpecialExpressionName]
         ? withSourceCodeInfo([NodeTypes.SpecialBuiltinSymbol, specialExpressionTypes[name as SpecialExpressionName]], operator[2])
-        : withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes[name]!], operator[2])
+        : withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, name], operator[2])
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
       left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2])

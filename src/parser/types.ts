@@ -88,7 +88,7 @@ export interface EffectMatcherFunction extends GenericDvalaFunction {
 
 export interface NormalBuiltinFunction extends GenericDvalaFunction {
   functionType: 'Builtin'
-  normalBuiltinSymbolType: number
+  normalBuiltinSymbolType: string
   name: string
 }
 
@@ -150,7 +150,7 @@ export type TemplateStringNode = AstNode<typeof NodeTypes.TemplateString, (Strin
 
 export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.UserDefinedSymbol, string>
-export type NormalBuiltinSymbolNode = AstNode<typeof NodeTypes.NormalBuiltinSymbol, number>
+export type NormalBuiltinSymbolNode = AstNode<typeof NodeTypes.NormalBuiltinSymbol, string>
 export type SpecialBuiltinSymbolNode = AstNode<typeof NodeTypes.SpecialBuiltinSymbol, SpecialExpressionType>
 export type SymbolNode = UserDefinedSymbolNode | NormalBuiltinSymbolNode | SpecialBuiltinSymbolNode
 export type ReservedSymbolNode = AstNode<typeof NodeTypes.ReservedSymbol, ReservedSymbol>
@@ -161,12 +161,12 @@ export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.NormalExpres
 export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.NormalExpression, [AstNode, AstNode[]]> // [name, node as function] node can be string number object or array
 export type NormalExpressionNode = NormalExpressionNodeWithName | NormalExpressionNodeExpression
 export const bindingTargetTypes = {
-  symbol: 11,
-  rest: 12,
-  object: 13,
-  array: 14,
-  literal: 15,
-  wildcard: 16,
+  symbol: 'symbol',
+  rest: 'rest',
+  object: 'object',
+  array: 'array',
+  literal: 'literal',
+  wildcard: 'wildcard',
 } as const
 
 export type BindingTargetType = typeof bindingTargetTypes[keyof typeof bindingTargetTypes]

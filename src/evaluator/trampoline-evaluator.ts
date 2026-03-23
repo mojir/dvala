@@ -764,8 +764,8 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
 
     // --- Named builtin ---
     if (isNormalBuiltinSymbolNode(nameSymbol)) {
-      const builtinType = nameSymbol[1]
-      const normalExpression = builtin.allNormalExpressions[builtinType]!
+      const builtinName = nameSymbol[1]
+      const normalExpression = builtin.normalExpressions[builtinName]!
       if (env.pure && normalExpression.pure === false) {
         throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
@@ -999,7 +999,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       return wrapMaybePromiseAsStep(result, k)
     }
     case 'Builtin': {
-      const normalExpression = builtin.allNormalExpressions[fn.normalBuiltinSymbolType]!
+      const normalExpression = builtin.normalExpressions[fn.normalBuiltinSymbolType]!
       if (env.pure && normalExpression.pure === false) {
         throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }

@@ -171,8 +171,8 @@ describe('moduleReference', () => {
 describe('no orphaned reference data', () => {
   it('every documented special expression has a reference entry', () => {
     const docNames: string[] = []
-    for (const [name, index] of Object.entries(specialExpressionTypes)) {
-      if (specialExpressions[index]?.docs)
+    for (const [name, type] of Object.entries(specialExpressionTypes)) {
+      if (specialExpressions[type as keyof typeof specialExpressions]?.docs)
         docNames.push(name)
     }
     const missing = docNames.filter(n => !(n in allReference))

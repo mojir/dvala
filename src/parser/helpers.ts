@@ -1,6 +1,5 @@
-import type { NormalExpressionName } from '../../reference/api'
 import type { SpecialExpressionName } from '../builtin'
-import { allNormalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
+import { normalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
 import type { AndNode } from '../builtin/specialExpressions/and'
 import type { HandleNode } from '../builtin/specialExpressions/handle'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
@@ -8,7 +7,7 @@ import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
 import type { OperatorToken, SourceCodeInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
-import { isNormalBuiltinSymbolNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
+import { isNormalBuiltinSymbolNode } from '../typeGuards/astNode'
 import { assertNumberOfParams } from '../utils/arity'
 import type { AstNode, BindingTarget, NormalBuiltinSymbolNode, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
 import type { ParserContext } from './ParserContext'
@@ -27,8 +26,8 @@ export function stringToSymbolNode(value: string, sourceCodeInfo: SourceCodeInfo
   if (specialExpressionTypes[value as SpecialExpressionName] !== undefined && value !== 'fn' && value !== 'defn') {
     return withSourceCodeInfo([NodeTypes.SpecialBuiltinSymbol, specialExpressionTypes[value as SpecialExpressionName]], sourceCodeInfo) satisfies SymbolNode
   }
-  if (normalExpressionTypes[value as NormalExpressionName] !== undefined) {
-    return withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, normalExpressionTypes[value as NormalExpressionName] as number], sourceCodeInfo) satisfies SymbolNode
+  if (normalExpressionTypes.has(value)) {
+    return withSourceCodeInfo([NodeTypes.NormalBuiltinSymbol, value], sourceCodeInfo) satisfies SymbolNode
   }
   return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value], sourceCodeInfo) satisfies SymbolNode
 }
@@ -54,39 +53,19 @@ export function stringFromQuotedSymbol(value: string): string {
     )
 }
 
-// Reverse lookup tables for getting symbol names from builtin types
-const normalExpressionNames: string[] = Object.entries(normalExpressionTypes).reduce((acc, [name, index]) => {
-  acc[index] = name
-  return acc
-}, [] as string[])
-
-const specialExpressionNames: string[] = Object.entries(specialExpressionTypes).reduce((acc, [name, index]) => {
-  acc[index] = name
-  return acc
-}, [] as string[])
-
 /**
  * Extract the symbol name from any symbol node type.
- * UserDefinedSymbolNode: node[1] is the string name
- * NormalBuiltinSymbolNode: node[1] is an index, need reverse lookup
- * SpecialBuiltinSymbolNode: node[1] is an index, need reverse lookup
+ * All symbol node types now store the string name directly.
  */
 export function getSymbolName(symbol: SymbolNode): string {
-  if (isUserDefinedSymbolNode(symbol)) {
-    return symbol[1]
-  }
-  if (isNormalBuiltinSymbolNode(symbol)) {
-    return normalExpressionNames[symbol[1]]!
-  }
-  // SpecialBuiltinSymbolNode
-  return specialExpressionNames[symbol[1]]!
+  return symbol[1]
 }
 
 export function createNamedNormalExpressionNode(symbolNode: NormalBuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], sourceCodeInfo: SourceCodeInfo | undefined): NormalExpressionNodeWithName {
   const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.NormalExpression, [symbolNode, params]], sourceCodeInfo)
 
   if (isNormalBuiltinSymbolNode(symbolNode)) {
-    assertNumberOfParams(allNormalExpressions[symbolNode[1]]!.arity, node[1][1].length, sourceCodeInfo)
+    assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, sourceCodeInfo)
   }
 
   return node

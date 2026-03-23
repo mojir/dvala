@@ -12,7 +12,6 @@ import type {
 } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import { normalExpressionTypes } from '../builtin/normalExpressions'
 import {
   asExpressionNode,
   asNormalExpressionNode,
@@ -33,7 +32,7 @@ describe('node type guards', () => {
   const symbolNode: SymbolNode = [NodeTypes.UserDefinedSymbol, 'A name']
   const numberNode: NumberNode = [NodeTypes.Number, 12]
   const stringNode: StringNode = [NodeTypes.String, 'foo']
-  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, normalExpressionTypes['+'] as number], []]]
+  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.NormalExpression, [[NodeTypes.NormalBuiltinSymbol, '+'], []]]
   const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.NormalExpression, [stringNode, [numberNode]]]
 
   const expressionNodes: ExpressionNode[] = [

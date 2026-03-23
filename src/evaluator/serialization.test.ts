@@ -35,7 +35,7 @@ function makeBuiltinFunction(): NormalBuiltinFunction {
   const fn: NormalBuiltinFunction = {
     [FUNCTION_SYMBOL]: true,
     functionType: 'Builtin',
-    normalBuiltinSymbolType: 0,
+    normalBuiltinSymbolType: '+',
     name: '+',
     arity: {},
   }
@@ -46,7 +46,7 @@ function makeSpecialBuiltinFunction(): SpecialBuiltinFunction {
   const fn: SpecialBuiltinFunction = {
     [FUNCTION_SYMBOL]: true,
     functionType: 'SpecialBuiltin',
-    specialBuiltinSymbolType: 0 as SpecialBuiltinFunction['specialBuiltinSymbolType'],
+    specialBuiltinSymbolType: '??' as SpecialBuiltinFunction['specialBuiltinSymbolType'],
     arity: {},
   }
   return fn

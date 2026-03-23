@@ -294,8 +294,8 @@ const skipSpecialExpressionExamples = new Set([
 ])
 
 describe('auto: docs metadata consistency (special expressions)', () => {
-  for (const [name, index] of Object.entries(specialExpressionTypes)) {
-    const expr = specialExpressions[index]
+  for (const [name, type] of Object.entries(specialExpressionTypes)) {
+    const expr = specialExpressions[type as keyof typeof specialExpressions]
     if (!expr?.docs)
       continue
     const docs = expr.docs
