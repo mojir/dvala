@@ -15,7 +15,7 @@ import { getAssertionError } from '../utils/getAssertionError'
 
 export function isSymbolNode(node: AstNode): node is SymbolNode {
   const nodeType = node[0]
-  return NodeTypes.UserDefinedSymbol === nodeType
+  return NodeTypes.Sym === nodeType
     || NodeTypes.Builtin === nodeType
     || NodeTypes.Special === nodeType
 }
@@ -29,7 +29,7 @@ export function assertSymbolNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo)
 }
 
 export function isUserDefinedSymbolNode(node: AstNode): node is UserDefinedSymbolNode {
-  return NodeTypes.UserDefinedSymbol === node[0]
+  return NodeTypes.Sym === node[0]
 }
 export function asUserDefinedSymbolNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): UserDefinedSymbolNode {
   assertUserDefinedSymbolNode(node, sourceCodeInfo)
@@ -37,7 +37,7 @@ export function asUserDefinedSymbolNode(node: AstNode, sourceCodeInfo?: SourceCo
 }
 function assertUserDefinedSymbolNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): asserts node is UserDefinedSymbolNode {
   if (!isUserDefinedSymbolNode(node))
-    throw getAssertionError('UserDefinedSymbolNode', node, sourceCodeInfo)
+    throw getAssertionError('SymNode', node, sourceCodeInfo)
 }
 
 export function isBuiltinSymbolNode(node: AstNode): node is BuiltinSymbolNode {

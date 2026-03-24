@@ -803,7 +803,7 @@ describe('applyFrame', () => {
       const env = emptyEnv()
       const frame: LetBindFrame = {
         type: 'LetBind',
-        target: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x', 0], undefined], 0],
+        target: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
         env,
       }
       // applyLetBind now returns a step with LetBindCompleteFrame on the stack

@@ -13,7 +13,7 @@ import { parseTemplateString } from './parseTemplateString'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 
 /**
- * Convert any symbol to a UserDefinedSymbol for use in binding targets.
+ * Convert any symbol to a Sym for use in binding targets.
  * Normal builtins (map, filter, etc.) are allowed — they can be shadowed.
  * Special expressions (if, let, for, etc.) cannot be used as variable names.
  */
@@ -24,9 +24,9 @@ function toUserDefinedSymbol(symbol: SymbolNode, debugInfo: TokenDebugInfo | und
   if (isUserDefinedSymbolNode(symbol)) {
     return symbol
   }
-  // Builtin → convert to UserDefinedSymbol using its string name
+  // Builtin → convert to Sym using its string name
   const name = getSymbolName(symbol)
-  return withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name, 0], debugInfo, ctx) satisfies UserDefinedSymbolNode
+  return withSourceCodeInfo([NodeTypes.Sym, name, 0], debugInfo, ctx) satisfies UserDefinedSymbolNode
 }
 
 export interface ParseBindingTargetOptions {
