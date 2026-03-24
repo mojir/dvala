@@ -81,7 +81,7 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     }
     case NodeTypes.Spread:
       return findUnresolvedSymbolsInNode((node as SpreadNode)[1], contextStack, builtin)
-    case NodeTypes.TemplateString: {
+    case NodeTypes.TmplStr: {
       const unresolvedSymbols = new Set<string>()
       for (const segment of (node as TemplateStringNode)[1]) {
         findUnresolvedSymbolsInNode(segment, contextStack, builtin)

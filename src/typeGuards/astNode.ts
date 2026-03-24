@@ -89,7 +89,7 @@ export function isExpressionNode(node: AstNode): node is ExpressionNode {
     || node[0] === NodeTypes.SpecialExpression
     || node[0] === NodeTypes.Num
     || node[0] === NodeTypes.Str
-    || node[0] === NodeTypes.TemplateString
+    || node[0] === NodeTypes.TmplStr
 }
 export function asExpressionNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): ExpressionNode {
   assertExpressionNode(node, sourceCodeInfo)
