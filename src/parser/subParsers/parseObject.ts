@@ -23,12 +23,12 @@ export function parseObject(ctx: ParserContext): ObjectNode {
         params.push(parseTemplateString(ctx, token))
       } else if (isStringToken(token)) {
         const stringNode = parseString(ctx, token)
-        params.push(withSourceCodeInfo([NodeTypes.String, stringNode[1], 0], token[2], ctx))
+        params.push(withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx))
       } else if (isSymbolToken(token)) {
         const value = token[1].startsWith('\'')
           ? stringFromQuotedSymbol(token[1])
           : token[1]
-        params.push(withSourceCodeInfo([NodeTypes.String, value, 0], token[2], ctx))
+        params.push(withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx))
         ctx.advance()
       } else if (isLBracketToken(token)) {
         ctx.advance()

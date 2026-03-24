@@ -10,9 +10,9 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
   const endStringPosition = token[1].lastIndexOf('"')
   const regexpString = token[1].substring(2, endStringPosition)
   const optionsString = token[1].substring(endStringPosition + 1)
-  const stringNode: StringNode = withSourceCodeInfo([NodeTypes.String, regexpString, 0], token[2], ctx) as StringNode
+  const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, regexpString, 0], token[2], ctx) as StringNode
 
-  const optionsNode: StringNode = withSourceCodeInfo([NodeTypes.String, optionsString, 0], token[2], ctx) as StringNode
+  const optionsNode: StringNode = withSourceCodeInfo([NodeTypes.Str, optionsString, 0], token[2], ctx) as StringNode
 
   const node: NormalExpressionNodeWithName = withSourceCodeInfo([
     NodeTypes.Call,

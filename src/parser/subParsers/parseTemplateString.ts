@@ -180,12 +180,12 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
   // Empty template: ``, or single literal with no interpolation: `hello`
   if (segments.length === 0) {
-    const node = withSourceCodeInfo([NodeTypes.String, '', 0], debugInfo, ctx) as StringNode
+    const node = withSourceCodeInfo([NodeTypes.Str, '', 0], debugInfo, ctx) as StringNode
     ctx.setNodeEnd(node[2])
     return node
   }
   if (segments.length === 1 && segments[0]!.type === 'literal') {
-    const node = withSourceCodeInfo([NodeTypes.String, segments[0]!.value, 0], debugInfo, ctx) as StringNode
+    const node = withSourceCodeInfo([NodeTypes.Str, segments[0]!.value, 0], debugInfo, ctx) as StringNode
     ctx.setNodeEnd(node[2])
     return node
   }
@@ -197,7 +197,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
     if (segment.type === 'literal') {
       if (segment.value.length === 0)
         continue
-      segmentNodes.push(withSourceCodeInfo([NodeTypes.String, segment.value, 0], debugInfo, ctx) as StringNode)
+      segmentNodes.push(withSourceCodeInfo([NodeTypes.Str, segment.value, 0], debugInfo, ctx) as StringNode)
     } else {
       if (segment.value.trim().length === 0) {
         throw new DvalaError('Empty interpolation in template string', resolvedSci)

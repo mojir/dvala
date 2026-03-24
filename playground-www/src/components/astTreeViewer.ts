@@ -61,9 +61,9 @@ function getNodeSummary(node: TreeNode): string {
   const [type, payload] = node
 
   switch (type) {
-    case 'Number':
+    case 'Num':
       return `${payload}`
-    case 'String':
+    case 'Str':
       return `"${truncate(payload as string, 40)}"`
     case 'Sym':
     case 'Builtin':
@@ -123,8 +123,8 @@ function truncate(s: string, maxLen: number): string {
 
 function isLeafNode(node: TreeNode): boolean {
   const type = node[0]
-  return type === 'Number'
-    || type === 'String'
+  return type === 'Num'
+    || type === 'Str'
     || type === 'Sym'
     || type === 'Builtin'
     || type === 'Special'

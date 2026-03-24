@@ -231,9 +231,9 @@ function evaluateFunction(
  */
 export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
   switch (node[0]) {
-    case NodeTypes.Number:
+    case NodeTypes.Num:
       return { type: 'Value', value: (node as NumberNode)[1], k }
-    case NodeTypes.String:
+    case NodeTypes.Str:
       return { type: 'Value', value: (node as StringNode)[1], k }
     case NodeTypes.Builtin:
     case NodeTypes.Special:

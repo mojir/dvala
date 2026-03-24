@@ -43,8 +43,8 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     }
     case NodeTypes.Builtin:
     case NodeTypes.Special:
-    case NodeTypes.String:
-    case NodeTypes.Number:
+    case NodeTypes.Str:
+    case NodeTypes.Num:
     case NodeTypes.Reserved:
     case NodeTypes.Binding:
       return null

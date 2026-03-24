@@ -136,7 +136,7 @@ describe('arity utilities', () => {
   describe('assertNumberOfParams', () => {
     const createTestNode = (params: number[]): NormalExpressionNodeWithName => {
       const symbolNode: BuiltinSymbolNode = [NodeTypes.Builtin, '+', 0]
-      const paramNodes: NumberNode[] = params.map(p => [NodeTypes.Number, p, 0])
+      const paramNodes: NumberNode[] = params.map(p => [NodeTypes.Num, p, 0])
       return [NodeTypes.Call, [symbolNode, paramNodes], 0]
     }
 
