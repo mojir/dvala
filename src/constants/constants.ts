@@ -10,7 +10,6 @@ export const NodeTypes = {
   Binding: 'Binding',
   Spread: 'Spread',
   TemplateString: 'TemplateString',
-  EffectName: 'EffectName',
   If: 'If',
   Block: 'Block',
   Effect: 'Effect',

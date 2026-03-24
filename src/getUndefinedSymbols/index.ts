@@ -100,7 +100,6 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     case NodeTypes.Block: {
       return getUndefinedSymbols(node[1] as AstNode[], contextStack.create({}), builtin)
     }
-    case NodeTypes.EffectName:
     case NodeTypes.Effect:
       return null // Effect names are always valid (resolved at runtime)
     case NodeTypes.Recur:

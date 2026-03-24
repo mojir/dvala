@@ -201,7 +201,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         ctx.setNodeEnd(node[2])
         return node
       }
-      const node = withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], token[2], ctx)
+      const node = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], token[2], ctx)
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -309,7 +309,7 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo
     ], 0], debugInfo, ctx)
     condition = withSourceCodeInfo([NodeTypes.Call, [matcherCall, [effSym]], 0], debugInfo, ctx)
   } else {
-    const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], debugInfo, ctx)
+    const effectNode: AstNode = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], debugInfo, ctx)
     condition = withSourceCodeInfo([NodeTypes.Call, [
       withSourceCodeInfo([NodeTypes.Builtin, '==', 0], debugInfo, ctx),
       [effSym, effectNode],
