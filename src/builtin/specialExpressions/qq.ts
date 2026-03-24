@@ -1,10 +1,10 @@
 import type { Any } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { asAny } from '../../typeGuards/dvala'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type QqNode = SpecialExpressionNode<[typeof specialExpressionTypes['??'], AstNode[]]>
+export type QqNode = [typeof NodeTypes.Qq, AstNode[], number]
 
 const docs: FunctionDocs = {
   category: 'special-expression',
@@ -52,5 +52,5 @@ export const qqSpecialExpression: BuiltinSpecialExpression<Any, QqNode> = {
     }
     return null
   },
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1][1], contextStack, builtin),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1], contextStack, builtin),
 }

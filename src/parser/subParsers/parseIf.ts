@@ -1,5 +1,4 @@
 import type { IfNode } from '../../builtin/specialExpressions/if'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import type { SymbolToken } from '../../tokenizer/token'
 import { assertReservedSymbolToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
@@ -28,7 +27,7 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
 
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode
   ctx.setNodeEnd(node[2])
   return node
 }
@@ -55,7 +54,7 @@ function parseElseIf(ctx: ParserContext): IfNode {
     }
   }
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, thenExpression, elseExpression]], 0], token[2], ctx) as IfNode
+  const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode
   ctx.setNodeEnd(node[2])
   return node
 }

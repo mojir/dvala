@@ -1,11 +1,10 @@
 import type { MatchCase, MatchNode } from '../../builtin/specialExpressions/match'
 import { type SymbolToken, assertReservedSymbolToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { NodeTypes } from '../../constants/constants'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
-import { parseImplicitBlock } from './parseImplicitBlock'
 import { parseBindingTarget } from './parseBindingTarget'
+import { parseImplicitBlock } from './parseImplicitBlock'
 
 export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
   ctx.advance()
@@ -39,7 +38,7 @@ export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.match, valueExpression, params], 0], token[2], ctx) as MatchNode
+  const node = withSourceCodeInfo([NodeTypes.Match, [valueExpression, params], 0], token[2], ctx) as MatchNode
   ctx.setNodeEnd(node[2])
   return node
 }

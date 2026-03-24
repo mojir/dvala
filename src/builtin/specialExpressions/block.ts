@@ -1,9 +1,9 @@
 import type { Any } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type DoNode = SpecialExpressionNode<[typeof specialExpressionTypes['block'], AstNode[], undefined]>
+export type DoNode = [typeof NodeTypes.Block, AstNode[], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -32,6 +32,6 @@ export const doSpecialExpression: BuiltinSpecialExpression<Any, DoNode> = {
   arity: {},
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    return getUndefinedSymbols(node[1][1], contextStack.create({}), builtin)
+    return getUndefinedSymbols(node[1] as AstNode[], contextStack.create({}), builtin)
   },
 }

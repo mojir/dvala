@@ -1,9 +1,9 @@
 import { RecurSignal } from '../../errors'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type RecurNode = SpecialExpressionNode<[typeof specialExpressionTypes['recur'], AstNode[]]>
+export type RecurNode = [typeof NodeTypes.Recur, AstNode[], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -45,5 +45,5 @@ export const recurSpecialExpression: BuiltinSpecialExpression<null, RecurNode> =
     throw new RecurSignal(params)
   },
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) =>
-    getUndefinedSymbols(node[1][1], contextStack, builtin),
+    getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin),
 }

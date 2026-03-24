@@ -1,12 +1,12 @@
 import type { Context } from '../../evaluator/interface'
 import type { Any } from '../../interface'
-import type { AstNode, BindingNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode, BindingNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { joinSets } from '../../utils'
 import { getAllBindingTargetNames } from '../bindingNode'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type LoopNode = SpecialExpressionNode<[typeof specialExpressionTypes['loop'], BindingNode[], AstNode]> // bindings, body
+export type LoopNode = [typeof NodeTypes.Loop, [BindingNode[], AstNode], number] // bindings, body
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -40,7 +40,7 @@ export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
   arity: {},
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const bindingNodes = node[1][1]
+    const [bindingNodes, body] = node[1]
 
     const newContext = bindingNodes
       .reduce((context: Context, bindingNode) => {
@@ -54,7 +54,7 @@ export const loopSpecialExpression: BuiltinSpecialExpression<Any, LoopNode> = {
 
     const bindingValueNodes = bindingNodes.map(bindingNode => bindingNode[1][1])
     const bindingsResult = getUndefinedSymbols(bindingValueNodes, contextStack, builtin)
-    const paramsResult = getUndefinedSymbols([node[1][2]], contextStack.create(newContext), builtin)
+    const paramsResult = getUndefinedSymbols([body], contextStack.create(newContext), builtin)
     return joinSets(bindingsResult, paramsResult)
   },
 }

@@ -1,13 +1,13 @@
 import type { Any } from '../../interface'
-import type { AstNode, BindingTarget, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode, BindingTarget } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 import { getAllBindingTargetNames } from '../bindingNode'
 import type { Context } from '../../evaluator/interface'
 
 // Each case: [pattern, body, guard?]
 export type MatchCase = [BindingTarget, AstNode, AstNode | undefined]
-export type MatchNode = SpecialExpressionNode<[typeof specialExpressionTypes['match'], AstNode, MatchCase[]]>
+export type MatchNode = [typeof NodeTypes.Match, [AstNode, MatchCase[]], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -54,10 +54,11 @@ export const matchSpecialExpression: BuiltinSpecialExpression<Any, MatchNode> = 
     const result = new Set<string>()
 
     // The match value expression
-    getUndefinedSymbols([node[1][1]], contextStack, builtin).forEach(s => result.add(s))
+    const [matchValue, cases] = node[1]
+    getUndefinedSymbols([matchValue], contextStack, builtin).forEach(s => result.add(s))
 
     // Each case
-    for (const [pattern, body, guard] of node[1][2]) {
+    for (const [pattern, body, guard] of cases) {
       const newContext: Context = {}
       Object.assign(newContext, getAllBindingTargetNames(pattern))
       const caseContextStack = contextStack.create(newContext)

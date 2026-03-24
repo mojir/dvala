@@ -2,7 +2,6 @@ import { isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import { DvalaError } from '../../errors'
 import { NodeTypes } from '../../constants/constants'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import type { ParserContext } from '../ParserContext'
 import { withSourceCodeInfo } from '../helpers'
@@ -27,7 +26,7 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
   if (nodes.length === 1) {
     return nodes[0]!
   }
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, nodes, undefined], 0], ctx.peekDebugInfo(), ctx) as DoNode
+  const node = withSourceCodeInfo([NodeTypes.Block, nodes, 0], ctx.peekDebugInfo(), ctx) as DoNode
   ctx.setNodeEnd(node[2])
   return node
 }

@@ -1,10 +1,10 @@
 import type { Any, Arr } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { asAny } from '../../typeGuards/dvala'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type ArrayNode = SpecialExpressionNode<[typeof specialExpressionTypes['array'], AstNode[]]>
+export type ArrayNode = [typeof NodeTypes.Array, AstNode[], number]
 
 const docs: FunctionDocs = {
   category: 'special-expression',
@@ -47,5 +47,5 @@ export const arraySpecialExpression: BuiltinSpecialExpression<Any, ArrayNode> = 
     return result
   },
 
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1][1], contextStack, builtin),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin),
 }

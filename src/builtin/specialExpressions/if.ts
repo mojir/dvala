@@ -1,9 +1,9 @@
 import type { Any } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type IfNode = SpecialExpressionNode<[typeof specialExpressionTypes['if'], [AstNode, AstNode, AstNode?]]>
+export type IfNode = [typeof NodeTypes.If, [AstNode, AstNode, AstNode?], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -31,5 +31,5 @@ export const ifSpecialExpression: BuiltinSpecialExpression<Any, IfNode> = {
   arity: { min: 2, max: 3 },
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) =>
-    getUndefinedSymbols(node[1][1].filter(n => !!n), contextStack, builtin),
+    getUndefinedSymbols((node[1] as AstNode[]).filter(n => !!n), contextStack, builtin),
 }

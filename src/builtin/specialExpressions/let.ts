@@ -1,12 +1,12 @@
 import type { Any } from '../../interface'
-import type { BindingNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode, BindingNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { addToSet } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
 import { getAllBindingTargetNames, walkDefaults } from '../bindingNode'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type LetNode = SpecialExpressionNode<[typeof specialExpressionTypes['let'], BindingNode]>
+export type LetNode = [typeof NodeTypes.Let, BindingNode, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -27,10 +27,10 @@ export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {
   arity: toFixedArity(0),
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const bindingNode = node[1][1]
+    const bindingNode = node[1]
     const target = bindingNode[1][0]
     const value = bindingNode[1][1]
-    const bindingResult = getUndefinedSymbols([value], contextStack, builtin)
+    const bindingResult = getUndefinedSymbols([value as AstNode], contextStack, builtin)
     walkDefaults(target, defaultNode => {
       addToSet(bindingResult, getUndefinedSymbols([defaultNode], contextStack, builtin))
     })

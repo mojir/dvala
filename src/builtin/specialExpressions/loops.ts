@@ -2,15 +2,15 @@ import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSy
 import type { ContextStack } from '../../evaluator/ContextStack'
 import type { Context } from '../../evaluator/interface'
 import type { Any } from '../../interface'
-import type { AstNode, BindingNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode, BindingNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { Builtin, BuiltinSpecialExpression, CustomDocs } from '../interface'
 import { getAllBindingTargetNames } from '../bindingNode'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 import { toFixedArity } from '../../utils/arity'
 
 export type LoopBindingNode = [BindingNode, BindingNode[], AstNode?, AstNode?] // Binding, Let-Bindings, When, While
 
-export type ForNode = SpecialExpressionNode<[typeof specialExpressionTypes['for'], LoopBindingNode[], AstNode]> // LoopBindings, body
+export type ForNode = [typeof NodeTypes.For, [LoopBindingNode[], AstNode], number] // LoopBindings, body
 
 function analyze(
   loopNode: ForNode,
@@ -20,7 +20,7 @@ function analyze(
 ): UndefinedSymbols {
   const result = new Set<string>()
   const newContext: Context = {}
-  const [, loopBindings, body] = loopNode[1]
+  const [loopBindings, body] = loopNode[1]
   loopBindings.forEach(loopBindingNode => {
     const [bindingNode, letBindings, whenNode, whileNode] = loopBindingNode
     const [target, value] = bindingNode[1]

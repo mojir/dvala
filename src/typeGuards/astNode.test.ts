@@ -11,7 +11,6 @@ import type {
   SymbolNode,
 } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
-import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import {
   asExpressionNode,
   asNormalExpressionNode,
@@ -28,7 +27,7 @@ import {
 } from './astNode'
 
 describe('node type guards', () => {
-  const specialExpressionNode: QqNode = [NodeTypes.SpecialExpression, [specialExpressionTypes['??'], [[NodeTypes.Reserved, null, 0], [NodeTypes.Reserved, null, 0]]], 0]
+  const specialExpressionNode: QqNode = [NodeTypes.Qq, [[NodeTypes.Reserved, null, 0], [NodeTypes.Reserved, null, 0]], 0]
   const symbolNode: SymbolNode = [NodeTypes.UserDefinedSymbol, 'A name', 0]
   const numberNode: NumberNode = [NodeTypes.Number, 12, 0]
   const stringNode: StringNode = [NodeTypes.String, 'foo', 0]
@@ -38,12 +37,11 @@ describe('node type guards', () => {
   const expressionNodes: ExpressionNode[] = [
     normalExpressionNodeWithName,
     normalExpressionNodeWithoutName,
-    specialExpressionNode,
     numberNode,
     stringNode,
   ]
 
-  const validNodes: AstNode[] = [symbolNode, ...expressionNodes]
+  const validNodes: AstNode[] = [symbolNode, specialExpressionNode, ...expressionNodes]
 
   it('nameNode', () => {
     testTypeGuars(

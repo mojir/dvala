@@ -3,7 +3,7 @@ import type { EvaluateNode } from '../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr } from '../interface'
 import type {
-  SpecialExpressionNode,
+  AstNode,
   UserDefinedFunction,
 } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -149,7 +149,7 @@ interface EvaluateHelpers {
   builtin: Builtin
   getUndefinedSymbols: GetUndefinedSymbols
 }
-export interface BuiltinSpecialExpression<T, N extends SpecialExpressionNode> {
+export interface BuiltinSpecialExpression<T, N extends AstNode> {
   evaluate?: (node: N, contextStack: ContextStack, helpers: EvaluateHelpers) => MaybePromise<T>
   evaluateAsNormalExpression?: NormalExpressionEvaluator<T>
   arity: Arity

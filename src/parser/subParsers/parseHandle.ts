@@ -1,5 +1,4 @@
 import type { HandleNode } from '../../builtin/specialExpressions/handle'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
@@ -38,7 +37,7 @@ export function parseHandle(ctx: ParserContext): HandleNode {
   ctx.advance()
 
   const node = withSourceCodeInfo(
-    [NodeTypes.SpecialExpression, [specialExpressionTypes.handle, expressions, handlersExpr], 0],
+    [NodeTypes.Handle, [expressions, handlersExpr], 0],
     token[2],
     ctx,
   ) as HandleNode
