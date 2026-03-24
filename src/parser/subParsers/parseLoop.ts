@@ -1,7 +1,7 @@
 import type { LoopNode } from '../../builtin/specialExpressions/loop'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { BindingNode } from '../types'
+import type { AstNode, BindingTarget } from '../types'
 import type { SymbolToken } from '../../tokenizer/token'
 import { assertLParenToken, assertOperatorToken, assertRParenToken, isOperatorToken, isRParenToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
@@ -14,21 +14,21 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
   assertLParenToken(ctx.tryPeek())
   ctx.advance()
 
-  const bindingNodes: BindingNode[] = []
+  const bindings: [BindingTarget, AstNode][] = []
   let token = ctx.tryPeek()
   while (!ctx.isAtEnd() && !isRParenToken(token)) {
     const target = parseBindingTarget(ctx, { requireDefaultValue: true, noRest: true })
     const value = target[1][1]!
     target[1][1] = undefined
 
-    bindingNodes.push(withSourceCodeInfo([NodeTypes.Binding, [target, value], 0], token?.[2], ctx) as BindingNode)
+    bindings.push([target, value])
 
     if (isOperatorToken(ctx.tryPeek(), ',')) {
       ctx.advance()
     }
     token = ctx.tryPeek()
   }
-  if (bindingNodes.length === 0) {
+  if (bindings.length === 0) {
     throw new DvalaError('Expected binding', ctx.peekSourceCodeInfo())
   }
 
@@ -40,7 +40,7 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
 
   const expression = ctx.parseExpression()
 
-  const node = withSourceCodeInfo([NodeTypes.Loop, [bindingNodes, expression], 0], firstToken[2], ctx) as LoopNode
+  const node = withSourceCodeInfo([NodeTypes.Loop, [bindings, expression], 0], firstToken[2], ctx) as LoopNode
   ctx.setNodeEnd(node[2])
   return node
 }

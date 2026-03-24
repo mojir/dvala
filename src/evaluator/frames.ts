@@ -232,7 +232,7 @@ export interface LetBindCompleteFrame {
 export interface LoopBindFrame {
   type: 'LoopBind'
   phase: 'value' | 'destructure'
-  bindingNodes: BindingNode[]
+  bindings: [BindingTarget, AstNode][]
   index: number // current binding (0-based)
   context: Context // accumulated bindings so far
   body: AstNode // loop body (stored for LoopIterateFrame creation)
@@ -250,7 +250,7 @@ export interface LoopBindFrame {
  */
 export interface LoopIterateFrame {
   type: 'LoopIterate'
-  bindingNodes: BindingNode[]
+  bindings: [BindingTarget, AstNode][]
   bindingContext: Context // mutable context with loop bindings
   body: AstNode
   env: ContextStack
@@ -266,7 +266,7 @@ export interface LoopIterateFrame {
  */
 export interface LoopBindCompleteFrame {
   type: 'LoopBindComplete'
-  bindingNodes: BindingNode[]
+  bindings: [BindingTarget, AstNode][]
   index: number // current binding (0-based)
   context: Context // accumulated bindings so far
   body: AstNode
@@ -393,7 +393,7 @@ export interface RecurFrame {
  */
 export interface RecurLoopRebindFrame {
   type: 'RecurLoopRebind'
-  bindingNodes: BindingNode[]
+  bindings: [BindingTarget, AstNode][]
   bindingIndex: number // current binding being processed
   params: Arr // recur params
   bindingContext: Context // shared context to update
