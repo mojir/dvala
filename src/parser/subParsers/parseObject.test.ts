@@ -147,9 +147,9 @@ describe('parseObject', () => {
       const ctx = createCtx('{ ...x }')
       const result = parseObject(ctx)
       const params = getObjectParams(result)
-      // Spread payload is a UserDefinedSymbol node for 'x'
+      // Spread payload is a Sym node for 'x'
       const spreadPayload = params[0]![1] as AstNode
-      expect(spreadPayload[0]).toBe(NodeTypes.UserDefinedSymbol)
+      expect(spreadPayload[0]).toBe(NodeTypes.Sym)
       expect(spreadPayload[1]).toBe('x')
     })
 

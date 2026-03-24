@@ -138,7 +138,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const functionArguments: BindingTarget[] = []
   for (let i = 1; i <= arity; i += 1) {
     const name = i === 1 ? '$' : `$${i}`
-    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, name, 0] as UserDefinedSymbolNode, undefined], 0], firstToken[2], ctx))
+    functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.Sym, name, 0] as UserDefinedSymbolNode, undefined], 0], firstToken[2], ctx))
   }
 
   const node: LambdaNode = withSourceCodeInfo([NodeTypes.Function, [

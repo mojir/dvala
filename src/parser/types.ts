@@ -149,7 +149,7 @@ export type StringNode = AstNode<typeof NodeTypes.String, string>
 export type TemplateStringNode = AstNode<typeof NodeTypes.TemplateString, (StringNode | AstNode)[]>
 
 export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
-export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.UserDefinedSymbol, string>
+export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.Sym, string>
 export type BuiltinSymbolNode = AstNode<typeof NodeTypes.Builtin, string>
 export type SpecialSymbolNode = AstNode<typeof NodeTypes.Special, SpecialExpressionType>
 export type SymbolNode = UserDefinedSymbolNode | BuiltinSymbolNode | SpecialSymbolNode

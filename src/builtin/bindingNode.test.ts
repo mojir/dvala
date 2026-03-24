@@ -13,7 +13,7 @@ describe('getAllBindingTargetNames', () => {
   })
 
   it('should return a single name for a symbol target', () => {
-    const bindingTarget: BindingTarget = [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x', 0], undefined], 0]
+    const bindingTarget: BindingTarget = [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0]
 
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ x: true })
@@ -22,8 +22,8 @@ describe('getAllBindingTargetNames', () => {
   it('should return all names for an object target', () => {
     const bindingTarget: BindingTarget = [bindingTargetTypes.object, [
       {
-        a: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'a', 0], undefined], 0],
-        b: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'b', 0], undefined], 0],
+        a: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0],
+        b: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0],
       },
       undefined,
     ], 0]
@@ -34,11 +34,11 @@ describe('getAllBindingTargetNames', () => {
   it('should return all names for a nested object target', () => {
     const bindingTarget: BindingTarget = [bindingTargetTypes.object, [{ a: [bindingTargetTypes.object, [
       {
-        x: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x', 0], undefined], 0],
-        y: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'y', 0], undefined], 0],
+        x: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
+        y: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0],
       },
       undefined,
-    ], 0], z: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'z', 0], undefined], 0] }, undefined], 0]
+    ], 0], z: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0] }, undefined], 0]
 
     const result = getAllBindingTargetNames(bindingTarget)
     expect(result).toEqual({ x: true, y: true, z: true })
@@ -47,8 +47,8 @@ describe('getAllBindingTargetNames', () => {
   it('should return all names for an array target', () => {
     const bindingTarget: ArrayBindingTarget = [bindingTargetTypes.array, [
       [
-        [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'a', 0], undefined], 0],
-        [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'b', 0], undefined], 0],
+        [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'a', 0], undefined], 0],
+        [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'b', 0], undefined], 0],
       ],
       undefined,
     ], 0]
@@ -62,11 +62,11 @@ describe('getAllBindingTargetNames', () => {
       {
         a: [bindingTargetTypes.array, [
           [
-            [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'x', 0], undefined], 0],
+            [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'x', 0], undefined], 0],
             [bindingTargetTypes.object, [
               {
-                y: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'y', 0], undefined], 0],
-                z: [bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, 'z', 0], undefined], 0],
+                y: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'y', 0], undefined], 0],
+                z: [bindingTargetTypes.symbol, [[NodeTypes.Sym, 'z', 0], undefined], 0],
               },
               undefined,
             ], 0],

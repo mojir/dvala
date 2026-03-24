@@ -237,7 +237,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: (node as StringNode)[1], k }
     case NodeTypes.Builtin:
     case NodeTypes.Special:
-    case NodeTypes.UserDefinedSymbol:
+    case NodeTypes.Sym:
       return { type: 'Value', value: env.evaluateSymbol(node as SymbolNode), k }
     case NodeTypes.Reserved:
       return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode, env), k }

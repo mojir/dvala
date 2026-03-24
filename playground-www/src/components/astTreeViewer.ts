@@ -33,7 +33,7 @@ const nodeColorMap: Record<string, string> = {
   TemplateString: 'var(--syntax-string)',
   Call: 'var(--syntax-builtin)',
   SpecialExpression: 'var(--syntax-keyword)',
-  UserDefinedSymbol: 'var(--syntax-symbol)',
+  Sym: 'var(--syntax-symbol)',
   Builtin: 'var(--syntax-builtin)',
   Special: 'var(--syntax-keyword)',
   Reserved: 'var(--syntax-keyword)',
@@ -65,7 +65,7 @@ function getNodeSummary(node: TreeNode): string {
       return `${payload}`
     case 'String':
       return `"${truncate(payload as string, 40)}"`
-    case 'UserDefinedSymbol':
+    case 'Sym':
     case 'Builtin':
     case 'Special':
     case 'Reserved':
@@ -74,7 +74,7 @@ function getNodeSummary(node: TreeNode): string {
       return `@${payload}`
     case 'Call': {
       const [fnNode, args] = payload as [AstNode, AstNode[]]
-      const fnName = fnNode[0] === 'Builtin' || fnNode[0] === 'UserDefinedSymbol'
+      const fnName = fnNode[0] === 'Builtin' || fnNode[0] === 'Sym'
         ? fnNode[1] as string
         : fnNode[0]
       return `${fnName}(${args.length} arg${args.length !== 1 ? 's' : ''})`
@@ -125,7 +125,7 @@ function isLeafNode(node: TreeNode): boolean {
   const type = node[0]
   return type === 'Number'
     || type === 'String'
-    || type === 'UserDefinedSymbol'
+    || type === 'Sym'
     || type === 'Builtin'
     || type === 'Special'
     || type === 'Reserved'

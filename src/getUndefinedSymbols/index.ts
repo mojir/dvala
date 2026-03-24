@@ -33,7 +33,7 @@ export type GetUndefinedSymbols = (ast: Ast | AstNode[], contextStack: ContextSt
 function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, builtin: Builtin): UndefinedSymbols | null {
   const nodeType = node[0]
   switch (nodeType) {
-    case NodeTypes.UserDefinedSymbol: {
+    case NodeTypes.Sym: {
       const symbolNode = node as UserDefinedSymbolNode
       const lookUpResult = contextStack.lookUp(symbolNode)
       if (lookUpResult === null)

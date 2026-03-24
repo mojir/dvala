@@ -27,7 +27,7 @@ import {
 
 describe('dvala type guards', () => {
   it('any', () => {
-    const node: AstNode = [NodeTypes.UserDefinedSymbol, 'test', 0]
+    const node: AstNode = [NodeTypes.Sym, 'test', 0]
 
     const valid = [node, 1, 'bar', null, [], {}]
     const invalid = [undefined]

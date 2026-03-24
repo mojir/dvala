@@ -3,7 +3,7 @@ export const NodeTypes = {
   String: 'String',
   Call: 'Call',
   SpecialExpression: 'SpecialExpression',
-  UserDefinedSymbol: 'UserDefinedSymbol',
+  Sym: 'Sym',
   Builtin: 'Builtin',
   Special: 'Special',
   Reserved: 'Reserved',

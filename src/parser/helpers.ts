@@ -35,7 +35,7 @@ export function stringToSymbolNode(value: string, debugInfo: TokenDebugInfo | un
     ctx.setNodeEnd(node[2])
     return node
   }
-  const node = withSourceCodeInfo([NodeTypes.UserDefinedSymbol, value, 0], debugInfo, ctx) satisfies SymbolNode
+  const node = withSourceCodeInfo([NodeTypes.Sym, value, 0], debugInfo, ctx) satisfies SymbolNode
   ctx.setNodeEnd(node[2])
   return node
 }

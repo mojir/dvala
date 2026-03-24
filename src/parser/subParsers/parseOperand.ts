@@ -258,7 +258,7 @@ function isHandlerShorthand(ctx: ParserContext): boolean {
  * For wildcard effects (containing *), uses effectMatcher instead of ==.
  */
 function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo: TokenDebugInfo | undefined): AstNode {
-  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.UserDefinedSymbol, name, 0], debugInfo, ctx) as UserDefinedSymbolNode
+  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.Sym, name, 0], debugInfo, ctx) as UserDefinedSymbolNode
   const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined], ctx.allocateNodeId(debugInfo)]
 
   // Parse parameter names (0-3)
