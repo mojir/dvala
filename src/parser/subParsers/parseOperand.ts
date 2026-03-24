@@ -53,7 +53,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       if (!isSymbolToken(symbolToken)) {
         throw new DvalaError('Expected symbol', ctx.peekSourceCodeInfo())
       }
-      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.String, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
+      const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
       operand = createAccessorNode(ctx, operand, stringNode, token[2])
       ctx.advance()
       token = ctx.tryPeek()
@@ -114,7 +114,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       if (isUnary) {
         ctx.advance()
         const operand = parseOperandPart(ctx)
-        const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0, 0], token[2], ctx)
+        const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
         const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
@@ -305,7 +305,7 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo
   if (effectName.includes('*')) {
     const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.Call, [
       withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher', 0], debugInfo, ctx),
-      [withSourceCodeInfo([NodeTypes.String, effectName, 0], debugInfo, ctx)],
+      [withSourceCodeInfo([NodeTypes.Str, effectName, 0], debugInfo, ctx)],
     ], 0], debugInfo, ctx)
     condition = withSourceCodeInfo([NodeTypes.Call, [matcherCall, [effSym]], 0], debugInfo, ctx)
   } else {

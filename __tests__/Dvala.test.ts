@@ -77,7 +77,7 @@ describe('all tests', () => {
 
   function ast(n: number): Ast {
     return {
-      body: [[NodeTypes.Number, n, 0]],
+      body: [[NodeTypes.Num, n, 0]],
     }
   }
 

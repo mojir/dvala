@@ -11,7 +11,7 @@ export function parseReservedSymbol(ctx: ParserContext): ReservedNode | NumberNo
 
   const symbol = token[1]
   if (isNumberReservedSymbol(symbol)) {
-    const node = withSourceCodeInfo([NodeTypes.Number, numberReservedSymbolRecord[symbol], 0], token[2], ctx) as NumberNode
+    const node = withSourceCodeInfo([NodeTypes.Num, numberReservedSymbolRecord[symbol], 0], token[2], ctx) as NumberNode
     ctx.setNodeEnd(node[2])
     return node
   }

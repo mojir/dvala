@@ -87,8 +87,8 @@ export function assertNormalExpressionNodeWithName(
 export function isExpressionNode(node: AstNode): node is ExpressionNode {
   return isNormalExpressionNode(node)
     || node[0] === NodeTypes.SpecialExpression
-    || node[0] === NodeTypes.Number
-    || node[0] === NodeTypes.String
+    || node[0] === NodeTypes.Num
+    || node[0] === NodeTypes.Str
     || node[0] === NodeTypes.TemplateString
 }
 export function asExpressionNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): ExpressionNode {

@@ -156,7 +156,7 @@ test.describe('toolbar actions', () => {
 
     const modalText = await modal.textContent()
     expect(modalText).toContain('Call')
-    expect(modalText).toContain('Number')
+    expect(modalText).toContain('Num')
   })
 
   test('reset playground clears everything', async ({ page }) => {
