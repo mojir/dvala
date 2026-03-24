@@ -2,13 +2,13 @@ import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSy
 import type { ContextStack } from '../../evaluator/ContextStack'
 import type { Context } from '../../evaluator/interface'
 import type { Any } from '../../interface'
-import type { AstNode, BindingNode } from '../../parser/types'
+import type { AstNode, BindingTarget } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
 import type { Builtin, BuiltinSpecialExpression, CustomDocs } from '../interface'
 import { getAllBindingTargetNames } from '../bindingNode'
 import { toFixedArity } from '../../utils/arity'
 
-export type LoopBindingNode = [BindingNode, BindingNode[], AstNode?, AstNode?] // Binding, Let-Bindings, When, While
+export type LoopBindingNode = [[BindingTarget, AstNode], [BindingTarget, AstNode][], AstNode?, AstNode?] // Binding, Let-Bindings, When, While
 
 export type ForNode = [typeof NodeTypes.For, [LoopBindingNode[], AstNode], number] // LoopBindings, body
 
@@ -22,8 +22,8 @@ function analyze(
   const newContext: Context = {}
   const [loopBindings, body] = loopNode[1]
   loopBindings.forEach(loopBindingNode => {
-    const [bindingNode, letBindings, whenNode, whileNode] = loopBindingNode
-    const [target, value] = bindingNode[1]
+    const [binding, letBindings, whenNode, whileNode] = loopBindingNode
+    const [target, value] = binding
     getUndefinedSymbols([value], contextStack.create(newContext), builtin).forEach(symbol =>
       result.add(symbol),
     )
@@ -31,8 +31,8 @@ function analyze(
     // Defensive: letBindings is always present when parsed from loop syntax
     /* v8 ignore next */
     if (letBindings) {
-      letBindings.forEach(letBindingNode => {
-        const [letTarget, letValue] = letBindingNode[1]
+      letBindings.forEach(letBinding => {
+        const [letTarget, letValue] = letBinding
 
         getUndefinedSymbols([letValue], contextStack.create(newContext), builtin).forEach(symbol =>
           result.add(symbol),

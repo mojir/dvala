@@ -2,7 +2,7 @@ import { getAllBindingTargetNames } from '../../builtin/bindingNode'
 import type { ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
-import type { AstNode, BindingNode, BindingTarget } from '../types'
+import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
 import { asSymbolToken, assertLParenToken, assertOperatorToken, assertRParenToken, assertReservedSymbolToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
@@ -24,8 +24,8 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 
   while (!ctx.isAtEnd() && !isRParenToken(ctx.tryPeek())) {
     const loopBinding = parseForLoopBinding(ctx)
-    const existingBoundNames = forLoopBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0][1][0])))
-    const newBoundNames = getAllBindingTargetNames(loopBinding[0][1][0])
+    const existingBoundNames = forLoopBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0][0])))
+    const newBoundNames = getAllBindingTargetNames(loopBinding[0][0])
     if (Object.keys(newBoundNames).some(n => existingBoundNames.includes(n))) {
       throw new DvalaError('Duplicate binding', undefined)
     }
@@ -56,22 +56,19 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
 
   assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'], ctx.peekSourceCodeInfo())
 
-  const letBindings: BindingNode[] = []
+  const letBindings: [BindingTarget, AstNode][] = []
   if (token[1] === 'let') {
     modifiers.push('&let')
     while (isSymbolToken(token, 'let')) {
       const letNode = parseLet(ctx, token)
-      const existingBoundNames = letBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[1][0])))
+      const existingBoundNames = letBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0])))
       const [letTarget, letValue] = letNode[1] as [BindingTarget, AstNode]
       const newBoundNames = Object.keys(getAllBindingTargetNames(letTarget))
       if (newBoundNames.some(n => existingBoundNames.includes(n))) {
         throw new DvalaError('Duplicate binding', undefined)
       }
 
-      // Reconstruct BindingNode for LoopBindingNode compatibility
-      const letBindingNode: BindingNode = withSourceCodeInfo([NodeTypes.Binding, [letTarget, letValue], 0], token[2], ctx) as BindingNode
-      ctx.setNodeEnd(letBindingNode[2])
-      letBindings.push(letBindingNode)
+      letBindings.push([letTarget, letValue])
       token = ctx.peek()
       assertInternalLoopBindingDelimiter(token, ['let', 'when', 'while'], ctx.peekSourceCodeInfo())
       token = ctx.peek()
@@ -110,7 +107,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
   return [bindingNode, letBindings, whenNode, whileNode] satisfies LoopBindingNode
 }
 
-function parseBinding(ctx: ParserContext): BindingNode {
+function parseBinding(ctx: ParserContext): [BindingTarget, AstNode] {
   const firstToken = asSymbolToken(ctx.tryPeek())
   const name = asUserDefinedSymbolNode(parseSymbol(ctx))
 
@@ -119,20 +116,9 @@ function parseBinding(ctx: ParserContext): BindingNode {
 
   const value = ctx.parseExpression()
 
-  const node: BindingNode = withSourceCodeInfo(
-    [
-      NodeTypes.Binding,
-      [
-        withSourceCodeInfo([bindingTargetTypes.symbol, [name, undefined], 0], firstToken[2], ctx),
-        value,
-      ],
-      0,
-    ],
-    firstToken[2],
-    ctx,
-  )
-  ctx.setNodeEnd(node[2])
-  return node
+  const target: BindingTarget = withSourceCodeInfo([bindingTargetTypes.symbol, [name, undefined], 0], firstToken[2], ctx)
+  ctx.setNodeEnd(target[2])
+  return [target, value]
 }
 
 function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[], sourceCodeInfo?: SourceCodeInfo): void {
