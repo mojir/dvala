@@ -15,7 +15,7 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
   const optionsNode: StringNode = withSourceCodeInfo([NodeTypes.String, optionsString, 0], token[2], ctx) as StringNode
 
   const node: NormalExpressionNodeWithName = withSourceCodeInfo([
-    NodeTypes.NormalExpression,
+    NodeTypes.Call,
     [
       withSourceCodeInfo([NodeTypes.Builtin, 'regexp', 0], token[2], ctx),
       [stringNode, optionsNode],

@@ -156,7 +156,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     ctx.setNodeEnd(node[2])
     return node
   } else {
-    const node = withSourceCodeInfo([NodeTypes.NormalExpression, [symbol, params], 0], symbolDebugInfo, ctx) as NormalExpressionNodeExpression
+    const node = withSourceCodeInfo([NodeTypes.Call, [symbol, params], 0], symbolDebugInfo, ctx) as NormalExpressionNodeExpression
     ctx.setNodeEnd(node[2])
     return node
   }

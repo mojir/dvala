@@ -31,8 +31,8 @@ describe('node type guards', () => {
   const symbolNode: SymbolNode = [NodeTypes.UserDefinedSymbol, 'A name', 0]
   const numberNode: NumberNode = [NodeTypes.Number, 12, 0]
   const stringNode: StringNode = [NodeTypes.String, 'foo', 0]
-  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.NormalExpression, [[NodeTypes.Builtin, '+', 0], []], 0]
-  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.NormalExpression, [stringNode, [numberNode]], 0]
+  const normalExpressionNodeWithName: NormalExpressionNodeWithName = [NodeTypes.Call, [[NodeTypes.Builtin, '+', 0], []], 0]
+  const normalExpressionNodeWithoutName: NormalExpressionNodeExpression = [NodeTypes.Call, [stringNode, [numberNode]], 0]
 
   const expressionNodes: ExpressionNode[] = [
     normalExpressionNodeWithName,

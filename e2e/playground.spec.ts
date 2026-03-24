@@ -155,7 +155,7 @@ test.describe('toolbar actions', () => {
     await expect(modal).toBeVisible({ timeout: 3000 })
 
     const modalText = await modal.textContent()
-    expect(modalText).toContain('NormalExpression')
+    expect(modalText).toContain('Call')
     expect(modalText).toContain('Number')
   })
 

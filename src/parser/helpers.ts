@@ -70,7 +70,7 @@ export function getSymbolName(symbol: SymbolNode): string {
 }
 
 export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): NormalExpressionNodeWithName {
-  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.NormalExpression, [symbolNode, params], 0], debugInfo, ctx)
+  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.Call, [symbolNode, params], 0], debugInfo, ctx)
 
   if (isBuiltinSymbolNode(symbolNode)) {
     assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, ctx.resolveTokenDebugInfo(debugInfo))

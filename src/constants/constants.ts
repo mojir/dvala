@@ -1,7 +1,7 @@
 export const NodeTypes = {
   Number: 'Number',
   String: 'String',
-  NormalExpression: 'NormalExpression',
+  Call: 'Call',
   SpecialExpression: 'SpecialExpression',
   UserDefinedSymbol: 'UserDefinedSymbol',
   Builtin: 'Builtin',
