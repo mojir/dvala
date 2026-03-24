@@ -19,7 +19,7 @@ import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import type { MatchSlot } from '../builtin/matchSlot'
-import type { AstNode, BindingNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
+import type { AstNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -336,7 +336,7 @@ export interface ForLetBindFrame {
   phase: 'evalValue' | 'destructure' // which part of the binding
   forFrame: ForLoopFrame // parent for frame state
   levelStates: ForBindingLevelState[]
-  letBindings: BindingNode[]
+  letBindings: [BindingTarget, AstNode][]
   letIndex: number // current let-binding (0-based)
   currentValue?: Any // value being destructured (set after evalValue)
   env: ContextStack

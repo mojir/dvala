@@ -43,7 +43,6 @@ import { parse } from '../parser'
 import type {
   Ast,
   AstNode,
-  BindingNode,
   BindingTarget,
   DvalaFunction,
   EffectRef,
@@ -533,7 +532,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
       // Evaluate the first binding's collection expression
       const firstBinding = loopBindings[0]!
-      const collectionNode = firstBinding[0][1][1] // bindingNode → [target, valueNode]
+      const collectionNode = firstBinding[0][1] // [target, valueNode] → valueNode
       return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
     }
     case NodeTypes.Import: {
@@ -1543,7 +1542,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
 
       // Process the first element's binding
       const binding = bindingNodes[frame.bindingLevel]!
-      const targetNode = binding[0][1][0]
+      const targetNode = binding[0][0]
       const element = (seq as Arr)[0]
 
       const elValue = asAny(element, sourceCodeInfo)
@@ -1626,7 +1625,7 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
   // Process next element at current level
   levelStates[currentLevel] = { ...currentState, index: nextElementIndex }
   const binding = bindingNodes[currentLevel]!
-  const targetNode = binding[0][1][0]
+  const targetNode = binding[0][0]
   const element = currentState.collection[nextElementIndex]
   const elValue = asAny(element, sourceCodeInfo)
 
@@ -1664,14 +1663,14 @@ function applyForElementBindComplete(frame: ForElementBindCompleteFrame, record:
 function startForLetBindings(
   forFrame: ForLoopFrame,
   levelStates: ForLoopFrame['levelStates'],
-  letBindings: BindingNode[],
+  letBindings: [BindingTarget, AstNode][],
   letIndex: number,
   env: ContextStack,
   sourceCodeInfo: SourceCodeInfo | undefined,
   k: ContinuationStack,
 ): Step {
-  const bindingNode = letBindings[letIndex]!
-  const bindingValue = bindingNode[1][1]
+  const letBinding = letBindings[letIndex]!
+  const bindingValue = letBinding[1]
 
   // Push frame to process the binding after value is evaluated
   const letBindFrame: ForLetBindFrame = {
@@ -1693,8 +1692,8 @@ function applyForLetBind(frame: ForLetBindFrame, value: Any, k: ContinuationStac
 
   if (phase === 'evalValue') {
     // Value evaluated — now destructure
-    const bindingNode = letBindings[letIndex]!
-    const target = bindingNode[1][0]
+    const letBinding = letBindings[letIndex]!
+    const target = letBinding[0]
 
     // Push frame for destructuring completion
     const destructureFrame: ForLetBindFrame = {
@@ -1755,7 +1754,7 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
   if (nextLevel < bindingNodes.length) {
     // Go deeper — evaluate the next level's collection
     const binding = bindingNodes[nextLevel]!
-    const collectionNode = binding[0][1][1]
+    const collectionNode = binding[0][1]
     const newFrame: ForLoopFrame = {
       ...frame,
       phase: 'evalCollection',
