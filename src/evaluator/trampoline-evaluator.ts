@@ -587,8 +587,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return stepSpecialExpression(node as SpecialExpressionNode, env, k)
     case NodeTypes.TemplateString:
       return stepTemplateString(node as TemplateStringNode, env, k)
-    case NodeTypes.EffectName:
-      return { type: 'Value', value: getEffectRef(node[1] as string), k }
+    // Effect nodes (from @name syntax) handled above with NodeTypes.Effect
     /* v8 ignore next 2 */
     default:
       throw new DvalaError(`${node[0]}-node cannot be evaluated`, env.resolve(node[2]))

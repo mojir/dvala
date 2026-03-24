@@ -39,7 +39,7 @@ const nodeColorMap: Record<string, string> = {
   Reserved: 'var(--syntax-keyword)',
   Binding: 'var(--syntax-keyword)',
   Spread: 'var(--syntax-punctuation)',
-  EffectName: 'var(--syntax-effect)',
+  Effect: 'var(--syntax-effect)',
   // Binding target types
   symbol: 'var(--syntax-symbol)',
   object: 'var(--syntax-punctuation)',
@@ -70,7 +70,7 @@ function getNodeSummary(node: TreeNode): string {
     case 'Special':
     case 'Reserved':
       return `${payload}`
-    case 'EffectName':
+    case 'Effect':
       return `@${payload}`
     case 'Call': {
       const [fnNode, args] = payload as [AstNode, AstNode[]]
@@ -129,7 +129,7 @@ function isLeafNode(node: TreeNode): boolean {
     || type === 'Builtin'
     || type === 'Special'
     || type === 'Reserved'
-    || type === 'EffectName'
+    || type === 'Effect'
     || type === 'symbol'
     || type === 'rest'
     || type === 'wildcard'
