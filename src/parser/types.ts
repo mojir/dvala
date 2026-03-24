@@ -146,7 +146,7 @@ export type AstNode<T extends NodeType = NodeType, Payload = unknown> = [T, Payl
 export type SpreadNode = AstNode<typeof NodeTypes.Spread, AstNode> // Payload should be array or object depending on context
 export type NumberNode = AstNode<typeof NodeTypes.Num, number>
 export type StringNode = AstNode<typeof NodeTypes.Str, string>
-export type TemplateStringNode = AstNode<typeof NodeTypes.TemplateString, (StringNode | AstNode)[]>
+export type TemplateStringNode = AstNode<typeof NodeTypes.TmplStr, (StringNode | AstNode)[]>
 
 export type ExpressionNode = NormalExpressionNode | SpecialExpressionNode | NumberNode | StringNode | TemplateStringNode
 export type UserDefinedSymbolNode = AstNode<typeof NodeTypes.Sym, string>

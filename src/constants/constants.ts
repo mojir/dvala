@@ -9,7 +9,7 @@ export const NodeTypes = {
   Reserved: 'Reserved',
   Binding: 'Binding',
   Spread: 'Spread',
-  TemplateString: 'TemplateString',
+  TmplStr: 'TmplStr',
   If: 'If',
   Block: 'Block',
   Effect: 'Effect',

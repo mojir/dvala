@@ -83,7 +83,7 @@ function getNodeSummary(node: TreeNode): string {
       const [name] = payload as [string, ...unknown[]]
       return `${name}`
     }
-    case 'TemplateString': {
+    case 'TmplStr': {
       const segments = payload as unknown[]
       return `\`...\` (${segments.length} segment${segments.length !== 1 ? 's' : ''})`
     }
@@ -158,7 +158,7 @@ function getChildren(node: TreeNode): ChildEntry[] {
     case 'SpecialExpression':
       getSpecialExpressionChildren(payload as [string, ...unknown[]], children)
       break
-    case 'TemplateString': {
+    case 'TmplStr': {
       const segments = payload as AstNode[]
       segments.forEach(seg => children.push({ label: null, node: seg }))
       break

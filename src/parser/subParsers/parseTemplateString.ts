@@ -218,7 +218,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
     }
   }
 
-  const node = withSourceCodeInfo([NodeTypes.TemplateString, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
+  const node = withSourceCodeInfo([NodeTypes.TmplStr, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
   ctx.setNodeEnd(node[2])
   return node
 }
