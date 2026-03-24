@@ -124,7 +124,7 @@ describe('parseObject', () => {
       const result = parseObject(ctx)
       const params = getObjectParams(result)
       // Computed key is a NormalExpression for ++
-      expect(params[0]![0]).toBe(NodeTypes.NormalExpression)
+      expect(params[0]![0]).toBe(NodeTypes.Call)
     })
 
     it('should consume the closing bracket', () => {
@@ -181,7 +181,7 @@ describe('parseObject', () => {
       const result = parseObject(ctx)
       const params = getObjectParams(result)
       // Value is a NormalExpression node for +
-      expect(params[1]![0]).toBe(NodeTypes.NormalExpression)
+      expect(params[1]![0]).toBe(NodeTypes.Call)
     })
 
     it('should parse boolean values', () => {

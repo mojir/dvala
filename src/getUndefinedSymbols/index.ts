@@ -48,7 +48,7 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     case NodeTypes.Reserved:
     case NodeTypes.Binding:
       return null
-    case NodeTypes.NormalExpression: {
+    case NodeTypes.Call: {
       const normalExpressionNode = node as NormalExpressionNode
       const unresolvedSymbols = new Set<string>()
       if (isNormalExpressionNodeWithName(normalExpressionNode)) {

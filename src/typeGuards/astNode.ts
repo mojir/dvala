@@ -49,7 +49,7 @@ export function isSpecialSymbolNode(node: AstNode): node is SpecialSymbolNode {
 }
 
 export function isNormalExpressionNode(node: AstNode): node is NormalExpressionNode {
-  return node[0] === NodeTypes.NormalExpression
+  return node[0] === NodeTypes.Call
 }
 export function asNormalExpressionNode(node: AstNode, sourceCodeInfo?: SourceCodeInfo): NormalExpressionNode {
   assertNormalExpressionNode(node, sourceCodeInfo)

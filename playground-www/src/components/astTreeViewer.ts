@@ -31,7 +31,7 @@ const nodeColorMap: Record<string, string> = {
   Number: 'var(--syntax-number)',
   String: 'var(--syntax-string)',
   TemplateString: 'var(--syntax-string)',
-  NormalExpression: 'var(--syntax-builtin)',
+  Call: 'var(--syntax-builtin)',
   SpecialExpression: 'var(--syntax-keyword)',
   UserDefinedSymbol: 'var(--syntax-symbol)',
   Builtin: 'var(--syntax-builtin)',
@@ -72,7 +72,7 @@ function getNodeSummary(node: TreeNode): string {
       return `${payload}`
     case 'EffectName':
       return `@${payload}`
-    case 'NormalExpression': {
+    case 'Call': {
       const [fnNode, args] = payload as [AstNode, AstNode[]]
       const fnName = fnNode[0] === 'Builtin' || fnNode[0] === 'UserDefinedSymbol'
         ? fnNode[1] as string
@@ -149,7 +149,7 @@ function getChildren(node: TreeNode): ChildEntry[] {
   const children: ChildEntry[] = []
 
   switch (type) {
-    case 'NormalExpression': {
+    case 'Call': {
       const [fnNode, args] = payload as [AstNode, AstNode[]]
       children.push({ label: 'fn', node: fnNode })
       args.forEach((arg, i) => children.push({ label: args.length > 1 ? `arg${i}` : 'arg', node: arg }))
@@ -372,7 +372,7 @@ function nodeMatchesSearch(node: TreeNode, query: string, label?: string | null)
   if (type.toLowerCase().includes(lowerQuery)) return true
   if (typeof payload === 'string' && payload.toLowerCase().includes(lowerQuery)) return true
   if (typeof payload === 'number' && `${payload}`.includes(query)) return true
-  if (type === 'NormalExpression') {
+  if (type === 'Call') {
     const fnNode = (payload as [AstNode, AstNode[]])[0]
     if (typeof fnNode[1] === 'string' && fnNode[1].toLowerCase().includes(lowerQuery)) return true
   }

@@ -157,8 +157,8 @@ export type ReservedNode = AstNode<typeof NodeTypes.Reserved, ReservedSymbol>
 export type EffectNameNode = AstNode<typeof NodeTypes.EffectName, string>
 export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
-export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.NormalExpression, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]
-export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.NormalExpression, [AstNode, AstNode[]]> // [name, node as function] node can be string number object or array
+export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.Call, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]
+export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.Call, [AstNode, AstNode[]]> // [name, node as function] node can be string number object or array
 export type NormalExpressionNode = NormalExpressionNodeWithName | NormalExpressionNodeExpression
 export const bindingTargetTypes = {
   symbol: 'symbol',

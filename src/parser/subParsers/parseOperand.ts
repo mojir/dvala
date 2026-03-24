@@ -116,7 +116,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         const operand = parseOperandPart(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Number, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
-        const node = withSourceCodeInfo([NodeTypes.NormalExpression, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
+        const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
         return node
       }
@@ -212,7 +212,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 }
 
 function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {
-  const node = withSourceCodeInfo([NodeTypes.NormalExpression, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+  const node = withSourceCodeInfo([NodeTypes.Call, [withSourceCodeInfo([NodeTypes.Builtin, 'get', 0], debugInfo, ctx), [left, right]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
   ctx.setNodeEnd(node[2])
   return node
 }
@@ -303,21 +303,21 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo
   // Build condition: eff == @effect (or effectMatcher("pattern")(eff) for wildcards)
   let condition: AstNode
   if (effectName.includes('*')) {
-    const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [
+    const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.Call, [
       withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher', 0], debugInfo, ctx),
       [withSourceCodeInfo([NodeTypes.String, effectName, 0], debugInfo, ctx)],
     ], 0], debugInfo, ctx)
-    condition = withSourceCodeInfo([NodeTypes.NormalExpression, [matcherCall, [effSym]], 0], debugInfo, ctx)
+    condition = withSourceCodeInfo([NodeTypes.Call, [matcherCall, [effSym]], 0], debugInfo, ctx)
   } else {
     const effectNode: AstNode = withSourceCodeInfo([NodeTypes.EffectName, effectName, 0], debugInfo, ctx)
-    condition = withSourceCodeInfo([NodeTypes.NormalExpression, [
+    condition = withSourceCodeInfo([NodeTypes.Call, [
       withSourceCodeInfo([NodeTypes.Builtin, '==', 0], debugInfo, ctx),
       [effSym, effectNode],
     ], 0], debugInfo, ctx)
   }
 
   // Build else: nxt(eff, arg)
-  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, argSym]], 0], debugInfo, ctx)
+  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.Call, [nxtSym, [effSym, argSym]], 0], debugInfo, ctx)
 
   // Build if: if condition then body else nxt(eff, arg) end
   const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.If, [condition, body, elseExpr], 0], debugInfo, ctx)

@@ -241,7 +241,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: env.evaluateSymbol(node as SymbolNode), k }
     case NodeTypes.Reserved:
       return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode, env), k }
-    case NodeTypes.NormalExpression:
+    case NodeTypes.Call:
       return stepNormalExpression(node as NormalExpressionNode, env, k)
     case NodeTypes.If: {
       const [conditionNode, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode?]
