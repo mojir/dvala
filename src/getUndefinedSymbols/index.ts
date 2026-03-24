@@ -8,7 +8,7 @@ import { NodeTypes } from '../constants/constants'
 import { DvalaError } from '../errors'
 import { joinSets } from '../utils'
 import type { ContextStack } from '../evaluator/ContextStack'
-import type { Ast, AstNode, BindingNode, NormalExpressionNode, SpecialExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
+import type { Ast, AstNode, BindingTarget, NormalExpressionNode, SpecialExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
 import { addToSet } from '../utils'
 import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 
@@ -166,10 +166,8 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       return getFunctionUnresolvedSymbols(fn, contextStack, getUndefinedSymbols, builtin)
     }
     case NodeTypes.Let: {
-      const bindingNode = node[1] as BindingNode
-      const target = bindingNode[1][0]
-      const value = bindingNode[1][1]
-      const bindingResult = getUndefinedSymbols([value as AstNode], contextStack, builtin)
+      const [target, value] = node[1] as [BindingTarget, AstNode]
+      const bindingResult = getUndefinedSymbols([value], contextStack, builtin)
       walkDefaults(target, defaultNode => {
         addToSet(bindingResult, getUndefinedSymbols([defaultNode], contextStack, builtin))
       })

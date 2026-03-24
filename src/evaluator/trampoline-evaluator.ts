@@ -355,9 +355,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Eval', node: handlersExpr, env, k: [setupFrame, ...k] }
     }
     case NodeTypes.Let: {
-      const bindingNode = node[1] as BindingNode
-      const target = bindingNode[1][0]
-      const valueNode = bindingNode[1][1]
+      const [target, valueNode] = node[1] as [BindingTarget, AstNode]
       const sourceCodeInfo = env.resolve(node[2])
       const frame: LetBindFrame = {
         type: 'LetBind',
