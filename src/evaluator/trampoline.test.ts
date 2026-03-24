@@ -714,7 +714,7 @@ describe('applyFrame', () => {
       const valueNode: NumberNode = [NodeTypes.Num, 1, 0]
       const frame: ObjectBuildFrame = {
         type: 'ObjectBuild',
-        nodes: [keyNode, valueNode],
+        entries: [[keyNode, valueNode]],
         index: 0,
         result: {},
         currentKey: null,
@@ -736,7 +736,7 @@ describe('applyFrame', () => {
       const valueNode: NumberNode = [NodeTypes.Num, 1, 0]
       const frame: ObjectBuildFrame = {
         type: 'ObjectBuild',
-        nodes: [keyNode, valueNode],
+        entries: [[keyNode, valueNode]],
         index: 0,
         result: {},
         currentKey: 'a',

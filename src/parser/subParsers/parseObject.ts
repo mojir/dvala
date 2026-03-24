@@ -1,4 +1,4 @@
-import type { ObjectNode } from '../../builtin/specialExpressions/object'
+import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
@@ -12,27 +12,28 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   const
     firstToken = asLBraceToken(ctx.tryPeek())
   ctx.advance()
-  const params: AstNode[] = []
+  const entries: ObjectEntry[] = []
   while (!ctx.isAtEnd() && !isRBraceToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
       ctx.advance()
-      params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
+      entries.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
     } else {
       const token = ctx.tryPeek()
+      let keyNode: AstNode
       if (isTemplateStringToken(token)) {
-        params.push(parseTemplateString(ctx, token))
+        keyNode = parseTemplateString(ctx, token)
       } else if (isStringToken(token)) {
         const stringNode = parseString(ctx, token)
-        params.push(withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx))
+        keyNode = withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx)
       } else if (isSymbolToken(token)) {
         const value = token[1].startsWith('\'')
           ? stringFromQuotedSymbol(token[1])
           : token[1]
-        params.push(withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx))
+        keyNode = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx)
         ctx.advance()
       } else if (isLBracketToken(token)) {
         ctx.advance()
-        params.push(ctx.parseExpression())
+        keyNode = ctx.parseExpression()
         assertRBracketToken(ctx.tryPeek())
         ctx.advance()
       } else {
@@ -42,7 +43,8 @@ export function parseObject(ctx: ParserContext): ObjectNode {
       assertOperatorToken(ctx.tryPeek(), ':')
       ctx.advance()
 
-      params.push(ctx.parseExpression())
+      const valueNode = ctx.parseExpression()
+      entries.push([keyNode, valueNode])
     }
     const nextToken = ctx.tryPeek()
     if (!isOperatorToken(nextToken, ',') && !isRBraceToken(nextToken)) {
@@ -57,7 +59,7 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   assertRBraceToken(ctx.tryPeek())
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.Object, params, 0], firstToken[2], ctx) as ObjectNode
+  const node = withSourceCodeInfo([NodeTypes.Object, entries, 0], firstToken[2], ctx) as ObjectNode
   ctx.setNodeEnd(node[2])
   return node
 }
