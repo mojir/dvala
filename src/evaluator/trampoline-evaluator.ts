@@ -478,16 +478,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
     }
     case NodeTypes.Loop: {
-      const [bindingNodes, body] = node[1] as [BindingNode[], AstNode]
+      const [bindings, body] = node[1] as [[BindingTarget, AstNode][], AstNode]
       const sourceCodeInfo = env.resolve(node[2])
       // Parser requires at least one binding — zero bindings is parser-prevented
       /* v8 ignore start */
-      if (bindingNodes.length === 0) {
+      if (bindings.length === 0) {
         // No bindings — just evaluate the body with an empty context
         const newContext: Context = {}
         const frame: LoopIterateFrame = {
           type: 'LoopIterate',
-          bindingNodes,
+          bindings,
           bindingContext: newContext,
           body,
           env: env.create(newContext),
@@ -500,14 +500,14 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const frame: LoopBindFrame = {
         type: 'LoopBind',
         phase: 'value',
-        bindingNodes,
+        bindings,
         index: 0,
         context: {},
         body,
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: bindingNodes[0]![1][1], env, k: [frame, ...k] }
+      return { type: 'Eval', node: bindings[0]![1], env, k: [frame, ...k] }
     }
     case NodeTypes.For: {
       const [loopBindings, body] = node[1] as [LoopBindingNode[], AstNode]
@@ -1458,16 +1458,15 @@ function applyLetBindComplete(frame: LetBindCompleteFrame, record: Any, k: Conti
 }
 
 function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): Step {
-  const { bindingNodes, index, context, body, env, sourceCodeInfo } = frame
+  const { bindings, index, context, body, env, sourceCodeInfo } = frame
 
   // Value for the current binding has been evaluated
-  const bindingNode = bindingNodes[index]!
-  const target = bindingNode[1][0]
+  const [target] = bindings[index]!
 
   // Push completion frame to receive the binding record
   const completeFrame: LoopBindCompleteFrame = {
     type: 'LoopBindComplete',
-    bindingNodes,
+    bindings,
     index,
     context,
     body,
@@ -1480,7 +1479,7 @@ function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): 
 }
 
 function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: ContinuationStack): Step {
-  const { bindingNodes, index, context, body, env, sourceCodeInfo } = frame
+  const { bindings, index, context, body, env, sourceCodeInfo } = frame
 
   // Add the binding record to the loop context
   Object.entries(record as Record<string, Any>).forEach(([name, val]) => {
@@ -1489,12 +1488,12 @@ function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: Con
 
   // Move to next binding
   const nextIndex = index + 1
-  if (nextIndex >= bindingNodes.length) {
+  if (nextIndex >= bindings.length) {
     // All bindings done — set up the loop iteration
     const loopEnv = env.create(context)
     const iterateFrame: LoopIterateFrame = {
       type: 'LoopIterate',
-      bindingNodes,
+      bindings,
       bindingContext: context,
       body,
       env: loopEnv,
@@ -1507,14 +1506,14 @@ function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: Con
   const newFrame: LoopBindFrame = {
     type: 'LoopBind',
     phase: 'value',
-    bindingNodes,
+    bindings,
     index: nextIndex,
     context,
     body,
     env,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: bindingNodes[nextIndex]![1][1], env: env.create(context), k: [newFrame, ...k] }
+  return { type: 'Eval', node: bindings[nextIndex]![1], env: env.create(context), k: [newFrame, ...k] }
 }
 
 function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationStack): Step {
@@ -1892,18 +1891,18 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
 
     if (frame.type === 'LoopIterate') {
       // Found loop frame — start rebinding using slots
-      const { bindingNodes, bindingContext, body, env } = frame
+      const { bindings, bindingContext, body, env } = frame
       const remainingK = k.slice(i + 1)
 
-      if (params.length !== bindingNodes.length) {
+      if (params.length !== bindings.length) {
         throw new DvalaError(
-          `recur expected ${bindingNodes.length} parameters, got ${params.length}`,
+          `recur expected ${bindings.length} parameters, got ${params.length}`,
           sourceCodeInfo,
         )
       }
 
       // Start the frame-based rebinding process
-      return startRecurLoopRebind(bindingNodes, 0, params, bindingContext, body, env, remainingK, sourceCodeInfo)
+      return startRecurLoopRebind(bindings, 0, params, bindingContext, body, env, remainingK, sourceCodeInfo)
     }
 
     if (frame.type === 'FnBody') {
@@ -1925,7 +1924,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
  * Start rebinding loop variables during recur using slot-based binding.
  */
 function startRecurLoopRebind(
-  bindingNodes: BindingNode[],
+  bindings: [BindingTarget, AstNode][],
   bindingIndex: number,
   params: Arr,
   bindingContext: Context,
@@ -1934,7 +1933,7 @@ function startRecurLoopRebind(
   remainingK: ContinuationStack,
   sourceCodeInfo: SourceCodeInfo | undefined,
 ): Step {
-  if (bindingIndex >= bindingNodes.length) {
+  if (bindingIndex >= bindings.length) {
     // All bindings complete — sync context and restart loop body
     const envContexts = env.getContextsRaw()
     const innermostContext = envContexts[0]!
@@ -1947,7 +1946,7 @@ function startRecurLoopRebind(
     // Push fresh LoopIterateFrame and re-evaluate body
     const newIterateFrame: LoopIterateFrame = {
       type: 'LoopIterate',
-      bindingNodes,
+      bindings,
       bindingContext,
       body,
       env,
@@ -1957,13 +1956,12 @@ function startRecurLoopRebind(
   }
 
   // Bind current node using slots
-  const bindingNode = bindingNodes[bindingIndex]!
-  const target = bindingNode[1][0]
+  const [target] = bindings[bindingIndex]!
   const param = toAny(params[bindingIndex])
 
   const rebindFrame: RecurLoopRebindFrame = {
     type: 'RecurLoopRebind',
-    bindingNodes,
+    bindings,
     bindingIndex,
     params,
     bindingContext,
@@ -1980,7 +1978,7 @@ function startRecurLoopRebind(
  * Handle completion of one loop binding during recur rebinding.
  */
 function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: ContinuationStack): Step {
-  const { bindingNodes, bindingIndex, params, bindingContext, body, env, remainingK, sourceCodeInfo } = frame
+  const { bindings, bindingIndex, params, bindingContext, body, env, remainingK, sourceCodeInfo } = frame
 
   // value is the binding record from startBindingSlots
   const record = value as Record<string, Any>
@@ -1989,7 +1987,7 @@ function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: Conti
   })
 
   // Continue with next binding
-  return startRecurLoopRebind(bindingNodes, bindingIndex + 1, params, bindingContext, body, env, remainingK, sourceCodeInfo)
+  return startRecurLoopRebind(bindings, bindingIndex + 1, params, bindingContext, body, env, remainingK, sourceCodeInfo)
 }
 
 function applyEffectResume(frame: EffectResumeFrame, value: Any, _k: ContinuationStack): Step {
