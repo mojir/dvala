@@ -149,11 +149,14 @@ test.describe('toolbar actions', () => {
   test('parse produces AST output', async ({ page }) => {
     await setDvalaCode(page, '1 + 2')
     await page.evaluate(() => (window as any).Playground.parse())
-    await waitForOutput(page)
 
-    const output = await getOutputText(page)
-    expect(output).toContain('Parse')
-    expect(output).toContain('body')
+    // Parse now opens a modal with the AST tree viewer
+    const modal = page.locator('.modal-panel')
+    await expect(modal).toBeVisible({ timeout: 3000 })
+
+    const modalText = await modal.textContent()
+    expect(modalText).toContain('NormalExpression')
+    expect(modalText).toContain('Number')
   })
 
   test('reset playground clears everything', async ({ page }) => {
