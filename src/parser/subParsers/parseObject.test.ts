@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { NodeTypes } from '../../constants/constants'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { DvalaError } from '../../errors'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
@@ -16,7 +15,7 @@ function createCtx(input: string) {
 }
 
 function getObjectParams(node: ObjectNode): AstNode[] {
-  return node[1][1]
+  return node[1]
 }
 
 describe('parseObject', () => {
@@ -24,8 +23,7 @@ describe('parseObject', () => {
     it('should return a SpecialExpression node with object type', () => {
       const ctx = createCtx('{}')
       const result = parseObject(ctx)
-      expect(result[0]).toBe(NodeTypes.SpecialExpression)
-      expect(result[1][0]).toBe(specialExpressionTypes.object)
+      expect(result[0]).toBe(NodeTypes.Object)
     })
 
     it('should have no params', () => {
@@ -216,8 +214,7 @@ describe('parseObject', () => {
       const ctx = createCtx('{ a: { b: 1 } }')
       const result = parseObject(ctx)
       const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.SpecialExpression)
-      expect((params[1]![1] as [number, AstNode[]])[0]).toBe(specialExpressionTypes.object)
+      expect(params[1]![0]).toBe(NodeTypes.Object)
     })
 
     it('should parse deeply nested objects', () => {
@@ -225,8 +222,8 @@ describe('parseObject', () => {
       const result = parseObject(ctx)
       const params = getObjectParams(result)
       const innerObject = params[1]!
-      const innerParams = (innerObject[1] as [number, AstNode[]])[1]
-      expect(innerParams[1]![0]).toBe(NodeTypes.SpecialExpression)
+      const innerParams = innerObject[1] as AstNode[]
+      expect(innerParams[1]![0]).toBe(NodeTypes.Object)
     })
   })
 

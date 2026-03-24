@@ -1,28 +1,27 @@
 import type { ContextStack } from '../../evaluator/ContextStack'
+import type { NodeTypes } from '../../constants/constants'
 import type { Context } from '../../evaluator/interface'
 import type { GetUndefinedSymbols, UndefinedSymbols } from '../../getUndefinedSymbols'
 import type {
   DvalaFunction,
-  SpecialExpressionNode,
 } from '../../parser/types'
 import { addToSet } from '../../utils'
 import { getAllBindingTargetNames, walkDefaults } from '../bindingNode'
 import type { Builtin, BuiltinSpecialExpression } from '../interface'
 import type { Function } from '../utils'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type LambdaNode = SpecialExpressionNode<[typeof specialExpressionTypes['function'], Function]>
+export type LambdaNode = [typeof NodeTypes.Function, Function, number]
 
 export const lambdaSpecialExpression: BuiltinSpecialExpression<DvalaFunction, LambdaNode> = {
   arity: {},
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const fn = node[1][1]
+    const fn = node[1]
     return getFunctionUnresolvedSymbols(fn, contextStack, getUndefinedSymbols, builtin)
   },
 
 }
 
-function getFunctionUnresolvedSymbols(
+export function getFunctionUnresolvedSymbols(
   fn: Function,
   contextStack: ContextStack,
   getUndefinedSymbols: GetUndefinedSymbols,

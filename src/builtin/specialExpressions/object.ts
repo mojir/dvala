@@ -1,10 +1,10 @@
 import type { Any, Obj } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { assertString } from '../../typeGuards/string'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type ObjectNode = SpecialExpressionNode<[typeof specialExpressionTypes['object'], AstNode[]]>
+export type ObjectNode = [typeof NodeTypes.Object, AstNode[], number]
 
 const docs: FunctionDocs = {
   category: 'special-expression',
@@ -57,5 +57,5 @@ export const objectSpecialExpression: BuiltinSpecialExpression<Any, ObjectNode> 
 
     return result
   },
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1][1], contextStack, builtin),
+  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin),
 }

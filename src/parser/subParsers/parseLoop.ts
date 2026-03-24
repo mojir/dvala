@@ -1,5 +1,4 @@
 import type { LoopNode } from '../../builtin/specialExpressions/loop'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { BindingNode } from '../types'
@@ -41,7 +40,7 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
 
   const expression = ctx.parseExpression()
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.loop, bindingNodes, expression], 0], firstToken[2], ctx) as LoopNode
+  const node = withSourceCodeInfo([NodeTypes.Loop, [bindingNodes, expression], 0], firstToken[2], ctx) as LoopNode
   ctx.setNodeEnd(node[2])
   return node
 }

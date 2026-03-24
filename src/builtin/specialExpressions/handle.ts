@@ -1,15 +1,15 @@
 import type { Any } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
 /**
- * HandleNode: [type, bodyExprs, handlersExpr]
+ * HandleNode: ["Handle", [bodyExprs, handlersExpr], nodeId]
  * - bodyExprs: array of body expression AST nodes
  * - handlersExpr: single expression evaluating to a handler function or list of handler functions
  */
-export type HandleNode = SpecialExpressionNode<[typeof specialExpressionTypes['handle'], AstNode[], AstNode]>
+export type HandleNode = [typeof NodeTypes.Handle, [AstNode[], AstNode], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -41,7 +41,7 @@ export const handleSpecialExpression: BuiltinSpecialExpression<Any, HandleNode> 
   arity: { min: 0 },
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const [, bodyExprs, handlersExpr] = node[1]
+    const [bodyExprs, handlersExpr] = node[1] as [AstNode[], AstNode]
     const bodyResult = getUndefinedSymbols(bodyExprs, contextStack, builtin)
     const handlersResult = getUndefinedSymbols([handlersExpr], contextStack, builtin)
     return joinSets(bodyResult, handlersResult)

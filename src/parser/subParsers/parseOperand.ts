@@ -320,11 +320,11 @@ function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo
   const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.NormalExpression, [nxtSym, [effSym, argSym]], 0], debugInfo, ctx)
 
   // Build if: if condition then body else nxt(eff, arg) end
-  const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.if, [condition, body, elseExpr]], 0], debugInfo, ctx)
+  const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.If, [condition, body, elseExpr], 0], debugInfo, ctx)
 
   // Build lambda: (arg, eff, nxt) -> ifExpr
   const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [args, [ifExpr]]], 0], debugInfo, ctx)
+  const node = withSourceCodeInfo([NodeTypes.Function, [args, [ifExpr]], 0], debugInfo, ctx)
   ctx.setNodeEnd(node[2])
   return node
 }

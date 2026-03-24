@@ -1,5 +1,4 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
@@ -35,19 +34,16 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
     if (isReservedSymbolToken(ctx.peek(), 'do')) {
       const doNode = parseDo(ctx)
       // Plain do...end: unwrap body expressions for multi-statement lambdas.
-      nodes = doNode[1][1]
+      nodes = doNode[1] as AstNode[]
     } else {
       nodes = [ctx.parseExpression()]
     }
 
     const node = withSourceCodeInfo([
-      NodeTypes.SpecialExpression,
+      NodeTypes.Function,
       [
-        specialExpressionTypes['function'],
-        [
-          functionArguments,
-          nodes,
-        ],
+        functionArguments,
+        nodes,
       ],
       0,
     ], firstToken[2], ctx) as LambdaNode
@@ -112,7 +108,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   if (isReservedSymbolToken(ctx.peek(), 'do')) {
     const doNode = parseDo(ctx)
     // Plain do...end: unwrap body expressions.
-    nodes = doNode[1][1]
+    nodes = doNode[1] as AstNode[]
   } else {
     nodes = [ctx.parseExpression()]
   }
@@ -145,10 +141,10 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
     functionArguments.push(withSourceCodeInfo([bindingTargetTypes.symbol, [[NodeTypes.UserDefinedSymbol, name, 0] as UserDefinedSymbolNode, undefined], 0], firstToken[2], ctx))
   }
 
-  const node: LambdaNode = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes['function'], [
+  const node: LambdaNode = withSourceCodeInfo([NodeTypes.Function, [
     functionArguments,
     nodes,
-  ]], 0], firstToken[2], ctx) as LambdaNode
+  ], 0], firstToken[2], ctx) as LambdaNode
 
   ctx.setNodeEnd(node[2])
   return node

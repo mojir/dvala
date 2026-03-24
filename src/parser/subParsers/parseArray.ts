@@ -1,5 +1,4 @@
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { asLBracketToken, assertRBracketToken, isOperatorToken, isRBracketToken } from '../../tokenizer/token'
@@ -30,7 +29,7 @@ export function parseArray(ctx: ParserContext): ArrayNode {
   assertRBracketToken(ctx.tryPeek())
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.array, params], 0], firstToken[2], ctx)
+  const node = withSourceCodeInfo([NodeTypes.Array, params, 0], firstToken[2], ctx)
   ctx.setNodeEnd(node[2])
-  return node
+  return node as ArrayNode
 }

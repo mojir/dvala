@@ -1,10 +1,10 @@
 import type { Arr } from '../../interface'
-import type { AstNode, SpecialExpressionNode } from '../../parser/types'
+import type { AstNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type ParallelNode = SpecialExpressionNode<[typeof specialExpressionTypes['parallel'], AstNode[]]>
+export type ParallelNode = [typeof NodeTypes.Parallel, AstNode[], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
@@ -25,7 +25,7 @@ export const parallelSpecialExpression: BuiltinSpecialExpression<Arr, ParallelNo
   arity: { min: 1 },
   docs,
   getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const branches = node[1][1] as AstNode[]
+    const branches = node[1] as AstNode[]
     const sets = branches.map(branch => getUndefinedSymbols([branch], contextStack, builtin))
     return joinSets(...sets)
   },

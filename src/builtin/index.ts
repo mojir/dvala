@@ -2,9 +2,7 @@ import type { Builtin } from './interface'
 import { normalExpressions } from './normalExpressions'
 import { andSpecialExpression } from './specialExpressions/and'
 import { matchSpecialExpression } from './specialExpressions/match'
-import { doSpecialExpression } from './specialExpressions/block'
 import { lambdaSpecialExpression } from './specialExpressions/functions'
-import { ifSpecialExpression } from './specialExpressions/if'
 import { letSpecialExpression } from './specialExpressions/let'
 import { loopSpecialExpression } from './specialExpressions/loop'
 import { forSpecialExpression } from './specialExpressions/loops'
@@ -26,10 +24,8 @@ export const specialExpressions = {
   [specialExpressionTypes['&&']]: andSpecialExpression,
   [specialExpressionTypes['||']]: orSpecialExpression,
   [specialExpressionTypes.array]: arraySpecialExpression,
-  [specialExpressionTypes.block]: doSpecialExpression,
   [specialExpressionTypes['function']]: lambdaSpecialExpression,
   [specialExpressionTypes.for]: forSpecialExpression,
-  [specialExpressionTypes.if]: ifSpecialExpression,
   [specialExpressionTypes.let]: letSpecialExpression,
   [specialExpressionTypes.loop]: loopSpecialExpression,
   [specialExpressionTypes.object]: objectSpecialExpression,
@@ -50,15 +46,8 @@ export type CommonSpecialExpressionType = [
   | typeof specialExpressionTypes['??']
   | typeof specialExpressionTypes['&&']
   | typeof specialExpressionTypes['match']
-  | typeof specialExpressionTypes['block']
-  | typeof specialExpressionTypes['if']
   | typeof specialExpressionTypes['||']
-  | typeof specialExpressionTypes['array']
-  | typeof specialExpressionTypes['object']
-  | typeof specialExpressionTypes['effect']
-  | typeof specialExpressionTypes['perform']
-  | typeof specialExpressionTypes['parallel']
-  | typeof specialExpressionTypes['race'],
+  | typeof specialExpressionTypes['object'],
 ]
 
 export type SpecialExpressionType = typeof specialExpressionTypes[SpecialExpressionName]

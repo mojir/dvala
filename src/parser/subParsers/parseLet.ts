@@ -1,5 +1,4 @@
 import type { LetNode } from '../../builtin/specialExpressions/let'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import type { BindingNode } from '../types'
 import type { SymbolToken } from '../../tokenizer/token'
@@ -17,7 +16,7 @@ export function parseLet(ctx: ParserContext, token: SymbolToken): LetNode {
 
   const bindingTarget: BindingNode = withSourceCodeInfo([NodeTypes.Binding, [target, value], 0], token[2], ctx) as BindingNode
   ctx.setNodeEnd(bindingTarget[2])
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.let, bindingTarget], 0], token[2], ctx) as LetNode
+  const node = withSourceCodeInfo([NodeTypes.Let, bindingTarget, 0], token[2], ctx) as LetNode
   ctx.setNodeEnd(node[2])
   return node
 }

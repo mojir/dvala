@@ -121,16 +121,24 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '|':
     case '|>':
       return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], debugInfo, ctx)
-    case '&&':
-    case '||':
+    case '&&': {
+      const node = withSourceCodeInfo([NodeTypes.And, [left, right], 0] as AndNode, debugInfo, ctx)
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    case '||': {
+      const node = withSourceCodeInfo([NodeTypes.Or, [left, right], 0], debugInfo, ctx)
+      ctx.setNodeEnd(node[2])
+      return node
+    }
     case '??': {
-      const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes[operatorName], [left, right]], 0] as AndNode, debugInfo, ctx)
+      const node = withSourceCodeInfo([NodeTypes.Qq, [left, right], 0], debugInfo, ctx)
       ctx.setNodeEnd(node[2])
       return node
     }
     case '||>': {
       // Effect pipe: expr ||> handler  →  handle expr with handler end
-      const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.handle, [left], right], 0], debugInfo, ctx) as HandleNode
+      const node = withSourceCodeInfo([NodeTypes.Handle, [[left], right], 0], debugInfo, ctx) as HandleNode
       ctx.setNodeEnd(node[2])
       return node
     }

@@ -1,5 +1,4 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
@@ -23,7 +22,7 @@ export function parseDo(ctx: ParserContext): DoNode {
 
   assertReservedSymbolToken(ctx.tryPeek(), 'end')
   ctx.advance()
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.block, expressions, undefined], 0], token[2], ctx) as DoNode
+  const node = withSourceCodeInfo([NodeTypes.Block, expressions, 0], token[2], ctx) as DoNode
   ctx.setNodeEnd(node[2])
   return node
 }

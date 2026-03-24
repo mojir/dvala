@@ -1,10 +1,9 @@
 import type { Any } from '../../interface'
-import type { SpecialExpressionNode } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type ImportNode = SpecialExpressionNode<[typeof specialExpressionTypes['import'], string]>
+export type ImportNode = [typeof NodeTypes.Import, string, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',

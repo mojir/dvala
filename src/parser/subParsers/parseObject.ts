@@ -1,5 +1,4 @@
 import type { ObjectNode } from '../../builtin/specialExpressions/object'
-import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
@@ -58,7 +57,7 @@ export function parseObject(ctx: ParserContext): ObjectNode {
   assertRBraceToken(ctx.tryPeek())
   ctx.advance()
 
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.object, params], 0], firstToken[2], ctx) as ObjectNode
+  const node = withSourceCodeInfo([NodeTypes.Object, params, 0], firstToken[2], ctx) as ObjectNode
   ctx.setNodeEnd(node[2])
   return node
 }

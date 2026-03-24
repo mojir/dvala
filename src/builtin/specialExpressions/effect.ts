@@ -1,8 +1,8 @@
-import type { EffectRef, SpecialExpressionNode } from '../../parser/types'
+import type { EffectRef } from '../../parser/types'
+import type { NodeTypes } from '../../constants/constants'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
-import type { specialExpressionTypes } from '../specialExpressionTypes'
 
-export type EffectNode = SpecialExpressionNode<[typeof specialExpressionTypes['effect'], string]>
+export type EffectNode = [typeof NodeTypes.Effect, string, number]
 
 const docs: CustomDocs = {
   category: 'special-expression',

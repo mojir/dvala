@@ -6,9 +6,7 @@ import type { EffectNode } from '../../builtin/specialExpressions/effect'
 import type { ImportNode } from '../../builtin/specialExpressions/import'
 import type { ObjectNode } from '../../builtin/specialExpressions/object'
 import type { OrNode } from '../../builtin/specialExpressions/or'
-import type { ParallelNode } from '../../builtin/specialExpressions/parallel'
 import type { PerformNode } from '../../builtin/specialExpressions/perform'
-import type { RaceNode } from '../../builtin/specialExpressions/race'
 import type { QqNode } from '../../builtin/specialExpressions/qq'
 import type { RecurNode } from '../../builtin/specialExpressions/recur'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
@@ -33,7 +31,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
 
   // Handle @dotted.name — custom parsing for dotted identifier argument
   if (isSpecialSymbolNode(symbol) && symbol[1] === specialExpressionTypes.effect) {
-    const node = parseEffectArgs(ctx, symbol, symbolSci, symbolDebugInfo)
+    const node = parseEffectArgs(ctx, symbolDebugInfo)
     ctx.setNodeEnd(node[2])
     return node
   }
@@ -72,7 +70,43 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
         throw new DvalaError('import expects a module name (symbol), got a non-symbol argument', resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci)
       }
       const moduleName = param[1]
-      const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionType, moduleName], 0], symbolDebugInfo, ctx) as ImportNode
+      const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx) as ImportNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+
+    // --- Direct node types (migrated from SpecialExpression) ---
+    if (specialExpressionType === specialExpressionTypes.recur) {
+      const node = withSourceCodeInfo([NodeTypes.Recur, params, 0], symbolDebugInfo, ctx) as RecurNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.array) {
+      const node = withSourceCodeInfo([NodeTypes.Array, params, 0], symbolDebugInfo, ctx) as ArrayNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.parallel) {
+      assertNumberOfParams({ min: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Parallel, params, 0], symbolDebugInfo, ctx) as unknown as AstNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.race) {
+      assertNumberOfParams({ min: 1 }, params.length, symbolSci)
+      const node = withSourceCodeInfo([NodeTypes.Race, params, 0], symbolDebugInfo, ctx) as unknown as AstNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.perform) {
+      assertNumberOfParams({ min: 1, max: 2 }, params.length, symbolSci)
+      const [effectExpr, payloadExpr] = params
+      const node = withSourceCodeInfo([NodeTypes.Perform, [effectExpr!, payloadExpr], 0], symbolDebugInfo, ctx) as PerformNode
+      ctx.setNodeEnd(node[2])
+      return node
+    }
+    if (specialExpressionType === specialExpressionTypes.object) {
+      const node = withSourceCodeInfo([NodeTypes.Object, params, 0], symbolDebugInfo, ctx) as ObjectNode
       ctx.setNodeEnd(node[2])
       return node
     }
@@ -80,61 +114,34 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
     const type = specialExpressionType as Exclude<
       SpecialExpressionType,
       | typeof specialExpressionTypes.for
-      | typeof specialExpressionTypes.if
       | typeof specialExpressionTypes.match
       | typeof specialExpressionTypes.let
-      | typeof specialExpressionTypes.block
       | typeof specialExpressionTypes.loop
       | typeof specialExpressionTypes.import
       | typeof specialExpressionTypes.effect
       | typeof specialExpressionTypes.handle
+      | typeof specialExpressionTypes.recur
+      | typeof specialExpressionTypes.array
+      | typeof specialExpressionTypes.perform
+      | typeof specialExpressionTypes.object
+      | typeof specialExpressionTypes.parallel
+      | typeof specialExpressionTypes.race
     >
     const specialExpression: SpecialExpression = builtin.specialExpressions[type]
     assertNumberOfParams(specialExpression.arity, params.length, symbolSci)
     switch (type) {
       case specialExpressionTypes['||']: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as OrNode
+        const node = withSourceCodeInfo([NodeTypes.Or, params, 0], symbolDebugInfo, ctx) as OrNode
         ctx.setNodeEnd(node[2])
         return node
       }
       case specialExpressionTypes['&&']: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as AndNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.recur: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as RecurNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.array: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as ArrayNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.object: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as ObjectNode
+        const node = withSourceCodeInfo([NodeTypes.And, params, 0], symbolDebugInfo, ctx) as AndNode
         ctx.setNodeEnd(node[2])
         return node
       }
       case specialExpressionTypes['??']: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as QqNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.perform: {
-        const [effectExpr, payloadExpr] = params
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, effectExpr!, payloadExpr], 0], symbolDebugInfo, ctx) as PerformNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.parallel: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as ParallelNode
-        ctx.setNodeEnd(node[2])
-        return node
-      }
-      case specialExpressionTypes.race: {
-        const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [type, params], 0], symbolDebugInfo, ctx) as RaceNode
+        const node = withSourceCodeInfo([NodeTypes.Qq, params, 0], symbolDebugInfo, ctx) as QqNode
         ctx.setNodeEnd(node[2])
         return node
       }
@@ -160,7 +167,7 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
  * or `com.myco.human.approve`. Consumes symbol tokens separated by `.` and
  * builds the full name string.
  */
-function parseEffectArgs(ctx: ParserContext, _symbol: AstNode, _symbolSci: ReturnType<typeof resolveSourceCodeInfo>, symbolDebugInfo: TokenDebugInfo | undefined): EffectNode {
+function parseEffectArgs(ctx: ParserContext, symbolDebugInfo: TokenDebugInfo | undefined): EffectNode {
   const firstToken = ctx.peek()
   if (!isSymbolToken(firstToken)) {
     throw new DvalaError('effect expects a dotted name identifier', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
@@ -180,7 +187,7 @@ function parseEffectArgs(ctx: ParserContext, _symbol: AstNode, _symbolSci: Retur
     throw new DvalaError('Expected closing parenthesis after effect name', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
-  const node = withSourceCodeInfo([NodeTypes.SpecialExpression, [specialExpressionTypes.effect, name], 0], symbolDebugInfo, ctx) as EffectNode
+  const node = withSourceCodeInfo([NodeTypes.Effect, name, 0], symbolDebugInfo, ctx) as EffectNode
   ctx.setNodeEnd(node[2])
   return node
 }

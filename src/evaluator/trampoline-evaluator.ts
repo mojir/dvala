@@ -35,7 +35,6 @@ import {
 } from '../builtin/matchSlot'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
-import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
 import { DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
@@ -244,6 +243,346 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode, env), k }
     case NodeTypes.NormalExpression:
       return stepNormalExpression(node as NormalExpressionNode, env, k)
+    case NodeTypes.If: {
+      const [conditionNode, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode?]
+      const frame: IfBranchFrame = {
+        type: 'IfBranch',
+        thenNode,
+        elseNode,
+        env,
+        sourceCodeInfo: env.resolve(node[2]),
+      }
+      return { type: 'Eval', node: conditionNode, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Block: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      const newContext: Context = {}
+      const newEnv = env.create(newContext)
+      if (nodes.length === 0) {
+        return { type: 'Value', value: null, k }
+      }
+      if (nodes.length === 1) {
+        return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
+      }
+      const frame: SequenceFrame = {
+        type: 'Sequence',
+        nodes,
+        index: 1,
+        env: newEnv,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...k] }
+    }
+    case NodeTypes.Effect:
+      return { type: 'Value', value: getEffectRef(node[1] as string), k }
+    case NodeTypes.Recur: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return handleRecur([], k, sourceCodeInfo)
+      }
+      const frame: RecurFrame = {
+        type: 'Recur',
+        nodes,
+        index: 1,
+        params: [],
+        env,
+        sourceCodeInfo,
+      }
+      if (nodes.length === 1) {
+        // Only one param — evaluate it, then recur
+        const singleFrame: RecurFrame = { ...frame, index: 1 }
+        return { type: 'Eval', node: nodes[0]!, env, k: [singleFrame, ...k] }
+      }
+      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Array: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return { type: 'Value', value: [], k }
+      }
+      const firstNode = nodes[0]!
+      const isFirstSpread = isSpreadNode(firstNode)
+      const frame: ArrayBuildFrame = {
+        type: 'ArrayBuild',
+        nodes,
+        index: 0,
+        result: [],
+        isSpread: isFirstSpread,
+        env,
+        sourceCodeInfo,
+      }
+      return {
+        type: 'Eval',
+        node: isFirstSpread ? firstNode[1] : firstNode,
+        env,
+        k: [frame, ...k],
+      }
+    }
+    case NodeTypes.Parallel: {
+      const branches = node[1] as AstNode[]
+      return { type: 'Parallel', branches, env, k }
+    }
+    case NodeTypes.Race: {
+      const branches = node[1] as AstNode[]
+      return { type: 'Race', branches, env, k }
+    }
+    case NodeTypes.Perform: {
+      const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]
+      const sourceCodeInfo = env.resolve(node[2])
+      const allNodes = payloadExpr ? [effectExpr, payloadExpr] : [effectExpr]
+      const frame: PerformArgsFrame = {
+        type: 'PerformArgs',
+        argNodes: allNodes,
+        index: 1,
+        params: [],
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: allNodes[0]!, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Handle: {
+      const [bodyExprs, handlersExpr] = node[1] as [AstNode[], AstNode]
+      const sourceCodeInfo = env.resolve(node[2])
+      const setupFrame: HandleSetupFrame = {
+        type: 'HandleSetup',
+        bodyExprs,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: handlersExpr, env, k: [setupFrame, ...k] }
+    }
+    case NodeTypes.Let: {
+      const bindingNode = node[1] as BindingNode
+      const target = bindingNode[1][0]
+      const valueNode = bindingNode[1][1]
+      const sourceCodeInfo = env.resolve(node[2])
+      const frame: LetBindFrame = {
+        type: 'LetBind',
+        target,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: valueNode, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Function: {
+      const fn = node[1] as [BindingTarget[], AstNode[], ...unknown[]]
+      const evaluatedFunc = evaluateFunction(fn, env)
+      const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
+      const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
+      const arity = { min: min > 0 ? min : undefined, max }
+      const dvalaFunction: DvalaFunction = {
+        [FUNCTION_SYMBOL]: true,
+        sourceCodeInfo: env.resolve(node[2]),
+        functionType: 'UserDefined',
+        name: undefined,
+        evaluatedfunction: evaluatedFunc,
+        arity,
+        docString: '',
+      }
+      return { type: 'Value', value: dvalaFunction, k }
+    }
+    case NodeTypes.Object: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return { type: 'Value', value: {}, k }
+      }
+      const firstNode = nodes[0]!
+      const isFirstSpread = isSpreadNode(firstNode)
+      const frame: ObjectBuildFrame = {
+        type: 'ObjectBuild',
+        nodes,
+        index: 0,
+        result: {},
+        currentKey: null,
+        isSpread: isFirstSpread,
+        env,
+        sourceCodeInfo,
+      }
+      return {
+        type: 'Eval',
+        node: isFirstSpread ? firstNode[1] : firstNode,
+        env,
+        k: [frame, ...k],
+      }
+    }
+    case NodeTypes.And: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return { type: 'Value', value: true, k }
+      }
+      const frame: AndFrame = {
+        type: 'And',
+        nodes,
+        index: 1,
+        env,
+        sourceCodeInfo,
+      }
+      if (nodes.length === 1) {
+        return { type: 'Eval', node: nodes[0]!, env, k }
+      }
+      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Or: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return { type: 'Value', value: false, k }
+      }
+      const frame: OrFrame = {
+        type: 'Or',
+        nodes,
+        index: 1,
+        env,
+        sourceCodeInfo,
+      }
+      if (nodes.length === 1) {
+        return { type: 'Eval', node: nodes[0]!, env, k }
+      }
+      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Qq: {
+      const nodes = node[1] as AstNode[]
+      const sourceCodeInfo = env.resolve(node[2])
+      if (nodes.length === 0) {
+        return { type: 'Value', value: null, k }
+      }
+      const firstNode = nodes[0]!
+      if (nodes.length === 1) {
+        return { type: 'Eval', node: firstNode, env, k }
+      }
+      const frame: QqFrame = {
+        type: 'Qq',
+        nodes,
+        index: 1,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: firstNode, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Match: {
+      const [matchValueNode, cases] = node[1] as [AstNode, MatchCase[]]
+      const sourceCodeInfo = env.resolve(node[2])
+      const frame: MatchFrame = {
+        type: 'Match',
+        phase: 'matchValue',
+        matchValue: null,
+        cases,
+        index: 0,
+        bindings: {},
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
+    }
+    case NodeTypes.Loop: {
+      const [bindingNodes, body] = node[1] as [BindingNode[], AstNode]
+      const sourceCodeInfo = env.resolve(node[2])
+      // Parser requires at least one binding — zero bindings is parser-prevented
+      /* v8 ignore start */
+      if (bindingNodes.length === 0) {
+        // No bindings — just evaluate the body with an empty context
+        const newContext: Context = {}
+        const frame: LoopIterateFrame = {
+          type: 'LoopIterate',
+          bindingNodes,
+          bindingContext: newContext,
+          body,
+          env: env.create(newContext),
+          sourceCodeInfo,
+        }
+        return { type: 'Eval', node: body, env: env.create(newContext), k: [frame, ...k] }
+      }
+      /* v8 ignore stop */
+      // Start evaluating the first binding's value
+      const frame: LoopBindFrame = {
+        type: 'LoopBind',
+        phase: 'value',
+        bindingNodes,
+        index: 0,
+        context: {},
+        body,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: bindingNodes[0]![1][1], env, k: [frame, ...k] }
+    }
+    case NodeTypes.For: {
+      const [loopBindings, body] = node[1] as [LoopBindingNode[], AstNode]
+      const sourceCodeInfo = env.resolve(node[2])
+      // Parser requires at least one loop binding — zero bindings is parser-prevented
+      /* v8 ignore next 3 */
+      if (loopBindings.length === 0) {
+        return { type: 'Value', value: [], k }
+      }
+      const context: Context = {}
+      const newEnv = env.create(context)
+      const frame: ForLoopFrame = {
+        type: 'ForLoop',
+        bindingNodes: loopBindings,
+        body,
+        result: [],
+        phase: 'evalCollection',
+        bindingLevel: 0,
+        levelStates: [],
+        context,
+        env: newEnv,
+        sourceCodeInfo,
+      }
+      // Evaluate the first binding's collection expression
+      const firstBinding = loopBindings[0]!
+      const collectionNode = firstBinding[0][1][1] // bindingNode → [target, valueNode]
+      return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
+    }
+    case NodeTypes.Import: {
+      const moduleName = node[1] as string
+      const sourceCodeInfo = env.resolve(node[2])
+      // Check for value modules first (file modules from bundles)
+      const valueModule = env.getValueModule(moduleName)
+      if (valueModule.found) {
+        return { type: 'Value', value: valueModule.value as Any, k }
+      }
+      // Fall back to builtin modules
+      const dvalaModule = env.getModule(moduleName)
+      if (!dvalaModule) {
+        throw new DvalaError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
+      }
+      const result: Obj = {}
+      for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
+        result[functionName] = {
+          [FUNCTION_SYMBOL]: true,
+          sourceCodeInfo,
+          functionType: 'Module',
+          moduleName,
+          functionName,
+          arity: expression.arity,
+        }
+      }
+      // Module source evaluation — initCoreDvalaSources pre-evaluates core module sources at startup
+      // and modules with .source are resolved before reaching this trampoline path
+      /* v8 ignore start */
+      if (dvalaModule.source) {
+        // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
+        if (!dvalaModule._cachedNodes) {
+          dvalaModule._cachedNodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
+        }
+        const nodes = dvalaModule._cachedNodes
+        const sourceEnv = env.create({})
+        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
+        if (nodes.length === 1) {
+          return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [mergeFrame, ...k] }
+        }
+        const sequenceFrame: SequenceFrame = { type: 'Sequence', nodes, index: 1, env: sourceEnv }
+        return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [sequenceFrame, mergeFrame, ...k] }
+      }
+      /* v8 ignore stop */
+      env.registerValueModule(moduleName, result)
+      return { type: 'Value', value: result, k }
+    }
     case NodeTypes.SpecialExpression:
       return stepSpecialExpression(node as SpecialExpressionNode, env, k)
     case NodeTypes.TemplateString:
@@ -341,401 +680,10 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
  * Special expressions: push a frame appropriate to the expression type
  * and return an EvalStep for the first sub-expression.
  */
-function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
+/* v8 ignore next 4 */
+function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, _k: ContinuationStack): Step | Promise<Step> {
   const sourceCodeInfo = env.resolve(node[2])
-  const type = node[1][0]
-
-  switch (type) {
-    // --- if ---
-    case specialExpressionTypes.if: {
-      const [conditionNode, thenNode, elseNode] = node[1][1] as [AstNode, AstNode, AstNode?]
-      const frame: IfBranchFrame = {
-        type: 'IfBranch',
-        thenNode,
-        elseNode,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: conditionNode, env, k: [frame, ...k] }
-    }
-
-    // --- && (and) ---
-    case specialExpressionTypes['&&']: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return { type: 'Value', value: true, k }
-      }
-      const frame: AndFrame = {
-        type: 'And',
-        nodes,
-        index: 1,
-        env,
-        sourceCodeInfo,
-      }
-      if (nodes.length === 1) {
-        return { type: 'Eval', node: nodes[0]!, env, k }
-      }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
-    }
-
-    // --- || (or) ---
-    case specialExpressionTypes['||']: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return { type: 'Value', value: false, k }
-      }
-      const frame: OrFrame = {
-        type: 'Or',
-        nodes,
-        index: 1,
-        env,
-        sourceCodeInfo,
-      }
-      if (nodes.length === 1) {
-        return { type: 'Eval', node: nodes[0]!, env, k }
-      }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
-    }
-
-    // --- ?? (nullish coalescing) ---
-    case specialExpressionTypes['??']: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return { type: 'Value', value: null, k }
-      }
-      const firstNode = nodes[0]!
-      if (nodes.length === 1) {
-        return { type: 'Eval', node: firstNode, env, k }
-      }
-      const frame: QqFrame = {
-        type: 'Qq',
-        nodes,
-        index: 1,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: firstNode, env, k: [frame, ...k] }
-    }
-
-    // --- match ---
-    case specialExpressionTypes.match: {
-      const matchValueNode = node[1][1] as AstNode
-      const cases = node[1][2] as MatchCase[]
-      const frame: MatchFrame = {
-        type: 'Match',
-        phase: 'matchValue',
-        matchValue: null,
-        cases,
-        index: 0,
-        bindings: {},
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
-    }
-
-    // --- block (do...end) ---
-    case specialExpressionTypes.block: {
-      const nodes = node[1][1] as AstNode[]
-      const newContext: Context = {}
-      const newEnv = env.create(newContext)
-
-      // Evaluate body directly
-      if (nodes.length === 0) {
-        return { type: 'Value', value: null, k }
-      }
-      if (nodes.length === 1) {
-        return { type: 'Eval', node: nodes[0]!, env: newEnv, k }
-      }
-      const frame: SequenceFrame = {
-        type: 'Sequence',
-        nodes,
-        index: 1,
-        env: newEnv,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...k] }
-    }
-
-    // --- let ---
-    case specialExpressionTypes.let: {
-      const bindingNode = node[1][1] as BindingNode
-      const target = bindingNode[1][0]
-      const valueNode = bindingNode[1][1]
-      const frame: LetBindFrame = {
-        type: 'LetBind',
-        target,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: valueNode, env, k: [frame, ...k] }
-    }
-
-    // --- loop ---
-    case specialExpressionTypes.loop: {
-      const bindingNodes = node[1][1] as BindingNode[]
-      const body = node[1][2] as AstNode
-      // Parser requires at least one binding — zero bindings is parser-prevented
-      /* v8 ignore start */
-      if (bindingNodes.length === 0) {
-        // No bindings — just evaluate the body with an empty context
-        const newContext: Context = {}
-        const frame: LoopIterateFrame = {
-          type: 'LoopIterate',
-          bindingNodes,
-          bindingContext: newContext,
-          body,
-          env: env.create(newContext),
-          sourceCodeInfo,
-        }
-        return { type: 'Eval', node: body, env: env.create(newContext), k: [frame, ...k] }
-      }
-      /* v8 ignore stop */
-      // Start evaluating the first binding's value
-      const frame: LoopBindFrame = {
-        type: 'LoopBind',
-        phase: 'value',
-        bindingNodes,
-        index: 0,
-        context: {},
-        body,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: bindingNodes[0]![1][1], env, k: [frame, ...k] }
-    }
-
-    // --- for ---
-    case specialExpressionTypes.for: {
-      const loopBindings = node[1][1] as LoopBindingNode[]
-      const body = node[1][2] as AstNode
-      // Parser requires at least one loop binding — zero bindings is parser-prevented
-      /* v8 ignore next 3 */
-      if (loopBindings.length === 0) {
-        return { type: 'Value', value: [], k }
-      }
-      const context: Context = {}
-      const newEnv = env.create(context)
-      const frame: ForLoopFrame = {
-        type: 'ForLoop',
-        bindingNodes: loopBindings,
-        body,
-        result: [],
-        phase: 'evalCollection',
-        bindingLevel: 0,
-        levelStates: [],
-        context,
-        env: newEnv,
-        sourceCodeInfo,
-      }
-      // Evaluate the first binding's collection expression
-      const firstBinding = loopBindings[0]!
-      const collectionNode = firstBinding[0][1][1] // bindingNode → [target, valueNode]
-      return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
-    }
-
-    // --- recur ---
-    case specialExpressionTypes.recur: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return handleRecur([], k, sourceCodeInfo)
-      }
-      const frame: RecurFrame = {
-        type: 'Recur',
-        nodes,
-        index: 1,
-        params: [],
-        env,
-        sourceCodeInfo,
-      }
-      if (nodes.length === 1) {
-        // Only one param — evaluate it, then recur
-        const singleFrame: RecurFrame = { ...frame, index: 1 }
-        return { type: 'Eval', node: nodes[0]!, env, k: [singleFrame, ...k] }
-      }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
-    }
-
-    // --- array ---
-    case specialExpressionTypes.array: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return { type: 'Value', value: [], k }
-      }
-      const firstNode = nodes[0]!
-      const isFirstSpread = isSpreadNode(firstNode)
-      const frame: ArrayBuildFrame = {
-        type: 'ArrayBuild',
-        nodes,
-        index: 0,
-        result: [],
-        isSpread: isFirstSpread,
-        env,
-        sourceCodeInfo,
-      }
-      return {
-        type: 'Eval',
-        node: isFirstSpread ? firstNode[1] : firstNode,
-        env,
-        k: [frame, ...k],
-      }
-    }
-
-    // --- object ---
-    case specialExpressionTypes.object: {
-      const nodes = node[1][1] as AstNode[]
-      if (nodes.length === 0) {
-        return { type: 'Value', value: {}, k }
-      }
-      const firstNode = nodes[0]!
-      const isFirstSpread = isSpreadNode(firstNode)
-      const frame: ObjectBuildFrame = {
-        type: 'ObjectBuild',
-        nodes,
-        index: 0,
-        result: {},
-        currentKey: null,
-        isSpread: isFirstSpread,
-        env,
-        sourceCodeInfo,
-      }
-      return {
-        type: 'Eval',
-        node: isFirstSpread ? firstNode[1] : firstNode,
-        env,
-        k: [frame, ...k],
-      }
-    }
-
-    // --- lambda (fn / ->) ---
-    case specialExpressionTypes['function']: {
-      const fn = node[1][1] as [BindingTarget[], AstNode[], ...unknown[]]
-      const evaluatedFunc = evaluateFunction(fn, env)
-      const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
-      const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
-      const arity = { min: min > 0 ? min : undefined, max }
-      const dvalaFunction: DvalaFunction = {
-        [FUNCTION_SYMBOL]: true,
-        sourceCodeInfo: env.resolve(node[2]),
-        functionType: 'UserDefined',
-        name: undefined,
-        evaluatedfunction: evaluatedFunc,
-        arity,
-        docString: '',
-      }
-      return { type: 'Value', value: dvalaFunction, k }
-    }
-
-    // --- import ---
-    case specialExpressionTypes.import: {
-      const moduleName = node[1][1] as string
-      // Check for value modules first (file modules from bundles)
-      const valueModule = env.getValueModule(moduleName)
-      if (valueModule.found) {
-        return { type: 'Value', value: valueModule.value as Any, k }
-      }
-      // Fall back to builtin modules
-      const dvalaModule = env.getModule(moduleName)
-      if (!dvalaModule) {
-        throw new DvalaError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
-      }
-      const result: Obj = {}
-      for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
-        result[functionName] = {
-          [FUNCTION_SYMBOL]: true,
-          sourceCodeInfo,
-          functionType: 'Module',
-          moduleName,
-          functionName,
-          arity: expression.arity,
-        }
-      }
-      // Module source evaluation — initCoreDvalaSources pre-evaluates core module sources at startup
-      // and modules with .source are resolved before reaching this trampoline path
-      /* v8 ignore start */
-      if (dvalaModule.source) {
-        // Cache parsed nodes on the module to avoid re-parsing (which would allocate new node IDs)
-        if (!dvalaModule._cachedNodes) {
-          dvalaModule._cachedNodes = parse(minifyTokenStream(tokenize(dvalaModule.source, false, undefined), { removeWhiteSpace: true }))
-        }
-        const nodes = dvalaModule._cachedNodes
-        const sourceEnv = env.create({})
-        const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
-        if (nodes.length === 1) {
-          return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [mergeFrame, ...k] }
-        }
-        const sequenceFrame: SequenceFrame = { type: 'Sequence', nodes, index: 1, env: sourceEnv }
-        return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [sequenceFrame, mergeFrame, ...k] }
-      }
-      /* v8 ignore stop */
-      env.registerValueModule(moduleName, result)
-      return { type: 'Value', value: result, k }
-    }
-
-    // --- effect ---
-    case specialExpressionTypes.effect: {
-      const effectName = node[1][1] as string
-      return { type: 'Value', value: getEffectRef(effectName), k }
-    }
-
-    // --- perform ---
-    case specialExpressionTypes.perform: {
-      const effectExpr = node[1][1] as AstNode
-      const payloadExpr = node[1][2] as AstNode | undefined
-      const allNodes = payloadExpr ? [effectExpr, payloadExpr] : [effectExpr]
-      if (allNodes.length === 1) {
-        // Only the effect expression, no payload — evaluate effect then dispatch
-        const frame: PerformArgsFrame = {
-          type: 'PerformArgs',
-          argNodes: allNodes,
-          index: 1,
-          params: [],
-          env,
-          sourceCodeInfo,
-        }
-        return { type: 'Eval', node: allNodes[0]!, env, k: [frame, ...k] }
-      }
-      const frame: PerformArgsFrame = {
-        type: 'PerformArgs',
-        argNodes: allNodes,
-        index: 1,
-        params: [],
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: allNodes[0]!, env, k: [frame, ...k] }
-    }
-
-    // --- parallel ---
-    case specialExpressionTypes.parallel: {
-      const branches = node[1][1] as AstNode[]
-      return { type: 'Parallel', branches, env, k }
-    }
-
-    // --- race ---
-    case specialExpressionTypes.race: {
-      const branches = node[1][1] as AstNode[]
-      return { type: 'Race', branches, env, k }
-    }
-
-    // --- handle...with ---
-    case specialExpressionTypes.handle: {
-      const bodyExprs = node[1][1] as AstNode[]
-      const handlersExpr = node[1][2] as AstNode
-      // First evaluate the handlers expression, then set up the HandleWithFrame
-      const setupFrame: HandleSetupFrame = {
-        type: 'HandleSetup',
-        bodyExprs,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: handlersExpr, env, k: [setupFrame, ...k] }
-    }
-
-    /* v8 ignore next 2 */
-    default:
-      throw new DvalaError(`Unknown special expression type: ${type}`, sourceCodeInfo)
-  }
+  throw new DvalaError(`Unknown special expression type: ${node[1][0]}`, sourceCodeInfo)
 }
 
 // ---------------------------------------------------------------------------
