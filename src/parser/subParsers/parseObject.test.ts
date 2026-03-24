@@ -3,7 +3,7 @@ import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { tokenize } from '../../tokenizer/tokenize'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
-import type { ObjectNode } from '../../builtin/specialExpressions/object'
+import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import type { AstNode } from '../types'
 import { createParserContext } from './parseExpression'
 import { parseObject } from './parseObject'
@@ -14,8 +14,12 @@ function createCtx(input: string) {
   return createParserContext(minified)
 }
 
-function getObjectParams(node: ObjectNode): AstNode[] {
+function getObjectEntries(node: ObjectNode): ObjectEntry[] {
   return node[1]
+}
+
+function asPair(entry: ObjectEntry): [AstNode, AstNode] {
+  return entry as [AstNode, AstNode]
 }
 
 describe('parseObject', () => {
@@ -26,10 +30,10 @@ describe('parseObject', () => {
       expect(result[0]).toBe(NodeTypes.Object)
     })
 
-    it('should have no params', () => {
+    it('should have no entries', () => {
       const ctx = createCtx('{}')
       const result = parseObject(ctx)
-      expect(getObjectParams(result)).toEqual([])
+      expect(getObjectEntries(result)).toEqual([])
     })
 
     it('should consume all tokens', () => {
@@ -43,29 +47,33 @@ describe('parseObject', () => {
     it('should parse a symbol key as a String node', () => {
       const ctx = createCtx('{ a: 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(2)
-      expect(params[0]![0]).toBe(NodeTypes.Str)
-      expect(params[0]![1]).toBe('a')
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(1)
+      const [key] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('a')
     })
 
     it('should parse the value as a Number node', () => {
       const ctx = createCtx('{ a: 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.Num)
-      expect(params[1]![1]).toBe(1)
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Num)
+      expect(value[1]).toBe(1)
     })
 
     it('should parse multiple symbol keys', () => {
       const ctx = createCtx('{ a: 1, b: 2 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(4)
-      expect(params[0]![1]).toBe('a')
-      expect(params[1]![1]).toBe(1)
-      expect(params[2]![1]).toBe('b')
-      expect(params[3]![1]).toBe(2)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(2)
+      const [key1, val1] = asPair(entries[0]!)
+      expect(key1[1]).toBe('a')
+      expect(val1[1]).toBe(1)
+      const [key2, val2] = asPair(entries[1]!)
+      expect(key2[1]).toBe('b')
+      expect(val2[1]).toBe(2)
     })
 
     it('should consume all tokens', () => {
@@ -79,23 +87,26 @@ describe('parseObject', () => {
     it('should parse a double-quoted string key', () => {
       const ctx = createCtx('{ "foo": 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[0]![0]).toBe(NodeTypes.Str)
-      expect(params[0]![1]).toBe('foo')
+      const entries = getObjectEntries(result)
+      const [key] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('foo')
     })
 
     it('should parse a string key with spaces', () => {
       const ctx = createCtx('{ " ": 10 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[0]![1]).toBe(' ')
+      const entries = getObjectEntries(result)
+      const [key] = asPair(entries[0]!)
+      expect(key[1]).toBe(' ')
     })
 
     it('should parse a string key with escape sequences', () => {
       const ctx = createCtx('{ "a\\nb": 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[0]![1]).toBe('a\nb')
+      const entries = getObjectEntries(result)
+      const [key] = asPair(entries[0]!)
+      expect(key[1]).toBe('a\nb')
     })
   })
 
@@ -103,9 +114,10 @@ describe('parseObject', () => {
     it('should parse a quoted symbol key and strip quotes', () => {
       const ctx = createCtx('{ \'foo bar\': 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[0]![0]).toBe(NodeTypes.Str)
-      expect(params[0]![1]).toBe('foo bar')
+      const entries = getObjectEntries(result)
+      const [key] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('foo bar')
     })
   })
 
@@ -113,18 +125,20 @@ describe('parseObject', () => {
     it('should parse a computed key with a string expression', () => {
       const ctx = createCtx('{ ["a"]: 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
+      const entries = getObjectEntries(result)
       // Computed key is the parsed expression (String node)
-      expect(params[0]![0]).toBe(NodeTypes.Str)
-      expect(params[0]![1]).toBe('a')
+      const [key] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('a')
     })
 
     it('should parse a computed key with a complex expression', () => {
       const ctx = createCtx('{ ["a" ++ "b"]: 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
+      const entries = getObjectEntries(result)
       // Computed key is a NormalExpression for ++
-      expect(params[0]![0]).toBe(NodeTypes.Call)
+      const [key] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Call)
     })
 
     it('should consume the closing bracket', () => {
@@ -138,17 +152,18 @@ describe('parseObject', () => {
     it('should parse spread as a Spread node', () => {
       const ctx = createCtx('{ ...x }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(1)
-      expect(params[0]![0]).toBe(NodeTypes.Spread)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(1)
+      expect((entries[0]! as AstNode)[0]).toBe(NodeTypes.Spread)
     })
 
     it('should parse spread payload as the expression', () => {
       const ctx = createCtx('{ ...x }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
+      const entries = getObjectEntries(result)
       // Spread payload is a Sym node for 'x'
-      const spreadPayload = params[0]![1] as AstNode
+      const spreadNode = entries[0]! as AstNode
+      const spreadPayload = spreadNode[1] as AstNode
       expect(spreadPayload[0]).toBe(NodeTypes.Sym)
       expect(spreadPayload[1]).toBe('x')
     })
@@ -156,22 +171,23 @@ describe('parseObject', () => {
     it('should parse spread mixed with key-value pairs', () => {
       const ctx = createCtx('{ ...x, a: 1 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(3)
-      expect(params[0]![0]).toBe(NodeTypes.Spread)
-      expect(params[1]![0]).toBe(NodeTypes.Str)
-      expect(params[1]![1]).toBe('a')
-      expect(params[2]![0]).toBe(NodeTypes.Num)
-      expect(params[2]![1]).toBe(1)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(2)
+      expect((entries[0]! as AstNode)[0]).toBe(NodeTypes.Spread)
+      const [key, value] = asPair(entries[1]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('a')
+      expect(value[0]).toBe(NodeTypes.Num)
+      expect(value[1]).toBe(1)
     })
 
     it('should parse multiple spreads', () => {
       const ctx = createCtx('{ ...x, ...y }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(2)
-      expect(params[0]![0]).toBe(NodeTypes.Spread)
-      expect(params[1]![0]).toBe(NodeTypes.Spread)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(2)
+      expect((entries[0]! as AstNode)[0]).toBe(NodeTypes.Spread)
+      expect((entries[1]! as AstNode)[0]).toBe(NodeTypes.Spread)
     })
   })
 
@@ -179,33 +195,37 @@ describe('parseObject', () => {
     it('should parse arithmetic expression values', () => {
       const ctx = createCtx('{ a: 2 + 3 }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
+      const entries = getObjectEntries(result)
       // Value is a NormalExpression node for +
-      expect(params[1]![0]).toBe(NodeTypes.Call)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Call)
     })
 
     it('should parse boolean values', () => {
       const ctx = createCtx('{ a: true }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.Reserved)
-      expect(params[1]![1]).toBe('true')
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Reserved)
+      expect(value[1]).toBe('true')
     })
 
     it('should parse null values', () => {
       const ctx = createCtx('{ a: null }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.Reserved)
-      expect(params[1]![1]).toBe('null')
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Reserved)
+      expect(value[1]).toBe('null')
     })
 
     it('should parse string values', () => {
       const ctx = createCtx('{ a: "hello" }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.Str)
-      expect(params[1]![1]).toBe('hello')
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Str)
+      expect(value[1]).toBe('hello')
     })
   })
 
@@ -213,17 +233,19 @@ describe('parseObject', () => {
     it('should parse nested object as a SpecialExpression', () => {
       const ctx = createCtx('{ a: { b: 1 } }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params[1]![0]).toBe(NodeTypes.Object)
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      expect(value[0]).toBe(NodeTypes.Object)
     })
 
     it('should parse deeply nested objects', () => {
       const ctx = createCtx('{ a: { b: { c: 1 } } }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      const innerObject = params[1]!
-      const innerParams = innerObject[1] as AstNode[]
-      expect(innerParams[1]![0]).toBe(NodeTypes.Object)
+      const entries = getObjectEntries(result)
+      const [, value] = asPair(entries[0]!)
+      const innerEntries = value[1] as ObjectEntry[]
+      const [, innerValue] = asPair(innerEntries[0]!)
+      expect(innerValue[0]).toBe(NodeTypes.Object)
     })
   })
 
@@ -231,16 +253,16 @@ describe('parseObject', () => {
     it('should allow trailing comma', () => {
       const ctx = createCtx('{ a: 1, b: 2, }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(4)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(2)
       expect(ctx.isAtEnd()).toBe(true)
     })
 
     it('should allow trailing comma with single entry', () => {
       const ctx = createCtx('{ a: 1, }')
       const result = parseObject(ctx)
-      const params = getObjectParams(result)
-      expect(params).toHaveLength(2)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(1)
     })
   })
 

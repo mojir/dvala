@@ -169,20 +169,20 @@ export interface ArrayBuildFrame {
 /**
  * Object literal construction (`{}` / `object`).
  *
- * Evaluates key-value pairs sequentially. For normal entries, evaluates
- * key then value (stepping by 2). For spread entries, evaluates the spread
- * expression and merges the result into `result`.
+ * Evaluates entries sequentially. Each entry is either a `[keyNode, valueNode]`
+ * pair or a `SpreadNode`. For pairs, evaluates key then value. For spreads,
+ * evaluates the spread expression and merges the result into `result`.
  *
  * `currentKey` holds the evaluated key string when we're between key and
- * value evaluation (null otherwise).
+ * value evaluation within a pair (null otherwise).
  */
 export interface ObjectBuildFrame {
   type: 'ObjectBuild'
-  nodes: AstNode[]
-  index: number // current position in nodes array
+  entries: (AstNode[] | AstNode)[] // paired entries or spread nodes
+  index: number // current entry index
   result: Obj // accumulated object
   currentKey: string | null // evaluated key awaiting its value
-  isSpread: boolean // whether current node is a spread
+  isSpread: boolean // whether current entry is a spread
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }

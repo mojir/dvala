@@ -4,7 +4,7 @@ import type { AndNode } from '../../builtin/specialExpressions/and'
 import type { ArrayNode } from '../../builtin/specialExpressions/array'
 import type { EffectNode } from '../../builtin/specialExpressions/effect'
 import type { ImportNode } from '../../builtin/specialExpressions/import'
-import type { ObjectNode } from '../../builtin/specialExpressions/object'
+import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import type { OrNode } from '../../builtin/specialExpressions/or'
 import type { PerformNode } from '../../builtin/specialExpressions/perform'
 import type { QqNode } from '../../builtin/specialExpressions/qq'
@@ -16,7 +16,7 @@ import type { AstNode, NormalExpressionNodeExpression } from '../types'
 import { resolveSourceCodeInfo } from '../types'
 import type { TokenDebugInfo } from '../../tokenizer/token'
 import { isOperatorToken, isRParenToken, isSymbolToken, sourceCodeInfoToDebugInfo } from '../../tokenizer/token'
-import { isBuiltinSymbolNode, isSpecialSymbolNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
+import { isBuiltinSymbolNode, isSpecialSymbolNode, isSpreadNode, isUserDefinedSymbolNode } from '../../typeGuards/astNode'
 import { assertNumberOfParams } from '../../utils/arity'
 import { createNamedNormalExpressionNode, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
@@ -106,7 +106,25 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       return node
     }
     if (specialExpressionType === specialExpressionTypes.object) {
-      const node = withSourceCodeInfo([NodeTypes.Object, params, 0], symbolDebugInfo, ctx) as ObjectNode
+      // Pair up flat alternating key/value params into ObjectEntry pairs
+      // Spread nodes stay as-is
+      const entries: ObjectEntry[] = []
+      let i = 0
+      while (i < params.length) {
+        const param = params[i]!
+        if (isSpreadNode(param)) {
+          entries.push(param)
+          i += 1
+        } else {
+          const valueParam = params[i + 1]
+          if (valueParam === undefined) {
+            throw new DvalaError('object() requires an even number of non-spread arguments (key-value pairs)', symbolSci)
+          }
+          entries.push([param, valueParam])
+          i += 2
+        }
+      }
+      const node = withSourceCodeInfo([NodeTypes.Object, entries, 0], symbolDebugInfo, ctx) as ObjectNode
       ctx.setNodeEnd(node[2])
       return node
     }

@@ -132,8 +132,21 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
         getUndefinedSymbols([handlersExpr], contextStack, builtin),
       )
     }
-    case NodeTypes.Object:
-      return getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin)
+    case NodeTypes.Object: {
+      const objectEntries = node[1] as (AstNode[] | AstNode)[]
+      const allNodes: AstNode[] = []
+      for (const entry of objectEntries) {
+        if (Array.isArray(entry) && Array.isArray(entry[0])) {
+          // Key-value pair: [keyNode, valueNode]
+          const [key, value] = entry as [AstNode, AstNode]
+          allNodes.push(key, value)
+        } else {
+          // SpreadNode
+          allNodes.push(entry as SpreadNode)
+        }
+      }
+      return getUndefinedSymbols(allNodes, contextStack, builtin)
+    }
     case NodeTypes.And:
     case NodeTypes.Or:
     case NodeTypes.Qq:

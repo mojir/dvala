@@ -55,6 +55,7 @@ import type {
   ReservedNode,
   SourceMap,
   SpecialExpressionNode,
+  SpreadNode,
   StringNode,
   SymbolNode,
   TemplateStringNode,
@@ -382,16 +383,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: dvalaFunction, k }
     }
     case NodeTypes.Object: {
-      const nodes = node[1] as AstNode[]
+      const entries = node[1] as (AstNode[] | AstNode)[]
       const sourceCodeInfo = env.resolve(node[2])
-      if (nodes.length === 0) {
+      if (entries.length === 0) {
         return { type: 'Value', value: {}, k }
       }
-      const firstNode = nodes[0]!
-      const isFirstSpread = isSpreadNode(firstNode)
+      const firstEntry = entries[0]!
+      const isFirstSpread = isSpreadNode(firstEntry as AstNode)
       const frame: ObjectBuildFrame = {
         type: 'ObjectBuild',
-        nodes,
+        entries,
         index: 0,
         result: {},
         currentKey: null,
@@ -401,7 +402,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
       return {
         type: 'Eval',
-        node: isFirstSpread ? firstNode[1] : firstNode,
+        node: isFirstSpread ? (firstEntry as SpreadNode)[1] : (firstEntry as [AstNode, AstNode])[0],
         env,
         k: [frame, ...k],
       }
@@ -1378,7 +1379,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
 }
 
 function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationStack): Step {
-  const { nodes, result, env, sourceCodeInfo } = frame
+  const { entries, result, env, sourceCodeInfo } = frame
 
   if (frame.isSpread) {
     // Spread value should be an object
@@ -1388,43 +1389,41 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     Object.assign(result, value)
     // Advance to next entry
     const nextIndex = frame.index + 1
-    if (nextIndex >= nodes.length) {
+    if (nextIndex >= entries.length) {
       return { type: 'Value', value: result, k }
     }
-    const nextNode = nodes[nextIndex]!
-    const isNextSpread = isSpreadNode(nextNode)
+    const nextEntry = entries[nextIndex]!
+    const isNextSpread = isSpreadNode(nextEntry as AstNode)
     const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, currentKey: null, isSpread: isNextSpread }
     return {
       type: 'Eval',
-      node: isNextSpread ? nextNode[1] : nextNode,
+      node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
       env,
       k: [newFrame, ...k],
     }
   }
 
   if (frame.currentKey === null) {
-    // We just evaluated a key expression
+    // We just evaluated a key expression — now evaluate the value
     assertString(value, sourceCodeInfo)
-    const valueNode = nodes[frame.index + 1]
-    if (valueNode === undefined) {
-      throw new DvalaError('Missing value for key', sourceCodeInfo)
-    }
+    const pair = entries[frame.index] as [AstNode, AstNode]
+    const valueNode = pair[1]
     const newFrame: ObjectBuildFrame = { ...frame, currentKey: value }
     return { type: 'Eval', node: valueNode, env, k: [newFrame, ...k] }
   } else {
     // We just evaluated a value expression
     result[frame.currentKey] = value
-    // Advance to next key-value pair
-    const nextIndex = frame.index + 2
-    if (nextIndex >= nodes.length) {
+    // Advance to next entry
+    const nextIndex = frame.index + 1
+    if (nextIndex >= entries.length) {
       return { type: 'Value', value: result, k }
     }
-    const nextNode = nodes[nextIndex]!
-    const isNextSpread = isSpreadNode(nextNode)
+    const nextEntry = entries[nextIndex]!
+    const isNextSpread = isSpreadNode(nextEntry as AstNode)
     const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, currentKey: null, isSpread: isNextSpread }
     return {
       type: 'Eval',
-      node: isNextSpread ? nextNode[1] : nextNode,
+      node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
       env,
       k: [newFrame, ...k],
     }
