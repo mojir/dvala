@@ -367,6 +367,25 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
+  'macroexpand': {
+    evaluate: (): never => { throw new Error('macroexpand is handled by the evaluator') },
+    arity: { min: 1 },
+    docs: {
+      category: 'meta',
+      returns: { type: 'any' },
+      args: {
+        macroFn: { type: 'any', description: 'A macro function.' },
+        args: { type: 'any', description: 'AST node arguments to pass to the macro.' },
+      },
+      variants: [{ argumentNames: ['macroFn', 'args'] }],
+      hideOperatorForm: true,
+      description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use code templates to construct the AST arguments.',
+      examples: [
+        'let double = macro (ast) -> ```${ast} + ${ast}```; macroexpand(double, ```21```)',
+        'let { prettyPrint } = import(ast); let double = macro (ast) -> ```${ast} + ${ast}```; macroexpand(double, ```21```) |> prettyPrint',
+      ],
+    },
+  },
   'qualifiedName': {
     evaluate: ([first]): string | null => {
       // Effect references have a qualified name
