@@ -30,19 +30,44 @@ Macros are functions that receive AST and return AST. They use the same call syn
 The only new keyword. Tells the evaluator: when this function is called, pass arguments as AST instead of evaluating them.
 
 ```dvala
-let memoize = macro (ast) -> do
+let memoize = macro "mylib.memoize" (ast) -> do
   // ast is the AST of the argument, not its evaluated value
   // returns new AST
 end;
 ```
 
+The first argument to `macro` is a **qualified name** — a dotted DNS-style identifier that uniquely identifies the macro across platforms and serialization boundaries. This is the same naming convention used by effects (see [QualifiedName design](2026-03-25_qualified-name.md)).
+
+The qualified name is required for macros that need to be identifiable by host-level handlers. Anonymous macros (without a qualified name) are also allowed for local/throwaway use:
+
+```dvala
+// Named macro — identifiable by host handlers
+let memoize = macro "mylib.memoize" (ast) -> ...;
+
+// Anonymous macro — local use only
+let id = macro (ast) -> ast;
+```
+
+### Named vs anonymous macro expansion
+
+Named macros (with a qualified name) emit `@dvala.macro.expand` when called — the host can intercept, log, cache, or sandbox the expansion. Anonymous macros are called directly with no effect — they're invisible to the host and skip the effect overhead entirely.
+
+| Macro type | Expansion mechanism | Host visible | Effect overhead |
+|---|---|---|---|
+| Named: `macro "name" (ast) -> ...` | `perform(@dvala.macro.expand, { fn, args })` | Yes | Yes |
+| Anonymous: `macro (ast) -> ...` | Direct call (no effect) | No | None |
+
+Giving a macro a qualified name is an explicit opt-in to host observability. Anonymous macros are local, fast, and private.
+
 A macro is a distinct type:
 
 ```dvala
-typeOf(memoize)      // → "macro"
-isMacro(memoize)     // → true
-isFunction(memoize)  // → false
-doc(memoize)         // → { type: "macro", description: "...", ... }
+typeOf(memoize)           // → "macro"
+isMacro(memoize)          // → true
+isFunction(memoize)       // → false
+qualifiedName(memoize)    // → "mylib.memoize"
+qualifiedName(id)         // → null (anonymous)
+doc(memoize)              // → { type: "macro", description: "...", ... }
 ```
 
 ### Core operators as macros
@@ -346,7 +371,7 @@ When the evaluator encounters a call to a macro, it performs an effect:
 ├──────────────────────────────────────────────────────┤
 │ 1. Resolve "memoize" in scope → sees it's a macro    │
 │ 2. Collect arguments as AST (don't evaluate)         │
-│ 3. perform(@macro.expand, {                          │
+│ 3. perform(@dvala.macro.expand, {                    │
 │      fn: memoize,                                    │
 │      args: [targetAst]                               │
 │    })                                                │
@@ -357,52 +382,56 @@ When the evaluator encounters a call to a macro, it performs an effect:
 
 The evaluator doesn't know how to expand macros. It asks the host via an effect. The host has full control.
 
+The payload `{ fn, args }` contains the macro function (with its qualified name accessible via `qualifiedName(fn)`) and the raw AST arguments. Host handlers can dispatch on the macro's qualified name to apply different strategies per macro — caching, logging, sandboxing, or custom expansion.
+
 ### Host Strategies
 
-The host provides a handler function `(arg, eff, nxt) -> value` for `@macro.expand`. The `arg` is `{ fn, args }` where `fn` is the macro function and `args` is the list of AST arguments.
+The host provides a handler function `(arg, eff, nxt) -> value` for `@dvala.macro.expand`. The `arg` is `{ fn, args }` where `fn` is the macro function and `args` is the list of AST arguments.
 
 ```dvala
 // Default: just call the function
 let defaultMacroHandler = (arg, eff, nxt) ->
-  if eff == @macro.expand then apply(arg.fn, arg.args)
+  if eff == @dvala.macro.expand then apply(get(arg, "fn"), get(arg, "args"))
   else nxt(eff, arg)
   end;
 
 // Caching: expand once, reuse
 let cachingMacroHandler = (arg, eff, nxt) ->
-  if eff == @macro.expand then do
-    let key = hash(arg.fn, arg.args);
-    get(cache, key) ?? do let r = apply(arg.fn, arg.args); set(cache, key, r); r end
+  if eff == @dvala.macro.expand then do
+    let key = hash(get(arg, "fn"), get(arg, "args"));
+    get(cache, key) ?? do let r = apply(get(arg, "fn"), get(arg, "args")); set(cache, key, r); r end
   end
   else nxt(eff, arg)
   end;
 
 // Logging: inspect every expansion
 let loggingMacroHandler = (arg, eff, nxt) ->
-  if eff == @macro.expand then do
-    let r = apply(arg.fn, arg.args);
+  if eff == @dvala.macro.expand then do
+    let r = apply(get(arg, "fn"), get(arg, "args"));
     perform(@dvala.io.print, prettyPrint(r));
     r
   end
   else nxt(eff, arg)
   end;
 
-// Sandboxed: whitelist allowed macros
+// Sandboxed: whitelist by qualified name
 let sandboxedMacroHandler = (arg, eff, nxt) ->
-  if eff == @macro.expand then do
-    if not(has(allowed, arg.fn)) then throw("macro not permitted") end;
-    apply(arg.fn, arg.args)
+  if eff == @dvala.macro.expand then do
+    let matcher = qualifiedMatcher("mylib.*");
+    if not(matcher(get(arg, "fn"))) then throw("macro not permitted") end;
+    apply(get(arg, "fn"), get(arg, "args"))
   end
   else nxt(eff, arg)
   end;
 ```
 
-### Two Expansion Tiers
+### Three Expansion Tiers
 
-| Tier | Expanded by | `@macro.expand` | Runtime cost |
+| Tier | Expanded by | `@dvala.macro.expand` | Runtime cost |
 |------|------------|-----------------|-------------|
 | Core macros (`&&`, `\|\|`, `??`) | Parser (parse time) | No | Zero |
-| User macros (`memoize`, `saga`) | Evaluator via effect | Yes | Effect + function call |
+| Anonymous macros (`macro (ast) -> ...`) | Evaluator, direct call | No | Function call only |
+| Named macros (`macro "name" (ast) -> ...`) | Evaluator via effect | Yes | Effect + function call |
 
 The bundler can pre-expand user macros, promoting them to the zero-cost tier in bundled output.
 
@@ -641,9 +670,10 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 
 1. ✅ `macro` keyword in parser — `parseMacro.ts` produces `Macro` AST nodes
 2. ✅ Evaluator: when calling a macro, pass arguments as AST (not evaluated)
-3. ⏳ `@macro.expand` effect — not yet implemented. Currently macros are called directly.
+3. ✅ `@dvala.macro.expand` effect — `callMacro` emits `PerformStep` for named macros, default handler in `dispatchPerform` calls the macro directly.
 4. ✅ `typeOf(macro)` → `"macro"`, `isMacro()` predicate, `isFunction()` excludes macros
 5. ✅ Tests: 10 tests in `__tests__/macro.test.ts` covering definition, invocation, type checks
+6. ✅ Qualified name for macros — `macro "qualified.name" (ast) -> ...` syntax. See [QualifiedName design](2026-03-25_qualified-name.md). Also added `qualifiedName()` builtin.
 
 **Implementation notes:**
 - `MacroFunction` type added to `parser/types.ts` (functionType: `'Macro'`)
@@ -652,15 +682,22 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 - `MacroEvalFrame` evaluates returned AST in calling scope
 - `parseLambdaFunction` rejects `(singleParam) ->` — `parseMacro` uses `parseFunctionArguments` directly
 - Macros only intercept named calls to `UserDefinedSymbol`. Expression-based callees go through normal eval.
+- `callMacro` emits `perform(@dvala.macro.expand, { fn, args })` — effect payload contains the macro function (with qualified name) and raw AST arguments.
 
-### Phase 2 — Code Templates ← NEXT
+### Phase 2 — Code Templates ✅ DONE
 
-1. Triple backtick syntax in tokenizer and parser
-2. `${expr}` splice markers in code templates
-3. N-backtick nesting (3+ backticks, match count)
-4. Evaluator: code template evaluation (walk pre-parsed AST, evaluate splices, return data)
-5. Implicit spread detection (single node vs array of nodes)
-6. Tests: code templates produce correct AST, splicing works
+1. ✅ Triple backtick syntax in tokenizer (`CodeTemplate` token) and parser (`CodeTmpl` + `Splice` node types)
+2. ✅ `${expr}` splice markers in code templates — parsed as `Splice` nodes, evaluated at runtime
+3. ✅ N-backtick nesting (3+ backticks, match count)
+4. ✅ Evaluator: `CodeTemplateBuildFrame` evaluates splices sequentially, `astToData` walks AST replacing Splice nodes
+5. ✅ Implicit spread detection — `isSpliceSpread` checks if value starts with array (array of nodes) vs string (single node)
+6. ✅ Tests: 17 tests in `__tests__/code-template.test.ts` — basic syntax, splicing, implicit spread, macro integration, N-backtick nesting
+
+**Implementation notes:**
+- Tokenizer: `tokenizeCodeTemplate` in `tokenizers.ts` — detects 3+ backticks, scans with `${...}` interpolation, closes on matching count
+- Parser: `parseCodeTemplate.ts` — replaces `${expr}` with placeholder symbols, parses combined source, walks AST to replace placeholders with `Splice` nodes
+- Evaluator: `CodeTemplateBuildFrame` collects splice values, `astToData` converts AST to data with splices filled in, `convertArrayPayload` handles implicit spread
+- `${expr}` currently works in expression positions only — binding-position splicing deferred to hygiene phase
 
 **Key design decisions (from earlier discussion):**
 - Triple backticks (`\`\`\`...\`\`\``) — visually distinct from template strings, no conflict with future tagged templates
@@ -669,11 +706,17 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 - Pre-parsed at parse time: the JS parser parses the content as Dvala code with splice markers. KMP receives pre-parsed AST.
 - N-backtick nesting: outer uses more backticks than inner (like markdown code fences)
 
-### Phase 3 — AST Module
+### Phase 3 — AST Module ✅ DONE
 
-1. `import(ast)` — `node.*` constructors, predicates, accessors
-2. `prettyPrint` — AST data → readable Dvala source
-3. Tests: constructors produce valid AST, round-trip through prettyPrint
+1. ✅ `import(ast)` — constructors (`num`, `strNode`, `bool`, `nil`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isBuiltin`, `isCall`, `isIf`, `isBlock`, `isLet`, `isFn`, `isBool`, `isNil`, `isEffectNode`, `isAstNode`), accessors (`nodeType`, `payload`)
+2. ✅ `prettyPrint` — AST data → readable Dvala source (numbers, strings, booleans, symbols, infix operators, function calls, if, block, let, function, perform, array, effect)
+3. ✅ Tests: 27 tests in `__tests__/ast-module.test.ts` — constructors, predicates, accessors, prettyPrint, macro round-trip
+
+**Implementation notes:**
+- Module: `src/builtin/modules/ast/index.ts`
+- Some names suffixed to avoid clashing with core builtins: `strNode` (vs `str`), `effectNode` (vs `effect`), `isEffectNode` (vs `isEffect`)
+- Registered in `allModules.ts`, `reference/index.ts`, `reference/api.ts`
+- Category `'ast'` added to `interface.ts`
 
 ### Phase 4 — Hygiene
 

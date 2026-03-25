@@ -317,7 +317,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['e'] }],
       description: 'Returns the name of an effect reference as a string.',
-      seeAlso: ['effectMatcher', 'isEffect'],
+      seeAlso: ['effectMatcher', 'isEffect', 'qualifiedName'],
       examples: [
         'effectName(@dvala.error)',
         'effectName(@llm.complete)',
@@ -359,11 +359,42 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['pattern'] }],
       description: 'Returns a predicate function that matches effects by name. If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the effect name against the regexp.',
-      seeAlso: ['effectName', 'isEffect'],
+      seeAlso: ['effectName', 'isEffect', 'qualifiedName'],
       examples: [
         'let pred = effectMatcher("dvala.*"); pred(@dvala.error)',
         'let pred = effectMatcher("dvala.*"); pred(@custom.foo)',
         'let pred = effectMatcher("*"); pred(@anything)',
+      ],
+    },
+  },
+  'qualifiedName': {
+    evaluate: ([first]): string | null => {
+      // Effect references have a qualified name
+      if (isEffect(first)) {
+        return first.name
+      }
+      // Macros may have an optional qualified name
+      if (isMacroFunction(first)) {
+        return first.qualifiedName
+      }
+      // Everything else has no qualified name
+      return null
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'meta',
+      returns: { type: ['string', 'null'] },
+      args: {
+        entity: { type: 'any', description: 'An effect reference, macro, or any other value.' },
+      },
+      variants: [{ argumentNames: ['entity'] }],
+      description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references and named macros.',
+      seeAlso: ['effectName', 'effectMatcher', 'isMacro', 'isEffect'],
+      examples: [
+        'qualifiedName(@dvala.io.print)',
+        'qualifiedName(macro "my.lib" (ast) -> ast)',
+        'qualifiedName(macro (ast) -> ast)',
+        'qualifiedName(42)',
       ],
     },
   },

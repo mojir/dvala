@@ -117,6 +117,7 @@ import type {
   LoopBindCompleteFrame,
   LoopBindFrame,
   LoopIterateFrame,
+  CodeTemplateBuildFrame,
   MacroEvalFrame,
   MatchFrame,
   MatchSlotContext,
@@ -385,7 +386,8 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: dvalaFunction, k }
     }
     case NodeTypes.Macro: {
-      const fn = node[1] as [BindingTarget[], AstNode[], ...unknown[]]
+      const fn = node[1] as [BindingTarget[], AstNode[], string | null]
+      const qualifiedName = fn[2] ?? null
       const evaluatedFunc = evaluateFunction(fn, env)
       const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
       const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
@@ -395,11 +397,34 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         sourceCodeInfo: env.resolve(node[2]),
         functionType: 'Macro',
         name: undefined,
+        qualifiedName,
         evaluatedfunction: evaluatedFunc,
         arity,
         docString: '',
       }
       return { type: 'Value', value: macroFunction, k }
+    }
+    case NodeTypes.CodeTmpl: {
+      const [bodyAst, spliceExprs] = node[1] as [AstNode[], AstNode[]]
+      const sourceCodeInfo = env.resolve(node[2])
+      // No splices — assemble immediately
+      if (spliceExprs.length === 0) {
+        const result = bodyAst.length === 1
+          ? astToData(bodyAst[0]!, [])
+          : bodyAst.map(n => astToData(n, []))
+        return { type: 'Value', value: toAny(result), k }
+      }
+      // Evaluate first splice expression
+      const frame: CodeTemplateBuildFrame = {
+        type: 'CodeTemplateBuild',
+        bodyAst,
+        spliceExprs,
+        index: 0,
+        values: [],
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: spliceExprs[0]!, env, k: [frame, ...k] }
     }
     case NodeTypes.Object: {
       const entries = node[1] as (AstNode[] | AstNode)[]
@@ -1237,6 +1262,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     }
     case 'AutoCheckpoint':
       return applyAutoCheckpoint(frame, k)
+    case 'CodeTemplateBuild':
+      return applyCodeTemplateBuild(frame, value, k)
     case 'MacroEval':
       return applyMacroEval(frame, value, k)
     /* v8 ignore next 2 */
@@ -2196,7 +2223,8 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   }
 
   // Auto-checkpoint: dispatch a real dvala.checkpoint effect before the original effect.
-  if (snapshotState?.autoCheckpoint && effect.name !== 'dvala.checkpoint') {
+  // Skip for dvala.macro.expand — macro expansion is internal machinery, not a suspension point.
+  if (snapshotState?.autoCheckpoint && effect.name !== 'dvala.checkpoint' && effect.name !== 'dvala.macro.expand') {
     // Skip if we're already inside an auto-checkpoint dispatch (phase: 'awaitEffect').
     const topFrame = k[0]
     if (topFrame?.type === 'AutoCheckpoint' && topFrame.phase === 'awaitEffect') {
@@ -2232,6 +2260,20 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   const standardHandler = getStandardEffectHandler(effect.name)
   if (standardHandler) {
     return standardHandler(arg, k, sourceCodeInfo)
+  }
+
+  // dvala.macro.expand — default handler calls the macro function directly.
+  // The MacroEvalFrame on k[0] provides the calling scope for evaluating the result.
+  if (effect.name === 'dvala.macro.expand') {
+    const payload = arg as { fn: MacroFunction; args: AstNode[] }
+    const macroEvalFrame = k[0] as MacroEvalFrame
+    return setupUserDefinedCall(
+      payload.fn as unknown as UserDefinedFunction,
+      payload.args,
+      macroEvalFrame.env,
+      sourceCodeInfo,
+      k,
+    )
   }
 
   // dvala.checkpoint resolves to null when completely unhandled.
@@ -3420,8 +3462,9 @@ function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): 
 // ---------------------------------------------------------------------------
 
 /**
- * Call a macro: pass argument AST nodes (unevaluated) to the macro function,
- * then evaluate the returned AST in the calling scope.
+ * Call a macro. Named macros (with a qualifiedName) emit @dvala.macro.expand
+ * so the host can intercept expansion. Anonymous macros are called directly
+ * with no effect overhead.
  */
 function callMacro(
   macroFn: MacroFunction,
@@ -3430,23 +3473,35 @@ function callMacro(
   sourceCodeInfo: SourceCodeInfo | undefined,
   k: ContinuationStack,
 ): Step {
-  // Push a MacroEvalFrame — when the macro body returns AST,
-  // this frame will evaluate it in the calling scope
+  // MacroEvalFrame evaluates the expanded AST in the calling scope
   const macroEvalFrame: MacroEvalFrame = {
     type: 'MacroEval',
     env,
     sourceCodeInfo,
   }
 
-  // Call the macro function with the raw AST nodes as arguments.
-  // AST nodes are Dvala arrays — they're valid Dvala values.
-  return setupUserDefinedCall(
-    macroFn as unknown as UserDefinedFunction,
-    argNodes,
-    env,
+  // Anonymous macros — call directly, no effect, no host visibility
+  if (!macroFn.qualifiedName) {
+    return setupUserDefinedCall(
+      macroFn as unknown as UserDefinedFunction,
+      argNodes,
+      env,
+      sourceCodeInfo,
+      [macroEvalFrame, ...k],
+    )
+  }
+
+  // Named macros — emit @dvala.macro.expand so the host can intercept.
+  // The effect arg is a Dvala object with fn (the macro) and args (AST nodes).
+  const payload = toAny({ fn: macroFn, args: argNodes })
+
+  return {
+    type: 'Perform',
+    effect: getEffectRef('dvala.macro.expand'),
+    arg: payload,
+    k: [macroEvalFrame, ...k],
     sourceCodeInfo,
-    [macroEvalFrame, ...k],
-  )
+  }
 }
 
 /**
@@ -3458,6 +3513,104 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // Evaluate it as an AST node in the calling scope.
   const astNode = value as AstNode
   return { type: 'Eval', node: astNode, env: frame.env, k }
+}
+
+// ---------------------------------------------------------------------------
+// Code template evaluation
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle a completed splice expression evaluation in a code template.
+ * Collect the value, evaluate the next splice, or assemble the final AST data.
+ */
+function applyCodeTemplateBuild(frame: CodeTemplateBuildFrame, value: Any, k: ContinuationStack): Step {
+  frame.values.push(value)
+  frame.index++
+
+  // More splices to evaluate
+  if (frame.index < frame.spliceExprs.length) {
+    return { type: 'Eval', node: frame.spliceExprs[frame.index]!, env: frame.env, k: [frame, ...k] }
+  }
+
+  // All splices evaluated — assemble the AST data
+  const result = frame.bodyAst.length === 1
+    ? astToData(frame.bodyAst[0]!, frame.values)
+    : frame.bodyAst.map(n => astToData(n, frame.values))
+  return { type: 'Value', value: toAny(result), k }
+}
+
+/**
+ * Convert a pre-parsed AST node into Dvala data (arrays and primitives).
+ * Splice nodes are replaced with the corresponding evaluated value.
+ *
+ * The result mirrors the AST node format: [type, payload, nodeId].
+ * This is what macros receive and construct — plain Dvala data.
+ */
+function astToData(node: AstNode, spliceValues: Any[]): Any {
+  const [type, payload] = node
+
+  // Splice node — insert the evaluated value directly
+  if (type === NodeTypes.Splice) {
+    return spliceValues[payload as number]!
+  }
+
+  // Use nodeId 0 for all generated nodes — code template AST is synthetic data
+  // Leaf nodes with primitive payloads — return as data tuple
+  if (!Array.isArray(payload)) {
+    return toAny([type, payload, 0])
+  }
+
+  // Recursive: convert array payloads, with implicit spread for splices
+  const convertedPayload = convertArrayPayload(payload, spliceValues)
+  return toAny([type, convertedPayload, 0])
+}
+
+/**
+ * Convert an array payload, handling implicit spread for Splice nodes.
+ *
+ * When a Splice node's value is an array of AST nodes (first element is an array),
+ * the nodes are spread into the parent array. When it's a single AST node
+ * (first element is a string), it's inserted as-is.
+ */
+function convertArrayPayload(items: unknown[], spliceValues: Any[]): Any[] {
+  const result: Any[] = []
+  for (const item of items) {
+    if (!Array.isArray(item)) {
+      result.push(item as Any)
+      continue
+    }
+    // Check if this is a Splice node
+    if (item.length >= 2 && item[0] === NodeTypes.Splice) {
+      const spliceValue = spliceValues[item[1] as number]!
+      // Implicit spread: if value is an array of AST nodes, spread them in
+      if (isSpliceSpread(spliceValue)) {
+        for (const spreadItem of spliceValue as Any[]) {
+          result.push(spreadItem)
+        }
+      } else {
+        result.push(spliceValue)
+      }
+    } else if (item.length >= 2 && typeof item[0] === 'string') {
+      // Regular AST node — recurse
+      result.push(astToData(item as AstNode, spliceValues))
+    } else {
+      // Plain array — recurse into elements
+      result.push(toAny(convertArrayPayload(item as unknown[], spliceValues)))
+    }
+  }
+  return result
+}
+
+/**
+ * Detect whether a splice value should be spread (array of AST nodes)
+ * or inserted as-is (single AST node or non-AST value).
+ *
+ * An array of AST nodes starts with an array: [[type, payload, id], ...]
+ * A single AST node starts with a string: [type, payload, id]
+ */
+function isSpliceSpread(value: Any): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false
+  return Array.isArray(value[0])
 }
 
 // ---------------------------------------------------------------------------

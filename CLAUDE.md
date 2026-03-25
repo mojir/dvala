@@ -214,15 +214,44 @@ m.frequencies([1, 1, 2])
 ### Macros
 
 ```dvala
-let id = macro (ast) -> ast;     // identity macro — returns AST unchanged
+let id = macro (ast) -> ast;     // anonymous macro — returns AST unchanged
 id(1 + 2)                         // → 3 (AST of `1 + 2` returned, then evaluated)
+
+let m = macro "mylib.id" (ast) -> ast;  // named macro with qualified name
+qualifiedName(m)                         // → "mylib.id"
 ```
 
-- `macro (params) -> body` — defines a macro. Same syntax as functions but with `macro` keyword.
+- `macro (params) -> body` — anonymous macro. Same syntax as functions but with `macro` keyword.
+- `macro "qualified.name" (params) -> body` — named macro with a qualified name for host-level dispatch.
 - When a macro is called, arguments are **NOT evaluated** — they're passed as AST nodes (arrays).
 - The macro body executes normally. It receives AST data and must return AST data.
 - The returned AST is then evaluated in the **calling scope**.
+- Named macros emit `@dvala.macro.expand` — the host can intercept. Anonymous macros are called directly.
 - `typeOf(m)` → `"macro"`, `isMacro(m)` → `true`, `isFunction(m)` → `false`.
+- `qualifiedName(m)` → `"mylib.id"` (named) or `null` (anonymous). Also works on effects: `qualifiedName(@dvala.io.print)` → `"dvala.io.print"`.
+
+#### Code Templates (triple backticks)
+
+Triple backticks create AST data at parse time. `${expr}` splices evaluated values into the AST.
+
+````dvala
+// Simple — returns AST for `42` → ["Num", 42, 0]
+```42```
+
+// With splicing — insert evaluated AST nodes
+let a = ["Num", 1, 0];
+```${a} + ${a}```        // → ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 1, 0]]], 0]
+
+// Macro using code template
+let double = macro (ast) -> ```${ast} + ${ast}```;
+double(21)                // → 42
+````
+
+- Content is parsed as Dvala code at parse time — no runtime parsing
+- `${expr}` evaluates `expr` at runtime and inserts the result (must be valid AST data)
+- N-backtick nesting: use 4+ backticks for outer level (inner can use fewer)
+- Multi-statement templates produce an array of AST nodes
+- Node IDs in generated AST are always 0
 
 #### AST Node Format (what macros receive and return)
 
@@ -299,6 +328,11 @@ end;
 - Type guards: `isMacroFunction()` in `src/typeGuards/dvalaFunction.ts`
 - Predicates: `isMacro` in `src/builtin/core/predicates.ts`, `typeOf` updated in `src/builtin/core/misc.ts`
 - Tests: `__tests__/macro.test.ts`
+- Code templates: `src/tokenizer/tokenizers.ts` (`tokenizeCodeTemplate`), `src/parser/subParsers/parseCodeTemplate.ts`
+- Node types: `CodeTmpl` (template), `Splice` (interpolation marker) in `src/constants/constants.ts`
+- `CodeTemplateBuildFrame` in `src/evaluator/frames.ts` — evaluates splice expressions sequentially
+- `astToData()` in trampoline evaluator — converts pre-parsed AST to Dvala data, replacing Splice nodes
+- Tests: `__tests__/code-template.test.ts`
 
 #### Gotchas When Working on Macros
 
@@ -307,7 +341,8 @@ end;
 - `parseLambdaFunction` rejects `(singleParam) ->` pattern — that's why `parseMacro` uses `parseFunctionArguments` directly.
 - Variable names in tests must not shadow builtins (e.g., don't use `first` as a macro name — it's a builtin).
 - Macros only intercept **named calls** to user-defined symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` names only.
-- The `@macro.expand` effect from the design doc is NOT yet implemented — currently macros are called directly.
+- Named macros emit `@dvala.macro.expand` — anonymous macros are called directly with no effect overhead.
+- Code template `${expr}` currently only works in **expression positions** — binding-position splicing (e.g., `let ${nameNode} = ...`) is not yet supported.
 
 ## MCP Tools
 
