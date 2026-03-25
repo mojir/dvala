@@ -6,10 +6,11 @@ import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExp
 import { bindingTargetTypes } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
-import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
+import type { CodeTemplateToken, StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
 import { isLBraceToken, isLBracketToken, isLParenToken, isOperatorToken, isRBracketToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
+import { parseCodeTemplate } from './parseCodeTemplate'
 import { parseRegexpShorthand } from './parseRegexpShorthand'
 import { parseReservedSymbol } from './parseReservedSymbol'
 import { parseString } from './parseString'
@@ -40,6 +41,7 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
   'dvala.sleep',
   'dvala.error',
   'dvala.checkpoint',
+  'dvala.macro.expand',
 ])
 
 export function parseOperand(ctx: ParserContext): AstNode {
@@ -174,6 +176,8 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       return parseString(ctx, token as StringToken)
     case 'TemplateString':
       return parseTemplateString(ctx, token as TemplateStringToken)
+    case 'CodeTemplate':
+      return parseCodeTemplate(ctx, token as CodeTemplateToken)
     case 'Symbol': {
       ctx.storePosition()
       const lamdaFunction = parseLambdaFunction(ctx)

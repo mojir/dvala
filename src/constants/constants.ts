@@ -30,6 +30,8 @@ export const NodeTypes = {
   Match: 'Match',
   Import: 'Import',
   Macro: 'Macro',
+  CodeTmpl: 'CodeTmpl',
+  Splice: 'Splice',
 } as const
 
 const NodeTypesSet = new Set<string>(Object.values(NodeTypes))

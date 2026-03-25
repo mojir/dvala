@@ -22,6 +22,7 @@ export const tokenTypes = [
   'string',
   'Symbol',
   'TemplateString',
+  'CodeTemplate',
   'Whitespace',
 ] as const
 
@@ -53,6 +54,7 @@ export type ShebangToken = GenericToken<'Shebang'>
 export type StringToken = GenericToken<'string'>
 export type SymbolToken<T extends string = string> = GenericToken<'Symbol', T>
 export type TemplateStringToken = GenericToken<'TemplateString'>
+export type CodeTemplateToken = GenericToken<'CodeTemplate'>
 export type WhitespaceToken = GenericToken<'Whitespace'>
 
 export type Token =
@@ -75,6 +77,7 @@ export type Token =
   | StringToken
   | SymbolToken
   | TemplateStringToken
+  | CodeTemplateToken
   | WhitespaceToken
 
 export type TokenDescriptor<T extends Token> = [length: number, token?: T]
@@ -338,6 +341,10 @@ export function assertTemplateStringToken(token: Token | undefined): asserts tok
 export function asTemplateStringToken(token: Token | undefined): TemplateStringToken {
   assertTemplateStringToken(token)
   return token
+}
+
+export function isCodeTemplateToken(token: Token | undefined): token is CodeTemplateToken {
+  return token?.[0] === 'CodeTemplate'
 }
 
 /** Convert lightweight token debug info to SourceCodeInfo for error reporting. */

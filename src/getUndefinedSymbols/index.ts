@@ -174,6 +174,14 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     }
     case NodeTypes.Import:
       return new Set()
+    case NodeTypes.CodeTmpl: {
+      // Code template: check splice expressions for undefined symbols
+      const [, spliceExprs] = node[1] as [AstNode[], AstNode[]]
+      return getUndefinedSymbols(spliceExprs, contextStack, builtin)
+    }
+    case NodeTypes.Splice:
+      // Splice nodes are internal markers — they don't reference symbols directly
+      return null
     case NodeTypes.Function:
     case NodeTypes.Macro: {
       const fn = node[1] as DvalaFunctionTuple

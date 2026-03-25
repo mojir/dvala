@@ -935,11 +935,13 @@ function openDemos(demos, subject) {
  * Extract all ```demo blocks from a commit message.
  */
 function extractDemos(message) {
-  const demoRegex = /```demo\n([\s\S]*?)```/g
+  // Support N-backtick fences (3+). The closing fence must match the opening count.
+  // This allows code containing triple backticks to be wrapped in 4+ backtick fences.
+  const demoRegex = /(`{3,})demo\n([\s\S]*?)\1/g
   const demos = []
   let match
   while ((match = demoRegex.exec(message)) !== null) {
-    demos.push(parseDemo(match[1]))
+    demos.push(parseDemo(match[2]))
   }
   return demos
 }
