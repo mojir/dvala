@@ -953,6 +953,7 @@ export interface CodeTemplateBuildFrame {
   spliceExprs: AstNode[] // splice expression ASTs to evaluate
   index: number // next splice to evaluate
   values: Any[] // accumulated splice values
+  renameMap: Map<string, string> // hygiene: literal binding names → gensymed names
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }

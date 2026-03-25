@@ -407,11 +407,13 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.CodeTmpl: {
       const [bodyAst, spliceExprs] = node[1] as [AstNode[], AstNode[]]
       const sourceCodeInfo = env.resolve(node[2])
+      // Build hygiene rename map for literal bindings
+      const renameMap = buildRenameMap(bodyAst)
       // No splices — assemble immediately
       if (spliceExprs.length === 0) {
         const result = bodyAst.length === 1
-          ? astToData(bodyAst[0]!, [])
-          : bodyAst.map(n => astToData(n, []))
+          ? astToData(bodyAst[0]!, [], renameMap)
+          : bodyAst.map(n => astToData(n, [], renameMap))
         return { type: 'Value', value: toAny(result), k }
       }
       // Evaluate first splice expression
@@ -421,6 +423,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         spliceExprs,
         index: 0,
         values: [],
+        renameMap,
         env,
         sourceCodeInfo,
       }
@@ -3532,26 +3535,152 @@ function applyCodeTemplateBuild(frame: CodeTemplateBuildFrame, value: Any, k: Co
     return { type: 'Eval', node: frame.spliceExprs[frame.index]!, env: frame.env, k: [frame, ...k] }
   }
 
-  // All splices evaluated — assemble the AST data
+  // All splices evaluated — assemble the AST data with hygiene renames
   const result = frame.bodyAst.length === 1
-    ? astToData(frame.bodyAst[0]!, frame.values)
-    : frame.bodyAst.map(n => astToData(n, frame.values))
+    ? astToData(frame.bodyAst[0]!, frame.values, frame.renameMap)
+    : frame.bodyAst.map(n => astToData(n, frame.values, frame.renameMap))
   return { type: 'Value', value: toAny(result), k }
 }
+
+// ---------------------------------------------------------------------------
+// Hygiene — automatic gensym for literal bindings in code templates
+// ---------------------------------------------------------------------------
+
+let gensymCounter = 0
+
+/** Generate a unique symbol name that won't collide with user code. */
+function gensym(name: string): string {
+  return `__gensym_${name}_${gensymCounter++}__`
+}
+
+/**
+ * Build a rename map for literal binding names in template AST.
+ * Walks the AST collecting symbol names from binding positions
+ * (Let targets, Function params), skipping Splice nodes.
+ */
+function buildRenameMap(nodes: AstNode[]): Map<string, string> {
+  const names = new Set<string>()
+  for (const node of nodes) {
+    collectBindingNames(node, names)
+  }
+  const renameMap = new Map<string, string>()
+  for (const name of names) {
+    renameMap.set(name, gensym(name))
+  }
+  return renameMap
+}
+
+/** Recursively collect symbol names from binding positions in an AST node. */
+function collectBindingNames(node: AstNode, names: Set<string>): void {
+  const [type, payload] = node
+
+  // Skip splice nodes — their content comes from the caller
+  if (type === NodeTypes.Splice) return
+
+  switch (type) {
+    case NodeTypes.Let: {
+      // ["Let", [bindingTarget, valueNode], id]
+      const [target, value] = payload as [unknown[], AstNode]
+      collectBindingTargetNames(target, names)
+      collectBindingNames(value, names)
+      break
+    }
+    case NodeTypes.Function:
+    case NodeTypes.Macro: {
+      // ["Function", [params[], bodyExprs[]], id]
+      const [params, bodyExprs] = payload as [unknown[][], AstNode[]]
+      for (const param of params) {
+        collectBindingTargetNames(param, names)
+      }
+      for (const expr of bodyExprs) {
+        collectBindingNames(expr, names)
+      }
+      break
+    }
+    default: {
+      // Recurse into array payloads to find nested Let/Function nodes
+      if (Array.isArray(payload)) {
+        for (const item of payload) {
+          if (Array.isArray(item) && item.length >= 2 && typeof item[0] === 'string') {
+            collectBindingNames(item as AstNode, names)
+          } else if (Array.isArray(item)) {
+            // Plain array — recurse into elements looking for AST nodes
+            for (const inner of item) {
+              if (Array.isArray(inner) && inner.length >= 2 && typeof inner[0] === 'string') {
+                collectBindingNames(inner as AstNode, names)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/** Extract symbol names from a binding target structure. */
+function collectBindingTargetNames(target: unknown[], names: Set<string>): void {
+  const targetType = target[0] as string
+  const targetPayload = target[1] as unknown[]
+
+  switch (targetType) {
+    case 'symbol': {
+      // ["symbol", [["Sym", name, id], default], id]
+      const symNode = targetPayload[0] as unknown[]
+      if (Array.isArray(symNode) && symNode[0] === NodeTypes.Sym) {
+        names.add(symNode[1] as string)
+      }
+      break
+    }
+    case 'rest': {
+      // ["rest", [name, default], id]
+      names.add(targetPayload[0] as string)
+      break
+    }
+    case 'array': {
+      // ["array", [targets[], default], id]
+      const targets = targetPayload[0] as unknown[][]
+      for (const t of targets) {
+        if (t) collectBindingTargetNames(t, names)
+      }
+      break
+    }
+    case 'object': {
+      // ["object", [record, default], id]
+      const record = targetPayload[0] as Record<string, unknown[]>
+      for (const t of Object.values(record)) {
+        collectBindingTargetNames(t, names)
+      }
+      break
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AST to data conversion (with hygiene)
+// ---------------------------------------------------------------------------
 
 /**
  * Convert a pre-parsed AST node into Dvala data (arrays and primitives).
  * Splice nodes are replaced with the corresponding evaluated value.
+ * Literal Sym nodes matching the rename map are gensymed for hygiene.
  *
  * The result mirrors the AST node format: [type, payload, nodeId].
  * This is what macros receive and construct — plain Dvala data.
  */
-function astToData(node: AstNode, spliceValues: Any[]): Any {
+function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, string>): Any {
   const [type, payload] = node
 
-  // Splice node — insert the evaluated value directly
+  // Splice node — insert the evaluated value directly (no renaming)
   if (type === NodeTypes.Splice) {
     return spliceValues[payload as number]!
+  }
+
+  // Rename literal Sym nodes for hygiene
+  if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
+    const renamed = renameMap.get(payload)
+    if (renamed) {
+      return toAny([type, renamed, 0])
+    }
   }
 
   // Use nodeId 0 for all generated nodes — code template AST is synthetic data
@@ -3561,7 +3690,7 @@ function astToData(node: AstNode, spliceValues: Any[]): Any {
   }
 
   // Recursive: convert array payloads, with implicit spread for splices
-  const convertedPayload = convertArrayPayload(payload, spliceValues)
+  const convertedPayload = convertArrayPayload(payload, spliceValues, renameMap)
   return toAny([type, convertedPayload, 0])
 }
 
@@ -3572,11 +3701,17 @@ function astToData(node: AstNode, spliceValues: Any[]): Any {
  * the nodes are spread into the parent array. When it's a single AST node
  * (first element is a string), it's inserted as-is.
  */
-function convertArrayPayload(items: unknown[], spliceValues: Any[]): Any[] {
+function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: Map<string, string>): Any[] {
   const result: Any[] = []
   for (const item of items) {
     if (!Array.isArray(item)) {
-      result.push(item as Any)
+      // Rename plain string values in binding targets (e.g. rest param names)
+      if (typeof item === 'string' && renameMap) {
+        const renamed = renameMap.get(item)
+        result.push((renamed ?? item) as Any)
+      } else {
+        result.push(item as Any)
+      }
       continue
     }
     // Check if this is a Splice node
@@ -3592,10 +3727,10 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[]): Any[] {
       }
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       // Regular AST node — recurse
-      result.push(astToData(item as AstNode, spliceValues))
+      result.push(astToData(item as AstNode, spliceValues, renameMap))
     } else {
       // Plain array — recurse into elements
-      result.push(toAny(convertArrayPayload(item as unknown[], spliceValues)))
+      result.push(toAny(convertArrayPayload(item as unknown[], spliceValues, renameMap)))
     }
   }
   return result

@@ -144,6 +144,54 @@ describe('code templates', () => {
     })
   })
 
+  describe('hygiene', () => {
+    it('should not capture caller variables with same name as macro internals', () => {
+      // The macro introduces a param `n` that would shadow the caller's `n`
+      // Without hygiene: (n) -> n + <caller's n> — param `n` shadows splice
+      // With hygiene: (__gensym_n_X__) -> __gensym_n_X__ + <caller's n> — no collision
+      const result = run(`
+        let makeAdder = macro (ast) -> \`\`\`(n) -> n + \${ast}\`\`\`;
+        let n = 100;
+        let f = makeAdder(n);
+        f(1)
+      `)
+      // Should be 101 (1 + 100), not 2 (1 + 1)
+      expect(result).toBe(101)
+    })
+
+    it('should gensym let bindings in templates', () => {
+      // The macro's `tmp` should not collide with the caller's `tmp`
+      const result = run(`
+        let wrap = macro (ast) -> \`\`\`do let tmp = \${ast}; tmp * 2 end\`\`\`;
+        let tmp = 5;
+        wrap(tmp + 1)
+      `)
+      // tmp + 1 = 6, then 6 * 2 = 12
+      expect(result).toBe(12)
+    })
+
+    it('should preserve spliced symbol identity', () => {
+      // Spliced AST should keep the caller's names, not be renamed
+      const result = run(`
+        let id = macro (ast) -> \`\`\`\${ast}\`\`\`;
+        let x = 42;
+        id(x)
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('should handle multiple bindings independently', () => {
+      const result = run(`
+        let compute = macro (ast) -> \`\`\`do let a = \${ast}; let b = a + 1; a + b end\`\`\`;
+        let a = 100;
+        let b = 200;
+        compute(a + b)
+      `)
+      // a = 100 + 200 = 300 (gensymed), b = 301 (gensymed), result = 300 + 301 = 601
+      expect(result).toBe(601)
+    })
+  })
+
   describe('N-backtick nesting', () => {
     it('should support 4-backtick delimiters', () => {
       const result = run('````42````')
