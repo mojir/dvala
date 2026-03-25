@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
+import { astModule } from '../src/builtin/modules/ast'
 
-const dvala = createDvala()
+const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)
 
 describe('macro system', () => {
@@ -102,6 +103,40 @@ describe('macro system', () => {
       `)
       // Handler returned AST for 99999, which gets evaluated → 99999
       expect(result).toBe(99999)
+    })
+  })
+
+  describe('macroexpand', () => {
+    it('should return expanded AST without evaluating it', () => {
+      const result = run(`
+        let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+        macroexpand(double, \`\`\`21\`\`\`)
+      `)
+      // Should return AST data, not the evaluated result 42
+      expect(Array.isArray(result)).toBe(true)
+      const arr = result as unknown[]
+      expect(arr[0]).toBe('Call')
+    })
+
+    it('should produce AST that prettyPrints correctly', () => {
+      const result = dvala.run(`
+        let { prettyPrint } = import(ast);
+        let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+        macroexpand(double, \`\`\`21\`\`\`) |> prettyPrint
+      `)
+      expect(result).toBe('21 + 21')
+    })
+
+    it('should throw if first argument is not a macro', () => {
+      expect(() => run('macroexpand((x) -> x, 1)')).toThrow('macroexpand: first argument must be a macro')
+    })
+
+    it('should work with multi-arg macros', () => {
+      const result = run(`
+        let pick = macro (a, b) -> a;
+        macroexpand(pick, \`\`\`1\`\`\`, \`\`\`2\`\`\`)
+      `)
+      expect(result).toEqual(['Num', 1, 0])
     })
   })
 

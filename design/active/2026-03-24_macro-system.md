@@ -741,12 +741,17 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 - Removed `|>` dvalaImpl from `functional.dvala` — no longer needed
 - `|>` builtin evaluate stub remains for docs/reference but throws if called directly
 
-### Phase 6 — Core Macros
+### Phase 6 — Core Macros (partial)
 
-1. Implement `&&`, `||`, `??` as macros expanded at parse time
-2. `macroexpand` macro
-3. Expansion depth limit (configurable in host handler)
-4. Tests: short-circuit behavior preserved, macroexpand returns AST
+1. ⏳ Implement `&&`, `||`, `??` as macros — deferred (performance concern)
+2. ✅ `macroexpand` builtin — calls macro body directly, returns expanded AST as data
+3. ⏳ Expansion depth limit — deferred
+4. ✅ Tests: 4 macroexpand tests in `__tests__/macro.test.ts`
+
+**Implementation notes:**
+- `macroexpand` is a core builtin handled in the evaluator's `dispatchCall`
+- Calls `setupUserDefinedCall` on the macro's `evaluatedfunction` without `MacroEvalFrame`
+- Result is the expanded AST as data, not evaluated code
 
 ### Phase 7 — Bundler Integration
 

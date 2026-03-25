@@ -779,6 +779,23 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       if (env.pure && normalExpression.pure === false) {
         throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
+      // macroexpand(macroFn, ...args) — call macro body directly, return expanded AST as data
+      if (builtinName === 'macroexpand') {
+        const macroFn = params[0]
+        if (!isMacroFunction(macroFn)) {
+          throw new DvalaError('macroexpand: first argument must be a macro', sourceCodeInfo)
+        }
+        const macroArgs = params.slice(1)
+        // Call the macro's body as a regular function — no MacroEvalFrame, so the
+        // expanded AST is returned as a value instead of being evaluated.
+        return setupUserDefinedCall(
+          macroFn as unknown as UserDefinedFunction,
+          macroArgs,
+          env,
+          sourceCodeInfo,
+          k,
+        )
+      }
       // dvalaImpl dispatch — initCoreDvalaSources sets dvalaImpl on core expressions at startup,
       // module expressions get dvalaImpl via ImportMerge, but the trampoline import handler
       // resolves modules from the valueModules cache so this path is never reached
