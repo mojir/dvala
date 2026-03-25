@@ -214,12 +214,8 @@ function renderHtml(entries, logoDataUrl) {
         desc: commentLines.join(' '),
         code: codeWithoutComments,
         url,
-        // Optional metadata overrides from the demo block (for historical demos).
-        // When hash is overridden, also fetch that commit's diff stats.
-        ...(demo.hash && { overrideHash: demo.hash }),
-        ...(demo.date && { overrideDate: demo.date }),
-        ...(demo.author && { overrideAuthor: demo.author }),
-        ...(demo.hash && getDiffStats(demo.hash)),
+        // Historical demos: hide git metadata (hash, date, author, stats)
+        historical: demo.historical === 'true',
       }
     })
 
@@ -401,6 +397,28 @@ function renderHtml(entries, logoDataUrl) {
       margin-bottom: 0.5rem;
     }
     .date-group:first-child { padding-top: 0; }
+    .commit-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 0.8rem;
+      margin-top: 1rem;
+      margin-bottom: 0.3rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      background: var(--code-bg);
+      border-radius: 6px;
+    }
+    .commit-group .commit-hash {
+      font-family: monospace;
+      color: var(--accent);
+      background: var(--surface);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+    }
+    .commit-group .commit-subject { flex: 1; }
+    .commit-group .commit-date { color: var(--text-dim); font-size: 0.75rem; }
     .pagination {
       display: flex;
       justify-content: center;
@@ -546,18 +564,8 @@ function renderHtml(entries, logoDataUrl) {
     // Helper: get commit metadata for a demo, with optional per-demo overrides.
     // Historical demos specify hash/date/author directly in the demo block
     // to show the original feature commit's metadata instead of the carrier commit.
-    function commitOf(d) {
-      const c = commits[d.commitIndex];
-      return {
-        ...c,
-        hash: d.overrideHash || c.hash,
-        date: d.overrideDate || c.date,
-        dateIso: d.overrideDate || c.dateIso,
-        authors: d.overrideAuthor ? [d.overrideAuthor] : c.authors,
-        insertions: d.overrideInsertions != null ? d.overrideInsertions : c.insertions,
-        deletions: d.overrideDeletions != null ? d.overrideDeletions : c.deletions,
-      };
-    }
+    // Get commit metadata. Historical demos hide it in the UI.
+    function commitOf(d) { return commits[d.commitIndex]; }
     const listEl = document.getElementById('list');
     const searchEl = document.getElementById('search');
     const countEl = document.getElementById('count');
@@ -586,6 +594,13 @@ function renderHtml(entries, logoDataUrl) {
           || c.dateIso.includes(query);
       });
 
+      // Sort by effective date, newest first
+      filteredDemos.sort((a, b) => {
+        const da = commitOf(a).date;
+        const db = commitOf(b).date;
+        return db.localeCompare(da);
+      });
+
       currentPage = 0;
       renderPage();
     }
@@ -600,23 +615,36 @@ function renderHtml(entries, logoDataUrl) {
       listEl.innerHTML = '';
       activeIndex = -1;
 
-      // Group demos by relative date periods
-      let currentGroup = '';
+      // Group by date, then by commit within each date group
+      let currentDateGroup = '';
+      let currentCommitHash = '';
       pageItems.forEach((d, localIdx) => {
-        const i = start + localIdx; // global index into filteredDemos
+        const i = start + localIdx;
         const c = commitOf(d);
-        const group = getDateGroup(c.date);
-        if (group !== currentGroup) {
-          currentGroup = group;
+
+        // Date group header (Today, Yesterday, This Week, etc.)
+        const dateGroup = getDateGroup(c.date);
+        if (dateGroup !== currentDateGroup) {
+          currentDateGroup = dateGroup;
+          currentCommitHash = ''; // reset commit grouping
           const groupEl = document.createElement('div');
           groupEl.className = 'date-group';
-          groupEl.textContent = group;
+          groupEl.textContent = dateGroup;
           listEl.appendChild(groupEl);
         }
 
-        const diffBadge = (c.insertions || c.deletions)
-          ? diffBar(c.insertions, c.deletions)
-          : '';
+        // Commit group header — show once per commit (skip for historical demos)
+        if (!d.historical && c.hash !== currentCommitHash) {
+          currentCommitHash = c.hash;
+          const commitEl = document.createElement('div');
+          commitEl.className = 'commit-group';
+          commitEl.innerHTML =
+            '<span class="commit-hash">' + c.hash + '</span> ' +
+            '<span class="commit-subject">' + esc(c.subject) + '</span>' +
+            ((c.insertions || c.deletions) ? ' ' + diffBar(c.insertions, c.deletions) : '') +
+            '<span class="commit-date">' + c.date + '</span>';
+          listEl.appendChild(commitEl);
+        }
 
         const entry = document.createElement('div');
         entry.className = 'entry';
@@ -624,9 +652,6 @@ function renderHtml(entries, logoDataUrl) {
         entry.innerHTML =
           '<div class="entry-header">' +
             '<span class="entry-title">' + esc(d.title) + '</span>' +
-            (diffBadge ? '<span class="entry-diff">' + diffBadge + '</span>' : '') +
-            '<span class="entry-hash">' + c.hash + '</span>' +
-            '<span class="entry-date">' + c.date + '</span>' +
           '</div>' +
           (d.desc ? '<div class="entry-desc">' + esc(d.desc) + '</div>' : '') +
           '<div class="entry-expanded-content">' +
@@ -689,20 +714,23 @@ function renderHtml(entries, logoDataUrl) {
       if (!d) return;
 
       const c = commitOf(d);
-      const detailDiff = (c.insertions || c.deletions)
-        ? ' &middot; ' + diffBar(c.insertions, c.deletions)
-        : '';
 
-      detailEl.innerHTML =
-        '<h2>' + esc(d.title) + '</h2>' +
+      // Git metadata section: hidden for historical demos
+      const detailMeta = d.historical ? '' :
         '<div class="detail-meta">' +
           '<span class="commit-hash">' + c.hash + '</span>' +
           '<span>' + esc(c.subject) + '</span>' +
         '</div>' +
         '<div class="detail-meta">' +
           '<span>' + esc(c.authors.join(', ')) + '</span>' +
-          '<span>' + c.dateIso + detailDiff + '</span>' +
-        '</div>' +
+          '<span>' + c.dateIso +
+            ((c.insertions || c.deletions) ? ' &middot; ' + diffBar(c.insertions, c.deletions) : '') +
+          '</span>' +
+        '</div>';
+
+      detailEl.innerHTML =
+        '<h2>' + esc(d.title) + '</h2>' +
+        detailMeta +
         (d.desc ? '<p class="detail-desc">' + esc(d.desc) + '</p>' : '') +
         '<pre class="detail-code"><code>' + esc(d.code) + '</code></pre>' +
         '<div class="detail-actions">' +
@@ -928,7 +956,7 @@ function extractDemos(message) {
 function parseDemo(block) {
   const demo = { description: '', code: '', context: '' }
   // Optional metadata overrides (single-line, no accumulation)
-  const singleLineFields = new Set(['hash', 'date', 'author'])
+  const singleLineFields = new Set(['historical'])
   let currentField = null
 
   for (const line of block.split('\n')) {
@@ -955,24 +983,6 @@ function parseDemo(block) {
     if (typeof demo[key] === 'string') demo[key] = demo[key].trim()
   }
   return demo
-}
-
-/**
- * Fetch diff stats (+insertions, -deletions) for a given commit hash.
- * Returns { overrideInsertions, overrideDeletions } or empty object.
- */
-function getDiffStats(hash) {
-  try {
-    const stat = execSync(`git diff --shortstat ${hash}~1..${hash}`, { encoding: 'utf-8' }).trim()
-    const insMatch = stat.match(/(\d+) insertion/)
-    const delMatch = stat.match(/(\d+) deletion/)
-    return {
-      overrideInsertions: insMatch ? parseInt(insMatch[1], 10) : 0,
-      overrideDeletions: delMatch ? parseInt(delMatch[1], 10) : 0,
-    }
-  } catch {
-    return {}
-  }
 }
 
 /** Escape HTML special characters for safe embedding. */
