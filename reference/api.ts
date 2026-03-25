@@ -1065,6 +1065,34 @@ export const api = {
     'handler.retry',
     'handler.fallback',
   ] as const,
+  ast: [
+    'ast.num',
+    'ast.strNode',
+    'ast.bool',
+    'ast.nil',
+    'ast.sym',
+    'ast.builtin',
+    'ast.effectNode',
+    'ast.call',
+    'ast.ifNode',
+    'ast.block',
+    'ast.nodeType',
+    'ast.isNum',
+    'ast.isStr',
+    'ast.isSym',
+    'ast.isBuiltin',
+    'ast.isCall',
+    'ast.isIf',
+    'ast.isBlock',
+    'ast.isLet',
+    'ast.isFn',
+    'ast.isBool',
+    'ast.isNil',
+    'ast.isEffectNode',
+    'ast.isAstNode',
+    'ast.payload',
+    'ast.prettyPrint',
+  ] as const,
   shorthand: [
     '-short-regexp',
     '-short-fn',
@@ -1120,6 +1148,7 @@ export type ConvertApiName = typeof api.convert[number]
 export type JsonApiName = typeof api.json[number]
 export type TimeApiName = typeof api.time[number]
 export type HandlerApiName = typeof api.handler[number]
+export type AstApiName = typeof api.ast[number]
 
 // Core functions - always available without import
 export type CoreNormalExpressionName
@@ -1155,6 +1184,7 @@ export type ModuleExpressionName
     | JsonApiName
     | TimeApiName
     | HandlerApiName
+    | AstApiName
 export type NormalExpressionName
   = | CoreNormalExpressionName
     | ModuleExpressionName

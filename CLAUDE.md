@@ -29,7 +29,8 @@ For user-facing features, include **demo blocks** in the commit message. These s
 
 ### Commit message format
 
-Use a `---` separator after the description, then markdown with ` ```demo ` fenced blocks:
+Use a `---` separator after the description, then markdown with ` ```demo ` fenced blocks.
+If the demo code contains triple backticks (e.g. code templates), use 4+ backtick fences (`````demo ... `````):
 
 ````
 feat: implement feature X
