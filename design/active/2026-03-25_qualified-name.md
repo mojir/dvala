@@ -69,7 +69,7 @@ pred(@other.thing)                  // → false
 1. ⏳ **Type**: `QualifiedName` — type alias for `string` (gives the concept a name)
 2. ⏳ **Rename**: `effectNameMatchesPattern` → `qualifiedNameMatchesPattern`
 3. ⏳ **`EffectRef`**: `.name` becomes `.name: QualifiedName` (no runtime change, just type)
-4. ✅ **`MacroFunction`**: `.qualifiedName: string | null` field — populated from `macro "name" (params) -> body` syntax
+4. ✅ **`MacroFunction`**: `.qualifiedName: string | null` field — populated from `macro@name (params) -> body` syntax
 5. ✅ **`qualifiedName()` builtin**: works on effects (returns name) and macros (returns qualifiedName or null). Returns null for all other values.
 6. ⏳ **`qualifiedMatcher()` builtin**: generalized from `effectMatcher` — not yet implemented
 7. ⏳ **Host matching**: `findMatchingHandlers` uses the shared matcher

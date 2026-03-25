@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, CodeTemplateToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, CodeTemplateToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -331,6 +331,26 @@ export const tokenizeReservedSymbolToken: Tokenizer<ReservedSymbolToken> = (inpu
   return [symbolMeta[0], ['ReservedSymbol', symbolName as ReservedSymbol]]
 }
 
+/**
+ * Tokenize `macro@qualified.name` as a single compound token.
+ * The `@` must immediately follow `macro` with no whitespace.
+ * Value is the qualified name (without the `macro@` prefix).
+ */
+export const tokenizeMacroQualified: Tokenizer<MacroQualifiedToken> = (input, position) => {
+  // Must start with 'macro' followed immediately by '@'
+  if (input.slice(position, position + 6) !== 'macro@') return NO_MATCH
+  // Char before 'macro' must not be an identifier char (word boundary)
+  if (position > 0 && jsIdentifierCharRegExp.test(input[position - 1]!)) return NO_MATCH
+
+  // Parse the effect name part starting at the '@'
+  const effectResult = tokenizeEffectName(input, position + 5)
+  if (effectResult[0] === 0 || !effectResult[1] || effectResult[1][0] === 'Error') {
+    return NO_MATCH
+  }
+  const qualifiedName = effectResult[1][1]
+  return [5 + effectResult[0], ['MacroQualified', qualifiedName]]
+}
+
 export const tokenizeOperator: Tokenizer<OperatorToken> = (input, position) => {
   const threeChars = input.slice(position, position + 3)
   if (position + 2 < input.length && isSymbolicOperator(threeChars)) {
@@ -623,6 +643,7 @@ export const tokenizers = [
   tokenizeBasePrefixedNumber,
   tokenizeNumber,
   tokenizeOperator,
+  tokenizeMacroQualified,
   tokenizeEffectName,
   tokenizeSymbol,
 ] as const satisfies Tokenizer<Token>[]

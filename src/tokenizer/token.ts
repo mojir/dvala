@@ -23,6 +23,7 @@ export const tokenTypes = [
   'Symbol',
   'TemplateString',
   'CodeTemplate',
+  'MacroQualified',
   'Whitespace',
 ] as const
 
@@ -55,6 +56,8 @@ export type StringToken = GenericToken<'string'>
 export type SymbolToken<T extends string = string> = GenericToken<'Symbol', T>
 export type TemplateStringToken = GenericToken<'TemplateString'>
 export type CodeTemplateToken = GenericToken<'CodeTemplate'>
+/** Token for `macro@qualified.name` — value is the qualified name (without macro@ prefix). */
+export type MacroQualifiedToken = GenericToken<'MacroQualified'>
 export type WhitespaceToken = GenericToken<'Whitespace'>
 
 export type Token =
@@ -78,6 +81,7 @@ export type Token =
   | SymbolToken
   | TemplateStringToken
   | CodeTemplateToken
+  | MacroQualifiedToken
   | WhitespaceToken
 
 export type TokenDescriptor<T extends Token> = [length: number, token?: T]
@@ -345,6 +349,10 @@ export function asTemplateStringToken(token: Token | undefined): TemplateStringT
 
 export function isCodeTemplateToken(token: Token | undefined): token is CodeTemplateToken {
   return token?.[0] === 'CodeTemplate'
+}
+
+export function isMacroQualifiedToken(token: Token | undefined): token is MacroQualifiedToken {
+  return token?.[0] === 'MacroQualified'
 }
 
 /** Convert lightweight token debug info to SourceCodeInfo for error reporting. */

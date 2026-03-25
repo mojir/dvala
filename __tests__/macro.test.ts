@@ -57,11 +57,11 @@ describe('macro system', () => {
 
   describe('qualified name', () => {
     it('should parse macro with qualified name', () => {
-      expect(() => run('macro "mylib.id" (ast) -> ast')).not.toThrow()
+      expect(() => run('macro@mylib.id (ast) -> ast')).not.toThrow()
     })
 
     it('should return qualified name via qualifiedName()', () => {
-      expect(run('let m = macro "mylib.id" (ast) -> ast; qualifiedName(m)')).toBe('mylib.id')
+      expect(run('let m = macro@mylib.id (ast) -> ast; qualifiedName(m)')).toBe('mylib.id')
     })
 
     it('should return null for anonymous macro', () => {
@@ -79,19 +79,19 @@ describe('macro system', () => {
     })
 
     it('should still be a macro with qualified name', () => {
-      expect(run('isMacro(macro "mylib.id" (ast) -> ast)')).toBe(true)
-      expect(run('typeOf(macro "mylib.id" (ast) -> ast)')).toBe('macro')
+      expect(run('isMacro(macro@mylib.id (ast) -> ast)')).toBe(true)
+      expect(run('typeOf(macro@mylib.id (ast) -> ast)')).toBe('macro')
     })
 
     it('should invoke correctly with qualified name', () => {
-      expect(run('let id = macro "mylib.id" (ast) -> ast; id(1 + 2)')).toBe(3)
+      expect(run('let id = macro@mylib.id (ast) -> ast; id(1 + 2)')).toBe(3)
     })
 
     it('should emit @dvala.macro.expand for named macros', () => {
       // Named macros emit the effect — a handler can intercept it.
       // The handler returns an AST node that gets evaluated in the calling scope.
       const result = run(`
-        let id = macro "mylib.id" (ast) -> ast;
+        let id = macro@mylib.id (ast) -> ast;
         handle
           id(42)
         with [(arg, eff, nxt) ->

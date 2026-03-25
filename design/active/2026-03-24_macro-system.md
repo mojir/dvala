@@ -30,7 +30,7 @@ Macros are functions that receive AST and return AST. They use the same call syn
 The only new keyword. Tells the evaluator: when this function is called, pass arguments as AST instead of evaluating them.
 
 ```dvala
-let memoize = macro "mylib.memoize" (ast) -> do
+let memoize = macro@mylib.memoize (ast) -> do
   // ast is the AST of the argument, not its evaluated value
   // returns new AST
 end;
@@ -42,7 +42,7 @@ The qualified name is required for macros that need to be identifiable by host-l
 
 ```dvala
 // Named macro — identifiable by host handlers
-let memoize = macro "mylib.memoize" (ast) -> ...;
+let memoize = macro@mylib.memoize (ast) -> ...;
 
 // Anonymous macro — local use only
 let id = macro (ast) -> ast;
@@ -54,7 +54,7 @@ Named macros (with a qualified name) emit `@dvala.macro.expand` when called — 
 
 | Macro type | Expansion mechanism | Host visible | Effect overhead |
 |---|---|---|---|
-| Named: `macro "name" (ast) -> ...` | `perform(@dvala.macro.expand, { fn, args })` | Yes | Yes |
+| Named: `macro@name (ast) -> ...` | `perform(@dvala.macro.expand, { fn, args })` | Yes | Yes |
 | Anonymous: `macro (ast) -> ...` | Direct call (no effect) | No | None |
 
 Giving a macro a qualified name is an explicit opt-in to host observability. Anonymous macros are local, fast, and private.
@@ -431,7 +431,7 @@ let sandboxedMacroHandler = (arg, eff, nxt) ->
 |------|------------|-----------------|-------------|
 | Core macros (`&&`, `\|\|`, `??`) | Parser (parse time) | No | Zero |
 | Anonymous macros (`macro (ast) -> ...`) | Evaluator, direct call | No | Function call only |
-| Named macros (`macro "name" (ast) -> ...`) | Evaluator via effect | Yes | Effect + function call |
+| Named macros (`macro@name (ast) -> ...`) | Evaluator via effect | Yes | Effect + function call |
 
 The bundler can pre-expand user macros, promoting them to the zero-cost tier in bundled output.
 
@@ -673,7 +673,7 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 3. ✅ `@dvala.macro.expand` effect — `callMacro` emits `PerformStep` for named macros, default handler in `dispatchPerform` calls the macro directly.
 4. ✅ `typeOf(macro)` → `"macro"`, `isMacro()` predicate, `isFunction()` excludes macros
 5. ✅ Tests: 10 tests in `__tests__/macro.test.ts` covering definition, invocation, type checks
-6. ✅ Qualified name for macros — `macro "qualified.name" (ast) -> ...` syntax. See [QualifiedName design](2026-03-25_qualified-name.md). Also added `qualifiedName()` builtin.
+6. ✅ Qualified name for macros — `macro@qualified.name (ast) -> ...` syntax. See [QualifiedName design](2026-03-25_qualified-name.md). Also added `qualifiedName()` builtin.
 
 **Implementation notes:**
 - `MacroFunction` type added to `parser/types.ts` (functionType: `'Macro'`)
