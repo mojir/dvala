@@ -718,11 +718,17 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 - Registered in `allModules.ts`, `reference/index.ts`, `reference/api.ts`
 - Category `'ast'` added to `interface.ts`
 
-### Phase 4 — Hygiene
+### Phase 4 — Hygiene ✅ DONE
 
-1. Auto-gensym for bindings inside code templates
-2. Spliced values retain original identity
-3. Tests: no name collisions between macro internals and caller scope
+1. ✅ Auto-gensym for bindings inside code templates — `buildRenameMap` collects literal binding names, `gensym` generates unique names
+2. ✅ Spliced values retain original identity — Splice nodes bypass the rename map
+3. ✅ Tests: 4 hygiene tests in `__tests__/code-template.test.ts` — param capture, let binding collision, spliced identity, multiple bindings
+
+**Implementation notes:**
+- `buildRenameMap` walks template AST collecting symbol names from Let targets and Function/Macro params, skipping Splice nodes
+- `gensym(name)` generates `__gensym_<name>_<counter>__` — unique per template evaluation
+- `astToData` and `convertArrayPayload` accept optional `renameMap` — literal Sym nodes matching the map are renamed
+- `CodeTemplateBuildFrame` carries the `renameMap` so it persists across splice evaluations
 
 ### Phase 5 — `|>` Desugaring
 
