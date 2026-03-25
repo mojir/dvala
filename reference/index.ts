@@ -24,6 +24,7 @@ import { assertModule } from '../src/builtin/modules/assertion'
 import { bitwiseUtilsModule } from '../src/builtin/modules/bitwise'
 import { collectionUtilsModule } from '../src/builtin/modules/collection'
 
+import { astModule } from '../src/builtin/modules/ast'
 import { convertModule } from '../src/builtin/modules/convert'
 import { jsonModule } from '../src/builtin/modules/json'
 import { timeModule } from '../src/builtin/modules/time'
@@ -257,6 +258,7 @@ export const moduleReference: Record<ModuleExpressionName, FunctionReference> = 
   ...moduledDocsToReference(jsonModule),
   ...moduledDocsToReference(timeModule),
   ...moduledDocsToReference(handlerModule),
+  ...moduledDocsToReference(astModule),
 } as Record<ModuleExpressionName, FunctionReference>
 
 Object.entries(normalExpressionReference).forEach(([key, obj]) => {
