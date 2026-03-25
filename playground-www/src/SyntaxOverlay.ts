@@ -43,6 +43,8 @@ function getTokenColor(token: Token): string | null {
       return colors.string
     case 'EffectName':
       return colors.effect
+    case 'MacroQualified':
+      return colors.keyword
     case 'Symbol': {
       if (effectConstructs.has(token[1])) return colors.effectConstruct
       return specialExpressionSet.has(token[1])
@@ -105,7 +107,7 @@ export function tokenizeToHtml(code: string): string {
     return tokens.map(token => {
       if (token[0] === 'TemplateString')
         return renderTemplateStringToken(token[1])
-      const prefix = token[0] === 'EffectName' ? '@' : ''
+      const prefix = token[0] === 'EffectName' ? '@' : token[0] === 'MacroQualified' ? 'macro@' : ''
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token)
       if (!color)
