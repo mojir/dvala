@@ -167,6 +167,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'MultiLineComment' // Should have been removed
     | 'SingleLineComment' // Should have been removed
     | 'Whitespace' // Should have been removed
+    | 'MacroQualified' // Handled in parseExpression
   >
   switch (tokenType) {
     case 'Number':

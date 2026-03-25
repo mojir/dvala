@@ -2,7 +2,7 @@ import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
-import { assertOperatorToken, isReservedSymbolToken, isStringToken } from '../../tokenizer/token'
+import { assertOperatorToken, isMacroQualifiedToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseDo } from './parseDo'
@@ -14,16 +14,10 @@ export type MacroNode = [typeof NodeTypes.Macro, MacroPayload, number]
 
 export function parseMacro(ctx: ParserContext): MacroNode {
   const token = ctx.peek()
-  ctx.advance() // skip 'macro'
+  ctx.advance() // skip 'macro' or 'macro@qualified.name' token
 
-  // Optional qualified name: macro("mylib.memoize") (params) -> body
-  let qualifiedName: string | null = null
-  const maybeString = ctx.peek()
-  if (isStringToken(maybeString)) {
-    // Extract the string value (strip surrounding quotes)
-    qualifiedName = maybeString[1].substring(1, maybeString[1].length - 1)
-    ctx.advance()
-  }
+  // Qualified name comes from the MacroQualified token (macro@foo.bar)
+  const qualifiedName: string | null = isMacroQualifiedToken(token) ? token[1] : null
 
   let functionArguments: BindingTarget[]
   try {

@@ -3,7 +3,7 @@ import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { DvalaError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
-import { isA_BinaryOperatorToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import { isA_BinaryOperatorToken, isMacroQualifiedToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialSymbolNode } from '../../typeGuards/astNode'
 import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
@@ -52,6 +52,9 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         left = parseMacro(ctx)
         break
     }
+  } else if (isMacroQualifiedToken(token)) {
+    // macro@qualified.name — pass the qualified name to parseMacro
+    left = parseMacro(ctx)
   } else if (isReservedSymbolToken(token, 'do')) {
     left = parseDo(ctx)
   } else if (isReservedSymbolToken(token, 'handle')) {

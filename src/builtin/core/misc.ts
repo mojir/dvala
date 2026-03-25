@@ -392,7 +392,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       seeAlso: ['effectName', 'effectMatcher', 'isMacro', 'isEffect'],
       examples: [
         'qualifiedName(@dvala.io.print)',
-        'qualifiedName(macro "my.lib" (ast) -> ast)',
+        'qualifiedName(macro@my.lib (ast) -> ast)',
         'qualifiedName(macro (ast) -> ast)',
         'qualifiedName(42)',
       ],

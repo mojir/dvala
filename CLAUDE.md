@@ -218,12 +218,12 @@ m.frequencies([1, 1, 2])
 let id = macro (ast) -> ast;     // anonymous macro — returns AST unchanged
 id(1 + 2)                         // → 3 (AST of `1 + 2` returned, then evaluated)
 
-let m = macro "mylib.id" (ast) -> ast;  // named macro with qualified name
-qualifiedName(m)                         // → "mylib.id"
+let m = macro@mylib.id (ast) -> ast;  // named macro with qualified name
+qualifiedName(m)                       // → "mylib.id"
 ```
 
 - `macro (params) -> body` — anonymous macro. Same syntax as functions but with `macro` keyword.
-- `macro "qualified.name" (params) -> body` — named macro with a qualified name for host-level dispatch.
+- `macro@qualified.name (params) -> body` — named macro with a qualified name for host-level dispatch. The `@` must be attached to `macro` with no space.
 - When a macro is called, arguments are **NOT evaluated** — they're passed as AST nodes (arrays).
 - The macro body executes normally. It receives AST data and must return AST data.
 - The returned AST is then evaluated in the **calling scope**.
