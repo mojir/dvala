@@ -140,6 +140,7 @@
     "build-playground": "wireit",
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
+    "demo": "node scripts/demo-link.mjs",
     "dev": "npx serve docs -p 9901 --single",
     "test:e2e": "npx playwright test",
     "test:e2e:prod": "E2E_BASE_URL=https://mojir.github.io/dvala npx playwright test",

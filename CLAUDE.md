@@ -21,30 +21,60 @@ Run `npm run check` after any medium or larger code change.
 - `it()` descriptions must begin with lowercase
 - No side-effect imports for module registration
 - Every built-in function needs a `docs` property with `category`, `description`, `returns`, `args`, `variants`, `examples`
+- Always add descriptive comments in code — explain the *why*, not just the *what*
 
-## Demo Before Commit
+## Demo Convention
 
-Before committing a completed task, provide a **playground demo link** so the user can try it interactively. Use the local playground URL with the Dvala code encoded in a `state` query parameter.
+For user-facing features, include **demo blocks** in the commit message. These serve as an interactive changelog — `npm run demo [ref]` extracts them and generates playground URLs.
 
-### How to create playground URLs
+### Commit message format
 
-The playground reads `?state=<encoded>` from the URL. The encoding is:
+Use a `---` separator after the description, then markdown with ` ```demo ` fenced blocks:
 
+````
+feat: implement feature X
+
+Description of the change.
+
+---
+
+```demo
+description: short description of what the demo shows
+code:
+let x = 42;
+x + 1
 ```
-base64(encodeURIComponent(JSON.stringify({ "dvala-code": "<dvala code here>" })))
+````
+
+Multiple demos per commit are fine. For demos needing context (bindings):
+
+````
+```demo
+description: macro with custom handler
+context:
+let myHandler = (arg, eff, nxt) -> nxt(eff, arg)
+code:
+handle perform(@my.eff, 10) with [myHandler] end
+```
+````
+
+### Generating playground links
+
+```bash
+npm run demo          # from HEAD
+npm run demo HEAD~3   # from specific ref
+npm run demo abc123   # from hash
 ```
 
-**To generate a link**, use the Bash tool:
+### Before committing
+
+Always show the user a playground demo link before committing. Generate it with:
 
 ```bash
 node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:9901/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
 ```
 
-For multi-line code, use template literals or `\n` in the string.
-
 The playground runs on `http://localhost:9901/` (start with `npm run dev`).
-
-Always provide at least one demo link per completed feature. Pick a concise example that shows the feature working.
 
 ## Creating design documents and plans
 I encurage you to structurize bigger tasks by creating .md plans.
