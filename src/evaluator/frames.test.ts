@@ -91,8 +91,9 @@ describe('frame types', () => {
       AutoCheckpoint: true,
       HandleWith: true,
       HandleSetup: true,
+      MacroEval: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(40)
+    expect(Object.keys(frameTypes)).toHaveLength(41)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -146,6 +147,7 @@ describe('frame types', () => {
         case 'AutoCheckpoint': return 'checkpoint'
         case 'HandleWith': return 'effect'
         case 'HandleSetup': return 'effect'
+        case 'MacroEval': return 'macro'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame

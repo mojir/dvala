@@ -1,4 +1,4 @@
-import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
+import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
 import { assertColl, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
@@ -8,15 +8,15 @@ import { toFixedArity } from '../../utils/arity'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
   'isFunction': {
-    evaluate: ([first]): boolean => isDvalaFunction(first),
+    evaluate: ([first]): boolean => isDvalaFunction(first) && !isMacroFunction(first),
     arity: toFixedArity(1),
     docs: {
       category: 'predicate',
       returns: { type: 'boolean' },
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if `x` is a function, otherwise `false`.',
-      seeAlso: ['isString', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
+      description: 'Returns `true` if `x` is a function (not a macro), otherwise `false`.',
+      seeAlso: ['isMacro', 'isString', 'isNumber', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isRegexp', 'typeOf'],
       examples: [
         'isFunction(+)',
         'isFunction(/)',
@@ -24,6 +24,24 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
         'isFunction(false)',
         'isFunction("false")',
         'isFunction([1, 2, 3])',
+      ],
+    },
+  },
+
+  'isMacro': {
+    evaluate: ([first]): boolean => isMacroFunction(first),
+    arity: toFixedArity(1),
+    docs: {
+      category: 'predicate',
+      returns: { type: 'boolean' },
+      args: { x: { type: 'any' } },
+      variants: [{ argumentNames: ['x'] }],
+      description: 'Returns `true` if `x` is a macro, otherwise `false`.',
+      seeAlso: ['isFunction', 'typeOf'],
+      examples: [
+        'isMacro(macro (ast) -> ast)',
+        'isMacro((x) -> x)',
+        'isMacro(42)',
       ],
     },
   },

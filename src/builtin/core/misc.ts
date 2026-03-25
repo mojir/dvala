@@ -2,7 +2,7 @@ import { DvalaError } from '../../errors'
 import type { EffectMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
-import { isDvalaFunction } from '../../typeGuards/dvalaFunction'
+import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
 import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
@@ -381,6 +381,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         return 'effect'
       if (isRegularExpression(value))
         return 'regexp'
+      if (isMacroFunction(value))
+        return 'macro'
       if (isDvalaFunction(value))
         return 'function'
       if (Array.isArray(value))
@@ -395,8 +397,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         x: { type: 'any', description: 'The value to inspect.' },
       },
       variants: [{ argumentNames: ['x'] }],
-      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"regexp"`, and `"effect"`.',
-      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isFunction', 'isRegexp', 'isEffect'],
+      description: 'Returns a string representing the type of `x`. Possible return values are `"number"`, `"string"`, `"boolean"`, `"null"`, `"array"`, `"object"`, `"function"`, `"macro"`, `"regexp"`, and `"effect"`.',
+      seeAlso: ['isNumber', 'isString', 'isBoolean', 'isNull', 'isArray', 'isObject', 'isFunction', 'isMacro', 'isRegexp', 'isEffect'],
       examples: [
         'typeOf(42)',
         'typeOf("hello")',
