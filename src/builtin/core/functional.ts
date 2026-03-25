@@ -12,7 +12,7 @@ import { assertFunctionLike } from '../../typeGuards/dvala'
 
 export const functionalNormalExpression: BuiltinNormalExpressions = {
   '|>': {
-    evaluate: () => { throw new Error('|> is implemented in Dvala') },
+    evaluate: (): never => { throw new Error('|> is implemented in Dvala') },
     arity: toFixedArity(2),
     docs: {
       category: 'functional',

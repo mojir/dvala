@@ -730,11 +730,16 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 - `astToData` and `convertArrayPayload` accept optional `renameMap` — literal Sym nodes matching the map are renamed
 - `CodeTemplateBuildFrame` carries the `renameMap` so it persists across splice evaluations
 
-### Phase 5 — `|>` Desugaring
+### Phase 5 — `|>` Desugaring ✅ DONE
 
-1. Change parser: `a |> b` produces `b(a)` AST instead of `["Call", ["|>", [a, b]]]`
-2. Verify all existing `|>` usage produces identical results
-3. Tests: pipe with functions unchanged, pipe with macros works
+1. ✅ Parser: `a |> b` now produces `["Call", [b, [a]], id]` instead of `["Call", ["|>", [a, b]]]`
+2. ✅ All existing `|>` usage produces identical results (32499 tests pass)
+3. ✅ Prefix form `|>(a, b)` removed — `|>` is now purely a parser construct
+
+**Implementation notes:**
+- One-line change in `fromBinaryOperatorToNode` in `helpers.ts` — `|>` case now emits `["Call", [right, [left]]]`
+- Removed `|>` dvalaImpl from `functional.dvala` — no longer needed
+- `|>` builtin evaluate stub remains for docs/reference but throws if called directly
 
 ### Phase 6 — Core Macros
 

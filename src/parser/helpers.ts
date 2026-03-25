@@ -9,7 +9,7 @@ import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'
 import { assertNumberOfParams } from '../utils/arity'
-import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
+import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExpression, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
 import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12
@@ -119,8 +119,13 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '&':
     case 'xor':
     case '|':
-    case '|>':
       return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], debugInfo, ctx)
+    case '|>': {
+      // Value pipe: a |> b  →  b(a) — desugared at parse time so macros on the right see AST
+      const node = withSourceCodeInfo([NodeTypes.Call, [right, [left]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+      ctx.setNodeEnd(node[2])
+      return node
+    }
     case '&&': {
       const node = withSourceCodeInfo([NodeTypes.And, [left, right], 0] as AndNode, debugInfo, ctx)
       ctx.setNodeEnd(node[2])
