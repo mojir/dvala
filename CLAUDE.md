@@ -157,6 +157,104 @@ m.frequencies([1, 1, 2])
 - Spread in arrays: `[...arr, 4]` / objects: `{ ...obj, key: val }`
 - Comments: `// single line` or `/* multi line */`
 
+### Macros
+
+```dvala
+let id = macro (ast) -> ast;     // identity macro — returns AST unchanged
+id(1 + 2)                         // → 3 (AST of `1 + 2` returned, then evaluated)
+```
+
+- `macro (params) -> body` — defines a macro. Same syntax as functions but with `macro` keyword.
+- When a macro is called, arguments are **NOT evaluated** — they're passed as AST nodes (arrays).
+- The macro body executes normally. It receives AST data and must return AST data.
+- The returned AST is then evaluated in the **calling scope**.
+- `typeOf(m)` → `"macro"`, `isMacro(m)` → `true`, `isFunction(m)` → `false`.
+
+#### AST Node Format (what macros receive and return)
+
+Every AST node is a 3-tuple: `[type, payload, nodeId]`. The `type` is a string tag, `payload` varies by type, `nodeId` is an integer (use `0` for generated nodes).
+
+**Value nodes:**
+```
+["Num", 42, 0]          // number literal
+["Str", "hello", 0]     // string literal
+["Bool", true, 0]       // boolean
+["Null", 0]             // null (2-tuple exception)
+```
+
+**Identifier nodes:**
+```
+["Sym", "x", 0]         // variable reference
+["Builtin", "+", 0]     // built-in function
+["Effect", "dvala.io.print", 0]  // effect reference
+```
+
+**Call (function application):**
+```
+["Call", [fnNode, [argNodes...]], 0]
+// Example: f(x, 1) →
+["Call", [["Sym", "f", 0], [["Sym", "x", 0], ["Num", 1, 0]]], 0]
+```
+
+**Key special expressions:**
+```
+["If", [cond, then, else], 0]
+["Let", [bindingTarget, valueNode], 0]
+["Block", [stmt1, stmt2, ...], 0]
+["Function", [[params], [bodyExprs]], 0]
+["Perform", [effectExpr, payloadExpr], 0]
+["Handle", [[bodyExprs], handlersExpr], 0]
+["Array", [elements...], 0]
+["Object", [entries...], 0]       // entries are [key, val] pairs or SpreadNodes
+["Recur", [args...], 0]
+["Macro", [[params], [bodyExprs]], 0]
+```
+
+**Operators (also Call nodes):** `x + 1` → `["Call", [["Builtin", "+", 0], [["Sym", "x", 0], ["Num", 1, 0]]], 0]`
+
+#### Writing Macros — Key Patterns
+
+**Identity macro** (pass-through):
+```dvala
+let id = macro (ast) -> ast;
+id(let x = 42);  // equivalent to: let x = 42
+```
+
+**Constructing AST manually:**
+```dvala
+let always42 = macro (ast) -> ["Num", 42, 0];
+always42(anything)  // → 42, ignores the argument
+```
+
+**Inspecting AST structure in macro body:**
+```dvala
+let debug = macro (ast) -> do
+  perform(@dvala.io.print, str(ast));  // print the AST
+  ast                                    // return it unchanged
+end;
+```
+
+#### Implementation Architecture
+
+- Parser: `src/parser/subParsers/parseMacro.ts` — parses `macro` keyword
+- Node type: `NodeTypes.Macro` in `src/constants/constants.ts`
+- Function type: `MacroFunction` in `src/parser/types.ts` (functionType: `'Macro'`)
+- Evaluator: `case NodeTypes.Macro:` in `stepNode()` creates `MacroFunction` value
+- Macro call: detected in `stepNormalExpression()` — skips arg evaluation, passes AST
+- `MacroEvalFrame` in `src/evaluator/frames.ts` — evaluates returned AST in calling scope
+- Type guards: `isMacroFunction()` in `src/typeGuards/dvalaFunction.ts`
+- Predicates: `isMacro` in `src/builtin/core/predicates.ts`, `typeOf` updated in `src/builtin/core/misc.ts`
+- Tests: `__tests__/macro.test.ts`
+
+#### Gotchas When Working on Macros
+
+- Macro args are AST nodes (arrays). In Dvala, arrays are truthy, so `typeOf(ast)` → `"array"`.
+- Don't confuse the macro's body execution (normal eval) with the returned AST (evaluated after).
+- `parseLambdaFunction` rejects `(singleParam) ->` pattern — that's why `parseMacro` uses `parseFunctionArguments` directly.
+- Variable names in tests must not shadow builtins (e.g., don't use `first` as a macro name — it's a builtin).
+- Macros only intercept **named calls** to user-defined symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` names only.
+- The `@macro.expand` effect from the design doc is NOT yet implemented — currently macros are called directly.
+
 ## MCP Tools
 
 When working with Dvala code or answering questions about the language, use the MCP tools rather than reading source files:
