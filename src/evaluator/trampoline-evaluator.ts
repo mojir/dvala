@@ -46,6 +46,7 @@ import type {
   BindingTarget,
   DvalaFunction,
   EffectRef,
+  MacroFunction,
   EvaluatedFunction,
   FunctionLike,
   HandleNextFunction,
@@ -68,9 +69,9 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
-import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode } from '../typeGuards/astNode'
+import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isObj } from '../typeGuards/dvala'
-import { isDvalaFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
+import { isDvalaFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { deepEqual, toAny } from '../utils'
@@ -116,6 +117,7 @@ import type {
   LoopBindCompleteFrame,
   LoopBindFrame,
   LoopIterateFrame,
+  MacroEvalFrame,
   MatchFrame,
   MatchSlotContext,
   MatchSlotFrame,
@@ -382,6 +384,23 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
       return { type: 'Value', value: dvalaFunction, k }
     }
+    case NodeTypes.Macro: {
+      const fn = node[1] as [BindingTarget[], AstNode[], ...unknown[]]
+      const evaluatedFunc = evaluateFunction(fn, env)
+      const min = evaluatedFunc[0].filter(arg => arg[0] !== bindingTargetTypes.rest && arg[1][1] === undefined).length
+      const max = evaluatedFunc[0].some(arg => arg[0] === bindingTargetTypes.rest) ? undefined : evaluatedFunc[0].length
+      const arity = { min: min > 0 ? min : undefined, max }
+      const macroFunction: MacroFunction = {
+        [FUNCTION_SYMBOL]: true,
+        sourceCodeInfo: env.resolve(node[2]),
+        functionType: 'Macro',
+        name: undefined,
+        evaluatedfunction: evaluatedFunc,
+        arity,
+        docString: '',
+      }
+      return { type: 'Value', value: macroFunction, k }
+    }
     case NodeTypes.Object: {
       const entries = node[1] as (AstNode[] | AstNode)[]
       const sourceCodeInfo = env.resolve(node[2])
@@ -628,6 +647,19 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
   const argNodes = node[1][1]
   const sourceCodeInfo = env.resolve(node[2])
 
+  // --- Macro check ---
+  // For named calls, resolve the callee first. If it's a macro, pass args as AST.
+  if (isNormalExpressionNodeWithName(node)) {
+    const nameSymbol = node[1][0]
+    if (isUserDefinedSymbolNode(nameSymbol)) {
+      const callee = env.evaluateSymbol(nameSymbol)
+      if (isMacroFunction(callee)) {
+        // Macro call: pass argument AST nodes directly (don't evaluate them)
+        return callMacro(callee, argNodes, env, sourceCodeInfo, k)
+      }
+    }
+  }
+
   // NaN guard wraps the final result
   const nanFrame: NanCheckFrame = { type: 'NanCheck', sourceCodeInfo }
 
@@ -795,8 +827,9 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
  */
 function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step | Promise<Step> {
   switch (fn.functionType) {
-    case 'UserDefined': {
-      return setupUserDefinedCall(fn, params, env, sourceCodeInfo, k)
+    case 'UserDefined':
+    case 'Macro': {
+      return setupUserDefinedCall(fn as UserDefinedFunction, params, env, sourceCodeInfo, k)
     }
     // Simple compound types: no recursion needed
     case 'Constantly': {
@@ -1204,6 +1237,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     }
     case 'AutoCheckpoint':
       return applyAutoCheckpoint(frame, k)
+    case 'MacroEval':
+      return applyMacroEval(frame, value, k)
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame
@@ -3378,6 +3413,51 @@ function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): 
     sourceCodeInfo: frame.sourceCodeInfo,
   }
   return { type: 'Perform', effect: frame.effect, arg: frame.arg, k: [markerFrame, ...k], sourceCodeInfo: frame.sourceCodeInfo }
+}
+
+// ---------------------------------------------------------------------------
+// Macro expansion
+// ---------------------------------------------------------------------------
+
+/**
+ * Call a macro: pass argument AST nodes (unevaluated) to the macro function,
+ * then evaluate the returned AST in the calling scope.
+ */
+function callMacro(
+  macroFn: MacroFunction,
+  argNodes: AstNode[],
+  env: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  // Push a MacroEvalFrame — when the macro body returns AST,
+  // this frame will evaluate it in the calling scope
+  const macroEvalFrame: MacroEvalFrame = {
+    type: 'MacroEval',
+    env,
+    sourceCodeInfo,
+  }
+
+  // Call the macro function with the raw AST nodes as arguments.
+  // AST nodes are Dvala arrays — they're valid Dvala values.
+  return setupUserDefinedCall(
+    macroFn as unknown as UserDefinedFunction,
+    argNodes,
+    env,
+    sourceCodeInfo,
+    [macroEvalFrame, ...k],
+  )
+}
+
+/**
+ * After a macro function returns a value (the new AST), evaluate it
+ * in the original calling scope.
+ */
+function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack): Step {
+  // The macro returned a value — it should be AST data (an array).
+  // Evaluate it as an AST node in the calling scope.
+  const astNode = value as AstNode
+  return { type: 'Eval', node: astNode, env: frame.env, k }
 }
 
 // ---------------------------------------------------------------------------

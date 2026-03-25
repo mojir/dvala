@@ -16,8 +16,9 @@ import { parseForOrDoseq } from './parseForOrDoseq'
 import { parseIf } from './parseIf'
 import { parseLet } from './parseLet'
 import { parseLoop } from './parseLoop'
-import { parseOperand } from './parseOperand'
+import { parseMacro } from './parseMacro'
 import { parseMatch } from './parseMatch'
+import { parseOperand } from './parseOperand'
 import { parseSymbol } from './parseSymbol'
 
 export function createParserContext(tokenStream: TokenStream): ParserContext {
@@ -46,6 +47,9 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         break
       case 'loop':
         left = parseLoop(ctx, token)
+        break
+      case 'macro':
+        left = parseMacro(ctx)
         break
     }
   } else if (isReservedSymbolToken(token, 'do')) {

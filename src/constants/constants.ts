@@ -29,6 +29,7 @@ export const NodeTypes = {
   For: 'For',
   Match: 'Match',
   Import: 'Import',
+  Macro: 'Macro',
 } as const
 
 const NodeTypesSet = new Set<string>(Object.values(NodeTypes))
@@ -41,6 +42,7 @@ export function isNodeType(type: unknown): type is NodeType {
 
 const functionTypes = [
   'UserDefined',
+  'Macro',
   'Partial',
   'Comp',
   'Constantly',

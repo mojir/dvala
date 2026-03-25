@@ -36,6 +36,13 @@ export interface UserDefinedFunction extends GenericDvalaFunction {
   docString: string // documentation string
 }
 
+export interface MacroFunction extends GenericDvalaFunction {
+  functionType: 'Macro'
+  name: string | undefined
+  evaluatedfunction: EvaluatedFunction
+  docString: string
+}
+
 export interface PartialFunction extends GenericDvalaFunction {
   functionType: 'Partial'
   function: FunctionLike
@@ -123,6 +130,7 @@ export interface HandleNextFunction extends GenericDvalaFunction {
 
 export type DvalaFunction =
   | UserDefinedFunction
+  | MacroFunction
   | NormalBuiltinFunction
   | SpecialBuiltinFunction
   | ModuleFunction

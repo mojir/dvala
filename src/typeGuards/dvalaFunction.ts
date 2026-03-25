@@ -1,4 +1,4 @@
-import type { DvalaFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
+import type { DvalaFunction, MacroFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
@@ -32,6 +32,10 @@ export function assertUserDefinedFunction(
 ): asserts value is UserDefinedFunction {
   if (!isUserDefinedFunction(value))
     throw getAssertionError('UserDefinedFunction', value, sourceCodeInfo)
+}
+
+export function isMacroFunction(value: unknown): value is MacroFunction {
+  return isDvalaFunction(value) && value.functionType === 'Macro'
 }
 
 export function isBuiltinFunction(value: unknown): value is NormalBuiltinFunction {

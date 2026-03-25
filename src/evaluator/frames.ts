@@ -923,6 +923,20 @@ export type Frame =
   | ImportMergeFrame
   // Auto-checkpoint
   | AutoCheckpointFrame
+  // Macro expansion
+  | MacroEvalFrame
+
+/**
+ * Macro expansion result (`macro`).
+ *
+ * Pushed when a macro function call returns its result (new AST).
+ * The trampoline evaluates the returned AST in the original calling scope.
+ */
+export interface MacroEvalFrame {
+  type: 'MacroEval'
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
 
 /**
  * Array type alias for readability — a continuation stack is just

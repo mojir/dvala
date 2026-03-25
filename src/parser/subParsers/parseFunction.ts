@@ -54,7 +54,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
   }
 }
 
-function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
+export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   const firstToken = ctx.peek()
   if (isSymbolToken(firstToken)) {
     return [withSourceCodeInfo([bindingTargetTypes.symbol, [parseSymbol(ctx), undefined], 0], firstToken[2], ctx)]

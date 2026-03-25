@@ -174,7 +174,8 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
     }
     case NodeTypes.Import:
       return new Set()
-    case NodeTypes.Function: {
+    case NodeTypes.Function:
+    case NodeTypes.Macro: {
       const fn = node[1] as DvalaFunctionTuple
       return getFunctionUnresolvedSymbols(fn, contextStack, getUndefinedSymbols, builtin)
     }
