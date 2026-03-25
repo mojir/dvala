@@ -1,4 +1,5 @@
 import { NodeTypes, isNodeType } from '../../../constants/constants'
+import { prettyPrint } from '../../../prettyPrint'
 import { DvalaError } from '../../../errors'
 import type { Any, Arr } from '../../../interface'
 import { toFixedArity } from '../../../utils/arity'
@@ -429,7 +430,7 @@ const astFunctions: BuiltinNormalExpressions = {
   'prettyPrint': {
     evaluate: ([node], sourceCodeInfo): string => {
       assertAstNode(node, sourceCodeInfo)
-      return prettyPrintNode(node as unknown as [string, unknown, number])
+      return prettyPrint(node)
     },
     arity: toFixedArity(1),
     docs: {
@@ -445,106 +446,6 @@ const astFunctions: BuiltinNormalExpressions = {
       ],
     },
   },
-}
-
-// ---------------------------------------------------------------------------
-// prettyPrint implementation
-// ---------------------------------------------------------------------------
-
-/** Convert an AST node to readable Dvala source. */
-function prettyPrintNode(node: [string, unknown, number]): string {
-  const [type, payload] = node
-
-  switch (type) {
-    case NodeTypes.Num:
-      return String(payload)
-    case NodeTypes.Str:
-      return `"${String(payload).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-    case NodeTypes.Reserved:
-      return String(payload) // "true", "false", "null"
-    case NodeTypes.Sym:
-      return String(payload)
-    case NodeTypes.Builtin:
-      return String(payload)
-    case NodeTypes.Effect:
-      return `@${payload}`
-    case NodeTypes.Call: {
-      const [fn, args] = payload as [unknown[], unknown[]]
-      const fnStr = prettyPrintNode(fn as [string, unknown, number])
-      const argStrs = (args as unknown[][]).map(a => prettyPrintNode(a as [string, unknown, number]))
-      // Infix binary operators
-      if (fn[0] === NodeTypes.Builtin && argStrs.length === 2) {
-        const op = fn[1] as string
-        if (['+', '-', '*', '/', '^', '%', '==', '!=', '<', '>', '<=', '>=', '++'].includes(op)) {
-          return `${argStrs[0]} ${op} ${argStrs[1]}`
-        }
-      }
-      return `${fnStr}(${argStrs.join(', ')})`
-    }
-    case NodeTypes.If: {
-      const parts = payload as unknown[][]
-      const cond = prettyPrintNode(parts[0] as [string, unknown, number])
-      const then = prettyPrintNode(parts[1] as [string, unknown, number])
-      if (parts.length > 2 && parts[2]) {
-        const else_ = prettyPrintNode(parts[2] as [string, unknown, number])
-        return `if ${cond} then ${then} else ${else_} end`
-      }
-      return `if ${cond} then ${then} end`
-    }
-    case NodeTypes.Block: {
-      const stmts = payload as unknown[][]
-      return `do ${stmts.map(s => prettyPrintNode(s as [string, unknown, number])).join('; ')} end`
-    }
-    case NodeTypes.Let: {
-      const [target, value] = payload as [unknown[], unknown[]]
-      const targetStr = prettyPrintBindingTarget(target)
-      const valueStr = prettyPrintNode(value as [string, unknown, number])
-      return `let ${targetStr} = ${valueStr}`
-    }
-    case NodeTypes.Function: {
-      const [params, body] = payload as [unknown[][], unknown[][]]
-      const paramStrs = params.map(p => prettyPrintBindingTarget(p))
-      const bodyStrs = body.map(b => prettyPrintNode(b as [string, unknown, number]))
-      if (bodyStrs.length === 1) {
-        return `(${paramStrs.join(', ')}) -> ${bodyStrs[0]}`
-      }
-      return `(${paramStrs.join(', ')}) -> do ${bodyStrs.join('; ')} end`
-    }
-    case NodeTypes.Perform: {
-      const [eff, arg] = payload as [unknown[], unknown[] | undefined]
-      const effStr = prettyPrintNode(eff as [string, unknown, number])
-      if (arg) {
-        return `perform(${effStr}, ${prettyPrintNode(arg as [string, unknown, number])})`
-      }
-      return `perform(${effStr})`
-    }
-    case NodeTypes.Array: {
-      const elements = payload as unknown[][]
-      return `[${elements.map(e => prettyPrintNode(e as [string, unknown, number])).join(', ')}]`
-    }
-    default:
-      // Fallback: show the raw structure for unhandled types
-      return `<${type}>`
-  }
-}
-
-/** Pretty print a binding target (used in let and function params). */
-function prettyPrintBindingTarget(target: unknown[]): string {
-  const targetType = target[0] as string
-  const targetPayload = target[1] as unknown[]
-
-  switch (targetType) {
-    case 'symbol': {
-      const [symNode] = targetPayload as [unknown[]]
-      return symNode[1] as string
-    }
-    case 'rest': {
-      const [name] = targetPayload as [string]
-      return `...${name}`
-    }
-    default:
-      return '_'
-  }
 }
 
 // ---------------------------------------------------------------------------
