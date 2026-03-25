@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, CodeTemplateToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -382,6 +382,119 @@ export const tokenizeShebang: Tokenizer<SingleLineCommentToken> = (input, positi
   return NO_MATCH
 }
 
+/**
+ * Tokenize a code template delimited by N backticks (N >= 3).
+ * Content may include ${expr} interpolations (same rules as template strings).
+ * The closing delimiter must be exactly N backticks.
+ * Token value includes the opening and closing backtick delimiters.
+ */
+export const tokenizeCodeTemplate: Tokenizer<CodeTemplateToken> = (input, position) => {
+  // Count consecutive backticks at position
+  let backtickCount = 0
+  while (input[position + backtickCount] === '`') {
+    backtickCount++
+  }
+  if (backtickCount < 3)
+    return NO_MATCH
+
+  const delimiter = '`'.repeat(backtickCount)
+  let value = delimiter
+  let length = backtickCount
+
+  while (position + length < input.length) {
+    // Check for closing delimiter
+    let closingCount = 0
+    while (input[position + length + closingCount] === '`') {
+      closingCount++
+    }
+    if (closingCount === backtickCount) {
+      value += delimiter
+      length += backtickCount
+      return [length, ['CodeTemplate', value]]
+    }
+
+    const char = input[position + length]!
+
+    if (char === '$' && input[position + length + 1] === '{') {
+      // Interpolation — scan to matching close brace
+      value += '${'
+      length += 2
+      let braceDepth = 1
+
+      while (position + length < input.length && braceDepth > 0) {
+        const c = input[position + length]!
+
+        if (c === '{') {
+          braceDepth++
+          value += c
+          length++
+        } else if (c === '}') {
+          braceDepth--
+          value += c
+          length++
+        } else if (c === '"') {
+          // String literal inside interpolation
+          value += c
+          length++
+          let escaping = false
+          while (position + length < input.length) {
+            const sc = input[position + length]!
+            value += sc
+            length++
+            if (escaping) {
+              escaping = false
+            } else if (sc === '\\') {
+              escaping = true
+            } else if (sc === '"') {
+              break
+            }
+          }
+        } else if (c === '\'') {
+          // Quoted symbol inside interpolation
+          value += c
+          length++
+          let escaping = false
+          while (position + length < input.length) {
+            const sc = input[position + length]!
+            value += sc
+            length++
+            if (escaping) {
+              escaping = false
+            } else if (sc === '\\') {
+              escaping = true
+            } else if (sc === '\'') {
+              break
+            }
+          }
+        } else if (c === '`') {
+          // Nested template string inside interpolation — delegate recursively
+          const [nestedLength, nestedToken] = tokenizeTemplateString(input, position + length)
+          if (nestedLength === 0 || !nestedToken) {
+            return [length, ['Error', value, undefined, `Unclosed nested template string in code template at position ${position + length}`]]
+          }
+          if (nestedToken[0] === 'Error') {
+            return [length + nestedLength, ['Error', value + nestedToken[1], undefined, nestedToken[3]]]
+          }
+          value += nestedToken[1]
+          length += nestedLength
+        } else {
+          value += c
+          length++
+        }
+      }
+
+      if (braceDepth > 0) {
+        return [length, ['Error', value, undefined, `Unclosed interpolation in code template at position ${position}`]]
+      }
+    } else {
+      value += char
+      length++
+    }
+  }
+
+  return [length, ['Error', value, undefined, `Unclosed code template at position ${position}`]]
+}
+
 export const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
   if (input[position] !== '`')
     return NO_MATCH
@@ -504,6 +617,7 @@ export const tokenizers = [
   tokenizeLBrace,
   tokenizeRBrace,
   tokenizeString,
+  tokenizeCodeTemplate,
   tokenizeTemplateString,
   tokenizeRegexpShorthand,
   tokenizeBasePrefixedNumber,

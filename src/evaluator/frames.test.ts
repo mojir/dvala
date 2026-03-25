@@ -5,6 +5,7 @@ import type {
   AutoCheckpointFrame,
   BindingSlotFrame,
   CallFnFrame,
+  CodeTemplateBuildFrame,
   ComplementFrame,
   CompFrame,
   ContinuationStack,
@@ -92,8 +93,9 @@ describe('frame types', () => {
       HandleWith: true,
       HandleSetup: true,
       MacroEval: true,
+      CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(41)
+    expect(Object.keys(frameTypes)).toHaveLength(42)
   })
 
   it('should support ContinuationStack as Frame array', () => {
@@ -148,6 +150,7 @@ describe('frame types', () => {
         case 'HandleWith': return 'effect'
         case 'HandleSetup': return 'effect'
         case 'MacroEval': return 'macro'
+        case 'CodeTemplateBuild': return 'template'
         default: {
           // Exhaustiveness check: if this line is reached, a frame type is missing
           const _exhaustive: never = frame
@@ -253,6 +256,7 @@ describe('frame types', () => {
     const _bindingSlot: BindingSlotFrame['type'] = 'BindingSlot'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
     const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
+    const _codeTemplateBuild: CodeTemplateBuildFrame['type'] = 'CodeTemplateBuild'
 
     // All type assignments above are verified by TypeScript at compile time.
     // If any type field doesn't match, compilation fails.
@@ -291,5 +295,6 @@ describe('frame types', () => {
     expect(_bindingSlot).toBe('BindingSlot')
     expect(_nanCheck).toBe('NanCheck')
     expect(_autoCheckpoint).toBe('AutoCheckpoint')
+    expect(_codeTemplateBuild).toBe('CodeTemplateBuild')
   })
 })

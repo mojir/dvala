@@ -925,6 +925,8 @@ export type Frame =
   | AutoCheckpointFrame
   // Macro expansion
   | MacroEvalFrame
+  // Code template
+  | CodeTemplateBuildFrame
 
 /**
  * Macro expansion result (`macro`).
@@ -934,6 +936,23 @@ export type Frame =
  */
 export interface MacroEvalFrame {
   type: 'MacroEval'
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Code template splice collection (``` ```.```).
+ *
+ * Evaluates splice expressions sequentially. When all are collected,
+ * walks the body AST and replaces Splice nodes with the evaluated values,
+ * returning the assembled AST as plain Dvala data.
+ */
+export interface CodeTemplateBuildFrame {
+  type: 'CodeTemplateBuild'
+  bodyAst: AstNode[] // pre-parsed AST with Splice placeholders
+  spliceExprs: AstNode[] // splice expression ASTs to evaluate
+  index: number // next splice to evaluate
+  values: Any[] // accumulated splice values
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
