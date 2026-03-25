@@ -22,6 +22,30 @@ Run `npm run check` after any medium or larger code change.
 - No side-effect imports for module registration
 - Every built-in function needs a `docs` property with `category`, `description`, `returns`, `args`, `variants`, `examples`
 
+## Demo Before Commit
+
+Before committing a completed task, provide a **playground demo link** so the user can try it interactively. Use the local playground URL with the Dvala code encoded in a `state` query parameter.
+
+### How to create playground URLs
+
+The playground reads `?state=<encoded>` from the URL. The encoding is:
+
+```
+base64(encodeURIComponent(JSON.stringify({ "dvala-code": "<dvala code here>" })))
+```
+
+**To generate a link**, use the Bash tool:
+
+```bash
+node -e "const code = 'let x = 42; x + 1'; console.log('http://localhost:9901/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
+```
+
+For multi-line code, use template literals or `\n` in the string.
+
+The playground runs on `http://localhost:9901/` (start with `npm run dev`).
+
+Always provide at least one demo link per completed feature. Pick a concise example that shows the feature working.
+
 ## Creating design documents and plans
 I encurage you to structurize bigger tasks by creating .md plans.
 Create .md files inside /design
