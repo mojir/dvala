@@ -1,12 +1,28 @@
 # AST Redesign: The 12 Fundamental Nodes
 
+## Status
+
+**Completed:**
+- ✅ All 19 special expressions: direct type tags (`If`, `Block`, `Let`, `Function`, etc.)
+- ✅ `NormalExpression` → `Call`
+- ✅ Renames: `UserDefinedSymbol` → `Sym`, `Number` → `Num`, `String` → `Str`, `TemplateString` → `TmplStr`
+- ✅ `EffectName` merged into `Effect`
+- ✅ `Binding` wrapper removed from `Let`, `Loop`, `For`
+- ✅ Object entries: flat interleaved → paired `[[key, val], ...]`
+- ✅ Playground AST tree viewer updated for all new types
+
+**Not yet done:**
+- Position separation (Symbol property / serialized format with position at index 0)
+- Pattern sub-language cleanup (bare strings for names)
+- Lowercase tags (`"if"` not `"If"`)
+
 ## Principles
 
 1. **Arrays only** — no objects, no special wrapper types. AST is Dvala data.
 2. **Flat** — no `SpecialExpression`/`NormalExpression`/`Binding` wrappers. Tag at index 0 is the discriminator.
-3. **Lowercase short tags** — `"let"`, `"if"`, `"fn"`, `"call"`, `"num"`, `"str"`, `"sym"`.
-4. **Positions separated** — runtime AST is position-free. Serialized format has position at index 0.
-5. **Patterns are a sub-language** — bare strings are binding names in pattern context. `["sym", "x"]` is only for expression context.
+3. **Lowercase short tags** — `"let"`, `"if"`, `"fn"`, `"call"`, `"num"`, `"str"`, `"sym"` (not yet applied — currently PascalCase).
+4. **Positions separated** — runtime AST is position-free. Serialized format has position at index 0 (not yet applied — positions still at index 2).
+5. **Patterns are a sub-language** — bare strings are binding names in pattern context (not yet applied — still uses `BindingTarget` system).
 
 ## Position Convention
 

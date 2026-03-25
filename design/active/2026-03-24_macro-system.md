@@ -637,15 +637,23 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 
 ## Part 13: Implementation Plan
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation ✅ DONE
 
-1. `macro` keyword in parser — produces macro function values
-2. Evaluator: when calling a macro, pass arguments as AST, perform `@macro.expand`
-3. Default `@macro.expand` handler in standard host
-4. `typeOf`, `isMacro` support for macro values
-5. Tests: basic macro definition and call
+1. ✅ `macro` keyword in parser — `parseMacro.ts` produces `Macro` AST nodes
+2. ✅ Evaluator: when calling a macro, pass arguments as AST (not evaluated)
+3. ⏳ `@macro.expand` effect — not yet implemented. Currently macros are called directly.
+4. ✅ `typeOf(macro)` → `"macro"`, `isMacro()` predicate, `isFunction()` excludes macros
+5. ✅ Tests: 10 tests in `__tests__/macro.test.ts` covering definition, invocation, type checks
 
-### Phase 2 — Code Templates
+**Implementation notes:**
+- `MacroFunction` type added to `parser/types.ts` (functionType: `'Macro'`)
+- `NodeTypes.Macro` in `constants.ts`
+- Macro check in `stepNormalExpression()` — resolves callee, checks `isMacroFunction`, branches
+- `MacroEvalFrame` evaluates returned AST in calling scope
+- `parseLambdaFunction` rejects `(singleParam) ->` — `parseMacro` uses `parseFunctionArguments` directly
+- Macros only intercept named calls to `UserDefinedSymbol`. Expression-based callees go through normal eval.
+
+### Phase 2 — Code Templates ← NEXT
 
 1. Triple backtick syntax in tokenizer and parser
 2. `${expr}` splice markers in code templates
@@ -653,6 +661,13 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 4. Evaluator: code template evaluation (walk pre-parsed AST, evaluate splices, return data)
 5. Implicit spread detection (single node vs array of nodes)
 6. Tests: code templates produce correct AST, splicing works
+
+**Key design decisions (from earlier discussion):**
+- Triple backticks (`\`\`\`...\`\`\``) — visually distinct from template strings, no conflict with future tagged templates
+- `${expr}` reuses existing interpolation syntax — zero new splice syntax
+- Parser switches to "code template mode" inside triple backticks — `${expr}` allowed in any position (bindings, params, operators)
+- Pre-parsed at parse time: the JS parser parses the content as Dvala code with splice markers. KMP receives pre-parsed AST.
+- N-backtick nesting: outer uses more backticks than inner (like markdown code fences)
 
 ### Phase 3 — AST Module
 
@@ -668,7 +683,7 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 
 ### Phase 5 — `|>` Desugaring
 
-1. Change parser: `a |> b` produces `b(a)` AST instead of `["|>", [a, b]]`
+1. Change parser: `a |> b` produces `b(a)` AST instead of `["Call", ["|>", [a, b]]]`
 2. Verify all existing `|>` usage produces identical results
 3. Tests: pipe with functions unchanged, pipe with macros works
 
