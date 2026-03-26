@@ -9,7 +9,9 @@
  * - Copy subtree as JSON
  */
 
-import type { Ast, AstNode, SourceMap } from '../../../src/parser/types'
+import type { Ast, AstNode } from '../../../src/parser/types'
+import { prettyPrint } from '../../../src/prettyPrint'
+import { tokenizeToHtml } from '../SyntaxOverlay'
 
 /** A tree node — either an AstNode or a BindingTarget (same [type, payload, id] shape). */
 type TreeNode = [string, unknown, number]
@@ -20,7 +22,6 @@ type TreeNode = [string, unknown, number]
 
 interface TreeViewerOptions {
   ast: Ast
-  onSelectNode?: (nodeId: number, sourceMap: SourceMap) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -532,15 +533,22 @@ function renderNode(
     row.classList.add('ast-tree__node--match')
   }
 
-  // Source highlight on click
+  // PrettyPrint preview on click
   row.addEventListener('click', e => {
     e.stopPropagation()
-    if (options.ast.sourceMap && options.onSelectNode) {
-      options.onSelectNode(nodeId, options.ast.sourceMap)
-    }
     // Toggle selected state
     row.closest('.ast-tree')?.querySelectorAll('.ast-tree__node--selected').forEach(el => el.classList.remove('ast-tree__node--selected'))
     row.classList.add('ast-tree__node--selected')
+    // Update prettyPrint preview
+    const previewEl = row.closest('.ast-tree-viewer')?.querySelector('.ast-tree__preview')
+    if (previewEl) {
+      try {
+        const source = prettyPrint(node)
+        previewEl.innerHTML = `<pre class="ast-tree__preview-code">${tokenizeToHtml(source)}</pre>`
+      } catch {
+        previewEl.innerHTML = `<pre class="ast-tree__preview-code">${JSON.stringify(node, null, 2)}</pre>`
+      }
+    }
   })
 
   // Context menu → copy JSON
@@ -714,5 +722,12 @@ export function createAstTreeViewer(options: TreeViewerOptions): HTMLElement {
   })
 
   wrapper.appendChild(tree)
+
+  // PrettyPrint preview pane — shows formatted source for selected node
+  const preview = document.createElement('div')
+  preview.className = 'ast-tree__preview'
+  preview.innerHTML = '<span class="ast-tree__preview-hint">Click a node to see its formatted source</span>'
+  wrapper.appendChild(preview)
+
   return wrapper
 }
