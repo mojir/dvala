@@ -18,6 +18,7 @@ import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import { copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
+import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
@@ -3100,17 +3101,10 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
   // Meta
   const metaContainer = ref('meta-container')
   if (snapshot.meta === undefined) {
-    metaContainer.innerHTML = ''
-    const empty = document.createElement('span')
-    empty.textContent = '(no metadata)'
-    empty.style.cssText = 'font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;'
-    metaContainer.appendChild(empty)
+    metaContainer.innerHTML = '<span style="font-size:0.75rem; color: var(--color-text-faintest); font-style: italic;">(no metadata)</span>'
   } else {
     const metaJson = JSON.stringify(snapshot.meta, null, 2)
-    ref('meta-json').textContent = metaJson
-    ref('copy-meta-btn').addEventListener('click', () => {
-      void navigator.clipboard.writeText(metaJson)
-    })
+    metaContainer.innerHTML = renderCodeBlock({ code: metaJson, language: 'json', noRun: true, noEdit: true })
   }
 
   // Technical info
@@ -3217,14 +3211,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
       <div class="snapshot-panel__col">
         <div class="snapshot-panel__section">
           <span class="snapshot-panel__section-label">Metadata</span>
-          <div data-ref="meta-container">
-            <div class="example-code snapshot-panel__code-block">
-              <pre data-ref="meta-json" class="fancy-scroll snapshot-panel__code-pre"></pre>
-              <div class="example-action-bar" style="position:absolute;top:0;right:0;">
-                <div class="example-action-btn" data-ref="copy-meta-btn">${copyIcon}</div>
-              </div>
-            </div>
-          </div>
+          <div data-ref="meta-container"></div>
         </div>
         <div data-ref="suspended-effect-section" class="snapshot-panel__section">
           <span class="snapshot-panel__section-label">Effect</span>
@@ -3240,12 +3227,6 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
         </div>
       </div>
       <div class="snapshot-panel__col">
-        <div data-ref="code-section" class="snapshot-panel__section" style="display:none;">
-          <div class="example-code snapshot-panel__code-block">
-            <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
-            <a href="#" role="button" data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
-          </div>
-        </div>
         <div class="snapshot-panel__section">
           <span class="snapshot-panel__section-label">Checkpoints (<span data-ref="cp-count">0</span>)</span>
           <div data-ref="checkpoints" class="snapshot-panel__checkpoints fancy-scroll"></div>
