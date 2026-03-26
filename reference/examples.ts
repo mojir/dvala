@@ -1156,6 +1156,196 @@ let neg = -num;
     `.trim(),
   },
   {
+    id: 'macro-toolkit',
+    name: 'Macro toolkit',
+    description: 'Builds a reusable macro toolkit step by step: unless, dbg, assert/assertEq, thread, tryOr — showing code generation, AST inspection, contracts, and macroexpand.',
+    context: {
+      effectHandlers: [
+        { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
+      ],
+    },
+    code: `
+// ============================================================
+// Macro Toolkit — a practical collection of utility macros
+// ============================================================
+// This example builds a reusable macro toolkit step by step,
+// showing how macros can generate code, inspect AST, enforce
+// contracts, and create new control flow constructs.
+
+let { prettyPrint, call } = import(ast);
+let { fallback } = import(effectHandler);
+let print = -> perform(@dvala.io.print, $);
+let error = -> perform(@dvala.error, $);
+
+
+// ─── 1. unless ──────────────────────────────────────────────
+// The inverse of \`if\`: runs the body when the condition is *false*.
+// A classic first macro — one line of code template does it all.
+
+let unless = macro (cond, body) ->
+  \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+
+print("── unless ──");
+print(unless(false, "condition was false → ran!"));
+print(unless(true, "condition was true → skipped"));
+
+
+// ─── 2. dbg — debug-print with source label ────────────────
+// Prints "<source> => <value>" and returns the value unchanged.
+// Uses prettyPrint to convert the unevaluated AST back to source.
+// Invaluable for tracing expressions without altering control flow.
+
+let dbg = macro (ast) -> do
+  let label = prettyPrint(ast);
+  \`\`\`do
+    let val = \${ast};
+    perform(@dvala.io.print, \${["Str", label ++ " => ", 0]} ++ str(val));
+    val
+  end\`\`\`
+end;
+
+print("── dbg ──");
+let x = dbg(3 + 4);
+dbg(x * 2);
+dbg(map([1, 2, 3], -> $ ^ 2));
+
+
+// ─── 3. assert and assertEq — test assertions ──────────────
+// assert(cond) — fails with the source expression on false
+// assertEq(actual, expected) — fails with both values on mismatch
+//
+// The macros capture the source text at compile time via prettyPrint,
+// so error messages are automatically descriptive.
+
+let assert = macro (cond) -> do
+  let src = prettyPrint(cond);
+  \`\`\`do
+    let v = \${cond};
+    if not(v) then
+      error("Assertion failed: " ++ \${["Str", src, 0]})
+    else
+      true
+    end
+  end\`\`\`
+end;
+
+let assertEq = macro (actual, expected) -> do
+  let actualSrc = prettyPrint(actual);
+  \`\`\`do
+    let a = \${actual};
+    let e = \${expected};
+    if a != e then
+      error(
+        "Assertion failed: " ++ \${["Str", actualSrc, 0]}
+        ++ " — expected " ++ str(e)
+        ++ ", got " ++ str(a)
+      )
+    else
+      true
+    end
+  end\`\`\`
+end;
+
+print("── assert / assertEq ──");
+assert(10 > 5);
+assert(isEven(42));
+assertEq(2 + 2, 4);
+assertEq("hello" ++ " world", "hello world");
+assertEq(map([1, 2, 3], -> $ * 10), [10, 20, 30]);
+print("all assertions passed!");
+
+
+// ─── 4. thread — pipe a value through functions ─────────────
+// thread(value, f1, f2, f3) becomes f3(f2(f1(value)))
+// Builds the nested call AST at compile time by folding over
+// the function arguments. A classic Lisp/Clojure threading macro.
+
+let thread = macro (val, ...fns) -> do
+  reduce(fns, (acc, f) -> call(f, [acc]), val)
+end;
+
+print("── thread ──");
+// thread(-42, abs, str, count) → count(str(abs(-42))) → 2
+print(thread(-42, abs, str, count));
+// thread with collection pipeline
+print(thread(
+  [3, 1, 4, 1, 5, 9],
+  sort,
+  reverse,
+  count
+));
+
+
+// ─── 5. tryOr — error recovery macro ────────────────────────
+// Wraps an expression with an effect handler that catches errors
+// and returns a fallback value. Uses Dvala's effect pipe (||>).
+
+let tryOr = macro (expr, defaultVal) ->
+  \`\`\`(\${expr}) ||> fallback(\${defaultVal})\`\`\`;
+
+print("── tryOr ──");
+print(tryOr(10 / 2, -1));
+print(tryOr(0 / 0, -1));
+print(tryOr(error("boom"), "recovered"));
+
+
+// ─── 6. macroexpand — inspecting generated code ─────────────
+// macroexpand calls a macro's body and returns the expanded AST
+// without evaluating it. Combined with prettyPrint from the ast
+// module, this lets you see exactly what code a macro generates.
+
+print("── macroexpand ──");
+print("unless(x > 0, 42) expands to:");
+print("  " ++ (macroexpand(unless, \`\`\`x > 0\`\`\`, \`\`\`42\`\`\`) |> prettyPrint));
+
+print("dbg(x + 1) expands to:");
+print("  " ++ (macroexpand(dbg, \`\`\`x + 1\`\`\`) |> prettyPrint));
+
+print("thread(v, f, g) expands to:");
+print("  " ++ (macroexpand(thread, \`\`\`v\`\`\`, \`\`\`f\`\`\`, \`\`\`g\`\`\`) |> prettyPrint));
+
+
+// ─── 7. Putting it all together ─────────────────────────────
+// Use the toolkit to build and verify a small utility with confidence.
+
+print("── integration demo ──");
+
+// A function that computes a letter grade from a percentage score
+let letterGrade = (pct) ->
+  if pct >= 90 then "A"
+  else if pct >= 80 then "B"
+  else if pct >= 70 then "C"
+  else if pct >= 60 then "D"
+  else "F"
+  end;
+
+// Verify with assertEq — if any fail, we get a clear error message
+assertEq(letterGrade(95), "A");
+assertEq(letterGrade(85), "B");
+assertEq(letterGrade(75), "C");
+assertEq(letterGrade(65), "D");
+assertEq(letterGrade(42), "F");
+print("letterGrade: all 5 tests passed!");
+
+// Use thread and dbg to process a list of scores
+let scores = [88, 92, 76, 95, 61];
+let total = dbg(reduce(scores, +, 0));
+let avg = dbg(total / count(scores));
+let grade = dbg(letterGrade(avg));
+
+// Defensive check with tryOr
+let safeAvg = tryOr(reduce([], +, 0) / 0, 0);
+assertEq(safeAvg, 0);
+print("safe division by zero handled!");
+
+// Final assertion
+assert(grade == "B" || grade == "C");
+unless(grade == "F", print("The class is doing fine!"));
+
+print("── done ──")
+    `.trim(),
+  },
+  {
     id: 'ast-coverage-extended',
     name: 'AST coverage (extended)',
     description: 'Comprehensive test covering all operators, destructuring variants, function forms, arity, all standard effects, handler chains, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',

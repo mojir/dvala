@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { NodeTypes } from '../constants/constants'
-import { DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
+import { AssertionError, DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import { parse } from '../parser'
@@ -677,9 +677,10 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
 
   // --- Macro check ---
   // For named calls, resolve the callee first. If it's a macro, pass args as AST.
+  // Check both user-defined and builtin symbols — builtins can be shadowed by macros.
   if (isNormalExpressionNodeWithName(node)) {
     const nameSymbol = node[1][0]
-    if (isUserDefinedSymbolNode(nameSymbol)) {
+    if (isUserDefinedSymbolNode(nameSymbol) || isBuiltinSymbolNode(nameSymbol)) {
       const callee = env.evaluateSymbol(nameSymbol)
       if (isMacroFunction(callee)) {
         // Macro call: pass argument AST nodes directly (don't evaluate them)
@@ -1870,6 +1871,39 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
  * 1. Local `HandleWithFrame` handlers (innermost first)
  * 2. Host handlers registered for `'dvala.error'`
  */
+/**
+ * Scan the continuation stack for the nearest MacroEvalFrame and return its
+ * sourceCodeInfo (the macro call site). Returns undefined if no macro frame
+ * is found. Used to give errors from macro-expanded code a meaningful location.
+ */
+function findMacroCallSiteInfo(k: ContinuationStack): SourceCodeInfo | undefined {
+  for (const frame of k) {
+    if (frame.type === 'MacroEval')
+      return frame.sourceCodeInfo
+  }
+  return undefined
+}
+
+/**
+ * If the continuation stack contains a MacroEvalFrame, patch the error with
+ * the macro call site location. Errors from macro-expanded code should always
+ * point to the call site (e.g. `assert(1 > 5)`) rather than internal helper
+ * functions, since the call site is what the user wrote and can fix.
+ */
+function patchErrorWithMacroCallSite(error: DvalaError, k: ContinuationStack): DvalaError {
+  const callSite = findMacroCallSiteInfo(k)
+  if (!callSite)
+    return error
+  // Create a new error with the macro call site as location
+  if (error instanceof UserDefinedError)
+    return new UserDefinedError(error.userMessage, callSite)
+  if (error instanceof AssertionError)
+    return new AssertionError(error.shortMessage, callSite)
+  if (error instanceof UndefinedSymbolError)
+    return new UndefinedSymbolError(error.symbol, callSite)
+  return new DvalaError(error.shortMessage, callSite)
+}
+
 function tryDispatchDvalaError(
   error: DvalaError,
   k: ContinuationStack,
@@ -3529,10 +3563,17 @@ function callMacro(
  * in the original calling scope.
  */
 function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack): Step {
+  // After expansion: the frame is a pass-through marker — just return the value.
+  if (frame.expanded) {
+    return { type: 'Value', value, k }
+  }
   // The macro returned a value — it should be AST data (an array).
   // Evaluate it as an AST node in the calling scope.
+  // Keep the MacroEvalFrame on the stack (marked as expanded) so that errors
+  // from the expanded code can find the macro call site for better error locations.
+  const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
   const astNode = value as AstNode
-  return { type: 'Eval', node: astNode, env: frame.env, k }
+  return { type: 'Eval', node: astNode, env: frame.env, k: [marker, ...k] }
 }
 
 // ---------------------------------------------------------------------------
@@ -3844,12 +3885,13 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
       case 'Error': {
-        const effectStep = tryDispatchDvalaError(step.error, step.k)
+        const patchedError = patchErrorWithMacroCallSite(step.error, step.k)
+        const effectStep = tryDispatchDvalaError(patchedError, step.k)
         if (effectStep) {
           return effectStep
         }
 
-        throw step.error
+        throw patchedError
       }
     }
   } catch (error) {
@@ -3873,7 +3915,12 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       const kForDispatch = step.type === 'Value'
         ? step.k.slice(1)
         : step.k
-      const effectStep = tryDispatchDvalaError(error, kForDispatch)
+
+      // If the error has no source location and we're inside a macro expansion,
+      // patch it with the macro call site so error messages are meaningful.
+      const patchedError = patchErrorWithMacroCallSite(error, kForDispatch)
+
+      const effectStep = tryDispatchDvalaError(patchedError, kForDispatch)
       if (effectStep) return effectStep
 
       // No local handler matched — check if host handlers can intercept dvala.error.
@@ -3882,13 +3929,15 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // Skip when the error is already a UserDefinedError (from unhandled @dvala.error)
       // to prevent infinite re-dispatch: host handler calls next() → unhandled →
       // UserDefinedError → re-dispatch to same host handler → loop.
-      if (!(error instanceof UserDefinedError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
+      if (!(patchedError instanceof UserDefinedError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
         const effect = getEffectRef('dvala.error')
-        const arg: Any = error.shortMessage
-        return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: error.sourceCodeInfo }
+        const arg: Any = patchedError.shortMessage
+        return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: patchedError.sourceCodeInfo }
       }
+      // No handler matched — re-throw with patched location.
+      throw patchedError
     }
-    // No handler matched — re-throw the error as a JS exception.
+    // Non-DvalaError — re-throw as-is.
     throw error
   }
 }

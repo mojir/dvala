@@ -4220,7 +4220,7 @@ async function defaultEffectHandler(ctx: EffectContext): Promise<void> {
     })
   }
   // Pass through to standard handlers for non-interactive standard effects
-  if (ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+  if (ctx.effectName === 'dvala.io.readStdin' || ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
     ctx.next()
     return
   }
@@ -4840,6 +4840,66 @@ function printlnHandler(ctx: EffectContext): Promise<void> {
   })
 }
 
+function ioErrorHandler(ctx: EffectContext): Promise<void> {
+  return new Promise<void>(resolve => {
+    const value = ctx.arg
+    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+
+    const submit = () => {
+      ctx.resume(value)
+      resolve()
+      resolveCurrentEffect()
+      focusDvalaCode()
+    }
+
+    const failEffect = makeFailHelper(ctx, resolve)
+
+    registerPendingEffect({
+      ctx,
+      title: 'Error output',
+      renderBody(el) {
+        const outputWrap = document.createElement('div')
+        outputWrap.className = 'println-output'
+        const pre = document.createElement('pre')
+        pre.className = 'println-content error-content'
+        pre.textContent = text
+        outputWrap.appendChild(pre)
+        const copyBtn = document.createElement('span')
+        copyBtn.className = 'println-copy-btn'
+        copyBtn.innerHTML = copyIcon
+        copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
+        outputWrap.appendChild(copyBtn)
+        el.appendChild(outputWrap)
+      },
+      renderFooter(el) {
+        if (failEffect.renderFooterOverride(el))
+          return
+        const failBtn = document.createElement('button')
+        failBtn.className = 'button button--danger'
+        failBtn.textContent = 'Fail…'
+        failBtn.addEventListener('click', failEffect.enter)
+        const btn = document.createElement('button')
+        btn.className = 'button button--primary'
+        btn.textContent = 'OK'
+        btn.addEventListener('click', submit)
+        el.appendChild(failBtn)
+        el.appendChild(btn)
+      },
+      onKeyDown(evt) {
+        if (failEffect.onKeyDown(evt))
+          return true
+        if (evt.key === 'Enter' || evt.key === 'Escape') {
+          evt.preventDefault()
+          submit()
+          return true
+        }
+        return false
+      },
+      resolve,
+    })
+  })
+}
+
 function ioPickHandler(ctx: EffectContext): Promise<void> {
   return new Promise<void>(resolve => {
     const argRaw = ctx.arg
@@ -5162,13 +5222,20 @@ function syncPrintlnHandler(ctx: EffectContext): void {
   ctx.resume(value)
 }
 
+function syncIoErrorHandler(ctx: EffectContext): void {
+  const value = ctx.arg
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  window.alert(`Error: ${text}`)
+  ctx.resume(value)
+}
+
 function syncDefaultEffectHandler(ctx: EffectContext): void {
   if (ctx.effectName === 'dvala.checkpoint') {
     ctx.next()
     return
   }
   // Pass through to standard handlers for non-interactive standard effects
-  if (ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
+  if (ctx.effectName === 'dvala.io.readStdin' || ctx.effectName.startsWith('dvala.random') || ctx.effectName.startsWith('dvala.time') || ctx.effectName === 'dvala.sleep') {
     ctx.next()
     return
   }
@@ -5201,6 +5268,7 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
     { pattern: 'dvala.io.confirm', handler: syncIoConfirmHandler },
     { pattern: 'dvala.io.read', handler: syncReadlineHandler },
     { pattern: 'dvala.io.print', handler: syncPrintlnHandler },
+    { pattern: 'dvala.io.error', handler: syncIoErrorHandler },
     ...(!getState('disable-playground-effects') ? getPlaygroundEffectHandlers() : []),
     { pattern: '*', handler: syncDefaultEffectHandler },
   ]
@@ -5259,6 +5327,8 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
     if (!hasPattern('dvala.io.print'))
       effectHandlers.push({ pattern: 'dvala.io.print', handler: printlnHandler })
+    if (!hasPattern('dvala.io.error'))
+      effectHandlers.push({ pattern: 'dvala.io.error', handler: ioErrorHandler })
 
     // Playground effects (playground.*)
     if (!getState('disable-playground-effects')) {

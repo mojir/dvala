@@ -162,10 +162,12 @@ async function runCode(code: string, label: string, uri?: vscode.Uri): Promise<v
     { pattern: '*', handler: async (ctx) => {
       // Pass through to standard handlers for standard effects
       if (ctx.effectName.startsWith('dvala.error') ||
+          ctx.effectName === 'dvala.io.readStdin' ||
           ctx.effectName.startsWith('dvala.random') ||
           ctx.effectName.startsWith('dvala.time') ||
           ctx.effectName === 'dvala.sleep' ||
-          ctx.effectName === 'dvala.checkpoint') {
+          ctx.effectName === 'dvala.checkpoint' ||
+          ctx.effectName === 'dvala.macro.expand') {
         ctx.next()
         return
       }
