@@ -195,15 +195,19 @@ function printCall(payload: [unknown[], unknown[]], ind: number): string {
   }
 
   // Infix binary operators: a + b
-  if (fnNode[0] === NodeTypes.Builtin && argNodes.length === 2) {
+  // Skip infix if either arg is a placeholder _ (partial application)
+  const hasPlaceholder = argNodes.some(a => a[0] === NodeTypes.Reserved && a[1] === '_')
+  if (fnNode[0] === NodeTypes.Builtin && argNodes.length === 2 && !hasPlaceholder) {
     const op = fnNode[1] as string
     if (infixOperators.has(op)) {
       return `${printNode(argNodes[0]!, ind)} ${op} ${printNode(argNodes[1]!, ind)}`
     }
   }
 
-  // Regular function call
-  const fnStr = printNode(fnNode, ind)
+  // Regular function call — wrap callee in parens if it's a complex expression (lambda, etc.)
+  const rawFnStr = printNode(fnNode, ind)
+  const needsParens = fnNode[0] === NodeTypes.Function || fnNode[0] === NodeTypes.Macro
+  const fnStr = needsParens ? `(${rawFnStr})` : rawFnStr
   const flat = `${fnStr}(${argNodes.map(a => printNode(a, ind)).join(', ')})`
   if (fits(flat, ind)) return flat
 
@@ -217,11 +221,18 @@ function printIf(parts: unknown[][], ind: number): string {
   const thenNode = parts[1] as AstNode
   const elseNode = parts.length > 2 && parts[2] ? parts[2] as AstNode : null
 
+  // Else-if chain: when else branch is another If, emit "else if ..." without extra "end"
+  const isElseIf = elseNode && (elseNode)[0] === NodeTypes.If
+
   // Try flat
   const thenStr = printNode(thenNode, ind)
   if (elseNode) {
-    const elseStr = printNode(elseNode, ind)
-    const flat = `if ${cond} then ${thenStr} else ${elseStr} end`
+    const elseStr = isElseIf
+      ? printIf((elseNode)[1] as unknown[][], ind)
+      : printNode(elseNode, ind)
+    const flat = isElseIf
+      ? `if ${cond} then ${thenStr} else ${elseStr}`
+      : `if ${cond} then ${thenStr} else ${elseStr} end`
     if (fits(flat, ind)) return flat
   } else {
     const flat = `if ${cond} then ${thenStr} end`
@@ -231,6 +242,11 @@ function printIf(parts: unknown[][], ind: number): string {
   // Multi-line
   const thenMulti = printNode(thenNode, ind + 1)
   if (elseNode) {
+    if (isElseIf) {
+      // else if — keep same indent, no extra end
+      const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
+      return `if ${cond} then\n${indent(ind + 1)}${thenMulti}\n${indent(ind)}else ${elseIfStr}`
+    }
     const elseMulti = printNode(elseNode, ind + 1)
     return `if ${cond} then\n${indent(ind + 1)}${thenMulti}\n${indent(ind)}else\n${indent(ind + 1)}${elseMulti}\n${indent(ind)}end`
   }
@@ -311,23 +327,28 @@ function printArray(elements: unknown[][], ind: number): string {
 
 function printObject(entries: unknown[][], ind: number): string {
   if (entries.length === 0) return '{}'
-  const parts = entries.map(entry => {
-    if (entry[0] === NodeTypes.Spread) {
-      return `...${printNode(entry as AstNode, ind)}`
-    }
-    const [keyNode, valueNode] = entry as [AstNode, AstNode]
-    const value = printNode(valueNode, ind)
-    if (keyNode[0] === NodeTypes.Str) {
-      return `${keyNode[1] as string}: ${value}`
-    }
-    return `[${printNode(keyNode, ind)}]: ${value}`
-  })
 
-  const flat = `{ ${parts.join(', ')} }`
+  // Try flat first
+  const flatParts = entries.map(entry => formatObjectEntry(entry, ind))
+  const flat = `{ ${flatParts.join(', ')} }`
   if (fits(flat, ind)) return flat
 
-  const lines = parts.map(p => `${indent(ind + 1)}${p}`)
+  // Multi-line — reformat at deeper indent
+  const multiParts = entries.map(entry => formatObjectEntry(entry, ind + 1))
+  const lines = multiParts.map(p => `${indent(ind + 1)}${p}`)
   return `{\n${lines.join(',\n')},\n${indent(ind)}}`
+}
+
+function formatObjectEntry(entry: unknown[], ind: number): string {
+  if (entry[0] === NodeTypes.Spread) {
+    return `...${printNode(entry[1] as AstNode, ind)}`
+  }
+  const [keyNode, valueNode] = entry as [AstNode, AstNode]
+  const value = printNode(valueNode, ind)
+  if (keyNode[0] === NodeTypes.Str) {
+    return `${keyNode[1] as string}: ${value}`
+  }
+  return `[${printNode(keyNode, ind)}]: ${value}`
 }
 
 function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
@@ -557,13 +578,21 @@ function printBindingTarget(target: unknown[]): string {
     case 'object': {
       const [record, defaultExpr] = targetPayload as [Record<string, unknown[]>, unknown[] | null]
       const entries = Object.entries(record).map(([key, bt]) => {
+        // Rest binding: { ...rest }
+        if (bt[0] === 'rest') {
+          return `...${(bt[1] as unknown[])[0] as string}`
+        }
         const btStr = printBindingTarget(bt)
         if (bt[0] === 'symbol') {
           const symName = (bt[1] as unknown[])[0] as unknown[]
           if ((symName[1] as string) === key) {
+            // Shorthand: { name }
             return btStr
           }
+          // Alias: { key as alias }
+          return `${key} as ${btStr}`
         }
+        // Nested destructuring: { key: pattern }
         return `${key}: ${btStr}`
       })
       if (defaultExpr) {
