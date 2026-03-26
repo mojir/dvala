@@ -777,10 +777,6 @@ test.describe('SEO meta tags', () => {
     // Home page title
     await expect(page).toHaveTitle(/Dvala/)
 
-    // Navigate to about
-    await page.evaluate(() => (window as any).Playground.navigate('/about'))
-    await expect(page).toHaveTitle(/About.*Dvala/)
-
     // Navigate to tutorials
     await page.evaluate(() => (window as any).Playground.navigate('/tutorials'))
     await expect(page).toHaveTitle(/Tutorials.*Dvala/)
