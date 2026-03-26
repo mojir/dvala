@@ -912,22 +912,28 @@ a.disabled {
 }
 
 .doc-page__example-action-bar {
-  display: none;
+  display: flex;
   position: absolute;
   top: var(--space-1);
   right: var(--space-1);
   flex-direction: row;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
 }
 
-.doc-page__example-code-wrap:hover .doc-page__example-action-bar {
-  display: flex;
+/* Hover on the whole block (including output) fades in the action bar */
+.doc-page__example:hover .doc-page__example-action-bar {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .doc-page__example-action-btn {
   background: none;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--color-text-dim);
   cursor: pointer;
   padding: var(--space-1);
   font-size: 1rem;
@@ -937,6 +943,19 @@ a.disabled {
 
 .doc-page__example-action-btn:hover {
   color: var(--color-text-bright);
+}
+
+.doc-page__example-use-btn {
+  font-size: 0.8rem;
+  font-family: var(--font-sans, sans-serif);
+  white-space: nowrap;
+  border: 1px solid var(--color-text-faintest);
+  border-radius: 4px;
+  padding: 0.3em 0.8em;
+}
+
+.doc-page__example-use-btn:hover {
+  border-color: var(--color-text-secondary);
 }
 
 .doc-page__see-also {
