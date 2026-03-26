@@ -9,3 +9,4 @@ test-report.xml
 test-results/
 vscode-dvala/out/
 nohup.out
+.cache/

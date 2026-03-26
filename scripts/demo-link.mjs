@@ -25,10 +25,14 @@
  */
 
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { platform } from 'node:os'
+
+const CACHE_DIR = join(process.cwd(), '.cache', 'demo')
+const CACHE_FILE = join(CACHE_DIR, 'commits.json')
+const CACHE_HASH_FILE = join(CACHE_DIR, 'last-hash.txt')
 
 // Earliest commit with a demo block — --all scans from here to HEAD
 const EARLIEST_DEMO_COMMIT = 'bd3d28e7'
@@ -84,61 +88,103 @@ if (checkMode) {
 // --all: scan git log and render HTML changelog
 // ---------------------------------------------------------------------------
 
+/** Scan a single commit for demo blocks. Returns entry or null if no demos. */
+function scanCommit(hash) {
+  const body = execSync(`git log -1 --format=%B ${hash}`, { encoding: 'utf-8' })
+  const demos = extractDemos(body)
+  if (demos.length === 0) return null
+
+  const subject = execSync(`git log -1 --format=%s ${hash}`, { encoding: 'utf-8' }).trim()
+  const dateIso = execSync(`git log -1 --format=%aI ${hash}`, { encoding: 'utf-8' }).trim()
+  const authorName = execSync(`git log -1 --format=%an ${hash}`, { encoding: 'utf-8' }).trim()
+  const authorEmail = execSync(`git log -1 --format=%ae ${hash}`, { encoding: 'utf-8' }).trim()
+
+  const coAuthors = []
+  const coAuthorRegex = /Co-Authored-By:\s*(.+?)\s*<(.+?)>/gi
+  let coMatch
+  while ((coMatch = coAuthorRegex.exec(body)) !== null) {
+    coAuthors.push({ name: coMatch[1].trim(), email: coMatch[2].trim() })
+  }
+
+  let insertions = 0
+  let deletions = 0
+  try {
+    const stat = execSync(`git diff --shortstat ${hash}~1..${hash}`, { encoding: 'utf-8' }).trim()
+    const insMatch = stat.match(/(\d+) insertion/)
+    const delMatch = stat.match(/(\d+) deletion/)
+    if (insMatch) insertions = parseInt(insMatch[1], 10)
+    if (delMatch) deletions = parseInt(delMatch[1], 10)
+  } catch { /* first commit has no parent — ignore */ }
+
+  return {
+    hash: hash.substring(0, 8),
+    fullHash: hash,
+    subject,
+    dateIso,
+    date: dateIso.substring(0, 10),
+    author: { name: authorName, email: authorEmail },
+    coAuthors,
+    insertions,
+    deletions,
+    demos,
+  }
+}
+
 function renderAllDemos() {
-  // First pass: find commits with demo blocks using a single git log call.
-  // Use null-byte separator to handle multi-line bodies safely.
-  // First pass: get all commit hashes, then only fetch details for commits with demos
-  console.log('Scanning commits...')
+  // Load cached entries if available
+  let cachedEntries = []
+  let lastCachedHash = null
+
+  if (existsSync(CACHE_FILE) && existsSync(CACHE_HASH_FILE)) {
+    try {
+      cachedEntries = JSON.parse(readFileSync(CACHE_FILE, 'utf-8'))
+      lastCachedHash = readFileSync(CACHE_HASH_FILE, 'utf-8').trim()
+      // Verify the cached hash still exists in the repo (handles rebase/amend)
+      try {
+        execSync(`git cat-file -t ${lastCachedHash}`, { encoding: 'utf-8', stdio: 'pipe' })
+      } catch {
+        // Hash no longer exists — full rescan
+        console.log('Cache invalidated (commit not found), rescanning...')
+        cachedEntries = []
+        lastCachedHash = null
+      }
+    } catch {
+      cachedEntries = []
+      lastCachedHash = null
+    }
+  }
+
+  // Determine which commits to scan
+  const rangeStart = lastCachedHash ? lastCachedHash : `${EARLIEST_DEMO_COMMIT}^`
   const hashes = execSync(
-    `git log --reverse --format=%H ${EARLIEST_DEMO_COMMIT}^..HEAD`,
+    `git log --reverse --format=%H ${rangeStart}..HEAD`,
     { encoding: 'utf-8' },
   ).trim().split('\n').filter(Boolean)
 
-  const allEntries = []
+  if (hashes.length === 0 && cachedEntries.length > 0) {
+    console.log(`Cache hit — ${cachedEntries.length} commits, no new commits to scan`)
+  } else if (lastCachedHash) {
+    console.log(`Cache hit — ${cachedEntries.length} cached, scanning ${hashes.length} new commits...`)
+  } else {
+    console.log(`Scanning ${hashes.length} commits...`)
+  }
+
+  const newEntries = []
 
   for (const hash of hashes) {
-    // Quick check: get body and look for demo blocks before fetching all metadata
-    const body = execSync(`git log -1 --format=%B ${hash}`, { encoding: 'utf-8' })
-    const demos = extractDemos(body)
-    if (demos.length === 0) continue
+    const entry = scanCommit(hash)
+    if (entry) newEntries.push(entry)
+  }
 
-    // Only fetch full metadata for commits that have demos
-    const subject = execSync(`git log -1 --format=%s ${hash}`, { encoding: 'utf-8' }).trim()
-    const dateIso = execSync(`git log -1 --format=%aI ${hash}`, { encoding: 'utf-8' }).trim()
-    const authorName = execSync(`git log -1 --format=%an ${hash}`, { encoding: 'utf-8' }).trim()
-    const authorEmail = execSync(`git log -1 --format=%ae ${hash}`, { encoding: 'utf-8' }).trim()
+  // Merge: cached entries + new entries (chronological order)
+  const allEntries = [...cachedEntries, ...newEntries]
 
-    // Extract co-authors from commit message trailers
-    const coAuthors = []
-    const coAuthorRegex = /Co-Authored-By:\s*(.+?)\s*<(.+?)>/gi
-    let coMatch
-    while ((coMatch = coAuthorRegex.exec(body)) !== null) {
-      coAuthors.push({ name: coMatch[1].trim(), email: coMatch[2].trim() })
-    }
-
-    // Get diff stats: insertions and deletions
-    let insertions = 0
-    let deletions = 0
-    try {
-      const stat = execSync(`git diff --shortstat ${hash}~1..${hash}`, { encoding: 'utf-8' }).trim()
-      const insMatch = stat.match(/(\d+) insertion/)
-      const delMatch = stat.match(/(\d+) deletion/)
-      if (insMatch) insertions = parseInt(insMatch[1], 10)
-      if (delMatch) deletions = parseInt(delMatch[1], 10)
-    } catch { /* first commit has no parent — ignore */ }
-
-    allEntries.push({
-      hash: hash.substring(0, 8),
-      fullHash: hash,
-      subject,
-      dateIso,
-      date: dateIso.substring(0, 10),
-      author: { name: authorName, email: authorEmail },
-      coAuthors,
-      insertions,
-      deletions,
-      demos,
-    })
+  // Update cache
+  if (newEntries.length > 0 || !lastCachedHash) {
+    mkdirSync(CACHE_DIR, { recursive: true })
+    writeFileSync(CACHE_FILE, JSON.stringify(allEntries, null, 2))
+    const headHash = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim()
+    writeFileSync(CACHE_HASH_FILE, headHash)
   }
 
   if (allEntries.length === 0) {
