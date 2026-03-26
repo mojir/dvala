@@ -996,3 +996,123 @@ end`)
     await expect(page.locator('#dynamic-page')).toContainText('Tutorials', { timeout: 3000 })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Start page & feature cards
+// ---------------------------------------------------------------------------
+
+test.describe('start page', () => {
+  test('shows feature cards for runtime and language', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    const cards = page.locator('.about-feature-card__title')
+    await expect(cards.getByText('Suspend & Resume')).toBeVisible()
+    await expect(cards.getByText('Algebraic Effects')).toBeVisible()
+    await expect(cards.getByText('Safe Sandbox')).toBeVisible()
+    await expect(cards.getByText('Pure Functional')).toBeVisible()
+    await expect(cards.getByText('Hygienic Macros')).toBeVisible()
+    await expect(cards.getByText('Embeddable in JS')).toBeVisible()
+  })
+
+  test('shows runtime branding subtitle', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await expect(page.locator('.start-page__subtitle')).toContainText('suspendable runtime')
+  })
+
+  test('clicking a feature card opens a modal', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    // Click the Algebraic Effects card
+    await page.locator('.about-feature-card', { hasText: 'Algebraic Effects' }).click()
+    // Modal should open with the title in the header
+    const modal = page.locator('#snapshot-modal')
+    await expect(modal).toBeVisible()
+    await expect(modal.locator('.breadcrumb-item')).toContainText('Algebraic Effects')
+  })
+
+  test('feature card modal contains runnable code blocks', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.locator('.about-feature-card', { hasText: 'Pure Functional' }).click()
+    const modal = page.locator('#snapshot-modal')
+    await expect(modal).toBeVisible()
+    // Should have code blocks with output
+    await expect(modal.locator('.doc-page__example').first()).toBeVisible()
+    await expect(modal.locator('.doc-page__example-output').first()).toBeVisible()
+  })
+
+  test('feature card modal closes on X click', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.locator('.about-feature-card', { hasText: 'Safe Sandbox' }).click()
+    const modal = page.locator('#snapshot-modal')
+    await expect(modal).toBeVisible()
+    await modal.locator('.modal-header__close-btn').click()
+    await expect(modal).not.toBeVisible()
+  })
+
+  test('no about link in sidebar', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    const sidebar = page.locator('#sidebar')
+    await expect(sidebar.getByText('About')).not.toBeVisible()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tutorial pages
+// ---------------------------------------------------------------------------
+
+test.describe('tutorial pages', () => {
+  test('tutorial page has sticky header with title', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
+    const header = page.locator('.tutorial-header')
+    await expect(header).toBeVisible()
+    await expect(header.locator('.tutorial-header__title')).toContainText('Intro')
+  })
+
+  test('prev/next navigation works', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
+    // First tutorial — prev should be disabled
+    await expect(page.locator('.tutorial-header__nav-btn--disabled').first()).toBeVisible()
+    // Click next
+    await page.locator('.tutorial-header__nav-btn').last().click()
+    // Should navigate to the second tutorial
+    await expect(page.locator('.tutorial-header__title')).not.toContainText('Intro')
+  })
+
+  test('TOC dropdown shows Table of contents label', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
+    await expect(page.locator('.tutorial-header__toc-label')).toContainText('Table of contents')
+  })
+
+  test('TOC dropdown navigates to selected tutorial', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
+    // Select a different tutorial via the TOC dropdown
+    await page.locator('.tutorial-header__toc').selectOption('advanced-macros')
+    await expect(page.locator('.tutorial-header__title')).toContainText('Macros')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// About route removal
+// ---------------------------------------------------------------------------
+
+test.describe('about route removed', () => {
+  test('/about falls through to start page', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/about'))
+    // Should show start page content (feature cards), not a 404
+    await expect(page.locator('#dynamic-page').getByText('Suspend & Resume')).toBeVisible()
+  })
+})
