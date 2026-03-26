@@ -935,6 +935,72 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
 `.trim(),
   },
   {
+    id: 'macros-intro',
+    name: 'Macros — Introduction',
+    description: 'Macros receive AST (unevaluated code) and return new AST. Code templates (triple backticks) make AST construction ergonomic.',
+    code: `
+// A macro receives its arguments as AST — not evaluated values.
+// It returns new AST which is then evaluated in the caller's scope.
+
+// Identity macro — returns the AST unchanged
+let id = macro (ast) -> ast;
+perform(@dvala.io.print, id(1 + 2));  // 3
+
+// Double macro — duplicates an expression using a code template
+// Triple backticks create AST at parse time, \${...} splices values in
+let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+perform(@dvala.io.print, double(21));       // 42
+perform(@dvala.io.print, double(inc(5)));   // 12
+
+// unless — a custom control flow macro
+let unless = macro (cond, body) ->
+  \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+
+perform(@dvala.io.print, unless(false, "runs!"));   // "runs!"
+perform(@dvala.io.print, unless(true, "skipped"));  // null
+
+// Macros work with |> pipe
+let negate = macro (ast) -> \`\`\`0 - \${ast}\`\`\`;
+perform(@dvala.io.print, 21 |> double |> negate);   // -42
+    `.trim(),
+  },
+  {
+    id: 'macros-advanced',
+    name: 'Macros — Advanced',
+    description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
+    code: `
+let { prettyPrint } = import(ast);
+
+// --- Named macros with qualified names ---
+// macro@name attaches a qualified name for host-level dispatch
+let double = macro@mylib.double (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+
+perform(@dvala.io.print, "Type: " ++ typeOf(double));
+perform(@dvala.io.print, "Name: " ++ qualifiedName(double));
+perform(@dvala.io.print, "Is macro: " ++ str(isMacro(double)));
+
+// --- macroexpand — inspect without evaluating ---
+let expanded = macroexpand(double, \`\`\`x + 1\`\`\`);
+perform(@dvala.io.print, "Expanded AST: " ++ prettyPrint(expanded));
+
+// --- Hygiene — macro bindings don't collide with caller ---
+let withTemp = macro (ast) -> \`\`\`do
+  let result = \${ast};
+  result * 2
+end\`\`\`;
+
+let result = 999;                    // caller's "result"
+let doubled = withTemp(result + 1);  // macro's "result" is gensymed
+perform(@dvala.io.print, "doubled: " ++ str(doubled));   // 2000
+perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)
+
+// --- Named macros emit @dvala.macro.expand ---
+// Host handlers can intercept expansion of named macros
+perform(@dvala.io.print, "double is named: " ++ str(qualifiedName(double) != null));
+perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp) == null))
+    `.trim(),
+  },
+  {
     id: 'ast-coverage',
     name: 'AST node coverage',
     description: 'Exercises all special expressions, operators, destructuring, effects, and node types. Useful for testing the AST tree viewer.',
