@@ -8,6 +8,14 @@ import { href } from '../router'
 import { labIcon, lampIcon } from '../icons'
 import { getPageHeader } from '../utils'
 
+// Feature card markdown content
+import suspendResumeMd from '../featureCards/suspend-resume.md'
+import algebraicEffectsMd from '../featureCards/algebraic-effects.md'
+import safeSandboxMd from '../featureCards/safe-sandbox.md'
+import pureFunctionalMd from '../featureCards/pure-functional.md'
+import hygienicMacrosMd from '../featureCards/hygienic-macros.md'
+import embeddableJsMd from '../featureCards/embeddable-js.md'
+
 declare global {
   interface Window {
     referenceData?: ReferenceData
@@ -24,6 +32,25 @@ const macroIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1
 // Stat card icons
 const coreIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m8 18l-6-6l6-6l1.425 1.425l-4.6 4.6L9.4 16.6zm8 0l-1.425-1.425l4.6-4.6L14.6 7.4L16 6l6 6z"/></svg>'
 const moduleIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42M5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4S7 4.67 7 5.5S6.33 7 5.5 7"/></svg>'
+
+const featureCards: Record<string, { markdown: string; icon: string }> = {
+  'suspend-resume': { markdown: suspendResumeMd, icon: suspendIcon },
+  'algebraic-effects': { markdown: algebraicEffectsMd, icon: effectIcon },
+  'safe-sandbox': { markdown: safeSandboxMd, icon: sandboxIcon },
+  'pure-functional': { markdown: pureFunctionalMd, icon: pureIcon },
+  'hygienic-macros': { markdown: hygienicMacrosMd, icon: macroIcon },
+  'embeddable-js': { markdown: embeddableJsMd, icon: embedIcon },
+}
+
+/** Get feature card title, icon, and markdown (without the # heading). */
+export function getFeatureCard(id: string): { title: string; icon: string; markdown: string } | null {
+  const card = featureCards[id]
+  if (!card) return null
+  const titleMatch = /^#\s+(.+)$/m.exec(card.markdown)
+  const title = titleMatch ? titleMatch[1]!.trim() : ''
+  const markdown = card.markdown.replace(/^#\s+.+\n*/, '')
+  return { title, icon: card.icon, markdown }
+}
 
 export function renderStartPage(): string {
   const data = window.referenceData
@@ -49,17 +76,17 @@ export function renderStartPage(): string {
     <section class="about-features">
       <h2 class="about-section-title">Runtime</h2>
       <div class="about-features__grid">
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('suspend-resume')">
           <span class="about-feature-card__icon">${suspendIcon}</span>
           <h3 class="about-feature-card__title">Suspend & Resume</h3>
           <p class="about-feature-card__desc">Serialize execution state to JSON, resume anywhere</p>
         </div>
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('algebraic-effects')">
           <span class="about-feature-card__icon">${effectIcon}</span>
           <h3 class="about-feature-card__title">Algebraic Effects</h3>
           <p class="about-feature-card__desc">Structured, resumable effects with host handlers</p>
         </div>
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('safe-sandbox')">
           <span class="about-feature-card__icon">${sandboxIcon}</span>
           <h3 class="about-feature-card__title">Safe Sandbox</h3>
           <p class="about-feature-card__desc">No file system, no network — fully controlled execution</p>
@@ -70,17 +97,17 @@ export function renderStartPage(): string {
     <section class="about-features">
       <h2 class="about-section-title">Language</h2>
       <div class="about-features__grid">
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('pure-functional')">
           <span class="about-feature-card__icon">${pureIcon}</span>
           <h3 class="about-feature-card__title">Pure Functional</h3>
           <p class="about-feature-card__desc">Immutable data, no side effects, predictable behavior</p>
         </div>
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('hygienic-macros')">
           <span class="about-feature-card__icon">${macroIcon}</span>
           <h3 class="about-feature-card__title">Hygienic Macros</h3>
           <p class="about-feature-card__desc">Extend the language with code templates and AST transformations</p>
         </div>
-        <div class="about-feature-card">
+        <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('embeddable-js')">
           <span class="about-feature-card__icon">${embedIcon}</span>
           <h3 class="about-feature-card__title">Embeddable in JS</h3>
           <p class="about-feature-card__desc">Drop into any JavaScript or TypeScript application</p>

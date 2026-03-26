@@ -24,7 +24,8 @@ import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
-import { renderStartPage } from './components/startPage'
+import { getFeatureCard, renderStartPage } from './components/startPage'
+import { renderDvalaMarkdown } from './renderDvalaMarkdown'
 import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
@@ -303,7 +304,7 @@ let effectPanelFooterEl: HTMLElement | null = null
 let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
 let currentSnapshot: Snapshot | null = null
-const modalStack: { panel: HTMLElement; label: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
+const modalStack: { panel: HTMLElement; label: string; icon?: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
 
 // Toast hint for effect modals that can't be dismissed with Escape
@@ -2749,6 +2750,18 @@ export function analyze() {
   }
 }
 
+export function showFeatureCard(id: string) {
+  const card = getFeatureCard(id)
+  if (!card) return
+  const { panel } = createModalPanel({
+    size: 'medium',
+    icon: card.icon,
+    markdown: card.markdown,
+    onClose: () => { popModal() },
+  })
+  pushPanel(panel, card.title)
+}
+
 export function parse() {
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
@@ -2769,6 +2782,7 @@ export function parse() {
 
 function showAstTreeModal(ast: Ast, title: string) {
   const { panel, body } = createModalPanel({
+    size: 'large',
     hamburgerItems: [
       {
         label: 'Copy JSON',
@@ -2785,13 +2799,6 @@ function showAstTreeModal(ast: Ast, title: string) {
 
   body.style.minHeight = '0'
   body.appendChild(treeViewer)
-
-  // Remove the empty footer
-  const footer = panel.querySelector('.modal-panel__footer')
-  if (footer) footer.remove()
-
-  // Wider panel for tree readability
-  panel.style.maxWidth = '1200px'
 
   pushPanel(panel, title)
 }
@@ -2971,7 +2978,11 @@ function buildBreadcrumbs(panel: HTMLElement) {
 
     const isLast = i === modalStack.length - 1
     const span = document.createElement('span')
-    span.textContent = entry.label
+    if (entry.icon) {
+      span.innerHTML = `<span class="breadcrumb-icon">${entry.icon}</span> ${entry.label}`
+    } else {
+      span.textContent = entry.label
+    }
     span.className = isLast ? 'breadcrumb-item' : 'breadcrumb-item--clickable'
     if (!isLast) {
       const targetIndex = i
@@ -3256,7 +3267,7 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
 
   panel.style.display = 'flex'
   elements.snapshotPanelContainer.appendChild(panel)
-  modalStack.push({ panel, label, snapshot: snapshot ?? (currentSnapshot ?? null), isEffect })
+  modalStack.push({ panel, label, icon: panel.dataset.icon, snapshot: snapshot ?? (currentSnapshot ?? null), isEffect })
   buildBreadcrumbs(panel)
 
   if (!isRoot) {
@@ -3266,7 +3277,8 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
       { duration: 250, easing: 'ease', fill: 'forwards' },
     )
   } else {
-    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : panel.classList.contains('modal-panel') ? '420px' : ''
+    const size = panel.dataset.size as ModalSize | undefined
+    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : size ? modalSizeMap[size] : panel.classList.contains('modal-panel') ? '800px' : ''
     elements.snapshotModal.style.display = 'flex'
     // Fade in (unless replacing, then instant)
     if (!isReplacement) {
@@ -3279,13 +3291,34 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
 }
 
 /** Build a standard modal panel: modal-header with breadcrumbs + optional hamburger, body div, footer div. */
-function createModalPanel(options?: {
+type ModalSize = 'small' | 'medium' | 'large'
+
+const modalSizeMap: Record<ModalSize, string> = {
+  small: '480px',
+  medium: '800px',
+  large: '1200px',
+}
+
+interface ModalPanelOptions {
+  title?: string
+  icon?: string
+  size?: ModalSize
+  markdown?: string
   hamburgerItems?: { label: string; action: () => void }[]
+  footerActions?: { label: string; primary?: boolean; action: () => void }[]
   noClose?: boolean
   onClose?: () => void
-}): { panel: HTMLElement; body: HTMLElement; footer: HTMLElement } {
+}
+
+function createModalPanel(options?: ModalPanelOptions): { panel: HTMLElement; body: HTMLElement; footer: HTMLElement | null } {
   const panel = document.createElement('div')
   panel.className = 'modal-panel'
+  if (options?.size) {
+    panel.dataset.size = options.size
+  }
+  if (options?.icon) {
+    panel.dataset.icon = options.icon
+  }
 
   const header = document.createElement('div')
   header.className = 'modal-header'
@@ -3339,11 +3372,24 @@ function createModalPanel(options?: {
 
   const body = document.createElement('div')
   body.className = 'modal-panel__body'
+  if (options?.markdown) {
+    body.innerHTML = `<div class="tutorial-page">${renderDvalaMarkdown(options.markdown)}</div>`
+  }
   panel.appendChild(body)
 
-  const footer = document.createElement('div')
-  footer.className = 'modal-panel__footer'
-  panel.appendChild(footer)
+  let footer: HTMLElement | null = null
+  if (options?.footerActions?.length) {
+    footer = document.createElement('div')
+    footer.className = 'modal-panel__footer'
+    for (const action of options.footerActions) {
+      const btn = document.createElement('button')
+      btn.className = action.primary ? 'button button--primary' : 'button'
+      btn.textContent = action.label
+      btn.addEventListener('click', () => action.action())
+      footer.appendChild(btn)
+    }
+    panel.appendChild(footer)
+  }
 
   return { panel, body, footer }
 }
@@ -3437,12 +3483,13 @@ export function popModal() {
     resolveSnapshotModal = null
     hideExecutionControlBar()
 
-    // Fade out, then hide overlay
+    // Fade out overlay and panel together
+    const overlay = elements.snapshotModal
     const container = elements.snapshotPanelContainer
-    overlayCloseAnimation = container.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease' })
+    overlayCloseAnimation = overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease' })
     overlayCloseAnimation.onfinish = () => {
       overlayCloseAnimation = null
-      elements.snapshotModal.style.display = 'none'
+      overlay.style.display = 'none'
       container.style.opacity = ''
       container.style.maxWidth = ''
       container.innerHTML = ''
@@ -3549,26 +3596,21 @@ export function showInfoModal(
   message: string,
   onConfirm?: () => void | Promise<void>,
 ): Promise<void> {
-  const { panel, body, footer } = createModalPanel()
+  const actions: ModalPanelOptions['footerActions'] = []
+  if (onConfirm) {
+    actions.push({ label: 'Cancel', action: () => dismissInfoModal() })
+  }
+  actions.push({ label: 'OK', primary: true, action: () => closeInfoModal() })
+
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    footerActions: actions,
+  })
 
   const messageEl = document.createElement('div')
   messageEl.className = 'modal-body-row'
   messageEl.textContent = message
   body.appendChild(messageEl)
-
-  if (onConfirm) {
-    const cancelBtn = document.createElement('button')
-    cancelBtn.className = 'button'
-    cancelBtn.textContent = 'Cancel'
-    cancelBtn.addEventListener('click', () => dismissInfoModal())
-    footer.appendChild(cancelBtn)
-  }
-
-  const okBtn = document.createElement('button')
-  okBtn.className = 'button button--primary'
-  okBtn.textContent = 'OK'
-  okBtn.addEventListener('click', () => closeInfoModal())
-  footer.appendChild(okBtn)
 
   infoModalOnConfirm = onConfirm ?? null
   pushPanel(panel, title)
@@ -3919,7 +3961,8 @@ export function toggleShowAllTerminalSnapshots(): void {
 }
 
 function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
-  const { panel, body, footer } = createModalPanel()
+  // Footer action references the input, so we build it after creating the body content
+  const { panel, body } = createModalPanel({ size: 'small' })
 
   const promptEl = document.createElement('div')
   promptEl.className = 'modal-body-row'
@@ -3940,12 +3983,15 @@ function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
     void onSave(name)
   }
 
+  // Manually add footer since action depends on input value
+  const footer = document.createElement('div')
+  footer.className = 'modal-panel__footer'
   const saveBtn = document.createElement('button')
   saveBtn.className = 'button button--primary'
   saveBtn.textContent = 'Save'
   saveBtn.addEventListener('click', doSave)
-
   footer.appendChild(saveBtn)
+  panel.appendChild(footer)
 
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') doSave()
@@ -4192,8 +4238,12 @@ function openEffectPanel(): void {
     resolveSnapshotModal = null
   }
 
-  const { panel, body, footer } = createModalPanel({ noClose: true })
+  const { panel, body } = createModalPanel({ size: 'small', noClose: true })
   effectPanelBodyEl = body
+  // Effect modal dynamically populates footer — create it manually
+  const footer = document.createElement('div')
+  footer.className = 'modal-panel__footer'
+  panel.appendChild(footer)
   effectPanelFooterEl = footer
 
   // Inject nav into header (reuses existing CSS classes)
