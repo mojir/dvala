@@ -631,6 +631,16 @@ a.disabled {
   line-height: 1.5;
 }
 
+.about-feature-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.about-feature-card--clickable:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
 .about-stats {
   margin-bottom: var(--space-12);
 }
@@ -2385,8 +2395,8 @@ button:focus {
   background: var(--color-surface-2);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  max-height: 85vh;
+  overflow: hidden;
+  max-height: calc(100vh - 48px);
 }
 
 .snapshot-panel__body {
@@ -2395,6 +2405,7 @@ button:focus {
   flex-direction: column;
   gap: var(--space-4);
   flex: 1;
+  overflow-y: auto;
 }
 
 .snapshot-panel__breadcrumbs {
@@ -2426,6 +2437,14 @@ button:focus {
 
 .breadcrumb-item--clickable:hover {
   color: var(--color-text-secondary);
+}
+
+.breadcrumb-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.4em;
+  font-size: 1.3em;
+  opacity: 0.8;
 }
 
 .snapshot-panel__columns {
@@ -2483,6 +2502,7 @@ button:focus {
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border-dim);
+  background-color: var(--color-surface-dim);
 }
 
 .snapshot-panel__buttons-left {
@@ -2498,13 +2518,22 @@ button:focus {
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-height: calc(100vh - 48px);
   background: var(--color-surface-2);
   overflow: hidden;
 }
 
+/* When a modal-panel is inside modal-box, let the panel handle scrolling (sticky header) */
+.modal-box:has(> .modal-panel) {
+  overflow-y: hidden;
+  max-height: calc(100vh - 48px);
+  padding: 0;
+}
+
 .modal-panel .modal-header {
   margin: 0;
-  padding: 0.6rem var(--space-4);
+  padding: 0.75rem var(--space-4);
+  font-size: 1.1rem;
 }
 
 .modal-panel__body {
@@ -2516,12 +2545,18 @@ button:focus {
   gap: var(--space-3);
 }
 
+.modal-panel__body::-webkit-scrollbar-track { background-color: transparent; }
+.modal-panel__body::-webkit-scrollbar { width: 8px; height: 8px; }
+.modal-panel__body::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar); border: none; }
+.modal-panel__body::-webkit-scrollbar-corner { background-color: transparent; }
+
 .modal-panel__footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border-dim);
+  background-color: var(--color-surface-dim);
 }
 
 .println-output {
