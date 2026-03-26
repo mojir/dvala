@@ -17,7 +17,7 @@ import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
-import { copyIcon, hamburgerIcon } from './icons'
+import { copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
 import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
@@ -224,7 +224,6 @@ const elements = {
   get dvalaCodeLockedIndicator() { return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement },
   get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
   get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
-  get snapshotPanelTemplate() { return document.getElementById('snapshot-panel-template') as HTMLTemplateElement },
   get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
   get importOptCode() { return document.getElementById('import-opt-code') as HTMLInputElement },
   get importOptCodeLabel() { return document.getElementById('import-opt-code-label') as HTMLLabelElement },
@@ -3210,8 +3209,65 @@ function populateSnapshotPanel(panel: HTMLElement, snapshot: Snapshot, error?: D
 }
 
 function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLElement {
-  const clone = elements.snapshotPanelTemplate.content.cloneNode(true) as DocumentFragment
-  const panel = clone.firstElementChild as HTMLElement
+  const { panel, body } = createModalPanel({ size: 'large' })
+
+  // Build the snapshot body content
+  body.innerHTML = `
+    <div class="snapshot-panel__columns">
+      <div class="snapshot-panel__col">
+        <div class="snapshot-panel__section">
+          <span class="snapshot-panel__section-label">Metadata</span>
+          <div data-ref="meta-container">
+            <div class="example-code snapshot-panel__code-block">
+              <pre data-ref="meta-json" class="fancy-scroll snapshot-panel__code-pre"></pre>
+              <div class="example-action-bar" style="position:absolute;top:0;right:0;">
+                <div class="example-action-btn" data-ref="copy-meta-btn">${copyIcon}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-ref="suspended-effect-section" class="snapshot-panel__section">
+          <span class="snapshot-panel__section-label">Effect</span>
+          <div class="snapshot-panel__field">
+            <span class="snapshot-panel__field-label">Name</span>
+            <code data-ref="effectName" class="snapshot-panel__effect-name"></code>
+          </div>
+          <div data-ref="effect-args" class="snapshot-panel__effect-args fancy-scroll"></div>
+        </div>
+        <div class="snapshot-panel__section">
+          <span class="snapshot-panel__section-label">Technical</span>
+          <div data-ref="tech" class="snapshot-panel__tech"></div>
+        </div>
+      </div>
+      <div class="snapshot-panel__col">
+        <div data-ref="code-section" class="snapshot-panel__section" style="display:none;">
+          <div class="example-code snapshot-panel__code-block">
+            <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
+            <a href="#" role="button" data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
+          </div>
+        </div>
+        <div class="snapshot-panel__section">
+          <span class="snapshot-panel__section-label">Checkpoints (<span data-ref="cp-count">0</span>)</span>
+          <div data-ref="checkpoints" class="snapshot-panel__checkpoints fancy-scroll"></div>
+        </div>
+      </div>
+    </div>
+  `
+
+  // Build the footer with action buttons
+  const footer = document.createElement('div')
+  footer.className = 'modal-panel__footer'
+  footer.style.justifyContent = 'space-between'
+  footer.innerHTML = `
+    <div class="snapshot-panel__buttons-left">
+      <button data-ref="save-btn" class="button">${saveIcon} Save</button>
+      <button data-ref="share-btn" class="button">${shareIcon} Share</button>
+      <button data-ref="download-btn" class="button">${downloadIcon} Download</button>
+      <button data-ref="copy-json-btn" class="button">${copyIcon} Copy JSON</button>
+    </div>
+    <button data-ref="resume-btn" class="button button--primary">Run</button>
+  `
+  panel.appendChild(footer)
 
   const q = (ref: string) => panel.querySelector(`[data-ref="${ref}"]`) as HTMLElement
 
@@ -3278,7 +3334,7 @@ function pushPanel(panel: HTMLElement, label: string, snapshot?: Snapshot, isEff
     )
   } else {
     const size = panel.dataset.size as ModalSize | undefined
-    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : size ? modalSizeMap[size] : panel.classList.contains('modal-panel') ? '800px' : ''
+    elements.snapshotPanelContainer.style.maxWidth = isEffect ? '480px' : size ? modalSizeMap[size] : ''
     elements.snapshotModal.style.display = 'flex'
     // Fade in (unless replacing, then instant)
     if (!isReplacement) {
