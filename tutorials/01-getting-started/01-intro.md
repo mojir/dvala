@@ -1,6 +1,6 @@
 # Intro
 
-Dvala is a lightweight, pure functional programming language designed to embed directly in JavaScript applications. It runs in a secure sandbox, and its programs can be **suspended, serialized, and resumed** — across processes, machines, and time.
+Dvala is a suspendable runtime that embeds directly in JavaScript applications. Programs run in a secure sandbox and can be **suspended, serialized, and resumed** — across processes, machines, and time. The Dvala language is pure functional with algebraic effects and hygienic macros.
 
 ## The Big Idea: Programs That Wait
 
@@ -59,6 +59,19 @@ There are no statements. Everything — `if`, `let`, `loop`, `match` — is an e
 let label = if 42 >= 0 then "positive" else "negative" end;
 label
 ```
+
+## Extensible with Macros
+
+Macros receive unevaluated code (AST) and return transformed code. Code templates make this ergonomic:
+
+```dvala
+let unless = macro (cond, body) ->
+  ```if not(${cond}) then ${body} else null end```;
+
+unless(false, "this runs!")
+```
+
+Macro bindings are automatically gensymed — no accidental name collisions with the caller's scope. See the [Macros tutorial](/tutorials/advanced-macros) for the full story.
 
 ## JavaScript Interoperability
 

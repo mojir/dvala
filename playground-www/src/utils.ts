@@ -16,7 +16,7 @@ export function getPageHeader(options?: { tagline?: boolean }): string {
   const showTagline = options?.tagline ?? false
   const taglineHtml = showTagline
     ? `<p class="start-page__tagline">Run anywhere - Resume everywhere</p>
-    <p class="start-page__subtitle">A suspendable, time-traveling functional language for JavaScript</p>`
+    <p class="start-page__subtitle">A suspendable runtime with algebraic effects</p>`
     : ''
   return `
   <div class="content-page__header start-page__header">

@@ -1,20 +1,24 @@
 # Dvala
 
-A suspendable virtual machine — pause anywhere, resume anytime, debug backward through time.
+A suspendable runtime with algebraic effects.
 
 Try it in the [Dvala Playground](https://mojir.github.io/dvala/).
 
-## Features
+## Runtime Features
 
-- **Algebraic effects** — `perform` is the only IO boundary; host handlers decide to resume, await, or suspend
 - **Serializable continuations** — Execution state freezes to JSON, resumable across processes and time
-- **Time-travel debugging** — Step backward, jump to any state, explore alternate timelines
+- **Algebraic effects** — `perform` is the only IO boundary; host handlers decide to resume, await, or suspend
 - **Sandboxed execution** — No file system, network, or global access — safe for untrusted code
-- **Pure functional** — Immutable data, no side effects, predictable behavior
 - **Host-controlled IO** — Every side effect goes through the host, who controls what Dvala can access
+- **Time-travel debugging** — Step backward, jump to any state, explore alternate timelines
+- **Fully serializable** — Every Dvala value, including functions and regexps, is JSON-serializable
+
+## Language Features
+
+- **Pure functional** — Immutable data, no side effects, predictable behavior
+- **Hygienic macros** — Extend the language with code templates and AST transformations
 - **Expression-based** — Everything returns a value, no statements
 - **First-class functions** — Functions are values that can be passed, returned, and composed
-- **Fully serializable** — Every Dvala value, including functions and regexps, is JSON-serializable
 - **Structural equality** — Objects compared by value, not reference
 
 ## Installation
