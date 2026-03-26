@@ -78,6 +78,7 @@ import raw_05_02 from '../../../tutorials/05-advanced/02-effects.md'
 import raw_05_03 from '../../../tutorials/05-advanced/03-implicit-async.md'
 import raw_05_04 from '../../../tutorials/05-advanced/04-suspension.md'
 import raw_05_05 from '../../../tutorials/05-advanced/05-concurrency.md'
+import raw_05_06 from '../../../tutorials/05-advanced/06-macros.md'
 
 function extractTitle(raw: string): string {
   const match = /^#\s+(.+)$/m.exec(raw)
@@ -134,6 +135,7 @@ export const tutorialFolders: TutorialFolder[] = [
       makeEntry('advanced-implicit-async', raw_05_03, 'Advanced'),
       makeEntry('advanced-suspension', raw_05_04, 'Advanced'),
       makeEntry('advanced-concurrency', raw_05_05, 'Advanced'),
+      makeEntry('advanced-macros', raw_05_06, 'Advanced'),
     ],
   },
 ]
