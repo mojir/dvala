@@ -478,7 +478,7 @@ function getMobileOverlay(): string {
     <div class="mobile-overlay__header">
       <img src="images/dvala-logo.webp" alt="Dvala" class="mobile-overlay__logo" width="800" height="232">
       <p class="mobile-overlay__tagline">Run anywhere - Resume everywhere</p>
-      <p class="mobile-overlay__subtitle">A suspendable, time-traveling functional language for JavaScript</p>
+      <p class="mobile-overlay__subtitle">A suspendable runtime with algebraic effects</p>
     </div>
 
     <div class="mobile-overlay__note">
