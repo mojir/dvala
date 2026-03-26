@@ -24,7 +24,6 @@ import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
-import { renderAboutPage } from './components/aboutPage'
 import { renderStartPage } from './components/startPage'
 import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
 import { playgroundEffectReference } from './playgroundEffects'
@@ -2597,14 +2596,10 @@ function routeToPath(appPath: string): void {
       const entry = data.searchEntries.find(e => e.linkName === linkName)
       pageTitle = entry ? `${entry.title} | Dvala Reference` : 'Reference | Dvala'
     }
-  } else if (path === 'about') {
-    dynPage.innerHTML = renderAboutPage()
-    sidebarLinkId = 'about-page_link'
-    pageTitle = 'About | Dvala'
   } else {
     dynPage.innerHTML = renderStartPage()
     sidebarLinkId = 'home-page_link'
-    pageTitle = 'Dvala - Suspendable Functional Language for JavaScript'
+    pageTitle = 'Dvala - A Suspendable Runtime with Algebraic Effects'
   }
 
   document.title = pageTitle
