@@ -12,9 +12,7 @@ import {
   analyzeIcon,
   cameraIcon,
   codeIcon,
-  copyIcon,
   debugIcon,
-  downloadIcon,
   formatIcon,
   gearIcon,
   githubIcon,
@@ -28,7 +26,6 @@ import {
   redoIcon,
   saveIcon,
   searchIcon,
-  shareIcon,
   stopIcon,
   syncIcon,
   trashIcon,
@@ -195,65 +192,6 @@ function getPlaygroundPanel(): string {
 
     </div>
   </div>
-
-  <template id="snapshot-panel-template">
-    <div class="snapshot-panel fancy-scroll">
-      <div class="modal-header">
-        <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
-        <a href="#" role="button" class="modal-header__close-btn" onclick="Playground.popModal()">✕</a>
-      </div>
-      <div class="snapshot-panel__body">
-      <div class="snapshot-panel__columns">
-        <div class="snapshot-panel__col">
-          <div class="snapshot-panel__section">
-            <span class="snapshot-panel__section-label">Metadata</span>
-            <div data-ref="meta-container">
-              <div class="example-code snapshot-panel__code-block">
-                <pre data-ref="meta-json" class="fancy-scroll snapshot-panel__code-pre"></pre>
-                <div class="example-action-bar" style="position:absolute;top:0;right:0;">
-                  <div class="example-action-btn" data-ref="copy-meta-btn"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div data-ref="suspended-effect-section" class="snapshot-panel__section">
-            <span class="snapshot-panel__section-label">Effect</span>
-            <div class="snapshot-panel__field">
-              <span class="snapshot-panel__field-label">Name</span>
-              <code data-ref="effectName" class="snapshot-panel__effect-name"></code>
-            </div>
-            <div data-ref="effect-args" class="snapshot-panel__effect-args fancy-scroll"></div>
-          </div>
-          <div class="snapshot-panel__section">
-            <span class="snapshot-panel__section-label">Technical</span>
-            <div data-ref="tech" class="snapshot-panel__tech"></div>
-          </div>
-        </div>
-        <div class="snapshot-panel__col">
-          <div data-ref="code-section" class="snapshot-panel__section" style="display:none;">
-            <div class="example-code snapshot-panel__code-block">
-              <pre data-ref="code-content" class="snapshot-panel__code-pre"></pre>
-              <a href="#" role="button" data-ref="add-to-playground" class="snapshot-panel__use-btn">Use in playground</a>
-            </div>
-          </div>
-          <div class="snapshot-panel__section">
-            <span class="snapshot-panel__section-label">Checkpoints (<span data-ref="cp-count">0</span>)</span>
-            <div data-ref="checkpoints" class="snapshot-panel__checkpoints fancy-scroll"></div>
-          </div>
-        </div>
-      </div>
-      </div>
-      <div data-ref="buttons" class="snapshot-panel__buttons">
-        <div class="snapshot-panel__buttons-left">
-          <button data-ref="save-btn" class="button">${saveIcon} Save</button>
-          <button data-ref="share-btn" class="button">${shareIcon} Share</button>
-          <button data-ref="download-btn" class="button">${downloadIcon} Download</button>
-          <button data-ref="copy-json-btn" class="button">${copyIcon} Copy JSON</button>
-        </div>
-        <button data-ref="resume-btn" class="button button--primary">Run</button>
-      </div>
-    </div>
-  </template>
 
   `
 }
