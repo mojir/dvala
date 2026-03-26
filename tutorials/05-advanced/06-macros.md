@@ -208,12 +208,12 @@ let negate = macro (ast) -> ```0 - ${ast}```;
 21 |> double |> negate
 ```
 
+Macros also work inside lambdas passed to pipes:
+
 ```dvala
 let double = macro (ast) -> ```${ast} + ${ast}```;
 [1, 2, 3] |> map(_, -> double($))
 ```
-
-Wait — the second example doesn't work as a macro pipe because `double` is inside a lambda. Macros only intercept **direct named calls** at the call site. Inside a lambda, `double($)` is a regular macro call which works fine.
 
 ---
 
@@ -437,23 +437,24 @@ Detection is unambiguous: a single AST node starts with a string (`["Num", ...]`
 
 ### Macros Only Intercept Named Calls
 
-Macros are detected when calling a **named user-defined symbol**. Calling through an expression doesn't trigger macro behavior:
+A macro call is only recognized when the callee is a **named variable** — `myMacro(x)`. If the macro is accessed through an expression like `first(fns)`, the macro check doesn't trigger and arguments are evaluated normally:
 
 ```dvala
-let id = macro (ast) -> ast;
+// This macro returns the AST type tag as a string
+let showType = macro (ast) -> ["Str", first(ast), 0];
 
-// Direct call — macro intercepts, receives AST
-id(42)
+// Direct call — macro intercepts, receives AST node ["Num", 42, 0]
+showType(42)
 ```
 
-```dvala
-let id = macro (ast) -> ast;
-let fns = [id];
+```dvala no-run
+let showType = macro (ast) -> ["Str", first(ast), 0];
+let fns = [showType];
 
 // Expression call — NOT intercepted as macro
-// first(fns) evaluates to the macro value, then it's called as a regular function
-// This means it receives the VALUE 42, not AST
-first(fns)(42)
+// first(fns) evaluates to the macro, then it's called as a regular function
+// ast receives the VALUE 42 (not AST), so first(42) fails
+first(fns)(42)  // Error: Expected string or array, got 42
 ```
 
 ### AST Arguments Are Arrays
