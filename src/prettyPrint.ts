@@ -143,8 +143,17 @@ function printNode(node: AstNode, ind: number): string {
     case NodeTypes.Race:
       return printCommaSeparated('race', payload as unknown[][], ind)
     case NodeTypes.CodeTmpl:
+      return printCodeTemplate(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Splice:
-      return `<${type}>`
+      return '<Splice>'
+    // Binding target types (from destructuring patterns, not evaluable code)
+    case 'symbol':
+    case 'rest':
+    case 'array':
+    case 'object':
+    case 'wildcard':
+    case 'literal':
+      return printBindingTarget(node)
     default:
       return `<${type}>`
   }
@@ -426,6 +435,63 @@ function printTemplateString(segments: unknown[][]): string {
     }
   }
   return `${result}\``
+}
+
+function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): string {
+  const [bodyAst, spliceExprs] = payload
+  // Print body nodes, replacing Splice nodes with ${spliceExpr}
+  const bodyParts = bodyAst.map(node => printNodeWithSplices(node as AstNode, spliceExprs, ind))
+  const inner = bodyParts.join('; ')
+  return `\`\`\`${inner}\`\`\``
+}
+
+/** Print an AST node, but render Splice nodes as ${expr} using the splice expressions list. */
+function printNodeWithSplices(node: AstNode, spliceExprs: unknown[][], ind: number): string {
+  const [type, payload] = node
+  if (type === NodeTypes.Splice) {
+    const index = payload as number
+    const expr = spliceExprs[index]
+    if (expr) {
+      return `\${${printNode(expr as AstNode, ind)}}`
+    }
+    return `\${<splice${index}>}`
+  }
+  // For non-splice nodes, we need to recursively handle splices in children.
+  // The simplest approach: temporarily replace Splice handling in printNode.
+  // But that would require threading splice context through everything.
+  // Instead, just use printNode for non-splice nodes — splices only appear
+  // at positions where printNode would call back into us via the AST structure.
+  // Since Splice nodes are only at leaf positions (expression slots), they'll
+  // hit the Splice case in printNode's switch, which shows <Splice>.
+  // We need a different approach: walk and substitute first.
+  return printNode(substituteSpplices(node, spliceExprs), ind)
+}
+
+/** Recursively replace Splice nodes with synthetic AST that prints as ${expr}. */
+function substituteSpplices(node: AstNode, spliceExprs: unknown[][]): AstNode {
+  const [type, payload, id] = node
+  if (type === NodeTypes.Splice) {
+    const index = payload as number
+    const expr = spliceExprs[index]
+    // Create a Sym node with the splice text — printNode will render it as-is
+    const spliceText = expr ? `\${${printNode(expr as AstNode, 0)}}` : `\${<splice${index}>}`
+    return [NodeTypes.Sym, spliceText, id]
+  }
+  if (!Array.isArray(payload)) return node
+  const newPayload = payload.map(item => {
+    if (Array.isArray(item)) {
+      if (item.length >= 2 && typeof item[0] === 'string') {
+        return substituteSpplices(item as AstNode, spliceExprs)
+      }
+      return item.map(inner =>
+        Array.isArray(inner) && inner.length >= 2 && typeof inner[0] === 'string'
+          ? substituteSpplices(inner as AstNode, spliceExprs)
+          : inner,
+      )
+    }
+    return item
+  })
+  return [type, newPayload, id]
 }
 
 // ---------------------------------------------------------------------------

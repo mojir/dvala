@@ -2786,25 +2786,7 @@ function showAstTreeModal(ast: Ast, title: string) {
     onClose: () => { popModal(); focusDvalaCode() },
   })
 
-  const treeViewer = createAstTreeViewer({
-    ast,
-    onSelectNode: (nodeId, sourceMap) => {
-      const pos = sourceMap.positions[nodeId]
-      if (!pos) return
-      const source = sourceMap.sources[pos.source]
-      if (!source) return
-      const lines = source.content.split('\n')
-      const toOffset = (line: number, col: number) => {
-        let off = 0
-        for (let i = 0; i < line; i++) off += (lines[i]?.length ?? 0) + 1
-        return off + col
-      }
-      const startOffset = toOffset(pos.start[0], pos.start[1])
-      const endOffset = toOffset(pos.end[0], pos.end[1])
-      elements.dvalaTextArea.setSelectionRange(startOffset, endOffset)
-      syntaxOverlay.setSelection(startOffset, endOffset)
-    },
-  })
+  const treeViewer = createAstTreeViewer({ ast })
 
   body.style.minHeight = '0'
   body.appendChild(treeViewer)
