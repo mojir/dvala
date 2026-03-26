@@ -938,6 +938,8 @@ export interface MacroEvalFrame {
   type: 'MacroEval'
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
+  /** When true, the frame is a pass-through marker for error location only. */
+  expanded?: boolean
 }
 
 /**

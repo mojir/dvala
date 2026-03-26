@@ -8,6 +8,8 @@ import { tokenizeSource } from '../../src/tooling'
 const normalExpressionSet = new Set(normalExpressionKeys)
 const specialExpressionSet = new Set(specialExpressionKeys)
 const playgroundEffectNames = new Set(Object.values(playgroundEffectReference).map(r => r.title))
+// Internal effects handled by the engine but not in the standardEffects registry
+const internalEffectNames = new Set(['dvala.error', 'dvala.macro.expand'])
 
 const colors = {
   keyword: 'var(--syntax-keyword)',
@@ -30,7 +32,7 @@ function escapeHtml(text: string): string {
 
 function getEffectNameStyle(name: string): string {
   if (playgroundEffectNames.has(name)) return 'font-style:italic;'
-  if (!standardEffectNames.has(name)) return 'text-decoration:underline;'
+  if (!standardEffectNames.has(name) && !internalEffectNames.has(name)) return 'text-decoration:underline;'
   return 'font-weight:bold;'
 }
 

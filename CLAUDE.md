@@ -343,7 +343,7 @@ end;
 - Don't confuse the macro's body execution (normal eval) with the returned AST (evaluated after).
 - `parseLambdaFunction` rejects `(singleParam) ->` pattern — that's why `parseMacro` uses `parseFunctionArguments` directly.
 - Variable names in tests must not shadow builtins (e.g., don't use `first` as a macro name — it's a builtin).
-- Macros only intercept **named calls** to user-defined symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` names only.
+- Macros only intercept **named calls** to user-defined or builtin symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` and `BuiltinSymbol` names only. This means you can shadow a builtin (e.g. `let assert = macro ...`) and it will work correctly as a macro.
 - Named macros emit `@dvala.macro.expand` — anonymous macros are called directly with no effect overhead.
 - Code template `${expr}` currently only works in **expression positions** — binding-position splicing (e.g., `let ${nameNode} = ...`) is not yet supported.
 - **Nested code templates with inner splices don't work** — `${...}` inside inner backtick fences is captured by the outer template's tokenizer. The tokenizer would need backtick-depth-aware splice detection to support macro-generating macros.

@@ -172,4 +172,68 @@ describe('macro system', () => {
       expect(result).toBe(42)
     })
   })
+
+  describe('macro shadowing builtins', () => {
+    it('should allow a macro to shadow a builtin name', () => {
+      // `assert` is a builtin — shadowing it with a macro should work
+      const result = run(`
+        let assert = macro (cond) -> cond;
+        assert(1 + 2)
+      `)
+      expect(result).toBe(3)
+    })
+
+    it('should invoke the macro, not the builtin, when shadowed', () => {
+      // The builtin `assert` throws on falsy values, but the macro should
+      // intercept the call and return the AST evaluation result instead.
+      const result = run(`
+        let { prettyPrint } = import(ast);
+        let assert = macro (cond) ->
+          \`\`\`if \${cond} then "pass" else "fail" end\`\`\`;
+        assert(1 > 5)
+      `)
+      expect(result).toBe('fail')
+    })
+
+    it('should work with other shadowed builtins like count or str', () => {
+      const result = run(`
+        let str = macro (ast) -> ["Str", "intercepted", 0];
+        str(anything)
+      `)
+      expect(result).toBe('intercepted')
+    })
+  })
+
+  describe('error source position in macro-expanded code', () => {
+    // Debug mode is needed to capture source positions
+    const debugDvala = createDvala({ modules: [astModule], debug: true })
+    const runDebug = (code: string) => debugDvala.run(code)
+
+    it('should point errors to the macro call site, not internal code', () => {
+      try {
+        runDebug(`let myError = -> perform(@dvala.error, $);
+let myAssert = macro (cond) ->
+  \`\`\`if \${cond} then true else myError("fail") end\`\`\`;
+myAssert(1 > 5)`)
+        expect.unreachable('should have thrown')
+      } catch (e: unknown) {
+        const err = e as { sourceCodeInfo?: { position: { line: number; column: number } } }
+        // Error should point to the myAssert(...) call on line 4, not myError definition on line 1
+        expect(err.sourceCodeInfo).toBeDefined()
+        expect(err.sourceCodeInfo!.position.line).toBe(4)
+      }
+    })
+
+    it('should preserve source position for errors with existing location', () => {
+      // Non-macro error should keep its original location
+      try {
+        runDebug('1 + "x"')
+        expect.unreachable('should have thrown')
+      } catch (e: unknown) {
+        const err = e as { sourceCodeInfo?: { position: { line: number } } }
+        expect(err.sourceCodeInfo).toBeDefined()
+        expect(err.sourceCodeInfo!.position.line).toBe(1)
+      }
+    })
+  })
 })
