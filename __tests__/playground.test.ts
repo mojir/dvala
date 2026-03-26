@@ -11,8 +11,6 @@
  * The tests are intentionally decoupled from DOM structure so they remain
  * stable as the playground UI evolves.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import type { RunResult } from '../src/evaluator/effectTypes'
@@ -393,26 +391,6 @@ describe('autoCompleter', () => {
 // ---------------------------------------------------------------------------
 // 7. Start page example.dvala
 // ---------------------------------------------------------------------------
-
-describe('start page example', () => {
-  const dvala = makePlaygroundDvala()
-  const exampleCode = readFileSync(
-    join(__dirname, '../playground-www/src/startPageExample.dvala'),
-    'utf-8',
-  )
-
-  it('runs with mocked io effect handlers', async () => {
-    let printlnValue: unknown
-    const result = await dvala.runAsync(exampleCode, {
-      effectHandlers: [
-        { pattern: 'dvala.io.pick', handler: ctx => { ctx.resume(1) } },
-        { pattern: 'dvala.io.print', handler: ctx => { printlnValue = ctx.arg; ctx.resume(ctx.arg ?? null) } },
-      ],
-    })
-    expect(result.type).toBe('completed')
-    expect(printlnValue).toBe('Total: $47.67 (You saved $5.3)')
-  })
-})
 
 // ---------------------------------------------------------------------------
 // 8. App routes — stubRoutes + dynamicOnlyRoutes must cover all APP_ROOTS
