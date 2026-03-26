@@ -5,6 +5,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#docstrings" },
+    { "include": "#code-templates" },
     { "include": "#template-strings" },
     { "include": "#strings" },
     { "include": "#regexp-shorthand" },
@@ -61,6 +62,98 @@
             }
           ]
         }
+      ]
+    },
+    "code-templates": {
+      "patterns": [
+        {
+          "comment": "Code template with 5+ backticks",
+          "name": "meta.code-template.dvala",
+          "begin": "(`````+)",
+          "end": "\\1",
+          "beginCaptures": { "1": { "name": "keyword.operator.code-template.dvala" } },
+          "endCaptures": { "0": { "name": "keyword.operator.code-template.dvala" } },
+          "patterns": [
+            { "include": "#code-template-splice" },
+            { "include": "#comments" },
+            { "include": "#code-templates" },
+            { "include": "#template-strings" },
+            { "include": "#strings" },
+            { "include": "#effect-names" },
+            { "include": "#numbers" },
+            { "include": "#reserved-symbols" },
+            { "include": "#special-expressions" },
+            { "include": "#builtin-functions" },
+            { "include": "#operators" },
+            { "include": "#brackets" },
+            { "include": "#symbols" }
+          ]
+        },
+        {
+          "comment": "Code template with 4 backticks",
+          "name": "meta.code-template.dvala",
+          "begin": "````",
+          "end": "````",
+          "beginCaptures": { "0": { "name": "keyword.operator.code-template.dvala" } },
+          "endCaptures": { "0": { "name": "keyword.operator.code-template.dvala" } },
+          "patterns": [
+            { "include": "#code-template-splice" },
+            { "include": "#comments" },
+            { "include": "#template-strings" },
+            { "include": "#strings" },
+            { "include": "#effect-names" },
+            { "include": "#numbers" },
+            { "include": "#reserved-symbols" },
+            { "include": "#special-expressions" },
+            { "include": "#builtin-functions" },
+            { "include": "#operators" },
+            { "include": "#brackets" },
+            { "include": "#symbols" }
+          ]
+        },
+        {
+          "comment": "Code template with 3 backticks (most common)",
+          "name": "meta.code-template.dvala",
+          "begin": "```",
+          "end": "```",
+          "beginCaptures": { "0": { "name": "keyword.operator.code-template.dvala" } },
+          "endCaptures": { "0": { "name": "keyword.operator.code-template.dvala" } },
+          "patterns": [
+            { "include": "#code-template-splice" },
+            { "include": "#comments" },
+            { "include": "#template-strings" },
+            { "include": "#strings" },
+            { "include": "#effect-names" },
+            { "include": "#numbers" },
+            { "include": "#reserved-symbols" },
+            { "include": "#special-expressions" },
+            { "include": "#builtin-functions" },
+            { "include": "#operators" },
+            { "include": "#brackets" },
+            { "include": "#symbols" }
+          ]
+        }
+      ]
+    },
+    "code-template-splice": {
+      "name": "meta.template.expression.dvala",
+      "begin": "\\$\\{",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "punctuation.definition.template-expression.begin.dvala" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.template-expression.end.dvala" } },
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#code-templates" },
+        { "include": "#template-strings" },
+        { "include": "#strings" },
+        { "include": "#effect-names" },
+        { "include": "#numbers" },
+        { "include": "#reserved-symbols" },
+        { "include": "#special-expressions" },
+        { "include": "#builtin-functions" },
+        { "include": "#operators" },
+        { "include": "#brackets" },
+        { "include": "#symbols" }
       ]
     },
     "template-strings": {
