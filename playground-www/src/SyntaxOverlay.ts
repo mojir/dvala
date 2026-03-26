@@ -103,12 +103,47 @@ function renderTemplateStringToken(rawValue: string): string {
   return result + backtick
 }
 
+function renderCodeTemplateToken(rawValue: string): string {
+  // Count opening backticks to find delimiter length
+  let backtickCount = 0
+  while (rawValue[backtickCount] === '`') {
+    backtickCount++
+  }
+  const delimiter = '`'.repeat(backtickCount)
+  const content = rawValue.slice(backtickCount, -backtickCount)
+  const segments = splitSegments(content)
+
+  // Render opening delimiter
+  const delimSpan = `<span style="color:${colors.punctuation}">${delimiter}</span>`
+  let result = delimSpan
+
+  for (const seg of segments) {
+    if (seg.type === 'literal') {
+      // Tokenize and highlight inner Dvala code normally
+      result += tokenizeToHtml(seg.value)
+    } else {
+      // Splice interpolation: ${expr}
+      result += `<span style="color:${colors.punctuation}">\${</span>`
+      result += tokenizeToHtml(seg.value)
+      result += `<span style="color:${colors.punctuation}">}</span>`
+    }
+  }
+
+  // Render closing delimiter
+  result += delimSpan
+
+  // Wrap entire template in underline to visually distinguish from runtime code
+  return `<span style="font-style:italic">${result}</span>`
+}
+
 export function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
     return tokens.map(token => {
       if (token[0] === 'TemplateString')
         return renderTemplateStringToken(token[1])
+      if (token[0] === 'CodeTemplate')
+        return renderCodeTemplateToken(token[1])
       const prefix = token[0] === 'EffectName' ? '@' : token[0] === 'MacroQualified' ? 'macro@' : ''
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token)
