@@ -983,6 +983,101 @@ a.disabled {
 /* ============================================================
    Tutorial page
    ============================================================ */
+/* --- Tutorial sticky header --- */
+
+.tutorial-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-dim);
+  border-bottom: 1px solid var(--color-border-dim);
+  margin: 0 calc(-1 * var(--space-3));
+}
+
+.tutorial-header__title {
+  font-weight: bold;
+  font-size: 1rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tutorial-header__toc-wrap {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.tutorial-header__toc-label {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  bottom: 1px;
+  right: 1.5em;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  background: var(--color-surface);
+  border-radius: 4px 0 0 4px;
+}
+
+.tutorial-header__toc {
+  background: var(--color-surface);
+  color: transparent;
+  border: 1px solid var(--color-border-dim);
+  border-radius: 4px;
+  padding: 0.2em 1.6em 0.2em 0.4em;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-width: 10rem;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5em center;
+  background-size: 10px 6px;
+}
+
+.tutorial-header__toc:hover {
+  border-color: var(--color-text-dim);
+}
+
+
+.tutorial-header__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8em;
+  height: 1.8em;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.tutorial-header__nav-btn:hover {
+  color: var(--color-text-bright);
+  background: var(--color-surface);
+}
+
+.tutorial-header__nav-btn--disabled {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* --- Tutorial page --- */
+
 .tutorial-page {
   padding: 0 var(--space-3);
   max-width: 60rem;
@@ -993,6 +1088,7 @@ a.disabled {
 
 .tutorial-page__content {
   line-height: 1.7;
+  margin-top: var(--space-4);
 }
 
 .tutorial-page__content h1,
@@ -1055,38 +1151,6 @@ a.disabled {
   color: var(--color-text-dim);
 }
 
-.tutorial-page__nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--space-8);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  gap: var(--space-4);
-}
-
-.tutorial-page__nav-link {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  transition: color 0.15s;
-  font-size: var(--font-size-sm);
-}
-
-.tutorial-page__nav-link:hover {
-  color: var(--color-text-bright);
-}
-
-.tutorial-page__nav-link--prev {
-  margin-right: auto;
-}
-
-.tutorial-page__nav-link--next {
-  margin-left: auto;
-}
-
-.tutorial-page__nav-link--disabled {
-  display: inline-block;
-}
 
 /* ============================================================
    Example page

@@ -139,25 +139,43 @@ export function renderTutorialPage(id: string): string {
   const prev = idx > 0 ? allTutorials[idx - 1] : null
   const next = idx < allTutorials.length - 1 ? allTutorials[idx + 1] : null
 
-  const contentHtml = renderDvalaMarkdown(entry.raw)
+  // Render markdown and strip the h1 — title goes in the sticky header
+  let contentHtml = renderDvalaMarkdown(entry.raw)
+  contentHtml = contentHtml.replace(/<h1[^>]*>.*?<\/h1>\s*/, '')
 
-  const prevLink = prev
-    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--prev" href="${href(`/tutorials/${prev.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${prev.id}')">← ${escapeHtml(prev.title)}</a>`
-    : '<span class="tutorial-page__nav-link tutorial-page__nav-link--disabled"></span>'
+  const prevBtn = prev
+    ? `<a class="tutorial-header__nav-btn" href="${href(`/tutorials/${prev.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${prev.id}')" title="${escapeHtml(prev.title)}">←</a>`
+    : '<span class="tutorial-header__nav-btn tutorial-header__nav-btn--disabled">←</span>'
 
-  const nextLink = next
-    ? `<a class="tutorial-page__nav-link tutorial-page__nav-link--next" href="${href(`/tutorials/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${next.id}')">→ ${escapeHtml(next.title)}</a>`
-    : '<span class="tutorial-page__nav-link tutorial-page__nav-link--disabled"></span>'
+  const nextBtn = next
+    ? `<a class="tutorial-header__nav-btn" href="${href(`/tutorials/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/tutorials/${next.id}')" title="${escapeHtml(next.title)}">→</a>`
+    : '<span class="tutorial-header__nav-btn tutorial-header__nav-btn--disabled">→</span>'
+
+  // TOC dropdown with all tutorials grouped by folder
+  const tocOptions = tutorialFolders.map(folder => {
+    const options = folder.entries.map(e => {
+      const selected = e.id === id ? ' selected' : ''
+      return `<option value="${e.id}"${selected}>${escapeHtml(e.title)}</option>`
+    }).join('')
+    return `<optgroup label="${escapeHtml(folder.name)}">${options}</optgroup>`
+  }).join('')
 
   return `
 <div class="tutorial-page">
+  <div class="tutorial-header">
+    ${prevBtn}
+    <span class="tutorial-header__title">${escapeHtml(entry.title)}</span>
+    <div class="tutorial-header__toc-wrap">
+      <span class="tutorial-header__toc-label">Table of contents</span>
+      <select class="tutorial-header__toc" onchange="Playground.navigate('/tutorials/' + this.value); this.blur()" aria-label="Table of contents">
+        ${tocOptions}
+      </select>
+    </div>
+    ${nextBtn}
+  </div>
   <div class="tutorial-page__content">
     ${contentHtml}
   </div>
-  <nav class="tutorial-page__nav" aria-label="Tutorial navigation">
-    ${prevLink}
-    ${nextLink}
-  </nav>
 </div>`.trim()
 }
 
