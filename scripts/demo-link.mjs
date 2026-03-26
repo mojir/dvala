@@ -1,27 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Extract demo blocks from git commit messages and generate playground URLs.
+ * Extract demo blocks from git commit messages and generate an interactive
+ * HTML changelog with executed results.
  *
  * Demos are fenced ```demo blocks in commit messages containing:
  *   description: short title
  *   code:
- *   // First comment lines serve as description for --all view
  *   let x = 42;
  *   x + 1
  *
  * Usage:
- *   npm run demo                  # open demos from HEAD in browser
- *   npm run demo -- HEAD~3       # from specific ref
- *   npm run demo -- --check      # validate current commit's demo code
- *   npm run demo -- --all        # render HTML changelog of all demos
- *
- * Options:
- *   --check     Validate current commit's demo code executes without error.
- *               Cannot be combined with --all (use --exact --all for that).
- *   --exact     (future) Build playground from commit's version for validation.
- *   --all       Scan from EARLIEST_DEMO_COMMIT to HEAD, render HTML changelog
- *               and open in browser.
+ *   npm run demo              # render HTML changelog and open in browser
+ *   npm run demo -- --check   # validate current commit's demo code
  */
 
 import { execSync } from 'node:child_process'
@@ -34,54 +25,27 @@ const CACHE_DIR = join(process.cwd(), '.cache', 'demo')
 const CACHE_FILE = join(CACHE_DIR, 'commits.json')
 const CACHE_HASH_FILE = join(CACHE_DIR, 'last-hash.txt')
 
-// Earliest commit with a demo block — --all scans from here to HEAD
+// Earliest commit with a demo block — scans from here to HEAD
 const EARLIEST_DEMO_COMMIT = 'bd3d28e7'
+
+const baseUrl = 'http://localhost:9901'
 
 // Parse CLI args
 const args = process.argv.slice(2)
 const checkMode = args.includes('--check')
-const exactMode = args.includes('--exact')
-const allMode = args.includes('--all')
-const positionalArgs = args.filter(a => !a.startsWith('--'))
-const ref = positionalArgs[0] || 'HEAD'
-const baseUrl = positionalArgs[1] || 'http://localhost:9901'
-
-// --check --all is not supported without --exact
-if (checkMode && allMode && !exactMode) {
-  console.error('Error: --check --all requires --exact (build each commit\'s version).')
-  console.error('Use --check alone to validate current commit, or --all alone for HTML output.')
-  process.exit(1)
-}
-
-// --exact mode: not yet implemented
-if (exactMode) {
-  console.error('--exact mode not yet implemented.')
-  process.exit(1)
-}
-
-// --all mode: scan history and render HTML
-if (allMode) {
-  renderAllDemos()
-  process.exit(0)
-}
-
-// --- Single commit mode ---
-
-// Get full commit message
-const message = execSync(`git log -1 --format=%B ${ref}`, { encoding: 'utf-8' })
-const demos = extractDemos(message)
-
-if (demos.length === 0) {
-  console.log(`No demo blocks found in commit ${ref}`)
-  process.exit(0)
-}
-
-const subject = execSync(`git log -1 --format=%s ${ref}`, { encoding: 'utf-8' }).trim()
 
 if (checkMode) {
+  // --check: validate current commit's demo code
+  const message = execSync('git log -1 --format=%B HEAD', { encoding: 'utf-8' })
+  const demos = extractDemos(message)
+  if (demos.length === 0) {
+    console.log('No demo blocks found in HEAD')
+    process.exit(0)
+  }
   runCheck(demos)
 } else {
-  openDemos(demos, subject)
+  // Default: render HTML changelog
+  renderAllDemos()
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +79,29 @@ function scanCommit(hash) {
     if (insMatch) insertions = parseInt(insMatch[1], 10)
     if (delMatch) deletions = parseInt(delMatch[1], 10)
   } catch { /* first commit has no parent — ignore */ }
+
+  // Execute each demo and capture result/error
+  for (const demo of demos) {
+    if (!demo.code) continue
+    try {
+      const tempFile = join(tmpdir(), `dvala-demo-run-${Date.now()}.cjs`)
+      const script = `
+        const { createDvala, allBuiltinModules } = require('${join(process.cwd(), 'dist/full.js')}');
+        const dvala = createDvala({ modules: allBuiltinModules });
+        const result = dvala.run(${JSON.stringify(demo.code)});
+        process.stdout.write(result === null ? 'null' : typeof result === 'string' ? '"' + result + '"' : JSON.stringify(result));
+      `
+      writeFileSync(tempFile, script)
+      try {
+        demo.result = execSync(`node "${tempFile}"`, { encoding: 'utf-8', stdio: 'pipe', timeout: 10000 })
+      } finally {
+        try { unlinkSync(tempFile) } catch { /* ignore */ }
+      }
+    } catch (e) {
+      const errLines = (e.stderr || e.message || '').trim().split('\n')
+      demo.error = errLines.filter(l => l.length < 200).pop() || errLines[errLines.length - 1]?.substring(0, 200) || 'Unknown error'
+    }
+  }
 
   return {
     hash: hash.substring(0, 8),
@@ -260,6 +247,8 @@ function renderHtml(entries, logoDataUrl) {
         desc: commentLines.join(' '),
         code: codeWithoutComments,
         url,
+        result: demo.result ?? null,
+        error: demo.error ?? null,
         // Historical demos: hide git metadata (hash, date, author, stats)
         historical: demo.historical === 'true',
       }
@@ -286,7 +275,21 @@ function renderHtml(entries, logoDataUrl) {
     }
   }
 
-  const dataJson = JSON.stringify({ commits, demos: flatDemos })
+  const headHash = execSync('git rev-parse --short=8 HEAD', { encoding: 'utf-8' }).trim()
+
+  // Filter out commits not reachable from HEAD (e.g., when on a historical checkout)
+  const reachable = new Set(
+    execSync(`git log --format=%H ${EARLIEST_DEMO_COMMIT}^..HEAD`, { encoding: 'utf-8' })
+      .trim().split('\n').filter(Boolean).map(h => h.substring(0, 8)),
+  )
+  const visibleCommits = commits.filter(c => reachable.has(c.hash))
+  // Remap demo commitIndex to the filtered commits array
+  const oldToNew = new Map(visibleCommits.map((c, newIdx) => [commits.indexOf(c), newIdx]))
+  const visibleDemos = flatDemos
+    .filter(d => oldToNew.has(d.commitIndex))
+    .map(d => ({ ...d, commitIndex: oldToNew.get(d.commitIndex) }))
+
+  const dataJson = JSON.stringify({ commits: visibleCommits, demos: visibleDemos, headHash })
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -412,13 +415,59 @@ function renderHtml(entries, logoDataUrl) {
       border-radius: 6px;
       padding: 0.8rem;
       overflow-x: auto;
+      position: relative;
     }
+    .entry-code pre { margin: 0; }
     .entry-code code {
       font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
       font-size: 0.82rem;
       line-height: 1.5;
       color: var(--code-text);
       white-space: pre;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .entry-code:hover .copy-btn,
+    .entry-output:hover .copy-btn,
+    .detail-code:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .entry-output {
+      margin: 0 0.6rem 0.4rem;
+      padding: 0.5rem 0.8rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: var(--success);
+      background: var(--code-bg);
+      border-left: 3px solid var(--success);
+      border-radius: 0 6px 6px 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      position: relative;
+    }
+    .entry-output.error {
+      color: var(--error);
+      border-left-color: var(--error);
+    }
+    .entry-output-label {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.2rem;
     }
     .entry-playground-link {
       display: inline-block;
@@ -487,6 +536,31 @@ function renderHtml(entries, logoDataUrl) {
     .pagination button:disabled { opacity: 0.4; cursor: default; }
     .detail-panel { min-height: 400px; }
     .hidden { display: none !important; }
+    .head-banner {
+      background: var(--code-bg);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .head-banner strong { color: var(--accent); }
+    .entry.current-commit {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .current-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
 
     /* --- Detail overlay --- */
     .detail-overlay {
@@ -534,7 +608,9 @@ function renderHtml(entries, logoDataUrl) {
       padding: 1.2rem;
       overflow-x: auto;
       margin-bottom: 1.2rem;
+      position: relative;
     }
+    .detail-code pre { margin: 0; }
     .detail-code code {
       font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
       font-size: 0.9rem;
@@ -605,7 +681,7 @@ function renderHtml(entries, logoDataUrl) {
   <script>window.__dvalaData = ${dataJson};</script>
 
   <script>
-    const { commits, demos } = window.__dvalaData;
+    const { commits, demos, headHash } = window.__dvalaData;
 
     // Helper: get commit metadata for a demo, with optional per-demo overrides.
     // Historical demos specify hash/date/author directly in the demo block
@@ -618,7 +694,7 @@ function renderHtml(entries, logoDataUrl) {
     const overlay = document.getElementById('overlay');
     const detailEl = document.getElementById('detail');
 
-    const PAGE_SIZE = 10;
+    const PAGE_SIZE = 20;
     let filteredDemos = [...demos];
     let activeIndex = -1;
     let detailIndex = -1;
@@ -661,6 +737,19 @@ function renderHtml(entries, logoDataUrl) {
       listEl.innerHTML = '';
       activeIndex = -1;
 
+      // HEAD commit banner — show on first page when not searching
+      if (currentPage === 0 && !searchEl.value) {
+        const headDemos = demos.filter(d => commitOf(d).hash === headHash);
+        const banner = document.createElement('div');
+        banner.className = 'head-banner';
+        if (headDemos.length > 0) {
+          banner.innerHTML = '<strong>HEAD</strong> (' + headHash + ') has ' + headDemos.length + ' demo' + (headDemos.length > 1 ? 's' : '');
+        } else {
+          banner.innerHTML = '<strong>HEAD</strong> (' + headHash + ') — no demos on current commit';
+        }
+        listEl.appendChild(banner);
+      }
+
       // Group by date, then by commit within each date group
       let currentDateGroup = '';
       let currentCommitHash = '';
@@ -693,21 +782,30 @@ function renderHtml(entries, logoDataUrl) {
         }
 
         const entry = document.createElement('div');
-        entry.className = 'entry';
+        const isCurrent = c.hash === headHash;
+        entry.className = 'entry' + (isCurrent ? ' current-commit' : '');
         entry.dataset.index = i;
+        const outputHtml = d.result != null
+          ? '<div class="entry-output"><div class="entry-output-label">Result</div><button class="copy-btn" onclick="copyText(this, ' + JSON.stringify(JSON.stringify(d.result)) + ')">Copy</button>' + esc(d.result) + '</div>'
+          : d.error
+            ? '<div class="entry-output error"><div class="entry-output-label">Error</div>This demo was written for an older version of Dvala and may no longer be compatible.</div>'
+            : '';
+
         entry.innerHTML =
           '<div class="entry-header">' +
             '<span class="entry-title">' + esc(d.title) + '</span>' +
+            (isCurrent ? '<span class="current-badge">HEAD</span>' : '') +
           '</div>' +
           (d.desc ? '<div class="entry-desc">' + esc(d.desc) + '</div>' : '') +
           '<div class="entry-expanded-content">' +
-            '<pre class="entry-code"><code>' + esc(d.code) + '</code></pre>' +
+            '<div class="entry-code"><pre><code>' + esc(d.code) + '</code></pre><button class="copy-btn" onclick="copyText(this, ' + JSON.stringify(JSON.stringify(d.code)) + ')">Copy</button></div>' +
+            outputHtml +
             '<a href="' + esc(d.url) + '" target="_blank" class="entry-playground-link">Open in Playground</a>' +
           '</div>';
 
         // Click to expand/collapse
         entry.addEventListener('click', (e) => {
-          if (e.target.closest('.entry-code')) return; // don't toggle when clicking code
+          if (e.target.closest('.entry-code') || e.target.closest('.entry-output') || e.target.closest('.copy-btn')) return;
           const wasExpanded = entry.classList.contains('expanded');
           // Collapse all
           listEl.querySelectorAll('.entry.expanded').forEach(el => el.classList.remove('expanded'));
@@ -774,11 +872,18 @@ function renderHtml(entries, logoDataUrl) {
           '</span>' +
         '</div>';
 
+      const detailOutput = d.result != null
+        ? '<div class="entry-output" style="margin:0 0 1rem"><div class="entry-output-label">Result</div><button class="copy-btn" onclick="copyText(this, ' + JSON.stringify(JSON.stringify(d.result)) + ')">Copy</button>' + esc(d.result) + '</div>'
+        : d.error
+          ? '<div class="entry-output error" style="margin:0 0 1rem"><div class="entry-output-label">Error</div>This demo was written for an older version of Dvala and may no longer be compatible.</div>'
+          : '';
+
       detailEl.innerHTML =
         '<h2>' + esc(d.title) + '</h2>' +
         detailMeta +
         (d.desc ? '<p class="detail-desc">' + esc(d.desc) + '</p>' : '') +
-        '<pre class="detail-code"><code>' + esc(d.code) + '</code></pre>' +
+        '<div class="detail-code"><pre><code>' + esc(d.code) + '</code></pre><button class="copy-btn" onclick="copyText(this, ' + JSON.stringify(JSON.stringify(d.code)) + ')">Copy</button></div>' +
+        detailOutput +
         '<div class="detail-actions">' +
           '<a href="' + esc(d.url) + '" target="_blank" class="primary">Open in Playground</a>' +
           '<button onclick="closeDetail()">Close</button>' +
@@ -864,6 +969,15 @@ function renderHtml(entries, logoDataUrl) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    window.copyText = function(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.opacity = '1';
+        setTimeout(() => { btn.textContent = orig; btn.style.opacity = ''; }, 1200);
+      });
+    };
+
     // Classify a date string (YYYY-MM-DD) into a relative group label
     function getDateGroup(dateStr) {
       const date = new Date(dateStr + 'T00:00:00');
@@ -943,34 +1057,6 @@ function runCheck(demos) {
     }
   }
   process.exit(allPassed ? 0 : 1)
-}
-
-// ---------------------------------------------------------------------------
-// Default: print URLs and open in browser
-// ---------------------------------------------------------------------------
-
-function openDemos(demos, subject) {
-  console.log(`\n  ${subject}\n`)
-
-  for (const demo of demos) {
-    const state = {}
-    if (demo.code) state['dvala-code'] = demo.code
-    if (demo.context) state['context'] = demo.context
-
-    const encoded = btoa(encodeURIComponent(JSON.stringify(state)))
-    const url = `${baseUrl}/?state=${encoded}`
-
-    if (demo.description) {
-      console.log(`  ${demo.description}`)
-    }
-    console.log(`  ${url}\n`)
-
-    // Open in default browser
-    const openCmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open'
-    try {
-      execSync(`${openCmd} "${url}"`, { stdio: 'ignore' })
-    } catch { /* ignore if browser can't open */ }
-  }
 }
 
 // ---------------------------------------------------------------------------
