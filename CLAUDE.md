@@ -11,8 +11,10 @@ Run `npm run check` after any medium or larger code change.
 - Entry: `src/index.ts` (minimal), `src/full.ts` (full with all modules)
 - Built-ins: `src/builtin/core/` (normal expressions), `src/builtin/specialExpressions/`
 - Modules: `src/builtin/modules/<name>/`
+- Shared: `src/prettyPrint.ts` (smart AST formatter, used by Dvala + playground)
 - Reference data: `reference/index.ts` (derived from co-located docs)
-- Tests: `__tests__/` (integration), `src/**/*.test.ts` (unit)
+- Tests: `__tests__/` (integration), `src/**/*.test.ts` (unit), `e2e/` (playwright)
+- Playground: `playground-www/src/` — see Playground Architecture below
 
 ## TS Coding Conventions
 
@@ -345,6 +347,39 @@ end;
 - Named macros emit `@dvala.macro.expand` — anonymous macros are called directly with no effect overhead.
 - Code template `${expr}` currently only works in **expression positions** — binding-position splicing (e.g., `let ${nameNode} = ...`) is not yet supported.
 - **Nested code templates with inner splices don't work** — `${...}` inside inner backtick fences is captured by the outer template's tokenizer. The tokenizer would need backtick-depth-aware splice detection to support macro-generating macros.
+
+#### `macroexpand` and the `ast` Module
+
+`macroexpand(macroFn, ...astArgs)` calls a macro's body and returns the expanded AST as data, without evaluating it. Pass AST arguments using code templates:
+
+```dvala
+let { prettyPrint } = import(ast);
+let double = macro (ast) -> ```${ast} + ${ast}```;
+macroexpand(double, ```21```) |> prettyPrint   // → "21 + 21"
+```
+
+The `ast` module (`import(ast)`) provides constructors (`num`, `strNode`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isCall`, `isLet`, `isFn`, etc.), accessors (`nodeType`, `payload`), and `prettyPrint`.
+
+Note: some names are suffixed to avoid clashing with core builtins: `strNode` (vs `str`), `effectNode` (vs `effect`), `isEffectNode` (vs `isEffect`).
+
+## Playground Architecture
+
+- `playground-www/src/renderCodeBlock.ts` — unified code block renderer (syntax highlighting, execution, "Use in playground" + copy buttons)
+- `playground-www/src/renderDvalaMarkdown.ts` — shared markdown renderer using `renderCodeBlock` for fenced dvala blocks
+- `playground-www/src/featureCards/*.md` — feature card content (rendered in modals from start page)
+- `playground-www/src/components/startPage.ts` — start page with feature cards (about page merged in)
+- `playground-www/src/components/tutorialPage.ts` — tutorial pages with sticky header (title, prev/next, TOC dropdown)
+
+### Modal system (`createModalPanel` in `scripts.ts`)
+
+```typescript
+createModalPanel({
+  title?, icon?, size?: 'small' | 'medium' | 'large',
+  markdown?, hamburgerItems?, footerActions?, noClose?, onClose?
+})
+```
+
+Sizes: small=480px, medium=800px, large=1200px. If `markdown` is provided, body is auto-rendered. If `footerActions` provided, footer buttons are auto-created. Snapshot panel uses `createModalPanel({ size: 'large' })`.
 
 ## MCP Tools
 
