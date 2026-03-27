@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
+import { MAX_MACRO_EXPANSION_DEPTH } from '../src/constants/constants'
 
 const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)
@@ -234,6 +235,34 @@ myAssert(1 > 5)`)
         expect(err.sourceCodeInfo).toBeDefined()
         expect(err.sourceCodeInfo!.position.line).toBe(1)
       }
+    })
+  })
+
+  describe('expansion depth limit', () => {
+    it('should throw when macro expansion exceeds depth limit', () => {
+      // Macro that calls itself — infinite expansion
+      expect(() => run(`
+        let inf = macro (ast) -> inf(ast);
+        inf(1)
+      `)).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
+    })
+
+    it('should throw for mutually recursive macros', () => {
+      // Two macros calling each other — infinite expansion
+      expect(() => run(`
+        let a = macro (ast) -> b(ast);
+        let b = macro (ast) -> a(ast);
+        a(1)
+      `)).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
+    })
+
+    it('should allow legitimate nested macro expansion', () => {
+      // Macro that expands to code containing another macro call — two levels deep
+      expect(run(`
+        let addOne = macro (ast) -> \`\`\`\${ast} + 1\`\`\`;
+        let addTwo = macro (ast) -> \`\`\`addOne(addOne(\${ast}))\`\`\`;
+        addTwo(10)
+      `)).toBe(12)
     })
   })
 })
