@@ -10,11 +10,13 @@ import { isObj } from '../../typeGuards/dvala'
 import collectionSource from '../core/collection.dvala'
 import sequenceSource from '../core/sequence.dvala'
 import functionalSource from '../core/functional.dvala'
+import errorSource from '../core/error.dvala'
 import objectSource from '../core/object.dvala'
 import { normalExpressions } from '.'
 
 const coreDvalaSources: Record<string, string> = {
   collection: collectionSource,
+  error: errorSource,
   sequence: sequenceSource,
   functional: functionalSource,
   object: objectSource,

@@ -8,16 +8,16 @@
       let expectedKeys = keys(firstColl) |> sort;
       for (obj in otherColls) -> do
         if not(isObject(obj)) then
-          perform(@dvala.error, "Expected object")
+          perform(@dvala.error, { message: "Expected object" })
         end;
         let objKeys = keys(obj) |> sort;
         if not(objKeys == expectedKeys) then
-          perform(@dvala.error, ++(
+          perform(@dvala.error, { message: ++(
             "All objects must have the same keys. Expected: ",
             join(expectedKeys, ", "),
             ". Found: ",
             join(objKeys, ", ")
-          ))
+          ) })
         end
       end;
       reduce(keys(firstColl), (acc, k) -> do
@@ -29,7 +29,7 @@
     else if isString(firstColl) then do
       for (s in otherColls) -> do
         if not(isString(s)) then
-          perform(@dvala.error, "Expected string")
+          perform(@dvala.error, { message: "Expected string" })
         end
       end;
       let len = reduce(otherColls, (m, s) -> min(m, count(s)), count(firstColl));
@@ -39,7 +39,7 @@
       end;
       reduce(mapped, (acc, ch) -> do
         if not(isString(ch)) then
-          perform(@dvala.error, "Expected string")
+          perform(@dvala.error, { message: "Expected string" })
         end;
         ++(acc, ch)
       end, "")
@@ -48,7 +48,7 @@
     else do
       for (x in otherColls) -> do
         if not(isArray(x)) then
-          perform(@dvala.error, "Expected array")
+          perform(@dvala.error, { message: "Expected array" })
         end
       end;
       let len = reduce(otherColls, (m, x) -> min(m, count(x)), count(firstColl));
@@ -77,7 +77,7 @@
       end, {})
 
     else
-      perform(@dvala.error, "Expected collection")
+      perform(@dvala.error, { message: "Expected collection" })
     end
   end,
 
@@ -112,7 +112,7 @@
     end
 
     else
-      perform(@dvala.error, "Expected collection")
+      perform(@dvala.error, { message: "Expected collection" })
     end
   end
 }
