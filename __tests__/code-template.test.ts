@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
+import { astModule } from '../src/builtin/modules/ast'
+import { tokenize } from '../src/tokenizer/tokenize'
 
-const dvala = createDvala()
+const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)
 
 describe('code templates', () => {
@@ -201,6 +203,35 @@ describe('code templates', () => {
     it('should support 5-backtick delimiters', () => {
       const result = run('`````42`````')
       expect(result).toEqual(['Num', 42, 0])
+    })
+  })
+
+  describe('deferred splices', () => {
+    it('should tokenize $${} as literal text in code template', () => {
+      const stream = tokenize('````$${x}````', false, undefined)
+      const codeTemplateToken = stream.tokens.find((t: unknown[]) => t[0] === 'CodeTemplate')
+      // The $${x} should be kept intact in the token value (both $ signs preserved)
+      expect(codeTemplateToken![1]).toContain('$${x}')
+    })
+
+    it('should pass $${} through as ${} in macro-generating macro', () => {
+      const result = run(`
+        let makeApplier = macro (fn) ->
+          \`\`\`\`macro (ast) -> \`\`\`\${fn}($\${ast})\`\`\`\`\`\`\`;
+        let doubleIt = makeApplier((x) -> x * 2);
+        doubleIt(21)
+      `)
+      expect(result).toBe(42)
+    })
+
+    it('should support macro generating macro with different operations', () => {
+      const result = run(`
+        let makeBinOp = macro (op) ->
+          \`\`\`\`macro (ast) -> \`\`\`$\${ast} \${op} $\${ast}\`\`\`\`\`\`\`;
+        let square = makeBinOp(*);
+        square(7)
+      `)
+      expect(result).toBe(49)
     })
   })
 })

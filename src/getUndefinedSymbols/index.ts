@@ -197,6 +197,10 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       return bindingResult
     }
 
+    // InlinedData is an internal wrapper for deferred splice values — no symbols to resolve
+    case NodeTypes.InlinedData:
+      return new Set()
+
     /* v8 ignore next 2 */
     default:
       throw new RuntimeError(`Unhandled node type: ${nodeType satisfies never}`, undefined)

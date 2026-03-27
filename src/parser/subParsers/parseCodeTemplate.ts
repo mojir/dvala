@@ -23,10 +23,15 @@ export type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], As
  * - bodyAst: the parsed Dvala code as AST, with Splice nodes for interpolations
  * - spliceExprs: the parsed expressions from ${...} interpolations
  */
+let templateCounter = 0
+
 export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken): CodeTemplateNode {
   ctx.advance()
   const debugInfo = token[2]
   const resolvedSci = ctx.resolveTokenDebugInfo(debugInfo)
+  // Unique prefix for this template's splice placeholders — prevents name collision
+  // when outer placeholder text appears inside an inner template.
+  const templateId = templateCounter++
 
   const raw = token[1]
 
@@ -55,7 +60,7 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
       }
       // Replace ${expr} with a unique placeholder symbol
       const index = spliceExprs.length
-      source += `__splice_${index}__`
+      source += `__splice_${templateId}_${index}__`
 
       // Parse the splice expression
       const innerStream = tokenize(segment.value, false, resolvedSci?.filePath)
@@ -89,8 +94,8 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
     }
   }
 
-  // Walk AST and replace placeholder symbols with Splice nodes
-  const processedBody = bodyAst.map(node => replacePlaceholders(node, spliceExprs))
+  // Walk AST and replace placeholder symbols with Splice nodes (only this template's placeholders)
+  const processedBody = bodyAst.map(node => replacePlaceholders(node, spliceExprs, 0, templateId))
 
   const resultNode = withSourceCodeInfo(
     [NodeTypes.CodeTmpl, [processedBody, spliceExprs], 0],
@@ -105,23 +110,34 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
  * Recursively walk an AST node and replace UserDefinedSymbol nodes
  * named `__splice_N__` with Splice nodes referencing the Nth splice expression.
  */
-function replacePlaceholders(node: AstNode, spliceExprs: AstNode[]): AstNode {
+function replacePlaceholders(node: AstNode, spliceExprs: AstNode[], indexOffset = 0, templateId?: number): AstNode {
   const [type, payload, nodeId] = node
 
-  // Check if this is a splice placeholder symbol
+  // Check if this is a splice placeholder symbol for THIS template
   if (type === NodeTypes.Sym && typeof payload === 'string') {
-    const match = payload.match(/^__splice_(\d+)__$/)
-    if (match) {
-      const index = parseInt(match[1]!, 10)
+    const match = payload.match(/^__splice_(\d+)_(\d+)__$/)
+    if (match && (templateId === undefined || parseInt(match[1]!, 10) === templateId)) {
+      const index = parseInt(match[2]!, 10) + indexOffset
       // Splice node payload is the index into spliceExprs
       return [NodeTypes.Splice, index, nodeId] as AstNode
     }
   }
 
+  // For nested CodeTmpl nodes, recurse but offset outer splice indices
+  // to avoid collision with the inner template's splice namespace.
+  if (type === NodeTypes.CodeTmpl && Array.isArray(payload)) {
+    const [bodyAst, innerSpliceExprs] = payload as [AstNode[], AstNode[]]
+    const innerCount = innerSpliceExprs.length
+    // Recurse into body, offsetting any outer splice placeholders by innerCount
+    const newBody = bodyAst.map(n => replacePlaceholders(n, spliceExprs, innerCount, templateId))
+    // Don't recurse into innerSpliceExprs — they belong to the inner template
+    return [type, [newBody, innerSpliceExprs], nodeId] as AstNode
+  }
+
   // Recursively walk array payloads
   if (Array.isArray(payload)) {
     const newPayload = payload.map(item =>
-      Array.isArray(item) ? replacePlaceholdersInValue(item, spliceExprs) : item,
+      Array.isArray(item) ? replacePlaceholdersInValue(item, spliceExprs, indexOffset, templateId) : item,
     )
     return [type, newPayload, nodeId] as AstNode
   }
@@ -133,13 +149,13 @@ function replacePlaceholders(node: AstNode, spliceExprs: AstNode[]): AstNode {
  * Replace placeholders in a value that may or may not be an AST node.
  * AST nodes are arrays starting with a string type tag.
  */
-function replacePlaceholdersInValue(value: unknown[], spliceExprs: AstNode[]): unknown[] {
+function replacePlaceholdersInValue(value: unknown[], spliceExprs: AstNode[], indexOffset = 0, templateId?: number): unknown[] {
   // Check if this looks like an AST node: [stringType, payload, number]
   if (value.length >= 2 && typeof value[0] === 'string') {
-    return replacePlaceholders(value as AstNode, spliceExprs)
+    return replacePlaceholders(value as AstNode, spliceExprs, indexOffset, templateId)
   }
   // It's a plain array — recurse into elements
   return value.map(item =>
-    Array.isArray(item) ? replacePlaceholdersInValue(item, spliceExprs) : item,
+    Array.isArray(item) ? replacePlaceholdersInValue(item, spliceExprs, indexOffset, templateId) : item,
   )
 }
