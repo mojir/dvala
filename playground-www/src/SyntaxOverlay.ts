@@ -94,6 +94,9 @@ function renderTemplateStringToken(rawValue: string): string {
   for (const seg of segments) {
     if (seg.type === 'literal') {
       result += `<span style="color:${colors.string}">${escapeHtml(seg.value)}</span>`
+    } else if (seg.type === 'deferred') {
+      const dollars = '$'.repeat(seg.dollarCount)
+      result += `<span style="color:${colors.string}">${dollars}{${escapeHtml(seg.value)}}</span>`
     } else {
       result += `<span style="color:${colors.punctuation}">\${</span>`
       result += tokenizeToHtml(seg.value)
@@ -121,6 +124,12 @@ function renderCodeTemplateToken(rawValue: string): string {
     if (seg.type === 'literal') {
       // Tokenize and highlight inner Dvala code normally
       result += tokenizeToHtml(seg.value)
+    } else if (seg.type === 'deferred') {
+      // Deferred splice: $${expr} or $$${expr} — render all $ signs
+      const dollars = '$'.repeat(seg.dollarCount)
+      result += `<span style="color:${colors.punctuation}">${dollars}{</span>`
+      result += tokenizeToHtml(seg.value)
+      result += `<span style="color:${colors.punctuation}">}</span>`
     } else {
       // Splice interpolation: ${expr}
       result += `<span style="color:${colors.punctuation}">\${</span>`
