@@ -1,3 +1,7 @@
+// Maximum nesting depth for macro expansion. Guards against infinite expansion
+// when macros expand to code that triggers further macro calls.
+export const MAX_MACRO_EXPANSION_DEPTH = 128
+
 export const NodeTypes = {
   Num: 'Num',
   Str: 'Str',

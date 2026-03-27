@@ -35,7 +35,7 @@ import {
 } from '../builtin/matchSlot'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
-import { NodeTypes } from '../constants/constants'
+import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
 import { AssertionError, DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
@@ -3527,6 +3527,20 @@ function callMacro(
   sourceCodeInfo: SourceCodeInfo | undefined,
   k: ContinuationStack,
 ): Step {
+  // Guard against infinite macro expansion by counting MacroEvalFrame instances on the stack
+  let depth = 0
+  for (const frame of k) {
+    if (frame.type === 'MacroEval') {
+      depth += 1
+      if (depth >= MAX_MACRO_EXPANSION_DEPTH) {
+        throw new DvalaError(
+          `Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded. Possible infinite macro expansion.`,
+          sourceCodeInfo,
+        )
+      }
+    }
+  }
+
   // MacroEvalFrame evaluates the expanded AST in the calling scope
   const macroEvalFrame: MacroEvalFrame = {
     type: 'MacroEval',
