@@ -1,4 +1,4 @@
-# Dvala Macro System
+  # Dvala Macro System
 
 ## Vision
 
@@ -10,7 +10,7 @@ Macros are functions that receive AST and return AST. They use the same call syn
 - **Code generation** — boilerplate reduction from schemas, configs, runtime data
 - **DSLs** — domain-specific abstractions built on Dvala
 - **Language extension** — core operators like `&&`, `||`, `??` can be macros
-- **Tooling** — the bundler itself is a macro (AST in → transformed AST out)
+- **Tooling** — the bundler itself is a macro (AST in → transformed AST out) — see [bundler plan](2026-03-27_bundler.md)
 
 ## Design Principles
 
@@ -755,22 +755,11 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 
 ### Phase 7 — Bundler Integration
 
-1. Bundler as macro — walks AST, handles `@macro.expand` and `@import.resolve`
-2. Selective expansion: pre-expand where possible, leave runtime-dependent macros
-3. Composable pipeline: `|> treeShake |> minify`
-4. Tests: bundled output is self-contained, KMP can evaluate it
+Extracted to separate plan: [2026-03-27_bundler.md](2026-03-27_bundler.md)
 
 ### Phase 8 — Standard Macro Library
 
-```dvala
-let { memoize, trace, curry, lazy, validate } = import(macros);
-```
-
-- `memoize` — cache by argument hash
-- `trace` — log entry/exit via effects
-- `curry` — auto-curry a function
-- `lazy` — defer evaluation, cache result
-- `validate` — runtime argument checks via effects
+Extracted to separate plan: [2026-03-27_standard-macro-library.md](2026-03-27_standard-macro-library.md)
 
 ---
 
