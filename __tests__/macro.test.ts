@@ -284,4 +284,46 @@ myAssert(1 > 5)`)
       `)).toBe(12)
     })
   })
+
+  describe('binding-position splice', () => {
+    it('should splice a simple name into let binding', () => {
+      expect(run(`
+        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        defConst(myVar, 42);
+        myVar
+      `)).toBe(42)
+    })
+
+    it('should splice an array destructuring pattern', () => {
+      expect(run(`
+        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        defConst([a, b], [1, 2]);
+        a + b
+      `)).toBe(3)
+    })
+
+    it('should splice an object destructuring pattern', () => {
+      expect(run(`
+        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        defConst({ x: x, y: y }, { x: 10, y: 20 });
+        x + y
+      `)).toBe(30)
+    })
+
+    it('should splice nested destructuring', () => {
+      expect(run(`
+        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        defConst([a, [b, c]], [1, [2, 3]]);
+        a + b + c
+      `)).toBe(6)
+    })
+
+    it('should splice rest element in array pattern', () => {
+      expect(run(`
+        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        defConst([head, ...tail], [1, 2, 3]);
+        tail
+      `)).toEqual([2, 3])
+    })
+  })
 })

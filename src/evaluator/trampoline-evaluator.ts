@@ -3861,9 +3861,148 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     return toAny([type, payload, 0])
   }
 
+  // Let nodes need special handling: the binding target may contain splices that
+  // resolve to Array/Object AST data, which must be converted to binding target format.
+  if (type === NodeTypes.Let) {
+    const [target, valueNode] = payload as [AstNode, AstNode]
+    const convertedValue = astToData(valueNode, spliceValues, renameMap)
+    const convertedTarget = convertBindingTarget(target as unknown[], spliceValues, renameMap)
+    return toAny([type, [convertedTarget, convertedValue], 0])
+  }
+
   // Recursive: convert array payloads, with implicit spread for splices
   const convertedPayload = convertArrayPayload(payload, spliceValues, renameMap)
   return toAny([type, convertedPayload, 0])
+}
+
+/**
+ * Convert a binding target from template AST, handling splices that resolve to
+ * Array/Object AST data by converting them to proper binding target format.
+ *
+ * When a splice inside a symbol binding target resolves to an Array or Object AST node,
+ * the target is restructured into the corresponding array/object binding target.
+ */
+function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?: Map<string, string>): Any {
+  const [targetType, targetPayload] = target as [string, unknown]
+
+  // Symbol binding target: ["symbol", [nameNode, default], id]
+  // This is where splices land — check if the name resolved to a non-Sym AST
+  if (targetType === 'symbol' && Array.isArray(targetPayload)) {
+    const [nameNode, defaultNode] = targetPayload as [AstNode, AstNode | null | undefined]
+
+    // Resolve splice in name position
+    let resolvedName: Any
+    if (Array.isArray(nameNode) && nameNode[0] === NodeTypes.Splice) {
+      resolvedName = spliceValues[nameNode[1] as number]!
+    } else {
+      resolvedName = astToData(nameNode, spliceValues, renameMap)
+    }
+
+    const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
+
+    // If the splice resolved to a Sym node, keep as symbol binding target
+    if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Sym) {
+      return toAny(['symbol', [resolvedName, convertedDefault], 0])
+    }
+
+    // If it resolved to an Array AST → convert to array binding target
+    if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Array) {
+      const elements = resolvedName[1] as Any[]
+      const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
+      return toAny(['array', [targets, convertedDefault], 0])
+    }
+
+    // If it resolved to an Object AST → convert to object binding target
+    if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Object) {
+      const entries = resolvedName[1] as Any[][]
+      const record: Record<string, Any> = {}
+      for (const entry of entries) {
+        // Object entries are [keyNode, valueNode] pairs
+        const keyNode = entry[0] as Any[]
+        const valNode = entry[1] as Any
+        // Key is typically a Str or Sym node — extract the name
+        const key = keyNode[1] as string
+        record[key] = expressionAstToBindingTarget(valNode)
+      }
+      return toAny(['object', [record, convertedDefault], 0])
+    }
+
+    // Fallback: return as-is (will error at evaluation time if invalid)
+    return toAny(['symbol', [resolvedName, convertedDefault], 0])
+  }
+
+  // Array binding target: ["array", [targets[], default], id] — recurse into nested targets
+  if (targetType === 'array' && Array.isArray(targetPayload)) {
+    const [targets, defaultNode] = targetPayload as [unknown[], AstNode | null | undefined]
+    const convertedTargets = targets.map(t =>
+      t === null ? null : convertBindingTarget(t as AstNode, spliceValues, renameMap),
+    )
+    const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
+    return toAny(['array', [convertedTargets, convertedDefault], 0])
+  }
+
+  // Object binding target: ["object", [record, default], id] — recurse into nested targets
+  if (targetType === 'object' && Array.isArray(targetPayload)) {
+    const [record, defaultNode] = targetPayload as [Record<string, unknown>, AstNode | null | undefined]
+    const convertedRecord: Record<string, Any> = {}
+    for (const [key, value] of Object.entries(record)) {
+      convertedRecord[key] = convertBindingTarget(value as AstNode, spliceValues, renameMap)
+    }
+    const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
+    return toAny(['object', [convertedRecord, convertedDefault], 0])
+  }
+
+  // Rest, literal, wildcard, or other — convert generically
+  if (Array.isArray(targetPayload)) {
+    return toAny([targetType, convertArrayPayload(targetPayload, spliceValues, renameMap), 0])
+  }
+  return toAny([targetType, targetPayload, 0])
+}
+
+/**
+ * Convert an expression AST node (Dvala data) to a binding target (Dvala data).
+ * Used when a splice in binding position resolves to a complex expression.
+ */
+function expressionAstToBindingTarget(astData: Any): Any {
+  if (!Array.isArray(astData)) return astData
+
+  const node = astData as Any[]
+  const nodeType = node[0]
+
+  // Sym → symbol binding target
+  if (nodeType === NodeTypes.Sym) {
+    return toAny(['symbol', [astData, null], 0])
+  }
+
+  // Array → array binding target (recurse into elements)
+  if (nodeType === NodeTypes.Array) {
+    const elements = node[1] as Any[]
+    const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
+    return toAny(['array', [targets, null], 0])
+  }
+
+  // Object → object binding target (recurse into entries)
+  if (nodeType === NodeTypes.Object) {
+    const entries = node[1] as Any[][]
+    const record: Record<string, Any> = {}
+    for (const entry of entries) {
+      const keyNode = entry[0] as Any[]
+      const valNode = entry[1] as Any
+      const key = keyNode[1] as string
+      record[key] = expressionAstToBindingTarget(valNode)
+    }
+    return toAny(['object', [record, null], 0])
+  }
+
+  // Spread → rest binding target
+  if (nodeType === NodeTypes.Spread) {
+    const inner = node[1] as Any[]
+    const name = inner[1] as string
+    return toAny(['rest', [name, null], 0])
+  }
+
+  // Anything else (number, string literal) → literal binding target
+  return toAny(['literal', [astData], 0])
 }
 
 /**
