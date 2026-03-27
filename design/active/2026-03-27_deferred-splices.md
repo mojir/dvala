@@ -94,16 +94,25 @@ if (type === NodeTypes.InlinedData) {
 
 This is a minimal change — one new node type, three handlers.
 
+## Additional Finding: Splice Placeholder Name Collision
+
+The inner `parseCodeTemplate` (recursive call from the outer parse) runs its own `splitSegments` on the inner template content. The outer placeholder text (e.g. `__splice_0_0__`) appears as literal text in the inner content. The inner `replacePlaceholders` uses a different regex (template-ID scoped), so it doesn't match the outer placeholder. BUT: the actual data still shows only 1 inner splice expression when 2 are expected.
+
+**Unresolved mystery**: the inner template content `${ast} __splice_0_0__ ${ast}` should produce 2 splice expressions via inner `splitSegments`, but the resulting AST data shows only 1. Need to add parse-time instrumentation to trace what `splitSegments` actually produces for the inner template.
+
+**Next step**: Add `console.log` or breakpoint inside `parseCodeTemplate` and `splitSegments` to trace the inner template processing. The issue is likely that the inner template content is different from what we expect — possibly the tokenizer or the outer `parseCodeTemplate` processes it differently.
+
 ## Implementation Plan
 
 1. ~~Tokenizer: `$${` handling~~ ✅ (in stash)
 2. ~~splitSegments: deferred splice stripping~~ ✅ (in stash)
 3. ~~replacePlaceholders: offset outer indices inside CodeTmpl~~ ✅ (in stash)
 4. ~~astToData: CodeTmpl-aware splice resolution~~ ✅ (in stash)
-5. **Add `InlinedData` node type** — prevents double conversion of outer splice values
-6. **Update `astToDataWithCodeTmplAwareness`** — wrap outer splice values in `InlinedData`
-7. **Update `astToData`** — pass through `InlinedData` payloads
-8. **Update evaluator `stepNode`** — handle `InlinedData` during CodeTmpl evaluation
-9. Add end-to-end tests
-10. Run full check + e2e
-11. Update skill docs
+5. ~~Add `InlinedData` node type~~ ✅ (in stash)
+6. ~~Update `astToDataWithCodeTmplAwareness`~~ ✅ (in stash)
+7. ~~Update `astToData`~~ ✅ (in stash)
+8. **DEBUG: Trace inner parseCodeTemplate** — find why inner spliceExprs has 1 entry instead of 2
+9. Fix the root cause
+10. End-to-end tests
+11. Run full check + e2e
+12. Update skill docs
