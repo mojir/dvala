@@ -3634,6 +3634,15 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   if (frame.expanded) {
     return { type: 'Value', value, k }
   }
+  // If the value is not a valid AST node (not an array), it came from an error handler
+  // recovery path — pass it through as the result instead of trying to evaluate it as AST.
+  // This fixes macro error propagation: when an error during macro expansion is caught
+  // by a handler, the handler's return value flows back through this frame. Without this
+  // check, the frame would try to evaluate a non-AST value (e.g. a string or error object),
+  // producing a secondary "M-node cannot be evaluated" error that masks the original.
+  if (!Array.isArray(value)) {
+    return { type: 'Value', value, k }
+  }
   // The macro returned a value — it should be AST data (an array).
   // Evaluate it as an AST node in the calling scope.
   // Keep the MacroEvalFrame on the stack (marked as expanded) so that errors
