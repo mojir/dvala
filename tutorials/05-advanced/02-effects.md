@@ -342,21 +342,21 @@ To raise an error, perform `dvala.error`:
 
 ```dvala
 handle
-  perform(@dvala.error, "oops")
-with @dvala.error(msg) -> "caught: " ++ msg
+  perform(@dvala.error, { message: "oops" })
+with @dvala.error(err) -> "caught: " ++ err.message
 end
 ```
 
 Runtime errors — like calling a function with invalid arguments — are automatically routed through `dvala.error`. This means `handle...with` (and `||>`) is the universal error-handling mechanism:
 
 ```dvala
-(0 / 0) ||> @dvala.error(msg) -> "caught: " ++ msg
+(0 / 0) ||> @dvala.error(err) -> "caught: " ++ err.message
 ```
 
 ```dvala
 handle
   sqrt(-1)
-with @dvala.error(msg) -> "caught: " ++ msg
+with @dvala.error(err) -> "caught: " ++ err.message
 end
 ```
 
@@ -368,7 +368,7 @@ handle
   sqrt(x * -1)
 with (arg, eff, nxt) ->
   if eff == @my.read then 42
-  else if eff == @dvala.error then "error: " ++ arg
+  else if eff == @dvala.error then "error: " ++ arg.message
   else nxt(eff, arg)
   end
 end
@@ -382,7 +382,7 @@ handle
   sqrt(x * -1)
 with [
   @my.read(x) -> 42,
-  @dvala.error(msg) -> "error: " ++ msg
+  @dvala.error(err) -> "error: " ++ err.message
 ]
 end
 ```
@@ -578,7 +578,7 @@ Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error fl
 const result = await dvala.runAsync(`
   handle
     perform(@my.risky)
-  with @dvala.error(msg) -> "recovered: " ++ msg
+  with @dvala.error(err) -> "recovered: " ++ err.message
   end
 `, {
   effectHandlers: [

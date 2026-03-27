@@ -925,7 +925,7 @@ describe('trampoline integration', () => {
   })
 
   it('should evaluate perform(@dvala.error) as error', () => {
-    const node = parseFirst('perform(@dvala.error, "test error")')
+    const node = parseFirst('perform(@dvala.error, { message: "test error" })')
     expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), []))).toThrow(UserDefinedError)
   })
 

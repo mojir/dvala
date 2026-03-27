@@ -20,7 +20,7 @@
     let failedSentinel = @assertion.failed;
     let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then [failedSentinel, arg] else nxt(eff, arg) end] end;
     if isArray(result) && first(result) == failedSentinel then do
-      let actualError = second(result);
+      let actualError = second(result).message;
       if actualError == expectedError then
         null
       else

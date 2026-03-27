@@ -167,8 +167,8 @@ describe('assert functions', () => {
     describe('assertFailsWith', () => {
       it('samples', () => {
         expect(() => runWithAssert('a.assertFailsWith(-> identity("X"), "X", "Should fail with X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, "Y"), "X")')).toThrow(DvalaError)
-        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, "X"), "X")')).not.toThrow()
+        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, { message: "Y" }), "X")')).toThrow(DvalaError)
+        expect(() => runWithAssert('a.assertFailsWith(-> perform(@dvala.error, { message: "X" }), "X")')).not.toThrow()
       })
     })
 

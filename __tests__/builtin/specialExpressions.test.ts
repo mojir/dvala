@@ -27,7 +27,7 @@ describe('specialExpressions', () => {
     const dvalaNoDebug = createDvala()
     let failed = false
     try {
-      dvalaNoDebug.run('perform(@dvala.error, slice("An error", 3))')
+      dvalaNoDebug.run('perform(@dvala.error, { message: slice("An error", 3) })')
       failed = true
     } catch (error) {
       expect((error as UserDefinedError).message).toBe('error')
@@ -37,11 +37,11 @@ describe('specialExpressions', () => {
 
     try {
       failed = false
-      dvalaDebug.run('perform(@dvala.error, slice("An error", 3))')
+      dvalaDebug.run('perform(@dvala.error, { message: slice("An error", 3) })')
       failed = true
     } catch (error) {
       expect((error as UserDefinedError).message).toBe(
-        'error\nLocation 1:1\nperform(@dvala.error, slice("An error", 3))\n^                                          ',
+        'error\nLocation 1:1\nperform(@dvala.error, { message: slice("An error", 3) })\n^                                                       ',
       )
     }
     if (failed)

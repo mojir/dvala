@@ -337,7 +337,7 @@ describe('stress: next() middleware + suspend/fail', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@my.effect, "data")
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -392,7 +392,7 @@ describe('stress: next() middleware + suspend/fail', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@no.handler, "payload")
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -1122,7 +1122,7 @@ describe('stress: error propagation through effect stacks', () => {
           perform(@my.eff, 1)
         with [(arg, eff, nxt) -> if eff == @my.eff then 0 / 0 else nxt(eff, arg) end]
         end
-      with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then arg.message else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -1132,7 +1132,7 @@ describe('stress: error propagation through effect stacks', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@my.eff)
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [
@@ -1188,7 +1188,7 @@ describe('stress: error propagation through effect stacks', () => {
       handle
         let x = perform(@my.wait);
         x / 0
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "div-error: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "div-error: " ++ arg.message else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

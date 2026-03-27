@@ -223,10 +223,10 @@ describe('phase 2 — Local Effect Handling', () => {
 
   describe('2d: effects and dvala.error interaction', () => {
     it('errors without dvala.error handler propagate as unhandled', () => {
-      // perform(@dvala.error, "boom") routes through dvala.error, but no handler -> propagates
+      // perform(@dvala.error, { message: "boom" }) routes through dvala.error, but no handler -> propagates
       expect(() => dvala.run(`
         handle
-          perform(@dvala.error, "boom")
+          perform(@dvala.error, { message: "boom" })
         with [(arg, eff, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
         end
       `)).toThrow('boom')
@@ -306,7 +306,7 @@ describe('phase 2 — Local Effect Handling', () => {
       const result = dvala.run(`
         handle
           perform(@no.handler, "data")
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
@@ -395,7 +395,7 @@ describe('phase 3 — Host Async API', () => {
     })
 
     it('should return error result for runtime errors', async () => {
-      const result = await dvala.runAsync('perform(@dvala.error, "boom")')
+      const result = await dvala.runAsync('perform(@dvala.error, { message: "boom" })')
       expect(result.type).toBe('error')
       if (result.type === 'error') {
         expect(result.error.message).toContain('boom')
@@ -498,7 +498,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.fail, "oops")
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -541,7 +541,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.fail)
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -792,7 +792,7 @@ describe('phase 3 — Host Async API', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.risky)
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "recovered: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "recovered: " ++ arg.message else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -2386,7 +2386,7 @@ describe('phase 4 — Suspension & Resume', () => {
     it('should handle errors after resume', async () => {
       const r1 = await dvala.runAsync(`
         let x = perform(@my.wait);
-        perform(@dvala.error, "error: " ++ x)
+        perform(@dvala.error, { message: "error: " ++ x })
       `, {
         effectHandlers: [
           { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
@@ -2407,8 +2407,8 @@ describe('phase 4 — Suspension & Resume', () => {
       const r1 = await dvala.runAsync(`
         handle
           let x = perform(@my.wait);
-          if x == "bad" then perform(@dvala.error, "bad input") else x end
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+          if x == "bad" then perform(@dvala.error, { message: "bad input" }) else x end
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [
@@ -3549,7 +3549,7 @@ describe('step 1 — handle...with...end', () => {
       expect(() => dvala.run(`
         handle
           perform(@my.eff, "data")
-        with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.error, "something went wrong") else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @my.eff then perform(@dvala.error, { message: "something went wrong" }) else nxt(eff, arg) end]
         end
       `)).toThrow('something went wrong')
     })
@@ -3583,7 +3583,7 @@ describe('step 2 — dvala.error standard effect', () => {
     const result = dvala.run(`
       handle
         0 / 0
-      with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then arg.message else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('Number is NaN')
@@ -3680,7 +3680,7 @@ describe('step 2 — dvala.error standard effect', () => {
     const result = await dvala.runAsync(
       `handle
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then arg.message else nxt(eff, arg) end]
       end`,
       {
         effectHandlers: [
@@ -4046,7 +4046,7 @@ describe('host handler wildcard patterns', () => {
       const result = await dvala.runAsync(`
         handle
           perform(@my.effect, "data")
-        with [(arg, eff, nxt) -> if eff == @dvala.error then arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then arg.message else nxt(eff, arg) end]
         end
       `, {
         effectHandlers: [

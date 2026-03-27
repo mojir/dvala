@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
-import { ArithmeticError, AssertionError, DvalaError, MacroError, RuntimeError, TypeError, UndefinedSymbolError, UserDefinedError } from '../errors'
+import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import { parse } from '../parser'
@@ -813,7 +813,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
     if (fn !== undefined) {
       return dispatchFunction(asFunctionLike(fn, sourceCodeInfo), params, placeholders, env, sourceCodeInfo, k)
     }
-    throw new UndefinedSymbolError(nameSymbol[1], sourceCodeInfo)
+    throw new ReferenceError(nameSymbol[1], sourceCodeInfo)
   } else {
     // --- Anonymous function expression ---
     // The function expression is the first payload element; need to evaluate it
@@ -1915,13 +1915,46 @@ function patchErrorWithMacroCallSite(error: DvalaError, k: ContinuationStack): D
   if (!callSite)
     return error
   // Create a new error with the macro call site as location
-  if (error instanceof UserDefinedError)
-    return new UserDefinedError(error.userMessage, callSite)
+  if (error instanceof UserError)
+    return new UserError(error.userMessage, callSite)
   if (error instanceof AssertionError)
     return new AssertionError(error.shortMessage, callSite)
-  if (error instanceof UndefinedSymbolError)
-    return new UndefinedSymbolError(error.symbol, callSite)
+  if (error instanceof ReferenceError)
+    return new ReferenceError(error.symbol, callSite)
   return new DvalaError(error.shortMessage, callSite)
+}
+
+/** Build the structured @dvala.error payload from a DvalaError instance. */
+function buildErrorPayload(error: DvalaError): Obj {
+  const payload: Obj = {
+    type: error.errorType,
+    message: error.shortMessage,
+  }
+  // Add type-specific data following the convention
+  if (error instanceof ReferenceError) {
+    payload.data = { symbol: error.symbol }
+  }
+  return payload
+}
+
+/**
+ * Validate and normalize a manual perform(@dvala.error, payload).
+ * Returns the normalized payload or throws TypeError if invalid.
+ */
+function validateErrorPayload(arg: Any, sourceCodeInfo: SourceCodeInfo | undefined): Obj {
+  if (arg === null || arg === undefined || typeof arg !== 'object' || Array.isArray(arg)) {
+    throw new TypeError('@dvala.error requires an error object', sourceCodeInfo)
+  }
+  const obj = arg as Obj
+  if (!('message' in obj)) {
+    throw new TypeError('@dvala.error requires a message field', sourceCodeInfo)
+  }
+  // Coerce type and message to strings, default type to "UserError"
+  return {
+    ...obj,
+    type: obj.type !== null && obj.type !== undefined ? String(obj.type) : 'UserError',
+    message: String(obj.message),
+  }
 }
 
 function tryDispatchDvalaError(
@@ -1929,9 +1962,9 @@ function tryDispatchDvalaError(
   k: ContinuationStack,
 ): Step | null {
   const effect = getEffectRef('dvala.error')
-  const arg: Any = error.shortMessage
+  const arg: Any = buildErrorPayload(error)
 
-  // Convert runtime error to a perform(@dvala.error, msg) if there's a
+  // Convert runtime error to a perform(@dvala.error, { type, message }) if there's a
   // handler that can catch it. Otherwise return null (caller re-throws).
   //
   // Walk k looking for handler frames (HandleWith) or EffectResumeFrame
@@ -1952,12 +1985,12 @@ function tryDispatchDvalaError(
       // handlerExecuting=true: error from handler body → skip source HandleWithFrame
       // handlerExecuting=false: error from nxt() dispatch → same scope can catch it
       //
-      // Special case: when the error is a UserDefinedError (thrown by dispatchPerform
+      // Special case: when the error is a UserError (thrown by dispatchPerform
       // for unhandled @dvala.error), skip the sourceHandleFrame even when
       // handlerExecuting=false. This prevents infinite loops where:
-      //   handler gets @dvala.error → calls nxt() → unhandled → UserDefinedError
+      //   handler gets @dvala.error → calls nxt() → unhandled → UserError
       //   → tryDispatchDvalaError routes @dvala.error back to same handler → loop
-      const skipFrame = (frame.handlerExecuting || error instanceof UserDefinedError)
+      const skipFrame = (frame.handlerExecuting || error instanceof UserError)
         ? frame.sourceHandleFrame
         : undefined
       const resumeK = frame.resumeK
@@ -2355,11 +2388,11 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     return { type: 'Value', value: null, k }
   }
 
-  // dvala.error is special — when unhandled, throw UserDefinedError
-  // so the error message propagates as a proper user error.
+  // dvala.error is special — validate payload and throw UserError when unhandled.
   if (effect.name === 'dvala.error') {
-    const message = typeof arg === 'string' ? arg : String(arg ?? 'Unknown error')
-    throw new UserDefinedError(message, sourceCodeInfo)
+    // Validate and normalize the payload (throws TypeError if invalid)
+    const payload = validateErrorPayload(arg, sourceCodeInfo)
+    throw new UserError(payload.message as string, sourceCodeInfo)
   }
 
   // No handler at all — unhandled effect.
@@ -2433,7 +2466,7 @@ function dispatchHostHandler(
 
       if (effectName === 'dvala.error') {
         const message = typeof arg === 'string' ? arg : String(arg ?? 'Unknown error')
-        throw new UserDefinedError(message, sourceCodeInfo)
+        throw new UserError(message, sourceCodeInfo)
       }
       // dvala.checkpoint resolves to null when all handlers call next().
       if (effectName === 'dvala.checkpoint') {
@@ -3960,12 +3993,12 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // No local handler matched — check if host handlers can intercept dvala.error.
       // Convert the runtime error to perform(@dvala.error, msg) so dispatchPerform
       // can route it to host handlers.
-      // Skip when the error is already a UserDefinedError (from unhandled @dvala.error)
+      // Skip when the error is already a UserError (from unhandled @dvala.error)
       // to prevent infinite re-dispatch: host handler calls next() → unhandled →
-      // UserDefinedError → re-dispatch to same host handler → loop.
-      if (!(patchedError instanceof UserDefinedError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
+      // UserError → re-dispatch to same host handler → loop.
+      if (!(patchedError instanceof UserError) && handlers && findMatchingHandlers('dvala.error', handlers).length > 0) {
         const effect = getEffectRef('dvala.error')
-        const arg: Any = patchedError.shortMessage
+        const arg: Any = buildErrorPayload(patchedError)
         return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: patchedError.sourceCodeInfo }
       }
       // No handler matched — re-throw with patched location.
