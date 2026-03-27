@@ -1924,6 +1924,29 @@ function patchErrorWithMacroCallSite(error: DvalaError, k: ContinuationStack): D
   return new DvalaError(error.shortMessage, callSite)
 }
 
+// ---------------------------------------------------------------------------
+// Error origin tracking — invisible to Dvala code, used by the runtime
+// ---------------------------------------------------------------------------
+
+/** Metadata about the original error, attached to @dvala.error payloads via a Symbol property. */
+interface ErrorOrigin {
+  sourceCodeInfo: SourceCodeInfo | undefined
+}
+
+/** Symbol key for error origin metadata on @dvala.error payloads. Invisible to Dvala code. */
+const ERROR_ORIGIN = Symbol('dvala.error.origin')
+
+/** Attach error origin metadata to a payload object. */
+function stampErrorOrigin(payload: Obj, origin: ErrorOrigin): Obj {
+  ;(payload as Record<symbol, unknown>)[ERROR_ORIGIN] = origin
+  return payload
+}
+
+/** Read error origin metadata from a payload, if present. */
+function getErrorOrigin(payload: Obj): ErrorOrigin | undefined {
+  return (payload as Record<symbol, unknown>)[ERROR_ORIGIN] as ErrorOrigin | undefined
+}
+
 /** Build the structured @dvala.error payload from a DvalaError instance. */
 function buildErrorPayload(error: DvalaError): Obj {
   const payload: Obj = {
@@ -1934,6 +1957,8 @@ function buildErrorPayload(error: DvalaError): Obj {
   if (error instanceof ReferenceError) {
     payload.data = { symbol: error.symbol }
   }
+  // Stamp origin metadata (sourceCodeInfo) for internal tracking — preserved across re-throws
+  stampErrorOrigin(payload, { sourceCodeInfo: error.sourceCodeInfo })
   return payload
 }
 
@@ -1950,11 +1975,20 @@ function validateErrorPayload(arg: Any, sourceCodeInfo: SourceCodeInfo | undefin
     throw new TypeError('@dvala.error requires a message field', sourceCodeInfo)
   }
   // Coerce type and message to strings, default type to "UserError"
-  return {
+  const normalized: Obj = {
     ...obj,
     type: obj.type !== null && obj.type !== undefined ? String(obj.type) : 'UserError',
     message: String(obj.message),
   }
+  // "First writer wins": if the payload already carries an error origin (re-throw),
+  // preserve it. Otherwise stamp a fresh origin from the perform call site.
+  const existingOrigin = getErrorOrigin(obj)
+  if (existingOrigin) {
+    stampErrorOrigin(normalized, existingOrigin)
+  } else {
+    stampErrorOrigin(normalized, { sourceCodeInfo })
+  }
+  return normalized
 }
 
 function tryDispatchDvalaError(
@@ -2392,7 +2426,9 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   if (effect.name === 'dvala.error') {
     // Validate and normalize the payload (throws TypeError if invalid)
     const payload = validateErrorPayload(arg, sourceCodeInfo)
-    throw new UserError(payload.message as string, sourceCodeInfo)
+    // Use the original error origin if available (preserved across re-throws)
+    const origin = getErrorOrigin(payload)
+    throw new UserError(payload.message as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
   }
 
   // No handler at all — unhandled effect.
