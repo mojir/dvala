@@ -158,9 +158,14 @@ function renderAllDemos() {
 
   const newEntries = []
 
-  for (const hash of hashes) {
+  for (let i = 0; i < hashes.length; i++) {
+    const hash = hashes[i]
+    process.stdout.write(`\r  Scanning commit ${i + 1}/${hashes.length}...`)
     const entry = scanCommit(hash)
     if (entry) newEntries.push(entry)
+  }
+  if (hashes.length > 0) {
+    process.stdout.write(`\r  Scanned ${hashes.length} commits, found ${newEntries.length} with demos.\n`)
   }
 
   // Merge: cached entries + new entries (chronological order)
