@@ -106,6 +106,38 @@ function renderTemplateStringToken(rawValue: string): string {
   return result + backtick
 }
 
+/**
+ * Render a literal segment inside a code template.
+ * Backtick runs (3+) are highlighted as punctuation (inner code template delimiters).
+ * Everything else is tokenized as Dvala code.
+ */
+function renderCodeTemplateLiteral(value: string): string {
+  let result = ''
+  let i = 0
+  while (i < value.length) {
+    // Check for backtick run (inner code template delimiter)
+    if (value[i] === '`') {
+      let count = 0
+      while (i + count < value.length && value[i + count] === '`') count++
+      if (count >= 3) {
+        result += `<span style="color:${colors.punctuation}">${'`'.repeat(count)}</span>`
+        i += count
+        continue
+      }
+    }
+    // Collect non-backtick chars and tokenize as a chunk
+    let chunk = ''
+    while (i < value.length && !(value[i] === '`' && value[i + 1] === '`' && value[i + 2] === '`')) {
+      chunk += value[i]
+      i++
+    }
+    if (chunk) {
+      result += tokenizeToHtml(chunk)
+    }
+  }
+  return result
+}
+
 function renderCodeTemplateToken(rawValue: string): string {
   // Count opening backticks to find delimiter length
   let backtickCount = 0
@@ -122,8 +154,8 @@ function renderCodeTemplateToken(rawValue: string): string {
 
   for (const seg of segments) {
     if (seg.type === 'literal') {
-      // Tokenize and highlight inner Dvala code normally
-      result += tokenizeToHtml(seg.value)
+      // Render literal content, highlighting inner code template delimiters as punctuation
+      result += renderCodeTemplateLiteral(seg.value)
     } else if (seg.type === 'deferred') {
       // Deferred splice: $${expr} or $$${expr} — render all $ signs
       const dollars = '$'.repeat(seg.dollarCount)
