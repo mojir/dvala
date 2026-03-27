@@ -692,7 +692,7 @@ describe('auto: suspend/resume round-trip', () => {
 // ---------------------------------------------------------------------------
 describe('auto: effect + error propagation', () => {
   it('dvala.error without handler throws', () => {
-    expect(() => dvala.run('perform(@dvala.error, "boom")')).toThrow('boom')
+    expect(() => dvala.run('perform(@dvala.error, { message: "boom" })')).toThrow('boom')
   })
 
   it('dvala.error caught by handle/with handler', () => {
@@ -719,7 +719,7 @@ describe('auto: effect + error propagation', () => {
     const result = dvala.run(`
       handle
         perform(@no.handler, "arg")
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `)
     expect(result).toContain('caught:')
@@ -858,7 +858,7 @@ describe('auto: host handler patterns', () => {
     const result = await dvala.runAsync(`
       handle
         perform(@my.eff)
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `, {
       effectHandlers: [

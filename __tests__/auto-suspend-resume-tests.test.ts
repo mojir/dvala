@@ -1186,7 +1186,7 @@ describe('auto: edge cases', () => {
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "step 1");
       let x = perform(@my.step);
-      perform(@dvala.error, "boom: " ++ x)
+      perform(@dvala.error, { message: "boom: " ++ x })
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
     if (r1.type !== 'suspended')
@@ -1208,8 +1208,8 @@ describe('auto: edge cases', () => {
       perform(@dvala.checkpoint, "step 1");
       handle
         let x = perform(@my.step);
-        perform(@dvala.error, "boom: " ++ x)
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        perform(@dvala.error, { message: "boom: " ++ x })
+      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

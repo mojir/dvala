@@ -182,7 +182,7 @@ describe('handle...with...end', () => {
     it('perform(@dvala.error) with non-matching handler should throw', () => {
       expect(() => dvala.run(`
         handle
-          perform(@dvala.error, "boom")
+          perform(@dvala.error, { message: "boom" })
         with [(arg, eff, nxt) -> if eff == @my.eff then arg else nxt(eff, arg) end]
         end
       `)).toThrow('boom')
@@ -192,7 +192,7 @@ describe('handle...with...end', () => {
       expect(() => dvala.run(`
         handle
           handle
-            perform(@dvala.error, "boom")
+            perform(@dvala.error, { message: "boom" })
           with [(arg, eff, nxt) -> nxt(eff, arg)]
           end
         with [(arg, eff, nxt) -> nxt(eff, arg)]
@@ -213,7 +213,7 @@ describe('handle...with...end', () => {
       const result = dvala.run(`
         handle
           perform(@no.handler, "data")
-        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg else nxt(eff, arg) end]
+        with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
         end
       `)
       expect(result).toBe('caught: Unhandled effect: \'no.handler\'')
@@ -329,7 +329,7 @@ describe('handle...with...end', () => {
     it('catches @dvala.error with shorthand', () => {
       const result = dvala.run(`
         handle 0 / 0
-        with [@dvala.error(msg) -> "caught: " ++ msg]
+        with [@dvala.error(err) -> "caught: " ++ err.message]
         end
       `)
       expect(result).toBe('caught: Number is NaN')
@@ -650,7 +650,7 @@ describe('handle...with...end', () => {
       // @my.custom is unhandled → produces @dvala.error → caught by @dvala.*
       const result = dvala.run(`
         handle perform(@my.custom, "data")
-        with [@dvala.*(arg) -> "caught: " ++ arg]
+        with [@dvala.*(arg) -> "caught: " ++ arg.message]
         end
       `)
       expect(result).toBe("caught: Unhandled effect: 'my.custom'")
@@ -742,7 +742,7 @@ describe('handle...with...end', () => {
       // But the unhandled effect produces @dvala.error which IS matched by @dvala.*
       const result = dvala.run(`
         handle perform(@dvalaExtra, "data")
-        with [@dvala.*(arg) -> "caught: " ++ arg]
+        with [@dvala.*(arg) -> "caught: " ++ arg.message]
         end
       `)
       expect(result).toBe("caught: Unhandled effect: 'dvalaExtra'")
@@ -802,7 +802,7 @@ describe('effect pipe ||>', () => {
 
     it('error catching with pipe', () => {
       const result = dvala.run(`
-        (0 / 0) ||> @dvala.error(msg) -> "caught: " ++ msg
+        (0 / 0) ||> @dvala.error(err) -> "caught: " ++ err.message
       `)
       expect(result).toBe('caught: Number is NaN')
     })
