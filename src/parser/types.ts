@@ -24,9 +24,12 @@ export interface RegularExpression {
   f: string
 }
 
+/** Dotted DNS-style identifier for entities with public identity (effects, macros, modules). */
+export type QualifiedName = string
+
 export interface EffectRef {
   [EFFECT_SYMBOL]: true
-  name: string // e.g. 'llm.complete'
+  name: QualifiedName // e.g. 'llm.complete'
 }
 
 export interface UserDefinedFunction extends GenericDvalaFunction {
@@ -40,7 +43,7 @@ export interface MacroFunction extends GenericDvalaFunction {
   functionType: 'Macro'
   name: string | undefined
   /** Dotted DNS-style identifier for host-level dispatch. Null for anonymous macros. */
-  qualifiedName: string | null
+  qualifiedName: QualifiedName | null
   evaluatedfunction: EvaluatedFunction
   docString: string
 }
@@ -90,6 +93,13 @@ export interface FNullFunction extends GenericDvalaFunction {
 
 export interface EffectMatcherFunction extends GenericDvalaFunction {
   functionType: 'EffectMatcher'
+  matchType: 'string' | 'regexp'
+  pattern: string // For string: the pattern string; for regexp: the source
+  flags: string // For regexp: the flags; for string: empty string
+}
+
+export interface QualifiedMatcherFunction extends GenericDvalaFunction {
+  functionType: 'QualifiedMatcher'
   matchType: 'string' | 'regexp'
   pattern: string // For string: the pattern string; for regexp: the source
   flags: string // For regexp: the flags; for string: empty string
@@ -145,6 +155,7 @@ export type DvalaFunction =
   | SomePredFunction
   | FNullFunction
   | EffectMatcherFunction
+  | QualifiedMatcherFunction
   | HandleNextFunction
 
 export type DvalaFunctionType = DvalaFunction['functionType']

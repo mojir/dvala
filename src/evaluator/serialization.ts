@@ -86,6 +86,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     case 'SpecialBuiltin':
     case 'Module':
     case 'EffectMatcher':
+    case 'QualifiedMatcher':
       return true
 
     // Conditionally serializable — check inner values/functions
@@ -157,7 +158,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
   }
 
   if (isDvalaFunction(value)) {
-    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher') {
+    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher' || value.functionType === 'QualifiedMatcher') {
       return null
     }
 

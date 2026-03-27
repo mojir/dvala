@@ -114,6 +114,7 @@ const skipReturnTypeExamples = new Set([
   'comp',
   'constantly',
   'effectMatcher',
+  'qualifiedMatcher',
 ])
 
 /**

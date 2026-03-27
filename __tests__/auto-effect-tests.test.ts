@@ -5,7 +5,7 @@
  * 1. Standard effects docs metadata consistency
  * 2. Standard effects seeAlso validity
  * 3. Standard effects arity enforcement
- * 4. effectNameMatchesPattern exhaustive coverage
+ * 4. qualifiedNameMatchesPattern exhaustive coverage
  * 5. Effect + control flow interactions (if, else if, match, &&, ||, ??, for, loop)
  * 6. Effect + higher-order function interactions (map, filter, reduce, etc.)
  * 7. Effect handler scoping (nesting levels)
@@ -25,7 +25,7 @@ function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOpti
 }
 import type { Snapshot } from '../src/evaluator/effectTypes'
 import { allStandardEffectDefinitions, standardEffectNames } from '../src/evaluator/standardEffects'
-import { effectNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
+import { qualifiedNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
 import { isDataType } from '../src/builtin/interface'
 import type { Any } from '../src/interface'
 import { allReference } from '../reference'
@@ -161,9 +161,9 @@ describe('auto: standard effects seeAlso symmetry', () => {
 // payload structure internally.
 
 // ---------------------------------------------------------------------------
-// 5. effectNameMatchesPattern — Exhaustive Coverage
+// 5. qualifiedNameMatchesPattern — Exhaustive Coverage
 // ---------------------------------------------------------------------------
-describe('auto: effectNameMatchesPattern exhaustive', () => {
+describe('auto: qualifiedNameMatchesPattern exhaustive', () => {
   // Effect names to test against
   const effectNames = [
     'dvala.error',
@@ -205,7 +205,7 @@ describe('auto: effectNameMatchesPattern exhaustive', () => {
     for (const name of effectNames) {
       const expectedResult = expected(name)
       it(`pattern '${pattern}' ${expectedResult ? 'matches' : 'does NOT match'} '${name}'`, () => {
-        expect(effectNameMatchesPattern(name, pattern)).toBe(expectedResult)
+        expect(qualifiedNameMatchesPattern(name, pattern)).toBe(expectedResult)
       })
     }
   }

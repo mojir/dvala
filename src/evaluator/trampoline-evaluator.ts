@@ -70,7 +70,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
-import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isObj } from '../typeGuards/dvala'
+import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
 import { isDvalaFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -80,7 +80,7 @@ import { valueToString } from '../utils/debug/debugTools'
 import type { MaybePromise } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
-import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, effectNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
+import { HaltSignal, ResumeFromSignal, SUSPENDED_MESSAGE, SuspensionSignal, createSnapshot, qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID, isHaltSignal, isResumeFromSignal, isSuspensionSignal } from './effectTypes'
 import type { ContextStack } from './ContextStack'
 import { getEffectRef } from './effectRef'
 import type { DeserializeOptions } from './suspension'
@@ -889,10 +889,30 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       assertEffect(effectRef, sourceCodeInfo)
       const effectName = effectRef.name
       if (fn.matchType === 'string') {
-        return { type: 'Value', value: effectNameMatchesPattern(effectName, fn.pattern), k }
+        return { type: 'Value', value: qualifiedNameMatchesPattern(effectName, fn.pattern), k }
       }
       const regexp = new RegExp(fn.pattern, fn.flags)
       return { type: 'Value', value: regexp.test(effectName), k }
+    }
+    case 'QualifiedMatcher': {
+      // Generalized matcher — works on any entity with a qualified name (effects, named macros)
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const entity = params[0]
+      // Extract qualified name from the entity
+      let qName: string | null = null
+      if (isEffect(entity)) {
+        qName = entity.name
+      } else if (isMacroFunction(entity)) {
+        qName = entity.qualifiedName
+      }
+      if (qName === null) {
+        return { type: 'Value', value: false, k }
+      }
+      if (fn.matchType === 'string') {
+        return { type: 'Value', value: qualifiedNameMatchesPattern(qName, fn.pattern), k }
+      }
+      const regexp = new RegExp(fn.pattern, fn.flags)
+      return { type: 'Value', value: regexp.test(qName), k }
     }
     case 'HandleNext': {
       // next(eff, arg) — dispatch to the next handler in the chain

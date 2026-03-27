@@ -1,5 +1,5 @@
 import { DvalaError } from '../../errors'
-import type { EffectMatcherFunction } from '../../parser/types'
+import type { EffectMatcherFunction, QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
@@ -359,7 +359,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['pattern'] }],
       description: 'Returns a predicate function that matches effects by name. If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the effect name against the regexp.',
-      seeAlso: ['effectName', 'isEffect', 'qualifiedName'],
+      seeAlso: ['effectName', 'isEffect', 'qualifiedName', 'qualifiedMatcher'],
       examples: [
         'let pred = effectMatcher("dvala.*"); pred(@dvala.error)',
         'let pred = effectMatcher("dvala.*"); pred(@custom.foo)',
@@ -408,12 +408,56 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['entity'] }],
       description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references and named macros.',
-      seeAlso: ['effectName', 'effectMatcher', 'isMacro', 'isEffect'],
+      seeAlso: ['effectName', 'effectMatcher', 'qualifiedMatcher', 'isMacro', 'isEffect'],
       examples: [
         'qualifiedName(@dvala.io.print)',
         'qualifiedName(macro@my.lib (ast) -> ast)',
         'qualifiedName(macro (ast) -> ast)',
         'qualifiedName(42)',
+      ],
+    },
+  },
+  'qualifiedMatcher': {
+    evaluate: ([pattern], sourceCodeInfo): QualifiedMatcherFunction => {
+      if (typeof pattern === 'string') {
+        return {
+          [FUNCTION_SYMBOL]: true,
+          sourceCodeInfo,
+          functionType: 'QualifiedMatcher',
+          matchType: 'string',
+          pattern,
+          flags: '',
+          arity: toFixedArity(1),
+        }
+      }
+      if (isRegularExpression(pattern)) {
+        return {
+          [FUNCTION_SYMBOL]: true,
+          sourceCodeInfo,
+          functionType: 'QualifiedMatcher',
+          matchType: 'regexp',
+          pattern: pattern.s,
+          flags: pattern.f,
+          arity: toFixedArity(1),
+        }
+      }
+      throw new DvalaError('qualifiedMatcher expects a string or regexp pattern', sourceCodeInfo)
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'meta',
+      returns: { type: 'function' },
+      args: {
+        pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against qualified names.' },
+      },
+      variants: [{ argumentNames: ['pattern'] }],
+      description: 'Returns a predicate function that matches any entity with a qualified name (effects, named macros). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
+      seeAlso: ['qualifiedName', 'effectMatcher', 'isEffect', 'isMacro'],
+      examples: [
+        'qualifiedMatcher("dvala.*")(@dvala.error)',
+        'qualifiedMatcher("dvala.*")(@custom.foo)',
+        'qualifiedMatcher("*")(macro@my.lib (ast) -> ast)',
+        'qualifiedMatcher("my.*")(macro@my.lib (ast) -> ast)',
       ],
     },
   },

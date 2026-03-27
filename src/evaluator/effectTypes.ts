@@ -214,15 +214,15 @@ export type Handlers = HandlerRegistration[]
  *   (dot boundary enforced: `dvala.*` matches `dvala.error` but NOT `dvalaXXX`)
  * - `*` alone → matches everything
  */
-export function effectNameMatchesPattern(effectName: string, pattern: string): boolean {
+export function qualifiedNameMatchesPattern(name: string, pattern: string): boolean {
   if (pattern === '*') {
     return true
   }
   if (pattern.endsWith('.*')) {
     const prefix = pattern.slice(0, -2) // e.g. "dvala.*" → "dvala"
-    return effectName === prefix || effectName.startsWith(`${prefix}.`)
+    return name === prefix || name.startsWith(`${prefix}.`)
   }
-  return effectName === pattern
+  return name === pattern
 }
 
 /**
@@ -238,7 +238,7 @@ export function findMatchingHandlers(
   }
   const result: [string, EffectHandler][] = []
   for (const { pattern, handler } of handlers) {
-    if (effectNameMatchesPattern(effectName, pattern)) {
+    if (qualifiedNameMatchesPattern(effectName, pattern)) {
       result.push([pattern, handler])
     }
   }
