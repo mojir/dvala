@@ -214,4 +214,4 @@ None — all resolved. See Resolved Decisions.
 ### Future features (not in this redesign)
 
 - **Stack traces** — collect `nodeId`s from continuation frames at error creation time, store as internal metadata alongside `nodeId` and `timestamp`. Expose to host via `RunResult.error.stack: SourceCodeInfo[]`. Purely additive — no breaking changes. Design work needed on filtering (which frames are "interesting") and cross-suspension behavior.
-- **`throw` builtin** — convenient wrapper: `throw("message")` or `throw("message", { data: ... })`. Builds the error object and performs `@dvala.error`. Sugar, not a new mechanism.
+- **`raise` builtin** — convenient wrapper: `raise("message")` or `raise("message", data)`. Builds `{ type: "UserError", message, data }` and performs `@dvala.error`. For custom `type` or extra fields, use `perform(@dvala.error, ...)` directly.

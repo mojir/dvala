@@ -17,7 +17,7 @@ describe('errors', () => {
       code: '(+ 1 2)',
     })
     expect(err).toBeInstanceOf(UserDefinedError)
-    expect(err.name).toBe('UserDefinedError')
+    expect(err.name).toBe('UserError')
     expect(err.message).toBe('A message\nLocation 1:1\n(+ 1 2)\n^      ')
   })
   describe('isDvalaError', () => {
