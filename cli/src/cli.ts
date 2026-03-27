@@ -9,6 +9,7 @@ import path from 'node:path'
 import { stringifyValue } from '../../common/utils'
 import { version } from '../../package.json'
 import { apiReference, isFunctionReference } from '../../reference'
+import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDatatypes, listModuleExpressions, listModules, lookupDoc } from '../../reference/format'
 import { allBuiltinModules } from '../../src/allModules'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
@@ -16,6 +17,7 @@ import { isDvalaBundle } from '../../src/bundler/interface'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
 import { runTest } from '../../src/testFramework'
+import { parseTokenStream, tokenizeSource } from '../../src/tooling'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
 import { getInlineCodeFormatter } from './cliFormatterRules'
@@ -86,6 +88,34 @@ interface BundleConfig {
   output: Maybe<string>
 }
 
+interface DocConfig {
+  subcommand: 'doc'
+  name: string
+}
+
+interface ListConfig {
+  subcommand: 'list'
+  moduleName: Maybe<string>
+  showModules: boolean
+  showDatatypes: boolean
+}
+
+interface TokenizeConfig {
+  subcommand: 'tokenize'
+  code: string
+  debug: boolean
+}
+
+interface ParseConfig {
+  subcommand: 'parse'
+  code: string
+  debug: boolean
+}
+
+interface ExamplesConfig {
+  subcommand: 'examples'
+}
+
 interface HelpConfig {
   subcommand: 'help'
 }
@@ -94,11 +124,11 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | RunBundleConfig | EvalConfig | TestConfig | BundleConfig | HelpConfig | VersionConfig
+type Config = ReplConfig | RunConfig | RunBundleConfig | EvalConfig | TestConfig | BundleConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | ExamplesConfig | HelpConfig | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes'])
 
 const commands = ['`help', '`quit', '`builtins', '`context']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -207,6 +237,66 @@ switch (config.subcommand) {
       }
     }
     runREPL(config.context)
+    break
+  }
+  case 'doc': {
+    const result = lookupDoc(config.name)
+    if ('error' in result) {
+      printErrorMessage(result.error)
+      process.exit(1)
+    }
+    if ('ambiguous' in result) {
+      console.log(`Multiple matches for "${config.name}":\n${result.ambiguous.map(m => `  ${m}`).join('\n')}\n\nPlease be more specific.`)
+      process.exit(1)
+    }
+    console.log(formatDoc(result.ref))
+    process.exit(0)
+    break
+  }
+  case 'list': {
+    if (config.showModules) {
+      console.log(listModules())
+    } else if (config.showDatatypes) {
+      console.log(listDatatypes())
+    } else if (config.moduleName) {
+      const result = listModuleExpressions(config.moduleName)
+      if (result === null) {
+        printErrorMessage(`Unknown module "${config.moduleName}". Available: ${getModuleNames().join(', ')}`)
+        process.exit(1)
+      }
+      console.log(result)
+    } else {
+      console.log(listCoreExpressions())
+    }
+    process.exit(0)
+    break
+  }
+  case 'tokenize': {
+    try {
+      const tokenStream = tokenizeSource(config.code, config.debug)
+      console.log(JSON.stringify(tokenStream, null, 2))
+      process.exit(0)
+    } catch (error) {
+      printErrorMessage(`${error}`)
+      process.exit(1)
+    }
+    break
+  }
+  case 'parse': {
+    try {
+      const tokenStream = tokenizeSource(config.code, config.debug)
+      const ast = parseTokenStream(tokenStream)
+      console.log(JSON.stringify(ast, null, 2))
+      process.exit(0)
+    } catch (error) {
+      printErrorMessage(`${error}`)
+      process.exit(1)
+    }
+    break
+  }
+  case 'examples': {
+    console.log(formatExamples())
+    process.exit(0)
     break
   }
   case 'help': {
@@ -589,6 +679,100 @@ function processArguments(args: string[]): Config {
       }
       return { subcommand: 'repl', loadFilename, context }
     }
+    case 'doc': {
+      const name = args[1]
+      if (!name) {
+        printErrorMessage('Missing name after "doc"')
+        process.exit(1)
+      }
+      return { subcommand: 'doc', name }
+    }
+    case 'list': {
+      let moduleName: Maybe<string> = null
+      let showModules = false
+      let showDatatypes = false
+      let i = 1
+      while (i < args.length) {
+        const parsed = parseOption(args, i)
+        if (!parsed) {
+          // Positional argument = module name
+          moduleName = args[i]!
+          i += 1
+          continue
+        }
+        switch (parsed.option) {
+          case '--modules':
+            showModules = true
+            i += parsed.count
+            break
+          case '--datatypes':
+            showDatatypes = true
+            i += parsed.count
+            break
+          default:
+            printErrorMessage(`Unknown option "${parsed.option}" for "list"`)
+            process.exit(1)
+        }
+      }
+      return { subcommand: 'list', moduleName, showModules, showDatatypes }
+    }
+    case 'tokenize': {
+      let code: Maybe<string> = null
+      let debug = false
+      let i = 1
+      while (i < args.length) {
+        const parsed = parseOption(args, i)
+        if (!parsed) {
+          code = args[i]!
+          i += 1
+          continue
+        }
+        switch (parsed.option) {
+          case '--debug':
+            debug = true
+            i += parsed.count
+            break
+          default:
+            printErrorMessage(`Unknown option "${parsed.option}" for "tokenize"`)
+            process.exit(1)
+        }
+      }
+      if (!code) {
+        printErrorMessage('Missing code after "tokenize"')
+        process.exit(1)
+      }
+      return { subcommand: 'tokenize', code, debug }
+    }
+    case 'parse': {
+      let code: Maybe<string> = null
+      let debug = false
+      let i = 1
+      while (i < args.length) {
+        const parsed = parseOption(args, i)
+        if (!parsed) {
+          code = args[i]!
+          i += 1
+          continue
+        }
+        switch (parsed.option) {
+          case '--debug':
+            debug = true
+            i += parsed.count
+            break
+          default:
+            printErrorMessage(`Unknown option "${parsed.option}" for "parse"`)
+            process.exit(1)
+        }
+      }
+      if (!code) {
+        printErrorMessage('Missing code after "parse"')
+        process.exit(1)
+      }
+      return { subcommand: 'parse', code, debug }
+    }
+    case 'examples': {
+      return { subcommand: 'examples' }
+    }
     case 'help': {
       return { subcommand: 'help' }
     }
@@ -690,6 +874,11 @@ Subcommands:
   bundle <entry> [options]        Bundle a multi-file project
   test <file> [options]           Run a .test.dvala test file
   repl [options]                  Start an interactive REPL
+  doc <name>                      Show documentation for a function/expression
+  list [module] [options]         List core expressions or module functions
+  tokenize <code> [options]       Tokenize source code to JSON
+  parse <code> [options]          Parse source code to AST JSON
+  examples                        Show example programs
   help                            Show this help
 
 Run/Run-bundle/Eval options:
@@ -708,6 +897,13 @@ Repl options:
   -l, --load=<file>               Preload a .dvala file into the REPL context
   -c, --context=<json>            Context as a JSON string
   -C, --context-file=<file>       Context from a .json file
+
+List options:
+  --modules                       List all available modules
+  --datatypes                     List all datatypes
+
+Tokenize/Parse options:
+  --debug                         Include source positions in output
 
 Global options:
   -h, --help                      Show this help
