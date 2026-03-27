@@ -140,9 +140,21 @@ export function splitSegments(raw: string): Segment[] {
   const segments: Segment[] = []
   let i = 0
   let literal = ''
-
   while (i < raw.length) {
     if (raw[i] === '$' && raw[i + 1] === '{') {
+      // Deferred splice: $${ or $$${ — strip one $ and emit as literal
+      // The first $ was already added to literal on a previous iteration
+      if (literal.length > 0 && literal[literal.length - 1] === '$') {
+        literal = literal.slice(0, -1)
+        literal += '${'
+        i += 2
+        const { expr, consumed } = scanExpression(raw, i)
+        literal += `${expr}}`
+        i += consumed
+        continue
+      }
+
+      // Normal splice — resolved by this template
       if (literal.length > 0) {
         segments.push({ type: 'literal', value: literal })
         literal = ''

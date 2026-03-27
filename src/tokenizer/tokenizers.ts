@@ -436,6 +436,24 @@ export const tokenizeCodeTemplate: Tokenizer<CodeTemplateToken> = (input, positi
     const char = input[position + length]!
 
     if (char === '$' && input[position + length + 1] === '{') {
+      // Deferred splice: $${ or $$${ — keep the extra $ signs in the token value
+      // so that splitSegments can distinguish deferred from normal splices.
+      // Check if the accumulated value ends with $ (meaning this is $${ or $$${ etc.)
+      if (value.length > 0 && value[value.length - 1] === '$') {
+        // Emit the full $${...} as literal text (no splice parsing)
+        value += '${'
+        length += 2
+        let braceDepth = 1
+        while (position + length < input.length && braceDepth > 0) {
+          const bc = input[position + length]!
+          if (bc === '{') braceDepth++
+          else if (bc === '}') braceDepth--
+          value += bc
+          length++
+        }
+        continue
+      }
+
       // Interpolation — scan to matching close brace
       value += '${'
       length += 2

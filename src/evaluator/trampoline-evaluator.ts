@@ -3847,6 +3847,11 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     return spliceValues[payload as number]!
   }
 
+  // InlinedData — already-resolved data from an outer template splice. Pass through as-is.
+  if (type === NodeTypes.InlinedData) {
+    return payload as Any
+  }
+
   // Rename literal Sym nodes for hygiene
   if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
     const renamed = renameMap.get(payload)
@@ -3861,6 +3866,21 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     return toAny([type, payload, 0])
   }
 
+  // CodeTmpl nodes contain both inner splices (indices 0..N-1, for the inner template)
+  // and outer splices (indices N+, for the outer template, offset by replacePlaceholders).
+  // Resolve outer splices, preserve inner splices as-is.
+  if (type === NodeTypes.CodeTmpl) {
+    const [bodyAst, innerSpliceExprs] = payload as [AstNode[], AstNode[]]
+    const innerCount = (innerSpliceExprs as unknown[]).length
+    // Convert body AST, resolving outer splices (index >= innerCount) but preserving inner ones
+    const convertedBody = bodyAst.map(n => astToDataWithCodeTmplAwareness(n, spliceValues, renameMap, innerCount))
+    // Convert inner splice expressions WITH the rename map (hygiene applies to inner
+    // scope names like macro parameters) but WITHOUT outer splice values (inner splice
+    // expressions don't contain outer splice placeholders).
+    const convertedSpliceExprs = innerSpliceExprs.map(e => astToData(e, [], renameMap))
+    return toAny([type, [convertedBody, convertedSpliceExprs], 0])
+  }
+
   // Let nodes need special handling: the binding target may contain splices that
   // resolve to Array/Object AST data, which must be converted to binding target format.
   if (type === NodeTypes.Let) {
@@ -3873,6 +3893,70 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
   // Recursive: convert array payloads, with implicit spread for splices
   const convertedPayload = convertArrayPayload(payload, spliceValues, renameMap)
   return toAny([type, convertedPayload, 0])
+}
+
+/**
+ * Like astToData, but aware of inner CodeTmpl splice boundaries.
+ * Splice nodes with index < innerCount are inner splices — preserved as data tuples.
+ * Splice nodes with index >= innerCount are outer splices — resolved using spliceValues[index - innerCount].
+ */
+function astToDataWithCodeTmplAwareness(
+  node: AstNode, spliceValues: Any[], renameMap: Map<string, string> | undefined, innerCount: number,
+): Any {
+  const [type, payload] = node
+
+  if (type === NodeTypes.Splice) {
+    const index = payload as number
+    if (index < innerCount) {
+      // Inner splice — preserve as data tuple for the inner template to resolve
+      return toAny([type, index, 0])
+    }
+    // Outer splice — resolve with adjusted index, wrapped in InlinedData to prevent double conversion
+    return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, 0])
+  }
+
+  // For everything else, delegate to standard astToData but with inner-awareness for nested arrays
+  if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
+    const renamed = renameMap.get(payload)
+    if (renamed) {
+      return toAny([type, renamed, 0])
+    }
+  }
+
+  if (!Array.isArray(payload)) {
+    return toAny([type, payload, 0])
+  }
+
+  // Recurse into array payloads, maintaining inner-awareness for Splice nodes
+  const result: Any[] = []
+  for (const item of payload) {
+    if (!Array.isArray(item)) {
+      if (typeof item === 'string' && renameMap) {
+        const renamed = renameMap.get(item)
+        result.push((renamed ?? item) as Any)
+      } else {
+        result.push(item as Any)
+      }
+      continue
+    }
+    if (item.length >= 2 && item[0] === NodeTypes.Splice) {
+      const spliceIndex = item[1] as number
+      if (spliceIndex < innerCount) {
+        result.push(toAny([NodeTypes.Splice, spliceIndex, 0]))
+      } else {
+        const spliceValue = spliceValues[spliceIndex - innerCount]!
+        // Wrap in InlinedData to prevent double conversion
+        result.push(toAny([NodeTypes.InlinedData, spliceValue, 0]))
+      }
+    } else if (item.length >= 2 && typeof item[0] === 'string') {
+      result.push(astToDataWithCodeTmplAwareness(item as AstNode, spliceValues, renameMap, innerCount))
+    } else {
+      result.push(toAny(item.map((sub: unknown) =>
+        Array.isArray(sub) ? astToDataWithCodeTmplAwareness(sub as AstNode, spliceValues, renameMap, innerCount) : sub,
+      )))
+    }
+  }
+  return toAny([type, result, 0])
 }
 
 /**
