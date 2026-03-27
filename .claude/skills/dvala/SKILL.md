@@ -167,26 +167,26 @@ qualifiedName(m)                       // → "mylib.id"
 - `typeOf(m)` → `"macro"`, `isMacro(m)` → `true`, `isFunction(m)` → `false`.
 - `qualifiedName(m)` → `"mylib.id"` (named) or `null` (anonymous). Also works on effects: `qualifiedName(@dvala.io.print)` → `"dvala.io.print"`.
 
-### Code Templates (triple backticks)
+### Quote Blocks (`quote...end`)
 
-Triple backticks create AST data at parse time. `${expr}` splices evaluated values into the AST.
+`quote...end` creates AST data at parse time. `$^{expr}` splices evaluated values into the AST.
 
-````dvala
+```dvala
 // Simple — returns AST for `42` → ["Num", 42, 0]
-```42```
+quote 42 end
 
 // With splicing — insert evaluated AST nodes
 let a = ["Num", 1, 0];
-```${a} + ${a}```        // → ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 1, 0]]], 0]
+quote $^{a} + $^{a} end  // → ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 1, 0]]], 0]
 
-// Macro using code template
-let double = macro (ast) -> ```${ast} + ${ast}```;
+// Macro using quote
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 double(21)                // → 42
-````
+```
 
 - Content is parsed as Dvala code at parse time — no runtime parsing
-- `${expr}` evaluates `expr` at runtime and inserts the result (must be valid AST data)
-- N-backtick nesting: use 4+ backticks for outer level (inner can use fewer)
+- `$^{expr}` evaluates `expr` at runtime and inserts the result (must be valid AST data)
+- `$^^{expr}` escapes two levels (for macro-generating macros)
 - Multi-statement templates produce an array of AST nodes
 - Node IDs in generated AST are always 0
 
@@ -279,17 +279,17 @@ end;
 - Variable names in tests must not shadow builtins (e.g., don't use `first` as a macro name — it's a builtin).
 - Macros only intercept **named calls** to user-defined or builtin symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` and `BuiltinSymbol` names only. This means you can shadow a builtin (e.g. `let assert = macro ...`) and it will work correctly as a macro.
 - Named macros emit `@dvala.macro.expand` — anonymous macros are called directly with no effect overhead.
-- Code template `${expr}` works in both **expression and binding positions** — e.g., `` ```let ${pattern} = ${value}``` `` where `pattern` can be a Sym, Array, or Object AST node (destructuring patterns are auto-converted to binding targets).
-- **Deferred splices** for nested code templates: `$${expr}` passes through as `${expr}` in the output (one level deferred), `$$${expr}` defers two levels. Enables macro-generating macros. Max 3 `$` signs.
+- Quote `$^{expr}` works in both **expression and binding positions** — e.g., `quote let $^{pattern} = $^{value} end` where `pattern` can be a Sym, Array, or Object AST node (destructuring patterns are auto-converted to binding targets).
+- **Nested quotes** for macro-generating macros: `$^^{expr}` escapes two quote levels, `$^^^{expr}` three levels. The `^` count tells you how many levels you're escaping.
 
 ### `macroexpand` and the `ast` Module
 
-`macroexpand(macroFn, ...astArgs)` calls a macro's body and returns the expanded AST as data, without evaluating it. Pass AST arguments using code templates:
+`macroexpand(macroFn, ...astArgs)` calls a macro's body and returns the expanded AST as data, without evaluating it. Pass AST arguments using quote blocks:
 
 ```dvala
 let { prettyPrint } = import(ast);
-let double = macro (ast) -> ```${ast} + ${ast}```;
-macroexpand(double, ```21```) |> prettyPrint   // → "21 + 21"
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+macroexpand(double, quote 21 end) |> prettyPrint   // → "21 + 21"
 ```
 
 The `ast` module (`import(ast)`) provides constructors (`num`, `strNode`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isCall`, `isLet`, `isFn`, etc.), accessors (`nodeType`, `payload`), and `prettyPrint`.

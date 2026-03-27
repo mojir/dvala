@@ -337,7 +337,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a let-binding.',
-      examples: ['let { isLet } = import(ast); isLet(```let x = 1```)'],
+      examples: ['let { isLet } = import(ast); isLet(quote let x = 1 end)'],
     },
   },
   'isFn': {
@@ -349,7 +349,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a function definition.',
-      examples: ['let { isFn } = import(ast); isFn(```(x) -> x```)'],
+      examples: ['let { isFn } = import(ast); isFn(quote (x) -> x end)'],
     },
   },
   'isBool': {
@@ -442,7 +442,7 @@ const astFunctions: BuiltinNormalExpressions = {
       examples: [
         'let { prettyPrint, num } = import(ast); prettyPrint(num(42))',
         'let { prettyPrint, call, builtin, num } = import(ast); prettyPrint(call(builtin("+"), [num(1), num(2)]))',
-        'let { prettyPrint } = import(ast); prettyPrint(```1 + 2```)',
+        'let { prettyPrint } = import(ast); prettyPrint(quote 1 + 2 end)',
       ],
     },
   },

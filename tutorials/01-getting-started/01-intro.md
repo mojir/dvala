@@ -66,7 +66,7 @@ Macros receive unevaluated code (AST) and return transformed code. Code template
 
 ```dvala
 let unless = macro (cond, body) ->
-  ```if not(${cond}) then ${body} else null end```;
+  quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!")
 ```

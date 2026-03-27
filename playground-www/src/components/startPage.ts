@@ -105,7 +105,7 @@ export function renderStartPage(): string {
         <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('hygienic-macros')">
           <span class="about-feature-card__icon">${macroIcon}</span>
           <h3 class="about-feature-card__title">Hygienic Macros</h3>
-          <p class="about-feature-card__desc">Extend the language with code templates and AST transformations</p>
+          <p class="about-feature-card__desc">Extend the language with quote...end templates and AST transformations</p>
         </div>
         <div class="about-feature-card about-feature-card--clickable" onclick="Playground.showFeatureCard('embeddable-js')">
           <span class="about-feature-card__icon">${embedIcon}</span>

@@ -19,6 +19,7 @@ import { parseLoop } from './parseLoop'
 import { parseMacro } from './parseMacro'
 import { parseMatch } from './parseMatch'
 import { parseOperand } from './parseOperand'
+import { parseQuote } from './parseQuote'
 import { parseSymbol } from './parseSymbol'
 
 export function createParserContext(tokenStream: TokenStream): ParserContext {
@@ -59,6 +60,8 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
     left = parseDo(ctx)
   } else if (isReservedSymbolToken(token, 'handle')) {
     left = parseHandle(ctx)
+  } else if (isReservedSymbolToken(token, 'quote')) {
+    left = parseQuote(ctx)
   }
 
   left ||= parseOperand(ctx)

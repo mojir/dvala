@@ -111,8 +111,8 @@ describe('macro system', () => {
   describe('macroexpand', () => {
     it('should return expanded AST without evaluating it', () => {
       const result = run(`
-        let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
-        macroexpand(double, \`\`\`21\`\`\`)
+        let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+        macroexpand(double, quote 21 end)
       `)
       // Should return AST data, not the evaluated result 42
       expect(Array.isArray(result)).toBe(true)
@@ -123,8 +123,8 @@ describe('macro system', () => {
     it('should produce AST that prettyPrints correctly', () => {
       const result = dvala.run(`
         let { prettyPrint } = import(ast);
-        let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
-        macroexpand(double, \`\`\`21\`\`\`) |> prettyPrint
+        let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+        macroexpand(double, quote 21 end) |> prettyPrint
       `)
       expect(result).toBe('21 + 21')
     })
@@ -136,7 +136,7 @@ describe('macro system', () => {
     it('should work with multi-arg macros', () => {
       const result = run(`
         let pick = macro (a, b) -> a;
-        macroexpand(pick, \`\`\`1\`\`\`, \`\`\`2\`\`\`)
+        macroexpand(pick, quote 1 end, quote 2 end)
       `)
       expect(result).toEqual(['Num', 1, 0])
     })
@@ -191,7 +191,7 @@ describe('macro system', () => {
       const result = run(`
         let { prettyPrint } = import(ast);
         let assert = macro (cond) ->
-          \`\`\`if \${cond} then "pass" else "fail" end\`\`\`;
+          quote if $^{cond} then "pass" else "fail" end end;
         assert(1 > 5)
       `)
       expect(result).toBe('fail')
@@ -215,7 +215,7 @@ describe('macro system', () => {
       try {
         runDebug(`let myError = -> perform(@dvala.error, $);
 let myAssert = macro (cond) ->
-  \`\`\`if \${cond} then true else myError("fail") end\`\`\`;
+  quote if $^{cond} then true else myError("fail") end end;
 myAssert(1 > 5)`)
         expect.unreachable('should have thrown')
       } catch (e: unknown) {
@@ -278,8 +278,8 @@ myAssert(1 > 5)`)
     it('should allow legitimate nested macro expansion', () => {
       // Macro that expands to code containing another macro call — two levels deep
       expect(run(`
-        let addOne = macro (ast) -> \`\`\`\${ast} + 1\`\`\`;
-        let addTwo = macro (ast) -> \`\`\`addOne(addOne(\${ast}))\`\`\`;
+        let addOne = macro (ast) -> quote $^{ast} + 1 end;
+        let addTwo = macro (ast) -> quote addOne(addOne($^{ast})) end;
         addTwo(10)
       `)).toBe(12)
     })
@@ -288,7 +288,7 @@ myAssert(1 > 5)`)
   describe('binding-position splice', () => {
     it('should splice a simple name into let binding', () => {
       expect(run(`
-        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst(myVar, 42);
         myVar
       `)).toBe(42)
@@ -296,7 +296,7 @@ myAssert(1 > 5)`)
 
     it('should splice an array destructuring pattern', () => {
       expect(run(`
-        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([a, b], [1, 2]);
         a + b
       `)).toBe(3)
@@ -304,7 +304,7 @@ myAssert(1 > 5)`)
 
     it('should splice an object destructuring pattern', () => {
       expect(run(`
-        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst({ x: x, y: y }, { x: 10, y: 20 });
         x + y
       `)).toBe(30)
@@ -312,7 +312,7 @@ myAssert(1 > 5)`)
 
     it('should splice nested destructuring', () => {
       expect(run(`
-        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([a, [b, c]], [1, [2, 3]]);
         a + b + c
       `)).toBe(6)
@@ -320,7 +320,7 @@ myAssert(1 > 5)`)
 
     it('should splice rest element in array pattern', () => {
       expect(run(`
-        let defConst = macro (n, v) -> \`\`\`let \${n} = \${v}\`\`\`;
+        let defConst = macro (n, v) -> quote let $^{n} = $^{v} end;
         defConst([head, ...tail], [1, 2, 3]);
         tail
       `)).toEqual([2, 3])
