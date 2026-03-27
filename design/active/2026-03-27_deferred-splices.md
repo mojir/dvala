@@ -38,61 +38,72 @@ let double = makeDoubler(+);
 double(21)   // → 42
 ```
 
-The outer template (4 backticks) resolves `${op}` and passes `$${ast}` through as `${ast}`. The resulting AST contains a macro whose body is a code template with `${ast}` as a normal splice.
+## Investigation Notes
 
-## Investigation Notes (from implementation attempt)
+### Three layers of changes needed
 
-### What works
+**Layer 1: Tokenizer** ✅
+`tokenizeCodeTemplate` detects `$${` (value ends with `$` when `$` + `{` is encountered) and emits the full `$${...}` as literal text — no splice parsing.
 
-1. **Tokenizer** (`tokenizeCodeTemplate`): When `$${` is encountered, the tokenizer detects that `value` ends with `$` (from the previous iteration) and emits `$${...}` as literal text in the token — no splice parsing. This correctly preserves the deferred splice in the token value. ✅
+**Layer 2: splitSegments** ✅
+When `splitSegments` encounters `$` + `{` and the literal buffer ends with `$`, it strips one `$` and emits `${expr}` as literal text. This happens at all nesting levels — the `$${` syntax is purely a "strip one `$`" operation.
 
-2. **`splitSegments`**: When processing the code template content, `$${x}` is recognized by checking if the literal buffer ends with `$`. One `$` is stripped and `${x}` is emitted as literal text. ✅
+No backtick depth tracking is needed in `splitSegments`. `${expr}` at any level is always a splice of the current template. `$${expr}` is always deferred. The user controls which level via the `$` count.
 
-3. **AST structure**: The outer `macroexpand` produces a valid `["Macro", [[params], [bodyExprs]], id]` where `bodyExprs` contains a `["CodeTmpl", [bodyAst, spliceExprs], id]` with 2 splice expressions referencing the `ast` parameter. ✅
+**Layer 3: Splice index separation** ✅ (data structure correct, runtime broken)
 
-### The deeper problem
+The outer template's source (after deferred splice stripping) contains both:
+- `${op}` → outer splice (replaced with `__splice_N__` placeholder → `Splice(N)` after `replacePlaceholders`)
+- Inner code template with `${ast}` → inner splice (parsed independently by inner `splitSegments`)
 
-The outer code template's content is `macro (ast) -> \`\`\`${ast} + ${ast}\`\`\``. After stripping `$${` → `${`, the inner ` ``` ``` ` is parsed as a code template by `parseCodeTemplate`. The inner template's `${ast}` splices become `Splice` nodes **indexed into the outer template's splice expression list**.
+These share the same `Splice` index namespace, causing collisions. Fix: `replacePlaceholders` offsets outer splice indices by the inner template's splice count when entering a `CodeTmpl` node.
 
-When `astToData` converts the outer template to data, these inner Splice nodes are resolved against the outer template's splice values. But they should be left as Splice nodes for the inner template to resolve at its own evaluation time.
+In `astToData`, the CodeTmpl handler distinguishes inner vs outer splices by index:
+- `index < innerCount` → inner splice, preserved as `["Splice", index, 0]` data
+- `index >= innerCount` → outer splice, resolved to `spliceValues[index - innerCount]`
 
-**Root cause:** `parseCodeTemplate` doesn't track backtick depth. When it encounters inner code template delimiters (` ``` `) inside the content, it parses the entire source including the inner template. The inner template's `${...}` splices are handled by the same `splitSegments` call as the outer template's splices. There is only ONE splice index namespace — outer and inner splices share it.
+**Verified**: the expanded AST structure is correct — inner splices preserved, outer values inlined.
 
-### What needs to change
+### The remaining problem: double conversion
 
-The fix requires **backtick-depth-aware splice parsing**. Two possible approaches:
+When the inner macro is called and its CodeTmpl body is evaluated, the evaluator calls `astToData` on the body to produce the final AST data. At this point:
 
-**Approach A: Parser-level depth tracking**
+- Inner Splice(0) nodes are resolved correctly (replaced with evaluated `ast` value)
+- But the inlined outer splice values (already data like `["Function", ...]`) are treated as AST nodes and re-converted by `astToData`
 
-`parseCodeTemplate` needs to know that splices inside inner code templates (lower backtick count) belong to the inner template, not the outer one. When building the source with `__splice_N__` placeholders, inner template splices should NOT get placeholder substitution — they should remain as `${expr}` literal text in the source.
+This produces garbage because the data is double-converted. `astToData` can't distinguish "already data from an outer splice" from "AST that needs converting" — they share the same `[type, payload, nodeId]` format.
 
-This means `splitSegments` (or a replacement) must track backtick nesting depth:
-- When encountering ` ``` ` in the content, increment depth
-- When encountering the matching closing ` ``` `, decrement depth
-- Only create splice expressions for `${...}` at depth 0
-- At depth > 0, emit `${...}` as literal text
+### Solution: Wrapper node approach
 
-**Approach B: Two-pass processing**
+Introduce a new internal node type `InlinedData` that wraps already-resolved data inside CodeTmpl bodies. `astToData` passes `InlinedData` values through without conversion.
 
-1. First pass: only process `$${...}` → `${...}` stripping (already done in tokenizer + splitSegments)
-2. Second pass: parse the resulting source, which now contains only same-level `${...}` splices
+**In `astToDataWithCodeTmplAwareness`**: when resolving an outer splice (index >= innerCount), wrap the value:
+```typescript
+// Instead of: return spliceValues[index - innerCount]!
+return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, 0])
+```
 
-The problem with Approach B: after stripping, the inner template's `${ast}` is indistinguishable from an outer-level `${ast}`. The backtick depth is the only way to know which level it belongs to.
+**In `astToData`**: when encountering `InlinedData`, return the payload as-is:
+```typescript
+if (type === NodeTypes.InlinedData) {
+  return payload as Any
+}
+```
 
-**Approach A is necessary.** The key change is in `splitSegments` (or `parseCodeTemplate`): when scanning content for `${...}` patterns, track backtick nesting and only create splice segments at depth 0.
+**In the evaluator's `stepNode`**: when encountering `InlinedData` during CodeTmpl evaluation, return the payload as the value (it's already data).
 
-### Implementation complexity
-
-- `splitSegments` currently does simple `${` scanning with brace matching
-- Adding backtick depth tracking requires matching N-backtick delimiters inside the content
-- Must handle: 3-backtick, 4-backtick, etc. inner templates
-- Must handle: nested template strings (single backtick) — these are NOT code templates
-- Edge case: inner code templates that themselves contain deferred splices (`$${}`)
+This is a minimal change — one new node type, three handlers.
 
 ## Implementation Plan
 
-1. **Extend `splitSegments` with backtick depth tracking** — when scanning content, match N-backtick delimiters and only create splice expressions at depth 0. Inner `${...}` at depth > 0 become literal text.
-2. **Keep tokenizer changes** — `$${` handling in `tokenizeCodeTemplate` is correct and needed
-3. **Keep `splitSegments` deferred splice stripping** — `$` stripping for `$${` is correct, just needs to happen only at depth 0
-4. **Add tests** — macro-generating macro end-to-end
-5. **Update skill docs** — remove "nested code templates don't work" gotcha
+1. ~~Tokenizer: `$${` handling~~ ✅ (in stash)
+2. ~~splitSegments: deferred splice stripping~~ ✅ (in stash)
+3. ~~replacePlaceholders: offset outer indices inside CodeTmpl~~ ✅ (in stash)
+4. ~~astToData: CodeTmpl-aware splice resolution~~ ✅ (in stash)
+5. **Add `InlinedData` node type** — prevents double conversion of outer splice values
+6. **Update `astToDataWithCodeTmplAwareness`** — wrap outer splice values in `InlinedData`
+7. **Update `astToData`** — pass through `InlinedData` payloads
+8. **Update evaluator `stepNode`** — handle `InlinedData` during CodeTmpl evaluation
+9. Add end-to-end tests
+10. Run full check + e2e
+11. Update skill docs
