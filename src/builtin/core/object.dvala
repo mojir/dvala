@@ -3,14 +3,14 @@
     let fn = last(args);
     let objs = slice(args, 0, count(args) - 1);
     if not(isFunction(fn)) then
-      perform(@dvala.error, str("Expected function, got: ", type(fn)))
+      perform(@dvala.error, { message: str("Expected function, got: ", type(fn)) })
     end;
     if count(objs) == 0 then
-      perform(@dvala.error, "Expected at least one object argument")
+      perform(@dvala.error, { message: "Expected at least one object argument" })
     end;
     reduce(rest(objs), (result, obj) -> do
       if not(isObject(obj)) then
-        perform(@dvala.error, str("Expected object, got: ", type(obj)))
+        perform(@dvala.error, { message: str("Expected object, got: ", type(obj)) })
       end;
       reduce(keys(obj), (res, key) -> do
         if contains(res, key) then
@@ -22,7 +22,7 @@
     end, do
       let f = first(objs);
       if not(isObject(f)) then
-        perform(@dvala.error, str("Expected object, got: ", type(f)))
+        perform(@dvala.error, { message: str("Expected object, got: ", type(f)) })
       end;
       f
     end)

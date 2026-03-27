@@ -28,7 +28,7 @@ with [(arg, eff, nxt) -> if eff == @dvala.io.print then arg else nxt(eff, arg) e
 end
 `,
   ],
-  seeAlso: ['isEffect', 'handle'],
+  seeAlso: ['isEffect', 'handle', 'raise'],
 }
 
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {

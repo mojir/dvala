@@ -163,6 +163,7 @@ export const api = {
     'boolean',
     'compare',
     'typeOf',
+    'raise',
   ] as const,
   object: [
     'dissoc',

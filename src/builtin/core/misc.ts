@@ -506,4 +506,25 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       ],
     },
   },
+  'raise': {
+    evaluate: () => { throw new Error('raise is implemented in Dvala') },
+    arity: { min: 1, max: 2 },
+    docs: {
+      category: 'misc',
+      returns: { type: 'never' },
+      args: {
+        message: { type: 'string', description: 'Error message.' },
+        data: { type: 'any', description: 'Optional structured data attached to the error.' },
+      },
+      variants: [{ argumentNames: ['message'] }, { argumentNames: ['message', 'data'] }],
+      hideOperatorForm: true,
+      description: 'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
+      seeAlso: ['perform'],
+      examples: [
+        'handle raise("oops") with @dvala.error(err) -> err.message end',
+        'handle raise("bad input", { field: "email" }) with @dvala.error(err) -> err.data.field end',
+        'let { fallback } = import(effectHandler); raise("oops") ||> fallback("recovered")',
+      ],
+    },
+  },
 }
