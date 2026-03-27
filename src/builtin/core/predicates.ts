@@ -37,7 +37,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a macro, otherwise `false`.',
-      seeAlso: ['isFunction', 'typeOf', 'qualifiedName'],
+      seeAlso: ['isFunction', 'typeOf', 'qualifiedName', 'qualifiedMatcher'],
       examples: [
         'isMacro(macro (ast) -> ast)',
         'isMacro((x) -> x)',
@@ -387,7 +387,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is an effect, otherwise `false`.',
-      seeAlso: ['effect', 'effectName', 'effectMatcher', 'perform', 'handle', 'typeOf', 'qualifiedName'],
+      seeAlso: ['effect', 'effectName', 'effectMatcher', 'perform', 'handle', 'typeOf', 'qualifiedName', 'qualifiedMatcher'],
       examples: [
         'isEffect(@dvala.io.print)',
         'isEffect(42)',

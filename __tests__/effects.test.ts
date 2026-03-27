@@ -3,7 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
-import { effectNameMatchesPattern, findMatchingHandlers, generateUUID } from '../src/evaluator/effectTypes'
+import { qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { Any } from '../src/interface'
 
@@ -3911,7 +3911,7 @@ describe('step 10 — predicate-based handler matching', () => {
 // Host handler wildcard patterns & middleware chaining
 // =========================================================================
 describe('host handler wildcard patterns', () => {
-  describe('effectNameMatchesPattern (via integration)', () => {
+  describe('qualifiedNameMatchesPattern (via integration)', () => {
     it('exact match works', async () => {
       const result = await dvala.runAsync('perform(@my.effect, 42)', {
         effectHandlers: [
@@ -4261,41 +4261,41 @@ describe('generateUUID', () => {
 })
 
 // =========================================================================
-// Unit tests for effectNameMatchesPattern and findMatchingHandlers
+// Unit tests for qualifiedNameMatchesPattern and findMatchingHandlers
 // =========================================================================
-describe('effectNameMatchesPattern', () => {
+describe('qualifiedNameMatchesPattern', () => {
   it('exact match', () => {
-    expect(effectNameMatchesPattern('dvala.error', 'dvala.error')).toBe(true)
-    expect(effectNameMatchesPattern('dvala.io.print', 'dvala.error')).toBe(false)
+    expect(qualifiedNameMatchesPattern('dvala.error', 'dvala.error')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala.io.print', 'dvala.error')).toBe(false)
   })
 
   it('wildcard suffix matches prefix itself', () => {
-    expect(effectNameMatchesPattern('dvala', 'dvala.*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala', 'dvala.*')).toBe(true)
   })
 
   it('wildcard suffix matches children', () => {
-    expect(effectNameMatchesPattern('dvala.error', 'dvala.*')).toBe(true)
-    expect(effectNameMatchesPattern('dvala.io.print', 'dvala.*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala.error', 'dvala.*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala.io.print', 'dvala.*')).toBe(true)
   })
 
   it('wildcard suffix matches deeply nested', () => {
-    expect(effectNameMatchesPattern('dvala.log.verbose', 'dvala.*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala.log.verbose', 'dvala.*')).toBe(true)
   })
 
   it('wildcard suffix enforces dot boundary', () => {
-    expect(effectNameMatchesPattern('dvalaXXX', 'dvala.*')).toBe(false)
-    expect(effectNameMatchesPattern('dvala-extra', 'dvala.*')).toBe(false)
+    expect(qualifiedNameMatchesPattern('dvalaXXX', 'dvala.*')).toBe(false)
+    expect(qualifiedNameMatchesPattern('dvala-extra', 'dvala.*')).toBe(false)
   })
 
   it('catch-all * matches everything', () => {
-    expect(effectNameMatchesPattern('anything', '*')).toBe(true)
-    expect(effectNameMatchesPattern('a.b.c.d', '*')).toBe(true)
-    expect(effectNameMatchesPattern('', '*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('anything', '*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('a.b.c.d', '*')).toBe(true)
+    expect(qualifiedNameMatchesPattern('', '*')).toBe(true)
   })
 
   it('no wildcard requires exact match', () => {
-    expect(effectNameMatchesPattern('dvala.error', 'dvala')).toBe(false)
-    expect(effectNameMatchesPattern('dvala', 'dvala')).toBe(true)
+    expect(qualifiedNameMatchesPattern('dvala.error', 'dvala')).toBe(false)
+    expect(qualifiedNameMatchesPattern('dvala', 'dvala')).toBe(true)
   })
 })
 
