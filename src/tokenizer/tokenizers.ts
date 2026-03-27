@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, CodeTemplateToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -403,134 +403,26 @@ export const tokenizeShebang: Tokenizer<SingleLineCommentToken> = (input, positi
 }
 
 /**
- * Tokenize a code template delimited by N backticks (N >= 3).
- * Content may include ${expr} interpolations (same rules as template strings).
- * The closing delimiter must be exactly N backticks.
- * Token value includes the opening and closing backtick delimiters.
+ * Tokenize a quote splice marker: $^+{
+ * Matches $ followed by one or more ^ followed by {.
+ * The value includes the full marker (e.g. "$^{", "$^^{").
+ * The opening { is consumed — the parser finds the matching } via RBrace tokens.
  */
-export const tokenizeCodeTemplate: Tokenizer<CodeTemplateToken> = (input, position) => {
-  // Count consecutive backticks at position
-  let backtickCount = 0
-  while (input[position + backtickCount] === '`') {
-    backtickCount++
-  }
-  if (backtickCount < 3)
+export const tokenizeQuoteSplice: Tokenizer<QuoteSpliceToken> = (input, position) => {
+  if (input[position] !== '$')
     return NO_MATCH
 
-  const delimiter = '`'.repeat(backtickCount)
-  let value = delimiter
-  let length = backtickCount
-
-  while (position + length < input.length) {
-    // Check for closing delimiter
-    let closingCount = 0
-    while (input[position + length + closingCount] === '`') {
-      closingCount++
-    }
-    if (closingCount === backtickCount) {
-      value += delimiter
-      length += backtickCount
-      return [length, ['CodeTemplate', value]]
-    }
-
-    const char = input[position + length]!
-
-    if (char === '$' && input[position + length + 1] === '{') {
-      // Deferred splice: $${ or $$${ — keep the extra $ signs in the token value
-      // so that splitSegments can distinguish deferred from normal splices.
-      // Check if the accumulated value ends with $ (meaning this is $${ or $$${ etc.)
-      if (value.length > 0 && value[value.length - 1] === '$') {
-        // Emit the full $${...} as literal text (no splice parsing)
-        value += '${'
-        length += 2
-        let braceDepth = 1
-        while (position + length < input.length && braceDepth > 0) {
-          const bc = input[position + length]!
-          if (bc === '{') braceDepth++
-          else if (bc === '}') braceDepth--
-          value += bc
-          length++
-        }
-        continue
-      }
-
-      // Interpolation — scan to matching close brace
-      value += '${'
-      length += 2
-      let braceDepth = 1
-
-      while (position + length < input.length && braceDepth > 0) {
-        const c = input[position + length]!
-
-        if (c === '{') {
-          braceDepth++
-          value += c
-          length++
-        } else if (c === '}') {
-          braceDepth--
-          value += c
-          length++
-        } else if (c === '"') {
-          // String literal inside interpolation
-          value += c
-          length++
-          let escaping = false
-          while (position + length < input.length) {
-            const sc = input[position + length]!
-            value += sc
-            length++
-            if (escaping) {
-              escaping = false
-            } else if (sc === '\\') {
-              escaping = true
-            } else if (sc === '"') {
-              break
-            }
-          }
-        } else if (c === '\'') {
-          // Quoted symbol inside interpolation
-          value += c
-          length++
-          let escaping = false
-          while (position + length < input.length) {
-            const sc = input[position + length]!
-            value += sc
-            length++
-            if (escaping) {
-              escaping = false
-            } else if (sc === '\\') {
-              escaping = true
-            } else if (sc === '\'') {
-              break
-            }
-          }
-        } else if (c === '`') {
-          // Nested template string inside interpolation — delegate recursively
-          const [nestedLength, nestedToken] = tokenizeTemplateString(input, position + length)
-          if (nestedLength === 0 || !nestedToken) {
-            return [length, ['Error', value, undefined, `Unclosed nested template string in code template at position ${position + length}`]]
-          }
-          if (nestedToken[0] === 'Error') {
-            return [length + nestedLength, ['Error', value + nestedToken[1], undefined, nestedToken[3]]]
-          }
-          value += nestedToken[1]
-          length += nestedLength
-        } else {
-          value += c
-          length++
-        }
-      }
-
-      if (braceDepth > 0) {
-        return [length, ['Error', value, undefined, `Unclosed interpolation in code template at position ${position}`]]
-      }
-    } else {
-      value += char
-      length++
-    }
+  let caretCount = 0
+  while (input[position + 1 + caretCount] === '^') {
+    caretCount++
   }
+  if (caretCount === 0 || input[position + 1 + caretCount] !== '{')
+    return NO_MATCH
 
-  return [length, ['Error', value, undefined, `Unclosed code template at position ${position}`]]
+  // Consumed: $ + N carets + {
+  const length = 1 + caretCount + 1
+  const value = input.slice(position, position + length)
+  return [length, ['QuoteSplice', value]]
 }
 
 export const tokenizeTemplateString: Tokenizer<TemplateStringToken> = (input, position) => {
@@ -655,7 +547,7 @@ export const tokenizers = [
   tokenizeLBrace,
   tokenizeRBrace,
   tokenizeString,
-  tokenizeCodeTemplate,
+  tokenizeQuoteSplice,
   tokenizeTemplateString,
   tokenizeRegexpShorthand,
   tokenizeBasePrefixedNumber,

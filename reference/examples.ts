@@ -937,7 +937,7 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
   {
     id: 'macros-intro',
     name: 'Macros — Introduction',
-    description: 'Macros receive AST (unevaluated code) and return new AST. Code templates (triple backticks) make AST construction ergonomic.',
+    description: 'Macros receive AST (unevaluated code) and return new AST. Quote...end blocks make AST construction ergonomic.',
     code: `
 // A macro receives its arguments as AST — not evaluated values.
 // It returns new AST which is then evaluated in the caller's scope.
@@ -946,21 +946,21 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
 let id = macro (ast) -> ast;
 perform(@dvala.io.print, id(1 + 2));  // 3
 
-// Double macro — duplicates an expression using a code template
-// Triple backticks create AST at parse time, \${...} splices values in
-let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+// Double macro — duplicates an expression using a quote...end block
+// quote...end creates AST at parse time, $^{...} splices values in
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 perform(@dvala.io.print, double(21));       // 42
 perform(@dvala.io.print, double(inc(5)));   // 12
 
 // unless — a custom control flow macro
 let unless = macro (cond, body) ->
-  \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+  quote if not($^{cond}) then $^{body} else null end end;
 
 perform(@dvala.io.print, unless(false, "runs!"));   // "runs!"
 perform(@dvala.io.print, unless(true, "skipped"));  // null
 
 // Macros work with |> pipe
-let negate = macro (ast) -> \`\`\`0 - \${ast}\`\`\`;
+let negate = macro (ast) -> quote 0 - $^{ast} end;
 perform(@dvala.io.print, 21 |> double |> negate);   // -42
     `.trim(),
   },
@@ -973,21 +973,21 @@ let { prettyPrint } = import(ast);
 
 // --- Named macros with qualified names ---
 // macro@name attaches a qualified name for host-level dispatch
-let double = macro@mylib.double (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 
 perform(@dvala.io.print, "Type: " ++ typeOf(double));
 perform(@dvala.io.print, "Name: " ++ qualifiedName(double));
 perform(@dvala.io.print, "Is macro: " ++ str(isMacro(double)));
 
 // --- macroexpand — inspect without evaluating ---
-let expanded = macroexpand(double, \`\`\`x + 1\`\`\`);
+let expanded = macroexpand(double, quote x + 1 end);
 perform(@dvala.io.print, "Expanded AST: " ++ prettyPrint(expanded));
 
 // --- Hygiene — macro bindings don't collide with caller ---
-let withTemp = macro (ast) -> \`\`\`do
-  let result = \${ast};
+let withTemp = macro (ast) -> quote do
+  let result = $^{ast};
   result * 2
-end\`\`\`;
+end end;
 
 let result = 999;                    // caller's "result"
 let doubled = withTemp(result + 1);  // macro's "result" is gensymed
@@ -1180,10 +1180,10 @@ let error = -> perform(@dvala.error, { message: $ });
 
 // ─── 1. unless ──────────────────────────────────────────────
 // The inverse of \`if\`: runs the body when the condition is *false*.
-// A classic first macro — one line of code template does it all.
+// A classic first macro — one line of quote...end block does it all.
 
 let unless = macro (cond, body) ->
-  \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+  quote if not($^{cond}) then $^{body} else null end end;
 
 print("── unless ──");
 print(unless(false, "condition was false → ran!"));
@@ -1197,11 +1197,11 @@ print(unless(true, "condition was true → skipped"));
 
 let dbg = macro (ast) -> do
   let label = prettyPrint(ast);
-  \`\`\`do
-    let val = \${ast};
-    perform(@dvala.io.print, \${["Str", label ++ " => ", 0]} ++ str(val));
+  quote do
+    let val = $^{ast};
+    perform(@dvala.io.print, $^{["Str", label ++ " => ", 0]} ++ str(val));
     val
-  end\`\`\`
+  end end
 end;
 
 print("── dbg ──");
@@ -1219,31 +1219,31 @@ dbg(map([1, 2, 3], -> $ ^ 2));
 
 let assert = macro (cond) -> do
   let src = prettyPrint(cond);
-  \`\`\`do
-    let v = \${cond};
+  quote do
+    let v = $^{cond};
     if not(v) then
-      error("Assertion failed: " ++ \${["Str", src, 0]})
+      error("Assertion failed: " ++ $^{["Str", src, 0]})
     else
       true
     end
-  end\`\`\`
+  end end
 end;
 
 let assertEq = macro (actual, expected) -> do
   let actualSrc = prettyPrint(actual);
-  \`\`\`do
-    let a = \${actual};
-    let e = \${expected};
+  quote do
+    let a = $^{actual};
+    let e = $^{expected};
     if a != e then
       error(
-        "Assertion failed: " ++ \${["Str", actualSrc, 0]}
+        "Assertion failed: " ++ $^{["Str", actualSrc, 0]}
         ++ " — expected " ++ str(e)
         ++ ", got " ++ str(a)
       )
     else
       true
     end
-  end\`\`\`
+  end end
 end;
 
 print("── assert / assertEq ──");
@@ -1281,7 +1281,7 @@ print(thread(
 // and returns a fallback value. Uses Dvala's effect pipe (||>).
 
 let tryOr = macro (expr, defaultVal) ->
-  \`\`\`(\${expr}) ||> fallback(\${defaultVal})\`\`\`;
+  quote ($^{expr}) ||> fallback($^{defaultVal}) end;
 
 print("── tryOr ──");
 print(tryOr(10 / 2, -1));
@@ -1296,13 +1296,13 @@ print(tryOr(error("boom"), "recovered"));
 
 print("── macroexpand ──");
 print("unless(x > 0, 42) expands to:");
-print("  " ++ (macroexpand(unless, \`\`\`x > 0\`\`\`, \`\`\`42\`\`\`) |> prettyPrint));
+print("  " ++ (macroexpand(unless, quote x > 0 end, quote 42 end) |> prettyPrint));
 
 print("dbg(x + 1) expands to:");
-print("  " ++ (macroexpand(dbg, \`\`\`x + 1\`\`\`) |> prettyPrint));
+print("  " ++ (macroexpand(dbg, quote x + 1 end) |> prettyPrint));
 
 print("thread(v, f, g) expands to:");
-print("  " ++ (macroexpand(thread, \`\`\`v\`\`\`, \`\`\`f\`\`\`, \`\`\`g\`\`\`) |> prettyPrint));
+print("  " ++ (macroexpand(thread, quote v end, quote f end, quote g end) |> prettyPrint));
 
 
 // ─── 7. Putting it all together ─────────────────────────────

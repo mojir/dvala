@@ -130,7 +130,7 @@ describe('ast module', () => {
     })
 
     it('should print code template AST', () => {
-      expect(run('let { prettyPrint } = import(ast); prettyPrint(```1 + 2```)')).toBe('1 + 2')
+      expect(run('let { prettyPrint } = import(ast); prettyPrint(quote 1 + 2 end)')).toBe('1 + 2')
     })
 
     it('should print effect references', () => {

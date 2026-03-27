@@ -93,61 +93,59 @@ The first returns `"Num"` because `42` is a number literal. The second returns `
 
 ---
 
-## Code Templates
+## Quote Blocks
 
-Manually constructing AST arrays is tedious. **Code templates** (triple backticks) let you write Dvala code that produces AST data at parse time:
+Manually constructing AST arrays is tedious. **Quote blocks** (`quote...end`) let you write Dvala code that produces AST data at parse time:
 
 ```dvala
 // This is AST data, not evaluated code
-```42```
+quote 42 end
 ```
 
 ```dvala
-```"hello"```
+quote "hello" end
 ```
 
 ```dvala
-```x + 1```
+quote x + 1 end
 ```
 
-### Splicing with `${expr}`
+### Splicing with `$^{expr}`
 
-Inside a code template, `${expr}` evaluates `expr` at runtime and inserts the result into the AST:
+Inside a quote block, `$^{expr}` evaluates `expr` at runtime and inserts the result into the AST:
 
 ```dvala
 let node = ["Num", 99, 0];
-```${node}```
+quote $^{node} end
 ```
 
 This is the key to building macros — you receive AST, splice it into a template, and return the new AST:
 
 ```dvala
 // double: duplicates an expression
-let double = macro (ast) -> ```${ast} + ${ast}```;
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 double(21)
 ```
 
 ```dvala
-let double = macro (ast) -> ```${ast} + ${ast}```;
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 double(inc(5))
 ```
 
-The macro receives the AST of `21` (or `inc(5)`), splices it into `${ast} + ${ast}`, and returns the expanded AST. The evaluator then evaluates the result.
+The macro receives the AST of `21` (or `inc(5)`), splices it into `$^{ast} + $^{ast}`, and returns the expanded AST. The evaluator then evaluates the result.
 
 ### Multi-Statement Templates
 
-Templates can contain multiple statements. The result is an array of AST nodes:
+Quote blocks can contain multiple statements. The result is an array of AST nodes:
 
 ```dvala
-let twoStatements = ```let x = 1; x + 1```;
+let twoStatements = quote let x = 1; x + 1 end;
 typeOf(twoStatements)
 ```
 
-### N-Backtick Nesting
+### Nested Quote Blocks
 
-If your code template needs to contain triple backticks, use 4+ backticks for the outer delimiter. The closing delimiter must match the opening count exactly.
-
-> **Note:** Nested code templates with `${...}` splices in the inner template are not yet supported — the outer template parser consumes all splice markers. This is a known limitation for macro-generating macros.
+Quote blocks can be nested naturally — inner `quote...end` blocks are just part of the quoted code. Use `$^^{expr}` (deferred splice) for splices that should be resolved in the inner expansion rather than the outer one.
 
 ---
 
@@ -160,14 +158,14 @@ Macros can create new control flow constructs that functions cannot:
 ```dvala
 // unless: execute body only if condition is false
 let unless = macro (cond, body) ->
-  ```if not(${cond}) then ${body} else null end```;
+  quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, 42)
 ```
 
 ```dvala
 let unless = macro (cond, body) ->
-  ```if not(${cond}) then ${body} else null end```;
+  quote if not($^{cond}) then $^{body} else null end end;
 
 unless(true, 42)
 ```
@@ -179,7 +177,7 @@ A regular function `unless(cond, body)` would evaluate `body` before calling the
 ```dvala
 // Wrap an expression in a try-catch style handler
 let safely = macro (ast) ->
-  ```(${ast}) ||> fallback(null)```;
+  quote ($^{ast}) ||> fallback(null) end;
 
 let { fallback } = import(effectHandler);
 safely(0 / 0)
@@ -203,15 +201,15 @@ The second argument (`1 / 0`) is never evaluated because the macro only returns 
 Because `a |> b` is desugared to `b(a)` at parse time, macros work naturally with pipes:
 
 ```dvala
-let double = macro (ast) -> ```${ast} + ${ast}```;
-let negate = macro (ast) -> ```0 - ${ast}```;
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+let negate = macro (ast) -> quote 0 - $^{ast} end;
 21 |> double |> negate
 ```
 
 Macros also work inside lambdas passed to pipes:
 
 ```dvala
-let double = macro (ast) -> ```${ast} + ${ast}```;
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 [1, 2, 3] |> map(_, -> double($))
 ```
 
@@ -221,14 +219,14 @@ let double = macro (ast) -> ```${ast} + ${ast}```;
 
 Macros generate code that runs in the caller's scope. Without care, a macro's internal variable names could collide with the caller's variables.
 
-Dvala solves this automatically: **literal bindings in code templates are auto-gensymed** — renamed to unique symbols that can't collide with anything.
+Dvala solves this automatically: **literal bindings in quote blocks are auto-gensymed** — renamed to unique symbols that can't collide with anything.
 
 ```dvala
 // The macro introduces "tmp" internally
-let withTemp = macro (ast) -> ```do
-  let tmp = ${ast};
+let withTemp = macro (ast) -> quote do
+  let tmp = $^{ast};
   tmp * 2
-end```;
+end end;
 
 // The caller also has "tmp"
 let tmp = 999;
@@ -241,20 +239,20 @@ The macro's `tmp` becomes something like `__gensym_tmp_42__` — invisible to th
 
 ### What Gets Gensymed
 
-- **Literal bindings** in code templates — `let x = ...`, function params `(x) -> ...`
-- Only names written directly in the template source
+- **Literal bindings** in quote blocks — `let x = ...`, function params `(x) -> ...`
+- Only names written directly in the quote block source
 
 ### What Doesn't Get Gensymed
 
-- **Spliced values** from `${expr}` — they keep their original identity
+- **Spliced values** from `$^{expr}` — they keep their original identity
 - Names from the caller's AST pass through unchanged
 
-This is the key rule: **template = private, splice = caller's**.
+This is the key rule: **quote block = private, splice = caller's**.
 
 ```dvala
-// The macro's param "n" is gensymed, but the spliced ${ast} retains
+// The macro's param "n" is gensymed, but the spliced $^{ast} retains
 // the caller's reference to "n"
-let makeAdder = macro (ast) -> ```(n) -> n + ${ast}```;
+let makeAdder = macro (ast) -> quote (n) -> n + $^{ast} end;
 let n = 100;
 let f = makeAdder(n);
 f(1)
@@ -269,7 +267,7 @@ Without hygiene this would return 2 (param `n` shadows caller's `n`). With hygie
 Macros can have a **qualified name** — a dotted DNS-style identifier for host-level dispatch:
 
 ```dvala
-let m = macro@mylib.double (ast) -> ```${ast} + ${ast}```;
+let m = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 qualifiedName(m)
 ```
 
@@ -285,7 +283,7 @@ The `@` must be attached to `macro` with no space — `macro@name`, not `macro @
 Qualified names connect macros to the effect system. When a **named** macro is called, the evaluator emits `@dvala.macro.expand` — an effect that host handlers can intercept:
 
 ```dvala
-let double = macro@mylib.double (ast) -> ```${ast} + ${ast}```;
+let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 
 // Named macro emits the effect — handler can intercept
 handle
@@ -304,7 +302,7 @@ with [(arg, eff, nxt) ->
 **Anonymous** macros (without `macro@name`) skip the effect entirely — they're direct calls with no host visibility:
 
 ```dvala
-let double = macro (ast) -> ```${ast} + ${ast}```;
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 // Anonymous — handler is NOT called
 handle
@@ -335,11 +333,11 @@ The `qualifiedName` function works on both macros and effects — they share the
 `macroexpand` calls a macro's body with AST arguments and returns the expanded AST **without evaluating it**:
 
 ```dvala
-let double = macro (ast) -> ```${ast} + ${ast}```;
-macroexpand(double, ```21```)
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+macroexpand(double, quote 21 end)
 ```
 
-Pass the macro function and AST arguments (constructed with code templates). The result is the expanded AST as data.
+Pass the macro function and AST arguments (constructed with quote blocks). The result is the expanded AST as data.
 
 ### Pretty Printing
 
@@ -347,15 +345,15 @@ Combine `macroexpand` with `prettyPrint` from the `ast` module for readable outp
 
 ```dvala
 let { prettyPrint } = import(ast);
-let double = macro (ast) -> ```${ast} + ${ast}```;
-macroexpand(double, ```21```) |> prettyPrint
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+macroexpand(double, quote 21 end) |> prettyPrint
 ```
 
 ```dvala
 let { prettyPrint } = import(ast);
 let unless = macro (cond, body) ->
-  ```if not(${cond}) then ${body} else null end```;
-macroexpand(unless, ```x > 10```, ```42```) |> prettyPrint
+  quote if not($^{cond}) then $^{body} else null end end;
+macroexpand(unless, quote x > 10 end, quote 42 end) |> prettyPrint
 ```
 
 ---
@@ -420,13 +418,13 @@ This is powerful for macros that need to inspect and transform specific AST shap
 
 ---
 
-## Implicit Spread in Templates
+## Implicit Spread in Quote Blocks
 
-When a splice `${expr}` evaluates to an **array of AST nodes** (not a single node), the nodes are spread into the parent:
+When a splice `$^{expr}` evaluates to an **array of AST nodes** (not a single node), the nodes are spread into the parent:
 
 ```dvala
 let args = [["Num", 1, 0], ["Num", 2, 0]];
-```+(${args})```
+quote +($^{args}) end
 ```
 
 Detection is unambiguous: a single AST node starts with a string (`["Num", ...]`), an array of nodes starts with an array (`[["Num", ...], ...]`).
@@ -474,13 +472,13 @@ end;
 check(42)
 ```
 
-### Template Bindings Are Always Gensymed
+### Quote Block Bindings Are Always Gensymed
 
-Even simple code templates gensym their bindings. If you want a binding to keep its original name (e.g., for the caller to reference), it must come from a splice:
+Even simple quote blocks gensym their bindings. If you want a binding to keep its original name (e.g., for the caller to reference), it must come from a splice:
 
 ```dvala no-run
 // This gensyms "x" — caller can't reference it
-let bad = macro (ast) -> ```let x = ${ast}```;
+let bad = macro (ast) -> quote let x = $^{ast} end;
 
 // This keeps the caller's name — use the ast module to construct
 // the binding target programmatically if needed
@@ -494,11 +492,12 @@ let bad = macro (ast) -> ```let x = ${ast}```;
 |---------|-------------|
 | `macro (params) -> body` | Define an anonymous macro |
 | `macro@name (params) -> body` | Define a named macro with qualified name |
-| `` ```code``` `` | Code template — produces AST data |
-| `` ```${expr}``` `` | Splice — insert evaluated AST into template |
+| `quote code end` | Quote block — produces AST data |
+| `$^{expr}` | Splice — insert evaluated AST into quote block |
+| `$^^{expr}` | Deferred splice — resolved in inner expansion |
 | `macroexpand(m, ...args)` | Expand without evaluating |
 | `prettyPrint(ast)` | AST to readable source |
 | `qualifiedName(m)` | Get the qualified name (or null) |
-| Hygiene | Template bindings auto-gensymed |
+| Hygiene | Quote block bindings auto-gensymed |
 | `@dvala.macro.expand` | Effect emitted by named macros |
 | `a \|> myMacro` | Pipe into macro (desugared at parse time) |

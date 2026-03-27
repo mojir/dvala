@@ -1,8 +1,8 @@
 import type { Token } from '../../src/tokenizer/token'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { standardEffectNames } from '../../src/evaluator/standardEffects'
-import { playgroundEffectReference } from './playgroundEffects'
 import { splitSegments } from '../../src/parser/subParsers/parseTemplateString'
+import { playgroundEffectReference } from './playgroundEffects'
 import { tokenizeSource } from '../../src/tooling'
 
 const normalExpressionSet = new Set(normalExpressionKeys)
@@ -106,85 +106,15 @@ function renderTemplateStringToken(rawValue: string): string {
   return result + backtick
 }
 
-/**
- * Render a literal segment inside a code template.
- * Backtick runs (3+) are highlighted as punctuation (inner code template delimiters).
- * Everything else is tokenized as Dvala code.
- */
-function renderCodeTemplateLiteral(value: string): string {
-  let result = ''
-  let i = 0
-  while (i < value.length) {
-    // Check for backtick run (inner code template delimiter)
-    if (value[i] === '`') {
-      let count = 0
-      while (i + count < value.length && value[i + count] === '`') count++
-      if (count >= 3) {
-        result += `<span style="color:${colors.punctuation}">${'`'.repeat(count)}</span>`
-        i += count
-        continue
-      }
-    }
-    // Collect non-backtick chars and tokenize as a chunk
-    let chunk = ''
-    while (i < value.length && !(value[i] === '`' && value[i + 1] === '`' && value[i + 2] === '`')) {
-      chunk += value[i]
-      i++
-    }
-    if (chunk) {
-      result += tokenizeToHtml(chunk)
-    }
-  }
-  return result
-}
-
-function renderCodeTemplateToken(rawValue: string): string {
-  // Count opening backticks to find delimiter length
-  let backtickCount = 0
-  while (rawValue[backtickCount] === '`') {
-    backtickCount++
-  }
-  const delimiter = '`'.repeat(backtickCount)
-  const content = rawValue.slice(backtickCount, -backtickCount)
-  const segments = splitSegments(content)
-
-  // Render opening delimiter
-  const delimSpan = `<span style="color:${colors.punctuation}">${delimiter}</span>`
-  let result = delimSpan
-
-  for (const seg of segments) {
-    if (seg.type === 'literal') {
-      // Render literal content, highlighting inner code template delimiters as punctuation
-      result += renderCodeTemplateLiteral(seg.value)
-    } else if (seg.type === 'deferred') {
-      // Deferred splice: $${expr} or $$${expr} — render all $ signs
-      const dollars = '$'.repeat(seg.dollarCount)
-      result += `<span style="color:${colors.punctuation}">${dollars}{</span>`
-      result += tokenizeToHtml(seg.value)
-      result += `<span style="color:${colors.punctuation}">}</span>`
-    } else {
-      // Splice interpolation: ${expr}
-      result += `<span style="color:${colors.punctuation}">\${</span>`
-      result += tokenizeToHtml(seg.value)
-      result += `<span style="color:${colors.punctuation}">}</span>`
-    }
-  }
-
-  // Render closing delimiter
-  result += delimSpan
-
-  // Wrap entire template in underline to visually distinguish from runtime code
-  return `<span style="font-style:italic">${result}</span>`
-}
-
 export function tokenizeToHtml(code: string): string {
   try {
     const tokens = tokenizeSource(code).tokens
     return tokens.map(token => {
       if (token[0] === 'TemplateString')
         return renderTemplateStringToken(token[1])
-      if (token[0] === 'CodeTemplate')
-        return renderCodeTemplateToken(token[1])
+      // QuoteSplice tokens ($^{, $^^{, etc.) are rendered as punctuation
+      if (token[0] === 'QuoteSplice')
+        return `<span style="color:${colors.punctuation}">${escapeHtml(token[1])}</span>`
       const prefix = token[0] === 'EffectName' ? '@' : token[0] === 'MacroQualified' ? 'macro@' : ''
       const escaped = escapeHtml(token[1])
       const color = getTokenColor(token)

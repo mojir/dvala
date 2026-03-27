@@ -1,36 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
-import { tokenize } from '../src/tokenizer/tokenize'
 
 const dvala = createDvala({ modules: [astModule] })
 const run = (code: string) => dvala.run(code)
 
-describe('code templates', () => {
-  describe('basic code template syntax', () => {
-    it('should parse a simple code template', () => {
-      // A code template returns AST data, not an evaluated value
-      const result = run('```42```')
+describe('quote...end code templates', () => {
+  describe('basic syntax', () => {
+    it('should parse a simple quote', () => {
+      // A quote returns AST data, not an evaluated value
+      const result = run('quote 42 end')
       // Should be an AST node: ["Num", 42, 0]
       expect(result).toEqual(['Num', 42, 0])
     })
 
     it('should parse a string literal template', () => {
-      const result = run('```"hello"```')
+      const result = run('quote "hello" end')
       expect(result).toEqual(['Str', 'hello', 0])
     })
 
     it('should parse a symbol reference template', () => {
-      const result = run('```x```')
+      const result = run('quote x end')
       expect(result).toEqual(['Sym', 'x', 0])
     })
 
     it('should parse a boolean template', () => {
-      expect(run('```true```')).toEqual(['Reserved', 'true', 0])
+      expect(run('quote true end')).toEqual(['Reserved', 'true', 0])
     })
 
     it('should parse a binary expression template', () => {
-      const result = run('```1 + 2```')
+      const result = run('quote 1 + 2 end')
       // Should be a Call node: ["Call", [["Builtin", "+", ...], [["Num", 1, ...], ["Num", 2, ...]]], ...]
       expect(Array.isArray(result)).toBe(true)
       const arr = result as unknown[]
@@ -38,10 +37,10 @@ describe('code templates', () => {
     })
   })
 
-  describe('splice interpolation', () => {
+  describe('splice interpolation ($^{})', () => {
     it('should splice a simple expression', () => {
-      // ${expr} evaluates expr and inserts the result into the AST
-      const result = run('let node = ["Num", 99, 0]; ```${node}```')
+      // $^{expr} evaluates expr and inserts the result into the AST
+      const result = run('let node = ["Num", 99, 0]; quote $^{node} end')
       // The splice inserts the value of `node` directly
       expect(result).toEqual(['Num', 99, 0])
     })
@@ -50,7 +49,7 @@ describe('code templates', () => {
       const result = run(`
         let a = ["Num", 1, 0];
         let b = ["Num", 2, 0];
-        \`\`\`\${a} + \${b}\`\`\`
+        quote $^{a} + $^{b} end
       `)
       // Should produce: ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 2, 0]]], 0]
       const arr = result as unknown[]
@@ -62,7 +61,7 @@ describe('code templates', () => {
     })
 
     it('should evaluate splice expressions in the current scope', () => {
-      const result = run('let x = 42; ```${["Num", x, 0]}```')
+      const result = run('let x = 42; quote $^{["Num", x, 0]} end')
       expect(result).toEqual(['Num', 42, 0])
     })
   })
@@ -70,7 +69,7 @@ describe('code templates', () => {
   describe('multi-statement templates', () => {
     it('should handle templates with multiple statements', () => {
       // Multiple statements in a template produce an array of AST nodes
-      const result = run('```let x = 1; x + 1```')
+      const result = run('quote let x = 1; x + 1 end')
       expect(Array.isArray(result)).toBe(true)
       const arr = result as unknown[]
       // Should be an array of two AST nodes
@@ -79,18 +78,18 @@ describe('code templates', () => {
   })
 
   describe('macro integration', () => {
-    it('should use code template in a macro to construct AST', () => {
+    it('should use quote in a macro to construct AST', () => {
       // A macro that doubles its argument: x + x
       const result = run(`
-        let double = macro (ast) -> \`\`\`\${ast} + \${ast}\`\`\`;
+        let double = macro (ast) -> quote $^{ast} + $^{ast} end;
         double(21)
       `)
       expect(result).toBe(42)
     })
 
-    it('should use code template to construct if expression', () => {
+    it('should use quote to construct if expression', () => {
       const result = run(`
-        let unless = macro (cond, body) -> \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+        let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
         unless(false, 42)
       `)
       expect(result).toBe(42)
@@ -98,7 +97,7 @@ describe('code templates', () => {
 
     it('should return null for unless with true condition', () => {
       const result = run(`
-        let unless = macro (cond, body) -> \`\`\`if not(\${cond}) then \${body} else null end\`\`\`;
+        let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
         unless(true, 42)
       `)
       expect(result).toBeNull()
@@ -107,10 +106,10 @@ describe('code templates', () => {
 
   describe('implicit spread', () => {
     it('should spread an array of AST nodes into function arguments', () => {
-      // When ${expr} evaluates to an array of AST nodes, they spread into the parent
+      // When $^{expr} evaluates to an array of AST nodes, they spread into the parent
       const result = run(`
         let args = [["Num", 1, 0], ["Num", 2, 0]];
-        \`\`\`+(\${args})\`\`\`
+        quote +($^{args}) end
       `)
       // Should produce: ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 2, 0]]], 0]
       const arr = result as unknown[]
@@ -124,7 +123,7 @@ describe('code templates', () => {
       // A single AST node (starts with string) is inserted as-is, not spread
       const result = run(`
         let node = ["Num", 42, 0];
-        \`\`\`\${node}\`\`\`
+        quote $^{node} end
       `)
       expect(result).toEqual(['Num', 42, 0])
     })
@@ -133,7 +132,7 @@ describe('code templates', () => {
       // A macro that wraps statements in a do...end block
       const result = run(`
         let stmts = [["Num", 1, 0], ["Num", 42, 0]];
-        let block = \`\`\`do \${stmts} end\`\`\`;
+        let block = quote do $^{stmts} end end;
         block
       `)
       // block should be a Block node containing the spread statements
@@ -148,11 +147,8 @@ describe('code templates', () => {
 
   describe('hygiene', () => {
     it('should not capture caller variables with same name as macro internals', () => {
-      // The macro introduces a param `n` that would shadow the caller's `n`
-      // Without hygiene: (n) -> n + <caller's n> — param `n` shadows splice
-      // With hygiene: (__gensym_n_X__) -> __gensym_n_X__ + <caller's n> — no collision
       const result = run(`
-        let makeAdder = macro (ast) -> \`\`\`(n) -> n + \${ast}\`\`\`;
+        let makeAdder = macro (ast) -> quote (n) -> n + $^{ast} end;
         let n = 100;
         let f = makeAdder(n);
         f(1)
@@ -162,9 +158,8 @@ describe('code templates', () => {
     })
 
     it('should gensym let bindings in templates', () => {
-      // The macro's `tmp` should not collide with the caller's `tmp`
       const result = run(`
-        let wrap = macro (ast) -> \`\`\`do let tmp = \${ast}; tmp * 2 end\`\`\`;
+        let wrap = macro (ast) -> quote do let tmp = $^{ast}; tmp * 2 end end;
         let tmp = 5;
         wrap(tmp + 1)
       `)
@@ -173,9 +168,8 @@ describe('code templates', () => {
     })
 
     it('should preserve spliced symbol identity', () => {
-      // Spliced AST should keep the caller's names, not be renamed
       const result = run(`
-        let id = macro (ast) -> \`\`\`\${ast}\`\`\`;
+        let id = macro (ast) -> quote $^{ast} end;
         let x = 42;
         id(x)
       `)
@@ -184,7 +178,7 @@ describe('code templates', () => {
 
     it('should handle multiple bindings independently', () => {
       const result = run(`
-        let compute = macro (ast) -> \`\`\`do let a = \${ast}; let b = a + 1; a + b end\`\`\`;
+        let compute = macro (ast) -> quote do let a = $^{ast}; let b = a + 1; a + b end end;
         let a = 100;
         let b = 200;
         compute(a + b)
@@ -194,30 +188,13 @@ describe('code templates', () => {
     })
   })
 
-  describe('N-backtick nesting', () => {
-    it('should support 4-backtick delimiters', () => {
-      const result = run('````42````')
-      expect(result).toEqual(['Num', 42, 0])
-    })
-
-    it('should support 5-backtick delimiters', () => {
-      const result = run('`````42`````')
-      expect(result).toEqual(['Num', 42, 0])
-    })
-  })
-
-  describe('deferred splices', () => {
-    it('should tokenize $${} as literal text in code template', () => {
-      const stream = tokenize('````$${x}````', false, undefined)
-      const codeTemplateToken = stream.tokens.find((t: unknown[]) => t[0] === 'CodeTemplate')
-      // The $${x} should be kept intact in the token value (both $ signs preserved)
-      expect(codeTemplateToken![1]).toContain('$${x}')
-    })
-
-    it('should pass $${} through as ${} in macro-generating macro', () => {
+  describe('nested quotes (deferred splices)', () => {
+    it('should support macro generating macro with $^^{}', () => {
       const result = run(`
         let makeApplier = macro (fn) ->
-          \`\`\`\`macro (ast) -> \`\`\`\${fn}($\${ast})\`\`\`\`\`\`\`;
+          quote
+            macro (ast) -> quote $^^{fn}($^{ast}) end
+          end;
         let doubleIt = makeApplier((x) -> x * 2);
         doubleIt(21)
       `)
@@ -227,11 +204,17 @@ describe('code templates', () => {
     it('should support macro generating macro with different operations', () => {
       const result = run(`
         let makeBinOp = macro (op) ->
-          \`\`\`\`macro (ast) -> \`\`\`$\${ast} \${op} $\${ast}\`\`\`\`\`\`\`;
+          quote
+            macro (ast) -> quote $^{ast} $^^{op} $^{ast} end
+          end;
         let square = makeBinOp(*);
         square(7)
       `)
       expect(result).toBe(49)
+    })
+
+    it('should error on splice level exceeding quote depth', () => {
+      expect(() => run('quote $^^{x} end')).toThrow(/Splice level 2 but only 1 quote level/)
     })
   })
 })

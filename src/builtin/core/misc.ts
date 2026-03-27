@@ -379,10 +379,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['macroFn', 'args'] }],
       hideOperatorForm: true,
-      description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use code templates to construct the AST arguments.',
+      description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
       examples: [
-        'let double = macro (ast) -> ```${ast} + ${ast}```; macroexpand(double, ```21```)',
-        'let { prettyPrint } = import(ast); let double = macro (ast) -> ```${ast} + ${ast}```; macroexpand(double, ```21```) |> prettyPrint',
+        'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
+        'let { prettyPrint } = import(ast); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
       ],
     },
   },
