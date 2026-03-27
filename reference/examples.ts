@@ -1001,6 +1001,68 @@ perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp
     `.trim(),
   },
   {
+    id: 'macro-inception',
+    name: 'Macro Inception',
+    description: 'Macros that generate other macros — the $^^{} splice escapes two quote levels. Inspired by Clojure nested quasiquote patterns.',
+    code: `
+// === Macro Inception — macros that write macros ===
+// Dvala's nested quote...end with $^^{} is analogous to
+// Clojure's nested \`(defmacro ... \`(~~ ...))\` pattern.
+
+// --- 1. Operator factory ---
+// Clojure: (defmacro def-binop [op]
+//            \`(defmacro ~(gensym) [a# b#] \`(~'~op ~~a# ~~b#)))
+//
+// A macro that creates binary-operator macros.
+// $^^{op} escapes two levels: captured by outer quote,
+// injected into inner quote's expansion.
+let makeBinOp = macro (op) ->
+  quote
+    macro (a, b) -> quote $^{a} $^^{op} $^{b} end
+  end;
+
+let myAdd = makeBinOp(+);
+let myMul = makeBinOp(*);
+perform(@dvala.io.print, "myAdd(3, 4) = " ++ str(myAdd(3, 4)));
+perform(@dvala.io.print, "myMul(3, 4) = " ++ str(myMul(3, 4)));
+
+// --- 2. Safe-wrapper factory ---
+// Clojure: (defmacro def-safe [fallback]
+//            \`(defmacro ~(gensym) [body#]
+//               \`(try ~~body# (catch Exception e# ~'~fallback))))
+//
+// A macro that creates error-catching macros,
+// each with a different fallback value baked in.
+let { fallback } = import(effectHandler);
+let makeSafe = macro (fallbackVal) ->
+  quote
+    macro (ast) -> quote ($^{ast}) ||> fallback($^^{fallbackVal}) end
+  end;
+
+let safeMath = makeSafe(0);
+let safeBool = makeSafe(false);
+perform(@dvala.io.print, "safeMath(0 / 0) = " ++ str(safeMath(0 / 0)));
+perform(@dvala.io.print, "safeMath(10 / 2) = " ++ str(safeMath(10 / 2)));
+perform(@dvala.io.print, "safeBool(1 > null) = " ++ str(safeBool(1 > null)));
+
+// --- 3. Function-to-macro lifter ---
+// Clojure: (defmacro def-applier [f]
+//            \`(defmacro ~(gensym) [x#] \`(~'~f ~~x#)))
+//
+// Wraps any function as a macro — the function is captured
+// at the outer level and called inside the inner expansion.
+let makeApplier = macro (fn) ->
+  quote
+    macro (ast) -> quote $^^{fn}($^{ast}) end
+  end;
+
+let doubleIt = makeApplier((x) -> x * 2);
+let stringify = makeApplier(str);
+perform(@dvala.io.print, "doubleIt(21) = " ++ str(doubleIt(21)));
+perform(@dvala.io.print, "stringify(1 + 2) = " ++ stringify(1 + 2))
+    `.trim(),
+  },
+  {
     id: 'ast-coverage',
     name: 'AST node coverage',
     description: 'Exercises all special expressions, operators, destructuring, effects, and node types. Useful for testing the AST tree viewer.',
