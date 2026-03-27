@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { astModule } from '../src/builtin/modules/ast'
+import { handlerModule } from '../src/builtin/modules/effectHandler'
 import { MAX_MACRO_EXPANSION_DEPTH } from '../src/constants/constants'
 
-const dvala = createDvala({ modules: [astModule] })
+const dvala = createDvala({ modules: [astModule, handlerModule] })
 const run = (code: string) => dvala.run(code)
 
 describe('macro system', () => {
@@ -254,6 +255,24 @@ myAssert(1 > 5)`)
         let b = macro (ast) -> a(ast);
         a(1)
       `)).toThrow(`Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded`)
+    })
+
+    it('should propagate original error message through handler', () => {
+      // When a macro expansion fails and an error handler catches it,
+      // the handler should receive the original error message — not a
+      // secondary "M-node cannot be evaluated" error.
+      expect(run(`
+        let inf = macro (ast) -> inf(ast);
+        handle inf(1) with @dvala.error(err) -> err.message end
+      `)).toContain('Maximum macro expansion depth')
+    })
+
+    it('should return handler value when macro expansion error is caught by fallback', () => {
+      expect(run(`
+        let { fallback } = import(effectHandler);
+        let inf = macro (ast) -> inf(ast);
+        inf(1) ||> fallback("default")
+      `)).toBe('default')
     })
 
     it('should allow legitimate nested macro expansion', () => {
