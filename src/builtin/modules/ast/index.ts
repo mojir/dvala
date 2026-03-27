@@ -1,6 +1,6 @@
 import { NodeTypes, isNodeType } from '../../../constants/constants'
 import { prettyPrint } from '../../../prettyPrint'
-import { DvalaError } from '../../../errors'
+import { TypeError } from '../../../errors'
 import type { Any, Arr } from '../../../interface'
 import { toFixedArity } from '../../../utils/arity'
 import { toAny } from '../../../utils'
@@ -18,13 +18,13 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 /** Assert that a value is an AST node (array with string type tag). */
 function assertAstNode(value: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts value is [string, unknown, number] {
   if (!Array.isArray(value) || value.length < 2 || typeof value[0] !== 'string') {
-    throw new DvalaError('Expected an AST node [type, payload, nodeId]', sourceCodeInfo)
+    throw new TypeError('Expected an AST node [type, payload, nodeId]', sourceCodeInfo)
   }
 }
 
 function assertArray(value: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts value is Arr {
   if (!Array.isArray(value)) {
-    throw new DvalaError('Expected an array', sourceCodeInfo)
+    throw new TypeError('Expected an array', sourceCodeInfo)
   }
 }
 
@@ -70,7 +70,7 @@ const astFunctions: BuiltinNormalExpressions = {
   },
   'bool': {
     evaluate: ([b], sourceCodeInfo): Any => {
-      if (typeof b !== 'boolean') throw new DvalaError('Expected a boolean', sourceCodeInfo)
+      if (typeof b !== 'boolean') throw new TypeError('Expected a boolean', sourceCodeInfo)
       return toAny([NodeTypes.Reserved, b ? 'true' : 'false', 0])
     },
     arity: toFixedArity(1),

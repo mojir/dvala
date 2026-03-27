@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { TokenizerError } from '../errors'
 
 const binaryOperators = [
   '^', // exponentiation
@@ -79,7 +79,7 @@ export function isBinaryOperator(operator: string): operator is SymbolicBinaryOp
 }
 export function assertBinaryOperator(operator: string): asserts operator is SymbolicBinaryOperator {
   if (!isBinaryOperator(operator)) {
-    throw new DvalaError(`Expected symbolic binary operator, got ${operator}`, undefined)
+    throw new TokenizerError(`Expected symbolic binary operator, got ${operator}`, undefined)
   }
 }
 export function asBinaryOperator(operator: string): SymbolicBinaryOperator {
@@ -93,7 +93,7 @@ export function isSymbolicOperator(operator: string): operator is SymbolicOperat
 }
 export function assertSymbolicOperator(operator: string): asserts operator is SymbolicOperator {
   if (!isSymbolicOperator(operator)) {
-    throw new DvalaError(`Expected symbolic operator, got ${operator}`, undefined)
+    throw new TokenizerError(`Expected symbolic operator, got ${operator}`, undefined)
   }
 }
 export function asSymbolicOperator(operator: string): SymbolicOperator {

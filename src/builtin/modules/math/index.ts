@@ -2,7 +2,7 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
 import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
-import { DvalaError } from '../../../errors'
+import { RuntimeError } from '../../../errors'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
@@ -24,7 +24,7 @@ function getNumberVectorOrMatrixOperation(
     return ['matrix', param]
   }
   if (!isNumber(param)) {
-    throw new DvalaError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
+    throw new RuntimeError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
   }
   return ['number', param]
 }

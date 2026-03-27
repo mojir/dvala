@@ -1,6 +1,6 @@
 import type { ObjectEntry, ObjectNode } from '../../builtin/specialExpressions/object'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { asLBraceToken, assertOperatorToken, assertRBraceToken, assertRBracketToken, isLBracketToken, isOperatorToken, isRBraceToken, isStringToken, isSymbolToken, isTemplateStringToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import { stringFromQuotedSymbol, withSourceCodeInfo } from '../helpers'
@@ -37,7 +37,7 @@ export function parseObject(ctx: ParserContext): ObjectNode {
         assertRBracketToken(ctx.tryPeek())
         ctx.advance()
       } else {
-        throw new DvalaError('Expected key to be a symbol or a string', ctx.peekSourceCodeInfo())
+        throw new ParseError('Expected key to be a symbol or a string', ctx.peekSourceCodeInfo())
       }
 
       assertOperatorToken(ctx.tryPeek(), ':')
@@ -48,7 +48,7 @@ export function parseObject(ctx: ParserContext): ObjectNode {
     }
     const nextToken = ctx.tryPeek()
     if (!isOperatorToken(nextToken, ',') && !isRBraceToken(nextToken)) {
-      throw new DvalaError('Expected comma or closing brace', ctx.peekSourceCodeInfo())
+      throw new ParseError('Expected comma or closing brace', ctx.peekSourceCodeInfo())
     }
 
     if (isOperatorToken(nextToken, ',')) {

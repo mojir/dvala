@@ -1,5 +1,5 @@
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import { tokenize } from '../../tokenizer/tokenize'
 import type { CodeTemplateToken } from '../../tokenizer/token'
@@ -51,7 +51,7 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
       source += segment.value
     } else {
       if (segment.value.trim().length === 0) {
-        throw new DvalaError('Empty interpolation in code template', resolvedSci)
+        throw new ParseError('Empty interpolation in code template', resolvedSci)
       }
       // Replace ${expr} with a unique placeholder symbol
       const index = spliceExprs.length
@@ -62,7 +62,7 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
       const minified = minifyTokenStream(innerStream, { removeWhiteSpace: true })
       for (const t of minified.tokens) {
         if (t[0] === 'Error') {
-          throw new DvalaError(`Code template interpolation error: ${t[3]}`, resolvedSci)
+          throw new ParseError(`Code template interpolation error: ${t[3]}`, resolvedSci)
         }
       }
       const innerCtx = createParserContext(minified)
@@ -76,7 +76,7 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
   const templateMinified = minifyTokenStream(templateStream, { removeWhiteSpace: true })
   for (const t of templateMinified.tokens) {
     if (t[0] === 'Error') {
-      throw new DvalaError(`Code template parse error: ${t[3]}`, resolvedSci)
+      throw new ParseError(`Code template parse error: ${t[3]}`, resolvedSci)
     }
   }
   const templateCtx = createParserContext(templateMinified)

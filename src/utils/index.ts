@@ -4,7 +4,7 @@ import { asAny, isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'
 import { asString, assertStringOrNumber } from '../typeGuards/string'
 import { isUnknownRecord } from '../typeGuards'
-import { DvalaError } from '../errors'
+import { TypeError } from '../errors'
 
 export function collHasKey(coll: unknown, key: string | number): boolean {
   if (!isColl(coll))
@@ -29,7 +29,7 @@ export function compare<T extends string | number>(a: T, b: T, sourceCodeInfo: S
   if (typeof a === 'number' && typeof b === 'number') {
     return Math.sign((a) - (b))
   }
-  throw new DvalaError(`Cannot compare values of different types: ${typeof a} and ${typeof b}`, sourceCodeInfo)
+  throw new TypeError(`Cannot compare values of different types: ${typeof a} and ${typeof b}`, sourceCodeInfo)
 }
 
 export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInfo): boolean {

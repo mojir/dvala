@@ -6,7 +6,7 @@
  */
 
 import type { Any } from './interface'
-import { DvalaError } from './errors'
+import { DvalaError, RuntimeError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { retriggerWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
@@ -58,7 +58,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
   if (!snapshot.effectName || snapshot.effectArg === undefined) {
     return {
       type: 'error',
-      error: new DvalaError(
+      error: new RuntimeError(
         'Cannot retrigger: snapshot has no captured effect (suspended outside of an effect handler)',
         undefined,
       ),

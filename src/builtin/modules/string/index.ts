@@ -50,7 +50,7 @@ stringRepeat("***", 0)`,
       try {
         return String.fromCodePoint(int)
       } catch (error) {
-        throw new DvalaError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -359,7 +359,7 @@ encodeBase64("Albert")`,
             .join(''),
         )
       } catch (error) {
-        throw new DvalaError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),
@@ -403,7 +403,7 @@ encodeUriComponent("Hi everyone!?")`,
       try {
         return decodeURIComponent(value)
       } catch (error) {
-        throw new DvalaError(error as Error, sourceCodeInfo)
+        throw new DvalaError(error, sourceCodeInfo)
       }
     },
     arity: toFixedArity(1),

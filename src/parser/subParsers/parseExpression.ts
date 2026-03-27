@@ -1,7 +1,7 @@
 import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
 import { isA_BinaryOperatorToken, isMacroQualifiedToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
@@ -91,7 +91,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
       if (isSpecialSymbolNode(operatorSymbol)) {
-        throw new DvalaError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
+        throw new ParseError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx)
     } else {

@@ -14,7 +14,7 @@
  * `runSync` will throw when a Promise surfaces.
  */
 
-import { DvalaError } from '../errors'
+import { ArithmeticError, RuntimeError, TypeError } from '../errors'
 import type { Arity, FunctionDocs } from '../builtin/interface'
 import type { Any, UnknownRecord } from '../interface'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
@@ -220,7 +220,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         return { type: 'Value', value: result ?? null, k }
       }
 
-      throw new DvalaError('dvala.io.read is not supported in this environment. In Node.js, register a "dvala.io.read" host handler.', sourceCodeInfo)
+      throw new RuntimeError('dvala.io.read is not supported in this environment. In Node.js, register a "dvala.io.read" host handler.', sourceCodeInfo)
     },
     arity: { min: 0, max: 1 },
     docs: {
@@ -248,14 +248,14 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       const options = Array.isArray(arg) ? undefined : (arg as UnknownRecord)?.['options']
 
       if (!Array.isArray(items)) {
-        throw new DvalaError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)
+        throw new TypeError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)
       }
       if (items.length === 0) {
-        throw new DvalaError('dvala.io.pick: items array must not be empty', sourceCodeInfo)
+        throw new TypeError('dvala.io.pick: items array must not be empty', sourceCodeInfo)
       }
       for (let i = 0; i < items.length; i++) {
         if (typeof items[i] !== 'string') {
-          throw new DvalaError(`dvala.io.pick: items[${i}] must be a string, got ${typeof items[i]}`, sourceCodeInfo)
+          throw new TypeError(`dvala.io.pick: items[${i}] must be a string, got ${typeof items[i]}`, sourceCodeInfo)
         }
       }
 
@@ -264,22 +264,22 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
       if (options !== undefined) {
         if (typeof options !== 'object' || options === null || Array.isArray(options)) {
-          throw new DvalaError(`dvala.io.pick: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
+          throw new TypeError(`dvala.io.pick: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
         }
         const opts = options as UnknownRecord
         if (opts['prompt'] !== undefined) {
           if (typeof opts['prompt'] !== 'string') {
-            throw new DvalaError('dvala.io.pick: options.prompt must be a string', sourceCodeInfo)
+            throw new TypeError('dvala.io.pick: options.prompt must be a string', sourceCodeInfo)
           }
           promptMessage = opts['prompt']
         }
         if (opts['default'] !== undefined) {
           if (typeof opts['default'] !== 'number' || !Number.isInteger(opts['default'])) {
-            throw new DvalaError('dvala.io.pick: options.default must be an integer', sourceCodeInfo)
+            throw new TypeError('dvala.io.pick: options.default must be an integer', sourceCodeInfo)
           }
           defaultIndex = opts['default']
           if (defaultIndex < 0 || defaultIndex >= items.length) {
-            throw new DvalaError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.length}`, sourceCodeInfo)
+            throw new TypeError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.length}`, sourceCodeInfo)
           }
         }
       }
@@ -301,12 +301,12 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         }
         const parsed = Number(trimmed)
         if (!Number.isInteger(parsed) || parsed < 0 || parsed >= items.length) {
-          throw new DvalaError(`dvala.io.pick: invalid selection "${trimmed}"`, sourceCodeInfo)
+          throw new TypeError(`dvala.io.pick: invalid selection "${trimmed}"`, sourceCodeInfo)
         }
         return { type: 'Value', value: parsed, k }
       }
 
-      throw new DvalaError('dvala.io.pick is not supported in this environment. In Node.js, register a "dvala.io.pick" host handler.', sourceCodeInfo)
+      throw new RuntimeError('dvala.io.pick is not supported in this environment. In Node.js, register a "dvala.io.pick" host handler.', sourceCodeInfo)
     },
     arity: { min: 1, max: 2 },
     docs: {
@@ -337,16 +337,16 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       const options = typeof arg === 'string' ? undefined : argObj?.['options']
 
       if (typeof question !== 'string') {
-        throw new DvalaError(`dvala.io.confirm: first argument must be a string, got ${typeof question}`, sourceCodeInfo)
+        throw new TypeError(`dvala.io.confirm: first argument must be a string, got ${typeof question}`, sourceCodeInfo)
       }
 
       if (options !== undefined) {
         if (typeof options !== 'object' || options === null || Array.isArray(options)) {
-          throw new DvalaError(`dvala.io.confirm: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
+          throw new TypeError(`dvala.io.confirm: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
         }
         const opts = options as UnknownRecord
         if (opts['default'] !== undefined && typeof opts['default'] !== 'boolean') {
-          throw new DvalaError('dvala.io.confirm: options.default must be a boolean', sourceCodeInfo)
+          throw new TypeError('dvala.io.confirm: options.default must be a boolean', sourceCodeInfo)
         }
       }
 
@@ -355,7 +355,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         return { type: 'Value', value: globalThis.confirm(question), k }
       }
 
-      throw new DvalaError('dvala.io.confirm is not supported in this environment. In Node.js, register a "dvala.io.confirm" host handler.', sourceCodeInfo)
+      throw new RuntimeError('dvala.io.confirm is not supported in this environment. In Node.js, register a "dvala.io.confirm" host handler.', sourceCodeInfo)
     },
     arity: { min: 1, max: 2 },
     docs: {
@@ -381,7 +381,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
   'dvala.io.readStdin': {
     handler: (_arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       if (!isNode() || !process.stdin) {
-        throw new DvalaError('dvala.io.readStdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
+        throw new RuntimeError('dvala.io.readStdin is not supported in this environment. Node.js is required.', sourceCodeInfo)
       }
       return new Promise<Step>((resolve, reject) => {
         const chunks: string[] = []
@@ -450,13 +450,13 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       const min = a[0]
       const max = a[1]
       if (typeof min !== 'number' || !Number.isInteger(min)) {
-        throw new DvalaError(`dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`, sourceCodeInfo)
+        throw new TypeError(`dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`, sourceCodeInfo)
       }
       if (typeof max !== 'number' || !Number.isInteger(max)) {
-        throw new DvalaError(`dvala.random.int: max must be an integer, got ${typeof max === 'number' ? max : typeof max}`, sourceCodeInfo)
+        throw new TypeError(`dvala.random.int: max must be an integer, got ${typeof max === 'number' ? max : typeof max}`, sourceCodeInfo)
       }
       if (max <= min) {
-        throw new DvalaError(`dvala.random.int: max (${max}) must be greater than min (${min})`, sourceCodeInfo)
+        throw new ArithmeticError(`dvala.random.int: max (${max}) must be greater than min (${min})`, sourceCodeInfo)
       }
       return { type: 'Value', value: Math.floor(Math.random() * (max - min)) + min, k }
     },
@@ -480,10 +480,10 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
       const array = arg
       if (!Array.isArray(array)) {
-        throw new DvalaError(`dvala.random.item: argument must be an array, got ${typeof array}`, sourceCodeInfo)
+        throw new TypeError(`dvala.random.item: argument must be an array, got ${typeof array}`, sourceCodeInfo)
       }
       if (array.length === 0) {
-        throw new DvalaError('dvala.random.item: cannot pick from an empty array', sourceCodeInfo)
+        throw new TypeError('dvala.random.item: cannot pick from an empty array', sourceCodeInfo)
       }
       const index = Math.floor(Math.random() * array.length)
       return { type: 'Value', value: array[index] as Any, k }
@@ -507,7 +507,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
   'dvala.random.shuffle': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
       if (!Array.isArray(arg)) {
-        throw new DvalaError(`dvala.random.shuffle: argument must be an array, got ${typeof arg}`, sourceCodeInfo)
+        throw new TypeError(`dvala.random.shuffle: argument must be an array, got ${typeof arg}`, sourceCodeInfo)
       }
       const shuffled: Any[] = Array.from(arg) as Any[]
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -604,7 +604,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Promise<Step> => {
       const ms = arg
       if (typeof ms !== 'number' || ms < 0) {
-        throw new DvalaError(`dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`, sourceCodeInfo)
+        throw new TypeError(`dvala.sleep requires a non-negative number argument, got ${typeof ms === 'number' ? ms : typeof ms}`, sourceCodeInfo)
       }
       return new Promise<Step>(resolve => {
         setTimeout(() => resolve({ type: 'Value', value: null, k }), ms)

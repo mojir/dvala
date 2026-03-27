@@ -4,7 +4,7 @@ import type { AndNode } from '../builtin/specialExpressions/and'
 import type { HandleNode } from '../builtin/specialExpressions/handle'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
-import { DvalaError } from '../errors'
+import { ParseError } from '../errors'
 import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'
@@ -155,10 +155,10 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case ',':
     case '->':
     case '...':
-      throw new DvalaError(`Unknown binary operator: ${operatorName}`, ctx.resolveTokenDebugInfo(debugInfo))
+      throw new ParseError(`Unknown binary operator: ${operatorName}`, ctx.resolveTokenDebugInfo(debugInfo))
     // Exhaustive check: all operator cases are handled above
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`Unknown binary operator: ${operatorName satisfies never}`, ctx.resolveTokenDebugInfo(debugInfo))
+      throw new ParseError(`Unknown binary operator: ${operatorName satisfies never}`, ctx.resolveTokenDebugInfo(debugInfo))
   }
 }

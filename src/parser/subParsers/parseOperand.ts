@@ -1,7 +1,7 @@
 import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExpression, SpecialSymbolNode, StringNode, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
@@ -53,7 +53,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       ctx.advance()
       const symbolToken = ctx.tryPeek()
       if (!isSymbolToken(symbolToken)) {
-        throw new DvalaError('Expected symbol', ctx.peekSourceCodeInfo())
+        throw new ParseError('Expected symbol', ctx.peekSourceCodeInfo())
       }
       const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
       operand = createAccessorNode(ctx, operand, stringNode, token[2])
@@ -63,7 +63,7 @@ export function parseOperand(ctx: ParserContext): AstNode {
       ctx.advance()
       const expression = ctx.parseExpression()
       if (!isRBracketToken(ctx.tryPeek())) {
-        throw new DvalaError('Expected closing bracket', ctx.peekSourceCodeInfo())
+        throw new ParseError('Expected closing bracket', ctx.peekSourceCodeInfo())
       }
       operand = createAccessorNode(ctx, operand, expression, token[2])
       ctx.advance()
@@ -93,7 +93,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     ctx.advance()
     const expression = ctx.parseExpression()
     if (!isRParenToken(ctx.peek())) {
-      throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
+      throw new ParseError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
     }
     ctx.advance()
     ctx.setNodeEnd(expression[2])
@@ -139,7 +139,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     if (operatorName === '->') {
       return parseShorthandLambdaFunction(ctx)
     } else {
-      throw new DvalaError(`Illegal operator: ${operatorName}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+      throw new ParseError(`Illegal operator: ${operatorName}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
     }
   }
 
@@ -197,7 +197,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       // Validate dvala.* effect names — only known standard effects are allowed.
       // Wildcards (containing *) are exempt since they're patterns, not literal names.
       if (effectName.startsWith('dvala.') && !effectName.includes('*') && !validDvalaEffects.has(effectName)) {
-        throw new DvalaError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+        throw new ParseError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
       }
       ctx.advance()
       // Check for handler shorthand: @effect -> body, @effect(params...) -> body
@@ -212,7 +212,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     }
 
     default:
-      throw new DvalaError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
+      throw new ParseError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
   }
 }
 

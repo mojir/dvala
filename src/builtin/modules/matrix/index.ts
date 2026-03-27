@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { RuntimeError } from '../../../errors'
 import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { approxZero } from '../../../utils'
@@ -33,7 +33,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
       try {
         return matrixMultiply(matrix1, matrix2)
       } catch (_error) {
-        throw new DvalaError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
+        throw new RuntimeError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),
@@ -50,7 +50,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
       assertSquareMatrix(matrix, sourceCodeInfo)
       const result = inverse(matrix)
       if (result === null) {
-        throw new DvalaError('The matrix must be invertible', sourceCodeInfo)
+        throw new RuntimeError('The matrix must be invertible', sourceCodeInfo)
       }
       return result
     },

@@ -1,6 +1,6 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { TokenDebugInfo } from '../../tokenizer/token'
@@ -68,7 +68,7 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   const functionArguments: BindingTarget[] = []
   while (!ctx.isAtEnd() && !isRParenToken(ctx.peek()) && !isSymbolToken(ctx.peek(), 'let')) {
     if (rest) {
-      throw new DvalaError('Rest argument must be last', ctx.peekSourceCodeInfo())
+      throw new ParseError('Rest argument must be last', ctx.peekSourceCodeInfo())
     }
     const bindingTarget = parseBindingTarget(ctx)
     if (bindingTarget[1][1] !== undefined) {
@@ -78,12 +78,12 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
       rest = true
     }
     if (defaults && !bindingTarget[1][1]) {
-      throw new DvalaError('Default arguments must be last', ctx.peekSourceCodeInfo())
+      throw new ParseError('Default arguments must be last', ctx.peekSourceCodeInfo())
     }
     functionArguments.push(bindingTarget)
 
     if (!isOperatorToken(ctx.peek(), ',') && !isRParenToken(ctx.peek()) && !isSymbolToken(ctx.peek(), 'let')) {
-      throw new DvalaError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
+      throw new ParseError('Expected comma or closing parenthesis', ctx.peekSourceCodeInfo())
     }
     if (isOperatorToken(ctx.peek(), ',')) {
       ctx.advance()
@@ -91,7 +91,7 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   }
 
   if (!isRParenToken(ctx.peek())) {
-    throw new DvalaError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
+    throw new ParseError('Expected closing parenthesis', ctx.peekSourceCodeInfo())
   }
 
   ctx.advance()
@@ -125,11 +125,11 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
       if (match) {
         const number = match[1] ?? '1'
         if (match[1] === '1') {
-          throw new DvalaError('Use $ instead of $1 for the first argument', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+          throw new ParseError('Use $ instead of $1 for the first argument', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
         }
         arity = Math.max(arity, Number(number))
         if (arity > maxShorthandLambdaArity)
-          throw new DvalaError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
+          throw new ParseError('Can\'t specify more than 20 arguments', ctx.resolveTokenDebugInfo(firstToken[2] as TokenDebugInfo))
       }
     }
   }

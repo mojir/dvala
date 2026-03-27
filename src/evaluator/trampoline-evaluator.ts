@@ -36,7 +36,7 @@ import {
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
-import { AssertionError, DvalaError, UndefinedSymbolError, UserDefinedError } from '../errors'
+import { ArithmeticError, AssertionError, DvalaError, MacroError, RuntimeError, TypeError, UndefinedSymbolError, UserDefinedError } from '../errors'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import { parse } from '../parser'
@@ -146,7 +146,7 @@ export type { Step }
 
 function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new DvalaError('Object as function requires one string parameter.', sourceCodeInfo)
+    throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
   const key = params[0]
   assertString(key, sourceCodeInfo)
   return toAny(fn[key])
@@ -154,7 +154,7 @@ function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceC
 
 function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new DvalaError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
+    throw new TypeError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
   const index = params[0]
   assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
   return toAny(fn[index])
@@ -162,13 +162,13 @@ function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCo
 
 function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   if (params.length !== 1)
-    throw new DvalaError('String as function requires one Obj parameter.', sourceCodeInfo)
+    throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
   const param = toAny(params[0])
   if (isObj(param))
     return toAny((param)[fn])
   if (isNumber(param, { integer: true }))
     return toAny(fn[param])
-  throw new DvalaError(
+  throw new TypeError(
     `string as function expects Obj or integer parameter, got ${valueToString(param)}`,
     sourceCodeInfo,
   )
@@ -177,7 +177,7 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
 function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   assertNumber(fn, undefined, { integer: true })
   if (params.length !== 1)
-    throw new DvalaError('Number as function requires one Arr parameter.', sourceCodeInfo)
+    throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
   const param = params[0]
   assertSeq(param, sourceCodeInfo)
   return toAny(param[fn])
@@ -190,7 +190,7 @@ function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: Sour
 function evaluateReservedSymbol(node: ReservedNode, env: ContextStack): Any {
   const reservedName = node[1]
   if (!['true', 'false', 'null'].includes(reservedName)) {
-    throw new DvalaError(`Reserved symbol ${reservedName} cannot be evaluated`, env.resolve(node[2]))
+    throw new TypeError(`Reserved symbol ${reservedName} cannot be evaluated`, env.resolve(node[2]))
   }
   const value = reservedSymbolRecord[reservedName]
   return asNonUndefined(value, env.resolve(node[2]))
@@ -594,7 +594,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       // Fall back to builtin modules
       const dvalaModule = env.getModule(moduleName)
       if (!dvalaModule) {
-        throw new DvalaError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
+        throw new TypeError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
       }
       const result: Obj = {}
       for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
@@ -635,7 +635,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     // Effect nodes (from @name syntax) handled above with NodeTypes.Effect
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`${node[0]}-node cannot be evaluated`, env.resolve(node[2]))
+      throw new TypeError(`${node[0]}-node cannot be evaluated`, env.resolve(node[2]))
   }
 }
 
@@ -741,7 +741,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
 /* v8 ignore next 4 */
 function stepSpecialExpression(node: SpecialExpressionNode, env: ContextStack, _k: ContinuationStack): Step | Promise<Step> {
   const sourceCodeInfo = env.resolve(node[2])
-  throw new DvalaError(`Unknown special expression type: ${node[1][0]}`, sourceCodeInfo)
+  throw new RuntimeError(`Unknown special expression type: ${node[1][0]}`, sourceCodeInfo)
 }
 
 // ---------------------------------------------------------------------------
@@ -778,13 +778,13 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       const builtinName = nameSymbol[1]
       const normalExpression = builtin.normalExpressions[builtinName]!
       if (env.pure && normalExpression.pure === false) {
-        throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
+        throw new RuntimeError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
       // macroexpand(macroFn, ...args) — call macro body directly, return expanded AST as data
       if (builtinName === 'macroexpand') {
         const macroFn = params[0]
         if (!isMacroFunction(macroFn)) {
-          throw new DvalaError('macroexpand: first argument must be a macro', sourceCodeInfo)
+          throw new TypeError('macroexpand: first argument must be a macro', sourceCodeInfo)
         }
         const macroArgs = params.slice(1)
         // Call the macro's body as a regular function — no MacroEvalFrame, so the
@@ -864,7 +864,7 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
     return { type: 'Value', value: evaluateNumberAsFunction(fn, params, sourceCodeInfo), k }
   }
   /* v8 ignore next 1 */
-  throw new DvalaError('Unexpected function type', sourceCodeInfo)
+  throw new RuntimeError('Unexpected function type', sourceCodeInfo)
 }
 
 /**
@@ -951,7 +951,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'Partial': {
       const actualParams = [...fn.params]
       if (params.length !== fn.placeholders.length) {
-        throw new DvalaError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
+        throw new TypeError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
       }
       const paramsCopy = [...params]
       for (const placeholderIndex of fn.placeholders) {
@@ -973,7 +973,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       const fns = fn.params
       if (fns.length === 0) {
         if (params.length !== 1)
-          throw new DvalaError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
+          throw new TypeError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
         return { type: 'Value', value: asAny(params[0], sourceCodeInfo), k }
       }
       // Start with the last function
@@ -1026,19 +1026,19 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         const result = specialExpression.evaluateAsNormalExpression(params, sourceCodeInfo, env)
         return wrapMaybePromiseAsStep(result, k)
       }
-      throw new DvalaError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
+      throw new TypeError(`Special builtin function ${fn.specialBuiltinSymbolType} is not supported as normal expression.`, sourceCodeInfo)
     }
     case 'Module': {
       const dvalaModule = env.getModule(fn.moduleName)
       if (!dvalaModule) {
-        throw new DvalaError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
+        throw new TypeError(`Module '${fn.moduleName}' not found.`, sourceCodeInfo)
       }
       const expression = dvalaModule.functions[fn.functionName]
       if (!expression) {
-        throw new DvalaError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
+        throw new TypeError(`Function '${fn.functionName}' not found in module '${fn.moduleName}'.`, sourceCodeInfo)
       }
       if (env.pure && expression.pure === false) {
-        throw new DvalaError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
+        throw new RuntimeError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
       }
       assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
       if (expression.dvalaImpl) {
@@ -1050,7 +1050,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'Builtin': {
       const normalExpression = builtin.normalExpressions[fn.normalBuiltinSymbolType]!
       if (env.pure && normalExpression.pure === false) {
-        throw new DvalaError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
+        throw new RuntimeError(`Cannot call impure function '${normalExpression.name}' in pure mode`, sourceCodeInfo)
       }
       if (normalExpression.dvalaImpl) {
         return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
@@ -1069,7 +1069,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
  */
 function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
   if (!arityAcceptsMin(fn.arity, params.length)) {
-    throw new DvalaError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
+    throw new TypeError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
   }
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
@@ -1310,7 +1310,7 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     /* v8 ignore next 2 */
     default: {
       const _exhaustive: never = frame
-      throw new DvalaError(`Unhandled frame type: ${(_exhaustive as Frame).type}`, undefined)
+      throw new RuntimeError(`Unhandled frame type: ${(_exhaustive as Frame).type}`, undefined)
     }
   }
 }
@@ -1457,7 +1457,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
   // Process the completed value
   if (frame.isSpread) {
     if (!Array.isArray(value)) {
-      throw new DvalaError('Spread value is not an array', sourceCodeInfo)
+      throw new TypeError('Spread value is not an array', sourceCodeInfo)
     }
     result.push(...value)
   } else {
@@ -1487,7 +1487,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
   if (frame.isSpread) {
     // Spread value should be an object
     if (!isUnknownRecord(value)) {
-      throw new DvalaError('Spread value is not an object', sourceCodeInfo)
+      throw new TypeError('Spread value is not an object', sourceCodeInfo)
     }
     Object.assign(result, value)
     // Advance to next entry
@@ -2029,7 +2029,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
       const remainingK = k.slice(i + 1)
 
       if (params.length !== bindings.length) {
-        throw new DvalaError(
+        throw new TypeError(
           `recur expected ${bindings.length} parameters, got ${params.length}`,
           sourceCodeInfo,
         )
@@ -2051,7 +2051,7 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
     }
   }
 
-  throw new DvalaError('recur called outside of loop or function body', sourceCodeInfo)
+  throw new RuntimeError('recur called outside of loop or function body', sourceCodeInfo)
 }
 
 /**
@@ -2195,7 +2195,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
     assertEffect(effectRef, frame.sourceCodeInfo)
     // Pure mode check — effects are not allowed in pure mode
     if (env.pure) {
-      throw new DvalaError(`Cannot perform effect '${effectRef.name}' in pure mode`, frame.sourceCodeInfo)
+      throw new RuntimeError(`Cannot perform effect '${effectRef.name}' in pure mode`, frame.sourceCodeInfo)
     }
     const arg = (params.length > 1 ? params[1]! : null) as Any
     // Produce a PerformStep — let the trampoline dispatch it
@@ -2363,7 +2363,7 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   }
 
   // No handler at all — unhandled effect.
-  throw new DvalaError(`Unhandled effect: '${effect.name}'`, sourceCodeInfo)
+  throw new RuntimeError(`Unhandled effect: '${effect.name}'`, sourceCodeInfo)
 }
 
 /**
@@ -2439,7 +2439,7 @@ function dispatchHostHandler(
       if (effectName === 'dvala.checkpoint') {
         return { type: 'Value', value: null, k }
       }
-      throw new DvalaError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
+      throw new RuntimeError(`Unhandled effect: '${effectName}'`, sourceCodeInfo)
     }
 
     const [_pattern, handler] = matchingHandlers[index]!
@@ -2449,7 +2449,7 @@ function dispatchHostHandler(
 
     function assertNotSettled(operation: string): void {
       if (settled) {
-        throw new DvalaError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
+        throw new RuntimeError(`Effect handler called ${operation}() after already calling another operation`, sourceCodeInfo)
       }
       settled = true
     }
@@ -2469,7 +2469,7 @@ function dispatchHostHandler(
       fail: (msg?: string) => {
         assertNotSettled('fail')
         const errorMsg = msg ?? `Effect handler failed for '${effectName}'`
-        outcome = { kind: 'step', step: { type: 'Error', error: new DvalaError(errorMsg, sourceCodeInfo), k } }
+        outcome = { kind: 'step', step: { type: 'Error', error: new RuntimeError(errorMsg, sourceCodeInfo), k } }
       },
       suspend: (meta?: Any) => {
         assertNotSettled('suspend')
@@ -2492,7 +2492,7 @@ function dispatchHostHandler(
       get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
       checkpoint: (message: string, meta?: Any): Snapshot => {
         if (!snapshotState) {
-          throw new DvalaError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
+          throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
         const continuation = serializeToObject(k)
         const snapshot = createSnapshot({
@@ -2511,14 +2511,14 @@ function dispatchHostHandler(
       },
       resumeFrom: (snapshot: Snapshot, value: Any) => {
         if (settled) {
-          throw new DvalaError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
+          throw new RuntimeError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
         }
         if (!snapshotState) {
-          throw new DvalaError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
+          throw new RuntimeError('resumeFrom is not available outside effect-enabled execution', sourceCodeInfo)
         }
         const found = snapshotState.snapshots.find(s => s.index === snapshot.index && s.executionId === snapshot.executionId)
         if (!found) {
-          throw new DvalaError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
+          throw new RuntimeError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
         }
         settled = true
         outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, value, found.index) }
@@ -2541,7 +2541,7 @@ function dispatchHostHandler(
     if (!(handlerResult instanceof Promise)) {
       // Synchronous handler — outcome must already be set
       if (!outcome) {
-        throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
+        throw new RuntimeError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
       }
       return resolveOutcome(outcome, index + 1)
     }
@@ -2557,7 +2557,7 @@ function dispatchHostHandler(
     return handlerResult.then(
       () => {
         if (!outcome) {
-          throw new DvalaError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
+          throw new RuntimeError(`Effect handler for '${effectName}' did not call resume(), fail(), suspend(), halt(), or next()`, sourceCodeInfo)
         }
         return resolveOutcome(outcome, index + 1)
       },
@@ -2821,7 +2821,7 @@ async function executeRaceBranches(
 
     // All branches errored — throw aggregate error
     const messages = errors.map(e => e.message).join('; ')
-    throw new DvalaError(`race: all branches failed: ${messages}`, undefined)
+    throw new RuntimeError(`race: all branches failed: ${messages}`, undefined)
   } finally {
     parentSignal.removeEventListener('abort', onParentAbort)
   }
@@ -2906,7 +2906,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   // Process the completed value
   if (isSpreadNode(currentArgNode)) {
     if (!Array.isArray(value)) {
-      throw new DvalaError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
+      throw new TypeError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
     }
     params.push(...value)
   } else {
@@ -3053,7 +3053,7 @@ function continueBindingArgs(
     const arg = args[i]!
     const defaultNode = arg[1][1]
     if (!defaultNode) {
-      throw new DvalaError(`Missing required argument ${i}`, sourceCodeInfo)
+      throw new TypeError(`Missing required argument ${i}`, sourceCodeInfo)
     }
 
     // Push frame to continue after default evaluation
@@ -3513,7 +3513,7 @@ function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): 
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
   if (typeof value === 'number' && Number.isNaN(value)) {
-    throw new DvalaError('Number is NaN', frame.sourceCodeInfo)
+    throw new ArithmeticError('Number is NaN', frame.sourceCodeInfo)
   }
   return { type: 'Value', value: annotate(value), k }
 }
@@ -3553,7 +3553,7 @@ function callMacro(
     if (frame.type === 'MacroEval') {
       depth += 1
       if (depth >= MAX_MACRO_EXPANSION_DEPTH) {
-        throw new DvalaError(
+        throw new MacroError(
           `Maximum macro expansion depth (${MAX_MACRO_EXPANSION_DEPTH}) exceeded. Possible infinite macro expansion.`,
           sourceCodeInfo,
         )
@@ -3872,7 +3872,7 @@ function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any; is
       if (typeof v === 'string' || Array.isArray(v) || isObj(v)) {
         return v
       }
-      throw new DvalaError(`Expected collection, got ${valueToString(v)}`, s)
+      throw new TypeError(`Expected collection, got ${valueToString(v)}`, s)
     },
     isSeq: (v: Any) => typeof v === 'string' || Array.isArray(v),
   }
@@ -3985,7 +3985,7 @@ export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any
   let step: Step | Promise<Step> = initial
   for (;;) {
     if (step instanceof Promise) {
-      throw new DvalaError('Unexpected async operation in synchronous context.', undefined)
+      throw new RuntimeError('Unexpected async operation in synchronous context.', undefined)
     }
     if (step.type === 'Value' && step.k.length === 0) {
       return step.value

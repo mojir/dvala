@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { RuntimeError } from '../../../errors'
 import type { Any } from '../../../interface'
 import { assertGrid, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
@@ -102,7 +102,7 @@ const gridFunctions: BuiltinNormalExpressions = {
 
       const flatTable = grid.flat()
       if (flatTable.length % rows !== 0) {
-        throw new DvalaError(`The number of elements in the grid must be divisible by rows, but got ${flatTable.length} and ${rows}`, sourceCodeInfo)
+        throw new RuntimeError(`The number of elements in the grid must be divisible by rows, but got ${flatTable.length} and ${rows}`, sourceCodeInfo)
       }
       const cols = flatTable.length / rows
 
@@ -194,7 +194,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertGrid(grid, sourceCodeInfo)
       assertVector(start, sourceCodeInfo)
       if (start.length !== 2) {
-        throw new DvalaError(`The start vector must have 2 elements, but got ${start.length}`, sourceCodeInfo)
+        throw new RuntimeError(`The start vector must have 2 elements, but got ${start.length}`, sourceCodeInfo)
       }
       const [rowStart, colStart] = start
       assertNumber(rowStart, sourceCodeInfo, { integer: true, nonNegative: true, lt: grid.length })
@@ -203,7 +203,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       end ??= [grid.length, grid[0]!.length]
       assertVector(end, sourceCodeInfo)
       if (end.length !== 2) {
-        throw new DvalaError(`The end vector must have 2 elements, but got ${end.length}`, sourceCodeInfo)
+        throw new RuntimeError(`The end vector must have 2 elements, but got ${end.length}`, sourceCodeInfo)
       }
       const [rowEnd, colEnd] = end
       assertNumber(rowEnd, sourceCodeInfo, { gt: rowStart, lte: grid.length })
@@ -274,7 +274,7 @@ const gridFunctions: BuiltinNormalExpressions = {
         rows.every(row => {
           assertArray(row, sourceCodeInfo)
           if (grid[0]!.length !== row.length) {
-            throw new DvalaError(`All rows must have the same length as the number of columns in grid, but got ${row.length}`, sourceCodeInfo)
+            throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${row.length}`, sourceCodeInfo)
           }
           return true
         })
@@ -306,7 +306,7 @@ const gridFunctions: BuiltinNormalExpressions = {
         cols.every(row => {
           assertArray(row, sourceCodeInfo)
           if (trMatrix[0]!.length !== row.length) {
-            throw new DvalaError(`All rows must have the same length as the number of rows in grid, but got ${row.length}`, sourceCodeInfo)
+            throw new RuntimeError(`All rows must have the same length as the number of rows in grid, but got ${row.length}`, sourceCodeInfo)
           }
           return true
         })
@@ -331,7 +331,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       const cols = (params[0] as Any[][])[0]!.length
       ;(params as Any[][][]).slice(1).every(grid => {
         if (grid[0]!.length !== cols) {
-          throw new DvalaError(`All grids must have the same number of columns, but got ${cols} and ${grid[0]!.length}`, sourceCodeInfo)
+          throw new RuntimeError(`All grids must have the same number of columns, but got ${cols} and ${grid[0]!.length}`, sourceCodeInfo)
         }
         return true
       })
@@ -353,7 +353,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       const rows = (params[0] as Any[][]).length
       ;(params as Any[][][]).slice(1).every(grid => {
         if (grid.length !== rows) {
-          throw new DvalaError(`All grids must have the same number of rows, but got ${rows} and ${grid.length}`, sourceCodeInfo)
+          throw new RuntimeError(`All grids must have the same number of rows, but got ${rows} and ${grid.length}`, sourceCodeInfo)
         }
         return true
       })
@@ -399,7 +399,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(rows, sourceCodeInfo)
       if (grid[0]!.length !== rows[0]!.length) {
-        throw new DvalaError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
+        throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
       }
       return [...grid, ...rows]
     },
@@ -410,7 +410,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(rows, sourceCodeInfo)
       if (grid[0]!.length !== rows[0]!.length) {
-        throw new DvalaError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
+        throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
       }
       return [...rows, ...grid]
     },
@@ -442,7 +442,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(cols, sourceCodeInfo)
       if (grid.length !== cols[0]!.length) {
-        throw new DvalaError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
+        throw new RuntimeError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
       }
 
       const result: Any[][] = []
@@ -464,7 +464,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertGrid(grid, sourceCodeInfo)
       assertGrid(cols, sourceCodeInfo)
       if (grid.length !== cols[0]!.length) {
-        throw new DvalaError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
+        throw new RuntimeError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
       }
 
       const result: Any[][] = []
@@ -506,7 +506,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertArray(array, sourceCodeInfo)
       assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })
       if (array.length % rows !== 0) {
-        throw new DvalaError(`The number of elements in the array must be divisible by rows, but got ${array.length} and ${rows}`, sourceCodeInfo)
+        throw new RuntimeError(`The number of elements in the array must be divisible by rows, but got ${array.length} and ${rows}`, sourceCodeInfo)
       }
       return fromArray(array, rows)
     },

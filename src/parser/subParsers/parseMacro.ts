@@ -1,6 +1,6 @@
 import type { LambdaNode } from '../../builtin/specialExpressions/functions'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { assertOperatorToken, isMacroQualifiedToken, isReservedSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
@@ -23,7 +23,7 @@ export function parseMacro(ctx: ParserContext): MacroNode {
   try {
     functionArguments = parseFunctionArguments(ctx)
   } catch {
-    throw new DvalaError('Expected function parameters after "macro"', ctx.peekSourceCodeInfo())
+    throw new ParseError('Expected function parameters after "macro"', ctx.peekSourceCodeInfo())
   }
 
   assertOperatorToken(ctx.peek(), '->')

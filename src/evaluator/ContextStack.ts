@@ -2,7 +2,7 @@ import type { SpecialExpression } from '../builtin'
 import { builtin, specialExpressionKeys } from '../builtin'
 import { normalExpressions } from '../builtin/normalExpressions'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
-import { DvalaError, UndefinedSymbolError } from '../errors'
+import { TypeError, UndefinedSymbolError } from '../errors'
 import type { Any } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { NormalBuiltinFunction, SourceMap, SpecialBuiltinFunction, SymbolNode, UserDefinedSymbolNode } from '../parser/types'
@@ -168,11 +168,11 @@ export class ContextStackImpl {
     const currentContext = this._contexts[0]!
     for (const [name, value] of Object.entries(values)) {
       if (currentContext[name]) {
-        throw new DvalaError(`Cannot redefine value "${name}"`, sourceCodeInfo)
+        throw new TypeError(`Cannot redefine value "${name}"`, sourceCodeInfo)
       }
       // Special expressions (if, let, for, etc.) cannot be shadowed — they're keywords
       if (specialExpressionKeys.includes(name)) {
-        throw new DvalaError(`Cannot shadow special expression "${name}"`, sourceCodeInfo)
+        throw new TypeError(`Cannot shadow special expression "${name}"`, sourceCodeInfo)
       }
       currentContext[name] = { value: toAny(value) }
     }
@@ -228,7 +228,7 @@ export class ContextStackImpl {
           } satisfies SpecialBuiltinFunction
         }
         default:
-          throw new DvalaError(`Unknown special builtin symbol type: ${functionType}`, this.resolve(node[2]))
+          throw new TypeError(`Unknown special builtin symbol type: ${functionType}`, this.resolve(node[2]))
       }
     }
     if (isBuiltinSymbolNode(node)) {
@@ -258,7 +258,7 @@ export class ContextStackImpl {
 
 function assertNotShadowingKeyword(name: string): void {
   if (specialExpressionKeys.includes(name)) {
-    throw new DvalaError(`Cannot shadow special expression "${name}"`, undefined)
+    throw new TypeError(`Cannot shadow special expression "${name}"`, undefined)
   }
 }
 
@@ -272,7 +272,7 @@ export function createContextStack(params: CreateContextStackParams = {}, module
   if (params.bindings) {
     for (const [identifier, entry] of Object.entries(params.bindings)) {
       if (identifier.includes('.')) {
-        throw new DvalaError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
+        throw new TypeError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
       }
       assertNotShadowingKeyword(identifier)
       if (!hostValues) {

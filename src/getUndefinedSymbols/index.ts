@@ -5,7 +5,7 @@ import { getFunctionUnresolvedSymbols } from '../builtin/specialExpressions/func
 import type { IfNode } from '../builtin/specialExpressions/if'
 import type { Function as DvalaFunctionTuple } from '../builtin/utils'
 import { NodeTypes } from '../constants/constants'
-import { DvalaError } from '../errors'
+import { RuntimeError } from '../errors'
 import { joinSets } from '../utils'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type { Ast, AstNode, BindingTarget, NormalExpressionNode, SpecialExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
@@ -199,6 +199,6 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
 
     /* v8 ignore next 2 */
     default:
-      throw new DvalaError(`Unhandled node type: ${nodeType satisfies never}`, undefined)
+      throw new RuntimeError(`Unhandled node type: ${nodeType satisfies never}`, undefined)
   }
 }

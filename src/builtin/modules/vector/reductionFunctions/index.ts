@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../../errors'
+import { DvalaError, RuntimeError } from '../../../../errors'
 import { assertVector } from '../../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../../typeGuards/number'
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../../../../builtin/interface'
@@ -98,7 +98,7 @@ function createReductionNormalExpression(
     evaluate: ([vector], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       try {
@@ -148,7 +148,7 @@ function createCenteredMovingNormalExpression(
     evaluate: ([vector, windowSize, leftPadding, rightPadding], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       assertNumber(windowSize, sourceCodeInfo, { integer: true, finite: true, gte: minLength, lte: vector.length })
@@ -202,7 +202,7 @@ function createRunningNormalExpression(
     evaluate: ([vector], sourceCodeInfo) => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < minLength) {
-        throw new DvalaError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
+        throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       if (vector.length === 0) {

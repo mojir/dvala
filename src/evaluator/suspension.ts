@@ -25,7 +25,7 @@
  * 3. Fill in host bindings (values, modules) on each instance
  */
 
-import { DvalaError } from '../errors'
+import { RuntimeError } from '../errors'
 import type { Any } from '../interface'
 
 import type { DvalaModule } from '../builtin/modules/interface'
@@ -299,7 +299,7 @@ export function deserializeFromObject(
   let data = blobData as SuspensionBlobData
 
   if (data.version !== SUSPENSION_VERSION) {
-    throw new DvalaError(
+    throw new RuntimeError(
       `Unsupported suspension blob version: ${data.version} (expected ${SUSPENSION_VERSION})`,
       undefined,
     )
@@ -343,7 +343,7 @@ export function deserializeFromObject(
     if (isCSRef(value)) {
       const cs = csMap.get(value.__csRef)
       if (!cs) {
-        throw new DvalaError(`Invalid suspension blob: unknown context stack ref ${value.__csRef}`, undefined)
+        throw new RuntimeError(`Invalid suspension blob: unknown context stack ref ${value.__csRef}`, undefined)
       }
       return cs
     }

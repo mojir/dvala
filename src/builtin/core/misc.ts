@@ -1,4 +1,4 @@
-import { DvalaError } from '../../errors'
+import { TypeError } from '../../errors'
 import type { EffectMatcherFunction, QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
@@ -348,7 +348,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
           arity: toFixedArity(1),
         }
       }
-      throw new DvalaError('effectMatcher expects a string or regexp pattern', sourceCodeInfo)
+      throw new TypeError('effectMatcher expects a string or regexp pattern', sourceCodeInfo)
     },
     arity: toFixedArity(1),
     docs: {
@@ -441,7 +441,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
           arity: toFixedArity(1),
         }
       }
-      throw new DvalaError('qualifiedMatcher expects a string or regexp pattern', sourceCodeInfo)
+      throw new TypeError('qualifiedMatcher expects a string or regexp pattern', sourceCodeInfo)
     },
     arity: toFixedArity(1),
     docs: {

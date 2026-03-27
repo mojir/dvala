@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { RuntimeError } from '../../../errors'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -47,7 +47,7 @@ export const partitionsNormalExpressions: BuiltinNormalExpressions = {
         return 1
 
       if (n > partitionNumbers.length) {
-        throw new DvalaError(`n is too large. The maximum value is ${partitionNumbers.length - 1}.`, sourceCodeInfo)
+        throw new RuntimeError(`n is too large. The maximum value is ${partitionNumbers.length - 1}.`, sourceCodeInfo)
       }
 
       return partitionNumbers[n - 1]!
