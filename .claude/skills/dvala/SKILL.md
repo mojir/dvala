@@ -280,7 +280,7 @@ end;
 - Macros only intercept **named calls** to user-defined or builtin symbols. Expression-based callees (`(myMacro)(x)`) go through normal evaluation — the macro check happens in `stepNormalExpression` for `UserDefinedSymbol` and `BuiltinSymbol` names only. This means you can shadow a builtin (e.g. `let assert = macro ...`) and it will work correctly as a macro.
 - Named macros emit `@dvala.macro.expand` — anonymous macros are called directly with no effect overhead.
 - Code template `${expr}` works in both **expression and binding positions** — e.g., `` ```let ${pattern} = ${value}``` `` where `pattern` can be a Sym, Array, or Object AST node (destructuring patterns are auto-converted to binding targets).
-- **Nested code templates with inner splices don't work** — `${...}` inside inner backtick fences is captured by the outer template's tokenizer. The tokenizer would need backtick-depth-aware splice detection to support macro-generating macros.
+- **Deferred splices** for nested code templates: `$${expr}` passes through as `${expr}` in the output (one level deferred), `$$${expr}` defers two levels. Enables macro-generating macros. Max 3 `$` signs.
 
 ### `macroexpand` and the `ast` Module
 
