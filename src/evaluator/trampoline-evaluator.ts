@@ -2501,8 +2501,10 @@ function dispatchHostHandler(
       }
 
       if (effectName === 'dvala.error') {
-        const message = typeof arg === 'string' ? arg : String(arg ?? 'Unknown error')
-        throw new UserError(message, sourceCodeInfo)
+        // Validate and normalize the payload (throws TypeError if invalid)
+        const payload = validateErrorPayload(arg, sourceCodeInfo)
+        const origin = getErrorOrigin(payload)
+        throw new UserError(payload.message as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
       }
       // dvala.checkpoint resolves to null when all handlers call next().
       if (effectName === 'dvala.checkpoint') {
