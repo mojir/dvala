@@ -1,7 +1,7 @@
 import { getAllBindingTargetNames } from '../../builtin/bindingNode'
 import type { ForNode, LoopBindingNode } from '../../builtin/specialExpressions/loops'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { SourceCodeInfo, SymbolToken, Token } from '../../tokenizer/token'
@@ -27,7 +27,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
     const existingBoundNames = forLoopBindings.flatMap(b => Object.keys(getAllBindingTargetNames(b[0][0])))
     const newBoundNames = getAllBindingTargetNames(loopBinding[0][0])
     if (Object.keys(newBoundNames).some(n => existingBoundNames.includes(n))) {
-      throw new DvalaError('Duplicate binding', undefined)
+      throw new ParseError('Duplicate binding', undefined)
     }
     forLoopBindings.push(loopBinding)
     if (isOperatorToken(ctx.tryPeek(), ',')) {
@@ -65,7 +65,7 @@ function parseForLoopBinding(ctx: ParserContext): LoopBindingNode {
       const [letTarget, letValue] = letNode[1] as [BindingTarget, AstNode]
       const newBoundNames = Object.keys(getAllBindingTargetNames(letTarget))
       if (newBoundNames.some(n => existingBoundNames.includes(n))) {
-        throw new DvalaError('Duplicate binding', undefined)
+        throw new ParseError('Duplicate binding', undefined)
       }
 
       letBindings.push([letTarget, letValue])
@@ -124,7 +124,7 @@ function parseBinding(ctx: ParserContext): [BindingTarget, AstNode] {
 function assertInternalLoopBindingDelimiter(token: Token, symbols: InternalLoopBindingDelimiter[], sourceCodeInfo?: SourceCodeInfo): void {
   if (!isInternalLoopBindingDelimiter(token, symbols)) {
     const symbolsString = `${[...symbols, ','].map(symbol => `"${symbol}"`).join(', ')} or ")"`
-    throw new DvalaError(`Expected symbol ${symbolsString}`, sourceCodeInfo)
+    throw new ParseError(`Expected symbol ${symbolsString}`, sourceCodeInfo)
   }
 }
 

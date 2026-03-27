@@ -1,4 +1,4 @@
-import { DvalaError } from '../../errors'
+import { RuntimeError } from '../../errors'
 import type { RegularExpression } from '../../parser/types'
 import { assertRegularExpression, assertStringOrRegularExpression, isRegularExpression } from '../../typeGuards/dvala'
 import { assertString, isString } from '../../typeGuards/string'
@@ -17,7 +17,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
 
         new RegExp(source, flags) // Throws if invalid regexp
       } catch (_e) {
-        throw new DvalaError(`Invalid regular expression: ${source} ${flags}`, sourceCodeInfo)
+        throw new RuntimeError(`Invalid regular expression: ${source} ${flags}`, sourceCodeInfo)
       }
       return {
         [REGEXP_SYMBOL]: true,

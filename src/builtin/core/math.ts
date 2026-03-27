@@ -1,4 +1,4 @@
-import { DvalaError } from '../../errors'
+import { RuntimeError } from '../../errors'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { assertNumber, isNumber } from '../../typeGuards/number'
@@ -22,12 +22,12 @@ function getNumberVectorOrMatrixOperation(
     } else if (isMatrix(param)) {
       hasMatrix = true
     } else if (!isNumber(param)) {
-      throw new DvalaError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
+      throw new RuntimeError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
     }
   }
   if (hasMatrix) {
     if (hasVector) {
-      throw new DvalaError('Cannot mix vector and matrix types', sourceCodeInfo)
+      throw new RuntimeError('Cannot mix vector and matrix types', sourceCodeInfo)
     }
     let rows: number | null = null
     let cold: number | null = null
@@ -38,7 +38,7 @@ function getNumberVectorOrMatrixOperation(
           cold = param[0]!.length
         } else {
           if (param.length !== rows || param[0]!.length !== cold) {
-            throw new DvalaError('Matrix dimensions do not match', sourceCodeInfo)
+            throw new RuntimeError('Matrix dimensions do not match', sourceCodeInfo)
           }
         }
       }
@@ -59,7 +59,7 @@ function getNumberVectorOrMatrixOperation(
           length = param.length
         } else {
           if (param.length !== length) {
-            throw new DvalaError('Vector lengths do not match', sourceCodeInfo)
+            throw new RuntimeError('Vector lengths do not match', sourceCodeInfo)
           }
         }
       }

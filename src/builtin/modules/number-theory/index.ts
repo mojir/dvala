@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { DvalaError, RuntimeError } from '../../../errors'
 import type { Arr } from '../../../interface'
 import { assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
@@ -367,12 +367,12 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
       assertVector(remainders, sourceCodeInfo)
       assertVector(moduli, sourceCodeInfo)
       if (remainders.length !== moduli.length) {
-        throw new DvalaError('Remainders and moduli must have the same length.', sourceCodeInfo)
+        throw new RuntimeError('Remainders and moduli must have the same length.', sourceCodeInfo)
       }
       try {
         return chineseRemainder(remainders, moduli)
       } catch (error) {
-        throw new DvalaError((error as Error).message, sourceCodeInfo)
+        throw new RuntimeError((error as Error).message, sourceCodeInfo)
       }
     },
     arity: toFixedArity(2),

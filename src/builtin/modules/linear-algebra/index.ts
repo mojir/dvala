@@ -1,4 +1,4 @@
-import { DvalaError } from '../../../errors'
+import { DvalaError, RuntimeError } from '../../../errors'
 import { assert2dVector, assert3dVector, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -51,7 +51,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNumber(radians, sourceCodeInfo, { finite: true })
       assert3dVector(axis, sourceCodeInfo)
       if (isZeroVector(axis)) {
-        throw new DvalaError('Rotation axis must not be zero', sourceCodeInfo)
+        throw new RuntimeError('Rotation axis must not be zero', sourceCodeInfo)
       }
       const cosTheta = Math.cos(radians)
       const sinTheta = Math.sin(radians)
@@ -70,10 +70,10 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vector, sourceCodeInfo)
       assertVector(normal, sourceCodeInfo)
       if (vector.length !== normal.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
       if (isZeroVector(normal)) {
-        throw new DvalaError('Reflection normal must not be zero', sourceCodeInfo)
+        throw new RuntimeError('Reflection normal must not be zero', sourceCodeInfo)
       }
       if (isZeroVector(vector)) {
         return vector
@@ -90,10 +90,10 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(normal, sourceCodeInfo)
       assertNumber(eta, sourceCodeInfo, { finite: true, positive: true })
       if (vector.length !== normal.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
       if (isZeroVector(normal)) {
-        throw new DvalaError('Refraction normal must not be zero', sourceCodeInfo)
+        throw new RuntimeError('Refraction normal must not be zero', sourceCodeInfo)
       }
       if (isZeroVector(vector)) {
         return vector
@@ -130,7 +130,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
       assertNumber(t, sourceCodeInfo, { finite: true })
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
       return vectorA.map((val, i) => val + (vectorB[i]! - val) * t)
     },
@@ -142,7 +142,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return dot(vectorA, vectorB)
@@ -155,7 +155,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== 3 || vectorB.length !== 3) {
-        throw new DvalaError('Cross product is only defined for 3D vectors', sourceCodeInfo)
+        throw new RuntimeError('Cross product is only defined for 3D vectors', sourceCodeInfo)
       }
 
       return [
@@ -252,7 +252,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       const min = Math.min(...vector)
 
       if (min <= 0) {
-        throw new DvalaError('Log normalization requires all values to be positive', sourceCodeInfo)
+        throw new RuntimeError('Log normalization requires all values to be positive', sourceCodeInfo)
       }
 
       return vector.map(val => Math.log(val / min))
@@ -264,11 +264,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (isZeroVector(vectorA) || isZeroVector(vectorB)) {
-        throw new DvalaError('Cannot calculate angle with zero-length vector', sourceCodeInfo)
+        throw new RuntimeError('Cannot calculate angle with zero-length vector', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i]!, 0)
@@ -284,11 +284,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (isZeroVector(vectorB)) {
-        throw new DvalaError('Cannot project onto zero-length vector', sourceCodeInfo)
+        throw new RuntimeError('Cannot project onto zero-length vector', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i]!, 0)
@@ -304,7 +304,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i]!, 0)
@@ -318,7 +318,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return areVectorsParallel(vectorA, vectorB)
@@ -331,7 +331,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return areVectorsCollinear(vectorA, vectorB)
@@ -343,11 +343,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorA, sourceCodeInfo)
       assertNonEmptyVector(vectorB, sourceCodeInfo)
       if (isZeroVector(vectorA) || isZeroVector(vectorB)) {
-        throw new DvalaError('Cannot calculate cosine similarity with zero-length vector', sourceCodeInfo)
+        throw new RuntimeError('Cannot calculate cosine similarity with zero-length vector', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i]!, 0)
@@ -364,7 +364,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return Math.sqrt(vectorA.reduce((acc, val, i) => acc + (val - vectorB[i]!) ** 2, 0))
@@ -385,7 +385,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return vectorA.reduce((acc, val, i) => acc + Math.abs(val - vectorB[i]!), 0)
@@ -406,7 +406,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return vectorA.reduce((acc, val, i) => acc + (val !== vectorB[i]! ? 1 : 0), 0)
@@ -426,7 +426,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return Math.max(...vectorA.map((val, i) => Math.abs(val - vectorB[i]!)))
@@ -447,7 +447,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNumber(p, sourceCodeInfo, { finite: true, positive: true })
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       return vectorA.reduce((acc, val, i) => acc + Math.abs(val - vectorB[i]!) ** p, 0) ** (1 / p)
@@ -468,7 +468,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertNonEmptyVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
       if (vectorA.length === 1) {
         return 0
@@ -484,11 +484,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
-        throw new DvalaError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
+        throw new RuntimeError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const meanA = calcMean(vectorA)
@@ -509,11 +509,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
-        throw new DvalaError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
+        throw new RuntimeError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       const ranksA = calcFractionalRanks(vectorA)
@@ -533,11 +533,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
-        throw new DvalaError('Vectors must have at least 2 elements for pearsonCorr', sourceCodeInfo)
+        throw new RuntimeError('Vectors must have at least 2 elements for pearsonCorr', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       try {
@@ -554,11 +554,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length < 2) {
-        throw new DvalaError('Vectors must have at least 2 elements for kendallTau', sourceCodeInfo)
+        throw new RuntimeError('Vectors must have at least 2 elements for kendallTau', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       try {
@@ -573,7 +573,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([vector, lag], sourceCodeInfo): number => {
       assertVector(vector, sourceCodeInfo)
       if (vector.length < 2) {
-        throw new DvalaError('Vector must have at least 2 elements for autocorrelation', sourceCodeInfo)
+        throw new RuntimeError('Vector must have at least 2 elements for autocorrelation', sourceCodeInfo)
       }
 
       assertNumber(lag, sourceCodeInfo, {
@@ -625,11 +625,11 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertVector(vectorB, sourceCodeInfo)
 
       if (vectorA.length < 2) {
-        throw new DvalaError('Vectors must have at least 2 elements', sourceCodeInfo)
+        throw new RuntimeError('Vectors must have at least 2 elements', sourceCodeInfo)
       }
 
       if (vectorA.length !== vectorB.length) {
-        throw new DvalaError('Vectors must be of the same length', sourceCodeInfo)
+        throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
 
       assertNumber(lag, sourceCodeInfo, {
@@ -665,7 +665,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       assertSquareMatrix(matrix, sourceCodeInfo)
       assertVector(vector, sourceCodeInfo)
       if (matrix.length !== vector.length) {
-        throw new DvalaError(`The number of rows in the matrix must be equal to the length of the vector, but got ${matrix.length} and ${vector.length}`, sourceCodeInfo)
+        throw new RuntimeError(`The number of rows in the matrix must be equal to the length of the vector, but got ${matrix.length} and ${vector.length}`, sourceCodeInfo)
       }
       return solve(matrix, vector)
     },

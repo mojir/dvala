@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { TypeError } from '../errors'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { valueToString } from '../utils/debug/debugTools'
 import { getSourceCodeInfo } from '../utils/debug/getSourceCodeInfo'
@@ -173,7 +173,7 @@ export function assertNumber(
   options: NumberOptions = {},
 ): asserts value is number {
   if (!isNumber(value, options)) {
-    throw new DvalaError(
+    throw new TypeError(
       `Expected ${getNumberTypeName(options)}, got ${valueToString(value)}.`,
       getSourceCodeInfo(value, sourceCodeInfo),
     )

@@ -1,5 +1,5 @@
 import type { TokenStream } from '../tokenizer/tokenize'
-import { DvalaError } from '../errors'
+import { ParseError } from '../errors'
 import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
 import type { AstNode, Ast, SourceMap } from './types'
 import { createParserContext, parseExpression } from './subParsers/parseExpression'
@@ -9,7 +9,7 @@ export { createParserContext, parseExpression }
 function parseInternal(tokenStream: TokenStream): { nodes: AstNode[]; sourceMap: SourceMap | undefined } {
   tokenStream.tokens.forEach(token => {
     if (token[0] === 'Error') {
-      throw new DvalaError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))
+      throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], tokenStream.source, tokenStream.filePath))
     }
   })
 
@@ -23,7 +23,7 @@ function parseInternal(tokenStream: TokenStream): { nodes: AstNode[]; sourceMap:
       ctx.advance()
     } else {
       if (!ctx.isAtEnd()) {
-        throw new DvalaError('Expected ;', ctx.peekSourceCodeInfo())
+        throw new ParseError('Expected ;', ctx.peekSourceCodeInfo())
       }
     }
   }

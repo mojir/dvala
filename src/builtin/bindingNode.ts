@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { RuntimeError } from '../errors'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 
@@ -50,12 +50,12 @@ function getNamesFromBindingTarget(target: BindingTarget | null, names: Record<s
     }
   } else if (target[0] === bindingTargetTypes.rest) {
     if (names[target[1][0]]) {
-      throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, undefined)
+      throw new RuntimeError(`Duplicate binding name: ${target[1][0]}`, undefined)
     }
     names[target[1][0]] = true
   } else if (target[0] === bindingTargetTypes.symbol) {
     if (names[target[1][0][1]]) {
-      throw new DvalaError(`Duplicate binding name: ${target[1][0]}`, undefined)
+      throw new RuntimeError(`Duplicate binding name: ${target[1][0]}`, undefined)
     }
     names[target[1][0][1]] = true
   }

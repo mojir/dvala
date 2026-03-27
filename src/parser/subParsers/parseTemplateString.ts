@@ -1,5 +1,5 @@
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { minifyTokenStream } from '../../tokenizer/minifyTokenStream'
 import { tokenize } from '../../tokenizer/tokenize'
 import type { TemplateStringToken } from '../../tokenizer/token'
@@ -200,7 +200,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
       segmentNodes.push(withSourceCodeInfo([NodeTypes.Str, segment.value, 0], debugInfo, ctx) as StringNode)
     } else {
       if (segment.value.trim().length === 0) {
-        throw new DvalaError('Empty interpolation in template string', resolvedSci)
+        throw new ParseError('Empty interpolation in template string', resolvedSci)
       }
       // Re-tokenize and re-parse the expression
       const innerStream = tokenize(segment.value, false, resolvedSci?.filePath)
@@ -208,7 +208,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
       for (const t of minified.tokens) {
         if (t[0] === 'Error') {
-          throw new DvalaError(`Template string interpolation error: ${t[3]}`, resolvedSci)
+          throw new ParseError(`Template string interpolation error: ${t[3]}`, resolvedSci)
         }
       }
 

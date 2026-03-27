@@ -1,6 +1,6 @@
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import type { ParserContext } from '../ParserContext'
@@ -16,7 +16,7 @@ export function parseDo(ctx: ParserContext): DoNode {
     if (isOperatorToken(ctx.tryPeek(), ';')) {
       ctx.advance()
     } else if (!isReservedSymbolToken(ctx.tryPeek(), 'end')) {
-      throw new DvalaError('Expected end', ctx.peekSourceCodeInfo())
+      throw new ParseError('Expected end', ctx.peekSourceCodeInfo())
     }
   }
 

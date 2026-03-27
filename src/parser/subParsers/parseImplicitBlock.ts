@@ -1,6 +1,6 @@
 import { isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { NodeTypes } from '../../constants/constants'
 import type { DoNode } from '../../builtin/specialExpressions/block'
 import type { ParserContext } from '../ParserContext'
@@ -20,7 +20,7 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
   assertImplicitBlockEnd(ctx, ends)
 
   if (nodes.length === 0) {
-    throw new DvalaError('Expected expression', ctx.peekSourceCodeInfo())
+    throw new ParseError('Expected expression', ctx.peekSourceCodeInfo())
   }
 
   if (nodes.length === 1) {
@@ -33,7 +33,7 @@ export function parseImplicitBlock(ctx: ParserContext, ends: ImplicitBlockEnd[])
 
 function assertImplicitBlockEnd(ctx: ParserContext, ends: ImplicitBlockEnd[]): void {
   if (!isImplicitBlockEnd(ctx, ends)) {
-    throw new DvalaError(`Expected ${ends.map(e => e[1]).join(' or ')}`, ctx.peekSourceCodeInfo())
+    throw new ParseError(`Expected ${ends.map(e => e[1]).join(' or ')}`, ctx.peekSourceCodeInfo())
   }
 }
 

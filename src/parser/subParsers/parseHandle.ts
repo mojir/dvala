@@ -1,6 +1,6 @@
 import type { HandleNode } from '../../builtin/specialExpressions/handle'
 import { NodeTypes } from '../../constants/constants'
-import { DvalaError } from '../../errors'
+import { ParseError } from '../../errors'
 import { asReservedSymbolToken, assertReservedSymbolToken, isOperatorToken, isReservedSymbolToken } from '../../tokenizer/token'
 import type { AstNode } from '../types'
 import type { ParserContext } from '../ParserContext'
@@ -22,12 +22,12 @@ export function parseHandle(ctx: ParserContext): HandleNode {
     if (isOperatorToken(ctx.tryPeek(), ';')) {
       ctx.advance()
     } else if (!isReservedSymbolToken(ctx.tryPeek(), 'with')) {
-      throw new DvalaError('Expected "with" or ";"', ctx.peekSourceCodeInfo())
+      throw new ParseError('Expected "with" or ";"', ctx.peekSourceCodeInfo())
     }
   }
 
   if (!isReservedSymbolToken(ctx.tryPeek(), 'with')) {
-    throw new DvalaError('Expected "with"', ctx.peekSourceCodeInfo())
+    throw new ParseError('Expected "with"', ctx.peekSourceCodeInfo())
   }
   ctx.advance()
 

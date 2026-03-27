@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { TypeError } from '../errors'
 import type { UnknownRecord } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { valueToString } from '../utils/debug/debugTools'
@@ -15,7 +15,7 @@ export function asNonUndefined<T>(value: T | undefined, sourceCodeInfo?: SourceC
 
 export function assertNonUndefined<T>(value: T | undefined, sourceCodeInfo?: SourceCodeInfo): asserts value is T {
   if (!isNonUndefined(value))
-    throw new DvalaError('Unexpected undefined', getSourceCodeInfo(value, sourceCodeInfo))
+    throw new TypeError('Unexpected undefined', getSourceCodeInfo(value, sourceCodeInfo))
 }
 
 export function isUnknownRecord(value: unknown): value is Record<string, unknown> {
@@ -24,7 +24,7 @@ export function isUnknownRecord(value: unknown): value is Record<string, unknown
 
 export function assertUnknownRecord(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is UnknownRecord {
   if (!isUnknownRecord(value)) {
-    throw new DvalaError(
+    throw new TypeError(
       `Expected ${'UnknownRecord'}, got ${valueToString(value)}.`,
       getSourceCodeInfo(value, sourceCodeInfo),
     )

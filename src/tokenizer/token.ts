@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { TokenizerError } from '../errors'
 import type { ReservedSymbol } from './reservedNames'
 import { type SymbolicBinaryOperator, type SymbolicOperator, isBinaryOperator } from './operators'
 
@@ -377,5 +377,5 @@ function throwUnexpectedToken(expected: TokenType, expectedValue: string | undef
   const actualOutput = actual ? `${actual[0]} '${actual[1]}'` : 'end of input'
   // Minimal location info from token debug info (no source text available here)
   const sourceCodeInfo = actual?.[2] ? debugInfoToSourceCodeInfo(actual[2]) : undefined
-  throw new DvalaError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, sourceCodeInfo)
+  throw new TokenizerError(`Unexpected token: ${actualOutput}, expected ${expected}${expectedValue ? ` '${expectedValue}'` : ''}`, sourceCodeInfo)
 }

@@ -11,7 +11,7 @@ import { getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from 
 import { FUNCTION_SYMBOL } from '../../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { asFunctionLike, assertFunctionLike } from '../../../typeGuards/dvala'
-import { DvalaError } from '../../../errors'
+import { TypeError } from '../../../errors'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 import functionalModuleSource from './functional.dvala'
@@ -22,7 +22,7 @@ const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
       params.forEach(param => assertFunctionLike(param, sourceCodeInfo))
       const arity = getCommonArityFromFunctions(params as FunctionLike[])
       if (arity === null) {
-        throw new DvalaError('All functions must accept the same number of arguments', sourceCodeInfo)
+        throw new TypeError('All functions must accept the same number of arguments', sourceCodeInfo)
       }
       return {
         [FUNCTION_SYMBOL]: true,

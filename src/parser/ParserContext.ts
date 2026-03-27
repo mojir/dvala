@@ -1,4 +1,4 @@
-import { DvalaError } from '../errors'
+import { ParseError } from '../errors'
 import type { SourceCodeInfo, Token, TokenDebugInfo } from '../tokenizer/token'
 import { debugInfoToSourceCodeInfo } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
@@ -87,7 +87,7 @@ export class ParserContext {
     /* v8 ignore next 4 */
     if (!token) {
       const lastToken = this.tokens.at(-1)
-      throw new DvalaError('Unexpected end of input', this.resolveTokenDebugInfo(lastToken?.[2]))
+      throw new ParseError('Unexpected end of input', this.resolveTokenDebugInfo(lastToken?.[2]))
     }
     return token
   }
