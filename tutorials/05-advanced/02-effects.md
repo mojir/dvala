@@ -255,13 +255,13 @@ handle expr with handler end
 **Error catching — the simplest case:**
 
 ```dvala
-(0 / 0) ||> @dvala.error(msg) -> 0
+(0 / 0) ||> @dvala.error(err) -> 0
 ```
 
 **With a stored handler:**
 
 ```dvala
-let safeDiv = @dvala.error(msg) -> 0;
+let safeDiv = @dvala.error(err) -> 0;
 (0 / 0) ||> safeDiv
 ```
 
@@ -670,7 +670,7 @@ const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
 | Handler shorthand | `@eff(x) -> body` |
 | Wildcard handler | `@dvala.*(x) -> body` |
 | Full handler | `(arg, eff, nxt) -> ...` |
-| Error catching | `expr \|\|> @dvala.error(msg) -> default` |
+| Error catching | `expr \|\|> @dvala.error(err) -> default` |
 | Middleware | `expr \|\|> h1 \|\|> h2 \|\|> h3` |
 | Fallback | `expr \|\|> fallback(value)` |
 | Retry | `expr \|\|> [retry(n), handler]` |

@@ -88,7 +88,7 @@ let safeSqrt = (x) ->
   handle
     sqrt(x)
   with [(arg, eff, nxt) ->
-    if eff == @dvala.error then null
+    if eff == @dvala.error then null  // arg is { message: ... } but we discard it
     else nxt(eff, arg)
     end
   ]

@@ -77,13 +77,13 @@ end
 
 ## Error Handling
 
-Use `handle` / `with` to handle errors. `perform(@dvala.error, msg)` raises an error:
+Use `handle` / `with` to handle errors. `perform(@dvala.error, { message: msg })` raises an error:
 
 ```dvala
 handle
-  perform(@dvala.error, "oops")
+  perform(@dvala.error, { message: "oops" })
 with [(arg, eff, nxt) ->
-  if eff == @dvala.error then arg
+  if eff == @dvala.error then arg.message
   else nxt(eff, arg)
   end
 ]

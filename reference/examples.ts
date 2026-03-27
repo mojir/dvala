@@ -573,12 +573,12 @@ startGame()
 let determinant = (matrix) -> do
   // Check if input is an array
   if not(isArray(matrix)) then
-    perform(@dvala.error, "Input must be an array");
+    perform(@dvala.error, { message: "Input must be an array" });
   end;
 
   // Check if matrix is empty
   if isEmpty(matrix) then
-    perform(@dvala.error, "Matrix cannot be empty");
+    perform(@dvala.error, { message: "Matrix cannot be empty" });
   end;
 
   let rows = count(matrix);
@@ -588,14 +588,14 @@ let determinant = (matrix) -> do
   
   // Check if first row is an array
   if not(isArray(firstRow)) then
-    perform(@dvala.error, "Input must be a 2D array");
+    perform(@dvala.error, { message: "Input must be a 2D array" });
   end;
   
   let cols = count(firstRow);
   
   // Ensure matrix is square
   if rows != cols then
-    perform(@dvala.error, "Matrix must be square");
+    perform(@dvala.error, { message: "Matrix must be square" });
   end;
   
   // Base case: 1x1 matrix
@@ -672,15 +672,15 @@ determinant(matrix4x4);
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
   // Check if inputs are arrays
-  if not(isArray(matrixA)) then perform(@dvala.error, "First input must be an array") end;
-  if not(isArray(matrixB)) then perform(@dvala.error, "Second input must be an array") end;
+  if not(isArray(matrixA)) then perform(@dvala.error, { message: "First input must be an array" }) end;
+  if not(isArray(matrixB)) then perform(@dvala.error, { message: "Second input must be an array" }) end;
 
   // Check if matrices are not empty
-  if isEmpty(matrixA) || isEmpty(matrixB) then perform(@dvala.error, "Matrices cannot be empty") end;
+  if isEmpty(matrixA) || isEmpty(matrixB) then perform(@dvala.error, { message: "Matrices cannot be empty" }) end;
 
   // Check if matrices are 2D arrays
-  if not(isArray(first(matrixA))) then perform(@dvala.error, "First input must be a 2D array") end;
-  if not(isArray(first(matrixB))) then perform(@dvala.error, "Second input must be a 2D array") end;
+  if not(isArray(first(matrixA))) then perform(@dvala.error, { message: "First input must be a 2D array" }) end;
+  if not(isArray(first(matrixB))) then perform(@dvala.error, { message: "Second input must be a 2D array" }) end;
 
   // Get dimensions
   let rowsA = count(matrixA);
@@ -690,16 +690,16 @@ let matrixMultiply = (matrixA, matrixB) -> do
 
   // Check if all rows have consistent length
   if some(matrixA, row -> not(isArray(row)) || count(row) != colsA) then
-    perform(@dvala.error, "First matrix has inconsistent row lengths")
+    perform(@dvala.error, { message: "First matrix has inconsistent row lengths" })
   end;
 
   if some(matrixB, row -> not(isArray(row)) || count(row) != colsB) then
-    perform(@dvala.error, "Second matrix has inconsistent row lengths")
+    perform(@dvala.error, { message: "Second matrix has inconsistent row lengths" })
   end;
 
   // Check if matrices can be multiplied
   if not(colsA == rowsB) then
-    perform(@dvala.error, "Matrix dimensions mismatch: first matrix columns must equal second matrix rows");
+    perform(@dvala.error, { message: "Matrix dimensions mismatch: first matrix columns must equal second matrix rows" });
   end;
 
   // Create a row of the result matrix
@@ -1175,7 +1175,7 @@ let neg = -num;
 let { prettyPrint, call } = import(ast);
 let { fallback } = import(effectHandler);
 let print = -> perform(@dvala.io.print, $);
-let error = -> perform(@dvala.error, $);
+let error = -> perform(@dvala.error, { message: $ });
 
 
 // ─── 1. unless ──────────────────────────────────────────────
