@@ -14,7 +14,8 @@ import { createParserContext, parseExpression } from './parseExpression'
 
 type LiteralSegment = { type: 'literal'; value: string }
 type ExpressionSegment = { type: 'expression'; value: string }
-export type Segment = LiteralSegment | ExpressionSegment
+type DeferredSegment = { type: 'deferred'; value: string; dollarCount: number }
+export type Segment = LiteralSegment | ExpressionSegment | DeferredSegment
 
 // ---------------------------------------------------------------------------
 // Raw content scanner — splits template content into literal/expression spans
@@ -142,15 +143,25 @@ export function splitSegments(raw: string): Segment[] {
   let literal = ''
   while (i < raw.length) {
     if (raw[i] === '$' && raw[i + 1] === '{') {
-      // Deferred splice: $${ or $$${ — strip one $ and emit as literal
+      // Deferred splice: $${ or $$${ — emit as a deferred segment
       // The first $ was already added to literal on a previous iteration
       if (literal.length > 0 && literal[literal.length - 1] === '$') {
-        literal = literal.slice(0, -1)
-        literal += '${'
-        i += 2
+        // Count how many $ signs precede the {
+        let dollarCount = 1 // the current $
+        while (literal.length >= dollarCount && literal[literal.length - dollarCount] === '$') {
+          dollarCount++
+        }
+        dollarCount-- // don't count beyond the actual $ chars
+        // Strip the leading $ signs from literal
+        literal = literal.slice(0, -dollarCount)
+        if (literal.length > 0) {
+          segments.push({ type: 'literal', value: literal })
+          literal = ''
+        }
+        i += 2 // skip ${
         const { expr, consumed } = scanExpression(raw, i)
-        literal += `${expr}}`
         i += consumed
+        segments.push({ type: 'deferred', value: expr, dollarCount: dollarCount + 1 })
         continue
       }
 

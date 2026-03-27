@@ -54,6 +54,9 @@ export function parseCodeTemplate(ctx: ParserContext, token: CodeTemplateToken):
   for (const segment of segments) {
     if (segment.type === 'literal') {
       source += segment.value
+    } else if (segment.type === 'deferred') {
+      // Deferred splice: strip one $ and emit as literal for the inner template
+      source += `${'$'.repeat(segment.dollarCount - 1)}{${segment.value}}`
     } else {
       if (segment.value.trim().length === 0) {
         throw new ParseError('Empty interpolation in code template', resolvedSci)
