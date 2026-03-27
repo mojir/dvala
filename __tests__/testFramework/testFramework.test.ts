@@ -132,7 +132,7 @@ not ok 2 sub
 1..2
 not ok 1 add
   ---
-  error: "UndefinedSymbolError"
+  error: "ReferenceError"
   message: "Undefined symbol 'ADD'."
   location: "${path.resolve(__dirname, 'broken-plus-lib.dvala')}:1:22"
   code:
