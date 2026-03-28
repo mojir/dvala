@@ -553,39 +553,57 @@ end
 
 #### Remaining syntax questions
 
-1. **Clause syntax inside `handler...end`** — separators between clauses? Semicolons? Newlines only?
-2. **Transform syntax inside `handler...end`** — `transform x -> expr`? Where exactly does it go relative to clauses?
-3. **`with h;` details** — is the semicolon required? Or could `with h do ... end` also work as a block form?
-4. **One-liner forms** — `with h; expr` on a single line vs always needing `do...end`?
-5. **`resume` binding** — keyword always available in clause bodies? Implicit binding (like `self`)? Or explicit parameter?
-6. **Multiple perform args** — `perform(@eff, a, b)` maps to `@eff(a, b) -> ...`. How does the parser handle variadic clauses?
-7. **Error messages and edge cases** — duplicate clauses, calling `resume` outside a clause, handler with no clauses, etc.
+1. ~~**Clause syntax inside `handler...end`**~~ — **Decided: no separators.** Clauses are branches (like `match` cases), not list items. The parser uses `@effect` tokens to detect new clauses — EffectName is not a binary operator, so expression parsing stops naturally.
+2. ~~**Transform and clause body syntax inside `handler...end`**~~ — **Decided.** Clause bodies follow `->`, same as lambdas: single expression or `do...end` block. Transform is always last (between clauses and `end`), optional, defaults to identity. Parser: after `@effect` clauses, `transform` → parse transform, `end` → no transform.
+3. ~~**`with h;` details**~~ — **Decided: `with h;` is a real construct (not pure sugar).** `with h;` evaluates `h`, pushes a `HandleWithFrame`, and evaluates the rest of the block as a sequence — no function boundary. This preserves `recur` behavior inside loops (a pure desugaring to `h(-> rest)` would break `recur` because the thunk creates a `FnBodyFrame`). Separately, handlers are callable: `h(-> body)` installs the handler around an explicit thunk (function boundary, `recur` doesn't cross — expected). Both forms are valuable: `with h;` for normal installation, `h(-> body)` for programmatic composition. `with h;` gets its own AST node (`WithHandler`) — semantically a scope modification like `let`, not a function call. Koka doesn't have this issue because it uses regular recursion, not `recur`.
+4. ~~**One-liner forms**~~ — Falls out from #3. `do with h; expr end` desugars to `do h(-> expr) end`. No special one-liner syntax needed.
+5. ~~**`resume` binding**~~ — **Decided.** `resume` is a reserved keyword, lexically scoped to handler clause bodies. It's a first-class value — can be passed to functions, stored, etc. Call syntax: `resume(value)` (parenthesized, like `recur` and `perform`). Returns the continuation's result. Calling `resume` outside a handler clause is a runtime error. Lexical (not dynamic) scoping chosen for clean continuation serialization — `resume` is just a value in the clause's environment, serializes like any closure variable.
+6. ~~**Multiple perform args**~~ — **Decided: single arg.** `perform(@eff, payload)` passes one payload (or null if omitted). Clause receives it as one param: `@eff(x) -> ...`. For multiple values, pack into array/object and destructure in the clause param: `@eff({ url, timeout }) -> ...`. No variadic, no arg-count mismatch. Same as current model.
+7. ~~**Error messages and edge cases**~~ — **Decided.** Duplicate clauses for same effect = parse error. `resume` outside handler clause = runtime error. `resume` called twice = runtime error (one-shot guard, easy to remove later). Handler with no clauses = allowed (identity handler or transform-only). `with h;` breaks `recur` if implemented as pure sugar — resolved by making `with h;` a real construct with its own AST node (no function boundary).
 
 ---
 
 ## Implementation Plan
 
-### Phase 1a: Resolve remaining syntax questions
-1. Finalize clause syntax inside `handler...end`
-2. Finalize `with h;` details and one-liner forms
-3. Finalize `resume` binding model
-4. Finalize multiple perform args
+### ~~Phase 1a: Resolve remaining syntax questions~~
+
+All resolved — see decisions above.
 
 ### Phase 1b: Core implementation
-1. **`handler...end` expression** — new reserved keyword, parser, handler value type
-2. **`with h;` statement** — parser support, installs handler on continuation stack for rest of block
-3. **Named clause dispatch** — dispatch by effect name in handler's clause map
-4. **`resume` keyword** — available in every handler clause, captures continuation
-5. **Abort by default** — clause return value without `resume` = abort (exits handle scope)
-6. **Transform clause** — apply on normal body completion and inside resume
-7. **Deep reinstallation** — reinstall handler around continuation on resume
-8. **Implicit propagation** — unmatched effects propagate to enclosing handler automatically
-9. **One-shot guard** — `resume` throws if called twice
-10. **Multiple perform args** — extend `perform` to pass variadic args to handler clauses
 
-### Phase 1c: Migration and cleanup
-1. **Drop old handler system** — remove handler chains `[h1, h2]`, `nxt`, `HandleNextFunction`, `||>` operator, handler shorthand-to-lambda desugaring
-2. **Update `fallback`/`retry`** — rewrite as functions returning handler values
-3. **Migrate all handlers** — tests, tutorials, examples, effectHandler module
-4. **Add tests** — abort, resume-returns-value, transform clause, state threading, one-shot guard, nested handlers, implicit propagation, multiple args, flat stacking, interleaving
-5. **Update docs** — tutorials, skill docs, reference
+1. **`handler...end` expression** — add `handler`, `transform`, `resume` as reserved keywords. Parser for `handler <clauses> [transform x -> expr] end`. New handler value type (`functionType: 'Handler'`, clause map + transform + closure env).
+2. **Handler callable** — `h(-> body)` installs handler around thunk. Evaluator recognizes handler values in `dispatchFunction`, pushes `HandleWithFrame`, evaluates thunk body.
+3. **Named clause dispatch** — when `perform` fires, look up effect name in handler's clause map. Match → run clause body with params bound + `resume` in scope. No match → propagate (pop `HandleWithFrame`, re-perform on outer stack).
+4. **`resume` keyword** — lexically bound in clause bodies as a first-class callable value. Captures continuation from perform site. Calling it: reinstalls handler (deep), evaluates continuation with given value, returns continuation's result (after transform). One-shot guard: runtime error if called twice (implemented as easy-to-remove check).
+5. **Abort by default** — clause return value without calling `resume` = abort. Clause's result becomes the handler call's result, bypassing transform.
+6. **Transform clause** — applies on normal body completion (Path 1) and inside `resume` returns (the reinstalled handler's normal completion). NOT applied on abort (Path 2).
+7. **Deep reinstallation** — when `resume(value)` is called, the handler is reinstalled around the continuation. Each `resume` creates a fresh handler scope.
+8. **Tests** — all patterns working with `h(-> body)` directly: abort, resume-returns-value, transform, state threading, one-shot guard, nested handlers, implicit propagation, intercept-and-forward, deep reinstallation.
+
+### Phase 1c: `with h;` statement
+
+`with h;` gets its own AST node (`WithHandler`). NOT a desugaring to `h(-> rest)` — that would break `recur` by introducing a function boundary. Instead: evaluates `h`, pushes `HandleWithFrame`, evaluates rest of block as sequence, pops frame. Semantically a scope modification like `let`.
+
+1. **Parser** — `with <expr>;` inside blocks. Parser collects remaining statements in the block as the handler's body.
+2. **Evaluator** — new `WithHandler` step: evaluate handler expr, push `HandleWithFrame`, evaluate rest as sequence.
+3. **Tests** — flat stacking, interleaving with `let`, `recur` inside `with h;` loops.
+
+### Phase 1d: Migration and cleanup
+
+1. **Drop old handler system** — remove `handle...with...end`, handler chains `[h1, h2]`, `nxt`, `HandleNextFunction`, `||>` operator, handler shorthand-to-lambda desugaring.
+2. **Update `fallback`/`retry`** — rewrite as functions returning handler values.
+3. **Migrate all handlers** — tests, tutorials, examples, effectHandler module.
+4. **Update docs** — tutorials, skill docs, reference.
+
+### Phase 1e: Algebraic properties documentation
+
+Add a tutorial/doc section that states and informally proves the algebraic properties of Dvala's effect handlers:
+
+1. **Monoid structure** — handlers form a monoid under composition:
+   - **Associativity**: `(h1 . h2) . h3 = h1 . (h2 . h3)` — nesting is function composition.
+   - **Identity**: `handler end` (no clauses, no transform) — installing it changes nothing.
+2. **Algebraic law** (deep handler reinstallation): `handle(perform(@eff, v); rest) = clause(v, x -> handle(rest[x]))` — handling distributes over the continuation.
+3. **Commutativity of disjoint effects** — handlers for non-overlapping effects commute under nesting.
+4. **Linearity of resume** — one-shot: `resume` is a linear resource, consumed exactly once (relaxed to multi-shot in Phase 3).
+
+Each property should be stated, demonstrated with runnable Dvala examples, and informally justified.
