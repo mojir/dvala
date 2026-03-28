@@ -113,23 +113,50 @@ Clojure uses this pattern extensively. Transients are ~2x faster than persistent
 
 ### Host interop boundary
 
-Dvala values would no longer be plain JS objects and arrays. The host API needs a conversion layer:
+**Decision: preserve the current host API.** Persistent structures are an internal optimization — the host never sees them.
+
+The key insight is that Dvala's workload splits cleanly:
+- **Inside Dvala**: heavy computation on large data (e.g. matrix operations) — persistent structures save O(N) on every operation
+- **At host boundaries**: I/O-bound side effects (DB writes, LLM calls, user input) — O(N) conversion is negligible compared to the I/O cost
+
+This means we can convert at every boundary without meaningful performance impact, because the host is about to do something orders of magnitude slower than the conversion.
+
+#### Where conversion happens
+
+1. **`dvala.run()` return value** — convert persistent → plain JS once at the end
+2. **Host effect handler args** — convert persistent → plain JS before each handler call
+3. **Host effect handler return values** — convert plain JS → persistent when resuming
 
 ```typescript
-// Today: plain JS values
+// Host API stays exactly the same:
 const result = dvala.run('[1, 2, 3]')
-result[0]         // 1 — just a JS array
+result[0]  // 1 — plain JS array, no .get() needed
 
-// After: persistent values with toJS()
-const result = dvala.run('[1, 2, 3]')
-result.toJS()     // [1, 2, 3] — converts to plain JS
-result.get(0)     // 1 — direct access without conversion
+// Host effect handlers stay exactly the same:
+dvala.run('perform(@save, {name: "Alice"})', {
+  handlers: {
+    save: (arg) => {
+      db.save(arg)        // arg is a plain JS object
+      return { ok: true } // plain JS return, converted back internally
+    }
+  }
+})
 ```
 
-Options:
-- **Auto-convert at boundary**: `dvala.run()` always returns plain JS. Simple for users, but loses structural sharing.
-- **Lazy conversion**: Return persistent values, provide `.toJS()`. Users who pass values back into Dvala avoid conversion round-trips.
-- **Configurable**: Let the host choose.
+#### Strategy options
+
+**Strategy A: Eager conversion (start here)**
+Convert to/from plain JS at every boundary crossing. Simple, predictable, zero API change.
+
+**Strategy B: Proxy wrappers (optimize later if needed)**
+Wrap persistent values in a JS Proxy that makes them look like plain objects/arrays. The host handler receives something that behaves like plain JS but avoids O(N) materialization unless the host actually iterates the whole thing:
+- A handler that reads `arg.name` pays O(log N) for that one lookup, not O(N) to convert everything
+- A handler that passes `arg` straight to `JSON.stringify()` materializes on demand
+- A handler that doesn't inspect args at all pays nothing
+
+Proxy traps need careful handling for `typeof`, `Array.isArray()`, spread, `JSON.stringify()`, etc. — but it's solvable.
+
+**Recommendation:** Start with Strategy A. Move to B only if profiling shows conversion cost matters somewhere. They're identical from the host's perspective.
 
 ### Multi-shot continuations (falls out for free)
 
@@ -174,14 +201,9 @@ Build a minimal persistent vector and hash map tailored to Dvala's needs.
 - **Pro**: No dependency, optimized for Dvala's access patterns
 - **Con**: Significant implementation effort, needs thorough testing
 
-### Option C: Immer-style proxies
+### ~~Option C: Immer-style proxies~~ (rejected for internal representation)
 
-Use JS Proxy to intercept mutations and create structural copies lazily.
-
-- **Pro**: Values look like plain JS objects (no API change)
-- **Con**: Not truly persistent — no structural sharing across time
-- **Con**: Proxy overhead on every access
-- **Con**: Doesn't help with multi-shot (still need to clone)
+Proxies as an *alternative to HAMTs* don't work — no structural sharing, no multi-shot benefit. However, proxies have a role at the **host interop boundary** (see Strategy B above) to avoid eager conversion costs.
 
 ### Recommendation: Option B
 
@@ -190,7 +212,70 @@ A minimal custom implementation gives the best trade-off. Dvala only needs:
 - Persistent hash map (object replacement): ~300 lines
 - Persistent linked list (stack): ~20 lines
 
+---
+
+## Migration strategy: internal proxy layer
+
+Replacing JS arrays/objects with HAMTs would normally require rewriting every evaluator and builtin function that touches values. A **proxy layer** can drastically reduce that scope.
+
+### The idea
+
+Wrap persistent structures in JS Proxies internally, so the evaluator and builtins keep reading values with `arr[i]`, `obj.key`, `arr.length` — the proxy translates to HAMT lookups. Only the write/create paths need rewriting.
+
+### What changes, what doesn't
+
+| Code pattern | Change needed? | Why |
+|---|---|---|
+| `arr[i]`, `obj.key`, `arr.length` | No | Proxy get trap → HAMT lookup |
+| `typeof val`, `Array.isArray(val)` | No | Proxy traps handle these |
+| `[...arr, newItem]`, `{ ...obj, k: v }` | **Yes** → `arr.append(x)`, `obj.assoc(k, v)` | Spread materializes O(N), defeating the HAMT |
+| `.filter()`, `.map()`, `.slice()` | **Yes** → use HAMT iterators | Same reason — iteration materializes |
+| Builtins that only read args | No | Proxy handles reads transparently |
+
+### Performance impact of the proxy layer
+
+Proxy traps add overhead on every property access — benchmarks typically show 5-50x slower than direct property access in V8. But the comparison isn't proxy vs native JS. It's:
+
+- `proxy trap → HAMT.get()` vs `HAMT.get()` directly
+
+The delta is just the proxy trap dispatch, which is small relative to the HAMT tree traversal itself. And the cases where it matters most:
+
+- **Casual reads** (`arr[0]`, `obj.name`): ~100ns proxy overhead. Irrelevant next to everything else happening in evaluation.
+- **Hot inner loops** (`map`, `filter`, `reduce`): builtins use HAMT's native iterator directly, bypassing the proxy entirely.
+- **Collection creation** (`append`, `assoc`): uses persistent APIs directly, no proxy involved.
+
+The proxy is only active for the "glue code" — individual value reads in the evaluator and builtins. That's not the bottleneck.
+
+**Conclusion:** The proxy layer is a migration strategy, not a performance concern. It should be benchmarked before committing to it, but the overhead is unlikely to matter. If it does, the proxy can be removed incrementally by rewriting read paths to direct HAMT calls — a straightforward, non-urgent optimization.
+
 The branching factor and node layout can be tuned for Dvala's typical collection sizes.
+
+---
+
+## Architecture layering
+
+The implementation is three fully decoupled layers:
+
+```
+┌─────────────────────────────────┐
+│  Host boundary                  │  toJS() conversion OR proxy wrapper
+├─────────────────────────────────┤
+│  Internal proxy layer (optional)│  Makes HAMTs look like plain JS for evaluator/builtins
+├─────────────────────────────────┤
+│  Persistent data structures     │  Pure HAMT vector + hash map, no knowledge of proxies
+└─────────────────────────────────┘
+```
+
+- The **data structures** are self-contained — `.get()`, `.set()`, `.push()`, `.assoc()`, iterators.
+- The **internal proxy layer** is optional and can be added/removed without touching the data structures.
+- The **host boundary** chooses its own strategy (eager conversion or proxy) independently.
+
+This also means the persistent structures are **platform-portable**. Each platform implements its own:
+- **JavaScript**: custom HAMT (this doc)
+- **Kotlin/KMP**: `kotlinx.collections.immutable` (PersistentList, PersistentMap) or custom
+- **Future platforms**: whatever native persistent collections are available
+
+The host API and Dvala semantics stay identical across platforms — only the internal representation changes.
 
 ---
 
@@ -210,4 +295,4 @@ The branching factor and node layout can be tuned for Dvala's typical collection
 - **Equality**: Persistent structures enable O(1) reference equality (`===`). Should Dvala's `==` use this? (Clojure does for identical? vs =)
 - **Serialization**: Persistent structures need custom serialization. The current continuation serialization assumes plain arrays/objects.
 - **String representation**: Strings are already immutable in JS. Do they need persistent treatment? (Probably not — JS strings are efficient.)
-- **Playground impact**: The AST viewer and output panel display values. Need to handle persistent values correctly.
+- **Playground impact**: The AST viewer and output panel display values. Need to handle persistent values correctly. (Likely a non-issue since `dvala.run()` will return plain JS.)
