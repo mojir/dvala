@@ -240,6 +240,13 @@ describe('prettyPrint — for comprehension', () => {
   it('for with let binding', () => {
     expect(pp('for (x in xs let y = x * 2) -> y')).toBe('for (x in xs let y = x * 2) -> y')
   })
+  it('for with let and when combined', () => {
+    expect(pp('for (x in xs let y = x * 2 when y > 0) -> y')).toBe('for (x in xs let y = x * 2 when y > 0) -> y')
+  })
+  it('for with no let bindings (null letBindings)', () => {
+    // Exercises Array.isArray(letBindings) falsy branch
+    expect(pp('for (x in [1, 2]) -> x')).toBe('for (x in [1, 2]) -> x')
+  })
   it('long for breaks', () => {
     const code = 'for (veryLongVarName in someVeryLongCollectionName when veryLongVarName > 0) -> veryLongVarName * veryLongVarName'
     const result = pp(code)
@@ -306,9 +313,12 @@ describe('prettyPrint — handler nodes', () => {
     expect(result).toContain('transform')
   })
   it('resume with arg', () => { expect(pp('handler @eff(x) -> resume(x) end')).toContain('resume(x)') })
-  it('bare resume', () => {
-    const result = pp('handler @eff(x) -> do let r = resume; r(x) end end')
-    expect(result).toContain('resume')
+  it('bare resume via raw AST', () => {
+    // Resume node with 'ref' payload — bare resume reference
+    expect(prettyPrint(['Resume', 'ref', 0])).toBe('resume')
+  })
+  it('resume with arg via raw AST', () => {
+    expect(prettyPrint(['Resume', ['Num', 42, 0], 0])).toBe('resume(42)')
   })
   it('with handler', () => {
     const result = pp('do with h; body end')
@@ -426,6 +436,11 @@ describe('prettyPrint — smart rewrites via raw AST', () => {
     const ast = ['Call', [['Builtin', '-', 0], [['Num', 0, 0], ['Sym', 'x', 0]]], 0]
     expect(prettyPrint(ast)).toBe('-x')
   })
+  it('non-zero minus stays as subtraction', () => {
+    // 3 - x → NOT rewritten to unary minus (first arg is 3, not 0)
+    const ast = ['Call', [['Builtin', '-', 0], [['Num', 3, 0], ['Sym', 'x', 0]]], 0]
+    expect(prettyPrint(ast)).toBe('3 - x')
+  })
 })
 
 describe('prettyPrint — raw AST edge cases', () => {
@@ -458,6 +473,39 @@ describe('prettyPrint — raw AST edge cases', () => {
     const bodyAst = [['Splice', 5, 0]]  // index 5 doesn't exist
     const codeTmpl = ['CodeTmpl', [bodyAst, []], 0]
     expect(() => prettyPrint(codeTmpl)).toThrow(/Invalid splice index/)
+  })
+
+  it('macro callee gets parens', () => {
+    // Covers the Macro branch of needsParens (line 219-220)
+    const param = ['symbol', [['Sym', 'ast', 0], undefined], 0]
+    const ast = ['Call', [['Macro', [[param], [['Sym', 'ast', 0]], null], 0], [['Num', 1, 0]]], 0]
+    expect(prettyPrint(ast)).toBe('(macro (ast) -> ast)(1)')
+  })
+
+  it('substituteSplices fallback for missing splice expr', () => {
+    // Splice index exists but spliceExprs[index] is undefined → fallback text
+    // This exercises the falsy branch of `expr ?` in substituteSplices (line 509)
+    const bodyAst = [['Call', [['Builtin', '+', 0], [['Splice', 0, 0], ['Num', 1, 0]]], 0]]
+    const codeTmpl = ['CodeTmpl', [bodyAst, [undefined]], 0]
+    const result = prettyPrint(codeTmpl)
+    expect(result).toContain('$^{<splice0>}')
+  })
+
+  it('pipe chain breaks when inner callee is not a named symbol', () => {
+    // f(g(x)) is a pipe chain, but f((a -> a)(x)) is not because callee is a lambda
+    const ast = ['Call', [['Sym', 'f', 0], [['Call', [['Function', [[], [['Sym', 'x', 0]]], 0], [['Num', 1, 0]]], 0]]], 0]
+    const result = prettyPrint(ast)
+    // Should NOT produce pipe chain — inner callee is a Function, not Sym/Builtin
+    expect(result).toContain('f(')
+    expect(result).not.toContain('|>')
+  })
+
+  it('null slot in array destructuring prints as _', () => {
+    // Array binding target with a null element: [a, , b] → the null becomes _
+    const arrayTarget = ['array', [[['symbol', [['Sym', 'a', 0], undefined], 0], null, ['symbol', [['Sym', 'b', 0], undefined], 0]], undefined], 0]
+    const letNode = ['Let', [arrayTarget, ['Array', [['Num', 1, 0], ['Num', 2, 0], ['Num', 3, 0]], 0]], 0]
+    const result = prettyPrint(letNode)
+    expect(result).toBe('let [a, _, b] = [1, 2, 3]')
   })
 
   it('binding target type passed directly to printNode', () => {
