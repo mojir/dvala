@@ -652,8 +652,6 @@ describe('AutoCompleter.ts branch coverage', () => {
   })
 
   it('dotPrefix path with no effectNames uses empty fallback', () => {
-    // Construct AutoCompleter directly with dotPrefix but no effectNames
-    // to cover the `params.effectNames ?? []` falsy branch at line 128
     const ac = new AutoCompleter('perform(@dvala.io.p', 19)
     const suggestions = ac.getSuggestions()
     expect(Array.isArray(suggestions)).toBe(true)
@@ -676,7 +674,6 @@ describe('AutoCompleter.ts branch coverage', () => {
 
   it('getPreviousSuggestion works', () => {
     const ac = getAutoCompleter('le', 2)
-    // Should have suggestions starting with 'le' (let, length, etc.)
     const first = ac.getNextSuggestion()
     expect(first).not.toBeNull()
     const prev = ac.getPreviousSuggestion()
@@ -687,7 +684,6 @@ describe('AutoCompleter.ts branch coverage', () => {
     const ac = getAutoCompleter('le', 2)
     const prev = ac.getPreviousSuggestion()
     expect(prev).not.toBeNull()
-    // Call many times to wrap
     for (let i = 0; i < 50; i++) ac.getPreviousSuggestion()
     expect(ac.getPreviousSuggestion()).not.toBeNull()
   })
@@ -707,6 +703,13 @@ describe('AutoCompleter.ts branch coverage', () => {
     const ac = getAutoCompleter('zzzzzzzzNotASymbol', 18)
     expect(ac.getNextSuggestion()).toBeNull()
     expect(ac.getPreviousSuggestion()).toBeNull()
+  })
+
+  it('includes custom bindings in suggestions', () => {
+    const ac = getAutoCompleter('myV', 3, { bindings: { myVar: 42, myVal: 99 } })
+    const suggestions = ac.getSuggestions()
+    expect(suggestions).toContain('myVar')
+    expect(suggestions).toContain('myVal')
   })
 })
 
