@@ -3,6 +3,7 @@
 
 import type { Reference } from '../../reference'
 import type { DvalaBundle } from '../../src/bundler/interface'
+import { serializeBundle, deserializeBundle } from '../../src/bundler/serialize'
 import type { UnknownRecord } from '../../src/interface'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -13,7 +14,6 @@ import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDat
 import { allBuiltinModules } from '../../src/allModules'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
-import { isDvalaBundle } from '../../src/bundler/interface'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
 import { findConfig } from '../../src/config'
@@ -96,6 +96,7 @@ interface BundleConfig {
   subcommand: 'bundle'
   filename: string
   output: Maybe<string>
+  sourceMap: boolean
 }
 
 interface DocConfig {
@@ -138,7 +139,7 @@ type Config = ReplConfig | RunConfig | RunBundleConfig | EvalConfig | TestConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap'])
 
 const commands = ['`help', '`quit', '`builtins', '`context']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -184,11 +185,12 @@ switch (config.subcommand) {
         printErrorMessage(`Invalid bundle: ${config.filename} is not valid JSON`)
         process.exit(1)
       }
-      if (!isDvalaBundle(parsed)) {
-        printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Dvala bundle (expected "program" string and "fileModules" array)`)
+      const dvalaBundle = deserializeBundle(parsed)
+      if (!dvalaBundle) {
+        printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Dvala bundle`)
         process.exit(1)
       }
-      const result = dvala.run(parsed)
+      const result = dvala.run(dvalaBundle)
       if (config.printResult) {
         console.log(result)
       }
@@ -216,8 +218,8 @@ switch (config.subcommand) {
   case 'bundle': {
     try {
       const absolutePath = path.resolve(config.filename)
-      const result = bundle(absolutePath)
-      const json = JSON.stringify(result, null, 2)
+      const result = bundle(absolutePath, { sourceMap: config.sourceMap })
+      const json = serializeBundle(result)
       if (config.output) {
         fs.writeFileSync(config.output, json, { encoding: 'utf-8' })
       } else {
@@ -668,6 +670,7 @@ function processArguments(args: string[]): Config {
     case 'bundle': {
       let filename: Maybe<string> = null
       let output: Maybe<string> = null
+      let sourceMap = true
       let i = 1
       while (i < args.length) {
         const parsed = parseOption(args, i)
@@ -690,6 +693,10 @@ function processArguments(args: string[]): Config {
             output = parsed.argument
             i += parsed.count
             break
+          case '--no-sourcemap':
+            sourceMap = false
+            i += parsed.count
+            break
           default:
             printErrorMessage(`Unknown option "${parsed.option}" for "bundle"`)
             process.exit(1)
@@ -699,7 +706,7 @@ function processArguments(args: string[]): Config {
         printErrorMessage('Missing filename after "bundle"')
         process.exit(1)
       }
-      return { subcommand: 'bundle', filename, output }
+      return { subcommand: 'bundle', filename, output, sourceMap }
     }
     case 'test': {
       let filename: Maybe<string> = null
