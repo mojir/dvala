@@ -66,14 +66,6 @@ interface RunConfig {
   pure: boolean
 }
 
-interface RunBuildConfig {
-  subcommand: 'run-build'
-  filename: string
-  context: Record<string, unknown>
-  printResult: boolean
-  pure: boolean
-}
-
 interface EvalConfig {
   subcommand: 'eval'
   expression: string
@@ -135,7 +127,7 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | RunBuildConfig | EvalConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | ExamplesConfig | HelpConfig | VersionConfig
+type Config = ReplConfig | RunConfig | EvalConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | ExamplesConfig | HelpConfig | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
@@ -163,34 +155,25 @@ switch (config.subcommand) {
     const dvala = makeDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
-      const result = dvala.run(content)
-      if (config.printResult) {
-        console.log(result)
+      // Detect bundle (JSON) vs source (.dvala) by trying JSON parse
+      let result: unknown
+      if (config.filename.endsWith('.json')) {
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(content)
+        } catch {
+          printErrorMessage(`Invalid JSON: ${config.filename}`)
+          process.exit(1)
+        }
+        const dvalaBundle = deserializeBundle(parsed)
+        if (!dvalaBundle) {
+          printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Dvala bundle`)
+          process.exit(1)
+        }
+        result = dvala.run(dvalaBundle)
+      } else {
+        result = dvala.run(content)
       }
-      process.exit(0)
-    } catch (error) {
-      printErrorMessage(`${error}`)
-      process.exit(1)
-    }
-    break
-  }
-  case 'run-build': {
-    const dvala = makeDvala(config.context, config.pure)
-    try {
-      const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(content)
-      } catch {
-        printErrorMessage(`Invalid bundle: ${config.filename} is not valid JSON`)
-        process.exit(1)
-      }
-      const dvalaBundle = deserializeBundle(parsed)
-      if (!dvalaBundle) {
-        printErrorMessage(`Invalid bundle: ${config.filename} is not a valid Dvala bundle`)
-        process.exit(1)
-      }
-      const result = dvala.run(dvalaBundle)
       if (config.printResult) {
         console.log(result)
       }
@@ -651,14 +634,6 @@ function processArguments(args: string[]): Config {
       }
       return { subcommand: 'run', filename, context, printResult, pure }
     }
-    case 'run-build': {
-      const { positional: filename, context, printResult, pure } = parseRunEvalOptions(args, 1)
-      if (!filename) {
-        printErrorMessage('Missing filename after "run-build"')
-        process.exit(1)
-      }
-      return { subcommand: 'run-build', filename, context, printResult, pure }
-    }
     case 'eval': {
       const { positional: expression, context, printResult, pure } = parseRunEvalOptions(args, 1)
       if (!expression) {
@@ -984,8 +959,7 @@ function printUsage() {
 Usage: dvala [subcommand] [options]
 
 Subcommands:
-  run <file> [options]            Run a .dvala file
-  run-build <file> [options]     Run a .json bundle
+  run <file> [options]            Run a .dvala file or .json bundle
   eval <expression> [options]     Evaluate a Dvala expression
   build <entry> [options]        Build a multi-file project
   test <file> [options]           Run a .test.dvala test file
@@ -997,7 +971,7 @@ Subcommands:
   examples                        Show example programs
   help                            Show this help
 
-Run/Run-build/Eval options:
+Run/Eval options:
   -c, --context=<json>            Context as a JSON string
   -C, --context-file=<file>       Context from a .json file
   -s, --silent                    Suppress printing the result
