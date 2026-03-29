@@ -4573,21 +4573,18 @@ function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
 function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undefined): void {
   if (!sourceMap) return
   if (!contextStack.sourceMap) {
-    contextStack.sourceMap = { sources: [...sourceMap.sources], positions: [...sourceMap.positions] }
+    contextStack.sourceMap = { sources: [...sourceMap.sources], positions: new Map(sourceMap.positions) }
     return
   }
   // Merge sources: offset source indices in new positions
   const sourceOffset = contextStack.sourceMap.sources.length
   contextStack.sourceMap.sources.push(...sourceMap.sources)
   // Copy positions with adjusted source index
-  for (let i = 0; i < sourceMap.positions.length; i++) {
-    const pos = sourceMap.positions[i]
-    if (pos) {
-      contextStack.sourceMap.positions[i] = {
-        ...pos,
-        source: pos.source + sourceOffset,
-      }
-    }
+  for (const [nodeId, pos] of sourceMap.positions) {
+    contextStack.sourceMap.positions.set(nodeId, {
+      ...pos,
+      source: pos.source + sourceOffset,
+    })
   }
 }
 

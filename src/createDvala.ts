@@ -116,15 +116,12 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     // Accumulate source map from each parsed file
     if (ast.sourceMap) {
       if (!accumulatedSourceMap) {
-        accumulatedSourceMap = { sources: [...ast.sourceMap.sources], positions: [...ast.sourceMap.positions] }
+        accumulatedSourceMap = { sources: [...ast.sourceMap.sources], positions: new Map(ast.sourceMap.positions) }
       } else {
         const sourceOffset = accumulatedSourceMap.sources.length
         accumulatedSourceMap.sources.push(...ast.sourceMap.sources)
-        for (let i = 0; i < ast.sourceMap.positions.length; i++) {
-          const pos = ast.sourceMap.positions[i]
-          if (pos) {
-            accumulatedSourceMap.positions[i] = { ...pos, source: pos.source + sourceOffset }
-          }
+        for (const [nodeId, pos] of ast.sourceMap.positions) {
+          accumulatedSourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
         }
       }
       // Point ast's sourceMap to the accumulated one so evaluate() uses it

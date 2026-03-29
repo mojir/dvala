@@ -238,12 +238,12 @@ export interface SourceMapPosition {
 
 export interface SourceMap {
   sources: { path: string; content: string }[]
-  positions: (SourceMapPosition | undefined)[] // indexed by node ID
+  positions: Map<number, SourceMapPosition>
 }
 
 export function resolveSourceCodeInfo(nodeId: number, sourceMap: SourceMap | undefined): SourceCodeInfo | undefined {
   if (!sourceMap) return undefined
-  const pos = sourceMap.positions[nodeId]
+  const pos = sourceMap.positions.get(nodeId)
   if (!pos) return undefined
   const source = sourceMap.sources[pos.source]
   if (!source) return undefined
