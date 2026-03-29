@@ -387,7 +387,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is an effect, otherwise `false`.',
-      seeAlso: ['effect', 'effectName', 'effectMatcher', 'perform', 'typeOf', 'qualifiedName', 'qualifiedMatcher'],
+      seeAlso: ['effect', 'effectName', 'perform', 'typeOf', 'qualifiedName', 'qualifiedMatcher'],
       examples: [
         'isEffect(@dvala.io.print)',
         'isEffect(42)',

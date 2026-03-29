@@ -1,5 +1,5 @@
 import { TypeError } from '../../errors'
-import type { EffectMatcherFunction, QualifiedMatcherFunction } from '../../parser/types'
+import type { QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
@@ -317,53 +317,10 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['e'] }],
       description: 'Returns the name of an effect reference as a string.',
-      seeAlso: ['effectMatcher', 'isEffect', 'qualifiedName'],
+      seeAlso: ['isEffect', 'qualifiedName', 'qualifiedMatcher'],
       examples: [
         'effectName(@dvala.error)',
         'effectName(@llm.complete)',
-      ],
-    },
-  },
-  'effectMatcher': {
-    evaluate: ([pattern], sourceCodeInfo): EffectMatcherFunction => {
-      if (typeof pattern === 'string') {
-        return {
-          [FUNCTION_SYMBOL]: true,
-          sourceCodeInfo,
-          functionType: 'EffectMatcher',
-          matchType: 'string',
-          pattern,
-          flags: '',
-          arity: toFixedArity(1),
-        }
-      }
-      if (isRegularExpression(pattern)) {
-        return {
-          [FUNCTION_SYMBOL]: true,
-          sourceCodeInfo,
-          functionType: 'EffectMatcher',
-          matchType: 'regexp',
-          pattern: pattern.s,
-          flags: pattern.f,
-          arity: toFixedArity(1),
-        }
-      }
-      throw new TypeError('effectMatcher expects a string or regexp pattern', sourceCodeInfo)
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'meta',
-      returns: { type: 'function' },
-      args: {
-        pattern: { type: ['string', 'regexp'], description: 'A wildcard pattern or regexp to match against effect names.' },
-      },
-      variants: [{ argumentNames: ['pattern'] }],
-      description: 'Returns a predicate function that matches effects by name. If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the effect name against the regexp.',
-      seeAlso: ['effectName', 'isEffect', 'qualifiedName', 'qualifiedMatcher'],
-      examples: [
-        'let pred = effectMatcher("dvala.*"); pred(@dvala.error)',
-        'let pred = effectMatcher("dvala.*"); pred(@custom.foo)',
-        'let pred = effectMatcher("*"); pred(@anything)',
       ],
     },
   },
@@ -408,7 +365,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['entity'] }],
       description: 'Returns the qualified name (dotted DNS-style identifier) of an entity, or null if it has none. Works on effect references and named macros.',
-      seeAlso: ['effectName', 'effectMatcher', 'qualifiedMatcher', 'isMacro', 'isEffect'],
+      seeAlso: ['effectName', 'qualifiedMatcher', 'isMacro', 'isEffect'],
       examples: [
         'qualifiedName(@dvala.io.print)',
         'qualifiedName(macro@my.lib (ast) -> ast)',
@@ -452,7 +409,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       },
       variants: [{ argumentNames: ['pattern'] }],
       description: 'Returns a predicate function that matches any entity with a qualified name (effects, named macros). If `pattern` is a string, uses wildcard matching: no wildcard means exact match, `.*` suffix matches the prefix and all descendants (dot boundary enforced), and `*` alone matches everything. If `pattern` is a regexp, tests the qualified name against the regexp. Returns false for entities without a qualified name.',
-      seeAlso: ['qualifiedName', 'effectMatcher', 'isEffect', 'isMacro'],
+      seeAlso: ['qualifiedName', 'effectName', 'isEffect', 'isMacro'],
       examples: [
         'qualifiedMatcher("dvala.*")(@dvala.error)',
         'qualifiedMatcher("dvala.*")(@custom.foo)',

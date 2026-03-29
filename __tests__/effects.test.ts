@@ -3673,7 +3673,7 @@ describe('step 9 — effectName accessor', () => {
   })
 })
 
-describe('step 10 — handler matching and effectMatcher', () => {
+describe('step 10 — handler matching', () => {
   it('should match effect by name in handler clause', () => {
     const result = dvala.run(`
       do
@@ -3710,8 +3710,7 @@ describe('step 10 — handler matching and effectMatcher', () => {
     expect(result).toBe('log handler')
   })
 
-  it('should support prefix matching via effectMatcher', () => {
-    // effectMatcher is still a useful utility for host handlers
+  it('should support prefix matching via handler clause', () => {
     const result = dvala.run(`
       do
         with handler @com.myco.foo(arg) -> resume("matched prefix") end;
@@ -3721,7 +3720,7 @@ describe('step 10 — handler matching and effectMatcher', () => {
     expect(result).toBe('matched prefix')
   })
 
-  it('should support regex matching via effectMatcher on effect refs', () => {
+  it('should support handler matching on effect refs', () => {
     const result = dvala.run(`
       do
         with handler @dvala.io.print(arg) -> resume("matched regex") end;
@@ -3758,44 +3757,6 @@ describe('step 10 — handler matching and effectMatcher', () => {
       end
     `)
     expect(result).toBe('oops')
-  })
-
-  it('should support effectMatcher with wildcard suffix', () => {
-    // effectMatcher is a utility function, test it standalone
-    expect(dvala.run('effectMatcher("dvala.*")(@dvala.io.print)')).toBe(true)
-    expect(dvala.run('effectMatcher("dvala.*")(@other.eff)')).toBe(false)
-  })
-
-  it('effectMatcher exact string should match exact name only', () => {
-    expect(dvala.run('effectMatcher("dvala")(@dvala)')).toBe(true)
-    expect(dvala.run('effectMatcher("dvala")(@dvala.error)')).toBe(false)
-  })
-
-  it('effectMatcher exact string should NOT match children', () => {
-    // "dvala" (no wildcard) is exact match only — does NOT match dvala.error
-    expect(dvala.run('let pred = effectMatcher("dvala"); pred(@dvala.error)')).toBe(false)
-    expect(dvala.run('let pred = effectMatcher("dvala"); pred(@dvala)')).toBe(true)
-  })
-
-  it('effectMatcher wildcard should enforce dot boundary', () => {
-    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@dvala.error)')).toBe(false)
-    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@custom.foo)')).toBe(true)
-    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@customXXX)')).toBe(false)
-    expect(dvala.run('let pred = effectMatcher("custom.*"); pred(@custom)')).toBe(true)
-  })
-
-  it('effectMatcher catch-all * should match everything', () => {
-    expect(dvala.run('let pred = effectMatcher("*"); pred(@anything)')).toBe(true)
-    expect(dvala.run('let pred = effectMatcher("*"); pred(@a.b.c)')).toBe(true)
-  })
-
-  it('should support effectMatcher with regexp', () => {
-    expect(dvala.run('effectMatcher(#"^dvala\\.")(@dvala.io.print)')).toBe(true)
-    expect(dvala.run('effectMatcher(#"^dvala\\.")(@other.eff)')).toBe(false)
-  })
-
-  it('effectMatcher regexp should work as wildcard catch-all', () => {
-    expect(dvala.run('effectMatcher(#".*")(@anything.goes)')).toBe(true)
   })
 
   it('handler should be serializable across suspend/resume', async () => {

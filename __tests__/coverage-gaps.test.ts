@@ -1471,20 +1471,6 @@ describe('recursive evaluator — recur in callback function', () => {
 })
 
 // ---------------------------------------------------------------------------
-// effectMatcher with non-string/non-regexp argument (misc.ts line 472)
-// ---------------------------------------------------------------------------
-
-describe('effectMatcher — non-string/non-regexp argument', () => {
-  it('should throw when given a number', () => {
-    expect(() => dvala.run('effectMatcher(42)')).toThrow('effectMatcher expects a string or regexp pattern')
-  })
-
-  it('should throw when given an array', () => {
-    expect(() => dvala.run('effectMatcher([1, 2])')).toThrow('effectMatcher expects a string or regexp pattern')
-  })
-})
-
-// ---------------------------------------------------------------------------
 // doc/arity with effects — meta.ts branches at lines 25, 94
 // ---------------------------------------------------------------------------
 

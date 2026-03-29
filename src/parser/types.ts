@@ -91,13 +91,6 @@ export interface FNullFunction extends GenericDvalaFunction {
   params: Arr
 }
 
-export interface EffectMatcherFunction extends GenericDvalaFunction {
-  functionType: 'EffectMatcher'
-  matchType: 'string' | 'regexp'
-  pattern: string // For string: the pattern string; for regexp: the source
-  flags: string // For regexp: the flags; for string: empty string
-}
-
 export interface QualifiedMatcherFunction extends GenericDvalaFunction {
   functionType: 'QualifiedMatcher'
   matchType: 'string' | 'regexp'
@@ -186,7 +179,6 @@ export type DvalaFunction =
   | EveryPredFunction
   | SomePredFunction
   | FNullFunction
-  | EffectMatcherFunction
   | QualifiedMatcherFunction
   | HandlerFunction
   | ResumeFunction

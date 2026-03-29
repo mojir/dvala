@@ -509,7 +509,7 @@ describe('stress: local + host handler priority with suspend', () => {
     expect(r2).toEqual({ type: 'completed', value: 'L3:deep' })
   })
 
-  it('effectMatcher predicate in handle/with survives suspend/resume', async () => {
+  it('handler clause in handle/with survives suspend/resume', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
@@ -890,11 +890,11 @@ describe('stress: deeply nested do/with + suspend', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 9. Effect-matcher predicates across complex flows
+// 9. Handler clauses across complex flows
 // ---------------------------------------------------------------------------
 
-describe('stress: effectMatcher in complex flows', () => {
-  it('handler with wildcard-like matching in nested do/with', () => {
+describe('stress: handler clauses in complex flows', () => {
+  it('handler with matching in nested do/with', () => {
     const result = dvala.run(`
       do
         with handler @dvala.error(arg) -> resume("error: " ++ arg) end;
@@ -905,7 +905,7 @@ describe('stress: effectMatcher in complex flows', () => {
     expect(result).toBe('matched: data')
   })
 
-  it('effectMatcher with regex survives suspend/resume + JSON round-trip', async () => {
+  it('handler clause survives suspend/resume + JSON round-trip', async () => {
     const handlers: Handlers = [
       { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
     ]
@@ -937,9 +937,8 @@ describe('stress: effectMatcher in complex flows', () => {
     expect(result).toBe('wildcard: data')
   })
 
-  it('effectMatcher predicate stored in variable works', () => {
-    // effectMatcher still works as a standalone predicate
-    expect(dvala.run('let isCustom = effectMatcher("custom.*"); isCustom(@custom.bar)')).toBe(true)
+  it('qualifiedMatcher predicate stored in variable works', () => {
+    expect(dvala.run('let isCustom = qualifiedMatcher("custom.*"); isCustom(@custom.bar)')).toBe(true)
     const result = dvala.run(`
       do
         with handler @custom.bar(arg) -> resume(arg * 2) end;

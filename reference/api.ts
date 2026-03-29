@@ -150,7 +150,8 @@ export const api = {
     'doc',
     'arity',
     'effectName',
-    'effectMatcher',
+    'qualifiedName',
+    'qualifiedMatcher',
   ] as const,
   misc: [
     '!=',

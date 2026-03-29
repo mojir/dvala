@@ -62,7 +62,6 @@ const functionTypes = [
   'EveryPred',
   'SomePred',
   'Fnull',
-  'EffectMatcher',
   'QualifiedMatcher',
   'Builtin',
   'SpecialBuiltin',
