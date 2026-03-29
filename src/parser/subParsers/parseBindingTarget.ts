@@ -199,7 +199,7 @@ export function parseBindingTarget(ctx: ParserContext, { requireDefaultValue, no
         elements[keyName] = symTarget
       } else if (isRBraceToken(token) || isOperatorToken(token, ',') || isOperatorToken(token, '=')) {
         // Without 'as' alias, the key becomes the binding name
-        const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions[keySymbol[2]] : undefined
+        const keyDebugInfo = keySymbol[2] !== undefined ? ctx.sourceMap?.positions.get(keySymbol[2]) : undefined
         const keyTokenDebug: TokenDebugInfo | undefined = keyDebugInfo ? [keyDebugInfo.start[0], keyDebugInfo.start[1]] : undefined
         const key = toUserDefinedSymbol(keySymbol, keyTokenDebug, ctx)
         if (elements[key[1]]) {

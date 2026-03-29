@@ -32,7 +32,7 @@ export class ParserContext {
     if (tokenStream.source !== undefined) {
       this.sourceMap = {
         sources: [{ path: tokenStream.filePath ?? '<anonymous>', content: tokenStream.source ?? '' }],
-        positions: [],
+        positions: new Map(),
       }
     }
   }
@@ -45,7 +45,7 @@ export class ParserContext {
         start: [debugInfo[0], debugInfo[1]], // already 0-based
         end: [debugInfo[0], debugInfo[1]], // placeholder — updated by setNodeEnd()
       }
-      this.sourceMap.positions[id] = position
+      this.sourceMap.positions.set(id, position)
     }
     return id
   }
@@ -57,7 +57,7 @@ export class ParserContext {
    */
   public setNodeEnd(nodeId: number): void {
     if (!this.sourceMap) return
-    const pos = this.sourceMap.positions[nodeId]
+    const pos = this.sourceMap.positions.get(nodeId)
     if (!pos) return
     // The last consumed token is at position - 1
     const lastToken = this.tokens[this.position - 1]
