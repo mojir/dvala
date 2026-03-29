@@ -3,6 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { createContextStack } from '../src/evaluator/ContextStack'
 import { AssertionError, DvalaError } from '../src/errors'
 import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
+import { AutoCompleter } from '../src/AutoCompleter/AutoCompleter'
 import { resume } from '../src/resume'
 import { retrigger } from '../src/retrigger'
 import { mathUtilsModule } from '../src/builtin/modules/math'
@@ -649,6 +650,64 @@ describe('AutoCompleter.ts branch coverage', () => {
     expect(suggestions.length).toBeGreaterThan(0)
     expect(suggestions.some(s => s.includes('print'))).toBe(true)
   })
+
+  it('dotPrefix path with no effectNames uses empty fallback', () => {
+    // Construct AutoCompleter directly with dotPrefix but no effectNames
+    // to cover the `params.effectNames ?? []` falsy branch at line 128
+    const ac = new AutoCompleter('perform(@dvala.io.p', 19)
+    const suggestions = ac.getSuggestions()
+    expect(Array.isArray(suggestions)).toBe(true)
+  })
+
+  it('handles empty program', () => {
+    const ac = getAutoCompleter('', 0)
+    expect(ac.getSuggestions()).toEqual([])
+  })
+
+  it('handles error token at end', () => {
+    const ac = getAutoCompleter('`unterminated', 13)
+    expect(ac.getSuggestions()).toEqual([])
+  })
+
+  it('handles cursor right after dot operator', () => {
+    const ac = getAutoCompleter('obj.', 4)
+    expect(Array.isArray(ac.getSuggestions())).toBe(true)
+  })
+
+  it('getPreviousSuggestion works', () => {
+    const ac = getAutoCompleter('le', 2)
+    // Should have suggestions starting with 'le' (let, length, etc.)
+    const first = ac.getNextSuggestion()
+    expect(first).not.toBeNull()
+    const prev = ac.getPreviousSuggestion()
+    expect(prev).not.toBeNull()
+  })
+
+  it('getPreviousSuggestion wraps around', () => {
+    const ac = getAutoCompleter('le', 2)
+    const prev = ac.getPreviousSuggestion()
+    expect(prev).not.toBeNull()
+    // Call many times to wrap
+    for (let i = 0; i < 50; i++) ac.getPreviousSuggestion()
+    expect(ac.getPreviousSuggestion()).not.toBeNull()
+  })
+
+  it('getNextSuggestion wraps around', () => {
+    const ac = getAutoCompleter('le', 2)
+    for (let i = 0; i < 50; i++) ac.getNextSuggestion()
+    expect(ac.getNextSuggestion()).not.toBeNull()
+  })
+
+  it('getSearchString returns the search prefix', () => {
+    const ac = getAutoCompleter('le', 2)
+    expect(ac.getSearchString()).toBe('le')
+  })
+
+  it('returns null suggestion when no matches', () => {
+    const ac = getAutoCompleter('zzzzzzzzNotASymbol', 18)
+    expect(ac.getNextSuggestion()).toBeNull()
+    expect(ac.getPreviousSuggestion()).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -656,11 +715,22 @@ describe('AutoCompleter.ts branch coverage', () => {
 // ---------------------------------------------------------------------------
 
 describe('bindingNode.ts branch coverage', () => {
-  it('walkDefaults finds default in object destructuring key', () => {
+  it('walkDefaults finds default in object destructuring key via let', () => {
     // Exercises line 11: element[1][1] truthy (key has default value)
-    // getUndefinedSymbols calls walkDefaults on let bindings
     const symbols = getUndefinedSymbols('let { a = someUndefined } = {}; a')
     expect(symbols.has('someUndefined')).toBe(true)
+  })
+
+  it('walkDefaults finds default in object destructuring via function param', () => {
+    // Same path but via function param analysis
+    const symbols = getUndefinedSymbols('let f = ({ a = someUndefined }) -> a; f')
+    expect(symbols.has('someUndefined')).toBe(true)
+  })
+
+  it('walkDefaults recurses into nested object destructuring defaults', () => {
+    // Nested: { a: { b = undefinedRef } }
+    const symbols = getUndefinedSymbols('let { x: { y = nestedRef } } = {}; y')
+    expect(symbols.has('nestedRef')).toBe(true)
   })
 
   it('uses default when nested object is missing', () => {
