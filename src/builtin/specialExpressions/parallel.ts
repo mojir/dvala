@@ -1,7 +1,6 @@
 import type { Arr } from '../../interface'
 import type { AstNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
-import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
 export type ParallelNode = [typeof NodeTypes.Parallel, AstNode[], number]
@@ -24,9 +23,6 @@ const docs: CustomDocs = {
 export const parallelSpecialExpression: BuiltinSpecialExpression<Arr, ParallelNode> = {
   arity: { min: 1 },
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const branches = node[1] as AstNode[]
-    const sets = branches.map(branch => getUndefinedSymbols([branch], contextStack, builtin))
-    return joinSets(...sets)
-  },
+  // Dead code — parser converts parallel(...) to native ParallelNode before getUndefinedSymbols is called
+  getUndefinedSymbols: () => new Set(),
 }

@@ -1,7 +1,6 @@
 import type { Any } from '../../interface'
 import type { AstNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
-import { joinSets } from '../../utils'
 import type { BuiltinSpecialExpression, CustomDocs } from '../interface'
 
 export type PerformNode = [typeof NodeTypes.Perform, [AstNode, AstNode | undefined], number]
@@ -34,10 +33,6 @@ end
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {
   arity: { min: 1, max: 2 },
   docs,
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const [effectExpr, payloadExpr] = node[1] as [AstNode, AstNode | undefined]
-    const effectResult = getUndefinedSymbols([effectExpr], contextStack, builtin)
-    const payloadResult = payloadExpr ? getUndefinedSymbols([payloadExpr], contextStack, builtin) : new Set<string>()
-    return joinSets(effectResult, payloadResult)
-  },
+  // Dead code — parser converts perform(...) to native PerformNode before getUndefinedSymbols is called
+  getUndefinedSymbols: () => new Set(),
 }
