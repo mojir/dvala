@@ -494,8 +494,7 @@ function printNodeWithSplices(node: AstNode, spliceExprs: unknown[][], ind: numb
     if (expr) {
       return `$^{${printNode(expr as AstNode, ind)}}`
     }
-    /* v8 ignore next -- defensive: splice index always valid from parser */
-    return `$^{<splice${index}>}`
+    throw new Error(`Invalid splice index ${index} in code template`)
   }
   // Walk AST and substitute Splice nodes before printing
   return printNode(substituteSplices(node, spliceExprs), ind)
@@ -617,9 +616,6 @@ function printBindingTarget(target: unknown[]): string {
       return printNode(expr as AstNode, 0)
     }
     case 'wildcard':
-      return '_'
-    /* v8 ignore next 2 -- exhaustive guard */
-    default:
       return '_'
   }
 }
