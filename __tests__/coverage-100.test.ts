@@ -656,9 +656,11 @@ describe('AutoCompleter.ts branch coverage', () => {
 // ---------------------------------------------------------------------------
 
 describe('bindingNode.ts branch coverage', () => {
-  it('handles nested default in object destructuring', () => {
-    const dvala = createDvala()
-    expect(dvala.run('let { a: { b = 99 } = { b: 1 } } = { a: { b: 42 } }; b')).toBe(42)
+  it('walkDefaults finds default in object destructuring key', () => {
+    // Exercises line 11: element[1][1] truthy (key has default value)
+    // getUndefinedSymbols calls walkDefaults on let bindings
+    const symbols = getUndefinedSymbols('let { a = someUndefined } = {}; a')
+    expect(symbols.has('someUndefined')).toBe(true)
   })
 
   it('uses default when nested object is missing', () => {
