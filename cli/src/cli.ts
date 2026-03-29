@@ -66,8 +66,8 @@ interface RunConfig {
   pure: boolean
 }
 
-interface RunBundleConfig {
-  subcommand: 'run-bundle'
+interface RunBuildConfig {
+  subcommand: 'run-build'
   filename: string
   context: Record<string, unknown>
   printResult: boolean
@@ -92,8 +92,8 @@ interface TestConfig {
   outputFile: Maybe<string>
 }
 
-interface BundleConfig {
-  subcommand: 'bundle'
+interface BuildConfig {
+  subcommand: 'build'
   filename: string
   output: Maybe<string>
   sourceMap: boolean
@@ -135,7 +135,7 @@ interface VersionConfig {
   subcommand: 'version'
 }
 
-type Config = ReplConfig | RunConfig | RunBundleConfig | EvalConfig | TestConfig | BundleConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | ExamplesConfig | HelpConfig | VersionConfig
+type Config = ReplConfig | RunConfig | RunBuildConfig | EvalConfig | TestConfig | BuildConfig | DocConfig | ListConfig | TokenizeConfig | ParseConfig | ExamplesConfig | HelpConfig | VersionConfig
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
@@ -174,7 +174,7 @@ switch (config.subcommand) {
     }
     break
   }
-  case 'run-bundle': {
+  case 'run-build': {
     const dvala = makeDvala(config.context, config.pure)
     try {
       const content = fs.readFileSync(config.filename, { encoding: 'utf-8' })
@@ -215,7 +215,7 @@ switch (config.subcommand) {
     }
     break
   }
-  case 'bundle': {
+  case 'build': {
     try {
       const absolutePath = path.resolve(config.filename)
       const result = bundle(absolutePath, { sourceMap: config.sourceMap })
@@ -651,13 +651,13 @@ function processArguments(args: string[]): Config {
       }
       return { subcommand: 'run', filename, context, printResult, pure }
     }
-    case 'run-bundle': {
+    case 'run-build': {
       const { positional: filename, context, printResult, pure } = parseRunEvalOptions(args, 1)
       if (!filename) {
-        printErrorMessage('Missing filename after "run-bundle"')
+        printErrorMessage('Missing filename after "run-build"')
         process.exit(1)
       }
-      return { subcommand: 'run-bundle', filename, context, printResult, pure }
+      return { subcommand: 'run-build', filename, context, printResult, pure }
     }
     case 'eval': {
       const { positional: expression, context, printResult, pure } = parseRunEvalOptions(args, 1)
@@ -667,7 +667,7 @@ function processArguments(args: string[]): Config {
       }
       return { subcommand: 'eval', expression, context, printResult, pure }
     }
-    case 'bundle': {
+    case 'build': {
       let filename: Maybe<string> = null
       let output: Maybe<string> = null
       let sourceMap = true
@@ -698,15 +698,15 @@ function processArguments(args: string[]): Config {
             i += parsed.count
             break
           default:
-            printErrorMessage(`Unknown option "${parsed.option}" for "bundle"`)
+            printErrorMessage(`Unknown option "${parsed.option}" for "build"`)
             process.exit(1)
         }
       }
       if (!filename) {
-        printErrorMessage('Missing filename after "bundle"')
+        printErrorMessage('Missing filename after "build"')
         process.exit(1)
       }
-      return { subcommand: 'bundle', filename, output, sourceMap }
+      return { subcommand: 'build', filename, output, sourceMap }
     }
     case 'test': {
       let filename: Maybe<string> = null
@@ -985,9 +985,9 @@ Usage: dvala [subcommand] [options]
 
 Subcommands:
   run <file> [options]            Run a .dvala file
-  run-bundle <file> [options]     Run a .json bundle
+  run-build <file> [options]     Run a .json bundle
   eval <expression> [options]     Evaluate a Dvala expression
-  bundle <entry> [options]        Bundle a multi-file project
+  build <entry> [options]        Build a multi-file project
   test <file> [options]           Run a .test.dvala test file
   repl [options]                  Start an interactive REPL
   doc <name>                      Show documentation for a function/expression
@@ -997,14 +997,14 @@ Subcommands:
   examples                        Show example programs
   help                            Show this help
 
-Run/Run-bundle/Eval options:
+Run/Run-build/Eval options:
   -c, --context=<json>            Context as a JSON string
   -C, --context-file=<file>       Context from a .json file
   -s, --silent                    Suppress printing the result
   --pure                          Enforce pure mode (no side effects or non-determinism)
 
-Bundle options:
-  -o, --output=<file>             Write bundle to file (default: stdout)
+Build options:
+  -o, --output=<file>             Write build output to file (default: stdout)
 
 Test options:
   --pattern=<regex>               Only run tests matching pattern
