@@ -87,7 +87,7 @@ interface TestConfig {
 
 interface BuildConfig {
   subcommand: 'build'
-  filename: Maybe<string>
+  directory: Maybe<string>
   output: Maybe<string>
   sourceMap: boolean
 }
@@ -201,17 +201,12 @@ switch (config.subcommand) {
   }
   case 'build': {
     try {
-      let absolutePath: string
-      if (isFilePath(config.filename)) {
-        absolutePath = path.resolve(config.filename)
-      } else {
-        const resolved = resolveProjectConfig(config.filename)
-        if (!resolved) {
-          printErrorMessage('No dvala.json found. Either specify an entry file, a project directory, or create a dvala.json in the project root.')
-          process.exit(1)
-        }
-        absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
+      const resolved = resolveProjectConfig(config.directory)
+      if (!resolved) {
+        printErrorMessage('No dvala.json found. Specify a project directory or create a dvala.json in the project root.')
+        process.exit(1)
       }
+      const absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
       const result = bundle(absolutePath, { sourceMap: config.sourceMap })
       const json = serializeBundle(result)
       if (config.output) {
@@ -680,18 +675,18 @@ function processArguments(args: string[]): Config {
       return { subcommand: 'eval', expression, context, printResult, pure }
     }
     case 'build': {
-      let filename: Maybe<string> = null
+      let directory: Maybe<string> = null
       let output: Maybe<string> = null
       let sourceMap = true
       let i = 1
       while (i < args.length) {
         const parsed = parseOption(args, i)
         if (!parsed) {
-          if (filename !== null) {
+          if (directory !== null) {
             printErrorMessage(`Unexpected argument "${args[i]}"`)
             process.exit(1)
           }
-          filename = args[i]!
+          directory = args[i]!
           i += 1
           continue
         }
@@ -714,8 +709,8 @@ function processArguments(args: string[]): Config {
             process.exit(1)
         }
       }
-      // filename is optional — if omitted, dvala.json entry is used
-      return { subcommand: 'build', filename, output, sourceMap }
+      // directory is optional — if omitted, walks up from cwd to find dvala.json
+      return { subcommand: 'build', directory, output, sourceMap }
     }
     case 'test': {
       let filename: Maybe<string> = null
@@ -995,7 +990,7 @@ Usage: dvala [subcommand] [options]
 Subcommands:
   run <file> [options]            Run a .dvala file or .json bundle
   eval <expression> [options]     Evaluate a Dvala expression
-  build <entry> [options]        Build a multi-file project
+  build [dir] [options]          Build a project (uses dvala.json)
   test <file> [options]           Run a .test.dvala test file
   repl [options]                  Start an interactive REPL
   doc <name>                      Show documentation for a function/expression
