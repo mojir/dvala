@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import path from 'node:path'
 import { createDvala } from '../src/createDvala'
+import { bundle } from '../src/bundler'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { DvalaBundle } from '../src/bundler/interface'
 
@@ -175,41 +177,36 @@ describe('createDvala', () => {
   })
 
   describe('run with DvalaBundle', () => {
-    it('runs a bundle with no file modules', () => {
+    it('runs a bundle with a simple AST', () => {
       const d = createDvala()
-      const bundle: DvalaBundle = { program: '1 + 2', fileModules: [] }
-      expect(d.run(bundle)).toBe(3)
+      // AST for: 1 + 2
+      const simpleBundle: DvalaBundle = {
+        version: 1,
+        ast: {
+          body: [['Call', [['Builtin', '+', 0], [['Num', 1, 0], ['Num', 2, 0]]], 0]],
+        },
+      }
+      expect(d.run(simpleBundle)).toBe(3)
     })
 
-    it('runs a bundle with file modules', () => {
+    it('runs a bundle produced by the bundler', () => {
+      const bundled = bundle(path.resolve(__dirname, 'bundler/fixtures/main.dvala'))
       const d = createDvala()
-      const bundle: DvalaBundle = {
-        program: 'let m = import("mylib"); m.x + 1',
-        fileModules: [['mylib', '{ x: 10 }']],
-      }
-      expect(d.run(bundle)).toBe(11)
+      expect(d.run(bundled)).toBe(50) // 42 + 8
     })
   })
 
   describe('runAsync with DvalaBundle', () => {
-    it('runs a bundle with no file modules async', async () => {
+    it('runs a bundle async', async () => {
       const d = createDvala()
-      const bundle: DvalaBundle = { program: '1 + 2', fileModules: [] }
-      const result = await d.runAsync(bundle)
-      expect(result).toMatchObject({ type: 'completed', value: 3, definedBindings: {} })
-    })
-
-    it('runs a bundle with file modules async', async () => {
-      const d = createDvala()
-      const bundle: DvalaBundle = {
-        program: 'let m = import("mylib"); m.x * 3',
-        fileModules: [['mylib', '{ x: 5 }']],
+      const asyncBundle: DvalaBundle = {
+        version: 1,
+        ast: {
+          body: [['Call', [['Builtin', '+', 0], [['Num', 1, 0], ['Num', 2, 0]]], 0]],
+        },
       }
-      const result = await d.runAsync(bundle)
-      expect(result.type).toBe('completed')
-      if (result.type === 'completed') {
-        expect(result.value).toBe(15)
-      }
+      const result = await d.runAsync(asyncBundle)
+      expect(result).toMatchObject({ type: 'completed', value: 3 })
     })
   })
 
@@ -217,8 +214,8 @@ describe('createDvala', () => {
     it('wraps non-DvalaError non-TypeError in DvalaError', async () => {
       const d = createDvala()
       const fakeBundle = {
-        fileModules: [],
-        get program(): string { throw new RangeError('boom') },
+        version: 1,
+        get ast(): any { throw new RangeError('boom') },
       }
 
       const result = await d.runAsync(fakeBundle as any)

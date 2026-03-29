@@ -1,2 +1,2 @@
-let x = import('./lib/constants.dvala')
+let x = import("./lib/constants.dvala");
 x + 1

@@ -169,22 +169,13 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       const contextStack = createContextStack({ bindings }, modules, pure)
 
       if (isDvalaBundle(source)) {
-        const savedPure = contextStack.pure
-        contextStack.pure = true
-        for (const [name, fileSource] of source.fileModules) {
-          const fileAst = buildAst(fileSource)
-          const moduleContextStack = contextStack.create({})
-          contextStack.registerValueModule(name, evaluate(fileAst, moduleContextStack))
-        }
-        contextStack.pure = savedPure
-        const ast = buildAst(source.program)
-        // Support effect handlers with bundles (e.g. test runner's describe effects)
+        // New AST bundle format: single pre-parsed AST with all modules inlined.
+        // The evaluator merges the source map into contextStack automatically.
+        const ast = source.ast
         if (effectHandlers) {
           return evaluateWithSyncEffects(ast, contextStack, effectHandlers)
         }
         const result = evaluate(ast, contextStack)
-        // Defensive guard: evaluate() currently never returns a Promise for bundle programs
-        // because bundles are pure. Kept as a safety net if that invariant ever changes.
         /* v8 ignore next 2 */
         if (result instanceof Promise)
           throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
@@ -215,19 +206,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)
 
-        if (isDvalaBundle(source)) {
-          const savedPure = contextStack.pure
-          contextStack.pure = true
-          for (const [name, fileSource] of source.fileModules) {
-            const fileAst = buildAst(fileSource)
-            const moduleContextStack = contextStack.create({})
-            contextStack.registerValueModule(name, evaluate(fileAst, moduleContextStack))
-          }
-          contextStack.pure = savedPure
-        }
-
-        const programSource = isDvalaBundle(source) ? source.program : source
-        const ast = buildAst(programSource)
+        // For AST bundles, use the pre-parsed AST directly
+        const ast = isDvalaBundle(source) ? source.ast : buildAst(source)
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const terminalSnapshot = runOptions?.terminalSnapshot
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
