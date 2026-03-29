@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { createContextStack } from '../src/evaluator/ContextStack'
-import { DvalaError } from '../src/errors'
-import { getUndefinedSymbols } from '../src/tooling'
+import { AssertionError, DvalaError } from '../src/errors'
+import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
 import { resume } from '../src/resume'
 import { retrigger } from '../src/retrigger'
 import { mathUtilsModule } from '../src/builtin/modules/math'
@@ -574,5 +574,107 @@ describe('trampoline-evaluator terminal snapshot halted', () => {
     if (result.type === 'halted') {
       expect(result.value).toBe(42)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: errors.ts — AssertionError with Error instance
+// ---------------------------------------------------------------------------
+
+describe('errors.ts branch coverage', () => {
+  it('assertionError wraps Error instance message', () => {
+    const err = new AssertionError(new Error('wrapped'))
+    expect(err.message).toBe('wrapped')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: resume.ts / retrigger.ts — terminalSnapshot option
+// ---------------------------------------------------------------------------
+
+describe('resume.ts branch coverage', () => {
+  it('resume with terminalSnapshot option', async () => {
+    const dvala = createDvala()
+    const suspended = await dvala.runAsync('perform(@my.eff, 42)', {
+      effectHandlers: [
+        { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
+      ],
+    })
+    if (suspended.type !== 'suspended') throw new Error('expected suspended')
+    const result = await resume(suspended.snapshot, 'ok', { terminalSnapshot: true })
+    expect(result.type).toBe('completed')
+  })
+})
+
+describe('retrigger.ts branch coverage', () => {
+  it('retrigger with terminalSnapshot option', async () => {
+    const dvala = createDvala()
+    const suspended = await dvala.runAsync('perform(@my.eff, 42)', {
+      effectHandlers: [
+        { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
+      ],
+    })
+    if (suspended.type !== 'suspended') throw new Error('expected suspended')
+    const result = await retrigger(suspended.snapshot, {
+      terminalSnapshot: true,
+      handlers: [
+        { pattern: 'my.eff', handler: async ({ resume: r }) => { r('done') } },
+      ],
+    })
+    expect(result.type).toBe('completed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: tooling.ts — custom effectNames
+// ---------------------------------------------------------------------------
+
+describe('tooling.ts branch coverage', () => {
+  it('getAutoCompleter with custom effectNames passes them through', () => {
+    // Exercises the truthy branch of `params.effectNames` in getAutoCompleter
+    const ac = getAutoCompleter('perform(@custom.f', 17, { effectNames: ['custom.foo', 'custom.bar'] })
+    const suggestions = ac.getSuggestions()
+    expect(suggestions).toContain('custom.foo')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: AutoCompleter.ts — dotPrefix path
+// ---------------------------------------------------------------------------
+
+describe('AutoCompleter.ts branch coverage', () => {
+  it('completes dotted effect names with prefix', () => {
+    const ac = getAutoCompleter('perform(@dvala.io.', 18)
+    const suggestions = ac.getSuggestions()
+    expect(suggestions.length).toBeGreaterThan(0)
+    expect(suggestions.some(s => s.includes('print'))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: bindingNode.ts — nested default in object destructuring
+// ---------------------------------------------------------------------------
+
+describe('bindingNode.ts branch coverage', () => {
+  it('handles nested default in object destructuring', () => {
+    const dvala = createDvala()
+    expect(dvala.run('let { a: { b = 99 } = { b: 1 } } = { a: { b: 42 } }; b')).toBe(42)
+  })
+
+  it('uses default when nested object is missing', () => {
+    const dvala = createDvala()
+    expect(dvala.run('let { a: { b = 99 } = {} } = {}; b')).toBe(99)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Branch coverage: bindingSlot.ts — literal/wildcard binding target
+// ---------------------------------------------------------------------------
+
+describe('bindingSlot.ts branch coverage', () => {
+  it('literal pattern in match covers literal/wildcard binding slot path', () => {
+    const dvala = createDvala()
+    // Match with literal pattern exercises the literal case in flattenBindingPattern
+    expect(dvala.run('match [1, 2] case [1, x] then x end')).toBe(2)
   })
 })
