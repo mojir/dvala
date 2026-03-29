@@ -28,3 +28,14 @@ export function isSuccess(result: TestRunResult): boolean {
     return false
   return result.results.every(r => r.status !== 'failed')
 }
+
+/** Aggregate results from running multiple test files */
+export interface TestSuiteResult {
+  files: TestRunResult[]
+  /** Total duration in milliseconds */
+  durationMs: number
+}
+
+export function isSuiteSuccess(result: TestSuiteResult): boolean {
+  return result.files.every(isSuccess)
+}

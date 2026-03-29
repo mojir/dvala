@@ -16,7 +16,8 @@ import { bundle } from '../../src/bundler'
 import { isDvalaBundle } from '../../src/bundler/interface'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import { runTestFile } from '../../src/testFramework'
+import { findConfig } from '../../src/config'
+import { runTestFile, runTestSuite } from '../../src/testFramework'
 import type { TestRunResult } from '../../src/testFramework/result'
 import { formatTap } from '../../src/testFramework/formatTap'
 import { formatConsole } from '../../src/testFramework/formatConsole'
@@ -85,7 +86,7 @@ type TestReporter = 'default' | 'verbose' | 'tap' | 'junit' | 'html'
 
 interface TestConfig {
   subcommand: 'test'
-  filename: string
+  filename: Maybe<string>
   testPattern: Maybe<string>
   reporter: TestReporter
   outputFile: Maybe<string>
@@ -320,16 +321,67 @@ switch (config.subcommand) {
   }
 }
 
-function runDvalaTest(testPath: string, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>) {
-  if (!/\.test\.dvala/.test(testPath)) {
-    printErrorMessage('Test file must end with .test.dvala')
-    process.exit(1)
-  }
-  const result = runTestFile({
-    testPath,
-    testNamePattern: testNamePattern !== null ? new RegExp(testNamePattern) : undefined,
-  })
+function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>) {
+  const pattern = testNamePattern !== null ? new RegExp(testNamePattern) : undefined
 
+  if (testPath) {
+    // Single file mode
+    if (!/\.test\.dvala/.test(testPath)) {
+      printErrorMessage('Test file must end with .test.dvala')
+      process.exit(1)
+    }
+    const result = runTestFile({ testPath, testNamePattern: pattern })
+    reportSingleFile(result, reporter, outputFile)
+  } else {
+    // Project mode — discover tests via dvala.json
+    const resolved = findConfig()
+    if (!resolved) {
+      printErrorMessage('No dvala.json found. Either specify a test file or create a dvala.json in the project root.')
+      process.exit(1)
+    }
+    const suiteResult = runTestSuite(resolved.rootDir, resolved.config.tests, pattern)
+
+    if (suiteResult.files.length === 0) {
+      printErrorMessage(`No test files found matching "${resolved.config.tests}" in ${resolved.rootDir}`)
+      process.exit(1)
+    }
+
+    // Console output for each file
+    let success = true
+    for (const fileResult of suiteResult.files) {
+      const consoleResult = reporter === 'tap'
+        ? formatTap(fileResult)
+        : formatConsole(fileResult, { verbose: reporter === 'verbose', color: useColor })
+      const consoleOutput = 'tap' in consoleResult ? consoleResult.tap : consoleResult.text
+      console.log(`\n${consoleOutput}`)
+      if (!consoleResult.success)
+        success = false
+    }
+
+    // Suite summary
+    const totalTests = suiteResult.files.reduce((sum, f) => sum + f.results.length, 0)
+    const totalPassed = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'passed').length, 0)
+    const totalFailed = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'failed').length, 0)
+    const totalSkipped = suiteResult.files.reduce((sum, f) => sum + f.results.filter(r => r.status === 'skipped').length, 0)
+    const duration = (suiteResult.durationMs / 1000).toFixed(3)
+
+    console.log(`\n${suiteResult.files.length} test files | ${totalTests} tests | ${totalPassed} passed | ${totalFailed} failed | ${totalSkipped} skipped (${duration}s)`)
+
+    // File output — concatenate results for all files
+    if (outputFile) {
+      const fileFormat = reporter !== 'default' && reporter !== 'verbose' ? reporter : inferFormat(outputFile)
+      // For multi-file output, concatenate individual file results
+      const fileContent = suiteResult.files.map(r => formatToFile(r, fileFormat)).join('\n')
+      fs.writeFileSync(outputFile, fileContent, 'utf-8')
+      console.log(`Test results written to ${outputFile}`)
+    }
+
+    if (!success)
+      process.exit(1)
+  }
+}
+
+function reportSingleFile(result: TestRunResult, reporter: TestReporter, outputFile: Maybe<string>) {
   // Console output — always human-readable
   const consoleResult = reporter === 'tap'
     ? formatTap(result)
@@ -337,7 +389,7 @@ function runDvalaTest(testPath: string, testNamePattern: Maybe<string>, reporter
   const consoleOutput = 'tap' in consoleResult ? consoleResult.tap : consoleResult.text
   console.log(`\n${consoleOutput}`)
 
-  // File output — uses the reporter format, or defaults based on file extension
+  // File output
   if (outputFile) {
     const fileFormat = reporter !== 'default' && reporter !== 'verbose' ? reporter : inferFormat(outputFile)
     const fileContent = formatToFile(result, fileFormat)
@@ -697,10 +749,7 @@ function processArguments(args: string[]): Config {
             process.exit(1)
         }
       }
-      if (!filename) {
-        printErrorMessage('Missing filename after "test"')
-        process.exit(1)
-      }
+      // filename is optional — if omitted, dvala.json project mode is used
       return { subcommand: 'test', filename, testPattern, reporter, outputFile }
     }
     case 'repl': {
