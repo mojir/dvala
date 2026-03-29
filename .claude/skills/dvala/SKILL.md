@@ -102,18 +102,27 @@ end
 perform(@dvala.io.print, "hello");            // invoke effect
 let v = perform(@dvala.io.pick, [1, 2, 3]);   // effect with return value
 
-// handle...with block
-handle
-  perform(@my.eff, arg)
-with @my.eff(x) -> x * 2 end
+// handler...end creates a first-class handler value
+let h = handler
+  @my.eff(x) -> resume(x * 2)     // resume = continue body
+  @dvala.error(msg) -> "caught"    // no resume = abort
+transform
+  x -> { ok: true, data: x }      // optional, transforms normal completion
+end;
 
-// effect pipe (shorthand for handle...with)
-perform(@dvala.io.pick, choices) ||> fallback(0)
+// with h; installs handler for rest of block
+do
+  with h;
+  perform(@my.eff, 21)
+end
 
-// handler module
+// h(-> body) installs handler around thunk
+h(-> perform(@my.eff, 21))
+
+// effectHandler module
 let { fallback, retry } = import(effectHandler);
-(0 / 0) ||> fallback(0)                       // catch errors
-perform(@eff, x) ||> [retry(2), fallback(0)]   // handler chain
+do with fallback(0); 0 / 0 end              // catch errors (aborts with 0)
+retry(3, -> dangerousOperation())            // retry up to 3 times
 ```
 
 ## Operators
@@ -124,7 +133,7 @@ Logical: `&&`, `||`, `not(x)`
 Nullish: `??` (first non-null)
 Bitwise: `&`, `|`, `xor`, `<<`, `>>`, `>>>`
 Concat: `++` (strings and arrays)
-Pipe: `|>` (value pipe), `||>` (effect pipe)
+Pipe: `|>` (value pipe)
 Unary: `-x` (negation)
 
 ## Import

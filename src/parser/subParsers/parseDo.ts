@@ -20,8 +20,7 @@ export function parseDo(ctx: ParserContext): DoNode {
   const expressions: AstNode[] = []
   while (!ctx.isAtEnd() && !isReservedSymbolToken(ctx.tryPeek(), 'end')) {
     // Check for `with h;` — handler installation for rest of block.
-    // `with` is a reserved keyword; inside parseDo it's always a handler install
-    // (the `with` in `handle...with...end` is consumed by parseHandle).
+    // `with` is a reserved keyword; inside parseDo it's always a handler install.
     if (isReservedSymbolToken(ctx.tryPeek(), 'with')) {
       const withNode = parseWithHandler(ctx)
       expressions.push(withNode)

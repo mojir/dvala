@@ -854,7 +854,7 @@ export interface NanCheckFrame {
  * - **Collection construction**: ArrayBuildFrame, ObjectBuildFrame
  * - **Binding**: LetBindFrame, LoopBindFrame, LoopIterateFrame, ForLoopFrame
  * - **Control flow**: RecurFrame
- * - **Exception & effect handling**: HandleWithFrame
+ * - **Exception & effect handling**: AlgebraicHandleFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: FnArgBindFrame, BindingSlotFrame, MatchSlotFrame
  * - **Post-processing**: NanCheckFrame

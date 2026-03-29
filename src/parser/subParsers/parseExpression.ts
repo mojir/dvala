@@ -133,9 +133,8 @@ function isHandlerStart(ctx: ParserContext): boolean {
   // handler transform... — transform-only handler
   if (isSymbolToken(next, 'transform')) return true
   // Note: `handler end` is NOT treated as a handler expression because it
-  // conflicts with existing code using `handler` as a variable name (e.g.
-  // `handle body with handler end`). Empty handlers can be created as
-  // `handler transform x -> x end` if needed.
+  // conflicts with existing code using `handler` as a variable name.
+  // Empty handlers can be created as `handler transform x -> x end` if needed.
   return false
 }
 
