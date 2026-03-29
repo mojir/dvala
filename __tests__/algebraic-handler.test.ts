@@ -442,3 +442,97 @@ describe('with h; — inline handler expression', () => {
     `)).toBe(0)
   })
 })
+
+// =========================================================================
+// Parser coverage — error paths and edge cases
+// =========================================================================
+
+describe('parseHandler — error paths', () => {
+  it('rejects non-effect token inside handler', () => {
+    // handler followed by a symbol (not @effect or transform) → parsed as variable, not handler keyword
+    // handler followed by @effect then garbage → parse error
+    expect(() => run('handler @my.eff end')).toThrow(/->/)
+  })
+
+  it('rejects missing -> after clause params', () => {
+    expect(() => run('handler @eff(x) x end')).toThrow(/->/)
+  })
+
+  it('rejects missing -> after transform param', () => {
+    expect(() => run('handler transform x x end')).toThrow(/->/)
+  })
+
+  it('rejects missing end', () => {
+    expect(() => run('handler @eff(x) -> x')).toThrow()
+  })
+})
+
+describe('parseHandler — do...end body forms', () => {
+  it('clause body with do...end', () => {
+    expect(run(`
+      let h = handler
+        @my.eff(x) -> do
+          let y = x * 2;
+          resume(y)
+        end
+      end;
+      h(-> perform(@my.eff, 5))
+    `)).toBe(10)
+  })
+
+  it('transform body with do...end', () => {
+    expect(run(`
+      let h = handler
+      transform x -> do
+        let y = x * 10;
+        y + 1
+      end
+      end;
+      h(-> 4)
+    `)).toBe(41)
+  })
+
+  it('clause with no params (empty parens)', () => {
+    expect(run(`
+      let h = handler @my.eff() -> resume(42) end;
+      h(-> perform(@my.eff))
+    `)).toBe(42)
+  })
+
+  it('clause with multiple params', () => {
+    expect(run(`
+      let h = handler @my.eff(a, b) -> resume(a + b) end;
+      h(-> perform(@my.eff, [10, 20]))
+    `)).toBe(30)
+  })
+})
+
+describe('parseDo — with h; edge cases', () => {
+  it('with as first statement in do block', () => {
+    expect(run(`
+      do
+        with handler @dvala.error(msg) -> 0 end;
+        0 / 0
+      end
+    `)).toBe(0)
+  })
+
+  it('empty body after with', () => {
+    expect(run(`
+      do
+        with handler transform x -> x end;
+      end
+    `)).toBeNull()
+  })
+
+  it('nested with in with body', () => {
+    expect(run(`
+      do
+        with handler @a() -> resume("A") end;
+        with handler @b() -> resume("B") end;
+        perform(@a) ++ perform(@b)
+      end
+    `)).toBe('AB')
+  })
+})
+
