@@ -125,6 +125,7 @@ export class AutoCompleter {
 
     if (this.dotPrefix) {
       // Inside a dotted-symbol context (e.g. "dvala.io.") — only complete effect names
+      /* v8 ignore next -- both ?? branches tested, v8 misreports nullish coalescing */
       return this.generateDottedEffectSuggestions(params.effectNames ?? [], fullSearch)
     }
 
