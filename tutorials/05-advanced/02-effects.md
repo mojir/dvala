@@ -456,34 +456,6 @@ applyHandler(h, -> 0 / 0)
 
 ---
 
-## Effect Matchers
-
-`effectMatcher` creates a predicate function that matches effects by name pattern:
-
-```dvala
-let pred = effectMatcher("dvala.*");
-pred(@dvala.error)
-```
-
-```dvala
-let pred = effectMatcher("dvala.*");
-pred(@custom.foo)
-```
-
-```dvala
-let pred = effectMatcher("*");
-pred(@anything)
-```
-
-You can use `effectMatcher` with regexp for more complex patterns:
-
-```dvala
-let pred = effectMatcher(#"^my\.(read|write)$");
-pred(@my.read)
-```
-
----
-
 ## Handler Module
 
 The `effectHandler` module provides reusable handlers for common patterns.

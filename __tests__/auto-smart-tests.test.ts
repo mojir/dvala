@@ -167,7 +167,7 @@ const skipWrongTypeTests = new Set([
   'dissoc', // flexible input
   'zipmap', // flexible input
   'doc', // meta function
-  'effectMatcher', // returns function
+  'qualifiedMatcher', // returns function
   'arity', // numbers/collections are function-like in Dvala, so arity(42) is valid
 ])
 

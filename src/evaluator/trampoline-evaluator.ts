@@ -943,18 +943,6 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // (constantly value) returns value regardless of params
       return { type: 'Value', value: fn.value, k }
     }
-    case 'EffectMatcher': {
-      // Pure regex/string matching - no evaluation needed
-      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
-      const effectRef = params[0]
-      assertEffect(effectRef, sourceCodeInfo)
-      const effectName = effectRef.name
-      if (fn.matchType === 'string') {
-        return { type: 'Value', value: qualifiedNameMatchesPattern(effectName, fn.pattern), k }
-      }
-      const regexp = new RegExp(fn.pattern, fn.flags)
-      return { type: 'Value', value: regexp.test(effectName), k }
-    }
     case 'QualifiedMatcher': {
       // Generalized matcher — works on any entity with a qualified name (effects, named macros)
       assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)

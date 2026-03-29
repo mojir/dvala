@@ -113,7 +113,6 @@ const skipReturnTypeExamples = new Set([
   // the returned function) so the result is not a function.
   'comp',
   'constantly',
-  'effectMatcher',
   'qualifiedMatcher',
 ])
 

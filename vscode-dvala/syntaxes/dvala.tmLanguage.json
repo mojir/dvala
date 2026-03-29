@@ -320,7 +320,7 @@
         {
           "comment": "String, regexp, misc functions",
           "name": "entity.name.function.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lowerCase|upperCase|trim|join|split|regexp|reMatch|replace|replaceAll|not|boolean|compare|typeOf|doc|arity|effectName|effectMatcher)(?=[\\s)\\]},;(]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:str|number|lowerCase|upperCase|trim|join|split|regexp|reMatch|replace|replaceAll|not|boolean|compare|typeOf|doc|arity|effectName|qualifiedName|qualifiedMatcher)(?=[\\s)\\]},;(]|$)"
         },
         {
           "comment": "Object functions",

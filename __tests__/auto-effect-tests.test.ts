@@ -992,9 +992,9 @@ describe('auto: runSync constraints', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 15. effectMatcher Wildcard Patterns
+// 15. qualifiedMatcher Wildcard Patterns (on effects)
 // ---------------------------------------------------------------------------
-describe('auto: effectMatcher wildcard patterns', () => {
+describe('auto: qualifiedMatcher wildcard patterns', () => {
   const patterns: { pattern: string; matches: string[]; nonMatches: string[] }[] = [
     {
       pattern: 'dvala.*',
@@ -1020,9 +1020,9 @@ describe('auto: effectMatcher wildcard patterns', () => {
 
   for (const { pattern, matches, nonMatches } of patterns) {
     for (const name of matches) {
-      it(`effectMatcher("${pattern}") matches effect(${name})`, () => {
+      it(`qualifiedMatcher("${pattern}") matches effect(${name})`, () => {
         const result = dvala.run(`
-          let pred = effectMatcher("${pattern}");
+          let pred = qualifiedMatcher("${pattern}");
           pred(effect(${name}))
         `)
         expect(result).toBe(true)
@@ -1030,9 +1030,9 @@ describe('auto: effectMatcher wildcard patterns', () => {
     }
 
     for (const name of nonMatches) {
-      it(`effectMatcher("${pattern}") does NOT match effect(${name})`, () => {
+      it(`qualifiedMatcher("${pattern}") does NOT match effect(${name})`, () => {
         const result = dvala.run(`
-          let pred = effectMatcher("${pattern}");
+          let pred = qualifiedMatcher("${pattern}");
           pred(effect(${name}))
         `)
         expect(result).toBe(false)
@@ -1045,9 +1045,9 @@ describe('auto: effectMatcher wildcard patterns', () => {
 // 16. Effect Predicate in do/with — handler matching via predicates
 // ---------------------------------------------------------------------------
 describe('auto: predicate-based handler matching', () => {
-  it('effectMatcher matches effects by pattern', () => {
+  it('qualifiedMatcher matches effects by pattern', () => {
     const result = dvala.run(`
-      let ioMatch = effectMatcher("test.io.*");
+      let ioMatch = qualifiedMatcher("test.io.*");
       do
         with handler @test.io.println(arg) -> resume("handled: " ++ arg) end;
         perform(@test.io.println, "msg")
@@ -1056,9 +1056,8 @@ describe('auto: predicate-based handler matching', () => {
     expect(result).toBe('handled: msg')
   })
 
-  it('effectMatcher does not match non-matching effect', () => {
-    // effectMatcher as standalone predicate
-    expect(dvala.run('effectMatcher("test.io.*")(@test.other)')).toBe(false)
+  it('qualifiedMatcher does not match non-matching effect', () => {
+    expect(dvala.run('qualifiedMatcher("test.io.*")(@test.other)')).toBe(false)
   })
 
   it('handler clauses match specific effects', () => {
@@ -1071,10 +1070,10 @@ describe('auto: predicate-based handler matching', () => {
     expect(result).toBe('io: msg')
   })
 
-  it('effectMatcher with regexp', () => {
+  it('qualifiedMatcher with regexp', () => {
     const result = dvala.run(`
       let re = regexp("^test\\\\.io");
-      let pred = effectMatcher(re);
+      let pred = qualifiedMatcher(re);
       pred(@test.io.println)
     `)
     expect(result).toBe(true)
