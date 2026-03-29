@@ -86,7 +86,7 @@ interface TestConfig {
 
 interface BuildConfig {
   subcommand: 'build'
-  filename: string
+  filename: Maybe<string>
   output: Maybe<string>
   sourceMap: boolean
 }
@@ -200,7 +200,16 @@ switch (config.subcommand) {
   }
   case 'build': {
     try {
-      const absolutePath = path.resolve(config.filename)
+      let entryFile = config.filename
+      if (!entryFile) {
+        const resolved = findConfig()
+        if (!resolved) {
+          printErrorMessage('No dvala.json found. Either specify an entry file or create a dvala.json in the project root.')
+          process.exit(1)
+        }
+        entryFile = path.resolve(resolved.rootDir, resolved.config.entry)
+      }
+      const absolutePath = path.resolve(entryFile)
       const result = bundle(absolutePath, { sourceMap: config.sourceMap })
       const json = serializeBundle(result)
       if (config.output) {
@@ -677,10 +686,7 @@ function processArguments(args: string[]): Config {
             process.exit(1)
         }
       }
-      if (!filename) {
-        printErrorMessage('Missing filename after "build"')
-        process.exit(1)
-      }
+      // filename is optional — if omitted, dvala.json entry is used
       return { subcommand: 'build', filename, output, sourceMap }
     }
     case 'test': {
