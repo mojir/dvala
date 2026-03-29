@@ -150,20 +150,22 @@ Laziness is only about *when* evaluation starts, not *how* it proceeds. A thunk 
 This means nested handlers and `nxt` forwarding work without special rules:
 
 ```dvala
-handle
-  handle
-    let x = perform(@fetch, "/data");   // lazy handler → thunk
-    process(x)                          // forces x
-  with
-    @fetch(url) ->                      // inner handler runs
-      if cached(url) then getCached(url)
-      else nxt(@fetch, url)             // forwards to outer handler
-      end
-  end
-with
-  lazy                                  // also lazy, but we're already
-  @fetch(url) -> httpGet(url)           // inside a force — runs normally
+let outerH = handler
+  lazy
+  @fetch(url) -> httpGet(url)           // runs when forced
 end
+
+let innerH = handler
+  @fetch(url) ->                        // inner handler runs
+    if cached(url) then getCached(url)
+    else perform(@fetch, url)           // forwards to outer handler
+    end
+end
+
+do with outerH; do with innerH;
+  let x = perform(@fetch, "/data");     // lazy handler → thunk
+  process(x)                            // forces x
+end end
 ```
 
 The sequence when `process(x)` forces `x`:

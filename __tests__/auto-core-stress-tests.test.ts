@@ -63,8 +63,8 @@ describe('round-trip: tokenize → untokenize', () => {
     'match [1, 2] case [a, b] then a + b end',
     'match { name: "alice" } case { name } then name end',
 
-    // handle/with
-    'handle perform(@my.eff) with [(arg, eff, nxt) -> if eff == @my.eff then 42 else nxt(eff, arg) end] end',
+    // do/with handler
+    'do with (handler @my.eff() -> resume(42) end); perform(@my.eff) end',
 
     // Operators
     '1 + 2 * 3',

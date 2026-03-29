@@ -75,7 +75,7 @@ myMul(3, 4)     // → 12
 // A macro that creates a "safe" wrapper with a custom fallback value
 let makeSafe = macro (fallbackVal) ->
   quote
-    macro (ast) -> quote ($^{ast}) ||> fallback($^^{fallbackVal}) end
+    macro (ast) -> quote do with fallback($^^{fallbackVal}); $^{ast} end end
   end;
 
 let { fallback } = import(effectHandler);

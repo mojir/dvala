@@ -132,7 +132,7 @@ Everything the program needs to continue:
 
 * **Local variables** — all `let` bindings in scope at the point of suspension
 * **Closures** — functions that capture variables from outer scopes
-* **Call stack** — nested function calls, `handle...with` handler frames, loop state
+* **Call stack** — nested function calls, algebraic handler frames, loop state
 * **Partially evaluated expressions** — the exact position within a complex expression
 
 ```typescript

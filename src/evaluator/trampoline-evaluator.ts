@@ -2005,7 +2005,7 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
  * re-throwing the error as a JS exception.
  *
  * Search order:
- * 1. Local `HandleWithFrame` handlers (innermost first)
+ * 1. Local `AlgebraicHandleFrame` handlers (innermost first)
  * 2. Host handlers registered for `'dvala.error'`
  */
 /**
@@ -2118,10 +2118,6 @@ function tryDispatchDvalaError(
   // Convert runtime error to a perform(@dvala.error, { type, message }) if there's a
   // handler that can catch it. Otherwise return null (caller re-throws).
   //
-  // Walk k looking for handler frames (HandleWith) or EffectResumeFrame
-  // (which points back to the handler scope via resumeK).
-  //
-  // When inside a handler (EffectResumeFrame found):
   // Walk k looking for AlgebraicHandle frames with @dvala.error clauses
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
@@ -2585,7 +2581,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
-  // Skipped when re-dispatching from a HandleNextFunction fallthrough (already captured upstream).
+  // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
   if (effect.name === 'dvala.checkpoint' && snapshotState && !skipCheckpointCapture) {
     const message = arg as string
     const continuation = serializeToObject(k)
@@ -4483,7 +4479,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       throw error
     }
     // Route DvalaError through the 'dvala.error' algebraic effect so that
-    // handle...with handlers can intercept runtime errors.
+    // algebraic handlers can intercept runtime errors.
     if (error instanceof DvalaError) {
       // For Value steps, step.k[0] is the frame that was being applied when
       // the error was thrown (e.g. LetDestructFrame, etc.).

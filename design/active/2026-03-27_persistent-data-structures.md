@@ -163,17 +163,14 @@ Proxy traps need careful handling for `typeof`, `Array.isArray()`, spread, `JSON
 With immutable frames and persistent stack, multi-shot just works:
 
 ```dvala
-handle
+let chooseAll = handler
+  @choose(options) -> flatMap(options, (x) -> resume(x))
+end
+
+do with chooseAll;
   let a = perform(@choose, [1, 2, 3]);
   let b = perform(@choose, [a, a * 10]);
   [a, b]
-with
-  return(x) -> [x]
-  ({ arg, eff, nxt, resume }) ->
-    if eff == @choose then
-      flatMap(arg, (x) -> resume(x))    // each resume shares the immutable stack
-    else nxt(eff, arg)
-    end
 end
 // → [[1, 1], [1, 10], [2, 2], [2, 20], [3, 3], [3, 30]]
 ```

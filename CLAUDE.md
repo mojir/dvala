@@ -55,9 +55,9 @@ Multiple demos per commit are fine. For demos needing context (bindings):
 ```demo
 description: macro with custom handler
 context:
-let myHandler = (arg, eff, nxt) -> nxt(eff, arg)
+let h = handler @my.eff(x) -> resume(x * 2) end
 code:
-handle perform(@my.eff, 10) with [myHandler] end
+do with h; perform(@my.eff, 10) end
 ```
 ````
 
