@@ -16,6 +16,7 @@ import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { bundle } from '../../src/bundler'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
+import type { ResolvedConfig } from '../../src/config'
 import { findConfig } from '../../src/config'
 import { runTestFile, runTestSuite } from '../../src/testFramework'
 import type { TestRunResult } from '../../src/testFramework/result'
@@ -200,16 +201,17 @@ switch (config.subcommand) {
   }
   case 'build': {
     try {
-      let entryFile = config.filename
-      if (!entryFile) {
-        const resolved = findConfig()
+      let absolutePath: string
+      if (isFilePath(config.filename)) {
+        absolutePath = path.resolve(config.filename)
+      } else {
+        const resolved = resolveProjectConfig(config.filename)
         if (!resolved) {
-          printErrorMessage('No dvala.json found. Either specify an entry file or create a dvala.json in the project root.')
+          printErrorMessage('No dvala.json found. Either specify an entry file, a project directory, or create a dvala.json in the project root.')
           process.exit(1)
         }
-        entryFile = path.resolve(resolved.rootDir, resolved.config.entry)
+        absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
       }
-      const absolutePath = path.resolve(entryFile)
       const result = bundle(absolutePath, { sourceMap: config.sourceMap })
       const json = serializeBundle(result)
       if (config.output) {
@@ -315,10 +317,36 @@ switch (config.subcommand) {
   }
 }
 
+/**
+ * Resolve a dvala.json config from an argument that could be:
+ * - null: walk up from cwd
+ * - a directory path: look for dvala.json there
+ * - a file path: return null (caller handles the file directly)
+ */
+function resolveProjectConfig(arg: Maybe<string>): ResolvedConfig | null {
+  if (arg && fs.existsSync(arg) && fs.statSync(arg).isDirectory()) {
+    return findConfig(arg)
+  }
+  if (!arg) {
+    return findConfig()
+  }
+  // It's a file path — no config needed
+  return null
+}
+
+/**
+ * Check if an argument looks like a specific file (not a directory, not null).
+ */
+function isFilePath(arg: Maybe<string>): arg is string {
+  if (!arg) return false
+  if (!fs.existsSync(arg)) return true // doesn't exist yet — treat as file
+  return !fs.statSync(arg).isDirectory()
+}
+
 function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>) {
   const pattern = testNamePattern !== null ? new RegExp(testNamePattern) : undefined
 
-  if (testPath) {
+  if (isFilePath(testPath)) {
     // Single file mode
     if (!/\.test\.dvala/.test(testPath)) {
       printErrorMessage('Test file must end with .test.dvala')
@@ -328,9 +356,9 @@ function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, r
     reportSingleFile(result, reporter, outputFile)
   } else {
     // Project mode — discover tests via dvala.json
-    const resolved = findConfig()
+    const resolved = resolveProjectConfig(testPath)
     if (!resolved) {
-      printErrorMessage('No dvala.json found. Either specify a test file or create a dvala.json in the project root.')
+      printErrorMessage('No dvala.json found. Either specify a test file, a project directory, or create a dvala.json in the project root.')
       process.exit(1)
     }
     const suiteResult = runTestSuite(resolved.rootDir, resolved.config.tests, pattern)
