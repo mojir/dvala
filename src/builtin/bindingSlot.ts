@@ -224,11 +224,6 @@ function flattenTarget(
       break
     }
 
-    case bindingTargetTypes.literal:
-    case bindingTargetTypes.wildcard:
-      // Literal and wildcard don't create bindings
-      // (Literal is for pattern matching, wildcard ignores)
-      break
   }
 }
 
