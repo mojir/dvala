@@ -207,6 +207,14 @@ describe('prettyPrint — recur / parallel / race', () => {
     expect(result).toContain('\n')
     expect(result).toContain('recur(')
   })
+  it('parallel', () => {
+    const ast = ['Parallel', [['Num', 1, 0], ['Num', 2, 0]], 0]
+    expect(prettyPrint(ast)).toBe('parallel(1, 2)')
+  })
+  it('race', () => {
+    const ast = ['Race', [['Num', 1, 0], ['Num', 2, 0]], 0]
+    expect(prettyPrint(ast)).toBe('race(1, 2)')
+  })
 })
 
 describe('prettyPrint — loops', () => {
@@ -415,14 +423,50 @@ describe('prettyPrint — binding targets with defaults', () => {
 
 describe('prettyPrint — smart rewrites via raw AST', () => {
   it('0 - x rewrites to -x', () => {
-    // Construct AST for `0 - x` directly — parser doesn't produce this from `-x`
     const ast = ['Call', [['Builtin', '-', 0], [['Num', 0, 0], ['Sym', 'x', 0]]], 0]
     expect(prettyPrint(ast)).toBe('-x')
   })
 })
 
-describe('prettyPrint — unknown node type fallback', () => {
-  it('returns <type> for unknown nodes', () => {
+describe('prettyPrint — raw AST edge cases', () => {
+  it('splice node outside code template', () => {
+    expect(prettyPrint(['Splice', 0, 0])).toBe('<Splice>')
+  })
+
+  it('binding target node passed to printNode', () => {
+    // A Let node whose target is printed inline
+    const symbolTarget = ['symbol', [['Sym', 'x', 0], undefined], 0]
+    const letNode = ['Let', [symbolTarget, ['Num', 42, 0]], 0]
+    expect(prettyPrint(letNode)).toBe('let x = 42')
+  })
+
+  it('unknown node type fallback', () => {
     expect(prettyPrint(['UnknownType', null, 0])).toBe('<UnknownType>')
+  })
+
+  it('code template with splice at top level exercises printNodeWithSplices', () => {
+    // CodeTmpl: [bodyAst, spliceExprs]
+    // bodyAst has a Splice node referencing spliceExprs[0]
+    const spliceExpr = ['Num', 99, 0]
+    const bodyAst = [['Splice', 0, 0]]
+    const codeTmpl = ['CodeTmpl', [bodyAst, [spliceExpr]], 0]
+    const result = prettyPrint(codeTmpl)
+    expect(result).toContain('$^{99}')
+  })
+
+  it('code template with invalid splice index throws', () => {
+    const bodyAst = [['Splice', 5, 0]]  // index 5 doesn't exist
+    const codeTmpl = ['CodeTmpl', [bodyAst, []], 0]
+    expect(() => prettyPrint(codeTmpl)).toThrow(/Invalid splice index/)
+  })
+
+  it('binding target type passed directly to printNode', () => {
+    // Binding targets (symbol, array, object, etc.) can appear in AST payloads.
+    // prettyPrint delegates to printBindingTarget for these.
+    expect(prettyPrint(['symbol', [['Sym', 'x', 0], undefined], 0])).toBe('x')
+    expect(prettyPrint(['rest', ['r', undefined], 0])).toBe('...r')
+    expect(prettyPrint(['wildcard', [], 0])).toBe('_')
+    expect(prettyPrint(['array', [[['symbol', [['Sym', 'a', 0], undefined], 0]], undefined], 0])).toBe('[a]')
+    expect(prettyPrint(['literal', [['Num', 42, 0]], 0])).toBe('42')
   })
 })
