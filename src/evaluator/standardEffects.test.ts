@@ -345,6 +345,31 @@ describe('standardEffects', () => {
         globalThis.prompt = originalPrompt
       }
     })
+
+    it('should throw when options is not an object (line 267)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler({ items, options: 'not-an-object' }, emptyK)).toThrow('must be an object')
+    })
+
+    it('should throw when options is an array (line 267)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler({ items, options: [1, 2] }, emptyK)).toThrow('must be an object')
+    })
+
+    it('should throw when options.prompt is not a string (line 272)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler({ items, options: { prompt: 42 } }, emptyK)).toThrow('prompt must be a string')
+    })
+
+    it('should throw when options.default is not an integer (line 278)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler({ items, options: { default: 1.5 } }, emptyK)).toThrow('default must be an integer')
+    })
+
+    it('should throw when options.default is a string (line 278)', () => {
+      const handler = getStandardEffectHandler('dvala.io.pick')!
+      expect(() => handler({ items, options: { default: 'foo' } }, emptyK)).toThrow('default must be an integer')
+    })
   })
 
   describe('dvala.io.confirm handler', () => {
