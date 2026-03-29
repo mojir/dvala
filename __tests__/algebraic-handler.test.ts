@@ -457,6 +457,17 @@ describe('with h; — parse errors', () => {
   })
 })
 
+describe('parseExpression — handler/resume edge cases', () => {
+  it('handler as variable name when not followed by @effect or transform', () => {
+    // `handler` followed by `+` is not a handler expression — it's a variable
+    expect(run('let handler = 10; handler + 1')).toBe(11)
+  })
+
+  it('rejects unclosed resume(', () => {
+    expect(() => run('do with handler @eff() -> resume(42 end; perform(@eff) end')).toThrow()
+  })
+})
+
 // =========================================================================
 // Parser coverage — error paths and edge cases
 // =========================================================================
