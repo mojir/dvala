@@ -24,6 +24,4 @@ b(a)`],
 export const letSpecialExpression: BuiltinSpecialExpression<Any, LetNode> = {
   arity: toFixedArity(0),
   docs,
-  // Dead code — parser converts let to native LetNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

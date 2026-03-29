@@ -14,8 +14,6 @@ export type LambdaNode = [typeof NodeTypes.Function, Function, number]
 
 export const lambdaSpecialExpression: BuiltinSpecialExpression<DvalaFunction, LambdaNode> = {
   arity: {},
-  // Dead code — parser converts function to native FunctionNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 
 }
 

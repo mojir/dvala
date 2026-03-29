@@ -25,5 +25,4 @@ const docs: CustomDocs = {
 export const effectSpecialExpression: BuiltinSpecialExpression<EffectRef, EffectNode> = {
   arity: {},
   docs,
-  getUndefinedSymbols: () => new Set<string>(),
 }

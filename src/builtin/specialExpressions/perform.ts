@@ -33,6 +33,4 @@ end
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {
   arity: { min: 1, max: 2 },
   docs,
-  // Dead code — parser converts perform(...) to native PerformNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

@@ -58,6 +58,4 @@ export const objectSpecialExpression: BuiltinSpecialExpression<Any, ObjectNode> 
 
     return result
   },
-  // Dead code — parser converts object(...) to native ObjectNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

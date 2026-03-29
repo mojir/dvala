@@ -44,6 +44,4 @@ export const recurSpecialExpression: BuiltinSpecialExpression<null, RecurNode> =
   evaluateAsNormalExpression: params => {
     throw new RecurSignal(params)
   },
-  // Dead code — parser converts recur(...) to native RecurNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

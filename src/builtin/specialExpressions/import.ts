@@ -22,5 +22,4 @@ const docs: CustomDocs = {
 export const importSpecialExpression: BuiltinSpecialExpression<Any, ImportNode> = {
   arity: toFixedArity(1),
   docs,
-  getUndefinedSymbols: () => new Set(),
 }

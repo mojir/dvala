@@ -8,7 +8,7 @@ import { NodeTypes } from '../constants/constants'
 import { RuntimeError } from '../errors'
 import { joinSets } from '../utils'
 import type { ContextStack } from '../evaluator/ContextStack'
-import type { Ast, AstNode, BindingTarget, NormalExpressionNode, SpecialExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
+import type { Ast, AstNode, BindingTarget, NormalExpressionNode, SpreadNode, TemplateStringNode, UserDefinedSymbolNode } from '../parser/types'
 import { addToSet } from '../utils'
 import { isNormalExpressionNodeWithName, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 
@@ -67,18 +67,10 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       }
       return unresolvedSymbols
     }
-    case NodeTypes.SpecialExpression: {
-      const specialExpressionNode = node as SpecialExpressionNode
-      const specialExpressionType = specialExpressionNode[1][0]
-      const specialExpression = builtin.specialExpressions[specialExpressionType]
-
-      const castedGetUndefinedSymbols = specialExpression.getUndefinedSymbols as Function
-
-      return castedGetUndefinedSymbols(specialExpressionNode, contextStack, {
-        getUndefinedSymbols,
-        builtin,
-      }) as UndefinedSymbols
-    }
+    // SpecialExpression nodes are never produced by the parser — all special
+    // expressions are converted to native NodeTypes (And, Or, Qq, etc.) at parse time.
+    case NodeTypes.SpecialExpression:
+      return null
     case NodeTypes.Spread:
       return findUnresolvedSymbolsInNode((node as SpreadNode)[1], contextStack, builtin)
     case NodeTypes.TmplStr: {
@@ -146,21 +138,21 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       return getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin)
     case NodeTypes.Match: {
       const matchSpecialExpression = builtin.specialExpressions.match
-      return matchSpecialExpression.getUndefinedSymbols(node as unknown as Parameters<typeof matchSpecialExpression.getUndefinedSymbols>[0], contextStack, {
+      return matchSpecialExpression.getUndefinedSymbols!(node as unknown as Parameters<NonNullable<typeof matchSpecialExpression.getUndefinedSymbols>>[0], contextStack, {
         getUndefinedSymbols,
         builtin,
       })
     }
     case NodeTypes.Loop: {
       const loopSpecialExpression = builtin.specialExpressions.loop
-      return loopSpecialExpression.getUndefinedSymbols(node as unknown as Parameters<typeof loopSpecialExpression.getUndefinedSymbols>[0], contextStack, {
+      return loopSpecialExpression.getUndefinedSymbols!(node as unknown as Parameters<NonNullable<typeof loopSpecialExpression.getUndefinedSymbols>>[0], contextStack, {
         getUndefinedSymbols,
         builtin,
       })
     }
     case NodeTypes.For: {
       const forSpecialExpression = builtin.specialExpressions.for
-      return forSpecialExpression.getUndefinedSymbols(node as unknown as Parameters<typeof forSpecialExpression.getUndefinedSymbols>[0], contextStack, {
+      return forSpecialExpression.getUndefinedSymbols!(node as unknown as Parameters<NonNullable<typeof forSpecialExpression.getUndefinedSymbols>>[0], contextStack, {
         getUndefinedSymbols,
         builtin,
       })

@@ -24,6 +24,4 @@ const docs: CustomDocs = {
 export const raceSpecialExpression: BuiltinSpecialExpression<Any, RaceNode> = {
   arity: { min: 1 },
   docs,
-  // Dead code — parser converts race(...) to native RaceNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }
