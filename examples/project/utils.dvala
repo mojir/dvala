@@ -1,0 +1,19 @@
+// A small utility library
+
+let clamp = (value, lo, hi) -> min(max(value, lo), hi);
+
+let lerp = (a, b, t) -> a + (b - a) * t;
+
+let inRange = (value, lo, hi) -> value >= lo && value <= hi;
+
+let sum = (arr) -> reduce(arr, +, 0);
+
+let average = (arr) -> sum(arr) / count(arr);
+
+{
+  clamp: clamp,
+  lerp: lerp,
+  inRange: inRange,
+  sum: sum,
+  average: average
+}

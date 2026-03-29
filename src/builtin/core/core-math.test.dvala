@@ -1,0 +1,44 @@
+let { test, describe } = import(test);
+let { assertEqual, assertTrue, assertFalse } = import(assertion);
+
+describe("arithmetic", -> do
+  test("addition", -> assertEqual(1 + 2, 3));
+  test("subtraction", -> assertEqual(5 - 3, 2));
+  test("multiplication", -> assertEqual(3 * 4, 12));
+  test("division", -> assertEqual(10 / 2, 5));
+  test("power", -> assertEqual(2 ^ 3, 8));
+  test("remainder", -> assertEqual(7 % 3, 1));
+  test("mod", -> assertEqual(7 mod 3, 1));
+  test("negation", -> assertEqual(-5, 0 - 5));
+end);
+
+describe("abs", -> do
+  test("positive", -> assertEqual(abs(5), 5));
+  test("negative", -> assertEqual(abs(-5), 5));
+  test("zero", -> assertEqual(abs(0), 0));
+end);
+
+describe("rounding", -> do
+  test("ceil", -> assertEqual(ceil(1.2), 2));
+  test("floor", -> assertEqual(floor(1.8), 1));
+  test("round", -> assertEqual(round(1.5), 2));
+  test("round down", -> assertEqual(round(1.4), 1));
+  test("trunc positive", -> assertEqual(trunc(1.9), 1));
+  test("trunc negative", -> assertEqual(trunc(-1.9), -1));
+end);
+
+describe("min and max", -> do
+  test("min two", -> assertEqual(min(3, 1), 1));
+  test("max two", -> assertEqual(max(3, 1), 3));
+  test("min multiple", -> assertEqual(min(3, 1, 2), 1));
+  test("max multiple", -> assertEqual(max(3, 1, 2), 3));
+end);
+
+describe("comparison", -> do
+  test("equal", -> assertTrue(1 == 1));
+  test("not equal", -> assertTrue(1 != 2));
+  test("less than", -> assertTrue(1 < 2));
+  test("greater than", -> assertTrue(2 > 1));
+  test("less or equal", -> assertTrue(1 <= 1));
+  test("greater or equal", -> assertTrue(2 >= 2));
+end);

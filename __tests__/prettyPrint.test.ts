@@ -470,7 +470,7 @@ describe('prettyPrint — raw AST edge cases', () => {
   })
 
   it('code template with invalid splice index throws', () => {
-    const bodyAst = [['Splice', 5, 0]]  // index 5 doesn't exist
+    const bodyAst = [['Splice', 5, 0]] // index 5 doesn't exist
     const codeTmpl = ['CodeTmpl', [bodyAst, []], 0]
     expect(() => prettyPrint(codeTmpl)).toThrow(/Invalid splice index/)
   })

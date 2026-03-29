@@ -1,6 +1,0 @@
-// @include plus-lib.dvala
-
-let add = (a, b) -> plus(a, b);
-let sub = (a, b) -> -(a, b);
-assert(plus);
-{add: add, sub: sub}

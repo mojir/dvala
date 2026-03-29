@@ -1,12 +1,10 @@
-// @include failure-program.dvala
-
+let { test } = import(test);
 let { assertEqual } = import(assertion);
 
-// Setup code
+let add = (a, b) -> a - b;
+let sub = (a, b) -> a + b;
 let one = 1;
 
-// @test add
-assertEqual(add(one, 2), 3);
+test("add", -> assertEqual(add(one, 2), 3));
 
-// @test sub
-assertEqual(sub(one, 2), -1);
+test("sub", -> assertEqual(sub(one, 2), -1));

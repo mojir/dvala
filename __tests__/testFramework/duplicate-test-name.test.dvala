@@ -1,7 +1,0 @@
-let { assertEqual } = import(assertion);
-
-// @test add
-assertEqual(add(1, 2), 3);
-
-// @test add
-assertEqual(sub(1, 2), -1);

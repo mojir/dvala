@@ -16,7 +16,12 @@ import { bundle } from '../../src/bundler'
 import { isDvalaBundle } from '../../src/bundler/interface'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import { runTest } from '../../src/testFramework'
+import { runTestFile } from '../../src/testFramework'
+import type { TestRunResult } from '../../src/testFramework/result'
+import { formatTap } from '../../src/testFramework/formatTap'
+import { formatConsole } from '../../src/testFramework/formatConsole'
+import { formatHtml } from '../../src/testFramework/formatHtml'
+import { formatJunit } from '../../src/testFramework/formatJunit'
 import { parseTokenStream, tokenizeSource } from '../../src/tooling'
 import { getCliDocumentation } from './cliDocumentation/getCliDocumentation'
 import { getCliFunctionSignature } from './cliDocumentation/getCliFunctionSignature'
@@ -76,10 +81,14 @@ interface EvalConfig {
   pure: boolean
 }
 
+type TestReporter = 'default' | 'verbose' | 'tap' | 'junit' | 'html'
+
 interface TestConfig {
   subcommand: 'test'
   filename: string
   testPattern: Maybe<string>
+  reporter: TestReporter
+  outputFile: Maybe<string>
 }
 
 interface BundleConfig {
@@ -221,7 +230,7 @@ switch (config.subcommand) {
     break
   }
   case 'test': {
-    runDvalaTest(config.filename, config.testPattern)
+    runDvalaTest(config.filename, config.testPattern, config.reporter, config.outputFile)
     process.exit(0)
     break
   }
@@ -311,20 +320,52 @@ switch (config.subcommand) {
   }
 }
 
-function runDvalaTest(testPath: string, testNamePattern: Maybe<string>) {
+function runDvalaTest(testPath: string, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>) {
   if (!/\.test\.dvala/.test(testPath)) {
     printErrorMessage('Test file must end with .test.dvala')
     process.exit(1)
   }
-  const { success, tap } = runTest({
+  const result = runTestFile({
     testPath,
     testNamePattern: testNamePattern !== null ? new RegExp(testNamePattern) : undefined,
   })
 
-  console.log(`\n${tap}`)
+  // Console output — always human-readable
+  const consoleResult = reporter === 'tap'
+    ? formatTap(result)
+    : formatConsole(result, { verbose: reporter === 'verbose', color: useColor })
+  const consoleOutput = 'tap' in consoleResult ? consoleResult.tap : consoleResult.text
+  console.log(`\n${consoleOutput}`)
 
-  if (!success)
+  // File output — uses the reporter format, or defaults based on file extension
+  if (outputFile) {
+    const fileFormat = reporter !== 'default' && reporter !== 'verbose' ? reporter : inferFormat(outputFile)
+    const fileContent = formatToFile(result, fileFormat)
+    fs.writeFileSync(outputFile, fileContent, 'utf-8')
+    console.log(`Test results written to ${outputFile}`)
+  }
+
+  if (!consoleResult.success)
     process.exit(1)
+}
+
+function inferFormat(filename: string): TestReporter {
+  if (filename.endsWith('.xml'))
+    return 'junit'
+  if (filename.endsWith('.html'))
+    return 'html'
+  return 'tap'
+}
+
+function formatToFile(result: TestRunResult, format: TestReporter): string {
+  switch (format) {
+    case 'junit':
+      return formatJunit(result).xml
+    case 'html':
+      return formatHtml(result).html
+    default:
+      return formatTap(result).tap
+  }
 }
 
 async function execute(expression: string, bindings: Record<string, unknown>, readLine: (msg: string) => Promise<string>): Promise<Record<string, unknown>> {
@@ -611,7 +652,10 @@ function processArguments(args: string[]): Config {
     case 'test': {
       let filename: Maybe<string> = null
       let testPattern: Maybe<string> = null
+      let reporter: TestReporter = 'default'
+      let outputFile: Maybe<string> = null
       let i = 1
+      const validReporters: TestReporter[] = ['default', 'verbose', 'tap', 'junit', 'html']
       while (i < args.length) {
         const parsed = parseOption(args, i)
         if (!parsed) {
@@ -632,6 +676,22 @@ function processArguments(args: string[]): Config {
             testPattern = parsed.argument
             i += parsed.count
             break
+          case '--reporter':
+            if (!parsed.argument || !validReporters.includes(parsed.argument as TestReporter)) {
+              printErrorMessage(`--reporter must be one of: ${validReporters.join(', ')}`)
+              process.exit(1)
+            }
+            reporter = parsed.argument as TestReporter
+            i += parsed.count
+            break
+          case '--outputFile':
+            if (!parsed.argument) {
+              printErrorMessage('Missing filename after --outputFile')
+              process.exit(1)
+            }
+            outputFile = parsed.argument
+            i += parsed.count
+            break
           default:
             printErrorMessage(`Unknown option "${parsed.option}" for "test"`)
             process.exit(1)
@@ -641,7 +701,7 @@ function processArguments(args: string[]): Config {
         printErrorMessage('Missing filename after "test"')
         process.exit(1)
       }
-      return { subcommand: 'test', filename, testPattern }
+      return { subcommand: 'test', filename, testPattern, reporter, outputFile }
     }
     case 'repl': {
       let loadFilename: Maybe<string> = null
