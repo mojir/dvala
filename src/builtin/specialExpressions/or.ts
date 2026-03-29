@@ -52,5 +52,4 @@ export const orSpecialExpression: BuiltinSpecialExpression<Any, OrNode> = {
     }
     return value
   },
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1], contextStack, builtin),
 }

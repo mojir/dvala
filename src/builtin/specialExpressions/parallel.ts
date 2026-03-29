@@ -23,6 +23,4 @@ const docs: CustomDocs = {
 export const parallelSpecialExpression: BuiltinSpecialExpression<Arr, ParallelNode> = {
   arity: { min: 1 },
   docs,
-  // Dead code — parser converts parallel(...) to native ParallelNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

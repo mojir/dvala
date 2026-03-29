@@ -155,7 +155,7 @@ export interface BuiltinSpecialExpression<T, N extends AstNode> {
   evaluateAsNormalExpression?: NormalExpressionEvaluator<T>
   arity: Arity
   docs?: SpecialExpressionDocs
-  getUndefinedSymbols: (
+  getUndefinedSymbols?: (
     node: N,
     contextStack: ContextStack,
     params: { getUndefinedSymbols: GetUndefinedSymbols; builtin: Builtin },

@@ -47,6 +47,4 @@ export const arraySpecialExpression: BuiltinSpecialExpression<Any, ArrayNode> = 
     return result
   },
 
-  // Dead code — parser converts array(...) to native ArrayNode before getUndefinedSymbols is called
-  getUndefinedSymbols: () => new Set(),
 }

@@ -51,5 +51,4 @@ export const andSpecialExpression: BuiltinSpecialExpression<Any, AndNode> = {
     return value
   },
 
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1], contextStack, builtin),
 }
