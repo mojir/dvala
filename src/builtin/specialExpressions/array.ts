@@ -47,5 +47,6 @@ export const arraySpecialExpression: BuiltinSpecialExpression<Any, ArrayNode> = 
     return result
   },
 
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => getUndefinedSymbols(node[1] as AstNode[], contextStack, builtin),
+  // Dead code — parser converts array(...) to native ArrayNode before getUndefinedSymbols is called
+  getUndefinedSymbols: () => new Set(),
 }

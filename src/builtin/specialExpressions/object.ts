@@ -2,7 +2,6 @@ import type { Any, Obj } from '../../interface'
 import type { AstNode, SpreadNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
 import { assertString } from '../../typeGuards/string'
-import { isSpreadNode } from '../../typeGuards/astNode'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 
 export type ObjectEntry = [AstNode, AstNode] | SpreadNode
@@ -59,17 +58,6 @@ export const objectSpecialExpression: BuiltinSpecialExpression<Any, ObjectNode> 
 
     return result
   },
-  getUndefinedSymbols: (node, contextStack, { getUndefinedSymbols, builtin }) => {
-    const entries = node[1] as ObjectEntry[]
-    const allNodes: AstNode[] = []
-    for (const entry of entries) {
-      if (isSpreadNode(entry as AstNode)) {
-        allNodes.push(entry as SpreadNode)
-      } else {
-        const [key, value] = entry as [AstNode, AstNode]
-        allNodes.push(key, value)
-      }
-    }
-    return getUndefinedSymbols(allNodes, contextStack, builtin)
-  },
+  // Dead code — parser converts object(...) to native ObjectNode before getUndefinedSymbols is called
+  getUndefinedSymbols: () => new Set(),
 }

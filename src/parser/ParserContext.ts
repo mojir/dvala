@@ -37,10 +37,6 @@ export class ParserContext {
     }
   }
 
-  public nextNodeId(): number {
-    return globalNodeIdCounter++
-  }
-
   public allocateNodeId(debugInfo?: TokenDebugInfo): number {
     const id = globalNodeIdCounter++
     if (this.sourceMap && debugInfo) {
