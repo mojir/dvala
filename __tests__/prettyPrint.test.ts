@@ -95,11 +95,13 @@ describe('prettyPrint — if/else', () => {
     expect(result).toContain('\n')
     expect(result).toContain('else if')
   })
-  it('if without else', () => {
-    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression end'
+  it('long if without else breaks to multi-line', () => {
+    const code = 'if someVeryLongConditionVariable then someVeryLongResultExpression + anotherVeryLongTerm end'
     const result = pp(code)
+    expect(result).toContain('\n')
     expect(result).toContain('if ')
     expect(result).toContain('end')
+    expect(result).not.toContain('else')
   })
 })
 
@@ -285,6 +287,16 @@ describe('prettyPrint — handler nodes', () => {
     const result = pp('handler @my.eff(x) -> do let y = x; resume(y) end end')
     expect(result).toContain('@my.eff')
   })
+  it('handler with multi-statement transform body', () => {
+    const result = pp('handler transform x -> do let y = x * 2; y + 1 end end')
+    expect(result).toContain('transform')
+    expect(result).toContain('let y = x * 2')
+  })
+  it('handler with multi-statement clause and transform', () => {
+    const result = pp('handler @eff(x) -> do let a = x; resume(a) end transform r -> do let b = r; b * 10 end end')
+    expect(result).toContain('@eff')
+    expect(result).toContain('transform')
+  })
   it('resume with arg', () => { expect(pp('handler @eff(x) -> resume(x) end')).toContain('resume(x)') })
   it('bare resume', () => {
     const result = pp('handler @eff(x) -> do let r = resume; r(x) end end')
@@ -305,6 +317,22 @@ describe('prettyPrint — code templates (quote)', () => {
   it('quote with splice', () => {
     const result = pp('let a = 1; quote $^{a} + $^{a} end')
     expect(result).toContain('$^{')
+  })
+  it('quote containing match (exercises substituteSplices non-array payload items)', () => {
+    // Match cases have [pattern, body, guard] where guard can be null.
+    // substituteSplices must handle null items in the payload array.
+    const result = pp('quote match x case 0 then "zero" case _ then "other" end end')
+    expect(result).toContain('quote')
+    expect(result).toContain('match')
+    expect(result).toContain('case')
+  })
+  it('quote containing if/else', () => {
+    const result = pp('quote if a then b else c end end')
+    expect(result).toContain('if')
+  })
+  it('quote containing let', () => {
+    const result = pp('quote let x = 42 end')
+    expect(result).toContain('let x = 42')
   })
 })
 
@@ -382,6 +410,14 @@ describe('prettyPrint — binding targets with defaults', () => {
     const result = pp('({ x, y } = { x: 0, y: 0 }) -> x + y')
     expect(result).toContain('{ x, y }')
     expect(result).toContain('=')
+  })
+})
+
+describe('prettyPrint — smart rewrites via raw AST', () => {
+  it('0 - x rewrites to -x', () => {
+    // Construct AST for `0 - x` directly — parser doesn't produce this from `-x`
+    const ast = ['Call', [['Builtin', '-', 0], [['Num', 0, 0], ['Sym', 'x', 0]]], 0]
+    expect(prettyPrint(ast)).toBe('-x')
   })
 })
 
