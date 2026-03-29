@@ -443,6 +443,20 @@ describe('with h; — inline handler expression', () => {
   })
 })
 
+describe('with h; — parse errors', () => {
+  it('rejects missing semicolon after with expression', () => {
+    expect(() => run('do with handler @dvala.error(msg) -> 0 end 42 end')).toThrow(/;/)
+  })
+
+  it('rejects missing semicolon or end in with body', () => {
+    expect(() => run('do with handler @dvala.error(msg) -> 0 end; 1 2 end')).toThrow(/;.*end|end/)
+  })
+
+  it('rejects missing end in do block', () => {
+    expect(() => run('do 1 2')).toThrow(/end/)
+  })
+})
+
 // =========================================================================
 // Parser coverage — error paths and edge cases
 // =========================================================================
