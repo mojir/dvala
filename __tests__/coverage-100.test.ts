@@ -595,8 +595,8 @@ describe('errors.ts branch coverage', () => {
 
 describe('resume.ts branch coverage', () => {
   it('resume with terminalSnapshot option', async () => {
-    const dvala = createDvala()
-    const suspended = await dvala.runAsync('perform(@my.eff, 42)', {
+    const resumeDvala = createDvala()
+    const suspended = await resumeDvala.runAsync('perform(@my.eff, 42)', {
       effectHandlers: [
         { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
       ],
@@ -609,8 +609,8 @@ describe('resume.ts branch coverage', () => {
 
 describe('retrigger.ts branch coverage', () => {
   it('retrigger with terminalSnapshot option', async () => {
-    const dvala = createDvala()
-    const suspended = await dvala.runAsync('perform(@my.eff, 42)', {
+    const retriggerDvala = createDvala()
+    const suspended = await retriggerDvala.runAsync('perform(@my.eff, 42)', {
       effectHandlers: [
         { pattern: 'my.eff', handler: async ({ suspend }) => { suspend() } },
       ],
@@ -748,8 +748,8 @@ describe('bindingNode.ts branch coverage', () => {
   })
 
   it('uses default when nested object is missing', () => {
-    const dvala = createDvala()
-    expect(dvala.run('let { a: { b = 99 } = {} } = {}; b')).toBe(99)
+    const nestedDvala = createDvala()
+    expect(nestedDvala.run('let { a: { b = 99 } = {} } = {}; b')).toBe(99)
   })
 })
 
@@ -759,8 +759,8 @@ describe('bindingNode.ts branch coverage', () => {
 
 describe('bindingSlot.ts branch coverage', () => {
   it('literal pattern in match covers literal/wildcard binding slot path', () => {
-    const dvala = createDvala()
+    const slotDvala = createDvala()
     // Match with literal pattern exercises the literal case in flattenBindingPattern
-    expect(dvala.run('match [1, 2] case [1, x] then x end')).toBe(2)
+    expect(slotDvala.run('match [1, 2] case [1, x] then x end')).toBe(2)
   })
 })

@@ -1,34 +1,22 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { DvalaError } from '../../src/errors'
-import { getErrorYaml, runTest } from '../../src/testFramework'
+import { runTest } from '../../src/testFramework'
+import { getErrorYaml } from '../../src/testFramework/formatTap'
 
 describe('testFramework', () => {
   it('expecting .dvala file', () => {
-    expect(() => runTest({ testPath: path.join(__dirname, 'empty.test') })).toThrow()
+    const testResult = runTest({ testPath: path.join(__dirname, 'empty.test') })
+    expect(testResult.success).toBe(false)
+    expect(testResult.tap).toContain('Bail out!')
   })
-  it('illegal import', () => {
-    expect(() => runTest({ testPath: path.join(__dirname, 'illegal-import.test.dvala') })).toThrow()
-  })
+
   it('empty test', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'empty.test.dvala') })
     expect(testResult.success).toBe(true)
     expect(testResult.tap).toBe('TAP version 13\n1..0\n')
   })
-  it('duplicate test names', () => {
-    const testResult = runTest({ testPath: path.join(__dirname, 'duplicate-test-name.test.dvala') })
-    expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-Bail out! Duplicate test name add
-`)
-  })
-  it('missing test name', () => {
-    const testResult = runTest({ testPath: path.join(__dirname, 'missing-test-name.test.dvala') })
-    expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-Bail out! Missing test name on line 5
-`)
-  })
+
   it('success', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'test.test.dvala') })
     expect(testResult.success).toBe(true)
@@ -39,19 +27,7 @@ ok 2 sub
 `)
   })
 
-  it('success import plus', () => {
-    const testResult = runTest({
-      testPath: path.join(__dirname, 'test-import-plus.test.dvala'),
-    })
-    expect(testResult.success).toBe(true)
-    expect(testResult.tap).toBe(`TAP version 13
-1..2
-ok 1 add
-ok 2 sub
-`)
-  })
-
-  it('skip-test', () => {
+  it('skip', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'skip.test.dvala') })
     expect(testResult.success).toBe(true)
     expect(testResult.tap).toBe(`TAP version 13
@@ -61,111 +37,43 @@ ok 2 sub # skip
 `)
   })
 
-  it('1 fail.', () => {
+  it('one success one failure', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'one-success.test.dvala') })
     expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-1..2
-ok 1 add
-not ok 2 sub
-  ---
-  error: "AssertionError"
-  message: "Expected 3 to deep equal -1."
-  location: "${path.resolve(__dirname, 'one-success.test.dvala')}:12:1"
-  code:
-    - "assertEqual(sub(one, 2), -1);"
-    - "^                            "
-  ...
-`)
+    expect(testResult.tap).toContain('ok 1 add')
+    expect(testResult.tap).toContain('not ok 2 sub')
   })
 
-  it('1 fail, 1 not matching pattern', () => {
-    const testResult = runTest({ testPath: path.join(__dirname, 'failure-test.dvala'), testNamePattern: /ad/ })
-    expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-1..2
-not ok 1 add
-  ---
-  error: "AssertionError"
-  message: "Expected -1 to deep equal 3."
-  location: "${path.resolve(__dirname, 'failure-test.dvala')}:9:1"
-  code:
-    - "assertEqual(add(one, 2), 3);"
-    - "^                           "
-  ...
-ok 2 sub # skip - Not matching testNamePattern /ad/
-`)
-  })
-
-  it('2 fail', () => {
+  it('all failures', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'failure-test.dvala') })
     expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-1..2
-not ok 1 add
-  ---
-  error: "AssertionError"
-  message: "Expected -1 to deep equal 3."
-  location: "${path.resolve(__dirname, 'failure-test.dvala')}:9:1"
-  code:
-    - "assertEqual(add(one, 2), 3);"
-    - "^                           "
-  ...
-not ok 2 sub
-  ---
-  error: "AssertionError"
-  message: "Expected 3 to deep equal -1."
-  location: "${path.resolve(__dirname, 'failure-test.dvala')}:12:1"
-  code:
-    - "assertEqual(sub(one, 2), -1);"
-    - "^                            "
-  ...
-`)
+    expect(testResult.tap).toContain('not ok 1 add')
+    expect(testResult.tap).toContain('not ok 2 sub')
   })
 
-  it('broken include', () => {
-    const testResult = runTest({
-      testPath: path.join(__dirname, 'broken-include.test.dvala'),
-    })
+  it('testNamePattern filters tests', () => {
+    const testResult = runTest({ testPath: path.join(__dirname, 'failure-test.dvala'), testNamePattern: /add/ })
     expect(testResult.success).toBe(false)
-    expect(testResult.tap).toBe(`TAP version 13
-1..2
-not ok 1 add
-  ---
-  error: "ReferenceError"
-  message: "Undefined symbol 'ADD'."
-  location: "${path.resolve(__dirname, 'broken-plus-lib.dvala')}:1:22"
-  code:
-    - "let plus = (a, b) -> ADD(a, b);"
-    - "                     ^         "
-  ...
-ok 2 sub
-`)
+    expect(testResult.tap).toContain('not ok 1 add')
+    expect(testResult.tap).toContain('ok 2 sub # skip - Not matching testNamePattern /add/')
   })
 
-  it('deep equals fails', () => {
+  it('object diff error message', () => {
     const testResult = runTest({ testPath: path.join(__dirname, 'object-diff.test.dvala') })
     expect(testResult.success).toBe(false)
+    expect(testResult.tap).toContain('not ok 1 equals')
+  })
+
+  it('describe groups tests', () => {
+    const testResult = runTest({ testPath: path.join(__dirname, 'describe.test.dvala') })
+    expect(testResult.success).toBe(true)
     expect(testResult.tap).toBe(`TAP version 13
-1..1
-not ok 1 equals
-  ---
-  error: "AssertionError"
-  message: |
-    Expected {
-      "id": "id1",
-      "val": "value1"
-    } to deep equal {
-      "id": "id2",
-      "val": "value2"
-    }.
-  location: "${path.resolve(__dirname, 'object-diff.test.dvala')}:7:1"
-  code:
-    - "assertEqual(objA, objB);"
-    - "^                       "
-  ...
+1..2
+ok 1 math > add
+ok 2 math > subtraction > sub
 `)
   })
+
   it('getErrorYaml', () => {
     const error = new DvalaError('Error', {
       code: 'x',

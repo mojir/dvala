@@ -618,6 +618,8 @@ function printBindingTarget(target: unknown[]): string {
     }
     case 'wildcard':
       return '_'
+    default:
+      return `<unknown-binding:${targetType}>`
   }
 }
 

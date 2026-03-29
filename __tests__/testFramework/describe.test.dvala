@@ -1,0 +1,13 @@
+let { test, describe } = import(test);
+let { assertEqual } = import(assertion);
+
+let add = (a, b) -> a + b;
+let sub = (a, b) -> a - b;
+
+describe("math", -> do
+  test("add", -> assertEqual(add(1, 2), 3));
+
+  describe("subtraction", -> do
+    test("sub", -> assertEqual(sub(3, 1), 2));
+  end);
+end);

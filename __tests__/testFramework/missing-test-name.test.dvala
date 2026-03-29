@@ -1,6 +1,0 @@
-// @include success-program.dvala
-
-let { assertEqual } = import(assertion);
-
-// @test
-assertEqual(sub(1, 2), -1);

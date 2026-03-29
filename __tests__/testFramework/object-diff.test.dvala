@@ -1,7 +1,7 @@
+let { test } = import(test);
+let { assertEqual } = import(assertion);
+
 let objA = { id: "id1", val: "value1" };
 let objB = { id: "id2", val: "value2" };
 
-let { assertEqual } = import(assertion);
-
-// @test equals
-assertEqual(objA, objB);
+test("equals", -> assertEqual(objA, objB));

@@ -1,67 +1,87 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import { DvalaError } from '../errors'
 import { createDvala } from '../createDvala'
-import type { DvalaRunner } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
-import type { SourceCodeInfo } from '../tokenizer/token'
-import { getCodeMarker } from '../utils/debug/getCodeMarker'
-
-interface TestChunk {
-  name: string
-  program: string
-  directive: 'SKIP' | null
-}
+import { createTestCollector, createTestModule } from '../builtin/modules/test'
+import type { TestEntry } from '../builtin/modules/test'
+import type { Handlers } from '../evaluator/effectTypes'
+import type { TestCaseResult, TestRunResult } from './result'
+import { formatTap } from './formatTap'
 
 interface RunTestParams {
   testPath: string
   testNamePattern?: RegExp
 }
 
-interface TestResult {
-  /**
-   * Test report
-   * http://testanything.org/
-   */
-  tap: string
-  success: boolean
-}
-
-export function runTest({ testPath: filePath, testNamePattern }: RunTestParams): TestResult {
-  const includedFilePaths = getIncludedFilePaths(filePath)
-  const testResult: TestResult = {
-    tap: 'TAP version 13\n',
-    success: true,
-  }
+/**
+ * Runs a .test.dvala file and returns structured results.
+ * The runner is format-agnostic — use formatTap() or other formatters to render output.
+ */
+export function runTestFile({ testPath: filePath, testNamePattern }: RunTestParams): TestRunResult {
   try {
-    const testChunks = getTestChunks(filePath)
-    testResult.tap += `1..${testChunks.length}\n`
-    testChunks.forEach((testChunkProgram, index) => {
-      const testNumber = index + 1
-      if (testNamePattern && !testNamePattern.test(testChunkProgram.name)) {
-        testResult.tap += `ok ${testNumber} ${testChunkProgram.name} # skip - Not matching testNamePattern ${testNamePattern}\n`
-      } else if (testChunkProgram.directive === 'SKIP') {
-        testResult.tap += `ok ${testNumber} ${testChunkProgram.name} # skip\n`
-      } else {
-        try {
-          const dvala = createDvala({ debug: true, modules: allBuiltinModules })
-          const bindings = getBindings(includedFilePaths, dvala)
-          dvala.run(testChunkProgram.program, {
-            bindings,
-            filePath,
-          })
-          testResult.tap += `ok ${testNumber} ${testChunkProgram.name}\n`
-        } catch (error) {
-          testResult.success = false
-          testResult.tap += `not ok ${testNumber} ${testChunkProgram.name}${getErrorYaml(error)}`
-        }
+    const source = readDvalaFile(filePath)
+
+    // Create a collector and a test module bound to it
+    const collector = createTestCollector()
+    const testModule = createTestModule(collector)
+
+    // Effect handlers for describe push/pop — the describe function in test.dvala
+    // performs these effects so the runner can manage the describe name stack
+    const testEffectHandlers: Handlers = [
+      {
+        pattern: 'test.pushDescribe',
+        handler: ({ arg, resume }) => {
+          collector.describeStack.push(arg as string)
+          resume(null)
+        },
+      },
+      {
+        pattern: 'test.popDescribe',
+        handler: ({ resume }) => {
+          collector.describeStack.pop()
+          resume(null)
+        },
+      },
+    ]
+
+    // Create a Dvala runner with the test module included alongside all builtins
+    const dvala = createDvala({ debug: true, modules: [...allBuiltinModules, testModule] })
+
+    // Evaluate the test file — this populates the collector with test registrations
+    dvala.run(source, { filePath, effectHandlers: testEffectHandlers })
+
+    // Run collected tests with timing
+    const tests = collector.tests
+    const runStart = performance.now()
+    const results: TestCaseResult[] = tests.map((test: TestEntry) => {
+      if (testNamePattern && !testNamePattern.test(test.fullName)) {
+        return { name: test.fullName, status: 'skipped' as const, reason: `Not matching testNamePattern ${testNamePattern}` }
+      }
+      if (test.skip) {
+        return { name: test.fullName, status: 'skipped' as const }
+      }
+      const start = performance.now()
+      try {
+        dvala.run('__testBody__()', { bindings: { __testBody__: test.body } })
+        return { name: test.fullName, status: 'passed' as const, durationMs: performance.now() - start }
+      } catch (error) {
+        return { name: test.fullName, status: 'failed' as const, error, durationMs: performance.now() - start }
       }
     })
+    const durationMs = performance.now() - runStart
+
+    return { filePath, results, durationMs }
   } catch (error: unknown) {
-    testResult.tap += `Bail out! ${getErrorMessage(error)}\n`
-    testResult.success = false
+    return { filePath, results: [], bailout: error }
   }
-  return testResult
+}
+
+/**
+ * Legacy API — runs a test file and returns TAP output.
+ * Used by the CLI and vitest integration.
+ */
+export function runTest(params: RunTestParams): { tap: string; success: boolean } {
+  const result = runTestFile(params)
+  return formatTap(result)
 }
 
 function readDvalaFile(dvalaPath: string): string {
@@ -69,158 +89,4 @@ function readDvalaFile(dvalaPath: string): string {
     throw new Error(`Expected .dvala file, got ${dvalaPath}`)
 
   return fs.readFileSync(dvalaPath, { encoding: 'utf-8' })
-}
-
-function getBindings(includedFilePaths: string[], dvala: DvalaRunner): Record<string, unknown> {
-  return includedFilePaths.reduce((acc: Record<string, unknown>, filePath) => {
-    const fileContent = readDvalaFile(filePath)
-    const result = dvala.run(fileContent, { filePath, bindings: acc })
-    if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
-      // First definition wins (preserves old context layer lookup order)
-      for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
-        if (!(key in acc)) {
-          acc[key] = value
-        }
-      }
-    }
-    return acc
-  }, {})
-}
-
-function getIncludedFilePaths(absoluteFilePath: string): string[] {
-  const result: string[] = []
-  getIncludesRecursively(absoluteFilePath, result)
-  return result.reduce((acc: string[], entry: string) => {
-    if (!acc.includes(entry))
-      acc.push(entry)
-
-    return acc
-  }, [])
-
-  function getIncludesRecursively(filePath: string, includedFilePaths: string[]): void {
-    const includeFilePaths = readIncludeDirectives(filePath)
-    includeFilePaths.forEach(includeFilePath => {
-      getIncludesRecursively(includeFilePath, includedFilePaths)
-      includedFilePaths.push(includeFilePath)
-    })
-  }
-}
-
-function readIncludeDirectives(filePath: string): string[] {
-  const fileContent = readDvalaFile(filePath)
-  const dirname = path.dirname(filePath)
-  let okToInclude = true
-  return fileContent.split('\n').reduce((acc: string[], line) => {
-    const includeMatch = line.match(/^\s*\/{2}\s*@include\s*(\S+)\s*$/)
-    if (includeMatch) {
-      if (!okToInclude)
-        throw new Error(`@include must be in the beginning of file: ${filePath}:${line + 1}`)
-
-      const relativeFilePath = includeMatch[1] as string
-      acc.push(path.resolve(dirname, relativeFilePath))
-    }
-    if (!line.match(/^\s*\/.*$/))
-      okToInclude = false
-
-    return acc
-  }, [])
-}
-
-// Splitting test file based on @test annotations
-function getTestChunks(testPath: string): TestChunk[] {
-  const testProgram = readDvalaFile(testPath)
-  let currentTest: TestChunk | undefined
-  let setupCode = ''
-  return testProgram.split('\n').reduce((result: TestChunk[], line, index) => {
-    const currentLineNbr = index + 1
-    const testNameAnnotationMatch = line.match(/^\s*\/{2}\s*@(?:(skip)-)?test\s*(.*)$/)
-    if (testNameAnnotationMatch) {
-      const directive = (testNameAnnotationMatch[1] ?? '').toUpperCase()
-      const testName = testNameAnnotationMatch[2]
-      if (!testName)
-        throw new Error(`Missing test name on line ${currentLineNbr}`)
-
-      if (result.find(chunk => chunk.name === testName))
-        throw new Error(`Duplicate test name ${testName}`)
-
-      currentTest = {
-        directive: (directive || null) as TestChunk['directive'],
-        name: testName,
-        // Adding new-lines to make dvala debug information report correct rows
-        program:
-          setupCode + [...Array(currentLineNbr + 2 - setupCode.split('\n').length).keys()].map(() => '').join('\n'),
-      }
-      result.push(currentTest)
-      return result
-    }
-    if (!currentTest)
-      setupCode += `${line}\n`
-    else
-      currentTest.program += `${line}\n`
-
-    return result
-  }, [])
-}
-
-export function getErrorYaml(error: unknown): string {
-  const message = getErrorMessage(error)
-  /* v8 ignore next 7 */
-  if (!isAbstractDvalaError(error)) {
-    return `
-  ---
-  message: ${JSON.stringify(message)}
-  ...
-`
-  }
-
-  const sourceCodeInfo = error.sourceCodeInfo
-  /* v8 ignore next 8 */
-  if (!sourceCodeInfo || typeof sourceCodeInfo === 'string') {
-    return `
-  ---
-  message: ${JSON.stringify(message)}
-  error: ${JSON.stringify(error.name)}
-  ...
-`
-  }
-
-  const formattedMessage = message.includes('\n')
-    ? `|\n    ${message.split(/\r?\n/).join('\n    ')}`
-    : JSON.stringify(message)
-  return `
-  ---
-  error: ${JSON.stringify(error.name)}
-  message: ${formattedMessage}
-  location: ${JSON.stringify(getLocation(sourceCodeInfo))}
-  code:
-    - "${sourceCodeInfo.code}"
-    - "${getCodeMarker(sourceCodeInfo)}"
-  ...
-`
-}
-
-function getLocation(sourceCodeInfo: SourceCodeInfo): string {
-  const terms: string[] = []
-  if (sourceCodeInfo.filePath)
-    terms.push(sourceCodeInfo.filePath)
-
-  if (sourceCodeInfo.position) {
-    terms.push(`${sourceCodeInfo.position.line}`)
-    terms.push(`${sourceCodeInfo.position.column}`)
-  }
-
-  return terms.join(':')
-}
-
-function getErrorMessage(error: unknown): string {
-  if (!isAbstractDvalaError(error)) {
-    // error should always be an Error (other cases is just for kicks)
-    /* v8 ignore next 1 */
-    return typeof error === 'string' ? error : error instanceof Error ? error.message : 'Unknown error'
-  }
-  return error.shortMessage
-}
-
-function isAbstractDvalaError(error: unknown): error is DvalaError {
-  return error instanceof DvalaError
 }
