@@ -16,19 +16,19 @@ const docs: CustomDocs = {
     ['eff', 'expression', 'An expression evaluating to an effect value (from `@name`).'],
     ['payload', 'expression', 'Optional single payload value passed to the effect handler. Defaults to `null` if omitted.'],
   ],
-  description: 'Invokes an effect. The nearest enclosing `handle/with` handler matching the effect '
-    + 'intercepts the call. The handler receives the payload and its return value '
-    + 'becomes the result of `perform`. If no local handler matches, the effect is dispatched '
-    + 'to the host.',
+  description: 'Invokes an effect. The nearest enclosing `with handler` matching the effect '
+    + 'intercepts the call. The handler clause receives the payload via its parameter '
+    + 'and can `resume(value)` to continue the body or return a value to abort. '
+    + 'If no local handler matches, the effect is dispatched to the host.',
   examples: [
     `
-handle
+do
+  with handler @dvala.io.print(arg) -> resume(arg) end;
   perform(@dvala.io.print, "hello")
-with [(arg, eff, nxt) -> if eff == @dvala.io.print then arg else nxt(eff, arg) end]
 end
 `,
   ],
-  seeAlso: ['isEffect', 'handle', 'raise'],
+  seeAlso: ['isEffect', 'raise'],
 }
 
 export const performSpecialExpression: BuiltinSpecialExpression<Any, PerformNode> = {

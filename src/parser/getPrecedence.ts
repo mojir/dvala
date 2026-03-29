@@ -52,9 +52,6 @@ export function getPrecedence(operatorSign: SymbolicBinaryOperator, sourceCodeIn
     case '|>': // pipe
       return 2
 
-    case '||>': // effect pipe
-      return 1
-
     /* v8 ignore next 2 */
     default:
       throw new ParseError(`Unknown binary operator: ${operatorSign satisfies never}`, sourceCodeInfo)

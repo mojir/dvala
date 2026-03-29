@@ -4,8 +4,9 @@
     assert(isFunction(fn), "First argument must be a function");
     if not(isNull(message)) then assert(isString(message), "Second argument must be a string") end;
     let failedSentinel = @assertion.failed;
-    let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then failedSentinel else nxt(eff, arg) end] end;
-    if isEffect(result) && result == failedSentinel then
+    let errorHandler = handler @dvala.error(err) -> [failedSentinel, err] end;
+    let result = errorHandler(-> fn());
+    if isArray(result) && first(result) == failedSentinel then
       null
     else
       assert(false, message ?? "Expected function to fail")
@@ -18,7 +19,8 @@
     assert(isString(expectedError), "Second argument must be a string");
     if not(isNull(message)) then assert(isString(message), "Third argument must be a string") end;
     let failedSentinel = @assertion.failed;
-    let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then [failedSentinel, arg] else nxt(eff, arg) end] end;
+    let errorHandler = handler @dvala.error(err) -> [failedSentinel, err] end;
+    let result = errorHandler(-> fn());
     if isArray(result) && first(result) == failedSentinel then do
       let actualError = second(result).message;
       if actualError == expectedError then
@@ -37,7 +39,8 @@
     assert(isFunction(fn), "First argument must be a function");
     if not(isNull(message)) then assert(isString(message), "Second argument must be a string") end;
     let failedSentinel = @assertion.failed;
-    let result = handle fn() with [(arg, eff, nxt) -> if eff == @dvala.error then failedSentinel else nxt(eff, arg) end] end;
+    let errorHandler = handler @dvala.error(err) -> failedSentinel end;
+    let result = errorHandler(-> fn());
     if isEffect(result) && result == failedSentinel then
       assert(false, message ?? "Expected function to succeed")
     else

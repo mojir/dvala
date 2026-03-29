@@ -16,24 +16,25 @@ perform(@dvala.io.pick, ["Red", "Green", "Blue"])
 
 ## Effect Handlers
 
-Use `handle...with...end` to intercept effects locally:
+Use `handler...end` to create handlers, and `with` to install them:
 
 ```dvala
 let { fallback } = import(effectHandler);
 
-handle
+do
+  with fallback(0);
   let x = 0 / 0;
   x + 1
-with fallback(0) end
+end
 ```
 
-## Effect Pipe
+## Handler as Function
 
-The `||>` operator is shorthand for handle...with:
+Handlers can also be called directly with `h(-> body)`:
 
 ```dvala
 let { fallback } = import(effectHandler);
-(0 / 0) ||> fallback(0)
+fallback(0)(-> 0 / 0)
 ```
 
 ## Custom Effects
@@ -41,8 +42,9 @@ let { fallback } = import(effectHandler);
 Define your own effects with `@name` and handle them:
 
 ```dvala
-handle
+do
+  with handler @my.double(val) -> resume(val * 2) end;
   let x = perform(@my.double, 21);
   x
-with @my.double(val) -> val * 2 end
+end
 ```

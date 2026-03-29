@@ -281,10 +281,11 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
     ]
 
     const r1 = await dvala.runAsync(`
-      handle
+      do
+        with handler @my.local(arg) -> resume(arg * 2) end;
         perform(@dvala.checkpoint, "inside do-with");
         perform(@my.local, 5)
-      with [(arg, eff, nxt) -> if eff == @my.local then arg * 2 else nxt(eff, arg) end]
+
       end;
       let x = perform(@my.step);
       perform(@my.check);
@@ -324,10 +325,11 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "outer");
-      handle
+      do
+        with handler @my.local(arg) -> resume(arg) end;
         let x = perform(@my.step);
         x + 1
-      with [(arg, eff, nxt) -> if eff == @my.local then arg else nxt(eff, arg) end]
+
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -345,9 +347,10 @@ describe('auto: checkpoint inside nested do/with + suspend', () => {
 
     const r1 = await dvala.runAsync(`
       let x = perform(@my.step);
-      handle
+      do
+        with handler @my.double(arg) -> resume(arg * 2) end;
         perform(@my.double, x)
-      with [(arg, eff, nxt) -> if eff == @my.double then arg * 2 else nxt(eff, arg) end]
+
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')
@@ -1206,10 +1209,11 @@ describe('auto: edge cases', () => {
 
     const r1 = await dvala.runAsync(`
       perform(@dvala.checkpoint, "step 1");
-      handle
+      do
+        with handler @dvala.error(arg) -> resume("caught: " ++ arg.message) end;
         let x = perform(@my.step);
         perform(@dvala.error, { message: "boom: " ++ x })
-      with [(arg, eff, nxt) -> if eff == @dvala.error then "caught: " ++ arg.message else nxt(eff, arg) end]
+
       end
     `, { effectHandlers: handlers })
     expect(r1.type).toBe('suspended')

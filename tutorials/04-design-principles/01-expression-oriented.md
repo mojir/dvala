@@ -81,17 +81,13 @@ squares
 
 ## Effects Return Values
 
-Even `handle...with` error handling returns a value:
+Even error handling with handlers returns a value:
 
 ```dvala
 let safeSqrt = (x) ->
-  handle
+  do
+    with handler @dvala.error(arg) -> resume(null) end;
     sqrt(x)
-  with [(arg, eff, nxt) ->
-    if eff == @dvala.error then null  // arg is { message: ... } but we discard it
-    else nxt(eff, arg)
-    end
-  ]
   end;
 [safeSqrt(16), safeSqrt(-1)]
 ```

@@ -1,7 +1,6 @@
 import type { SpecialExpressionName } from '../builtin'
 import { normalExpressions, normalExpressionTypes } from '../builtin/normalExpressions'
 import type { AndNode } from '../builtin/specialExpressions/and'
-import type { HandleNode } from '../builtin/specialExpressions/handle'
 import { specialExpressionTypes } from '../builtin/specialExpressionTypes'
 import { NodeTypes } from '../constants/constants'
 import { ParseError } from '../errors'
@@ -138,12 +137,6 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     }
     case '??': {
       const node = withSourceCodeInfo([NodeTypes.Qq, [left, right], 0], debugInfo, ctx)
-      ctx.setNodeEnd(node[2])
-      return node
-    }
-    case '||>': {
-      // Effect pipe: expr ||> handler  →  handle expr with handler end
-      const node = withSourceCodeInfo([NodeTypes.Handle, [[left], right], 0], debugInfo, ctx) as HandleNode
       ctx.setNodeEnd(node[2])
       return node
     }

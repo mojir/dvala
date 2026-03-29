@@ -31,7 +31,6 @@ const NodeTypes = {
   Parallel: 'Parallel',
   Race: 'Race',
   Perform: 'Perform',
-  Handle: 'Handle',
   Object: 'Object',
   Function: 'Function',
   Let: 'Let',
@@ -43,6 +42,9 @@ const NodeTypes = {
   Match: 'Match',
   Import: 'Import',
   Macro: 'Macro',
+  Handler: 'Handler',
+  Resume: 'Resume',
+  WithHandler: 'WithHandler',
   CodeTmpl: 'CodeTmpl',
   Splice: 'Splice',
 } as const
@@ -126,8 +128,6 @@ function printNode(node: AstNode, ind: number): string {
       return printBinaryChain(payload as unknown[][], '??', ind)
     case NodeTypes.Recur:
       return printCommaSeparated('recur', payload as unknown[][], ind)
-    case NodeTypes.Handle:
-      return printHandle(payload as [unknown[][], unknown[]], ind)
     case NodeTypes.Loop:
       return printLoop(payload as [unknown[][], unknown[]], ind)
     case NodeTypes.For:
@@ -146,6 +146,16 @@ function printNode(node: AstNode, ind: number): string {
       return printCodeTemplate(payload as [unknown[][], unknown[][]], ind)
     case NodeTypes.Splice:
       return '<Splice>'
+    case NodeTypes.Handler:
+      return printHandler(payload as [unknown[], unknown], ind)
+    case NodeTypes.Resume:
+      return payload === 'ref' ? 'resume' : `resume(${printNode(payload as AstNode, ind)})`
+    case NodeTypes.WithHandler: {
+      const [handlerExpr, bodyExprs] = payload as [unknown[], unknown[][]]
+      const handlerStr = printNode(handlerExpr as AstNode, ind)
+      const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind))
+      return `with ${handlerStr};\n${bodyStrs.map(s => `${indent(ind)}${s}`).join(';\n')}`
+    }
     // Binding target types (from destructuring patterns, not evaluable code)
     case 'symbol':
     case 'rest':
@@ -360,24 +370,33 @@ function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
   return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}${op} ${p}`).join('\n')}`
 }
 
-function printHandle(payload: [unknown[][], unknown[]], ind: number): string {
-  const [bodyExprs, handlersExpr] = payload
+function printHandler(payload: [unknown[], unknown], ind: number): string {
+  const [clauses, transform] = payload as [
+    { effectName: string; params: unknown[][]; body: unknown[][] }[],
+    [unknown[], unknown[][]] | null,
+  ]
 
-  // Smart rewrite: single body expr → expr ||> handler
-  if (bodyExprs.length === 1) {
-    const flat = `${printNode(bodyExprs[0] as AstNode, ind)} ||> ${printNode(handlersExpr as AstNode, ind)}`
-    if (fits(flat, ind)) return flat
+  const parts: string[] = ['handler']
+  for (const clause of clauses) {
+    const paramsStr = clause.params.length > 0
+      ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})`
+      : '()'
+    const bodyStr = clause.body.length === 1
+      ? printNode(clause.body[0] as AstNode, ind + 1)
+      : clause.body.map(b => printNode(b as AstNode, ind + 1)).join('; ')
+    parts.push(`${indent(ind + 1)}@${clause.effectName}${paramsStr} -> ${bodyStr}`)
   }
-
-  // Full form
-  const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind + 1))
-  const handlersStr = printNode(handlersExpr as AstNode, ind + 1)
-
-  const flatBody = bodyExprs.map(b => printNode(b as AstNode, ind)).join('; ')
-  const flat = `handle ${flatBody} with ${printNode(handlersExpr as AstNode, ind)} end`
-  if (fits(flat, ind)) return flat
-
-  return `handle\n${bodyStrs.map(s => `${indent(ind + 1)}${s}`).join(';\n')}\n${indent(ind)}with ${handlersStr}\n${indent(ind)}end`
+  if (transform) {
+    const [param, body] = transform
+    const paramStr = printBindingTarget(param)
+    const bodyStr = (body).length === 1
+      ? printNode((body)[0] as AstNode, ind + 1)
+      : (body).map(b => printNode(b as AstNode, ind + 1)).join('; ')
+    parts.push(`${indent(ind)}transform`)
+    parts.push(`${indent(ind + 1)}${paramStr} -> ${bodyStr}`)
+  }
+  parts.push(`${indent(ind)}end`)
+  return parts.join('\n')
 }
 
 function printLoop(payload: [unknown[][], unknown[]], ind: number): string {

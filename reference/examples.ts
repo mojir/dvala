@@ -1036,7 +1036,7 @@ perform(@dvala.io.print, "myMul(3, 4) = " ++ str(myMul(3, 4)));
 let { fallback } = import(effectHandler);
 let makeSafe = macro (fallbackVal) ->
   quote
-    macro (ast) -> quote ($^{ast}) ||> fallback($^^{fallbackVal}) end
+    macro (ast) -> quote fallback($^^{fallbackVal})(-> $^{ast}) end
   end;
 
 let safeMath = makeSafe(0);
@@ -1179,15 +1179,16 @@ end;
 // --- Effect name ---
 let eff = @dvala.io.pick;
 
-// --- Effect handling: handle/perform ---
+// --- Effect handling: handler...end with do...with ---
 let { fallback } = import(effectHandler);
-let handled = handle
+let handled = do
+  with fallback("Green");
   let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
   color ++ " was chosen"
-with fallback("Green") end;
+end;
 
-// --- Effect pipe operator (||>) ---
-let piped2 = perform(@dvala.io.pick, [1, 2, 3]) ||> fallback(1);
+// --- Handler as function ---
+let piped2 = fallback(1)(-> perform(@dvala.io.pick, [1, 2, 3]));
 
 // --- Import ---
 let mathMod = import(math);
@@ -1339,11 +1340,11 @@ print(thread(
 
 
 // ─── 5. tryOr — error recovery macro ────────────────────────
-// Wraps an expression with an effect handler that catches errors
-// and returns a fallback value. Uses Dvala's effect pipe (||>).
+// Wraps an expression with a handler that catches errors
+// and returns a fallback value. Uses fallback(v)(-> body).
 
 let tryOr = macro (expr, defaultVal) ->
-  quote ($^{expr}) ||> fallback($^{defaultVal}) end;
+  quote fallback($^{defaultVal})(-> $^{expr}) end;
 
 print("── tryOr ──");
 print(tryOr(10 / 2, -1));
@@ -1553,15 +1554,15 @@ let s20 = [
 ];
 
 // --- 21: Effects & Handlers ---
-let { fallback, retry } = import(effectHandler);
+let { fallback } = import(effectHandler);
 let s21 = [
   effectName(@dvala.io.print), isEffect(@dvala.io.print),
-  handle perform(@dvala.io.pick, ["a", "b"]) with fallback("a") end,
-  handle perform(@dvala.io.pick, [10, 20]) with [fallback(0)] end,
-  perform(@dvala.io.pick, [1, 2]) ||> fallback(1),
-  (0 / 0) ||> fallback(0),
-  handle let v = perform(@custom.eff, 5); v * 10 with @custom.eff(x) -> x + 1 end,
-  handle perform(@custom.eff, "hello") with [retry(2), @custom.eff(x) -> x ++ "!"] end,
+  do with fallback("a"); perform(@dvala.io.pick, ["a", "b"]) end,
+  do with fallback(0); perform(@dvala.io.pick, [10, 20]) end,
+  fallback(1)(-> perform(@dvala.io.pick, [1, 2])),
+  fallback(0)(-> 0 / 0),
+  do with handler @custom.eff(x) -> resume(x + 1) end; let v = perform(@custom.eff, 5); v * 10 end,
+  do with handler @custom.eff(x) -> resume(x ++ "!") end; perform(@custom.eff, "hello") end,
 ];
 
 // --- 22: Import ---

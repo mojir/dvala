@@ -1,4 +1,4 @@
-import type { DvalaFunction, MacroFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
+import type { DvalaFunction, HandlerFunction, MacroFunction, NormalBuiltinFunction, UserDefinedFunction } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
@@ -40,4 +40,8 @@ export function isMacroFunction(value: unknown): value is MacroFunction {
 
 export function isBuiltinFunction(value: unknown): value is NormalBuiltinFunction {
   return isUnknownRecord(value) && value.functionType === 'Builtin'
+}
+
+export function isHandlerFunction(value: unknown): value is HandlerFunction {
+  return isDvalaFunction(value) && value.functionType === 'Handler'
 }

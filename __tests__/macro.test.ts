@@ -95,13 +95,10 @@ describe('macro system', () => {
       // The handler returns an AST node that gets evaluated in the calling scope.
       const result = run(`
         let id = macro@mylib.id (ast) -> ast;
-        handle
+        do
+          with handler @dvala.macro.expand(arg) -> resume(["Num", 99999, 0]) end;
           id(42)
-        with [(arg, eff, nxt) ->
-          if eff == @dvala.macro.expand then ["Num", 99999, 0]
-          else nxt(eff, arg)
-          end
-        ] end
+        end
       `)
       // Handler returned AST for 99999, which gets evaluated → 99999
       expect(result).toBe(99999)
@@ -145,31 +142,29 @@ describe('macro system', () => {
   describe('anonymous macros and @dvala.macro.expand', () => {
     it('should not emit @dvala.macro.expand for anonymous macros', () => {
       // Anonymous macros bypass the effect system entirely.
-      // A handle...with block for @dvala.macro.expand should NOT intercept them.
+      // A handler for @dvala.macro.expand should NOT intercept them.
       const result = run(`
         let id = macro (ast) -> ast;
-        handle
+        do
+          with handler @dvala.macro.expand(arg) -> resume(99999) end;
           id(42)
-        with [(arg, eff, nxt) ->
-          if eff == @dvala.macro.expand then 99999
-          else nxt(eff, arg)
-          end
-        ] end
+        end
       `)
       // Should be 42 (direct call), not 99999 (intercepted)
       expect(result).toBe(42)
     })
 
-    it('should work inside handle...with blocks without being intercepted', () => {
+    it('should work inside handler blocks without being intercepted', () => {
       // Anonymous macros inside effect handling blocks should expand normally
       const result = run(`
         let double = macro (ast) -> do
           let node = ast;
           ["Call", [["Builtin", "+", 0], [node, node]], 0]
         end;
-        handle
+        do
+          with handler @other.eff(arg) -> resume(arg) end;
           double(21)
-        with [(arg, eff, nxt) -> nxt(eff, arg)] end
+        end
       `)
       expect(result).toBe(42)
     })
@@ -263,7 +258,7 @@ myAssert(1 > 5)`)
       // secondary "M-node cannot be evaluated" error.
       expect(run(`
         let inf = macro (ast) -> inf(ast);
-        handle inf(1) with @dvala.error(err) -> err.message end
+        do with handler @dvala.error(err) -> resume(err.message) end; inf(1) end
       `)).toContain('Maximum macro expansion depth')
     })
 
@@ -271,7 +266,7 @@ myAssert(1 > 5)`)
       expect(run(`
         let { fallback } = import(effectHandler);
         let inf = macro (ast) -> inf(ast);
-        inf(1) ||> fallback("default")
+        fallback("default")(-> inf(1))
       `)).toBe('default')
     })
 

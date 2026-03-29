@@ -249,7 +249,7 @@ function extractSplice(
 /** Check if a token opens a block that ends with 'end'. */
 function isBlockOpener(t: Token): boolean {
   if (isReservedSymbolToken(t, 'do')) return true
-  if (isReservedSymbolToken(t, 'handle')) return true
+  if (isSymbolToken(t, 'handler')) return true
   if (isReservedSymbolToken(t, 'quote')) return true
   if (isSymbolToken(t, 'if')) return true
   if (isSymbolToken(t, 'match')) return true

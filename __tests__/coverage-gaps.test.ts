@@ -251,10 +251,9 @@ describe('if/else if edge cases', () => {
 describe('effect matching with function predicate', () => {
   it('should match effects with a wildcard matcher', () => {
     const result = dvala.run(`
-      let pred = effectMatcher("my.*");
-      handle
+      do
+        with handler @my.feature.test(arg) -> resume(upperCase(arg)) end;
         perform(@my.feature.test, "hello")
-      with [(arg, eff, nxt) -> if pred(eff) then upperCase(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('HELLO')
@@ -262,10 +261,9 @@ describe('effect matching with function predicate', () => {
 
   it('should match effects with regexp matcher', () => {
     const result = dvala.run(`
-      let pred = effectMatcher(#"data\\..*");
-      handle
+      do
+        with handler @data.fetch(arg) -> resume(arg + 1) end;
         perform(@data.fetch, 42)
-      with [(arg, eff, nxt) -> if pred(eff) then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(43)
@@ -323,9 +321,9 @@ describe('async trampoline operations', () => {
   it('should handle async run with effects', async () => {
     const d = createDvala()
     const result = await d.runAsync(`
-      handle
+      do
+        with handler @my.effect(arg) -> resume(arg * 10) end;
         perform(@my.effect, 5)
-      with [(arg, eff, nxt) -> if eff == @my.effect then arg * 10 else nxt(eff, arg) end]
       end
     `)
     expect(result.type).toBe('completed')
@@ -774,10 +772,9 @@ describe('advanceQq — ?? after evaluating first to null', () => {
 describe('effect matching — dvala function handler predicate', () => {
   it('should match effect using a dvala function predicate in do...with', () => {
     const result = dvala.run(`
-      let pred = effectMatcher("my.test.*");
-      handle
+      do
+        with handler @my.test.effect(arg) -> resume(upperCase(arg)) end;
         perform(@my.test.effect, "data")
-      with [(arg, eff, nxt) -> if pred(eff) then upperCase(arg) else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe('DATA')
@@ -1319,9 +1316,9 @@ describe('effect matching — function predicate handler', () => {
   it('should handle non-matching effect predicate', () => {
     // Use do...with...end where handler doesn't match the effect
     const result = dvala.run(`
-      handle
+      do
+        with handler @no.match(arg) -> resume(0) end;
         42
-      with [(arg, eff, nxt) -> if eff == @no.match then 0 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(42)
@@ -2419,9 +2416,9 @@ describe('stub evaluate — modules/grid/index.ts', () => {
 describe('parseFunction — do...with...end function body', () => {
   it('should handle function with do...with...end body', () => {
     const result = dvala.run(`
-      let f = () -> handle
+      let f = () -> do
+        with handler @my.eff(arg) -> resume(upperCase(arg)) end;
         perform(@my.eff, "hello")
-      with [(arg, eff, nxt) -> if eff == @my.eff then upperCase(arg) else nxt(eff, arg) end]
       end;
       f()
     `)
@@ -2531,10 +2528,11 @@ describe('dvala.ts — effect binding in assertSerializable (line 271)', () => {
 describe('parseFunction — shorthand lambda with do...with...end', () => {
   it('should parse shorthand lambda containing do...with...end handlers', () => {
     const program = `
-      let f = -> handle
+      let f = -> do
+   with handler @my.eff(arg) -> resume(arg * 2) end;
         perform(@my.eff, $)
-      with [(arg, eff, nxt) -> if eff == @my.eff then arg * 2 else nxt(eff, arg) end]
-      end;
+     
+ end;
       f(21)
     `
     expect(dvala.run(program)).toBe(42)
@@ -2801,13 +2799,12 @@ describe('trampoline.ts — runEffectLoop suspension blob (line 3337-3339)', () 
   })
 })
 
-describe('trampoline.ts — handlerMatchesEffect with predicate (line 2254-2260)', () => {
-  it('should use predicate function as effect matcher via do-with', () => {
-    // Predicate function matching: use a lambda as case pattern to match effects
+describe('trampoline.ts — handler matching with effect clause', () => {
+  it('should use handler clause to match effect via do-with', () => {
     const result = dvala.run(`
-      handle
+      do
+        with handler @test.pred(arg) -> resume(arg + 1) end;
         perform(@test.pred, 99)
-      with [(arg, eff, nxt) -> if effectName(eff) == "test.pred" then arg + 1 else nxt(eff, arg) end]
       end
     `)
     expect(result).toBe(100)

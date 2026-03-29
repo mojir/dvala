@@ -22,7 +22,6 @@ export const NodeTypes = {
   Parallel: 'Parallel',
   Race: 'Race',
   Perform: 'Perform',
-  Handle: 'Handle',
   Object: 'Object',
   Function: 'Function',
   Let: 'Let',
@@ -34,6 +33,9 @@ export const NodeTypes = {
   Match: 'Match',
   Import: 'Import',
   Macro: 'Macro',
+  Handler: 'Handler',
+  Resume: 'Resume',
+  WithHandler: 'WithHandler',
   CodeTmpl: 'CodeTmpl',
   Splice: 'Splice',
   // InlinedData wraps already-resolved data inside CodeTmpl bodies.
@@ -65,7 +67,8 @@ const functionTypes = [
   'Builtin',
   'SpecialBuiltin',
   'Module',
-  'HandleNext',
+  'Handler',
+  'Resume',
 ] as const
 
 const functionTypeSet = new Set(functionTypes)

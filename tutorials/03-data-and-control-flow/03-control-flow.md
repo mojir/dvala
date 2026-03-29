@@ -77,28 +77,20 @@ end
 
 ## Error Handling
 
-Use `handle` / `with` to handle errors. `perform(@dvala.error, { message: msg })` raises an error:
+Use `handler...end` with `do...with` to handle errors. `perform(@dvala.error, { message: msg })` raises an error:
 
 ```dvala
-handle
+do
+  with handler @dvala.error(arg) -> resume(arg.message) end;
   perform(@dvala.error, { message: "oops" })
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then arg.message
-  else nxt(eff, arg)
-  end
-]
 end
 ```
 
 ```dvala
 let safeDiv = (a, b) ->
-  handle
+  do
+    with handler @dvala.error(arg) -> resume("error") end;
     a / b
-  with [(arg, eff, nxt) ->
-    if eff == @dvala.error then "error"
-    else nxt(eff, arg)
-    end
-  ]
   end;
 safeDiv(10, 0)
 ```

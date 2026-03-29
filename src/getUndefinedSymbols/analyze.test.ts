@@ -28,26 +28,19 @@ describe('analyze', () => {
     expect(getUndefinedSymbols('race(1, 2)')).toEqual(new Set([]))
   })
 
-  it('handle...with handlers', () => {
-    // handle...with handler: no undefined symbols
+  it('do...with handler', () => {
+    // handler with no undefined symbols
     expect(getUndefinedSymbols(`
-      handle
+      do
+        with handler @dvala.io.print(arg) -> resume(null) end;
         perform(@dvala.io.print, "hello")
-      with [(arg, eff, nxt) -> if eff == @dvala.io.print then null else nxt(eff, arg) end]
       end`)).toEqual(new Set([]))
 
-    // undefined symbol in handler function
+    // undefined symbol in handler clause body
     expect(getUndefinedSymbols(`
-      handle
+      do
+        with handler @dvala.io.print(arg) -> resume(undefinedHandler) end;
         1
-      with [(arg, eff, nxt) -> if eff == @dvala.io.print then undefinedHandler else nxt(eff, arg) end]
       end`)).toEqual(new Set(['undefinedHandler']))
-
-    // undefined symbol in handler effect expression
-    expect(getUndefinedSymbols(`
-      handle
-        1
-      with [(arg, eff, nxt) -> if eff == unknownEffect then null else nxt(eff, arg) end]
-      end`)).toEqual(new Set(['unknownEffect']))
   })
 })

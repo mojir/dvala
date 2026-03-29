@@ -132,6 +132,11 @@ export function serializeToObject(k: ContinuationStack, meta?: Any): SuspensionB
     if (value instanceof ContextStackImpl) {
       return { __csRef: csMap.get(value)! } satisfies CSRef
     }
+    // Map instances (e.g. HandlerFunction.clauseMap) — skip serialization.
+    // The Map is rebuilt from sibling data (clauses array) during deserialization.
+    if (value instanceof Map) {
+      return null
+    }
 
     if (Array.isArray(value)) {
       return value.map((item, i) => serializeValue(item, `${path}[${i}]`))
@@ -354,6 +359,16 @@ export function deserializeFromObject(
       const result: Record<string, unknown> = {}
       for (const [key, v] of Object.entries(value)) {
         result[key] = resolveValue(v)
+      }
+      // Rebuild HandlerFunction.clauseMap from clauses after deserialization.
+      // The clauseMap is a JavaScript Map which doesn't survive JSON serialization.
+      // Since it's derived from the clauses array, we can rebuild it.
+      if (result.functionType === 'Handler' && Array.isArray(result.clauses)) {
+        const clauseMap = new Map<string, unknown>()
+        for (const clause of result.clauses as { effectName: string }[]) {
+          clauseMap.set(clause.effectName, clause)
+        }
+        result.clauseMap = clauseMap
       }
       return result
     }

@@ -1,15 +1,14 @@
 {
-  retry: (n) -> (arg, eff, nxt) ->
-    if eff == @dvala.error then nxt(eff, arg)
-    else
-      loop (remaining = n) ->
-        handle nxt(eff, arg)
-        with @dvala.error(msg) ->
-          if remaining > 0 then recur(remaining - 1)
-          else nxt(@dvala.error, msg)
-          end
-        end
-    end,
+  fallback: (value) -> handler @dvala.error(msg) -> value end,
 
-  fallback: (value) -> @dvala.error(msg) -> value
+  retry: (n, bodyFn) ->
+    loop (remaining = n) ->
+      do
+        with (handler @dvala.error(msg) ->
+          if remaining > 0 then recur(remaining - 1)
+          else perform(@dvala.error, msg)
+          end
+        end);
+        bodyFn()
+      end
 }

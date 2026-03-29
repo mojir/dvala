@@ -15,5 +15,4 @@ export const specialExpressionTypes = {
   'perform': 'perform',
   'parallel': 'parallel',
   'race': 'race',
-  'handle': 'handle',
 } as const

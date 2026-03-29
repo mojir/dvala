@@ -177,7 +177,7 @@ A regular function `unless(cond, body)` would evaluate `body` before calling the
 ```dvala
 // Wrap an expression in a try-catch style handler
 let safely = macro (ast) ->
-  quote ($^{ast}) ||> fallback(null) end;
+  quote fallback(null)(-> $^{ast}) end;
 
 let { fallback } = import(effectHandler);
 safely(0 / 0)
@@ -286,17 +286,14 @@ Qualified names connect macros to the effect system. When a **named** macro is c
 let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 
 // Named macro emits the effect — handler can intercept
-handle
-  double(21)
-with [(arg, eff, nxt) ->
-  if eff == @dvala.macro.expand then do
+do
+  with handler @dvala.macro.expand(arg) -> do
     perform(@dvala.io.print, "Expanding macro: " ++ qualifiedName(get(arg, "fn")));
     // Return the expansion result as AST
-    ["Num", 99, 0]
-  end
-  else nxt(eff, arg)
-  end
-] end
+    resume(["Num", 99, 0])
+  end end;
+  double(21)
+end
 ```
 
 **Anonymous** macros (without `macro@name`) skip the effect entirely — they're direct calls with no host visibility:
@@ -305,13 +302,10 @@ with [(arg, eff, nxt) ->
 let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 // Anonymous — handler is NOT called
-handle
+do
+  with handler @dvala.macro.expand(arg) -> resume(["Num", 99, 0]) end;
   double(21)
-with [(arg, eff, nxt) ->
-  if eff == @dvala.macro.expand then ["Num", 99, 0]
-  else nxt(eff, arg)
-  end
-] end
+end
 ```
 
 This gives you a spectrum:

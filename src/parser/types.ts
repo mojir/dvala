@@ -129,15 +129,47 @@ export interface ModuleFunction extends GenericDvalaFunction {
 }
 
 /**
- * The `next` function passed to handle...with handler functions.
- * When called with (eff, arg), dispatches to the next handler in the chain
- * or propagates to the outer scope if no more handlers.
+ * A handler clause: maps an effect name to a body expression.
+ * params are the binding targets for the effect's arguments.
  */
-export interface HandleNextFunction extends GenericDvalaFunction {
-  functionType: 'HandleNext'
-  handlers: Any[] // handler functions in the chain
-  handlerIndex: number // next handler to try
-  resumeK: unknown // ContinuationStack — stored as unknown to avoid circular import
+export interface HandlerClause {
+  effectName: string // e.g. 'dvala.error', 'my.eff'
+  params: BindingTarget[] // clause parameter bindings (from the effect args)
+  body: AstNode[] // clause body expressions
+}
+
+/**
+ * First-class handler value created by `handler...end`.
+ * Contains named effect clauses and an optional transform clause.
+ * When installed (via `h(-> body)` or `with h;`), provides algebraic effect handling
+ * with resume/abort semantics.
+ */
+export interface HandlerFunction extends GenericDvalaFunction {
+  functionType: 'Handler'
+  clauses: HandlerClause[] // effect clauses (dispatched by exact name match)
+  clauseMap: Map<string, HandlerClause> // effect name → clause (for O(1) dispatch)
+  /** Transform clause: [paramBindingTarget, bodyExprs]. Defaults to identity. */
+  transform: [BindingTarget, AstNode[]] | null
+  /** Closure environment captured at handler creation. */
+  closureEnv: unknown // ContextStack — stored as unknown to avoid circular import
+}
+
+/**
+ * First-class resume function created when a handler clause is entered.
+ * When called with a value, it resumes the continuation at the perform site
+ * with the handler reinstalled (deep semantics).
+ */
+export interface ResumeFunction extends GenericDvalaFunction {
+  functionType: 'Resume'
+  /** Reference to the HandlerClauseFrame that owns this resume.
+   *  Used to check one-shot guard and set resumed flag. */
+  clauseFrame: unknown // HandlerClauseFrame — unknown to avoid circular import
+  /** The handler to reinstall on resume (deep semantics). */
+  handler: HandlerFunction
+  /** Continuation from perform site up to the AlgebraicHandleFrame. */
+  performK: unknown // ContinuationStack
+  /** Handler environment for reinstallation. */
+  handlerEnv: unknown // ContextStack
 }
 
 export type DvalaFunction =
@@ -156,7 +188,8 @@ export type DvalaFunction =
   | FNullFunction
   | EffectMatcherFunction
   | QualifiedMatcherFunction
-  | HandleNextFunction
+  | HandlerFunction
+  | ResumeFunction
 
 export type DvalaFunctionType = DvalaFunction['functionType']
 
