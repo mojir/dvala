@@ -125,13 +125,6 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       }
       return unresolvedSymbols
     }
-    case NodeTypes.Handle: {
-      const [bodyExprs, handlersExpr] = node[1] as [AstNode[], AstNode]
-      return joinSets(
-        getUndefinedSymbols(bodyExprs, contextStack, builtin),
-        getUndefinedSymbols([handlersExpr], contextStack, builtin),
-      )
-    }
     case NodeTypes.Object: {
       const objectEntries = node[1] as (AstNode[] | AstNode)[]
       const allNodes: AstNode[] = []
@@ -195,6 +188,36 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       })
       contextStack.addValues(getAllBindingTargetNames(target), contextStack.resolve(target[2]))
       return bindingResult
+    }
+
+    case NodeTypes.Handler: {
+      // Handler: collect undefined symbols from all clause bodies and transform body.
+      // Clause params introduce new bindings within clause scope, but since
+      // getUndefinedSymbols is a conservative over-approximation we skip
+      // removing clause-scoped names here (they'll be bound at eval time).
+      const [clauses, transform] = node[1] as [{ params: BindingTarget[]; body: AstNode[] }[], [BindingTarget, AstNode[]] | null]
+      const result = new Set<string>()
+      for (const clause of clauses) {
+        addToSet(result, getUndefinedSymbols(clause.body, contextStack, builtin))
+      }
+      if (transform) {
+        addToSet(result, getUndefinedSymbols(transform[1], contextStack, builtin))
+      }
+      return result
+    }
+    case NodeTypes.Resume: {
+      // resume(value) — check the argument expression for undefined symbols
+      const payload = node[1] as AstNode | 'ref'
+      if (payload === 'ref') return null
+      return getUndefinedSymbols([payload], contextStack, builtin)
+    }
+    case NodeTypes.WithHandler: {
+      // with h; body — check handler expression and body for undefined symbols
+      const [handlerExpr, bodyExprs] = node[1] as [AstNode, AstNode[]]
+      return joinSets(
+        getUndefinedSymbols([handlerExpr], contextStack, builtin),
+        getUndefinedSymbols(bodyExprs, contextStack, builtin),
+      )
     }
 
     // InlinedData is an internal wrapper for deferred splice values — no symbols to resolve

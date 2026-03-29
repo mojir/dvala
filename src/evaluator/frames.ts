@@ -19,7 +19,7 @@ import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import type { MatchSlot } from '../builtin/matchSlot'
-import type { AstNode, BindingTarget, EffectRef, FunctionLike, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
+import type { AstNode, BindingTarget, EffectRef, FunctionLike, HandlerFunction, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -408,67 +408,92 @@ export interface RecurLoopRebindFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * Bridges a handler's return value back to the perform call site.
+ * Algebraic effect handler boundary (new system).
  *
- * When `perform` matches a `HandleWithFrame`, the handler runs with a continuation
- * that excludes the current try/with/catch scope (so errors and effects from
- * the handler propagate upward per P&P semantics). However, the handler's
- * return value needs to resume the body at the perform call site with the
- * HandleWithFrame still on the stack (so subsequent performs in the same body
- * can still match handlers).
+ * Installed by `h(-> body)` where `h` is a HandlerFunction value.
+ * When `perform` fires, the effect name is looked up in the handler's clauseMap.
+ * If found, the clause body runs with `resume` bound in scope.
+ * If not found, the effect propagates to the next handler on the stack.
  *
- * `EffectResumeFrame` is placed below the handler's function frames in the
- * continuation stack. When the handler returns a value, this frame replaces
- * the continuation with `resumeK` — the original continuation from the
- * perform call site, with the HandleWithFrame intact.
- *
- * Error/effect semantics:
- * - Handler RETURNS value → EffectResumeFrame redirects to resumeK → body continues
- * - Handler THROWS error → error walks past EffectResumeFrame to outer_k → correct
- * - Handler PERFORMS effect → effect walks past EffectResumeFrame to outer_k → correct
+ * On normal body completion, the transform clause is applied (if present).
+ * On abort (clause returns without calling resume), transform is bypassed.
  */
-export interface EffectResumeFrame {
-  type: 'EffectResume'
-  resumeK: ContinuationStack
-  /** The HandleWithFrame that spawned this handler chain. Used by
-   *  tryDispatchDvalaError to skip re-entering the same handler on error. */
-  sourceHandleFrame?: HandleWithFrame
-  /** Set to true while the handler is executing. When an error occurs and
-   *  this is true, the error is from the handler body and should NOT be
-   *  re-dispatched to the source HandleWithFrame. When false (set by nxt()),
-   *  the error is from downstream dispatch and CAN be caught by the same scope. */
-  handlerExecuting?: boolean
-  sourceCodeInfo?: SourceCodeInfo
-}
-
-/**
- * `handle...with` effect handler boundary.
- *
- * `handle...with` effect handler boundary. Handlers are evaluated Dvala function values
- * (not AST nodes). When `perform` is called, the trampoline searches for a
- * matching `HandleWithFrame` and invokes the handler chain.
- *
- * The handlers list is an array of Dvala function values, each conforming
- * to `(eff, arg, next) -> value`. They are tried in order via the `next`
- * closure mechanism.
- */
-export interface HandleWithFrame {
-  type: 'HandleWith'
-  handlers: Any[] // Array of Dvala function values
+export interface AlgebraicHandleFrame {
+  type: 'AlgebraicHandle'
+  handler: HandlerFunction
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
 
 /**
- * Frame for evaluating the handlers expression in `handle...with`.
+ * Transform application frame for the new handler system.
  *
- * First the body expressions are wrapped in a sequence. Then the handlers
- * expression is evaluated. Once handlers are resolved, a `HandleWithFrame`
- * is pushed and the body is evaluated.
+ * Pushed when:
+ * 1. Body completes normally — applies the handler's transform clause
+ * 2. `resume(value)` is called — the reinstalled handler's normal completion
+ *    goes through transform, and the result is what `resume` returns
+ *
+ * The transform clause's param is bound to `value`, and the body is evaluated.
+ * If no transform exists, this frame is not pushed (identity transform).
  */
-export interface HandleSetupFrame {
-  type: 'HandleSetup'
+export interface HandlerTransformFrame {
+  type: 'HandlerTransform'
+  handler: HandlerFunction
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Clause execution frame for the new handler system.
+ *
+ * When a handler clause matches a performed effect:
+ * 1. The clause body runs with params bound + `resume` in scope
+ * 2. If `resume` is called: continuation runs (handler reinstalled, deep semantics)
+ * 3. If `resume` is NOT called: clause result becomes the handle block result (abort)
+ *
+ * This frame bridges the clause's result back to the perform call site.
+ * - If `resumed` is true: the clause called resume, so resume's return value
+ *   flows normally through the continuation
+ * - If `resumed` is false (abort): clause result replaces the entire handle block result,
+ *   bypassing the AlgebraicHandleFrame's transform
+ */
+export interface HandlerClauseFrame {
+  type: 'HandlerClause'
+  /** Continuation from the perform site to the AlgebraicHandleFrame.
+   *  Used by resume to continue execution with the handler reinstalled. */
+  performK: ContinuationStack
+  /** The handler to reinstall on resume (deep handler semantics). */
+  handler: HandlerFunction
+  /** Whether resume was called. */
+  resumed: boolean
+  /** One-shot guard: true after resume is called once. */
+  resumeConsumed: boolean
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Setup frame for `with h;` — evaluates the handler expression,
+ * then pushes an AlgebraicHandleFrame and evaluates the body.
+ *
+ * When the handler value arrives, this frame pushes AlgebraicHandleFrame
+ * and starts body evaluation as a sequence — no function boundary,
+ * preserving `recur` behavior.
+ */
+export interface WithHandlerSetupFrame {
+  type: 'WithHandlerSetup'
   bodyExprs: AstNode[]
+  env: ContextStack
+  sourceCodeInfo?: SourceCodeInfo
+}
+
+/**
+ * Collects the evaluated argument for `resume(value)` and dispatches
+ * the resume function call.
+ */
+export interface ResumeCallFrame {
+  type: 'ResumeCall'
+  resumeFn: Any // The ResumeFunction value to call
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }
@@ -896,9 +921,11 @@ export type Frame =
   | RecurLoopRebindFrame
   | PerformArgsFrame
   // Effect handling
-  | EffectResumeFrame
-  | HandleWithFrame
-  | HandleSetupFrame
+  | AlgebraicHandleFrame
+  | HandlerTransformFrame
+  | HandlerClauseFrame
+  | ResumeCallFrame
+  | WithHandlerSetupFrame
   // Compound function wrappers
   | ComplementFrame
   | CompFrame

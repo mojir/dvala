@@ -36,7 +36,6 @@ const binaryOperators = [
   '??', // nullish coalescing
 
   '|>', // pipe
-  '||>', // effect pipe
 ] as const
 
 const otherOperators = [
@@ -63,6 +62,9 @@ const nonFunctionOperators = [
   'loop',
   'recur',
   'while',
+  'handler',
+  'transform',
+  'resume',
 ]
 
 const nonFunctionOperatorSet = new Set(nonFunctionOperators)

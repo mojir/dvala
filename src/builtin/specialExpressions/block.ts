@@ -7,12 +7,12 @@ export type DoNode = [typeof NodeTypes.Block, AstNode[], number]
 
 const docs: CustomDocs = {
   category: 'special-expression',
-  customVariants: ['do body end', 'handle body with [handler-fn] end'],
+  customVariants: ['do body end', 'do with handler; body end'],
   details: [
     ['body', 'expressions', 'The expressions to evaluate.'],
   ],
   description: 'Evaluates `body`. Resulting value is the value of the last expression. '
-    + 'Use `handle...with...end` to install effect handlers that intercept `perform` calls.',
+    + 'Use `with handler...end;` inside a `do` block to install effect handlers that intercept `perform` calls.',
   examples: [
     `
 do
@@ -21,9 +21,9 @@ do
   b(a)
 end`,
     `
-handle
+do
+  with handler @dvala.io.print(arg) -> resume(null) end;
   perform(@dvala.io.print, "hello")
-with [(arg, eff, nxt) -> if eff == @dvala.io.print then null else nxt(eff, arg) end]
 end`,
   ],
 }

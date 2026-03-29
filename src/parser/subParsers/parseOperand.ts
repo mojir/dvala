@@ -2,8 +2,7 @@ import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
 import { ParseError } from '../../errors'
-import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExpression, SpecialSymbolNode, StringNode, UserDefinedSymbolNode } from '../types'
-import { bindingTargetTypes } from '../types'
+import type { AstNode, BuiltinSymbolNode, NormalExpressionNodeExpression, SpecialSymbolNode, StringNode } from '../types'
 import { isBinaryOperator } from '../../tokenizer/operators'
 import { isNumberReservedSymbol } from '../../tokenizer/reservedNames'
 import type { StringToken, TemplateStringToken, TokenDebugInfo, TokenType } from '../../tokenizer/token'
@@ -197,12 +196,6 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         throw new ParseError(`Unknown dvala effect: '${effectName}'`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
       }
       ctx.advance()
-      // Check for handler shorthand: @effect -> body, @effect(params...) -> body
-      if (isHandlerShorthand(ctx)) {
-        const node = parseHandlerShorthand(ctx, effectName, token[2] as TokenDebugInfo)
-        ctx.setNodeEnd(node[2])
-        return node
-      }
       const node = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], token[2], ctx)
       ctx.setNodeEnd(node[2])
       return node
@@ -219,114 +212,3 @@ function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, d
   return node
 }
 
-/**
- * Detect handler shorthand after an EffectName token has been consumed.
- * Matches: @effect -> body, @effect(params...) -> body
- */
-function isHandlerShorthand(ctx: ParserContext): boolean {
-  // @effect -> body (zero params)
-  if (isOperatorToken(ctx.tryPeek(), '->')) return true
-
-  // @effect(params...) -> body (1-3 params)
-  if (!isLParenToken(ctx.tryPeek())) return false
-
-  // Scan ahead: ( symbol [, symbol [, symbol]] ) ->
-  let ahead = 1
-  if (!isSymbolToken(ctx.peekAhead(ahead))) return false
-  ahead++
-  for (let i = 0; i < 2; i++) {
-    if (isRParenToken(ctx.peekAhead(ahead))) {
-      return isOperatorToken(ctx.peekAhead(ahead + 1), '->')
-    }
-    if (!isOperatorToken(ctx.peekAhead(ahead), ',')) return false
-    ahead++
-    if (!isSymbolToken(ctx.peekAhead(ahead))) return false
-    ahead++
-  }
-  return isRParenToken(ctx.peekAhead(ahead)) && isOperatorToken(ctx.peekAhead(ahead + 1), '->')
-}
-
-/**
- * Parse handler shorthand with 0-3 params.
- *
- * Handler signature order: (arg, eff, nxt) — matches the full handler contract.
- *
- * Forms:
- *   @effect -> body                    → ($, $2, $3) -> if $2 == @effect then body else $3($2, $) end
- *   @effect(x) -> body                → (x, eff·, nxt·) -> if eff· == @effect then body else nxt·(eff·, x) end
- *   @effect(x, e) -> body             → (x, e, nxt·) -> if e == @effect then body else nxt·(e, x) end
- *   @effect(x, e, n) -> body          → (x, e, n) -> if e == @effect then body else n(e, x) end
- *
- * For wildcard effects (containing *), uses effectMatcher instead of ==.
- */
-function parseHandlerShorthand(ctx: ParserContext, effectName: string, debugInfo: TokenDebugInfo | undefined): AstNode {
-  const mkSymbol = (name: string): UserDefinedSymbolNode => withSourceCodeInfo([NodeTypes.Sym, name, 0], debugInfo, ctx) as UserDefinedSymbolNode
-  const mkBinding = (name: string): BindingTarget => [bindingTargetTypes.symbol, [mkSymbol(name), undefined], ctx.allocateNodeId(debugInfo)]
-
-  // Parse parameter names (0-3)
-  let argName: string
-  let effName: string
-  let nxtName: string
-
-  if (isOperatorToken(ctx.tryPeek(), '->')) {
-    // Zero-param form: @effect -> body (uses $, $2, $3)
-    argName = '$'
-    effName = '$2'
-    nxtName = '$3'
-    ctx.advance() // skip ->
-  } else {
-    // Parenthesized form: @effect(arg [, eff [, nxt]]) -> body
-    ctx.advance() // skip (
-    const params: string[] = []
-    while (!isRParenToken(ctx.tryPeek())) {
-      params.push(ctx.peek()[1])
-      ctx.advance() // skip param
-      if (isOperatorToken(ctx.tryPeek(), ',')) ctx.advance() // skip comma
-    }
-    ctx.advance() // skip )
-    ctx.advance() // skip ->
-
-    // Use untypeable names (middle dot) for unspecified params
-    argName = params[0]!
-    effName = params[1] ?? 'eff·'
-    nxtName = params[2] ?? 'nxt·'
-  }
-
-  // Parse body expression, stopping at ||> so shorthand chaining works:
-  // expr ||> @a(x) -> x * 2 ||> @b(y) -> y + 1
-  // parses as: (expr ||> @a(x) -> x * 2) ||> @b(y) -> y + 1
-  const effectPipePrecedence = 1
-  const body = ctx.parseExpression(effectPipePrecedence)
-
-  const argSym = mkSymbol(argName)
-  const effSym = mkSymbol(effName)
-  const nxtSym = mkSymbol(nxtName)
-
-  // Build condition: eff == @effect (or effectMatcher("pattern")(eff) for wildcards)
-  let condition: AstNode
-  if (effectName.includes('*')) {
-    const matcherCall: AstNode = withSourceCodeInfo([NodeTypes.Call, [
-      withSourceCodeInfo([NodeTypes.Builtin, 'effectMatcher', 0], debugInfo, ctx),
-      [withSourceCodeInfo([NodeTypes.Str, effectName, 0], debugInfo, ctx)],
-    ], 0], debugInfo, ctx)
-    condition = withSourceCodeInfo([NodeTypes.Call, [matcherCall, [effSym]], 0], debugInfo, ctx)
-  } else {
-    const effectNode: AstNode = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], debugInfo, ctx)
-    condition = withSourceCodeInfo([NodeTypes.Call, [
-      withSourceCodeInfo([NodeTypes.Builtin, '==', 0], debugInfo, ctx),
-      [effSym, effectNode],
-    ], 0], debugInfo, ctx)
-  }
-
-  // Build else: nxt(eff, arg)
-  const elseExpr: AstNode = withSourceCodeInfo([NodeTypes.Call, [nxtSym, [effSym, argSym]], 0], debugInfo, ctx)
-
-  // Build if: if condition then body else nxt(eff, arg) end
-  const ifExpr: AstNode = withSourceCodeInfo([NodeTypes.If, [condition, body, elseExpr], 0], debugInfo, ctx)
-
-  // Build lambda: (arg, eff, nxt) -> ifExpr
-  const args: BindingTarget[] = [mkBinding(argName), mkBinding(effName), mkBinding(nxtName)]
-  const node = withSourceCodeInfo([NodeTypes.Function, [args, [ifExpr]], 0], debugInfo, ctx)
-  ctx.setNodeEnd(node[2])
-  return node
-}

@@ -111,15 +111,13 @@ end;
 // --- Effect name ---
 let eff = @dvala.io.pick;
 
-// --- Effect handling: handle/perform ---
+// --- Effect handling: handler/with ---
 let { fallback } = import(effectHandler);
-let handled = handle
+let handled = do
+  with fallback("Green");
   let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
   color ++ " was chosen"
-with fallback("Green") end;
-
-// --- Effect pipe operator (||>) ---
-let piped2 = perform(@dvala.io.pick, [1, 2, 3]) ||> fallback(1);
+end;
 
 // --- Import ---
 let mathMod = import(math);

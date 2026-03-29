@@ -87,6 +87,8 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     case 'Module':
     case 'EffectMatcher':
     case 'QualifiedMatcher':
+    case 'Handler': // clauseMap (Map) is rebuilt from clauses during deserialization
+    case 'Resume': // continuation state rebuilt during deserialization
       return true
 
     // Conditionally serializable — check inner values/functions
@@ -158,7 +160,7 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
   }
 
   if (isDvalaFunction(value)) {
-    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher' || value.functionType === 'QualifiedMatcher') {
+    if (value.functionType === 'UserDefined' || value.functionType === 'Builtin' || value.functionType === 'SpecialBuiltin' || value.functionType === 'Module' || value.functionType === 'EffectMatcher' || value.functionType === 'QualifiedMatcher' || value.functionType === 'Handler' || value.functionType === 'Resume') {
       return null
     }
 

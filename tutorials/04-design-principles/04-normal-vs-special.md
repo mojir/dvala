@@ -120,13 +120,9 @@ for (x in [1, 2, 3] when x > 1) -> x * 10
 
 ```dvala
 let e = @my.double;
-handle
+do
+  with handler @my.double(arg) -> resume(arg * 2) end;
   perform(e, 21)
-with [(arg, eff, nxt) ->
-  if eff == @my.double then arg * 2
-  else nxt(eff, arg)
-  end
-]
 end
 ```
 

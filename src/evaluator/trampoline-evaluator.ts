@@ -46,10 +46,12 @@ import type {
   BindingTarget,
   DvalaFunction,
   EffectRef,
+  HandlerClause,
+  HandlerFunction,
   MacroFunction,
   EvaluatedFunction,
   FunctionLike,
-  HandleNextFunction,
+  ResumeFunction,
   NormalExpressionNode,
   NumberNode,
   PartialFunction,
@@ -71,7 +73,7 @@ import { asNonUndefined, isUnknownRecord } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
-import { isDvalaFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
+import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { deepEqual, toAny } from '../utils'
@@ -87,6 +89,7 @@ import type { DeserializeOptions } from './suspension'
 import { deserializeFromObject, serializeSuspensionBlob, serializeTerminalSnapshot, serializeToObject } from './suspension'
 import { getStandardEffectHandler } from './standardEffects'
 import type {
+  AlgebraicHandleFrame,
   AndFrame,
   ArrayBuildFrame,
   AutoCheckpointFrame,
@@ -96,7 +99,6 @@ import type {
   ComplementFrame,
   CompFrame,
   ContinuationStack,
-  EffectResumeFrame,
   EvalArgsFrame,
   EveryPredFrame,
   FnArgBindFrame,
@@ -107,8 +109,10 @@ import type {
   ForLetBindFrame,
   ForLoopFrame,
   Frame,
-  HandleSetupFrame,
-  HandleWithFrame,
+  HandlerClauseFrame,
+  HandlerTransformFrame,
+  ResumeCallFrame,
+  WithHandlerSetupFrame,
   IfBranchFrame,
   ImportMergeFrame,
   JuxtFrame,
@@ -346,17 +350,6 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       }
       return { type: 'Eval', node: allNodes[0]!, env, k: [frame, ...k] }
     }
-    case NodeTypes.Handle: {
-      const [bodyExprs, handlersExpr] = node[1] as [AstNode[], AstNode]
-      const sourceCodeInfo = env.resolve(node[2])
-      const setupFrame: HandleSetupFrame = {
-        type: 'HandleSetup',
-        bodyExprs,
-        env,
-        sourceCodeInfo,
-      }
-      return { type: 'Eval', node: handlersExpr, env, k: [setupFrame, ...k] }
-    }
     case NodeTypes.Let: {
       const [target, valueNode] = node[1] as [BindingTarget, AstNode]
       const sourceCodeInfo = env.resolve(node[2])
@@ -403,6 +396,74 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         docString: '',
       }
       return { type: 'Value', value: macroFunction, k }
+    }
+    case NodeTypes.Handler: {
+      // Create a first-class handler value from the handler...end expression.
+      // Clauses and transform are stored as AST (evaluated lazily in clause scope).
+      const [parsedClauses, transform] = node[1] as [
+        { effectName: string; params: BindingTarget[]; body: AstNode[] }[],
+        [BindingTarget, AstNode[]] | null,
+      ]
+      const clauses: HandlerClause[] = parsedClauses.map(c => ({
+        effectName: c.effectName,
+        params: c.params,
+        body: c.body,
+      }))
+      const clauseMap = new Map<string, HandlerClause>()
+      for (const clause of clauses) {
+        clauseMap.set(clause.effectName, clause)
+      }
+      const handlerFunction: HandlerFunction = {
+        [FUNCTION_SYMBOL]: true,
+        sourceCodeInfo: env.resolve(node[2]),
+        functionType: 'Handler',
+        clauses,
+        clauseMap,
+        transform,
+        closureEnv: env,
+        arity: { min: 1, max: 1 }, // h(-> body)
+      }
+      return { type: 'Value', value: handlerFunction, k }
+    }
+    case NodeTypes.WithHandler: {
+      // `with h; body` — evaluate handler expression, then install and evaluate body.
+      // NOT a desugaring to h(-> body) — no function boundary, preserves recur.
+      const [handlerExpr, bodyExprs] = node[1] as [AstNode, AstNode[]]
+      const sourceCodeInfo = env.resolve(node[2])
+      const setupFrame: WithHandlerSetupFrame = {
+        type: 'WithHandlerSetup',
+        bodyExprs,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: handlerExpr, env, k: [setupFrame, ...k] }
+    }
+    case NodeTypes.Resume: {
+      // resume(value), resume(), or bare resume reference.
+      // Payload encoding: AstNode = call with arg, 'ref' = bare reference
+      const payload = node[1] as AstNode | 'ref'
+      const sourceCodeInfo = env.resolve(node[2])
+
+      // Look up `resume` in current scope
+      const resumeLookup = env.lookUpByName('resume')
+      if (resumeLookup === null) {
+        throw new RuntimeError('`resume` can only be used inside a handler clause', sourceCodeInfo)
+      }
+      const resumeFn = resumeLookup.value
+
+      if (payload === 'ref') {
+        // Bare resume — return the function value (first-class)
+        return { type: 'Value', value: resumeFn, k }
+      }
+
+      // resume(value) or resume() — evaluate arg then call the resume function.
+      const resumeCallFrame: ResumeCallFrame = {
+        type: 'ResumeCall',
+        resumeFn,
+        env,
+        sourceCodeInfo,
+      }
+      return { type: 'Eval', node: payload, env, k: [resumeCallFrame, ...k] }
     }
     case NodeTypes.CodeTmpl: {
       const [bodyAst, spliceExprs] = node[1] as [AstNode[], AstNode[]]
@@ -914,38 +975,76 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       const regexp = new RegExp(fn.pattern, fn.flags)
       return { type: 'Value', value: regexp.test(qName), k }
     }
-    case 'HandleNext': {
-      // next(eff, arg) — dispatch to the next handler in the chain
-      assertNumberOfParams({ min: 2, max: 2 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
-      const nextEff = params[0] as Any
-      const nextArg = params[1] as Any
-      assertEffect(nextEff, sourceCodeInfo)
-      const { handlers, handlerIndex, resumeK } = fn
-      const rk = resumeK as ContinuationStack
+    case 'Handler': {
+      // h(-> body) — install algebraic handler around the thunk body.
+      // The single argument must be a function (thunk) — we call it with no args.
+      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const thunk = params[0]!
+      const thunkFn = asFunctionLike(thunk, sourceCodeInfo)
 
-      if (handlerIndex >= handlers.length) {
-        // No more handlers in the chain — propagate past the HandleWithFrame.
-        // Mark the EffectResumeFrame as no longer executing the handler body,
-        // so that errors from downstream dispatch can be caught by the same scope.
-        // Walk k to find the EffectResumeFrame — it may not be at k[0] when
-        // the handler body has pushed intervening frames (e.g. NanCheck, FnBody).
-        for (const frame of k) {
-          if (frame.type === 'EffectResume') {
-            frame.handlerExecuting = false
-            break
-          }
-        }
-        // skipCheckpointCapture prevents double-capturing checkpoints that were
-        // already captured upstream before the handler chain was invoked.
-        return { type: 'Perform', effect: nextEff, arg: nextArg, k, sourceCodeInfo, skipCheckpointCapture: true }
+      // Push AlgebraicHandleFrame, then evaluate the thunk body
+      const handleFrame: AlgebraicHandleFrame = {
+        type: 'AlgebraicHandle',
+        handler: fn,
+        env: fn.closureEnv as ContextStack,
+        sourceCodeInfo,
+      }
+      // Call the thunk with no arguments, with the handler frame on the stack
+      return dispatchFunction(thunkFn, [], [], env, sourceCodeInfo, [handleFrame, ...k])
+    }
+    case 'Resume': {
+      // resume(value) — execute the resume logic.
+      // 1. One-shot guard
+      // 2. Mark clause as resumed
+      // 3. Reinstall handler around continuation (deep semantics)
+      // 4. Resume continuation with the given value
+      const clauseFrame = fn.clauseFrame as HandlerClauseFrame
+      if (clauseFrame.resumeConsumed) {
+        throw new RuntimeError('resume can only be called once per effect (one-shot continuation)', sourceCodeInfo)
+      }
+      clauseFrame.resumeConsumed = true
+      clauseFrame.resumed = true
+
+      const resumeValue = (params.length > 0 ? params[0]! : null) as Any
+      const performK = fn.performK as ContinuationStack
+      const handler = fn.handler
+
+      // Reinstall handler: create a new AlgebraicHandleFrame around the continuation.
+      // performK = [frames... , AlgebraicHandleFrame]
+      // We replace the AlgebraicHandleFrame with a fresh one (deep reinstallation).
+      // The continuation resumes at the perform site with the value.
+      const newHandleFrame: AlgebraicHandleFrame = {
+        type: 'AlgebraicHandle',
+        handler,
+        env: fn.handlerEnv as ContextStack,
+        sourceCodeInfo: handler.sourceCodeInfo,
       }
 
-      // Call handlers[handlerIndex](arg, eff, nextNextFn)
-      const nextNextFn = buildNextFunction(handlers, handlerIndex + 1, rk, sourceCodeInfo)
-      const handler = handlers[handlerIndex]!
-      const fnLike = asFunctionLike(handler, sourceCodeInfo)
-      // The handler runs on the same k (which has EffectResumeFrame → outerK)
-      return dispatchFunction(fnLike, [nextArg, nextEff, nextNextFn], [], env, sourceCodeInfo, k)
+      // Build the reinstalled continuation: everything before the AlgebraicHandleFrame
+      // from performK, then the new AlgebraicHandleFrame, then the clause frame's
+      // continuation (which includes the original outer frames).
+      // performK = [inner frames..., AlgebraicHandleFrame]
+      // We want: [inner frames..., newAlgebraicHandleFrame, clauseFrame, outerK]
+      // where outerK is what's below the clause on k.
+      //
+      // But actually: the clause body runs on [clauseFrame, ...outerK].
+      // resume needs to return a value TO the clause body.
+      // So the result of the reinstalled continuation goes back to the clause.
+      //
+      // Stack for the resumed continuation:
+      // [innerFrames..., newAlgebraicHandleFrame, HandlerClauseFrame, ...outerK]
+      // where the HandlerClauseFrame will catch the value when resume "returns".
+
+      // Strip the old AlgebraicHandleFrame from performK
+      const innerFrames = performK.slice(0, performK.length - 1)
+
+      // The k currently has [clauseFrame?, ...outerK] — but actually we're inside
+      // dispatchDvalaFunction, so k is whatever was passed. The clauseFrame is
+      // already on k from the clause body evaluation.
+      // We want the resumed continuation to flow back through the clauseFrame.
+      const reinstalledK: ContinuationStack = [...innerFrames, newHandleFrame, ...k]
+
+      return { type: 'Value', value: resumeValue, k: reinstalledK }
     }
     // Param-transforming compound types: transform and re-dispatch
     case 'Partial': {
@@ -1241,13 +1340,31 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyRecurLoopRebind(frame, value, k)
     case 'PerformArgs':
       return applyPerformArgs(frame, value, k)
-    case 'EffectResume':
-      return applyEffectResume(frame, value, k)
-    case 'HandleSetup':
-      return applyHandleSetup(frame, value, k)
-    case 'HandleWith':
-      // Body completed — return value (frame is just a marker on the stack)
+    case 'AlgebraicHandle':
+      // Body completed normally (Path 1) — apply transform clause
+      return applyAlgebraicHandleNormalCompletion(frame, value, k)
+    case 'HandlerTransform':
+      // Transform body completed — return transformed value
       return { type: 'Value', value, k }
+    case 'HandlerClause':
+      // Clause body completed without calling resume — this is an abort.
+      // The clause's return value becomes the entire handle block's result,
+      // bypassing the AlgebraicHandleFrame's transform.
+      return applyHandlerClauseAbort(frame, value, k)
+    case 'ResumeCall':
+      // Arg evaluated — dispatch the resume function with [argValue]
+      return dispatchFunction(
+        asFunctionLike(frame.resumeFn, frame.sourceCodeInfo),
+        [value],
+        [],
+        frame.env,
+        frame.sourceCodeInfo,
+        k,
+      )
+    case 'WithHandlerSetup':
+      // Handler expression evaluated — install handler and evaluate body.
+      // Same logic as applyHandleSetup but uses AlgebraicHandleFrame.
+      return applyWithHandlerSetup(frame, value, k)
     case 'ParallelResume':
       return applyParallelResume(frame, value, k)
     case 'EvalArgs':
@@ -2005,48 +2122,14 @@ function tryDispatchDvalaError(
   // (which points back to the handler scope via resumeK).
   //
   // When inside a handler (EffectResumeFrame found):
-  // - Error from handler body (frames above EffectResumeFrame): SKIP the
-  //   source HandleWithFrame to prevent infinite recursion
-  // - Error from nxt() propagation (EffectResumeFrame is first): do NOT skip,
-  //   the same scope's @dvala.error handler should catch it
+  // Walk k looking for AlgebraicHandle frames with @dvala.error clauses
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
-    if (frame.type === 'HandleWith') {
-      // HandleWith always receives all effects — the handler chain decides
-      return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
-    }
-    if (frame.type === 'EffectResume') {
-      // handlerExecuting=true: error from handler body → skip source HandleWithFrame
-      // handlerExecuting=false: error from nxt() dispatch → same scope can catch it
-      //
-      // Special case: when the error is a UserError (thrown by dispatchPerform
-      // for unhandled @dvala.error), skip the sourceHandleFrame even when
-      // handlerExecuting=false. This prevents infinite loops where:
-      //   handler gets @dvala.error → calls nxt() → unhandled → UserError
-      //   → tryDispatchDvalaError routes @dvala.error back to same handler → loop
-      const skipFrame = (frame.handlerExecuting || error instanceof UserError)
-        ? frame.sourceHandleFrame
-        : undefined
-      const resumeK = frame.resumeK
-      for (let j = 0; j < resumeK.length; j++) {
-        const rFrame = resumeK[j]!
-        if (rFrame.type === 'HandleWith' && rFrame === skipFrame) {
-          // Splice out the skipped frame so dispatchPerform won't find it
-          const patchedK = [...resumeK.slice(0, j), ...resumeK.slice(j + 1)]
-          // Continue looking for an outer handler in the rest
-          for (let jj = j; jj < patchedK.length; jj++) {
-            const rrFrame = patchedK[jj]!
-            if (rrFrame.type === 'HandleWith') {
-              return { type: 'Perform', effect, arg, k: patchedK, sourceCodeInfo: error.sourceCodeInfo }
-            }
-          }
-          return null // No outer handler
-        }
-        if (rFrame.type === 'HandleWith') {
-          return { type: 'Perform', effect, arg, k: resumeK, sourceCodeInfo: error.sourceCodeInfo }
-        }
+    if (frame.type === 'AlgebraicHandle') {
+      if (frame.handler.clauseMap.has('dvala.error')) {
+        return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
       }
-      return null
+      // No @dvala.error clause — continue searching
     }
   }
   return null // No handler found
@@ -2064,21 +2147,6 @@ function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step |
   // Evaluate next param
   const newFrame: RecurFrame = { ...frame, index: index + 1 }
   return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
-}
-
-/**
- * Check if a FnBodyFrame at position `fnBodyIndex` belongs to an effect handler.
- * Handler bodies have an EffectResumeFrame in their outer continuation
- * (between the FnBody and the next structural frame like LoopIterate or HandleWith).
- */
-function hasEffectResumeBelow(k: ContinuationStack, fnBodyIndex: number): boolean {
-  for (let j = fnBodyIndex + 1; j < k.length; j++) {
-    const f = k[j]!
-    if (f.type === 'EffectResume') return true
-    // Stop searching at structural boundaries that a handler wouldn't cross
-    if (f.type === 'LoopIterate' || f.type === 'FnBody' || f.type === 'HandleWith') return false
-  }
-  return false
 }
 
 /**
@@ -2107,10 +2175,6 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
     }
 
     if (frame.type === 'FnBody') {
-      // Skip handler function bodies — recur should target the enclosing loop,
-      // not the handler function. A handler body is identified by an
-      // EffectResumeFrame nearby in the outer continuation.
-      if (hasEffectResumeBelow(k, i)) continue
       // Found function body frame — restart with new params
       const { fn, outerEnv } = frame
       const remainingK = k.slice(i + 1)
@@ -2191,39 +2255,30 @@ function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: Conti
   return startRecurLoopRebind(bindings, bindingIndex + 1, params, bindingContext, body, env, remainingK, sourceCodeInfo)
 }
 
-function applyEffectResume(frame: EffectResumeFrame, value: Any, _k: ContinuationStack): Step {
-  // The handler returned a value. Replace the continuation with resumeK
-  // (the original continuation from the perform call site, with HandleWithFrame
-  // still on the stack for subsequent performs).
-  // The _k (handler's remaining outer_k) is discarded — resumeK already
-  // includes the full original continuation.
-  return { type: 'Value', value, k: frame.resumeK }
-}
-
 /**
- * HandleSetup: the handlers expression has been evaluated.
- * Now push a HandleWithFrame around the body and evaluate it.
+ * WithHandlerSetup: the handler expression has been evaluated.
+ * Push an AlgebraicHandleFrame and evaluate the body as a sequence.
+ * No function boundary — preserves `recur` behavior.
  */
-function applyHandleSetup(frame: HandleSetupFrame, value: Any, k: ContinuationStack): Step {
-  // value is the evaluated handlers expression — either a single function or an array of functions
-  const handlers = Array.isArray(value) ? value : [value]
+function applyWithHandlerSetup(frame: WithHandlerSetupFrame, value: Any, k: ContinuationStack): Step {
+  if (!isHandlerFunction(value)) {
+    throw new RuntimeError('`with` expects a handler value (created by handler...end)', frame.sourceCodeInfo)
+  }
 
-  const handleWithFrame: HandleWithFrame = {
-    type: 'HandleWith',
-    handlers: handlers as Any[],
-    env: frame.env,
+  const handleFrame: AlgebraicHandleFrame = {
+    type: 'AlgebraicHandle',
+    handler: value,
+    env: value.closureEnv as ContextStack,
     sourceCodeInfo: frame.sourceCodeInfo,
   }
 
-  // Build body as a sequence
   const { bodyExprs, env } = frame
   if (bodyExprs.length === 0) {
-    return { type: 'Value', value: null, k: [handleWithFrame, ...k] }
+    return { type: 'Value', value: null, k: [handleFrame, ...k] }
   }
   if (bodyExprs.length === 1) {
-    return { type: 'Eval', node: bodyExprs[0]!, env, k: [handleWithFrame, ...k] }
+    return { type: 'Eval', node: bodyExprs[0]!, env, k: [handleFrame, ...k] }
   }
-  // Multiple body expressions — wrap in a sequence
   const sequenceFrame: SequenceFrame = {
     type: 'Sequence',
     nodes: bodyExprs,
@@ -2231,7 +2286,260 @@ function applyHandleSetup(frame: HandleSetupFrame, value: Any, k: ContinuationSt
     env,
     sourceCodeInfo: frame.sourceCodeInfo,
   }
-  return { type: 'Eval', node: bodyExprs[0]!, env, k: [sequenceFrame, handleWithFrame, ...k] }
+  return { type: 'Eval', node: bodyExprs[0]!, env, k: [sequenceFrame, handleFrame, ...k] }
+}
+
+// ---------------------------------------------------------------------------
+// Algebraic handler system (new)
+// ---------------------------------------------------------------------------
+
+/**
+ * Body completed normally (Path 1) — apply transform clause.
+ * If no transform, pass through (identity). Transform does NOT apply to abort values.
+ */
+function applyAlgebraicHandleNormalCompletion(frame: AlgebraicHandleFrame, value: Any, k: ContinuationStack): Step {
+  const { handler } = frame
+  return applyHandlerTransform(handler, value, frame.env, frame.sourceCodeInfo, k)
+}
+
+/**
+ * Apply a handler's transform clause to a value. Used for both:
+ * - Normal body completion (Path 1)
+ * - Inside resume return (reinstalled handler's normal completion)
+ *
+ * If no transform clause, returns the value unchanged (identity).
+ */
+function applyHandlerTransform(handler: HandlerFunction, value: Any, _env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
+  if (!handler.transform) {
+    // No transform — identity
+    return { type: 'Value', value, k }
+  }
+
+  const [paramTarget, bodyExprs] = handler.transform
+  const closureEnv = handler.closureEnv as ContextStack
+
+  // Bind the transform parameter to the value
+  const transformFrame: HandlerTransformFrame = {
+    type: 'HandlerTransform',
+    handler,
+    env: closureEnv,
+    sourceCodeInfo,
+  }
+
+  // Bind param and evaluate transform body
+  return startTransformClause(paramTarget, bodyExprs, value, closureEnv, sourceCodeInfo, [transformFrame, ...k])
+}
+
+/**
+ * Start evaluating a transform clause body with the param bound.
+ */
+function startTransformClause(
+  paramTarget: BindingTarget,
+  bodyExprs: AstNode[],
+  value: Any,
+  closureEnv: ContextStack,
+  sourceCodeInfo: SourceCodeInfo | undefined,
+  k: ContinuationStack,
+): Step {
+  // Create a new scope with the transform parameter bound.
+  // For the common case (simple symbol: `x -> expr`), bind directly.
+  const context: Context = {}
+  if (paramTarget[0] === bindingTargetTypes.symbol) {
+    const symNode = paramTarget[1][0]
+    context[symNode[1]] = { value }
+  } else {
+    // Complex destructuring — bind all names to the value for now.
+    // Full destructuring support can be added via binding slots later.
+    const names = getAllBindingTargetNames(paramTarget)
+    for (const name of Object.keys(names)) {
+      context[name] = { value }
+    }
+  }
+
+  const bodyEnv = closureEnv.create(context)
+
+  if (bodyExprs.length === 1) {
+    return { type: 'Eval', node: bodyExprs[0]!, env: bodyEnv, k }
+  }
+  const seqFrame: SequenceFrame = {
+    type: 'Sequence',
+    nodes: bodyExprs,
+    index: 1,
+    env: bodyEnv,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: bodyExprs[0]!, env: bodyEnv, k: [seqFrame, ...k] }
+}
+
+/**
+ * Handler clause completed without calling resume — abort.
+ * The clause's return value becomes the handle block's result,
+ * bypassing the AlgebraicHandleFrame (and its transform).
+ *
+ * We need to pop the continuation up past the AlgebraicHandleFrame.
+ */
+function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: ContinuationStack): Step {
+  if (frame.resumed) {
+    // resume was called — the clause's return value is the final result
+    // of the reinstalled handler block. This has already gone through
+    // the transform (inside resume). Now we need to skip the outer
+    // AlgebraicHandleFrame since the clause is returning a value
+    // (abort from the outer handler's perspective).
+    //
+    // Pop past the AlgebraicHandleFrame on k
+    for (let i = 0; i < k.length; i++) {
+      if (k[i]!.type === 'AlgebraicHandle') {
+        // Skip the AlgebraicHandleFrame — abort bypasses transform
+        return { type: 'Value', value, k: k.slice(i + 1) }
+      }
+    }
+    // No AlgebraicHandleFrame found — should not happen, but return value
+    return { type: 'Value', value, k }
+  }
+
+  // Clause did NOT call resume — pure abort.
+  // Pop past the AlgebraicHandleFrame to bypass the transform.
+  for (let i = 0; i < k.length; i++) {
+    if (k[i]!.type === 'AlgebraicHandle') {
+      return { type: 'Value', value, k: k.slice(i + 1) }
+    }
+  }
+  return { type: 'Value', value, k }
+}
+
+/**
+ * Dispatch a perform against an AlgebraicHandleFrame.
+ *
+ * Looks up the effect name in the handler's clauseMap.
+ * If found: runs clause body with params bound + `resume` in scope.
+ * If not found: propagates past this handler (returns null to indicate no match).
+ */
+function dispatchAlgebraicHandler(
+  frame: AlgebraicHandleFrame,
+  effect: EffectRef,
+  arg: Any,
+  k: ContinuationStack,
+  frameIndex: number,
+  sourceCodeInfo?: SourceCodeInfo,
+): Step | null {
+  const { handler } = frame
+  const clause = handler.clauseMap.get(effect.name)
+
+  if (!clause) {
+    // No matching clause — propagate to outer handler
+    return null
+  }
+
+  // Found a matching clause. Set up the clause execution:
+  // 1. Capture the continuation from perform site to AlgebraicHandleFrame (performK)
+  // 2. Create a resume function that reinstalls the handler (deep semantics)
+  // 3. Run clause body with params bound + resume in scope
+
+  // performK = continuation from perform call site up to and including the AlgebraicHandleFrame
+  const performK = k.slice(0, frameIndex + 1)
+
+  // outerK = continuation past the AlgebraicHandleFrame (clause runs outside handler scope)
+  const outerK = k.slice(frameIndex + 1)
+
+  // Create the HandlerClauseFrame — bridges clause result back
+  const clauseFrame: HandlerClauseFrame = {
+    type: 'HandlerClause',
+    performK,
+    handler,
+    resumed: false,
+    resumeConsumed: false,
+    env: handler.closureEnv as ContextStack,
+    sourceCodeInfo,
+  }
+
+  // Build resume function — a UserDefined function that captures the continuation
+  const resumeFn = buildResumeFunction(clauseFrame, handler, performK, frame.env, sourceCodeInfo)
+
+  // Create clause scope with params bound + resume
+  const closureEnv = handler.closureEnv as ContextStack
+  const clauseContext: Context = {
+    resume: { value: resumeFn },
+  }
+
+  // Bind effect arguments to clause params
+  // The arg is the single payload from perform(@eff, arg).
+  // Clause params receive it positionally.
+  const clauseParams = clause.params
+  if (clauseParams.length === 0) {
+    // No params — nothing to bind
+  } else if (clauseParams.length === 1) {
+    // Single param — bind the arg directly
+    const target = clauseParams[0]!
+    if (target[0] === bindingTargetTypes.symbol) {
+      const symNode = target[1][0]
+      clauseContext[symNode[1]] = { value: arg }
+    }
+  } else {
+    // Multiple params — arg should be an array (or we bind first param to arg, rest to null)
+    if (Array.isArray(arg)) {
+      for (let i = 0; i < clauseParams.length; i++) {
+        const target = clauseParams[i]!
+        if (target[0] === bindingTargetTypes.symbol) {
+          const symNode = target[1][0]
+          clauseContext[symNode[1]] = { value: (arg[i] ?? null) as Any }
+        }
+      }
+    } else {
+      // Single arg with multiple params — bind first to arg, rest to null
+      for (let i = 0; i < clauseParams.length; i++) {
+        const target = clauseParams[i]!
+        if (target[0] === bindingTargetTypes.symbol) {
+          const symNode = target[1][0]
+          clauseContext[symNode[1]] = { value: i === 0 ? arg : null }
+        }
+      }
+    }
+  }
+
+  const clauseEnv = closureEnv.create(clauseContext)
+
+  // Evaluate clause body — runs outside the handler scope (outerK, not k)
+  const clauseBodyExprs = clause.body
+  if (clauseBodyExprs.length === 1) {
+    return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: [clauseFrame, ...outerK] }
+  }
+  const seqFrame: SequenceFrame = {
+    type: 'Sequence',
+    nodes: clauseBodyExprs,
+    index: 1,
+    env: clauseEnv,
+    sourceCodeInfo,
+  }
+  return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: [seqFrame, clauseFrame, ...outerK] }
+}
+
+/**
+ * Build a `resume` function for a handler clause.
+ *
+ * When called with `resume(value)`:
+ * 1. One-shot guard: error if called twice
+ * 2. Reinstall the handler (deep semantics) around the continuation
+ * 3. Evaluate the continuation with the given value at the perform site
+ * 4. Apply the handler's transform clause on normal completion
+ * 5. Return the result to the clause body (resume returns the continuation's result)
+ */
+function buildResumeFunction(
+  clauseFrame: HandlerClauseFrame,
+  handler: HandlerFunction,
+  performK: ContinuationStack,
+  handlerEnv: ContextStack,
+  sourceCodeInfo?: SourceCodeInfo,
+): ResumeFunction {
+  return {
+    [FUNCTION_SYMBOL]: true,
+    functionType: 'Resume',
+    clauseFrame,
+    handler,
+    performK,
+    handlerEnv,
+    arity: { min: 0, max: 1 },
+    sourceCodeInfo,
+  }
 }
 
 /**
@@ -2272,75 +2580,6 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   // Evaluate next arg
   const newFrame: PerformArgsFrame = { ...frame, index: index + 1 }
   return { type: 'Eval', node: argNodes[index]!, env, k: [newFrame, ...k] }
-}
-
-/**
- * Build a HandleNextFunction for the given handler index in the chain.
- * When called with (eff, arg), it dispatches to handlers[handlerIndex].
- * If handlerIndex >= handlers.length, re-performs past the HandleWithFrame.
- */
-function buildNextFunction(
-  handlers: Any[],
-  handlerIndex: number,
-  resumeK: ContinuationStack,
-  sourceCodeInfo?: SourceCodeInfo,
-): HandleNextFunction {
-  return {
-    [FUNCTION_SYMBOL]: true,
-    functionType: 'HandleNext',
-    handlers,
-    handlerIndex,
-    resumeK,
-    arity: { min: 2, max: 2 },
-    sourceCodeInfo,
-  }
-}
-
-/**
- * Invoke the handle...with handler chain when a perform matches a HandleWithFrame.
- *
- * Builds a `next` closure and calls handlers[0](arg, eff, next).
- * The handler's return value becomes the resume value for the perform.
- */
-function invokeHandleWithChain(
-  frame: HandleWithFrame,
-  effect: EffectRef,
-  arg: Any,
-  k: ContinuationStack,
-  frameIndex: number,
-  sourceCodeInfo?: SourceCodeInfo,
-): Step | Promise<Step> {
-  const { handlers } = frame
-
-  if (handlers.length === 0) {
-    // No handlers — propagate past this frame by re-performing on the outer stack
-    const outerK = k.slice(frameIndex + 1)
-    return { type: 'Perform', effect, arg, k: outerK, sourceCodeInfo, skipCheckpointCapture: true }
-  }
-
-  // resumeK = original k — handler's return value resumes here
-  const resumeK = k
-
-  // outerK = continuation past the HandleWithFrame (for handler execution)
-  const outerK = k.slice(frameIndex + 1)
-
-  // EffectResumeFrame bridges handler's return value back to resumeK
-  const effectResumeFrame: EffectResumeFrame = {
-    type: 'EffectResume',
-    resumeK,
-    sourceHandleFrame: frame,
-    handlerExecuting: true,
-    sourceCodeInfo,
-  }
-  const handlerK: ContinuationStack = [effectResumeFrame, ...outerK]
-
-  // Build next function for handler[1..n]
-  const nextFn = buildNextFunction(handlers, 1, resumeK, sourceCodeInfo)
-
-  // Call handlers[0](arg, eff, nextFn)
-  const firstHandler = handlers[0]!
-  const fnLike = asFunctionLike(firstHandler, sourceCodeInfo)
-  return dispatchFunction(fnLike, [arg, effect, nextFn], [], frame.env, sourceCodeInfo, handlerK)
 }
 
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {
@@ -2386,8 +2625,13 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
 
   for (let i = 0; i < k.length; i++) {
     const frame = k[i]!
-    if (frame.type === 'HandleWith') {
-      return invokeHandleWithChain(frame, effect, arg, k, i, sourceCodeInfo)
+    if (frame.type === 'AlgebraicHandle') {
+      // New handler system — try named clause dispatch
+      const result = dispatchAlgebraicHandler(frame, effect, arg, k, i, sourceCodeInfo)
+      if (result !== null) {
+        return result
+      }
+      // No matching clause — propagate past this handler (continue loop)
     }
   }
 

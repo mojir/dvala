@@ -756,52 +756,40 @@ end;
 
 ### Error Handling
 
-#### Handle/With Effect Handlers
+#### Handler-based Effect Handling
 
 ```dvala
-// Basic error handling with handle/with
+// Basic error handling with handler
 let riskyOperation = () -> perform(@dvala.error, "Something went wrong");
-handle
+do
+  with handler @dvala.error(arg) -> resume("Something went wrong") end;
   riskyOperation()
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "Something went wrong"
-  else nxt(eff, arg)
-  end
-] end;
+end;
 
 // With error message binding
-handle
+do
+  with handler @dvala.error(arg) -> resume("Error: " ++ arg) end;
   riskyOperation()
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "Error: " ++ arg
-  else nxt(eff, arg)
-  end
-] end;
+end;
 
 // Error handling for graceful degradation
 let parseData = () -> { value: 42 };
 let process = (val) -> val * 2;
-handle
+do
+  with handler @dvala.error(arg) -> resume("Using default value") end;
   let { value } = parseData();
   process(value)
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "Using default value"
-  else nxt(eff, arg)
-  end
-] end;
+end;
 ```
 
 #### Raising Errors
 
 ```dvala
 // Raising errors
-handle
+do
+  with handler @dvala.error(arg) -> resume("Caught an error") end;
   perform(@dvala.error, "Custom error message")
-with [(arg, eff, nxt) ->
-  if eff == @dvala.error then "Caught an error"
-  else nxt(eff, arg)
-  end
-] end;
+end;
 
 // Custom error messages in functions
 let divide = (a, b) ->

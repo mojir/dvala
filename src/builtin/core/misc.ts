@@ -2,7 +2,7 @@ import { TypeError } from '../../errors'
 import type { EffectMatcherFunction, QualifiedMatcherFunction } from '../../parser/types'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { asAny, asEffect, isEffect, isRegularExpression } from '../../typeGuards/dvala'
-import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
+import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
 import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
@@ -477,6 +477,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         return 'regexp'
       if (isMacroFunction(value))
         return 'macro'
+      if (isHandlerFunction(value))
+        return 'handler'
       if (isDvalaFunction(value))
         return 'function'
       if (Array.isArray(value))
@@ -521,9 +523,8 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Raises an error by performing `@dvala.error` with a structured payload `{ type: "UserError", message, data }`. Convenience wrapper — use `perform(@dvala.error, ...)` directly for custom error types or additional fields.',
       seeAlso: ['perform'],
       examples: [
-        'handle raise("oops") with @dvala.error(err) -> err.message end',
-        'handle raise("bad input", { field: "email" }) with @dvala.error(err) -> err.data.field end',
-        'let { fallback } = import(effectHandler); raise("oops") ||> fallback("recovered")',
+        'do with handler @dvala.error(err) -> resume(err.message) end; raise("oops") end',
+        'do with handler @dvala.error(err) -> resume(err.data.field) end; raise("bad input", { field: "email" }) end',
       ],
     },
   },

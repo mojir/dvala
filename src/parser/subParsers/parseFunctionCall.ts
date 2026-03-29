@@ -137,7 +137,6 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
       | typeof specialExpressionTypes.loop
       | typeof specialExpressionTypes.import
       | typeof specialExpressionTypes.effect
-      | typeof specialExpressionTypes.handle
       | typeof specialExpressionTypes.recur
       | typeof specialExpressionTypes.array
       | typeof specialExpressionTypes.perform
