@@ -75,25 +75,19 @@
     ],
     "description": "Do block"
   },
-  "Handle-with": {
-    "prefix": "handle",
+  "Handler": {
+    "prefix": "handler",
     "body": [
-      "handle",
-      "\t$1",
-      "with $2",
-      "end"
+      "handler @$1($2) -> $3"
     ],
-    "description": "Handle-with effect handler"
+    "description": "Effect handler"
   },
-  "Effect pipe": {
-    "prefix": "||>",
-    "body": ["||> $1"],
-    "description": "Effect pipe operator"
-  },
-  "Handler shorthand": {
-    "prefix": "@",
-    "body": ["@$1($2) -> $3"],
-    "description": "Handler shorthand: @effect(param) -> body"
+  "Transform": {
+    "prefix": "transform",
+    "body": [
+      "transform @$1($2) -> $3"
+    ],
+    "description": "Effect transform handler"
   },
   "Perform": {
     "prefix": "perf",

@@ -294,9 +294,9 @@
     "special-expressions": {
       "patterns": [
         {
-          "comment": "Special expressions: if, let, for, match, loop, block, import, perform, handle, effect, with, parallel, race, recur, self",
+          "comment": "Special expressions: if, let, for, match, loop, block, import, perform, effect, with, parallel, race, recur, self, handler, transform, resume",
           "name": "keyword.control.dvala",
-          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|match|loop|block|import|perform|handle|effect|with|parallel|race|recur|self)(?=[\\s(\\[{)\\]},;]|$)"
+          "match": "(?<=[\\s(\\[{,;]|^)(?:if|let|for|match|loop|block|import|perform|effect|with|parallel|race|recur|self|handler|transform|resume)(?=[\\s(\\[{)\\]},;]|$)"
         }
       ]
     },
@@ -342,7 +342,7 @@
         },
         {
           "name": "keyword.operator.pipe.dvala",
-          "match": "\\|\\|>|\\|>"
+          "match": "\\|>"
         },
         {
           "name": "keyword.operator.spread.dvala",
