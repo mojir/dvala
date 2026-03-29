@@ -32,7 +32,7 @@ describe('createDvala', () => {
 
     it('runs with factory modules', () => {
       const d = createDvala({ modules: [mathUtilsModule] })
-      expect(d.run('let m = import(math); m.ln(1)')).toBe(0)
+      expect(d.run('let m = import("math"); m.ln(1)')).toBe(0)
     })
   })
 
@@ -184,7 +184,7 @@ describe('createDvala', () => {
     it('runs a bundle with file modules', () => {
       const d = createDvala()
       const bundle: DvalaBundle = {
-        program: 'let m = import(mylib); m.x + 1',
+        program: 'let m = import("mylib"); m.x + 1',
         fileModules: [['mylib', '{ x: 10 }']],
       }
       expect(d.run(bundle)).toBe(11)
@@ -202,7 +202,7 @@ describe('createDvala', () => {
     it('runs a bundle with file modules async', async () => {
       const d = createDvala()
       const bundle: DvalaBundle = {
-        program: 'let m = import(mylib); m.x * 3',
+        program: 'let m = import("mylib"); m.x * 3',
         fileModules: [['mylib', '{ x: 5 }']],
       }
       const result = await d.runAsync(bundle)

@@ -19,7 +19,7 @@ perform(@dvala.io.pick, ["Red", "Green", "Blue"])
 Use `handler...end` to create handlers, and `with` to install them:
 
 ```dvala
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 
 do
   with fallback(0);
@@ -33,7 +33,7 @@ end
 Handlers can also be called directly with `h(-> body)`:
 
 ```dvala
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 fallback(0)(-> 0 / 0)
 ```
 

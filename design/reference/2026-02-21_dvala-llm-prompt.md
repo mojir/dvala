@@ -508,7 +508,7 @@ map([1, 2, 3], -> $ ^ 2)     // => [1, 4, 9]
 | `jsonStringify(x, indent?)` | Serialize to JSON string |
 | `epochToIso-date(ms)` | Milliseconds to ISO date string |
 | `iso-dateToEpoch(s)` | ISO date string to milliseconds |
-| `import(path)` | Import module or function (see Modules) |
+| `import("path")` | Import module or function (see Modules) |
 | `doc(fn)` | Return documentation string |
 | `arity(fn)` | Return `{min, max}` arity object |
 
@@ -537,11 +537,11 @@ Modules must be explicitly imported before use:
 
 ```dvala
 // Import entire module as an object
-let m = import(math);
+let m = import("math");
 m.sin(PI)
 
 // Import with destructuring
-let { sin, cos } = import(math);
+let { sin, cos } = import("math");
 sin(PI)
 ```
 
@@ -656,7 +656,7 @@ safe-divide(10, 0)   // => "Division by zero"
 ### Using a module
 
 ```dvala
-let { sin, cos } = import(math);
+let { sin, cos } = import("math");
 
 let unit-circle-point = theta ->
   { x: cos(theta), y: sin(theta) };

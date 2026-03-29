@@ -342,7 +342,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should support modules', () => {
       const dvalaWithMath = createDvala({ modules: [mathUtilsModule] })
-      const result = dvalaWithMath.run('let m = import(math); m.ln(1)')
+      const result = dvalaWithMath.run('let m = import("math"); m.ln(1)')
       expect(result).toBe(0)
     })
   })
@@ -362,7 +362,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should support modules', async () => {
       const dvalaWithMath = createDvala({ modules: [mathUtilsModule] })
-      const result = await dvalaWithMath.runAsync('let m = import(math); m.ln(1)')
+      const result = await dvalaWithMath.runAsync('let m = import("math"); m.ln(1)')
       expect(result).toMatchObject({ type: 'completed', value: 0 })
     })
 
@@ -1554,7 +1554,7 @@ describe('phase 4 — Suspension & Resume', () => {
       let callCount = 0
       const dvalaWithMath = createDvala({ modules: [mathUtilsModule] })
       const result = await dvalaWithMath.runAsync(`
-        let m = import(math);
+        let m = import("math");
         perform(@dvala.checkpoint, "cp");
         let y = perform(@my.action);
         m.ln(y)

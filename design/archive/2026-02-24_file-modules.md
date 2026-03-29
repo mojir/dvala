@@ -4,7 +4,7 @@
 
 Dvala currently has two separate mechanisms for referencing external code:
 
-1. **`import(moduleName)`** — a language-level special expression that imports registered builtin modules (e.g., `import(vector)`, `import(math)`). These are TypeScript-implemented modules injected via `new Dvala({ modules: [...] })`.
+1. **`import("moduleName")`** — a language-level special expression that imports registered builtin modules (e.g., `import("vector")`, `import("math")`). These are TypeScript-implemented modules injected via `new Dvala({ modules: [...] })`.
 
 2. **`// @include file.dvala`** — a comment-based directive used only by the test framework. It's invisible to the language, parsed by TypeScript host code, and has no general-purpose use.
 
@@ -23,7 +23,7 @@ A standalone function (not a method on `Dvala`) that:
 5. Detects circular dependencies and throws an error if found.
 6. Topologically sorts the file modules by dependency order.
 7. Ensures no canonical module name collides with a builtin module name — adjusts the name if needed.
-8. Rewrites all `import("./path/to/file.dvala")` calls to `import(canonicalName)` (string argument → bare symbol).
+8. Rewrites all `import("./path/to/file.dvala")` calls to `import("canonicalName")` (string argument → bare symbol).
 9. Outputs a `DvalaBundle`.
 
 ### Phase 2 — Existing `Dvala.run` (runtime)
@@ -32,7 +32,7 @@ A standalone function (not a method on `Dvala`) that:
 
 1. Iterates `fileModules` in order (dependency order).
 2. For each `[name, source]`: parses and evaluates the source, registers the result as a **value module** keyed by `name`.
-3. Parses and evaluates the main `program`, which can now `import(name)` and find the registered value modules.
+3. Parses and evaluates the main `program`, which can now `import("name")` and find the registered value modules.
 
 No changes to the parser or tokenizer are needed — the bundler rewrites string imports to bare symbol imports before the parser sees them.
 
@@ -104,12 +104,12 @@ If a canonical module name would collide with a builtin module name (e.g., `./ma
 
 ## Value Modules
 
-Currently, `import(moduleName)` only works with **builtin modules** (`DvalaModule`), which contain `BuiltinNormalExpression` objects with TypeScript `evaluate` functions. File modules are different — they evaluate to a plain Dvala value.
+Currently, `import("moduleName")` only works with **builtin modules** (`DvalaModule`), which contain `BuiltinNormalExpression` objects with TypeScript `evaluate` functions. File modules are different — they evaluate to a plain Dvala value.
 
 The `import` evaluator handles two kinds of modules:
 
 - **Builtin modules** (`DvalaModule`): Existing behavior. Wraps functions as `ModuleFunction` descriptors.
-- **Value modules** (new): The result of evaluating a file module source. `import(name)` returns the stored value directly — no wrapping.
+- **Value modules** (new): The result of evaluating a file module source. `import("name")` returns the stored value directly — no wrapping.
 
 A file module can evaluate to **any Dvala value**: object, array, number, string, null, function, etc.
 
@@ -127,8 +127,8 @@ let add = (a, b) -> a + b;
 
 ```dvala
 let { add } = import(math-helpers);   // object → destructure
-let answer = import(constants);        // number → use directly
-let names = import(names);             // array → use directly
+let answer = import("constants");        // number → use directly
+let names = import("names");             // array → use directly
 ```
 
 The `ContextStack` needs a second map (or a unified map with a discriminated union) to hold value modules alongside builtin modules.

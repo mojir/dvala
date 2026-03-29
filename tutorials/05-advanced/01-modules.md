@@ -7,7 +7,7 @@ Dvala provides domain-specific function libraries as opt-in modules. Import them
 Use `import` to load a module. It returns an object whose keys are the module's functions:
 
 ```dvala
-let m = import(math);
+let m = import("math");
 m.sin(PI / 2)
 ```
 
@@ -16,7 +16,7 @@ m.sin(PI / 2)
 Combine `import` with destructuring to pull out individual functions:
 
 ```dvala
-let { sin, cos } = import(math);
+let { sin, cos } = import("math");
 sin(PI / 6)
 ```
 
@@ -25,7 +25,7 @@ sin(PI / 6)
 Trigonometric, logarithmic, and angle-conversion functions:
 
 ```dvala
-let { ln, log10 } = import(math);
+let { ln, log10 } = import("math");
 [ln(E), log10(1000)]
 ```
 
@@ -34,12 +34,12 @@ let { ln, log10 } = import(math);
 Extended sequence operations — `sortBy`, `distinct`, `groupBy`, and more:
 
 ```dvala
-let seq = import(sequence);
+let seq = import("sequence");
 seq.distinct([1, 2, 2, 3, 3, 3])
 ```
 
 ```dvala
-let seq = import(sequence);
+let seq = import("sequence");
 seq.sortBy(["banana", "fig", "apple"], count)
 ```
 
@@ -48,7 +48,7 @@ seq.sortBy(["banana", "fig", "apple"], count)
 Deep access and advanced aggregation:
 
 ```dvala
-let col = import(collection);
+let col = import("collection");
 let data = { user: { name: "Alice" } };
 col.getIn(data, ["user", "name"])
 ```
@@ -58,7 +58,7 @@ col.getIn(data, ["user", "name"])
 Statistical functions for number arrays:
 
 ```dvala
-let vec = import(vector);
+let vec = import("vector");
 vec.cumsum([1, 2, 3, 4])
 ```
 
@@ -67,7 +67,7 @@ vec.cumsum([1, 2, 3, 4])
 Vector math — dot products, distances, normalization:
 
 ```dvala
-let lin = import(linearAlgebra);
+let lin = import("linearAlgebra");
 lin.dot([1, 2, 3], [4, 5, 6])
 ```
 
@@ -76,7 +76,7 @@ lin.dot([1, 2, 3], [4, 5, 6])
 Matrix operations — multiplication, determinant, inverse:
 
 ```dvala
-let mat = import(matrix);
+let mat = import("matrix");
 mat.det([[1, 2], [3, 4]])
 ```
 
@@ -85,7 +85,7 @@ mat.det([[1, 2], [3, 4]])
 Additional string utilities:
 
 ```dvala
-let s = import(string);
+let s = import("string");
 s.padLeft("42", 5, "0")
 ```
 
@@ -94,6 +94,6 @@ s.padLeft("42", 5, "0")
 GCD, LCM, primality-related functions:
 
 ```dvala
-let nt = import(numberTheory);
+let nt = import("numberTheory");
 nt.gcd(24, 36)
 ```

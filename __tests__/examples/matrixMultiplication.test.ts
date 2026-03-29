@@ -6,7 +6,7 @@ const dvala = createDvala({ debug: true, modules: [collectionUtilsModule] })
 describe('determinant.', () => {
   it('should compile', () => {
     expect(dvala.run(`
-let { isEvery } = import(collection);
+let { isEvery } = import("collection");
 // Matrix multiplication with correct syntax
 let matrixMultiply = (matrixA, matrixB) -> do
   // Check if inputs are arrays

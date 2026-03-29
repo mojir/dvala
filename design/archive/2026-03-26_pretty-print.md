@@ -60,7 +60,7 @@ Num, Str, Reserved, Sym, Builtin, Effect, Call (with infix), If, Block, Let, Fun
 - `Loop` — `loop (bindings) -> body`
 - `For` — `for (x in coll) -> expr`
 - `Match` — `match ... case ... end`
-- `Import` — `import(module)`
+- `Import` — `import("module")`
 - `Macro` — `macro (params) -> body` / `macro@name (params) -> body`
 - `CodeTmpl` / `Splice` — code templates (emit as `<CodeTmpl>` fallback is fine)
 - `Parallel` / `Race` — `parallel(...)` / `race(...)`

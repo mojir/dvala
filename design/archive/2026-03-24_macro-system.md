@@ -307,10 +307,10 @@ The following are NOT in the core AST. They are macros that expand to the primit
 
 ### AST Module
 
-`import(ast)` provides constructors, predicates, and accessors:
+`import("ast")` provides constructors, predicates, and accessors:
 
 ```dvala
-let { node, isLet, isFunction, getName, getBody, getParams, getValue, prettyPrint } = import(ast);
+let { node, isLet, isFunction, getName, getBody, getParams, getValue, prettyPrint } = import("ast");
 
 // Constructors — produce clean runtime AST
 node.number(42)                    // → ["num", 42]
@@ -654,7 +654,7 @@ with [(arg, eff, nxt) ->
 Macros can be defined in modules and imported:
 
 ```dvala
-let { memoize, trace, saga } = import(macros);
+let { memoize, trace, saga } = import("macros");
 memoize(let fib = (n) -> ...)
 ```
 
@@ -708,7 +708,7 @@ Dvala's `match` with array destructuring is natural for pattern-matching on AST 
 
 ### Phase 3 — AST Module ✅ DONE
 
-1. ✅ `import(ast)` — constructors (`num`, `strNode`, `bool`, `nil`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isBuiltin`, `isCall`, `isIf`, `isBlock`, `isLet`, `isFn`, `isBool`, `isNil`, `isEffectNode`, `isAstNode`), accessors (`nodeType`, `payload`)
+1. ✅ `import("ast")` — constructors (`num`, `strNode`, `bool`, `nil`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isBuiltin`, `isCall`, `isIf`, `isBlock`, `isLet`, `isFn`, `isBool`, `isNil`, `isEffectNode`, `isAstNode`), accessors (`nodeType`, `payload`)
 2. ✅ `prettyPrint` — AST data → readable Dvala source (numbers, strings, booleans, symbols, infix operators, function calls, if, block, let, function, perform, array, effect)
 3. ✅ Tests: 27 tests in `__tests__/ast-module.test.ts` — constructors, predicates, accessors, prettyPrint, macro round-trip
 

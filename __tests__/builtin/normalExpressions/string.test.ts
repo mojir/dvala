@@ -94,7 +94,7 @@ describe('string functions', () => {
 })
 
 describe('string-Utils module functions', () => {
-  const imp = 'let su = import(string); '
+  const imp = 'let su = import("string"); '
   for (const dvala of [createDvala({ modules: [stringUtilsModule] }), createDvala({ modules: [stringUtilsModule], debug: true })]) {
     describe('trimLeft', () => {
       it('samples', () => {

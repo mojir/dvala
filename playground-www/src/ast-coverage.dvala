@@ -112,7 +112,7 @@ end;
 let eff = @dvala.io.pick;
 
 // --- Effect handling: handler/with ---
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 let handled = do
   with fallback("Green");
   let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
@@ -120,7 +120,7 @@ let handled = do
 end;
 
 // --- Import ---
-let mathMod = import(math);
+let mathMod = import("math");
 
 // --- Regexp shorthand ---
 let reResult = "hello-world" reMatch #"(\w+)-(\w+)";

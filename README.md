@@ -197,8 +197,8 @@ A vector is simply a non-empty array containing only numbers. The `vec` module p
 
 ```dvala
 // Import vector and linear algebra modules
-let vec = import(vector);
-let lin = import(linearAlgebra);
+let vec = import("vector");
+let lin = import("linearAlgebra");
 
 // Vectors are just number arrays
 [1, 2, 3, 4, 5];              // This is a vector
@@ -250,7 +250,7 @@ A matrix is a 2D array where each row is a vector (non-empty array of numbers) a
 
 ```dvala
 // Import matrix module
-let mat = import(matrix);
+let mat = import("matrix");
 
 // Matrices are 2D number arrays with consistent row lengths
 [[1, 2], [3, 4]];              // This is a 2x2 matrix
@@ -1249,7 +1249,7 @@ Here's the complete precedence table, from highest to lowest:
 3 > 2 && 1 < 2;      // => true && true = true
 
 // Pipe has very low precedence
-let { sum } = import(vector);
+let { sum } = import("vector");
 [1, 2, 3] |> map(_, inc) |> sum;      // Evaluates left to right
 
 // Conditional expression
@@ -1391,7 +1391,7 @@ let longWords = text
 ### Data Transformation
 
 ```dvala
-let su = import(sequence);
+let su = import("sequence");
 let users = [
   { name: "Alice", age: 30, department: "Engineering" },
   { name: "Bob", age: 25, department: "Marketing" },
@@ -1444,8 +1444,8 @@ import { matrixModule } from '@mojir/dvala/modules/matrix';
 
 const dvala = new Dvala({ modules: [vectorModule, matrixModule] });
 
-// Now you can use import(vector) and import(matrix) in Dvala code
-dvala.run('let la = import(linearAlgebra); la.dot([1, 2, 3], [4, 5, 6])'); // => 32
+// Now you can use import("vector") and import("matrix") in Dvala code
+dvala.run('let la = import("linearAlgebra"); la.dot([1, 2, 3], [4, 5, 6])'); // => 32
 ```
 
 ### Using Dvala in JavaScript

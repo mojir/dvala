@@ -339,7 +339,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
       description: 'Calls a macro\'s body with the given AST arguments and returns the expanded AST as data, without evaluating it. Use quote...end blocks to construct the AST arguments.',
       examples: [
         'let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end)',
-        'let { prettyPrint } = import(ast); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
+        'let { prettyPrint } = import("ast"); let double = macro (ast) -> quote $^{ast} + $^{ast} end; macroexpand(double, quote 21 end) |> prettyPrint',
       ],
     },
   },

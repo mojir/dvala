@@ -969,7 +969,7 @@ perform(@dvala.io.print, 21 |> double |> negate);   // -42
     name: 'Macros — Advanced',
     description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
     code: `
-let { prettyPrint } = import(ast);
+let { prettyPrint } = import("ast");
 
 // --- Named macros with qualified names ---
 // macro@name attaches a qualified name for host-level dispatch
@@ -1033,7 +1033,7 @@ perform(@dvala.io.print, "myMul(3, 4) = " ++ str(myMul(3, 4)));
 //
 // A macro that creates error-catching macros,
 // each with a different fallback value baked in.
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 let makeSafe = macro (fallbackVal) ->
   quote
     macro (ast) -> quote fallback($^^{fallbackVal})(-> $^{ast}) end
@@ -1180,7 +1180,7 @@ end;
 let eff = @dvala.io.pick;
 
 // --- Effect handling: handler...end with do...with ---
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 let handled = do
   with fallback("Green");
   let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
@@ -1191,7 +1191,7 @@ end;
 let piped2 = fallback(1)(-> perform(@dvala.io.pick, [1, 2, 3]));
 
 // --- Import ---
-let mathMod = import(math);
+let mathMod = import("math");
 
 // --- Regexp shorthand ---
 let reResult = "hello-world" reMatch #"(\\w+)-(\\w+)";
@@ -1235,8 +1235,8 @@ let neg = -num;
 // showing how macros can generate code, inspect AST, enforce
 // contracts, and create new control flow constructs.
 
-let { prettyPrint, call } = import(ast);
-let { fallback } = import(effectHandler);
+let { prettyPrint, call } = import("ast");
+let { fallback } = import("effectHandler");
 let print = -> perform(@dvala.io.print, $);
 let error = -> perform(@dvala.error, { message: $ });
 
@@ -1554,7 +1554,7 @@ let s20 = [
 ];
 
 // --- 21: Effects & Handlers ---
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 let s21 = [
   effectName(@dvala.io.print), isEffect(@dvala.io.print),
   do with fallback("a"); perform(@dvala.io.pick, ["a", "b"]) end,
@@ -1566,7 +1566,7 @@ let s21 = [
 ];
 
 // --- 22: Import ---
-let { sin, cos } = import(math);
+let { sin, cos } = import("math");
 let s22 = [sin(0), cos(0), sin(0) + cos(0)];
 
 // --- 23: Regexp ---
@@ -1645,9 +1645,9 @@ let allPrev = [
   ...s21, ...s22, ...s23, ...s24, ...s25, ...s26, ...s27, ...s28, ...s29,
 ];
 
-let vec = import(vector);
-let la = import(linearAlgebra);
-let matMod = import(matrix);
+let vec = import("vector");
+let la = import("linearAlgebra");
+let matMod = import("matrix");
 let r3 = (x) -> round(x * 1000) / 1000;
 let bar = (val, mx, w) -> do
   let len = max(round(val / mx * w), 0);

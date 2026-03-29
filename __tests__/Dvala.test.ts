@@ -209,7 +209,7 @@ describe('all tests', () => {
     })
 
     it('should return empty set for import expression', () => {
-      const result = getUndefinedSymbols('let v = import(vector); v.sum([1, 2])', { modules: [vectorModule] })
+      const result = getUndefinedSymbols('let v = import("vector"); v.sum([1, 2])', { modules: [vectorModule] })
       expect(result).toEqual(new Set())
     })
   })

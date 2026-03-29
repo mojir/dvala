@@ -78,7 +78,7 @@ let makeSafe = macro (fallbackVal) ->
     macro (ast) -> quote do with fallback($^^{fallbackVal}); $^{ast} end end
   end;
 
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 
 let safeMath = makeSafe(0);
 let safeStr = makeSafe("error");

@@ -60,16 +60,16 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   if (isSpecialSymbolNode(symbol)) { // Named function
     const specialExpressionType = symbol[1]
 
-    // Handle import specially — extract module name as a string from the symbol argument
+    // Handle import specially — extract module name from a string literal argument
     if (specialExpressionType === specialExpressionTypes.import) {
       if (params.length !== 1) {
         throw new ParseError(`import expects exactly 1 argument, got ${params.length}`, symbolSci)
       }
       const param = params[0]!
-      if (!isUserDefinedSymbolNode(param)) {
-        throw new ParseError('import expects a module name (symbol), got a non-symbol argument', resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci)
+      if (param[0] !== NodeTypes.Str) {
+        throw new ParseError('import expects a string argument, e.g. import("math")', resolveSourceCodeInfo(param[2], ctx.sourceMap) ?? symbolSci)
       }
-      const moduleName = param[1]
+      const moduleName = param[1] as string
       const node = withSourceCodeInfo([NodeTypes.Import, moduleName, 0], symbolDebugInfo, ctx) as ImportNode
       ctx.setNodeEnd(node[2])
       return node

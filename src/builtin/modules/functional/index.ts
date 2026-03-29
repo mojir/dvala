@@ -51,13 +51,13 @@ The returned function takes a variable number of args,
 and returns a vector containing the result of applying each function to the args (left-to-right).`,
       seeAlso: ['comp'],
       examples: [
-        `let { juxt } = import(functional);
+        `let { juxt } = import("functional");
 juxt(+, *, min, max)(
   3,
   4,
   6,
 )`,
-        `let { juxt } = import(functional);
+        `let { juxt } = import("functional");
 juxt("a", "b")(
   {
     a: 1,
@@ -66,7 +66,7 @@ juxt("a", "b")(
     d: 4
   }
 )`,
-        `let { juxt } = import(functional);
+        `let { juxt } = import("functional");
 juxt(+, *, min, max) apply range(1, 11)`,
       ],
     },
@@ -92,10 +92,10 @@ juxt(+, *, min, max) apply range(1, 11)`,
       description: 'Takes a function `fun` and returns a new function that takes the same arguments as f, has the same effects, if any, and returns the opposite truth value.',
       seeAlso: ['comp', 'functional.everyPred', 'functional.somePred'],
       examples: [
-        'let { complement } = import(functional);\ncomplement(>)(1, 3)',
-        'let { complement } = import(functional);\ncomplement(<)(1, 3)',
-        'let { complement } = import(functional);\ncomplement(+)(1, 3)',
-        'let { complement } = import(functional);\ncomplement(+)(0, 0)',
+        'let { complement } = import("functional");\ncomplement(>)(1, 3)',
+        'let { complement } = import("functional");\ncomplement(<)(1, 3)',
+        'let { complement } = import("functional");\ncomplement(+)(1, 3)',
+        'let { complement } = import("functional");\ncomplement(+)(0, 0)',
       ],
     },
   },
@@ -127,12 +127,12 @@ Takes a number of predicates and returns a function that returns \`true\` if all
 return a truthy value against all of its arguments, else it returns \`false\`.`,
       seeAlso: ['functional.somePred', 'functional.complement', 'collection.isEvery'],
       examples: [
-        `let { everyPred } = import(functional);
+        `let { everyPred } = import("functional");
 everyPred(isString, -> count($) > 3)(
   "Albert",
   "Mojir"
 )`,
-        `let { everyPred } = import(functional);
+        `let { everyPred } = import("functional");
 (isString everyPred -> count($) > 3)(
   "Albert",
   "M"
@@ -167,10 +167,10 @@ everyPred(isString, -> count($) > 3)(
       description: 'Takes a number of `predicates` and returns a function that returns `true` if at least one of the `predicates` return a truthy `true` value against at least one of its arguments, else it returns `false`.',
       seeAlso: ['functional.everyPred', 'functional.complement', 'collection.isAny'],
       examples: [
-        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("Albert", "Mojir")',
-        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("a", "M")',
-        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)("a", [1, 2, 3])',
-        'let { somePred } = import(functional);\nsomePred(isString, -> count($) > 3)([1, 2, 3], [2])',
+        'let { somePred } = import("functional");\nsomePred(isString, -> count($) > 3)("Albert", "Mojir")',
+        'let { somePred } = import("functional");\nsomePred(isString, -> count($) > 3)("a", "M")',
+        'let { somePred } = import("functional");\nsomePred(isString, -> count($) > 3)("a", [1, 2, 3])',
+        'let { somePred } = import("functional");\nsomePred(isString, -> count($) > 3)([1, 2, 3], [2])',
       ],
       hideOperatorForm: true,
     },
@@ -206,13 +206,13 @@ everyPred(isString, -> count($) > 3)(
       description: 'Takes a function `fun`, and returns a function that calls `fun`, replacing a null argument to the corresponding argument.',
       seeAlso: ['identity', 'constantly'],
       examples: [
-        'let { fnull } = import(functional);\nfnull(inc, 0)(1)',
-        'let { fnull } = import(functional);\nfnull(inc, 0)(null)',
-        'let { fnull } = import(functional);\n(inc fnull 0)(null)',
-        'let { fnull } = import(functional);\nfnull(+, 1, 2)(null, 0)',
-        'let { fnull } = import(functional);\nfnull(+, 1, 2)(0, null)',
-        'let { fnull } = import(functional);\nfnull(+, 1, 2)(null, null)',
-        'let { fnull } = import(functional);\nfnull(+, 1, 2)(null, null, 3, 4)',
+        'let { fnull } = import("functional");\nfnull(inc, 0)(1)',
+        'let { fnull } = import("functional");\nfnull(inc, 0)(null)',
+        'let { fnull } = import("functional");\n(inc fnull 0)(null)',
+        'let { fnull } = import("functional");\nfnull(+, 1, 2)(null, 0)',
+        'let { fnull } = import("functional");\nfnull(+, 1, 2)(0, null)',
+        'let { fnull } = import("functional");\nfnull(+, 1, 2)(null, null)',
+        'let { fnull } = import("functional");\nfnull(+, 1, 2)(null, null, 3, 4)',
       ],
     },
   },

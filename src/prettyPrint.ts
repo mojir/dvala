@@ -7,7 +7,7 @@
  *
  * Exposed as:
  * - TS function: `prettyPrint(node)` — for playground and tooling
- * - Dvala function: `let { prettyPrint } = import(ast)` — for in-language use
+ * - Dvala function: `let { prettyPrint } = import("ast")` — for in-language use
  */
 
 const MAX_WIDTH = 80
@@ -135,7 +135,7 @@ function printNode(node: AstNode, ind: number): string {
     case NodeTypes.Match:
       return printMatch(payload as [unknown[], unknown[][]], ind)
     case NodeTypes.Import:
-      return `import(${payload})`
+      return `import("${payload}")`
     case NodeTypes.TmplStr:
       return printTemplateString(payload as unknown[][])
     case NodeTypes.Parallel:

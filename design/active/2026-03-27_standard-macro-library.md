@@ -5,7 +5,7 @@
 A `macros` module providing ready-to-use macros that showcase the macro system and solve real problems. All macros are implemented in pure Dvala — no new TypeScript primitives needed.
 
 ```dvala
-let { trace, curry, assert, dbg, cond, unless, tap, time, lazy } = import(macros);
+let { trace, curry, assert, dbg, cond, unless, tap, time, lazy } = import("macros");
 ```
 
 ## Proposed Macros

@@ -92,7 +92,7 @@ describe('round-trip: tokenize → untokenize', () => {
     'let x = 1; x + 2',
 
     // Import
-    'import(vector)',
+    'import("vector")',
   ]
 
   for (const program of programs) {
@@ -129,25 +129,25 @@ describe('round-trip: tokenize → untokenize', () => {
 describe('module system edge cases', () => {
   it('import same builtin module twice returns same object', () => {
     const result = dvala.run(`
-      let v1 = import(vector);
-      let v2 = import(vector);
+      let v1 = import("vector");
+      let v2 = import("vector");
       ==(v1, v2)
     `)
     expect(result).toBe(true)
   })
 
   it('destructuring import', () => {
-    const result = dvala.run('let { stdev } = import(vector); stdev([2, 4, 4, 4, 5, 5, 7, 9])')
+    const result = dvala.run('let { stdev } = import("vector"); stdev([2, 4, 4, 4, 5, 5, 7, 9])')
     expect(result).toBe(2)
   })
 
   it('module function call works', () => {
-    const result = dvala.run('let m = import(numberTheory); m.gcd(12, 8)')
+    const result = dvala.run('let m = import("numberTheory"); m.gcd(12, 8)')
     expect(result).toBe(4)
   })
 
   it('import unknown module throws', () => {
-    expect(() => dvala.run('import(nonexistent)')).toThrow()
+    expect(() => dvala.run('import("nonexistent")')).toThrow()
   })
 })
 
@@ -217,15 +217,15 @@ describe('type annotations / predicates', () => {
   })
 
   it('isGrid on grid module results', () => {
-    expect(dvala.run('let g = import(grid); isGrid(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
+    expect(dvala.run('let g = import("grid"); isGrid(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
   })
 
   it('isMatrix on grid module results with numeric data', () => {
-    expect(dvala.run('let g = import(grid); isMatrix(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
+    expect(dvala.run('let g = import("grid"); isMatrix(g.transpose([[1, 2], [3, 4]]))')).toBe(true)
   })
 
   it('isVector on vector module results', () => {
-    expect(dvala.run('let v = import(vector); isVector(v.mode([1, 2, 2, 3]))')).toBe(true)
+    expect(dvala.run('let v = import("vector"); isVector(v.mode([1, 2, 2, 3]))')).toBe(true)
   })
 
   it('type predicates are consistent between debug and non-debug mode', () => {
@@ -583,7 +583,7 @@ describe('getUndefinedSymbols', () => {
   })
 
   it('import symbols are defined', () => {
-    expect(getUndefinedSymbols('let v = import(vector); v.stdev([1, 2, 3])'))
+    expect(getUndefinedSymbols('let v = import("vector"); v.stdev([1, 2, 3])'))
       .toEqual(new Set())
   })
 
@@ -843,8 +843,8 @@ describe('higher-order function edge cases', () => {
   })
 
   it('isEvery with predicate', () => {
-    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 6], isEven)')).toBe(true)
-    expect(dvala.run('let { isEvery } = import(collection); isEvery([2, 4, 5], isEven)')).toBe(false)
+    expect(dvala.run('let { isEvery } = import("collection"); isEvery([2, 4, 6], isEven)')).toBe(true)
+    expect(dvala.run('let { isEvery } = import("collection"); isEvery([2, 4, 5], isEven)')).toBe(false)
   })
 
   it('some with predicate returns element', () => {
@@ -853,12 +853,12 @@ describe('higher-order function edge cases', () => {
   })
 
   it('sortBy with key function', () => {
-    expect(dvala.run('let { sortBy } = import(sequence); sortBy([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)'))
+    expect(dvala.run('let { sortBy } = import("sequence"); sortBy([{ n: 3 }, { n: 1 }, { n: 2 }], -> $.n)'))
       .toEqual([{ n: 1 }, { n: 2 }, { n: 3 }])
   })
 
   it('groupBy', () => {
-    expect(dvala.run('let { groupBy } = import(sequence); groupBy([1, 2, 3, 4, 5], -> if isEven($) then "even" else "odd" end)'))
+    expect(dvala.run('let { groupBy } = import("sequence"); groupBy([1, 2, 3, 4, 5], -> if isEven($) then "even" else "odd" end)'))
       .toEqual({ odd: [1, 3, 5], even: [2, 4] })
   })
 
@@ -868,7 +868,7 @@ describe('higher-order function edge cases', () => {
   })
 
   it('mapcat (flat-map)', () => {
-    expect(dvala.run('let { mapcat } = import(sequence); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
+    expect(dvala.run('let { mapcat } = import("sequence"); mapcat([[1, 2], [3, 4], [5]], identity)')).toEqual([1, 2, 3, 4, 5])
   })
 
   it('takeWhile / dropWhile', () => {
@@ -877,12 +877,12 @@ describe('higher-order function edge cases', () => {
   })
 
   it('map-indexed', () => {
-    expect(dvala.run('let { mapi } = import(collection); mapi(["a", "b", "c"], (x, i) -> str(i) ++ ":" ++ x)'))
+    expect(dvala.run('let { mapi } = import("collection"); mapi(["a", "b", "c"], (x, i) -> str(i) ++ ":" ++ x)'))
       .toEqual(['0:a', '1:b', '2:c'])
   })
 
   it('zip', () => {
-    expect(dvala.run('let { interleave } = import(sequence); interleave([1, 2, 3], ["a", "b", "c"])'))
+    expect(dvala.run('let { interleave } = import("sequence"); interleave([1, 2, 3], ["a", "b", "c"])'))
       .toEqual([1, 'a', 2, 'b', 3, 'c'])
   })
 
@@ -1011,8 +1011,8 @@ describe('string operation edge cases', () => {
   })
 
   it('isStartsWith and isEndsWith', () => {
-    expect(dvala.run('let { isStartsWith, isEndsWith } = import(sequence); isStartsWith("hello world", "hello")')).toBe(true)
-    expect(dvala.run('let { isStartsWith, isEndsWith } = import(sequence); isEndsWith("hello world", "world")')).toBe(true)
+    expect(dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isStartsWith("hello world", "hello")')).toBe(true)
+    expect(dvala.run('let { isStartsWith, isEndsWith } = import("sequence"); isEndsWith("hello world", "world")')).toBe(true)
   })
 
   it('contains on string', () => {
@@ -1026,12 +1026,12 @@ describe('string operation edge cases', () => {
   })
 
   it('stringRepeat', () => {
-    expect(dvala.run('let { stringRepeat } = import(string); stringRepeat("ha", 3)')).toBe('hahaha')
+    expect(dvala.run('let { stringRepeat } = import("string"); stringRepeat("ha", 3)')).toBe('hahaha')
   })
 
   it('padLeft and padRight', () => {
-    expect(dvala.run('let { padLeft, padRight } = import(string); padLeft("42", 5, "0")')).toBe('00042')
-    expect(dvala.run('let { padLeft, padRight } = import(string); padRight("42", 5, "0")')).toBe('42000')
+    expect(dvala.run('let { padLeft, padRight } = import("string"); padLeft("42", 5, "0")')).toBe('00042')
+    expect(dvala.run('let { padLeft, padRight } = import("string"); padRight("42", 5, "0")')).toBe('42000')
   })
 
   it('slice for substring', () => {
@@ -1074,7 +1074,7 @@ describe('collection operation edge cases', () => {
   it('get and getIn', () => {
     expect(dvala.run('get({ a: 1 }, "a")')).toBe(1)
     expect(dvala.run('get({ a: 1 }, "b")')).toBeNull()
-    expect(dvala.run('let { getIn } = import(collection); getIn({ a: { b: { c: 42 } } }, ["a", "b", "c"])')).toBe(42)
+    expect(dvala.run('let { getIn } = import("collection"); getIn({ a: { b: { c: 42 } } }, ["a", "b", "c"])')).toBe(42)
   })
 
   it('assoc and dissoc', () => {
@@ -1110,7 +1110,7 @@ describe('collection operation edge cases', () => {
   })
 
   it('distinct', () => {
-    expect(dvala.run('let { distinct } = import(sequence); distinct([1, 2, 2, 3, 3, 3])')).toEqual([1, 2, 3])
+    expect(dvala.run('let { distinct } = import("sequence"); distinct([1, 2, 2, 3, 3, 3])')).toEqual([1, 2, 3])
   })
 
   it('sort', () => {
@@ -1266,7 +1266,7 @@ describe('complex real-world patterns', () => {
 
   it('compose multiple transformations', () => {
     expect(dvala.run(`
-      let { distinct } = import(sequence);
+      let { distinct } = import("sequence");
       let process = (data) -> do
         let flat = flatten(data);
         let positive = filter(flat, -> $ > 0);

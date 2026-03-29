@@ -37,8 +37,8 @@ This feels bolted-on — tests aren't real Dvala expressions, can't be composed,
 Tests are pure Dvala code using two functions: `test` and `describe`.
 
 ```dvala
-let { test, describe } = import(test);
-let { assertEqual } = import(assertion);
+let { test, describe } = import("test");
+let { assertEqual } = import("assertion");
 
 test("abs of negative", fn()
   assertEqual(abs(-5), 5);
@@ -52,8 +52,8 @@ end);
 Grouping with `describe`:
 
 ```dvala
-let { test, describe } = import(test);
-let { assertEqual, assertTrue } = import(assertion);
+let { test, describe } = import("test");
+let { assertEqual, assertTrue } = import("assertion");
 
 describe("string functions", fn()
   test("upper-case", fn()
@@ -69,8 +69,8 @@ end);
 Nesting is allowed:
 
 ```dvala
-let { test, describe } = import(test);
-let { assertEqual } = import(assertion);
+let { test, describe } = import("test");
+let { assertEqual } = import("assertion");
 
 describe("math", fn()
   describe("abs", fn()
@@ -87,7 +87,7 @@ The runner injects `test` and `describe` as bindings before evaluating `.test.dv
 
 **Option B: A `test` module**
 ```dvala
-let { test, describe } = import(test);
+let { test, describe } = import("test");
 ```
 Regular module, usable anywhere. The runner collects registered tests after evaluation.
 
@@ -97,7 +97,7 @@ Regular module, usable anywhere. The runner collects registered tests after eval
 **Decision:** Option B — a `test` module. Injection doesn't scale: as the framework grows (`skip`, `only`, `todo`, hooks...) it becomes a hidden namespace of magic functions. An explicit import is consistent with how everything else works in Dvala, and the user controls what they pull in:
 
 ```dvala
-let { test, describe, skip } = import(test);
+let { test, describe, skip } = import("test");
 ```
 
 The runner's only job: detect `.test.dvala` file, evaluate it, collect registered tests, run them. No special bindings needed.

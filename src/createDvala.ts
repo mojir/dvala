@@ -181,6 +181,10 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         }
         contextStack.pure = savedPure
         const ast = buildAst(source.program)
+        // Support effect handlers with bundles (e.g. test runner's describe effects)
+        if (effectHandlers) {
+          return evaluateWithSyncEffects(ast, contextStack, effectHandlers)
+        }
         const result = evaluate(ast, contextStack)
         // Defensive guard: evaluate() currently never returns a Promise for bundle programs
         // because bundles are pure. Kept as a safety net if that invariant ever changes.

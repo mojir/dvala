@@ -47,7 +47,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['n'] }],
       description: 'Creates a number AST node.',
       examples: [
-        'let { num } = import(ast); num(42)',
+        'let { num } = import("ast"); num(42)',
       ],
     },
   },
@@ -64,7 +64,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['s'] }],
       description: 'Creates a string AST node.',
       examples: [
-        'let { strNode } = import(ast); strNode("hello")',
+        'let { strNode } = import("ast"); strNode("hello")',
       ],
     },
   },
@@ -81,7 +81,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['b'] }],
       description: 'Creates a boolean AST node.',
       examples: [
-        'let { bool } = import(ast); bool(true)',
+        'let { bool } = import("ast"); bool(true)',
       ],
     },
   },
@@ -97,7 +97,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: [] }],
       description: 'Creates a null AST node.',
       examples: [
-        'let { nil } = import(ast); nil()',
+        'let { nil } = import("ast"); nil()',
       ],
     },
   },
@@ -116,7 +116,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates a symbol (variable reference) AST node.',
       examples: [
-        'let { sym } = import(ast); sym("x")',
+        'let { sym } = import("ast"); sym("x")',
       ],
     },
   },
@@ -133,7 +133,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates a builtin function reference AST node.',
       examples: [
-        'let { builtin } = import(ast); builtin("+")',
+        'let { builtin } = import("ast"); builtin("+")',
       ],
     },
   },
@@ -150,7 +150,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['name'] }],
       description: 'Creates an effect reference AST node.',
       examples: [
-        'let { effectNode } = import(ast); effectNode("dvala.io.print")',
+        'let { effectNode } = import("ast"); effectNode("dvala.io.print")',
       ],
     },
   },
@@ -173,7 +173,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['fn', 'args'] }],
       description: 'Creates a function call AST node.',
       examples: [
-        'let { call, builtin, num } = import(ast); call(builtin("+"), [num(1), num(2)])',
+        'let { call, builtin, num } = import("ast"); call(builtin("+"), [num(1), num(2)])',
       ],
     },
   },
@@ -203,7 +203,7 @@ const astFunctions: BuiltinNormalExpressions = {
       ],
       description: 'Creates an if-expression AST node.',
       examples: [
-        'let { ifNode, sym, num } = import(ast); ifNode(sym("x"), num(1), num(2))',
+        'let { ifNode, sym, num } = import("ast"); ifNode(sym("x"), num(1), num(2))',
       ],
     },
   },
@@ -220,7 +220,7 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['stmts'] }],
       description: 'Creates a block (do...end) AST node.',
       examples: [
-        'let { block, num } = import(ast); block([num(1), num(2)])',
+        'let { block, num } = import("ast"); block([num(1), num(2)])',
       ],
     },
   },
@@ -239,8 +239,8 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns the type tag of an AST node (e.g., "Num", "Str", "Call").',
       examples: [
-        'let { nodeType, num } = import(ast); nodeType(num(42))',
-        'let { nodeType, sym } = import(ast); nodeType(sym("x"))',
+        'let { nodeType, num } = import("ast"); nodeType(num(42))',
+        'let { nodeType, sym } = import("ast"); nodeType(sym("x"))',
       ],
     },
   },
@@ -253,7 +253,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a number literal.',
-      examples: ['let { isNum, num } = import(ast); isNum(num(42))'],
+      examples: ['let { isNum, num } = import("ast"); isNum(num(42))'],
     },
   },
   'isStr': {
@@ -265,7 +265,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a string literal.',
-      examples: ['let { isStr, strNode } = import(ast); isStr(strNode("hi"))'],
+      examples: ['let { isStr, strNode } = import("ast"); isStr(strNode("hi"))'],
     },
   },
   'isSym': {
@@ -277,7 +277,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a symbol (variable reference).',
-      examples: ['let { isSym, sym } = import(ast); isSym(sym("x"))'],
+      examples: ['let { isSym, sym } = import("ast"); isSym(sym("x"))'],
     },
   },
   'isBuiltin': {
@@ -289,7 +289,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a builtin function reference.',
-      examples: ['let { isBuiltin, builtin } = import(ast); isBuiltin(builtin("+"))'],
+      examples: ['let { isBuiltin, builtin } = import("ast"); isBuiltin(builtin("+"))'],
     },
   },
   'isCall': {
@@ -301,7 +301,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a function call.',
-      examples: ['let { isCall, call, builtin, num } = import(ast); isCall(call(builtin("+"), [num(1)]))'],
+      examples: ['let { isCall, call, builtin, num } = import("ast"); isCall(call(builtin("+"), [num(1)]))'],
     },
   },
   'isIf': {
@@ -313,7 +313,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is an if-expression.',
-      examples: ['let { isIf, ifNode, sym, num } = import(ast); isIf(ifNode(sym("x"), num(1), num(2)))'],
+      examples: ['let { isIf, ifNode, sym, num } = import("ast"); isIf(ifNode(sym("x"), num(1), num(2)))'],
     },
   },
   'isBlock': {
@@ -325,7 +325,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a block (do...end).',
-      examples: ['let { isBlock, block, num } = import(ast); isBlock(block([num(1)]))'],
+      examples: ['let { isBlock, block, num } = import("ast"); isBlock(block([num(1)]))'],
     },
   },
   'isLet': {
@@ -337,7 +337,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a let-binding.',
-      examples: ['let { isLet } = import(ast); isLet(quote let x = 1 end)'],
+      examples: ['let { isLet } = import("ast"); isLet(quote let x = 1 end)'],
     },
   },
   'isFn': {
@@ -349,7 +349,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a function definition.',
-      examples: ['let { isFn } = import(ast); isFn(quote (x) -> x end)'],
+      examples: ['let { isFn } = import("ast"); isFn(quote (x) -> x end)'],
     },
   },
   'isBool': {
@@ -361,7 +361,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a boolean literal.',
-      examples: ['let { isBool, bool } = import(ast); isBool(bool(true))'],
+      examples: ['let { isBool, bool } = import("ast"); isBool(bool(true))'],
     },
   },
   'isNil': {
@@ -373,7 +373,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is a null literal.',
-      examples: ['let { isNil, nil } = import(ast); isNil(nil())'],
+      examples: ['let { isNil, nil } = import("ast"); isNil(nil())'],
     },
   },
   'isEffectNode': {
@@ -385,7 +385,7 @@ const astFunctions: BuiltinNormalExpressions = {
       args: { node: { type: 'any' } },
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the AST node is an effect reference.',
-      examples: ['let { isEffectNode, effectNode } = import(ast); isEffectNode(effectNode("dvala.io.print"))'],
+      examples: ['let { isEffectNode, effectNode } = import("ast"); isEffectNode(effectNode("dvala.io.print"))'],
     },
   },
   'isAstNode': {
@@ -400,8 +400,8 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns true if the value is a valid AST node (array starting with a known type tag).',
       examples: [
-        'let { isAstNode, num } = import(ast); isAstNode(num(42))',
-        'let { isAstNode } = import(ast); isAstNode([1, 2, 3])',
+        'let { isAstNode, num } = import("ast"); isAstNode(num(42))',
+        'let { isAstNode } = import("ast"); isAstNode([1, 2, 3])',
       ],
     },
   },
@@ -420,8 +420,8 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['node'] }],
       description: 'Returns the payload (second element) of an AST node.',
       examples: [
-        'let { payload, num } = import(ast); payload(num(42))',
-        'let { payload, strNode } = import(ast); payload(strNode("hello"))',
+        'let { payload, num } = import("ast"); payload(num(42))',
+        'let { payload, strNode } = import("ast"); payload(strNode("hello"))',
       ],
     },
   },
@@ -440,9 +440,9 @@ const astFunctions: BuiltinNormalExpressions = {
       variants: [{ argumentNames: ['node'] }],
       description: 'Converts an AST node back to readable Dvala source code.',
       examples: [
-        'let { prettyPrint, num } = import(ast); prettyPrint(num(42))',
-        'let { prettyPrint, call, builtin, num } = import(ast); prettyPrint(call(builtin("+"), [num(1), num(2)]))',
-        'let { prettyPrint } = import(ast); prettyPrint(quote 1 + 2 end)',
+        'let { prettyPrint, num } = import("ast"); prettyPrint(num(42))',
+        'let { prettyPrint, call, builtin, num } = import("ast"); prettyPrint(call(builtin("+"), [num(1), num(2)]))',
+        'let { prettyPrint } = import("ast"); prettyPrint(quote 1 + 2 end)',
       ],
     },
   },
