@@ -36,7 +36,7 @@ describe('proc Integration Tests', () => {
 
   describe('process operations', () => {
     test('shuld return current working directory', () => {
-      const result = runDvala('let p = import(cliProc); p.getCwd()')
+      const result = runDvala('let p = import("cliProc"); p.getCwd()')
       expect(result).toBe(__dirname)
     })
   })

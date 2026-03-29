@@ -33,7 +33,7 @@ The full bundle includes everything from the minimal bundle plus all built-in mo
 import { createDvala, allBuiltinModules } from '@mojir/dvala/full'
 
 const dvala = createDvala({ modules: allBuiltinModules })
-dvala.run('let la = import(linearAlgebra); la.dot([1, 2, 3], [4, 5, 6])') // => 32
+dvala.run('let la = import("linearAlgebra"); la.dot([1, 2, 3], [4, 5, 6])') // => 32
 ```
 
 ### Individual Modules

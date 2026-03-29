@@ -461,7 +461,7 @@ applyHandler(h, -> 0 / 0)
 The `effectHandler` module provides reusable handlers for common patterns.
 
 ```dvala
-let { retry, fallback } = import(effectHandler)
+let { retry, fallback } = import("effectHandler")
 ```
 
 ### `fallback(value)`
@@ -469,14 +469,14 @@ let { retry, fallback } = import(effectHandler)
 Returns a handler that catches `@dvala.error` and aborts with `value`:
 
 ```dvala
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 do with fallback(0); 0 / 0 end
 ```
 
 Or using the function call form:
 
 ```dvala
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 fallback(0)(-> 0 / 0)
 ```
 
@@ -485,7 +485,7 @@ fallback(0)(-> 0 / 0)
 Retries `bodyFn()` up to `n` times on `@dvala.error`. On final failure, propagates the error:
 
 ```dvala
-let { retry, fallback } = import(effectHandler);
+let { retry, fallback } = import("effectHandler");
 do with (handler @dvala.error(msg) -> "gave up" end); retry(3, -> 0 / 0) end
 ```
 

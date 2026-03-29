@@ -26,7 +26,7 @@ describe('prettyPrint — atoms', () => {
   it('symbols', () => { expect(pp('x')).toBe('x') })
   it('builtins', () => { expect(pp('+(1, 2)')).toBe('1 + 2') })
   it('effects', () => { expect(pp('@dvala.io.print')).toBe('@dvala.io.print') })
-  it('import', () => { expect(pp('import(math)')).toBe('import(math)') })
+  it('import', () => { expect(pp('import("math")')).toBe('import("math")') })
 })
 
 describe('prettyPrint — operators', () => {

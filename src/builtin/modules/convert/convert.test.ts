@@ -5,7 +5,7 @@ import { convertModule } from './'
 const dvala = createDvala({ modules: [convertModule] })
 
 function runConvert(code: string): unknown {
-  return dvala.run(`let c = import(convert); ${code.replace(/convert:/g, 'c.')}`)
+  return dvala.run(`let c = import("convert"); ${code.replace(/convert:/g, 'c.')}`)
 }
 
 describe('convert module', () => {

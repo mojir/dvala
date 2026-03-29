@@ -121,19 +121,19 @@ const collectionUtilsFunctions: BuiltinNormalExpressions = {
       seeAlso: ['get', 'collection.assocIn', 'collection.updateIn'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "a", 0]
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "b", 0]
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.getIn(
   [[1, 2, 3], [4, { a: "Kalle" }, 6]],
   [1, 1, "b", 0],
@@ -185,21 +185,21 @@ If any levels do not exist, objects will be created - and the corresponding keys
       seeAlso: ['assoc', 'collection.getIn', 'collection.updateIn'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.assocIn(
   {},
   ["a", "b", "c"],
   "Albert"
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.assocIn(
   [1, 2, [1, 2, 3]],
   [2, 1],
   "Albert"
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.assocIn(
   [1, 2, { name: "albert" }],
   [2, "name", 0],
@@ -232,11 +232,11 @@ If the key does not exist, \`null\` is passed as the old value.`,
       seeAlso: ['collection.updateIn', 'assoc'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 let x = { a: 1, b: 2 };
 cu.update(x, "a", inc)`,
         `
-let cu = import(collection);
+let cu = import("collection");
 let x = { a: 1, b: 2 };
 cu.update(
   x,
@@ -269,28 +269,28 @@ objects will be created - and the corresponding keys must be of type string.`,
       seeAlso: ['collection.update', 'collection.assocIn', 'collection.getIn'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.updateIn(
   { a: [1, 2, 3] },
   ["a", 1],
   -> if isNull($) then 0 else inc($) end
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "foo"],
   -> if isNull($) then "?" else "!" end
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.updateIn(
   { a: { foo: "bar"} },
   ["a", "baz"],
   -> if isNull($) then "?" else "!" end
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.updateIn(
   { a: [1, 2, 3] },
   ["a", 1],
@@ -319,9 +319,9 @@ cu.updateIn(
       description: 'Creates a new collection with all elements that pass the test implemented by `b`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['filter', 'collection.mapi'],
       examples: [
-        'let cu = import(collection); cu.filteri([1, 2, 3], (x, i) -> i % 2 == 0)',
-        'let cu = import(collection); cu.filteri([1, 2, 3], (x, i) -> x % 2 == 0)',
-        'let cu = import(collection); cu.filteri([1, 2, 3], (x, i) -> x + i > 3)',
+        'let cu = import("collection"); cu.filteri([1, 2, 3], (x, i) -> i % 2 == 0)',
+        'let cu = import("collection"); cu.filteri([1, 2, 3], (x, i) -> x % 2 == 0)',
+        'let cu = import("collection"); cu.filteri([1, 2, 3], (x, i) -> x + i > 3)',
       ],
     },
   },
@@ -342,11 +342,11 @@ cu.updateIn(
       description: 'Creates a new collection populated with the results of calling `b` on every element in `a`. The function is called for each element in the collection, and it should take two arguments: the element itself and the index.',
       seeAlso: ['map', 'collection.filteri'],
       examples: [
-        'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x + i)',
-        'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x * i)',
-        'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x - i)',
-        'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x / i)',
-        'let cu = import(collection); cu.mapi([1, 2, 3], (x, i) -> x % inc(i))',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x + i)',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x * i)',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x - i)',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x / i)',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x % inc(i))',
       ],
     },
   },
@@ -371,9 +371,9 @@ cu.updateIn(
       description: 'Runs `fun` function on each element of the `coll`, passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['reduce', 'collection.reduceiRight', 'collection.reductionsi'],
       examples: [
-        'let cu = import(collection); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
-        'let cu = import(collection); cu.reducei("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reducei({ a: 1, b: 2 }, -> $ ++ $3, "")',
+        'let cu = import("collection"); cu.reducei([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
+        'let cu = import("collection"); cu.reducei("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
+        'let cu = import("collection"); cu.reducei({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -392,8 +392,8 @@ cu.updateIn(
       description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value.',
       seeAlso: ['reduce', 'collection.reduceiRight'],
       examples: [
-        'let cu = import(collection); cu.reduceRight(["A", "B", "C"], str, "")',
-        'let cu = import(collection); cu.reduceRight({ a: 1, b: 2 }, +, 0)',
+        'let cu = import("collection"); cu.reduceRight(["A", "B", "C"], str, "")',
+        'let cu = import("collection"); cu.reduceRight({ a: 1, b: 2 }, +, 0)',
       ],
     },
   },
@@ -418,9 +418,9 @@ cu.updateIn(
       description: 'Runs `fun` function on each element of the `coll` (starting from the last item), passing in the return value from the calculation on the preceding element. The final result of running the reducer across all elements of the `coll` is a single value. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reducei', 'collection.reduceRight'],
       examples: [
-        'let cu = import(collection); cu.reduceiRight([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
-        'let cu = import(collection); cu.reduceiRight("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reduceiRight({ a: 1, b: 2 }, -> $ ++ $3, "")',
+        'let cu = import("collection"); cu.reduceiRight([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
+        'let cu = import("collection"); cu.reduceiRight("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
+        'let cu = import("collection"); cu.reduceiRight({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -439,12 +439,12 @@ cu.updateIn(
       description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`.',
       seeAlso: ['reduce', 'collection.reductionsi'],
       examples: [
-        'let cu = import(collection); cu.reductions([1, 2, 3], +, 0)',
-        'let cu = import(collection); cu.reductions([1, 2, 3], +, 10)',
-        'let cu = import(collection); cu.reductions([], +, 0)',
-        'let cu = import(collection); cu.reductions({ a: 1, b: 2 }, +, 0)',
+        'let cu = import("collection"); cu.reductions([1, 2, 3], +, 0)',
+        'let cu = import("collection"); cu.reductions([1, 2, 3], +, 10)',
+        'let cu = import("collection"); cu.reductions([], +, 0)',
+        'let cu = import("collection"); cu.reductions({ a: 1, b: 2 }, +, 0)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.reductions(
   [1, 2, 3, 4, 5, 6, 7, 8, 9],
   (result, value) -> result + (if isEven(value) then value else 0 end),
@@ -474,9 +474,9 @@ cu.reductions(
       description: 'Returns an array of the intermediate values of the reduction (see `reduce`) of `coll` by `fun`. The function is called for each element in the collection, and it should take three arguments: the accumulator, the element itself, and the index.',
       seeAlso: ['collection.reductions', 'collection.reducei'],
       examples: [
-        'let cu = import(collection); cu.reductionsi([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
-        'let cu = import(collection); cu.reductionsi("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
-        'let cu = import(collection); cu.reductionsi({ a: 1, b: 2 }, -> $ ++ $3, "")',
+        'let cu = import("collection"); cu.reductionsi([1, 2, 3], (acc, x, i) -> acc + x + i, 0)',
+        'let cu = import("collection"); cu.reductionsi("Albert", (acc, x, i) -> acc ++ x ++ i, "")',
+        'let cu = import("collection"); cu.reductionsi({ a: 1, b: 2 }, -> $ ++ $3, "")',
       ],
     },
   },
@@ -505,13 +505,13 @@ cu.reductions(
       description: 'Returns `null` if `coll` is empty or `null`, otherwise `coll`.',
       seeAlso: ['isEmpty', 'isNotEmpty'],
       examples: [
-        'let cu = import(collection); cu.notEmpty([])',
-        'let cu = import(collection); cu.notEmpty([1, 2, 3])',
-        'let cu = import(collection); cu.notEmpty({})',
-        'let cu = import(collection); cu.notEmpty({ a: 2 })',
-        'let cu = import(collection); cu.notEmpty("")',
-        'let cu = import(collection); cu.notEmpty("Albert")',
-        'let cu = import(collection); cu.notEmpty(null)',
+        'let cu = import("collection"); cu.notEmpty([])',
+        'let cu = import("collection"); cu.notEmpty([1, 2, 3])',
+        'let cu = import("collection"); cu.notEmpty({})',
+        'let cu = import("collection"); cu.notEmpty({ a: 2 })',
+        'let cu = import("collection"); cu.notEmpty("")',
+        'let cu = import("collection"); cu.notEmpty("Albert")',
+        'let cu = import("collection"); cu.notEmpty(null)',
       ],
     },
   },
@@ -529,31 +529,31 @@ cu.reductions(
       description: 'Returns `true` if all entries in `a` pass the test implemented by `b`, otherwise returns `false`.',
       seeAlso: ['collection.isAny', 'collection.notEvery', 'collection.notAny', 'functional.everyPred', 'grid.isCellEvery'],
       examples: [
-        'let cu = import(collection); cu.isEvery([1, 2, 3], isNumber)',
-        'let cu = import(collection); cu.isEvery([1, 2, 3], isEven)',
+        'let cu = import("collection"); cu.isEvery([1, 2, 3], isNumber)',
+        'let cu = import("collection"); cu.isEvery([1, 2, 3], isEven)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isEvery(
   ["Albert", "Mojir", 160, [1, 2]],
   isString,
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isEvery(
   [50, 100, 150, 200],
   -> $ > 10,
 )`,
-        'let cu = import(collection); cu.isEvery([], isNumber)',
-        'let cu = import(collection); cu.isEvery("", isNumber)',
-        'let cu = import(collection); cu.isEvery({}, isNumber)',
+        'let cu = import("collection"); cu.isEvery([], isNumber)',
+        'let cu = import("collection"); cu.isEvery("", isNumber)',
+        'let cu = import("collection"); cu.isEvery({}, isNumber)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isEvery(
   { a: 2, b: 4},
   -> isEven(second($))
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isEvery(
   { a: 2, b: 3 },
   -> isEven(second($))
@@ -576,28 +576,28 @@ cu.isEvery(
       seeAlso: ['collection.isEvery', 'collection.notAny', 'collection.notEvery', 'functional.somePred', 'some', 'grid.isSome'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isAny(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.isAny([], isNumber)',
-        'let cu = import(collection); cu.isAny("", isNumber)',
-        'let cu = import(collection); cu.isAny({}, isNumber)',
+        'let cu = import("collection"); cu.isAny([], isNumber)',
+        'let cu = import("collection"); cu.isAny("", isNumber)',
+        'let cu = import("collection"); cu.isAny({}, isNumber)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isAny(
   { a: 2, b: 3 },
   -> isEven(second($))
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.isAny(
   { a: 1, b: 3 },
   -> isEven(second($))
@@ -620,28 +620,28 @@ cu.isAny(
       seeAlso: ['collection.isAny', 'collection.isEvery', 'collection.notEvery'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notAny(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notAny(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.notAny([], isNumber)',
-        'let cu = import(collection); cu.notAny("", isNumber)',
-        'let cu = import(collection); cu.notAny({}, isNumber)',
+        'let cu = import("collection"); cu.notAny([], isNumber)',
+        'let cu = import("collection"); cu.notAny("", isNumber)',
+        'let cu = import("collection"); cu.notAny({}, isNumber)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notAny(
   { a: 2, b: 3 },
   -> isEven(second($))
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notAny(
   { a: 1, b: 3 },
   -> isEven(second($))
@@ -664,28 +664,28 @@ cu.notAny(
       seeAlso: ['collection.isEvery', 'collection.isAny', 'collection.notAny'],
       examples: [
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notEvery(
   ["Albert", "Mojir", 160, [1, 2]],
   isString
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notEvery(
   [50, 100, 150, 200],
   x -> x > 10
 )`,
-        'let cu = import(collection); cu.notEvery([], isNumber)',
-        'let cu = import(collection); cu.notEvery("", isNumber)',
-        'let cu = import(collection); cu.notEvery({}, isNumber)',
+        'let cu = import("collection"); cu.notEvery([], isNumber)',
+        'let cu = import("collection"); cu.notEvery("", isNumber)',
+        'let cu = import("collection"); cu.notEvery({}, isNumber)',
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notEvery(
   { a: 2, b: 4 },
   -> isEven(second($))
 )`,
         `
-let cu = import(collection);
+let cu = import("collection");
 cu.notEvery(
   { a: 2, b: 3 },
   -> isEven(second($))

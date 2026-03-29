@@ -7,7 +7,7 @@ describe('assert functions', () => {
   for (const dvala of [createDvala({ modules: [assertModule] }), createDvala({ debug: true, modules: [assertModule] })]) {
     // Helper to run assert module functions with the new import syntax
     const runWithAssert = (code: string): unknown => {
-      const modifiedCode = `let a = import(assertion); ${code}`
+      const modifiedCode = `let a = import("assertion"); ${code}`
       return dvala.run(modifiedCode)
     }
     describe('assert (core)', () => {

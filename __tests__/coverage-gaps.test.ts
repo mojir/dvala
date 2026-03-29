@@ -61,34 +61,34 @@ describe('recursive evaluator — compound function types (trampoline fallback)'
 
   describe('juxt function via trampoline dispatch', () => {
     it('should handle juxt with multiple functions', () => {
-      expect(dvalaFull.run('let { juxt } = import(functional); let f = juxt(inc, dec); f(5)')).toEqual([6, 4])
+      expect(dvalaFull.run('let { juxt } = import("functional"); let f = juxt(inc, dec); f(5)')).toEqual([6, 4])
     })
   })
 
   describe('complement function via trampoline dispatch', () => {
     it('should handle complement', () => {
-      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(isOdd); f(3)')).toBe(false)
-      expect(dvalaFull.run('let { complement } = import(functional); let f = complement(isOdd); f(4)')).toBe(true)
+      expect(dvalaFull.run('let { complement } = import("functional"); let f = complement(isOdd); f(3)')).toBe(false)
+      expect(dvalaFull.run('let { complement } = import("functional"); let f = complement(isOdd); f(4)')).toBe(true)
     })
   })
 
   describe('everyPred function via trampoline dispatch', () => {
     it('should handle everyPred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.everyPred(isNumber, isOdd)(5)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.everyPred(isNumber, isOdd)(4)')).toBe(false)
+      expect(dvalaFull.run('let f = import("functional"); f.everyPred(isNumber, isOdd)(5)')).toBe(true)
+      expect(dvalaFull.run('let f = import("functional"); f.everyPred(isNumber, isOdd)(4)')).toBe(false)
     })
   })
 
   describe('somePred function via trampoline dispatch', () => {
     it('should handle somePred', () => {
-      expect(dvalaFull.run('let f = import(functional); f.somePred(isZero, isEven)(0)')).toBe(true)
-      expect(dvalaFull.run('let f = import(functional); f.somePred(isZero, isEven)(5)')).toBe(false)
+      expect(dvalaFull.run('let f = import("functional"); f.somePred(isZero, isEven)(0)')).toBe(true)
+      expect(dvalaFull.run('let f = import("functional"); f.somePred(isZero, isEven)(5)')).toBe(false)
     })
   })
 
   describe('fnull function via trampoline dispatch', () => {
     it('should handle fnull', () => {
-      expect(dvalaFull.run('let { fnull } = import(functional); let f = fnull(+, 0, 0); f(null, 5)')).toBe(5)
+      expect(dvalaFull.run('let { fnull } = import("functional"); let f = fnull(+, 0, 0); f(null, 5)')).toBe(5)
     })
   })
 
@@ -112,7 +112,7 @@ describe('recursive evaluator — compound function types (trampoline fallback)'
 
   describe('module function via trampoline dispatch', () => {
     it('should call module functions with callbacks', () => {
-      expect(dvalaFull.run('let a = import(assertion); a.assertEqual(1, 1)')).toBe(null)
+      expect(dvalaFull.run('let a = import("assertion"); a.assertEqual(1, 1)')).toBe(null)
     })
   })
 
@@ -445,7 +445,7 @@ describe('contextStack — shadowing builtin', () => {
 describe('import with Dvala source', () => {
   it('should import module with dvala source functions', () => {
     // The number-theory module has Dvala source that gets parsed into multiple nodes
-    const result = dvalaFull.run('let { gcd } = import(numberTheory); gcd(12, 8)')
+    const result = dvalaFull.run('let { gcd } = import("numberTheory"); gcd(12, 8)')
     expect(result).toBe(4)
   })
 })
@@ -487,7 +487,7 @@ describe('recursive evaluator via module functions', () => {
   describe('executeUserDefinedRecursive — user closure via module callback', () => {
     it('should trigger recursive user-defined evaluation via arithmeticTakeWhile', () => {
       const result = dvalaFull.run(`
-        let nt = import(numberTheory);
+        let nt = import("numberTheory");
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> val < 6)
       `)
       expect(result).toEqual([1, 2, 3, 4, 5])
@@ -495,7 +495,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger recursive user-defined with default params via module callback', () => {
       const result = dvalaFull.run(`
-        let nt = import(numberTheory);
+        let nt = import("numberTheory");
         nt.arithmeticTakeWhile(0, 1, (val, idx = 0) -> val < 3)
       `)
       expect(result).toEqual([0, 1, 2])
@@ -503,7 +503,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger recursive user-defined with rest args via module callback', () => {
       const result = dvalaFull.run(`
-        let nt = import(numberTheory);
+        let nt = import("numberTheory");
         nt.arithmeticTakeWhile(1, 2, (val, ...restArgs) -> val < 10)
       `)
       expect(result).toEqual([1, 3, 5, 7, 9])
@@ -511,7 +511,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger recursive user-defined with destructuring via module callback', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertEqual([1, 2, 3], [1, 2, 3])
       `)
       expect(result).toBe(null)
@@ -523,7 +523,7 @@ describe('recursive evaluator via module functions', () => {
       // arithmeticTakeWhile calls executeFunction with the predicate
       // passing a builtin like isEven triggers executeBuiltinRecursive
       const result = dvalaFull.run(`
-        let nt = import(numberTheory);
+        let nt = import("numberTheory");
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> val < 5 && isNumber(val))
       `)
       expect(result).toEqual([1, 2, 3, 4])
@@ -533,7 +533,7 @@ describe('recursive evaluator via module functions', () => {
   describe('executeModuleRecursive — module function as callback', () => {
     it('should trigger module recursive path via assertion module', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertFails(() -> throw("test error"))
       `)
       expect(result).toBe(null)
@@ -541,7 +541,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger assertFailsWith recursive path', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertFailsWith(() -> assert(false, "test error"), "test error")
       `)
       expect(result).toBe(null)
@@ -549,7 +549,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should trigger assertSucceeds recursive path', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> 42)
       `)
       expect(result).toBe(null)
@@ -561,7 +561,7 @@ describe('recursive evaluator via module functions', () => {
       // When a user function called from a module callback calls a builtin,
       // that goes through evaluateNormalExpressionRecursive
       const result = dvalaFull.run(`
-        let nt = import(numberTheory);
+        let nt = import("numberTheory");
         nt.arithmeticTakeWhile(1, 1, (val, idx) -> do
           let doubled = val * 2;
           doubled < 12
@@ -575,7 +575,7 @@ describe('recursive evaluator via module functions', () => {
     it('should handle array-as-function in module callback context', () => {
       // Use assertFails to call a function that uses array-as-function
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> do
           let arr = [10, 20, 30];
           arr(1)
@@ -586,7 +586,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should handle object-as-function in module callback context', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> do
           let obj = { a: 1, b: 2 };
           obj("a")
@@ -597,7 +597,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should handle string-as-function in module callback context', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> do
           let s = "hello";
           s(1)
@@ -608,7 +608,7 @@ describe('recursive evaluator via module functions', () => {
 
     it('should handle number-as-function in module callback context', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> do
           let n = 0;
           n([10, 20, 30])
@@ -621,7 +621,7 @@ describe('recursive evaluator via module functions', () => {
   describe('executeSpecialBuiltinRecursive — special builtin as callback', () => {
     it('should handle special builtin in recursive context', () => {
       const result = dvalaFull.run(`
-        let a = import(assertion);
+        let a = import("assertion");
         a.assertSucceeds(() -> do
           let f = &&;
           f(true, 42)
@@ -695,7 +695,7 @@ describe('importMerge — module source with dvala-only functions', () => {
   it('should import module with dvala-only functions not in TS', () => {
     // functional module has source that adds functions not in the TS definition
     const result = dvalaFull.run(`
-      let f = import(functional);
+      let f = import("functional");
       isObject(f)
     `)
     expect(result).toBe(true)
@@ -929,7 +929,7 @@ describe('wrapMaybePromiseAsStep — async compound function', () => {
   it('should handle async compound function that resolves', async () => {
     const d = createDvala({ modules: allBuiltinModules })
     const result = await d.runAsync(`
-      let { juxt } = import(functional);
+      let { juxt } = import("functional");
       let f = juxt(inc, dec);
       f(5)
     `)
@@ -995,7 +995,7 @@ describe('import module with dvala source — multi-node parse path', () => {
   it('should import module containing dvala source with multiple nodes', () => {
     // The collection module has dvala source that provides extra functions
     const result = dvalaFull.run(`
-      let c = import(collection);
+      let c = import("collection");
       isObject(c)
     `)
     expect(result).toBe(true)
@@ -1079,7 +1079,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
     // 0 / 0 produces NaN → evaluateNodeRecursive NaN check throws
     // assertFails catches the error
     expect(dvalaFull.run(`
-      let { assertFails } = import(assertion);
+      let { assertFails } = import("assertion");
       assertFails(() -> 0 / 0)
     `)).toBe(null)
   })
@@ -1087,7 +1087,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit evaluateParamsRecursive spread handling (lines 180-183)', () => {
     // Spread args in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> do let arr = [1, 2]; +(...arr) end)
     `)).toBe(null)
   })
@@ -1095,7 +1095,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit evaluateParamsRecursive placeholder handling (line 190)', () => {
     // Placeholder in function call within recursive evaluator
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> do let f = +(_, 1); f(5) end)
     `)).toBe(null)
   })
@@ -1103,7 +1103,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit evaluateNormalExpressionRecursive partial (lines 207-220)', () => {
     // Partial application (named function with placeholder) in recursive path
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> do let f = *(_, 2); f(5) end)
     `)).toBe(null)
   })
@@ -1111,7 +1111,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit anonymous function expression in recursive path (lines 240-258)', () => {
     // Anonymous function call in recursive evaluator
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> ((x) -> x + 1)(5))
     `)).toBe(null)
   })
@@ -1119,7 +1119,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit arity error in recursive path (lines 325-326)', () => {
     // Wrong arity in recursive evaluator
     expect(dvalaFull.run(`
-      let { assertFails } = import(assertion);
+      let { assertFails } = import("assertion");
       assertFails(() -> do let f = (x, y) -> x + y; f(1) end)
     `)).toBe(null)
   })
@@ -1127,7 +1127,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit default values in recursive path (lines 353-366)', () => {
     // Function with default parameter value in recursive evaluator
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> do let f = (x, y = 10) -> x + y; f(5) end)
     `)).toBe(null)
   })
@@ -1135,7 +1135,7 @@ describe('recursive evaluator — specific code paths via assertion module', () 
   it('should hit anonymous function with partial in recursive path (lines 244-254)', () => {
     // Anonymous function expression with placeholders in recursive path
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> do let add = (a, b) -> a + b; add(_, 10)(5) end)
     `)).toBe(null)
   })
@@ -1153,7 +1153,7 @@ describe('recursive evaluator — builtin and module dispatch', () => {
     // When a builtin with dvalaImpl is called inside a recursive evaluator path,
     // e.g., calling map inside an assertSucceeds callback
     expect(dvalaFull.run(`
-      let { assertSucceeds } = import(assertion);
+      let { assertSucceeds } = import("assertion");
       assertSucceeds(() -> map([1, 2, 3], inc))
     `)).toBe(null)
   })
@@ -1162,7 +1162,7 @@ describe('recursive evaluator — builtin and module dispatch', () => {
     // Rest args in recursive evaluator via module callback
     // arithmeticTakeWhile calls executeFunction so hits recursive path
     expect(dvalaFull.run(`
-      let nt = import(numberTheory);
+      let nt = import("numberTheory");
       nt.arithmeticTakeWhile(1, 2, (val, ...restArgs) -> val < 10)
     `)).toEqual([1, 3, 5, 7, 9])
   })
@@ -1177,7 +1177,7 @@ describe('import — multi-node module source', () => {
     // grid module has multi-statement source (do...end wrapping)
     // This triggers the SequenceFrame path in import
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       isObject(g)
     `)
     expect(result).toBe(true)
@@ -1427,7 +1427,7 @@ describe('importMerge — dvala-only function path', () => {
     // collection.dvala defines update, updateIn, etc.
     // These override TS functions via dvalaImpl
     const result = dvalaFull.run(`
-      let c = import(collection);
+      let c = import("collection");
       c.update({a: 1, b: 2}, "a", inc)
     `)
     expect(result).toEqual({ a: 2, b: 2 })
@@ -1436,7 +1436,7 @@ describe('importMerge — dvala-only function path', () => {
   it('should access grid module functions defined in dvala source', () => {
     // grid.dvala defines functions that may be dvala-only
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isCellEvery([[1, 2], [3, 4]], isNumber)
     `)
     expect(result).toBe(true)
@@ -1464,7 +1464,7 @@ describe('recursive evaluator — recur in callback function', () => {
     // Use arithmeticTakeWhile which calls executeFunction on a predicate
     // The callback is a user-defined function
     expect(dvalaFull.run(`
-      let nt = import(numberTheory);
+      let nt = import("numberTheory");
       nt.arithmeticTakeWhile(1, 1, (n) -> n < 5)
     `)).toEqual([1, 2, 3, 4])
   })
@@ -1770,7 +1770,7 @@ describe('trampoline — import module with single expression', () => {
   it('should import a core dvala source module', () => {
     // grid module has dvala source; imports trigger the merge path
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isCellEvery([[1, 2], [3, 4]], isNumber)
     `)
     expect(result).toBe(true)
@@ -1924,7 +1924,7 @@ describe('serialization — compound function types in continuations', () => {
 
   it('should serialize continuation with complement function', async () => {
     const result = await dvalaFull.runAsync(`
-      let { complement } = import(functional);
+      let { complement } = import("functional");
       let f = complement(isOdd);
       perform(@test.pause);
       f(3)
@@ -1951,7 +1951,7 @@ describe('serialization — compound function types in continuations', () => {
 
   it('should serialize continuation with juxt', async () => {
     const result = await dvalaFull.runAsync(`
-      let { juxt } = import(functional);
+      let { juxt } = import("functional");
       let f = juxt(inc, dec);
       perform(@test.pause);
       f(5)
@@ -1965,7 +1965,7 @@ describe('serialization — compound function types in continuations', () => {
 
   it('should serialize continuation with everyPred', async () => {
     const result = await dvalaFull.runAsync(`
-      let { everyPred } = import(functional);
+      let { everyPred } = import("functional");
       let f = everyPred(isNumber, isOdd);
       perform(@test.pause);
       f(5)
@@ -1979,7 +1979,7 @@ describe('serialization — compound function types in continuations', () => {
 
   it('should serialize continuation with somePred', async () => {
     const result = await dvalaFull.runAsync(`
-      let { somePred } = import(functional);
+      let { somePred } = import("functional");
       let f = somePred(isNumber, isString);
       perform(@test.pause);
       f(5)
@@ -1993,7 +1993,7 @@ describe('serialization — compound function types in continuations', () => {
 
   it('should serialize continuation with fnull', async () => {
     const result = await dvalaFull.runAsync(`
-      let { fnull } = import(functional);
+      let { fnull } = import("functional");
       let f = fnull(+, 0, 0);
       perform(@test.pause);
       f(1, 2)
@@ -2111,7 +2111,7 @@ describe('trampoline — special builtin as first-class function', () => {
 describe('trampoline — module function as callback', () => {
   it('should call module function through recursive path', () => {
     const result = dvalaFull.run(`
-      let m = import(math);
+      let m = import("math");
       map([0, 1.5707963267948966], m.sin)
     `)
     const arr = result as number[]
@@ -2149,7 +2149,7 @@ describe('trampoline — function default parameter values', () => {
 describe('grid module — dvala-implemented functions', () => {
   it('should execute cellMap via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.cellMap([[1, 2], [3, 4]], inc)
     `)
     expect(result).toEqual([[2, 3], [4, 5]])
@@ -2157,7 +2157,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute isSome via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isSome([[1, 2], [3, 4]], (x) -> x > 3)
     `)
     expect(result).toBe(true)
@@ -2165,7 +2165,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute isEveryRow via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isEveryRow([[1, 2], [3, 4]], (row) -> count(row) == 2)
     `)
     expect(result).toBe(true)
@@ -2173,7 +2173,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute isSomeRow via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isSomeRow([[1, 2], [3, 4]], (row) -> first(row) > 2)
     `)
     expect(result).toBe(true)
@@ -2181,7 +2181,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute isEveryCol via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isEveryCol([[1, 2], [3, 4]], (col) -> count(col) == 2)
     `)
     expect(result).toBe(true)
@@ -2189,7 +2189,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute isSomeCol via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.isSomeCol([[1, 2], [3, 4]], (col) -> first(col) > 0)
     `)
     expect(result).toBe(true)
@@ -2197,7 +2197,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute generate via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.generate(2, 2, (r, c) -> r * 2 + c)
     `)
     expect(result).toEqual([[0, 1], [2, 3]])
@@ -2205,7 +2205,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute cellMapi via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.cellMapi([[10, 20], [30, 40]], (val, row, col) -> row * 10 + col)
     `)
     expect(result).toEqual([[0, 1], [10, 11]])
@@ -2213,7 +2213,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute cellReduce via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.cellReduce([[1, 2], [3, 4]], (acc, val) -> acc + val, 0)
     `)
     expect(result).toBe(10)
@@ -2221,7 +2221,7 @@ describe('grid module — dvala-implemented functions', () => {
 
   it('should execute cellReducei via dvala implementation', () => {
     const result = dvalaFull.run(`
-      let g = import(grid);
+      let g = import("grid");
       g.cellReducei([[1, 2], [3, 4]], (acc, val, row, col) -> acc + val, 0)
     `)
     expect(result).toBe(10)
@@ -2809,7 +2809,7 @@ describe('trampoline.ts — evaluateNode export (line 3184)', () => {
 describe('trampoline.ts — module function with dvalaImpl (line 1316)', () => {
   it('should dispatch module function with dvalaImpl through trampoline', () => {
     // Import module and call sortBy via module reference
-    const result = dvalaFull.run('let su = import(sequence); su.sortBy([3, 1, 2], identity)')
+    const result = dvalaFull.run('let su = import("sequence"); su.sortBy([3, 1, 2], identity)')
     expect(result).toEqual([1, 2, 3])
   })
 })
@@ -2829,7 +2829,7 @@ describe('trampoline.ts — wrapMaybePromiseAsStep error (line 2980-2989)', () =
 describe('trampoline.ts — import module with dvala source (line 1083)', () => {
   it('should import module with multi-expression dvala source', () => {
     // grid module has dvala source — use a dvala-implemented function
-    const result = dvalaFull.run('let g = import(grid); g.row([[1, 2], [3, 4]], 0)')
+    const result = dvalaFull.run('let g = import("grid"); g.row([[1, 2], [3, 4]], 0)')
     expect(result).toEqual([1, 2])
   })
 })

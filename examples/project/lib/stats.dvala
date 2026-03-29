@@ -1,0 +1,15 @@
+let mySum = (arr) -> reduce(arr, +, 0);
+
+let average = (arr) -> mySum(arr) / count(arr);
+
+let variance = (arr) -> do
+  let avg = average(arr);
+  let squaredDiffs = map(arr, (x) -> (x - avg) ^ 2);
+  average(squaredDiffs)
+end;
+
+{
+  sum: mySum,
+  average: average,
+  variance: variance
+}

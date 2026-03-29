@@ -179,7 +179,7 @@ A regular function `unless(cond, body)` would evaluate `body` before calling the
 let safely = macro (ast) ->
   quote fallback(null)(-> $^{ast}) end;
 
-let { fallback } = import(effectHandler);
+let { fallback } = import("effectHandler");
 safely(0 / 0)
 ```
 
@@ -338,13 +338,13 @@ Pass the macro function and AST arguments (constructed with quote blocks). The r
 Combine `macroexpand` with `prettyPrint` from the `ast` module for readable output:
 
 ```dvala
-let { prettyPrint } = import(ast);
+let { prettyPrint } = import("ast");
 let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 macroexpand(double, quote 21 end) |> prettyPrint
 ```
 
 ```dvala
-let { prettyPrint } = import(ast);
+let { prettyPrint } = import("ast");
 let unless = macro (cond, body) ->
   quote if not($^{cond}) then $^{body} else null end end;
 macroexpand(unless, quote x > 10 end, quote 42 end) |> prettyPrint
@@ -354,12 +354,12 @@ macroexpand(unless, quote x > 10 end, quote 42 end) |> prettyPrint
 
 ## The AST Module
 
-For programmatic AST construction and inspection, use `import(ast)`:
+For programmatic AST construction and inspection, use `import("ast")`:
 
 ### Constructors
 
 ```dvala
-let { num, sym, builtin, call } = import(ast);
+let { num, sym, builtin, call } = import("ast");
 call(builtin("+"), [num(1), num(2)])
 ```
 
@@ -368,7 +368,7 @@ Available constructors: `num`, `strNode`, `bool`, `nil`, `sym`, `builtin`, `effe
 ### Predicates
 
 ```dvala
-let { isNum, isCall, isAstNode, num } = import(ast);
+let { isNum, isCall, isAstNode, num } = import("ast");
 [isNum(num(42)), isCall(num(42)), isAstNode(num(42)), isAstNode(42)]
 ```
 
@@ -377,14 +377,14 @@ Available predicates: `isNum`, `isStr`, `isSym`, `isBuiltin`, `isCall`, `isIf`, 
 ### Accessors
 
 ```dvala
-let { nodeType, payload, num } = import(ast);
+let { nodeType, payload, num } = import("ast");
 [nodeType(num(42)), payload(num(42))]
 ```
 
 ### Pretty Print
 
 ```dvala
-let { prettyPrint, call, builtin, num, sym, ifNode } = import(ast);
+let { prettyPrint, call, builtin, num, sym, ifNode } = import("ast");
 prettyPrint(ifNode(call(builtin(">"), [sym("x"), num(0)]), sym("x"), num(0)))
 ```
 

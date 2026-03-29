@@ -1,12 +1,6 @@
-let { test, describe, skip } = import(test);
-let { assertEqual, assertTrue, assertFalse } = import(assertion);
-
-// Inline the utility functions (no file imports yet)
-let clamp = (value, lo, hi) -> min(max(value, lo), hi);
-let lerp = (a, b, t) -> a + (b - a) * t;
-let inRange = (value, lo, hi) -> value >= lo && value <= hi;
-let mySum = (arr) -> reduce(arr, +, 0);
-let average = (arr) -> mySum(arr) / count(arr);
+let { test, describe } = import("test");
+let { assertEqual, assertTrue, assertFalse } = import("assertion");
+let { clamp, lerp, inRange } = import("../lib/math.dvala");
 
 describe("clamp", -> do
   test("within range", -> assertEqual(clamp(5, 0, 10), 5));
@@ -33,15 +27,4 @@ describe("inRange", -> do
     assertTrue(inRange(0, 0, 10));
     assertTrue(inRange(10, 0, 10));
   end);
-end);
-
-describe("sum and average", -> do
-  test("sum of list", -> assertEqual(mySum([1, 2, 3, 4]), 10));
-  test("sum of empty", -> assertEqual(mySum([]), 0));
-  test("average", -> assertEqual(average([2, 4, 6]), 4));
-end);
-
-skip("todo: file imports", -> do
-  // When file imports are supported, test loading utils.dvala
-  assertTrue(false);
 end);

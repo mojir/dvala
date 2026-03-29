@@ -23,7 +23,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { test } = import(test);\ntest("addition", -> assertEqual(1 + 1, 2))',
+      'let { test } = import("test");\ntest("addition", -> assertEqual(1 + 1, 2))',
     ],
     seeAlso: ['test.describe', 'test.skip'],
     hideOperatorForm: true,
@@ -50,7 +50,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { test, describe } = import(test);\ndescribe("math", -> test("abs", -> assertEqual(abs(-1), 1)))',
+      'let { test, describe } = import("test");\ndescribe("math", -> test("abs", -> assertEqual(abs(-1), 1)))',
     ],
     seeAlso: ['test.test', 'test.skip'],
     hideOperatorForm: true,
@@ -77,7 +77,7 @@ export const moduleDocs: Record<string, FunctionDocs> = {
       },
     ],
     examples: [
-      'let { skip } = import(test);\nskip("not ready yet", -> assertEqual(todo(), 42))',
+      'let { skip } = import("test");\nskip("not ready yet", -> assertEqual(todo(), 42))',
     ],
     seeAlso: ['test.test', 'test.describe'],
     hideOperatorForm: true,

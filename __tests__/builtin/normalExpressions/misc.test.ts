@@ -20,44 +20,44 @@ describe('misc functions', () => {
   for (const dvala of [createDvala({ modules: [jsonModule, timeModule] }), createDvala({ modules: [jsonModule, timeModule], debug: true })]) {
     describe('epochToIsoDate', () => {
       it('samples', () => {
-        expect(dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')
-        expect(dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(-1649756230899)')).toBe('1917-09-21T14:22:49.101Z')
-        expect(dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(0)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(0.999)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(0.999)')).toBe('1970-01-01T00:00:00.000Z')
-        expect(() => dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(1649756230899 1649756230899)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate()')).toThrow(DvalaError)
-        expect(() => dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate("1649756230899")')).toThrow(DvalaError)
-        expect(() => dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(null)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { epochToIsoDate } = import(time); epochToIsoDate(true)')).toThrow(DvalaError)
+        expect(dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(1649756230899)')).toBe('2022-04-12T09:37:10.899Z')
+        expect(dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(-1649756230899)')).toBe('1917-09-21T14:22:49.101Z')
+        expect(dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(0)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(0.999)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(0.999)')).toBe('1970-01-01T00:00:00.000Z')
+        expect(() => dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(1649756230899 1649756230899)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate("1649756230899")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { epochToIsoDate } = import("time"); epochToIsoDate(true)')).toThrow(DvalaError)
       })
     })
 
     describe('isoDateToEpoch', () => {
       it('samples', () => {
-        expect(dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch("2022-04-12T09:37:10.899Z")')).toBe(1649756230899)
-        expect(dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch("2022-04-12")')).toBeGreaterThan(1649548800000)
+        expect(dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch("2022-04-12T09:37:10.899Z")')).toBe(1649756230899)
+        expect(dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch("2022-04-12")')).toBeGreaterThan(1649548800000)
         expect(() =>
-          dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch("2022-04-12T09:37:10.899Z", "2022-04-12T09:37:10.899Z")'),
+          dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch("2022-04-12T09:37:10.899Z", "2022-04-12T09:37:10.899Z")'),
         ).toThrow()
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch()')).toThrow(DvalaError)
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch(1649756230899)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch(null)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch(true)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch("2022-04-1X")')).toThrow(DvalaError)
-        expect(() => dvala.run('let { isoDateToEpoch } = import(time); isoDateToEpoch("")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch(1649756230899)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch(null)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch(true)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch("2022-04-1X")')).toThrow(DvalaError)
+        expect(() => dvala.run('let { isoDateToEpoch } = import("time"); isoDateToEpoch("")')).toThrow(DvalaError)
       })
     })
 
     describe('jsonStringify', () => {
       it('samples', () => {
-        expect(dvala.run('let { jsonStringify } = import(json); jsonStringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
-        expect(dvala.run('let { jsonStringify } = import(json); jsonStringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
+        expect(dvala.run('let { jsonStringify } = import("json"); jsonStringify({ a: 10, b: 20})')).toBe('{"a":10,"b":20}')
+        expect(dvala.run('let { jsonStringify } = import("json"); jsonStringify({ a: 10, b: 20}, 2)')).toBe('{\n  "a": 10,\n  "b": 20\n}')
       })
     })
     describe('jsonParse', () => {
       it('samples', () => {
-        expect(dvala.run('let { jsonParse } = import(json); jsonParse("[1,2,3]")')).toEqual([1, 2, 3])
+        expect(dvala.run('let { jsonParse } = import("json"); jsonParse("[1,2,3]")')).toEqual([1, 2, 3])
       })
     })
   }
@@ -287,7 +287,7 @@ describe('misc functions', () => {
 
     describe('import', () => {
       it('should throw for unknown entire module', () => {
-        expect(() => dvala.run('import(UnknownModule)')).toThrow(DvalaError)
+        expect(() => dvala.run('import("UnknownModule")')).toThrow(DvalaError)
       })
     })
   }

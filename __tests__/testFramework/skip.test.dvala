@@ -1,5 +1,5 @@
-let { test, skip } = import(test);
-let { assertEqual } = import(assertion);
+let { test, skip } = import("test");
+let { assertEqual } = import("assertion");
 
 let add = (a, b) -> a + b;
 let sub = (a, b) -> a + b;

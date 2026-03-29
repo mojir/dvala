@@ -33,11 +33,11 @@ const stringUtilsFunctions: BuiltinNormalExpressions = {
       description: 'Repeates `s` `n` times.',
       seeAlso: ['str', 'repeat'],
       examples: [
-        `let { stringRepeat } = import(string);
+        `let { stringRepeat } = import("string");
 "*" stringRepeat 10`,
-        `let { stringRepeat } = import(string);
+        `let { stringRepeat } = import("string");
 stringRepeat("*", 10)`,
-        `let { stringRepeat } = import(string);
+        `let { stringRepeat } = import("string");
 stringRepeat("***", 0)`,
       ],
     },
@@ -62,9 +62,9 @@ stringRepeat("***", 0)`,
       description: 'Return character for code point `code`.',
       seeAlso: ['string.toCharCode'],
       examples: [
-        `let { fromCharCode } = import(string);
+        `let { fromCharCode } = import("string");
 fromCharCode(65)`,
-        `let { fromCharCode } = import(string);
+        `let { fromCharCode } = import("string");
 fromCharCode(0)`,
       ],
     },
@@ -84,9 +84,9 @@ fromCharCode(0)`,
       description: 'Return code point for first character in `c`.',
       seeAlso: ['string.fromCharCode'],
       examples: [
-        `let { toCharCode } = import(string);
+        `let { toCharCode } = import("string");
 toCharCode("A")`,
-        `let { toCharCode } = import(string);
+        `let { toCharCode } = import("string");
 toCharCode("Albert")`,
       ],
     },
@@ -106,11 +106,11 @@ toCharCode("Albert")`,
       description: 'Returns a new string with leading whitespaces removed.',
       seeAlso: ['trim', 'string.trimRight'],
       examples: [
-        `let { trimLeft } = import(string);
+        `let { trimLeft } = import("string");
 trimLeft("  Albert  ")`,
-        `let { trimLeft } = import(string);
+        `let { trimLeft } = import("string");
 trimLeft("   ")`,
-        `let { trimLeft } = import(string);
+        `let { trimLeft } = import("string");
 trimLeft("")`,
       ],
     },
@@ -130,11 +130,11 @@ trimLeft("")`,
       description: 'Returns a new string with trailing whitespaces removed.',
       seeAlso: ['trim', 'string.trimLeft'],
       examples: [
-        `let { trimRight } = import(string);
+        `let { trimRight } = import("string");
 trimRight("  Albert  ")`,
-        `let { trimRight } = import(string);
+        `let { trimRight } = import("string");
 trimRight("   ")`,
-        `let { trimRight } = import(string);
+        `let { trimRight } = import("string");
 trimRight("")`,
       ],
     },
@@ -154,13 +154,13 @@ trimRight("")`,
       description: 'Divides `s` into an array of substrings, each representing a line.',
       seeAlso: ['split'],
       examples: [
-        `let { splitLines } = import(string);
+        `let { splitLines } = import("string");
 splitLines("Albert\nMojir\n")`,
-        `let { splitLines } = import(string);
+        `let { splitLines } = import("string");
 splitLines("Albert\n\nMojir")`,
-        `let { splitLines } = import(string);
+        `let { splitLines } = import("string");
 splitLines("Albert\nMojir\n\n")`,
-        `let { splitLines } = import(string);
+        `let { splitLines } = import("string");
 splitLines("")`,
       ],
     },
@@ -194,15 +194,15 @@ splitLines("")`,
       description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padRight'],
       examples: [
-        `let { padLeft } = import(string);
+        `let { padLeft } = import("string");
 "Albert" padLeft 20`,
-        `let { padLeft } = import(string);
+        `let { padLeft } = import("string");
 padLeft("Albert", 20)`,
-        `let { padLeft } = import(string);
+        `let { padLeft } = import("string");
 padLeft("Albert", 20, "-*-")`,
-        `let { padLeft } = import(string);
+        `let { padLeft } = import("string");
 padLeft("Albert", 5)`,
-        `let { padLeft } = import(string);
+        `let { padLeft } = import("string");
 padLeft("Albert", -1)`,
       ],
     },
@@ -236,15 +236,15 @@ padLeft("Albert", -1)`,
       description: 'Pads from the start of `s` with `padString` (multiple times, if needed) until the resulting string reaches the given `length`.',
       seeAlso: ['string.padLeft'],
       examples: [
-        `let { padRight } = import(string);
+        `let { padRight } = import("string");
 "Albert" padRight 20`,
-        `let { padRight } = import(string);
+        `let { padRight } = import("string");
 padRight("Albert", 20)`,
-        `let { padRight } = import(string);
+        `let { padRight } = import("string");
 padRight("Albert", 20, "-*-")`,
-        `let { padRight } = import(string);
+        `let { padRight } = import("string");
 padRight("Albert", 5)`,
-        `let { padRight } = import(string);
+        `let { padRight } = import("string");
 padRight("Albert", -1)`,
       ],
     },
@@ -290,31 +290,31 @@ padRight("Albert", -1)`,
       description: 'Applies placeholders to a string. Support for basic pluralization - see examples. If pluralization is used, first placeholder must be a number.',
       seeAlso: ['str'],
       examples: [
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("Hi, $1 and $2", "Carl", "Larry")`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("Hi $1, $2, $3, $4, $5, $6, $7, $8 and $9", "A", "B", "C", "D", "E", "F", "G", "H", "I")`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("$1 book||||$1 books", 0)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("$1 book||||$1 books", 1)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("$1 book||||$1 books", 2)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||$1 book||||$1 books", 0)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||$1 book||||$1 books", 1)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||$1 book||||$1 books", 10)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||One book||||Two books||||Three books||||$1 books", 0)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||One book||||Two books||||Three books||||$1 books", 1)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||One book||||Two books||||Three books||||$1 books", 2)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||One book||||Two books||||Three books||||$1 books", 3)`,
-        `let { template } = import(string);
+        `let { template } = import("string");
 template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
       ],
       hideOperatorForm: true,
@@ -340,7 +340,7 @@ template("No book||||One book||||Two books||||Three books||||$1 books", 4)`,
       description: 'Returns a Base64 encoded string from `s`.',
       seeAlso: ['string.decodeBase64'],
       examples: [
-        `let { encodeBase64 } = import(string);
+        `let { encodeBase64 } = import("string");
 encodeBase64("Albert")`,
       ],
     },
@@ -371,7 +371,7 @@ encodeBase64("Albert")`,
       description: 'Returns a Base64 decoded string from `base64string`.',
       seeAlso: ['string.encodeBase64'],
       examples: [
-        `let { decodeBase64 } = import(string);
+        `let { decodeBase64 } = import("string");
 decodeBase64("QWxiZXJ0IPCfkLs=")`,
       ],
     },
@@ -391,7 +391,7 @@ decodeBase64("QWxiZXJ0IPCfkLs=")`,
       description: 'Returns an escaped `URI` string.',
       seeAlso: ['string.decodeUriComponent'],
       examples: [
-        `let { encodeUriComponent } = import(string);
+        `let { encodeUriComponent } = import("string");
 encodeUriComponent("Hi everyone!?")`,
       ],
     },
@@ -415,7 +415,7 @@ encodeUriComponent("Hi everyone!?")`,
       description: 'Returns an un-escaped `URI` string.',
       seeAlso: ['string.encodeUriComponent'],
       examples: [
-        `let { decodeUriComponent } = import(string);
+        `let { decodeUriComponent } = import("string");
 decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
       ],
     },
@@ -435,13 +435,13 @@ decodeUriComponent("Hi%20everyone!%3F%20%F0%9F%91%8D")`,
       description: 'Returns `s` with the first character converted to uppercase and the rest to lowercase.',
       seeAlso: ['lowerCase', 'upperCase'],
       examples: [
-        `let { capitalize } = import(string);
+        `let { capitalize } = import("string");
 capitalize("albert")`,
-        `let { capitalize } = import(string);
+        `let { capitalize } = import("string");
 capitalize("ALBERT")`,
-        `let { capitalize } = import(string);
+        `let { capitalize } = import("string");
 capitalize("aLBERT")`,
-        `let { capitalize } = import(string);
+        `let { capitalize } = import("string");
 capitalize("")`,
       ],
     },

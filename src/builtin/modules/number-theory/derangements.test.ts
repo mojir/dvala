@@ -5,7 +5,7 @@ import { numberTheoryModule } from './'
 const dvala = createDvala({ modules: [numberTheoryModule] })
 
 function runNth(code: string) {
-  return dvala.run(`let nt = import(numberTheory); ${code.replace(/nth:/g, 'nt.')}`)
+  return dvala.run(`let nt = import("numberTheory"); ${code.replace(/nth:/g, 'nt.')}`)
 }
 describe('derangements', () => {
   describe('nth:derangements', () => {

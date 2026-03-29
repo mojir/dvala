@@ -20,8 +20,8 @@ const timeFunctions: BuiltinNormalExpressions = {
       description: 'Returns IOS date time string from `ms` (milliseconds elapsed since the UNIX epoch).',
       seeAlso: ['time.isoDateToEpoch'],
       examples: [
-        'let { epochToIsoDate } = import(time);\nepochToIsoDate(1649756230899)',
-        'let { epochToIsoDate } = import(time);\nepochToIsoDate(0)',
+        'let { epochToIsoDate } = import("time");\nepochToIsoDate(1649756230899)',
+        'let { epochToIsoDate } = import("time");\nepochToIsoDate(0)',
       ],
     },
   },
@@ -41,8 +41,8 @@ const timeFunctions: BuiltinNormalExpressions = {
       description: 'Returns milliseconds elapsed since the UNIX epoch to `iso`.',
       seeAlso: ['time.epochToIsoDate'],
       examples: [
-        'let { isoDateToEpoch } = import(time);\nisoDateToEpoch("2022-04-12T09:37:10.899Z")',
-        'let { isoDateToEpoch } = import(time);\nisoDateToEpoch("1980-01-01")',
+        'let { isoDateToEpoch } = import("time");\nisoDateToEpoch("2022-04-12T09:37:10.899Z")',
+        'let { isoDateToEpoch } = import("time");\nisoDateToEpoch("1980-01-01")',
       ],
     },
   },

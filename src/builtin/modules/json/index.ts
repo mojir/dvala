@@ -23,7 +23,7 @@ const jsonFunctions: BuiltinNormalExpressions = {
       description: 'Returns `JSON.parse(``x``)`.',
       seeAlso: ['json.jsonStringify'],
       examples: [
-        'let { jsonParse } = import(json);\njsonParse("[1, 2, 3]")',
+        'let { jsonParse } = import("json");\njsonParse("[1, 2, 3]")',
       ],
     },
   },
@@ -51,8 +51,8 @@ const jsonFunctions: BuiltinNormalExpressions = {
       description: 'Returns `JSON.stringify(``x``)`. If second argument is provided, returns `JSON.stringify(``x``, null, ``indent``)`.',
       seeAlso: ['json.jsonParse'],
       examples: [
-        'let { jsonStringify } = import(json);\njsonStringify([1, 2, 3])',
-        'let { jsonStringify } = import(json);\njsonStringify({ a: { b: 10 }}, 2)',
+        'let { jsonStringify } = import("json");\njsonStringify([1, 2, 3])',
+        'let { jsonStringify } = import("json");\njsonStringify({ a: { b: 10 }}, 2)',
       ],
       hideOperatorForm: true,
     },

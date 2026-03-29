@@ -678,8 +678,8 @@ describe('parser', () => {
     it('supports basic function calls', () => {
       // These tests assume your runtime provides these functions
       expect(dvala.run('abs(-5)')).toBe(5)
-      expect(dvalaWithMathUtils.run('let { sin, cos } = import(math); sin(0)')).toBeCloseTo(0)
-      expect(dvalaWithMathUtils.run('let { sin, cos } = import(math); cos(0)')).toBeCloseTo(1)
+      expect(dvalaWithMathUtils.run('let { sin, cos } = import("math"); sin(0)')).toBeCloseTo(0)
+      expect(dvalaWithMathUtils.run('let { sin, cos } = import("math"); cos(0)')).toBeCloseTo(1)
     })
 
     it('supports function calls with multiple arguments', () => {
@@ -689,7 +689,7 @@ describe('parser', () => {
 
     it('supports nested function calls', () => {
       expect(dvala.run('abs(min(-5, -10))')).toBe(10)
-      expect(dvalaWithMathUtils.run('let { sin } = import(math); round(sin(3.14159))')).toBeCloseTo(0)
+      expect(dvalaWithMathUtils.run('let { sin } = import("math"); round(sin(3.14159))')).toBeCloseTo(0)
     })
 
     it('supports function calls with expressions as arguments', () => {

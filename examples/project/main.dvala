@@ -1,0 +1,14 @@
+let { clamp, lerp } = import("./lib/math.dvala");
+let { average } = import("./lib/stats.dvala");
+let { pi } = import("./lib/constants.dvala");
+
+let values = [3, 7, 2, 9, 4];
+let avg = average(values);
+let clamped = clamp(avg, 0, 5);
+let interpolated = lerp(0, pi, 0.5);
+
+{
+  avg: avg,
+  clamped: clamped,
+  interpolated: interpolated
+}

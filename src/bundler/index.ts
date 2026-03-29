@@ -18,10 +18,11 @@ const builtinModuleNames = new Set([
 ])
 
 /**
- * Regex to match `import("...")` or `import('...')` calls in Dvala source.
- * Captures the file path inside the quotes.
+ * Regex to match file imports: import("./..."), import("../..."), or import("/...").
+ * Only paths starting with ./, ../, or / are treated as file imports.
+ * Bare module names like import("math") are left untouched.
  */
-const fileImportPattern = /import\(\s*"([^"]+)"\s*\)|import\(\s*'([^']+)'\s*\)/g
+const fileImportPattern = /import\(\s*"(\.{0,2}\/[^"]+)"\s*\)|import\(\s*'(\.{0,2}\/[^']+)'\s*\)/g
 
 /**
  * Bundles a Dvala entry file and all its file imports into a DvalaBundle.
@@ -190,7 +191,7 @@ export function bundle(entryPath: string): DvalaBundle {
       if (!canonicalName)
         throw new Error(`No canonical name for: ${resolvedPath}`)
 
-      return `import(${canonicalName})`
+      return `import("${canonicalName}")`
     })
   }
 }

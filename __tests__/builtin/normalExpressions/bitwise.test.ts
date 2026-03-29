@@ -71,51 +71,51 @@ describe('bitwise', () => {
   for (const dvala of [createDvala({ modules: [bitwiseUtilsModule] }), createDvala({ modules: [bitwiseUtilsModule], debug: true })]) {
     describe('bitNot', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitNot } = import(bitwise); bitNot(0)')).toBe(-1)
-        expect(dvala.run('let { bitNot } = import(bitwise); bitNot(255)')).toBe(-256)
-        expect(dvala.run('let { bitNot } = import(bitwise); bitNot(0b1111)')).toBe(~Number('0b1111'))
-        expect(dvala.run('let { bitNot } = import(bitwise); bitNot(0xffff)')).toBe(~Number('0xffff'))
-        expect(() => dvala.run('let { bitNot } = import(bitwise); bitNot()')).toThrow(DvalaError)
-        expect(() => dvala.run('let { bitNot } = import(bitwise); bitNot(1, 2)')).toThrow(DvalaError)
+        expect(dvala.run('let { bitNot } = import("bitwise"); bitNot(0)')).toBe(-1)
+        expect(dvala.run('let { bitNot } = import("bitwise"); bitNot(255)')).toBe(-256)
+        expect(dvala.run('let { bitNot } = import("bitwise"); bitNot(0b1111)')).toBe(~Number('0b1111'))
+        expect(dvala.run('let { bitNot } = import("bitwise"); bitNot(0xffff)')).toBe(~Number('0xffff'))
+        expect(() => dvala.run('let { bitNot } = import("bitwise"); bitNot()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { bitNot } = import("bitwise"); bitNot(1, 2)')).toThrow(DvalaError)
       })
     })
     describe('bitAndNot', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitAndNot } = import(bitwise); bitAndNot(0b1100, 0b1001)')).toBe(0b0100)
-        expect(dvala.run('let { bitAndNot } = import(bitwise); bitAndNot(0b1111, 0b1010, 0b1010)')).toBe(0b0101)
-        expect(dvala.run('let { bitAndNot } = import(bitwise); bitAndNot(0b1111, 0b0111, 0b0011)')).toBe(0b1000)
-        expect(() => dvala.run('let { bitAndNot } = import(bitwise); bitAndNot()')).toThrow(DvalaError)
-        expect(() => dvala.run('let { bitAndNot } = import(bitwise); bitAndNot(12)')).toThrow(DvalaError)
-        expect(() => dvala.run('let { bitAndNot } = import(bitwise); bitAndNot(1, 2.1)')).toThrow(DvalaError)
+        expect(dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot(0b1100, 0b1001)')).toBe(0b0100)
+        expect(dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot(0b1111, 0b1010, 0b1010)')).toBe(0b0101)
+        expect(dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot(0b1111, 0b0111, 0b0011)')).toBe(0b1000)
+        expect(() => dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot()')).toThrow(DvalaError)
+        expect(() => dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot(12)')).toThrow(DvalaError)
+        expect(() => dvala.run('let { bitAndNot } = import("bitwise"); bitAndNot(1, 2.1)')).toThrow(DvalaError)
       })
     })
     describe('bitClear', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitClear } = import(bitwise); 0b1111 bitClear 2')).toBe(0b1011)
-        expect(dvala.run('let { bitClear } = import(bitwise); bitClear(0b1111, 2)')).toBe(0b1011)
-        expect(dvala.run('let { bitClear } = import(bitwise); bitClear(0b1111, 5)')).toBe(0b1111)
+        expect(dvala.run('let { bitClear } = import("bitwise"); 0b1111 bitClear 2')).toBe(0b1011)
+        expect(dvala.run('let { bitClear } = import("bitwise"); bitClear(0b1111, 2)')).toBe(0b1011)
+        expect(dvala.run('let { bitClear } = import("bitwise"); bitClear(0b1111, 5)')).toBe(0b1111)
       })
     })
     describe('bitFlip', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitFlip } = import(bitwise); 0b1111 bitFlip 2')).toBe(0b1011)
-        expect(dvala.run('let { bitFlip } = import(bitwise); bitFlip(0b1111, 2)')).toBe(0b1011)
-        expect(dvala.run('let { bitFlip } = import(bitwise); bitFlip(0, 2)')).toBe(0b100)
+        expect(dvala.run('let { bitFlip } = import("bitwise"); 0b1111 bitFlip 2')).toBe(0b1011)
+        expect(dvala.run('let { bitFlip } = import("bitwise"); bitFlip(0b1111, 2)')).toBe(0b1011)
+        expect(dvala.run('let { bitFlip } = import("bitwise"); bitFlip(0, 2)')).toBe(0b100)
       })
     })
     describe('bitSet', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitSet } = import(bitwise); 0b1001 bitSet 2')).toBe(0b1101)
-        expect(dvala.run('let { bitSet } = import(bitwise); bitSet(0b1001, 2)')).toBe(0b1101)
-        expect(dvala.run('let { bitSet } = import(bitwise); bitSet(0, 2)')).toBe(0b100)
+        expect(dvala.run('let { bitSet } = import("bitwise"); 0b1001 bitSet 2')).toBe(0b1101)
+        expect(dvala.run('let { bitSet } = import("bitwise"); bitSet(0b1001, 2)')).toBe(0b1101)
+        expect(dvala.run('let { bitSet } = import("bitwise"); bitSet(0, 2)')).toBe(0b100)
       })
     })
     describe('bitTest', () => {
       it('samples', () => {
-        expect(dvala.run('let { bitTest } = import(bitwise); 0b1001 bitTest 2')).toBe(false)
-        expect(dvala.run('let { bitTest } = import(bitwise); 0b1111 bitTest 2')).toBe(true)
-        expect(dvala.run('let { bitTest } = import(bitwise); bitTest(0b1001, 2)')).toBe(false)
-        expect(dvala.run('let { bitTest } = import(bitwise); bitTest(0b1111, 2)')).toBe(true)
+        expect(dvala.run('let { bitTest } = import("bitwise"); 0b1001 bitTest 2')).toBe(false)
+        expect(dvala.run('let { bitTest } = import("bitwise"); 0b1111 bitTest 2')).toBe(true)
+        expect(dvala.run('let { bitTest } = import("bitwise"); bitTest(0b1001, 2)')).toBe(false)
+        expect(dvala.run('let { bitTest } = import("bitwise"); bitTest(0b1111, 2)')).toBe(true)
       })
     })
   }

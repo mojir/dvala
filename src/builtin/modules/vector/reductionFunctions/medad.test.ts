@@ -8,7 +8,7 @@ const dvala = createDvala({ modules: [vectorModule] })
 // Helper to run vec module functions with the new import syntax
 function runVec(code: string): unknown {
   // Add module import prefix to function calls
-  const modifiedCode = `let v = import(vector); v.${code}`
+  const modifiedCode = `let v = import("vector"); v.${code}`
   return dvala.run(modifiedCode)
 }
 

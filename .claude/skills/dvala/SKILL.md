@@ -120,7 +120,7 @@ end
 h(-> perform(@my.eff, 21))
 
 // effectHandler module
-let { fallback, retry } = import(effectHandler);
+let { fallback, retry } = import("effectHandler");
 do with fallback(0); 0 / 0 end              // catch errors (aborts with 0)
 retry(3, -> dangerousOperation())            // retry up to 3 times
 ```
@@ -139,8 +139,8 @@ Unary: `-x` (negation)
 ## Import
 
 ```dvala
-let { sin, cos } = import(math);
-let m = import(collection);
+let { sin, cos } = import("math");
+let m = import("collection");
 m.frequencies([1, 1, 2])
 ```
 
@@ -296,11 +296,11 @@ end;
 `macroexpand(macroFn, ...astArgs)` calls a macro's body and returns the expanded AST as data, without evaluating it. Pass AST arguments using quote blocks:
 
 ```dvala
-let { prettyPrint } = import(ast);
+let { prettyPrint } = import("ast");
 let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 macroexpand(double, quote 21 end) |> prettyPrint   // → "21 + 21"
 ```
 
-The `ast` module (`import(ast)`) provides constructors (`num`, `strNode`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isCall`, `isLet`, `isFn`, etc.), accessors (`nodeType`, `payload`), and `prettyPrint`.
+The `ast` module (`import("ast")`) provides constructors (`num`, `strNode`, `sym`, `builtin`, `effectNode`, `call`, `ifNode`, `block`), predicates (`isNum`, `isStr`, `isSym`, `isCall`, `isLet`, `isFn`, etc.), accessors (`nodeType`, `payload`), and `prettyPrint`.
 
 Note: some names are suffixed to avoid clashing with core builtins: `strNode` (vs `str`), `effectNode` (vs `effect`), `isEffectNode` (vs `isEffect`).

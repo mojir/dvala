@@ -43,7 +43,7 @@ let negate = macro (ast) -> quote 0 - $^{ast} end;
 ## Inspect Expansions
 
 ```dvala
-let { prettyPrint } = import(ast);
+let { prettyPrint } = import("ast");
 let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 macroexpand(double, quote 21 end) |> prettyPrint
 ```

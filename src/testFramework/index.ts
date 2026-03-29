@@ -1,11 +1,15 @@
 import fs from 'node:fs'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
+import { bundle } from '../bundler'
 import { createTestCollector, createTestModule } from '../builtin/modules/test'
 import type { TestEntry } from '../builtin/modules/test'
 import type { Handlers } from '../evaluator/effectTypes'
 import type { TestCaseResult, TestRunResult } from './result'
 import { formatTap } from './formatTap'
+
+/** Regex to detect file imports: import("./..."), import("../..."), or import("/...") */
+const fileImportPattern = /import\(\s*["']\.{0,2}\/[^"']+["']\s*\)/
 
 interface RunTestParams {
   testPath: string
@@ -46,8 +50,16 @@ export function runTestFile({ testPath: filePath, testNamePattern }: RunTestPara
     // Create a Dvala runner with the test module included alongside all builtins
     const dvala = createDvala({ debug: true, modules: [...allBuiltinModules, testModule] })
 
+    // If the test file uses file imports, bundle it first so that
+    // import("./path.dvala") calls are resolved and available at runtime
+    const hasFileImports = fileImportPattern.test(source)
+    const runSource = hasFileImports ? bundle(filePath) : source
+
     // Evaluate the test file — this populates the collector with test registrations
-    dvala.run(source, { filePath, effectHandlers: testEffectHandlers })
+    dvala.run(runSource, hasFileImports
+      ? { effectHandlers: testEffectHandlers }
+      : { filePath, effectHandlers: testEffectHandlers },
+    )
 
     // Run collected tests with timing
     const tests = collector.tests

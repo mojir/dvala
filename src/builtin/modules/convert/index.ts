@@ -344,7 +344,7 @@ function generateLinearConversions(category: UnitCategory): BuiltinNormalExpress
           description: `Converts a value from ${fromDesc} (\`${from}\`) to ${toDesc} (\`${to}\`).`,
           seeAlso,
           examples: [
-            `let { ${fnName} } = import(convert);
+            `let { ${fnName} } = import("convert");
 ${fnName}(1)`,
           ],
         },
@@ -392,7 +392,7 @@ function generateTemperatureConversions(): BuiltinNormalExpressions {
           description: `Converts a temperature from ${fromDesc} (\`${from}\`) to ${toDesc} (\`${to}\`).`,
           seeAlso,
           examples: [
-            `let { ${fnName} } = import(convert);
+            `let { ${fnName} } = import("convert");
 ${fnName}(100)`,
           ],
         },

@@ -6,7 +6,7 @@ import { matrixModule } from './'
 const dvala = createDvala({ modules: [matrixModule] })
 
 function runMat(code: string) {
-  return dvala.run(`let mat = import(matrix); ${code.replace(/mat:/g, 'mat.')}`)
+  return dvala.run(`let mat = import("matrix"); ${code.replace(/mat:/g, 'mat.')}`)
 }
 
 describe('matrix', () => {

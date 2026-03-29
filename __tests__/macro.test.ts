@@ -119,7 +119,7 @@ describe('macro system', () => {
 
     it('should produce AST that prettyPrints correctly', () => {
       const result = dvala.run(`
-        let { prettyPrint } = import(ast);
+        let { prettyPrint } = import("ast");
         let double = macro (ast) -> quote $^{ast} + $^{ast} end;
         macroexpand(double, quote 21 end) |> prettyPrint
       `)
@@ -184,7 +184,7 @@ describe('macro system', () => {
       // The builtin `assert` throws on falsy values, but the macro should
       // intercept the call and return the AST evaluation result instead.
       const result = run(`
-        let { prettyPrint } = import(ast);
+        let { prettyPrint } = import("ast");
         let assert = macro (cond) ->
           quote if $^{cond} then "pass" else "fail" end end;
         assert(1 > 5)
@@ -264,7 +264,7 @@ myAssert(1 > 5)`)
 
     it('should return handler value when macro expansion error is caught by fallback', () => {
       expect(run(`
-        let { fallback } = import(effectHandler);
+        let { fallback } = import("effectHandler");
         let inf = macro (ast) -> inf(ast);
         fallback("default")(-> inf(1))
       `)).toBe('default')

@@ -475,7 +475,7 @@ describe('sequence functions', () => {
 })
 
 describe('sequence-Utils module functions', () => {
-  const imp = 'let su = import(sequence); '
+  const imp = 'let su = import("sequence"); '
   for (const mdvala of [createDvala({ modules: [sequenceUtilsModule] }), createDvala({ modules: [sequenceUtilsModule], debug: true })]) {
     describe('position', () => {
       it('samples', () => {

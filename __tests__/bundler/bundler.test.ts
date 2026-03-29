@@ -26,10 +26,10 @@ describe('bundle', () => {
     expect(moduleNames).toContain('lib/math-helpers')
     expect(moduleNames).toContain('lib/constants')
 
-    // Program should have rewritten imports (bare symbols, not strings)
-    expect(result.program).toContain('import(lib/math-helpers)')
-    expect(result.program).toContain('import(lib/constants)')
-    expect(result.program).not.toContain('import("')
+    // Program should have rewritten imports (canonical names as strings)
+    expect(result.program).toContain('import("lib/math-helpers")')
+    expect(result.program).toContain('import("lib/constants")')
+    expect(result.program).not.toContain('import("./')
   })
 
   it('bundles multiple imports', () => {
@@ -73,7 +73,7 @@ describe('bundle', () => {
     const mathModule = moduleNames[0]!
     expect(mathModule).not.toBe('math')
     // The program should reference the adjusted name
-    expect(result.program).toContain(`import(${mathModule})`)
+    expect(result.program).toContain(`import("${mathModule}")`)
   })
 
   it('throws on missing file', () => {
@@ -85,7 +85,7 @@ describe('bundle', () => {
     const result = bundle(path.join(fixturesDir, 'single-quote-import.dvala'))
     expect(result.fileModules).toHaveLength(1)
     expect(result.fileModules[0]![0]).toBe('lib/constants')
-    expect(result.program).toContain('import(lib/constants)')
+    expect(result.program).toContain('import("lib/constants")')
   })
 
   it('derives canonical name for a file outside the entry directory', () => {

@@ -24,8 +24,8 @@ const dvala = createDvala({ modules: [gridModule] })
 
 // Helper to run grid module functions with the new import syntax
 function runGrid(code: string): unknown {
-  // Replace 'grid:functionName(' with 'let g = import(grid); g.functionName('
-  const modifiedCode = code.replace(/grid:(\S+?)\(/g, 'let g = import(grid); g.$1(')
+  // Replace 'grid:functionName(' with 'let g = import("grid"); g.functionName('
+  const modifiedCode = code.replace(/grid:(\S+?)\(/g, 'let g = import("grid"); g.$1(')
   return dvala.run(modifiedCode)
 }
 
@@ -431,12 +431,12 @@ describe('grid', () => {
 
 describe('import with destructuring', () => {
   it('should import a single function via destructuring', () => {
-    expect(dvala.run('let { row } = import(grid); row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
+    expect(dvala.run('let { row } = import("grid"); row([[1, 2], [3, 4]], 0)')).toEqual([1, 2])
   })
 
   it('should work with function composition', () => {
     expect(dvala.run(`
-      let { transpose, row } = import(grid);
+      let { transpose, row } = import("grid");
       row(transpose([[1, 2], [3, 4]]), 1)
     `)).toEqual([2, 4])
   })
