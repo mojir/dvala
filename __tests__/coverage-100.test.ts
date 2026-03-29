@@ -711,6 +711,17 @@ describe('AutoCompleter.ts branch coverage', () => {
     expect(suggestions).toContain('myVar')
     expect(suggestions).toContain('myVal')
   })
+
+  it('case-insensitive includes finds match not found by earlier rounds', () => {
+    // Search "XY" — a binding "axy" contains "xy" (case-insensitive) but NOT "XY" (case-sensitive).
+    // Round 1 (startsWith "XY"): no match
+    // Round 2 (startsWith "xy" case-insensitive): no match (doesn't start with it)
+    // Round 3 (includes "XY" case-sensitive): no match ("axy" doesn't contain "XY")
+    // Round 4 (includes "xy" case-insensitive): MATCH ("axy" contains "xy")
+    const ac = getAutoCompleter('XY', 2, { bindings: { axy: 1 } })
+    const suggestions = ac.getSuggestions()
+    expect(suggestions).toContain('axy')
+  })
 })
 
 // ---------------------------------------------------------------------------
