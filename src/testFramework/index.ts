@@ -1,11 +1,12 @@
-import fs from 'node:fs'
+import fs, { globSync } from 'node:fs'
+import path from 'node:path'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
 import { bundle } from '../bundler'
 import { createTestCollector, createTestModule } from '../builtin/modules/test'
 import type { TestEntry } from '../builtin/modules/test'
 import type { Handlers } from '../evaluator/effectTypes'
-import type { TestCaseResult, TestRunResult } from './result'
+import type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
 import { formatTap } from './formatTap'
 
 /** Regex to detect file imports: import("./..."), import("../..."), or import("/...") */
@@ -94,6 +95,22 @@ export function runTestFile({ testPath: filePath, testNamePattern }: RunTestPara
 export function runTest(params: RunTestParams): { tap: string; success: boolean } {
   const result = runTestFile(params)
   return formatTap(result)
+}
+
+/**
+ * Discover and run all test files matching a glob pattern.
+ * Used by `dvala test` (no args) with dvala.json config.
+ */
+export function runTestSuite(rootDir: string, testGlob: string, testNamePattern?: RegExp): TestSuiteResult {
+  const files = globSync(testGlob, { cwd: rootDir })
+    .map(f => path.resolve(rootDir, f))
+    .sort()
+
+  const start = performance.now()
+  const results = files.map(testPath => runTestFile({ testPath, testNamePattern }))
+  const durationMs = performance.now() - start
+
+  return { files: results, durationMs }
 }
 
 function readDvalaFile(dvalaPath: string): string {
