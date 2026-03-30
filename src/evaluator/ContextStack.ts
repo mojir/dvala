@@ -11,6 +11,7 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
 import { toAny } from '../utils'
+import { fromJS } from '../utils/interop'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { Context, LookUpResult } from './interface'
 import { isContextEntry } from './interface'
@@ -200,8 +201,10 @@ export class ContextStackImpl {
     }
     const hostValue = this.values?.[name]
     if (hostValue !== undefined) {
+      // Apply fromJS so plain JS arrays/objects passed as host bindings are
+      // converted to PersistentVector/PersistentMap before entering the evaluator.
       return {
-        value: toAny(hostValue),
+        value: fromJS(hostValue),
       }
     }
 

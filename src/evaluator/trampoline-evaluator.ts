@@ -1134,7 +1134,9 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         return setupUserDefinedCall(expression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
       const result = expression.evaluate(params, sourceCodeInfo, env)
-      return wrapMaybePromiseAsStep(result, k)
+      // Convert plain JS arrays returned by module functions to PersistentVector
+      // so they are valid Dvala sequence values.
+      return wrapMaybePromiseAsStep(Array.isArray(result) ? fromJS(result) : result, k)
     }
     case 'Builtin': {
       const normalExpression = builtin.normalExpressions[fn.normalBuiltinSymbolType]!
@@ -1145,7 +1147,8 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         return setupUserDefinedCall(normalExpression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
       const result = normalExpression.evaluate(params, sourceCodeInfo, env)
-      return wrapMaybePromiseAsStep(result, k)
+      // Convert plain JS arrays returned by builtin functions to PersistentVector
+      return wrapMaybePromiseAsStep(Array.isArray(result) ? fromJS(result) : result, k)
     }
   }
 }
@@ -1568,12 +1571,12 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
   // Process the completed value into a new immutable result
   let newResult: Arr
   if (frame.isSpread) {
-    if (!isPersistentVector(value)) {
+    if (!isPersistentVector(value) && !Array.isArray(value)) {
       throw new TypeError('Spread value is not an array', sourceCodeInfo)
     }
-    // Append all items from the spread vector
+    // Append all items from the spread value (PV or plain array) into the result PV
     let r = frame.result
-    for (const item of value) r = r.append(item as Any)
+    for (const item of value as Iterable<Any>) r = r.append(item as Any)
     newResult = r
   } else {
     newResult = frame.result.append(value)
@@ -1742,13 +1745,29 @@ function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationS
 
 function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const { bindingNodes, result, env, sourceCodeInfo } = frame
-  const { asColl, isSeq } = getCollectionUtils()
+  const { asColl } = getCollectionUtils()
 
   switch (frame.phase) {
     case 'evalCollection': {
       // A collection expression has been evaluated
       const coll = asColl(value, sourceCodeInfo)
-      const seq: Arr = isSeq(coll) ? (coll as Arr) : PersistentVector.from(Object.entries((coll as Obj).toRecord()) as unknown as Any[])
+      // Build a PersistentVector to iterate: PV stays as-is, plain arrays are
+      // wrapped in PV, strings become a PV of characters, and PersistentMap
+      // becomes a PV of [key, val] PV pairs.
+      let seq: Arr
+      if (isPersistentVector(coll)) {
+        seq = coll as Arr
+      } else if (Array.isArray(coll)) {
+        seq = PersistentVector.from(coll as Any[])
+      } else if (typeof coll === 'string') {
+        seq = PersistentVector.from([...coll] as Any[])
+      } else {
+        // Each [key, value] entry must itself be a PersistentVector so that
+        // destructuring patterns like `for let [k, v] of obj` work correctly.
+        const pairs: Any[] = []
+        for (const [k, v] of coll as Obj) pairs.push(PersistentVector.from([k, v] as Any[]))
+        seq = PersistentVector.from(pairs)
+      }
 
       if (seq.size === 0) {
         // Empty collection — abort this level
@@ -3218,11 +3237,11 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   // Process the completed value — build new immutable params
   let newParams: Arr
   if (isSpreadNode(currentArgNode)) {
-    if (!isPersistentVector(value)) {
+    if (!isPersistentVector(value) && !Array.isArray(value)) {
       throw new TypeError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
     }
     let acc = frame.params
-    for (const item of value) acc = acc.append(item as Any)
+    for (const item of value as Iterable<Any>) acc = acc.append(item as Any)
     newParams = acc
   } else {
     newParams = frame.params.append(value)
@@ -4416,12 +4435,13 @@ function wrapMaybePromiseAsStep(result: MaybePromise<Any>, k: ContinuationStack)
 function getCollectionUtils(): { asColl: (v: Any, s?: SourceCodeInfo) => Any; isSeq: (v: Any) => boolean } {
   return {
     asColl: (v: Any, s?: SourceCodeInfo) => {
-      if (typeof v === 'string' || Array.isArray(v) || isObj(v)) {
+      // Accept both PersistentVector (new) and plain JS arrays (legacy module returns)
+      if (typeof v === 'string' || isPersistentVector(v) || Array.isArray(v) || isObj(v)) {
         return v
       }
       throw new TypeError(`Expected collection, got ${valueToString(v)}`, s)
     },
-    isSeq: (v: Any) => typeof v === 'string' || Array.isArray(v),
+    isSeq: (v: Any) => typeof v === 'string' || isPersistentVector(v) || Array.isArray(v),
   }
 }
 

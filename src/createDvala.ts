@@ -15,6 +15,7 @@ import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
+import { toJS } from './utils/interop'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
@@ -173,26 +174,28 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         // The evaluator merges the source map into contextStack automatically.
         const ast = source.ast
         if (effectHandlers) {
-          return evaluateWithSyncEffects(ast, contextStack, effectHandlers)
+          // toJS converts PersistentVector/Map to plain JS arrays/objects so
+          // host code can work with standard JS values.
+          return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
         }
         const result = evaluate(ast, contextStack)
         /* v8 ignore next 2 */
         if (result instanceof Promise)
           throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
-        return result
+        return toJS(result)
       }
 
       const ast = buildAst(source, runOptions?.filePath)
 
       if (effectHandlers) {
-        return evaluateWithSyncEffects(ast, contextStack, effectHandlers)
+        return toJS(evaluateWithSyncEffects(ast, contextStack, effectHandlers) as never)
       }
 
       const result = evaluate(ast, contextStack)
       if (result instanceof Promise) {
         throw new TypeError('Unexpected async result in run(). Use runAsync() for async operations.')
       }
-      return result
+      return toJS(result)
     },
 
     async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {

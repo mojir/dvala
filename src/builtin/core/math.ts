@@ -1,7 +1,7 @@
 import { RuntimeError } from '../../errors'
 import type { Any, Arr } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
-import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
+import { assertMatrix, assertNonEmptyVector, assertVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinNormalExpressions } from '../interface'
@@ -32,7 +32,9 @@ function getNumberVectorOrMatrixOperation(
     }
     let rows: number | null = null
     let cold: number | null = null
-    for (const param of paramsArr) {
+    // Convert PV→plain before dimension checks so .length works
+    const plainParams = paramsArr.map(p => isMatrix(p) ? assertMatrix(p, sourceCodeInfo) : p)
+    for (const param of plainParams) {
       if (isMatrix(param)) {
         if (rows === null) {
           rows = param.length
@@ -44,7 +46,7 @@ function getNumberVectorOrMatrixOperation(
         }
       }
     }
-    const matrices = paramsArr.map(param => {
+    const matrices = plainParams.map(param => {
       if (isMatrix(param)) {
         return param
       }
@@ -54,7 +56,9 @@ function getNumberVectorOrMatrixOperation(
   }
   if (hasVector) {
     let length: number | null = null
-    for (const param of paramsArr) {
+    // Convert PV→plain before length checks so .length works
+    const plainParams = paramsArr.map(p => isVector(p) ? assertVector(p, sourceCodeInfo) : p)
+    for (const param of plainParams) {
       if (isVector(param)) {
         if (length === null) {
           length = param.length
@@ -65,7 +69,7 @@ function getNumberVectorOrMatrixOperation(
         }
       }
     }
-    const vectors = paramsArr.map(param => {
+    const vectors = plainParams.map(param => {
       if (isVector(param)) {
         return param
       }
