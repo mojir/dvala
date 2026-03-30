@@ -72,7 +72,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
-import { cons, isPersistentVector, listDrop, listSize, listTake, listPrependAll, listToArray, PersistentVector, PersistentMap } from '../utils/persistent'
+import { cons, isPersistentVector, listDrop, listFromArray, listSize, listTake, listPrependAll, listToArray, PersistentVector, PersistentMap } from '../utils/persistent'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -982,18 +982,9 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       return dispatchFunction(thunkFn, PersistentVector.empty(), [], env, sourceCodeInfo, cons(handleFrame, k))
     }
     case 'Resume': {
-      // resume(value) — execute the resume logic.
-      // 1. One-shot guard
-      // 2. Mark clause as resumed
-      // 3. Reinstall handler around continuation (deep semantics)
-      // 4. Resume continuation with the given value
-      const clauseFrame = fn.clauseFrame as HandlerClauseFrame
-      if (clauseFrame.resumeConsumed) {
-        throw new RuntimeError('resume can only be called once per effect (one-shot continuation)', sourceCodeInfo)
-      }
-      clauseFrame.resumeConsumed = true
-      clauseFrame.resumed = true
-
+      // resume(value) — reinstall the handler and continue execution from the perform site.
+      // Multi-shot: resume may be called any number of times. Each call re-uses the
+      // same immutable performK snapshot (a PersistentList) — no copying needed.
       const resumeValue = (params.size > 0 ? params.get(0)! : null) as Any
       const performK = fn.performK as ContinuationStack
       const handler = fn.handler
@@ -1028,11 +1019,18 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // performK = [inner frames..., AlgebraicHandleFrame] — drop the last frame (the handle frame)
       const innerFrames = listTake(performK, listSize(performK) - 1)
 
+      // Multi-shot: freshen the environment in each inner frame so that this
+      // resume starts from an independent copy of the captured scope.
+      // Without freshening, the second resume would fail with "Cannot redefine value"
+      // because addValues mutates _contexts[0] and both resumes share the same
+      // ContextStack references captured in performK.
+      const freshInnerFrames = freshenContinuationEnvs(innerFrames)
+
       // The k currently has [clauseFrame?, ...outerK] — but actually we're inside
       // dispatchDvalaFunction, so k is whatever was passed. The clauseFrame is
       // already on k from the clause body evaluation.
       // We want the resumed continuation to flow back through the clauseFrame.
-      const reinstalledK: ContinuationStack = listPrependAll(listToArray(innerFrames), cons(newHandleFrame, k))
+      const reinstalledK: ContinuationStack = listPrependAll(listToArray(freshInnerFrames), cons(newHandleFrame, k))
 
       return { type: 'Value', value: resumeValue, k: reinstalledK }
     }
@@ -2398,28 +2396,9 @@ function startTransformClause(
  * We need to pop the continuation up past the AlgebraicHandleFrame.
  */
 function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: ContinuationStack): Step {
-  if (frame.resumed) {
-    // resume was called — the clause's return value is the final result
-    // of the reinstalled handler block. This has already gone through
-    // the transform (inside resume). Now we need to skip the outer
-    // AlgebraicHandleFrame since the clause is returning a value
-    // (abort from the outer handler's perspective).
-    //
-    // Pop past the AlgebraicHandleFrame on k
-    let _node = k
-    while (_node !== null) {
-      if (_node.head.type === 'AlgebraicHandle') {
-        // Skip the AlgebraicHandleFrame — abort bypasses transform
-        return { type: 'Value', value, k: _node.tail }
-      }
-      _node = _node.tail
-    }
-    // No AlgebraicHandleFrame found — should not happen, but return value
-    return { type: 'Value', value, k }
-  }
-
-  // Clause did NOT call resume — pure abort.
-  // Pop past the AlgebraicHandleFrame to bypass the transform.
+  void frame // frame fields unused at this point — clause is complete
+  // Clause body completed. Whether or not resume was called, the clause's return
+  // value propagates past the enclosing AlgebraicHandleFrame (bypassing its transform).
   let _node = k
   while (_node !== null) {
     if (_node.head.type === 'AlgebraicHandle') {
@@ -2428,6 +2407,32 @@ function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: Conti
     _node = _node.tail
   }
   return { type: 'Value', value, k }
+}
+
+/**
+ * Create a new continuation where each frame's env has an independent copy
+ * of its innermost context (_contexts[0]). Used for multi-shot: prevents
+ * mutations from one resume affecting subsequent resumes.
+ *
+ * addValues() only mutates _contexts[0], so copying just that context is
+ * sufficient to ensure each resume path is independent. Deduplicates env
+ * references so frames sharing the same env get the same fresh copy.
+ */
+function freshenContinuationEnvs(k: ContinuationStack): ContinuationStack {
+  const envMap = new Map<ContextStack, ContextStack>()
+  const frames = listToArray(k)
+  const freshFrames = frames.map((frame): Frame => {
+    if (!('env' in frame)) return frame
+    const env = (frame as { env: ContextStack }).env
+    if (!envMap.has(env)) {
+      envMap.set(env, env.withCopiedTopContext())
+    }
+    // objectLiteralTypeAssertions: 'never' forbids `{ ... } as Frame`.
+    // Cast through unknown to satisfy the lint rule.
+    const freshFrameUnknown: unknown = { ...frame, env: envMap.get(env) }
+    return freshFrameUnknown as Frame
+  })
+  return listFromArray(freshFrames)
 }
 
 /**
@@ -2469,8 +2474,6 @@ function dispatchAlgebraicHandler(
     type: 'HandlerClause',
     performK,
     handler,
-    resumed: false,
-    resumeConsumed: false,
     env: handler.closureEnv as ContextStack,
     sourceCodeInfo,
   }
@@ -3260,7 +3263,7 @@ function handleParallelResume(
 }
 
 function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { node, placeholders, env } = frame
+  const { node, env } = frame
   const argNodes = node[1][1]
   const currentArgNode = argNodes[frame.index]!
 
@@ -3277,7 +3280,10 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
     newParams = frame.params.append(value)
   }
 
-  // Find the next real argument (skip placeholders)
+  // Find the next real argument (skip placeholders).
+  // Copy placeholders array before appending — required for multi-shot safety since
+  // frame.placeholders must remain unchanged if this frame is in a captured continuation.
+  const placeholders = [...frame.placeholders]
   let nextIndex = frame.index + 1
   while (nextIndex < argNodes.length) {
     const nextArg = argNodes[nextIndex]!
@@ -3291,11 +3297,11 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
 
   if (nextIndex >= argNodes.length) {
     // All args evaluated — dispatch the call
-    return dispatchCall({ ...frame, params: newParams, index: nextIndex }, k)
+    return dispatchCall({ ...frame, params: newParams, placeholders, index: nextIndex }, k)
   }
 
   // Evaluate next argument
-  const newFrame: EvalArgsFrame = { ...frame, params: newParams, index: nextIndex }
+  const newFrame: EvalArgsFrame = { ...frame, params: newParams, placeholders, index: nextIndex }
   const nextArg = argNodes[nextIndex]!
   if (isSpreadNode(nextArg)) {
     return { type: 'Eval', node: nextArg[1], env, k: cons<Frame>(newFrame, k) }
@@ -3511,11 +3517,13 @@ function continueBindingSlots(
     const value = extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo)
 
     if (value === undefined && slot.defaultNode) {
-      // Need to evaluate default — push frame and evaluate
+      // Need to evaluate default — push frame and evaluate.
+      // Both contexts and record are copied so each resumption starts from the
+      // same snapshot (required for multi-shot continuation safety).
       const frame: BindingSlotFrame = {
         type: 'BindingSlot',
         contexts: contexts.map(c => ({ ...c })), // snapshot context stack
-        record,
+        record: { ...record }, // copy accumulated bindings so far
         env,
         sourceCodeInfo,
       }
@@ -4001,18 +4009,20 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
  * Collect the value, evaluate the next splice, or assemble the final AST data.
  */
 function applyCodeTemplateBuild(frame: CodeTemplateBuildFrame, value: Any, k: ContinuationStack): Step {
-  frame.values.push(value)
-  frame.index++
+  // Build new frame instead of mutating — required for multi-shot continuation safety.
+  const nextValues = [...frame.values, value]
+  const nextIndex = frame.index + 1
 
   // More splices to evaluate
-  if (frame.index < frame.spliceExprs.length) {
-    return { type: 'Eval', node: frame.spliceExprs[frame.index]!, env: frame.env, k: cons<Frame>(frame, k) }
+  if (nextIndex < frame.spliceExprs.length) {
+    const newFrame: CodeTemplateBuildFrame = { ...frame, values: nextValues, index: nextIndex }
+    return { type: 'Eval', node: frame.spliceExprs[nextIndex]!, env: frame.env, k: cons<Frame>(newFrame, k) }
   }
 
   // All splices evaluated — assemble the AST data with hygiene renames
   const result = frame.bodyAst.length === 1
-    ? astToData(frame.bodyAst[0]!, frame.values, frame.renameMap)
-    : frame.bodyAst.map(n => astToData(n, frame.values, frame.renameMap))
+    ? astToData(frame.bodyAst[0]!, nextValues, frame.renameMap)
+    : frame.bodyAst.map(n => astToData(n, nextValues, frame.renameMap))
   return { type: 'Value', value: toAny(result), k }
 }
 

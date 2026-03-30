@@ -159,6 +159,28 @@ export class ContextStackImpl {
     return contextStack
   }
 
+  /**
+   * Create a new ContextStack that shares all outer scopes but has an
+   * independent shallow copy of the innermost context (`_contexts[0]`).
+   *
+   * Used for multi-shot continuations: `addValues` only mutates `_contexts[0]`,
+   * so each resume call must get its own copy of that context. Without this,
+   * the second resume would see bindings added by the first resume and throw
+   * "Cannot redefine value".
+   */
+  public withCopiedTopContext(): ContextStack {
+    const cs = new ContextStackImpl({
+      contexts: [{ ...this._contexts[0] }, ...this._contexts.slice(1)],
+      values: this.values,
+      modules: this.modules,
+      valueModules: this.valueModules,
+      pure: this.pure,
+      sourceMap: this.sourceMap,
+    })
+    cs.globalContext = this.globalContext
+    return cs
+  }
+
   public new(context: Context): ContextStack {
     const contexts = [{}, context]
 
