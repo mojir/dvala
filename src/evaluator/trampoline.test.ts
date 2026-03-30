@@ -8,7 +8,7 @@ import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
 import { fromJS, toJS } from '../utils/interop'
-import { PersistentMap, PersistentVector } from '../utils/persistent'
+import { listSize, listToArray, PersistentMap, PersistentVector } from '../utils/persistent'
 import type { ContextStack } from './ContextStack'
 import { createContextStack } from './ContextStack'
 import type {
@@ -71,15 +71,15 @@ function runTrampoline(step: Step): unknown {
 
 describe('tick', () => {
   it('should return terminal ValueStep unchanged when k is empty', () => {
-    const step: Step = { type: 'Value', value: 42, k: [] }
+    const step: Step = { type: 'Value', value: 42, k: null }
     const next = tick(step)
-    expect(next).toEqual({ type: 'Value', value: 42, k: [] })
+    expect(next).toEqual({ type: 'Value', value: 42, k: null })
   })
 
   it('should apply top frame when ValueStep has non-empty k', () => {
     const thenNode: NumberNode = [NodeTypes.Num, 99, 0]
     const frame: IfBranchFrame = { type: 'IfBranch', thenNode, elseNode: undefined, env: emptyEnv() }
-    const step: Step = { type: 'Value', value: true, k: [frame] }
+    const step: Step = { type: 'Value', value: true, k: { head: frame, tail: null } }
     const next = tick(step) as Step
     expect(next.type).toBe('Eval')
     if (next.type === 'Eval') {
@@ -89,26 +89,26 @@ describe('tick', () => {
 
   it('should dispatch EvalStep via stepNode', () => {
     const node = parseFirst('42')
-    const step: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
+    const step: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
     const next = tick(step) as Step
-    expect(next).toEqual({ type: 'Value', value: 42, k: [] })
+    expect(next).toEqual({ type: 'Value', value: 42, k: null })
   })
 
   it('should dispatch ApplyStep via applyFrame', () => {
     const frame: NanCheckFrame = { type: 'NanCheck' }
-    const step: Step = { type: 'Apply', frame, value: 42, k: [] }
+    const step: Step = { type: 'Apply', frame, value: 42, k: null }
     const next = tick(step) as Step
-    expect(next).toEqual({ type: 'Value', value: 42, k: [] })
+    expect(next).toEqual({ type: 'Value', value: 42, k: null })
   })
 
   it('should run a full program via tick loop', () => {
     const node = parseFirst('1 + 2 + 3')
-    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
+    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
     let step: Step | Promise<Step> = initial
     for (let i = 0; i < 1000; i++) {
       if (step instanceof Promise)
         throw new TypeError('Unexpected async')
-      if (step.type === 'Value' && step.k.length === 0) {
+      if (step.type === 'Value' && listSize(step.k) === 0) {
         expect(step.value).toBe(6)
         return
       }
@@ -125,18 +125,18 @@ describe('tick', () => {
 describe('runSyncTrampoline', () => {
   it('should evaluate a simple expression', () => {
     const node = parseFirst('42')
-    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
+    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
     expect(runSyncTrampoline(initial)).toBe(42)
   })
 
   it('should evaluate a complex expression', () => {
     const node = parseFirst('(1 + 2) * (3 + 4)')
-    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
+    const initial: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
     expect(runSyncTrampoline(initial)).toBe(21)
   })
 
   it('should evaluate a terminal ValueStep immediately', () => {
-    const initial: Step = { type: 'Value', value: 'done', k: [] }
+    const initial: Step = { type: 'Value', value: 'done', k: null }
     expect(runSyncTrampoline(initial)).toBe('done')
   })
 })
@@ -149,7 +149,7 @@ describe('stepNode', () => {
   describe('leaf nodes', () => {
     it('should return ValueStep for number literals', () => {
       const node = parseFirst('42')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       expect((step as { value: Any }).value).toBe(42)
     })
@@ -157,7 +157,7 @@ describe('stepNode', () => {
     it('should return ValueStep for negative number literals', () => {
       const node = parseFirst('-3.14')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
+      const step = stepNodeSync(node, env, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(-3.14)
@@ -167,7 +167,7 @@ describe('stepNode', () => {
     it('should return ValueStep for string literals', () => {
       const node = parseFirst('"hello"')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
+      const step = stepNodeSync(node, env, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe('hello')
@@ -177,35 +177,35 @@ describe('stepNode', () => {
     it('should return ValueStep for empty string', () => {
       const node = parseFirst('""')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
-      expect(step).toEqual({ type: 'Value', value: '', k: [] })
+      const step = stepNodeSync(node, env, null)
+      expect(step).toEqual({ type: 'Value', value: '', k: null })
     })
 
     it('should return ValueStep for reserved symbol true', () => {
       const node = parseFirst('true')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
-      expect(step).toEqual({ type: 'Value', value: true, k: [] })
+      const step = stepNodeSync(node, env, null)
+      expect(step).toEqual({ type: 'Value', value: true, k: null })
     })
 
     it('should return ValueStep for reserved symbol false', () => {
       const node = parseFirst('false')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
-      expect(step).toEqual({ type: 'Value', value: false, k: [] })
+      const step = stepNodeSync(node, env, null)
+      expect(step).toEqual({ type: 'Value', value: false, k: null })
     })
 
     it('should return ValueStep for reserved symbol null', () => {
       const node = parseFirst('null')
       const env = emptyEnv()
-      const step = stepNodeSync(node, env, [])
-      expect(step).toEqual({ type: 'Value', value: null, k: [] })
+      const step = stepNodeSync(node, env, null)
+      expect(step).toEqual({ type: 'Value', value: null, k: null })
     })
 
     it('should return ValueStep for user-defined symbol', () => {
       const node = parseFirst('x')
       const env = createContextStack({ globalContext: { x: { value: 10 } } })
-      const step = stepNodeSync(node, env, [])
+      const step = stepNodeSync(node, env, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(10)
@@ -214,7 +214,7 @@ describe('stepNode', () => {
 
     it('should return ValueStep for builtin symbol', () => {
       const node = parseFirst('inc')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
     })
   })
@@ -226,18 +226,18 @@ describe('stepNode', () => {
   describe('normal expressions', () => {
     it('should push EvalArgsFrame for normal expression with args', () => {
       const node = parseFirst('1 + 2')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(2) // EvalArgsFrame + NanCheckFrame
-        expect(step.k[0]!.type).toBe('EvalArgs')
-        expect(step.k[1]!.type).toBe('NanCheck')
+        expect(listSize(step.k)).toBe(2) // EvalArgsFrame + NanCheckFrame
+        expect(step.k?.head!.type).toBe('EvalArgs')
+        expect(step.k?.tail?.head!.type).toBe('NanCheck')
       }
     })
 
     it('should dispatch immediately for no-arg normal expression', () => {
       const node = parseFirst('object()')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
     })
   })
@@ -249,27 +249,27 @@ describe('stepNode', () => {
   describe('special expressions', () => {
     it('should push IfBranchFrame for if expression', () => {
       const node = parseFirst('if true then 1 else 2 end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('IfBranch')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('IfBranch')
       }
     })
 
     it('should push AndFrame for && expression', () => {
       const node = parseFirst('&&(true, false)')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('And')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('And')
       }
     })
 
     it('should return true immediately for empty && expression', () => {
       const node = parseFirst('&&()')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(true)
@@ -278,17 +278,17 @@ describe('stepNode', () => {
 
     it('should push OrFrame for || expression', () => {
       const node = parseFirst('||(false, true)')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Or')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('Or')
       }
     })
 
     it('should return false immediately for empty || expression', () => {
       const node = parseFirst('||()')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(false)
@@ -297,24 +297,24 @@ describe('stepNode', () => {
 
     it('should return null immediately for if with false condition and no else', () => {
       const node = parseFirst('if false then 1 end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       // This will push an IfBranchFrame then evaluate; just verify it steps
       expect(step.type).toBe('Eval')
     })
 
     it('should push IfBranchFrame for if/else if', () => {
       const node = parseFirst('if true then 1 end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('IfBranch')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('IfBranch')
       }
     })
 
     it('should return null for empty block', () => {
       const node = parseFirst('do end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(null)
@@ -323,36 +323,36 @@ describe('stepNode', () => {
 
     it('should eval single-node block without SequenceFrame', () => {
       const node = parseFirst('do 42 end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(0)
+        expect(listSize(step.k)).toBe(0)
       }
     })
 
     it('should push SequenceFrame for multi-node block', () => {
       const node = parseFirst('do 1; 2; 3 end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Sequence')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('Sequence')
       }
     })
 
     it('should push LetBindFrame for let expression', () => {
       const node = parseFirst('let x = 10;')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('LetBind')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('LetBind')
       }
     })
 
     it('should return empty array for empty array literal', () => {
       const node = parseFirst('[]')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toEqual(PersistentVector.empty())
@@ -361,17 +361,17 @@ describe('stepNode', () => {
 
     it('should push ArrayBuildFrame for non-empty array literal', () => {
       const node = parseFirst('[1, 2, 3]')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('ArrayBuild')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('ArrayBuild')
       }
     })
 
     it('should return empty object for empty object literal', () => {
       const node = parseFirst('{}')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toEqual(PersistentMap.empty())
@@ -380,17 +380,17 @@ describe('stepNode', () => {
 
     it('should push ObjectBuildFrame for non-empty object literal', () => {
       const node = parseFirst('{ a: 1 }')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('ObjectBuild')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('ObjectBuild')
       }
     })
 
     it('should return a DvalaFunction for lambda', () => {
       const node = parseFirst('(x) -> x')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toHaveProperty('functionType', 'UserDefined')
@@ -400,7 +400,7 @@ describe('stepNode', () => {
     it('should return value for a symbol in scope', () => {
       const node = parseFirst('x')
       const env = createContextStack({ globalContext: { x: { value: 42 } } })
-      const step = stepNodeSync(node, env, [])
+      const step = stepNodeSync(node, env, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(42)
@@ -409,55 +409,55 @@ describe('stepNode', () => {
 
     it('should push MatchFrame for match expression', () => {
       const node = parseFirst('match 1 case 1 then "one" case 2 then "two" end')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Match')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('Match')
       }
     })
 
     it('should push QqFrame for ?? expression', () => {
       const node = parseFirst('??(null, 1)')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Qq')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('Qq')
       }
     })
 
     it('should push RecurFrame for recur', () => {
       const node = parseFirst('recur(1, 2)')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('Recur')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('Recur')
       }
     })
 
     it('should throw DvalaError for recur outside loop/function', () => {
       const node = parseFirst('recur()')
-      expect(() => stepNodeSync(node, emptyEnv(), [])).toThrow('recur called outside of loop or function body')
+      expect(() => stepNodeSync(node, emptyEnv(), null)).toThrow('recur called outside of loop or function body')
     })
 
     it('should push LoopBindFrame for loop expression', () => {
       const node = parseFirst('loop (x = 0) -> x')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(1)
-        expect(step.k[0]!.type).toBe('LoopBind')
+        expect(listSize(step.k)).toBe(1)
+        expect(step.k?.head!.type).toBe('LoopBind')
       }
     })
 
     it('should push ForLoopFrame for for expression', () => {
       const node = parseFirst('for (x in [1, 2, 3]) -> x')
-      const step = stepNodeSync(node, emptyEnv(), [])
+      const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.some(f => f.type === 'ForLoop')).toBe(true)
+        expect(listToArray(step.k).some((f: Frame) => f.type === 'ForLoop')).toBe(true)
       }
     })
   })
@@ -478,7 +478,7 @@ describe('applyFrame', () => {
         elseNode,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, true, [])
+      const step = applyFrameSync(frame, true, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(thenNode)
@@ -494,7 +494,7 @@ describe('applyFrame', () => {
         elseNode,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, [])
+      const step = applyFrameSync(frame, false, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(elseNode)
@@ -509,8 +509,8 @@ describe('applyFrame', () => {
         elseNode: undefined,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, [])
-      expect(step).toEqual({ type: 'Value', value: null, k: [] })
+      const step = applyFrameSync(frame, false, null)
+      expect(step).toEqual({ type: 'Value', value: null, k: null })
     })
   })
 
@@ -523,8 +523,8 @@ describe('applyFrame', () => {
         index: 2, // past the last node
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step).toEqual({ type: 'Value', value: 42, k: [] })
+      const step = applyFrameSync(frame, 42, null)
+      expect(step).toEqual({ type: 'Value', value: 42, k: null })
     })
 
     it('should evaluate next node when more remain', () => {
@@ -535,7 +535,7 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 'ignored', [])
+      const step = applyFrameSync(frame, 'ignored', null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
@@ -550,10 +550,10 @@ describe('applyFrame', () => {
         index: 1, // last node index
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 'ignored', [])
+      const step = applyFrameSync(frame, 'ignored', null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(step.k.length).toBe(0) // no additional frame for last node
+        expect(listSize(step.k)).toBe(0) // no additional frame for last node
       }
     })
   })
@@ -567,8 +567,8 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, [])
-      expect(step).toEqual({ type: 'Value', value: false, k: [] })
+      const step = applyFrameSync(frame, false, null)
+      expect(step).toEqual({ type: 'Value', value: false, k: null })
     })
 
     it('should continue on truthy value with more nodes', () => {
@@ -579,7 +579,7 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, true, [])
+      const step = applyFrameSync(frame, true, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
@@ -594,8 +594,8 @@ describe('applyFrame', () => {
         index: 1, // past last
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step).toEqual({ type: 'Value', value: 42, k: [] })
+      const step = applyFrameSync(frame, 42, null)
+      expect(step).toEqual({ type: 'Value', value: 42, k: null })
     })
   })
 
@@ -608,8 +608,8 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step).toEqual({ type: 'Value', value: 42, k: [] })
+      const step = applyFrameSync(frame, 42, null)
+      expect(step).toEqual({ type: 'Value', value: 42, k: null })
     })
 
     it('should continue on falsy value', () => {
@@ -620,7 +620,7 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, false, [])
+      const step = applyFrameSync(frame, false, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
@@ -637,8 +637,8 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 42, [])
-      expect(step).toEqual({ type: 'Value', value: 42, k: [] })
+      const step = applyFrameSync(frame, 42, null)
+      expect(step).toEqual({ type: 'Value', value: 42, k: null })
     })
 
     it('should advance when value is null', () => {
@@ -649,7 +649,7 @@ describe('applyFrame', () => {
         index: 1,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, null, [])
+      const step = applyFrameSync(frame, null, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
@@ -668,7 +668,7 @@ describe('applyFrame', () => {
         isSpread: false,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 10, [])
+      const step = applyFrameSync(frame, 10, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
@@ -686,7 +686,7 @@ describe('applyFrame', () => {
         isSpread: false,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 20, [])
+      const step = applyFrameSync(frame, 20, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toEqual(fromJS([10, 20]))
@@ -703,7 +703,7 @@ describe('applyFrame', () => {
         isSpread: true,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, fromJS([1, 2, 3]), [])
+      const step = applyFrameSync(frame, fromJS([1, 2, 3]), null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toEqual(fromJS([1, 2, 3]))
@@ -724,12 +724,12 @@ describe('applyFrame', () => {
         isSpread: false,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 'a', [])
+      const step = applyFrameSync(frame, 'a', null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(valueNode)
-        expect(step.k[0]!.type).toBe('ObjectBuild')
-        const newFrame = step.k[0] as ObjectBuildFrame
+        expect(step.k?.head!.type).toBe('ObjectBuild')
+        const newFrame = step.k?.head as ObjectBuildFrame
         expect(newFrame.currentKey).toBe('a')
       }
     })
@@ -746,7 +746,7 @@ describe('applyFrame', () => {
         isSpread: false,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 42, [])
+      const step = applyFrameSync(frame, 42, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toEqual(fromJS({ a: 42 }))
@@ -764,7 +764,7 @@ describe('applyFrame', () => {
         params: PersistentVector.empty(),
         env: emptyEnv(),
       }
-      expect(() => applyFrameSync(frame, 42, [])).toThrow('recur called outside of loop or function body')
+      expect(() => applyFrameSync(frame, 42, null)).toThrow('recur called outside of loop or function body')
     })
 
     it('should continue collecting when more params remain', () => {
@@ -776,11 +776,11 @@ describe('applyFrame', () => {
         params: PersistentVector.empty(),
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, 10, [])
+      const step = applyFrameSync(frame, 10, null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
         expect(step.node).toBe(nodes[1])
-        expect(step.k[0]!.type).toBe('Recur')
+        expect(step.k?.head!.type).toBe('Recur')
       }
     })
   })
@@ -788,7 +788,7 @@ describe('applyFrame', () => {
   describe('nanCheckFrame', () => {
     it('should pass non-NaN values through', () => {
       const frame: NanCheckFrame = { type: 'NanCheck' }
-      const step = applyFrameSync(frame, 42, [])
+      const step = applyFrameSync(frame, 42, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
         expect(step.value).toBe(42)
@@ -797,7 +797,7 @@ describe('applyFrame', () => {
 
     it('should throw on NaN value', () => {
       const frame: NanCheckFrame = { type: 'NanCheck' }
-      expect(() => applyFrameSync(frame, Number.NaN, [])).toThrow('NaN')
+      expect(() => applyFrameSync(frame, Number.NaN, null)).toThrow('NaN')
     })
   })
 
@@ -811,7 +811,7 @@ describe('applyFrame', () => {
       }
       // applyLetBind now returns a step with LetBindCompleteFrame on the stack
       // Run the full trampoline to get the final value
-      const step = applyFrameSync(frame, 42, [])
+      const step = applyFrameSync(frame, 42, null)
       const finalValue = runTrampoline(step)
       expect(finalValue).toBe(42)
       // Also verify the binding was added to the environment
@@ -827,139 +827,139 @@ describe('applyFrame', () => {
 describe('trampoline integration', () => {
   it('should evaluate number literal', () => {
     const node = parseFirst('42')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(42)
   })
 
   it('should evaluate string literal', () => {
     const node = parseFirst('"hello"')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe('hello')
   })
 
   it('should evaluate boolean literals', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('true'), emptyEnv(), []))).toBe(true)
-    expect(runTrampoline(stepNodeSync(parseFirst('false'), emptyEnv(), []))).toBe(false)
+    expect(runTrampoline(stepNodeSync(parseFirst('true'), emptyEnv(), null))).toBe(true)
+    expect(runTrampoline(stepNodeSync(parseFirst('false'), emptyEnv(), null))).toBe(false)
   })
 
   it('should evaluate null', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('null'), emptyEnv(), []))).toBe(null)
+    expect(runTrampoline(stepNodeSync(parseFirst('null'), emptyEnv(), null))).toBe(null)
   })
 
   it('should evaluate addition', () => {
     const node = parseFirst('1 + 2')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(3)
   })
 
   it('should evaluate nested arithmetic', () => {
     const node = parseFirst('2 * 3 + 4')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(10)
   })
 
   it('should evaluate if expression', () => {
     const node = parseFirst('if true then 1 else 2 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(1)
   })
 
   it('should evaluate if with false condition', () => {
     const node = parseFirst('if false then 1 else 2 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
 
   it('should evaluate negated if expression', () => {
     const node = parseFirst('if not(true) then 1 else 2 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
 
   it('should evaluate && short circuit', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('&&(false, 1)'), emptyEnv(), []))).toBe(false)
-    expect(runTrampoline(stepNodeSync(parseFirst('&&(true, 42)'), emptyEnv(), []))).toBe(42)
+    expect(runTrampoline(stepNodeSync(parseFirst('&&(false, 1)'), emptyEnv(), null))).toBe(false)
+    expect(runTrampoline(stepNodeSync(parseFirst('&&(true, 42)'), emptyEnv(), null))).toBe(42)
   })
 
   it('should evaluate || short circuit', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('||(42, false)'), emptyEnv(), []))).toBe(42)
-    expect(runTrampoline(stepNodeSync(parseFirst('||(false, 99)'), emptyEnv(), []))).toBe(99)
+    expect(runTrampoline(stepNodeSync(parseFirst('||(42, false)'), emptyEnv(), null))).toBe(42)
+    expect(runTrampoline(stepNodeSync(parseFirst('||(false, 99)'), emptyEnv(), null))).toBe(99)
   })
 
   it('should evaluate if/else if expression', () => {
     const node = parseFirst('if false then 1 else if true then 2 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
 
   it('should evaluate ?? nullish coalescing', () => {
-    expect(runTrampoline(stepNodeSync(parseFirst('??(null, 42)'), emptyEnv(), []))).toBe(42)
-    expect(runTrampoline(stepNodeSync(parseFirst('??(10, 42)'), emptyEnv(), []))).toBe(10)
+    expect(runTrampoline(stepNodeSync(parseFirst('??(null, 42)'), emptyEnv(), null))).toBe(42)
+    expect(runTrampoline(stepNodeSync(parseFirst('??(10, 42)'), emptyEnv(), null))).toBe(10)
   })
 
   it('should evaluate do block', () => {
     const node = parseFirst('do 1; 2; 3 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(3)
   })
 
   it('should evaluate let binding', () => {
     const node = parseFirst('let x = 42;')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(42)
   })
 
   it('should evaluate array literal', () => {
     const node = parseFirst('[1, 2, 3]')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toEqual([1, 2, 3])
   })
 
   it('should evaluate object literal', () => {
     const node = parseFirst('{ a: 1, b: 2 }')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toEqual({ a: 1, b: 2 })
   })
 
   it('should evaluate lambda and immediate call', () => {
     const node = parseFirst('((x) -> x + 1)(10)')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(11)
   })
 
   it('should evaluate perform(@dvala.error) as error', () => {
     const node = parseFirst('perform(@dvala.error, { message: "test error" })')
-    expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), []))).toThrow(UserDefinedError)
+    expect(() => runTrampoline(stepNodeSync(node, emptyEnv(), null))).toThrow(UserDefinedError)
   })
 
   it('should evaluate do...with handler on success', () => {
     const node = parseFirst('do with handler @dvala.error(arg) -> resume(0) end; 42 end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(42)
   })
 
   it('should evaluate string functions', () => {
     const node = parseFirst('str("hello", " ", "world")')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe('hello world')
   })
 
   it('should evaluate match expression', () => {
     const node = parseFirst('match 2 case 1 then "one" case 2 then "two" end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe('two')
   })
 
   it('should evaluate user-defined variable', () => {
     const node = parseFirst('x')
     const env = createContextStack({ globalContext: { x: { value: 'hello' } } })
-    const step = stepNodeSync(node, env, [])
+    const step = stepNodeSync(node, env, null)
     expect(runTrampoline(step)).toBe('hello')
   })
 
   it('should evaluate loop with recur', () => {
     const node = parseFirst('loop (x = 0) -> if x < 5 then recur(x + 1) else x end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(5)
   })
 
@@ -969,7 +969,7 @@ describe('trampoline integration', () => {
     // handleRecur slices the continuation stack at the LoopIterateFrame,
     // replacing it rather than growing the stack.
     const node = parseFirst('loop (n = 100000) -> if n > 0 then recur(n - 1) else n end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(0)
   })
 
@@ -978,14 +978,14 @@ describe('trampoline integration', () => {
     // FnBodyFrame and calls setupUserDefinedCall with the remaining stack,
     // replacing the old frame rather than growing.
     const node = parseFirst('(n -> if n > 0 then recur(n - 1) else n end)(100000)')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(0)
   })
 
   it('should handle deep mutual recur accumulating a result', () => {
     // Verify that recur correctly rebinds multiple parameters
     const node = parseFirst('loop (n = 100000, acc = 0) -> if n > 0 then recur(n - 1, acc + 1) else acc end')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(100000)
   })
 
@@ -997,44 +997,44 @@ describe('trampoline integration', () => {
         if n > 0 then recur(n - 1, acc + n) else acc end
       end)(100, 0)
     `)
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     // sum from 1 to 100 = 5050
     expect(runTrampoline(step)).toBe(5050)
   })
 
   it('should evaluate for loop', () => {
     const node = parseFirst('for (x in [1, 2, 3]) -> x * 2')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toEqual([2, 4, 6])
   })
 
   it('should evaluate for (formerly doseq)', () => {
     const node = parseFirst('for (x in [1, 2, 3]) -> x')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toEqual([1, 2, 3])
   })
 
   it('should evaluate nested function calls', () => {
     const node = parseFirst('(1 + 2) + (3 + 4)')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(10)
   })
 
   it('should evaluate array as function', () => {
     const node = parseFirst('[1, 2, 3](1)')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
 
   it('should evaluate object as function', () => {
     const node = parseFirst('{ a: 1, b: 2 }("b")')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(2)
   })
 
   it('should evaluate string as function', () => {
     const node = parseFirst('"a"({ a: 42 })')
-    const step = stepNodeSync(node, emptyEnv(), [])
+    const step = stepNodeSync(node, emptyEnv(), null)
     expect(runTrampoline(step)).toBe(42)
   })
 })
@@ -1075,8 +1075,8 @@ describe('sync/async trampoline parity', () => {
   for (const [program, expected] of programs) {
     it(`sync and async produce same result for: ${program}`, async () => {
       const node = parseFirst(program)
-      const syncStep: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
-      const asyncStep: Step = { type: 'Eval', node, env: emptyEnv(), k: [] }
+      const syncStep: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
+      const asyncStep: Step = { type: 'Eval', node, env: emptyEnv(), k: null }
 
       const syncResult = runSyncTrampoline(syncStep)
       const asyncResult = await runAsyncTrampoline(asyncStep)

@@ -7,6 +7,10 @@ export {
   isEmpty as isPersistentListEmpty,
   listToArray,
   listFromArray,
+  listTake,
+  listDrop,
+  listPrependAll,
+  listSize,
 } from './PersistentList'
 
 import { PersistentVector } from './PersistentVector'

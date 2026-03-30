@@ -47,3 +47,40 @@ export function listFromArray<T>(arr: T[]): PersistentList<T> {
   }
   return list
 }
+
+/** Return the first `n` elements as a new list. O(N). */
+export function listTake<T>(list: PersistentList<T>, n: number): PersistentList<T> {
+  const buf: T[] = []
+  let node = list
+  while (node !== null && buf.length < n) {
+    buf.push(node.head)
+    node = node.tail
+  }
+  return listFromArray(buf)
+}
+
+/** Skip the first `n` elements and return the rest. O(N). */
+export function listDrop<T>(list: PersistentList<T>, n: number): PersistentList<T> {
+  let node = list
+  for (let i = 0; i < n && node !== null; i++) node = node.tail
+  return node
+}
+
+/**
+ * Prepend all elements of `arr` to `list`.
+ * First element of `arr` becomes the new head. O(N).
+ * Used for stack reconstruction: e.g. [...innerFrames, handler, ...outerK].
+ */
+export function listPrependAll<T>(arr: readonly T[], list: PersistentList<T>): PersistentList<T> {
+  let result = list
+  for (let i = arr.length - 1; i >= 0; i--) result = cons(arr[i]!, result)
+  return result
+}
+
+/** Return the number of elements in the list. O(N). */
+export function listSize<T>(list: PersistentList<T>): number {
+  let n = 0
+  let node = list
+  while (node !== null) { n++; node = node.tail }
+  return n
+}

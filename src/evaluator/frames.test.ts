@@ -100,10 +100,9 @@ describe('frame types', () => {
     expect(Object.keys(frameTypes)).toHaveLength(44)
   })
 
-  it('should support ContinuationStack as Frame array', () => {
-    const stack: ContinuationStack = []
-    expect(Array.isArray(stack)).toBe(true)
-    expect(stack).toHaveLength(0)
+  it('should support ContinuationStack as null (empty persistent list)', () => {
+    const stack: ContinuationStack = null
+    expect(stack).toBeNull()
   })
 
   it('should cover all frame type discriminants exhaustively', () => {
