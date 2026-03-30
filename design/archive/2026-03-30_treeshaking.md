@@ -1,6 +1,6 @@
 # AST Tree-Shaking Pass
 
-**Status:** Draft
+**Status:** Completed
 **Created:** 2026-03-30
 
 ## Goal
