@@ -147,9 +147,9 @@ export interface RaceStep {
  */
 export interface ParallelResumeStep {
   type: 'ParallelResume'
-  value: Any
+  value: unknown
   branchCount: number
-  completedBranches: { index: number; value: Any }[]
+  completedBranches: { index: number; value: unknown }[]
   suspendedBranches: { index: number; snapshot: Snapshot }[]
   k: ContinuationStack
 }

@@ -1,4 +1,5 @@
 import { DvalaError, RuntimeError } from '../../../../errors'
+import type { Any } from '../../../../interface'
 import { assertVector } from '../../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../../typeGuards/number'
 import type { BuiltinNormalExpression, BuiltinNormalExpressions } from '../../../../builtin/interface'
@@ -95,8 +96,8 @@ function createReductionNormalExpression(
   minLength: number,
 ): BuiltinNormalExpression<number> {
   return {
-    evaluate: ([vector], sourceCodeInfo) => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo) => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length < minLength) {
         throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
@@ -114,23 +115,23 @@ function createReductionNormalExpression(
 function createMovingNormalExpression(
   reductionFunction: ReductionFunction,
   minLength: number,
-): BuiltinNormalExpression<number[]> {
+): BuiltinNormalExpression<Any> {
   return {
-    evaluate: ([vector, windowSize], sourceCodeInfo) => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, windowSize], sourceCodeInfo) => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       assertNumber(windowSize, sourceCodeInfo, { integer: true, finite: true, gte: minLength, lte: vector.length })
       if (vector.length === 0) {
-        return []
+        return [] as unknown as Any
       }
       try {
         if (windowSize >= vector.length) {
-          return [reductionFunction(vector)]
+          return [reductionFunction(vector)] as unknown as Any
         }
         const result = []
         for (let i = 0; i < vector.length - windowSize + 1; i += 1) {
           result.push(reductionFunction(vector.slice(i, i + windowSize)))
         }
-        return result
+        return result as unknown as Any
       } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }
@@ -143,10 +144,10 @@ function createCenteredMovingNormalExpression(
   reductionFunction: ReductionFunction,
   minLength: number,
   padding: number | null,
-): BuiltinNormalExpression<(number | null)[]> {
+): BuiltinNormalExpression<Any> {
   return {
-    evaluate: ([vector, windowSize, leftPadding, rightPadding], sourceCodeInfo) => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, windowSize, leftPadding, rightPadding], sourceCodeInfo) => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length < minLength) {
         throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
@@ -162,7 +163,7 @@ function createCenteredMovingNormalExpression(
       }
 
       if (vector.length === 0) {
-        return []
+        return [] as unknown as Any
       }
 
       const halfWindowSize = Math.floor(windowSize / 2)
@@ -188,7 +189,7 @@ function createCenteredMovingNormalExpression(
       }
 
       result.push(...Array<null>(vector.length - end).fill(null))
-      return result
+      return result as unknown as Any
     },
     arity: { min: 2, max: 4 },
   }
@@ -197,16 +198,16 @@ function createCenteredMovingNormalExpression(
 function createRunningNormalExpression(
   reductionFunction: ReductionFunction,
   minLength: number,
-): BuiltinNormalExpression<(number | null)[]> {
+): BuiltinNormalExpression<Any> {
   return {
-    evaluate: ([vector], sourceCodeInfo) => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo) => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length < minLength) {
         throw new RuntimeError(`Vector length must be at least ${minLength}`, sourceCodeInfo)
       }
 
       if (vector.length === 0) {
-        return []
+        return [] as unknown as Any
       }
 
       try {
@@ -216,7 +217,7 @@ function createRunningNormalExpression(
         for (let i = nullsCount; i < vector.length; i += 1) {
           result.push(reductionFunction(vector.slice(0, i + 1)))
         }
-        return result
+        return result as unknown as Any
       } catch (error) {
         throw new DvalaError(error, sourceCodeInfo)
       }

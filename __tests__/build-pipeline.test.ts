@@ -101,8 +101,8 @@ describe('build pipeline', () => {
     // The expanded bundle is still runnable and produces correct results
     const dvala = createDvala()
     const output = dvala.run(expanded) as Record<string, number>
-    expect(output.doubled).toBe(10)  // double(5) → 5 + 5
-    expect(output.safe).toBe(42)     // withDefault(null, 42) → if isNull(null) then 42 else null end
+    expect(output.doubled).toBe(10) // double(5) → 5 + 5
+    expect(output.safe).toBe(42) // withDefault(null, 42) → if isNull(null) then 42 else null end
   })
 
   it('without macro expansion, macro calls remain in AST', () => {

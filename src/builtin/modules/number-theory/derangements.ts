@@ -1,18 +1,22 @@
-import type { Arr } from '../../../interface'
+import type { Any, Arr } from '../../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
+import { PersistentVector } from '../../../utils/persistent'
 
-function getAllDerangements(arr: Arr): Arr[] {
-  const n = arr.length
-  const result: Arr[] = []
+// Generates all derangements of the given array (no element stays in original position).
+// Works with plain arrays internally for efficiency, wraps results in PersistentVector.
+function getAllDerangements(arr: Arr): PersistentVector<unknown>[] {
+  const n = arr.size
+  const result: PersistentVector<unknown>[] = []
   const used = Array.from({ length: n }, () => false)
-  const temp: Arr = Array.from({ length: n })
+  // Use plain JS array for temp during generation, then wrap at the end
+  const temp: unknown[] = new Array(n)
 
   function generateDerangements(pos: number): void {
     if (pos === n) {
-      result.push([...temp])
+      result.push(PersistentVector.from(temp))
       return
     }
 
@@ -23,7 +27,7 @@ function getAllDerangements(arr: Arr): Arr[] {
       }
 
       used[i] = true
-      temp[pos] = arr[i]!
+      temp[pos] = arr.get(i)
       generateDerangements(pos + 1)
       used[i] = false
     }
@@ -52,9 +56,10 @@ function countDerangements(n: number): number {
 
 export const derangementsNormalExpressions: BuiltinNormalExpressions = {
   'derangements': {
-    evaluate: ([set], sourceCodeInfo): Arr => {
+    // Returns a PersistentVector of PersistentVectors (each derangement), cast to Any
+    evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      return getAllDerangements(set)
+      return PersistentVector.from(getAllDerangements(set)) as unknown as Any
     },
     arity: toFixedArity(1),
   },

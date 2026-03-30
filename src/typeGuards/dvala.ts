@@ -1,7 +1,8 @@
-import type { Any, Coll, Obj, Seq } from '../interface'
+import type { Any, Arr, Coll, Obj, Seq } from '../interface'
 import type { EffectRef, FunctionLike, RegularExpression } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { getAssertionError } from '../utils/getAssertionError'
+import { isPersistentMap, isPersistentVector } from '../utils/persistent'
 import { EFFECT_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { isDvalaFunction } from './dvalaFunction'
 
@@ -19,7 +20,7 @@ export function assertAny(value: unknown, sourceCodeInfo?: SourceCodeInfo): asse
 }
 
 export function isSeq(value: unknown): value is Seq {
-  return Array.isArray(value) || typeof value === 'string'
+  return isPersistentVector(value) || typeof value === 'string'
 }
 export function asSeq(value: unknown, sourceCodeInfo?: SourceCodeInfo): Seq {
   assertSeq(value, sourceCodeInfo)
@@ -30,16 +31,20 @@ export function assertSeq(value: unknown, sourceCodeInfo?: SourceCodeInfo): asse
     throw getAssertionError('string or array', value, sourceCodeInfo)
 }
 
+export function isArr(value: unknown): value is Arr {
+  return isPersistentVector(value)
+}
+export function asArr(value: unknown, sourceCodeInfo?: SourceCodeInfo): Arr {
+  assertArr(value, sourceCodeInfo)
+  return value
+}
+export function assertArr(value: unknown, sourceCodeInfo?: SourceCodeInfo): asserts value is Arr {
+  if (!isArr(value))
+    throw getAssertionError('array', value, sourceCodeInfo)
+}
+
 export function isObj(value: unknown): value is Obj {
-  return !(
-    value === null
-    || typeof value !== 'object'
-    || Array.isArray(value)
-    || value instanceof RegExp
-    || isDvalaFunction(value)
-    || isRegularExpression(value)
-    || isEffect(value)
-  )
+  return isPersistentMap(value)
 }
 export function asObj(value: unknown, sourceCodeInfo?: SourceCodeInfo): Obj {
   assertObj(value, sourceCodeInfo)

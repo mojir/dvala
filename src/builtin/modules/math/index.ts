@@ -1,5 +1,7 @@
+import type { Any, Arr } from '../../../interface'
+import { fromJS } from '../../../utils/interop'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
-import { isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
+import { assertMatrix, assertVector, isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
 import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import { RuntimeError } from '../../../errors'
@@ -7,8 +9,6 @@ import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
 import mathModuleSource from './math.dvala'
-
-type NumberVectorOrMatrix = number | number[] | number[][]
 
 function getNumberVectorOrMatrixOperation(
   param: unknown,
@@ -18,10 +18,10 @@ function getNumberVectorOrMatrixOperation(
   | ['vector', number[]]
   | ['matrix', number[][]] {
   if (isVector(param)) {
-    return ['vector', param]
+    return ['vector', assertVector(param, sourceCodeInfo)]
   }
   if (isMatrix(param)) {
-    return ['matrix', param]
+    return ['matrix', assertMatrix(param, sourceCodeInfo)]
   }
   if (!isNumber(param)) {
     throw new RuntimeError(`Invalid parameter type: ${typeof param}`, sourceCodeInfo)
@@ -29,17 +29,19 @@ function getNumberVectorOrMatrixOperation(
   return ['number', param]
 }
 
+// Wraps a scalar math function to work element-wise on numbers, vectors, and matrices.
+// Return is cast to Any because number[], number[][] are annotated plain JS arrays (not PersistentVector).
 function unaryMathOp(
   fn: (val: number) => number,
-): (params: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) => NumberVectorOrMatrix {
+): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return ([param], sourceCodeInfo) => {
     const [operation, operand] = getNumberVectorOrMatrixOperation(param, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operand)
     } else if (operation === 'vector') {
-      return operand.map(val => fn(val))
+      return fromJS(operand.map(val => fn(val)))
     } else {
-      return operand.map(row => row.map(val => fn(val)))
+      return fromJS(operand.map(row => row.map(val => fn(val))))
     }
   }
 }

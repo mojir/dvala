@@ -1,6 +1,7 @@
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
+import { PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 import { toFixedArity } from '../../utils/arity'
 
@@ -13,11 +14,11 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
       let step: number
       assertNumber(first, sourceCodeInfo, { finite: true })
 
-      if (params.length === 1) {
+      if (params.size === 1) {
         from = 0
         to = first
         step = to >= 0 ? 1 : -1
-      } else if (params.length === 2) {
+      } else if (params.size === 2) {
         assertNumber(second, sourceCodeInfo, { finite: true })
         from = first
         to = second
@@ -36,12 +37,13 @@ export const arrayNormalExpression: BuiltinNormalExpressions = {
           assertNumber(step, sourceCodeInfo, { nonZero: true })
       }
 
+      // Build a plain JS array first, then wrap in a PersistentVector
       const result: number[] = []
 
       for (let i = from; step < 0 ? i > to : i < to; i += step)
         result.push(i)
 
-      return result
+      return PersistentVector.from(result)
     },
     arity: { min: 1, max: 3 },
     docs: {
@@ -80,11 +82,12 @@ range(
   'repeat': {
     evaluate: ([value, count], sourceCodeInfo): Arr => {
       assertNumber(count, sourceCodeInfo, { integer: true, nonNegative: true })
-      const result: Arr = []
+      // Build via transient for efficient repeated appends
+      const t = PersistentVector.empty<unknown>().asTransient()
       for (let i = 0; i < count; i += 1)
-        result.push(value)
+        t.append(value)
 
-      return result
+      return t.persistent()
     },
     arity: toFixedArity(2),
     docs: {
@@ -113,7 +116,8 @@ range(
         ? Number.POSITIVE_INFINITY
         : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
 
-      return seq.flat(actualDepth)
+      // Convert to plain JS array for flat(), then wrap result in PersistentVector
+      return PersistentVector.from([...seq].flat(actualDepth))
     },
     arity: { min: 1, max: 2 },
     docs: {

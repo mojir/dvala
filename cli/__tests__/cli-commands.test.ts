@@ -35,8 +35,7 @@ describe('CLI commands', () => {
     try {
       exec(args, cwd)
       return ''
-    }
-    catch (error: any) {
+    } catch (error: any) {
       return error.stderr?.toString() || error.stdout?.toString() || error.message
     }
   }
@@ -105,7 +104,6 @@ describe('CLI commands', () => {
       const withoutPath = path.join(tmpDir, 'without-macros.json')
       exec(`build ${exampleProjectDir} -o ${withPath}`)
       exec(`build ${exampleProjectDir} --no-expand-macros -o ${withoutPath}`)
-      const withContent = fs.readFileSync(withPath, 'utf-8')
       const withoutContent = fs.readFileSync(withoutPath, 'utf-8')
       // With expansion (default): no Macro nodes in calls
       // Without expansion: Macro nodes present

@@ -7,14 +7,19 @@ import { assertArray } from '../../typeGuards/array'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber, isString, isStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
+import { isPersistentVector, PersistentMap, PersistentVector } from '../../utils/persistent'
 
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
     if (typeof key === 'string' && collHasKey(coll, key))
-      return toAny(coll[key])
-  } else {
+      return toAny(coll.get(key))
+  } else if (typeof coll === 'string') {
     if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length)
       return toAny(coll[key])
+  } else {
+    // PersistentVector
+    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size)
+      return toAny(coll.get(key))
   }
   return undefined
 }
@@ -22,22 +27,20 @@ function get(coll: Coll, key: string | number): Any | undefined {
 function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: SourceCodeInfo) {
   assertColl(coll, sourceCodeInfo)
   assertStringOrNumber(key, sourceCodeInfo)
-  if (Array.isArray(coll) || typeof coll === 'string') {
+  if (isPersistentVector(coll) || typeof coll === 'string') {
     assertNumber(key, sourceCodeInfo, { integer: true })
     assertNumber(key, sourceCodeInfo, { gte: 0 })
-    assertNumber(key, sourceCodeInfo, { lte: coll.length })
+    const seqLength = typeof coll === 'string' ? coll.length : coll.size
+    assertNumber(key, sourceCodeInfo, { lte: seqLength })
     if (typeof coll === 'string') {
       assertString(value, sourceCodeInfo, { char: true })
       return `${coll.slice(0, key)}${value}${coll.slice(key + 1)}`
     }
-    const copy = [...coll]
-    copy[key] = value
-    return copy
+    // Return a new vector with the value set at the given index
+    return coll.set(key, value)
   }
   assertString(key, sourceCodeInfo)
-  const copy = { ...coll }
-  copy[key] = value
-  return copy
+  return coll.assoc(key, value)
 }
 
 export const collectionNormalExpression: BuiltinNormalExpressions = {
@@ -130,7 +133,7 @@ reduce(
   'get': {
     evaluate: (params, sourceCodeInfo) => {
       const [coll, key] = params
-      const defaultValue = toAny(params[2])
+      const defaultValue = toAny(params.get(2))
       assertStringOrNumber(key, sourceCodeInfo)
       if (coll === null)
         return defaultValue
@@ -213,10 +216,12 @@ get(
         return coll.length
 
       assertColl(coll, sourceCodeInfo)
-      if (Array.isArray(coll))
-        return coll.length
+      // Both PersistentVector and PersistentMap expose `.size`
+      if (isPersistentVector(coll))
+        return coll.size
 
-      return Object.keys(coll).length
+      // Must be PersistentMap (Obj) — cast to access .size
+      return (coll as PersistentMap).size
     },
     arity: toFixedArity(1),
     docs: {
@@ -250,10 +255,15 @@ get(
       }
       if (isSeq(coll)) {
         assertAny(key, sourceCodeInfo)
-        return !!coll.find(elem => deepEqual(asAny(elem), key, sourceCodeInfo))
+        // Iterate PersistentVector to find matching element
+        for (const elem of coll) {
+          if (deepEqual(asAny(elem), key, sourceCodeInfo))
+            return true
+        }
+        return false
       }
       assertString(key, sourceCodeInfo)
-      return key in coll
+      return coll.has(key)
     },
     arity: toFixedArity(2),
     docs: {
@@ -356,24 +366,37 @@ assoc(
   },
   '++': {
     evaluate: (params, sourceCodeInfo): Any => {
-      if (!isNumber(params[0])) {
-        assertColl(params[0], sourceCodeInfo)
+      const first = params.get(0)
+      if (!isNumber(first)) {
+        assertColl(first, sourceCodeInfo)
       }
-      if (Array.isArray(params[0])) {
-        return params.reduce((result: Arr, arr) => {
+      if (isPersistentVector(first)) {
+        // Concatenate all arrays by spreading into a transient
+        let result: Arr = PersistentVector.empty()
+        for (const arr of params) {
           assertArray(arr, sourceCodeInfo)
-          return result.concat(arr)
-        }, [])
-      } else if (isStringOrNumber(params[0])) {
-        return params.reduce((result: string, s) => {
+          for (const item of arr) {
+            result = result.append(item)
+          }
+        }
+        return result
+      } else if (isStringOrNumber(first)) {
+        let result = ''
+        for (const s of params) {
           assertStringOrNumber(s, sourceCodeInfo)
-          return `${result}${s}`
-        }, '')
+          result = `${result}${s}`
+        }
+        return result
       } else {
-        return params.reduce((result: Obj, obj) => {
+        // Merge objects: fold assoc over all entries from each object
+        let result: Obj = PersistentMap.empty()
+        for (const obj of params) {
           assertObj(obj, sourceCodeInfo)
-          return Object.assign(result, obj)
-        }, {})
+          for (const [k, v] of obj) {
+            result = result.assoc(k, v)
+          }
+        }
+        return result
       }
     },
     arity: { min: 1 },

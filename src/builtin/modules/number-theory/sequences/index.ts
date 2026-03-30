@@ -1,4 +1,5 @@
 import { RuntimeError } from '../../../../errors'
+import type { Any } from '../../../../interface'
 import type { SourceCodeInfo } from '../../../../tokenizer/token'
 import { assertNumber } from '../../../../typeGuards/number'
 import { assertString } from '../../../../typeGuards/string'
@@ -89,21 +90,24 @@ addSequence(perfectPowerSequence)
 addSequence(primeSequence)
 addSequence(recamanSequence)
 addSequence(thueMorseSequence)
-addNormalExpressions(getFiniteNumberSequence('tribonacci', tribonacciNumbers))
-addNormalExpressions(getFiniteNumberSequence('catalan', catalanNumbers))
-addNormalExpressions(getFiniteNumberSequence('factorial', factorialNumbers))
-addNormalExpressions(getFiniteNumberSequence('fibonacci', fibonacciNumbers))
-addNormalExpressions(getFiniteNumberSequence('lucas', lucasNumbers))
-addNormalExpressions(getFiniteNumberSequence('mersenne', mersenneNumbers))
-addNormalExpressions(getFiniteNumberSequence('partition', partitionNumbers))
-addNormalExpressions(getFiniteNumberSequence('pell', pellNumbers))
-addNormalExpressions(getFiniteNumberSequence('perfect', perfectNumbers))
-addNormalExpressions(getFiniteNumberSequence('sylvester', sylvesterNumbers))
-addNormalExpressions(getFiniteNumberSequence('bell', bellNumbers))
-addNormalExpressions(arithmeticNormalExpressions)
-addNormalExpressions(bernoulliNormalExpressions)
-addNormalExpressions(geometricNormalExpressions)
-addNormalExpressions(poligonalNormalExpressions)
+// SequenceNormalExpressions has evaluate return types like Type[] or number[] which aren't
+// directly assignable to BuiltinNormalExpression<Any>. The runtime values are compatible
+// because these are annotated plain JS arrays. Cast through unknown to satisfy the type checker.
+addNormalExpressions(getFiniteNumberSequence('tribonacci', tribonacciNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('catalan', catalanNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('factorial', factorialNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('fibonacci', fibonacciNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('lucas', lucasNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('mersenne', mersenneNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('partition', partitionNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('pell', pellNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('perfect', perfectNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('sylvester', sylvesterNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(getFiniteNumberSequence('bell', bellNumbers) as unknown as BuiltinNormalExpressions)
+addNormalExpressions(arithmeticNormalExpressions as unknown as BuiltinNormalExpressions)
+addNormalExpressions(bernoulliNormalExpressions as unknown as BuiltinNormalExpressions)
+addNormalExpressions(geometricNormalExpressions as unknown as BuiltinNormalExpressions)
+addNormalExpressions(poligonalNormalExpressions as unknown as BuiltinNormalExpressions)
 
 function addNormalExpressions(normalExpressions: BuiltinNormalExpressions) {
   for (const [key, value] of Object.entries(normalExpressions)) {
@@ -151,10 +155,11 @@ function addSequence<Type extends number | string>(sequence: SequenceDefinition<
 function createSeqNormalExpression<Type extends number | string>(
   seqFunction: SeqFunction<Type>,
   maxLength: number | undefined,
-): BuiltinNormalExpression<Type[]> {
+// Return Any because Type[] (number[] or string[]) are annotated plain arrays not PersistentVector
+): BuiltinNormalExpression<Any> {
   return {
     evaluate: (params, sourceCodeInfo) => {
-      const length = params[0] ?? maxLength
+      const length = params.get(0) ?? maxLength
       assertNumber(length, sourceCodeInfo, { integer: true, positive: true, lte: maxLength })
       const result = seqFunction(length, sourceCodeInfo)
       if (typeof result[0] === 'number') {
@@ -163,7 +168,7 @@ function createSeqNormalExpression<Type extends number | string>(
           throw new RuntimeError('Result exceeds maximum safe integer', sourceCodeInfo)
         }
       }
-      return result
+      return result as unknown as Any
     },
     arity: typeof maxLength === 'number' ? { max: 1 } : toFixedArity(1),
   }
@@ -171,7 +176,8 @@ function createSeqNormalExpression<Type extends number | string>(
 
 function createTakeWhileNormalExpression(
   maxLength: number | undefined,
-): BuiltinNormalExpression<number[]> {
+// Return Any because number[] is annotated plain array not PersistentVector
+): BuiltinNormalExpression<Any> {
   return {
     /* v8 ignore next 1 */
     evaluate: () => { throw new Error('unreachable: overridden by dvalaImpl') },
@@ -185,7 +191,7 @@ function createNthNormalExpression<Type extends number | string>(
 ): BuiltinNormalExpression<Type> {
   return {
     evaluate: (params, sourceCodeInfo) => {
-      const n = params[0]
+      const n = params.get(0)
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true, lte: maxLength })
       const sequence = seqFunction(n, sourceCodeInfo)
       if (typeof sequence[0] === 'number') {
@@ -205,7 +211,7 @@ function createNumberPredNormalExpression(
 ): BuiltinNormalExpression<boolean> {
   return {
     evaluate: (params, sourceCodeInfo) => {
-      const value = params[0]
+      const value = params.get(0)
       assertNumber(value, sourceCodeInfo)
       return predFunction(value, sourceCodeInfo)
     },
@@ -218,7 +224,7 @@ function createStringPredNormalExpression(
 ): BuiltinNormalExpression<boolean> {
   return {
     evaluate: (params, sourceCodeInfo) => {
-      const value = params[0]
+      const value = params.get(0)
       assertString(value, sourceCodeInfo)
       return predFunction(value, sourceCodeInfo)
     },

@@ -1,4 +1,5 @@
 import { DvalaError } from '../../../errors'
+import type { Any } from '../../../interface'
 import { asNonUndefined } from '../../../typeGuards'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
@@ -141,9 +142,10 @@ trimRight("")`,
   },
 
   'splitLines': {
-    evaluate: ([str], sourceCodeInfo): string[] => {
+    // Returns a plain JS string[] — cast to Any because it's an annotated collection
+    evaluate: ([str], sourceCodeInfo): Any => {
       assertString(str, sourceCodeInfo)
-      return str.split((/\r\n|\n|\r/)).filter(line => line !== '')
+      return str.split((/\r\n|\n|\r/)).filter(line => line !== '') as unknown as Any
     },
     arity: toFixedArity(1),
     docs: {

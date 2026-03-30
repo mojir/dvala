@@ -1,8 +1,10 @@
 import { RuntimeError } from '../../errors'
+import type { Arr } from '../../interface'
 import type { RegularExpression } from '../../parser/types'
 import { assertRegularExpression, assertStringOrRegularExpression, isRegularExpression } from '../../typeGuards/dvala'
 import { assertString, isString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
+import { PersistentVector } from '../../utils/persistent'
 import { REGEXP_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 
@@ -50,7 +52,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
     },
   },
   'reMatch': {
-    evaluate: ([text, regexp], sourceCodeInfo): string[] | null => {
+    evaluate: ([text, regexp], sourceCodeInfo): Arr | null => {
       assertRegularExpression(regexp, sourceCodeInfo)
       if (!isString(text))
         return null
@@ -58,7 +60,7 @@ export const regexpNormalExpression: BuiltinNormalExpressions = {
       const regExp = new RegExp(regexp.s, regexp.f)
       const match = regExp.exec(text)
       if (match)
-        return [...match]
+        return PersistentVector.from([...match])
 
       return null
     },

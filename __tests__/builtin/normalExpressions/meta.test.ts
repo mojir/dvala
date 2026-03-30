@@ -3,6 +3,7 @@ import { createDvala } from '../../../src/createDvala'
 import { getMetaNormalExpression } from '../../../src/builtin/core/meta'
 import type { ContextStack } from '../../../src/evaluator/ContextStack'
 import { FUNCTION_SYMBOL } from '../../../src/utils/symbols'
+import { PersistentVector } from '../../../src/utils/persistent'
 import '../../../src/initReferenceData'
 
 describe('misc functions', () => {
@@ -69,7 +70,7 @@ describe('misc functions', () => {
         arity: {},
       }
       const result = meta.doc!.evaluate(
-        [builtinFn],
+        PersistentVector.from([builtinFn]),
         { position: { line: 1, column: 1 }, code: 'doc(>=)' },
         undefined as unknown as ContextStack,
       )

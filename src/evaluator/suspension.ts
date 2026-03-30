@@ -90,7 +90,7 @@ function isCSRef(value: unknown): value is CSRef {
  * Validates that all values are serializable.
  * Throws a descriptive `DvalaError` if non-serializable values are found.
  */
-export function serializeToObject(k: ContinuationStack, meta?: Any): SuspensionBlobData {
+export function serializeToObject(k: ContinuationStack, meta?: unknown): SuspensionBlobData {
   // Phase 1: Collect all unique ContextStack instances
   const csMap = new Map<ContextStackImpl, number>()
   let nextId = 0
@@ -196,7 +196,7 @@ export function serializeSuspensionBlob(
   k: ContinuationStack,
   snapshots: unknown[],
   nextSnapshotIndex: number,
-  meta?: Any,
+  meta?: unknown,
 ): SuspensionBlobData {
   const base = serializeToObject(k, meta)
 

@@ -1,22 +1,23 @@
 import { RuntimeError } from '../../errors'
+import type { Any, Arr } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { assertNonEmptyVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import { toFixedArity } from '../../utils/arity'
 import type { BuiltinNormalExpressions } from '../interface'
 
-type NumberVectorOrMatrix = number | number[] | number[][]
-
 function getNumberVectorOrMatrixOperation(
-  params: unknown[],
+  params: Iterable<unknown>,
   sourceCodeInfo: SourceCodeInfo | undefined,
 ):
   | ['number', number[]]
   | ['vector', number[][]]
   | ['matrix', number[][][]] {
+  // Convert to plain array once so we can use .map() and cast at the end
+  const paramsArr = Array.from(params)
   let hasVector: boolean = false
   let hasMatrix: boolean = false
-  for (const param of params) {
+  for (const param of paramsArr) {
     if (isVector(param)) {
       hasVector = true
     } else if (isMatrix(param)) {
@@ -31,7 +32,7 @@ function getNumberVectorOrMatrixOperation(
     }
     let rows: number | null = null
     let cold: number | null = null
-    for (const param of params) {
+    for (const param of paramsArr) {
       if (isMatrix(param)) {
         if (rows === null) {
           rows = param.length
@@ -43,7 +44,7 @@ function getNumberVectorOrMatrixOperation(
         }
       }
     }
-    const matrices = params.map(param => {
+    const matrices = paramsArr.map(param => {
       if (isMatrix(param)) {
         return param
       }
@@ -53,7 +54,7 @@ function getNumberVectorOrMatrixOperation(
   }
   if (hasVector) {
     let length: number | null = null
-    for (const param of params) {
+    for (const param of paramsArr) {
       if (isVector(param)) {
         if (length === null) {
           length = param.length
@@ -64,7 +65,7 @@ function getNumberVectorOrMatrixOperation(
         }
       }
     }
-    const vectors = params.map(param => {
+    const vectors = paramsArr.map(param => {
       if (isVector(param)) {
         return param
       }
@@ -73,35 +74,36 @@ function getNumberVectorOrMatrixOperation(
 
     return ['vector', vectors]
   }
-  return ['number', params as number[]]
+  return ['number', paramsArr as number[]]
 }
 
 function unaryMathOp(
   fn: (val: number) => number,
-): (params: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) => NumberVectorOrMatrix {
+): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operands[0]!)
     } else if (operation === 'vector') {
-      return operands[0]!.map(val => fn(val))
+      // number[] is a Dvala vector (annotated plain JS array) — cast to Any
+      return operands[0]!.map(val => fn(val)) as unknown as Any
     } else {
-      return operands[0]!.map(row => row.map(val => fn(val)))
+      return operands[0]!.map(row => row.map(val => fn(val))) as unknown as Any
     }
   }
 }
 
 function binaryMathOp(
   fn: (a: number, b: number) => number,
-): (params: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) => NumberVectorOrMatrix {
+): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return fn(operands[0]!, operands[1]!)
     } else if (operation === 'vector') {
-      return operands[0]!.map((val, i) => fn(val, operands[1]![i]!))
+      return operands[0]!.map((val, i) => fn(val, operands[1]![i]!)) as unknown as Any
     } else {
-      return operands[0]!.map((row, i) => row.map((val, j) => fn(val, operands[1]![i]![j]!)))
+      return operands[0]!.map((row, i) => row.map((val, j) => fn(val, operands[1]![i]![j]!))) as unknown as Any
     }
   }
 }
@@ -109,19 +111,19 @@ function binaryMathOp(
 function reduceMathOp(
   identity: number,
   fn: (a: number, b: number) => number,
-): (params: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) => NumberVectorOrMatrix {
+): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
   return (params, sourceCodeInfo) => {
-    if (params.length === 0)
+    if (params.size === 0)
       return identity
     const [operation, operands] = getNumberVectorOrMatrixOperation(params, sourceCodeInfo)
     if (operation === 'number') {
       return operands.reduce((a, b) => fn(a, b), identity)
     } else if (operation === 'vector') {
       const [first, ...rest] = operands
-      return rest.reduce((acc, v) => acc.map((val, i) => fn(val, v[i]!)), first!)
+      return rest.reduce((acc, v) => acc.map((val, i) => fn(val, v[i]!)), first!) as unknown as Any
     } else {
       const [first, ...rest] = operands
-      return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => fn(val, m[i]![j]!))), first!)
+      return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => fn(val, m[i]![j]!))), first!) as unknown as Any
     }
   }
 }
@@ -225,8 +227,8 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
   },
   '/': {
-    evaluate: (params, sourceCodeInfo): NumberVectorOrMatrix => {
-      if (params.length === 0) {
+    evaluate: (params, sourceCodeInfo): Any => {
+      if (params.size === 0) {
         return 1
       }
 
@@ -243,11 +245,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       } else if (operation === 'vector') {
         const firstVector = operands[0]!
         const restVectors = operands.slice(1)
-        return restVectors.reduce((acc, vector) => acc.map((val, i) => val / vector[i]!), firstVector)
+        return restVectors.reduce((acc, vector) => acc.map((val, i) => val / vector[i]!), firstVector) as unknown as Any
       } else {
         const firstMatrix = operands[0]!
         const restMatrices = operands.slice(1)
-        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val / matrix[i]![j]!)), firstMatrix)
+        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val / matrix[i]![j]!)), firstMatrix) as unknown as Any
       }
     },
     arity: {},
@@ -277,8 +279,8 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
   },
   '-': {
-    evaluate: (params, sourceCodeInfo): NumberVectorOrMatrix => {
-      if (params.length === 0) {
+    evaluate: (params, sourceCodeInfo): Any => {
+      if (params.size === 0) {
         return 0
       }
 
@@ -295,11 +297,11 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       } else if (operation === 'vector') {
         const firstVector = operands[0]!
         const restVectors = operands.slice(1)
-        return restVectors.reduce((acc, vector) => acc.map((val, i) => val - vector[i]!), firstVector)
+        return restVectors.reduce((acc, vector) => acc.map((val, i) => val - vector[i]!), firstVector) as unknown as Any
       } else {
         const firstMatrix = operands[0]!
         const restMatrices = operands.slice(1)
-        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val - matrix[i]![j]!)), firstMatrix)
+        return restMatrices.reduce((acc, matrix) => acc.map((row, i) => row.map((val, j) => val - matrix[i]![j]!)), firstMatrix) as unknown as Any
       }
     },
     arity: {},
@@ -489,7 +491,7 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
     },
   },
   'round': {
-    evaluate: ([value, decimals], sourceCodeInfo): NumberVectorOrMatrix => {
+    evaluate: ([value, decimals], sourceCodeInfo): Any => {
       const [operation, operands] = getNumberVectorOrMatrixOperation([value], sourceCodeInfo)
       if (operation === 'number') {
         if (decimals === undefined || decimals === 0) {
@@ -502,20 +504,20 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
       } else if (operation === 'vector') {
         const vector = operands[0]!
         if (decimals === undefined || decimals === 0) {
-          return vector.map(val => Math.round(val))
+          return vector.map(val => Math.round(val)) as unknown as Any
         } else {
           assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
           const factor = 10 ** decimals
-          return vector.map(val => Math.round(val * factor) / factor)
+          return vector.map(val => Math.round(val * factor) / factor) as unknown as Any
         }
       } else {
         const matrix = operands[0]!
         if (decimals === undefined || decimals === 0) {
-          return matrix.map(row => row.map(val => Math.round(val)))
+          return matrix.map(row => row.map(val => Math.round(val))) as unknown as Any
         } else {
           assertNumber(decimals, sourceCodeInfo, { integer: true, positive: true })
           const factor = 10 ** decimals
-          return matrix.map(row => row.map(val => Math.round(val * factor) / factor))
+          return matrix.map(row => row.map(val => Math.round(val * factor) / factor)) as unknown as Any
         }
       }
     },
@@ -623,9 +625,8 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
   },
   'min': {
     evaluate: (params, sourceCodeInfo): number => {
-      if (params.length === 1 && isVector(params[0])) {
-        const vector = params[0]
-        assertNonEmptyVector(vector, sourceCodeInfo)
+      if (params.size === 1 && isVector(params.get(0))) {
+        const vector = assertNonEmptyVector(params.get(0), sourceCodeInfo)
         return vector.reduce((m, val) => Math.min(m, val), Infinity)
       }
       const [first, ...rest] = params
@@ -662,9 +663,8 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
   },
   'max': {
     evaluate: (params, sourceCodeInfo): number => {
-      if (params.length === 1 && isVector(params[0])) {
-        const vector = params[0]
-        assertNonEmptyVector(vector, sourceCodeInfo)
+      if (params.size === 1 && isVector(params.get(0))) {
+        const vector = assertNonEmptyVector(params.get(0), sourceCodeInfo)
         return vector.reduce((m, val) => Math.max(m, val), -Infinity)
       }
       const [first, ...rest] = params

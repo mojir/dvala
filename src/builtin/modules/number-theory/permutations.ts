@@ -1,8 +1,9 @@
-import type { Arr } from '../../../interface'
+import type { Any } from '../../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
+import { PersistentVector } from '../../../utils/persistent'
 import { factorialOf } from './factorial'
 
 /**
@@ -40,9 +41,11 @@ function permutations<T>(collection: T[]): T[][] {
 
 export const permutationsNormalExpressions: BuiltinNormalExpressions = {
   'permutations': {
-    evaluate: ([set], sourceCodeInfo): Arr[] => {
+    // Returns a PersistentVector of PersistentVectors (each permutation), cast to Any
+    evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      return permutations(set)
+      // Convert PV to plain array for the recursive permutations helper, then wrap results
+      return PersistentVector.from(permutations([...set]).map(p => PersistentVector.from(p))) as unknown as Any
     },
     arity: toFixedArity(1),
   },

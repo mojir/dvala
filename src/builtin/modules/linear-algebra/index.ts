@@ -1,4 +1,5 @@
 import { DvalaError, RuntimeError } from '../../../errors'
+import type { Any } from '../../../interface'
 import { assert2dVector, assert3dVector, assertMatrix, assertNonEmptyVector, assertSquareMatrix, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -25,50 +26,53 @@ import { scale } from './helpers/scale'
 import { length } from './helpers/length'
 import linearAlgebraModuleSource from './linear-algebra.dvala'
 
+// Casts number[] and number[][] annotated plain JS arrays to Any for evaluator compatibility
+function toAny(val: unknown): Any { return val as Any }
+
 export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
   'rotate2d': {
-    evaluate: ([vector, radians], sourceCodeInfo): number[] => {
-      assert2dVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, radians], sourceCodeInfo): Any => {
+      const vector = assert2dVector(vector_, sourceCodeInfo)
       if (isZeroVector(vector)) {
-        return vector
+        return toAny(vector)
       }
       assertNumber(radians, sourceCodeInfo, { finite: true })
       const cosTheta = Math.cos(radians)
       const sinTheta = Math.sin(radians)
-      return [
+      return toAny([
         vector[0] * cosTheta - vector[1] * sinTheta,
         vector[0] * sinTheta + vector[1] * cosTheta,
-      ]
+      ])
     },
     arity: toFixedArity(2),
   },
   'rotate3d': {
-    evaluate: ([vector, axis, radians], sourceCodeInfo): number[] => {
-      assert3dVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, axis_, radians], sourceCodeInfo): Any => {
+      const vector = assert3dVector(vector_, sourceCodeInfo)
       if (isZeroVector(vector)) {
-        return vector
+        return toAny(vector)
       }
       assertNumber(radians, sourceCodeInfo, { finite: true })
-      assert3dVector(axis, sourceCodeInfo)
+      const axis = assert3dVector(axis_, sourceCodeInfo)
       if (isZeroVector(axis)) {
         throw new RuntimeError('Rotation axis must not be zero', sourceCodeInfo)
       }
       const cosTheta = Math.cos(radians)
       const sinTheta = Math.sin(radians)
-      const [u, v, w] = getUnit(axis, sourceCodeInfo)
-      const dotProduct = vector[0] * u + vector[1] * v + vector[2] * w
-      return [
-        dotProduct * u * (1 - cosTheta) + vector[0] * cosTheta + (-w * vector[1] + v * vector[2]) * sinTheta,
-        dotProduct * v * (1 - cosTheta) + vector[1] * cosTheta + (w * vector[0] - u * vector[2]) * sinTheta,
-        dotProduct * w * (1 - cosTheta) + vector[2] * cosTheta + (-v * vector[0] + u * vector[1]) * sinTheta,
-      ]
+      const [u, vComp, w] = getUnit(axis, sourceCodeInfo)
+      const dotProduct = vector[0] * u + vector[1] * vComp + vector[2] * w
+      return toAny([
+        dotProduct * u * (1 - cosTheta) + vector[0] * cosTheta + (-w * vector[1] + vComp * vector[2]) * sinTheta,
+        dotProduct * vComp * (1 - cosTheta) + vector[1] * cosTheta + (w * vector[0] - u * vector[2]) * sinTheta,
+        dotProduct * w * (1 - cosTheta) + vector[2] * cosTheta + (-vComp * vector[0] + u * vector[1]) * sinTheta,
+      ])
     },
     arity: toFixedArity(3),
   },
   'reflect': {
-    evaluate: ([vector, normal], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
-      assertVector(normal, sourceCodeInfo)
+    evaluate: ([vector_, normal_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
+      const normal = assertVector(normal_, sourceCodeInfo)
       if (vector.length !== normal.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
@@ -76,18 +80,18 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
         throw new RuntimeError('Reflection normal must not be zero', sourceCodeInfo)
       }
       if (isZeroVector(vector)) {
-        return vector
+        return toAny(vector)
       }
       const unitNormal = getUnit(normal, sourceCodeInfo)
       const doubleDot = 2 * dot(vector, unitNormal)
-      return subtract(vector, scale(unitNormal, doubleDot))
+      return toAny(subtract(vector, scale(unitNormal, doubleDot)))
     },
     arity: toFixedArity(2),
   },
   'refract': {
-    evaluate: ([vector, normal, eta], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
-      assertVector(normal, sourceCodeInfo)
+    evaluate: ([vector_, normal_, eta], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
+      const normal = assertVector(normal_, sourceCodeInfo)
       assertNumber(eta, sourceCodeInfo, { finite: true, positive: true })
       if (vector.length !== normal.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -96,7 +100,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
         throw new RuntimeError('Refraction normal must not be zero', sourceCodeInfo)
       }
       if (isZeroVector(vector)) {
-        return vector
+        return toAny(vector)
       }
       // Make sure vectors are normalized
       const normalizedV = getUnit(vector, sourceCodeInfo)
@@ -110,7 +114,7 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
 
       // Check for total internal reflection
       if (discriminant < 0) {
-        return vector // Total internal reflection occurs
+        return toAny(vector) // Total internal reflection occurs
       }
 
       // Calculate the refracted vector
@@ -120,26 +124,26 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
         eta * dotProduct + Math.sqrt(discriminant),
       )
 
-      return subtract(scaledIncident, scaledNormal)
+      return toAny(subtract(scaledIncident, scaledNormal))
     },
     arity: toFixedArity(3),
   },
   'lerp': {
-    evaluate: ([vectorA, vectorB, t], sourceCodeInfo): number[] => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_, t], sourceCodeInfo): Any => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
       assertNumber(t, sourceCodeInfo, { finite: true })
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
-      return vectorA.map((val, i) => val + (vectorB[i]! - val) * t)
+      return toAny(vectorA.map((val, i) => val + (vectorB[i]! - val) * t))
     },
     arity: toFixedArity(3),
   },
   'dot': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -150,103 +154,103 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'cross': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number[] => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): Any => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== 3 || vectorB.length !== 3) {
         throw new RuntimeError('Cross product is only defined for 3D vectors', sourceCodeInfo)
       }
 
-      return [
+      return toAny([
         vectorA[1]! * vectorB[2]! - vectorA[2]! * vectorB[1]!,
         vectorA[2]! * vectorB[0]! - vectorA[0]! * vectorB[2]!,
         vectorA[0]! * vectorB[1]! - vectorA[1]! * vectorB[0]!,
-      ] as number[]
+      ])
     },
     arity: toFixedArity(2),
   },
   'normalizeMinmax': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       if (vector.length === 0) {
-        return []
+        return toAny([])
       }
 
       const min = vector.reduce((acc, val) => (val < acc ? val : acc), vector[0]!)
       const max = vector.reduce((acc, val) => (val > acc ? val : acc), vector[0]!)
 
       if (min === max) {
-        return vector.map(() => 0)
+        return toAny(vector.map(() => 0))
       }
 
-      return vector.map(val => (val - min) / (max - min))
+      return toAny(vector.map(val => (val - min) / (max - min)))
     },
     arity: toFixedArity(1),
   },
   'normalizeRobust': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       if (vector.length === 0) {
-        return []
+        return toAny([])
       }
 
       const median = calcMedian(vector)
       const medad = calcMedad(vector)
 
       if (medad === 0) {
-        return vector.map(val => val - median)
+        return toAny(vector.map(val => val - median))
       }
-      return vector.map(val => (val - median) / medad)
+      return toAny(vector.map(val => (val - median) / medad))
     },
     arity: toFixedArity(1),
   },
   'normalizeZscore': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       const mean = calcMean(vector)
       const stdDev = calcStdDev(vector)
 
       if (stdDev === 0) {
-        return vector.map(() => 0)
+        return toAny(vector.map(() => 0))
       }
 
-      return vector.map(val => (val - mean) / stdDev)
+      return toAny(vector.map(val => (val - mean) / stdDev))
     },
     arity: toFixedArity(1),
   },
   'normalizeL1': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length === 0) {
-        return []
+        return toAny([])
       }
       const norm = vector.reduce((acc, val) => acc + Math.abs(val), 0)
 
       if (norm === 0) {
-        return vector.map(() => 0)
+        return toAny(vector.map(() => 0))
       }
 
-      return vector.map(val => val / norm)
+      return toAny(vector.map(val => val / norm))
     },
     arity: toFixedArity(1),
   },
   'normalizeL2': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
-      return getUnit(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
+      return toAny(getUnit(vector, sourceCodeInfo))
     },
     arity: toFixedArity(1),
   },
   'normalizeLog': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       if (vector.length === 0) {
-        return []
+        return toAny([])
       }
 
       const min = Math.min(...vector)
@@ -255,14 +259,14 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
         throw new RuntimeError('Log normalization requires all values to be positive', sourceCodeInfo)
       }
 
-      return vector.map(val => Math.log(val / min))
+      return toAny(vector.map(val => Math.log(val / min)))
     },
     arity: toFixedArity(1),
   },
   'angle': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (isZeroVector(vectorA) || isZeroVector(vectorB)) {
         throw new RuntimeError('Cannot calculate angle with zero-length vector', sourceCodeInfo)
       }
@@ -280,9 +284,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'projection': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number[] => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): Any => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (isZeroVector(vectorB)) {
         throw new RuntimeError('Cannot project onto zero-length vector', sourceCodeInfo)
       }
@@ -294,14 +298,14 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
       const dotProduct = vectorA.reduce((acc, val, i) => acc + val * vectorB[i]!, 0)
       const magnitudeB = Math.sqrt(vectorB.reduce((acc, val) => acc + val * val, 0))
 
-      return vectorB.map(val => (dotProduct / (magnitudeB ** 2)) * val)
+      return toAny(vectorB.map(val => (dotProduct / (magnitudeB ** 2)) * val))
     },
     arity: toFixedArity(2),
   },
   'isOrthogonal': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): boolean => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -313,9 +317,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'isParallel': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): boolean => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -326,9 +330,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'isCollinear': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): boolean => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): boolean => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -339,9 +343,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'cosineSimilarity': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (isZeroVector(vectorA) || isZeroVector(vectorB)) {
         throw new RuntimeError('Cannot calculate cosine similarity with zero-length vector', sourceCodeInfo)
       }
@@ -359,9 +363,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'euclideanDistance': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -372,17 +376,17 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'euclideanNorm': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
 
       return length(vector)
     },
     arity: toFixedArity(1),
   },
   'manhattanDistance': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -393,17 +397,17 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'manhattanNorm': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
 
       return vector.reduce((acc, val) => acc + Math.abs(val), 0)
     },
     arity: toFixedArity(1),
   },
   'hammingDistance': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -414,16 +418,16 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'hammingNorm': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       return vector.reduce((acc, val) => acc + (val !== 0 ? 1 : 0), 0)
     },
     arity: toFixedArity(1),
   },
   'chebyshevDistance': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -434,16 +438,16 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'chebyshevNorm': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       return Math.max(...vector.map(val => Math.abs(val)))
     },
     arity: toFixedArity(1),
   },
   'minkowskiDistance': {
-    evaluate: ([vectorA, vectorB, p], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_, p], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       assertNumber(p, sourceCodeInfo, { finite: true, positive: true })
 
       if (vectorA.length !== vectorB.length) {
@@ -455,17 +459,17 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'minkowskiNorm': {
-    evaluate: ([vector, p], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, p], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       assertNumber(p, sourceCodeInfo, { finite: true, positive: true })
       return vector.reduce((acc, val) => acc + Math.abs(val) ** p, 0) ** (1 / p)
     },
     arity: toFixedArity(2),
   },
   'cov': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
@@ -479,9 +483,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'corr': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
         throw new RuntimeError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
@@ -504,9 +508,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'spearmanCorr': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
         throw new RuntimeError('Vectors must have at least 2 elements for corr', sourceCodeInfo)
@@ -528,9 +532,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'pearsonCorr': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length <= 1) {
         throw new RuntimeError('Vectors must have at least 2 elements for pearsonCorr', sourceCodeInfo)
@@ -549,9 +553,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'kendallTau': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length < 2) {
         throw new RuntimeError('Vectors must have at least 2 elements for kendallTau', sourceCodeInfo)
@@ -570,8 +574,8 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'autocorrelation': {
-    evaluate: ([vector, lag], sourceCodeInfo): number => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, lag], sourceCodeInfo): number => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length < 2) {
         throw new RuntimeError('Vector must have at least 2 elements for autocorrelation', sourceCodeInfo)
       }
@@ -620,9 +624,9 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
   },
 
   'crossCorrelation': {
-    evaluate: ([vectorA, vectorB, lag], sourceCodeInfo): number => {
-      assertVector(vectorA, sourceCodeInfo)
-      assertVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_, lag], sourceCodeInfo): number => {
+      const vectorA = assertVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertVector(vectorB_, sourceCodeInfo)
 
       if (vectorA.length < 2) {
         throw new RuntimeError('Vectors must have at least 2 elements', sourceCodeInfo)
@@ -651,46 +655,46 @@ export const linearAlgebraNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'rref': {
-    evaluate: ([matrix], sourceCodeInfo): number[][] => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): Any => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
 
       // Reduced Row Echelon Form (RREF)
       const [rref] = gaussJordanElimination(matrix)
-      return rref
+      return toAny(rref)
     },
     arity: toFixedArity(1),
   },
   'solve': {
-    evaluate: ([matrix, vector], sourceCodeInfo): number[] | null => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([matrix_, vector_], sourceCodeInfo): Any => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (matrix.length !== vector.length) {
         throw new RuntimeError(`The number of rows in the matrix must be equal to the length of the vector, but got ${matrix.length} and ${vector.length}`, sourceCodeInfo)
       }
-      return solve(matrix, vector)
+      return toAny(solve(matrix, vector))
     },
     arity: toFixedArity(2),
   },
   'toPolar': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assert2dVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assert2dVector(vector_, sourceCodeInfo)
       if (isZeroVector(vector)) {
-        return [0, 0]
+        return toAny([0, 0])
       }
       const r = Math.sqrt(vector[0] ** 2 + vector[1] ** 2)
       const theta = Math.atan2(vector[1], vector[0])
-      return [r, theta]
+      return toAny([r, theta])
     },
     arity: toFixedArity(1),
   },
   'fromPolar': {
-    evaluate: ([polar], sourceCodeInfo): number[] => {
-      assert2dVector(polar, sourceCodeInfo)
+    evaluate: ([polar_], sourceCodeInfo): Any => {
+      const polar = assert2dVector(polar_, sourceCodeInfo)
       const [r, theta] = polar
       if (r === 0) {
-        return [0, 0]
+        return toAny([0, 0])
       }
-      return [r * Math.cos(theta), r * Math.sin(theta)]
+      return toAny([r * Math.cos(theta), r * Math.sin(theta)])
     },
     arity: toFixedArity(1),
   },

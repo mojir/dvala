@@ -7,6 +7,8 @@ import type { AstNode, NumberNode, StringNode } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
+import { fromJS } from '../utils/interop'
+import { PersistentMap, PersistentVector } from '../utils/persistent'
 import type { ContextStack } from './ContextStack'
 import { createContextStack } from './ContextStack'
 import type {
@@ -661,7 +663,7 @@ describe('applyFrame', () => {
         type: 'ArrayBuild',
         nodes,
         index: 0,
-        result: [],
+        result: PersistentVector.empty(),
         isSpread: false,
         env: emptyEnv(),
       }
@@ -674,19 +676,19 @@ describe('applyFrame', () => {
 
     it('should return result when all elements are done', () => {
       const nodes: NumberNode[] = [[NodeTypes.Num, 1, 0]]
-      const result = [10]
+      const resultVec = PersistentVector.from([10])
       const frame: ArrayBuildFrame = {
         type: 'ArrayBuild',
         nodes,
         index: 0,
-        result,
+        result: resultVec,
         isSpread: false,
         env: emptyEnv(),
       }
       const step = applyFrameSync(frame, 20, [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toEqual([10, 20])
+        expect(step.value).toEqual(fromJS([10, 20]))
       }
     })
 
@@ -696,14 +698,14 @@ describe('applyFrame', () => {
         type: 'ArrayBuild',
         nodes,
         index: 0,
-        result: [],
+        result: PersistentVector.empty(),
         isSpread: true,
         env: emptyEnv(),
       }
-      const step = applyFrameSync(frame, [1, 2, 3], [])
+      const step = applyFrameSync(frame, fromJS([1, 2, 3]), [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toEqual([1, 2, 3])
+        expect(step.value).toEqual(fromJS([1, 2, 3]))
       }
     })
   })
@@ -716,7 +718,7 @@ describe('applyFrame', () => {
         type: 'ObjectBuild',
         entries: [[keyNode, valueNode]],
         index: 0,
-        result: {},
+        result: PersistentMap.empty(),
         currentKey: null,
         isSpread: false,
         env: emptyEnv(),
@@ -738,7 +740,7 @@ describe('applyFrame', () => {
         type: 'ObjectBuild',
         entries: [[keyNode, valueNode]],
         index: 0,
-        result: {},
+        result: PersistentMap.empty(),
         currentKey: 'a',
         isSpread: false,
         env: emptyEnv(),
@@ -746,7 +748,7 @@ describe('applyFrame', () => {
       const step = applyFrameSync(frame, 42, [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toEqual({ a: 42 })
+        expect(step.value).toEqual(fromJS({ a: 42 }))
       }
     })
   })
@@ -758,7 +760,7 @@ describe('applyFrame', () => {
         type: 'Recur',
         nodes,
         index: 1,
-        params: [],
+        params: PersistentVector.empty(),
         env: emptyEnv(),
       }
       expect(() => applyFrameSync(frame, 42, [])).toThrow('recur called outside of loop or function body')
@@ -770,7 +772,7 @@ describe('applyFrame', () => {
         type: 'Recur',
         nodes,
         index: 1,
-        params: [],
+        params: PersistentVector.empty(),
         env: emptyEnv(),
       }
       const step = applyFrameSync(frame, 10, [])
@@ -1058,14 +1060,14 @@ describe('sync/async trampoline parity', () => {
     ['|| (false, false, 5)', 5],
     ['??(null, 42)', 42],
     ['do 1; 2; 3 end', 3],
-    ['[1, 2, 3]', [1, 2, 3]],
-    ['{ a: 1, b: 2 }', { a: 1, b: 2 }],
+    ['[1, 2, 3]', fromJS([1, 2, 3])],
+    ['{ a: 1, b: 2 }', fromJS({ a: 1, b: 2 })],
     ['((x) -> x * 2)(21)', 42],
     ['loop (x = 0) -> if x < 5 then recur(x + 1) else x end', 5],
     ['(n -> if n > 0 then recur(n - 1) else n end)(10)', 0],
     ['do with handler @dvala.error(arg) -> resume(0) end; 1 + 2 end', 3],
     ['do with handler @dvala.error(arg) -> resume("caught") end; perform(@dvala.error, "oops") end', 'caught'],
-    ['for (x in [1, 2, 3]) -> x * 10', [10, 20, 30]],
+    ['for (x in [1, 2, 3]) -> x * 10', fromJS([10, 20, 30])],
     ['match 3 case 1 then "one" case 3 then "three" end', 'three'],
   ]
 

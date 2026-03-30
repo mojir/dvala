@@ -6,6 +6,7 @@ import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 import { qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID } from '../src/evaluator/effectTypes'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { Any } from '../src/interface'
+import { PersistentMap } from '../src/utils/persistent'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
 
@@ -2167,7 +2168,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.snapshot, { approved: false, reason: 'Budget exceeded' })
+      const r2 = await resumeContinuation(r1.snapshot, PersistentMap.fromRecord({ approved: false, reason: 'Budget exceeded' }))
       expect(r2).toEqual({ type: 'completed', value: 'Rejected: Budget exceeded' })
     })
 
@@ -2450,7 +2451,7 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(storedMeta.payload).toBe('[LLM: Generate Q4 report]')
 
       // Simulate: Process 2 loads snapshot and resumes with approval
-      const r2 = await resumeContinuation(storedSnapshot, { approved: true, reason: null }, { handlers })
+      const r2 = await resumeContinuation(storedSnapshot, PersistentMap.fromRecord({ approved: true, reason: null }), { handlers })
       expect(r2.type).toBe('completed')
       if (r2.type === 'completed') {
         expect(r2.value).toBe('[LLM: Finalize: [LLM: Generate Q4 report]]')
@@ -2471,7 +2472,7 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      const r2 = await resumeContinuation(r1.snapshot, { approved: false, reason: 'denied' })
+      const r2 = await resumeContinuation(r1.snapshot, PersistentMap.fromRecord({ approved: false, reason: 'denied' }))
       expect(r2).toEqual({ type: 'completed', value: 'No: denied' })
     })
 

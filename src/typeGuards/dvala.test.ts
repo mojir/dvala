@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
-import type { Seq } from '../interface'
 import type { AstNode, RegularExpression } from '../parser/types'
+import { PersistentVector } from '../utils/persistent'
 import { FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { NodeTypes } from '../constants/constants'
 import {
@@ -70,7 +70,7 @@ describe('dvala type guards', () => {
   })
 
   it('seq', () => {
-    const valid: Seq = ['', '1', [], [1, 2, 3]]
+    const valid = ['', '1', PersistentVector.empty(), PersistentVector.from([1, 2, 3])]
     const invalid = [0, 1, true, false, null, undefined, {}]
     testTypeGuars(
       {

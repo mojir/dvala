@@ -83,13 +83,13 @@ apply(
 
   'comp': {
     evaluate: (params, sourceCodeInfo): CompFunction => {
-      params.forEach(param => assertFunctionLike(param, sourceCodeInfo))
+      for (const param of params) assertFunctionLike(param, sourceCodeInfo)
       return {
         [FUNCTION_SYMBOL]: true,
         sourceCodeInfo,
         functionType: 'Comp',
         params,
-        arity: params.length > 0 ? getArityFromFunction(params.at(-1) as FunctionLike) : { min: 1, max: 1 },
+        arity: params.size > 0 ? getArityFromFunction(params.get(params.size - 1) as FunctionLike) : { min: 1, max: 1 },
       }
     },
     arity: {},

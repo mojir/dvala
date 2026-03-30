@@ -11,6 +11,7 @@ import { tokenize } from '../src/tokenizer/tokenize'
 import { getUndefinedSymbols } from '../src/tooling'
 import type { Handlers } from '../src/evaluator/effectTypes'
 import { getStandardEffectDefinition } from '../src/evaluator/standardEffects'
+import { PersistentMap, PersistentVector } from '../src/utils/persistent'
 import '../src/initReferenceData'
 
 // ---------------------------------------------------------------------------
@@ -374,7 +375,7 @@ describe('effects API — host handler edge cases', () => {
   it('should handle host handler with suspend()', async () => {
     const handlers: Handlers = [
       { pattern: 'test.suspend', handler: async ctx => {
-        ctx.suspend({ reason: 'waiting' })
+        ctx.suspend(PersistentMap.fromRecord({ reason: 'waiting' }))
       } },
     ]
     const result = await dvala.runAsync('perform(@test.suspend)', { effectHandlers: handlers })
@@ -832,7 +833,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
     let savedSnapshot: unknown = null
     const handlers: Handlers = [
       { pattern: 'test.checkpoint', handler: async ctx => {
-        savedSnapshot = ctx.checkpoint('label snap1', { label: 'snap1' })
+        savedSnapshot = ctx.checkpoint('label snap1', PersistentMap.fromRecord({ label: 'snap1' }))
         ctx.resume(1)
       } },
     ]
@@ -847,7 +848,7 @@ describe('host handler — checkpoint and resumeFrom', () => {
       { pattern: 'test.snap', handler: async ctx => {
         callCount++
         if (callCount === 1) {
-          ctx.checkpoint('label first', { label: 'first' })
+          ctx.checkpoint('label first', PersistentMap.fromRecord({ label: 'first' }))
           ctx.resume(10)
         } else {
           ctx.resume(99)
@@ -1410,7 +1411,7 @@ describe('setupUserDefinedCall — async binding fallbacks', () => {
     `, {
       effectHandlers: [
         { pattern: 'my.getData', handler: async ({ resume: doResume }) => {
-          doResume([10, 20])
+          doResume(PersistentVector.from([10, 20]))
         } },
       ],
     })
@@ -2042,8 +2043,8 @@ describe('dedupSubTrees — via suspend/resume', () => {
       const resumed = await resume(result.snapshot, null)
       expect(resumed.type).toBe('completed')
       if (resumed.type === 'completed') {
-        const arr = resumed.value as unknown[]
-        expect(arr).toHaveLength(3)
+        const arr = resumed.value as PersistentVector
+        expect(arr.size).toBe(3)
       }
     }
   })
@@ -2230,58 +2231,58 @@ describe('grid module — dvala-implemented functions', () => {
 
 describe('stub evaluate — core/functional.ts', () => {
   it('|> evaluate throws', () => {
-    expect(() => functionalNormalExpression['|>']!.evaluate([], undefined, undefined!)).toThrow('|> is implemented in Dvala')
+    expect(() => functionalNormalExpression['|>']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('|> is implemented in Dvala')
   })
   it('apply evaluate throws', () => {
-    expect(() => functionalNormalExpression.apply!.evaluate([], undefined, undefined!)).toThrow('apply is implemented in Dvala')
+    expect(() => functionalNormalExpression.apply!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('apply is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — sequence module (mapcat)', () => {
   it('mapcat evaluate throws', () => {
-    expect(() => sequenceUtilsModule.functions.mapcat!.evaluate([], undefined, undefined!)).toThrow('mapcat is implemented in Dvala')
+    expect(() => sequenceUtilsModule.functions.mapcat!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('mapcat is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — vector module (movingFn, runningFn)', () => {
   it('movingFn evaluate throws', () => {
-    expect(() => vectorModule.functions['movingFn']!.evaluate([], undefined, undefined!)).toThrow('movingFn is implemented in Dvala')
+    expect(() => vectorModule.functions['movingFn']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('movingFn is implemented in Dvala')
   })
   it('runningFn evaluate throws', () => {
-    expect(() => vectorModule.functions['runningFn']!.evaluate([], undefined, undefined!)).toThrow('runningFn is implemented in Dvala')
+    expect(() => vectorModule.functions['runningFn']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('runningFn is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/object.ts', () => {
   it('mergeWith evaluate throws', () => {
-    expect(() => objectNormalExpression['mergeWith']!.evaluate([], undefined, undefined!)).toThrow('mergeWith is implemented in Dvala')
+    expect(() => objectNormalExpression['mergeWith']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('mergeWith is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/collection.ts', () => {
   it('filter evaluate throws', () => {
-    expect(() => collectionNormalExpression.filter!.evaluate([], undefined, undefined!)).toThrow('filter is implemented in Dvala')
+    expect(() => collectionNormalExpression.filter!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('filter is implemented in Dvala')
   })
   it('map evaluate throws', () => {
-    expect(() => collectionNormalExpression.map!.evaluate([], undefined, undefined!)).toThrow('map is implemented in Dvala')
+    expect(() => collectionNormalExpression.map!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('map is implemented in Dvala')
   })
   it('reduce evaluate throws', () => {
-    expect(() => collectionNormalExpression.reduce!.evaluate([], undefined, undefined!)).toThrow('reduce is implemented in Dvala')
+    expect(() => collectionNormalExpression.reduce!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('reduce is implemented in Dvala')
   })
 })
 
 describe('stub evaluate — core/sequence.ts', () => {
   it('some evaluate throws', () => {
-    expect(() => sequenceNormalExpression.some!.evaluate([], undefined, undefined!)).toThrow('some is implemented in Dvala')
+    expect(() => sequenceNormalExpression.some!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('some is implemented in Dvala')
   })
   it('sort evaluate throws', () => {
-    expect(() => sequenceNormalExpression.sort!.evaluate([], undefined, undefined!)).toThrow('sort is implemented in Dvala')
+    expect(() => sequenceNormalExpression.sort!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('sort is implemented in Dvala')
   })
   it('takeWhile evaluate throws', () => {
-    expect(() => sequenceNormalExpression['takeWhile']!.evaluate([], undefined, undefined!)).toThrow('takeWhile is implemented in Dvala')
+    expect(() => sequenceNormalExpression['takeWhile']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('takeWhile is implemented in Dvala')
   })
   it('dropWhile evaluate throws', () => {
-    expect(() => sequenceNormalExpression['dropWhile']!.evaluate([], undefined, undefined!)).toThrow('dropWhile is implemented in Dvala')
+    expect(() => sequenceNormalExpression['dropWhile']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('dropWhile is implemented in Dvala')
   })
 })
 
@@ -2292,65 +2293,65 @@ describe('stub evaluate — core/sequence.ts', () => {
 describe('stub evaluate — modules/sequence/index.ts', () => {
   const fns = sequenceUtilsModule.functions
   it('position evaluate throws', () => {
-    expect(() => fns.position!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.position!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('sortBy evaluate throws', () => {
-    expect(() => fns['sortBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['sortBy']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('remove evaluate throws', () => {
-    expect(() => fns.remove!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.remove!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('splitWith evaluate throws', () => {
-    expect(() => fns['splitWith']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['splitWith']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('groupBy evaluate throws', () => {
-    expect(() => fns['groupBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['groupBy']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('partitionBy evaluate throws', () => {
-    expect(() => fns['partitionBy']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['partitionBy']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
 describe('stub evaluate — modules/collection/index.ts', () => {
   const fns = collectionUtilsModule.functions
   it('update evaluate throws', () => {
-    expect(() => fns.update!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.update!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('updateIn evaluate throws', () => {
-    expect(() => fns['updateIn']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['updateIn']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('filteri evaluate throws', () => {
-    expect(() => fns.filteri!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.filteri!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('mapi evaluate throws', () => {
-    expect(() => fns.mapi!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.mapi!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reducei evaluate throws', () => {
-    expect(() => fns.reducei!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reducei!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reduceRight evaluate throws', () => {
-    expect(() => fns['reduceRight']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['reduceRight']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reduceiRight evaluate throws', () => {
-    expect(() => fns['reduceiRight']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['reduceiRight']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reductions evaluate throws', () => {
-    expect(() => fns.reductions!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reductions!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('reductionsi evaluate throws', () => {
-    expect(() => fns.reductionsi!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.reductionsi!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isEvery evaluate throws', () => {
-    expect(() => fns['isEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isEvery']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isAny evaluate throws', () => {
-    expect(() => fns['isAny']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isAny']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('notAny evaluate throws', () => {
-    expect(() => fns['notAny']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['notAny']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('notEvery evaluate throws', () => {
-    expect(() => fns['notEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['notEvery']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2361,37 +2362,37 @@ describe('stub evaluate — modules/collection/index.ts', () => {
 describe('stub evaluate — modules/grid/index.ts', () => {
   const fns = gridModule.functions
   it('isCellEvery evaluate throws', () => {
-    expect(() => fns['isCellEvery']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isCellEvery']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isSome evaluate throws', () => {
-    expect(() => fns['isSome']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isSome']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isEveryRow evaluate throws', () => {
-    expect(() => fns['isEveryRow']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isEveryRow']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isSomeRow evaluate throws', () => {
-    expect(() => fns['isSomeRow']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isSomeRow']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isEveryCol evaluate throws', () => {
-    expect(() => fns['isEveryCol']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isEveryCol']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('isSomeCol evaluate throws', () => {
-    expect(() => fns['isSomeCol']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['isSomeCol']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('generate evaluate throws', () => {
-    expect(() => fns.generate!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns.generate!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cellMap evaluate throws', () => {
-    expect(() => fns['cellMap']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cellMap']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cellMapi evaluate throws', () => {
-    expect(() => fns['cellMapi']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cellMapi']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cellReduce evaluate throws', () => {
-    expect(() => fns['cellReduce']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cellReduce']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
   it('cellReducei evaluate throws', () => {
-    expect(() => fns['cellReducei']!.evaluate([], undefined, undefined!)).toThrow('Dvala implementation should be used instead')
+    expect(() => fns['cellReducei']!.evaluate(PersistentVector.empty(), undefined, undefined!)).toThrow('Dvala implementation should be used instead')
   })
 })
 
@@ -2676,7 +2677,7 @@ describe('trampoline.ts — effect host handler callbacks', () => {
   it('should handle handler that calls suspend (line 2453)', async () => {
     const handlers: Handlers = [
       { pattern: 'test.suspend', handler: async ({ suspend }) => {
-        suspend({ reason: 'test' })
+        suspend(PersistentMap.fromRecord({ reason: 'test' }))
       } },
     ]
     const result = await dvala.runAsync('perform(@test.suspend)', { effectHandlers: handlers })

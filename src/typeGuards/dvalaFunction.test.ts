@@ -1,6 +1,7 @@
 import { describe, expect, it, test } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
 import type { DvalaFunction } from '../parser/types'
+import { PersistentVector } from '../utils/persistent'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import {
   asDvalaFunction,
@@ -31,7 +32,7 @@ describe('dvalaFunction type guards', () => {
   const lf4: DvalaFunction = {
     [FUNCTION_SYMBOL]: true,
     functionType: 'Comp',
-    params: ['x'],
+    params: PersistentVector.from(['x']),
     arity: {},
   }
   const lf5: DvalaFunction = {

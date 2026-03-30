@@ -1,10 +1,11 @@
 import { isDvalaFunction, isMacroFunction } from '../../typeGuards/dvalaFunction'
-import { assertColl, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
+import { assertColl, isArr, isColl, isEffect, isObj, isRegularExpression, isSeq } from '../../typeGuards/dvala'
 import { assertNumber, isNumber } from '../../typeGuards/number'
 import type { BuiltinNormalExpressions } from '../interface'
 import { isGrid, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
 import { EPSILON } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
+import type { PersistentMap } from '../../utils/persistent'
 
 export const predicatesNormalExpression: BuiltinNormalExpressions = {
   'isFunction': {
@@ -513,10 +514,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       if (typeof coll === 'string')
         return coll.length === 0
 
-      if (Array.isArray(coll))
-        return coll.length === 0
+      // PersistentVector and PersistentMap both expose `.size`
+      if (isArr(coll))
+        return coll.size === 0
 
-      return Object.keys(coll).length === 0
+      return (coll as PersistentMap).size === 0
     },
     arity: toFixedArity(1),
     docs: {
@@ -546,10 +548,11 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       if (typeof coll === 'string')
         return coll.length > 0
 
-      if (Array.isArray(coll))
-        return coll.length > 0
+      // PersistentVector and PersistentMap both expose `.size`
+      if (isArr(coll))
+        return coll.size > 0
 
-      return Object.keys(coll).length > 0
+      return (coll as PersistentMap).size > 0
     },
     arity: toFixedArity(1),
     docs: {

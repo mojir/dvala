@@ -7,8 +7,8 @@ import type { BuiltinNormalExpressions } from '../interface'
 export const assertionNormalExpression: BuiltinNormalExpressions = {
   assert: {
     evaluate: (params, sourceCodeInfo): Any => {
-      const value = params[0]
-      const message = params.length === 2 ? params[1] : `${value}`
+      const value = params.get(0)
+      const message = params.size === 2 ? params.get(1) : `${value}`
       assertString(message, sourceCodeInfo)
       if (!value)
         throw new AssertionError(message, sourceCodeInfo)

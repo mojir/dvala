@@ -5,23 +5,26 @@ import { assertStringOrRegularExpression, isObj } from '../../typeGuards/dvala'
 import { assertNumber } from '../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
+import { isPersistentVector, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 
 const blankRegexp = /^\s*$/
 export const stringNormalExpression: BuiltinNormalExpressions = {
   'str': {
     evaluate: (params: Arr) => {
-      return params.reduce((result: string, param) => {
+      let result = ''
+      for (const param of params) {
         const paramStr
           = param === undefined || param === null
             ? ''
             : isObj(param)
-              ? JSON.stringify(param)
-              : Array.isArray(param)
-                ? JSON.stringify(param)
+              ? JSON.stringify(param.toRecord())
+              : isPersistentVector(param)
+                ? JSON.stringify(param.toArray())
                 : `${param}`
-        return result + paramStr
-      }, '')
+        result = result + paramStr
+      }
+      return result
     },
     arity: {},
     docs: {
@@ -130,9 +133,9 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
   'join': {
     evaluate: ([stringList, delimiter], sourceCodeInfo): string => {
       assertArray(stringList, sourceCodeInfo)
-      stringList.forEach(str => assertStringOrNumber(str, sourceCodeInfo))
+      for (const str of stringList) assertStringOrNumber(str, sourceCodeInfo)
       assertString(delimiter, sourceCodeInfo)
-      return stringList.join(delimiter)
+      return [...stringList].join(delimiter)
     },
     arity: toFixedArity(2),
     docs: {
@@ -158,7 +161,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
   },
 
   'split': {
-    evaluate: ([str, stringOrRegExpValue, limit], sourceCodeInfo): string[] => {
+    evaluate: ([str, stringOrRegExpValue, limit], sourceCodeInfo): Arr => {
       assertString(str, sourceCodeInfo)
       assertStringOrRegularExpression(stringOrRegExpValue, sourceCodeInfo)
       if (limit !== undefined)
@@ -168,7 +171,7 @@ export const stringNormalExpression: BuiltinNormalExpressions = {
         = typeof stringOrRegExpValue === 'string'
           ? stringOrRegExpValue
           : new RegExp(stringOrRegExpValue.s, stringOrRegExpValue.f)
-      return str.split(delimiter, limit)
+      return PersistentVector.from(str.split(delimiter, limit))
     },
     arity: { min: 2, max: 3 },
     docs: {

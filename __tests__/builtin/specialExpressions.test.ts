@@ -62,7 +62,7 @@ describe('specialExpressions', () => {
     it('shorthand samples', () => {
       expect(dvala.run('[]')).toEqual([])
       expect(dvala.run('[1]')).toEqual([1])
-      expect((dvala.run('[null]') as Arr)[0]).toEqual(null)
+      expect((dvala.run('[null]') as Arr).get(0)).toEqual(null)
       expect(dvala.run('[0, "1", null, true, false, [[]], object()]')).toEqual([0, '1', null, true, false, [[]], {}])
     })
     test('findUnresolvedIdentifiers', () => {

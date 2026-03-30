@@ -46,7 +46,7 @@ export interface Snapshot {
   readonly terminal?: boolean
 
   /** Optional domain metadata from the perform call or suspend call. */
-  readonly meta?: Any
+  readonly meta?: unknown
 
   /**
    * The name of the effect that was being handled when the program suspended.
@@ -58,7 +58,7 @@ export interface Snapshot {
    * The payload passed to the suspended effect's perform call.
    * Undefined when suspension occurred outside of an effect handler.
    */
-  readonly effectArg?: Any
+  readonly effectArg?: unknown
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ export interface EffectContext {
   effectName: string
 
   /** The single payload from the Dvala `perform(eff, payload)` call. */
-  arg: Any
+  arg: unknown
 
   /**
    * Aborted when: `race()` branch loses, runtime is disposed, or host cancels.
@@ -143,7 +143,7 @@ export interface EffectContext {
    * Resume the program with the given value (or a Promise that resolves to one).
    * The value becomes the result of the `perform(...)` expression in Dvala.
    */
-  resume: (value: Any | Promise<Any>) => void
+  resume: (value: unknown) => void
 
   /**
    * Propagate as a Dvala-level error. If `msg` is provided it overrides the
@@ -157,7 +157,7 @@ export interface EffectContext {
    * `meta` is passed through to `Snapshot.meta` for domain context
    * (e.g., assignee, deadline, priority).
    */
-  suspend: (meta?: Any) => void
+  suspend: (meta?: unknown) => void
 
   /**
    * Pass to the next registered handler whose pattern matches this effect.
@@ -173,20 +173,20 @@ export interface EffectContext {
    * Returns the new Snapshot. This is the host-side equivalent of
    * `perform(@dvala.checkpoint)`.
    */
-  checkpoint: (message: string, meta?: Any) => Snapshot
+  checkpoint: (message: string, meta?: unknown) => Snapshot
 
   /**
    * Abandon current execution and resume from a previous snapshot.
    * All snapshots after the target are discarded.
    */
-  resumeFrom: (snapshot: Snapshot, value: Any) => void
+  resumeFrom: (snapshot: Snapshot, value: unknown) => void
 
   /**
    * Halt the program immediately. Returns a `{ type: 'halted', value }` result.
    * Unlike `fail()`, this does not trigger error handlers — it's a clean termination.
    * If `value` is omitted, defaults to `null`.
    */
-  halt: (value?: Any) => void
+  halt: (value?: unknown) => void
 }
 
 /** A function that handles an effect by calling `resume`, `suspend`, `fail`, `halt`, or `next`. */
@@ -257,10 +257,10 @@ export function findMatchingHandlers(
  * terminal snapshot containing the checkpoint history for debugging/replay.
  */
 export type RunResult =
-  | { type: 'completed'; value: Any; definedBindings?: Record<string, unknown>; snapshot?: Snapshot }
+  | { type: 'completed'; value: unknown; definedBindings?: Record<string, unknown>; snapshot?: Snapshot }
   | { type: 'suspended'; snapshot: Snapshot }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot }
-  | { type: 'halted'; value: Any; snapshot?: Snapshot }
+  | { type: 'halted'; value: unknown; snapshot?: Snapshot }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline
@@ -280,7 +280,7 @@ export class SuspensionSignal {
     /** High-water mark for snapshot indices at the point of suspension. */
     public readonly nextSnapshotIndex: number,
     /** Optional domain metadata passed through to RunResult. */
-    public readonly meta?: Any,
+    public readonly meta?: unknown,
     /** The effect name being handled when suspend() was called. */
     public readonly effectName?: string,
     /** The effect payload being handled when suspend() was called. */

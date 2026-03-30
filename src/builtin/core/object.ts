@@ -4,13 +4,14 @@ import { assertObj } from '../../typeGuards/dvala'
 import { asString, assertString } from '../../typeGuards/string'
 import { collHasKey, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
+import { PersistentMap, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const objectNormalExpression: BuiltinNormalExpressions = {
   'keys': {
-    evaluate: ([obj], sourceCodeInfo): string[] => {
+    evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
-      return Object.keys(obj)
+      return PersistentVector.from(obj.keys())
     },
     arity: toFixedArity(1),
     docs: {
@@ -31,7 +32,7 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
   'vals': {
     evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
-      return Object.values(obj)
+      return PersistentVector.from(obj.values())
     },
     arity: toFixedArity(1),
     docs: {
@@ -50,9 +51,10 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
   },
 
   'entries': {
-    evaluate: ([obj], sourceCodeInfo): [string, unknown][] => {
+    evaluate: ([obj], sourceCodeInfo): Arr => {
       assertObj(obj, sourceCodeInfo)
-      return Object.entries(obj)
+      // Each entry is a [key, value] pair represented as a PersistentVector
+      return PersistentVector.from(obj.entries().map(([k, v]) => PersistentVector.from([k, v]) as Arr))
     },
     arity: toFixedArity(1),
     docs: {
@@ -71,11 +73,11 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
   },
 
   'find': {
-    evaluate: ([obj, key], sourceCodeInfo): [string, unknown] | null => {
+    evaluate: ([obj, key], sourceCodeInfo): Arr | null => {
       assertObj(obj, sourceCodeInfo)
       assertString(key, sourceCodeInfo)
       if (collHasKey(obj, key))
-        return [key, obj[key]]
+        return PersistentVector.from([key, obj.get(key)])
 
       return null
     },
@@ -104,9 +106,8 @@ export const objectNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([obj, key], sourceCodeInfo): Any => {
       assertObj(obj, sourceCodeInfo)
       assertString(key, sourceCodeInfo)
-      const newObj = { ...obj }
-      delete newObj[key]
-      return newObj
+      // PersistentMap.dissoc returns a new map with the key removed
+      return obj.dissoc(key)
     },
     arity: toFixedArity(2),
     docs: {
@@ -135,7 +136,7 @@ o`,
 
   'merge': {
     evaluate: (params, sourceCodeInfo): Any => {
-      if (params.length === 0)
+      if (params.size === 0)
         return null
 
       const [first, ...rest] = params
@@ -144,9 +145,14 @@ o`,
       return rest.reduce(
         (result: Obj, obj) => {
           assertObj(obj, sourceCodeInfo)
-          return { ...result, ...obj }
+          // Fold all entries of obj into result via assoc
+          let merged = result
+          for (const [k, v] of obj) {
+            merged = merged.assoc(k, v)
+          }
+          return merged
         },
-        { ...first },
+        first,
       )
     },
     arity: { min: 0 },
@@ -203,13 +209,13 @@ If no arguments are provided \`null\` is returned.`,
       assertStringArray(keys, sourceCodeInfo)
       assertArray(values, sourceCodeInfo)
 
-      const length = Math.min(keys.length, values.length)
+      const length = Math.min(keys.size, values.size)
 
-      const result: Obj = {}
+      let result: Obj = PersistentMap.empty()
 
       for (let i = 0; i < length; i += 1) {
-        const key = asString(keys[i], sourceCodeInfo)
-        result[key] = toAny(values[i])
+        const key = asString(keys.get(i), sourceCodeInfo)
+        result = result.assoc(key, toAny(values.get(i)))
       }
       return result
     },
@@ -238,12 +244,12 @@ If no arguments are provided \`null\` is returned.`,
       assertStringArray(keys, sourceCodeInfo)
       assertObj(obj, sourceCodeInfo)
 
-      return keys.reduce((result: Obj, key) => {
-        if (collHasKey(obj, key))
-          result[key] = toAny(obj[key])
-
-        return result
-      }, {})
+      let result: Obj = PersistentMap.empty()
+      for (const key of keys) {
+        if (typeof key === 'string' && collHasKey(obj, key))
+          result = result.assoc(key, toAny(obj.get(key)))
+      }
+      return result
     },
     arity: toFixedArity(2),
     docs: {

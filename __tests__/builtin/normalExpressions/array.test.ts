@@ -69,7 +69,7 @@ describe('array functions', () => {
       expect(() => dvala.run('flatten()')).toThrow(DvalaError)
     })
     it('immutability', () => {
-      dvala.run('flatten(nestedArray)', { bindings: testData })
+      dvala.run('flatten(nestedArray)', { bindings: testData as unknown as Record<string, unknown> })
     })
   })
 

@@ -1,4 +1,5 @@
 import { RuntimeError } from '../../../errors'
+import type { Any } from '../../../interface'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -34,9 +35,10 @@ function partitions(n: number): number[][] {
 
 export const partitionsNormalExpressions: BuiltinNormalExpressions = {
   'partitions': {
-    evaluate: ([n], sourceCodeInfo): number[][] => {
+    // Returns number[][] (annotated grid of annotated vectors), cast to Any for the evaluator signature
+    evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
-      return partitions(n)
+      return partitions(n) as unknown as Any
     },
     arity: toFixedArity(1),
   },

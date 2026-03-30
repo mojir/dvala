@@ -4,6 +4,7 @@ import { cloneColl, collHasKey, deepEqual, smartTrim, toNonNegativeInteger } fro
 import { REGEXP_SYMBOL } from '../src/utils/symbols'
 import { valueToString } from '../src/utils/debug/debugTools'
 import { NodeTypes } from '../src/constants/constants'
+import { PersistentMap, PersistentVector } from '../src/utils/persistent'
 
 describe('utils', () => {
   it('collHasKey', () => {
@@ -82,15 +83,18 @@ describe('utils', () => {
 
   describe('cloneColl', () => {
     it('samples', () => {
-      expect(cloneColl({ a: 10 })).toEqual({ a: 10 })
-      expect(cloneColl({ a: [1, 2, 3] })).toEqual({ a: [1, 2, 3] })
+      // PersistentMap is immutable — cloneColl returns the same reference
+      const map = PersistentMap.fromRecord({ a: 10 })
+      expect(cloneColl(map)).toBe(map)
+      // PersistentVector is immutable — cloneColl returns the same reference
+      const vec = PersistentVector.from([1, 2, 3])
+      expect(cloneColl(vec)).toBe(vec)
     })
-    it('new instance', () => {
-      const original = { a: [1, 2, 3] }
-      const second = cloneColl(original)
-      expect(original).not.toBe(second)
-      second.a[0] = 10
-      expect(original.a[0]).toBe(1)
+    it('persistent structures are immutable', () => {
+      const original = PersistentMap.fromRecord({ a: PersistentVector.from([1, 2, 3]) })
+      const cloned = cloneColl(original)
+      // Persistent structures are immutable, so clone returns same instance
+      expect(cloned).toBe(original)
     })
   })
 

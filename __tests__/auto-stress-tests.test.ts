@@ -27,6 +27,7 @@ import { createDvala } from '../src/createDvala'
 import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import type { Any } from '../src/interface'
+import { fromJS } from '../src/utils/interop'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 // Wrapper that disables auto-checkpoint by default (tests care about value, not snapshots)
 function resumeContinuation(snapshot: Snapshot, value: Any, options?: ResumeOptions) {
@@ -632,8 +633,8 @@ describe('stress: deep closures + effects + suspend', () => {
 
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
-    const r2 = await resumeContinuation(restored, [1, 2, 3])
-    expect(r2).toEqual({ type: 'completed', value: [3, 6, 9] })
+    const r2 = await resumeContinuation(restored, fromJS([1, 2, 3]))
+    expect(r2).toEqual({ type: 'completed', value: fromJS([3, 6, 9]) })
   })
 })
 
@@ -1463,7 +1464,7 @@ describe('stress: suspend inside control flow', () => {
     if (r1.type !== 'suspended')
       return
 
-    const r2 = await resumeContinuation(r1.snapshot, [10, 20, 12])
+    const r2 = await resumeContinuation(r1.snapshot, fromJS([10, 20, 12]))
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
 })

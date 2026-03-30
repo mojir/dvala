@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import type { Any } from '../interface'
+import { PersistentMap, PersistentVector } from '../utils/persistent'
 import type {
   CompFunction,
   ComplementFunction,
@@ -85,25 +86,25 @@ describe('isSerializable', () => {
 
   describe('arrays', () => {
     it('should accept empty arrays', () => {
-      expect(isSerializable([])).toBe(true)
+      expect(isSerializable(PersistentVector.empty())).toBe(true)
     })
     it('should accept arrays of primitives', () => {
-      expect(isSerializable([1, 'two', true, null])).toBe(true)
+      expect(isSerializable(PersistentVector.from([1, 'two', true, null]))).toBe(true)
     })
     it('should accept nested arrays', () => {
-      expect(isSerializable([[1, 2], [3, [4, 5]]])).toBe(true)
+      expect(isSerializable(PersistentVector.from([PersistentVector.from([1, 2]), PersistentVector.from([3, PersistentVector.from([4, 5])])]))).toBe(true)
     })
   })
 
   describe('objects', () => {
     it('should accept empty objects', () => {
-      expect(isSerializable({})).toBe(true)
+      expect(isSerializable(PersistentMap.empty())).toBe(true)
     })
     it('should accept objects with primitive values', () => {
-      expect(isSerializable({ a: 1, b: 'two', c: true, d: null })).toBe(true)
+      expect(isSerializable(PersistentMap.fromRecord({ a: 1, b: 'two', c: true, d: null }))).toBe(true)
     })
     it('should accept nested objects', () => {
-      expect(isSerializable({ a: { b: { c: 42 } } })).toBe(true)
+      expect(isSerializable(PersistentMap.fromRecord({ a: PersistentMap.fromRecord({ b: PersistentMap.fromRecord({ c: 42 }) }) }))).toBe(true)
     })
   })
 
@@ -127,12 +128,12 @@ describe('isSerializable', () => {
 
     it('should accept arrays containing EffectRef', () => {
       const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.print' }
-      expect(isSerializable([1, ref] as Any)).toBe(true)
+      expect(isSerializable(PersistentVector.from([1, ref]))).toBe(true)
     })
 
     it('should accept objects containing EffectRef', () => {
       const ref: EffectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.time.now' }
-      const obj: Any = { eff: ref }
+      const obj = PersistentMap.fromRecord({ eff: ref })
       expect(isSerializable(obj)).toBe(true)
     })
   })
@@ -158,7 +159,7 @@ describe('isSerializable', () => {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Partial',
         function: makeUserDefinedFunction(),
-        params: [1, 'two'],
+        params: PersistentVector.from([1, 'two']),
         placeholders: [2],
         arity: {},
       }
@@ -169,7 +170,7 @@ describe('isSerializable', () => {
       const comp: CompFunction = {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Comp',
-        params: [makeUserDefinedFunction(), makeBuiltinFunction()],
+        params: PersistentVector.from([makeUserDefinedFunction(), makeBuiltinFunction()]),
         arity: {},
       }
       expect(isSerializable(comp as Any)).toBe(true)
@@ -189,7 +190,7 @@ describe('isSerializable', () => {
       const juxt: JuxtFunction = {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Juxt',
-        params: [makeUserDefinedFunction()],
+        params: PersistentVector.from([makeUserDefinedFunction()]),
         arity: {},
       }
       expect(isSerializable(juxt as Any)).toBe(true)
@@ -209,7 +210,7 @@ describe('isSerializable', () => {
       const everyPred: EveryPredFunction = {
         [FUNCTION_SYMBOL]: true,
         functionType: 'EveryPred',
-        params: [makeUserDefinedFunction()],
+        params: PersistentVector.from([makeUserDefinedFunction()]),
         arity: {},
       }
       expect(isSerializable(everyPred as Any)).toBe(true)
@@ -219,7 +220,7 @@ describe('isSerializable', () => {
       const somePred: SomePredFunction = {
         [FUNCTION_SYMBOL]: true,
         functionType: 'SomePred',
-        params: [makeUserDefinedFunction()],
+        params: PersistentVector.from([makeUserDefinedFunction()]),
         arity: {},
       }
       expect(isSerializable(somePred as Any)).toBe(true)
@@ -230,7 +231,7 @@ describe('isSerializable', () => {
         [FUNCTION_SYMBOL]: true,
         functionType: 'Fnull',
         function: makeUserDefinedFunction(),
-        params: [1, 'default'],
+        params: PersistentVector.from([1, 'default']),
         arity: {},
       }
       expect(isSerializable(fnull as Any)).toBe(true)
@@ -239,15 +240,17 @@ describe('isSerializable', () => {
 
   describe('circular references', () => {
     it('should return false for circular arrays', () => {
+      // Circular references in plain arrays (not reachable via PersistentVector, but runtime handles it)
       const arr: unknown[] = [1, 2]
       arr.push(arr)
-      expect(isSerializable(arr)).toBe(false)
+      expect(isSerializable(arr as unknown as Any)).toBe(false)
     })
 
     it('should return false for circular objects', () => {
+      // Circular references in plain objects (not reachable via PersistentMap, but runtime handles it)
       const obj: Record<string, unknown> = { a: 1 }
       obj.self = obj
-      expect(isSerializable(obj)).toBe(false)
+      expect(isSerializable(obj as unknown as Any)).toBe(false)
     })
   })
 })
@@ -270,7 +273,7 @@ describe('describeSerializationIssue', () => {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Partial',
       function: makeUserDefinedFunction(),
-      params: [1, 'two'],
+      params: PersistentVector.from([1, 'two']),
       placeholders: [2],
       arity: {},
     }
@@ -281,7 +284,7 @@ describe('describeSerializationIssue', () => {
     const comp: CompFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Comp',
-      params: [makeUserDefinedFunction()],
+      params: PersistentVector.from([makeUserDefinedFunction()]),
       arity: {},
     }
     expect(describeSerializationIssue(comp as Any)).toBeNull()
@@ -311,7 +314,7 @@ describe('describeSerializationIssue', () => {
     const juxt: JuxtFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Juxt',
-      params: [makeUserDefinedFunction()],
+      params: PersistentVector.from([makeUserDefinedFunction()]),
       arity: {},
     }
     expect(describeSerializationIssue(juxt as Any)).toBeNull()
@@ -321,7 +324,7 @@ describe('describeSerializationIssue', () => {
     const everyPred: EveryPredFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'EveryPred',
-      params: [makeUserDefinedFunction()],
+      params: PersistentVector.from([makeUserDefinedFunction()]),
       arity: {},
     }
     expect(describeSerializationIssue(everyPred as Any)).toBeNull()
@@ -331,7 +334,7 @@ describe('describeSerializationIssue', () => {
     const somePred: SomePredFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'SomePred',
-      params: [makeUserDefinedFunction()],
+      params: PersistentVector.from([makeUserDefinedFunction()]),
       arity: {},
     }
     expect(describeSerializationIssue(somePred as Any)).toBeNull()
@@ -342,18 +345,18 @@ describe('describeSerializationIssue', () => {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Fnull',
       function: makeUserDefinedFunction(),
-      params: [1, 'default'],
+      params: PersistentVector.from([1, 'default']),
       arity: {},
     }
     expect(describeSerializationIssue(fnull as Any)).toBeNull()
   })
 
   it('should return null for serializable arrays', () => {
-    expect(describeSerializationIssue([1, 'two', true])).toBeNull()
+    expect(describeSerializationIssue(PersistentVector.from([1, 'two', true]))).toBeNull()
   })
 
   it('should return null for serializable objects', () => {
-    expect(describeSerializationIssue({ a: 1, b: 'two' })).toBeNull()
+    expect(describeSerializationIssue(PersistentMap.fromRecord({ a: 1, b: 'two' }))).toBeNull()
   })
 
   it('should return null for RegularExpression', () => {
@@ -407,7 +410,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
       [FUNCTION_SYMBOL]: true,
       functionType: 'Partial',
       function: BAD as unknown as FunctionLike,
-      params: [1],
+      params: PersistentVector.from([1]),
       placeholders: [],
       arity: {},
     }
@@ -419,7 +422,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
       [FUNCTION_SYMBOL]: true,
       functionType: 'Partial',
       function: makeUserDefinedFunction(),
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       placeholders: [],
       arity: {},
     }
@@ -430,7 +433,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
     const comp: CompFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Comp',
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       arity: {},
     }
     expect(describeSerializationIssue(comp as Any)).toContain('params[0]')
@@ -440,7 +443,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
     const juxt: JuxtFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'Juxt',
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       arity: {},
     }
     expect(describeSerializationIssue(juxt as Any)).toContain('params[0]')
@@ -450,7 +453,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
     const everyPred: EveryPredFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'EveryPred',
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       arity: {},
     }
     expect(describeSerializationIssue(everyPred as Any)).toContain('params[0]')
@@ -460,7 +463,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
     const somePred: SomePredFunction = {
       [FUNCTION_SYMBOL]: true,
       functionType: 'SomePred',
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       arity: {},
     }
     expect(describeSerializationIssue(somePred as Any)).toContain('params[0]')
@@ -471,7 +474,7 @@ describe('describeSerializationIssue — non-serializable compound functions', (
       [FUNCTION_SYMBOL]: true,
       functionType: 'Fnull',
       function: BAD as unknown as FunctionLike,
-      params: [1],
+      params: PersistentVector.from([1]),
       arity: {},
     }
     expect(describeSerializationIssue(fnull as Any)).toContain('.function')
@@ -482,19 +485,19 @@ describe('describeSerializationIssue — non-serializable compound functions', (
       [FUNCTION_SYMBOL]: true,
       functionType: 'Fnull',
       function: makeUserDefinedFunction(),
-      params: [BAD],
+      params: PersistentVector.from([BAD]),
       arity: {},
     }
     expect(describeSerializationIssue(fnull as Any)).toContain('params[0]')
   })
 
   it('should detect non-serializable element in array', () => {
-    const arr = [1, BAD, 3]
+    const arr = PersistentVector.from([1, BAD, 3])
     expect(describeSerializationIssue(arr)).toContain('[1]')
   })
 
   it('should detect non-serializable value in object', () => {
-    const obj = { a: 1, b: BAD }
+    const obj = PersistentMap.fromRecord({ a: 1, b: BAD })
     expect(describeSerializationIssue(obj)).toContain('.b')
   })
 })
