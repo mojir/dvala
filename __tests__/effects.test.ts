@@ -4227,3 +4227,118 @@ describe('findMatchingHandlers', () => {
     expect(result.map(([p]) => p)).toEqual(['*', 'test.*', 'test.effect'])
   })
 })
+
+describe('shallow handler', () => {
+  it('handles a single effect and resumes correctly', () => {
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.eff() -> resume(42)
+      end;
+      h(-> perform(@test.eff))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('does NOT reinstall after resume (unlike deep handler)', () => {
+    // A shallow handler handles exactly one effect then is gone.
+    // The continuation runs bare — so a second perform would be unhandled.
+    expect(() =>
+      dvala.run(`
+        let h = shallow handler
+          @test.eff() -> resume(1)
+        end;
+        h(-> do
+          perform(@test.eff);
+          perform(@test.eff)
+        end)
+      `),
+    ).toThrow('Unhandled effect')
+  })
+
+  it('implements state threading via recursive re-application', () => {
+    // Each effect handling step re-applies the handler with updated state.
+    // Variable names differ per clause to avoid "Cannot redefine" error.
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do
+            let kg = resume;
+            withState(s)(-> kg(s))
+          end
+          @state.set(v) -> do
+            let ks = resume;
+            withState(v)(-> ks(null))
+          end
+        end;
+      withState(0)(-> do
+        perform(@state.set, 1);
+        perform(@state.get)
+      end)
+    `)
+    expect(result).toBe(1)
+  })
+
+  it('state: multiple sets and gets thread correctly', () => {
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do
+            let kg = resume;
+            withState(s)(-> kg(s))
+          end
+          @state.set(v) -> do
+            let ks = resume;
+            withState(v)(-> ks(null))
+          end
+        end;
+      withState(0)(-> do
+        perform(@state.set, 10);
+        perform(@state.set, 20);
+        perform(@state.set, 30);
+        perform(@state.get)
+      end)
+    `)
+    expect(result).toBe(30)
+  })
+
+  it('transform applies when no effects are performed (normal exit)', () => {
+    // When the computation exits without triggering any effects, the transform fires.
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.eff() -> resume(5)
+        transform x -> x * 10
+      end;
+      h(-> 7)
+    `)
+    expect(result).toBe(70)
+  })
+
+  it('transform does NOT re-apply when effect is handled via resume (Eff semantics)', () => {
+    // Shallow handler: when an effect is handled, the clause body's return value is the
+    // result — the original handler's transform is not re-applied (unlike deep handlers).
+    // This mirrors Eff/Koka shallow handler semantics.
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.eff() -> resume(5)
+        transform x -> x * 10
+      end;
+      h(-> perform(@test.eff))
+    `)
+    // No transform: clause body returns 5 directly (resume(5) returns to clause, clause returns 5)
+    expect(result).toBe(5)
+  })
+
+  it('shallow handler: bare resume is captured as first-class value', () => {
+    const result = dvala.run(`
+      let captured = null;
+      let h = shallow handler
+        @test.eff() -> do
+          let k = resume;
+          k(99)
+        end
+      end;
+      h(-> perform(@test.eff))
+    `)
+    expect(result).toBe(99)
+  })
+})

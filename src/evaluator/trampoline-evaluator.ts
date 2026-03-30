@@ -401,9 +401,10 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.Handler: {
       // Create a first-class handler value from the handler...end expression.
       // Clauses and transform are stored as AST (evaluated lazily in clause scope).
-      const [parsedClauses, transform] = node[1] as [
+      const [parsedClauses, transform, shallow] = node[1] as [
         { effectName: string; params: BindingTarget[]; body: AstNode[] }[],
         [BindingTarget, AstNode[]] | null,
+        boolean,
       ]
       const clauses: HandlerClause[] = parsedClauses.map(c => ({
         effectName: c.effectName,
@@ -421,6 +422,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         clauses,
         clauseMap,
         transform,
+        shallow: shallow ?? false,
         closureEnv: env,
         arity: { min: 1, max: 1 }, // h(-> body)
       }
@@ -989,47 +991,29 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       const performK = fn.performK as ContinuationStack
       const handler = fn.handler
 
-      // Reinstall handler: create a new AlgebraicHandleFrame around the continuation.
-      // performK = [frames... , AlgebraicHandleFrame]
-      // We replace the AlgebraicHandleFrame with a fresh one (deep reinstallation).
-      // The continuation resumes at the perform site with the value.
+      // Strip the old AlgebraicHandleFrame from performK (it's always the last frame).
+      const innerFrames = listTake(performK, listSize(performK) - 1)
+
+      // Multi-shot: freshen envs so each resume fork gets independent _contexts[0].
+      const freshInnerFrames = freshenContinuationEnvs(innerFrames)
+
+      if (handler.shallow) {
+        // Shallow handler: do NOT reinstall the handler around the continuation.
+        // The continuation runs bare — subsequent effects propagate to outer handlers.
+        // This enables state threading: @set installs run(newVal) around resume(null),
+        // and since we don't reinstall the old handler, run(newVal) catches @get.
+        const shallowK: ContinuationStack = listPrependAll(listToArray(freshInnerFrames), k)
+        return { type: 'Value', value: resumeValue, k: shallowK }
+      }
+
+      // Deep reinstallation: create a new AlgebraicHandleFrame and prepend it.
+      // The handler wraps the continuation so subsequent effects are caught by this handler.
       const newHandleFrame: AlgebraicHandleFrame = {
         type: 'AlgebraicHandle',
         handler,
         env: fn.handlerEnv as ContextStack,
         sourceCodeInfo: handler.sourceCodeInfo,
       }
-
-      // Build the reinstalled continuation: everything before the AlgebraicHandleFrame
-      // from performK, then the new AlgebraicHandleFrame, then the clause frame's
-      // continuation (which includes the original outer frames).
-      // performK = [inner frames..., AlgebraicHandleFrame]
-      // We want: [inner frames..., newAlgebraicHandleFrame, clauseFrame, outerK]
-      // where outerK is what's below the clause on k.
-      //
-      // But actually: the clause body runs on [clauseFrame, ...outerK].
-      // resume needs to return a value TO the clause body.
-      // So the result of the reinstalled continuation goes back to the clause.
-      //
-      // Stack for the resumed continuation:
-      // [innerFrames..., newAlgebraicHandleFrame, HandlerClauseFrame, ...outerK]
-      // where the HandlerClauseFrame will catch the value when resume "returns".
-
-      // Strip the old AlgebraicHandleFrame from performK
-      // performK = [inner frames..., AlgebraicHandleFrame] — drop the last frame (the handle frame)
-      const innerFrames = listTake(performK, listSize(performK) - 1)
-
-      // Multi-shot: freshen the environment in each inner frame so that this
-      // resume starts from an independent copy of the captured scope.
-      // Without freshening, the second resume would fail with "Cannot redefine value"
-      // because addValues mutates _contexts[0] and both resumes share the same
-      // ContextStack references captured in performK.
-      const freshInnerFrames = freshenContinuationEnvs(innerFrames)
-
-      // The k currently has [clauseFrame?, ...outerK] — but actually we're inside
-      // dispatchDvalaFunction, so k is whatever was passed. The clauseFrame is
-      // already on k from the clause body evaluation.
-      // We want the resumed continuation to flow back through the clauseFrame.
       const reinstalledK: ContinuationStack = listPrependAll(listToArray(freshInnerFrames), cons(newHandleFrame, k))
 
       return { type: 'Value', value: resumeValue, k: reinstalledK }

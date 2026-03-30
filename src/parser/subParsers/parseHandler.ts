@@ -23,7 +23,7 @@ export interface ParsedHandlerClause {
  *
  * The handler value is created at evaluation time from this AST node.
  */
-export type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null], number]
+export type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [BindingTarget, AstNode[]] | null, boolean], number]
 
 /**
  * Parse `handler <clauses> [transform x -> expr] end`.
@@ -37,7 +37,7 @@ export type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [Bi
  * Duplicate effect names are a parse error.
  * Transform: optional, `transform x -> expr` (or `transform x -> do...end`).
  */
-export function parseHandler(ctx: ParserContext): HandlerNode {
+export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
   // `handler` is a contextual keyword (Symbol token, not ReservedSymbol)
   const token = ctx.tryPeek()!
   ctx.advance() // consume 'handler'
@@ -128,7 +128,7 @@ export function parseHandler(ctx: ParserContext): HandlerNode {
   ctx.advance() // consume 'end'
 
   const node = withSourceCodeInfo(
-    [NodeTypes.Handler, [clauses, transform], 0],
+    [NodeTypes.Handler, [clauses, transform, shallow], 0],
     token[2],
     ctx,
   ) as HandlerNode
