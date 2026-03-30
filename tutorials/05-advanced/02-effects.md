@@ -33,12 +33,12 @@ Dvala's implementation follows the established conventions from three mature alg
 | Transform | `return(x)` clause | `val x ->` clause | `retc` field | `transform x ->` clause |
 | Handler scope | `with handler` | `handle expr with` | `match_with` | `with h;` or `h(-> body)` |
 | Deep/shallow | both | deep | shallow | deep |
-| Multi-shot | yes | yes | no | no (one-shot) |
+| Multi-shot | yes | yes | no | yes |
 
 **Key design decisions:**
 
 - **Explicit resume** — Koka's `fun` clauses auto-resume, `ctl` clauses don't. Dvala unifies: `resume` is always available, you choose whether to call it.
-- **One-shot continuations** — like OCaml 5, each `resume` can only be called once. This enables serializable continuations (suspend/resume across processes).
+- **Multi-shot continuations** — `resume` can be called any number of times. Each call forks the continuation independently from the same captured snapshot (O(1), no cloning). This enables nondeterminism, backtracking, and probabilistic programming.
 - **Effects are values** — effect references like `@my.eff` are first-class, can be stored and compared. Handlers are also first-class values.
 - **Errors are effects** — no separate exception mechanism. `@dvala.error` is just an effect.
 
@@ -308,24 +308,63 @@ Each `perform(@inc)` hits the reinstalled handler. The result builds up: `0+1+1+
 
 ---
 
-## One-Shot Constraint
+## Multi-Shot Continuations
 
-`resume` can only be called **once** per effect. Calling it a second time is a runtime error:
+`resume` can be called **any number of times** from the same handler clause. Each call forks the continuation from the same captured snapshot — independently and without cloning. This is called **multi-shot** continuation use.
+
+### Two-shot: explicit double resume
+
+The simplest multi-shot pattern — call `resume` twice, collect both results:
 
 ```dvala
-do
-  with handler @dvala.error(err) -> "caught" end;
-  let h = handler
-    @my.eff(x) -> do
-      let a = resume(1);
-      resume(2)
-    end
-  end;
-  h(-> perform(@my.eff, 0))
+let h = handler
+  @flip() -> [resume(true)] ++ [resume(false)]
+end;
+do with h;
+  if perform(@flip) then 1 else 2 end
 end
 ```
 
-This constraint is inherent to Dvala's continuation model — continuations are consumed on first use, enabling serialization for suspend/resume.
+`resume(true)` runs the body with `true` → evaluates to `1`. `resume(false)` runs it with `false` → evaluates to `2`. The clause concatenates both into `[1, 2]`.
+
+### Building a nondeterminism handler
+
+The `@choose` effect picks one value from a list. A handler that explores **all** branches uses `reduce` with multi-shot resume:
+
+```dvala
+let chooseAll = handler
+  @choose(options) -> reduce(options, (acc, x) -> acc ++ resume(x), [])
+  transform result -> [result]
+end;
+
+do with chooseAll;
+  let a = perform(@choose, [1, 2]);
+  let b = perform(@choose, [10, 20]);
+  [a, b]
+end
+```
+
+`transform result -> [result]` wraps each leaf result in a singleton so `resume(x)` always returns an array — making `++` work at every level of nesting.
+
+Trace for `perform(@choose, [1, 2])`:
+- `reduce` iterates over `[1, 2]`
+- `resume(1)` → entire remaining body runs with `a=1`, hits the inner `@choose`, produces `[[1,10],[1,20]]`
+- `resume(2)` → entire remaining body runs with `a=2`, produces `[[2,10],[2,20]]`
+- `++` concatenates: `[[1,10],[1,20],[2,10],[2,20]]`
+
+Each `resume` call is an independent fork — branches don't share mutable state.
+
+### Zero-shot (abort) still works
+
+Calling `resume` zero times is just a normal abort:
+
+```dvala
+let h = handler @stop() -> "stopped" end;
+do with h;
+  perform(@stop);
+  "never reached"
+end
+```
 
 ---
 
@@ -489,6 +528,57 @@ let { retry, fallback } = import("effectHandler");
 do with (handler @dvala.error(msg) -> "gave up" end); retry(3, -> 0 / 0) end
 ```
 
+### Nondeterminism handlers
+
+These handlers interpret the `@choose` effect — a computation that "picks" a value from a list — in different ways:
+
+#### `chooseAll(bodyFn)`
+
+Explores **every** branch. Returns an array of all results. Uses multi-shot continuations — `resume` is called once per option.
+
+```dvala
+let { chooseAll } = import("effectHandler");
+chooseAll(-> perform(@choose, [1, 2, 3]) * 10)
+```
+
+Cartesian product of two choices:
+
+```dvala
+let { chooseAll } = import("effectHandler");
+chooseAll(-> do
+  let a = perform(@choose, [1, 2]);
+  let b = perform(@choose, [10, 20]);
+  [a, b]
+end)
+```
+
+#### `chooseFirst(bodyFn)`
+
+Always picks the **first** option. Deterministic — equivalent to replacing every `@choose` with `first(options)`.
+
+```dvala
+let { chooseFirst } = import("effectHandler");
+chooseFirst(-> perform(@choose, ["a", "b", "c"]))
+```
+
+#### `chooseRandom(bodyFn)`
+
+Picks one option **at random** at each `@choose`. Uses `@dvala.random.item` internally.
+
+```dvala
+let { chooseRandom } = import("effectHandler");
+chooseRandom(-> perform(@choose, [1, 2, 3, 4, 5]))
+```
+
+#### `chooseTake(n, bodyFn)`
+
+Like `chooseAll` but stops after collecting `n` results. Branches beyond the limit are not explored.
+
+```dvala
+let { chooseTake } = import("effectHandler");
+chooseTake(2, -> perform(@choose, [1, 2, 3, 4, 5]) * 10)
+```
+
 ---
 
 ## Host Handlers (JavaScript)
@@ -619,6 +709,11 @@ const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
 | First-class handlers | `let h = handler ... end; h(-> body)` |
 | Fallback | `do with fallback(value); body end` |
 | Retry | `retry(n, -> body)` |
+| Multi-shot resume | call `resume` multiple times in one clause |
+| Explore all branches | `chooseAll(-> body with @choose)` |
+| Pick first branch | `chooseFirst(-> body with @choose)` |
+| Pick random branch | `chooseRandom(-> body with @choose)` |
+| Explore first N branches | `chooseTake(n, -> body with @choose)` |
 
 ### Further reading
 
