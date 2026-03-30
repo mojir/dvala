@@ -59,6 +59,14 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
           left = parseHandler(ctx)
         }
         break
+      case 'shallow':
+        // `shallow handler ...` — shallow handler expression.
+        // Contextual: only triggers when followed by `handler` + a handler start token.
+        if (isShallowHandlerStart(ctx)) {
+          ctx.advance() // consume 'shallow'
+          left = parseHandler(ctx, true)
+        }
+        break
       case 'resume':
         // Contextual keyword: parse as resume if followed by `(` or at expression end.
         // When used as a variable binding, the normal symbol path handles it.
@@ -125,6 +133,21 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
  * Handler expression: `handler @effect... end` or `handler transform... end` or `handler end`.
  * The lookahead checks the token after `handler`.
  */
+/**
+ * Check if `shallow handler` starts a shallow handler expression.
+ * Requires: current token = `shallow`, next = `handler`, token after = handler start.
+ */
+function isShallowHandlerStart(ctx: ParserContext): boolean {
+  // peekAhead(1) is the token after `shallow` (should be `handler`)
+  if (!isSymbolToken(ctx.peekAhead(1), 'handler')) return false
+  // peekAhead(2) is the token after `handler` (should be @effect or `transform`)
+  const afterHandler = ctx.peekAhead(2)
+  if (!afterHandler) return false
+  if (isEffectNameToken(afterHandler)) return true
+  if (isSymbolToken(afterHandler, 'transform')) return true
+  return false
+}
+
 function isHandlerStart(ctx: ParserContext): boolean {
   const next = ctx.peekAhead(1)
   if (!next) return false

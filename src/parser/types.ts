@@ -143,6 +143,8 @@ export interface HandlerFunction extends GenericDvalaFunction {
   clauseMap: Map<string, HandlerClause> // effect name → clause (for O(1) dispatch)
   /** Transform clause: [paramBindingTarget, bodyExprs]. Defaults to identity. */
   transform: [BindingTarget, AstNode[]] | null
+  /** If true, shallow handler — resume does NOT reinstall the handler around the continuation. */
+  shallow: boolean
   /** Closure environment captured at handler creation. */
   closureEnv: unknown // ContextStack — stored as unknown to avoid circular import
 }
