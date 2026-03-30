@@ -1,6 +1,6 @@
 # AST-Based Bundle Format
 
-**Status:** Draft
+**Status:** Completed
 **Created:** 2026-03-30
 
 ## Goal
