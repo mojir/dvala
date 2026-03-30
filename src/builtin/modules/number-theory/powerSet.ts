@@ -1,25 +1,29 @@
-import type { Arr } from '../../../interface'
+import type { Any, Arr } from '../../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
+import { PersistentVector } from '../../../utils/persistent'
 
-function powerSet(set: Arr): Arr[] {
-  const result: Arr[] = [[]]
+// Generates the power set of the given set (all possible subsets).
+// Works with plain arrays internally, wraps each subset in a PersistentVector.
+function powerSet(set: Arr): PersistentVector<unknown>[] {
+  const result: unknown[][] = [[]]
 
   for (const value of set) {
     const newSubsets = result.map(subset => [...subset, value])
     result.push(...newSubsets)
   }
 
-  return result
+  return result.map(subset => PersistentVector.from(subset))
 }
 
 export const powerSetNormalExpressions: BuiltinNormalExpressions = {
   'powerSet': {
-    evaluate: ([set], sourceCodeInfo): Arr[] => {
+    // Returns a PersistentVector of PersistentVectors (each subset), cast to Any
+    evaluate: ([set], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      return powerSet(set)
+      return PersistentVector.from(powerSet(set)) as unknown as Any
     },
     arity: toFixedArity(1),
   },

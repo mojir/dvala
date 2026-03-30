@@ -69,16 +69,18 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
-import { asNonUndefined, isUnknownRecord } from '../typeGuards'
+import { asNonUndefined } from '../typeGuards'
 import { annotate } from '../typeGuards/annotatedCollections'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
+import { isPersistentVector, PersistentVector, PersistentMap } from '../utils/persistent'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
 import { deepEqual, toAny } from '../utils'
 import { arityAcceptsMin, assertNumberOfParams, toFixedArity } from '../utils/arity'
 import { valueToString } from '../utils/debug/debugTools'
+import { fromJS, toJS } from '../utils/interop'
 import type { MaybePromise } from '../utils/maybePromise'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot, SnapshotState } from './effectTypes'
@@ -149,27 +151,27 @@ export type { Step }
 // ---------------------------------------------------------------------------
 
 function evaluateObjectAsFunction(fn: Obj, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  if (params.length !== 1)
+  if (params.size !== 1)
     throw new TypeError('Object as function requires one string parameter.', sourceCodeInfo)
-  const key = params[0]
+  const key = params.get(0)
   assertString(key, sourceCodeInfo)
-  return toAny(fn[key])
+  return toAny(fn.get(key))
 }
 
 function evaluateArrayAsFunction(fn: Arr, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  if (params.length !== 1)
+  if (params.size !== 1)
     throw new TypeError('Array as function requires one non negative integer parameter.', sourceCodeInfo)
-  const index = params[0]
+  const index = params.get(0)
   assertNumber(index, sourceCodeInfo, { integer: true, nonNegative: true })
-  return toAny(fn[index])
+  return toAny(fn.get(index))
 }
 
 function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
-  if (params.length !== 1)
+  if (params.size !== 1)
     throw new TypeError('String as function requires one Obj parameter.', sourceCodeInfo)
-  const param = toAny(params[0])
+  const param = toAny(params.get(0))
   if (isObj(param))
-    return toAny((param)[fn])
+    return toAny((param).get(fn))
   if (isNumber(param, { integer: true }))
     return toAny(fn[param])
   throw new TypeError(
@@ -180,11 +182,11 @@ function evaluateStringAsFunction(fn: string, params: Arr, sourceCodeInfo?: Sour
 
 function evaluateNumberAsFunction(fn: number, params: Arr, sourceCodeInfo?: SourceCodeInfo): Any {
   assertNumber(fn, undefined, { integer: true })
-  if (params.length !== 1)
+  if (params.size !== 1)
     throw new TypeError('Number as function requires one Arr parameter.', sourceCodeInfo)
-  const param = params[0]
+  const param = params.get(0)
   assertSeq(param, sourceCodeInfo)
-  return toAny(param[fn])
+  return toAny(typeof param === 'string' ? param[fn] : param.get(fn))
 }
 
 // ---------------------------------------------------------------------------
@@ -287,13 +289,13 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const nodes = node[1] as AstNode[]
       const sourceCodeInfo = env.resolve(node[2])
       if (nodes.length === 0) {
-        return handleRecur([], k, sourceCodeInfo)
+        return handleRecur(PersistentVector.empty(), k, sourceCodeInfo)
       }
       const frame: RecurFrame = {
         type: 'Recur',
         nodes,
         index: 1,
-        params: [],
+        params: PersistentVector.empty(),
         env,
         sourceCodeInfo,
       }
@@ -308,7 +310,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const nodes = node[1] as AstNode[]
       const sourceCodeInfo = env.resolve(node[2])
       if (nodes.length === 0) {
-        return { type: 'Value', value: [], k }
+        return { type: 'Value', value: PersistentVector.empty(), k }
       }
       const firstNode = nodes[0]!
       const isFirstSpread = isSpreadNode(firstNode)
@@ -316,7 +318,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'ArrayBuild',
         nodes,
         index: 0,
-        result: [],
+        result: PersistentVector.empty(),
         isSpread: isFirstSpread,
         env,
         sourceCodeInfo,
@@ -344,7 +346,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'PerformArgs',
         argNodes: allNodes,
         index: 1,
-        params: [],
+        params: PersistentVector.empty(),
         env,
         sourceCodeInfo,
       }
@@ -494,7 +496,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       const entries = node[1] as (AstNode[] | AstNode)[]
       const sourceCodeInfo = env.resolve(node[2])
       if (entries.length === 0) {
-        return { type: 'Value', value: {}, k }
+        return { type: 'Value', value: PersistentMap.empty(), k }
       }
       const firstEntry = entries[0]!
       const isFirstSpread = isSpreadNode(firstEntry as AstNode)
@@ -502,7 +504,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'ObjectBuild',
         entries,
         index: 0,
-        result: {},
+        result: PersistentMap.empty(),
         currentKey: null,
         isSpread: isFirstSpread,
         env,
@@ -623,7 +625,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       // Parser requires at least one loop binding — zero bindings is parser-prevented
       /* v8 ignore next 3 */
       if (loopBindings.length === 0) {
-        return { type: 'Value', value: [], k }
+        return { type: 'Value', value: PersistentVector.empty(), k }
       }
       const context: Context = {}
       const newEnv = env.create(context)
@@ -631,7 +633,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'ForLoop',
         bindingNodes: loopBindings,
         body,
-        result: [],
+        result: PersistentVector.empty(),
         phase: 'evalCollection',
         bindingLevel: 0,
         levelStates: [],
@@ -657,16 +659,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (!dvalaModule) {
         throw new TypeError(`Unknown module: '${moduleName}'`, sourceCodeInfo)
       }
-      const result: Obj = {}
+      let result: Obj = PersistentMap.empty()
       for (const [functionName, expression] of Object.entries(dvalaModule.functions)) {
-        result[functionName] = {
+        result = result.assoc(functionName, {
           [FUNCTION_SYMBOL]: true,
           sourceCodeInfo,
           functionType: 'Module',
           moduleName,
           functionName,
           arity: expression.arity,
-        }
+        })
       }
       // Module source evaluation — initCoreDvalaSources pre-evaluates core module sources at startup
       // and modules with .source are resolved before reaching this trampoline path
@@ -758,7 +760,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
     type: 'EvalArgs',
     node,
     index: 0,
-    params: [],
+    params: PersistentVector.empty(),
     placeholders: [],
     env,
     sourceCodeInfo,
@@ -769,7 +771,7 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
   while (startIndex < argNodes.length) {
     const arg = argNodes[startIndex]!
     if (arg[0] === NodeTypes.Reserved && arg[1] === '_') {
-      evalArgsFrame.placeholders.push(evalArgsFrame.params.length)
+      evalArgsFrame.placeholders.push(evalArgsFrame.params.size)
       startIndex++
     } else {
       break
@@ -843,11 +845,11 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       }
       // macroexpand(macroFn, ...args) — call macro body directly, return expanded AST as data
       if (builtinName === 'macroexpand') {
-        const macroFn = params[0]
+        const macroFn = params.get(0)
         if (!isMacroFunction(macroFn)) {
           throw new TypeError('macroexpand: first argument must be a macro', sourceCodeInfo)
         }
-        const macroArgs = params.slice(1)
+        const macroArgs = PersistentVector.from([...params].slice(1))
         // Call the macro's body as a regular function — no MacroEvalFrame, so the
         // expanded AST is returned as a value instead of being evaluated.
         return setupUserDefinedCall(
@@ -912,7 +914,7 @@ function dispatchFunction(fn: FunctionLike, params: Arr, placeholders: number[],
   }
 
   // Non-function callables: arrays, objects, strings, numbers
-  if (Array.isArray(fn)) {
+  if (isPersistentVector(fn)) {
     return { type: 'Value', value: evaluateArrayAsFunction(fn, params, sourceCodeInfo), k }
   }
   if (isObj(fn)) {
@@ -945,8 +947,8 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     }
     case 'QualifiedMatcher': {
       // Generalized matcher — works on any entity with a qualified name (effects, named macros)
-      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
-      const entity = params[0]
+      assertNumberOfParams({ min: 1, max: 1 }, params.size, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const entity = params.get(0)
       // Extract qualified name from the entity
       let qName: string | null = null
       if (isEffect(entity)) {
@@ -966,8 +968,8 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     case 'Handler': {
       // h(-> body) — install algebraic handler around the thunk body.
       // The single argument must be a function (thunk) — we call it with no args.
-      assertNumberOfParams({ min: 1, max: 1 }, params.length, fn.sourceCodeInfo ?? sourceCodeInfo)
-      const thunk = params[0]!
+      assertNumberOfParams({ min: 1, max: 1 }, params.size, fn.sourceCodeInfo ?? sourceCodeInfo)
+      const thunk = params.get(0)!
       const thunkFn = asFunctionLike(thunk, sourceCodeInfo)
 
       // Push AlgebraicHandleFrame, then evaluate the thunk body
@@ -978,7 +980,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         sourceCodeInfo,
       }
       // Call the thunk with no arguments, with the handler frame on the stack
-      return dispatchFunction(thunkFn, [], [], env, sourceCodeInfo, [handleFrame, ...k])
+      return dispatchFunction(thunkFn, PersistentVector.empty(), [], env, sourceCodeInfo, [handleFrame, ...k])
     }
     case 'Resume': {
       // resume(value) — execute the resume logic.
@@ -993,7 +995,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       clauseFrame.resumeConsumed = true
       clauseFrame.resumed = true
 
-      const resumeValue = (params.length > 0 ? params[0]! : null) as Any
+      const resumeValue = (params.size > 0 ? params.get(0)! : null) as Any
       const performK = fn.performK as ContinuationStack
       const handler = fn.handler
 
@@ -1036,19 +1038,19 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     }
     // Param-transforming compound types: transform and re-dispatch
     case 'Partial': {
-      const actualParams = [...fn.params]
-      if (params.length !== fn.placeholders.length) {
-        throw new TypeError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.length}.`, sourceCodeInfo)
+      const actualParamsArr = [...fn.params]
+      if (params.size !== fn.placeholders.length) {
+        throw new TypeError(`(partial) expects ${fn.placeholders.length} arguments, got ${params.size}.`, sourceCodeInfo)
       }
       const paramsCopy = [...params]
       for (const placeholderIndex of fn.placeholders) {
-        actualParams.splice(placeholderIndex, 0, paramsCopy.shift())
+        actualParamsArr.splice(placeholderIndex, 0, paramsCopy.shift())
       }
-      return dispatchFunction(fn.function, actualParams, [], env, sourceCodeInfo, k)
+      return dispatchFunction(fn.function, PersistentVector.from(actualParamsArr as Any[]), [], env, sourceCodeInfo, k)
     }
     case 'Fnull': {
-      const fnulledParams = params.map((param, index) => (param === null ? toAny(fn.params[index]) : param))
-      return dispatchFunction(fn.function, fnulledParams, [], env, sourceCodeInfo, k)
+      const fnulledParamsArr = Array.from(params).map((param, index) => (param === null ? toAny(fn.params.get(index)) : param)) as Any[]
+      return dispatchFunction(fn.function, PersistentVector.from(fnulledParamsArr), [], env, sourceCodeInfo, k)
     }
     // Complement: call wrapped function, then negate result
     case 'Complement': {
@@ -1058,24 +1060,24 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     // Comp: chain function calls right-to-left
     case 'Comp': {
       const fns = fn.params
-      if (fns.length === 0) {
-        if (params.length !== 1)
-          throw new TypeError(`(comp) expects one argument, got ${valueToString(params.length)}.`, sourceCodeInfo)
-        return { type: 'Value', value: asAny(params[0], sourceCodeInfo), k }
+      if (fns.size === 0) {
+        if (params.size !== 1)
+          throw new TypeError(`(comp) expects one argument, got ${valueToString(params.size)}.`, sourceCodeInfo)
+        return { type: 'Value', value: asAny(params.get(0), sourceCodeInfo), k }
       }
       // Start with the last function
-      const startIndex = fns.length - 1
+      const startIndex = fns.size - 1
       const frame: CompFrame = { type: 'Comp', fns, index: startIndex - 1, env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns[startIndex], sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(asFunctionLike(fns.get(startIndex), sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
     }
     // Juxt: call each function with same params, collect results
     case 'Juxt': {
       const fns = fn.params
-      if (fns.length === 0) {
-        return { type: 'Value', value: [] as Arr, k }
+      if (fns.size === 0) {
+        return { type: 'Value', value: PersistentVector.empty(), k }
       }
-      const frame: JuxtFrame = { type: 'Juxt', fns, params, index: 1, results: [], env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns[0], sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+      const frame: JuxtFrame = { type: 'Juxt', fns, params, index: 1, results: PersistentVector.empty(), env, sourceCodeInfo }
+      return dispatchFunction(asFunctionLike(fns.get(0), sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
     }
     // EveryPred: short-circuit AND across all (predicate, param) pairs
     case 'EveryPred': {
@@ -1090,7 +1092,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: EveryPredFrame = { type: 'EveryPred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, [firstCheck.param], [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, [frame, ...k])
     }
     // SomePred: short-circuit OR across all (predicate, param) pairs
     case 'SomePred': {
@@ -1105,7 +1107,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: SomePredFrame = { type: 'SomePred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, [firstCheck.param], [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, [frame, ...k])
     }
     case 'SpecialBuiltin': {
       const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
@@ -1127,7 +1129,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       if (env.pure && expression.pure === false) {
         throw new RuntimeError(`Cannot call impure function '${fn.functionName}' in pure mode`, sourceCodeInfo)
       }
-      assertNumberOfParams(expression.arity, params.length, sourceCodeInfo)
+      assertNumberOfParams(expression.arity, params.size, sourceCodeInfo)
       if (expression.dvalaImpl) {
         return setupUserDefinedCall(expression.dvalaImpl, params, env, sourceCodeInfo, k)
       }
@@ -1155,8 +1157,8 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
  * suspension/serialization at any point during destructuring.
  */
 function setupUserDefinedCall(fn: UserDefinedFunction, params: Arr, env: ContextStack, sourceCodeInfo: SourceCodeInfo | undefined, k: ContinuationStack): Step {
-  if (!arityAcceptsMin(fn.arity, params.length)) {
-    throw new TypeError(`Expected ${fn.arity} arguments, got ${params.length}.`, sourceCodeInfo)
+  if (!arityAcceptsMin(fn.arity, params.size)) {
+    throw new TypeError(`Expected ${fn.arity} arguments, got ${params.size}.`, sourceCodeInfo)
   }
   const evaluatedFunc = fn.evaluatedfunction
   const args = evaluatedFunc[0]
@@ -1187,8 +1189,8 @@ function continueArgSlotBinding(
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Phase 1: Bind provided args (not needing defaults)
-  if (argIndex < params.length && argIndex < nbrOfNonRestArgs) {
-    const param = toAny(params[argIndex])
+  if (argIndex < params.size && argIndex < nbrOfNonRestArgs) {
+    const param = toAny(params.get(argIndex))
     const argTarget = args[argIndex]!
     const completeFrame: FnArgSlotCompleteFrame = {
       type: 'FnArgSlotComplete',
@@ -1230,7 +1232,7 @@ function handleRestArgAndBody(
   const bindingEnv = outerEnv.create(closureContext).create(context)
 
   // Handle rest argument
-  const rest: Arr = params.slice(nbrOfNonRestArgs).map(toAny)
+  const rest: Arr = PersistentVector.from(Array.from(params).slice(nbrOfNonRestArgs).map(toAny))
   const restArgument = args.find(arg => arg[0] === bindingTargetTypes.rest)
   if (restArgument) {
     // Use startBindingSlots for rest arg with completion frame
@@ -1343,7 +1345,7 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       // Arg evaluated — dispatch the resume function with [argValue]
       return dispatchFunction(
         asFunctionLike(frame.resumeFn, frame.sourceCodeInfo),
-        [value],
+        PersistentVector.from([value]),
         [],
         frame.env,
         frame.sourceCodeInfo,
@@ -1385,9 +1387,9 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
     case 'NanCheck':
       return applyNanCheck(frame, value, k)
     case 'ImportMerge': {
-      const dvalaFunctions = isObj(value) ? value : {}
+      const dvalaFunctions = isObj(value) ? value : PersistentMap.empty()
       // Set dvalaImpl on module expressions for functions overridden by .dvala source
-      for (const [name, fn] of Object.entries(dvalaFunctions)) {
+      for (const [name, fn] of dvalaFunctions) {
         const expression = frame.module.functions[name]
         if (expression && isUserDefinedFunction(fn)) {
           expression.dvalaImpl = fn
@@ -1396,13 +1398,17 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       // Merge: .dvala functions that DON'T have a matching TS expression override entirely
       // (they are module-only .dvala functions). Functions WITH a TS expression keep
       // the Module function value (arity checking preserved) and dispatch via dvalaImpl.
-      const dvalaOnlyFunctions: Obj = {}
-      for (const [name, fn] of Object.entries(dvalaFunctions)) {
+      let dvalaOnlyFunctions: Obj = PersistentMap.empty()
+      for (const [name, fn] of dvalaFunctions) {
         if (!frame.module.functions[name]) {
-          dvalaOnlyFunctions[name] = fn
+          dvalaOnlyFunctions = dvalaOnlyFunctions.assoc(name, fn)
         }
       }
-      const merged = { ...frame.tsFunctions, ...dvalaOnlyFunctions }
+      // Merge tsFunctions with dvalaOnlyFunctions: start with tsFunctions, assoc each dvala-only entry
+      let merged: Obj = frame.tsFunctions
+      for (const [name, fn] of dvalaOnlyFunctions) {
+        merged = merged.assoc(name, fn)
+      }
       frame.env.registerValueModule(frame.moduleName, merged)
       return { type: 'Value', value: merged, k }
     }
@@ -1557,27 +1563,31 @@ function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k
 }
 
 function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStack): Step {
-  const { nodes, result, env, sourceCodeInfo } = frame
+  const { nodes, env, sourceCodeInfo } = frame
 
-  // Process the completed value
+  // Process the completed value into a new immutable result
+  let newResult: Arr
   if (frame.isSpread) {
-    if (!Array.isArray(value)) {
+    if (!isPersistentVector(value)) {
       throw new TypeError('Spread value is not an array', sourceCodeInfo)
     }
-    result.push(...value)
+    // Append all items from the spread vector
+    let r = frame.result
+    for (const item of value) r = r.append(item as Any)
+    newResult = r
   } else {
-    result.push(value)
+    newResult = frame.result.append(value)
   }
 
   // Advance to next element
   const nextIndex = frame.index + 1
   if (nextIndex >= nodes.length) {
-    return { type: 'Value', value: result, k }
+    return { type: 'Value', value: newResult, k }
   }
 
   const nextNode = nodes[nextIndex]!
   const isNextSpread = isSpreadNode(nextNode)
-  const newFrame: ArrayBuildFrame = { ...frame, index: nextIndex, isSpread: isNextSpread }
+  const newFrame: ArrayBuildFrame = { ...frame, index: nextIndex, result: newResult, isSpread: isNextSpread }
   return {
     type: 'Eval',
     node: isNextSpread ? nextNode[1] : nextNode,
@@ -1587,22 +1597,24 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
 }
 
 function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationStack): Step {
-  const { entries, result, env, sourceCodeInfo } = frame
+  const { entries, env, sourceCodeInfo } = frame
 
   if (frame.isSpread) {
-    // Spread value should be an object
-    if (!isUnknownRecord(value)) {
+    // Spread value should be an object (PersistentMap)
+    if (!isObj(value)) {
       throw new TypeError('Spread value is not an object', sourceCodeInfo)
     }
-    Object.assign(result, value)
+    // Merge spread object into result by assoc-ing each entry
+    let newResult = frame.result
+    for (const [k2, v] of value) newResult = newResult.assoc(k2, v as Any)
     // Advance to next entry
     const nextIndex = frame.index + 1
     if (nextIndex >= entries.length) {
-      return { type: 'Value', value: result, k }
+      return { type: 'Value', value: newResult, k }
     }
     const nextEntry = entries[nextIndex]!
     const isNextSpread = isSpreadNode(nextEntry as AstNode)
-    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, currentKey: null, isSpread: isNextSpread }
+    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, result: newResult, currentKey: null, isSpread: isNextSpread }
     return {
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
@@ -1619,16 +1631,16 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     const newFrame: ObjectBuildFrame = { ...frame, currentKey: value }
     return { type: 'Eval', node: valueNode, env, k: [newFrame, ...k] }
   } else {
-    // We just evaluated a value expression
-    result[frame.currentKey] = value
+    // We just evaluated a value expression — assoc the key-value pair into result
+    const newResult = frame.result.assoc(frame.currentKey, value)
     // Advance to next entry
     const nextIndex = frame.index + 1
     if (nextIndex >= entries.length) {
-      return { type: 'Value', value: result, k }
+      return { type: 'Value', value: newResult, k }
     }
     const nextEntry = entries[nextIndex]!
     const isNextSpread = isSpreadNode(nextEntry as AstNode)
-    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, currentKey: null, isSpread: isNextSpread }
+    const newFrame: ObjectBuildFrame = { ...frame, index: nextIndex, result: newResult, currentKey: null, isSpread: isNextSpread }
     return {
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
@@ -1657,7 +1669,7 @@ function applyLetBindComplete(frame: LetBindCompleteFrame, record: Any, k: Conti
   const { originalValue, env, sourceCodeInfo } = frame
 
   // Add the binding record to the environment
-  env.addValues(record as Record<string, Any>, sourceCodeInfo)
+  env.addValues(record as unknown as Record<string, Any>, sourceCodeInfo)
 
   // Return the original RHS value (which is what `let x = expr` evaluates to)
   return { type: 'Value', value: originalValue, k }
@@ -1688,7 +1700,7 @@ function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: Con
   const { bindings, index, context, body, env, sourceCodeInfo } = frame
 
   // Add the binding record to the loop context
-  Object.entries(record as Record<string, Any>).forEach(([name, val]) => {
+  Object.entries(record as unknown as Record<string, Any>).forEach(([name, val]) => {
     context[name] = { value: val }
   })
 
@@ -1736,21 +1748,21 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
     case 'evalCollection': {
       // A collection expression has been evaluated
       const coll = asColl(value, sourceCodeInfo)
-      const seq = isSeq(coll) ? coll : Object.entries(coll as Obj)
+      const seq: Arr = isSeq(coll) ? (coll as Arr) : PersistentVector.from(Object.entries((coll as Obj).toRecord()) as unknown as Any[])
 
-      if ((seq as Arr).length === 0) {
+      if (seq.size === 0) {
         // Empty collection — abort this level
         return handleForAbort(frame, k)
       }
 
       // Store collection for this level
       const levelStates = [...frame.levelStates]
-      levelStates[frame.bindingLevel] = { collection: seq as Arr, index: 0 }
+      levelStates[frame.bindingLevel] = { collection: seq, index: 0 }
 
       // Process the first element's binding
       const binding = bindingNodes[frame.bindingLevel]!
       const targetNode = binding[0][0]
-      const element = (seq as Arr)[0]
+      const element = seq.get(0)
 
       const elValue = asAny(element, sourceCodeInfo)
 
@@ -1795,10 +1807,9 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
     }
 
     case 'evalBody': {
-      // Body has been evaluated
-      result.push(value)
-      // Advance innermost binding to next element
-      return advanceForElement(frame, k)
+      // Body has been evaluated — append immutably and update frame
+      const newResult = result.append(value)
+      return advanceForElement({ ...frame, result: newResult }, k)
     }
 
   }
@@ -1820,7 +1831,7 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
   const currentState = levelStates[currentLevel]!
   const nextElementIndex = currentState.index + 1
 
-  if (nextElementIndex >= currentState.collection.length) {
+  if (nextElementIndex >= currentState.collection.size) {
     // No more elements at this level — back up
     if (currentLevel === 0) {
       return handleForAbort(frame, k)
@@ -1833,7 +1844,7 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
   levelStates[currentLevel] = { ...currentState, index: nextElementIndex }
   const binding = bindingNodes[currentLevel]!
   const targetNode = binding[0][0]
-  const element = currentState.collection[nextElementIndex]
+  const element = currentState.collection.get(nextElementIndex)
   const elValue = asAny(element, sourceCodeInfo)
 
   const completeFrame: ForElementBindCompleteFrame = {
@@ -1851,7 +1862,7 @@ function applyForElementBindComplete(frame: ForElementBindCompleteFrame, record:
   const { forFrame, levelStates, env, sourceCodeInfo } = frame
 
   // Add the binding record to the context
-  Object.entries(record as Record<string, Any>).forEach(([name, val]) => {
+  Object.entries(record as unknown as Record<string, Any>).forEach(([name, val]) => {
     forFrame.context[name] = { value: val }
   })
 
@@ -1918,7 +1929,7 @@ function applyForLetBind(frame: ForLetBindFrame, value: Any, k: ContinuationStac
   }
 
   // phase === 'destructure' — binding record received
-  Object.entries(value as Record<string, Any>).forEach(([name, val]) => {
+  Object.entries(value as unknown as Record<string, Any>).forEach(([name, val]) => {
     forFrame.context[name] = { value: val }
   })
 
@@ -2043,24 +2054,23 @@ const ERROR_ORIGIN = Symbol('dvala.error.origin')
 
 /** Attach error origin metadata to a payload object. */
 function stampErrorOrigin(payload: Obj, origin: ErrorOrigin): Obj {
-  ;(payload as Record<symbol, unknown>)[ERROR_ORIGIN] = origin
+  ;(payload as unknown as Record<symbol, unknown>)[ERROR_ORIGIN] = origin
   return payload
 }
 
 /** Read error origin metadata from a payload, if present. */
 function getErrorOrigin(payload: Obj): ErrorOrigin | undefined {
-  return (payload as Record<symbol, unknown>)[ERROR_ORIGIN] as ErrorOrigin | undefined
+  return (payload as unknown as Record<symbol, unknown>)[ERROR_ORIGIN] as ErrorOrigin | undefined
 }
 
 /** Build the structured @dvala.error payload from a DvalaError instance. */
 function buildErrorPayload(error: DvalaError): Obj {
-  const payload: Obj = {
-    type: error.errorType,
-    message: error.shortMessage,
-  }
+  let payload: Obj = PersistentMap.empty<unknown>()
+    .assoc('type', error.errorType)
+    .assoc('message', error.shortMessage)
   // Add type-specific data following the convention
   if (error instanceof ReferenceError) {
-    payload.data = { symbol: error.symbol }
+    payload = payload.assoc('data', PersistentMap.fromRecord({ symbol: error.symbol }))
   }
   // Stamp origin metadata (sourceCodeInfo) for internal tracking — preserved across re-throws
   stampErrorOrigin(payload, { sourceCodeInfo: error.sourceCodeInfo })
@@ -2072,19 +2082,19 @@ function buildErrorPayload(error: DvalaError): Obj {
  * Returns the normalized payload or throws TypeError if invalid.
  */
 function validateErrorPayload(arg: Any, sourceCodeInfo: SourceCodeInfo | undefined): Obj {
-  if (arg === null || arg === undefined || typeof arg !== 'object' || Array.isArray(arg)) {
+  if (!isObj(arg)) {
     throw new TypeError('@dvala.error requires an error object', sourceCodeInfo)
   }
-  const obj = arg as Obj
-  if (!('message' in obj)) {
+  const obj = arg
+  if (!obj.has('message')) {
     throw new TypeError('@dvala.error requires a message field', sourceCodeInfo)
   }
   // Coerce type and message to strings, default type to "UserError"
-  const normalized: Obj = {
-    ...obj,
-    type: obj.type !== null && obj.type !== undefined ? String(obj.type) : 'UserError',
-    message: String(obj.message),
-  }
+  const rawType = obj.get('type')
+  const rawMessage = obj.get('message')
+  const normalized: Obj = obj
+    .assoc('type', rawType !== null && rawType !== undefined ? String(rawType) : 'UserError')
+    .assoc('message', String(rawMessage))
   // "First writer wins": if the payload already carries an error origin (re-throw),
   // preserve it. Otherwise stamp a fresh origin from the perform call site.
   const existingOrigin = getErrorOrigin(obj)
@@ -2120,16 +2130,16 @@ function tryDispatchDvalaError(
 }
 
 function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { nodes, index, params, env } = frame
-  params.push(value)
+  const { nodes, index, env } = frame
+  const newParams = frame.params.append(value)
 
   if (index >= nodes.length) {
     // All recur params collected — handle recur via continuation stack
-    return handleRecur(params, k, frame.sourceCodeInfo)
+    return handleRecur(newParams, k, frame.sourceCodeInfo)
   }
 
   // Evaluate next param
-  const newFrame: RecurFrame = { ...frame, index: index + 1 }
+  const newFrame: RecurFrame = { ...frame, index: index + 1, params: newParams }
   return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
 }
 
@@ -2147,9 +2157,9 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
       const { bindings, bindingContext, body, env } = frame
       const remainingK = k.slice(i + 1)
 
-      if (params.length !== bindings.length) {
+      if (params.size !== bindings.length) {
         throw new TypeError(
-          `recur expected ${bindings.length} parameters, got ${params.length}`,
+          `recur expected ${bindings.length} parameters, got ${params.size}`,
           sourceCodeInfo,
         )
       }
@@ -2206,7 +2216,7 @@ function startRecurLoopRebind(
 
   // Bind current node using slots
   const [target] = bindings[bindingIndex]!
-  const param = toAny(params[bindingIndex])
+  const param = toAny(params.get(bindingIndex))
 
   const rebindFrame: RecurLoopRebindFrame = {
     type: 'RecurLoopRebind',
@@ -2230,7 +2240,7 @@ function applyRecurLoopRebind(frame: RecurLoopRebindFrame, value: Any, _k: Conti
   const { bindings, bindingIndex, params, bindingContext, body, env, remainingK, sourceCodeInfo } = frame
 
   // value is the binding record from startBindingSlots
-  const record = value as Record<string, Any>
+  const record = value as unknown as Record<string, Any>
   Object.entries(record).forEach(([name, val]) => {
     bindingContext[name] = { value: val }
   })
@@ -2545,24 +2555,24 @@ function applyParallelResume(frame: ParallelResumeFrame, value: Any, k: Continua
 }
 
 function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { argNodes, index, params, env } = frame
-  params.push(value)
+  const { argNodes, index, env } = frame
+  const newParams = frame.params.append(value)
 
   if (index >= argNodes.length) {
     // All values collected — first is the effect ref, second (optional) is the payload
-    const effectRef = params[0]!
+    const effectRef = newParams.get(0)!
     assertEffect(effectRef, frame.sourceCodeInfo)
     // Pure mode check — effects are not allowed in pure mode
     if (env.pure) {
       throw new RuntimeError(`Cannot perform effect '${effectRef.name}' in pure mode`, frame.sourceCodeInfo)
     }
-    const arg = (params.length > 1 ? params[1]! : null) as Any
+    const arg = (newParams.size > 1 ? newParams.get(1)! : null) as Any
     // Produce a PerformStep — let the trampoline dispatch it
     return { type: 'Perform', effect: effectRef, arg, k, sourceCodeInfo: frame.sourceCodeInfo }
   }
 
   // Evaluate next arg
-  const newFrame: PerformArgsFrame = { ...frame, index: index + 1 }
+  const newFrame: PerformArgsFrame = { ...frame, index: index + 1, params: newParams }
   return { type: 'Eval', node: argNodes[index]!, env, k: [newFrame, ...k] }
 }
 
@@ -2634,11 +2644,11 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   // dvala.macro.expand — default handler calls the macro function directly.
   // The MacroEvalFrame on k[0] provides the calling scope for evaluating the result.
   if (effect.name === 'dvala.macro.expand') {
-    const payload = arg as { fn: MacroFunction; args: AstNode[] }
+    const payload = arg as unknown as { fn: MacroFunction; args: AstNode[] }
     const macroEvalFrame = k[0] as MacroEvalFrame
     return setupUserDefinedCall(
       payload.fn as unknown as UserDefinedFunction,
-      payload.args,
+      PersistentVector.from(payload.args) as unknown as Arr,
       macroEvalFrame.env,
       sourceCodeInfo,
       k,
@@ -2656,7 +2666,7 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     const payload = validateErrorPayload(arg, sourceCodeInfo)
     // Use the original error origin if available (preserved across re-throws)
     const origin = getErrorOrigin(payload)
-    throw new UserError(payload.message as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
+    throw new UserError(payload.get('message') as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
   }
 
   // No handler at all — unhandled effect.
@@ -2732,7 +2742,7 @@ function dispatchHostHandler(
         // Validate and normalize the payload (throws TypeError if invalid)
         const payload = validateErrorPayload(arg, sourceCodeInfo)
         const origin = getErrorOrigin(payload)
-        throw new UserError(payload.message as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
+        throw new UserError(payload.get('message') as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
       }
       // dvala.checkpoint resolves to null when all handlers call next().
       if (effectName === 'dvala.checkpoint') {
@@ -2755,14 +2765,16 @@ function dispatchHostHandler(
 
     const ctx: EffectContext = {
       effectName,
-      arg,
+      // Convert Dvala value to plain JS so the host handler sees a familiar value
+      arg: toJS(arg),
       signal: effectSignal,
-      resume: (value: Any | Promise<Any>) => {
+      resume: (value: unknown) => {
         assertNotSettled('resume')
         if (value instanceof Promise) {
-          outcome = { kind: 'asyncResume', promise: value }
+          // Convert the resolved plain-JS value back to a Dvala value before feeding to continuation
+          outcome = { kind: 'asyncResume', promise: value.then(v => fromJS(v)) }
         } else {
-          outcome = { kind: 'step', step: { type: 'Value', value, k } }
+          outcome = { kind: 'step', step: { type: 'Value', value: fromJS(value), k } }
         }
       },
       fail: (msg?: string) => {
@@ -2770,7 +2782,7 @@ function dispatchHostHandler(
         const errorMsg = msg ?? `Effect handler failed for '${effectName}'`
         outcome = { kind: 'step', step: { type: 'Error', error: new RuntimeError(errorMsg, sourceCodeInfo), k } }
       },
-      suspend: (meta?: Any) => {
+      suspend: (meta?: unknown) => {
         assertNotSettled('suspend')
         outcome = {
           kind: 'throw',
@@ -2780,6 +2792,7 @@ function dispatchHostHandler(
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
             meta,
             effectName,
+            // Store the original Dvala arg value (not toJS-converted) for internal use
             arg,
           ),
         }
@@ -2789,7 +2802,7 @@ function dispatchHostHandler(
         outcome = { kind: 'next' }
       },
       get snapshots(): Snapshot[] { return snapshotState ? [...snapshotState.snapshots] : [] },
-      checkpoint: (message: string, meta?: Any): Snapshot => {
+      checkpoint: (message: string, meta?: unknown): Snapshot => {
         if (!snapshotState) {
           throw new RuntimeError('checkpoint is not available outside effect-enabled execution', sourceCodeInfo)
         }
@@ -2808,7 +2821,7 @@ function dispatchHostHandler(
         }
         return snapshot
       },
-      resumeFrom: (snapshot: Snapshot, value: Any) => {
+      resumeFrom: (snapshot: Snapshot, value: unknown) => {
         if (settled) {
           throw new RuntimeError('Effect handler called resumeFrom() after already calling another operation', sourceCodeInfo)
         }
@@ -2820,14 +2833,14 @@ function dispatchHostHandler(
           throw new RuntimeError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
         }
         settled = true
-        outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, value, found.index) }
+        outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, fromJS(value), found.index) }
       },
-      halt: (value: Any = null) => {
+      halt: (value: unknown = null) => {
         assertNotSettled('halt')
         outcome = {
           kind: 'throw',
           error: new HaltSignal(
-            value,
+            fromJS(value),
             snapshotState ? snapshotState.snapshots : [],
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
           ),
@@ -2902,9 +2915,9 @@ function combineSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   return controller.signal
 }
 
-function throwSuspension(k: ContinuationStack, meta?: Any, effectName?: string, effectArg?: Any): never {
+function throwSuspension(k: ContinuationStack, meta?: unknown, effectName?: string, effectArg?: unknown): never {
   // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism, not an error
-  throw new SuspensionSignal(k, [], 0, meta, effectName, effectArg)
+  throw new SuspensionSignal(k, [], 0, meta, effectName, effectArg as Any)
 }
 
 /**
@@ -2965,7 +2978,7 @@ async function executeParallelBranches(
   const results = await Promise.allSettled(branchPromises)
 
   // Collect outcomes
-  const completedBranches: { index: number; value: Any }[] = []
+  const completedBranches: { index: number; value: unknown }[] = []
   const suspendedBranches: { index: number; snapshot: Snapshot }[] = []
   const errors: DvalaError[] = []
 
@@ -3011,11 +3024,11 @@ async function executeParallelBranches(
   }
 
   // All branches completed — build the result array in original order
-  const resultArray: Any[] = Array.from({ length: branches.length })
+  const resultMutable: unknown[] = Array.from({ length: branches.length })
   for (const { index, value } of completedBranches) {
-    resultArray[index] = value
+    resultMutable[index] = value
   }
-  return { type: 'Value', value: resultArray, k }
+  return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k }
 }
 
 /**
@@ -3055,7 +3068,7 @@ async function executeRaceBranches(
   try {
     // Track the first branch to complete (temporal order, not positional)
     let winnerIndex = -1
-    let winnerValue: Any = null
+    let winnerValue: unknown = null
 
     // Run all branches concurrently, tracking completion order
     const branchPromises = branches.map(async (branch, i) => {
@@ -3082,11 +3095,11 @@ async function executeRaceBranches(
 
     // If we have a winner, return it
     if (winnerIndex >= 0) {
-      return { type: 'Value', value: winnerValue, k }
+      return { type: 'Value', value: winnerValue as Any, k }
     }
 
     // No completed branch — collect suspended and errored
-    const suspendedMetas: Any[] = []
+    const suspendedMetas: unknown[] = []
     const errors: DvalaError[] = []
 
     for (let i = 0; i < results.length; i++) {
@@ -3114,7 +3127,7 @@ async function executeRaceBranches(
     if (suspendedMetas.length > 0) {
       // Race suspension: only outer k, host provides winner value directly
       // Meta contains all branch metas so host knows who is waiting
-      const raceMeta: Any = { type: 'race', branches: suspendedMetas }
+      const raceMeta: Any = toAny({ type: 'race', branches: suspendedMetas })
       throwSuspension(k, raceMeta)
     }
 
@@ -3190,26 +3203,29 @@ function handleParallelResume(
   }
 
   // All branches now completed — build the result array in original order
-  const resultArray: Any[] = Array.from({ length: branchCount })
+  const resultMutable: unknown[] = Array.from({ length: branchCount })
   for (const { index, value: v } of updatedCompleted) {
-    resultArray[index] = v
+    resultMutable[index] = v
   }
-  return { type: 'Value', value: resultArray, k }
+  return { type: 'Value', value: PersistentVector.from(resultMutable as Any[]), k }
 }
 
 function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
-  const { node, params, placeholders, env } = frame
+  const { node, placeholders, env } = frame
   const argNodes = node[1][1]
   const currentArgNode = argNodes[frame.index]!
 
-  // Process the completed value
+  // Process the completed value — build new immutable params
+  let newParams: Arr
   if (isSpreadNode(currentArgNode)) {
-    if (!Array.isArray(value)) {
+    if (!isPersistentVector(value)) {
       throw new TypeError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
     }
-    params.push(...value)
+    let acc = frame.params
+    for (const item of value) acc = acc.append(item as Any)
+    newParams = acc
   } else {
-    params.push(value)
+    newParams = frame.params.append(value)
   }
 
   // Find the next real argument (skip placeholders)
@@ -3217,7 +3233,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   while (nextIndex < argNodes.length) {
     const nextArg = argNodes[nextIndex]!
     if (nextArg[0] === NodeTypes.Reserved && nextArg[1] === '_') {
-      placeholders.push(params.length)
+      placeholders.push(newParams.size)
       nextIndex++
     } else {
       break
@@ -3226,11 +3242,11 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
 
   if (nextIndex >= argNodes.length) {
     // All args evaluated — dispatch the call
-    return dispatchCall({ ...frame, index: nextIndex }, k)
+    return dispatchCall({ ...frame, params: newParams, index: nextIndex }, k)
   }
 
   // Evaluate next argument
-  const newFrame: EvalArgsFrame = { ...frame, index: nextIndex }
+  const newFrame: EvalArgsFrame = { ...frame, params: newParams, index: nextIndex }
   const nextArg = argNodes[nextIndex]!
   if (isSpreadNode(nextArg)) {
     return { type: 'Eval', node: nextArg[1], env, k: [newFrame, ...k] }
@@ -3302,7 +3318,7 @@ function applyFnArgSlotComplete(frame: FnArgSlotCompleteFrame, value: Any, k: Co
   const { fn, params, argIndex, nbrOfNonRestArgs, context, outerEnv, sourceCodeInfo } = frame
 
   // value is the binding record from startBindingSlots
-  const record = value as Record<string, Any>
+  const record = value as unknown as Record<string, Any>
   Object.entries(record).forEach(([key, val]) => {
     context[key] = { value: val }
   })
@@ -3319,7 +3335,7 @@ function applyFnRestArgComplete(frame: FnRestArgCompleteFrame, value: Any, k: Co
   const { fn, context, outerEnv, sourceCodeInfo } = frame
 
   // value is the binding record from startBindingSlots
-  const record = value as Record<string, Any>
+  const record = value as unknown as Record<string, Any>
   Object.entries(record).forEach(([key, val]) => {
     context[key] = { value: val }
   })
@@ -3423,7 +3439,7 @@ function continueBindingSlots(
         const parentValue = slot.path.length > 0
           ? extractValueByPath(ctx.rootValue, slot.path, sourceCodeInfo) ?? null
           : ctx.rootValue
-        record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo)
+        record[slot.name] = extractObjectRest(parentValue, slot.restKeys, sourceCodeInfo) as unknown as Any
       } else if (slot.restIndex !== undefined) {
         // Array rest
         const parentValue = slot.path.length > 0
@@ -3475,8 +3491,8 @@ function continueBindingSlots(
     ctx.index++
   }
 
-  // All contexts done — return the record
-  return { type: 'Value', value: record, k }
+  // All contexts done — return the record (cast through unknown since callers re-cast to Record<string, Any>)
+  return { type: 'Value', value: record as unknown as Any, k }
 }
 
 /**
@@ -3614,7 +3630,7 @@ function continueMatchSlots(
         // Collect rest values
         if (slot.restKeys !== undefined) {
           // Object rest
-          record[slot.name!] = extractMatchObjectRest(ctx.rootValue, slot.path, slot.restKeys)
+          record[slot.name!] = extractMatchObjectRest(ctx.rootValue, slot.path, slot.restKeys) as unknown as Any
         } else if (slot.restIndex !== undefined) {
           // Array rest
           record[slot.name!] = extractMatchArrayRest(ctx.rootValue, slot.path, slot.restIndex)
@@ -3736,7 +3752,7 @@ function tryNextMatchCase(matchFrame: MatchFrame, k: ContinuationStack): Step {
 function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const { fns, index, env, sourceCodeInfo } = frame
   // Wrap result in array for next function call
-  const nextParams: Arr = [value]
+  const nextParams: Arr = PersistentVector.from([value])
 
   if (index < 0) {
     // All functions called, return final result
@@ -3745,7 +3761,7 @@ function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | P
 
   // Call the next function in the chain
   const nextFrame: CompFrame = { type: 'Comp', fns, index: index - 1, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns[index], sourceCodeInfo), nextParams, [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), nextParams, [], env, sourceCodeInfo, [nextFrame, ...k])
 }
 
 /**
@@ -3753,17 +3769,17 @@ function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | P
  */
 function applyJuxt(frame: JuxtFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const { fns, params, index, results, env, sourceCodeInfo } = frame
-  // Add result to accumulated array
-  const newResults = [...results, value]
+  // Add result to accumulated array immutably
+  const newResults: Arr = results.append(value)
 
-  if (index >= fns.length) {
+  if (index >= fns.size) {
     // All functions called, return collected results
     return { type: 'Value', value: newResults, k }
   }
 
   // Call the next function
   const nextFrame: JuxtFrame = { type: 'Juxt', fns, params, index: index + 1, results: newResults, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns[index], sourceCodeInfo), params, [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), params, [], env, sourceCodeInfo, [nextFrame, ...k])
 }
 
 /**
@@ -3785,7 +3801,7 @@ function applyEveryPred(frame: EveryPredFrame, value: Any, k: ContinuationStack)
   // Continue to next check
   const nextFrame: EveryPredFrame = { type: 'EveryPred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, [check.param], [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, [nextFrame, ...k])
 }
 
 /**
@@ -3807,7 +3823,7 @@ function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): 
   // Continue to next check
   const nextFrame: SomePredFrame = { type: 'SomePred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, [check.param], [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, [nextFrame, ...k])
 }
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
@@ -3871,7 +3887,7 @@ function callMacro(
   if (!macroFn.qualifiedName) {
     return setupUserDefinedCall(
       macroFn as unknown as UserDefinedFunction,
-      argNodes,
+      PersistentVector.from(argNodes) as unknown as Arr,
       env,
       sourceCodeInfo,
       [macroEvalFrame, ...k],
@@ -3914,7 +3930,7 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // Keep the MacroEvalFrame on the stack (marked as expanded) so that errors
   // from the expanded code can find the macro call site for better error locations.
   const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
-  const astNode = value as AstNode
+  const astNode = value as unknown as AstNode
   return { type: 'Eval', node: astNode, env: frame.env, k: [marker, ...k] }
 }
 
@@ -4226,11 +4242,11 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
 
     // If it resolved to an Object AST → convert to object binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Object) {
-      const entries = resolvedName[1] as Any[][]
+      const entries = resolvedName[1] as unknown as Any[][]
       const record: Record<string, Any> = {}
       for (const entry of entries) {
         // Object entries are [keyNode, valueNode] pairs
-        const keyNode = entry[0] as Any[]
+        const keyNode = entry[0] as unknown as Any[]
         const valNode = entry[1] as Any
         // Key is typically a Str or Sym node — extract the name
         const key = keyNode[1] as string
@@ -4288,17 +4304,17 @@ function expressionAstToBindingTarget(astData: Any): Any {
 
   // Array → array binding target (recurse into elements)
   if (nodeType === NodeTypes.Array) {
-    const elements = node[1] as Any[]
+    const elements = node[1] as unknown as Any[]
     const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
     return toAny(['array', [targets, null], 0])
   }
 
   // Object → object binding target (recurse into entries)
   if (nodeType === NodeTypes.Object) {
-    const entries = node[1] as Any[][]
+    const entries = node[1] as unknown as Any[][]
     const record: Record<string, Any> = {}
     for (const entry of entries) {
-      const keyNode = entry[0] as Any[]
+      const keyNode = entry[0] as unknown as Any[]
       const valNode = entry[1] as Any
       const key = keyNode[1] as string
       record[key] = expressionAstToBindingTarget(valNode)
@@ -4308,7 +4324,7 @@ function expressionAstToBindingTarget(astData: Any): Any {
 
   // Spread → rest binding target
   if (nodeType === NodeTypes.Spread) {
-    const inner = node[1] as Any[]
+    const inner = node[1] as unknown as Any[]
     const name = inner[1] as string
     return toAny(['rest', [name, null], 0])
   }
@@ -4342,7 +4358,7 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
       const spliceValue = spliceValues[item[1] as number]!
       // Implicit spread: if value is an array of AST nodes, spread them in
       if (isSpliceSpread(spliceValue)) {
-        for (const spreadItem of spliceValue as Any[]) {
+        for (const spreadItem of spliceValue as unknown as Any[]) {
           result.push(spreadItem)
         }
       } else {
@@ -4746,7 +4762,7 @@ async function retriggerParallelGroup(
   frame: ParallelResumeFrame,
   outerK: ContinuationStack,
   currentEffectName: string,
-  currentEffectArgs: Any,
+  currentEffectArgs: unknown,
   handlers: Handlers | undefined,
   signal: AbortSignal,
   snapshotState: SnapshotState,
@@ -4879,13 +4895,13 @@ async function retriggerParallelGroup(
   }
 
   // All branches complete — assemble result and continue with outer continuation
-  const resultArray: Any[] = Array.from({ length: branchCount })
+  const resultMutable: unknown[] = Array.from({ length: branchCount })
   for (const { index, value } of newCompleted) {
-    resultArray[index] = value
+    resultMutable[index] = value
   }
 
   return runEffectLoop(
-    { type: 'Value', value: resultArray, k: outerK },
+    { type: 'Value', value: PersistentVector.from(resultMutable), k: outerK },
     handlers,
     signal,
     snapshotState,
@@ -4897,7 +4913,7 @@ async function retriggerParallelGroup(
 export async function retriggerWithEffects(
   k: ContinuationStack,
   effectName: string,
-  effectArg: Any,
+  effectArg: unknown,
   handlers?: Handlers,
   initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
@@ -5006,15 +5022,15 @@ async function runEffectLoop(
       snapshotState.snapshots,
       snapshotState.nextSnapshotIndex,
     )
-    const meta: Record<string, unknown> = {}
+    let meta: Obj = PersistentMap.empty()
     if (options?.error) {
-      meta.error = options.error.toJSON()
+      meta = meta.assoc('error', toAny(options.error.toJSON()))
     }
     if (options?.halted) {
-      meta.halted = true
+      meta = meta.assoc('halted', true)
     }
     if (options?.result !== undefined) {
-      meta.result = options.result
+      meta = meta.assoc('result', options.result)
     }
     const message = options?.error
       ? 'Run failed with error'
@@ -5028,7 +5044,7 @@ async function runEffectLoop(
       executionId: snapshotState.executionId,
       message,
       terminal: true,
-      ...(Object.keys(meta).length > 0 ? { meta } : {}),
+      ...(meta.size > 0 ? { meta } : {}),
     })
   }
 

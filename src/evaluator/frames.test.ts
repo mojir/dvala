@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { PersistentVector } from '../utils/persistent'
 import type {
   AndFrame,
   ArrayBuildFrame,
@@ -168,10 +169,10 @@ describe('frame types', () => {
 
   it('should allow ForBindingLevelState to be used in ForLoopFrame', () => {
     const levelState: ForBindingLevelState = {
-      collection: [1, 2, 3],
+      collection: PersistentVector.from([1, 2, 3]),
       index: 0,
     }
-    expect(levelState.collection).toEqual([1, 2, 3])
+    expect(levelState.collection).toEqual(PersistentVector.from([1, 2, 3]))
     expect(levelState.index).toBe(0)
   })
 

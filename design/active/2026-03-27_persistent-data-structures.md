@@ -1,6 +1,6 @@
 # Persistent Data Structures & Multi-Shot Continuations
 
-**Status:** Future
+**Status:** Draft
 **Created:** 2026-03-27
 
 ## Goal
@@ -123,9 +123,12 @@ This means we can convert at every boundary without meaningful performance impac
 
 #### Where conversion happens
 
-1. **`dvala.run()` return value** — convert persistent → plain JS once at the end
-2. **Host effect handler args** — convert persistent → plain JS before each handler call
-3. **Host effect handler return values** — convert plain JS → persistent when resuming
+All four directions require **deep, recursive** conversion — nested arrays/objects must be fully converted, not just the top level.
+
+1. **`dvala.run()` return value** — persistent → plain JS once at the end
+2. **Host effect handler args** — persistent → plain JS before each handler call
+3. **Host effect handler return values** — plain JS → persistent when resuming
+4. **`bindings` on entry** — plain JS → persistent when host-provided bindings enter the runtime (currently not converted — a gap that must be closed)
 
 ```typescript
 // Host API stays exactly the same:
@@ -143,20 +146,7 @@ dvala.run('perform(@save, {name: "Alice"})', {
 })
 ```
 
-#### Strategy options
-
-**Strategy A: Eager conversion (start here)**
-Convert to/from plain JS at every boundary crossing. Simple, predictable, zero API change.
-
-**Strategy B: Proxy wrappers (optimize later if needed)**
-Wrap persistent values in a JS Proxy that makes them look like plain objects/arrays. The host handler receives something that behaves like plain JS but avoids O(N) materialization unless the host actually iterates the whole thing:
-- A handler that reads `arg.name` pays O(log N) for that one lookup, not O(N) to convert everything
-- A handler that passes `arg` straight to `JSON.stringify()` materializes on demand
-- A handler that doesn't inspect args at all pays nothing
-
-Proxy traps need careful handling for `typeof`, `Array.isArray()`, spread, `JSON.stringify()`, etc. — but it's solvable.
-
-**Recommendation:** Start with Strategy A. Move to B only if profiling shows conversion cost matters somewhere. They're identical from the host's perspective.
+**Strategy: eager conversion (Strategy A).** Convert to/from plain JS at every boundary crossing. Simple, predictable, zero API change. Strategy B (proxy wrappers at the host boundary — not the internal proxy) remains a possible future optimization if profiling shows conversion cost matters, but is not planned.
 
 ### Multi-shot continuations (falls out for free)
 
@@ -211,85 +201,134 @@ A minimal custom implementation gives the best trade-off. Dvala only needs:
 
 ---
 
-## Migration strategy: internal proxy layer
+## Migration strategy
 
-Replacing JS arrays/objects with HAMTs would normally require rewriting every evaluator and builtin function that touches values. A **proxy layer** can drastically reduce that scope.
+**No internal proxy layer.** Every read path in the evaluator and builtins is rewritten to use the HAMT API directly (`arr.get(i)`, `obj.get(key)`, `arr.size`, etc.). More upfront work, but clean result with no tech debt and no layer to remove later.
 
-### The idea
+### What changes
 
-Wrap persistent structures in JS Proxies internally, so the evaluator and builtins keep reading values with `arr[i]`, `obj.key`, `arr.length` — the proxy translates to HAMT lookups. Only the write/create paths need rewriting.
+| Code pattern | Becomes |
+|---|---|
+| `arr[i]` | `arr.get(i)` |
+| `arr.length` | `arr.size` |
+| `obj.key` | `obj.get('key')` |
+| `Array.isArray(val)` | `isPersistentVector(val)` |
+| `[...arr, x]`, `{ ...obj, k: v }` | `arr.append(x)`, `obj.assoc(k, v)` |
+| `.map()`, `.filter()`, `.slice()` | HAMT iterator equivalents |
 
-### What changes, what doesn't
+### Immutable frames migration
 
-| Code pattern | Change needed? | Why |
-|---|---|---|
-| `arr[i]`, `obj.key`, `arr.length` | No | Proxy get trap → HAMT lookup |
-| `typeof val`, `Array.isArray(val)` | No | Proxy traps handle these |
-| `[...arr, newItem]`, `{ ...obj, k: v }` | **Yes** → `arr.append(x)`, `obj.assoc(k, v)` | Spread materializes O(N), defeating the HAMT |
-| `.filter()`, `.map()`, `.slice()` | **Yes** → use HAMT iterators | Same reason — iteration materializes |
-| Builtins that only read args | No | Proxy handles reads transparently |
+The evaluator has 50+ frame types, all currently mutated in place (`frame.index++`, `frame.values.push(value)`). Making them immutable is the highest-risk change in the plan.
 
-### Performance impact of the proxy layer
+**Migration strategy:** Use TypeScript's `Readonly<T>` to find every mutation site mechanically. Mark all frame types as `Readonly<...>` — the compiler immediately flags every mutation site across the codebase. Fix them one frame type at a time, running the test suite after each. No manual hunting; the compiler does the audit.
 
-Proxy traps add overhead on every property access — benchmarks typically show 5-50x slower than direct property access in V8. But the comparison isn't proxy vs native JS. It's:
+```typescript
+// Before
+interface EvalFrame { index: number; nodes: AstNode[] }
 
-- `proxy trap → HAMT.get()` vs `HAMT.get()` directly
+// After — compiler flags every frame.index++ and frame.nodes.push()
+type EvalFrame = Readonly<{ index: number; nodes: readonly AstNode[] }>
+```
 
-The delta is just the proxy trap dispatch, which is small relative to the HAMT tree traversal itself. And the cases where it matters most:
+The persistent linked list for the continuation stack comes **last** — after all frames are immutable, switching `k` from `Frame[]` to a persistent linked list is straightforward.
 
-- **Casual reads** (`arr[0]`, `obj.name`): ~100ns proxy overhead. Irrelevant next to everything else happening in evaluation.
-- **Hot inner loops** (`map`, `filter`, `reduce`): builtins use HAMT's native iterator directly, bypassing the proxy entirely.
-- **Collection creation** (`append`, `assoc`): uses persistent APIs directly, no proxy involved.
+**Copy-on-fork rejected:** An alternative (deep-copy the stack only on second `resume` call) would unblock multi-shot sooner with less risk, but at O(stack) per fork. Given the constraint solver use case (backtracking in tight loops), O(1) forking is worth the upfront cost.
 
-The proxy is only active for the "glue code" — individual value reads in the evaluator and builtins. That's not the bottleneck.
-
-**Conclusion:** The proxy layer is a migration strategy, not a performance concern. It should be benchmarked before committing to it, but the overhead is unlikely to matter. If it does, the proxy can be removed incrementally by rewriting read paths to direct HAMT calls — a straightforward, non-urgent optimization.
-
-The branching factor and node layout can be tuned for Dvala's typical collection sizes.
-
----
-
-## Architecture layering
-
-The implementation is three fully decoupled layers:
+### Architecture
 
 ```
 ┌─────────────────────────────────┐
-│  Host boundary                  │  toJS() conversion OR proxy wrapper
+│  Host boundary                  │  toJS() / fromJS() conversion
 ├─────────────────────────────────┤
-│  Internal proxy layer (optional)│  Makes HAMTs look like plain JS for evaluator/builtins
-├─────────────────────────────────┤
-│  Persistent data structures     │  Pure HAMT vector + hash map, no knowledge of proxies
+│  Persistent data structures     │  HAMT vector + hash map, persistent linked list
 └─────────────────────────────────┘
 ```
 
-- The **data structures** are self-contained — `.get()`, `.set()`, `.push()`, `.assoc()`, iterators.
-- The **internal proxy layer** is optional and can be added/removed without touching the data structures.
-- The **host boundary** chooses its own strategy (eager conversion or proxy) independently.
-
-This also means the persistent structures are **platform-portable**. Each platform implements its own:
+Platform-portable — each platform implements its own persistent structures:
 - **JavaScript**: custom HAMT (this doc)
-- **Kotlin/KMP**: `kotlinx.collections.immutable` (PersistentList, PersistentMap) or custom
-- **Future platforms**: whatever native persistent collections are available
+- **Kotlin/KMP**: `kotlinx.collections.immutable` or custom
+- **Future platforms**: native persistent collections
 
-The host API and Dvala semantics stay identical across platforms — only the internal representation changes.
+The host API and Dvala semantics stay identical across platforms.
 
 ---
 
 ## Phasing
 
-1. **Phase 0 (now)**: Ship handler redesign (abort/resume/return) with one-shot
-2. **Phase 1**: Persistent vector and hash map for Dvala values. Benchmark against current clone-based approach. Add host interop boundary.
-3. **Phase 2**: Immutable evaluator frames + persistent continuation stack
+1. **Phase 0**: ~~Ship handler redesign (abort/resume/return) with one-shot~~ — **complete**
+2. **Phase 1**: HAMT data structures + value migration (collections, builtins, evaluator read paths, host interop, deepEqual)
+3. **Phase 2**: Immutable evaluator frames + persistent continuation stack + serialization update
 4. **Phase 3**: Remove one-shot guard. Multi-shot falls out for free.
 5. **Phase 4**: Add `@choose` effect and nondeterminism patterns to the standard library
 
+## Implementation Plan
+
+### Phase 1 — HAMT data structures + value migration
+
+**Step 0 — `deepEqual` first**
+Update `deepEqual` to handle HAMT values before anything else. `==` is broken the moment HAMT values exist and `deepEqual` still uses `Array.isArray`. All downstream tests depend on this.
+
+**Step 1 — `PersistentVector`**
+`.get(i)`, `.set(i, v)`, `.append(v)`, `.prepend(v)`, `.size`, iterator, transient for bulk ops (`map`, `filter`, `reduce`). Thorough unit tests including edge cases at branching boundaries.
+
+**Step 2 — `PersistentMap`**
+`.get(k)`, `.assoc(k, v)`, `.dissoc(k)`, `.has(k)`, `.size`, `.keys()`, `.entries()`, iterator, transient. Thorough unit tests.
+
+**Step 3 — `PersistentList`** (cons cells for the continuation stack)
+`.head`, `.tail`, `cons(v, list)`, `isEmpty`. Small — ~20 lines. Built now, wired in Phase 2.
+
+**Step 4 — Type guards**
+`isPersistentVector(v)`, `isPersistentMap(v)` replacing `Array.isArray` and `typeof x === 'object'` checks.
+
+**Step 5 — Value creation paths**
+Array literals, object literals, spread operations produce HAMT values. Parser/evaluator creates persistent structures instead of plain JS.
+
+**Step 6 — Builtins**
+All array/object builtins (`map`, `filter`, `append`, `assoc`, `slice`, etc.) use HAMT API. Hot-path builtins (`map`, `filter`, `reduce`) must use transients — not just iterator equivalents.
+
+**Step 7 — Evaluator read paths**
+Property access, index access, size/length checks throughout the evaluator. Every `arr[i]` → `arr.get(i)`, `arr.length` → `arr.size`, `obj.key` → `obj.get('key')`.
+
+**Step 8 — Host interop**
+`toJS(v)` / `fromJS(v)` — deep recursive conversion in both directions. Wire into `run()` return, effect handler args/returns, and `bindings` on entry.
+
+**Step 9 — Benchmarks**
+Before/after on write-heavy workloads (`append` in a loop, object spread). Establish read regression baseline. Acceptance criteria: write ops improve by expected factor; read ops regress no more than 2–3x (O(log32 N) vs O(1)) with no user-observable slowdown on typical programs.
+
+### Phase 2 — Immutable frames + serialization
+
+**Step 10 — Mark frames `Readonly<T>`**
+Add `Readonly<...>` to all frame type definitions. Let the compiler enumerate every mutation site.
+
+**Step 11 — Fix mutations frame by frame**
+Convert each frame type, tests green after each. Every step returns a new frame instead of mutating.
+
+**Step 12 — Switch continuation stack to `PersistentList`**
+Replace `Frame[]` with `PersistentList<Frame>`. Push/pop become `cons` / `.tail`.
+
+**Step 13 — Update serialization**
+Frames now contain persistent values. Update serialization/deserialization to handle HAMT values inside frames. The logical value serialization (Step 8 above) provides the building block.
+
+### Phase 3 — Multi-shot
+
+**Step 14 — Remove one-shot guard**
+Delete the `resumeConsumed` check. Multi-shot works because `resume` holds an immutable stack reference — calling it twice forks from the same snapshot.
+
+**Step 15 — `@choose` and nondeterminism stdlib**
+Add `@choose` effect, `chooseAll` handler, and nondeterminism patterns to the standard library.
+
 ---
+
+## Decisions
+
+- **No internal proxy layer**: Take the migration hit upfront. Every read path in the evaluator and builtins gets rewritten to the HAMT API directly. Cleaner result, no tech debt, no layer to remove later.
+- **Small collection threshold**: Skipped for now. Pure HAMT for all collection sizes. A hybrid representation (flat array below threshold N, HAMT above) is a known future optimization — Clojure uses this for vectors under 32 elements. Add a prominent comment in the HAMT implementation pointing to this optimization.
+- **KMP portability**: Keep in mind but not a constraint for the JS implementation. The HAMT API surface should be clean and portable — no JS-specific tricks leaking into the design.
+- **Equality**: `==` is always structural. Reference equality (`===`) is used internally as a fast-path optimization only — never exposed to users. Two independently constructed equal collections are still O(N) to compare; values derived from each other short-circuit at shared nodes.
+- **Serialization**: Serialize persistent values as plain logical values (arrays as JSON arrays, maps as JSON objects). Reconstruct HAMTs on deserialization. The wire format is independent of the internal representation. Note: continuation frames *contain* Dvala values — frame serialization is entangled with Phase 2 (immutable frames) and is more involved than top-level value serialization.
+- **Immutable frames**: Use TypeScript `Readonly<T>` to mechanically surface all mutation sites. Fix one frame type at a time with tests green throughout. Persistent continuation stack comes last.
+- **Copy-on-fork**: Rejected. O(1) forking via immutable frames is worth the upfront cost given the constraint solver use case.
 
 ## Open Questions
 
-- **Small collection threshold**: For arrays < N elements, is a plain JS array faster than a HAMT? Should small collections use flat arrays internally?
-- **Equality**: Persistent structures enable O(1) reference equality (`===`). Should Dvala's `==` use this? (Clojure does for identical? vs =)
-- **Serialization**: Persistent structures need custom serialization. The current continuation serialization assumes plain arrays/objects.
-- **String representation**: Strings are already immutable in JS. Do they need persistent treatment? (Probably not — JS strings are efficient.)
-- **Playground impact**: The AST viewer and output panel display values. Need to handle persistent values correctly. (Likely a non-issue since `dvala.run()` will return plain JS.)
+None.

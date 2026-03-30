@@ -4,11 +4,11 @@
  * The primary API for running Dvala programs is `createDvala()` from `./createDvala`.
  */
 
-import type { Any } from './interface'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { resumeWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
+import { fromJS } from './utils/interop'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -23,7 +23,7 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
  * `modules` must be provided again (they are not in the blob).
  */
 export interface ResumeOptions {
-  bindings?: Record<string, Any>
+  bindings?: Record<string, unknown>
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
@@ -55,7 +55,7 @@ export interface ResumeOptions {
  * const next = await resume(snapshot, humanDecision, { handlers })
  * ```
  */
-export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOptions): Promise<RunResult> {
+export async function resume(snapshot: Snapshot, value: unknown, options?: ResumeOptions): Promise<RunResult> {
   try {
     const modules = options?.modules
       ? new Map(options.modules.map(m => [m.name, m]))
@@ -63,16 +63,16 @@ export async function resume(snapshot: Snapshot, value: Any, options?: ResumeOpt
 
     // Extract the opaque continuation from the snapshot and deserialize it.
     const deserialized = deserializeFromObject(snapshot.continuation, {
-      values: options?.bindings as Record<string, unknown> | undefined,
+      values: options?.bindings,
       modules,
     })
 
     const deserializeOptions = {
-      values: options?.bindings as Record<string, unknown> | undefined,
+      values: options?.bindings,
       modules,
     }
 
-    return await resumeWithEffects(deserialized.k, value, options?.handlers, {
+    return await resumeWithEffects(deserialized.k, fromJS(value), options?.handlers, {
       snapshots: deserialized.snapshots,
       nextSnapshotIndex: deserialized.nextSnapshotIndex,
       maxSnapshots: options?.maxSnapshots,

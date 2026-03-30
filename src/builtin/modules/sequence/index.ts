@@ -6,6 +6,7 @@ import { asNumber, assertNumber } from '../../../typeGuards/number'
 import { assertString } from '../../../typeGuards/string'
 import { collHasKey, deepEqual, toNonNegativeInteger } from '../../../utils'
 import { toFixedArity } from '../../../utils/arity'
+import { isPersistentVector, PersistentMap, PersistentVector } from '../../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
@@ -99,8 +100,15 @@ su.position(
         const index = seq.lastIndexOf(value)
         return index !== -1 ? index : null
       } else {
-        const index = seq.findLastIndex(item => deepEqual(asAny(item, sourceCodeInfo), value), sourceCodeInfo)
-        return index !== -1 ? index : null
+        // Iterate backwards to find last matching index
+        let lastIndex = -1
+        let i = 0
+        for (const item of seq) {
+          if (deepEqual(asAny(item, sourceCodeInfo), value, sourceCodeInfo))
+            lastIndex = i
+          i++
+        }
+        return lastIndex !== -1 ? lastIndex : null
       }
     },
     arity: toFixedArity(2),
@@ -127,19 +135,37 @@ su.position(
   },
   'splice': {
     evaluate: (params, sourceCodeInfo): Any => {
-      const [seq, start, deleteCount, ...rest] = params
-      assertSeq(seq, sourceCodeInfo)
-      assertNumber(start, sourceCodeInfo, { integer: true })
-      assertNumber(deleteCount, sourceCodeInfo, { integer: true, nonNegative: true })
+      const seq = asSeq(params.get(0), sourceCodeInfo)
+      const start = asNumber(params.get(1), sourceCodeInfo, { integer: true })
+      const deleteCount = asNumber(params.get(2), sourceCodeInfo, { integer: true, nonNegative: true })
+      const rest: unknown[] = []
+      for (let i = 3; i < params.size; i++) rest.push(params.get(i))
 
-      const from = start < 0 ? seq.length + start : start
+      const seqLen = typeof seq === 'string' ? seq.length : seq.size
+      const from = start < 0 ? seqLen + start : start
 
-      if (Array.isArray(seq)) {
-        return [...seq.slice(0, from), ...rest, ...seq.slice(from + deleteCount)]
+      if (isPersistentVector(seq)) {
+        let result = PersistentVector.empty<Any>()
+        let i = 0
+        let restInserted = false
+        for (const item of seq) {
+          if (i === from) {
+            for (const r of rest) result = result.append(r as Any)
+            restInserted = true
+          }
+          if (i < from || i >= from + deleteCount)
+            result = result.append(item as Any)
+          i++
+        }
+        // Append rest at end if from was beyond the seq length
+        if (!restInserted) {
+          for (const r of rest) result = result.append(r as Any)
+        }
+        return result
       }
 
       rest.forEach(elem => assertString(elem, sourceCodeInfo))
-      return `${seq.substring(0, from)}${rest.join('')}${seq.substring(from + deleteCount)}`
+      return `${seq.substring(0, from)}${(rest as string[]).join('')}${seq.substring(from + deleteCount)}`
     },
     arity: { min: 3 },
     docs: {
@@ -195,11 +221,13 @@ su.position(
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
         assertCharArray(values, sourceCodeInfo)
-        return [...values, seq].join('')
+        return [...(values as string[]), seq].join('')
       }
-      const copy = [...seq]
-      copy.unshift(...values)
-      return copy
+      // Prepend all values to the vector in order
+      let result = PersistentVector.empty<Any>()
+      for (const v of values) result = result.append(v as Any)
+      for (const item of seq) result = result.append(item as Any)
+      return result
     },
     arity: { min: 2 },
     docs: {
@@ -230,13 +258,16 @@ l`,
     evaluate: ([input], sourceCodeInfo): Seq => {
       assertSeq(input, sourceCodeInfo)
 
-      if (Array.isArray(input)) {
-        const result: Any[] = []
+      if (isPersistentVector(input)) {
+        let result = PersistentVector.empty<Any>()
         for (const item of input) {
           assertAny(item, sourceCodeInfo)
-          if (!result.some(existingItem => deepEqual(existingItem, item, sourceCodeInfo))) {
-            result.push(item)
+          let found = false
+          for (const existingItem of result) {
+            if (deepEqual(existingItem, item, sourceCodeInfo)) { found = true; break }
           }
+          if (!found)
+            result = result.append(item)
         }
         return result
       }
@@ -287,12 +318,19 @@ l`,
       assertNumber(index, sourceCodeInfo, { integer: true })
       assertSeq(input, sourceCodeInfo)
 
-      const at = index < 0 ? input.length + index : index
-      if (at < 0 || at >= input.length)
+      const inputLen = typeof input === 'string' ? input.length : input.size
+      const at = index < 0 ? inputLen + index : index
+      if (at < 0 || at >= inputLen)
         return input
 
-      if (Array.isArray(input)) {
-        return input.filter((_, i) => i !== at)
+      if (isPersistentVector(input)) {
+        let result = PersistentVector.empty<Any>()
+        let i = 0
+        for (const item of input) {
+          if (i !== at) result = result.append(item as Any)
+          i++
+        }
+        return result
       }
       return `${input.substring(0, at)}${input.substring(at + 1)}`
     },
@@ -319,12 +357,25 @@ l`,
     },
   },
   'splitAt': {
-    evaluate: ([seq, pos], sourceCodeInfo): Seq => {
+    evaluate: ([seq, pos], sourceCodeInfo): Arr => {
       assertNumber(pos, sourceCodeInfo, { integer: true })
       assertSeq(seq, sourceCodeInfo)
 
-      const at = pos < 0 ? seq.length + pos : pos
-      return [seq.slice(0, at), seq.slice(at)]
+      const seqLen = typeof seq === 'string' ? seq.length : seq.size
+      const at = pos < 0 ? seqLen + pos : pos
+
+      if (isPersistentVector(seq)) {
+        let before = PersistentVector.empty<Any>()
+        let after = PersistentVector.empty<Any>()
+        let i = 0
+        for (const item of seq) {
+          if (i < at) before = before.append(item as Any)
+          else after = after.append(item as Any)
+          i++
+        }
+        return PersistentVector.from<Any>([before, after])
+      }
+      return PersistentVector.from<Any>([seq.slice(0, at), seq.slice(at)])
     },
     arity: toFixedArity(2),
     docs: {
@@ -375,17 +426,15 @@ l`,
     evaluate: ([seq], sourceCodeInfo): Obj => {
       assertSeq(seq, sourceCodeInfo)
 
-      const arr = typeof seq === 'string' ? seq.split('') : seq
-
-      return arr.reduce((result: Obj, val) => {
+      // Build frequency map using PersistentMap
+      let result = PersistentMap.empty<Any>()
+      const items = typeof seq === 'string' ? seq.split('') : [...seq]
+      for (const val of items) {
         assertString(val, sourceCodeInfo)
-        if (collHasKey(result, val))
-          result[val] = (result[val] as number) + 1
-        else
-          result[val] = 1
-
-        return result
-      }, {})
+        const count = collHasKey(result, val) ? (result.get(val) as number) : 0
+        result = result.assoc(val, count + 1)
+      }
+      return result
     },
     arity: toFixedArity(1),
     docs: {
@@ -426,12 +475,12 @@ l`,
   },
 
   'partition': {
-    evaluate: (params, sourceCodeInfo): Seq => {
-      const seq = asSeq(params[0], sourceCodeInfo)
-      const n = toNonNegativeInteger(asNumber(params[1], sourceCodeInfo))
-      const step = params.length >= 3 ? toNonNegativeInteger(asNumber(params[2], sourceCodeInfo)) : n
-      const pad = params.length === 4
-        ? params[3] === null ? [] : asArray(params[3], sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Arr => {
+      const seq = asSeq(params.get(0), sourceCodeInfo)
+      const n = toNonNegativeInteger(asNumber(params.get(1), sourceCodeInfo))
+      const step = params.size >= 3 ? toNonNegativeInteger(asNumber(params.get(2), sourceCodeInfo)) : n
+      const pad = params.size === 4
+        ? params.get(3) === null ? PersistentVector.empty<Any>() : asArray(params.get(3), sourceCodeInfo)
         : undefined
 
       return partitionHelper(n, step, seq, pad, sourceCodeInfo)
@@ -477,12 +526,12 @@ l`,
   },
 
   'partitionAll': {
-    evaluate: (params, sourceCodeInfo): Seq => {
-      const seq = asSeq(params[0], sourceCodeInfo)
-      const n = toNonNegativeInteger(asNumber(params[1], sourceCodeInfo))
-      const step = params.length === 3 ? toNonNegativeInteger(asNumber(params[2], sourceCodeInfo)) : n
+    evaluate: (params, sourceCodeInfo): Arr => {
+      const seq = asSeq(params.get(0), sourceCodeInfo)
+      const n = toNonNegativeInteger(asNumber(params.get(1), sourceCodeInfo))
+      const step = params.size === 3 ? toNonNegativeInteger(asNumber(params.get(2), sourceCodeInfo)) : n
 
-      return partitionHelper(n, step, seq, [], sourceCodeInfo)
+      return partitionHelper(n, step, seq, PersistentVector.empty<Any>(), sourceCodeInfo)
     },
     arity: { min: 2, max: 3 },
     docs: {
@@ -542,7 +591,8 @@ l`,
         return str.endsWith(search)
       }
 
-      return deepEqual(asAny(str.at(-1), sourceCodeInfo), asAny(search, sourceCodeInfo), sourceCodeInfo)
+      // Check if last element equals search
+      return deepEqual(asAny(str.get(str.size - 1), sourceCodeInfo), asAny(search, sourceCodeInfo), sourceCodeInfo)
     },
     arity: toFixedArity(2),
     docs: {
@@ -576,7 +626,8 @@ l`,
         return seq.startsWith(search)
       }
 
-      return deepEqual(asAny(seq[0], sourceCodeInfo), asAny(search, sourceCodeInfo), sourceCodeInfo)
+      // Check if first element equals search
+      return deepEqual(asAny(seq.get(0), sourceCodeInfo), asAny(search, sourceCodeInfo), sourceCodeInfo)
     },
     arity: toFixedArity(2),
     docs: {
@@ -604,7 +655,8 @@ l`,
     evaluate: ([...seqs], sourceCodeInfo): Seq => {
       const isStringSeq = typeof seqs[0] === 'string'
 
-      const seqsArr = isStringSeq
+      // Normalize all sequences to a common form for iteration
+      const normalizedSeqs: (string[] | Arr)[] = isStringSeq
         ? seqs.map(seq => {
           assertString(seq, sourceCodeInfo)
           return seq.split('')
@@ -614,17 +666,21 @@ l`,
           return seq
         })
 
-      const maxLength = Math.min(...seqsArr.map(seq => seq.length))
-      const result: Arr = []
+      // Get length/size of each normalized seq
+      const getLen = (s: string[] | Arr): number => Array.isArray(s) ? s.length : s.size
+      const getItem = (s: string[] | Arr, i: number): unknown => Array.isArray(s) ? s[i] : s.get(i)
+
+      const maxLength = Math.min(...normalizedSeqs.map(getLen))
+      let result = PersistentVector.empty<Any>()
       for (let i = 0; i < maxLength; i += 1) {
-        for (const seq of seqsArr) {
+        for (const seq of normalizedSeqs) {
           // Defensive: i is bounded by maxLength which is min of all seq lengths
           /* v8 ignore next 2 */
-          if (i < seq.length)
-            result.push(seq[i])
+          if (i < getLen(seq))
+            result = result.append(getItem(seq, i) as Any)
         }
       }
-      return isStringSeq ? result.join('') : result
+      return isStringSeq ? [...result].join('') : result
     },
     arity: { min: 1 },
     docs: {
@@ -659,14 +715,18 @@ l`,
         return seq.split('').join(separator)
       }
 
-      if (seq.length === 0)
-        return []
+      if (seq.size === 0)
+        return PersistentVector.empty<Any>()
 
-      const result: Arr = []
-      for (let i = 0; i < seq.length - 1; i += 1) {
-        result.push(seq[i], separator)
+      let result = PersistentVector.empty<Any>()
+      let i = 0
+      for (const item of seq) {
+        result = result.append(item as Any)
+        // Append separator between items, not after the last one
+        if (i < seq.size - 1)
+          result = result.append(separator as Any)
+        i++
       }
-      result.push(seq[seq.length - 1])
       return result
     },
     arity: toFixedArity(2),
@@ -692,33 +752,37 @@ l`,
   },
 }
 
-function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined, sourceCodeInfo?: SourceCodeInfo) {
+function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined, sourceCodeInfo?: SourceCodeInfo): Arr {
   assertNumber(step, sourceCodeInfo, { positive: true })
   const isStringSeq = typeof seq === 'string'
+  const seqLen = isStringSeq ? seq.length : seq.size
 
-  const result: Arr[] = []
+  let result = PersistentVector.empty<Any>()
   let start = 0
-  outer: while (start < seq.length) {
-    const innerArr: Arr = []
+  outer: while (start < seqLen) {
+    let innerArr = PersistentVector.empty<Any>()
     for (let i = start; i < start + n; i += 1) {
-      if (i >= seq.length) {
-        const padIndex = i - seq.length
+      if (i >= seqLen) {
+        const padIndex = i - seqLen
         if (!pad) {
           start += step
           continue outer
         }
-        if (padIndex >= pad.length)
+        if (padIndex >= pad.size)
           break
 
-        innerArr.push(pad[padIndex])
+        innerArr = innerArr.append(pad.get(padIndex) as Any)
       } else {
-        innerArr.push(seq[i])
+        // Get element at position i from the sequence
+        const item = isStringSeq ? seq[i] : seq.get(i)
+        innerArr = innerArr.append(item as Any)
       }
     }
-    result.push(innerArr)
+    // For string sequences, join the inner array chars into a string
+    result = result.append(isStringSeq ? [...innerArr].join('') as Any : innerArr as Any)
     start += step
   }
-  return isStringSeq ? result.map(x => x.join('')) : result
+  return result
 }
 
 export const sequenceUtilsModule: DvalaModule = {

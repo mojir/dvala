@@ -6,13 +6,18 @@ import { isDvalaFunction, isHandlerFunction, isMacroFunction } from '../../typeG
 import { asStringOrNumber, assertStringOrNumber } from '../../typeGuards/string'
 import { compare, deepEqual } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
+import { isPersistentVector } from '../../utils/persistent'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 
-function isEqual([first, ...rest]: unknown[], sourceCodeInfo: SourceCodeInfo | undefined) {
-  const firstAny = asAny(first, sourceCodeInfo)
-  for (const param of rest) {
-    if (!deepEqual(firstAny, asAny(param, sourceCodeInfo), sourceCodeInfo))
+function isEqual(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | undefined) {
+  // Destructure by iteration — works for both plain arrays and PersistentVector
+  const iter = params[Symbol.iterator]()
+  const firstResult = iter.next()
+  if (firstResult.done) return true
+  const firstAny = asAny(firstResult.value, sourceCodeInfo)
+  for (let next = iter.next(); !next.done; next = iter.next()) {
+    if (!deepEqual(firstAny, asAny(next.value, sourceCodeInfo), sourceCodeInfo))
       return false
   }
   return true
@@ -438,7 +443,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         return 'handler'
       if (isDvalaFunction(value))
         return 'function'
-      if (Array.isArray(value))
+      if (isPersistentVector(value))
         return 'array'
       return 'object'
     },

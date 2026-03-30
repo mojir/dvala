@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DvalaError, RecurSignal, UserDefinedError, isDvalaError } from '../src/errors'
+import { PersistentVector } from '../src/utils/persistent'
 
 describe('errors', () => {
   it('recurSignal', () => {
-    const err = new RecurSignal([100])
+    const err = new RecurSignal(PersistentVector.from([100]))
     expect(err).toBeInstanceOf(RecurSignal)
     expect(err.name).toBe('RecurSignal')
-    expect(err.params).toEqual([100])
+    expect(err.params).toEqual(PersistentVector.from([100]))
   })
   it('userDefinedError', () => {
     const err = new UserDefinedError('A message', {
@@ -24,7 +25,7 @@ describe('errors', () => {
     it('isDvalaError', () => {
       const error = new Error('An error')
       const dvalaError = new DvalaError('An error', undefined)
-      const recurSignal = new RecurSignal([100])
+      const recurSignal = new RecurSignal(PersistentVector.from([100]))
       const userDefinedError = new UserDefinedError('An error')
 
       expect(isDvalaError(dvalaError)).toBe(true)

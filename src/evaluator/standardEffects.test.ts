@@ -4,6 +4,11 @@ import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { getStandardEffectHandler, standardEffectNames } from './standardEffects'
 import type { ContinuationStack } from './frames'
 
+// Cast a plain JS value to Any for passing to handlers that inspect it at runtime
+function asAny(value: unknown): Any {
+  return value as unknown as Any
+}
+
 // A minimal continuation stack for testing — standard effects don't inspect frames
 const emptyK: ContinuationStack = []
 
@@ -87,7 +92,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
         const obj = { a: 1 }
-        const result = handler(obj, emptyK)
+        const result = handler(asAny(obj), emptyK)
         expect(result).toEqual({ type: 'Value', value: obj, k: emptyK })
         expect(spy).toHaveBeenCalledWith('{\n  "a": 1\n}')
       } finally {
@@ -100,7 +105,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
         const arr = [1, 2, 3]
-        const result = handler(arr, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny(arr), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.value).toBe(arr) // same reference
       } finally {
         spy.mockRestore()
@@ -226,7 +231,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '1')
-        const result = handler({ items }, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny({ items }), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe(1)
       } finally {
@@ -239,7 +244,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => null)
-        const result = handler({ items }, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny({ items }), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBeNull()
       } finally {
@@ -252,7 +257,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '')
-        const result = handler({ items, options: { default: 2 } }, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny({ items, options: { default: 2 } }), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe(2)
       } finally {
@@ -265,7 +270,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '')
-        const result = handler({ items }, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny({ items }), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBeNull()
       } finally {
@@ -278,7 +283,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '0')
-        void handler({ items, options: { prompt: 'Pick a fruit:' } }, emptyK)
+        void handler(asAny({ items, options: { prompt: 'Pick a fruit:' } }), emptyK)
         expect((globalThis.prompt as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toContain('Pick a fruit:')
       } finally {
         globalThis.prompt = originalPrompt
@@ -290,7 +295,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '0')
-        expect(() => handler({ items: [] }, emptyK)).toThrow('must not be empty')
+        expect(() => handler(asAny({ items: [] }), emptyK)).toThrow('must not be empty')
       } finally {
         globalThis.prompt = originalPrompt
       }
@@ -298,7 +303,7 @@ describe('standardEffects', () => {
 
     it('should throw on non-array first argument', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items: 'not-an-array' }, emptyK)).toThrow('must be an array')
+      expect(() => handler(asAny({ items: 'not-an-array' }), emptyK)).toThrow('must be an array')
     })
 
     it('should throw when items contain non-strings', () => {
@@ -306,7 +311,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '0')
-        expect(() => handler({ items: ['ok', 42] }, emptyK)).toThrow('must be a string')
+        expect(() => handler(asAny({ items: ['ok', 42] }), emptyK)).toThrow('must be a string')
       } finally {
         globalThis.prompt = originalPrompt
       }
@@ -317,7 +322,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => '0')
-        expect(() => handler({ items, options: { default: 10 } }, emptyK)).toThrow('out of bounds')
+        expect(() => handler(asAny({ items, options: { default: 10 } }), emptyK)).toThrow('out of bounds')
       } finally {
         globalThis.prompt = originalPrompt
       }
@@ -328,7 +333,7 @@ describe('standardEffects', () => {
       const originalPrompt = globalThis.prompt
       try {
         globalThis.prompt = vi.fn(() => 'banana')
-        expect(() => handler({ items }, emptyK)).toThrow('invalid selection')
+        expect(() => handler(asAny({ items }), emptyK)).toThrow('invalid selection')
       } finally {
         globalThis.prompt = originalPrompt
       }
@@ -340,7 +345,7 @@ describe('standardEffects', () => {
       try {
         // @ts-expect-error -- simulating Node.js environment without prompt
         globalThis.prompt = undefined
-        expect(() => handler({ items }, emptyK)).toThrow('not supported in this environment')
+        expect(() => handler(asAny({ items }), emptyK)).toThrow('not supported in this environment')
       } finally {
         globalThis.prompt = originalPrompt
       }
@@ -348,27 +353,27 @@ describe('standardEffects', () => {
 
     it('should throw when options is not an object (line 267)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items, options: 'not-an-object' }, emptyK)).toThrow('must be an object')
+      expect(() => handler(asAny({ items, options: 'not-an-object' }), emptyK)).toThrow('must be an object')
     })
 
     it('should throw when options is an array (line 267)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items, options: [1, 2] }, emptyK)).toThrow('must be an object')
+      expect(() => handler(asAny({ items, options: [1, 2] }), emptyK)).toThrow('must be an object')
     })
 
     it('should throw when options.prompt is not a string (line 272)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items, options: { prompt: 42 } }, emptyK)).toThrow('prompt must be a string')
+      expect(() => handler(asAny({ items, options: { prompt: 42 } }), emptyK)).toThrow('prompt must be a string')
     })
 
     it('should throw when options.default is not an integer (line 278)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items, options: { default: 1.5 } }, emptyK)).toThrow('default must be an integer')
+      expect(() => handler(asAny({ items, options: { default: 1.5 } }), emptyK)).toThrow('default must be an integer')
     })
 
     it('should throw when options.default is a string (line 278)', () => {
       const handler = getStandardEffectHandler('dvala.io.pick')!
-      expect(() => handler({ items, options: { default: 'foo' } }, emptyK)).toThrow('default must be an integer')
+      expect(() => handler(asAny({ items, options: { default: 'foo' } }), emptyK)).toThrow('default must be an integer')
     })
   })
 
@@ -405,7 +410,7 @@ describe('standardEffects', () => {
       const originalConfirm = globalThis.confirm
       try {
         globalThis.confirm = vi.fn(() => true)
-        const result = handler({ question: 'Proceed?', options: { default: true } }, emptyK) as { type: string; value: unknown; k: unknown }
+        const result = handler(asAny({ question: 'Proceed?', options: { default: true } }), emptyK) as { type: string; value: unknown; k: unknown }
         expect(result.type).toBe('Value')
         expect(result.value).toBe(true)
       } finally {
@@ -423,7 +428,7 @@ describe('standardEffects', () => {
       const originalConfirm = globalThis.confirm
       try {
         globalThis.confirm = vi.fn(() => true)
-        expect(() => handler({ question: 'Sure?', options: 'bad' }, emptyK)).toThrow('must be an object')
+        expect(() => handler(asAny({ question: 'Sure?', options: 'bad' }), emptyK)).toThrow('must be an object')
       } finally {
         globalThis.confirm = originalConfirm
       }
@@ -434,7 +439,7 @@ describe('standardEffects', () => {
       const originalConfirm = globalThis.confirm
       try {
         globalThis.confirm = vi.fn(() => true)
-        expect(() => handler({ question: 'Sure?', options: { default: 1 } }, emptyK)).toThrow('must be a boolean')
+        expect(() => handler(asAny({ question: 'Sure?', options: { default: 1 } }), emptyK)).toThrow('must be a boolean')
       } finally {
         globalThis.confirm = originalConfirm
       }
@@ -537,7 +542,7 @@ describe('standardEffects', () => {
   describe('dvala.random.int handler', () => {
     it('should return an integer in [min, max)', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      const result = handler([0, 10], emptyK) as { type: string; value: number; k: unknown }
+      const result = handler(asAny([0, 10]), emptyK) as { type: string; value: number; k: unknown }
       expect(result.type).toBe('Value')
       expect(Number.isInteger(result.value)).toBe(true)
       expect(result.value).toBeGreaterThanOrEqual(0)
@@ -546,24 +551,24 @@ describe('standardEffects', () => {
 
     it('should throw when max <= min', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      expect(() => handler([5, 5], emptyK)).toThrow('must be greater than min')
-      expect(() => handler([5, 3], emptyK)).toThrow('must be greater than min')
+      expect(() => handler(asAny([5, 5]), emptyK)).toThrow('must be greater than min')
+      expect(() => handler(asAny([5, 3]), emptyK)).toThrow('must be greater than min')
     })
 
     it('should throw on non-integer arguments', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      expect(() => handler([1.5, 10], emptyK)).toThrow('must be an integer')
-      expect(() => handler([0, 10.5], emptyK)).toThrow('must be an integer')
+      expect(() => handler(asAny([1.5, 10]), emptyK)).toThrow('must be an integer')
+      expect(() => handler(asAny([0, 10.5]), emptyK)).toThrow('must be an integer')
     })
 
     it('should include type name when min is not a number', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      expect(() => handler(['foo', 10], emptyK)).toThrow('got string')
+      expect(() => handler(asAny(['foo', 10]), emptyK)).toThrow('got string')
     })
 
     it('should include type name when max is not a number', () => {
       const handler = getStandardEffectHandler('dvala.random.int')!
-      expect(() => handler([0, 'bar'], emptyK)).toThrow('got string')
+      expect(() => handler(asAny([0, 'bar']), emptyK)).toThrow('got string')
     })
   })
 
@@ -571,14 +576,14 @@ describe('standardEffects', () => {
     it('should return an element from the array', () => {
       const handler = getStandardEffectHandler('dvala.random.item')!
       const arr = [10, 20, 30]
-      const result = handler(arr, emptyK) as { type: string; value: number; k: unknown }
+      const result = handler(asAny(arr), emptyK) as { type: string; value: number; k: unknown }
       expect(result.type).toBe('Value')
       expect(arr).toContain(result.value)
     })
 
     it('should throw on empty array', () => {
       const handler = getStandardEffectHandler('dvala.random.item')!
-      expect(() => handler([], emptyK)).toThrow('empty array')
+      expect(() => handler(asAny([]), emptyK)).toThrow('empty array')
     })
 
     it('should throw on non-array argument', () => {
@@ -591,7 +596,7 @@ describe('standardEffects', () => {
     it('should return a new array with the same elements', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
       const arr = [1, 2, 3, 4, 5]
-      const result = handler(arr, emptyK) as { type: string; value: number[]; k: unknown }
+      const result = handler(asAny(arr), emptyK) as { type: string; value: unknown[]; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toHaveLength(arr.length)
       expect([...result.value].sort()).toEqual([...arr].sort())
@@ -601,13 +606,13 @@ describe('standardEffects', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
       const arr = [1, 2, 3, 4, 5]
       const original = [...arr]
-      void handler(arr, emptyK)
+      void handler(asAny(arr), emptyK)
       expect(arr).toEqual(original)
     })
 
     it('should return an empty array when given an empty array', () => {
       const handler = getStandardEffectHandler('dvala.random.shuffle')!
-      const result = handler([], emptyK) as { type: string; value: unknown[]; k: unknown }
+      const result = handler(asAny([]), emptyK) as { type: string; value: unknown[]; k: unknown }
       expect(result.type).toBe('Value')
       expect(result.value).toEqual([])
     })
@@ -672,7 +677,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       const builtinFn = { [FUNCTION_SYMBOL]: true, functionType: 'Builtin', normalBuiltinSymbolType: 42 }
       try {
-        void handler(builtinFn, emptyK)
+        void handler(asAny(builtinFn), emptyK)
         expect(spy).toHaveBeenCalledWith('<builtin function 42>')
       } finally {
         spy.mockRestore()
@@ -698,7 +703,7 @@ describe('standardEffects', () => {
       const handler = getStandardEffectHandler('dvala.io.print')!
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
-        void handler([Number.POSITIVE_INFINITY], emptyK)
+        void handler(asAny([Number.POSITIVE_INFINITY]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "∞"\n]')
       } finally {
         spy.mockRestore()
@@ -709,7 +714,7 @@ describe('standardEffects', () => {
       const handler = getStandardEffectHandler('dvala.io.print')!
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       try {
-        void handler([Number.NEGATIVE_INFINITY], emptyK)
+        void handler(asAny([Number.NEGATIVE_INFINITY]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "-∞"\n]')
       } finally {
         spy.mockRestore()
@@ -721,7 +726,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       const fn = { [FUNCTION_SYMBOL]: true, functionType: 'UserDefined', n: 'myFn' }
       try {
-        void handler([fn], emptyK)
+        void handler(asAny([fn]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "<function myFn>"\n]')
       } finally {
         spy.mockRestore()
@@ -733,7 +738,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       const effectRef = { [EFFECT_SYMBOL]: true, name: 'dvala.io.print' }
       try {
-        void handler([effectRef], emptyK)
+        void handler(asAny([effectRef]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "<effect dvala.io.print>"\n]')
       } finally {
         spy.mockRestore()
@@ -745,7 +750,7 @@ describe('standardEffects', () => {
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
       const re = { [REGEXP_SYMBOL]: true, s: 'abc', f: 'g' }
       try {
-        void handler([re], emptyK)
+        void handler(asAny([re]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "/abc/g"\n]')
       } finally {
         spy.mockRestore()

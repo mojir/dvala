@@ -6,6 +6,7 @@ import { assertString } from '../../typeGuards/string'
 import { toFixedArity } from '../../utils/arity'
 import { generateDocString } from '../../utils/docString/generateDocString'
 import type { Any } from '../../interface'
+import { PersistentMap } from '../../utils/persistent'
 import type { Arity, BuiltinNormalExpressions } from '../interface'
 import { FUNCTION_SYMBOL } from '../../utils/symbols'
 
@@ -85,23 +86,31 @@ export function getMetaNormalExpression(
       },
     },
     'arity': {
-      evaluate: ([value], sourceCodeInfo): Arity | Any => {
+      evaluate: ([value], sourceCodeInfo): Any => {
+        // Helper: convert a plain arity object to a PersistentMap so it's a valid Dvala object
+        function arityToMap(a: Arity): Any {
+          let m = PersistentMap.empty<unknown>()
+          if (a.min !== undefined) m = m.assoc('min', a.min)
+          if (a.max !== undefined) m = m.assoc('max', a.max)
+          return m
+        }
+
         // Handle effects
         if (isEffect(value)) {
           const key = `-effect-${value.name}`
           const ref = effectReference[key]
           if (!ref)
-            return {}
+            return PersistentMap.empty()
           // Derive arity from variants
           const argCounts = ref.variants.map(v => v.argumentNames.length)
           const min = Math.min(...argCounts)
           const max = Math.max(...argCounts)
-          return { min, max }
+          return arityToMap({ min, max })
         }
 
         // Handle functions
         assertFunctionLike(value, sourceCodeInfo)
-        return isDvalaFunction(value) ? value.arity : toFixedArity(1)
+        return arityToMap(isDvalaFunction(value) ? value.arity : toFixedArity(1))
       },
       arity: toFixedArity(1),
       docs: {

@@ -1,3 +1,4 @@
+import type { Any } from '../../../interface'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -38,18 +39,20 @@ export function primeFactors(n: number): number[] {
 
 export const primeFactorsNormalExpressions: BuiltinNormalExpressions = {
   'primeFactors': {
-    evaluate: ([number], sourceCodeInfo): number[] => {
+    // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
+    evaluate: ([number], sourceCodeInfo): Any => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
-      return primeFactors(number)
+      return primeFactors(number) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'distinctPrimeFactors': {
-    evaluate: ([n], sourceCodeInfo): number[] => {
+    // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
+    evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { finite: true, integer: true, positive: true })
       const factors = primeFactors(n)
       const distinctFactors = new Set(factors)
-      return Array.from(distinctFactors)
+      return Array.from(distinctFactors) as unknown as Any
     },
     arity: toFixedArity(1),
   },

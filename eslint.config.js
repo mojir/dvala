@@ -24,6 +24,7 @@ module.exports = tseslint.config(
       'eslint.config.js',
       'scripts/**',
       'vscode-dvala/**',
+      'benchmarks/**',
     ],
   },
   eslint.configs.recommended,

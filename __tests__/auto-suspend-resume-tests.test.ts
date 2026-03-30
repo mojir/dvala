@@ -29,6 +29,7 @@ import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import { createDvala } from '../src/createDvala'
 import type { Any } from '../src/interface'
+import { fromJS } from '../src/utils/interop'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
@@ -1038,11 +1039,11 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
     { label: 'boolean true', meta: true },
     { label: 'boolean false', meta: false },
     { label: 'empty string', meta: '' },
-    { label: 'array', meta: [1, 2, 3] },
-    { label: 'nested object', meta: { a: { b: { c: 1 } } } },
-    { label: 'mixed array', meta: [1, 'two', true, null, { x: 3 }] },
-    { label: 'empty object', meta: {} },
-    { label: 'empty array', meta: [] },
+    { label: 'array', meta: fromJS([1, 2, 3]) },
+    { label: 'nested object', meta: fromJS({ a: { b: { c: 1 } } }) },
+    { label: 'mixed array', meta: fromJS([1, 'two', true, null, { x: 3 }]) },
+    { label: 'empty object', meta: fromJS({}) },
+    { label: 'empty array', meta: fromJS([]) },
   ]
 
   for (const { label, meta } of metaVariants) {
@@ -1391,10 +1392,10 @@ describe('auto: complex workflow patterns', () => {
     expect(r1.snapshot.meta).toEqual({ action: 'approve', payload: 'prepared: report' })
 
     // Resume with approval
-    const r2 = await resumeContinuation(r1.snapshot, { approved: true })
+    const r2 = await resumeContinuation(r1.snapshot, fromJS({ approved: true }))
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
-      expect(r2.value).toEqual({ approved: true })
+      expect(r2.value).toEqual(fromJS({ approved: true }))
     }
   })
 

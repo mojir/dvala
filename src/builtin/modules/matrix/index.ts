@@ -1,4 +1,5 @@
 import { RuntimeError } from '../../../errors'
+import type { Any } from '../../../interface'
 import { assertMatrix, assertSquareMatrix, assertVector, isSquareMatrix } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { approxZero } from '../../../utils'
@@ -27,11 +28,11 @@ import matrixModuleSource from './matrix.dvala'
 
 export const matrixNormalExpression: BuiltinNormalExpressions = {
   'mul': {
-    evaluate: ([matrix1, matrix2], sourceCodeInfo): number[][] => {
-      assertMatrix(matrix1, sourceCodeInfo)
-      assertMatrix(matrix2, sourceCodeInfo)
+    evaluate: ([matrix1_, matrix2_], sourceCodeInfo): Any => {
+      const matrix1 = assertMatrix(matrix1_, sourceCodeInfo)
+      const matrix2 = assertMatrix(matrix2_, sourceCodeInfo)
       try {
-        return matrixMultiply(matrix1, matrix2)
+        return matrixMultiply(matrix1, matrix2) as unknown as Any
       } catch (_error) {
         throw new RuntimeError(`The number of columns in the first matrix must be equal to the number of rows in the second matrix, but got ${matrix1[0]!.length} and ${matrix2.length}`, sourceCodeInfo)
       }
@@ -39,113 +40,113 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'det': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return determinant(matrix)
     },
     arity: toFixedArity(1),
   },
   'inv': {
-    evaluate: ([matrix], sourceCodeInfo): number[][] => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): Any => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       const result = inverse(matrix)
       if (result === null) {
         throw new RuntimeError('The matrix must be invertible', sourceCodeInfo)
       }
-      return result
+      return result as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'adj': {
-    evaluate: ([matrix], sourceCodeInfo): number[][] => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
-      return adjugate(matrix)
+    evaluate: ([matrix_], sourceCodeInfo): Any => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
+      return adjugate(matrix) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'cofactor': {
-    evaluate: ([matrix], sourceCodeInfo): number[][] => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
-      return cofactor(matrix)
+    evaluate: ([matrix_], sourceCodeInfo): Any => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
+      return cofactor(matrix) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'minor': {
-    evaluate: ([matrix, row, col], sourceCodeInfo): number[][] => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_, row, col], sourceCodeInfo): Any => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       assertNumber(row, sourceCodeInfo, { integer: true, nonNegative: true, lte: matrix.length })
       assertNumber(col, sourceCodeInfo, { integer: true, nonNegative: true, lte: matrix[0]!.length })
 
-      return minor(matrix, row, col)
+      return minor(matrix, row, col) as unknown as Any
     },
     arity: toFixedArity(3),
   },
   'trace': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertSquareMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertSquareMatrix(matrix_, sourceCodeInfo)
       return trace(matrix)
     },
     arity: toFixedArity(1),
   },
   'isSymmetric': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isSymetric(matrix)
     },
     arity: toFixedArity(1),
   },
   'isTriangular': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangular(matrix)
     },
     arity: toFixedArity(1),
   },
   'isUpperTriangular': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangularUpper(matrix)
     },
     arity: toFixedArity(1),
   },
   'isLowerTriangular': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isTriangularLower(matrix)
     },
     arity: toFixedArity(1),
   },
   'isDiagonal': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isDiagonal(matrix)
     },
     arity: toFixedArity(1),
   },
   'isSquare': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isSquare(matrix)
     },
     arity: toFixedArity(1),
   },
   'isOrthogonalMatrix': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isOrthogonal(matrix)
     },
     arity: toFixedArity(1),
   },
   'isIdentity': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return isIdentity(matrix)
     },
     arity: toFixedArity(1),
   },
   'isInvertible': {
-    evaluate: ([matrix], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       if (!isSquareMatrix(matrix)) {
         return false
       }
@@ -154,7 +155,7 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   'hilbert': {
-    evaluate: ([size], sourceCodeInfo): number[][] => {
+    evaluate: ([size], sourceCodeInfo): Any => {
       assertNumber(size, sourceCodeInfo, { integer: true, positive: true })
       const result: number[][] = []
       for (let i = 0; i < size; i += 1) {
@@ -164,13 +165,13 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
         }
         result.push(row)
       }
-      return result
+      return result as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'vandermonde': {
-    evaluate: ([vector], sourceCodeInfo): number[][] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       const result: number[][] = []
       for (let i = 0; i < vector.length; i += 1) {
         const row: number[] = []
@@ -179,22 +180,22 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
         }
         result.push(row)
       }
-      return result
+      return result as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'band': {
-    evaluate: ([n, lband, uband], sourceCodeInfo): number[][] => {
+    evaluate: ([n, lband, uband], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(lband, sourceCodeInfo, { integer: true, nonNegative: true, lt: n })
       assertNumber(uband, sourceCodeInfo, { integer: true, nonNegative: true, lte: n })
-      return band(n, lband, uband)
+      return band(n, lband, uband) as unknown as Any
     },
     arity: toFixedArity(3),
   },
   'isBanded': {
-    evaluate: ([matrix, lband, uband], sourceCodeInfo): boolean => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_, lband, uband], sourceCodeInfo): boolean => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       const maxBand = Math.max(matrix.length, matrix[0]!.length)
       assertNumber(lband, sourceCodeInfo, { integer: true, nonNegative: true, lt: maxBand })
       assertNumber(uband, sourceCodeInfo, { integer: true, nonNegative: true, lt: maxBand })
@@ -203,8 +204,8 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'rank': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       const [, result] = gaussJordanElimination(matrix)
       return result
     },
@@ -212,32 +213,33 @@ export const matrixNormalExpression: BuiltinNormalExpressions = {
   },
   // Frobenius norm
   'frobeniusNorm': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return Math.sqrt(matrix.reduce((sum, row) => sum + row.reduce((rowSum, cell) => rowSum + cell * cell, 0), 0))
     },
     arity: toFixedArity(1),
   },
   // oneNorm (column norm)
   'oneNorm': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return norm1(matrix)
     },
     arity: toFixedArity(1),
   },
   // Infinity norm
   'infNorm': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
       return matrix.reduce((max, row) => Math.max(max, row.reduce((sum, cell) => sum + Math.abs(cell), 0)), 0)
     },
     arity: toFixedArity(1),
   },
   // Max norm
   'maxNorm': {
-    evaluate: ([matrix], sourceCodeInfo): number => {
-      assertMatrix(matrix, sourceCodeInfo)
+    evaluate: ([matrix_], sourceCodeInfo): number => {
+      const matrix = assertMatrix(matrix_, sourceCodeInfo)
+
       return matrix.reduce((maxVal, row) => {
         const rowMax = row.reduce((max, val) => Math.max(max, Math.abs(val)), 0)
         return Math.max(maxVal, rowMax)

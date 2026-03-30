@@ -1,4 +1,5 @@
 import type { Arr } from '../../../interface'
+import { PersistentVector } from '../../../utils/persistent'
 import type {
   ComplementFunction,
   EveryPredFunction,
@@ -19,8 +20,8 @@ import functionalModuleSource from './functional.dvala'
 const functionalUtilsNormalExpression: BuiltinNormalExpressions = {
   'juxt': {
     evaluate: (params, sourceCodeInfo): JuxtFunction => {
-      params.forEach(param => assertFunctionLike(param, sourceCodeInfo))
-      const arity = getCommonArityFromFunctions(params as FunctionLike[])
+      for (const param of params) assertFunctionLike(param, sourceCodeInfo)
+      const arity = getCommonArityFromFunctions([...params] as FunctionLike[])
       if (arity === null) {
         throw new TypeError('All functions must accept the same number of arguments', sourceCodeInfo)
       }
@@ -177,8 +178,13 @@ everyPred(isString, -> count($) > 3)(
   },
 
   'fnull': {
-    evaluate: ([fn, ...params]: Arr, sourceCodeInfo): FNullFunction => {
+    evaluate: (rawParams, sourceCodeInfo): FNullFunction => {
+      const fn = rawParams.get(0)
       const fun = asFunctionLike(fn, sourceCodeInfo)
+      // Collect the default arguments (everything after the function) into a new PersistentVector
+      const params: Arr = PersistentVector.from(
+        Array.from({ length: rawParams.size - 1 }, (_, i) => rawParams.get(i + 1)),
+      )
       return {
         [FUNCTION_SYMBOL]: true,
         sourceCodeInfo,

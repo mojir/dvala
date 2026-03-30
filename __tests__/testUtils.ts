@@ -1,6 +1,5 @@
 import { expect } from 'vitest'
 import { ContextStackImpl } from '../src/evaluator/ContextStack'
-import type { Obj } from '../src/interface'
 import { isRegularExpression } from '../src/typeGuards/dvala'
 import type { Context } from '../src/evaluator/interface'
 import { DvalaError } from '../src/errors'
@@ -31,7 +30,7 @@ export function testTypeGuars(
   })
 }
 
-interface Primitives extends Obj {
+interface Primitives {
   string: string
   emptyString: ''
   integer: number

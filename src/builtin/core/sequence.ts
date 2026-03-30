@@ -5,13 +5,14 @@ import { assertNumber } from '../../typeGuards/number'
 import { assertString } from '../../typeGuards/string'
 import { deepEqual, toAny } from '../../utils'
 import { toFixedArity } from '../../utils/arity'
+import { isPersistentVector, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 
 export const sequenceNormalExpression: BuiltinNormalExpressions = {
   'nth': {
     evaluate: (params, sourceCodeInfo): Any => {
       const [seq, i] = params
-      const defaultValue = toAny(params[2])
+      const defaultValue = toAny(params.get(2))
 
       assertNumber(i, sourceCodeInfo, { integer: true })
 
@@ -19,8 +20,13 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         return defaultValue
 
       assertSeq(seq, sourceCodeInfo)
-      if (i >= 0 && i < seq.length) {
-        const result = toAny(seq[i])
+      if (typeof seq === 'string') {
+        if (i >= 0 && i < seq.length)
+          return toAny(seq[i])
+        return defaultValue
+      }
+      if (i >= 0 && i < seq.size) {
+        const result = toAny(seq.get(i))
         return result
       } else {
         return defaultValue
@@ -65,9 +71,10 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         return null
 
       assertSeq(array, sourceCodeInfo)
-      const result = toAny(array[0])
+      if (typeof array === 'string')
+        return toAny(array[0])
 
-      return result
+      return toAny(array.get(0))
     },
     arity: toFixedArity(1),
     docs: {
@@ -90,9 +97,10 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         return null
 
       assertSeq(array, sourceCodeInfo)
-      const result = toAny(array.at(-1))
+      if (typeof array === 'string')
+        return toAny(array.length > 0 ? array[array.length - 1] : undefined)
 
-      return result
+      return toAny(array.get(array.size - 1))
     },
     arity: toFixedArity(1),
     docs: {
@@ -118,7 +126,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         return seq.substring(0, seq.length - 1)
       }
 
-      return seq.slice(0, seq.length - 1)
+      return PersistentVector.from([...seq].slice(0, seq.size - 1))
     },
     arity: toFixedArity(1),
     docs: {
@@ -146,7 +154,7 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
         const index = seq.indexOf(value)
         return index !== -1 ? index : null
       } else {
-        const index = seq.findIndex(item => deepEqual(asAny(item, sourceCodeInfo), value), sourceCodeInfo)
+        const index = [...seq].findIndex(item => deepEqual(asAny(item, sourceCodeInfo), value))
         return index !== -1 ? index : null
       }
     },
@@ -176,10 +184,14 @@ export const sequenceNormalExpression: BuiltinNormalExpressions = {
     evaluate: ([seq, ...values], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
-        assertCharArray(values, sourceCodeInfo)
+        // values is a plain JS array here (rest parameter from destructuring Arr)
+        assertCharArray(PersistentVector.from(values), sourceCodeInfo)
         return [seq, ...values].join('')
       } else {
-        return [...seq, ...values]
+        // Append each value to the persistent vector
+        let result: Arr = seq
+        for (const v of values) result = result.append(v)
+        return result
       }
     },
     arity: { min: 2 },
@@ -210,11 +222,11 @@ l`,
   'rest': {
     evaluate: ([seq], sourceCodeInfo): Arr | string => {
       assertSeq(seq, sourceCodeInfo)
-      if (Array.isArray(seq)) {
-        if (seq.length <= 1)
-          return []
+      if (isPersistentVector(seq)) {
+        if (seq.size <= 1)
+          return PersistentVector.empty()
 
-        return seq.slice(1)
+        return PersistentVector.from([...seq].slice(1))
       }
       return seq.substring(1)
     },
@@ -241,11 +253,11 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
   'next': {
     evaluate: ([seq], sourceCodeInfo): Arr | string | null => {
       assertSeq(seq, sourceCodeInfo)
-      if (Array.isArray(seq)) {
-        if (seq.length <= 1)
+      if (isPersistentVector(seq)) {
+        if (seq.size <= 1)
           return null
 
-        return seq.slice(1)
+        return PersistentVector.from([...seq].slice(1))
       }
       if (seq.length <= 1)
         return null
@@ -276,8 +288,8 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
         return null
 
       assertSeq(seq, sourceCodeInfo)
-      if (Array.isArray(seq)) {
-        return [...seq].reverse()
+      if (isPersistentVector(seq)) {
+        return PersistentVector.from([...seq].reverse())
       }
 
       return seq.split('').reverse().join('')
@@ -304,7 +316,10 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
         return null
 
       assertSeq(seq, sourceCodeInfo)
-      return toAny(seq[1])
+      if (typeof seq === 'string')
+        return toAny(seq[1])
+
+      return toAny(seq.get(1))
     },
     arity: toFixedArity(1),
     docs: {
@@ -328,16 +343,16 @@ For string \`seq\` returns all but the first characters in \`seq\`.`,
       assertSeq(seq, sourceCodeInfo)
       assertNumber(from, sourceCodeInfo, { integer: true })
 
-      if (params.length === 2) {
-        if (Array.isArray(seq)) {
-          return seq.slice(from)
+      if (params.size === 2) {
+        if (isPersistentVector(seq)) {
+          return PersistentVector.from([...seq].slice(from))
         }
         return seq.slice(from)
       }
 
       assertNumber(to, sourceCodeInfo, { integer: true })
-      if (Array.isArray(seq)) {
-        return seq.slice(from, to)
+      if (isPersistentVector(seq)) {
+        return PersistentVector.from([...seq].slice(from, to))
       }
       return seq.slice(from, to)
     },
@@ -448,6 +463,9 @@ sort(
       assertNumber(n, sourceCodeInfo)
       assertSeq(input, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
+      if (isPersistentVector(input))
+        return PersistentVector.from([...input].slice(0, num))
+
       return input.slice(0, num)
     },
     arity: toFixedArity(2),
@@ -477,6 +495,10 @@ sort(
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
+      if (isPersistentVector(array)) {
+        const from = array.size - num
+        return PersistentVector.from([...array].slice(from))
+      }
       const from = array.length - num
       return array.slice(from)
     },
@@ -505,6 +527,9 @@ sort(
       assertNumber(n, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
       assertSeq(input, sourceCodeInfo)
+      if (isPersistentVector(input))
+        return PersistentVector.from([...input].slice(num))
+
       return input.slice(num)
     },
     arity: toFixedArity(2),
@@ -533,6 +558,10 @@ sort(
       assertSeq(array, sourceCodeInfo)
       assertNumber(n, sourceCodeInfo)
       const num = Math.max(Math.ceil(n), 0)
+      if (isPersistentVector(array)) {
+        const from = array.size - num
+        return PersistentVector.from([...array].slice(0, from))
+      }
       const from = array.length - num
       return array.slice(0, from)
     },

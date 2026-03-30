@@ -3,6 +3,7 @@ import { DvalaError } from '../errors'
 import type { FunctionLike, BuiltinSymbolNode, NormalExpressionNodeWithName, NumberNode } from '../parser/types'
 import { NodeTypes } from '../constants/constants'
 import { arityAccepts, arityAcceptsMin, assertNumberOfParams, getArityFromFunction, getCommonArityFromFunctions, toFixedArity } from './arity'
+import { PersistentVector } from './persistent'
 import { FUNCTION_SYMBOL } from './symbols'
 
 describe('arity utilities', () => {
@@ -111,8 +112,8 @@ describe('arity utilities', () => {
 
     it('should return fixed count when min equals max and constraints are compatible with min', () => {
       const functions = [
-        { [FUNCTION_SYMBOL]: true, arity: { min: 2, max: 2, even: true } },
-        { [FUNCTION_SYMBOL]: true, arity: { min: 2, max: 2, even: true } },
+        { [FUNCTION_SYMBOL]: true, arity: { min: 2, max: 2 } },
+        { [FUNCTION_SYMBOL]: true, arity: { min: 2, max: 2 } },
       ] as FunctionLike[]
       expect(getCommonArityFromFunctions(functions)).toEqual(toFixedArity(2))
     })
@@ -124,12 +125,12 @@ describe('arity utilities', () => {
     })
 
     it('should return 1 for collection input', () => {
-      expect(getArityFromFunction([])).toEqual({ min: 1, max: 1 })
+      expect(getArityFromFunction(PersistentVector.empty())).toEqual({ min: 1, max: 1 })
     })
 
     it('should return arity from function object', () => {
-      const fn: FunctionLike = { [FUNCTION_SYMBOL]: true, arity: 3 }
-      expect(getArityFromFunction(fn)).toBe(3)
+      const fn: FunctionLike = { [FUNCTION_SYMBOL]: true, functionType: 'Constantly', value: 0, arity: toFixedArity(3) }
+      expect(getArityFromFunction(fn)).toEqual(toFixedArity(3))
     })
   })
 

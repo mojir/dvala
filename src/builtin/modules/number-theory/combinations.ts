@@ -1,8 +1,9 @@
-import type { Arr } from '../../../interface'
+import type { Any } from '../../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
+import { PersistentVector } from '../../../utils/persistent'
 import { binomialCoefficient } from './binomialCefficient'
 
 /**
@@ -41,12 +42,14 @@ function combinations<T>(collection: T[], size: number): T[][] {
 
 export const combinationsNormalExpressions: BuiltinNormalExpressions = {
   'combinations': {
-    evaluate: ([set, n], sourceCodeInfo): Arr[] => {
+    // Returns an array of PersistentVectors (each combination is wrapped), cast to Any
+    evaluate: ([set, n], sourceCodeInfo): Any => {
       assertArray(set, sourceCodeInfo)
-      assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true, lte: set.length })
+      assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true, lte: set.size })
       if (n === 0)
-        return [[]]
-      return combinations(set, n)
+        return PersistentVector.from([PersistentVector.empty()]) as unknown as Any
+      // Convert PV to plain array for the recursive combinations helper, then wrap results
+      return PersistentVector.from(combinations([...set], n).map(c => PersistentVector.from(c))) as unknown as Any
     },
     arity: toFixedArity(2),
   },

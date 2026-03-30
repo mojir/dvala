@@ -12,6 +12,10 @@ import { moduleDocs } from './docs'
 import { fromArray } from './fromArray'
 import { transpose } from './transpose'
 
+// Grid functions return plain JS Any[][] (annotated collections), not PersistentVector.
+// Cast to Any to satisfy the NormalExpressionEvaluator<Any> return type.
+function toAnyGrid(val: unknown): Any { return val as Any }
+
 const gridFunctions: BuiltinNormalExpressions = {
   'isCellEvery': {
     evaluate: () => {
@@ -50,30 +54,33 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'row': {
-    evaluate: ([grid, row], sourceCodeInfo): Any[] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, row] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       assertNumber(row, sourceCodeInfo, { integer: true, nonNegative: true, lt: grid.length })
-      return grid[row]!
+      return toAnyGrid(grid[row]!)
     },
     arity: toFixedArity(2),
   },
   'col': {
-    evaluate: ([grid, col], sourceCodeInfo): Any[] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, col] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       assertNumber(col, sourceCodeInfo, { integer: true, nonNegative: true, lt: grid[0]!.length })
-      return grid.map(row => row[col]!)
+      return toAnyGrid(grid.map(row => row[col]!))
     },
     arity: toFixedArity(2),
   },
   'shape': {
-    evaluate: ([grid], sourceCodeInfo): Any[] => {
-      assertGrid(grid, sourceCodeInfo)
-      return [grid.length, grid[0]!.length]
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
+      return toAnyGrid([grid.length, grid[0]!.length])
     },
     arity: toFixedArity(1),
   },
   'fill': {
-    evaluate: ([rows, cols, value], sourceCodeInfo): Any[][] => {
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [rows, cols, value] = params
       assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })
       assertNumber(cols, sourceCodeInfo, { integer: true, positive: true })
       assertAny(value, sourceCodeInfo)
@@ -85,7 +92,7 @@ const gridFunctions: BuiltinNormalExpressions = {
         }
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: toFixedArity(3),
   },
@@ -96,8 +103,9 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'reshape': {
-    evaluate: ([grid, rows], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, rows] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })
 
       const flatTable = grid.flat()
@@ -114,41 +122,42 @@ const gridFunctions: BuiltinNormalExpressions = {
         }
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: toFixedArity(2),
   },
   'transpose': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      return transpose(grid)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
+      return toAnyGrid(transpose(grid))
     },
     arity: toFixedArity(1),
   },
   'flipH': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      return grid.map(row => row.reverse())
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
+      return toAnyGrid(grid.map(row => row.reverse()))
     },
     arity: toFixedArity(1),
   },
   'flipV': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      return grid.reverse()
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
+      return toAnyGrid(grid.reverse())
     },
     arity: toFixedArity(1),
   },
   'rotate': {
-    evaluate: ([grid, times], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, times] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       assertNumber(times, sourceCodeInfo, { integer: true })
       // Normalize times to be between 0 and 3
-      times = ((times % 4) + 4) % 4
+      const t = ((times % 4) + 4) % 4
 
       // If times is 0, return the original grid
-      if (times === 0 || grid.length === 0) {
-        return grid.map(row => [...row])
+      if (t === 0 || grid.length === 0) {
+        return toAnyGrid(grid.map(row => [...row]))
       }
 
       const height = grid.length
@@ -156,7 +165,7 @@ const gridFunctions: BuiltinNormalExpressions = {
 
       let result: Any[][]
 
-      switch (times) {
+      switch (t) {
         case 1: // 90 degrees clockwise
           result = Array<Any>(width).fill(null).map(() => Array<Any>(height).fill(null))
           for (let y = 0; y < height; y++) {
@@ -185,14 +194,15 @@ const gridFunctions: BuiltinNormalExpressions = {
           break
       }
 
-      return result!
+      return toAnyGrid(result!)
     },
     arity: toFixedArity(2),
   },
   'crop': {
-    evaluate: ([grid, start, end], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      assertVector(start, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, start_, end_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
+      const start = assertVector(start_, sourceCodeInfo)
       if (start.length !== 2) {
         throw new RuntimeError(`The start vector must have 2 elements, but got ${start.length}`, sourceCodeInfo)
       }
@@ -200,8 +210,7 @@ const gridFunctions: BuiltinNormalExpressions = {
       assertNumber(rowStart, sourceCodeInfo, { integer: true, nonNegative: true, lt: grid.length })
       assertNumber(colStart, sourceCodeInfo, { integer: true, nonNegative: true, lt: grid[0]!.length })
 
-      end ??= [grid.length, grid[0]!.length]
-      assertVector(end, sourceCodeInfo)
+      const end = assertVector(end_ ?? [grid.length, grid[0]!.length], sourceCodeInfo)
       if (end.length !== 2) {
         throw new RuntimeError(`The end vector must have 2 elements, but got ${end.length}`, sourceCodeInfo)
       }
@@ -217,119 +226,128 @@ const gridFunctions: BuiltinNormalExpressions = {
         }
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 2, max: 3 },
   },
   'sliceRows': {
-    evaluate: ([grid, rowStart, rowEnd], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, rowStart, rowEnd] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
 
       if (typeof rowEnd === 'undefined') {
         assertNumber(rowStart, sourceCodeInfo, { integer: true, lte: grid.length, gte: -grid.length })
         if (rowStart < 0) {
-          return grid.slice(grid.length + rowStart)
+          return toAnyGrid(grid.slice(grid.length + rowStart))
         }
-        return grid.slice(rowStart)
+        return toAnyGrid(grid.slice(rowStart))
       }
 
       assertNumber(rowStart, sourceCodeInfo, { integer: true, nonNegative: true, lte: grid.length })
       assertNumber(rowEnd, sourceCodeInfo, { integer: true })
-      rowEnd = rowEnd < 0 ? grid.length + rowEnd : rowEnd
-      assertNumber(rowEnd, sourceCodeInfo, { gt: rowStart, lte: grid.length })
+      const end = rowEnd < 0 ? grid.length + rowEnd : rowEnd
+      assertNumber(end, sourceCodeInfo, { gt: rowStart, lte: grid.length })
 
-      return grid.slice(rowStart, rowEnd)
+      return toAnyGrid(grid.slice(rowStart, end))
     },
     arity: { min: 2, max: 3 },
   },
   'sliceCols': {
-    evaluate: ([grid, colStart, colEnd], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, colStart, colEnd] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       const trMatrix = transpose(grid)
 
       if (typeof colEnd === 'undefined') {
         assertNumber(colStart, sourceCodeInfo, { integer: true, lte: trMatrix.length, gte: -trMatrix.length })
         if (colStart < 0) {
-          return transpose(trMatrix.slice(trMatrix.length + colStart))
+          return toAnyGrid(transpose(trMatrix.slice(trMatrix.length + colStart)))
         }
-        return transpose(trMatrix.slice(colStart))
+        return toAnyGrid(transpose(trMatrix.slice(colStart)))
       }
 
       assertNumber(colStart, sourceCodeInfo, { integer: true, nonNegative: true, lte: trMatrix.length })
       assertNumber(colEnd, sourceCodeInfo, { integer: true })
-      colEnd = colEnd < 0 ? trMatrix.length + colEnd : colEnd
-      assertNumber(colEnd, sourceCodeInfo, { gt: colStart, lte: trMatrix.length })
+      const end = colEnd < 0 ? trMatrix.length + colEnd : colEnd
+      assertNumber(end, sourceCodeInfo, { gt: colStart, lte: trMatrix.length })
 
-      return transpose(trMatrix.slice(colStart, colEnd))
+      return toAnyGrid(transpose(trMatrix.slice(colStart, end)))
     },
     arity: { min: 2, max: 3 },
   },
   'spliceRows': {
-    evaluate: ([grid, rowStart, rowDeleteCount, ...rows], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, rowStart, rowDeleteCount, ...rows_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       assertNumber(rowStart, sourceCodeInfo, { integer: true, nonNegative: true, lte: grid.length })
       assertNumber(rowDeleteCount, sourceCodeInfo, { integer: true, nonNegative: true })
-      if (rows.length !== 0) {
-        assertGrid(rows, sourceCodeInfo)
-        rows.every(row => {
-          assertArray(row, sourceCodeInfo)
-          if (grid[0]!.length !== row.length) {
-            throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${row.length}`, sourceCodeInfo)
-          }
-          return true
-        })
-      }
+      const validatedRows: Any[][] = rows_.length !== 0
+        ? (() => {
+          const rows = assertGrid(rows_, sourceCodeInfo)
+          rows.every(row => {
+            assertArray(row, sourceCodeInfo)
+            if (grid[0]!.length !== (row as unknown[]).length) {
+              throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${(row as unknown[]).length}`, sourceCodeInfo)
+            }
+            return true
+          })
+          return rows
+        })()
+        : []
 
       const result: Any[][] = []
       for (let i = 0; i < rowStart; i += 1) {
         result.push(grid[i]!)
       }
-      if (rows.length > 0) {
-        result.push(...(rows as Any[][]))
+      if (validatedRows.length > 0) {
+        result.push(...validatedRows)
       }
       for (let i = rowStart + rowDeleteCount; i < grid.length; i += 1) {
         result.push(grid[i]!)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 3 },
   },
   'spliceCols': {
-    evaluate: ([grid, colStart, colDeleteCount, ...cols], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, colStart, colDeleteCount, ...cols_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
       const trMatrix = transpose(grid)
       assertNumber(colStart, sourceCodeInfo, { integer: true, nonNegative: true, lte: trMatrix.length })
       assertNumber(colDeleteCount, sourceCodeInfo, { integer: true, nonNegative: true })
 
-      if (cols.length !== 0) {
-        assertGrid(cols, sourceCodeInfo)
-        cols.every(row => {
-          assertArray(row, sourceCodeInfo)
-          if (trMatrix[0]!.length !== row.length) {
-            throw new RuntimeError(`All rows must have the same length as the number of rows in grid, but got ${row.length}`, sourceCodeInfo)
-          }
-          return true
-        })
-      }
+      const validatedCols: Any[][] = cols_.length !== 0
+        ? (() => {
+          const cols = assertGrid(cols_, sourceCodeInfo)
+          cols.every(row => {
+            assertArray(row, sourceCodeInfo)
+            if (trMatrix[0]!.length !== (row as unknown[]).length) {
+              throw new RuntimeError(`All rows must have the same length as the number of rows in grid, but got ${(row as unknown[]).length}`, sourceCodeInfo)
+            }
+            return true
+          })
+          return cols
+        })()
+        : []
 
       const result: Any[][] = []
       for (let i = 0; i < colStart; i += 1) {
         result.push(trMatrix[i]!)
       }
-      result.push(...(cols as Any[][]))
+      result.push(...validatedCols)
       for (let i = colStart + colDeleteCount; i < trMatrix.length; i += 1) {
         result.push(trMatrix[i]!)
       }
-      return transpose(result)
+      return toAnyGrid(transpose(result))
     },
     arity: { min: 3 },
   },
   'concatRows': {
-    evaluate: (params, sourceCodeInfo): Any[][] => {
-      assertArray(params, sourceCodeInfo)
-      params.every(grid => assertGrid(grid, sourceCodeInfo))
-      const cols = (params[0] as Any[][])[0]!.length
-      ;(params as Any[][][]).slice(1).every(grid => {
+    evaluate: (params, sourceCodeInfo): Any => {
+      const paramsArr = [...params].map(grid => assertGrid(grid, sourceCodeInfo))
+      const cols = paramsArr[0]![0]!.length
+      paramsArr.slice(1).every(grid => {
         if (grid[0]!.length !== cols) {
           throw new RuntimeError(`All grids must have the same number of columns, but got ${cols} and ${grid[0]!.length}`, sourceCodeInfo)
         }
@@ -337,21 +355,20 @@ const gridFunctions: BuiltinNormalExpressions = {
       })
 
       const result: Any[][] = []
-      ;(params as Any[][][]).forEach(grid => {
+      paramsArr.forEach(grid => {
         grid.forEach(row => {
           result.push(row)
         })
       })
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 1 },
   },
   'concatCols': {
-    evaluate: (params, sourceCodeInfo): Any[][] => {
-      assertArray(params, sourceCodeInfo)
-      params.every(grid => assertGrid(grid, sourceCodeInfo))
-      const rows = (params[0] as Any[][]).length
-      ;(params as Any[][][]).slice(1).every(grid => {
+    evaluate: (params, sourceCodeInfo): Any => {
+      const paramsArr = [...params].map(grid => assertGrid(grid, sourceCodeInfo))
+      const rows = paramsArr[0]!.length
+      paramsArr.slice(1).every(grid => {
         if (grid.length !== rows) {
           throw new RuntimeError(`All grids must have the same number of rows, but got ${rows} and ${grid.length}`, sourceCodeInfo)
         }
@@ -361,12 +378,12 @@ const gridFunctions: BuiltinNormalExpressions = {
       const result: Any[][] = []
       for (let i = 0; i < rows; i += 1) {
         const row: Any[] = []
-        ;(params as Any[][][]).forEach(grid => {
+        paramsArr.forEach(grid => {
           row.push(...grid[i]!)
         })
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 1 },
   },
@@ -395,52 +412,55 @@ const gridFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(3),
   },
   'pushRows': {
-    evaluate: ([grid, ...rows], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      assertGrid(rows, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, ...rows_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
+      const rows = assertGrid(rows_, sourceCodeInfo)
       if (grid[0]!.length !== rows[0]!.length) {
         throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
       }
-      return [...grid, ...rows]
+      return toAnyGrid([...grid, ...rows])
     },
     arity: { min: 2 },
   },
   'unshiftRows': {
-    evaluate: ([grid, ...rows], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      assertGrid(rows, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, ...rows_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
+      const rows = assertGrid(rows_, sourceCodeInfo)
       if (grid[0]!.length !== rows[0]!.length) {
         throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${grid[0]!.length} and ${rows[0]!.length}`, sourceCodeInfo)
       }
-      return [...rows, ...grid]
+      return toAnyGrid([...rows, ...grid])
     },
     arity: { min: 2 },
   },
   'popRow': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
       if (grid.length === 1) {
         return null
       }
-      return grid.slice(0, -1)
+      return toAnyGrid(grid.slice(0, -1))
     },
     arity: toFixedArity(1),
 
   },
   'shiftRow': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
       if (grid.length === 1) {
         return null
       }
-      return grid.slice(1)
+      return toAnyGrid(grid.slice(1))
     },
     arity: toFixedArity(1),
   },
   'pushCols': {
-    evaluate: ([grid, ...cols], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      assertGrid(cols, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, ...cols_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
+      const cols = assertGrid(cols_, sourceCodeInfo)
       if (grid.length !== cols[0]!.length) {
         throw new RuntimeError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
       }
@@ -455,14 +475,15 @@ const gridFunctions: BuiltinNormalExpressions = {
         })
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 2 },
   },
   'unshiftCols': {
-    evaluate: ([grid, ...cols], sourceCodeInfo): Any[][] => {
-      assertGrid(grid, sourceCodeInfo)
-      assertGrid(cols, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [grid_, ...cols_] = params
+      const grid = assertGrid(grid_, sourceCodeInfo)
+      const cols = assertGrid(cols_, sourceCodeInfo)
       if (grid.length !== cols[0]!.length) {
         throw new RuntimeError(`All columns must have the same length as the number of rows in grid, but got ${cols.length}`, sourceCodeInfo)
       }
@@ -477,38 +498,39 @@ const gridFunctions: BuiltinNormalExpressions = {
         row.push(...grid[i]!)
         result.push(row)
       }
-      return result
+      return toAnyGrid(result)
     },
     arity: { min: 2 },
   },
   'popCol': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
       if (grid[0]!.length === 1) {
         return null
       }
-      return grid.map(row => row.slice(0, -1))
+      return toAnyGrid(grid.map(row => row.slice(0, -1)))
     },
     arity: toFixedArity(1),
   },
   'shiftCol': {
-    evaluate: ([grid], sourceCodeInfo): Any[][] | null => {
-      assertGrid(grid, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const grid = assertGrid(params.get(0), sourceCodeInfo)
       if (grid[0]!.length === 1) {
         return null
       }
-      return grid.map(row => row.slice(1))
+      return toAnyGrid(grid.map(row => row.slice(1)))
     },
     arity: toFixedArity(1),
   },
   'fromArray': {
-    evaluate: ([array, rows], sourceCodeInfo): unknown[][] => {
+    evaluate: (params, sourceCodeInfo): Any => {
+      const [array, rows] = params
       assertArray(array, sourceCodeInfo)
       assertNumber(rows, sourceCodeInfo, { integer: true, positive: true })
-      if (array.length % rows !== 0) {
-        throw new RuntimeError(`The number of elements in the array must be divisible by rows, but got ${array.length} and ${rows}`, sourceCodeInfo)
+      if (array.size % rows !== 0) {
+        throw new RuntimeError(`The number of elements in the array must be divisible by rows, but got ${array.size} and ${rows}`, sourceCodeInfo)
       }
-      return fromArray(array, rows)
+      return toAnyGrid(fromArray([...array], rows))
     },
     arity: toFixedArity(2),
   },

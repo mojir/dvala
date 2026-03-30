@@ -41,8 +41,7 @@ export function expandMacros(ast: Ast): Ast {
         macroFunctions.set(def.name, fn)
       }
     }
-  }
-  catch {
+  } catch {
     return ast
   }
 
@@ -78,8 +77,7 @@ function recurseForCollection(payload: unknown, result: { name: string; node: As
         result.push({ name, node: item as AstNode })
       }
       recurseForCollection((item as AstNode)[1], result)
-    }
-    else if (Array.isArray(item)) {
+    } else if (Array.isArray(item)) {
       recurseForCollection(item, result)
     }
   }
@@ -122,8 +120,7 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
             return expandNodeRecursive(expanded as AstNode, macros, dvala)
           }
           return node
-        }
-        catch {
+        } catch {
           return node
         }
       }

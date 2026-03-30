@@ -1,22 +1,33 @@
 import type { Any, Coll, Obj } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import { asAny, isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
+import { isColl, isObj, isRegularExpression } from '../typeGuards/dvala'
 import { isNumber } from '../typeGuards/number'
 import { asString, assertStringOrNumber } from '../typeGuards/string'
 import { isUnknownRecord } from '../typeGuards'
 import { TypeError } from '../errors'
+import { isPersistentMap, isPersistentVector, PersistentMap } from './persistent'
 
 export function collHasKey(coll: unknown, key: string | number): boolean {
   if (!isColl(coll))
     return false
 
-  if (typeof coll === 'string' || Array.isArray(coll)) {
+  if (typeof coll === 'string') {
     if (!isNumber(key, { integer: true }))
       return false
-
     return key >= 0 && key < coll.length
   }
-  return !!Object.getOwnPropertyDescriptor(coll, key)
+
+  if (isPersistentVector(coll)) {
+    if (!isNumber(key, { integer: true }))
+      return false
+    return key >= 0 && key < coll.size
+  }
+
+  if (isPersistentMap(coll)) {
+    return coll.has(String(key))
+  }
+
+  return false
 }
 
 export function compare<T extends string | number>(a: T, b: T, sourceCodeInfo: SourceCodeInfo | undefined): number {
@@ -39,19 +50,36 @@ export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInf
   if (typeof a === 'number' && typeof b === 'number')
     return approxEqual(a, b)
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length)
+  // Persistent vectors — structural equality
+  if (isPersistentVector(a) && isPersistentVector(b)) {
+    if (a.size !== b.size)
       return false
+    let i = 0
+    for (const item of a) {
+      if (!deepEqual(item, b.get(i), sourceCodeInfo))
+        return false
+      i++
+    }
+    return true
+  }
 
-    for (let i = 0; i < a.length; i += 1) {
-      if (!deepEqual(asAny(a[i], sourceCodeInfo), asAny(b[i], sourceCodeInfo), sourceCodeInfo))
+  // Persistent maps — structural equality
+  if (isPersistentMap(a) && isPersistentMap(b)) {
+    if (a.size !== b.size)
+      return false
+    for (const [key, val] of a) {
+      if (!b.has(key))
+        return false
+      if (!deepEqual(val, b.get(key), sourceCodeInfo))
         return false
     }
     return true
   }
+
   if (isRegularExpression(a) && isRegularExpression(b))
     return a.s === b.s && a.f === b.f
 
+  // Plain JS records (internal frame data, not Dvala values)
   if (isUnknownRecord(a) && isUnknownRecord(b)) {
     const aKeys = Object.keys(a)
     const bKeys = Object.keys(b)
@@ -76,23 +104,26 @@ export function toAny(value: unknown): Any {
   return (value ?? null) as Any
 }
 
-function clone<T>(value: T): T {
-  if (isObj(value)) {
-    return Object.entries(value).reduce((result: Obj, entry) => {
-      const [key, val] = entry
-      result[key] = clone(val)
-      return result
-    }, {}) as T
+function cloneValue<T>(value: T): T {
+  if (isPersistentMap(value)) {
+    // PersistentMap is already immutable — return as-is (structural sharing)
+    return value
   }
-  if (Array.isArray(value))
-
-    return value.map(item => clone(item)) as unknown as T
-
+  if (isPersistentVector(value)) {
+    // PersistentVector is already immutable — return as-is
+    return value
+  }
+  if (isObj(value)) {
+    // Internal plain-object clone (should rarely be needed after HAMT migration)
+    return Object.entries(value as Obj).reduce((result: Obj, [key, val]) => {
+      return result.assoc(key, cloneValue(val))
+    }, PersistentMap.empty()) as unknown as T
+  }
   return value
 }
 
 export function cloneColl<T extends Coll>(value: T): T {
-  return clone(value)
+  return cloneValue(value)
 }
 
 export function joinSets<T>(...results: Set<T>[]): Set<T> {

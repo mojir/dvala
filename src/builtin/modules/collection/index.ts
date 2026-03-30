@@ -1,7 +1,7 @@
 import type { Any, Arr, Coll, Obj } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { cloneColl, collHasKey, toAny } from '../../../utils'
-import { asColl, assertAny, assertColl, assertObj, isColl, isObj } from '../../../typeGuards/dvala'
+import { asColl, assertAny, assertColl, assertObj, isColl, isArr, isObj } from '../../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber, isNumber } from '../../../typeGuards/number'
@@ -9,16 +9,19 @@ import { asStringOrNumber, assertString, assertStringOrNumber } from '../../../t
 import { toFixedArity } from '../../../utils/arity'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import { PersistentMap, PersistentVector } from '../../../utils/persistent'
 import collectionModuleSource from './collection.dvala'
 
 // --- Private helper: get value from collection by key ---
 function get(coll: Coll, key: string | number): Any | undefined {
   if (isObj(coll)) {
+    // PersistentMap: use .get(key) for string keys
     if (typeof key === 'string' && collHasKey(coll, key))
-      return toAny(coll[key])
-  } else {
-    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.length)
-      return toAny(coll[key])
+      return toAny(coll.get(key))
+  } else if (isArr(coll)) {
+    // PersistentVector: use .get(i) for numeric indices
+    if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size)
+      return toAny(coll.get(key))
   }
   return undefined
 }
@@ -26,22 +29,21 @@ function get(coll: Coll, key: string | number): Any | undefined {
 // --- Private helper: assoc value into collection ---
 function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: SourceCodeInfo) {
   assertColl(coll, sourceCodeInfo)
-  if (Array.isArray(coll) || typeof coll === 'string') {
+  if (isArr(coll) || typeof coll === 'string') {
     assertNumber(key, sourceCodeInfo, { integer: true })
     assertNumber(key, sourceCodeInfo, { gte: 0 })
-    assertNumber(key, sourceCodeInfo, { lte: coll.length })
     if (typeof coll === 'string') {
+      assertNumber(key, sourceCodeInfo, { lte: coll.length })
       assertString(value, sourceCodeInfo, { char: true })
       return `${coll.slice(0, key)}${value}${coll.slice(key + 1)}`
     }
-    const copy = [...coll]
-    copy[key] = value
-    return copy
+    assertNumber(key, sourceCodeInfo, { lte: coll.size })
+    // PersistentVector: use functional set for immutable update
+    return coll.set(key, value)
   }
   assertString(key, sourceCodeInfo)
-  const copy = { ...coll }
-  copy[key] = value
-  return copy
+  // PersistentMap: use functional assoc for immutable update
+  return coll.assoc(key, value)
 }
 
 interface CollMeta {
@@ -57,28 +59,31 @@ function cloneAndGetMeta(
 ): { coll: Coll; innerCollMeta: CollMeta } {
   const coll = cloneColl(originalColl)
 
-  const butLastKeys = keys.slice(0, keys.length - 1)
+  // All keys except the last one (we navigate to the parent before updating)
+  const butLastKeys = keys.size > 1 ? [...keys].slice(0, keys.size - 1) : []
 
   const innerCollMeta = butLastKeys.reduce(
     (result: CollMeta, key) => {
       const resultColl = result.coll
 
       let newResultColl: Coll
-      if (Array.isArray(resultColl)) {
+      if (isArr(resultColl)) {
         assertNumber(key, sourceCodeInfo)
-        newResultColl = asColl(resultColl[key], sourceCodeInfo)
+        newResultColl = asColl(resultColl.get(key), sourceCodeInfo)
       } else {
         assertObj(resultColl, sourceCodeInfo)
         assertString(key, sourceCodeInfo)
-        if (!collHasKey(result.coll, key))
-          (resultColl)[key] = {}
+        if (!collHasKey(result.coll, key)) {
+          // Create a nested empty map if the key doesn't exist yet
+          return { coll: PersistentMap.empty(), parent: resultColl }
+        }
 
-        newResultColl = asColl(resultColl[key], sourceCodeInfo)
+        newResultColl = asColl(resultColl.get(key), sourceCodeInfo)
       }
 
       return { coll: newResultColl, parent: resultColl }
     },
-    { coll, parent: {} },
+    { coll, parent: PersistentMap.empty() },
   )
   return { coll, innerCollMeta }
 }
@@ -86,9 +91,9 @@ function cloneAndGetMeta(
 const collectionUtilsFunctions: BuiltinNormalExpressions = {
   'getIn': {
     evaluate: (params, sourceCodeInfo): Any => {
-      let coll = toAny(params[0])
-      const keys = params[1] ?? [] // null behaves as empty array
-      const defaultValue = toAny(params[2])
+      let coll = toAny(params.get(0))
+      const keys = params.get(1) ?? PersistentVector.empty() // null behaves as empty array
+      const defaultValue = toAny(params.get(2))
       assertArray(keys, sourceCodeInfo)
       for (const key of keys) {
         assertStringOrNumber(key, sourceCodeInfo)
@@ -148,23 +153,19 @@ cu.getIn(
       assertArray(keys, sourceCodeInfo)
       assertAny(value, sourceCodeInfo)
 
-      if (keys.length === 1) {
-        assertStringOrNumber(keys[0], sourceCodeInfo)
-        return assoc(originalColl, keys[0], value, sourceCodeInfo)
+      if (keys.size === 1) {
+        assertStringOrNumber(keys.get(0), sourceCodeInfo)
+        return assoc(originalColl, keys.get(0) as string | number, value, sourceCodeInfo)
       }
 
       const { coll, innerCollMeta } = cloneAndGetMeta(originalColl, keys, sourceCodeInfo)
 
-      const lastKey = asStringOrNumber(keys[keys.length - 1], sourceCodeInfo)
-      const parentKey = asStringOrNumber(keys[keys.length - 2], sourceCodeInfo)
+      const lastKey = asStringOrNumber(keys.get(keys.size - 1), sourceCodeInfo)
+      const parentKey = asStringOrNumber(keys.get(keys.size - 2), sourceCodeInfo)
 
-      if (Array.isArray(innerCollMeta.parent)) {
-        assertNumber(parentKey, sourceCodeInfo)
-        innerCollMeta.parent[parentKey] = assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
-      } else {
-        assertString(parentKey, sourceCodeInfo)
-        innerCollMeta.parent[parentKey] = assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
-      }
+      // Update the parent with the new nested value
+      assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
+      assoc(innerCollMeta.parent, parentKey, innerCollMeta.coll, sourceCodeInfo)
 
       return coll
     },
@@ -489,10 +490,11 @@ cu.reductions(
       if (typeof coll === 'string')
         return coll.length > 0 ? coll : null
 
-      if (Array.isArray(coll))
-        return coll.length > 0 ? coll : null
+      if (isArr(coll))
+        return coll.size > 0 ? coll : null
 
-      return Object.keys(coll).length > 0 ? coll : null
+      // Obj is PersistentMap: use .size property
+      return coll.size > 0 ? coll : null
     },
     arity: toFixedArity(1),
     docs: {

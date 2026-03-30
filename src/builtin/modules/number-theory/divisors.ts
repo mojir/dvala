@@ -1,3 +1,4 @@
+import type { Any } from '../../../interface'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
@@ -27,9 +28,10 @@ export function getProperDivisors(n: number): number[] {
 
 export const divisorsNormalExpressions: BuiltinNormalExpressions = {
   'divisors': {
-    evaluate: ([number], sourceCodeInfo): number[] => {
+    // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
+    evaluate: ([number], sourceCodeInfo): Any => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
-      return getDivisors(number)
+      return getDivisors(number) as unknown as Any
     },
     arity: toFixedArity(1),
   },
@@ -41,9 +43,10 @@ export const divisorsNormalExpressions: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   'properDivisors': {
-    evaluate: ([number], sourceCodeInfo): number[] => {
+    // Returns a plain JS number[] (annotated vector), cast to Any for the evaluator signature
+    evaluate: ([number], sourceCodeInfo): Any => {
       assertNumber(number, sourceCodeInfo, { finite: true, integer: true, positive: true })
-      return getProperDivisors(number)
+      return getProperDivisors(number) as unknown as Any
     },
     arity: toFixedArity(1),
   },

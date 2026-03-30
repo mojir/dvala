@@ -20,6 +20,7 @@ import type { Any, UnknownRecord } from '../interface'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { toFixedArity } from '../utils/arity'
+import { isPersistentMap, isPersistentVector, PersistentVector } from '../utils/persistent'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import type { ContinuationStack } from './frames'
 import type { Step } from './step'
@@ -244,18 +245,19 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.io.pick': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const items = Array.isArray(arg) ? arg : (arg as UnknownRecord)?.['items']
-      const options = Array.isArray(arg) ? undefined : (arg as UnknownRecord)?.['options']
+      // arg is either a PersistentVector (array of items) or a PersistentMap (object with items/options)
+      const items = isPersistentVector(arg) ? arg : isPersistentMap(arg) ? arg.get('items') : undefined
+      const options = isPersistentVector(arg) ? undefined : isPersistentMap(arg) ? arg.get('options') : undefined
 
-      if (!Array.isArray(items)) {
+      if (!isPersistentVector(items)) {
         throw new TypeError(`dvala.io.pick: first argument must be an array, got ${typeof items}`, sourceCodeInfo)
       }
-      if (items.length === 0) {
+      if (items.size === 0) {
         throw new TypeError('dvala.io.pick: items array must not be empty', sourceCodeInfo)
       }
-      for (let i = 0; i < items.length; i++) {
-        if (typeof items[i] !== 'string') {
-          throw new TypeError(`dvala.io.pick: items[${i}] must be a string, got ${typeof items[i]}`, sourceCodeInfo)
+      for (let i = 0; i < items.size; i++) {
+        if (typeof items.get(i) !== 'string') {
+          throw new TypeError(`dvala.io.pick: items[${i}] must be a string, got ${typeof items.get(i)}`, sourceCodeInfo)
         }
       }
 
@@ -263,30 +265,30 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
       let defaultIndex: number | undefined
 
       if (options !== undefined) {
-        if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+        if (!isPersistentMap(options)) {
           throw new TypeError(`dvala.io.pick: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
         }
-        const opts = options as UnknownRecord
-        if (opts['prompt'] !== undefined) {
-          if (typeof opts['prompt'] !== 'string') {
+        if (options.get('prompt') !== undefined) {
+          if (typeof options.get('prompt') !== 'string') {
             throw new TypeError('dvala.io.pick: options.prompt must be a string', sourceCodeInfo)
           }
-          promptMessage = opts['prompt']
+          promptMessage = options.get('prompt') as string
         }
-        if (opts['default'] !== undefined) {
-          if (typeof opts['default'] !== 'number' || !Number.isInteger(opts['default'])) {
+        if (options.get('default') !== undefined) {
+          const optDefault = options.get('default')
+          if (typeof optDefault !== 'number' || !Number.isInteger(optDefault)) {
             throw new TypeError('dvala.io.pick: options.default must be an integer', sourceCodeInfo)
           }
-          defaultIndex = opts['default']
-          if (defaultIndex < 0 || defaultIndex >= items.length) {
-            throw new TypeError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.length}`, sourceCodeInfo)
+          defaultIndex = optDefault
+          if (defaultIndex < 0 || defaultIndex >= items.size) {
+            throw new TypeError(`dvala.io.pick: options.default (${defaultIndex}) is out of bounds for array of length ${items.size}`, sourceCodeInfo)
           }
         }
       }
 
       // Browser: window.prompt (synchronous)
       if (typeof globalThis.prompt === 'function') {
-        const listLines = (items as string[]).map((item, i) => `${i}: ${item}`).join('\n')
+        const listLines = [...items].map((item, i) => `${i}: ${item}`).join('\n')
         const header = promptMessage ?? 'Choose an item:'
         const defaultHint = defaultIndex !== undefined ? ` [default: ${defaultIndex}]` : ''
         const message = `${header}${defaultHint}\n${listLines}`
@@ -300,7 +302,7 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
           return { type: 'Value', value: defaultIndex !== undefined ? defaultIndex : null, k }
         }
         const parsed = Number(trimmed)
-        if (!Number.isInteger(parsed) || parsed < 0 || parsed >= items.length) {
+        if (!Number.isInteger(parsed) || parsed < 0 || parsed >= items.size) {
           throw new TypeError(`dvala.io.pick: invalid selection "${trimmed}"`, sourceCodeInfo)
         }
         return { type: 'Value', value: parsed, k }
@@ -332,20 +334,19 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.io.confirm': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const argObj = arg as UnknownRecord
-      const question = typeof arg === 'string' ? arg : argObj?.['question']
-      const options = typeof arg === 'string' ? undefined : argObj?.['options']
+      // arg is either a string question or a PersistentMap with question/options fields
+      const question = typeof arg === 'string' ? arg : isPersistentMap(arg) ? arg.get('question') : undefined
+      const options = typeof arg === 'string' ? undefined : isPersistentMap(arg) ? arg.get('options') : undefined
 
       if (typeof question !== 'string') {
         throw new TypeError(`dvala.io.confirm: first argument must be a string, got ${typeof question}`, sourceCodeInfo)
       }
 
       if (options !== undefined) {
-        if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+        if (!isPersistentMap(options)) {
           throw new TypeError(`dvala.io.confirm: second argument must be an object, got ${typeof options}`, sourceCodeInfo)
         }
-        const opts = options as UnknownRecord
-        if (opts['default'] !== undefined && typeof opts['default'] !== 'boolean') {
+        if (options.get('default') !== undefined && typeof options.get('default') !== 'boolean') {
           throw new TypeError('dvala.io.confirm: options.default must be a boolean', sourceCodeInfo)
         }
       }
@@ -506,17 +507,18 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.random.shuffle': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      if (!Array.isArray(arg)) {
+      if (!isPersistentVector(arg)) {
         throw new TypeError(`dvala.random.shuffle: argument must be an array, got ${typeof arg}`, sourceCodeInfo)
       }
-      const shuffled: Any[] = Array.from(arg) as Any[]
+      // Copy elements into a mutable array, perform Fisher-Yates in place, then wrap back in PersistentVector
+      const shuffled: Any[] = [...arg] as Any[]
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
         const tmp = shuffled[i]
         shuffled[i] = shuffled[j]!
         shuffled[j] = tmp!
       }
-      return { type: 'Value', value: shuffled, k }
+      return { type: 'Value', value: PersistentVector.from(shuffled), k }
     },
     arity: toFixedArity(1),
     docs: {

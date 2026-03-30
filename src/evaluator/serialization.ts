@@ -21,7 +21,7 @@
 
 import type { Any } from '../interface'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
-import { isEffect, isRegularExpression } from '../typeGuards/dvala'
+import { isArr, isEffect, isObj, isRegularExpression } from '../typeGuards/dvala'
 import type {
   DvalaFunction,
 } from '../parser/types'
@@ -64,14 +64,29 @@ export function isSerializable(value: Any, visited = new Set<object>()): boolean
     return isDvalaFunctionSerializable(value, visited)
   }
 
-  // Array — serializable if all elements are
-  if (Array.isArray(value)) {
-    return value.every(item => isSerializable(item as Any, visited))
+  // PersistentVector (Dvala array) — serializable if all elements are
+  if (isArr(value)) {
+    for (const item of value)
+      if (!isSerializable(item as Any, visited))
+        return false
+    return true
   }
 
-  // Plain object — serializable if all values are
+  // PersistentMap (Dvala object) — serializable if all values are
+  if (isObj(value)) {
+    for (const [, v] of value)
+      if (!isSerializable(v as Any, visited))
+        return false
+    return true
+  }
+
+  // Anything else (plain JS arrays/objects from circular reference tests, or unexpected types)
   if (typeof value === 'object') {
-    return Object.values(value).every(v => isSerializable(v as Any, visited))
+    const obj = value as unknown as Record<string, unknown>
+    for (const v of Object.values(obj))
+      if (!isSerializable(v as Any, visited))
+        return false
+    return true
   }
 
   // Anything else (shouldn't happen in well-typed code) is not serializable
@@ -94,12 +109,12 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
     case 'Partial': {
       const partial = fn
       return isSerializable(partial.function as Any, visited)
-        && partial.params.every(p => isSerializable(p as Any, visited))
+        && [...partial.params].every(p => isSerializable(p as Any, visited))
     }
 
     case 'Comp': {
       const comp = fn
-      return comp.params.every(p => isSerializable(p as Any, visited))
+      return [...comp.params].every(p => isSerializable(p as Any, visited))
     }
 
     case 'Constantly': {
@@ -109,7 +124,7 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
 
     case 'Juxt': {
       const juxt = fn
-      return juxt.params.every(p => isSerializable(p as Any, visited))
+      return [...juxt.params].every(p => isSerializable(p as Any, visited))
     }
 
     case 'Complement': {
@@ -119,18 +134,18 @@ function isDvalaFunctionSerializable(fn: DvalaFunction, visited: Set<object>): b
 
     case 'EveryPred': {
       const everyPred = fn
-      return everyPred.params.every(p => isSerializable(p as Any, visited))
+      return [...everyPred.params].every(p => isSerializable(p as Any, visited))
     }
 
     case 'SomePred': {
       const somePred = fn
-      return somePred.params.every(p => isSerializable(p as Any, visited))
+      return [...somePred.params].every(p => isSerializable(p as Any, visited))
     }
 
     case 'Fnull': {
       const fnull = fn
       return isSerializable(fnull.function as Any, visited)
-        && fnull.params.every(p => isSerializable(p as Any, visited))
+        && [...fnull.params].every(p => isSerializable(p as Any, visited))
     }
 
     /* v8 ignore next 2 */
@@ -169,8 +184,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
       const fnIssue = describeSerializationIssue(partial.function as Any, `${path}.function`)
       if (fnIssue)
         return fnIssue
-      for (let i = 0; i < partial.params.length; i++) {
-        const paramIssue = describeSerializationIssue(partial.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < partial.params.size; i++) {
+        const paramIssue = describeSerializationIssue(partial.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -179,8 +194,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'Comp') {
       const comp = value
-      for (let i = 0; i < comp.params.length; i++) {
-        const paramIssue = describeSerializationIssue(comp.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < comp.params.size; i++) {
+        const paramIssue = describeSerializationIssue(comp.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -199,8 +214,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'Juxt') {
       const juxt = value
-      for (let i = 0; i < juxt.params.length; i++) {
-        const paramIssue = describeSerializationIssue(juxt.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < juxt.params.size; i++) {
+        const paramIssue = describeSerializationIssue(juxt.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -209,8 +224,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'EveryPred') {
       const everyPred = value
-      for (let i = 0; i < everyPred.params.length; i++) {
-        const paramIssue = describeSerializationIssue(everyPred.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < everyPred.params.size; i++) {
+        const paramIssue = describeSerializationIssue(everyPred.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -219,8 +234,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
 
     if (value.functionType === 'SomePred') {
       const somePred = value
-      for (let i = 0; i < somePred.params.length; i++) {
-        const paramIssue = describeSerializationIssue(somePred.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < somePred.params.size; i++) {
+        const paramIssue = describeSerializationIssue(somePred.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -232,8 +247,8 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
       const fnIssue = describeSerializationIssue(fnull.function as Any, `${path}.function`)
       if (fnIssue)
         return fnIssue
-      for (let i = 0; i < fnull.params.length; i++) {
-        const paramIssue = describeSerializationIssue(fnull.params[i] as Any, `${path}.params[${i}]`)
+      for (let i = 0; i < fnull.params.size; i++) {
+        const paramIssue = describeSerializationIssue(fnull.params.get(i) as Any, `${path}.params[${i}]`)
         if (paramIssue)
           return paramIssue
       }
@@ -243,17 +258,32 @@ export function describeSerializationIssue(value: Any, path: string = 'value'): 
     return `${path} has unknown function type ${value}`
   }
 
-  if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
-      const issue = describeSerializationIssue(value[i] as Any, `${path}[${i}]`)
+  // PersistentVector (Dvala array) — check each element
+  if (isArr(value)) {
+    let i = 0
+    for (const item of value) {
+      const issue = describeSerializationIssue(item as Any, `${path}[${i}]`)
+      if (issue)
+        return issue
+      i++
+    }
+    return null
+  }
+
+  // PersistentMap (Dvala object) — check each value
+  if (isObj(value)) {
+    for (const [key, v] of value) {
+      const issue = describeSerializationIssue(v as Any, `${path}.${key}`)
       if (issue)
         return issue
     }
     return null
   }
 
+  // Fallback for plain objects (unexpected in normal usage, but handled for robustness)
   if (typeof value === 'object') {
-    for (const [key, v] of Object.entries(value)) {
+    const obj = value as unknown as Record<string, unknown>
+    for (const [key, v] of Object.entries(obj)) {
       const issue = describeSerializationIssue(v as Any, `${path}.${key}`)
       if (issue)
         return issue

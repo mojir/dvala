@@ -17,8 +17,8 @@ import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../parser/ty
 import { bindingTargetTypes } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { assertArray } from '../typeGuards/array'
-import { asAny } from '../typeGuards/dvala'
-import { assertUnknownRecord } from '../typeGuards'
+import { assertObj } from '../typeGuards/dvala'
+import { PersistentMap, PersistentVector } from '../utils/persistent'
 
 // ---------------------------------------------------------------------------
 // Root type validation
@@ -37,7 +37,7 @@ export function validateBindingRootType(target: BindingTarget, value: Any, sourc
       assertArray(value as Arr, sourceCodeInfo)
       break
     case bindingTargetTypes.object:
-      assertUnknownRecord(value, sourceCodeInfo)
+      assertObj(value, sourceCodeInfo)
       break
     // symbol, rest, literal, wildcard don't need root type validation
   }
@@ -245,11 +245,11 @@ export function extractValueByPath(rootValue: Any, path: BindingPathStep[], sour
     }
 
     if (step.type === 'key') {
-      assertUnknownRecord(current, sourceCodeInfo)
-      current = current[step.key]
+      assertObj(current, sourceCodeInfo)
+      current = (current as PersistentMap).get(step.key)
     } else {
       assertArray(current as Arr, sourceCodeInfo)
-      current = (current as Arr)[step.index]
+      current = (current as Arr).get(step.index)
     }
   }
 
@@ -260,12 +260,12 @@ export function extractValueByPath(rootValue: Any, path: BindingPathStep[], sour
  * Extract rest values for an object rest binding.
  * Returns an object with all keys except those in restKeys.
  */
-export function extractObjectRest(value: Any, restKeys: Set<string>, sourceCodeInfo?: SourceCodeInfo): Record<string, Any> {
-  assertUnknownRecord(value, sourceCodeInfo)
-  const result: Record<string, Any> = {}
-  for (const [key, val] of Object.entries(value)) {
+export function extractObjectRest(value: Any, restKeys: Set<string>, sourceCodeInfo?: SourceCodeInfo): PersistentMap {
+  assertObj(value, sourceCodeInfo)
+  let result = PersistentMap.empty<Any>()
+  for (const [key, val] of value as PersistentMap<Any>) {
     if (!restKeys.has(key)) {
-      result[key] = asAny(val)
+      result = result.assoc(key, val)
     }
   }
   return result
@@ -277,5 +277,11 @@ export function extractObjectRest(value: Any, restKeys: Set<string>, sourceCodeI
  */
 export function extractArrayRest(value: Any, restIndex: number, sourceCodeInfo?: SourceCodeInfo): Arr {
   assertArray(value as Arr, sourceCodeInfo)
-  return (value as Arr).slice(restIndex)
+  // Collect elements from restIndex to end — PersistentVector has no native slice
+  const arr = value as Arr
+  const items: unknown[] = []
+  for (let i = restIndex; i < arr.size; i++) {
+    items.push(arr.get(i))
+  }
+  return PersistentVector.from(items)
 }

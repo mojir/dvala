@@ -12,6 +12,7 @@ import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { isUnknownRecord } from '../typeGuards'
 import { asAny } from '../typeGuards/dvala'
+import { isPersistentVector, PersistentVector } from '../utils/persistent'
 import type { BindingPathStep } from './bindingSlot'
 
 // ---------------------------------------------------------------------------
@@ -288,8 +289,13 @@ export function extractMatchObjectRest(value: Any, path: BindingPathStep[], rest
  */
 export function extractMatchArrayRest(value: Any, path: BindingPathStep[], restIndex: number): Arr {
   const arr = path.length > 0 ? extractMatchValueByPath(value, path) : value
-  if (!Array.isArray(arr)) return []
-  return arr.slice(restIndex).map(v => asAny(v))
+  if (!isPersistentVector(arr)) return PersistentVector.empty()
+  // Collect elements from restIndex onward as a new PersistentVector
+  const items: unknown[] = []
+  for (let i = restIndex; i < arr.size; i++) {
+    items.push(asAny(arr.get(i)))
+  }
+  return PersistentVector.from(items)
 }
 
 /**

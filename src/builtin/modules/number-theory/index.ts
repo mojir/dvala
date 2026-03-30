@@ -1,10 +1,11 @@
 import { DvalaError, RuntimeError } from '../../../errors'
-import type { Arr } from '../../../interface'
+import type { Any, Arr } from '../../../interface'
 import { assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
+import { PersistentVector } from '../../../utils/persistent'
 import type { DvalaModule } from '../interface'
 import { moduleDocs } from './docs'
 import numberTheoryModuleSource from './number-theory.dvala'
@@ -189,8 +190,8 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
   },
 
   'multinomial': {
-    evaluate: ([...args], sourceCodeInfo): number => {
-      assertVector(args, sourceCodeInfo)
+    evaluate: ([...args_], sourceCodeInfo): number => {
+      const args = assertVector(args_, sourceCodeInfo)
       const sum = args.reduce((acc: number, curr) => {
         assertNumber(curr, sourceCodeInfo, { integer: true, nonNegative: true })
         return acc + curr
@@ -305,28 +306,31 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(1),
   },
   'cartesianProduct': {
-    evaluate: (params, sourceCodeInfo): Arr[] => {
-      params.forEach(set => {
+    // Returns a PersistentVector of PersistentVectors (each product tuple), cast to Any
+    evaluate: (params, sourceCodeInfo): Any => {
+      for (const set of params) {
         assertArray(set, sourceCodeInfo)
-      })
-      const sets = params as Arr[]
-      return sets.reduce((acc: Arr[], set) => {
-        const result: Arr[] = []
-        acc.forEach(arr => {
-          set.forEach(value => {
-            result.push([...arr, value])
-          })
-        })
-        return result
-      }, [[]])
+      }
+      const sets = [...params] as Arr[]
+      const result = sets.reduce((acc: PersistentVector<unknown>[], set) => {
+        const newAcc: PersistentVector<unknown>[] = []
+        for (const arr of acc) {
+          for (const value of set) {
+            newAcc.push(arr.append(value))
+          }
+        }
+        return newAcc
+      }, [PersistentVector.empty()])
+      return PersistentVector.from(result) as unknown as Any
     },
     arity: { min: 1 },
   },
   'perfectPower': {
-    evaluate: ([n], sourceCodeInfo): [number, number] | null => {
+    // Returns a plain [number, number] tuple or null — cast to Any
+    evaluate: ([n], sourceCodeInfo): Any => {
       assertNumber(n, sourceCodeInfo, { integer: true, positive: true })
       const result = perfectPower(n)
-      return result || null
+      return (result || null) as unknown as Any
     },
     arity: toFixedArity(1),
   },
@@ -354,18 +358,19 @@ export const combinatoricalNormalExpression: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'extendedGcd': {
-    evaluate: ([a, b], sourceCodeInfo): [number, number, number] => {
+    // Returns a plain [number, number, number] tuple — cast to Any
+    evaluate: ([a, b], sourceCodeInfo): Any => {
       assertNumber(a, sourceCodeInfo, { integer: true })
       assertNumber(b, sourceCodeInfo, { integer: true })
 
-      return extendedGcd(a, b)
+      return extendedGcd(a, b) as unknown as Any
     },
     arity: toFixedArity(2),
   },
   'chineseRemainder': {
-    evaluate: ([remainders, moduli], sourceCodeInfo): number => {
-      assertVector(remainders, sourceCodeInfo)
-      assertVector(moduli, sourceCodeInfo)
+    evaluate: ([remainders_, moduli_], sourceCodeInfo): number => {
+      const remainders = assertVector(remainders_, sourceCodeInfo)
+      const moduli = assertVector(moduli_, sourceCodeInfo)
       if (remainders.length !== moduli.length) {
         throw new RuntimeError('Remainders and moduli must have the same length.', sourceCodeInfo)
       }

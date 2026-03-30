@@ -1,6 +1,7 @@
 import { TypeError } from '../errors'
 import type { Any } from '../interface'
 import type { SourceCodeInfo } from '../tokenizer/token'
+import { isPersistentVector } from '../utils/persistent'
 import { isNumber } from './number'
 
 const annotatedArrays = new WeakSet<unknown[]>()
@@ -11,108 +12,139 @@ const annotatedNonMatrices = new WeakSet<unknown[]>()
 const annotatedGrids = new WeakSet<unknown[]>()
 const annotatedNonGrids = new WeakSet<unknown[]>()
 
-export function annotate<T>(value: T): T {
-  if (!Array.isArray(value)) {
-    return value
+/**
+ * If value is a PersistentVector, convert it (deeply) to a plain JS array.
+ * Otherwise, return the value unchanged. This is used at module boundaries
+ * where downstream code expects plain arrays with bracket indexing.
+ */
+function toPlainArray(value: unknown): unknown {
+  if (isPersistentVector(value)) {
+    const arr: unknown[] = []
+    for (const item of value) arr.push(toPlainArray(item))
+    return arr
   }
-  if (annotatedArrays.has(value)) {
-    return value
-  }
-  isVector(value)
-  if (!isMatrix(value)) {
-    isGrid(value)
-  }
-
   return value
 }
+
+export function annotate<T>(value: T): T {
+  const plain = toPlainArray(value)
+  if (!Array.isArray(plain)) {
+    return value
+  }
+  if (annotatedArrays.has(plain)) {
+    return plain as T
+  }
+  isVector(plain)
+  if (!isMatrix(plain)) {
+    isGrid(plain)
+  }
+
+  return plain as T
+}
 export function isVector(vector: unknown): vector is number[] {
-  if (!Array.isArray(vector)) {
+  const plain = toPlainArray(vector)
+  if (!Array.isArray(plain)) {
     return false
   }
 
-  if (annotatedVectors.has(vector)) {
+  if (annotatedVectors.has(plain)) {
     return true
   }
-  if (annotadedNonVectors.has(vector)) {
+  if (annotadedNonVectors.has(plain)) {
     return false
   }
 
-  if (vector.every(elem => isNumber(elem))) {
-    annotatedArrays.add(vector)
-    annotatedVectors.add(vector)
+  if (plain.every(elem => isNumber(elem))) {
+    annotatedArrays.add(plain)
+    annotatedVectors.add(plain)
     return true
   }
-  annotadedNonVectors.add(vector)
+  annotadedNonVectors.add(plain)
   return false
 }
 
-export function assertVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is number[] {
-  if (!isVector(vector)) {
+/**
+ * Assert that `vector` is a numeric vector. If it's a PersistentVector,
+ * converts to a plain `number[]` and returns it. Callers should use the
+ * return value: `vector = assertVector(vector, sci)`
+ */
+export function assertVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number[] {
+  const plain = toPlainArray(vector)
+  if (!isVector(plain)) {
     throw new TypeError(`Expected a vector, but got ${vector}`, sourceCodeInfo)
   }
+  return plain
 }
 
 export function is2dVector(vector: unknown): vector is [number, number] {
-  if (!isVector(vector)) {
+  const plain = toPlainArray(vector)
+  if (!isVector(plain)) {
     return false
   }
-  return vector.length === 2
+  return plain.length === 2
 }
-export function assert2dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is [number, number] {
-  if (!is2dVector(vector)) {
+export function assert2dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): [number, number] {
+  const plain = toPlainArray(vector)
+  if (!is2dVector(plain)) {
     throw new TypeError(`Expected a 2d vector, but got ${vector}`, sourceCodeInfo)
   }
+  return plain
 }
 
 export function is3dVector(vector: unknown): vector is [number, number, number] {
-  if (!isVector(vector)) {
+  const plain = toPlainArray(vector)
+  if (!isVector(plain)) {
     return false
   }
-  return vector.length === 3
+  return plain.length === 3
 }
-export function assert3dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is [number, number, number] {
-  if (!is3dVector(vector)) {
+export function assert3dVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): [number, number, number] {
+  const plain = toPlainArray(vector)
+  if (!is3dVector(plain)) {
     throw new TypeError(`Expected a 3d vector, but got ${vector}`, sourceCodeInfo)
   }
+  return plain
 }
 
-export function assertNonEmptyVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts vector is number[] {
-  assertVector(vector, sourceCodeInfo)
-  if (vector.length === 0) {
+export function assertNonEmptyVector(vector: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number[] {
+  const plain = assertVector(vector, sourceCodeInfo)
+  if (plain.length === 0) {
     throw new TypeError(`Expected a non empty vector, but got ${vector}`, sourceCodeInfo)
   }
+  return plain
 }
 
 export function isGrid(grid: unknown, typePred?: (elem: unknown) => boolean): grid is unknown[][] {
-  if (!Array.isArray(grid)) {
+  const plain = toPlainArray(grid)
+  if (!Array.isArray(plain)) {
     return false
   }
-  if (annotatedGrids.has(grid)) {
+  if (annotatedGrids.has(plain)) {
     return true
   }
-  if (annotatedNonGrids.has(grid)) {
+  if (annotatedNonGrids.has(plain)) {
     return false
   }
-  if (grid.length === 0) {
-    annotatedNonGrids.add(grid)
+  if (plain.length === 0) {
+    annotatedNonGrids.add(plain)
     return false
   }
-  if (!Array.isArray(grid[0])) {
-    annotatedNonGrids.add(grid)
+  if (!Array.isArray(plain[0])) {
+    annotatedNonGrids.add(plain)
     return false
   }
-  const nbrOfCols = grid[0].length
+  const nbrOfCols = plain[0].length
   if (nbrOfCols === 0) {
-    annotatedNonGrids.add(grid)
+    annotatedNonGrids.add(plain)
     return false
   }
-  for (const row of grid) {
+  for (const row of plain) {
     if (!Array.isArray(row)) {
-      annotatedNonGrids.add(grid)
+      annotatedNonGrids.add(plain)
       return false
     }
     if (row.length !== nbrOfCols) {
-      annotatedNonGrids.add(grid)
+      annotatedNonGrids.add(plain)
       return false
     }
     if (typePred && row.some(cell => !typePred(cell))) {
@@ -122,48 +154,56 @@ export function isGrid(grid: unknown, typePred?: (elem: unknown) => boolean): gr
       return false
     }
   }
-  annotatedArrays.add(grid)
-  annotatedGrids.add(grid)
+  annotatedArrays.add(plain)
+  annotatedGrids.add(plain)
   return true
 }
 
-export function assertGrid(grid: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts grid is Any[][] {
-  if (!isGrid(grid)) {
+export function assertGrid(grid: unknown, sourceCodeInfo: SourceCodeInfo | undefined): Any[][] {
+  const plain = toPlainArray(grid)
+  if (!isGrid(plain)) {
     throw new TypeError(`Expected a grid, but got ${grid}`, sourceCodeInfo)
   }
+  return plain as Any[][]
 }
 
 export function isMatrix(matrix: unknown): matrix is number[][] {
-  if (!isGrid(matrix, isNumber)) {
-    if (Array.isArray(matrix)) {
-      annotatedNonMatrices.add(matrix)
+  const plain = toPlainArray(matrix)
+  if (!isGrid(plain, isNumber)) {
+    if (Array.isArray(plain)) {
+      annotatedNonMatrices.add(plain)
     }
     return false
   }
-  annotadedMatrices.add(matrix)
+  annotadedMatrices.add(plain)
   return true
 }
 
-export function assertMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts matrix is number[][] {
-  if (!isMatrix(matrix)) {
+export function assertMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number[][] {
+  const plain = toPlainArray(matrix)
+  if (!isMatrix(plain)) {
     throw new TypeError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
   }
+  return plain
 }
 
-export function assertSquareMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts matrix is number[][] {
-  if (!isMatrix(matrix)) {
+export function assertSquareMatrix(matrix: unknown, sourceCodeInfo: SourceCodeInfo | undefined): number[][] {
+  const plain = toPlainArray(matrix)
+  if (!isMatrix(plain)) {
     throw new TypeError(`Expected a matrix, but got ${matrix}`, sourceCodeInfo)
   }
-  if (matrix.length !== matrix[0]!.length) {
-    throw new TypeError(`Expected square matrix, but got ${matrix.length} and ${matrix[0]!.length}`, sourceCodeInfo)
+  if (plain.length !== (plain[0] as number[]).length) {
+    throw new TypeError(`Expected square matrix, but got ${plain.length} and ${(plain[0] as number[]).length}`, sourceCodeInfo)
   }
+  return plain
 }
 
 export function isSquareMatrix(matrix: unknown): matrix is number[][] {
-  if (!isMatrix(matrix)) {
+  const plain = toPlainArray(matrix)
+  if (!isMatrix(plain)) {
     return false
   }
-  if (matrix.length !== matrix[0]!.length) {
+  if ((plain).length !== (plain)[0]!.length) {
     return false
   }
   return true

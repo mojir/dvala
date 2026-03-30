@@ -1,7 +1,8 @@
 import type { Any, Obj } from '../../interface'
-import type { AstNode, SpreadNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
+import type { AstNode, SpreadNode } from '../../parser/types'
 import { assertString } from '../../typeGuards/string'
+import { PersistentMap } from '../../utils/persistent'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 
 export type ObjectEntry = [AstNode, AstNode] | SpreadNode
@@ -47,13 +48,13 @@ export const objectSpecialExpression: BuiltinSpecialExpression<Any, ObjectNode> 
   arity: {},
   docs,
   evaluateAsNormalExpression: (params, sourceCodeInfo) => {
-    const result: Obj = {}
+    let result: Obj = PersistentMap.empty()
 
-    for (let i = 0; i < params.length; i += 2) {
-      const key = params[i]
-      const value = params[i + 1]
+    for (let i = 0; i < params.size; i += 2) {
+      const key = params.get(i)
+      const value = params.get(i + 1)
       assertString(key, sourceCodeInfo)
-      result[key] = value ?? null
+      result = result.assoc(key, value ?? null)
     }
 
     return result

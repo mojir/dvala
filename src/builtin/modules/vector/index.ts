@@ -1,4 +1,5 @@
 import { RuntimeError } from '../../../errors'
+import type { Any } from '../../../interface'
 import { assertNonEmptyVector, assertVector } from '../../../typeGuards/annotatedCollections'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
@@ -65,8 +66,8 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
   },
   'sum': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.reduce((acc, val) => acc + val, 0)
     },
     arity: toFixedArity(1),
@@ -87,8 +88,8 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
   },
   'prod': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.reduce((acc, val) => acc * val, 1)
     },
     arity: toFixedArity(1),
@@ -109,8 +110,8 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
   },
   'mean': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       return vector.reduce((acc, val) => acc + val, 0) / vector.length
     },
     arity: toFixedArity(1),
@@ -130,8 +131,8 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
   },
   'median': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       return calcMedian(vector)
     },
     arity: toFixedArity(1),
@@ -152,83 +153,83 @@ const vectorFunctions: BuiltinNormalExpressions = {
     },
   },
   'isMonotonic': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val >= vector[i - 1]!)
         || vector.every((val, i) => i === 0 || val <= vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'isStrictlyMonotonic': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val > vector[i - 1]!)
         || vector.every((val, i) => i === 0 || val < vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'isIncreasing': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val >= vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'isDecreasing': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val <= vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'isStrictlyIncreasing': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val > vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'isStrictlyDecreasing': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return vector.every((val, i) => i === 0 || val < vector[i - 1]!)
     },
     arity: toFixedArity(1),
   },
   'mode': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
-      return mode(vector)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
+      return mode(vector) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'minIndex': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
 
       return vector.reduce((acc, val, i) => (val < vector[acc]! ? i : acc), 0)
     },
     arity: toFixedArity(1),
   },
   'maxIndex': {
-    evaluate: ([vector], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
 
       return vector.reduce((acc, val, i) => (val > vector[acc]! ? i : acc), 0)
     },
     arity: toFixedArity(1),
   },
   'sortIndices': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
-      return [...vector.keys()].sort((a, b) => vector[a]! - vector[b]!)
+      return [...vector.keys()].sort((a, b) => vector[a]! - vector[b]!) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'countValues': {
-    evaluate: ([vector], sourceCodeInfo): [number, number][] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       const frequencyMap = new Map<number, number>()
       for (const value of vector) {
@@ -241,89 +242,89 @@ const vectorFunctions: BuiltinNormalExpressions = {
           return countDiff
         // If counts are equal, sort by value (ascending)
         return a[0] - b[0]
-      })
+      }) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'linspace': {
-    evaluate: ([start, end, numPoints], sourceCodeInfo): number[] => {
+    evaluate: ([start, end, numPoints], sourceCodeInfo): Any => {
       assertNumber(start, sourceCodeInfo, { finite: true })
       assertNumber(end, sourceCodeInfo, { finite: true })
       assertNumber(numPoints, sourceCodeInfo, { integer: true, nonNegative: true })
 
       if (numPoints === 0) {
-        return []
+        return [] as unknown as Any
       }
       if (numPoints === 1) {
-        return [start]
+        return [start] as unknown as Any
       }
       const step = (end - start) / (numPoints - 1)
-      return Array.from({ length: numPoints }, (_, i) => start + i * step)
+      return Array.from({ length: numPoints }, (_, i) => start + i * step) as unknown as Any
     },
     arity: toFixedArity(3),
   },
   'cumsum': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       return vector.reduce((acc, val) => {
         const last = acc[acc.length - 1] ?? 0
         acc.push(last + val)
         return acc
-      }, [] as number[])
+      }, [] as number[]) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'cumprod': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
 
       return vector.reduce((acc, val) => {
         const last = acc[acc.length - 1] ?? 1
         acc.push(last * val)
         return acc
-      }, [] as number[])
+      }, [] as number[]) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'quartiles': {
-    evaluate: ([vector], sourceCodeInfo): [number, number, number] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       if (vector.length < 4) {
         throw new RuntimeError('Quartiles require at least four values', sourceCodeInfo)
       }
-      return quartiles(vector)
+      return quartiles(vector) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'percentile': {
-    evaluate: ([vector, percentile], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, percentile], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       assertNumber(percentile, sourceCodeInfo, { finite: true, nonNegative: true, lte: 100 })
       return calcPercentile(vector, percentile)
     },
     arity: toFixedArity(2),
   },
   'quantile': {
-    evaluate: ([vector, quantile], sourceCodeInfo): number => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, quantile], sourceCodeInfo): number => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       assertNumber(quantile, sourceCodeInfo, { finite: true, nonNegative: true, lte: 1 })
       return calcPercentile(vector, quantile * 100)
     },
     arity: toFixedArity(2),
   },
   'histogram': {
-    evaluate: ([vector, bins], sourceCodeInfo): [number, number, number][] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, bins], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       assertNumber(bins, sourceCodeInfo, { integer: true, positive: true })
 
-      return calcHistogram(vector, bins)
+      return calcHistogram(vector, bins) as unknown as Any
     },
     arity: toFixedArity(2),
   },
   'ecdf': {
-    evaluate: ([vector, value], sourceCodeInfo): number => {
-      assertNonEmptyVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, value], sourceCodeInfo): number => {
+      const vector = assertNonEmptyVector(vector_, sourceCodeInfo)
       assertNumber(value, sourceCodeInfo, { finite: true })
 
       const sorted = [...vector].sort((a, b) => a - b)
@@ -334,50 +335,49 @@ const vectorFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'isOutliers': {
-    evaluate: ([vector], sourceCodeInfo): boolean => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_], sourceCodeInfo): boolean => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       return hasOutliers(vector)
     },
     arity: toFixedArity(1),
   },
   'outliers': {
-    evaluate: ([vector], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
-      return outliers(vector)
+    evaluate: ([vector_], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
+      return outliers(vector) as unknown as Any
     },
     arity: toFixedArity(1),
   },
   'bincount': {
-    evaluate: (params, sourceCodeInfo): number[] => {
-      const vector = params[0]
-      assertVector(vector, sourceCodeInfo)
+    evaluate: (params, sourceCodeInfo): Any => {
+      const vector = assertVector(params.get(0), sourceCodeInfo)
       vector.forEach(val => assertNumber(val, sourceCodeInfo, { finite: true, integer: true, nonNegative: true }))
 
-      const minSize = params[1] ?? 0
+      const minSize = params.get(1) ?? 0
       assertNumber(minSize, sourceCodeInfo, { integer: true, nonNegative: true })
 
-      const weights = params[2] ?? undefined
+      const weights_ = params.get(2) ?? undefined
+      const weights = weights_ !== undefined ? assertVector(weights_, sourceCodeInfo) : undefined
       if (weights !== undefined) {
-        assertVector(weights, sourceCodeInfo)
         if (weights.length !== vector.length) {
           throw new RuntimeError('Weights vector must be the same length as the input vector', sourceCodeInfo)
         }
         weights.forEach(val => assertNumber(val, sourceCodeInfo, { finite: true }))
       }
 
-      return bincount(vector, minSize, weights)
+      return bincount(vector, minSize, weights) as unknown as Any
     },
     arity: { min: 1, max: 3 },
   },
   'winsorize': {
-    evaluate: ([vector, lowerQuantile, upperQuantile], sourceCodeInfo): number[] => {
-      assertVector(vector, sourceCodeInfo)
+    evaluate: ([vector_, lowerQuantile, upperQuantile], sourceCodeInfo): Any => {
+      const vector = assertVector(vector_, sourceCodeInfo)
       assertNumber(lowerQuantile, sourceCodeInfo, { finite: true, gte: 0, lte: 1 })
       upperQuantile ??= lowerQuantile > 0.5 ? 1 : (1 - lowerQuantile)
       assertNumber(upperQuantile, sourceCodeInfo, { finite: true, gte: lowerQuantile, lte: 1 })
 
       if (vector.length === 0)
-        return []
+        return [] as unknown as Any
 
       const sorted = [...vector].sort((a, b) => a - b)
 
@@ -387,14 +387,14 @@ const vectorFunctions: BuiltinNormalExpressions = {
       const lowerBound = sorted[lowerIndex]!
       const upperBound = sorted[upperIndex]!
 
-      return vector.map(val => Math.max(lowerBound, Math.min(val, upperBound)))
+      return vector.map(val => Math.max(lowerBound, Math.min(val, upperBound))) as unknown as Any
     },
     arity: { min: 2, max: 3 },
   },
   'mse': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
@@ -403,9 +403,9 @@ const vectorFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'rmse': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
@@ -414,9 +414,9 @@ const vectorFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'mae': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }
@@ -425,9 +425,9 @@ const vectorFunctions: BuiltinNormalExpressions = {
     arity: toFixedArity(2),
   },
   'smape': {
-    evaluate: ([vectorA, vectorB], sourceCodeInfo): number => {
-      assertNonEmptyVector(vectorA, sourceCodeInfo)
-      assertNonEmptyVector(vectorB, sourceCodeInfo)
+    evaluate: ([vectorA_, vectorB_], sourceCodeInfo): number => {
+      const vectorA = assertNonEmptyVector(vectorA_, sourceCodeInfo)
+      const vectorB = assertNonEmptyVector(vectorB_, sourceCodeInfo)
       if (vectorA.length !== vectorB.length) {
         throw new RuntimeError('Vectors must be of the same length', sourceCodeInfo)
       }

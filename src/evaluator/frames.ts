@@ -522,7 +522,7 @@ export interface ResumeCallFrame {
 export interface ParallelResumeFrame {
   type: 'ParallelResume'
   branchCount: number
-  completedBranches: { index: number; value: Any }[]
+  completedBranches: { index: number; value: unknown }[]
   suspendedBranches: { index: number; snapshot: Snapshot }[]
 }
 

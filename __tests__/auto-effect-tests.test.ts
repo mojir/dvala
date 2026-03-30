@@ -28,6 +28,7 @@ import { allStandardEffectDefinitions, standardEffectNames } from '../src/evalua
 import { qualifiedNameMatchesPattern, findMatchingHandlers } from '../src/evaluator/effectTypes'
 import { isDataType } from '../src/builtin/interface'
 import type { Any } from '../src/interface'
+import { fromJS } from '../src/utils/interop'
 import { allReference } from '../reference'
 import '../src/initReferenceData'
 
@@ -609,10 +610,10 @@ describe('auto: suspend/resume round-trip', () => {
     { label: 'boolean true', value: true, code: 'if x then "yes" else "no" end' },
     { label: 'boolean false', value: false, code: 'if x then "yes" else "no" end' },
     { label: 'null', value: null, code: '??(x, "default")' },
-    { label: 'array', value: [1, 2, 3], code: 'count(x)' },
-    { label: 'empty array', value: [], code: 'count(x)' },
-    { label: 'object', value: { a: 1, b: 2 }, code: 'x.a + x.b' },
-    { label: 'nested object', value: { x: { y: 42 } }, code: 'x.x.y' },
+    { label: 'array', value: fromJS([1, 2, 3]), code: 'count(x)' },
+    { label: 'empty array', value: fromJS([]), code: 'count(x)' },
+    { label: 'object', value: fromJS({ a: 1, b: 2 }), code: 'x.a + x.b' },
+    { label: 'nested object', value: fromJS({ x: { y: 42 } }), code: 'x.x.y' },
   ]
 
   for (const { label, value, code } of resumeValues) {

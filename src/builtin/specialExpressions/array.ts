@@ -1,7 +1,8 @@
 import type { Any, Arr } from '../../interface'
-import type { AstNode } from '../../parser/types'
 import type { NodeTypes } from '../../constants/constants'
+import type { AstNode } from '../../parser/types'
 import { asAny } from '../../typeGuards/dvala'
+import { PersistentVector } from '../../utils/persistent'
 import type { BuiltinSpecialExpression, FunctionDocs } from '../interface'
 
 export type ArrayNode = [typeof NodeTypes.Array, AstNode[], number]
@@ -38,10 +39,10 @@ export const arraySpecialExpression: BuiltinSpecialExpression<Any, ArrayNode> = 
   arity: {},
   docs,
   evaluateAsNormalExpression: (params, sourceCodeInfo) => {
-    const result: Arr = []
+    let result: Arr = PersistentVector.empty()
 
     for (const param of params) {
-      result.push(asAny(param, sourceCodeInfo))
+      result = result.append(asAny(param, sourceCodeInfo))
     }
 
     return result
