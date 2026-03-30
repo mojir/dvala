@@ -451,11 +451,10 @@ export interface HandlerTransformFrame {
  * 2. If `resume` is called: continuation runs (handler reinstalled, deep semantics)
  * 3. If `resume` is NOT called: clause result becomes the handle block result (abort)
  *
- * This frame bridges the clause's result back to the perform call site.
- * - If `resumed` is true: the clause called resume, so resume's return value
- *   flows normally through the continuation
- * - If `resumed` is false (abort): clause result replaces the entire handle block result,
- *   bypassing the AlgebraicHandleFrame's transform
+ * When the clause body completes (via `applyHandlerClauseAbort`), the result
+ * propagates past the enclosing AlgebraicHandleFrame regardless of whether
+ * `resume` was called. Multi-shot is safe because this frame is never mutated
+ * after being pushed onto the continuation stack.
  */
 export interface HandlerClauseFrame {
   type: 'HandlerClause'
@@ -464,10 +463,6 @@ export interface HandlerClauseFrame {
   performK: ContinuationStack
   /** The handler to reinstall on resume (deep handler semantics). */
   handler: HandlerFunction
-  /** Whether resume was called. */
-  resumed: boolean
-  /** One-shot guard: true after resume is called once. */
-  resumeConsumed: boolean
   env: ContextStack
   sourceCodeInfo?: SourceCodeInfo
 }

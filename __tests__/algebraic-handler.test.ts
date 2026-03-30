@@ -124,12 +124,15 @@ describe('algebraic handler — resume', () => {
   })
 })
 
-describe('algebraic handler — one-shot constraint', () => {
-  it('calling resume twice throws a runtime error', () => {
-    expect(() => run(`
-      let h = handler @my.eff(x) -> do let a = resume(1); resume(2) end end;
+describe('algebraic handler — multi-shot continuations', () => {
+  it('calling resume twice returns results from both branches', () => {
+    // Multi-shot: both resume calls execute the continuation independently.
+    // First resume(1) returns 1, second resume(2) returns 2, concat gives [1, 2].
+    const result = run(`
+      let h = handler @my.eff(x) -> [resume(1)] ++ [resume(2)] end;
       h(-> perform(@my.eff, 0))
-    `)).toThrow(/one-shot/)
+    `)
+    expect(result).toEqual([1, 2])
   })
 })
 
