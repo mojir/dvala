@@ -987,8 +987,14 @@ export interface CodeTemplateBuildFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+import type { PersistentList } from '../utils/persistent/PersistentList'
+
 /**
- * Array type alias for readability — a continuation stack is just
- * an array of frames. The top of the stack is index 0.
+ * The continuation stack — a persistent linked list of frames.
+ * Head = top of stack (next frame to apply). Tail = rest of continuation.
+ *
+ * PersistentList gives O(1) push (cons) and pop (tail), and O(1) forking:
+ * to take a multi-shot continuation, just keep the reference. Two resumptions
+ * from the same snapshot share the same immutable list structure.
  */
-export type ContinuationStack = Frame[]
+export type ContinuationStack = PersistentList<Frame>

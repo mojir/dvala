@@ -17,7 +17,7 @@ function fromJsAny(value: unknown): Any {
 }
 
 // A minimal continuation stack for testing — standard effects don't inspect frames
-const emptyK: ContinuationStack = []
+const emptyK: ContinuationStack = null
 
 describe('standardEffects', () => {
   describe('standardEffectNames', () => {

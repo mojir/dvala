@@ -26,9 +26,9 @@ import { PersistentVector } from './PersistentVector'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const N_SMALL = 1_000   // exercises level-1/2 HAMT growth
+const N_SMALL = 1_000 // exercises level-1/2 HAMT growth
 const N_MEDIUM = 10_000 // exercises level-2/3 promotion, deep bitmap nodes
-const N_LARGE = 50_000  // ensures no off-by-one at any depth boundary
+const N_LARGE = 50_000 // ensures no off-by-one at any depth boundary
 
 // ---------------------------------------------------------------------------
 // PersistentMap stress tests

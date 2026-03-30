@@ -351,7 +351,7 @@ describe('PersistentMap', () => {
       const pm1 = PersistentMap.fromRecord(rec)
       const pm2 = pm1.assoc('key50', -1)
       expect(pm2.get('key50')).toBe(-1)
-      for (const k of Object.keys(rec).filter(k => k !== 'key50')) {
+      for (const k of Object.keys(rec).filter(key => key !== 'key50')) {
         expect(pm2.get(k)).toBe(rec[k])
       }
     })

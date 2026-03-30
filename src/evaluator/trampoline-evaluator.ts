@@ -72,7 +72,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
-import { isPersistentVector, PersistentVector, PersistentMap } from '../utils/persistent'
+import { cons, isPersistentVector, listDrop, listSize, listTake, listPrependAll, listToArray, PersistentVector, PersistentMap } from '../utils/persistent'
 import { isDvalaFunction, isHandlerFunction, isMacroFunction, isUserDefinedFunction } from '../typeGuards/dvalaFunction'
 import { assertNumber, isNumber } from '../typeGuards/number'
 import { assertString } from '../typeGuards/string'
@@ -260,7 +260,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo: env.resolve(node[2]),
       }
-      return { type: 'Eval', node: conditionNode, env, k: [frame, ...k] }
+      return { type: 'Eval', node: conditionNode, env, k: cons(frame, k) }
     }
     case NodeTypes.Block: {
       const nodes = node[1] as AstNode[]
@@ -280,7 +280,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env: newEnv,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: [frame, ...k] }
+      return { type: 'Eval', node: nodes[0]!, env: newEnv, k: cons(frame, k) }
     }
     case NodeTypes.Effect:
       return { type: 'Value', value: getEffectRef(node[1] as string), k }
@@ -301,9 +301,9 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (nodes.length === 1) {
         // Only one param — evaluate it, then recur
         const singleFrame: RecurFrame = { ...frame, index: 1 }
-        return { type: 'Eval', node: nodes[0]!, env, k: [singleFrame, ...k] }
+        return { type: 'Eval', node: nodes[0]!, env, k: cons(singleFrame, k) }
       }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+      return { type: 'Eval', node: nodes[0]!, env, k: cons(frame, k) }
     }
     case NodeTypes.Array: {
       const nodes = node[1] as AstNode[]
@@ -326,7 +326,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'Eval',
         node: isFirstSpread ? firstNode[1] : firstNode,
         env,
-        k: [frame, ...k],
+        k: cons(frame, k),
       }
     }
     case NodeTypes.Parallel: {
@@ -349,7 +349,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: allNodes[0]!, env, k: [frame, ...k] }
+      return { type: 'Eval', node: allNodes[0]!, env, k: cons(frame, k) }
     }
     case NodeTypes.Let: {
       const [target, valueNode] = node[1] as [BindingTarget, AstNode]
@@ -360,7 +360,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: valueNode, env, k: [frame, ...k] }
+      return { type: 'Eval', node: valueNode, env, k: cons(frame, k) }
     }
     case NodeTypes.Function: {
       const fn = node[1] as [BindingTarget[], AstNode[], ...unknown[]]
@@ -437,7 +437,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: handlerExpr, env, k: [setupFrame, ...k] }
+      return { type: 'Eval', node: handlerExpr, env, k: cons(setupFrame, k) }
     }
     case NodeTypes.Resume: {
       // resume(value), resume(), or bare resume reference.
@@ -464,7 +464,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: payload, env, k: [resumeCallFrame, ...k] }
+      return { type: 'Eval', node: payload, env, k: cons(resumeCallFrame, k) }
     }
     case NodeTypes.CodeTmpl: {
       const [bodyAst, spliceExprs] = node[1] as [AstNode[], AstNode[]]
@@ -489,7 +489,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: spliceExprs[0]!, env, k: [frame, ...k] }
+      return { type: 'Eval', node: spliceExprs[0]!, env, k: cons(frame, k) }
     }
     case NodeTypes.Object: {
       const entries = node[1] as (AstNode[] | AstNode)[]
@@ -513,7 +513,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         type: 'Eval',
         node: isFirstSpread ? (firstEntry as SpreadNode)[1] : (firstEntry as [AstNode, AstNode])[0],
         env,
-        k: [frame, ...k],
+        k: cons(frame, k),
       }
     }
     case NodeTypes.And: {
@@ -532,7 +532,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (nodes.length === 1) {
         return { type: 'Eval', node: nodes[0]!, env, k }
       }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+      return { type: 'Eval', node: nodes[0]!, env, k: cons(frame, k) }
     }
     case NodeTypes.Or: {
       const nodes = node[1] as AstNode[]
@@ -550,7 +550,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       if (nodes.length === 1) {
         return { type: 'Eval', node: nodes[0]!, env, k }
       }
-      return { type: 'Eval', node: nodes[0]!, env, k: [frame, ...k] }
+      return { type: 'Eval', node: nodes[0]!, env, k: cons(frame, k) }
     }
     case NodeTypes.Qq: {
       const nodes = node[1] as AstNode[]
@@ -569,7 +569,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: firstNode, env, k: [frame, ...k] }
+      return { type: 'Eval', node: firstNode, env, k: cons(frame, k) }
     }
     case NodeTypes.Match: {
       const [matchValueNode, cases] = node[1] as [AstNode, MatchCase[]]
@@ -584,7 +584,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: matchValueNode, env, k: [frame, ...k] }
+      return { type: 'Eval', node: matchValueNode, env, k: cons(frame, k) }
     }
     case NodeTypes.Loop: {
       const [bindings, body] = node[1] as [[BindingTarget, AstNode][], AstNode]
@@ -602,7 +602,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
           env: env.create(newContext),
           sourceCodeInfo,
         }
-        return { type: 'Eval', node: body, env: env.create(newContext), k: [frame, ...k] }
+        return { type: 'Eval', node: body, env: env.create(newContext), k: cons(frame, k) }
       }
       /* v8 ignore stop */
       // Start evaluating the first binding's value
@@ -616,7 +616,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: bindings[0]![1], env, k: [frame, ...k] }
+      return { type: 'Eval', node: bindings[0]![1], env, k: cons(frame, k) }
     }
     case NodeTypes.For: {
       const [loopBindings, body] = node[1] as [LoopBindingNode[], AstNode]
@@ -643,7 +643,7 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       // Evaluate the first binding's collection expression
       const firstBinding = loopBindings[0]!
       const collectionNode = firstBinding[0][1] // [target, valueNode] → valueNode
-      return { type: 'Eval', node: collectionNode, env: newEnv, k: [frame, ...k] }
+      return { type: 'Eval', node: collectionNode, env: newEnv, k: cons(frame, k) }
     }
     case NodeTypes.Import: {
       const moduleName = node[1] as string
@@ -681,10 +681,10 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         const sourceEnv = env.create({})
         const mergeFrame: ImportMergeFrame = { type: 'ImportMerge', tsFunctions: result, moduleName, module: dvalaModule, env, sourceCodeInfo }
         if (nodes.length === 1) {
-          return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [mergeFrame, ...k] }
+          return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: cons(mergeFrame, k) }
         }
         const sequenceFrame: SequenceFrame = { type: 'Sequence', nodes, index: 1, env: sourceEnv }
-        return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: [sequenceFrame, mergeFrame, ...k] }
+        return { type: 'Eval', node: nodes[0]!, env: sourceEnv, k: cons(sequenceFrame, cons(mergeFrame, k)) }
       }
       /* v8 ignore stop */
       env.registerValueModule(moduleName, result)
@@ -722,7 +722,7 @@ function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: Cont
     sourceCodeInfo,
   }
 
-  return { type: 'Eval', node: segments[0]!, env, k: [frame, ...k] }
+  return { type: 'Eval', node: segments[0]!, env, k: cons(frame, k) }
 }
 
 // ---------------------------------------------------------------------------
@@ -780,12 +780,12 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
 
   if (startIndex >= argNodes.length) {
     // No real args to evaluate — dispatch immediately
-    return dispatchCall(evalArgsFrame, [nanFrame, ...k])
+    return dispatchCall(evalArgsFrame, cons(nanFrame, k))
   }
 
   // Start evaluating the first real argument
   const firstArg = argNodes[startIndex]!
-  const newK: ContinuationStack = [evalArgsFrame, nanFrame, ...k]
+  const newK: ContinuationStack = cons(evalArgsFrame, cons(nanFrame, k))
   if (isSpreadNode(firstArg)) {
     return { type: 'Eval', node: firstArg[1], env, k: newK }
   }
@@ -887,7 +887,7 @@ function dispatchCall(frame: EvalArgsFrame, k: ContinuationStack): Step | Promis
       env,
       sourceCodeInfo,
     }
-    return { type: 'Eval', node: fnNode, env, k: [callFrame, ...k] }
+    return { type: 'Eval', node: fnNode, env, k: cons(callFrame, k) }
   }
 }
 
@@ -979,7 +979,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         sourceCodeInfo,
       }
       // Call the thunk with no arguments, with the handler frame on the stack
-      return dispatchFunction(thunkFn, PersistentVector.empty(), [], env, sourceCodeInfo, [handleFrame, ...k])
+      return dispatchFunction(thunkFn, PersistentVector.empty(), [], env, sourceCodeInfo, cons(handleFrame, k))
     }
     case 'Resume': {
       // resume(value) — execute the resume logic.
@@ -1025,13 +1025,14 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // where the HandlerClauseFrame will catch the value when resume "returns".
 
       // Strip the old AlgebraicHandleFrame from performK
-      const innerFrames = performK.slice(0, performK.length - 1)
+      // performK = [inner frames..., AlgebraicHandleFrame] — drop the last frame (the handle frame)
+      const innerFrames = listTake(performK, listSize(performK) - 1)
 
       // The k currently has [clauseFrame?, ...outerK] — but actually we're inside
       // dispatchDvalaFunction, so k is whatever was passed. The clauseFrame is
       // already on k from the clause body evaluation.
       // We want the resumed continuation to flow back through the clauseFrame.
-      const reinstalledK: ContinuationStack = [...innerFrames, newHandleFrame, ...k]
+      const reinstalledK: ContinuationStack = listPrependAll(listToArray(innerFrames), cons(newHandleFrame, k))
 
       return { type: 'Value', value: resumeValue, k: reinstalledK }
     }
@@ -1054,7 +1055,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
     // Complement: call wrapped function, then negate result
     case 'Complement': {
       const frame: ComplementFrame = { type: 'Complement', sourceCodeInfo }
-      return dispatchFunction(fn.function, params, [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(fn.function, params, [], env, sourceCodeInfo, cons(frame, k))
     }
     // Comp: chain function calls right-to-left
     case 'Comp': {
@@ -1067,7 +1068,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       // Start with the last function
       const startIndex = fns.size - 1
       const frame: CompFrame = { type: 'Comp', fns, index: startIndex - 1, env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns.get(startIndex), sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(asFunctionLike(fns.get(startIndex), sourceCodeInfo), params, [], env, sourceCodeInfo, cons(frame, k))
     }
     // Juxt: call each function with same params, collect results
     case 'Juxt': {
@@ -1076,7 +1077,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
         return { type: 'Value', value: PersistentVector.empty(), k }
       }
       const frame: JuxtFrame = { type: 'Juxt', fns, params, index: 1, results: PersistentVector.empty(), env, sourceCodeInfo }
-      return dispatchFunction(asFunctionLike(fns.get(0), sourceCodeInfo), params, [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(asFunctionLike(fns.get(0), sourceCodeInfo), params, [], env, sourceCodeInfo, cons(frame, k))
     }
     // EveryPred: short-circuit AND across all (predicate, param) pairs
     case 'EveryPred': {
@@ -1091,7 +1092,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: EveryPredFrame = { type: 'EveryPred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, cons(frame, k))
     }
     // SomePred: short-circuit OR across all (predicate, param) pairs
     case 'SomePred': {
@@ -1106,7 +1107,7 @@ function dispatchDvalaFunction(fn: DvalaFunction, params: Arr, env: ContextStack
       }
       const frame: SomePredFrame = { type: 'SomePred', checks, index: 1, env, sourceCodeInfo }
       const firstCheck = checks[0]!
-      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, [frame, ...k])
+      return dispatchFunction(firstCheck.fn, PersistentVector.from([firstCheck.param]), [], env, sourceCodeInfo, cons(frame, k))
     }
     case 'SpecialBuiltin': {
       const specialExpression = asNonUndefined(builtin.specialExpressions[fn.specialBuiltinSymbolType], sourceCodeInfo)
@@ -1204,7 +1205,7 @@ function continueArgSlotBinding(
       outerEnv,
       sourceCodeInfo,
     }
-    return startBindingSlots(argTarget, param, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
+    return startBindingSlots(argTarget, param, bindingEnv, sourceCodeInfo, cons(completeFrame, k))
   }
 
   // Phase 2: Bind args needing defaults
@@ -1245,7 +1246,7 @@ function handleRestArgAndBody(
       outerEnv,
       sourceCodeInfo,
     }
-    return startBindingSlots(restArgument, rest, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
+    return startBindingSlots(restArgument, rest, bindingEnv, sourceCodeInfo, cons(completeFrame, k))
   }
 
   // No rest arg - proceed directly to body
@@ -1279,7 +1280,7 @@ function proceedToFnBody(
     sourceCodeInfo,
   }
 
-  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: [fnBodyFrame, ...k] }
+  return { type: 'Eval', node: bodyNodes[0]!, env: bodyEnv, k: cons(fnBodyFrame, k) }
 }
 
 // ---------------------------------------------------------------------------
@@ -1444,7 +1445,7 @@ function applySequence(frame: SequenceFrame, _value: Any, k: ContinuationStack):
     // Last node — no need for frame
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
-  return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
 function applyIfBranch(frame: IfBranchFrame, value: Any, k: ContinuationStack): Step {
@@ -1516,7 +1517,7 @@ function applyAnd(frame: AndFrame, value: Any, k: ContinuationStack): Step {
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
   const newFrame: AndFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
 function applyOr(frame: OrFrame, value: Any, k: ContinuationStack): Step {
@@ -1531,7 +1532,7 @@ function applyOr(frame: OrFrame, value: Any, k: ContinuationStack): Step {
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
   const newFrame: OrFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
 function applyQq(frame: QqFrame, value: Any, k: ContinuationStack): Step {
@@ -1548,7 +1549,7 @@ function applyQq(frame: QqFrame, value: Any, k: ContinuationStack): Step {
     return { type: 'Eval', node: nodes[index]!, env, k }
   }
   const newFrame: QqFrame = { ...frame, index: index + 1 }
-  return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
 function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k: ContinuationStack): Step {
@@ -1561,7 +1562,7 @@ function applyTemplateStringBuild(frame: TemplateStringBuildFrame, value: Any, k
   }
 
   const newFrame: TemplateStringBuildFrame = { ...frame, index: nextIndex, result }
-  return { type: 'Eval', node: segments[nextIndex]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: segments[nextIndex]!, env, k: cons(newFrame, k) }
 }
 
 function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStack): Step {
@@ -1594,7 +1595,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
     type: 'Eval',
     node: isNextSpread ? nextNode[1] : nextNode,
     env,
-    k: [newFrame, ...k],
+    k: cons(newFrame, k),
   }
 }
 
@@ -1621,7 +1622,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
       env,
-      k: [newFrame, ...k],
+      k: cons(newFrame, k),
     }
   }
 
@@ -1631,7 +1632,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
     const pair = entries[frame.index] as [AstNode, AstNode]
     const valueNode = pair[1]
     const newFrame: ObjectBuildFrame = { ...frame, currentKey: value }
-    return { type: 'Eval', node: valueNode, env, k: [newFrame, ...k] }
+    return { type: 'Eval', node: valueNode, env, k: cons(newFrame, k) }
   } else {
     // We just evaluated a value expression — assoc the key-value pair into result
     const newResult = frame.result.assoc(frame.currentKey, value)
@@ -1647,7 +1648,7 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
       type: 'Eval',
       node: isNextSpread ? (nextEntry as SpreadNode)[1] : (nextEntry as [AstNode, AstNode])[0],
       env,
-      k: [newFrame, ...k],
+      k: cons(newFrame, k),
     }
   }
 }
@@ -1664,7 +1665,7 @@ function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): St
   }
 
   // Start processing binding slots with linearized approach
-  return startBindingSlots(target, value, env, sourceCodeInfo, [completeFrame, ...k])
+  return startBindingSlots(target, value, env, sourceCodeInfo, cons(completeFrame, k))
 }
 
 function applyLetBindComplete(frame: LetBindCompleteFrame, record: Any, k: ContinuationStack): Step {
@@ -1695,7 +1696,7 @@ function applyLoopBind(frame: LoopBindFrame, value: Any, k: ContinuationStack): 
   }
 
   // Start processing binding slots with linearized approach
-  return startBindingSlots(target, value, env.create(context), sourceCodeInfo, [completeFrame, ...k])
+  return startBindingSlots(target, value, env.create(context), sourceCodeInfo, cons(completeFrame, k))
 }
 
 function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: ContinuationStack): Step {
@@ -1719,7 +1720,7 @@ function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: Con
       env: loopEnv,
       sourceCodeInfo,
     }
-    return { type: 'Eval', node: body, env: loopEnv, k: [iterateFrame, ...k] }
+    return { type: 'Eval', node: body, env: loopEnv, k: cons(iterateFrame, k) }
   }
 
   // Evaluate next binding's value expression (in context with previous bindings)
@@ -1733,7 +1734,7 @@ function applyLoopBindComplete(frame: LoopBindCompleteFrame, record: Any, k: Con
     env,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: bindings[nextIndex]![1], env: env.create(context), k: [newFrame, ...k] }
+  return { type: 'Eval', node: bindings[nextIndex]![1], env: env.create(context), k: cons(newFrame, k) }
 }
 
 function applyLoopIterate(_frame: LoopIterateFrame, value: Any, k: ContinuationStack): Step {
@@ -1792,7 +1793,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
         env,
         sourceCodeInfo,
       }
-      return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, [completeFrame, ...k])
+      return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, cons(completeFrame, k))
     }
 
     case 'evalWhen': {
@@ -1806,7 +1807,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       const whileNode = binding[3]
       if (whileNode) {
         const newFrame: ForLoopFrame = { ...frame, phase: 'evalWhile' }
-        return { type: 'Eval', node: whileNode, env, k: [newFrame, ...k] }
+        return { type: 'Eval', node: whileNode, env, k: cons(newFrame, k) }
       }
       return processForNextLevel(frame, k)
     }
@@ -1872,7 +1873,7 @@ function advanceForElement(frame: ForLoopFrame, k: ContinuationStack): Step | Pr
     env,
     sourceCodeInfo,
   }
-  return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, [completeFrame, ...k])
+  return startBindingSlots(targetNode, elValue, env, sourceCodeInfo, cons(completeFrame, k))
 }
 
 /** Handle completion of for-loop element binding. */
@@ -1919,7 +1920,7 @@ function startForLetBindings(
     env,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: bindingValue, env, k: [letBindFrame, ...k] }
+  return { type: 'Eval', node: bindingValue, env, k: cons(letBindFrame, k) }
 }
 
 /** Handle continuation after evaluating a for-loop let-binding value or destructuring. */
@@ -1943,7 +1944,7 @@ function applyForLetBind(frame: ForLetBindFrame, value: Any, k: ContinuationStac
       env,
       sourceCodeInfo,
     }
-    return startBindingSlots(target, value, env, sourceCodeInfo, [destructureFrame, ...k])
+    return startBindingSlots(target, value, env, sourceCodeInfo, cons(destructureFrame, k))
   }
 
   // phase === 'destructure' — binding record received
@@ -1971,12 +1972,12 @@ function processForGuards(frame: ForLoopFrame, levelStates: ForLoopFrame['levelS
 
   if (whenNode) {
     const newFrame: ForLoopFrame = { ...frame, levelStates, phase: 'evalWhen' }
-    return { type: 'Eval', node: whenNode, env, k: [newFrame, ...k] }
+    return { type: 'Eval', node: whenNode, env, k: cons(newFrame, k) }
   }
 
   if (whileNode) {
     const newFrame: ForLoopFrame = { ...frame, levelStates, phase: 'evalWhile' }
-    return { type: 'Eval', node: whileNode, env, k: [newFrame, ...k] }
+    return { type: 'Eval', node: whileNode, env, k: cons(newFrame, k) }
   }
 
   return processForNextLevel({ ...frame, levelStates }, k)
@@ -1996,7 +1997,7 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
       phase: 'evalCollection',
       bindingLevel: nextLevel,
     }
-    return { type: 'Eval', node: collectionNode, env, k: [newFrame, ...k] }
+    return { type: 'Eval', node: collectionNode, env, k: cons(newFrame, k) }
   }
 
   // All levels bound — evaluate the body
@@ -2006,7 +2007,7 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
   // may be separate objects, so mutations to frame.context won't be visible
   // through frame.env. Pushing frame.context on top guarantees current values.
   const bodyEnv = env.create(frame.context)
-  return { type: 'Eval', node: body, env: bodyEnv, k: [newFrame, ...k] }
+  return { type: 'Eval', node: body, env: bodyEnv, k: cons(newFrame, k) }
 }
 
 /**
@@ -2031,7 +2032,10 @@ function processForNextLevel(frame: ForLoopFrame, k: ContinuationStack): Step {
  * is found. Used to give errors from macro-expanded code a meaningful location.
  */
 function findMacroCallSiteInfo(k: ContinuationStack): SourceCodeInfo | undefined {
-  for (const frame of k) {
+  let _node = k
+  while (_node !== null) {
+    const frame = _node.head
+    _node = _node.tail
     if (frame.type === 'MacroEval')
       return frame.sourceCodeInfo
   }
@@ -2135,8 +2139,10 @@ function tryDispatchDvalaError(
   // handler that can catch it. Otherwise return null (caller re-throws).
   //
   // Walk k looking for AlgebraicHandle frames with @dvala.error clauses
-  for (let i = 0; i < k.length; i++) {
-    const frame = k[i]!
+  let _node = k
+  while (_node !== null) {
+    const frame = _node.head
+    _node = _node.tail
     if (frame.type === 'AlgebraicHandle') {
       if (frame.handler.clauseMap.has('dvala.error')) {
         return { type: 'Perform', effect, arg, k, sourceCodeInfo: error.sourceCodeInfo }
@@ -2158,7 +2164,7 @@ function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step |
 
   // Evaluate next param
   const newFrame: RecurFrame = { ...frame, index: index + 1, params: newParams }
-  return { type: 'Eval', node: nodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nodes[index]!, env, k: cons(newFrame, k) }
 }
 
 /**
@@ -2167,13 +2173,15 @@ function applyRecur(frame: RecurFrame, value: Any, k: ContinuationStack): Step |
  * Uses frame-based slot binding for proper suspension support.
  */
 function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCodeInfo | undefined): Step {
-  for (let i = 0; i < k.length; i++) {
-    const frame = k[i]!
+  let _node = k
+  while (_node !== null) {
+    const frame = _node.head
+    const remainingK = _node.tail
+    _node = remainingK
 
     if (frame.type === 'LoopIterate') {
       // Found loop frame — start rebinding using slots
       const { bindings, bindingContext, body, env } = frame
-      const remainingK = k.slice(i + 1)
 
       if (params.size !== bindings.length) {
         throw new TypeError(
@@ -2189,7 +2197,6 @@ function handleRecur(params: Arr, k: ContinuationStack, sourceCodeInfo: SourceCo
     if (frame.type === 'FnBody') {
       // Found function body frame — restart with new params
       const { fn, outerEnv } = frame
-      const remainingK = k.slice(i + 1)
       return setupUserDefinedCall(fn, params, outerEnv, frame.sourceCodeInfo, remainingK)
     }
   }
@@ -2229,7 +2236,7 @@ function startRecurLoopRebind(
       env,
       sourceCodeInfo,
     }
-    return { type: 'Eval', node: body, env, k: [newIterateFrame, ...remainingK] }
+    return { type: 'Eval', node: body, env, k: cons(newIterateFrame, remainingK) }
   }
 
   // Bind current node using slots
@@ -2248,7 +2255,7 @@ function startRecurLoopRebind(
     sourceCodeInfo,
   }
 
-  return startBindingSlots(target, param, env, sourceCodeInfo, [rebindFrame, ...remainingK])
+  return startBindingSlots(target, param, env, sourceCodeInfo, cons(rebindFrame, remainingK))
 }
 
 /**
@@ -2286,10 +2293,10 @@ function applyWithHandlerSetup(frame: WithHandlerSetupFrame, value: Any, k: Cont
 
   const { bodyExprs, env } = frame
   if (bodyExprs.length === 0) {
-    return { type: 'Value', value: null, k: [handleFrame, ...k] }
+    return { type: 'Value', value: null, k: cons(handleFrame, k) }
   }
   if (bodyExprs.length === 1) {
-    return { type: 'Eval', node: bodyExprs[0]!, env, k: [handleFrame, ...k] }
+    return { type: 'Eval', node: bodyExprs[0]!, env, k: cons(handleFrame, k) }
   }
   const sequenceFrame: SequenceFrame = {
     type: 'Sequence',
@@ -2298,7 +2305,7 @@ function applyWithHandlerSetup(frame: WithHandlerSetupFrame, value: Any, k: Cont
     env,
     sourceCodeInfo: frame.sourceCodeInfo,
   }
-  return { type: 'Eval', node: bodyExprs[0]!, env, k: [sequenceFrame, handleFrame, ...k] }
+  return { type: 'Eval', node: bodyExprs[0]!, env, k: cons(sequenceFrame, cons(handleFrame, k)) }
 }
 
 // ---------------------------------------------------------------------------
@@ -2339,7 +2346,7 @@ function applyHandlerTransform(handler: HandlerFunction, value: Any, _env: Conte
   }
 
   // Bind param and evaluate transform body
-  return startTransformClause(paramTarget, bodyExprs, value, closureEnv, sourceCodeInfo, [transformFrame, ...k])
+  return startTransformClause(paramTarget, bodyExprs, value, closureEnv, sourceCodeInfo, cons(transformFrame, k))
 }
 
 /**
@@ -2380,7 +2387,7 @@ function startTransformClause(
     env: bodyEnv,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: bodyExprs[0]!, env: bodyEnv, k: [seqFrame, ...k] }
+  return { type: 'Eval', node: bodyExprs[0]!, env: bodyEnv, k: cons(seqFrame, k) }
 }
 
 /**
@@ -2399,11 +2406,13 @@ function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: Conti
     // (abort from the outer handler's perspective).
     //
     // Pop past the AlgebraicHandleFrame on k
-    for (let i = 0; i < k.length; i++) {
-      if (k[i]!.type === 'AlgebraicHandle') {
+    let _node = k
+    while (_node !== null) {
+      if (_node.head.type === 'AlgebraicHandle') {
         // Skip the AlgebraicHandleFrame — abort bypasses transform
-        return { type: 'Value', value, k: k.slice(i + 1) }
+        return { type: 'Value', value, k: _node.tail }
       }
+      _node = _node.tail
     }
     // No AlgebraicHandleFrame found — should not happen, but return value
     return { type: 'Value', value, k }
@@ -2411,10 +2420,12 @@ function applyHandlerClauseAbort(frame: HandlerClauseFrame, value: Any, k: Conti
 
   // Clause did NOT call resume — pure abort.
   // Pop past the AlgebraicHandleFrame to bypass the transform.
-  for (let i = 0; i < k.length; i++) {
-    if (k[i]!.type === 'AlgebraicHandle') {
-      return { type: 'Value', value, k: k.slice(i + 1) }
+  let _node = k
+  while (_node !== null) {
+    if (_node.head.type === 'AlgebraicHandle') {
+      return { type: 'Value', value, k: _node.tail }
     }
+    _node = _node.tail
   }
   return { type: 'Value', value, k }
 }
@@ -2448,10 +2459,10 @@ function dispatchAlgebraicHandler(
   // 3. Run clause body with params bound + resume in scope
 
   // performK = continuation from perform call site up to and including the AlgebraicHandleFrame
-  const performK = k.slice(0, frameIndex + 1)
+  const performK = listTake(k, frameIndex + 1)
 
   // outerK = continuation past the AlgebraicHandleFrame (clause runs outside handler scope)
-  const outerK = k.slice(frameIndex + 1)
+  const outerK = listDrop(k, frameIndex + 1)
 
   // Create the HandlerClauseFrame — bridges clause result back
   const clauseFrame: HandlerClauseFrame = {
@@ -2522,7 +2533,7 @@ function dispatchAlgebraicHandler(
   // Evaluate clause body — runs outside the handler scope (outerK, not k)
   const clauseBodyExprs = clause.body
   if (clauseBodyExprs.length === 1) {
-    return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: [clauseFrame, ...outerK] }
+    return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: cons(clauseFrame, outerK) }
   }
   const seqFrame: SequenceFrame = {
     type: 'Sequence',
@@ -2531,7 +2542,7 @@ function dispatchAlgebraicHandler(
     env: clauseEnv,
     sourceCodeInfo,
   }
-  return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: [seqFrame, clauseFrame, ...outerK] }
+  return { type: 'Eval', node: clauseBodyExprs[0]!, env: clauseEnv, k: cons<Frame>(seqFrame, cons<Frame>(clauseFrame, outerK)) }
 }
 
 /**
@@ -2600,7 +2611,7 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
 
   // Evaluate next arg
   const newFrame: PerformArgsFrame = { ...frame, index: index + 1, params: newParams }
-  return { type: 'Eval', node: argNodes[index]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: argNodes[index]!, env, k: cons<Frame>(newFrame, k) }
 }
 
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {
@@ -2627,10 +2638,10 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   // Skip for dvala.macro.expand — macro expansion is internal machinery, not a suspension point.
   if (snapshotState?.autoCheckpoint && effect.name !== 'dvala.checkpoint' && effect.name !== 'dvala.macro.expand') {
     // Skip if we're already inside an auto-checkpoint dispatch (phase: 'awaitEffect').
-    const topFrame = k[0]
+    const topFrame = k?.head
     if (topFrame?.type === 'AutoCheckpoint' && topFrame.phase === 'awaitEffect') {
       // Pop the marker frame and dispatch the original effect normally.
-      k = k.slice(1)
+      k = k!.tail
     } else {
       const autoCheckpointFrame: AutoCheckpointFrame = {
         type: 'AutoCheckpoint',
@@ -2640,20 +2651,25 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
         sourceCodeInfo,
       }
       const checkpointMessage = `Auto checkpoint before ${effect.name}`
-      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), arg: checkpointMessage, k: [autoCheckpointFrame, ...k], sourceCodeInfo }
+      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), arg: checkpointMessage, k: cons<Frame>(autoCheckpointFrame, k), sourceCodeInfo }
     }
   }
 
-  for (let i = 0; i < k.length; i++) {
-    const frame = k[i]!
+  // Walk the continuation stack looking for AlgebraicHandleFrame handlers.
+  let searchNode = k
+  let frameIndex = 0
+  while (searchNode !== null) {
+    const frame = searchNode.head
     if (frame.type === 'AlgebraicHandle') {
       // New handler system — try named clause dispatch
-      const result = dispatchAlgebraicHandler(frame, effect, arg, k, i, sourceCodeInfo)
+      const result = dispatchAlgebraicHandler(frame, effect, arg, k, frameIndex, sourceCodeInfo)
       if (result !== null) {
         return result
       }
       // No matching clause — propagate past this handler (continue loop)
     }
+    searchNode = searchNode.tail
+    frameIndex++
   }
 
   // No matching local handler found — dispatch to host handler if available.
@@ -2669,12 +2685,12 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   }
 
   // dvala.macro.expand — default handler calls the macro function directly.
-  // The MacroEvalFrame on k[0] provides the calling scope for evaluating the result.
+  // The MacroEvalFrame on k?.head provides the calling scope for evaluating the result.
   if (effect.name === 'dvala.macro.expand') {
     // payload is a PM: { fn: MacroFunction, args: PV<PV<AstNode>> }
     // (fromJS was applied at callMacro: fn passes through, args are PV-converted)
     const payloadPM = arg as unknown as PersistentMap<Any>
-    const macroEvalFrame = k[0] as MacroEvalFrame
+    const macroEvalFrame = k!.head as MacroEvalFrame
     const macroFn_ = payloadPM.get('fn') as unknown as UserDefinedFunction
     // args is a PV of PV-converted AST nodes — each element is already a PV
     const argsAsPV = payloadPM.get('args') as unknown as Arr
@@ -2969,7 +2985,7 @@ async function runBranch(
   handlers: Handlers | undefined,
   signal: AbortSignal,
 ): Promise<RunResult> {
-  const initial: Step = { type: 'Eval', node, env, k: [] }
+  const initial: Step = { type: 'Eval', node, env, k: null }
   return runEffectLoop(initial, handlers, signal)
 }
 
@@ -3049,7 +3065,7 @@ async function executeParallelBranches(
       completedBranches,
       suspendedBranches: suspendedBranches.slice(1), // remaining after the first
     }
-    const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
+    const resumeK: ContinuationStack = cons<Frame>(parallelResumeFrame, k)
 
     // Throw SuspensionSignal with the first suspended branch's meta and effect info
     const firstSuspended = suspendedBranches[0]!
@@ -3231,7 +3247,7 @@ function handleParallelResume(
       completedBranches: updatedCompleted,
       suspendedBranches: remaining,
     }
-    const resumeK: ContinuationStack = [parallelResumeFrame, ...k]
+    const resumeK: ContinuationStack = cons<Frame>(parallelResumeFrame, k)
     return throwSuspension(resumeK, nextSuspended.snapshot.meta, nextSuspended.snapshot.effectName, nextSuspended.snapshot.effectArg)
   }
 
@@ -3282,9 +3298,9 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
   const newFrame: EvalArgsFrame = { ...frame, params: newParams, index: nextIndex }
   const nextArg = argNodes[nextIndex]!
   if (isSpreadNode(nextArg)) {
-    return { type: 'Eval', node: nextArg[1], env, k: [newFrame, ...k] }
+    return { type: 'Eval', node: nextArg[1], env, k: cons<Frame>(newFrame, k) }
   }
-  return { type: 'Eval', node: nextArg, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: nextArg, env, k: cons<Frame>(newFrame, k) }
 }
 
 function applyCallFn(frame: CallFnFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
@@ -3310,7 +3326,7 @@ function applyFnBody(frame: FnBodyFrame, value: Any, k: ContinuationStack): Step
   // This replaces the old FnBodyFrame rather than growing the stack — achieving
   // proper tail call elimination.
   const newFrame: FnBodyFrame = { ...frame, bodyIndex: bodyIndex + 1 }
-  return { type: 'Eval', node: bodyNodes[bodyIndex]!, env, k: [newFrame, ...k] }
+  return { type: 'Eval', node: bodyNodes[bodyIndex]!, env, k: cons<Frame>(newFrame, k) }
 }
 
 /**
@@ -3340,7 +3356,7 @@ function applyFnArgBind(frame: FnArgBindFrame, value: Any, k: ContinuationStack)
     sourceCodeInfo,
   }
 
-  return startBindingSlots(arg, value, bindingEnv, sourceCodeInfo, [completeFrame, ...k])
+  return startBindingSlots(arg, value, bindingEnv, sourceCodeInfo, cons<Frame>(completeFrame, k))
 }
 
 /**
@@ -3415,7 +3431,7 @@ function continueBindingArgs(
       outerEnv,
       sourceCodeInfo,
     }
-    return { type: 'Eval', node: defaultNode, env: bindingEnv, k: [frame, ...k] }
+    return { type: 'Eval', node: defaultNode, env: bindingEnv, k: cons<Frame>(frame, k) }
   }
 
   // All non-rest args bound, handle rest argument and proceed to body
@@ -3503,7 +3519,7 @@ function continueBindingSlots(
         env,
         sourceCodeInfo,
       }
-      return { type: 'Eval', node: slot.defaultNode, env, k: [frame, ...k] }
+      return { type: 'Eval', node: slot.defaultNode, env, k: cons<Frame>(frame, k) }
     }
 
     const resolvedValue = value ?? null
@@ -3656,7 +3672,7 @@ function continueMatchSlots(
           env,
           sourceCodeInfo,
         }
-        return { type: 'Eval', node: slot.literalNode!, env, k: [frame, ...k] }
+        return { type: 'Eval', node: slot.literalNode!, env, k: cons<Frame>(frame, k) }
       }
 
       case 'rest': {
@@ -3695,7 +3711,7 @@ function continueMatchSlots(
               env,
               sourceCodeInfo,
             }
-            return { type: 'Eval', node: slot.defaultNode, env, k: [frame, ...k] }
+            return { type: 'Eval', node: slot.defaultNode, env, k: cons<Frame>(frame, k) }
           }
           // No default, bind null
           record[slot.name!] = value ?? null
@@ -3758,7 +3774,7 @@ function matchSucceeded(
     // Need to evaluate guard with bindings in scope
     const guardEnv = env.create(context)
     const guardFrame: MatchFrame = { ...matchFrame, phase: 'guard', bindings }
-    return { type: 'Eval', node: guard, env: guardEnv, k: [guardFrame, ...k] }
+    return { type: 'Eval', node: guard, env: guardEnv, k: cons<Frame>(guardFrame, k) }
   }
 
   // No guard — evaluate body directly
@@ -3794,7 +3810,7 @@ function applyComp(frame: CompFrame, value: Any, k: ContinuationStack): Step | P
 
   // Call the next function in the chain
   const nextFrame: CompFrame = { type: 'Comp', fns, index: index - 1, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), nextParams, [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), nextParams, [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
 }
 
 /**
@@ -3812,7 +3828,7 @@ function applyJuxt(frame: JuxtFrame, value: Any, k: ContinuationStack): Step | P
 
   // Call the next function
   const nextFrame: JuxtFrame = { type: 'Juxt', fns, params, index: index + 1, results: newResults, env, sourceCodeInfo }
-  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), params, [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(asFunctionLike(fns.get(index), sourceCodeInfo), params, [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
 }
 
 /**
@@ -3834,7 +3850,7 @@ function applyEveryPred(frame: EveryPredFrame, value: Any, k: ContinuationStack)
   // Continue to next check
   const nextFrame: EveryPredFrame = { type: 'EveryPred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
 }
 
 /**
@@ -3856,7 +3872,7 @@ function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): 
   // Continue to next check
   const nextFrame: SomePredFrame = { type: 'SomePred', checks, index: index + 1, env, sourceCodeInfo }
   const check = checks[index]!
-  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, [nextFrame, ...k])
+  return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
 }
 
 function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
@@ -3878,7 +3894,7 @@ function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): 
     arg: frame.arg,
     sourceCodeInfo: frame.sourceCodeInfo,
   }
-  return { type: 'Perform', effect: frame.effect, arg: frame.arg, k: [markerFrame, ...k], sourceCodeInfo: frame.sourceCodeInfo }
+  return { type: 'Perform', effect: frame.effect, arg: frame.arg, k: cons<Frame>(markerFrame, k), sourceCodeInfo: frame.sourceCodeInfo }
 }
 
 // ---------------------------------------------------------------------------
@@ -3899,7 +3915,10 @@ function callMacro(
 ): Step {
   // Guard against infinite macro expansion by counting MacroEvalFrame instances on the stack
   let depth = 0
-  for (const frame of k) {
+  let macroCheckNode = k
+  while (macroCheckNode !== null) {
+    const frame = macroCheckNode.head
+    macroCheckNode = macroCheckNode.tail
     if (frame.type === 'MacroEval') {
       depth += 1
       if (depth >= MAX_MACRO_EXPANSION_DEPTH) {
@@ -3927,7 +3946,7 @@ function callMacro(
       PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
       env,
       sourceCodeInfo,
-      [macroEvalFrame, ...k],
+      cons<Frame>(macroEvalFrame, k),
     )
   }
 
@@ -3940,7 +3959,7 @@ function callMacro(
     type: 'Perform',
     effect: getEffectRef('dvala.macro.expand'),
     arg: payload,
-    k: [macroEvalFrame, ...k],
+    k: cons<Frame>(macroEvalFrame, k),
     sourceCodeInfo,
   }
 }
@@ -3970,7 +3989,7 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
   // Dispatch auto-converts plain arrays to PV; convert back to plain array for stepNode.
   const astNode = (isPersistentVector(value) ? toJS(value as Any) : value) as AstNode
-  return { type: 'Eval', node: astNode, env: frame.env, k: [marker, ...k] }
+  return { type: 'Eval', node: astNode, env: frame.env, k: cons<Frame>(marker, k) }
 }
 
 // ---------------------------------------------------------------------------
@@ -3987,7 +4006,7 @@ function applyCodeTemplateBuild(frame: CodeTemplateBuildFrame, value: Any, k: Co
 
   // More splices to evaluate
   if (frame.index < frame.spliceExprs.length) {
-    return { type: 'Eval', node: frame.spliceExprs[frame.index]!, env: frame.env, k: [frame, ...k] }
+    return { type: 'Eval', node: frame.spliceExprs[frame.index]!, env: frame.env, k: cons<Frame>(frame, k) }
   }
 
   // All splices evaluated — assemble the AST data with hygiene renames
@@ -4504,11 +4523,10 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
   try {
     switch (step.type) {
       case 'Value': {
-        if (step.k.length === 0) {
+        if (step.k === null) {
           return step // Terminal state — program is complete
         }
-        const [frame, ...rest] = step.k
-        return applyFrame(frame!, step.value, rest)
+        return applyFrame(step.k.head, step.value, step.k.tail)
       }
       case 'Eval':
         return stepNode(step.node, step.env, step.k)
@@ -4551,7 +4569,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // For Eval/Apply steps, step.k already excludes the frame that caused
       // the error, so no stripping is needed.
       const kForDispatch = step.type === 'Value'
-        ? step.k.slice(1)
+        ? step.k?.tail ?? null
         : step.k
 
       // If the error has no source location and we're inside a macro expansion,
@@ -4591,7 +4609,7 @@ export function runSyncTrampoline(initial: Step, effectHandlers?: Handlers): Any
     if (step instanceof Promise) {
       throw new RuntimeError('Unexpected async operation in synchronous context.', undefined)
     }
-    if (step.type === 'Value' && step.k.length === 0) {
+    if (step.type === 'Value' && step.k === null) {
       return step.value
     }
     step = tick(step, effectHandlers)
@@ -4608,7 +4626,7 @@ export async function runAsyncTrampoline(initial: Step): Promise<Any> {
     if (step instanceof Promise) {
       step = await step
     }
-    if (step.type === 'Value' && step.k.length === 0) {
+    if (step.type === 'Value' && step.k === null) {
       return step.value
     }
     step = tick(step)
@@ -4624,10 +4642,10 @@ export async function runAsyncTrampoline(initial: Step): Promise<Any> {
  */
 function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
   if (nodes.length === 0) {
-    return { type: 'Value', value: null, k: [] }
+    return { type: 'Value', value: null, k: null }
   }
   if (nodes.length === 1) {
-    return { type: 'Eval', node: nodes[0]!, env, k: [] }
+    return { type: 'Eval', node: nodes[0]!, env, k: null }
   }
   const sequenceFrame: SequenceFrame = {
     type: 'Sequence',
@@ -4635,7 +4653,7 @@ function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
     index: 1,
     env,
   }
-  return { type: 'Eval', node: nodes[0]!, env, k: [sequenceFrame] }
+  return { type: 'Eval', node: nodes[0]!, env, k: cons<Frame>(sequenceFrame, null) }
 }
 
 /**
@@ -4702,12 +4720,12 @@ export function evaluateAsync(ast: Ast, contextStack: ContextStack): Promise<Any
  * and other utilities.
  */
 export function evaluateNode(node: AstNode, contextStack: ContextStack): MaybePromise<Any> {
-  const initial: Step = { type: 'Eval', node, env: contextStack, k: [] }
+  const initial: Step = { type: 'Eval', node, env: contextStack, k: null }
   try {
     return runSyncTrampoline(initial)
   } catch (error) {
     if (error instanceof DvalaError && error.message.includes('Unexpected async operation')) {
-      const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: [] }
+      const freshInitial: Step = { type: 'Eval', node, env: contextStack, k: null }
       return runAsyncTrampoline(freshInitial)
     }
     throw error
@@ -4850,7 +4868,7 @@ async function retriggerParallelGroup(
     let firstStep: Step
     try {
       firstStep = await Promise.resolve(
-        dispatchHostHandler(currentEffectName, currentMatchingHandlers, currentEffectArgs as Arr, [], effectSignal, undefined, snapshotState),
+        dispatchHostHandler(currentEffectName, currentMatchingHandlers, currentEffectArgs as Arr, null, effectSignal, undefined, snapshotState),
       )
     } catch (error) {
       if (isSuspensionSignal(error)) {
@@ -4936,7 +4954,7 @@ async function retriggerParallelGroup(
       completedBranches: newCompleted,
       suspendedBranches: newSuspended.slice(1),
     }
-    const resumeK: ContinuationStack = [newFrame, ...outerK]
+    const resumeK: ContinuationStack = cons<Frame>(newFrame, outerK)
     const continuation = serializeSuspensionBlob(resumeK, snapshotState.snapshots, snapshotState.nextSnapshotIndex, firstSuspended.snapshot.meta)
     const snapshot = createSnapshot({
       continuation,
@@ -4991,10 +5009,10 @@ export async function retriggerWithEffects(
 
   // When the continuation starts with a ParallelResumeFrame, dispatch all
   // remaining suspended branches concurrently rather than one at a time.
-  if (k.length > 0 && k[0]!.type === 'ParallelResume') {
+  if (k !== null && k.head.type === 'ParallelResume') {
     return retriggerParallelGroup(
-      k[0],
-      k.slice(1),
+      k.head,
+      k.tail,
       effectName,
       effectArg,
       handlers,
@@ -5112,7 +5130,7 @@ async function runEffectLoop(
         if (step instanceof Promise) {
           step = await step
         }
-        if (step.type === 'Value' && step.k.length === 0) {
+        if (step.type === 'Value' && step.k === null) {
           const snapshot = createTerminalSnapshot({ result: step.value })
           return snapshot
             ? { type: 'completed', value: step.value, snapshot }
