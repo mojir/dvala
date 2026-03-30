@@ -1,7 +1,6 @@
 import { DvalaError } from '../../../errors'
 import type { Any } from '../../../interface'
 import { asNonUndefined } from '../../../typeGuards'
-import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { asStringOrNumber, assertString } from '../../../typeGuards/string'
 import { toNonNegativeInteger } from '../../../utils'
@@ -255,7 +254,7 @@ padRight("Albert", -1)`,
   'template': {
     evaluate: ([templateString, ...placeholders], sourceCodeInfo): string => {
       assertString(templateString, sourceCodeInfo)
-      assertArray(placeholders, sourceCodeInfo)
+      // placeholders is a rest-spread from PV params, always a plain JS array — no assertion needed
       const templateStrings = templateString.split('||||')
       if (templateStrings.length <= 1) {
         return applyPlaceholders(templateStrings[0] as string, placeholders, sourceCodeInfo)

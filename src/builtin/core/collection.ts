@@ -36,7 +36,9 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
       assertString(value, sourceCodeInfo, { char: true })
       return `${coll.slice(0, key)}${value}${coll.slice(key + 1)}`
     }
-    // Return a new vector with the value set at the given index
+    // Append when key equals size (PersistentVector.set() rejects out-of-bounds)
+    if (key === seqLength)
+      return coll.append(value)
     return coll.set(key, value)
   }
   assertString(key, sourceCodeInfo)

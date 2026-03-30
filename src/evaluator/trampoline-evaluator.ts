@@ -70,7 +70,6 @@ import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 import type { SourceCodeInfo } from '../tokenizer/token'
 import { tokenize } from '../tokenizer/tokenize'
 import { asNonUndefined } from '../typeGuards'
-import { annotate } from '../typeGuards/annotatedCollections'
 import { isBuiltinSymbolNode, isNormalExpressionNodeWithName, isSpreadNode, isUserDefinedSymbolNode } from '../typeGuards/astNode'
 import { asAny, asFunctionLike, assertEffect, assertSeq, isAny, isEffect, isObj } from '../typeGuards/dvala'
 import { isPersistentVector, PersistentVector, PersistentMap } from '../utils/persistent'
@@ -1576,7 +1575,7 @@ function applyArrayBuild(frame: ArrayBuildFrame, value: Any, k: ContinuationStac
     }
     // Append all items from the spread value (PV or plain array) into the result PV
     let r = frame.result
-    for (const item of value as Iterable<Any>) r = r.append(item as Any)
+    for (const item of value as Iterable<Any>) r = r.append(item)
     newResult = r
   } else {
     newResult = frame.result.append(value)
@@ -1756,7 +1755,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
       // becomes a PV of [key, val] PV pairs.
       let seq: Arr
       if (isPersistentVector(coll)) {
-        seq = coll as Arr
+        seq = coll
       } else if (Array.isArray(coll)) {
         seq = PersistentVector.from(coll as Any[])
       } else if (typeof coll === 'string') {
@@ -1765,7 +1764,7 @@ function applyForLoop(frame: ForLoopFrame, value: Any, k: ContinuationStack): St
         // Each [key, value] entry must itself be a PersistentVector so that
         // destructuring patterns like `for let [k, v] of obj` work correctly.
         const pairs: Any[] = []
-        for (const [k, v] of coll as Obj) pairs.push(PersistentVector.from([k, v] as Any[]))
+        for (const [key, v] of coll as Obj) pairs.push(PersistentVector.from([key, v] as Any[]))
         seq = PersistentVector.from(pairs)
       }
 
@@ -2497,6 +2496,15 @@ function dispatchAlgebraicHandler(
           clauseContext[symNode[1]] = { value: (arg[i] ?? null) as Any }
         }
       }
+    } else if (isPersistentVector(arg)) {
+      // HAMT: arrays are PersistentVectors — use .get(i) to access elements positionally
+      for (let i = 0; i < clauseParams.length; i++) {
+        const target = clauseParams[i]!
+        if (target[0] === bindingTargetTypes.symbol) {
+          const symNode = target[1][0]
+          clauseContext[symNode[1]] = { value: (arg.get(i) ?? null) as Any }
+        }
+      }
     } else {
       // Single arg with multiple params — bind first to arg, rest to null
       for (let i = 0; i < clauseParams.length; i++) {
@@ -2663,11 +2671,16 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   // dvala.macro.expand — default handler calls the macro function directly.
   // The MacroEvalFrame on k[0] provides the calling scope for evaluating the result.
   if (effect.name === 'dvala.macro.expand') {
-    const payload = arg as unknown as { fn: MacroFunction; args: AstNode[] }
+    // payload is a PM: { fn: MacroFunction, args: PV<PV<AstNode>> }
+    // (fromJS was applied at callMacro: fn passes through, args are PV-converted)
+    const payloadPM = arg as unknown as PersistentMap<Any>
     const macroEvalFrame = k[0] as MacroEvalFrame
+    const macroFn_ = payloadPM.get('fn') as unknown as UserDefinedFunction
+    // args is a PV of PV-converted AST nodes — each element is already a PV
+    const argsAsPV = payloadPM.get('args') as unknown as Arr
     return setupUserDefinedCall(
-      payload.fn as unknown as UserDefinedFunction,
-      PersistentVector.from(payload.args) as unknown as Arr,
+      macroFn_,
+      argsAsPV,
       macroEvalFrame.env,
       sourceCodeInfo,
       k,
@@ -2856,10 +2869,11 @@ function dispatchHostHandler(
       },
       halt: (value: unknown = null) => {
         assertNotSettled('halt')
+        // halt() returns a value to the host — keep as plain JS, don't convert to PV/PM
         outcome = {
           kind: 'throw',
           error: new HaltSignal(
-            fromJS(value),
+            value as Any,
             snapshotState ? snapshotState.snapshots : [],
             snapshotState ? snapshotState.nextSnapshotIndex : 0,
           ),
@@ -3241,7 +3255,7 @@ function applyEvalArgs(frame: EvalArgsFrame, value: Any, k: ContinuationStack): 
       throw new TypeError(`Spread operator requires an array, got ${valueToString(value)}`, env.resolve(currentArgNode[2]))
     }
     let acc = frame.params
-    for (const item of value as Iterable<Any>) acc = acc.append(item as Any)
+    for (const item of value as Iterable<Any>) acc = acc.append(item)
     newParams = acc
   } else {
     newParams = frame.params.append(value)
@@ -3849,7 +3863,9 @@ function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): 
   if (typeof value === 'number' && Number.isNaN(value)) {
     throw new ArithmeticError('Number is NaN', frame.sourceCodeInfo)
   }
-  return { type: 'Value', value: annotate(value), k }
+  // Skip annotate() — PersistentVector is now the native array type (HAMT Phase 1).
+  // annotate() would convert PVs to plain arrays, breaking assertSeq/assertColl.
+  return { type: 'Value', value, k }
 }
 
 function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): Step {
@@ -3904,9 +3920,11 @@ function callMacro(
 
   // Anonymous macros — call directly, no effect, no host visibility
   if (!macroFn.qualifiedName) {
+    // Convert each AST node (plain array) to PV so macro bodies can use Dvala builtins
+    // like first(), get(), etc. on the received arguments.
     return setupUserDefinedCall(
       macroFn as unknown as UserDefinedFunction,
-      PersistentVector.from(argNodes) as unknown as Arr,
+      PersistentVector.from(argNodes.map(arg => fromJS(arg as unknown as Any))) as unknown as Arr,
       env,
       sourceCodeInfo,
       [macroEvalFrame, ...k],
@@ -3914,8 +3932,9 @@ function callMacro(
   }
 
   // Named macros — emit @dvala.macro.expand so the host can intercept.
-  // The effect arg is a Dvala object with fn (the macro) and args (AST nodes).
-  const payload = toAny({ fn: macroFn, args: argNodes })
+  // The effect arg is a Dvala PM with fn (the macro) and args (PV of PV-converted AST nodes).
+  // We use fromJS so that Dvala handlers can use get(arg, "fn"), get(arg, "args") etc.
+  const payload = fromJS({ fn: macroFn, args: argNodes })
 
   return {
     type: 'Perform',
@@ -3941,7 +3960,7 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // by a handler, the handler's return value flows back through this frame. Without this
   // check, the frame would try to evaluate a non-AST value (e.g. a string or error object),
   // producing a secondary "M-node cannot be evaluated" error that masks the original.
-  if (!Array.isArray(value)) {
+  if (!Array.isArray(value) && !isPersistentVector(value)) {
     return { type: 'Value', value, k }
   }
   // The macro returned a value — it should be AST data (an array).
@@ -3949,7 +3968,8 @@ function applyMacroEval(frame: MacroEvalFrame, value: Any, k: ContinuationStack)
   // Keep the MacroEvalFrame on the stack (marked as expanded) so that errors
   // from the expanded code can find the macro call site for better error locations.
   const marker: MacroEvalFrame = { type: 'MacroEval', env: frame.env, sourceCodeInfo: frame.sourceCodeInfo, expanded: true }
-  const astNode = value as unknown as AstNode
+  // Dispatch auto-converts plain arrays to PV; convert back to plain array for stepNode.
+  const astNode = (isPersistentVector(value) ? toJS(value as Any) : value) as AstNode
   return { type: 'Eval', node: astNode, env: frame.env, k: [marker, ...k] }
 }
 
@@ -4105,14 +4125,19 @@ function collectBindingTargetNames(target: unknown[], names: Set<string>): void 
 function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, string>): Any {
   const [type, payload] = node
 
-  // Splice node — insert the evaluated value directly (no renaming)
+  // Splice node — insert the evaluated value directly (no renaming).
+  // If the splice value is a PV (user Dvala array used as AST data), convert to plain array
+  // so nested structures remain plain-array AST nodes instead of PV.
   if (type === NodeTypes.Splice) {
-    return spliceValues[payload as number]!
+    const sv = spliceValues[payload as number]!
+    return isPersistentVector(sv) ? toAny(toJS(sv as Any)) : sv
   }
 
-  // InlinedData — already-resolved data from an outer template splice. Pass through as-is.
+  // InlinedData — already-resolved data from an outer template splice. Pass through as-is,
+  // but convert PV to plain array so the result is valid AST data.
   if (type === NodeTypes.InlinedData) {
-    return payload as Any
+    const inlined = payload as Any
+    return isPersistentVector(inlined) ? toAny(toJS(inlined)) : inlined
   }
 
   // Rename literal Sym nodes for hygiene
@@ -4245,6 +4270,10 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
       resolvedName = astToData(nameNode, spliceValues, renameMap)
     }
 
+    // Splice values may be PV (macro args are now PV-converted AST nodes); convert to plain array
+    if (isPersistentVector(resolvedName))
+      resolvedName = toJS(resolvedName as Any) as Any
+
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
 
     // If the splice resolved to a Sym node, keep as symbol binding target
@@ -4375,13 +4404,15 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
     // Check if this is a Splice node
     if (item.length >= 2 && item[0] === NodeTypes.Splice) {
       const spliceValue = spliceValues[item[1] as number]!
-      // Implicit spread: if value is an array of AST nodes, spread them in
+      // Implicit spread: if value is an array/PV of AST nodes, spread them in
       if (isSpliceSpread(spliceValue)) {
-        for (const spreadItem of spliceValue as unknown as Any[]) {
-          result.push(spreadItem)
+        for (const spreadItem of spliceValue as unknown as Iterable<Any>) {
+          // Convert PV AST nodes to plain arrays
+          result.push(isPersistentVector(spreadItem) ? toAny(toJS(spreadItem as Any)) : spreadItem)
         }
       } else {
-        result.push(spliceValue)
+        // Convert PV AST node to plain array
+        result.push(isPersistentVector(spliceValue) ? toAny(toJS(spliceValue as Any)) : spliceValue)
       }
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       // Regular AST node — recurse
@@ -4398,12 +4429,18 @@ function convertArrayPayload(items: unknown[], spliceValues: Any[], renameMap?: 
  * Detect whether a splice value should be spread (array of AST nodes)
  * or inserted as-is (single AST node or non-AST value).
  *
- * An array of AST nodes starts with an array: [[type, payload, id], ...]
+ * An array/PV of AST nodes starts with an array/PV: [[type, payload, id], ...]
  * A single AST node starts with a string: [type, payload, id]
  */
 function isSpliceSpread(value: Any): boolean {
+  // PV (HAMT Phase 1 user array) — spread if first element is also array/PV (list of AST nodes)
+  if (isPersistentVector(value)) {
+    if (value.size === 0) return false
+    const first = value.get(0)
+    return isPersistentVector(first) || Array.isArray(first)
+  }
   if (!Array.isArray(value) || value.length === 0) return false
-  return Array.isArray(value[0])
+  return Array.isArray(value[0]) || isPersistentVector(value[0])
 }
 
 // ---------------------------------------------------------------------------
@@ -5064,7 +5101,8 @@ async function runEffectLoop(
       executionId: snapshotState.executionId,
       message,
       terminal: true,
-      ...(meta.size > 0 ? { meta } : {}),
+      // Convert meta PM to plain JS so it's directly accessible as a record
+      ...(meta.size > 0 ? { meta: toJS(meta as Any) } : {}),
     })
   }
 

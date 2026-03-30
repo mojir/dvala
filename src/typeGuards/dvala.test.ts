@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
 import type { AstNode, RegularExpression } from '../parser/types'
-import { PersistentVector } from '../utils/persistent'
+import { PersistentMap, PersistentVector } from '../utils/persistent'
 import { FUNCTION_SYMBOL, REGEXP_SYMBOL } from '../utils/symbols'
 import { NodeTypes } from '../constants/constants'
 import {
@@ -41,8 +41,8 @@ describe('dvala type guards', () => {
   })
 
   it('obj', () => {
-    const valid = [{}, { a: 1 }]
-    const invalid = [0, { [FUNCTION_SYMBOL]: true }, /test/, [], [1], true, null, undefined]
+    const valid = [PersistentMap.empty(), PersistentMap.fromRecord({ a: 1 })]
+    const invalid = [0, { [FUNCTION_SYMBOL]: true }, /test/, PersistentVector.empty(), PersistentVector.from([1]), true, null, undefined]
     testTypeGuars(
       {
         valid,
@@ -99,7 +99,7 @@ describe('dvala type guards', () => {
   })
 
   it('coll', () => {
-    const valid = ['2', { a: 1 }, [2]]
+    const valid = ['2', PersistentMap.fromRecord({ a: 1 }), PersistentVector.from([2])]
     const invalid = [0, null, true, false]
     testTypeGuars(
       {

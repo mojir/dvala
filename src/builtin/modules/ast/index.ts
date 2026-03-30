@@ -2,8 +2,11 @@ import { NodeTypes, isNodeType } from '../../../constants/constants'
 import { prettyPrint } from '../../../prettyPrint'
 import { TypeError } from '../../../errors'
 import type { Any, Arr } from '../../../interface'
+import type { AstNode } from '../../../parser/types'
 import { toFixedArity } from '../../../utils/arity'
 import { toAny } from '../../../utils'
+import { isPersistentVector } from '../../../utils/persistent'
+import { toJS } from '../../../utils/interop'
 import { assertString } from '../../../typeGuards/string'
 import { assertNumber } from '../../../typeGuards/number'
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../interface'
@@ -15,17 +18,55 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Assert that a value is an AST node (array with string type tag). */
+/**
+ * Get element i from a value that is either a plain array or a PersistentVector.
+ * AST nodes come in as PV because dispatch wraps plain-array returns via fromJS.
+ */
+function nodeElem(node: unknown, i: number): unknown {
+  if (isPersistentVector(node)) return node.get(i)
+  if (Array.isArray(node)) return (node as unknown[])[i]
+  return undefined
+}
+
+/**
+ * Return the size of a PV or plain array.
+ */
+function nodeSize(node: unknown): number {
+  if (isPersistentVector(node)) return node.size
+  if (Array.isArray(node)) return (node as unknown[]).length
+  return 0
+}
+
+/** Assert that a value is an AST node (PV or plain array with string type tag). */
 function assertAstNode(value: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts value is [string, unknown, number] {
-  if (!Array.isArray(value) || value.length < 2 || typeof value[0] !== 'string') {
+  const ok = (isPersistentVector(value) || Array.isArray(value))
+    && nodeSize(value) >= 2
+    && typeof nodeElem(value, 0) === 'string'
+  if (!ok) {
     throw new TypeError('Expected an AST node [type, payload, nodeId]', sourceCodeInfo)
   }
 }
 
+/**
+ * Check whether a value is an AST node (PV or array with known type tag).
+ * Used by predicates (isCall, isNum, etc.) that must not throw.
+ */
+function isAstNodeLike(node: unknown, tag: string): boolean {
+  return (isPersistentVector(node) || Array.isArray(node)) && nodeElem(node, 0) === tag
+}
+
 function assertArray(value: unknown, sourceCodeInfo: SourceCodeInfo | undefined): asserts value is Arr {
-  if (!Array.isArray(value)) {
+  if (!isPersistentVector(value) && !Array.isArray(value)) {
     throw new TypeError('Expected an array', sourceCodeInfo)
   }
+}
+
+/**
+ * Convert an AST node (may be a PersistentVector after dispatch wrapping) back
+ * to a plain-array AstNode for prettyPrint, which expects plain JS arrays.
+ */
+function toPlainAstNode(node: unknown): AstNode {
+  return toJS(node as Any) as AstNode
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +270,7 @@ const astFunctions: BuiltinNormalExpressions = {
   'nodeType': {
     evaluate: ([node], sourceCodeInfo): Any => {
       assertAstNode(node, sourceCodeInfo)
-      return (node as unknown[])[0] as string
+      return nodeElem(node, 0) as string
     },
     arity: toFixedArity(1),
     docs: {
@@ -245,7 +286,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isNum': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Num,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Num),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -257,7 +298,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isStr': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Str,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Str),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -269,7 +310,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isSym': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Sym,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Sym),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -281,7 +322,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isBuiltin': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Builtin,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Builtin),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -293,7 +334,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isCall': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Call,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Call),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -305,7 +346,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isIf': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.If,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.If),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -317,7 +358,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isBlock': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Block,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Block),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -329,7 +370,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isLet': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Let,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Let),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -341,7 +382,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isFn': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Function,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Function),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -353,7 +394,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isBool': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Reserved && (node[1] === 'true' || node[1] === 'false'),
+    evaluate: ([node]): boolean => (isPersistentVector(node) || Array.isArray(node)) && nodeElem(node, 0) === NodeTypes.Reserved && (nodeElem(node, 1) === 'true' || nodeElem(node, 1) === 'false'),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -365,7 +406,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isNil': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Reserved && node[1] === 'null',
+    evaluate: ([node]): boolean => (isPersistentVector(node) || Array.isArray(node)) && nodeElem(node, 0) === NodeTypes.Reserved && nodeElem(node, 1) === 'null',
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -377,7 +418,7 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
   'isEffectNode': {
-    evaluate: ([node]): boolean => Array.isArray(node) && node[0] === NodeTypes.Effect,
+    evaluate: ([node]): boolean => isAstNodeLike(node, NodeTypes.Effect),
     arity: toFixedArity(1),
     docs: {
       category: 'ast',
@@ -390,7 +431,10 @@ const astFunctions: BuiltinNormalExpressions = {
   },
   'isAstNode': {
     evaluate: ([node]): boolean => {
-      return Array.isArray(node) && node.length >= 2 && typeof node[0] === 'string' && isNodeType(node[0])
+      return (isPersistentVector(node) || Array.isArray(node))
+        && nodeSize(node) >= 2
+        && typeof nodeElem(node, 0) === 'string'
+        && isNodeType(nodeElem(node, 0) as string)
     },
     arity: toFixedArity(1),
     docs: {
@@ -410,7 +454,7 @@ const astFunctions: BuiltinNormalExpressions = {
   'payload': {
     evaluate: ([node], sourceCodeInfo): Any => {
       assertAstNode(node, sourceCodeInfo)
-      return (node as unknown[])[1] as Any
+      return nodeElem(node, 1) as Any
     },
     arity: toFixedArity(1),
     docs: {
@@ -430,7 +474,8 @@ const astFunctions: BuiltinNormalExpressions = {
   'prettyPrint': {
     evaluate: ([node], sourceCodeInfo): string => {
       assertAstNode(node, sourceCodeInfo)
-      return prettyPrint(node)
+      // prettyPrint expects plain JS arrays; convert PV back to nested plain arrays
+      return prettyPrint(toPlainAstNode(node))
     },
     arity: toFixedArity(1),
     docs: {

@@ -16,6 +16,7 @@ import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { toJS } from './utils/interop'
+import { isPersistentMap, isPersistentVector } from './utils/persistent'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
@@ -73,6 +74,9 @@ function assertSerializable(val: unknown, path: string): void {
     throw new TypeError(`${path} is not serializable (function)`)
   if (typeof val === 'object') {
     if (FUNCTION_SYMBOL in val || REGEXP_SYMBOL in val || EFFECT_SYMBOL in val)
+      return
+    // PersistentVector/PersistentMap are valid Dvala values — accept as-is
+    if (isPersistentVector(val) || isPersistentMap(val))
       return
     if (Array.isArray(val)) {
       val.forEach((item, i) => assertSerializable(item, `${path}[${i}]`))
@@ -218,7 +222,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
           modules,
         }, !disableAutoCheckpoint, terminalSnapshot)
         if (result.type === 'completed') {
-          return { ...result, definedBindings: contextStack.getModuleScopeBindings() }
+          // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
+          return { ...result, value: toJS(result.value as never), definedBindings: contextStack.getModuleScopeBindings() }
         }
         return result
       } catch (error) {

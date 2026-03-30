@@ -2,6 +2,7 @@ import { AssertionError } from '../../../errors'
 import { compare, deepEqual } from '../../../utils'
 import type { BuiltinNormalExpressions } from '../../../builtin/interface'
 import { asAny, isColl, isObj, isRegularExpression, isSeq } from '../../../typeGuards/dvala'
+import { isPersistentVector } from '../../../utils/persistent'
 import { isDvalaFunction } from '../../../typeGuards/dvalaFunction'
 import { isNumber } from '../../../typeGuards/number'
 import { assertString, assertStringOrNumber } from '../../../typeGuards/string'
@@ -203,7 +204,7 @@ const assertNormalExpression: BuiltinNormalExpressions = {
         message = ` ${message}`
       }
       message ??= ''
-      if (!Array.isArray(first))
+      if (!isPersistentVector(first))
         throw new AssertionError(`Expected ${JSON.stringify(first)} to be an array.${message}`, sourceCodeInfo)
 
       return null

@@ -6,13 +6,14 @@ import { toFixedArity } from '../../../utils/arity'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
+import { fromJS, toJS } from '../../../utils/interop'
 
 const jsonFunctions: BuiltinNormalExpressions = {
   'jsonParse': {
     evaluate: ([first], sourceCodeInfo): Any => {
       assertString(first, sourceCodeInfo)
-
-      return JSON.parse(first)
+      // Convert plain JS arrays/objects from JSON.parse to PV/PM
+      return fromJS(JSON.parse(first))
     },
     arity: toFixedArity(1),
     docs: {
@@ -30,11 +31,13 @@ const jsonFunctions: BuiltinNormalExpressions = {
   'jsonStringify': {
     evaluate: ([first, second], sourceCodeInfo): string => {
       assertAny(first, sourceCodeInfo)
+      // Convert PV/PM to plain JS arrays/objects before stringifying
+      const jsValue = toJS(first)
       if (second === undefined)
-        return JSON.stringify(first)
+        return JSON.stringify(jsValue)
 
       assertNumber(second, sourceCodeInfo)
-      return JSON.stringify(first, null, second)
+      return JSON.stringify(jsValue, null, second)
     },
     arity: { min: 1, max: 2 },
     docs: {

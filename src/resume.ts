@@ -8,7 +8,8 @@ import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { resumeWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
-import { fromJS } from './utils/interop'
+import { fromJS, toJS } from './utils/interop'
+import type { Any } from './interface'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -72,13 +73,18 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
       modules,
     }
 
-    return await resumeWithEffects(deserialized.k, fromJS(value), options?.handlers, {
+    const result = await resumeWithEffects(deserialized.k, fromJS(value), options?.handlers, {
       snapshots: deserialized.snapshots,
       nextSnapshotIndex: deserialized.nextSnapshotIndex,
       maxSnapshots: options?.maxSnapshots,
       autoCheckpoint: !options?.disableAutoCheckpoint,
       ...(options?.terminalSnapshot ? { terminalSnapshot: true } : {}),
     }, deserializeOptions)
+    // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
+    if (result.type === 'completed') {
+      return { ...result, value: toJS(result.value as Any) }
+    }
+    return result
   } catch (error) {
     if (error instanceof DvalaError) {
       return { type: 'error', error }

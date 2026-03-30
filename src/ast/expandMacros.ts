@@ -3,6 +3,9 @@ import { createDvala } from '../createDvala'
 import { prettyPrint } from '../prettyPrint'
 import type { Ast, AstNode } from '../parser/types'
 import { isMacroFunction } from '../typeGuards/dvalaFunction'
+import { fromJS } from '../utils/interop'
+import type { Any } from '../interface'
+import { PersistentVector } from '../utils/persistent'
 
 /**
  * Build-time macro expansion pass.
@@ -113,8 +116,12 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
       const macroFn = macros.get(name)
       if (macroFn) {
         try {
+          // Convert each AST node (plain array) to PV so macro bodies can use Dvala
+          // builtins like first(), get(), etc. on the received arguments. The outer PV
+          // wrapper prevents fromJS (applied to all host bindings) from recursing further.
+          const argsAsPV = PersistentVector.from(args.map(arg => fromJS(arg as unknown as Any)))
           const expanded = dvala.run('macroexpand(__m__, ...args)', {
-            bindings: { __m__: macroFn, args },
+            bindings: { __m__: macroFn, args: argsAsPV },
           })
           if (Array.isArray(expanded) && expanded.length === 3 && typeof expanded[0] === 'string') {
             return expandNodeRecursive(expanded as AstNode, macros, dvala)

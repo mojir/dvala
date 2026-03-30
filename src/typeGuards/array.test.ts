@@ -1,5 +1,6 @@
 import { describe, it } from 'vitest'
 import { testTypeGuars } from '../../__tests__/testUtils'
+import { PersistentVector } from '../utils/persistent'
 import {
   asArray,
   asCharArray,
@@ -13,11 +14,11 @@ import {
 
 describe('array type guards', () => {
   const nonArrays: unknown[] = [0, 1, true, false, null, undefined, {}, { 1: 1 }, /foo/, 'bar', '']
-  const stringArrays: string[][] = [['foo'], ['foo', 'c']]
-  const charArrays: string[][] = [['f'], ['f', 'c']]
-  const unknownArray: unknown[] = ['foo', null]
+  const stringArrays = [PersistentVector.from(['foo']), PersistentVector.from(['foo', 'c'])]
+  const charArrays = [PersistentVector.from(['f']), PersistentVector.from(['f', 'c'])]
+  const unknownArray = PersistentVector.from(['foo', null])
 
-  const allStringArrays = [[], ...stringArrays, ...charArrays]
+  const allStringArrays = [PersistentVector.empty(), ...stringArrays, ...charArrays]
   const allArrays = [...allStringArrays, unknownArray]
 
   it('array', () => {
@@ -43,7 +44,7 @@ describe('array type guards', () => {
   it('charArray', () => {
     testTypeGuars(
       {
-        valid: [[], ...charArrays],
+        valid: [PersistentVector.empty(), ...charArrays],
         invalid: [...nonArrays, unknownArray, ...stringArrays],
       },
       { is: isCharArray, as: asCharArray, assert: assertCharArray },

@@ -10,6 +10,7 @@ import { DvalaError, RuntimeError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { retriggerWithEffects } from './evaluator/trampoline-evaluator'
 import { deserializeFromObject } from './evaluator/suspension'
+import { toJS } from './utils/interop'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -77,7 +78,7 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
 
     const deserialized = deserializeFromObject(snapshot.continuation, deserializeOptions)
 
-    return await retriggerWithEffects(
+    const result = await retriggerWithEffects(
       deserialized.k,
       snapshot.effectName,
       snapshot.effectArg,
@@ -91,6 +92,10 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
       },
       deserializeOptions,
     )
+    // Apply toJS to convert PV/PM to plain JS arrays/objects, matching dvala.runAsync() semantics
+    if (result.type === 'completed')
+      return { ...result, value: toJS(result.value as Any) }
+    return result
   } catch (error) {
     if (error instanceof DvalaError) {
       return { type: 'error', error }

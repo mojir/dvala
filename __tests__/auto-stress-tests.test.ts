@@ -634,7 +634,7 @@ describe('stress: deep closures + effects + suspend', () => {
     const json = JSON.stringify(r1.snapshot)
     const restored = JSON.parse(json) as Snapshot
     const r2 = await resumeContinuation(restored, fromJS([1, 2, 3]))
-    expect(r2).toEqual({ type: 'completed', value: fromJS([3, 6, 9]) })
+    expect(r2).toEqual({ type: 'completed', value: [3, 6, 9] })
   })
 })
 

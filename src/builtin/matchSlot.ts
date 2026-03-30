@@ -7,12 +7,11 @@
  * - Sequential slot processing with early exit on failure
  */
 
-import type { Any, Arr } from '../interface'
+import type { Any, Arr, Obj } from '../interface'
 import type { AstNode, BindingTarget } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
-import { isUnknownRecord } from '../typeGuards'
-import { asAny } from '../typeGuards/dvala'
-import { isPersistentVector, PersistentVector } from '../utils/persistent'
+import { asAny, isObj } from '../typeGuards/dvala'
+import { isPersistentVector, PersistentMap, PersistentVector } from '../utils/persistent'
 import type { BindingPathStep } from './bindingSlot'
 
 // ---------------------------------------------------------------------------
@@ -236,11 +235,13 @@ export function extractMatchValueByPath(rootValue: Any, path: BindingPathStep[])
     }
 
     if (step.type === 'key') {
-      if (!isUnknownRecord(current)) return undefined
-      current = current[step.key]
+      // PersistentMap (Obj) uses .get(); plain objects are not used in HAMT Phase 1
+      if (!isObj(current)) return undefined
+      current = (current).get(step.key)
     } else {
-      if (!Array.isArray(current)) return undefined
-      current = current[step.index]
+      // PersistentVector uses .get(); plain arrays are not used in HAMT Phase 1
+      if (!isPersistentVector(current)) return undefined
+      current = current.get(step.index)
     }
   }
 
@@ -262,23 +263,23 @@ export function checkTypeAtPath(
   }
 
   if (requiredType === 'object') {
-    return isUnknownRecord(value)
+    return isObj(value)
   } else {
-    return Array.isArray(value)
+    return isPersistentVector(value)
   }
 }
 
 /**
  * Extract rest values for object rest.
  */
-export function extractMatchObjectRest(value: Any, path: BindingPathStep[], restKeys: Set<string>): Record<string, Any> {
+export function extractMatchObjectRest(value: Any, path: BindingPathStep[], restKeys: Set<string>): Obj {
   const obj = path.length > 0 ? extractMatchValueByPath(value, path) : value
-  if (!isUnknownRecord(obj)) return {}
+  if (!isObj(obj)) return PersistentMap.empty()
 
-  const result: Record<string, Any> = {}
-  for (const [key, val] of Object.entries(obj)) {
+  let result: Obj = PersistentMap.empty()
+  for (const [key, val] of obj) {
     if (!restKeys.has(key)) {
-      result[key] = asAny(val)
+      result = result.assoc(key, asAny(val))
     }
   }
   return result
@@ -308,7 +309,7 @@ export function checkArrayLengthConstraint(
   value: Any,
 ): boolean {
   if (target[0] !== bindingTargetTypes.array) return true
-  if (!Array.isArray(value)) return false
+  if (!isPersistentVector(value)) return false
 
   const elements = target[1][0]
   let hasRest = false
@@ -327,9 +328,9 @@ export function checkArrayLengthConstraint(
   }
 
   if (hasRest) {
-    return value.length >= nonRestCount
+    return value.size >= nonRestCount
   } else {
-    return value.length === nonRestCount
+    return value.size === nonRestCount
   }
 }
 
@@ -341,5 +342,5 @@ export function checkObjectTypeConstraint(
   value: Any,
 ): boolean {
   if (target[0] !== bindingTargetTypes.object) return true
-  return isUnknownRecord(value)
+  return isObj(value)
 }

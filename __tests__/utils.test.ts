@@ -16,15 +16,15 @@ describe('utils', () => {
     expect(collHasKey('Albert', 6)).toBe(false)
     expect(collHasKey('', 0)).toBe(false)
 
-    expect(collHasKey([1, 2, 3], 1)).toBe(true)
-    expect(collHasKey([1, 2, 3], 6)).toBe(false)
-    expect(collHasKey([], 0)).toBe(false)
+    expect(collHasKey(PersistentVector.from([1, 2, 3]), 1)).toBe(true)
+    expect(collHasKey(PersistentVector.from([1, 2, 3]), 6)).toBe(false)
+    expect(collHasKey(PersistentVector.empty(), 0)).toBe(false)
 
-    expect(collHasKey({ a: 1, b: 2 }, 'a')).toBe(true)
-    expect(collHasKey({ a: 1, b: 2 }, 'b')).toBe(true)
-    expect(collHasKey({ a: 1, b: 2 }, 'c')).toBe(false)
-    expect(collHasKey({}, 0)).toBe(false)
-    expect(collHasKey({}, 'a')).toBe(false)
+    expect(collHasKey(PersistentMap.fromRecord({ a: 1, b: 2 }), 'a')).toBe(true)
+    expect(collHasKey(PersistentMap.fromRecord({ a: 1, b: 2 }), 'b')).toBe(true)
+    expect(collHasKey(PersistentMap.fromRecord({ a: 1, b: 2 }), 'c')).toBe(false)
+    expect(collHasKey(PersistentMap.empty(), 0)).toBe(false)
+    expect(collHasKey(PersistentMap.empty(), 'a')).toBe(false)
   })
 
   const primitives = [0, 1, true, false, null, 'Albert', 'Mojir']
@@ -67,9 +67,11 @@ describe('utils', () => {
       expect(deepEqual(c, d)).toBe(true)
     })
     it('nested structures', () => {
-      expect(deepEqual([1, 2, 3], [1, 2, 3])).toBe(true)
-      expect(deepEqual({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true)
-      expect(deepEqual([1, 2, { a: 1, b: 2 }], [1, 2, { b: 2, a: 1 }])).toBe(true)
+      expect(deepEqual(PersistentVector.from([1, 2, 3]), PersistentVector.from([1, 2, 3]))).toBe(true)
+      expect(deepEqual(PersistentMap.fromRecord({ a: 1, b: 2 }), PersistentMap.fromRecord({ a: 1, b: 2 }))).toBe(true)
+      const nested1 = PersistentVector.from([1, 2, PersistentMap.fromRecord({ a: 1, b: 2 })])
+      const nested2 = PersistentVector.from([1, 2, PersistentMap.fromRecord({ b: 2, a: 1 })])
+      expect(deepEqual(nested1, nested2)).toBe(true)
     })
   })
   it('toNonNegativeInteger', () => {

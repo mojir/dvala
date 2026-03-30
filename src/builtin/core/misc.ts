@@ -443,7 +443,7 @@ export const miscNormalExpression: BuiltinNormalExpressions = {
         return 'handler'
       if (isDvalaFunction(value))
         return 'function'
-      if (isPersistentVector(value))
+      if (isPersistentVector(value) || Array.isArray(value))
         return 'array'
       return 'object'
     },

@@ -1,6 +1,6 @@
 import type { Any, Arr, Obj, Seq } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
-import { asArray, assertArray, assertCharArray } from '../../../typeGuards/array'
+import { asArray, assertArray } from '../../../typeGuards/array'
 import { asAny, asSeq, assertAny, assertSeq } from '../../../typeGuards/dvala'
 import { asNumber, assertNumber } from '../../../typeGuards/number'
 import { assertString } from '../../../typeGuards/string'
@@ -220,7 +220,11 @@ su.position(
     evaluate: ([seq, ...values], sourceCodeInfo): Seq => {
       assertSeq(seq, sourceCodeInfo)
       if (typeof seq === 'string') {
-        assertCharArray(values, sourceCodeInfo)
+        // values comes from rest destructuring (plain JS array), check each char manually
+        for (const v of values) {
+          if (typeof v !== 'string' || v.length !== 1)
+            throw new TypeError(`Expected char, got ${typeof v === 'string' ? `"${v}"` : String(v)}`)
+        }
         return [...(values as string[]), seq].join('')
       }
       // Prepend all values to the vector in order

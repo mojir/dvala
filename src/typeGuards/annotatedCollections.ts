@@ -23,6 +23,11 @@ function toPlainArray(value: unknown): unknown {
     for (const item of value) arr.push(toPlainArray(item))
     return arr
   }
+  if (Array.isArray(value)) {
+    // Also recurse into plain arrays — handles rest-spread params (e.g. `[grid_, ...rows_] = pvParams`)
+    // where `rows_` is a plain JS array but each element may still be a PersistentVector.
+    return value.map(toPlainArray)
+  }
   return value
 }
 
