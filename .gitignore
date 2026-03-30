@@ -1,6 +1,7 @@
 dist
 build
 coverage
+.tmp-cli-test
 docs
 .wireit
 node_modules
