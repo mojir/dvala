@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, test, vitest } from 'vites
 import { createDvala } from '../../src/createDvala'
 import type { UserDefinedError } from '../../src/errors'
 import { DvalaError } from '../../src/errors'
-import type { Arr } from '../../src/interface'
 import { getUndefinedSymbols } from '../../src/tooling'
 
 const dvala = createDvala()
@@ -62,7 +61,7 @@ describe('specialExpressions', () => {
     it('shorthand samples', () => {
       expect(dvala.run('[]')).toEqual([])
       expect(dvala.run('[1]')).toEqual([1])
-      expect((dvala.run('[null]') as Arr).get(0)).toEqual(null)
+      expect((dvala.run('[null]') as unknown[])[0]).toEqual(null)
       expect(dvala.run('[0, "1", null, true, false, [[]], object()]')).toEqual([0, '1', null, true, false, [[]], {}])
     })
     test('findUnresolvedIdentifiers', () => {

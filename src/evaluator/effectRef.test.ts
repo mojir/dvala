@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Any } from '../interface'
 import { isEffect, isObj } from '../typeGuards/dvala'
+import { PersistentMap } from '../utils/persistent'
 import { EFFECT_SYMBOL } from '../utils/symbols'
 import { clearEffectRefInternMap, getEffectRef } from './effectRef'
 
@@ -85,7 +86,7 @@ describe('isObj excludes effects', () => {
     expect(isObj(ref as Any)).toBe(false)
   })
 
-  it('should still treat plain objects as Obj', () => {
-    expect(isObj({ a: 1 })).toBe(true)
+  it('should still treat PersistentMap as Obj', () => {
+    expect(isObj(PersistentMap.fromRecord({ a: 1 }))).toBe(true)
   })
 })

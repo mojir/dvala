@@ -1395,7 +1395,7 @@ describe('auto: complex workflow patterns', () => {
     const r2 = await resumeContinuation(r1.snapshot, fromJS({ approved: true }))
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
-      expect(r2.value).toEqual(fromJS({ approved: true }))
+      expect(r2.value).toEqual({ approved: true })
     }
   })
 

@@ -285,7 +285,6 @@ const gridFunctions: BuiltinNormalExpressions = {
         ? (() => {
           const rows = assertGrid(rows_, sourceCodeInfo)
           rows.every(row => {
-            assertArray(row, sourceCodeInfo)
             if (grid[0]!.length !== (row as unknown[]).length) {
               throw new RuntimeError(`All rows must have the same length as the number of columns in grid, but got ${(row as unknown[]).length}`, sourceCodeInfo)
             }
@@ -321,7 +320,6 @@ const gridFunctions: BuiltinNormalExpressions = {
         ? (() => {
           const cols = assertGrid(cols_, sourceCodeInfo)
           cols.every(row => {
-            assertArray(row, sourceCodeInfo)
             if (trMatrix[0]!.length !== (row as unknown[]).length) {
               throw new RuntimeError(`All rows must have the same length as the number of rows in grid, but got ${(row as unknown[]).length}`, sourceCodeInfo)
             }

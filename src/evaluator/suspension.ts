@@ -29,6 +29,7 @@ import { RuntimeError } from '../errors'
 import type { Any } from '../interface'
 
 import type { DvalaModule } from '../builtin/modules/interface'
+import { isPersistentMap, isPersistentVector, PersistentMap, PersistentVector } from '../utils/persistent'
 import { ContextStackImpl } from './ContextStack'
 import { dedupSubTrees, expandPoolRefs } from './dedupSubTrees'
 import type { Context } from './interface'
@@ -67,12 +68,22 @@ interface SuspensionBlobData {
 
 // Marker objects embedded in the serialized data
 interface CSRef { __csRef: number }
+/** Marker for a serialized PersistentVector */
+interface PVMarker { __pv: unknown[] }
+/** Marker for a serialized PersistentMap */
+interface PMMarker { __pm: Record<string, unknown> }
 
 function isCSRef(value: unknown): value is CSRef {
   return value !== null
     && typeof value === 'object'
     && '__csRef' in value
     && typeof (value as CSRef).__csRef === 'number'
+}
+function isPVMarker(value: unknown): value is PVMarker {
+  return value !== null && typeof value === 'object' && '__pv' in value
+}
+function isPMMarker(value: unknown): value is PMMarker {
+  return value !== null && typeof value === 'object' && '__pm' in value
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +147,25 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown): Suspens
     // The Map is rebuilt from sibling data (clauses array) during deserialization.
     if (value instanceof Map) {
       return null
+    }
+
+    // PersistentVector: serialize as { __pv: [...items] }
+    if (isPersistentVector(value)) {
+      const items: unknown[] = []
+      let i = 0
+      for (const item of value) {
+        items.push(serializeValue(item, `${path}[${i++}]`))
+      }
+      return { __pv: items } satisfies PVMarker
+    }
+
+    // PersistentMap: serialize as { __pm: { key: value, ... } }
+    if (isPersistentMap(value)) {
+      const result: Record<string, unknown> = {}
+      for (const [key, v] of value) {
+        result[key] = serializeValue(v, `${path}.${key}`)
+      }
+      return { __pm: result } satisfies PMMarker
     }
 
     if (Array.isArray(value)) {
@@ -343,7 +373,7 @@ export function deserializeFromObject(
     csMap.set(scs.id, cs)
   }
 
-  // Phase 2: Deep-resolve all values, replacing __csRef markers with real instances
+  // Phase 2: Deep-resolve all values, replacing markers with real instances
   function resolveValue(value: unknown): unknown {
     if (isCSRef(value)) {
       const cs = csMap.get(value.__csRef)
@@ -351,6 +381,18 @@ export function deserializeFromObject(
         throw new RuntimeError(`Invalid suspension blob: unknown context stack ref ${value.__csRef}`, undefined)
       }
       return cs
+    }
+    // Reconstruct PersistentVector from __pv marker
+    if (isPVMarker(value)) {
+      let pv: PersistentVector = PersistentVector.empty()
+      for (const item of value.__pv) pv = pv.append(resolveValue(item))
+      return pv
+    }
+    // Reconstruct PersistentMap from __pm marker
+    if (isPMMarker(value)) {
+      let pm: PersistentMap = PersistentMap.empty()
+      for (const [k, v] of Object.entries(value.__pm)) pm = pm.assoc(k, resolveValue(v))
+      return pm
     }
     if (Array.isArray(value)) {
       return value.map(resolveValue)

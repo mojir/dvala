@@ -1,9 +1,26 @@
 import type { Arr } from '../../interface'
 import { assertArray } from '../../typeGuards/array'
 import { asNumber, assertNumber } from '../../typeGuards/number'
-import { PersistentVector } from '../../utils/persistent'
+import { isPersistentVector, PersistentVector } from '../../utils/persistent'
 import type { BuiltinNormalExpressions } from '../interface'
 import { toFixedArity } from '../../utils/arity'
+
+/**
+ * Recursively flatten an iterable, treating both PersistentVectors and plain
+ * arrays as flattenable containers. `Array.prototype.flat` only flattens plain
+ * arrays, so PVs (the native Dvala array type) must be handled explicitly.
+ */
+function flattenDeep(items: Iterable<unknown>, depth: number): unknown[] {
+  const result: unknown[] = []
+  for (const item of items) {
+    if (depth > 0 && (isPersistentVector(item) || Array.isArray(item))) {
+      result.push(...flattenDeep(item as Iterable<unknown>, depth - 1))
+    } else {
+      result.push(item)
+    }
+  }
+  return result
+}
 
 export const arrayNormalExpression: BuiltinNormalExpressions = {
   'range': {
@@ -116,8 +133,8 @@ range(
         ? Number.POSITIVE_INFINITY
         : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
 
-      // Convert to plain JS array for flat(), then wrap result in PersistentVector
-      return PersistentVector.from([...seq].flat(actualDepth))
+      // Use PV-aware flatten since Array.prototype.flat() doesn't descend into PersistentVectors
+      return PersistentVector.from(flattenDeep(seq, actualDepth))
     },
     arity: { min: 1, max: 2 },
     docs: {

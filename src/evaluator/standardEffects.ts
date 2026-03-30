@@ -447,9 +447,9 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.random.int': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const a = Array.isArray(arg) ? arg : []
-      const min = a[0]
-      const max = a[1]
+      // arg is a PersistentVector [min, max] — access via .get()
+      const min = isPersistentVector(arg) ? arg.get(0) : (Array.isArray(arg) ? arg[0] : undefined)
+      const max = isPersistentVector(arg) ? arg.get(1) : (Array.isArray(arg) ? arg[1] : undefined)
       if (typeof min !== 'number' || !Number.isInteger(min)) {
         throw new TypeError(`dvala.random.int: min must be an integer, got ${typeof min === 'number' ? min : typeof min}`, sourceCodeInfo)
       }
@@ -479,15 +479,17 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
 
   'dvala.random.item': {
     handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
-      const array = arg
-      if (!Array.isArray(array)) {
-        throw new TypeError(`dvala.random.item: argument must be an array, got ${typeof array}`, sourceCodeInfo)
+      // arg is a PersistentVector — accept PV or plain array
+      if (!isPersistentVector(arg) && !Array.isArray(arg)) {
+        throw new TypeError(`dvala.random.item: argument must be an array, got ${typeof arg}`, sourceCodeInfo)
       }
-      if (array.length === 0) {
+      const size = isPersistentVector(arg) ? arg.size : (arg as unknown[]).length
+      if (size === 0) {
         throw new TypeError('dvala.random.item: cannot pick from an empty array', sourceCodeInfo)
       }
-      const index = Math.floor(Math.random() * array.length)
-      return { type: 'Value', value: array[index] as Any, k }
+      const index = Math.floor(Math.random() * size)
+      const value = isPersistentVector(arg) ? arg.get(index) as Any : (arg as Any[])[index] as Any
+      return { type: 'Value', value, k }
     },
     arity: toFixedArity(1),
     docs: {

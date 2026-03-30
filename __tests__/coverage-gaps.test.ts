@@ -2043,8 +2043,8 @@ describe('dedupSubTrees — via suspend/resume', () => {
       const resumed = await resume(result.snapshot, null)
       expect(resumed.type).toBe('completed')
       if (resumed.type === 'completed') {
-        const arr = resumed.value as PersistentVector
-        expect(arr.size).toBe(3)
+        const arr = resumed.value as unknown[]
+        expect(arr.length).toBe(3)
       }
     }
   })

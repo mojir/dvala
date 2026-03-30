@@ -1,6 +1,7 @@
 import type { Arity, BuiltinNormalExpressions } from '../../../../../src/builtin/interface'
 import type { DvalaModule } from '../../../../../src/builtin/modules/interface'
 import type { Any } from '../../../../../src/interface'
+import { fromJS, toJS } from '../../../../../src/utils/interop'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -77,7 +78,8 @@ const readJson: JsFunction = {
   fn: (filePath: string): unknown => {
     const content = fs.readFileSync(filePath, { encoding: 'utf8' })
     try {
-      return JSON.parse(content) as unknown
+      // Convert to PV/PM so Dvala code can use get(), first(), etc. on the result
+      return fromJS(JSON.parse(content) as Any)
     } catch (error: any) {
       throw new Error(`Failed to parse JSON from file ${filePath}: ${error.message}`, { cause: error })
     }
@@ -96,7 +98,9 @@ If the file does not exist or is not valid JSON, an error will be thrown.
 
 const writeJson: JsFunction = {
   fn: (data: unknown, filePath: string, indentation: number | null = 2): void => {
-    const content = indentation ? JSON.stringify(data, null, indentation) : JSON.stringify(data)
+    // Convert PV/PM to plain JS arrays/objects before serializing
+    const plain = toJS(data as Any)
+    const content = indentation ? JSON.stringify(plain, null, indentation) : JSON.stringify(plain)
     fs.writeFileSync(filePath, content, { encoding: 'utf8' })
   },
   docString: `

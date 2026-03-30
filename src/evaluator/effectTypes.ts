@@ -9,6 +9,7 @@
 import type { Any } from '../interface'
 import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
+import { toJS } from '../utils/interop'
 
 // ---------------------------------------------------------------------------
 // Snapshot — captured continuation point
@@ -81,9 +82,12 @@ export function generateUUID(): string {
 
 /**
  * Create a Snapshot with a freshly generated unique `id`.
+ * effectArg is converted to plain JS so it serializes cleanly via JSON
+ * and compares correctly in tests without PV/PM internals leaking out.
  */
 export function createSnapshot(fields: Omit<Snapshot, 'id'>): Snapshot {
-  return { id: generateUUID(), ...fields }
+  const effectArg = fields.effectArg !== undefined ? toJS(fields.effectArg as Any) : undefined
+  return { id: generateUUID(), ...fields, effectArg }
 }
 
 // ---------------------------------------------------------------------------

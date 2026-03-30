@@ -7,7 +7,7 @@ import type { AstNode, NumberNode, StringNode } from '../parser/types'
 import { bindingTargetTypes } from '../parser/types'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
-import { fromJS } from '../utils/interop'
+import { fromJS, toJS } from '../utils/interop'
 import { PersistentMap, PersistentVector } from '../utils/persistent'
 import type { ContextStack } from './ContextStack'
 import { createContextStack } from './ContextStack'
@@ -59,9 +59,10 @@ function stepNodeSync(node: AstNode, env: ContextStack, k: ContinuationStack): S
   return result
 }
 
-// Helper: run the trampoline to completion using runSyncTrampoline
-function runTrampoline(step: Step): Any {
-  return runSyncTrampoline(step)
+// Helper: run the trampoline to completion using runSyncTrampoline.
+// Applies toJS() so callers can compare against plain arrays/objects (matching dvala.run() semantics).
+function runTrampoline(step: Step): unknown {
+  return toJS(runSyncTrampoline(step) as Any)
 }
 
 // ---------------------------------------------------------------------------
@@ -354,7 +355,7 @@ describe('stepNode', () => {
       const step = stepNodeSync(node, emptyEnv(), [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toEqual([])
+        expect(step.value).toEqual(PersistentVector.empty())
       }
     })
 
@@ -373,7 +374,7 @@ describe('stepNode', () => {
       const step = stepNodeSync(node, emptyEnv(), [])
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
-        expect(step.value).toEqual({})
+        expect(step.value).toEqual(PersistentMap.empty())
       }
     })
 

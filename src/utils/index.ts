@@ -63,6 +63,17 @@ export function deepEqual(a: unknown, b: unknown, sourceCodeInfo?: SourceCodeInf
     return true
   }
 
+  // Plain JS arrays — structural equality (used for toJS()-converted run() results)
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length)
+      return false
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i], sourceCodeInfo))
+        return false
+    }
+    return true
+  }
+
   // Persistent maps — structural equality
   if (isPersistentMap(a) && isPersistentMap(b)) {
     if (a.size !== b.size)

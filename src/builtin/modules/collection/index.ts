@@ -1,7 +1,7 @@
-import type { Any, Arr, Coll, Obj } from '../../../interface'
+import type { Any, Coll } from '../../../interface'
 import type { SourceCodeInfo } from '../../../tokenizer/token'
-import { cloneColl, collHasKey, toAny } from '../../../utils'
-import { asColl, assertAny, assertColl, assertObj, isColl, isArr, isObj } from '../../../typeGuards/dvala'
+import { collHasKey, toAny } from '../../../utils'
+import { assertAny, assertColl, isColl, isArr, isObj } from '../../../typeGuards/dvala'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber, isNumber } from '../../../typeGuards/number'
@@ -22,6 +22,10 @@ function get(coll: Coll, key: string | number): Any | undefined {
     // PersistentVector: use .get(i) for numeric indices
     if (isNumber(key, { nonNegative: true, integer: true }) && key >= 0 && key < coll.size)
       return toAny(coll.get(key))
+  } else if (typeof coll === 'string') {
+    // String: index by integer to get character
+    if (isNumber(key, { nonNegative: true, integer: true }) && key < coll.length)
+      return toAny(coll[key])
   }
   return undefined
 }
@@ -46,46 +50,17 @@ function assoc(coll: Coll, key: string | number, value: Any, sourceCodeInfo?: So
   return coll.assoc(key, value)
 }
 
-interface CollMeta {
-  coll: Coll
-  parent: Obj | Arr
-}
-
-// --- Private helper: clone and get meta for nested operations ---
-function cloneAndGetMeta(
-  originalColl: Coll,
-  keys: Arr,
-  sourceCodeInfo?: SourceCodeInfo,
-): { coll: Coll; innerCollMeta: CollMeta } {
-  const coll = cloneColl(originalColl)
-
-  // All keys except the last one (we navigate to the parent before updating)
-  const butLastKeys = keys.size > 1 ? [...keys].slice(0, keys.size - 1) : []
-
-  const innerCollMeta = butLastKeys.reduce(
-    (result: CollMeta, key) => {
-      const resultColl = result.coll
-
-      let newResultColl: Coll
-      if (isArr(resultColl)) {
-        assertNumber(key, sourceCodeInfo)
-        newResultColl = asColl(resultColl.get(key), sourceCodeInfo)
-      } else {
-        assertObj(resultColl, sourceCodeInfo)
-        assertString(key, sourceCodeInfo)
-        if (!collHasKey(result.coll, key)) {
-          // Create a nested empty map if the key doesn't exist yet
-          return { coll: PersistentMap.empty(), parent: resultColl }
-        }
-
-        newResultColl = asColl(resultColl.get(key), sourceCodeInfo)
-      }
-
-      return { coll: newResultColl, parent: resultColl }
-    },
-    { coll, parent: PersistentMap.empty() },
-  )
-  return { coll, innerCollMeta }
+// --- Private helper: functionally update nested collection ---
+function assocInHelper(coll: Coll, keys: unknown[], value: Any, sourceCodeInfo?: SourceCodeInfo): Coll {
+  if (keys.length === 0) return coll
+  const key = asStringOrNumber(keys[0], sourceCodeInfo)
+  if (keys.length === 1) {
+    return assoc(coll, key, value, sourceCodeInfo)
+  }
+  const nested = get(coll, key)
+  const nestedColl: Coll = (nested !== undefined && isColl(nested)) ? nested : PersistentMap.empty()
+  const updatedNested = assocInHelper(nestedColl, keys.slice(1), value, sourceCodeInfo)
+  return assoc(coll, key, toAny(updatedNested), sourceCodeInfo)
 }
 
 const collectionUtilsFunctions: BuiltinNormalExpressions = {
@@ -152,22 +127,7 @@ cu.getIn(
       assertColl(originalColl, sourceCodeInfo)
       assertArray(keys, sourceCodeInfo)
       assertAny(value, sourceCodeInfo)
-
-      if (keys.size === 1) {
-        assertStringOrNumber(keys.get(0), sourceCodeInfo)
-        return assoc(originalColl, keys.get(0) as string | number, value, sourceCodeInfo)
-      }
-
-      const { coll, innerCollMeta } = cloneAndGetMeta(originalColl, keys, sourceCodeInfo)
-
-      const lastKey = asStringOrNumber(keys.get(keys.size - 1), sourceCodeInfo)
-      const parentKey = asStringOrNumber(keys.get(keys.size - 2), sourceCodeInfo)
-
-      // Update the parent with the new nested value
-      assoc(innerCollMeta.coll, lastKey, value, sourceCodeInfo)
-      assoc(innerCollMeta.parent, parentKey, innerCollMeta.coll, sourceCodeInfo)
-
-      return coll
+      return assocInHelper(originalColl, [...keys] as unknown[], value, sourceCodeInfo)
     },
     arity: toFixedArity(3),
     docs: {

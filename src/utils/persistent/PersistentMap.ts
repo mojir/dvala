@@ -229,7 +229,10 @@ function mergeTwoLeaves<V>(a: LeafNode<V>, b: LeafNode<V>, shift: number): Bitma
     const child = mergeTwoLeaves(a, b, shift + BITS)
     return { type: 'bitmap', bitmap: ba, children: [child] }
   }
-  const [first, second] = ba < bb ? [a, b] : [b, a]
+  // Use unsigned comparison: bit() can return -2147483648 for slot 31 (1 << 31 is signed-negative).
+  // bitmapIndex counts lower-positioned bits, so the child with the lower UNSIGNED bit value
+  // belongs at index 0. Without >>> 0, the signed -2147483648 would wrongly sort first.
+  const [first, second] = (ba >>> 0) < (bb >>> 0) ? [a, b] : [b, a]
   return { type: 'bitmap', bitmap: ba | bb, children: [first, second] }
 }
 
@@ -241,7 +244,8 @@ function expandCollision<V>(collision: CollisionNode<V>, leaf: LeafNode<V>, shif
     const child = expandCollision(collision, leaf, shift + BITS)
     return { type: 'bitmap', bitmap: bc, children: [child] }
   }
-  const [first, second] = bc < bl ? [collision, leaf] : [leaf, collision]
+  // Same unsigned-comparison fix as mergeTwoLeaves — see comment there.
+  const [first, second] = (bc >>> 0) < (bl >>> 0) ? [collision, leaf] : [leaf, collision]
   return { type: 'bitmap', bitmap: bc | bl, children: [first as HNode<V>, second as HNode<V>] }
 }
 
