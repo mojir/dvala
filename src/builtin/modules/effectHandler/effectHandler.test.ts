@@ -53,6 +53,83 @@ describe('handler module', () => {
     })
   })
 
+  describe('chooseAll', () => {
+    it('collects all results for a single choice', () => {
+      expect(dvala.run(`
+        let { chooseAll } = import("effectHandler");
+        chooseAll(-> perform(@choose, [1, 2, 3]) * 10)
+      `)).toEqual([10, 20, 30])
+    })
+
+    it('produces cartesian product for two choices', () => {
+      const result = dvala.run(`
+        let { chooseAll } = import("effectHandler");
+        chooseAll(-> do
+          let a = perform(@choose, [1, 2]);
+          let b = perform(@choose, [10, 20]);
+          [a, b]
+        end)
+      `) as number[][]
+      expect(result.sort((x, y) => (x[0]! - y[0]!) || (x[1]! - y[1]!))).toEqual([[1, 10], [1, 20], [2, 10], [2, 20]])
+    })
+
+    it('returns singleton when no choices are performed', () => {
+      expect(dvala.run(`
+        let { chooseAll } = import("effectHandler");
+        chooseAll(-> 42)
+      `)).toEqual([42])
+    })
+  })
+
+  describe('chooseFirst', () => {
+    it('picks the first option', () => {
+      expect(dvala.run(`
+        let { chooseFirst } = import("effectHandler");
+        chooseFirst(-> perform(@choose, [1, 2, 3]) * 10)
+      `)).toBe(10)
+    })
+
+    it('works with a single option', () => {
+      expect(dvala.run(`
+        let { chooseFirst } = import("effectHandler");
+        chooseFirst(-> perform(@choose, [99]))
+      `)).toBe(99)
+    })
+  })
+
+  describe('chooseRandom', () => {
+    it('returns one of the options', () => {
+      const result = dvala.run(`
+        let { chooseRandom } = import("effectHandler");
+        chooseRandom(-> perform(@choose, [1, 2, 3]))
+      `)
+      expect([1, 2, 3]).toContain(result)
+    })
+  })
+
+  describe('chooseTake', () => {
+    it('takes first n results', () => {
+      expect(dvala.run(`
+        let { chooseTake } = import("effectHandler");
+        chooseTake(2, -> perform(@choose, [1, 2, 3]) * 10)
+      `)).toEqual([10, 20])
+    })
+
+    it('returns all results when n >= total', () => {
+      expect(dvala.run(`
+        let { chooseTake } = import("effectHandler");
+        chooseTake(10, -> perform(@choose, [1, 2, 3]) * 10)
+      `)).toEqual([10, 20, 30])
+    })
+
+    it('returns empty array when n=0', () => {
+      expect(dvala.run(`
+        let { chooseTake } = import("effectHandler");
+        chooseTake(0, -> perform(@choose, [1, 2, 3]))
+      `)).toEqual([])
+    })
+  })
+
   describe('retry', () => {
     it('should propagate error after retries exhausted', () => {
       expect(dvala.run(`
