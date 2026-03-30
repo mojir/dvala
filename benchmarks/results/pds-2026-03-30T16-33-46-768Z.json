@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-03-30T16:33:46.768Z",
+  "label": "baseline (clone-based)",
+  "runs": 5,
+  "scenarios": [
+    {
+      "scenario": "scenario1",
+      "description": "Array accumulation — push 10,000 elements one by one",
+      "results": [
+        {
+          "name": "current (clone-based)",
+          "median": 36.26875000000001,
+          "min": 35.97920800000003,
+          "max": 37.79108299999996,
+          "runs": 5,
+          "times": [
+            37.02999999999997,
+            36.220416,
+            37.79108299999996,
+            36.26875000000001,
+            35.97920800000003
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "scenario2",
+      "description": "Nested state updates — 5000 iterations, 1000-item collection",
+      "results": [
+        {
+          "name": "current (clone-based)",
+          "median": 60.746834000000035,
+          "min": 59.20429100000001,
+          "max": 64.87458400000003,
+          "runs": 5,
+          "times": [
+            64.87458400000003,
+            61.23258299999998,
+            60.746834000000035,
+            60.02604199999996,
+            59.20429100000001
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "scenario3",
+      "description": "Point updates — 3,000 assoc calls on 20,000-element array",
+      "results": [
+        {
+          "name": "current (clone-based)",
+          "median": 14.117624999999975,
+          "min": 14.059833000000026,
+          "max": 14.846042000000011,
+          "runs": 5,
+          "times": [
+            14.846042000000011,
+            14.117624999999975,
+            14.104416000000015,
+            14.059833000000026,
+            14.372417000000041
+          ]
+        }
+      ]
+    }
+  ]
+}
