@@ -189,7 +189,9 @@ const skipDeterminismTests = new Set([
   'rand-int!',
 ])
 
-const skipModuleDeterminismTests: Record<string, Set<string>> = {}
+const skipModuleDeterminismTests: Record<string, Set<string>> = {
+  effectHandler: new Set(['chooseRandom']),
+}
 
 // =========================================================================
 // 1. DOCS METADATA CONSISTENCY
