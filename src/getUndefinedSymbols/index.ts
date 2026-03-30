@@ -184,16 +184,17 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
 
     case NodeTypes.Handler: {
       // Handler: collect undefined symbols from all clause bodies and transform body.
-      // Clause params introduce new bindings within clause scope, but since
-      // getUndefinedSymbols is a conservative over-approximation we skip
-      // removing clause-scoped names here (they'll be bound at eval time).
+      // Each clause body is analyzed in its own fresh sub-scope so that `let` bindings
+      // in one clause do not bleed into another clause (they're independent scopes at runtime).
       const [clauses, transform] = node[1] as [{ params: BindingTarget[]; body: AstNode[] }[], [BindingTarget, AstNode[]] | null]
       const result = new Set<string>()
       for (const clause of clauses) {
-        addToSet(result, getUndefinedSymbols(clause.body, contextStack, builtin))
+        // Fresh scope per clause: clause params + let bindings are local to this clause
+        const clauseScope = contextStack.create({})
+        addToSet(result, getUndefinedSymbols(clause.body, clauseScope, builtin))
       }
       if (transform) {
-        addToSet(result, getUndefinedSymbols(transform[1], contextStack, builtin))
+        addToSet(result, getUndefinedSymbols(transform[1], contextStack.create({}), builtin))
       }
       return result
     }

@@ -4257,17 +4257,17 @@ describe('shallow handler', () => {
 
   it('implements state threading via recursive re-application', () => {
     // Each effect handling step re-applies the handler with updated state.
-    // Variable names differ per clause to avoid "Cannot redefine" error.
+    // Both clauses can use the same variable name (each clause has its own scope).
     const result = dvala.run(`
       let withState = (s) ->
         shallow handler
           @state.get() -> do
-            let kg = resume;
-            withState(s)(-> kg(s))
+            let k = resume;
+            withState(s)(-> k(s))
           end
           @state.set(v) -> do
-            let ks = resume;
-            withState(v)(-> ks(null))
+            let k = resume;
+            withState(v)(-> k(null))
           end
         end;
       withState(0)(-> do
@@ -4283,12 +4283,12 @@ describe('shallow handler', () => {
       let withState = (s) ->
         shallow handler
           @state.get() -> do
-            let kg = resume;
-            withState(s)(-> kg(s))
+            let k = resume;
+            withState(s)(-> k(s))
           end
           @state.set(v) -> do
-            let ks = resume;
-            withState(v)(-> ks(null))
+            let k = resume;
+            withState(v)(-> k(null))
           end
         end;
       withState(0)(-> do
@@ -4338,6 +4338,43 @@ describe('shallow handler', () => {
         end
       end;
       h(-> perform(@test.eff))
+    `)
+    expect(result).toBe(99)
+  })
+})
+
+describe('handler clause scope isolation', () => {
+  it('two clauses can use the same variable name (each clause has own scope)', () => {
+    // Each handler clause gets an independent scope — `let k` in clause A
+    // must not conflict with `let k` in clause B, even on the same handler.
+    // Uses deep handler (state doesn't thread — returns 0), but must not crash.
+    const result = dvala.run(`
+      let h = handler
+        @a() -> do let k = resume; k(1) end
+        @b() -> do let k = resume; k(2) end
+      end;
+      h(-> do perform(@a); perform(@b) end)
+    `)
+    expect(result).toBe(2)
+  })
+
+  it('same-name let k works in shallow handler state threading', () => {
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do
+            let k = resume;
+            withState(s)(-> k(s))
+          end
+          @state.set(v) -> do
+            let k = resume;
+            withState(v)(-> k(null))
+          end
+        end;
+      withState(0)(-> do
+        perform(@state.set, 99);
+        perform(@state.get)
+      end)
     `)
     expect(result).toBe(99)
   })
