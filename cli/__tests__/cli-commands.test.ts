@@ -100,6 +100,23 @@ describe('CLI commands', () => {
       expect(content.ast.sourceMap).toBeUndefined()
     })
 
+    it('builds with --no-expand-macros keeps Macro nodes', () => {
+      const withPath = path.join(tmpDir, 'with-macros.json')
+      const withoutPath = path.join(tmpDir, 'without-macros.json')
+      exec(`build ${exampleProjectDir} -o ${withPath}`)
+      exec(`build ${exampleProjectDir} --no-expand-macros -o ${withoutPath}`)
+      const withContent = fs.readFileSync(withPath, 'utf-8')
+      const withoutContent = fs.readFileSync(withoutPath, 'utf-8')
+      // With expansion (default): no Macro nodes in calls
+      // Without expansion: Macro nodes present
+      expect(withoutContent).toContain('"Macro"')
+      // Both should produce runnable bundles
+      const withResult = exec(`run ${withPath}`)
+      const withoutResult = exec(`run ${withoutPath}`)
+      expect(withResult).toContain('doubled')
+      expect(withoutResult).toContain('doubled')
+    })
+
     it('fails without dvala.json', () => {
       const result = execFails('build /tmp')
       expect(result).toContain('dvala.json')
