@@ -44,8 +44,8 @@ export function initCoreDvalaSources(): void {
       continue
     }
 
-    const obj = result
-    for (const [name, fn] of Object.entries(obj)) {
+    // PersistentMap doesn't expose entries via Object.entries — iterate directly.
+    for (const [name, fn] of result) {
       const expression = normalExpressions[name]
       // Defensive: all core dvala modules produce UserDefined functions
       /* v8 ignore next */

@@ -264,7 +264,9 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
 
   'isArray': {
     evaluate: ([first]): boolean => {
-      return Array.isArray(first)
+      // Accept both PersistentVector (Dvala array type) and plain JS arrays
+      // (returned by some module functions that haven't been ported to PV yet).
+      return isArr(first) || Array.isArray(first)
     },
     arity: toFixedArity(1),
     docs: {
