@@ -17,22 +17,27 @@ describe('expandMacros', () => {
     const ast = parse('let double = macro (x) -> quote $^{x} + $^{x} end; double(21)')
     const expanded = expandMacros(ast)
 
-    // The macro definition should be removed, call expanded to 21 + 21
-    expect(expanded.body.length).toBe(1) // just the expanded expression
-    // The remaining node should NOT be a Call to "double" — it should be the expansion
-    const remaining = expanded.body[0]!
-    expect(remaining[0]).not.toBe('Sym') // not an unexpanded reference
+    // Definition kept, call expanded to 21 + 21
+    expect(expanded.body.length).toBe(2) // let double = ...; <expanded>
+    // The second node (the call) should be expanded, not a Call to "double"
+    const callResult = expanded.body[1]!
+    expect(callResult[0]).toBe('Call') // it's now a + call, not a double call
     // Evaluate the expanded AST
     const dvala = createDvala()
     expect(dvala.run({ version: 1, ast: expanded })).toBe(42)
   })
 
-  it('removes macro definition from output', () => {
+  it('keeps macro definition but expands calls', () => {
     const ast = parse('let m = macro (x) -> x; m(42)')
     const expanded = expandMacros(ast)
 
-    // Should only have the expanded body, no Let for the macro
-    expect(expanded.body.length).toBe(1) // just the expanded expression
+    // Definition is kept (treeshaking removes it later), call is expanded
+    expect(expanded.body.length).toBe(2) // let m = macro... ; <expanded>
+    // The second node should be the expanded result, not a Call to m
+    const callNode = expanded.body[1]!
+    expect(callNode[0]).not.toBe('Call') // expanded, not a macro call
+    const dvala = createDvala()
+    expect(dvala.run({ version: 1, ast: expanded })).toBe(42)
   })
 
   it('expands nested macro calls', () => {

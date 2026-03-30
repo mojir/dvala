@@ -7,7 +7,7 @@ import { isMacroFunction } from '../typeGuards/dvalaFunction'
 /**
  * Build-time macro expansion pass.
  *
- * Walks the AST, finds macro definitions (let name = macro ...),
+ * Walks the entire AST, finds macro definitions (let name = macro ...),
  * evaluates them to get macro functions, then expands all calls
  * to those macros using macroexpand. The macro definitions are
  * removed from the output.
@@ -15,36 +15,21 @@ import { isMacroFunction } from '../typeGuards/dvalaFunction'
  * Only expands macros that are statically defined as let bindings
  * with Macro node values and whose bodies don't depend on runtime context.
  * Macros that fail to evaluate are left unexpanded.
- *
- * Note: uses prettyPrint to reconstruct source for macro evaluation.
- * This is a pragmatic choice — the macro bodies need to be evaluated
- * in a fresh Dvala context, and the evaluator's public API takes strings.
- * A future evaluateAst API would eliminate this round-trip.
  */
 export function expandMacros(ast: Ast): Ast {
-  // Phase 1: Find all macro definitions (let name = macro ...)
-  const macroDefs: { name: string; index: number }[] = []
-
-  for (let i = 0; i < ast.body.length; i++) {
-    const node = ast.body[i]!
-    const name = extractMacroDefName(node)
-    if (name) {
-      macroDefs.push({ name, index: i })
-    }
-  }
+  // Phase 1: Collect all macro definitions from the entire AST
+  const macroDefs: { name: string; node: AstNode }[] = []
+  collectMacroDefs(ast.body, macroDefs)
 
   if (macroDefs.length === 0) {
     return ast
   }
 
   // Phase 2: Evaluate all macro definitions together so they can reference each other.
-  // We prettyPrint each definition and evaluate them in a shared Dvala context.
   const dvala = createDvala()
   const macroFunctions = new Map<string, unknown>()
-  const expandedIndices = new Set<number>()
 
-  // Build a combined source: all macro lets, then return an object of them
-  const defSources = macroDefs.map(d => prettyPrint(ast.body[d.index]!))
+  const defSources = macroDefs.map(d => prettyPrint(d.node))
   const returnObj = macroDefs.map(d => `${d.name}: ${d.name}`).join(', ')
   const evalSource = `${defSources.join(';\n')};\n{ ${returnObj} }`
 
@@ -54,11 +39,10 @@ export function expandMacros(ast: Ast): Ast {
       const fn = result[def.name]
       if (isMacroFunction(fn)) {
         macroFunctions.set(def.name, fn)
-        expandedIndices.add(def.index)
       }
     }
-  } catch {
-    // Collective evaluation failed — macros may depend on runtime context.
+  }
+  catch {
     return ast
   }
 
@@ -66,32 +50,57 @@ export function expandMacros(ast: Ast): Ast {
     return ast
   }
 
-  // Phase 3: Expand macro calls in the remaining AST body.
-  const expandedBody: AstNode[] = []
-
-  for (let i = 0; i < ast.body.length; i++) {
-    if (expandedIndices.has(i)) {
-      continue // Remove expanded macro definitions
-    }
-    expandedBody.push(expandNodeRecursive(ast.body[i]!, macroFunctions, dvala))
-  }
+  // Phase 3: Walk the AST, expand macro calls.
+  // Macro definitions are kept — treeshaking can remove them later.
+  const expandedBody = processNodes(ast.body, macroFunctions, dvala)
 
   return { body: expandedBody, sourceMap: ast.sourceMap }
+}
+
+/** Recursively find all let-bound macro definitions in the AST */
+function collectMacroDefs(nodes: AstNode[], result: { name: string; node: AstNode }[]): void {
+  for (const node of nodes) {
+    const name = extractMacroDefName(node)
+    if (name) {
+      result.push({ name, node })
+    }
+    // Recurse into blocks, let values, etc.
+    recurseForCollection(node[1], result)
+  }
+}
+
+function recurseForCollection(payload: unknown, result: { name: string; node: AstNode }[]): void {
+  if (!Array.isArray(payload)) return
+  for (const item of payload) {
+    if (isAstNode(item)) {
+      const name = extractMacroDefName(item as AstNode)
+      if (name) {
+        result.push({ name, node: item as AstNode })
+      }
+      recurseForCollection((item as AstNode)[1], result)
+    }
+    else if (Array.isArray(item)) {
+      recurseForCollection(item, result)
+    }
+  }
 }
 
 /** Check if a node is `let <name> = macro ...` and return the name */
 function extractMacroDefName(node: AstNode): string | null {
   if (node[0] !== NodeTypes.Let) return null
-
   const [target, value] = node[1] as [unknown, AstNode]
   if (!Array.isArray(value) || value[0] !== NodeTypes.Macro) return null
-
   if (!Array.isArray(target)) return null
   if (target[0] !== 'symbol') return null
   const payload = target[1] as [unknown[], unknown]
   const symNode = payload[0]
   if (!Array.isArray(symNode) || symNode[0] !== NodeTypes.Sym) return null
   return symNode[1] as string
+}
+
+/** Process a list of nodes: expand macro calls, keep definitions (treeshaking removes them later) */
+function processNodes(nodes: AstNode[], macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>): AstNode[] {
+  return nodes.map(node => expandNodeRecursive(node, macros, dvala))
 }
 
 /** Recursively expand macro calls in an AST node */
@@ -106,20 +115,25 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
       const macroFn = macros.get(name)
       if (macroFn) {
         try {
-          // Use macroexpand(macroFn, ...args) to get expanded AST
           const expanded = dvala.run('macroexpand(__m__, ...args)', {
             bindings: { __m__: macroFn, args },
           })
           if (Array.isArray(expanded) && expanded.length === 3 && typeof expanded[0] === 'string') {
-            // Recursively expand in case the expansion contains more macro calls
             return expandNodeRecursive(expanded as AstNode, macros, dvala)
           }
           return node
-        } catch {
+        }
+        catch {
           return node
         }
       }
     }
+  }
+
+  // For Block nodes, process the body to remove macro defs inside blocks
+  if (type === NodeTypes.Block && Array.isArray(payload)) {
+    const blockBody = processNodes(payload as AstNode[], macros, dvala)
+    return [type, blockBody, nodeId]
   }
 
   // Recurse into children
@@ -131,13 +145,14 @@ function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala:
   return node
 }
 
-/** Recursively process a value that may be an AST node, an array of nodes, or a plain value */
 function recurseInto(value: unknown, macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>): unknown {
   if (!Array.isArray(value)) return value
-  // AST node: [string, payload, number]
-  if (value.length === 3 && typeof value[0] === 'string' && typeof value[2] === 'number') {
+  if (isAstNode(value)) {
     return expandNodeRecursive(value as AstNode, macros, dvala)
   }
-  // Array of values — recurse into each
   return value.map(item => recurseInto(item, macros, dvala))
+}
+
+function isAstNode(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 3 && typeof value[0] === 'string' && typeof value[2] === 'number'
 }

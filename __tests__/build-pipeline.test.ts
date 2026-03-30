@@ -83,4 +83,40 @@ describe('build pipeline', () => {
     expect(resolved.config.build.expandMacros).toBe(true)
     expect(resolved.config.build.sourceMap).toBe(true)
   })
+
+  it('macro expansion expands macro calls in bundled output', () => {
+    const resolved = findConfig(exampleProjectDir)!
+    const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
+    const bundled = bundle(entryPath)
+    const expanded = { ...bundled, ast: expandMacros(bundled.ast) }
+
+    // The expanded bundle should have no macro Call nodes for "double" or "withDefault"
+    const json = JSON.stringify(expanded.ast.body)
+    // "double" and "withDefault" should not appear as Call targets (Sym references in Call nodes)
+    // but may still appear as Let binding names (definitions are kept)
+    expect(json).not.toContain('"Call",[["Sym","double"')
+    expect(json).not.toContain('"Call",[["Sym","withDefault"')
+
+    // The expanded bundle is still runnable and produces correct results
+    const dvala = createDvala()
+    const output = dvala.run(expanded) as Record<string, number>
+    expect(output.doubled).toBe(10)  // double(5) → 5 + 5
+    expect(output.safe).toBe(42)     // withDefault(null, 42) → if isNull(null) then 42 else null end
+  })
+
+  it('without macro expansion, macro calls remain in AST', () => {
+    const resolved = findConfig(exampleProjectDir)!
+    const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
+    const bundled = bundle(entryPath)
+
+    // Without expansion, the AST should contain Macro nodes
+    const json = JSON.stringify(bundled.ast.body)
+    expect(json).toContain('"Macro"')
+
+    // Still runnable (macros expand at runtime)
+    const dvala = createDvala()
+    const output = dvala.run(bundled) as Record<string, number>
+    expect(output.doubled).toBe(10)
+    expect(output.safe).toBe(42)
+  })
 })
