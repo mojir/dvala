@@ -100,14 +100,9 @@ function pushTailMut(root: unknown[], shift: number, count: number, tailNode: IN
     const child = newRoot[subidx] as INode | undefined
     newRoot[subidx] = child !== undefined
       ? makeNode(pushTailMut((child.array as unknown[]).slice(), shift - BITS, count, tailNode))
-      : makeNode(newPathArr(shift - BITS, tailNode))
+      : newPath(shift - BITS, tailNode)
   }
   return newRoot
-}
-
-function newPathArr(level: number, node: INode): unknown[] {
-  if (level === 0) return [node]
-  return [makeNode(newPathArr(level - BITS, node))]
 }
 
 /** ------------------------------------------------------------------ */
@@ -256,7 +251,7 @@ function pushTailPersistent(node: INode, level: number, count: number, tailNode:
     const child = node.array[subidx] as INode | undefined
     arr[subidx] = child !== undefined
       ? pushTailPersistent(child, level - BITS, count, tailNode)
-      : makeNode(newPathArr(level - BITS, tailNode))
+      : newPath(level - BITS, tailNode)
   }
   return makeNode(arr)
 }
