@@ -117,6 +117,19 @@ describe('CLI commands', () => {
       expect(withoutResult).toContain('doubled')
     })
 
+    it('builds with --no-tree-shake produces larger bundle', () => {
+      const shakenPath = path.join(tmpDir, 'shaken.json')
+      const unshakenPath = path.join(tmpDir, 'unshaken.json')
+      exec(`build ${exampleProjectDir} -o ${shakenPath}`)
+      exec(`build ${exampleProjectDir} --no-tree-shake -o ${unshakenPath}`)
+      const shakenSize = fs.statSync(shakenPath).size
+      const unshakenSize = fs.statSync(unshakenPath).size
+      expect(unshakenSize).toBeGreaterThan(shakenSize)
+      // Both produce correct output
+      expect(exec(`run ${shakenPath}`)).toContain('doubled')
+      expect(exec(`run ${unshakenPath}`)).toContain('doubled')
+    })
+
     it('fails without dvala.json', () => {
       const result = execFails('build /tmp')
       expect(result).toContain('dvala.json')

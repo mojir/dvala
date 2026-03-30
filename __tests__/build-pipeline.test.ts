@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
 import { bundle } from '../src/bundler'
 import { expandMacros } from '../src/ast/expandMacros'
+import { treeShake } from '../src/ast/treeShake'
 import { serializeBundle, deserializeBundle } from '../src/bundler/serialize'
 import { findConfig } from '../src/config'
 
@@ -118,5 +119,30 @@ describe('build pipeline', () => {
     const output = dvala.run(bundled) as Record<string, number>
     expect(output.doubled).toBe(10)
     expect(output.safe).toBe(42)
+  })
+
+  it('tree-shaking removes unused bindings after macro expansion', () => {
+    const resolved = findConfig(exampleProjectDir)!
+    const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
+    const bundled = bundle(entryPath)
+    const expanded = { ...bundled, ast: expandMacros(bundled.ast) }
+    const shaken = { ...expanded, ast: treeShake(expanded.ast) }
+
+    // Shaken bundle should be smaller (fewer AST nodes)
+    const expandedSize = JSON.stringify(expanded.ast.body).length
+    const shakenSize = JSON.stringify(shaken.ast.body).length
+    expect(shakenSize).toBeLessThan(expandedSize)
+
+    // Still runnable and produces correct results
+    const dvala = createDvala()
+    const output = dvala.run(shaken) as Record<string, number>
+    expect(output.avg).toBe(5)
+    expect(output.doubled).toBe(10)
+    expect(output.safe).toBe(42)
+  })
+
+  it('build config includes treeShake default', () => {
+    const resolved = findConfig(exampleProjectDir)!
+    expect(resolved.config.build.treeShake).toBe(true)
   })
 })

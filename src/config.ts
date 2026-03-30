@@ -6,6 +6,8 @@ const CONFIG_FILENAME = 'dvala.json'
 export interface BuildConfig {
   /** Expand statically-defined macros at build time. Default: true */
   expandMacros: boolean
+  /** Remove unused let bindings. Default: true */
+  treeShake: boolean
   /** Include source maps in the bundle. Default: true */
   sourceMap: boolean
 }
@@ -30,6 +32,7 @@ export interface ResolvedConfig {
 
 const buildDefaults: BuildConfig = {
   expandMacros: true,
+  treeShake: true,
   sourceMap: true,
 }
 

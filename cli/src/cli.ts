@@ -14,6 +14,7 @@ import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDat
 import { allBuiltinModules } from '../../src/allModules'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
 import { expandMacros } from '../../src/ast/expandMacros'
+import { treeShake } from '../../src/ast/treeShake'
 import { bundle } from '../../src/bundler'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
@@ -93,6 +94,7 @@ interface BuildConfig {
   /** CLI overrides — null means "use dvala.json value" */
   noSourceMap: boolean
   noExpandMacros: boolean
+  noTreeShake: boolean
 }
 
 interface DocConfig {
@@ -135,7 +137,7 @@ type Config = ReplConfig | RunConfig | EvalConfig | TestConfig | BuildConfig | D
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake'])
 
 const commands = ['`help', '`quit', '`builtins', '`context']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -213,11 +215,15 @@ switch (config.subcommand) {
       const buildConfig = resolved.config.build
       const sourceMap = config.noSourceMap ? false : buildConfig.sourceMap
       const doExpandMacros = config.noExpandMacros ? false : buildConfig.expandMacros
+      const doTreeShake = config.noTreeShake ? false : buildConfig.treeShake
 
       const absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
       let result = bundle(absolutePath, { sourceMap })
       if (doExpandMacros) {
         result = { ...result, ast: expandMacros(result.ast) }
+      }
+      if (doTreeShake) {
+        result = { ...result, ast: treeShake(result.ast) }
       }
       const json = serializeBundle(result)
       if (config.output) {
@@ -690,6 +696,7 @@ function processArguments(args: string[]): Config {
       let output: Maybe<string> = null
       let noSourceMap = false
       let noExpandMacros = false
+      let noTreeShake = false
       let i = 1
       while (i < args.length) {
         const parsed = parseOption(args, i)
@@ -720,13 +727,17 @@ function processArguments(args: string[]): Config {
             noExpandMacros = true
             i += parsed.count
             break
+          case '--no-tree-shake':
+            noTreeShake = true
+            i += parsed.count
+            break
           default:
             printErrorMessage(`Unknown option "${parsed.option}" for "build"`)
             process.exit(1)
         }
       }
       // directory is optional — if omitted, walks up from cwd to find dvala.json
-      return { subcommand: 'build', directory, output, noSourceMap, noExpandMacros }
+      return { subcommand: 'build', directory, output, noSourceMap, noExpandMacros, noTreeShake }
     }
     case 'test': {
       let filename: Maybe<string> = null
@@ -1026,6 +1037,7 @@ Build options:
   -o, --output=<file>             Write build output to file (default: stdout)
   --no-sourcemap                  Strip source maps from bundle
   --no-expand-macros              Skip build-time macro expansion
+  --no-tree-shake                 Skip unused binding removal
 
 Test options:
   --pattern=<regex>               Only run tests matching pattern
