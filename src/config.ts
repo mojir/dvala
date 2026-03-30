@@ -3,11 +3,20 @@ import path from 'node:path'
 
 const CONFIG_FILENAME = 'dvala.json'
 
+export interface BuildConfig {
+  /** Expand statically-defined macros at build time. Default: true */
+  expandMacros: boolean
+  /** Include source maps in the bundle. Default: true */
+  sourceMap: boolean
+}
+
 export interface DvalaConfig {
   /** Glob pattern for test file discovery, relative to project root. Default: "**\/*.test.dvala" */
   tests: string
   /** Entry file for bundling. Default: "main.dvala" */
   entry: string
+  /** Build pipeline options */
+  build: BuildConfig
 }
 
 export interface ResolvedConfig {
@@ -19,9 +28,15 @@ export interface ResolvedConfig {
   rootDir: string
 }
 
+const buildDefaults: BuildConfig = {
+  expandMacros: true,
+  sourceMap: true,
+}
+
 const defaults: DvalaConfig = {
   tests: '**/*.test.dvala',
   entry: 'main.dvala',
+  build: buildDefaults,
 }
 
 /**
@@ -36,12 +51,15 @@ export function findConfig(startDir?: string): ResolvedConfig | null {
     const configPath = path.join(dir, CONFIG_FILENAME)
     if (fs.existsSync(configPath)) {
       const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      const config: DvalaConfig = { ...defaults, ...raw }
+      const config: DvalaConfig = {
+        ...defaults,
+        ...raw,
+        build: { ...buildDefaults, ...raw.build },
+      }
       return { config, configPath, rootDir: dir }
     }
     const parent = path.dirname(dir)
     if (parent === dir) {
-      // Reached filesystem root
       return null
     }
     dir = parent

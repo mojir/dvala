@@ -13,6 +13,7 @@ import { apiReference, isFunctionReference } from '../../reference'
 import { formatDoc, formatExamples, getModuleNames, listCoreExpressions, listDatatypes, listModuleExpressions, listModules, lookupDoc } from '../../reference/format'
 import { allBuiltinModules } from '../../src/allModules'
 import { normalExpressionKeys, specialExpressionKeys } from '../../src/builtin'
+import { expandMacros } from '../../src/ast/expandMacros'
 import { bundle } from '../../src/bundler'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
@@ -89,7 +90,9 @@ interface BuildConfig {
   subcommand: 'build'
   directory: Maybe<string>
   output: Maybe<string>
-  sourceMap: boolean
+  /** CLI overrides — null means "use dvala.json value" */
+  noSourceMap: boolean
+  noExpandMacros: boolean
 }
 
 interface DocConfig {
@@ -132,7 +135,7 @@ type Config = ReplConfig | RunConfig | EvalConfig | TestConfig | BuildConfig | D
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros'])
 
 const commands = ['`help', '`quit', '`builtins', '`context']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -206,8 +209,16 @@ switch (config.subcommand) {
         printErrorMessage('No dvala.json found. Specify a project directory or create a dvala.json in the project root.')
         process.exit(1)
       }
+      // Merge dvala.json build config with CLI overrides
+      const buildConfig = resolved.config.build
+      const sourceMap = config.noSourceMap ? false : buildConfig.sourceMap
+      const doExpandMacros = config.noExpandMacros ? false : buildConfig.expandMacros
+
       const absolutePath = path.resolve(resolved.rootDir, resolved.config.entry)
-      const result = bundle(absolutePath, { sourceMap: config.sourceMap })
+      let result = bundle(absolutePath, { sourceMap })
+      if (doExpandMacros) {
+        result = { ...result, ast: expandMacros(result.ast) }
+      }
       const json = serializeBundle(result)
       if (config.output) {
         fs.writeFileSync(config.output, json, { encoding: 'utf-8' })
@@ -677,7 +688,8 @@ function processArguments(args: string[]): Config {
     case 'build': {
       let directory: Maybe<string> = null
       let output: Maybe<string> = null
-      let sourceMap = true
+      let noSourceMap = false
+      let noExpandMacros = false
       let i = 1
       while (i < args.length) {
         const parsed = parseOption(args, i)
@@ -701,7 +713,11 @@ function processArguments(args: string[]): Config {
             i += parsed.count
             break
           case '--no-sourcemap':
-            sourceMap = false
+            noSourceMap = true
+            i += parsed.count
+            break
+          case '--no-expand-macros':
+            noExpandMacros = true
             i += parsed.count
             break
           default:
@@ -710,7 +726,7 @@ function processArguments(args: string[]): Config {
         }
       }
       // directory is optional — if omitted, walks up from cwd to find dvala.json
-      return { subcommand: 'build', directory, output, sourceMap }
+      return { subcommand: 'build', directory, output, noSourceMap, noExpandMacros }
     }
     case 'test': {
       let filename: Maybe<string> = null
@@ -1008,6 +1024,8 @@ Run/Eval options:
 
 Build options:
   -o, --output=<file>             Write build output to file (default: stdout)
+  --no-sourcemap                  Strip source maps from bundle
+  --no-expand-macros              Skip build-time macro expansion
 
 Test options:
   --pattern=<regex>               Only run tests matching pattern
