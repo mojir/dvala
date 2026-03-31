@@ -1673,7 +1673,7 @@ let ys = for (i in range(10)) -> i * 2.0 + 1;
 let analysis = {
   distribution: {
     nRaw: count(nums),
-    outliers: outliers,
+    outliers,
     nClean: count(clean),
     range: [min(...clean), max(...clean)],
     span: vec.span(clean),
@@ -1693,8 +1693,8 @@ let analysis = {
     cumulativeSum: vec.cumsum(take(clean, 6)),
   },
   geometry: {
-    v1: v1,
-    v2: v2,
+    v1,
+    v2,
     dot: la.dot(v1, v2),
     cross: la.cross(v1, v2),
     angle: r3(la.angle(v1, v2)),
@@ -1707,8 +1707,8 @@ let analysis = {
     projection: la.projection([3, 4], [1, 0]),
   },
   correlation: {
-    xs: xs,
-    ys: ys,
+    xs,
+    ys,
     pearson: la.pearsonCorr(xs, ys),
     spearman: la.spearmanCorr(xs, ys),
     covariance: r3(la.cov(xs, ys)),
