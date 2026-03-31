@@ -74,6 +74,11 @@ In production you provide a real I/O handler. In a test, you suppress the output
 ```dvala
 let { assertEqual } = import("assertion");
 
+let greet = name -> do
+  perform(@dvala.io.print, "Hello, " ++ name ++ "!");
+  name
+end;
+
 let silence = handler @dvala.io.print(msg) -> resume(null) end;
 
 assertEqual(silence(-> greet("Alice")), "Alice")
