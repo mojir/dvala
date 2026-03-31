@@ -1090,7 +1090,7 @@ test.describe('chapter pages', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
-    await expect(page.locator('.chapter-header__toc-btn')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Table of contents' })).toBeVisible()
   })
 
   test('TOC dropdown navigates to selected chapter', async ({ page }) => {
@@ -1098,7 +1098,7 @@ test.describe('chapter pages', () => {
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
     // Open the TOC dropdown and click a chapter
-    await page.locator('.chapter-header__toc-btn').click()
+    await page.getByRole('button', { name: 'Table of contents' }).click()
     await page.locator('#chapter-toc-dropdown .chapter-toc-dropdown__item', { hasText: 'Macros' }).click()
     await expect(page.locator('.chapter-header__title')).toContainText('Macros')
   })

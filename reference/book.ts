@@ -35,19 +35,27 @@ export function parseChapterMarkdown(markdown: string): { title: string; body: s
   return { title, body }
 }
 
+export interface CodeBlock {
+  lines: string[]
+  /** If true, the block is expected to throw an error when run. */
+  throws: boolean
+}
+
 /**
  * Extract runnable dvala code blocks from chapter markdown.
  * Blocks tagged `no-run` are excluded.
+ * Blocks tagged `throws` are expected to throw an error.
  */
-export function extractCodeBlocks(markdown: string): string[][] {
+export function extractCodeBlocks(markdown: string): CodeBlock[] {
   const codeBlockRegExp = /^```dvala([^\n]*)\n([\s\S]*?)^```/gm
-  const blocks: string[][] = []
+  const blocks: CodeBlock[] = []
   let match: RegExpExecArray | null
 
   while ((match = codeBlockRegExp.exec(markdown)) !== null) {
     const options = match[1]!.trim().split(',').map(s => s.trim()).filter(Boolean)
     if (!options.includes('no-run')) {
-      blocks.push(match[2]!.split('\n').filter((_, i, arr) => i < arr.length - 1 || arr[i] !== ''))
+      const lines = match[2]!.split('\n').filter((_, i, arr) => i < arr.length - 1 || arr[i] !== '')
+      blocks.push({ lines, throws: options.includes('throws') })
     }
   }
   return blocks
@@ -109,6 +117,6 @@ export const chapters: ChapterEntry[] = bookItems.flatMap(item =>
   isBookSection(item) ? item.entries : [item],
 )
 
-export function getExamples(chapter: ChapterEntry): string[][] {
+export function getExamples(chapter: ChapterEntry): CodeBlock[] {
   return extractCodeBlocks(chapter.body)
 }

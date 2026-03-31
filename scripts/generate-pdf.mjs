@@ -168,33 +168,18 @@ function resetSlugQueues(chapters) {
 }
 
 // ---------------------------------------------------------------------------
-// Chapter files in reading order
+// Chapter files in reading order — discovered dynamically by scanning book/.
+// Mirrors the bookChaptersPlugin in rolldown.plugins.mjs: drop a .md file in
+// book/NN-section/NN-chapter.md and it appears automatically.
 // ---------------------------------------------------------------------------
-const CHAPTER_FILES = [
-  '01-getting-started/01-intro.md',
-  '01-getting-started/02-getting-started.md',
-  '02-core-language/01-data-types.md',
-  '02-core-language/02-operators.md',
-  '02-core-language/03-lexical-scoping.md',
-  '02-core-language/04-functions.md',
-  '03-data-and-control-flow/01-collections.md',
-  '03-data-and-control-flow/02-destructuring.md',
-  '03-data-and-control-flow/03-control-flow.md',
-  '03-data-and-control-flow/04-pattern-matching.md',
-  '03-data-and-control-flow/05-loops-and-recursion.md',
-  '03-data-and-control-flow/06-pipes-and-data-flow.md',
-  '04-design-principles/01-expression-oriented.md',
-  '04-design-principles/02-immutability.md',
-  '04-design-principles/03-purity.md',
-  '04-design-principles/04-normal-vs-special.md',
-  '04-design-principles/05-tail-call-optimization.md',
-  '05-advanced/01-modules.md',
-  '05-advanced/02-effects.md',
-  '05-advanced/03-implicit-async.md',
-  '05-advanced/04-suspension.md',
-  '05-advanced/05-concurrency.md',
-  '05-advanced/06-macros.md',
-]
+const BOOK_DIR = path.join(ROOT, 'book')
+const CHAPTER_FILES = fs.readdirSync(BOOK_DIR).sort()
+  .filter(dir => fs.statSync(path.join(BOOK_DIR, dir)).isDirectory())
+  .flatMap(dir =>
+    fs.readdirSync(path.join(BOOK_DIR, dir)).sort()
+      .filter(file => file.endsWith('.md'))
+      .map(file => `${dir}/${file}`)
+  )
 
 // ---------------------------------------------------------------------------
 // Parse chapters to extract h1 title and h2 sections for the TOC

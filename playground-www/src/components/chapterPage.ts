@@ -7,7 +7,7 @@
  */
 
 import { href, navigate } from '../router'
-import { hamburgerIcon } from '../icons'
+import { hamburgerIcon, searchIcon } from '../icons'
 import { renderDvalaMarkdown, slugifyHeading } from '../renderDvalaMarkdown'
 
 export interface ChapterEntry {
@@ -88,7 +88,10 @@ export function renderBookIndexPage(): string {
   <div class="chapter-header">
     <span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">←</span>
     <span class="chapter-header__title">The Book</span>
-    <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+    <div class="chapter-header__actions">
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleBookSearch(event)" aria-label="Search chapters">${searchIcon}</button>
+    </div>
     ${nextBtn}
   </div>
   <div class="book-page__content">
@@ -139,7 +142,10 @@ export function renderChapterPage(id: string): string {
   <div class="chapter-header">
     ${prevBtn}
     <span class="chapter-header__title">${escapeHtml(entry.title)}</span>
-    <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+    <div class="chapter-header__actions">
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleBookSearch(event)" aria-label="Search chapters">${searchIcon}</button>
+    </div>
     ${nextBtn}
   </div>
   <div class="book-page__content">

@@ -99,7 +99,7 @@ export interface Variant {
   argumentNames: string[]
 }
 
-export type ExampleEntry = string | { code: string; noRun: true }
+export type ExampleEntry = string | { code: string; noRun: true } | { code: string; throws: true }
 
 export interface FunctionDocs {
   category: Category

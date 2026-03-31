@@ -450,7 +450,7 @@ let showType = macro (ast) -> ["Str", first(ast), 0];
 showType(42)
 ```
 
-```dvala no-run
+```dvala throws
 let showType = macro (ast) -> ["Str", first(ast), 0];
 let fns = [showType];
 

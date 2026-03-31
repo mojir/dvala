@@ -2,6 +2,10 @@
 
 > Reading as a publisher — notes on flow, gaps, and chapter-level feedback.
 > Goal: make this a bestseller for developers building suspendable, agent-driven workflows.
+>
+> **Revision 2 — 2026-03-31.** Three new chapters added since the initial review:
+> `02-core-language/05-strings.md`, `04-design-principles/06-testing.md`, `05-advanced/07-building-projects.md`.
+> The `tutorials/` directory has been renamed to `book/`. See the **Update Notes** section below.
 
 ---
 
@@ -26,6 +30,7 @@ The challenge: the book tries to be a language tutorial *and* a reference *and* 
    2. Operators
    3. Lexical Scoping & Closures
    4. Functions
+   5. Strings                           ← NEW
 3. Data & Control Flow
    1. Collections
    2. Destructuring
@@ -39,6 +44,7 @@ The challenge: the book tries to be a language tutorial *and* a reference *and* 
    3. Purity & Side-Effect Discipline
    4. Normal vs Special Expressions
    5. Tail Call Optimization
+   6. Testing                           ← NEW
 5. Advanced
    1. Modules
    2. Effects & Handlers
@@ -46,6 +52,7 @@ The challenge: the book tries to be a language tutorial *and* a reference *and* 
    4. Suspension & Serializable Continuations
    5. Concurrency: parallel & race
    6. Macros
+   7. Building Projects                 ← NEW
 ```
 
 ### What works
@@ -83,22 +90,22 @@ The challenge: the book tries to be a language tutorial *and* a reference *and* 
 
 ### Critical gaps (will hurt adoption)
 
-**1. No end-to-end real-world example.**
-The Intro shows a 10-line AI approval workflow snippet. The rest of the book teaches syntax. There is no chapter that says: "here is a complete, working Dvala application — let's build it." Readers finishing this book will not know how to build their first real program. The suspension story especially needs a complete walkthrough: create the workflow → run it → see it suspend → store the snapshot → resume it.
+**1. No end-to-end real-world example.** *(still open)*
+The Intro shows a 10-line AI approval workflow snippet. The rest of the book teaches syntax. There is no chapter that says: "here is a complete, working Dvala application — let's build it." The suspension story especially needs a complete walkthrough: create the workflow → run it → see it suspend → store the snapshot → resume it.
 
-**2. Testing is mentioned but never taught.**
-The CLI lists `dvala test <file>` but there is no tutorial on how to write a `.test.dvala` file, what assertion functions are available, or how to structure tests. For developers evaluating Dvala for production, this is a blocker.
+**2. Testing is mentioned but never taught.** ✅ *addressed — new Ch 4.6*
+A new Testing chapter was added. See detailed review below.
 
-**3. Multi-file project structure is unaddressed.**
-The Getting Started chapter mentions `dvala bundle <entry>` and `dvala run-bundle <file>`. The Modules chapter only covers the built-in module library. How do you split your own code across files? How do file modules work? How does the bundler know what to include? This is a real use case and it's missing.
+**3. Multi-file project structure is unaddressed.** ✅ *addressed — new Ch 5.7*
+A new Building Projects chapter was added. See detailed review below.
 
-**4. JavaScript/TypeScript integration story is fragmented.**
-The Intro promises "JavaScript Interoperability." Getting Started covers `bindings`. The Effects chapter eventually covers host handlers. But there's no dedicated chapter that says: "here is how you integrate Dvala into your Node.js/TypeScript project end-to-end." A reader evaluating Dvala for production needs to see the full TypeScript API surface in one place.
+**4. JavaScript/TypeScript integration story is fragmented.** *(still open)*
+The Intro promises "JavaScript Interoperability." Getting Started covers `bindings`. The Effects chapter covers host handlers. But there's no dedicated chapter that consolidates the full TypeScript API surface (createDvala, runAsync, resume, RunResult, Snapshot, effectHandlers patterns). A reader evaluating Dvala for production still needs to piece this together from multiple chapters.
 
 ### Significant gaps
 
 **5. Built-in standard library overview.**
-The Modules chapter covers optional modules. But there are hundreds of built-in functions (`map`, `filter`, `reduce`, `sort`, `count`, `keys`, `vals`, etc.) that need no import. There's no chapter or appendix giving an organized overview. The reader has to discover them through scattered examples.
+The Modules chapter now opens with a note about built-in functions requiring no import. But there are still hundreds of built-in functions (`map`, `filter`, `reduce`, `sort`, `count`, `keys`, `vals`, etc.) with no organized overview. The reader discovers them only through scattered examples. An appendix or reference page would help.
 
 **6. Error taxonomy.**
 What errors can Dvala programs encounter? What does the `dvala.error` payload look like? Are there different error subtypes? Is there a way to match on error type?
@@ -161,6 +168,19 @@ Mentioned but described only as "start an interactive session." No guidance on h
 - `comp` (right-to-left) is shown. Does left-to-right composition (`pipe`) exist? If so, it belongs here.
 - **Missing:** Arity — how does Dvala handle calling a function with too many or too few arguments?
 
+### Ch 2.5 — Strings ✅ *new chapter*
+
+Good decision to give strings their own chapter — they were previously scattered between Data Types and the optional `string` module.
+
+- Covers literals, templates, `++` / `str`, length, case, trim, slice, search, replace, split/join — a solid practical overview.
+- **Standout:** The "Strings as Sequences" section is excellent. Showing that `map`, `filter`, `reverse`, and `first`/`rest` work on strings is both surprising and delightful for new readers.
+- The `reMatch` regex section is clean. Showing the null-on-no-match behavior is important.
+- **Issue:** The template string conditional example (`if temp > 20 then "warm" else "cold" end` inside `${}`) is great but uses `end` without explaining the `end` terminator appears inside the template string. First-time readers may be confused. A note: "full Dvala expressions, including `if...end`, work inside `${}`" would help.
+- **Missing:** `startsWith` / `endsWith` — these are very common operations and their absence will surprise developers coming from most other languages. Do they exist? If not, show the `slice` / `indexOf` equivalents.
+- **Missing:** Regex flags. The `#"..."` syntax is shown but there's no mention of case-insensitive matching or multiline mode. Even a "see the string module for flag support" note would help.
+- **Missing:** String-to-number and number-to-string conversion. `str(42)` converts to string, but how do you parse `"42"` to a number? `toNumber`? This is a very common operation.
+- **Placement note:** This chapter comes after Functions (Ch 2.4) but strings were already introduced in Data Types (Ch 2.1) and Operators (Ch 2.2 for `++`). Consider adding a brief "building on what you saw in Chapter 2.1" bridge sentence at the top.
+
 ### Ch 3.1 — Collections
 
 - The chapter covers arrays, objects, and strings — but strings are covered in Ch 2.1. Reconsider the structure or add a clear statement: "strings are also sequences."
@@ -175,14 +195,11 @@ Mentioned but described only as "start an interactive session." No guidance on h
 - The `as` keyword for renaming (`name as userName`) is a nice feature. Make sure it's mentioned in the pattern matching chapter too (it is, but it deserves a cross-reference).
 - **Issue:** Nothing about destructuring in `for` comprehensions — `for ({ name, age } in people)` would be very natural. Does it work? If so, show it.
 
-### Ch 3.3 — Control Flow
+### Ch 3.3 — Control Flow ✅ *improved since R1*
 
-- **Major issue:** Error handling with `perform(@dvala.error, ...)` and `handler...end` appears here without introduction. The reader has not seen effects yet. Either:
-  - Add a "See the Effects chapter for a full explanation" note and simplify the examples to just show the syntax
-  - Or defer error handling to after Ch 5.2 and replace with a "Errors and exceptions" forward reference
-
-- The `do/end` block section is thin. Consider showing `do` used as an IIFE pattern for one-off computations.
-- **Missing:** There's no mention of "what happens if an `if` has no `else` and the condition is false." The examples show it but the text should be explicit: returns `null`.
+- **Fixed:** The no-`else` behavior is now explicit: "returns `null` when the condition is false — there is no 'void' or 'undefined', just `null`." Good.
+- **Fixed:** The error handling section now has a prominent callout box noting effects aren't introduced until Ch 5.2. This directly addresses the R1 concern about unexplained forward references.
+- The `do/end` section is still thin — consider adding the IIFE pattern as a sidebar.
 
 ### Ch 3.4 — Pattern Matching
 
@@ -237,14 +254,15 @@ Mentioned but described only as "start an interactive session." No guidance on h
 - **Issue:** The naive `factorial` example (lines 7–12) is labeled "beautiful but dangerous" but the recursive version using `self` from Ch 2.4 uses the same pattern. Are readers supposed to never use `self` for large inputs? Be more explicit about the size threshold.
 - `dropLast(xs, 1)` in the "Reverse a List" example — is `dropLast` a built-in? Verify and add it to the standard library overview.
 
-### Ch 5.1 — Modules
+### Ch 5.1 — Modules ✅ *improved since R1*
 
-- Too thin. This is a list, not a tutorial.
-- **Missing:** How to create your own module (if possible from Dvala code).
-- **Missing:** File modules — how do multi-file projects work? How does `import("./mymodule")` differ from `import("math")`?
-- **Missing:** What does the `import` expression actually return? An object with function values? Are the functions closures?
-- **Issue:** The available modules list doesn't match the Getting Started chapter (which mentions `assertion`, `bitwise`, `convert`, `functional`, `grid`, `number-theory`). Synchronize these lists.
-- The module examples feel like unit tests, not tutorials. Each deserves a sentence of explanation.
+- **Fixed:** Module table now lists all 13 modules with import names and descriptions. The module list now matches what Getting Started describes. This is a big improvement.
+- **Fixed:** The opening paragraph clarifies which functions need no import (`map`, `filter`, etc.) — a missing distinction from R1.
+- **Fixed:** Cross-reference to the `assertion` module now links directly to the Testing chapter.
+- `dvala list` / `dvala doc` tip at the top is excellent discoverability guidance.
+- Still thin on examples per module — each module section shows 1–2 code blocks without prose explanation. Even a sentence per module about *when* to reach for it would help.
+- **Still missing:** File module imports (`import("./lib/math.dvala")`) are not mentioned here — they're exclusively in Building Projects (Ch 5.7). Add a one-line forward reference: "For importing your own files, see Building Projects."
+- **Still missing:** What `import` returns structurally (it's an object of functions) is implicit but never stated.
 
 ### Ch 5.2 — Effects & Handlers
 
@@ -287,23 +305,57 @@ Mentioned but described only as "start an interactive session." No guidance on h
 - The "Gotchas" section is valuable — more like this throughout the book.
 - **Issue:** The `$^^{expr}` (deferred splice) is mentioned in passing but never demonstrated with an example. Show it or cut it.
 - **Missing:** Can macros call other macros? Can macro expansion be recursive? Are there depth limits?
-- **Missing:** How do macros interact with the module system? Can a file module export macros?
+- **Missing:** How do macros interact with the module system? Can a file module export macros? (Now that Building Projects exists, this connection is more important.)
 - The `@dvala.macro.expand` effect (named macro interception by host) is an advanced but powerful feature. Consider separating this into a "Host macro hooks" section to make it more discoverable.
 
 ---
 
-## Structural Recommendations
+### Ch 4.6 — Testing ✅ *new chapter*
 
-1. **Add a "Real-World Walkthrough" chapter** — Build a complete multi-step approval workflow from scratch. Show every layer: Dvala code → host integration → suspension → storage → resume.
+This directly addresses one of the R1 critical gaps. Verdict: **excellent addition**.
 
-2. **Add a Cookbook/Recipes appendix** — Short, focused recipes for common patterns: error recovery, retry logic, timeout, parallel fan-out, state threading with effects, etc.
+- The opening argument — "pure functions are trivially testable" — is the right hook. It shows testing as a *benefit* of the design rather than a chore.
+- The `assertion` module walkthrough is clean. `assertEqual`, `assertFails`, `assertFailsWith` are the right things to show.
+- **Standout section:** "Testing Effectful Code" with the `silence` handler pattern is genuinely novel and one of the best things in the entire book. Many developers haven't seen this pattern and it will stick. The `fakeConfig` example is even better — extremely practical.
+- The minimal test runner built from a handler is a great "aha moment" — it shows that testing infrastructure is just the language, no special magic.
+- **Issue:** The chapter describes what `assert` does but never says what it does when the assertion *passes*. Does it return `null`? `true`? Clarify.
+- **Issue:** The `zip` function in the `assertEqual` example (line 36) is built by hand using `map` + `range` + `count`. This is a lot of distracting code for a testing chapter. Either use `seq.zip` from the sequence module, or extract it with a "we'll define this helper" note.
+- **Missing:** How do you *run* a `.test.dvala` file? The CLI command `dvala test <file>` was mentioned in Getting Started but nothing in this chapter tells the reader how to actually execute tests. At minimum: "Save your tests in a `.test.dvala` file and run `dvala test ./tests.test.dvala`."
+- **Missing:** What output does the test runner produce? Does `dvala test` print pass/fail per assertion? Does it stop at the first failure? The minimal test runner example shows a pattern but the CLI runner's behavior is unaddressed.
+- **Missing:** How to test functions that perform effects at both entry and exit (e.g., a function that logs on start and on completion). The examples show silencing one effect. Stacking handlers to suppress multiple effects deserves a brief example.
 
-3. **Add a JavaScript/TypeScript Integration Guide** — Consolidate all the TypeScript API (createDvala, runAsync, resume, RunResult, Snapshot, effectHandlers patterns) in one place.
+### Ch 5.7 — Building Projects ✅ *new chapter*
 
-4. **Trim or relocate "Normal vs Special Expressions"** — Move to appendix.
+This also directly addresses an R1 critical gap. Verdict: **solid, with some gaps to fill**.
 
-5. **Promote Suspension earlier** — After the Effects chapter, add a short "Quick Suspension Preview" that shows the basic suspend/resume loop before diving into all the async nuance.
+- The `dvala.json` table is clean. Empty `{}` works — good to state this upfront.
+- The file layout diagram and the "library module exports its API as the last expression" pattern are clear and practical.
+- The bundle internals explanation (module inlining as `let` bindings) is interesting and helps demystify what the bundler actually does.
+- The TypeScript `deserializeBundle` integration is a nice touch — it's the right way to load a bundle from a host.
+- `dvala run` accepting both source files and bundles (auto-detected by extension) is well explained.
+- **Issue:** The chapter says `dvala build` "walks up from the current directory until it finds `dvala.json`" — but it also says you can pass an explicit directory (`dvala build ./my-project`). What if there's no `dvala.json` at all? Does it error? Does it fall back to the file on the command line?
+- **Issue:** Build options table says `--no-sourcemap` reduces bundle size but doesn't say by how much. Even a rough estimate ("typically 30-50% smaller for large projects") would help users decide.
+- **Missing:** Testing in the context of a project. `dvala test` is listed in the Getting Started CLI table as "Run a `.test.dvala` test file." But how does `dvala test` work inside a project? Does it pick up the `"tests"` glob from `dvala.json` automatically? Can you run `dvala test` without arguments from the project root?
+- **Missing:** How do you pass `bindings` or effect handlers when running a bundle via `dvala run`? The TypeScript example shows `dvala.run(bundle)` but no `{ bindings: ... }` or `effectHandlers`. Is this possible for bundles?
+- **Missing:** What happens if a file module performs a side effect at module scope (e.g., a `perform(@dvala.io.print, ...)` at the top level of a `.dvala` file)? The Purity chapter says file modules are always pure — does the bundler enforce this? What error do you get?
+- **Missing:** Multi-level nesting — can you have modules that import other modules? The example only shows one level of depth. Is there a limit? Does the deduplication handle diamond imports correctly (you mention it does, but show it)?
 
-6. **Standardize the code example style** — Some chapters show `no-run` examples extensively (Concurrency), others are all interactive. The reader can't tell which concepts can be tried in the playground.
+---
 
-7. **Add a "Getting Help / Community" section** — Where do readers go when they're stuck? Issue tracker, Discord, Stack Overflow tag?
+## Structural Recommendations (updated)
+
+1. **Still needed: End-to-end real-world example** — Build a complete multi-step approval workflow from scratch. Show every layer: Dvala code → host integration → suspension → storage → resume. This remains the book's biggest gap.
+
+2. **Add a JavaScript/TypeScript Integration Guide** — Consolidate all the TypeScript API (createDvala, runAsync, resume, RunResult, Snapshot, effectHandlers patterns) in one place. Ch 5.4 (Suspension) covers host handlers but the full picture is scattered.
+
+3. **Add a Cookbook/Recipes appendix** — Short, focused recipes: error recovery, retry logic, timeout, parallel fan-out, state threading with effects. These are the first things developers reach for.
+
+4. **Trim or relocate "Normal vs Special Expressions"** — Still recommend moving to appendix.
+
+5. **Promote Suspension earlier** — After the Effects chapter, add a short "Quick Suspension Preview" before diving into the full async/concurrency arc.
+
+6. **Standardize the code example style** — Ch 5.5 (Concurrency) is still all `no-run`. The reader can't try anything. Use local synchronous handlers to demonstrate the same patterns interactively.
+
+7. **Add a "Getting Help / Community" section** to Ch 1.2 (Getting Started) — Where do readers go when stuck?
+
+8. **Add `dvala test` usage to the Testing chapter** — Close the loop: write assertions, run `dvala test`, see output.

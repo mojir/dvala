@@ -93,8 +93,12 @@ describe('apiReference', () => {
         obj.examples.forEach((entry, index) => {
           const example = typeof entry === 'string' ? entry : entry.code
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          if (typeof entry === 'string')
-            expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          if (typeof entry === 'string' || !('noRun' in entry)) {
+            if (typeof entry !== 'string' && 'throws' in entry)
+              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).toThrow()
+            else
+              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          }
         })
       })
     })
@@ -160,8 +164,12 @@ describe('moduleReference', () => {
         obj.examples.forEach((entry, index) => {
           const example = typeof entry === 'string' ? entry : entry.code
           expect(example, `${obj.category}:${key}. Example number ${index + 1} ended with ;`).not.toMatch(/;\s*$/)
-          if (typeof entry === 'string')
-            expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          if (typeof entry === 'string' || !('noRun' in entry)) {
+            if (typeof entry !== 'string' && 'throws' in entry)
+              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).toThrow()
+            else
+              expect(() => dvala.run(example), `${obj.category}:${key}. Example number ${index + 1}`).not.toThrow()
+          }
         })
       })
     })
@@ -306,10 +314,13 @@ describe('chapterExamples', () => {
 
   chapters.forEach(chapter => {
     describe(chapter.title, () => {
-      getExamples(chapter).forEach((codeLines, index) => {
-        const example = codeLines.join('\n')
+      getExamples(chapter).forEach(({ lines, throws }, index) => {
+        const example = lines.join('\n')
         it(`example ${index + 1}: ${example}`, () => {
-          expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).not.toThrow()
+          if (throws)
+            expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).toThrow()
+          else
+            expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).not.toThrow()
         })
       })
     })

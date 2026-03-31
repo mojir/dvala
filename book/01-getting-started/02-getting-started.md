@@ -109,8 +109,7 @@ $ dvala run script.dvala
 |---|---|
 | `dvala eval <expr>` | Evaluate a Dvala expression |
 | `dvala run <file>` | Run a `.dvala` source file |
-| `dvala bundle <entry>` | Bundle a multi-file project into a single JSON file |
-| `dvala run-bundle <file>` | Run a bundled `.json` file |
+| `dvala build [dir]` | Bundle a project into a single JSON file (reads `dvala.json`) |
 | `dvala test <file>` | Run a `.test.dvala` test file |
 | `dvala repl` | Start the interactive REPL (default) |
 | `dvala doc <name>` | Show documentation for any built-in function or expression |

@@ -26,11 +26,25 @@ export function parseObject(ctx: ParserContext): ObjectNode {
         const stringNode = parseString(ctx, token)
         keyNode = withSourceCodeInfo([NodeTypes.Str, stringNode[1], 0], token[2], ctx)
       } else if (isSymbolToken(token)) {
-        const value = token[1].startsWith('\'')
+        const isQuoted = token[1].startsWith('\'')
+        const value = isQuoted
           ? stringFromQuotedSymbol(token[1])
           : token[1]
         keyNode = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx)
         ctx.advance()
+        // Shorthand property: { foo } → { foo: foo } (only for unquoted symbols)
+        if (!isQuoted && !isOperatorToken(ctx.tryPeek(), ':')) {
+          const valueNode = withSourceCodeInfo([NodeTypes.Sym, value, 0], token[2], ctx)
+          entries.push([keyNode, valueNode])
+          const nextToken = ctx.tryPeek()
+          if (!isOperatorToken(nextToken, ',') && !isRBraceToken(nextToken)) {
+            throw new ParseError('Expected comma or closing brace', ctx.peekSourceCodeInfo())
+          }
+          if (isOperatorToken(nextToken, ',')) {
+            ctx.advance()
+          }
+          continue
+        }
       } else if (isLBracketToken(token)) {
         ctx.advance()
         keyNode = ctx.parseExpression()

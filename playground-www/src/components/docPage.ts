@@ -173,9 +173,9 @@ function renderCustomVariants(ref: Reference): string {
   ).join('\n')
 }
 
-function renderExample(entry: string | { code: string; noRun: true }): string {
+function renderExample(entry: string | { code: string; noRun: true } | { code: string; throws: true }): string {
   const code = typeof entry === 'string' ? entry : entry.code
-  const noRun = typeof entry !== 'string' && entry.noRun
+  const noRun = typeof entry !== 'string' && 'noRun' in entry && entry.noRun
   return renderCodeBlock({ code, noRun })
 }
 
