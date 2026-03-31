@@ -3,7 +3,7 @@
   "overrides": {
     "file-type": "^21.3.2"
   },
-  "version": "0.0.35",
+  "version": "0.1.0",
   "description": "A suspendable, time-traveling functional language for JavaScript with algebraic effects",
   "author": "Albert Mojir",
   "license": "MIT",
