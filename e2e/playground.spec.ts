@@ -1086,19 +1086,20 @@ test.describe('chapter pages', () => {
     await expect(page.locator('.chapter-header__title')).not.toContainText('Intro')
   })
 
-  test('TOC dropdown shows Table of contents label', async ({ page }) => {
+  test('TOC button is visible in chapter header', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
-    await expect(page.locator('.chapter-header__toc-label')).toContainText('Table of contents')
+    await expect(page.locator('.chapter-header__toc-btn')).toBeVisible()
   })
 
   test('TOC dropdown navigates to selected chapter', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
-    // Select a different chapter via the TOC dropdown
-    await page.locator('.chapter-header__toc').selectOption('advanced-macros')
+    // Open the TOC dropdown and click a chapter
+    await page.locator('.chapter-header__toc-btn').click()
+    await page.locator('#chapter-toc-dropdown .chapter-toc-dropdown__item', { hasText: 'Macros' }).click()
     await expect(page.locator('.chapter-header__title')).toContainText('Macros')
   })
 })

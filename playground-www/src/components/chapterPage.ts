@@ -7,6 +7,7 @@
  */
 
 import { href, navigate } from '../router'
+import { hamburgerIcon } from '../icons'
 import { renderDvalaMarkdown, slugifyHeading } from '../renderDvalaMarkdown'
 
 export interface ChapterEntry {
@@ -40,10 +41,10 @@ function extractTitle(raw: string): string {
 const sectionMap = new Map<string, BookSection>()
 for (const { path: chapterPath, content } of rawChapters) {
   const slashIdx = chapterPath.indexOf('/')
-  const dirSegment = chapterPath.slice(0, slashIdx)       // "04-design-principles"
-  const fileSegment = chapterPath.slice(slashIdx + 1)     // "06-testing.md"
+  const dirSegment = chapterPath.slice(0, slashIdx) // "04-design-principles"
+  const fileSegment = chapterPath.slice(slashIdx + 1) // "06-testing.md"
 
-  const sectionSlug = dirSegment.replace(/^\d+-/, '')     // "design-principles"
+  const sectionSlug = dirSegment.replace(/^\d+-/, '') // "design-principles"
   const chapterSlug = fileSegment.replace(/^\d+-/, '').replace(/\.md$/, '') // "testing"
 
   const sectionName = toTitleCase(sectionSlug)
@@ -59,31 +60,12 @@ export const bookSections: BookSection[] = Array.from(sectionMap.values())
 
 export const allChapters: ChapterEntry[] = bookSections.flatMap(f => f.entries)
 
-// Navigates to overview (/book) if 'overview' selected, otherwise to the chapter
-const tocNavHandler = "(this.value === 'overview' ? Playground.navigate('/book') : Playground.navigate('/book/' + this.value)); this.blur()"
-
-// Builds the TOC <option>/<optgroup> list; pass null activeId for the overview page
-function buildTocOptions(activeId: string | null): string {
-  const overviewSelected = activeId === null ? ' selected' : ''
-  const overviewOption = `<option value="overview"${overviewSelected}>Overview</option>`
-  const folderOptions = bookSections.map(folder => {
-    const options = folder.entries.map(e => {
-      const selected = e.id === activeId ? ' selected' : ''
-      return `<option value="${e.id}"${selected}>${escapeHtml(e.title)}</option>`
-    }).join('')
-    return `<optgroup label="${escapeHtml(folder.name)}">${options}</optgroup>`
-  }).join('')
-  return overviewOption + folderOptions
-}
-
 export function renderBookIndexPage(): string {
   const next = allChapters[0] ?? null
 
   const nextBtn = next
     ? `<a class="chapter-header__nav-btn" href="${href(`/book/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${next.id}')" title="${escapeHtml(next.title)}">→</a>`
     : '<span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">→</span>'
-
-  const tocOptions = buildTocOptions(null)
 
   const sections = bookSections.map(folder => `
 <section class="book-toc__group">
@@ -106,12 +88,7 @@ export function renderBookIndexPage(): string {
   <div class="chapter-header">
     <span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">←</span>
     <span class="chapter-header__title">The Book</span>
-    <div class="chapter-header__toc-wrap">
-      <span class="chapter-header__toc-label">Table of contents</span>
-      <select class="chapter-header__toc" onchange="${tocNavHandler}" aria-label="Table of contents">
-        ${tocOptions}
-      </select>
-    </div>
+    <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
     ${nextBtn}
   </div>
   <div class="book-page__content">
@@ -157,19 +134,12 @@ export function renderChapterPage(id: string): string {
     ? `<a class="chapter-header__nav-btn" href="${href(`/book/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${next.id}')" title="${escapeHtml(next.title)}">→</a>`
     : '<span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">→</span>'
 
-  const tocOptions = buildTocOptions(id)
-
   return `
 <div class="book-page">
   <div class="chapter-header">
     ${prevBtn}
     <span class="chapter-header__title">${escapeHtml(entry.title)}</span>
-    <div class="chapter-header__toc-wrap">
-      <span class="chapter-header__toc-label">Table of contents</span>
-      <select class="chapter-header__toc" onchange="${tocNavHandler}" aria-label="Table of contents">
-        ${tocOptions}
-      </select>
-    </div>
+    <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
     ${nextBtn}
   </div>
   <div class="book-page__content">

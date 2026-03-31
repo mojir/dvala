@@ -27,7 +27,7 @@ import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
-import { renderBookIndexPage, renderChapterPage, allChapters } from './components/chapterPage'
+import { renderBookIndexPage, renderChapterPage, allChapters, bookSections } from './components/chapterPage'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
   clearAll as clearAllSnapshots,
@@ -330,6 +330,59 @@ export function openMoreMenu(triggerEl?: HTMLElement) {
 
 export function closeMoreMenu() {
   elements.moreMenu.style.display = 'none'
+}
+
+export function toggleTocMenu(event: Event): void {
+  event.stopPropagation()
+  const btn = event.currentTarget as HTMLElement
+
+  const existing = document.getElementById('chapter-toc-dropdown')
+  if (existing) {
+    existing.remove()
+    return
+  }
+
+  const dropdown = document.createElement('div')
+  dropdown.id = 'chapter-toc-dropdown'
+  dropdown.className = 'chapter-toc-dropdown'
+
+  // Overview link
+  const overview = document.createElement('a')
+  overview.className = 'chapter-toc-dropdown__item chapter-toc-dropdown__item--overview'
+  overview.textContent = 'Overview'
+  overview.addEventListener('click', () => { dropdown.remove(); router.navigate('/book') })
+  dropdown.appendChild(overview)
+
+  // Sections + chapters
+  for (const section of bookSections) {
+    const label = document.createElement('div')
+    label.className = 'chapter-toc-dropdown__section'
+    label.textContent = section.name
+    dropdown.appendChild(label)
+
+    for (const entry of section.entries) {
+      const a = document.createElement('a')
+      a.className = 'chapter-toc-dropdown__item'
+      a.textContent = entry.title
+      a.addEventListener('click', () => { dropdown.remove(); router.navigate(`/book/${entry.id}`) })
+      dropdown.appendChild(a)
+    }
+  }
+
+  // Position fixed below the button
+  document.body.appendChild(dropdown)
+  const rect = btn.getBoundingClientRect()
+  dropdown.style.top = `${rect.bottom + 4}px`
+  dropdown.style.right = `${window.innerWidth - rect.right}px`
+
+  // Close on outside click
+  const closeOnOutside = (e: Event) => {
+    if (!dropdown.contains(e.target as Node)) {
+      dropdown.remove()
+      document.removeEventListener('click', closeOnOutside)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', closeOnOutside), 0)
 }
 
 const expandedApiSections = new Set<string>()
