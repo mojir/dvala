@@ -2,6 +2,7 @@
  * Structured test results — format-agnostic.
  * Formatters (TAP, JUnit, JSON, etc.) consume these types.
  */
+import type { SourceMap } from '../parser/types'
 
 export interface TestCaseResult {
   name: string
@@ -21,6 +22,10 @@ export interface TestRunResult {
   durationMs?: number
   /** If set, the entire file failed to load/parse before any tests ran */
   bailout?: unknown
+  /** Node evaluation hit counts — present when coverage was requested */
+  coverageMap?: Map<number, number>
+  /** Source map for resolving node IDs to file positions — present when coverage was requested */
+  sourceMap?: SourceMap
 }
 
 export function isSuccess(result: TestRunResult): boolean {

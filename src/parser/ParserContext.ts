@@ -4,14 +4,6 @@ import { debugInfoToSourceCodeInfo } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { AstNode, SourceMap, SourceMapPosition } from './types'
 
-// Global node ID counter — ensures unique IDs across all parsed files
-let globalNodeIdCounter = 0
-
-/** Reset the global node ID counter (for testing only). */
-export function resetNodeIdCounter(): void {
-  globalNodeIdCounter = 0
-}
-
 export class ParserContext {
   private readonly tokens: Token[]
   private position: number
@@ -23,8 +15,11 @@ export class ParserContext {
   private readonly source: string | undefined
   /** File path of the source (available in debug mode). */
   private readonly filePath: string | undefined
+  /** Allocates a unique node ID — provided by the caller to scope uniqueness per instance. */
+  readonly allocateId: () => number
 
-  constructor(tokenStream: TokenStream) {
+  constructor(tokenStream: TokenStream, allocateId: () => number) {
+    this.allocateId = allocateId
     this.tokens = tokenStream.tokens
     this.position = 0
     this.source = tokenStream.source
@@ -38,7 +33,7 @@ export class ParserContext {
   }
 
   public allocateNodeId(debugInfo?: TokenDebugInfo): number {
-    const id = globalNodeIdCounter++
+    const id = this.allocateId()
     if (this.sourceMap && debugInfo) {
       const position: SourceMapPosition = {
         source: 0, // single source for now

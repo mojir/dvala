@@ -18,9 +18,12 @@ import { treeShake } from '../../src/ast/treeShake'
 import { bundle } from '../../src/bundler'
 import { createDvala } from '../../src/createDvala'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
-import type { ResolvedConfig } from '../../src/config'
+import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../src/config'
 import { findConfig } from '../../src/config'
 import { runTestFile, runTestSuite } from '../../src/testFramework'
+import { globSync } from 'glob'
+import type { CoverageFilter } from '../../src/testFramework/coverage'
+import { computeCoverageSummary, generateSuiteLcov } from '../../src/testFramework/coverage'
 import type { TestRunResult } from '../../src/testFramework/result'
 import { formatTap } from '../../src/testFramework/formatTap'
 import { formatConsole } from '../../src/testFramework/formatConsole'
@@ -85,6 +88,10 @@ interface TestConfig {
   testPattern: Maybe<string>
   reporter: TestReporter
   outputFile: Maybe<string>
+  coverage: boolean
+  /** CLI overrides — null means "use dvala.json value" */
+  coverageReporter: Maybe<CoverageReporter[]>
+  coverageDir: Maybe<string>
 }
 
 interface BuildConfig {
@@ -239,8 +246,12 @@ switch (config.subcommand) {
     break
   }
   case 'test': {
-    runDvalaTest(config.filename, config.testPattern, config.reporter, config.outputFile)
-    process.exit(0)
+    runDvalaTest(config.filename, config.testPattern, config.reporter, config.outputFile, config.coverage, config.coverageReporter, config.coverageDir)
+      .then(() => process.exit(0))
+      .catch(error => {
+        printErrorMessage(`${error}`)
+        process.exit(1)
+      })
     break
   }
   case 'repl': {
@@ -355,17 +366,28 @@ function isFilePath(arg: Maybe<string>): arg is string {
   return !fs.statSync(arg).isDirectory()
 }
 
-function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>) {
+async function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, reporter: TestReporter, outputFile: Maybe<string>, coverage: boolean, coverageReporterOverride: Maybe<CoverageReporter[]>, coverageDirOverride: Maybe<string>) {
   const pattern = testNamePattern !== null ? new RegExp(testNamePattern) : undefined
 
   if (isFilePath(testPath)) {
-    // Single file mode
+    // Single file mode — no dvala.json, use coverage defaults
     if (!/\.test\.dvala/.test(testPath)) {
       printErrorMessage('Test file must end with .test.dvala')
       process.exit(1)
     }
-    const result = runTestFile({ testPath, testNamePattern: pattern })
+    const result = await runTestFile({ testPath, testNamePattern: pattern, coverage })
     reportSingleFile(result, reporter, outputFile)
+    if (coverage) {
+      // Single file: use defaults then apply any CLI overrides; base dir is cwd
+      const coverageConfig: CoverageConfig = {
+        reporter: coverageReporterOverride ?? ['lcov'],
+        reportsDirectory: coverageDirOverride ?? 'coverage',
+        include: ['**/*.dvala'],
+        exclude: ['**/*.test.dvala'],
+        all: true,
+      }
+      writeCoverage([result], coverageConfig, process.cwd())
+    }
   } else {
     // Project mode — discover tests via dvala.json
     const resolved = resolveProjectConfig(testPath)
@@ -373,7 +395,7 @@ function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, r
       printErrorMessage('No dvala.json found. Either specify a test file, a project directory, or create a dvala.json in the project root.')
       process.exit(1)
     }
-    const suiteResult = runTestSuite(resolved.rootDir, resolved.config.tests, pattern)
+    const suiteResult = await runTestSuite(resolved.rootDir, resolved.config.tests, pattern, coverage)
 
     if (suiteResult.files.length === 0) {
       printErrorMessage(`No test files found matching "${resolved.config.tests}" in ${resolved.rootDir}`)
@@ -410,9 +432,140 @@ function runDvalaTest(testPath: Maybe<string>, testNamePattern: Maybe<string>, r
       console.log(`Test results written to ${outputFile}`)
     }
 
+    if (coverage) {
+      // Apply CLI overrides on top of dvala.json coverage config
+      const coverageConfig: CoverageConfig = {
+        ...resolved.config.coverage,
+        ...(coverageReporterOverride !== null ? { reporter: coverageReporterOverride } : {}),
+        ...(coverageDirOverride !== null ? { reportsDirectory: coverageDirOverride } : {}),
+      }
+      writeCoverage(suiteResult.files, coverageConfig, resolved.rootDir)
+    }
+
     if (!success)
       process.exit(1)
   }
+}
+
+/**
+ * Write coverage data according to the resolved coverage config.
+ * Currently supports the "lcov" reporter (writes lcov.info).
+ * The reportsDirectory is resolved relative to baseDir (the project root or cwd).
+ */
+function writeCoverage(results: TestRunResult[], coverageConfig: CoverageConfig, baseDir: string): void {
+  // When all:true, glob for every matching source file so unvisited files appear at 0%
+  let allFiles: string[] | undefined
+  if (coverageConfig.all) {
+    const matched = coverageConfig.include.flatMap(pattern =>
+      globSync(pattern, { cwd: baseDir, ignore: coverageConfig.exclude, absolute: true }),
+    )
+    allFiles = [...new Set(matched)]
+  }
+
+  const filter: CoverageFilter = { include: coverageConfig.include, exclude: coverageConfig.exclude, rootDir: baseDir, allFiles }
+  // Text summary always goes to stdout regardless of reporter config
+  printCoverageText(results, filter)
+
+  const outDir = path.resolve(baseDir, coverageConfig.reportsDirectory)
+  fs.mkdirSync(outDir, { recursive: true })
+
+  for (const reporter of coverageConfig.reporter) {
+    if (reporter === 'lcov') {
+      const lcov = generateSuiteLcov(results)
+      const outFile = path.join(outDir, 'lcov.info')
+      fs.writeFileSync(outFile, lcov, 'utf-8')
+    }
+    // "html" reporter: not yet implemented
+  }
+}
+
+const MAX_UNCOVERED_WIDTH = 20
+
+/**
+ * Print a vitest-style per-source-file coverage table to stdout.
+ * Files are grouped by directory; an "All files" summary row is shown at the top.
+ */
+function printCoverageText(results: TestRunResult[], filter?: CoverageFilter): void {
+  const summaries = computeCoverageSummary(results, filter)
+  if (summaries.length === 0) return
+
+  const cwd = process.cwd()
+
+  // Build flat list of rows grouped by directory
+  type Row = { dir: string; file: string; linePct: number; exprPct: number; uncovered: string; s: typeof summaries[0] }
+  const rows: Row[] = summaries.map(s => {
+    const rel = path.relative(cwd, s.path)
+    const dir = path.dirname(rel)
+    const file = path.basename(rel)
+    const linePct = s.linesFound > 0 ? (s.linesHit / s.linesFound) * 100 : 100
+    const exprPct = s.exprsFound > 0 ? (s.exprsHit / s.exprsFound) * 100 : 100
+    let uncovered = s.uncoveredLines.join(',')
+    if (uncovered.length > MAX_UNCOVERED_WIDTH)
+      uncovered = `${uncovered.slice(0, MAX_UNCOVERED_WIDTH - 1)}…`
+    return { dir, file, linePct, exprPct, uncovered, s }
+  })
+
+  // All-files aggregate
+  const totalLinesHit = summaries.reduce((n, s) => n + s.linesHit, 0)
+  const totalLinesFound = summaries.reduce((n, s) => n + s.linesFound, 0)
+  const totalExprsHit = summaries.reduce((n, s) => n + s.exprsHit, 0)
+  const totalExprsFound = summaries.reduce((n, s) => n + s.exprsFound, 0)
+  const totalLinePct = totalLinesFound > 0 ? (totalLinesHit / totalLinesFound) * 100 : 100
+  const totalExprPct = totalExprsFound > 0 ? (totalExprsHit / totalExprsFound) * 100 : 100
+
+  // Column widths
+  const FILE_COL = 'File'
+  const LINE_COL = '% Lines'
+  const EXPR_COL = '% Exprs'
+  const UNCOV_COL = 'Uncovered Line #s'
+
+  const dirHeaders = [...new Set(rows.map(r => r.dir))].map(d => ` ${d}`)
+  const fileEntries = rows.map(r => `  ${r.file}`)
+  const fileColWidth = Math.max(FILE_COL.length, 'All files'.length, ...dirHeaders.map(s => s.length), ...fileEntries.map(s => s.length))
+  const pctColWidth = Math.max(LINE_COL.length, EXPR_COL.length, 6) // "100.00"
+  const uncovColWidth = Math.max(UNCOV_COL.length, MAX_UNCOVERED_WIDTH)
+
+  const sep = `${'-'.repeat(fileColWidth + 1)}|${'-'.repeat(pctColWidth + 2)}|${'-'.repeat(pctColWidth + 2)}|${'-'.repeat(uncovColWidth + 2)}`
+
+  function fmtPct(pct: number): string {
+    return (Number.isInteger(pct) ? `${pct}` : pct.toFixed(2)).padStart(pctColWidth)
+  }
+
+  function row(label: string, linePct: number, exprPct: number, uncovered: string): string {
+    return `${label.padEnd(fileColWidth)} | ${fmtPct(linePct)} | ${fmtPct(exprPct)} | ${uncovered.padEnd(uncovColWidth)}`
+  }
+
+  console.log(`\n${sep}`)
+  console.log(`${FILE_COL.padEnd(fileColWidth)} | ${LINE_COL.padStart(pctColWidth)} | ${EXPR_COL.padStart(pctColWidth)} | ${UNCOV_COL.padEnd(uncovColWidth)}`)
+  console.log(sep)
+  console.log(row('All files', totalLinePct, totalExprPct, ''))
+
+  // Group rows by directory
+  const byDir = new Map<string, Row[]>()
+  for (const r of rows) {
+    let group = byDir.get(r.dir)
+    if (!group) { group = []; byDir.set(r.dir, group) }
+    group.push(r)
+  }
+
+  // Root-level files first, then subdirectories
+  const sortedDirs = [...byDir.keys()].sort((a, b) => a === '.' ? -1 : b === '.' ? 1 : a.localeCompare(b))
+  for (const dir of sortedDirs) {
+    const files = byDir.get(dir)!
+    if (dir === '.') {
+      // Root-level files: same indent as directory headers, no directory row
+      for (const f of files)
+        console.log(row(` ${f.file}`, f.linePct, f.exprPct, f.uncovered))
+    } else {
+      const dirLinePct = files.reduce((s, f) => s + f.linePct, 0) / files.length
+      const dirExprPct = files.reduce((s, f) => s + f.exprPct, 0) / files.length
+      console.log(row(` ${dir}`, dirLinePct, dirExprPct, ''))
+      for (const f of files)
+        console.log(row(`  ${f.file}`, f.linePct, f.exprPct, f.uncovered))
+    }
+  }
+
+  console.log(sep)
 }
 
 function reportSingleFile(result: TestRunResult, reporter: TestReporter, outputFile: Maybe<string>) {
@@ -744,8 +897,12 @@ function processArguments(args: string[]): Config {
       let testPattern: Maybe<string> = null
       let reporter: TestReporter = 'default'
       let outputFile: Maybe<string> = null
+      let coverage = false
+      let coverageReporter: Maybe<CoverageReporter[]> = null
+      let coverageDir: Maybe<string> = null
       let i = 1
       const validReporters: TestReporter[] = ['default', 'verbose', 'tap', 'junit', 'html']
+      const validCoverageReporters: CoverageReporter[] = ['lcov', 'html']
       while (i < args.length) {
         const parsed = parseOption(args, i)
         if (!parsed) {
@@ -782,13 +939,40 @@ function processArguments(args: string[]): Config {
             outputFile = parsed.argument
             i += parsed.count
             break
+          case '--coverage':
+            coverage = true
+            i += parsed.count
+            break
+          case '--coverage-reporter': {
+            if (!parsed.argument) {
+              printErrorMessage('Missing reporters after --coverage-reporter')
+              process.exit(1)
+            }
+            const reporters = parsed.argument.split(',').map(r => r.trim()) as CoverageReporter[]
+            const invalid = reporters.filter(r => !validCoverageReporters.includes(r))
+            if (invalid.length > 0) {
+              printErrorMessage(`Invalid coverage reporter(s): ${invalid.join(', ')}. Must be one of: ${validCoverageReporters.join(', ')}`)
+              process.exit(1)
+            }
+            coverageReporter = reporters
+            i += parsed.count
+            break
+          }
+          case '--coverage-dir':
+            if (!parsed.argument) {
+              printErrorMessage('Missing directory after --coverage-dir')
+              process.exit(1)
+            }
+            coverageDir = parsed.argument
+            i += parsed.count
+            break
           default:
             printErrorMessage(`Unknown option "${parsed.option}" for "test"`)
             process.exit(1)
         }
       }
       // filename is optional — if omitted, dvala.json project mode is used
-      return { subcommand: 'test', filename, testPattern, reporter, outputFile }
+      return { subcommand: 'test', filename, testPattern, reporter, outputFile, coverage, coverageReporter, coverageDir }
     }
     case 'repl': {
       let loadFilename: Maybe<string> = null

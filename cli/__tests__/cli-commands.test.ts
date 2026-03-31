@@ -164,6 +164,31 @@ describe('CLI commands', () => {
       expect(result).toContain('clamp')
       expect(result).toContain('skip')
     })
+
+    it('generates lcov coverage report with --coverage', () => {
+      // Coverage is written to reportsDirectory relative to the project root (exampleProjectDir).
+      const coverageDir = path.join(exampleProjectDir, 'coverage')
+      if (fs.existsSync(coverageDir))
+        fs.rmSync(coverageDir, { recursive: true })
+
+      try {
+        const result = exec(`test ${exampleProjectDir} --coverage`)
+        expect(result).toContain('passed')
+        expect(result).toContain('% Lines')
+
+        const lcovPath = path.join(coverageDir, 'lcov.info')
+        expect(fs.existsSync(lcovPath)).toBe(true)
+
+        const lcov = fs.readFileSync(lcovPath, 'utf-8')
+        expect(lcov).toContain('SF:')
+        expect(lcov).toContain('DA:')
+        expect(lcov).toContain('end_of_record')
+      } finally {
+        // Clean up — avoid leaving generated files in the examples directory
+        if (fs.existsSync(coverageDir))
+          fs.rmSync(coverageDir, { recursive: true })
+      }
+    })
   })
 
   // --- doc ---

@@ -124,7 +124,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
 
       if (effectiveLevel === 1) {
         // This splice belongs to the current (outer) quote — extract it
-        i = extractSplice(bodyTokens, i, spliceExprs, processedTokens, templateId, resolvedSci)
+        i = extractSplice(bodyTokens, i, spliceExprs, processedTokens, templateId, resolvedSci, ctx.allocateId)
         continue
       } else if (effectiveLevel > 1) {
         throw new ParseError(
@@ -153,7 +153,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
 
   // Pass 3: Parse the processed tokens as Dvala code
   const bodyStream: TokenStream = { tokens: processedTokens }
-  const bodyCtx = createParserContext(bodyStream)
+  const bodyCtx = createParserContext(bodyStream, ctx.allocateId)
   const bodyAst: AstNode[] = []
   while (!bodyCtx.isAtEnd()) {
     bodyAst.push(parseExpression(bodyCtx, 0))
@@ -201,6 +201,7 @@ function extractSplice(
   processedTokens: Token[],
   templateId: number,
   sci: ReturnType<ParserContext['resolveTokenDebugInfo']>,
+  allocateId: () => number,
 ): number {
   const spliceToken = bodyTokens[i]!
   const spliceDebugInfo = spliceToken[2]
@@ -233,7 +234,7 @@ function extractSplice(
 
   // Parse the splice expression
   const innerStream: TokenStream = { tokens: exprTokens }
-  const innerCtx = createParserContext(innerStream)
+  const innerCtx = createParserContext(innerStream, allocateId)
   const expr = parseExpression(innerCtx, 0)
   const index = spliceExprs.length
   spliceExprs.push(expr)
