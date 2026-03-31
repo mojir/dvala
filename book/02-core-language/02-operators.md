@@ -133,6 +133,10 @@ Any two-argument function can be used as an infix operator:
 [1, 2, 3, 4] filter isOdd
 ```
 
+## Operator Precedence
+
+Dvala follows standard mathematical precedence: `*`, `/`, `%` bind tighter than `+`, `-`. So `2 + 3 * 4` evaluates as `2 + (3 * 4) = 14`, not `(2 + 3) * 4 = 20`. Use parentheses when in doubt.
+
 ## Partial Application
 
 Use `_` as a placeholder to create partially applied functions from operators:
@@ -146,4 +150,6 @@ add5(10)
 let half = _ / 2;
 half(20)
 ```
+
+The `_` placeholder works the same way in pipe expressions — `xs |> filter(_, isOdd)` passes `xs` into the first argument of `filter`. See the [Pipes & Data Flow](../03-data-and-control-flow/06-pipes-and-data-flow.md) chapter for the full picture.
 

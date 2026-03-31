@@ -9,12 +9,16 @@ Most embedded scripting languages treat code as a black box: start it, wait for 
 This is possible because Dvala is built on **serializable continuations**: when a program suspends, its entire state — call stack, local variables, closures — is captured as a plain JSON snapshot. That snapshot can be stored in a database, sent over the network, or archived indefinitely. When the time comes, `resume(snapshot)` picks up exactly where the program left off.
 
 ```typescript
+import { createDvala, resume } from '@mojir/dvala'
+
+const dvala = createDvala({ effectHandlers })
+
 // First run — program suspends waiting for human approval
 const r1 = await dvala.runAsync(`
   let report = perform(@llm.complete, "Generate Q4 report");
   let approved = perform(@human.approve, report);
   if approved then "Published" else "Rejected" end
-`, { effectHandlers })
+`)
 
 // r1.type === 'suspended'
 await db.save(r1.snapshot)  // Store to database; process can exit
@@ -95,10 +99,16 @@ people
 let factorial = n ->
   if n <= 1
     then 1
-    else n * factorial(n - 1)
+    else n * self(n - 1)
   end;
 
 factorial(10)
 ```
 
-Ready to dive in? Continue to the next page to get Dvala installed.
+`self` refers to the enclosing function, enabling recursion without naming the function twice. See the [Functions](../02-core-language/04-functions.md) chapter for details.
+
+---
+
+Ready to dive in? Continue to the next page to get Dvala installed and try examples in the **interactive playground**.
+
+> **Get help** — file an issue at [github.com/mojir/dvala](https://github.com/mojir/dvala) or use `dvala doc <name>` in the CLI to explore any built-in.

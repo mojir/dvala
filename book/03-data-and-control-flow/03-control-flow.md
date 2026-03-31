@@ -4,7 +4,7 @@ Since everything in Dvala is an expression, all control flow constructs return v
 
 ## If / Then / Else
 
-The basic conditional. Without `else`, the expression returns `null` when the condition is false:
+The basic conditional. Without `else`, the expression returns `null` when the condition is false — there is no "void" or "undefined", just `null`:
 
 ```dvala
 if 10 > 5 then "big" else "small" end
@@ -76,6 +76,8 @@ end
 ```
 
 ## Error Handling
+
+> **Note:** Error handling in Dvala is built on *algebraic effects* — a mechanism introduced fully in [Effects & Handlers](../05-advanced/02-effects.md). This section shows the syntax so you can recognize it; for the full explanation of how `perform`, `handler`, and `resume` work, see that chapter.
 
 Use `handler...end` with `do...with` to handle errors. `perform(@dvala.error, { message: msg })` raises an error:
 

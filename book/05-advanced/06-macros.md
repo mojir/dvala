@@ -145,7 +145,18 @@ typeOf(twoStatements)
 
 ### Nested Quote Blocks
 
-Quote blocks can be nested naturally — inner `quote...end` blocks are just part of the quoted code. Use `$^^{expr}` (deferred splice) for splices that should be resolved in the inner expansion rather than the outer one.
+Quote blocks can be nested naturally — inner `quote...end` blocks are just part of the quoted code. Use `$^^{expr}` (deferred splice) when writing a macro that *generates a quote block*, and you need a splice to be resolved during the outer expansion (where `$^` would only be visible to the inner quote):
+
+```dvala no-run
+// A macro that produces a quoted expression containing a resolved value.
+// $^{val} resolves at depth 1 (this quote).
+// $^^{val} would resolve at depth 2 — inside a nested quote block.
+let snapshot = macro (val) ->
+  // Produces: quote <resolved-value> + 1 end  (as an AST)
+  quote quote $^^{val} + 1 end end;
+```
+
+In practice `$^^` is only needed when building macros that themselves generate `quote` blocks. For everyday macro writing, `$^` is sufficient.
 
 ---
 

@@ -101,6 +101,37 @@ Combine objects with `merge` — later keys win:
 merge({ a: 1, b: 2 }, { b: 3, c: 4 })
 ```
 
+## Finding Elements
+
+`some` returns the **first element matching a predicate**, or `null` if none match:
+
+```dvala
+some([1, 3, 4, 7], isEven)
+```
+
+```dvala
+some([1, 3, 5], isEven)
+```
+
+To check whether *all* elements satisfy a predicate, combine `filter` and `count`:
+
+```dvala
+let xs = [2, 4, 6];
+count(filter(xs, isEven)) == count(xs)
+```
+
+## Flattening
+
+`flatten` collapses one level of nesting. Combine with `map` for a flatMap pattern:
+
+```dvala
+flatten([[1, 2], [3, 4], [5]])
+```
+
+```dvala
+flatten(map([1, 2, 3], x -> [x, x * 10]))
+```
+
 ## Collection Predicates
 
 Test properties of collections:

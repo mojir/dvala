@@ -1,10 +1,19 @@
 # Expression-Oriented Design
 
+In Dvala, every construct — without exception — evaluates to a value. There are no statements, no `void`, no `return`. `if`, `match`, `loop`, `do` — all of them produce values that can be bound, passed, or composed.
+
+## Practical Benefits
+
+* **No early return bugs** — there is no `return`, so you can't accidentally skip cleanup
+* **Declarative style** — code reads as "the value is..." rather than "do this, then do that"
+* **Refactoring safety** — any expression can be extracted into a `let` binding or inlined without changing semantics
+* **Uniform composition** — `|>`, `map`, `comp` work with everything because everything produces a value
+
 ## Background: Everything Has a Value
 
-In [denotational semantics](https://en.wikipedia.org/wiki/Denotational_semantics) ([Scott & Strachey, 1971](https://www.cs.ox.ac.uk/files/3228/PRG06.pdf)), every program construct denotes a value. The ML family of languages (ML, OCaml, Haskell, F#) embraced this: `if` returns a value, pattern matching returns a value, blocks return a value. There is no distinction between **expressions** (which produce values) and **statements** (which don't).
+> **Further reading.** This section provides historical context from programming language theory. Skip it if you just want to see the language features.
 
-Dvala is purely expression-oriented. Every construct — without exception — evaluates to a value.
+In [denotational semantics](https://en.wikipedia.org/wiki/Denotational_semantics) ([Scott & Strachey, 1971](https://www.cs.ox.ac.uk/files/3228/PRG06.pdf)), every program construct denotes a value. The ML family of languages (ML, OCaml, Haskell, F#) embraced this: `if` returns a value, pattern matching returns a value, blocks return a value. There is no distinction between **expressions** (which produce values) and **statements** (which don't).
 
 ## if Returns a Value
 
@@ -120,13 +129,6 @@ let classify = (xs) ->
     end;
 classify([-3, 0, 5, -1, 7])
 ```
-
-## Practical Benefits
-
-* **No early return bugs** — there is no `return`, so you can't accidentally skip cleanup
-* **Declarative style** — code reads as "the value is..." rather than "do this, then do that"
-* **Refactoring safety** — any expression can be extracted into a `let` binding or inlined without changing semantics
-* **Uniform composition** — `|>`, `map`, `comp` work with everything because everything produces a value
 
 ## Summary
 

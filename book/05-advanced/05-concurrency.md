@@ -6,14 +6,16 @@
 
 Dvala provides two structured concurrency primitives: `parallel` and `race`. Both are special expressions that scope concurrent work within a single expression.
 
-Since `parallel` and `race` require async mode and external effect handlers, the examples in this tutorial are shown but not executed. The concepts can be understood through local handlers:
+> **Why are the examples below marked `no-run`?** `parallel` and `race` launch branches concurrently — they always require `dvala.runAsync()` on the host side, even when branches are synchronous. The playground uses synchronous evaluation, so these expressions cannot run inline. To try them, integrate Dvala into a TypeScript project and call `runAsync()`.
+
+The sequential equivalent of `parallel` (useful for understanding the shape) looks like this and runs in the playground:
 
 ```dvala
 do
   with handler @my.val(arg) -> resume(arg * 2) end;
   let a = perform(@my.val, 10);
   let b = perform(@my.val, 20);
-  a + b
+  [a, b]
 end
 ```
 
@@ -113,6 +115,14 @@ race(
   perform(@db.get, key)
 )
 ```
+
+## Error Handling
+
+**In `parallel`:** if any branch throws an unhandled error, the entire `parallel` expression throws that error. Other branches that are still running are cancelled. Results from completed branches are discarded.
+
+**In `race`:** branches that throw are silently dropped — only successful completions count as a winner. If *all* branches throw, `race` throws an aggregate error.
+
+To handle errors per-branch, wrap each branch in a `do...with handler` block before passing it to `parallel` or `race`.
 
 ## Requirements
 

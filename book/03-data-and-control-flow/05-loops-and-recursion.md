@@ -78,9 +78,26 @@ let fib = n ->
     n
   else
     self(n - 1) + self(n - 2)
-  end
+  end;
 fib(10)
 ```
+
+> **Warning:** This Fibonacci implementation is `O(2^n)` — it recomputes the same subproblems exponentially. It works for small inputs but becomes unusably slow past around `fib(30)`. For large inputs, use `loop`/`recur` with two accumulators instead. See the [Tail Call Optimization](../04-design-principles/05-tail-call-optimization.md) chapter.
+
+## While-Style Loops
+
+Dvala has no standalone `while` keyword. To loop while a condition holds, use `loop`/`recur`:
+
+```dvala
+// Keep halving until value drops below 1
+loop (x = 100.0) ->
+  if x < 1
+    then x
+    else recur(x / 2)
+  end
+```
+
+The `while` keyword that appears in `for` comprehensions is for **early exit from a `for`**, not a general loop construct.
 
 ## For with Side Effects
 

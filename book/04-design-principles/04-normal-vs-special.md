@@ -1,5 +1,7 @@
 # Normal vs Special Expressions
 
+> **Optional reading.** This chapter explains an implementation concept that helps you understand *why* `if` short-circuits and `let` bindings are ordered — but you don't need it to write effective Dvala programs. If you're new to the language, feel free to skip ahead and return here when you're curious about the internals.
+
 ## Background: Lisp Special Forms
 
 [John McCarthy](https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29)'s [original Lisp (1960)](http://www-formal.stanford.edu/jmc/recursive.html) distinguished between **functions** (which evaluate all arguments before applying) and **special forms** (which control evaluation order). This distinction is fundamental: `if` cannot be a normal function because it must **not** evaluate the branch that isn't taken.
