@@ -5,7 +5,7 @@
 
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
-import { labIcon, lampIcon } from '../icons'
+import { bookIcon, labIcon } from '../icons'
 import { getPageHeader } from '../utils'
 
 // Feature card markdown content
@@ -63,9 +63,9 @@ export function renderStartPage(): string {
   ${getPageHeader({ tagline: true })}
   <div class="content-page__body start-page__body">
     <nav class="start-page__nav">
-      <a class="start-page__nav-link" href="${href('/tutorials')}" onclick="event.preventDefault();Playground.navigate('/tutorials')">
-        <span class="start-page__nav-icon">${lampIcon}</span>
-        <span>Tutorials</span>
+      <a class="start-page__nav-link" href="${href('/book')}" onclick="event.preventDefault();Playground.navigate('/book')">
+        <span class="start-page__nav-icon">${bookIcon}</span>
+        <span>The Book</span>
       </a>
       <a class="start-page__nav-link" href="${href('/examples')}" onclick="event.preventDefault();Playground.navigate('/examples')">
         <span class="start-page__nav-icon">${labIcon}</span>

@@ -128,7 +128,7 @@
     "lint:no-fix": "wireit",
     "typecheck": "wireit",
     "typecheck:watch": "tsc -p ./tsconfig.compile.json --noEmit --watch",
-    "check": "npm install && npm run lint && npm run typecheck && npm run build && npm run test",
+    "check": "npm install && npm run lint && npm run typecheck && npm run build && npm run test && npm run build-book",
     "check:no-fix": "npm run lint:no-fix && npm run typecheck && npm run test",
     "clean": "npm run clean-dvala && npm run clean-playground && rm -rf .wireit coverage test-results vscode-dvala/out .cache",
     "clean-dvala": "rm -rf dist build",
@@ -138,10 +138,12 @@
     "build-cli": "wireit",
     "build-mcp": "wireit",
     "build-playground": "wireit",
+    "build-book": "wireit",
     "build-vscode-ext": "wireit",
     "dvala": "node ./dist/cli/cli.js",
     "benchmark": "npm run build-dvala && npx tsx benchmarks/pds-baseline.ts",
     "demo": "node scripts/demo-link.mjs",
+    "pdf": "node scripts/generate-pdf.mjs",
     "dev": "npx serve docs -p 9901 --single",
     "test:e2e": "npx playwright test",
     "test:e2e:prod": "E2E_BASE_URL=https://mojir.github.io/dvala npx playwright test",
@@ -161,6 +163,7 @@
     "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.27.4",
     "eslint": "^10.0.3",
+    "highlight.js": "^11.11.1",
     "open-cli": "^8.0.0",
     "rolldown": "^1.0.0-rc.9",
     "serve": "^14.2.6",
@@ -301,7 +304,7 @@
         "src/**",
         "common/**",
         "reference/**/*.ts",
-        "tutorials/**",
+        "book/**",
         "rolldown.config.playground-builder.mjs",
         "rolldown.config.playground-www.mjs",
         "rolldown.plugins.mjs",
@@ -312,6 +315,20 @@
         "playground-builder/build/**",
         "playground-www/build/**",
         "docs/**"
+      ],
+      "clean": "if-file-deleted"
+    },
+    "build-book": {
+      "command": "node scripts/generate-pdf.mjs",
+      "dependencies": [
+        "build-playground"
+      ],
+      "files": [
+        "scripts/generate-pdf.mjs",
+        "book/**"
+      ],
+      "output": [
+        "docs/the-dvala-book.pdf"
       ],
       "clean": "if-file-deleted"
     },

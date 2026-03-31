@@ -246,7 +246,7 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
     {
       name: 'playground.router.goto',
       group: 'Router',
-      description: 'Navigate to a page (e.g. `"settings"`, `"examples"`, `"tutorials/effects"`).',
+      description: 'Navigate to a page (e.g. `"settings"`, `"examples"`, `"book/advanced-effects"`).',
       args: {
         route: { type: 'string', description: 'The route to navigate to.' },
       },

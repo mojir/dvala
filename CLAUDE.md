@@ -124,7 +124,7 @@ Before suggesting Dvala code to the user, verify it works by running it with `dv
 - `playground-www/src/renderDvalaMarkdown.ts` — shared markdown renderer using `renderCodeBlock` for fenced dvala blocks
 - `playground-www/src/featureCards/*.md` — feature card content (rendered in modals from start page)
 - `playground-www/src/components/startPage.ts` — start page with feature cards (about page merged in)
-- `playground-www/src/components/tutorialPage.ts` — tutorial pages with sticky header (title, prev/next, TOC dropdown)
+- `playground-www/src/components/chapterPage.ts` — chapter pages with sticky header (title, prev/next, TOC dropdown)
 
 ### Modal system (`createModalPanel` in `scripts.ts`)
 

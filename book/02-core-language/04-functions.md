@@ -34,7 +34,7 @@ greet()
 Parameters can have default values:
 
 ```dvala
-let greet = (name = "World") -> "Hello, " ++ name;
+let greet = (name = "World") -> `Hello, ${name}`;
 greet()
 ```
 

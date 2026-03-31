@@ -777,9 +777,9 @@ test.describe('SEO meta tags', () => {
     // Home page title
     await expect(page).toHaveTitle(/Dvala/)
 
-    // Navigate to tutorials
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials'))
-    await expect(page).toHaveTitle(/Tutorials.*Dvala/)
+    // Navigate to the book
+    await page.evaluate(() => (window as any).Playground.navigate('/book'))
+    await expect(page).toHaveTitle(/The Book.*Dvala/)
 
     // Navigate to examples
     await page.evaluate(() => (window as any).Playground.navigate('/examples'))
@@ -981,19 +981,19 @@ end`)
   })
 
   test('router.back navigates back', async ({ page }) => {
-    // Navigate to examples then tutorials via JS API
+    // Navigate to examples then the book via JS API
     await page.evaluate(() => (window as any).Playground.navigate('/examples'))
     await expect(page.locator('#dynamic-page')).toContainText('Examples', { timeout: 3000 })
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials'))
-    await expect(page.locator('#dynamic-page')).toContainText('Tutorials', { timeout: 3000 })
+    await page.evaluate(() => (window as any).Playground.navigate('/book'))
+    await expect(page.locator('#dynamic-page')).toContainText('The Book', { timeout: 3000 })
 
-    // Go back to home, then run router.back to go to tutorials
+    // Go back to home, then run router.back to go to the book
     await page.evaluate(() => (window as any).Playground.navigate('/'))
     await waitForInit(page)
 
     await setDvalaCode(page, 'perform(@playground.router.back)')
     await clickRun(page)
-    await expect(page.locator('#dynamic-page')).toContainText('Tutorials', { timeout: 3000 })
+    await expect(page.locator('#dynamic-page')).toContainText('The Book', { timeout: 3000 })
   })
 })
 
@@ -1061,45 +1061,45 @@ test.describe('start page', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Tutorial pages
+// Chapter pages
 // ---------------------------------------------------------------------------
 
-test.describe('tutorial pages', () => {
-  test('tutorial page has sticky header with title', async ({ page }) => {
+test.describe('chapter pages', () => {
+  test('chapter page has sticky header with title', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
-    const header = page.locator('.tutorial-header')
+    await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
+    const header = page.locator('.chapter-header')
     await expect(header).toBeVisible()
-    await expect(header.locator('.tutorial-header__title')).toContainText('Intro')
+    await expect(header.locator('.chapter-header__title')).toContainText('Intro')
   })
 
   test('prev/next navigation works', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
-    // First tutorial — prev should be disabled
-    await expect(page.locator('.tutorial-header__nav-btn--disabled').first()).toBeVisible()
+    await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
+    // First chapter — prev should be disabled
+    await expect(page.locator('.chapter-header__nav-btn--disabled').first()).toBeVisible()
     // Click next
-    await page.locator('.tutorial-header__nav-btn').last().click()
-    // Should navigate to the second tutorial
-    await expect(page.locator('.tutorial-header__title')).not.toContainText('Intro')
+    await page.locator('.chapter-header__nav-btn').last().click()
+    // Should navigate to the second chapter
+    await expect(page.locator('.chapter-header__title')).not.toContainText('Intro')
   })
 
   test('TOC dropdown shows Table of contents label', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
-    await expect(page.locator('.tutorial-header__toc-label')).toContainText('Table of contents')
+    await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
+    await expect(page.locator('.chapter-header__toc-label')).toContainText('Table of contents')
   })
 
-  test('TOC dropdown navigates to selected tutorial', async ({ page }) => {
+  test('TOC dropdown navigates to selected chapter', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
-    await page.evaluate(() => (window as any).Playground.navigate('/tutorials/getting-started-intro'))
-    // Select a different tutorial via the TOC dropdown
-    await page.locator('.tutorial-header__toc').selectOption('advanced-macros')
-    await expect(page.locator('.tutorial-header__title')).toContainText('Macros')
+    await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
+    // Select a different chapter via the TOC dropdown
+    await page.locator('.chapter-header__toc').selectOption('advanced-macros')
+    await expect(page.locator('.chapter-header__title')).toContainText('Macros')
   })
 })
 

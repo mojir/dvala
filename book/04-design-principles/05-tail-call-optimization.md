@@ -139,7 +139,7 @@ for (x in range(10) when isOdd(x)) -> x * x
 
 ```dvala
 // Cartesian product
-for (i in [1, 2, 3], j in ["a", "b"]) -> str(i) ++ j
+for (i in [1, 2, 3], j in ["a", "b"]) -> `${i}${j}`
 ```
 
 ## Summary

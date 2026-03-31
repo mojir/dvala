@@ -4,6 +4,7 @@
     "types/**/*",
     "playground-www/**/*",
     "reference/**/*",
-    "common/**/*"
+    "common/**/*",
+    "book/**/*"
   ]
 }
