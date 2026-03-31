@@ -1098,6 +1098,7 @@ export const api = {
   shorthand: [
     '-short-regexp',
     '-short-fn',
+    '-short-object',
   ] as const satisfies `-short-${string}`[],
   datatype: [
     '-type-number',

@@ -40,6 +40,7 @@ let default = {
     'object("x", 10, "y", true, "z", "A string")',
     '{}',
     '{ a: 1, b: 2 }',
+    'let x = 10; let y = 20; { x, y }',
   ],
   hideOperatorForm: true,
 }

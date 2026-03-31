@@ -280,6 +280,59 @@ describe('parseObject', () => {
     })
   })
 
+  describe('shorthand properties', () => {
+    it('should parse { foo } as { foo: foo }', () => {
+      const ctx = createCtx('{ foo }')
+      const result = parseObject(ctx)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(1)
+      const [key, value] = asPair(entries[0]!)
+      expect(key[0]).toBe(NodeTypes.Str)
+      expect(key[1]).toBe('foo')
+      expect(value[0]).toBe(NodeTypes.Sym)
+      expect(value[1]).toBe('foo')
+    })
+
+    it('should parse multiple shorthand properties', () => {
+      const ctx = createCtx('{ a, b, c }')
+      const result = parseObject(ctx)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(3)
+      for (const [i, name] of (['a', 'b', 'c'] as const).entries()) {
+        const [key, value] = asPair(entries[i]!)
+        expect(key[0]).toBe(NodeTypes.Str)
+        expect(key[1]).toBe(name)
+        expect(value[0]).toBe(NodeTypes.Sym)
+        expect(value[1]).toBe(name)
+      }
+    })
+
+    it('should mix shorthand and explicit properties', () => {
+      const ctx = createCtx('{ a, b: 2, c }')
+      const result = parseObject(ctx)
+      const entries = getObjectEntries(result)
+      expect(entries).toHaveLength(3)
+      const [k0, v0] = asPair(entries[0]!)
+      expect(k0[1]).toBe('a')
+      expect(v0[0]).toBe(NodeTypes.Sym)
+      const [k1, v1] = asPair(entries[1]!)
+      expect(k1[1]).toBe('b')
+      expect(v1[0]).toBe(NodeTypes.Num)
+      const [k2, v2] = asPair(entries[2]!)
+      expect(k2[1]).toBe('c')
+      expect(v2[0]).toBe(NodeTypes.Sym)
+    })
+
+    it('should not apply shorthand to quoted symbol keys', () => {
+      const ctx = createCtx("{ 'foo bar': 1 }")
+      const result = parseObject(ctx)
+      const entries = getObjectEntries(result)
+      const [key, value] = asPair(entries[0]!)
+      expect(key[1]).toBe('foo bar')
+      expect(value[0]).toBe(NodeTypes.Num)
+    })
+  })
+
   describe('error cases', () => {
     it('should throw on numeric key', () => {
       const ctx = createCtx('{ 1: 1 }')

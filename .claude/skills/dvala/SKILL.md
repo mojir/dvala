@@ -40,8 +40,8 @@ let { user: { name, tags: [first] } } = d;  // nested
 let { ...rest } = obj;                       // object rest
 ```
 
-**Gotcha**: Object shorthand `{ x }` does NOT work in object literals. Always use `{ x: x }`.
-Builtin names (e.g. `sin`, `count`) need explicit `key: value` in object literals.
+Object shorthand `{ x }` works — equivalent to `{ x: x }`.
+Builtin names (e.g. `sin`, `count`) need explicit `key: value` in object literals (they're not identifiers, so shorthand doesn't apply).
 
 ## Functions
 

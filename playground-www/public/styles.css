@@ -1008,13 +1008,19 @@ a.disabled {
   min-width: 0;
 }
 
+.chapter-header__actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .chapter-header__toc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 1.8em;
   height: 1.8em;
-  margin-left: auto;
   flex-shrink: 0;
   border: none;
   background: none;
@@ -1054,7 +1060,8 @@ a.disabled {
 }
 
 .chapter-toc-dropdown__item {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: var(--space-1) var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
@@ -1070,6 +1077,26 @@ a.disabled {
   background: var(--color-surface);
 }
 
+.chapter-toc-dropdown__check {
+  display: inline-block;
+  width: 1.2em;
+  flex-shrink: 0;
+  color: var(--color-brand);
+}
+
+.chapter-toc-dropdown__item--active {
+  color: var(--color-text-bright);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.chapter-toc-dropdown__subitem--active {
+  padding-left: var(--space-3);
+  color: var(--color-text-bright);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+}
+
 .chapter-toc-dropdown__item--overview {
   font-weight: 600;
   color: var(--color-text);
@@ -1077,6 +1104,128 @@ a.disabled {
   margin-bottom: var(--space-1);
 }
 
+.chapter-toc-dropdown__subitem {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-1) calc(var(--space-3) + 1rem);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-toc-dropdown__subitem:hover {
+  color: var(--color-text-bright);
+  background: var(--color-surface);
+}
+
+
+.chapter-search-dropdown {
+  position: fixed;
+  z-index: 300;
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  min-width: 20rem;
+  max-width: 28rem;
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+
+.chapter-search-input {
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-bright);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chapter-search-input::placeholder {
+  color: var(--color-text-dim);
+}
+
+.chapter-search-results {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chapter-search-result {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  gap: 1px;
+}
+
+.chapter-search-result:hover,
+.chapter-search-result--active {
+  background: var(--color-surface);
+}
+
+.chapter-search-result--section {
+  padding-left: calc(var(--space-3) + 1rem);
+}
+
+.chapter-search-result--content {
+  padding-left: calc(var(--space-3) + 1rem);
+}
+
+.chapter-search-separator {
+  height: 1px;
+  background: var(--color-border-dim);
+  margin: var(--space-1) 0;
+}
+
+.chapter-search-result--content .chapter-search-result__label {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.chapter-search-result--code {
+  padding-left: calc(var(--space-3) + 1rem);
+}
+
+.chapter-search-result--code .chapter-search-result__label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-search-result__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-search-result__context {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-search-empty {
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  text-align: center;
+}
 
 .chapter-header__nav-btn {
   display: inline-flex;
@@ -1190,7 +1339,7 @@ a.disabled {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-8);
   padding: var(--space-2) var(--space-3);
   background: var(--color-surface);
   border-radius: var(--radius-md);

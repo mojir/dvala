@@ -25,4 +25,14 @@ Shorthand for \`(args, ...) -> expression\`.
       '(-> $ * $)(9)',
     ],
   },
+  '-short-object': {
+    shorthand: true,
+    title: '{ foo }',
+    category: 'shorthand',
+    description: 'Shorthand for `{ foo: foo }`. When a key and variable name are the same, you can omit the value.',
+    examples: [
+      'let x = 1; let y = 2; { x, y }',
+      'let name = "Alice"; let age = 30; { name, age }',
+    ],
+  },
 }

@@ -28,6 +28,7 @@ import { renderExamplePage } from './components/examplePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
 import { renderBookIndexPage, renderChapterPage, allChapters, bookSections } from './components/chapterPage'
+import { slugifyHeading } from './renderDvalaMarkdown'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
   clearAll as clearAllSnapshots,
@@ -342,6 +343,10 @@ export function toggleTocMenu(event: Event): void {
     return
   }
 
+  // Derive active chapter id and active h2 slug from current URL
+  const currentChapterId = router.currentPath().replace(/^\/book\//, '')
+  const currentHash = location.hash.replace(/^#/, '')
+
   const dropdown = document.createElement('div')
   dropdown.id = 'chapter-toc-dropdown'
   dropdown.className = 'chapter-toc-dropdown'
@@ -353,6 +358,10 @@ export function toggleTocMenu(event: Event): void {
   overview.addEventListener('click', () => { dropdown.remove(); router.navigate('/book') })
   dropdown.appendChild(overview)
 
+  let activeEl: HTMLElement | null = null
+
+  const check = '<span class="chapter-toc-dropdown__check">✓</span>'
+
   // Sections + chapters
   for (const section of bookSections) {
     const label = document.createElement('div')
@@ -361,11 +370,40 @@ export function toggleTocMenu(event: Event): void {
     dropdown.appendChild(label)
 
     for (const entry of section.entries) {
+      const isActiveChapter = entry.id === currentChapterId
+      // Only mark the chapter itself when no h2 section is active
+      const chapterMarked = isActiveChapter && !currentHash
       const a = document.createElement('a')
-      a.className = 'chapter-toc-dropdown__item'
-      a.textContent = entry.title
+      a.className = `chapter-toc-dropdown__item${chapterMarked ? ' chapter-toc-dropdown__item--active' : ''}`
+      a.innerHTML = (chapterMarked ? check : '<span class="chapter-toc-dropdown__check"></span>') + entry.title
       a.addEventListener('click', () => { dropdown.remove(); router.navigate(`/book/${entry.id}`) })
       dropdown.appendChild(a)
+      if (chapterMarked) activeEl = a
+
+      // h2 sub-items
+      const h2s = [...entry.raw.matchAll(/^##\s+(.+)$/gm)]
+      for (const m of h2s) {
+        const text = m[1]!.trim()
+        const slug = slugifyHeading(text)
+        const isActiveSub = isActiveChapter && currentHash === slug
+        const sub = document.createElement('a')
+        sub.className = `chapter-toc-dropdown__subitem${isActiveSub ? ' chapter-toc-dropdown__subitem--active' : ''}`
+        sub.innerHTML = (isActiveSub ? check : '<span class="chapter-toc-dropdown__check"></span>') + text
+        sub.addEventListener('click', () => {
+          dropdown.remove()
+          const alreadyOnChapter = router.currentPath() === `/book/${entry.id}`
+          if (!alreadyOnChapter) router.navigate(`/book/${entry.id}`)
+          setTimeout(() => {
+            const el = document.getElementById(slug)
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth' })
+              history.replaceState(null, '', `${location.pathname}#${slug}`)
+            }
+          }, alreadyOnChapter ? 0 : 80)
+        })
+        dropdown.appendChild(sub)
+        if (isActiveSub) activeEl = sub
+      }
     }
   }
 
@@ -375,11 +413,227 @@ export function toggleTocMenu(event: Event): void {
   dropdown.style.top = `${rect.bottom + 4}px`
   dropdown.style.right = `${window.innerWidth - rect.right}px`
 
+  // Scroll active item to vertical center of the dropdown
+  if (activeEl) {
+    const elTop = activeEl.offsetTop
+    const elHeight = activeEl.offsetHeight
+    dropdown.scrollTop = elTop - dropdown.clientHeight / 2 + elHeight / 2
+  }
+
   // Close on outside click
   const closeOnOutside = (e: Event) => {
     if (!dropdown.contains(e.target as Node)) {
       dropdown.remove()
       document.removeEventListener('click', closeOnOutside)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', closeOnOutside), 0)
+}
+
+// Build a flat search index from all chapters, h2 headings, prose paragraphs, and code blocks.
+// This is computed once lazily so it doesn't block startup.
+interface BookSearchEntry {
+  type: 'chapter' | 'section' | 'content' | 'code'
+  label: string // primary display text
+  context: string // secondary line (breadcrumb)
+  snippet: string // full text for matching (may be longer than label)
+  chapterId: string
+  hash: string // '' for chapter hits, slug for section/content/code hits
+}
+
+// Walk raw markdown and yield prose paragraphs and code blocks grouped by nearest h2.
+// Prose is cleaned of markdown syntax; code is kept verbatim for exact-match searching.
+function extractContentBlocks(raw: string): { hash: string; text: string; isCode: boolean }[] {
+  const out: { hash: string; text: string; isCode: boolean }[] = []
+  let currentHash = ''
+  let inCode = false
+  let buf = ''
+
+  const flushProse = () => {
+    const clean = buf.replace(/[*_`[\]()!]/g, '').replace(/\s+/g, ' ').trim()
+    if (clean.length > 30) out.push({ hash: currentHash, text: clean, isCode: false })
+    buf = ''
+  }
+
+  for (const line of raw.split('\n')) {
+    if (/^```/.test(line)) {
+      if (!inCode) {
+        // Entering code block — flush pending prose first
+        flushProse()
+        inCode = true
+      } else {
+        // Exiting code block — save the code content
+        const code = buf.trim()
+        if (code.length > 10) out.push({ hash: currentHash, text: code, isCode: true })
+        buf = ''
+        inCode = false
+      }
+      continue
+    }
+    if (inCode) { buf += (buf ? '\n' : '') + line; continue }
+    // Update current section anchor on h2
+    if (/^##\s/.test(line)) {
+      flushProse()
+      currentHash = slugifyHeading(line.replace(/^##\s+/, '').trim())
+      continue
+    }
+    if (/^#+\s/.test(line)) continue
+    if (line.trim() === '') { flushProse() } else { buf += (buf ? ' ' : '') + line }
+  }
+  // Flush any trailing buffer
+  if (inCode) { const code = buf.trim(); if (code.length > 10) out.push({ hash: currentHash, text: code, isCode: true }) } else flushProse()
+  return out
+}
+
+let _bookSearchIndex: BookSearchEntry[] | null = null
+function getBookSearchIndex(): BookSearchEntry[] {
+  if (_bookSearchIndex) return _bookSearchIndex
+  _bookSearchIndex = []
+  for (const section of bookSections) {
+    for (const entry of section.entries) {
+      _bookSearchIndex.push({ type: 'chapter', label: entry.title, context: section.name, snippet: '', chapterId: entry.id, hash: '' })
+      for (const m of entry.raw.matchAll(/^##\s+(.+)$/gm)) {
+        const text = m[1]!.trim()
+        _bookSearchIndex.push({ type: 'section', label: text, context: entry.title, snippet: '', chapterId: entry.id, hash: slugifyHeading(text) })
+      }
+      // Index prose and code blocks at lower priority
+      for (const { hash, text, isCode } of extractContentBlocks(entry.raw)) {
+        const type = isCode ? 'code' : 'content'
+        const label = text.length > 80 ? `${text.slice(0, 80)}…` : text
+        _bookSearchIndex.push({ type, label, context: entry.title, snippet: text, chapterId: entry.id, hash })
+      }
+    }
+  }
+  return _bookSearchIndex
+}
+
+export function toggleBookSearch(event: Event): void {
+  event.stopPropagation()
+  const btn = event.currentTarget as HTMLElement
+
+  const existing = document.getElementById('chapter-search-dropdown')
+  if (existing) { existing.remove(); return }
+
+  // Also close TOC dropdown if open
+  document.getElementById('chapter-toc-dropdown')?.remove()
+
+  const dropdown = document.createElement('div')
+  dropdown.id = 'chapter-search-dropdown'
+  dropdown.className = 'chapter-search-dropdown'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'Search chapters…'
+  input.className = 'chapter-search-input'
+  dropdown.appendChild(input)
+
+  const results = document.createElement('div')
+  results.className = 'chapter-search-results'
+  dropdown.appendChild(results)
+
+  // Navigate to a search result and close the dropdown
+  const selectEntry = (entry: BookSearchEntry) => {
+    dropdown.remove()
+    document.removeEventListener('keydown', onKey)
+    if (entry.hash) {
+      const alreadyOnChapter = router.currentPath() === `/book/${entry.chapterId}`
+      if (!alreadyOnChapter) router.navigate(`/book/${entry.chapterId}`)
+      setTimeout(() => {
+        const el = document.getElementById(entry.hash)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' })
+          history.replaceState(null, '', `${location.pathname}#${entry.hash}`)
+        }
+      }, alreadyOnChapter ? 0 : 80)
+    } else {
+      router.navigate(`/book/${entry.chapterId}`)
+    }
+  }
+
+  // Populate results list based on current query.
+  // Chapter and section hits (type 'chapter'/'section') take priority over body content hits.
+  let currentResults: BookSearchEntry[] = []
+  const renderResults = (query: string) => {
+    results.innerHTML = ''
+    const q = query.trim().toLowerCase()
+    if (!q) { currentResults = []; return }
+    const index = getBookSearchIndex()
+    const priorityHits = index.filter(e => (e.type === 'chapter' || e.type === 'section') && (e.label.toLowerCase().includes(q) || e.context.toLowerCase().includes(q)))
+    const bodyHits = index.filter(e => (e.type === 'content' || e.type === 'code') && (e.snippet.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)))
+    // Cap body hits so they don't drown out chapter/section matches
+    currentResults = [...priorityHits, ...bodyHits.slice(0, Math.max(0, 14 - priorityHits.length))]
+    if (currentResults.length === 0) {
+      const empty = document.createElement('div')
+      empty.className = 'chapter-search-empty'
+      empty.textContent = 'No results'
+      results.appendChild(empty)
+      return
+    }
+    // Insert a visual divider before the first body (content/code) result
+    const firstContentIdx = currentResults.findIndex(e => e.type === 'content' || e.type === 'code')
+    currentResults.forEach((entry, i) => {
+      if (i === firstContentIdx && i > 0) {
+        const sep = document.createElement('div')
+        sep.className = 'chapter-search-separator'
+        results.appendChild(sep)
+      }
+      const item = document.createElement('div')
+      const modClass = entry.type === 'section' ? ' chapter-search-result--section'
+        : entry.type === 'content' ? ' chapter-search-result--content'
+          : entry.type === 'code' ? ' chapter-search-result--code' : ''
+      item.className = `chapter-search-result${modClass}`
+      item.dataset.index = String(i)
+      const labelEl = document.createElement('span')
+      labelEl.className = 'chapter-search-result__label'
+      labelEl.textContent = entry.label
+      const ctxEl = document.createElement('span')
+      ctxEl.className = 'chapter-search-result__context'
+      ctxEl.textContent = entry.context
+      item.appendChild(labelEl)
+      item.appendChild(ctxEl)
+      item.addEventListener('mousedown', e => { e.preventDefault(); selectEntry(entry) })
+      item.addEventListener('mouseover', () => setActive(i))
+      results.appendChild(item)
+    })
+  }
+
+  // Keyboard-driven active item tracking
+  let activeIndex = -1
+  const setActive = (i: number) => {
+    const items = results.querySelectorAll<HTMLElement>('.chapter-search-result')
+    items.forEach((el, idx) => el.classList.toggle('chapter-search-result--active', idx === i))
+    activeIndex = i
+    if (i >= 0) items[i]?.scrollIntoView({ block: 'nearest' })
+  }
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { dropdown.remove(); document.removeEventListener('keydown', onKey); return }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(activeIndex + 1, currentResults.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(activeIndex - 1, 0)) }
+    if (e.key === 'Enter' && activeIndex >= 0) {
+      const entry = currentResults[activeIndex]
+      if (entry) selectEntry(entry)
+    }
+  }
+  document.addEventListener('keydown', onKey)
+
+  input.addEventListener('input', () => { activeIndex = -1; renderResults(input.value) })
+
+  // Position fixed below the button
+  document.body.appendChild(dropdown)
+  const rect = btn.getBoundingClientRect()
+  dropdown.style.top = `${rect.bottom + 4}px`
+  dropdown.style.right = `${window.innerWidth - rect.right}px`
+
+  // Autofocus after mount
+  requestAnimationFrame(() => input.focus())
+
+  // Close on outside click (not on input blur, so mouse clicks on results work)
+  const closeOnOutside = (e: Event) => {
+    if (!dropdown.contains(e.target as Node)) {
+      dropdown.remove()
+      document.removeEventListener('click', closeOnOutside)
+      document.removeEventListener('keydown', onKey)
     }
   }
   setTimeout(() => document.addEventListener('click', closeOnOutside), 0)

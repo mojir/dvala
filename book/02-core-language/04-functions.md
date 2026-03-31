@@ -89,7 +89,7 @@ fib(8)
 
 Dvala is strict about the number of arguments. Calling a function with **too few** arguments throws an error at runtime:
 
-```dvala no-run
+```dvala throws
 let add = (a, b) -> a + b;
 add(1)  // Error: Expected 2 arguments, got 1
 ```
