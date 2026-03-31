@@ -19,7 +19,7 @@ import type { Any, Arr, Obj } from '../interface'
 import type { DvalaModule } from '../builtin/modules/interface'
 import type { BindingSlot } from '../builtin/bindingSlot'
 import type { MatchSlot } from '../builtin/matchSlot'
-import type { AstNode, BindingTarget, EffectRef, FunctionLike, HandlerFunction, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
+import type { AstNode, BindingTarget, FunctionLike, HandlerFunction, NormalExpressionNode, UserDefinedFunction } from '../parser/types'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { SourceCodeInfo } from '../tokenizer/token'
@@ -874,19 +874,6 @@ export interface ImportMergeFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
-/**
- * Auto-checkpoint frame: dispatches the original effect after a
- * `dvala.checkpoint` completes. Pushed when `autoCheckpoint` is enabled
- * so the checkpoint effect propagates to host handlers.
- */
-export interface AutoCheckpointFrame {
-  type: 'AutoCheckpoint'
-  phase: 'awaitCheckpoint' | 'awaitEffect'
-  effect: EffectRef
-  arg: Any
-  sourceCodeInfo?: SourceCodeInfo
-}
-
 export type Frame =
   // Program flow
   | SequenceFrame
@@ -943,8 +930,6 @@ export type Frame =
   | NanCheckFrame
   // Module import
   | ImportMergeFrame
-  // Auto-checkpoint
-  | AutoCheckpointFrame
   // Macro expansion
   | MacroEvalFrame
   // Code template

@@ -3,7 +3,6 @@ import { PersistentVector } from '../utils/persistent'
 import type {
   AndFrame,
   ArrayBuildFrame,
-  AutoCheckpointFrame,
   BindingSlotFrame,
   CallFnFrame,
   CodeTemplateBuildFrame,
@@ -88,7 +87,6 @@ describe('frame types', () => {
       MatchSlot: true,
       NanCheck: true,
       ImportMerge: true,
-      AutoCheckpoint: true,
       AlgebraicHandle: true,
       HandlerTransform: true,
       HandlerClause: true,
@@ -97,7 +95,7 @@ describe('frame types', () => {
       MacroEval: true,
       CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(44)
+    expect(Object.keys(frameTypes)).toHaveLength(43)
   })
 
   it('should support ContinuationStack as null (empty persistent list)', () => {
@@ -146,7 +144,6 @@ describe('frame types', () => {
         case 'MatchSlot': return 'destructure'
         case 'NanCheck': return 'post'
         case 'ImportMerge': return 'import'
-        case 'AutoCheckpoint': return 'checkpoint'
         case 'AlgebraicHandle': return 'effect'
         case 'HandlerTransform': return 'effect'
         case 'HandlerClause': return 'effect'
@@ -256,7 +253,6 @@ describe('frame types', () => {
     const _fnRestArgComplete: FnRestArgCompleteFrame['type'] = 'FnRestArgComplete'
     const _bindingSlot: BindingSlotFrame['type'] = 'BindingSlot'
     const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
-    const _autoCheckpoint: AutoCheckpointFrame['type'] = 'AutoCheckpoint'
     const _codeTemplateBuild: CodeTemplateBuildFrame['type'] = 'CodeTemplateBuild'
 
     // All type assignments above are verified by TypeScript at compile time.
@@ -294,7 +290,6 @@ describe('frame types', () => {
     expect(_fnRestArgComplete).toBe('FnRestArgComplete')
     expect(_bindingSlot).toBe('BindingSlot')
     expect(_nanCheck).toBe('NanCheck')
-    expect(_autoCheckpoint).toBe('AutoCheckpoint')
     expect(_codeTemplateBuild).toBe('CodeTemplateBuild')
   })
 })

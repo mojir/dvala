@@ -291,7 +291,7 @@ function getSettingsPage(): string {
         <p class="settings-tab-content__desc">Configure the Dvala language runtime behavior.</p>
         ${toggle('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
         ${toggle('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
-        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots before every effect.', 'Playground.toggleAutoCheckpoint()')}
+        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at program start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
       </div>
 
       <div id="settings-tab-playground" class="settings-tab-content">
