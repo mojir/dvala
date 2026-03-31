@@ -288,7 +288,7 @@ let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 // Named macro emits the effect — handler can intercept
 do
   with handler @dvala.macro.expand(arg) -> do
-    perform(@dvala.io.print, "Expanding macro: " ++ qualifiedName(get(arg, "fn")));
+    perform(@dvala.io.print, `Expanding macro: ${qualifiedName(get(arg, "fn"))}`);
     // Return the expansion result as AST
     resume(["Num", 99, 0])
   end end;
@@ -397,8 +397,8 @@ Dvala's `match` with array destructuring works naturally on AST nodes:
 ```dvala
 let describe = macro (ast) -> do
   let result = match ast
-    case ["Num", n, _] then ["Str", "number: " ++ str(n), 0]
-    case ["Str", s, _] then ["Str", "string: " ++ s, 0]
+    case ["Num", n, _] then ["Str", `number: ${n}`, 0]
+    case ["Str", s, _] then ["Str", `string: ${s}`, 0]
     case ["Call", _, _] then ["Str", "call expression", 0]
     case _ then ["Str", "something else", 0]
   end;

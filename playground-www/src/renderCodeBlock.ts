@@ -2,7 +2,7 @@
  * Unified code block renderer.
  *
  * Renders a code block with syntax highlighting, optional execution output,
- * and hover action buttons (edit, copy). Used by tutorials, docs, feature
+ * and hover action buttons (edit, copy). Used by book chapters, docs, feature
  * cards, snapshot panels, and anywhere code is displayed.
  */
 

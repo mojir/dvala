@@ -112,7 +112,7 @@ const effectHandlers = [
 const r1 = await dvala.runAsync(`
   let a = perform(@human.step, "Step 1: Enter amount");
   let b = perform(@human.step, "Step 2: Confirm");
-  if b then "Transferred: " ++ str(a) else "Cancelled" end
+  if b then `Transferred: ${a}` else "Cancelled" end
 `, { effectHandlers })
 
 // r1.type === 'suspended', r1.snapshot.meta.step === 'Step 1: Enter amount'
@@ -184,7 +184,7 @@ let decision = perform(@human.approve, report);
 if decision.approved then
   perform(@email.send, report)
 else
-  "Rejected: " ++ decision.reason
+  `Rejected: ${decision.reason}`
 end
 ```
 

@@ -2,20 +2,20 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-export interface TutorialEntry {
+export interface ChapterEntry {
   id: string
   title: string
   body: string
 }
 
-export interface TutorialFolder {
+export interface BookSection {
   title: string
-  entries: TutorialEntry[]
+  entries: ChapterEntry[]
 }
 
-export type TutorialItem = TutorialEntry | TutorialFolder
+export type BookItem = ChapterEntry | BookSection
 
-export function isTutorialFolder(item: TutorialItem): item is TutorialFolder {
+export function isBookSection(item: BookItem): item is BookSection {
   return 'entries' in item
 }
 
@@ -23,11 +23,11 @@ export function isTutorialFolder(item: TutorialItem): item is TutorialFolder {
 // Markdown utilities
 // ---------------------------------------------------------------------------
 
-export function parseTutorialMarkdown(markdown: string): { title: string; body: string } {
+export function parseChapterMarkdown(markdown: string): { title: string; body: string } {
   const lines = markdown.split('\n')
   const titleLineIndex = lines.findIndex(line => /^# .+$/.test(line))
   if (titleLineIndex === -1) {
-    throw new Error('Tutorial markdown must have a # title')
+    throw new Error('Chapter markdown must have a # title')
   }
   const title = /^# (.+)$/.exec(lines[titleLineIndex]!)![1]!
   const bodyLines = [...lines.slice(0, titleLineIndex), ...lines.slice(titleLineIndex + 1)]
@@ -36,7 +36,7 @@ export function parseTutorialMarkdown(markdown: string): { title: string; body: 
 }
 
 /**
- * Extract runnable dvala code blocks from tutorial markdown.
+ * Extract runnable dvala code blocks from chapter markdown.
  * Blocks tagged `no-run` are excluded.
  */
 export function extractCodeBlocks(markdown: string): string[][] {
@@ -57,7 +57,7 @@ export function extractCodeBlocks(markdown: string): string[][] {
 // Filesystem scanning
 // ---------------------------------------------------------------------------
 
-const pagesDir = path.resolve(process.cwd(), 'tutorials')
+const pagesDir = path.resolve(process.cwd(), 'book')
 
 function toDisplayName(name: string): string {
   return name
@@ -67,19 +67,19 @@ function toDisplayName(name: string): string {
     .join(' ')
 }
 
-function loadMarkdownFile(filePath: string): TutorialEntry {
+function loadMarkdownFile(filePath: string): ChapterEntry {
   const basename = path.basename(filePath, '.md').replace(/^\d+-/, '')
-  const id = `tutorial-${basename}`
+  const id = `chapter-${basename}`
   const content = fs.readFileSync(filePath, 'utf-8')
-  const { title, body } = parseTutorialMarkdown(content)
+  const { title, body } = parseChapterMarkdown(content)
   return { id, title, body }
 }
 
-function loadTutorialItems(): TutorialItem[] {
+function loadBookItems(): BookItem[] {
   const entries = fs.readdirSync(pagesDir, { withFileTypes: true })
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const items: TutorialItem[] = []
+  const items: BookItem[] = []
 
   for (const entry of entries) {
     if (entry.isFile() && entry.name.endsWith('.md')) {
@@ -102,13 +102,13 @@ function loadTutorialItems(): TutorialItem[] {
   return items
 }
 
-export const tutorialItems: TutorialItem[] = loadTutorialItems()
+export const bookItems: BookItem[] = loadBookItems()
 
-/** Flat list of all tutorial entries */
-export const tutorials: TutorialEntry[] = tutorialItems.flatMap(item =>
-  isTutorialFolder(item) ? item.entries : [item],
+/** Flat list of all chapter entries */
+export const chapters: ChapterEntry[] = bookItems.flatMap(item =>
+  isBookSection(item) ? item.entries : [item],
 )
 
-export function getExamples(tutorial: TutorialEntry): string[][] {
-  return extractCodeBlocks(tutorial.body)
+export function getExamples(chapter: ChapterEntry): string[][] {
+  return extractCodeBlocks(chapter.body)
 }

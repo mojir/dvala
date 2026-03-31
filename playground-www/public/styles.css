@@ -187,9 +187,9 @@ a.disabled {
 .doc-page__description a,
 .doc-page__description a:link,
 .doc-page__description a:visited,
-.tutorial-page__content a,
-.tutorial-page__content a:link,
-.tutorial-page__content a:visited {
+.book-page__content a,
+.book-page__content a:link,
+.book-page__content a:visited {
   text-decoration: underline;
 }
 
@@ -981,26 +981,26 @@ a.disabled {
 }
 
 /* ============================================================
-   Tutorial page
+   Book chapter page
    ============================================================ */
-/* --- Tutorial sticky header --- */
+/* --- Chapter sticky header --- */
 
-.tutorial-header {
+.chapter-header {
   position: sticky;
-  top: 0;
+  top: -1rem;
   z-index: 10;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-2);
   background: var(--color-surface-dim);
   border-bottom: 1px solid var(--color-border-dim);
   margin: 0 calc(-1 * var(--space-3));
 }
 
-.tutorial-header__title {
+.chapter-header__title {
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.5rem;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
@@ -1008,13 +1008,13 @@ a.disabled {
   min-width: 0;
 }
 
-.tutorial-header__toc-wrap {
+.chapter-header__toc-wrap {
   position: relative;
   margin-left: auto;
   flex-shrink: 0;
 }
 
-.tutorial-header__toc-label {
+.chapter-header__toc-label {
   position: absolute;
   top: 1px;
   left: 1px;
@@ -1023,20 +1023,20 @@ a.disabled {
   display: flex;
   align-items: center;
   padding: 0 0.5em;
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: var(--color-text-secondary);
   pointer-events: none;
   background: var(--color-surface);
   border-radius: 4px 0 0 4px;
 }
 
-.tutorial-header__toc {
+.chapter-header__toc {
   background: var(--color-surface);
   color: transparent;
   border: 1px solid var(--color-border-dim);
   border-radius: 4px;
-  padding: 0.2em 1.6em 0.2em 0.4em;
-  font-size: 0.8rem;
+  padding: 0.35em 1.6em 0.35em 0.4em;
+  font-size: 1rem;
   cursor: pointer;
   min-width: 10rem;
   -webkit-appearance: none;
@@ -1047,12 +1047,12 @@ a.disabled {
   background-size: 10px 6px;
 }
 
-.tutorial-header__toc:hover {
+.chapter-header__toc:hover {
   border-color: var(--color-text-dim);
 }
 
 
-.tutorial-header__nav-btn {
+.chapter-header__nav-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1061,56 +1061,58 @@ a.disabled {
   border-radius: 4px;
   color: var(--color-text-secondary);
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 1.4rem;
   flex-shrink: 0;
   transition: color 0.15s, background 0.15s;
 }
 
-.tutorial-header__nav-btn:hover {
+.chapter-header__nav-btn:hover {
   color: var(--color-text-bright);
   background: var(--color-surface);
 }
 
-.tutorial-header__nav-btn--disabled {
+.chapter-header__nav-btn--disabled {
   opacity: 0.25;
   pointer-events: none;
 }
 
-/* --- Tutorial page --- */
+/* --- Book chapter page --- */
 
-.tutorial-page {
+.book-page {
   padding: 0 var(--space-3);
   max-width: 60rem;
+  margin-top: -1rem;
   margin-left: auto;
   margin-right: auto;
   padding-bottom: var(--space-8);
 }
 
-.tutorial-page__content {
+.book-page__content {
   line-height: 1.7;
   margin-top: var(--space-4);
 }
 
-.tutorial-page__content h1,
-.tutorial-page__content h2,
-.tutorial-page__content h3 {
+.book-page__content h1,
+.book-page__content h2,
+.book-page__content h3 {
   margin-top: var(--space-6);
   margin-bottom: var(--space-3);
+  scroll-margin-top: 5rem;
 }
 
-.tutorial-page__content h1 {
+.book-page__content h1 {
   font-size: var(--font-size-xl);
 }
 
-.tutorial-page__content h2 {
+.book-page__content h2 {
   font-size: var(--font-size-lg);
 }
 
-.tutorial-page__content p {
+.book-page__content p {
   margin: 0 0 var(--space-3) 0;
 }
 
-.tutorial-page__content code {
+.book-page__content code {
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   background: var(--color-surface);
@@ -1118,7 +1120,7 @@ a.disabled {
   border-radius: var(--radius-sm);
 }
 
-.tutorial-page__content pre {
+.book-page__content pre {
   background: var(--color-surface);
   border-left: 3px solid var(--color-primary);
   padding: var(--space-3);
@@ -1126,29 +1128,140 @@ a.disabled {
   overflow-x: auto;
 }
 
-.tutorial-page__content .doc-page__example pre {
+.book-page__content .doc-page__example pre {
   border-left: none;
   border-radius: 0;
   background: var(--color-code-bg);
 }
 
-.tutorial-page__content pre code {
+.book-page__content pre code {
   background: none;
   padding: 0;
   font-size: var(--font-size-sm);
 }
 
-.tutorial-page__content ul,
-.tutorial-page__content ol {
+.book-page__content ul,
+.book-page__content ol {
   margin: 0 0 var(--space-3) 0;
   padding-left: var(--space-6);
 }
 
-.tutorial-page__content blockquote {
+.book-page__content blockquote {
   border-left: 3px solid var(--color-border-dim);
   margin: 0 0 var(--space-3) 0;
   padding-left: var(--space-3);
   color: var(--color-text-dim);
+}
+
+.book-page__content table th,
+.book-page__content table td {
+  padding: 0.35em 0.75em;
+}
+
+/* --- Book chapter page sub-TOC (h2 section links) --- */
+
+.chapter-subtoc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border-left: 2px solid var(--color-brand);
+}
+
+.chapter-subtoc__link {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.chapter-subtoc__link:hover {
+  color: var(--color-text-bright);
+}
+
+/* --- Book overview TOC --- */
+
+.book-toc__header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
+
+.book-toc__download {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.3em 0.8em;
+}
+
+.book-toc__download:hover {
+  color: var(--color-text-bright);
+  border-color: var(--color-text-dim);
+}
+
+.book-toc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.book-toc__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.book-toc__group-title {
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
+}
+
+.book-toc__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.book-toc__item > a {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  display: block;
+  padding: 0.2em 0;
+}
+
+.book-toc__item > a:hover {
+  color: var(--color-text-bright);
+}
+
+.book-toc__sublist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border-dim);
+  margin-left: 0.2em;
+  margin-bottom: var(--space-2);
+}
+
+.book-toc__subitem a {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  display: block;
+  padding: 0.15em 0;
+}
+
+.book-toc__subitem a:hover {
+  color: var(--color-text-bright);
 }
 
 
@@ -1724,17 +1837,17 @@ button:focus {
   color: var(--color-text-bright);
 }
 
-/* Tutorial nav links inside .content (legacy) */
-.content .tutorial-nav-link,
-.content .tutorial-nav-link:link,
-.content .tutorial-nav-link:visited,
-.content .tutorial-nav-link:hover {
+/* Chapter nav links inside .content (legacy) */
+.content .chapter-nav-link,
+.content .chapter-nav-link:link,
+.content .chapter-nav-link:visited,
+.content .chapter-nav-link:hover {
   color: var(--color-text-secondary);
   transition: color 0.15s;
   text-decoration: none;
 }
 
-.content .tutorial-nav-link:hover {
+.content .chapter-nav-link:hover {
   color: var(--color-text-bright);
 }
 

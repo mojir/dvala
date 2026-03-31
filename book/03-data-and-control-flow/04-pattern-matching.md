@@ -127,7 +127,7 @@ Destructure objects by naming the keys you care about:
 
 ```dvala
 match { name: "Alice", age: 30 }
-  case { name, age } then name ++ " is " ++ str(age)
+  case { name, age } then `${name} is ${age}`
 end
 ```
 
@@ -137,8 +137,8 @@ Pin a key to a specific value:
 
 ```dvala
 match { type: "click", x: 10, y: 20 }
-  case { type: "click", x, y } then "Click at " ++ str(x) ++ ", " ++ str(y)
-  case { type: "keydown", key } then "Key: " ++ key
+  case { type: "click", x, y } then `Click at ${x}, ${y}`
+  case { type: "keydown", key } then `Key: ${key}`
   case _ then "unknown event"
 end
 ```
@@ -159,7 +159,7 @@ Bind a key's value to a different name:
 
 ```dvala
 match { name: "Alice" }
-  case { name as n } then n ++ "!"
+  case { name as n } then `${n}!`
 end
 ```
 
@@ -179,7 +179,7 @@ Match deeply nested structures:
 
 ```dvala
 match { user: { name: "Alice", profile: { email: "alice@example.com" } } }
-  case { user: { name, profile: { email } } } then name ++ ": " ++ email
+  case { user: { name, profile: { email } } } then `${name}: ${email}`
 end
 ```
 
@@ -200,7 +200,7 @@ Guards work with destructured patterns too:
 ```dvala
 match { role: "admin", name: "Alice" }
   case { role: "admin", name } when name == "Bob" then "Admin Bob"
-  case { role: "admin", name } then "Admin: " ++ name
+  case { role: "admin", name } then `Admin: ${name}`
   case _ then "unknown"
 end
 ```
@@ -227,7 +227,7 @@ let describePoint = (point) ->
     case [0, 0] then "origin"
     case [0, y] then "y-axis"
     case [x, 0] then "x-axis"
-    case [x, y] then "point at " ++ str(x) ++ ", " ++ str(y)
+    case [x, y] then `point at ${x}, ${y}`
   end;
 
 [describePoint([0, 0]), describePoint([0, 5]), describePoint([3, 0]), describePoint([3, 4])]
@@ -238,7 +238,7 @@ let describePoint = (point) ->
 ```dvala
 let handleResponse = (response) ->
   match response
-    case { status: 200, body } then "OK: " ++ body
+    case { status: 200, body } then `OK: ${body}`
     case { status: 404 } then "Not found"
     case { status } when status >= 500 then "Server error"
     case _ then "Unknown"

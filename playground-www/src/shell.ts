@@ -18,8 +18,8 @@ import {
   githubIcon,
   hamburgerIcon,
   homeIcon,
+  bookIcon,
   labIcon,
-  lampIcon,
   newFileIcon,
   pauseIcon,
   playIcon,
@@ -62,7 +62,7 @@ function getShellHTML(): string {
     </div>
     <div class="sidebar-nav-list">
       <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
-      <a href="#" role="button" id="tutorials-page_link" onclick="Playground.navigate('/tutorials')">${lampIcon} Tutorials</a>
+      <a href="#" role="button" id="book-page_link" onclick="Playground.navigate('/book')">${bookIcon} The Book</a>
       <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
     </div>
     <div class="sidebar-nav-item-row">

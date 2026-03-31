@@ -19,7 +19,7 @@ export function dvalaSourcePlugin() {
 
 /**
  * Treats .md files as raw string exports.
- * Allows `import raw from './tutorial.md'` to import the file contents as a string.
+ * Allows `import raw from './chapter.md'` to import the file contents as a string.
  */
 export function markdownSourcePlugin() {
   return {

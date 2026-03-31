@@ -4,7 +4,7 @@ import { apiReference, effectReference, getLinkName, isFunctionReference, isCust
 import type { Reference } from '../../reference'
 import { moduleCategories, coreCategories } from '../../reference/api'
 import { examples } from '../../reference/examples'
-import { isTutorialFolder, tutorials, tutorialItems } from '../../reference/tutorials'
+import { isBookSection, chapters, bookItems } from '../../reference/book'
 import { allAppRoutes } from '../../common/appRoutes'
 import type { ReferenceData, SearchEntry } from '../../common/referenceData'
 import { version } from '../../package.json'
@@ -68,7 +68,7 @@ function buildReferenceData(): ReferenceData {
 }
 
 // ---------------------------------------------------------------------------
-// Minimal markdown → HTML (for tutorial bodies in stub pages)
+// Minimal markdown → HTML (for chapter bodies in stub pages)
 // ---------------------------------------------------------------------------
 
 function escapeHtml(s: string): string {
@@ -178,7 +178,7 @@ function defaultNav(): string {
   return `<nav>
       <a href="${BASE_URL}/">Home</a>
       <a href="${BASE_URL}/about/">About</a>
-      <a href="${BASE_URL}/tutorials/">Tutorials</a>
+      <a href="${BASE_URL}/book/">The Book</a>
       <a href="${BASE_URL}/examples/">Examples</a>
       <a href="${BASE_URL}/core/">Core API</a>
       <a href="${BASE_URL}/modules/">Modules</a>
@@ -287,35 +287,35 @@ suspendable and resumable execution, and time-travel debugging.</p>
   <li><strong>Pure Functional</strong> &mdash; immutable data, no side effects in the language core</li>
   <li><strong>JavaScript Interop</strong> &mdash; embed Dvala in any JavaScript environment</li>
 </ul>
-<p>Learn more in the <a href="${BASE_URL}/tutorials/">tutorials</a> or explore the <a href="${BASE_URL}/core/">core API</a>.</p>`,
+<p>Learn more in <a href="${BASE_URL}/book/">The Book</a> or explore the <a href="${BASE_URL}/core/">core API</a>.</p>`,
   }))
 
-  // --- Tutorials index ---
-  const tutorialListHtml = tutorialItems.map(item => {
-    if (isTutorialFolder(item)) {
+  // --- Book index ---
+  const bookListHtml = bookItems.map(item => {
+    if (isBookSection(item)) {
       const entries = item.entries.map(e =>
-        `<li><a href="${BASE_URL}/tutorials/${e.id}/">${escapeHtml(e.title)}</a></li>`,
+        `<li><a href="${BASE_URL}/book/${e.id}/">${escapeHtml(e.title)}</a></li>`,
       ).join('\n')
       return `<h3>${escapeHtml(item.title)}</h3>\n<ul>${entries}</ul>`
     }
-    return `<ul><li><a href="${BASE_URL}/tutorials/${item.id}/">${escapeHtml(item.title)}</a></li></ul>`
+    return `<ul><li><a href="${BASE_URL}/book/${item.id}/">${escapeHtml(item.title)}</a></li></ul>`
   }).join('\n')
 
-  writeStubFile('tutorials', stubPage({
-    route: '/tutorials/',
-    title: 'Tutorials',
+  writeStubFile('book', stubPage({
+    route: '/book/',
+    title: 'The Book',
     description: 'Learn Dvala step by step — from basics to advanced topics like algebraic effects and concurrency.',
-    body: `<h1>Dvala Tutorials</h1>\n<p>Step-by-step guides to learning Dvala.</p>\n${tutorialListHtml}`,
+    body: `<h1>The Dvala Book</h1>\n<p>Step-by-step guide to learning Dvala.</p>\n${bookListHtml}`,
   }))
 
-  // --- Individual tutorial pages ---
-  for (const tutorial of tutorials) {
-    const bodyHtml = markdownToHtml(tutorial.body)
-    writeStubFile(`tutorials/${tutorial.id}`, stubPage({
-      route: `/tutorials/${tutorial.id}/`,
-      title: tutorial.title,
-      description: `Dvala tutorial: ${tutorial.title}`,
-      body: `<h1>${escapeHtml(tutorial.title)}</h1>\n${bodyHtml}`,
+  // --- Individual chapter pages ---
+  for (const chapter of chapters) {
+    const bodyHtml = markdownToHtml(chapter.body)
+    writeStubFile(`book/${chapter.id}`, stubPage({
+      route: `/book/${chapter.id}/`,
+      title: chapter.title,
+      description: `Dvala book chapter: ${chapter.title}`,
+      body: `<h1>${escapeHtml(chapter.title)}</h1>\n${bodyHtml}`,
     }))
   }
 
@@ -407,7 +407,7 @@ suspendable and resumable execution, and time-travel debugging.</p>
   }
 
   // eslint-disable-next-line no-console
-  console.log(`Generated ${7 + tutorials.length + allRefEntries.length} stub pages`)
+  console.log(`Generated ${7 + chapters.length + allRefEntries.length} stub pages`)
 }
 
 // ---------------------------------------------------------------------------
@@ -572,14 +572,14 @@ function writeSitemap() {
   const staticPages = [
     '/',
     '/about/',
-    '/tutorials/',
+    '/book/',
     '/examples/',
     '/core/',
     '/modules/',
   ]
 
-  // Tutorial pages
-  const tutorialPages = tutorials.map(t => `/tutorials/${t.id}/`)
+  // Chapter pages
+  const chapterPages = chapters.map(t => `/book/${t.id}/`)
 
   // Reference pages (API, modules, effects)
   const refPages = [
@@ -588,7 +588,7 @@ function writeSitemap() {
     ...Object.values(effectReference).map(ref => `/ref/${getLinkName(ref)}/`),
   ]
 
-  const allPages = [...staticPages, ...tutorialPages, ...refPages]
+  const allPages = [...staticPages, ...chapterPages, ...refPages]
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

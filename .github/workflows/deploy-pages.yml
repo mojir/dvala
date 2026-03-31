@@ -29,7 +29,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build-playground
+      - run: npm run build-book
 
       - uses: actions/upload-pages-artifact@v4
         with:

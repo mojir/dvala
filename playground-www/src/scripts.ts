@@ -27,7 +27,7 @@ import { renderModulesPage } from './components/modulesPage'
 import { renderExamplePage } from './components/examplePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
-import { renderTutorialsIndexPage, renderTutorialPage, allTutorials } from './components/tutorialPage'
+import { renderBookIndexPage, renderChapterPage, allChapters } from './components/chapterPage'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
   clearAll as clearAllSnapshots,
@@ -370,8 +370,8 @@ function collapseCollapsible(el: HTMLElement, animate = true) {
   el.style.maxHeight = '0'
 }
 
-export function showTutorialsPage() {
-  router.navigate('/tutorials')
+export function showBookPage() {
+  router.navigate('/book')
 }
 
 export function showSettingsTab(id: string) {
@@ -2516,8 +2516,8 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
 
 function pageIdToAppPath(pageId: string): string {
   if (!pageId || pageId === 'index') return '/'
-  // tutorial pages
-  if (pageId.startsWith('tutorial-')) return `/tutorials/${pageId.slice(9)}`
+  // chapter pages
+  if (pageId.startsWith('chapter-')) return `/book/${pageId.slice(8)}`
   // special static pages — map to router paths expected by routeToPath
   if (pageId === 'settings-page') return '/settings'
   if (pageId === 'saved-programs-page') return '/saved'
@@ -2579,16 +2579,21 @@ function routeToPath(appPath: string): void {
     dynPage.innerHTML = renderExamplePage()
     sidebarLinkId = 'example-page_link'
     pageTitle = 'Examples | Dvala'
-  } else if (path === 'tutorials') {
-    dynPage.innerHTML = renderTutorialsIndexPage()
-    sidebarLinkId = 'tutorials-page_link'
-    pageTitle = 'Tutorials | Dvala'
-  } else if (path.startsWith('tutorials/')) {
-    const tutId = path.slice('tutorials/'.length)
-    dynPage.innerHTML = renderTutorialPage(tutId)
-    sidebarLinkId = 'tutorials-page_link'
-    const tut = allTutorials.find(t => t.id === tutId)
-    pageTitle = tut ? `${tut.title} | Dvala Tutorials` : 'Tutorial | Dvala'
+  } else if (path === 'book') {
+    dynPage.innerHTML = renderBookIndexPage()
+    sidebarLinkId = 'book-page_link'
+    pageTitle = 'The Book | Dvala'
+  } else if (path.startsWith('book/')) {
+    const chapId = path.slice('book/'.length)
+    dynPage.innerHTML = renderChapterPage(chapId)
+    sidebarLinkId = 'book-page_link'
+    const chapter = allChapters.find(t => t.id === chapId)
+    pageTitle = chapter ? `${chapter.title} | The Dvala Book` : 'The Dvala Book'
+    // Scroll to anchor if URL has a hash (e.g. on page reload)
+    if (location.hash) {
+      const target = document.getElementById(location.hash.slice(1))
+      if (target) target.scrollIntoView()
+    }
   } else if (path.startsWith('ref/')) {
     const linkName = path.slice('ref/'.length)
     dynPage.innerHTML = renderDocPage(linkName)
@@ -3410,7 +3415,7 @@ function createModalPanel(options?: ModalPanelOptions): { panel: HTMLElement; bo
   const body = document.createElement('div')
   body.className = 'modal-panel__body'
   if (options?.markdown) {
-    body.innerHTML = `<div class="tutorial-page">${renderDvalaMarkdown(options.markdown)}</div>`
+    body.innerHTML = `<div class="book-page">${renderDvalaMarkdown(options.markdown)}</div>`
   }
   panel.appendChild(body)
 

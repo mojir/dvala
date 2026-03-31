@@ -32,7 +32,7 @@ Dvala's implementation follows the established conventions from three mature alg
 | Abort | don't resume | don't call `k` | don't `continue` | don't call `resume` |
 | Transform | `return(x)` clause | `val x ->` clause | `retc` field | `transform x ->` clause |
 | Handler scope | `with handler` | `handle expr with` | `match_with` | `with h;` or `h(-> body)` |
-| Deep/shallow | both | deep | shallow | deep |
+| Deep/shallow | both | deep | shallow | both |
 | Multi-shot | yes | yes | no | yes |
 
 **Key design decisions:**
@@ -193,9 +193,9 @@ Multiple `with` statements install handlers in layers. Inner handlers take prece
 
 ```dvala
 do
-  with handler @outer(x) -> resume("outer: " ++ x) end;
-  with handler @inner(x) -> resume("inner: " ++ x) end;
-  perform(@inner, "hi") ++ " " ++ perform(@outer, "there")
+  with handler @outer(x) -> resume(`outer: ${x}`) end;
+  with handler @inner(x) -> resume(`inner: ${x}`) end;
+  `${perform(@inner, "hi")} ${perform(@outer, "there")}`
 end
 ```
 
@@ -308,6 +308,174 @@ Each `perform(@inc)` hits the reinstalled handler. The result builds up: `0+1+1+
 
 ---
 
+## Deep vs Shallow Handlers
+
+You've now seen two important properties of deep handlers: **reinstallation** (the handler stays active for the continuation) and **resume returns a value** (the clause can react to the continuation's result). Together these make deep handlers ideal for most patterns.
+
+But there is one thing deep handlers fundamentally cannot do: **change their behaviour between effect calls**.
+
+### The state problem
+
+Consider implementing mutable state via effects. `@get` returns the current value, `@set` updates it. A handler function carries the current value as a parameter:
+
+```dvala
+let state = (s) ->
+  handler
+    @get() -> resume(s)
+    @set(v) -> resume(null)
+  end;
+
+do with state(0);
+  perform(@set, 1);  // should update state to 1
+  perform(@get)      // should return 1... but returns 0
+end
+```
+
+This returns `0`. Why? Reinstallation is the culprit.
+
+When `@set(1)` is handled, the clause calls `resume(null)`. Before the continuation runs, the deep handler reinstalls — using the **original** `state(0)` closure. The variable `v = 1` was captured in the clause but is never wired into the reinstalled handler's `s` parameter. The next `@get` sees `s = 0`.
+
+A deep handler's closure is frozen at creation time. There is no way to "update" it mid-computation.
+
+### Shallow handlers
+
+Dvala supports a second mode: **shallow handlers** (`shallow handler ... end`). A shallow handler handles **one effect, then steps aside** — when `resume` is called, the continuation runs without the handler reinstalled.
+
+This sounds like a limitation, but it's exactly the feature we need: if the handler doesn't reinstall itself, we can install a *new* one (with updated state) before resuming.
+
+```dvala
+let state = (s) ->
+  shallow handler
+    @get() -> do with state(s); resume(s) end
+    @set(v) -> do with state(v); resume(null) end
+  end;
+
+do with state(0);
+  perform(@set, 1);
+  perform(@get)
+end
+```
+
+This returns `1`. The trace:
+
+1. `do with state(0); ...` — shallow handler for `s = 0` is installed
+2. `perform(@set, 1)` → `@set` clause: `s = 0`, `v = 1`
+3. Clause installs a fresh `state(1)` for the rest of the block, then resumes inside it
+4. `perform(@get)` → caught by the new `state(1)` handler: `s = 1`, resumes with `1`
+5. Block returns `1`
+
+Each effect handling step **installs a new handler** with the updated state. The continuation runs inside that new handler, so subsequent effects see the new value.
+
+### Reading the shallow state pattern
+
+The pattern has a consistent shape in both clauses:
+
+```dvala no-run
+@get() -> do with state(s); resume(s) end
+//                  ^same s      ^value to return for get
+
+@set(v) -> do with state(v); resume(null) end
+//                  ^new v       ^set returns null
+```
+
+Each clause:
+1. **Installs a new handler** with the updated state — `do with state(...); ...`
+2. **Resumes the continuation** inside that scope — `resume(...)` is the last expression
+
+The resumed continuation sees the fresh handler. Any subsequent `@get` or `@set` hits the new handler, not the old one.
+
+### Named states
+
+The single-value pattern extends naturally to multiple named variables. Instead of threading a scalar through `state(s)`, thread a map through `states(store)` — one handler covers all variables at once:
+
+```dvala
+let states = (store) ->
+  shallow handler
+    @get(name) -> do with states(store); resume(get(store, name)) end
+    @set(pair) -> do
+      let [name, v] = pair;
+      with states(assoc(store, name, v));
+      resume(null)
+    end
+  end;
+
+do with states({ x: 0, y: 0 });
+  perform(@set, ["x", 5]);
+  perform(@set, ["y", 20]);
+  [perform(@get, "x"), perform(@get, "y")]
+end
+```
+
+`@get(name)` looks up a key; `@set([name, v])` creates a new map with `assoc` and reinstalls. The initial store doubles as the variable declarations — any key present at startup is a valid state variable.
+
+### Cleaning up the call site with macros
+
+The `perform(@set, ["x", 5])` syntax exposes the tuple plumbing. Two small macros hide it:
+
+```dvala
+let getState = macro(name) -> quote perform(@get, $^{name}) end;
+let setState = macro(name, v) -> quote perform(@set, [$^{name}, $^{v}]) end;
+
+let states = (store) ->
+  shallow handler
+    @get(name) -> do with states(store); resume(get(store, name)) end
+    @set(pair) -> do
+      let [name, v] = pair;
+      with states(assoc(store, name, v));
+      resume(null)
+    end
+  end;
+
+do with states({ x: 0, y: 0 });
+  setState("x", 5);
+  setState("y", 20);
+  [getState("x"), getState("y")]
+end
+```
+
+`setState("x", 5)` and `getState("x")` expand at compile time — no runtime overhead. The `states` handler itself is unchanged.
+
+### Deep vs shallow: comparison
+
+| | Deep (`handler`) | Shallow (`shallow handler`) |
+|---|---|---|
+| Reinstalls on resume? | Yes — same original closure | No — continuation runs bare |
+| State threading | Not possible — closure is frozen | Explicit: install a new handler per effect |
+| Subsequent effects caught automatically? | Yes — same handler | Only via explicit new installation |
+| Transform clause | Fires on normal completion and resume path | Fires on normal completion only |
+| Best for | Logging, counting, error recovery, nondeterminism | Mutable state, step-by-step iteration |
+| Boilerplate | Low — handler stays active | Higher — must re-wrap per effect |
+
+**Default to deep.** The overwhelming majority of patterns — logging, counting, error recovery, nondeterminism — work naturally with deep handlers. Use shallow only when you specifically need the handler to change behaviour between effect calls.
+
+### Other patterns shallow handlers enable
+
+Shallow handlers are useful anywhere the handler needs **different behaviour at each invocation**.
+
+**Step-by-step iteration** — a `takeFirst(n)` handler that collects up to `n` yielded values and stops early:
+
+```dvala
+let takeFirst = (n) ->
+  shallow handler
+    @yield(x) ->
+      if n == 0 then []
+      else [x, ...takeFirst(n - 1)(-> resume(null))]
+      end
+  end;
+
+do with takeFirst(3);
+  perform(@yield, "a");
+  perform(@yield, "b");
+  perform(@yield, "c");
+  perform(@yield, "d");  // never reached
+  []
+end
+```
+
+Each `@yield` is handled by a fresh `takeFirst(n - 1)` instance. When `n` reaches `0`, the clause returns `[]` without calling `resume` — the rest of the body never runs (early termination). A deep handler can't implement this: reinstallation always uses the same `n`, with no way to count down.
+
+---
+
 ## Multi-Shot Continuations
 
 `resume` can be called **any number of times** from the same handler clause. Each call forks the continuation from the same captured snapshot — independently and without cloning. This is called **multi-shot** continuation use.
@@ -386,7 +554,7 @@ do
   with logger;
   perform(@log, "start");
   let x = 42;
-  perform(@log, "computed: " ++ str(x));
+  perform(@log, `computed: ${x}`);
   x
 end
 ```
@@ -411,13 +579,13 @@ This enables middleware-style handlers that intercept, transform, and forward ef
 ```dvala
 let addAuth = handler
   @fetch(url) -> do
-    let result = perform(@fetch, url ++ "?auth=token");
+    let result = perform(@fetch, `${url}?auth=token`);
     resume(result)
   end
 end;
 
 let fetcher = handler
-  @fetch(url) -> resume("data from " ++ url)
+  @fetch(url) -> resume(`data from ${url}`)
 end;
 
 do
@@ -439,7 +607,7 @@ To raise an error, perform `dvala.error`:
 
 ```dvala
 do
-  with handler @dvala.error(err) -> resume("caught: " ++ err.message) end;
+  with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
   perform(@dvala.error, { message: "oops" })
 end
 ```
@@ -448,14 +616,14 @@ Runtime errors — like division by zero or calling a function with invalid argu
 
 ```dvala
 do
-  with handler @dvala.error(err) -> resume("caught: " ++ err.message) end;
+  with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
   0 / 0
 end
 ```
 
 ```dvala
 do
-  with handler @dvala.error(err) -> resume("caught: " ++ err.message) end;
+  with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
   sqrt(-1)
 end
 ```
@@ -466,7 +634,7 @@ You can mix error handling with other effect handlers:
 do
   with handler
     @my.read(x) -> resume(42)
-    @dvala.error(err) -> resume("error: " ++ err.message)
+    @dvala.error(err) -> resume(`error: ${err.message}`)
   end;
   let x = perform(@my.read);
   sqrt(x * -1)
@@ -610,7 +778,7 @@ Call `fail(msg?)` to raise a Dvala-level error from a host handler. The error fl
 ```typescript
 const result = await dvala.runAsync(`
   do
-    with handler @dvala.error(err) -> resume("recovered: " ++ err.message) end;
+    with handler @dvala.error(err) -> resume(`recovered: ${err.message}`) end;
     perform(@my.risky)
   end
 `, {
@@ -630,7 +798,7 @@ Call `suspend(meta?)` to pause the entire program. The execution state is captur
 ```typescript
 const result = await dvala.runAsync(`
   let answer = perform(@human.approve, "Draft report");
-  "Approved: " ++ answer
+  `Approved: ${answer}`
 `, {
   effectHandlers: [
     { pattern: 'human.approve', handler: async ({ arg, suspend }) => {
@@ -709,6 +877,7 @@ const result = await dvala.runAsync('perform(@my.sub.action, "go")', {
 | First-class handlers | `let h = handler ... end; h(-> body)` |
 | Fallback | `do with fallback(value); body end` |
 | Retry | `retry(n, -> body)` |
+| Shallow handler | `shallow handler @eff(x) -> ... end` |
 | Multi-shot resume | call `resume` multiple times in one clause |
 | Explore all branches | `chooseAll(-> body with @choose)` |
 | Pick first branch | `chooseFirst(-> body with @choose)` |

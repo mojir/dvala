@@ -10,7 +10,7 @@ import { allBuiltinModules } from '../src/allModules'
 import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import { type ApiName, categories } from '../reference/api'
 import '../src/initReferenceData'
-import { getExamples, tutorials } from '../reference/tutorials'
+import { getExamples, chapters } from '../reference/book'
 import type { HandlerRegistration } from '../src/evaluator/effectTypes'
 import type { Any } from '../src/interface'
 
@@ -293,8 +293,8 @@ describe('modulePageExamples', () => {
   })
 })
 
-describe('tutorialExamples', () => {
-  // Effect handlers for running tutorial examples
+describe('chapterExamples', () => {
+  // Effect handlers for running chapter examples
   // Interactive effects resume with mock values, others pass through
   const testHandlers: HandlerRegistration[] = [
     { pattern: 'dvala.io.read', handler: ctx => ctx.resume('test-input') },
@@ -304,22 +304,22 @@ describe('tutorialExamples', () => {
     { pattern: '*', handler: ctx => ctx.next() },
   ]
 
-  tutorials.forEach(tutorial => {
-    describe(tutorial.title, () => {
-      getExamples(tutorial).forEach((codeLines, index) => {
+  chapters.forEach(chapter => {
+    describe(chapter.title, () => {
+      getExamples(chapter).forEach((codeLines, index) => {
         const example = codeLines.join('\n')
         it(`example ${index + 1}: ${example}`, () => {
-          expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${tutorial.title} example ${index + 1}`).not.toThrow()
+          expect(() => dvala.run(example, { effectHandlers: testHandlers }), `${chapter.title} example ${index + 1}`).not.toThrow()
         })
       })
     })
   })
 })
 
-describe('tutorial IDs', () => {
-  it('should have unique IDs across all tutorials', () => {
-    const ids = tutorials.map(t => t.id)
+describe('chapter IDs', () => {
+  it('should have unique IDs across all chapters', () => {
+    const ids = chapters.map(t => t.id)
     const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index)
-    expect(duplicates, `Duplicate tutorial IDs found: ${duplicates.join(', ')}`).toEqual([])
+    expect(duplicates, `Duplicate chapter IDs found: ${duplicates.join(', ')}`).toEqual([])
   })
 })

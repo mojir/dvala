@@ -36,7 +36,7 @@ export function renderSidebar(currentPath: string): string {
 
   <ul class="sidebar__nav">
     ${renderNavItem('/', 'Home', currentPath)}
-    ${renderNavItem('/tutorials', 'Tutorials', currentPath)}
+    ${renderNavItem('/book', 'The Book', currentPath)}
     ${renderNavItem('/examples', 'Examples', currentPath)}
     ${renderNavItem('/saved', 'Programs', currentPath)}
     ${renderNavItem('/snapshots', 'Snapshots', currentPath)}

@@ -71,7 +71,7 @@ let unless = macro (cond, body) ->
 unless(false, "this runs!")
 ```
 
-Macro bindings are automatically gensymed — no accidental name collisions with the caller's scope. See the [Macros tutorial](/tutorials/advanced-macros) for the full story.
+Macro bindings are automatically gensymed — no accidental name collisions with the caller's scope. See the [Macros](#macros) chapter for the full story.
 
 ## JavaScript Interoperability
 

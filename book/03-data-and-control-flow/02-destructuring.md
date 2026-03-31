@@ -80,7 +80,7 @@ others
 Destructure directly in function parameters:
 
 ```dvala
-let greet = ({ name }) -> "Hello, " ++ name;
+let greet = ({ name }) -> `Hello, ${name}`;
 greet({ name: "Pat" })
 ```
 
@@ -95,5 +95,5 @@ Mix array and object destructuring for complex data:
 
 ```dvala
 let [{ name }, { age }] = [{ name: "Tina" }, { age: 33 }];
-name ++ " is " ++ str(age)
+`${name} is ${age}`
 ```

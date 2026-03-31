@@ -78,7 +78,7 @@ When using Dvala's bundler, file modules are **always** evaluated in pure mode. 
 ```dvala no-run
 // File modules can define impure functions, but cannot call them
 // This would be valid in a file module:
-{ greet: (name) -> "hello " ++ name }
+{ greet: (name) -> `hello ${name}` }
 ```
 
 ## Summary
