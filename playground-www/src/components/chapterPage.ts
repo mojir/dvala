@@ -1,14 +1,16 @@
 /**
  * Renders book chapter pages.
- * Chapter .md files are imported as raw strings via markdownSourcePlugin.
- * Rendered with marked. Navigation between chapters provided.
+ * Chapter .md files are discovered via import.meta.glob — drop a .md file in book/ and it
+ * appears automatically. markdownSourcePlugin converts each .md to a raw string export.
+ * Section names and chapter IDs are derived from the directory/file naming convention:
+ *   book/NN-section-name/NN-chapter-name.md  →  section "Section Name", id "section-name-chapter-name"
  */
 
 import { href, navigate } from '../router'
 import { renderDvalaMarkdown, slugifyHeading } from '../renderDvalaMarkdown'
 
 export interface ChapterEntry {
-  id: string // URL slug, e.g. "getting-started"
+  id: string // URL slug, e.g. "getting-started-intro"
   title: string // extracted from first # heading in the .md
   raw: string // raw markdown string
   folder: string // display name of the containing folder
@@ -19,90 +21,41 @@ export interface BookSection {
   entries: ChapterEntry[]
 }
 
-// Import all chapter .md files as raw strings
-import raw_01_01 from '../../../book/01-getting-started/01-intro.md'
-import raw_01_02 from '../../../book/01-getting-started/02-getting-started.md'
-import raw_02_01 from '../../../book/02-core-language/01-data-types.md'
-import raw_02_02 from '../../../book/02-core-language/02-operators.md'
-import raw_02_03 from '../../../book/02-core-language/03-lexical-scoping.md'
-import raw_02_04 from '../../../book/02-core-language/04-functions.md'
-import raw_03_01 from '../../../book/03-data-and-control-flow/01-collections.md'
-import raw_03_02 from '../../../book/03-data-and-control-flow/02-destructuring.md'
-import raw_03_03 from '../../../book/03-data-and-control-flow/03-control-flow.md'
-import raw_03_04 from '../../../book/03-data-and-control-flow/04-pattern-matching.md'
-import raw_03_05 from '../../../book/03-data-and-control-flow/05-loops-and-recursion.md'
-import raw_03_06 from '../../../book/03-data-and-control-flow/06-pipes-and-data-flow.md'
-import raw_04_01 from '../../../book/04-design-principles/01-expression-oriented.md'
-import raw_04_02 from '../../../book/04-design-principles/02-immutability.md'
-import raw_04_03 from '../../../book/04-design-principles/03-purity.md'
-import raw_04_04 from '../../../book/04-design-principles/04-normal-vs-special.md'
-import raw_04_05 from '../../../book/04-design-principles/05-tail-call-optimization.md'
-import raw_05_01 from '../../../book/05-advanced/01-modules.md'
-import raw_05_02 from '../../../book/05-advanced/02-effects.md'
-import raw_05_03 from '../../../book/05-advanced/03-implicit-async.md'
-import raw_05_04 from '../../../book/05-advanced/04-suspension.md'
-import raw_05_05 from '../../../book/05-advanced/05-concurrency.md'
-import raw_05_06 from '../../../book/05-advanced/06-macros.md'
+// bookChaptersPlugin (rolldown.plugins.mjs) scans book/**/*.md at build time and emits this
+// virtual module as a plain array — no import.meta.glob needed, works in iife output format.
+import rawChapters from 'virtual:book-chapters'
+
+function toTitleCase(slug: string): string {
+  // "design-principles" → "Design Principles"
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
 
 function extractTitle(raw: string): string {
   const match = /^#\s+(.+)$/m.exec(raw)
   return match ? match[1]!.trim() : 'Untitled'
 }
 
-function makeEntry(id: string, raw: string, folder: string): ChapterEntry {
-  return { id, title: extractTitle(raw), raw, folder }
+// Build bookSections from the virtual module, grouped by directory.
+// Each entry: { path: "04-design-principles/06-testing.md", content: "..." }
+const sectionMap = new Map<string, BookSection>()
+for (const { path: chapterPath, content } of rawChapters) {
+  const slashIdx = chapterPath.indexOf('/')
+  const dirSegment = chapterPath.slice(0, slashIdx)       // "04-design-principles"
+  const fileSegment = chapterPath.slice(slashIdx + 1)     // "06-testing.md"
+
+  const sectionSlug = dirSegment.replace(/^\d+-/, '')     // "design-principles"
+  const chapterSlug = fileSegment.replace(/^\d+-/, '').replace(/\.md$/, '') // "testing"
+
+  const sectionName = toTitleCase(sectionSlug)
+  const chapterId = `${sectionSlug}-${chapterSlug}`
+
+  if (!sectionMap.has(dirSegment))
+    sectionMap.set(dirSegment, { name: sectionName, entries: [] })
+
+  sectionMap.get(dirSegment)!.entries.push({ id: chapterId, title: extractTitle(content), raw: content, folder: sectionName })
 }
 
-export const bookSections: BookSection[] = [
-  {
-    name: 'Getting Started',
-    entries: [
-      makeEntry('getting-started-intro', raw_01_01, 'Getting Started'),
-      makeEntry('getting-started-walkthrough', raw_01_02, 'Getting Started'),
-    ],
-  },
-  {
-    name: 'Core Language',
-    entries: [
-      makeEntry('core-language-data-types', raw_02_01, 'Core Language'),
-      makeEntry('core-language-operators', raw_02_02, 'Core Language'),
-      makeEntry('core-language-lexical-scoping', raw_02_03, 'Core Language'),
-      makeEntry('core-language-functions', raw_02_04, 'Core Language'),
-    ],
-  },
-  {
-    name: 'Data and Control Flow',
-    entries: [
-      makeEntry('data-and-control-flow-collections', raw_03_01, 'Data and Control Flow'),
-      makeEntry('data-and-control-flow-destructuring', raw_03_02, 'Data and Control Flow'),
-      makeEntry('data-and-control-flow-control-flow', raw_03_03, 'Data and Control Flow'),
-      makeEntry('data-and-control-flow-pattern-matching', raw_03_04, 'Data and Control Flow'),
-      makeEntry('data-and-control-flow-loops-and-recursion', raw_03_05, 'Data and Control Flow'),
-      makeEntry('data-and-control-flow-pipes-and-data-flow', raw_03_06, 'Data and Control Flow'),
-    ],
-  },
-  {
-    name: 'Design Principles',
-    entries: [
-      makeEntry('design-principles-expression-oriented', raw_04_01, 'Design Principles'),
-      makeEntry('design-principles-immutability', raw_04_02, 'Design Principles'),
-      makeEntry('design-principles-purity', raw_04_03, 'Design Principles'),
-      makeEntry('design-principles-normal-vs-special', raw_04_04, 'Design Principles'),
-      makeEntry('design-principles-tail-call-optimization', raw_04_05, 'Design Principles'),
-    ],
-  },
-  {
-    name: 'Advanced',
-    entries: [
-      makeEntry('advanced-modules', raw_05_01, 'Advanced'),
-      makeEntry('advanced-effects', raw_05_02, 'Advanced'),
-      makeEntry('advanced-implicit-async', raw_05_03, 'Advanced'),
-      makeEntry('advanced-suspension', raw_05_04, 'Advanced'),
-      makeEntry('advanced-concurrency', raw_05_05, 'Advanced'),
-      makeEntry('advanced-macros', raw_05_06, 'Advanced'),
-    ],
-  },
-]
+export const bookSections: BookSection[] = Array.from(sectionMap.values())
 
 export const allChapters: ChapterEntry[] = bookSections.flatMap(f => f.entries)
 
