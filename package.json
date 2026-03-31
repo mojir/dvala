@@ -321,6 +321,7 @@
     "build-book": {
       "command": "node scripts/generate-pdf.mjs",
       "dependencies": [
+        "build-dvala",
         "build-playground"
       ],
       "files": [
