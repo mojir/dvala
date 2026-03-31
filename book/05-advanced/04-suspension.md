@@ -26,7 +26,7 @@ Dvala takes a different approach: continuations are **serializable**. When a pro
 
 This is possible because Dvala is designed for it from the ground up. The evaluator uses a trampoline with explicit continuation frames (no native call stack), all values are JSON-compatible, and closures capture only serializable data.
 
-The trade-off: Dvala restricts to **single-shot continuations** — a continuation can be resumed exactly once. Multi-shot continuations (resuming the same point multiple times) are fundamentally incompatible with serializable state, since you cannot meaningfully serialize a fork of mutable execution. Languages like Koka and Effekt support multi-shot but sacrifice serializability.
+Dvala supports **multi-shot continuations** — a continuation captured by a handler can be resumed any number of times (see the [Effects & Handlers](./02-effects.md) chapter for examples). When a program *suspends* for serialization, each serialized snapshot captures a single point-in-time state that can be resumed once from external storage. This is a property of the host-level `suspend()` / `resume()` API, not a limitation of the handler system itself.
 
 ## How It Works
 
@@ -189,6 +189,47 @@ end
 ```
 
 Each `perform` may complete instantly (LLM call), or suspend for days (human approval). The program is the same regardless.
+
+## End-to-End Walkthrough
+
+Here is the complete lifecycle — create, suspend, store, resume, complete — in one place:
+
+```typescript
+import { createDvala, resume } from '@mojir/dvala/full'
+
+// --- 1. Write the Dvala workflow ---
+const code = `
+  let report = perform(@llm.generate, "Q4 summary");
+  let approved = perform(@human.approve, report);
+  if approved then "Published: " ++ report else "Rejected" end
+`
+
+// --- 2. First run: LLM call completes, then suspends for human ---
+const dvala = createDvala()
+const r1 = await dvala.runAsync(code, {
+  effectHandlers: [
+    { pattern: 'llm.generate',  handler: async ({ args, resume }) => resume('Q4 was great') },
+    { pattern: 'human.approve', handler: async ({ args, suspend }) => suspend({ doc: args[0] }) },
+  ],
+})
+// r1 = { type: 'suspended', snapshot: { continuation: ..., meta: { doc: 'Q4 was great' } } }
+
+// --- 3. Store the snapshot (process can now exit) ---
+await db.save('task-1', JSON.stringify(r1.snapshot))
+
+// --- ... hours or days pass ... ---
+
+// --- 4. Resume with the human's decision ---
+const snapshot = JSON.parse(await db.load('task-1'))
+const r2 = await resume(snapshot, true)
+// r2 = { type: 'completed', value: 'Published: Q4 was great' }
+```
+
+Key points:
+- The Dvala program is a **straight-line script** — no callbacks, no state machine
+- Each `perform` is either handled immediately (`llm.generate`) or causes suspension (`human.approve`)
+- The `snapshot` is plain JSON — store it anywhere, load it anywhere
+- `resume(snapshot, value)` picks up exactly where `perform` was waiting
 
 ## The RunResult Type
 

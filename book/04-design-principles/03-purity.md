@@ -8,11 +8,24 @@ Dvala takes a different approach: **runtime enforcement**. The result is practic
 
 ## Pure Mode
 
-Dvala can enforce purity at runtime. When you run code in **pure mode**, any call to a function with effects throws an error:
+Dvala can enforce purity at runtime. Pass `{ pure: true }` to the host API to run code in pure mode. Any attempt to `perform` an effect will throw:
+
+```typescript
+import { createDvala } from '@mojir/dvala/full'
+
+const dvala = createDvala()
+const result = dvala.run('1 + 1', { pure: true })
+// result.value === 2
+
+dvala.run('perform(@dvala.io.print, "hello")', { pure: true })
+// throws: "Cannot perform effect 'dvala.io.print' in pure mode"
+```
+
+From inside Dvala, pure mode is transparent — the program simply cannot reach any `perform`. The error is thrown immediately when the `perform` is evaluated:
 
 ```dvala no-run
-// In pure mode, performing an effect throws:
-// "Cannot perform effect 'dvala.io.print' in pure mode"
+// Running this with { pure: true } throws at runtime:
+//   RuntimeError: Cannot perform effect 'dvala.io.print' in pure mode
 perform(@dvala.io.print, "Hello, anybody out there?")
 ```
 
@@ -73,7 +86,7 @@ end
 
 ## File Modules Are Pure
 
-When using Dvala's bundler, file modules are **always** evaluated in pure mode. This ensures that importing a module never causes side effects — a deliberate design choice that makes the module system predictable:
+When using Dvala's bundler, file modules are **always** evaluated in pure mode. This ensures that importing a module never causes side effects — a deliberate design choice that makes the module system predictable. (File modules and the bundler are covered in the [Modules](../05-advanced/01-modules.md) chapter.)
 
 ```dvala no-run
 // File modules can define impure functions, but cannot call them

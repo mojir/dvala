@@ -183,6 +183,38 @@ match { user: { name: "Alice", profile: { email: "alice@example.com" } } }
 end
 ```
 
+## Matching by Type
+
+Dvala is dynamically typed, so branching on a value's type is a common need. Use guards with type predicates:
+
+```dvala
+let classify = v ->
+  match v
+    case x when isNumber(x) then `number: ${x}`
+    case x when isString(x) then `string: "${x}"`
+    case x when isArray(x)  then `array of ${count(x)}`
+    case x when isObject(x) then `object`
+    case _ then "null"
+  end;
+
+[classify(42), classify("hi"), classify([1, 2]), classify({a: 1}), classify(null)]
+```
+
+## Matching Null
+
+A variable pattern with a default value (`case x = fallback`) matches `null` and substitutes the default. Use this to handle missing or absent data cleanly:
+
+```dvala
+let greet = name ->
+  match name
+    case n = "stranger" then `Hello, ${n}!`
+  end;
+
+[greet("Alice"), greet(null)]
+```
+
+The wildcard `_` also matches `null`, making it a natural catch-all for unhandled or absent values.
+
 ## Guards
 
 Add a `when` clause to refine a match with an arbitrary condition. Bound variables are available in the guard:

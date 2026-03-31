@@ -1,6 +1,20 @@
 # Data Types
 
-Dvala has a small set of data types. Every value is immutable and fully serializable as JSON.
+Dvala is **dynamically typed** — there are no type annotations and types are checked at runtime. Every value is immutable and fully serializable as JSON.
+
+## Comments
+
+Use `//` for single-line comments and `/* */` for multi-line:
+
+```dvala
+// This is a single-line comment
+let x = 42; // inline comment
+
+/* This spans
+   multiple lines */
+let y = x + 1;
+y
+```
 
 ## Numbers
 
@@ -25,6 +39,8 @@ Numbers can be integers or floats. Dvala also supports hexadecimal, binary, octa
 ```dvala
 -2.3e-2
 ```
+
+Division by zero produces `Infinity` (or `-Infinity`), and invalid operations like `0 / 0` throw an error rather than silently producing `NaN`. `Infinity` is a valid number value but is **not** JSON-serializable — avoid it in data that will be snapshotted.
 
 ## Strings
 
@@ -53,11 +69,12 @@ let y = 6;
 `${x} * ${y} = ${x * y}`
 ```
 
-Interpolations can contain full expressions including function calls, conditionals, and more:
+Interpolations can contain any expression — function calls, conditionals, and more:
 
 ```dvala
-let items = ["apple", "banana", "cherry"];
-for (i in range(count(items))) -> `${i + 1}. ${items[i]}`
+let price = 9.99;
+let qty = 3;
+`Total: $${price * qty}`
 ```
 
 ## Booleans and Null

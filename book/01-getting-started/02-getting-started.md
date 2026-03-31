@@ -50,6 +50,8 @@ const dvala = createDvala({ modules: [vectorModule, matrixModule] })
 
 Available modules: `assertion`, `bitwise`, `collection`, `convert`, `functional`, `grid`, `linear-algebra`, `math`, `matrix`, `number-theory`, `sequence`, `string`, and `vector`.
 
+> **TypeScript users:** full TypeScript types are included — `RunResult`, `Snapshot`, `DvalaError`, and all effect handler types are exported from `@mojir/dvala`. No `@types/` package needed.
+
 ### Passing Values
 
 You can expose JavaScript values to Dvala code via `bindings`. Bindings must be serializable — plain objects, arrays, strings, numbers, booleans, or `null`. JavaScript functions are not allowed; use the [effects system](tutorial-effects) to call host-side logic from Dvala.
@@ -111,6 +113,16 @@ $ dvala run script.dvala
 | `dvala run-bundle <file>` | Run a bundled `.json` file |
 | `dvala test <file>` | Run a `.test.dvala` test file |
 | `dvala repl` | Start the interactive REPL (default) |
+| `dvala doc <name>` | Show documentation for any built-in function or expression |
+| `dvala list [module]` | List all available built-in functions |
+
+`dvala doc` and `dvala list` are the fastest way to explore the standard library without leaving the terminal:
+
+```sh
+$ dvala doc filter
+$ dvala list
+$ dvala list math
+```
 
 ## Try It Here
 

@@ -81,7 +81,9 @@ end;
 
 let silence = handler @dvala.io.print(msg) -> resume(null) end;
 
-assertEqual(silence(-> greet("Alice")), "Alice")
+do with silence;
+  assertEqual(greet("Alice"), "Alice")
+end
 ```
 
 The handler intercepts the `@dvala.io.print` effect and resumes with `null` — the print never happens. The test verifies the return value in complete isolation from I/O.
@@ -95,7 +97,9 @@ let formatWelcome = -> "Welcome to " ++ perform(@app.config, "appName");
 
 let fakeConfig = handler @app.config(key) -> resume("TestApp") end;
 
-assertEqual(fakeConfig(-> formatWelcome()), "Welcome to TestApp")
+do with fakeConfig;
+  assertEqual(formatWelcome(), "Welcome to TestApp")
+end
 ```
 
 The test handler fixes the configuration to a known value. No config file, no environment variable, no setup.

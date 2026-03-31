@@ -522,6 +522,8 @@ Trace for `perform(@choose, [1, 2])`:
 
 Each `resume` call is an independent fork — branches don't share mutable state.
 
+> **Multi-shot and serialization:** Multi-shot continuations work fully in in-memory handlers. When a program *suspends* for serialization (via the host `suspend()` API), each stored snapshot captures a single point-in-time state. Resuming from a stored snapshot is a separate host-level operation, not a second `resume()` call inside the handler. See the [Suspension](./04-suspension.md) chapter for the full picture.
+
 ### Zero-shot (abort) still works
 
 Calling `resume` zero times is just a normal abort:

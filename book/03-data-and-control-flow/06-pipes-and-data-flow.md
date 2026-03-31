@@ -4,7 +4,7 @@ Dvala has powerful features for building readable data transformation pipelines:
 
 ## The Pipe Operator
 
-Use `|>` to pass a value through a chain of transformations. Use `_` to mark where the piped value goes:
+Use `|>` to pass a value through a chain of transformations. Use `_` to mark where the piped value goes. The `_` placeholder is the same mechanism as partial application in operators — see the [Operators](../02-core-language/02-operators.md) chapter for how it works outside of pipes.
 
 ```dvala
 [1, 2, 3, 4, 5, 6]

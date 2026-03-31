@@ -114,7 +114,7 @@ let c2 = makeCounter();
 [c1(), c1(), c2()]
 ```
 
-`c1` and `c2` are independent. Note: because Dvala has no mutation, each call to `c1()` starts from `n = 0` and returns 1.
+`c1` and `c2` are independent. Note: because Dvala has no mutation, each call to `c1()` starts from `n = 0` and returns 1. If you need a counter that increments across calls, the idiomatic approach is to maintain state in an effect handler — see the [Effects & Handlers](../05-advanced/02-effects.md) chapter for the shallow handler state pattern.
 
 ## Closures in Higher-Order Functions
 

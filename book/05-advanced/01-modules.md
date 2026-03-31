@@ -1,6 +1,26 @@
 # Modules
 
-Dvala provides domain-specific function libraries as opt-in modules. Import them to access specialized functionality.
+Dvala provides domain-specific function libraries as opt-in modules. Import them to access specialized functionality beyond the built-in core functions (`map`, `filter`, `reduce`, `sort`, `keys`, etc. need no import — they're always available).
+
+## Available Modules
+
+| Module | Import name | What it adds |
+|---|---|---|
+| `math` | `"math"` | Trig, logarithms, angle conversion |
+| `sequence` | `"sequence"` | `sortBy`, `distinct`, `groupBy`, `zip`, `partition` |
+| `collection` | `"collection"` | Deep access (`getIn`, `assocIn`), advanced aggregation |
+| `vector` | `"vector"` | Statistics for number arrays: `mean`, `sum`, `cumsum`, `stddev` |
+| `linearAlgebra` | `"linearAlgebra"` | Dot product, distance, normalization, matrix-vector ops |
+| `matrix` | `"matrix"` | Matrix multiply, determinant, inverse, transpose |
+| `string` | `"string"` | Padding, trimming, splitting with regex, case conversion |
+| `numberTheory` | `"numberTheory"` | GCD, LCM, primality, divisors |
+| `functional` | `"functional"` | `memoize`, `trampoline`, `once`, advanced composition |
+| `convert` | `"convert"` | Type coercion and base conversion |
+| `bitwise` | `"bitwise"` | Bitwise AND, OR, XOR, shifts |
+| `assertion` | `"assertion"` | Test assertions — see the [Testing](../04-design-principles/06-testing.md) chapter |
+| `grid` | `"grid"` | 2D grid creation and traversal |
+
+Use `dvala list` in the CLI to browse available functions, or `dvala doc <name>` for details on any function.
 
 ## Importing a Module
 

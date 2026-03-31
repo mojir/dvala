@@ -1,5 +1,15 @@
 # Tail Call Optimization via loop/recur
 
+Dvala provides three iteration strategies. Pick the right one for your problem:
+
+| Strategy | When to use | Stack safe? |
+|---|---|---|
+| `for` | Transforming or filtering a collection | Yes |
+| `loop` / `recur` | Accumulator patterns, unbounded iteration | Yes — constant stack |
+| `self` | Tree traversal, bounded-depth recursion | No — use only for shallow depths |
+
+The rest of this chapter explains why this matters and how `loop`/`recur` works.
+
 ## The Problem: Stack Overflow
 
 Recursive functions are elegant but dangerous. Each recursive call adds a frame to the call stack. For large inputs, this means stack overflow:
@@ -126,7 +136,7 @@ let depth = (node) ->
 depth({ "left": { "left": 0, "right": 0 }, "right": 0 })
 ```
 
-Use `self` when the recursion depth is naturally bounded (tree depth, parsing, divide-and-conquer). Use `loop`/`recur` when iteration count could be large or unbounded.
+Use `self` when the recursion depth is naturally bounded — for example, a balanced binary tree rarely exceeds depth 30–40. Use `loop`/`recur` whenever the iteration count grows with input size (lists, ranges, counters) or is otherwise unbounded.
 
 ## For Comprehensions: Iteration Without Recursion
 

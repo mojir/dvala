@@ -32,6 +32,8 @@ end
 
 The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new binding — it does not modify the original. Functions that captured the original `x` still see 10:
 
+### Closures See Their Own Captured Value, Not the Shadow
+
 ```dvala
 let x = 10;
 let getX = () -> x;
@@ -40,6 +42,8 @@ do
   getX()
 end
 ```
+
+`getX` was defined when `x` was 10. Shadowing `x` to 99 in the inner scope does not affect `getX` — it still returns 10. This predictability is a direct consequence of immutability combined with lexical scoping.
 
 ## Immutable Data Structures
 
@@ -119,13 +123,17 @@ let updated = config
 [config, updated]
 ```
 
+## Immutability Makes Serialization Possible
+
+Dvala's killer feature — snapshotting and resuming a running program — works because there is no mutable state to capture. A suspended program's entire world is a tree of values. That tree can be serialized to JSON, stored in a database, and loaded into a completely different process. If values could mutate, a snapshot would be meaningless: by the time you resume, the captured state would be stale.
+
+See the [Suspension & Serializable Continuations](../05-advanced/04-suspension.md) chapter for the full story.
+
 ## Why Immutability Matters
 
-Immutability enables several key features in Dvala:
-
-* **Serializable continuations** — Dvala can snapshot and resume computations because state never changes out from under a suspended program
+* **Serializable continuations** — programs can be snapshotted and resumed because state never changes out from under them
 * **Pure functions** — without mutation, functions are guaranteed pure (same inputs → same outputs)
-* **Safe concurrency** — `parallel` branches can't interfere with each other because there's nothing to mutate
+* **Safe concurrency** — `parallel` branches can't interfere with each other because there's nothing to mutate (see [Concurrency](../05-advanced/05-concurrency.md))
 * **Predictable debugging** — a value is the same everywhere it appears
 * **Equational reasoning** — you can understand code by substituting values, like simplifying a math expression
 
