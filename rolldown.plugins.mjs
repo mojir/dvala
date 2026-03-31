@@ -2,6 +2,9 @@
  * Shared Rolldown plugins used across all rolldown config files.
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+
 /**
  * Treats .dvala files as raw string exports.
  * Allows `import source from './foo.dvala'` to import the file contents as a string.
@@ -28,6 +31,49 @@ export function markdownSourcePlugin() {
       if (id.endsWith('.md')) {
         return { code: `export default ${JSON.stringify(code)}`, map: null }
       }
+    },
+  }
+}
+
+/**
+ * Provides a virtual module `virtual:book-chapters` that exports all book chapter .md files
+ * as a sorted array of { path, content } objects, discovered at build time by scanning book/.
+ * This avoids import.meta.glob (unsupported in iife output format) while still being dynamic —
+ * dropping a .md file in book/ is enough for it to appear.
+ */
+export function bookChaptersPlugin() {
+  const VIRTUAL_ID = 'virtual:book-chapters'
+  const RESOLVED_ID = '\0virtual:book-chapters'
+
+  return {
+    name: 'book-chapters',
+    resolveId(id) {
+      if (id === VIRTUAL_ID)
+        return RESOLVED_ID
+    },
+    load(id) {
+      if (id !== RESOLVED_ID)
+        return
+
+      const bookDir = path.resolve('book')
+      const entries = []
+
+      // Walk book/NN-section/NN-chapter.md, sorted by path for correct chapter order
+      for (const dir of fs.readdirSync(bookDir).sort()) {
+        const dirPath = path.join(bookDir, dir)
+        if (!fs.statSync(dirPath).isDirectory())
+          continue
+        for (const file of fs.readdirSync(dirPath).sort()) {
+          if (!file.endsWith('.md'))
+            continue
+          const content = fs.readFileSync(path.join(dirPath, file), 'utf8')
+          // Use posix-style path as the key so it's consistent across platforms
+          entries.push({ path: `${dir}/${file}`, content })
+        }
+      }
+
+      // Emit as a JS module exporting a plain array — works in any output format
+      return `export default ${JSON.stringify(entries)};`
     },
   }
 }
