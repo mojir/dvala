@@ -235,7 +235,7 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
         }
       }
 
-      const innerCtx = createParserContext(minified)
+      const innerCtx = createParserContext(minified, ctx.allocateId)
       const expr = parseExpression(innerCtx, 0)
       segmentNodes.push(expr)
     }

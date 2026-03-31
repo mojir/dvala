@@ -12,6 +12,34 @@ export interface BuildConfig {
   sourceMap: boolean
 }
 
+export type CoverageReporter = 'lcov' | 'html'
+
+export interface CoverageConfig {
+  /**
+   * Which file-based reporters to emit. Default: ["lcov"].
+   * "lcov" writes coverage/lcov.info; "html" writes an HTML report.
+   * A text summary is always printed to stdout regardless of this setting.
+   */
+  reporter: CoverageReporter[]
+  /** Directory for coverage output, relative to project root. Default: "coverage" */
+  reportsDirectory: string
+  /**
+   * Glob patterns for source files to include in coverage, relative to project root.
+   * Default: ["**\/*.dvala"]
+   */
+  include: string[]
+  /**
+   * Glob patterns to exclude from coverage, relative to project root.
+   * Default: ["**\/*.test.dvala"]
+   */
+  exclude: string[]
+  /**
+   * When true, report all files matching include/exclude even if never imported
+   * during tests — those files appear with 0% coverage. Default: false.
+   */
+  all: boolean
+}
+
 export interface DvalaConfig {
   /** Glob pattern for test file discovery, relative to project root. Default: "**\/*.test.dvala" */
   tests: string
@@ -19,6 +47,8 @@ export interface DvalaConfig {
   entry: string
   /** Build pipeline options */
   build: BuildConfig
+  /** Coverage reporting options */
+  coverage: CoverageConfig
 }
 
 export interface ResolvedConfig {
@@ -36,10 +66,19 @@ const buildDefaults: BuildConfig = {
   sourceMap: true,
 }
 
+const coverageDefaults: CoverageConfig = {
+  reporter: ['lcov'],
+  reportsDirectory: 'coverage',
+  include: ['**/*.dvala'],
+  exclude: ['**/*.test.dvala'],
+  all: true,
+}
+
 const defaults: DvalaConfig = {
   tests: '**/*.test.dvala',
   entry: 'main.dvala',
   build: buildDefaults,
+  coverage: coverageDefaults,
 }
 
 /**
@@ -58,6 +97,7 @@ export function findConfig(startDir?: string): ResolvedConfig | null {
         ...defaults,
         ...raw,
         build: { ...buildDefaults, ...raw.build },
+        coverage: { ...coverageDefaults, ...raw.coverage },
       }
       return { config, configPath, rootDir: dir }
     }

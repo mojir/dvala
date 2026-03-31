@@ -22,8 +22,8 @@ import { parseOperand } from './parseOperand'
 import { parseQuote } from './parseQuote'
 import { parseSymbol } from './parseSymbol'
 
-export function createParserContext(tokenStream: TokenStream): ParserContext {
-  const ctx = new ParserContext(tokenStream)
+export function createParserContext(tokenStream: TokenStream, allocateId: () => number): ParserContext {
+  const ctx = new ParserContext(tokenStream, allocateId)
   ctx.parseExpression = (precedence = 0) => parseExpression(ctx, precedence)
   return ctx
 }

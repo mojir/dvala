@@ -11,6 +11,6 @@ let withDefault = macro (value, fallback) -> quote
 end;
 
 {
-  double: double,
-  withDefault: withDefault
+  double,
+  withDefault
 }

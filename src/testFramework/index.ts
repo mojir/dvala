@@ -1,10 +1,12 @@
-import fs, { globSync } from 'node:fs'
+import fs from 'node:fs'
+import { globSync } from 'glob'
 import path from 'node:path'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
 import { bundle } from '../bundler'
 import { createTestCollector, createTestModule } from '../builtin/modules/test'
 import type { TestEntry } from '../builtin/modules/test'
+import type { AstNode } from '../parser/types'
 import type { Handlers } from '../evaluator/effectTypes'
 import type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
 import { formatTap } from './formatTap'
@@ -15,13 +17,15 @@ const fileImportPattern = /import\(\s*["']\.{0,2}\/[^"']+["']\s*\)/
 interface RunTestParams {
   testPath: string
   testNamePattern?: RegExp
+  /** When true, accumulates a node evaluation hit map and sourceMap for coverage reporting. */
+  coverage?: boolean
 }
 
 /**
  * Runs a .test.dvala file and returns structured results.
  * The runner is format-agnostic — use formatTap() or other formatters to render output.
  */
-export function runTestFile({ testPath: filePath, testNamePattern }: RunTestParams): TestRunResult {
+export async function runTestFile({ testPath: filePath, testNamePattern, coverage }: RunTestParams): Promise<TestRunResult> {
   try {
     const source = readDvalaFile(filePath)
 
@@ -51,21 +55,32 @@ export function runTestFile({ testPath: filePath, testNamePattern }: RunTestPara
     // Create a Dvala runner with the test module included alongside all builtins
     const dvala = createDvala({ debug: true, modules: [...allBuiltinModules, testModule] })
 
+    // When coverage is requested, accumulate a hit map across file load + all test bodies
+    const coverageMap = coverage ? new Map<number, number>() : undefined
+    const onNodeEval = coverageMap
+      ? (node: AstNode) => { const id = node[2]; coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1) }
+      : undefined
+
     // If the test file uses file imports, bundle it first so that
     // import("./path.dvala") calls are resolved and available at runtime
     const hasFileImports = fileImportPattern.test(source)
     const runSource = hasFileImports ? bundle(filePath) : source
 
     // Evaluate the test file — this populates the collector with test registrations
-    dvala.run(runSource, hasFileImports
-      ? { effectHandlers: testEffectHandlers }
-      : { filePath, effectHandlers: testEffectHandlers },
+    const fileResult = await dvala.runAsync(runSource, hasFileImports
+      ? { effectHandlers: testEffectHandlers, onNodeEval }
+      : { filePath, effectHandlers: testEffectHandlers, onNodeEval },
     )
+
+    if (fileResult.type !== 'completed') {
+      const error = fileResult.type === 'error' ? fileResult.error : new Error(`Unexpected result type: ${fileResult.type}`)
+      return { filePath, results: [], bailout: error }
+    }
 
     // Run collected tests with timing
     const tests = collector.tests
     const runStart = performance.now()
-    const results: TestCaseResult[] = tests.map((test: TestEntry) => {
+    const results: TestCaseResult[] = await Promise.all(tests.map(async (test: TestEntry) => {
       if (testNamePattern && !testNamePattern.test(test.fullName)) {
         return { name: test.fullName, status: 'skipped' as const, reason: `Not matching testNamePattern ${testNamePattern}` }
       }
@@ -73,16 +88,21 @@ export function runTestFile({ testPath: filePath, testNamePattern }: RunTestPara
         return { name: test.fullName, status: 'skipped' as const }
       }
       const start = performance.now()
-      try {
-        dvala.run('__testBody__()', { bindings: { __testBody__: test.body } })
-        return { name: test.fullName, status: 'passed' as const, durationMs: performance.now() - start }
-      } catch (error) {
-        return { name: test.fullName, status: 'failed' as const, error, durationMs: performance.now() - start }
+      const result = await dvala.runAsync('__testBody__()', { bindings: { __testBody__: test.body }, onNodeEval })
+      const durationMs = performance.now() - start
+      if (result.type === 'error') {
+        return { name: test.fullName, status: 'failed' as const, error: result.error, durationMs }
       }
-    })
+      if (result.type !== 'completed') {
+        return { name: test.fullName, status: 'failed' as const, error: new Error(`Unexpected result type: ${result.type}`), durationMs }
+      }
+      return { name: test.fullName, status: 'passed' as const, durationMs }
+    }))
     const durationMs = performance.now() - runStart
 
-    return { filePath, results, durationMs }
+    // sourceMap from the last completed result — consistent across all runs within this instance
+    const sourceMap = fileResult.sourceMap
+    return { filePath, results, durationMs, ...(coverageMap ? { coverageMap, sourceMap } : {}) }
   } catch (error: unknown) {
     return { filePath, results: [], bailout: error }
   }
@@ -92,8 +112,8 @@ export function runTestFile({ testPath: filePath, testNamePattern }: RunTestPara
  * Legacy API — runs a test file and returns TAP output.
  * Used by the CLI and vitest integration.
  */
-export function runTest(params: RunTestParams): { tap: string; success: boolean } {
-  const result = runTestFile(params)
+export async function runTest(params: RunTestParams): Promise<{ tap: string; success: boolean }> {
+  const result = await runTestFile(params)
   return formatTap(result)
 }
 
@@ -101,13 +121,13 @@ export function runTest(params: RunTestParams): { tap: string; success: boolean 
  * Discover and run all test files matching a glob pattern.
  * Used by `dvala test` (no args) with dvala.json config.
  */
-export function runTestSuite(rootDir: string, testGlob: string, testNamePattern?: RegExp): TestSuiteResult {
+export async function runTestSuite(rootDir: string, testGlob: string, testNamePattern?: RegExp, coverage?: boolean): Promise<TestSuiteResult> {
   const files = globSync(testGlob, { cwd: rootDir })
     .map(f => path.resolve(rootDir, f))
     .sort()
 
   const start = performance.now()
-  const results = files.map(testPath => runTestFile({ testPath, testNamePattern }))
+  const results = await Promise.all(files.map(testPath => runTestFile({ testPath, testNamePattern, coverage })))
   const durationMs = performance.now() - start
 
   return { files: results, durationMs }

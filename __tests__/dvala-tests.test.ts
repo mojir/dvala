@@ -22,8 +22,8 @@ describe('dvala tests', () => {
   for (const testFile of dvalaTestFiles) {
     const relativePath = path.relative(path.resolve(__dirname, '..'), testFile)
 
-    it(relativePath, () => {
-      const result = runTestFile({ testPath: testFile })
+    it(relativePath, async () => {
+      const result = await runTestFile({ testPath: testFile })
 
       if (!isSuccess(result)) {
         const { text } = formatConsole(result, { color: false })

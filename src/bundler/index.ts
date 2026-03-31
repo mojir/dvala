@@ -46,6 +46,11 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
   const entryDir = path.dirname(absoluteEntryPath)
   const includeSourceMap = options?.sourceMap ?? true
 
+  // Shared node ID allocator across all files — ensures unique IDs within the bundle
+  // so that merged sourceMap positions don't collide across files.
+  let nodeIdCounter = 0
+  const allocateNodeId = () => nodeIdCounter++
+
   // Map from absolute file path → source code
   const fileSources = new Map<string, string>()
   // Map from absolute file path → canonical module name
@@ -129,7 +134,7 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
     // Parse to AST
     const tokenStream = tokenize(source, includeSourceMap, absoluteFilePath)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-    const parsedAst = parseToAst(minified)
+    const parsedAst = parseToAst(minified, allocateNodeId)
     fileAsts.set(absoluteFilePath, parsedAst)
 
     const deps = new Set<string>()

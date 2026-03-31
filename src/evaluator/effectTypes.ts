@@ -9,7 +9,7 @@
 import type { Any } from '../interface'
 import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
-import type { AstNode } from '../parser/types'
+import type { AstNode, SourceMap } from '../parser/types'
 import type { ContextStack } from './ContextStack'
 import { toJS } from '../utils/interop'
 
@@ -286,10 +286,10 @@ export function findMatchingHandlers(
  * terminal snapshot containing the checkpoint history for debugging/replay.
  */
 export type RunResult =
-  | { type: 'completed'; value: unknown; definedBindings?: Record<string, unknown>; snapshot?: Snapshot }
-  | { type: 'suspended'; snapshot: Snapshot }
-  | { type: 'error'; error: DvalaError; snapshot?: Snapshot }
-  | { type: 'halted'; value: unknown; snapshot?: Snapshot }
+  | { type: 'completed'; value: unknown; definedBindings?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
+  | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap }
+  | { type: 'error'; error: DvalaError; snapshot?: Snapshot; sourceMap?: SourceMap }
+  | { type: 'halted'; value: unknown; snapshot?: Snapshot; sourceMap?: SourceMap }
 
 // ---------------------------------------------------------------------------
 // Suspension signal — used internally by the trampoline

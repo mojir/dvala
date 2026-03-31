@@ -7,7 +7,6 @@ import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evalua
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
 import { parseToAst } from './parser'
-import { resetNodeIdCounter } from './parser/ParserContext'
 import type { Ast, SourceMap } from './parser/types'
 import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
@@ -43,8 +42,8 @@ export type DvalaRunOptions =
  * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval'] }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval'] }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -92,8 +91,11 @@ function assertSerializable(val: unknown, path: string): void {
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
-  resetNodeIdCounter()
   initCoreDvalaSources()
+  // Per-instance node ID counter — ensures unique IDs within this runner.
+  // Can be overridden via options.nodeIdAllocator for cross-instance coordination.
+  let nodeIdCounter = 0
+  const allocateNodeId = () => nodeIdCounter++
 
   const modules = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))
@@ -109,15 +111,16 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   // Global node IDs ensure no collisions between files.
   let accumulatedSourceMap: SourceMap | undefined
 
-  function buildAst(source: string, filePath?: string): Ast {
-    if (!filePath) {
+  function buildAst(source: string, filePath?: string, forceDebug?: boolean): Ast {
+    const effectiveDebug = debug || (forceDebug ?? false)
+    if (!filePath && !forceDebug) {
       const cached = cache.get(source)
       if (cached)
         return cached
     }
-    const tokenStream = tokenize(source, debug, filePath)
+    const tokenStream = tokenize(source, effectiveDebug, filePath)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-    const ast: Ast = parseToAst(minified)
+    const ast: Ast = parseToAst(minified, allocateNodeId)
     // Accumulate source map from each parsed file
     if (ast.sourceMap) {
       if (!accumulatedSourceMap) {
@@ -132,7 +135,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       // Point ast's sourceMap to the accumulated one so evaluate() uses it
       ast.sourceMap = accumulatedSourceMap
     }
-    if (!filePath)
+    // Only cache when debug mode is consistent with the factory setting.
+    // If forceDebug elevated debug for this call, the AST has a sourceMap that
+    // would be absent from a non-debug cached entry — skip caching to avoid
+    // serving a debug AST to non-debug callers (or vice versa).
+    if (!filePath && !forceDebug)
       cache.set(source, ast)
     return ast
   }
@@ -213,19 +220,36 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const contextStack = createContextStack({ bindings }, modules, pure)
 
-        // For AST bundles, use the pre-parsed AST directly
-        const ast = isDvalaBundle(source) ? source.ast : buildAst(source)
+        // For AST bundles, use the pre-parsed AST directly.
+        // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
+        const forceDebug = !!runOptions?.onNodeEval
+        const ast = isDvalaBundle(source) ? source.ast : buildAst(source, runOptions?.filePath, forceDebug)
+        // For bundles, merge the bundle's sourceMap into accumulatedSourceMap so that
+        // onNodeEval callers can resolve nodeIds to positions after the run.
+        if (isDvalaBundle(source) && source.ast.sourceMap && forceDebug) {
+          if (!accumulatedSourceMap) {
+            accumulatedSourceMap = { sources: [...source.ast.sourceMap.sources], positions: new Map(source.ast.sourceMap.positions) }
+          } else {
+            const sourceOffset = accumulatedSourceMap.sources.length
+            accumulatedSourceMap.sources.push(...source.ast.sourceMap.sources)
+            for (const [nodeId, pos] of source.ast.sourceMap.positions)
+              accumulatedSourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
+          }
+        }
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const terminalSnapshot = runOptions?.terminalSnapshot
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
         }, !disableAutoCheckpoint, terminalSnapshot, runOptions?.onNodeEval)
+        // Include the accumulated sourceMap so callers can resolve nodeIds to positions.
+        // Only present when debug mode was active (explicitly or via onNodeEval).
+        const sourceMap = accumulatedSourceMap
         if (result.type === 'completed') {
           // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
-          return { ...result, value: toJS(result.value as never), definedBindings: contextStack.getModuleScopeBindings() }
+          return { ...result, value: toJS(result.value as never), definedBindings: contextStack.getModuleScopeBindings(), sourceMap }
         }
-        return result
+        return { ...result, sourceMap }
       } catch (error) {
         if (error instanceof DvalaError) {
           return { type: 'error', error }
@@ -246,5 +270,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       const params: AutoCompleterParams = { bindings: factoryBindings }
       return new AutoCompleter(program, position, params)
     },
+
   }
 }

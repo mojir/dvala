@@ -11,7 +11,8 @@ import { parseObject } from './parseObject'
 function createCtx(input: string) {
   const tokenStream = tokenize(input, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
-  return createParserContext(minified)
+  let id = 0
+  return createParserContext(minified, () => id++)
 }
 
 function getObjectEntries(node: ObjectNode): ObjectEntry[] {
