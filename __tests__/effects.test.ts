@@ -1564,7 +1564,8 @@ describe('phase 4 — Suspension & Resume', () => {
           { pattern: 'my.action', handler: async ({ resume: r, snapshots, resumeFrom }) => {
             callCount++
             if (callCount === 1) {
-              resumeFrom(snapshots[0]!, 0)
+              // snapshots[0] = 'Program start', snapshots[1] = the explicit 'cp' checkpoint (after m was imported)
+              resumeFrom(snapshots[1]!, 0)
             } else {
               r(1)
             }
@@ -1895,7 +1896,7 @@ describe('phase 4 — Suspension & Resume', () => {
   })
 
   describe('9: auto-checkpoint (enabled by default)', () => {
-    it('should capture a snapshot before each non-checkpoint effect', async () => {
+    it('should capture a snapshot at program start and after each non-checkpoint effect', async () => {
       let capturedSnapshots: readonly unknown[] = []
       await dvala.runAsync(`
         perform(@my.a);
@@ -1912,11 +1913,11 @@ describe('phase 4 — Suspension & Resume', () => {
           } },
         ],
       })
-      // 3 auto-checkpoints: before my.a, before my.b, before my.check
+      // program start + after my.a + after my.b = 3 snapshots when my.check handler runs
       expect(capturedSnapshots).toHaveLength(3)
-      expect((capturedSnapshots[0] as { message: string }).message).toBe('Auto checkpoint before my.a')
-      expect((capturedSnapshots[1] as { message: string }).message).toBe('Auto checkpoint before my.b')
-      expect((capturedSnapshots[2] as { message: string }).message).toBe('Auto checkpoint before my.check')
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('Program start')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('After my.a')
+      expect((capturedSnapshots[2] as { message: string }).message).toBe('After my.b')
     })
 
     it('should not capture auto-checkpoints when disableAutoCheckpoint is true', async () => {
@@ -1937,7 +1938,7 @@ describe('phase 4 — Suspension & Resume', () => {
       expect(capturedSnapshots).toHaveLength(0)
     })
 
-    it('should dispatch dvala.checkpoint effect to host handlers', async () => {
+    it('should not dispatch dvala.checkpoint effect for auto-checkpoints', async () => {
       const checkpointMessages: string[] = []
       await dvala.runAsync(`
         perform(@my.action);
@@ -1952,7 +1953,8 @@ describe('phase 4 — Suspension & Resume', () => {
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
         ],
       })
-      expect(checkpointMessages).toEqual(['Auto checkpoint before my.action'])
+      // Auto-checkpoints are captured silently — dvala.checkpoint is NOT dispatched
+      expect(checkpointMessages).toEqual([])
     })
 
     it('should not auto-checkpoint for explicit dvala.checkpoint effects', async () => {
@@ -1970,8 +1972,8 @@ describe('phase 4 — Suspension & Resume', () => {
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
         ],
       })
-      // "manual" from explicit checkpoint, "my.action" from auto-checkpoint before my.action
-      expect(checkpointMessages).toEqual(['manual', 'Auto checkpoint before my.action'])
+      // Only the explicit dvala.checkpoint is dispatched — auto-checkpoints are silent
+      expect(checkpointMessages).toEqual(['manual'])
     })
 
     it('should work with maxSnapshots', async () => {
@@ -1994,29 +1996,31 @@ describe('phase 4 — Suspension & Resume', () => {
           } },
         ],
       })
-      // 4 auto-checkpoints total, limit 2 — only last 2 retained
+      // program start + after my.a + after my.b + after my.c = 4 snapshots total, limit 2 — only last 2 retained
       expect(capturedSnapshots).toHaveLength(2)
-      expect((capturedSnapshots[0] as { message: string }).message).toBe('Auto checkpoint before my.c')
-      expect((capturedSnapshots[1] as { message: string }).message).toBe('Auto checkpoint before my.check')
+      expect((capturedSnapshots[0] as { message: string }).message).toBe('After my.b')
+      expect((capturedSnapshots[1] as { message: string }).message).toBe('After my.c')
     })
 
-    it('should allow host handler to suspend on auto-checkpoint', async () => {
+    it('should complete normally when dvala.checkpoint handler is registered but auto-checkpoints are silent', async () => {
+      // Auto-checkpoints no longer dispatch dvala.checkpoint — they are captured silently.
+      // A dvala.checkpoint handler cannot intercept auto-checkpoints.
+      const checkpointCalled: boolean[] = []
       const result = await dvala.runAsync(`
         perform(@my.action);
         42
       `, {
         disableAutoCheckpoint: false,
         effectHandlers: [
-          { pattern: 'dvala.checkpoint', handler: async ({ suspend }) => {
-            suspend({ reason: 'auto-checkpoint intercepted' })
+          { pattern: 'dvala.checkpoint', handler: async ({ resume: r }) => {
+            checkpointCalled.push(true)
+            r(null)
           } },
           { pattern: 'my.action', handler: async ({ resume: r }) => { r(null) } },
         ],
       })
-      expect(result.type).toBe('suspended')
-      if (result.type === 'suspended') {
-        expect(result.snapshot.meta).toEqual({ reason: 'auto-checkpoint intercepted' })
-      }
+      expect(result.type).toBe('completed')
+      expect(checkpointCalled).toHaveLength(0)
     })
 
     it('should resume correctly after auto-checkpoint suspend', async () => {

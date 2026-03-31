@@ -91,8 +91,6 @@ export interface PerformStep {
   arg: Any
   k: ContinuationStack
   sourceCodeInfo?: SourceCodeInfo
-  /** When true, skip unconditional checkpoint capture (effect was already captured upstream). */
-  skipCheckpointCapture?: boolean
 }
 
 /**

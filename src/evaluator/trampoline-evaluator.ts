@@ -93,7 +93,6 @@ import type {
   AlgebraicHandleFrame,
   AndFrame,
   ArrayBuildFrame,
-  AutoCheckpointFrame,
   BindingSlotContext,
   BindingSlotFrame,
   CallFnFrame,
@@ -1397,8 +1396,6 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       frame.env.registerValueModule(frame.moduleName, merged)
       return { type: 'Value', value: merged, k }
     }
-    case 'AutoCheckpoint':
-      return applyAutoCheckpoint(frame, k)
     case 'CodeTemplateBuild':
       return applyCodeTemplateBuild(frame, value, k)
     case 'MacroEval':
@@ -2601,11 +2598,11 @@ function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationSt
   return { type: 'Eval', node: argNodes[index]!, env, k: cons<Frame>(newFrame, k) }
 }
 
-function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState, skipCheckpointCapture?: boolean): Step | Promise<Step> {
+function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
   // dvala.checkpoint — unconditional snapshot capture before normal dispatch.
   // The snapshot is always captured regardless of whether any handler intercepts.
   // Skipped when re-dispatching from an algebraic handler fallthrough (already captured upstream).
-  if (effect.name === 'dvala.checkpoint' && snapshotState && !skipCheckpointCapture) {
+  if (effect.name === 'dvala.checkpoint' && snapshotState) {
     const message = arg as string
     const continuation = serializeToObject(k)
     const snapshot = createSnapshot({
@@ -2618,27 +2615,6 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     snapshotState.snapshots.push(snapshot)
     if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
       snapshotState.snapshots.shift()
-    }
-  }
-
-  // Auto-checkpoint: dispatch a real dvala.checkpoint effect before the original effect.
-  // Skip for dvala.macro.expand — macro expansion is internal machinery, not a suspension point.
-  if (snapshotState?.autoCheckpoint && effect.name !== 'dvala.checkpoint' && effect.name !== 'dvala.macro.expand') {
-    // Skip if we're already inside an auto-checkpoint dispatch (phase: 'awaitEffect').
-    const topFrame = k?.head
-    if (topFrame?.type === 'AutoCheckpoint' && topFrame.phase === 'awaitEffect') {
-      // Pop the marker frame and dispatch the original effect normally.
-      k = k!.tail
-    } else {
-      const autoCheckpointFrame: AutoCheckpointFrame = {
-        type: 'AutoCheckpoint',
-        phase: 'awaitCheckpoint',
-        effect,
-        arg,
-        sourceCodeInfo,
-      }
-      const checkpointMessage = `Auto checkpoint before ${effect.name}`
-      return { type: 'Perform', effect: getEffectRef('dvala.checkpoint'), arg: checkpointMessage, k: cons<Frame>(autoCheckpointFrame, k), sourceCodeInfo }
     }
   }
 
@@ -2805,6 +2781,23 @@ function dispatchHostHandler(
       signal: effectSignal,
       resume: (value: unknown) => {
         assertNotSettled('resume')
+        // Capture a post-effect snapshot so time travel can rewind to right after this effect.
+        // Snapshot after (not before) so the effect result is baked in — re-execution from here
+        // is pure and needs no effect-result replay.
+        if (snapshotState?.autoCheckpoint && effectName !== 'dvala.checkpoint' && effectName !== 'dvala.macro.expand') {
+          const continuation = serializeToObject(k)
+          const snapshot = createSnapshot({
+            continuation,
+            timestamp: Date.now(),
+            index: snapshotState.nextSnapshotIndex++,
+            executionId: snapshotState.executionId,
+            message: `After ${effectName}`,
+          })
+          snapshotState.snapshots.push(snapshot)
+          if (snapshotState.maxSnapshots !== undefined && snapshotState.snapshots.length > snapshotState.maxSnapshots) {
+            snapshotState.snapshots.shift()
+          }
+        }
         if (value instanceof Promise) {
           // Convert the resolved plain-JS value back to a Dvala value before feeding to continuation
           outcome = { kind: 'asyncResume', promise: value.then(v => fromJS(v)) }
@@ -3876,19 +3869,6 @@ function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): 
   return { type: 'Value', value, k }
 }
 
-function applyAutoCheckpoint(frame: AutoCheckpointFrame, k: ContinuationStack): Step {
-  // Checkpoint resolved — now dispatch the original effect with a marker frame
-  // so dispatchPerform knows to skip auto-checkpoint for this re-dispatch.
-  const markerFrame: AutoCheckpointFrame = {
-    type: 'AutoCheckpoint',
-    phase: 'awaitEffect',
-    effect: frame.effect,
-    arg: frame.arg,
-    sourceCodeInfo: frame.sourceCodeInfo,
-  }
-  return { type: 'Perform', effect: frame.effect, arg: frame.arg, k: cons<Frame>(markerFrame, k), sourceCodeInfo: frame.sourceCodeInfo }
-}
-
 // ---------------------------------------------------------------------------
 // Macro expansion
 // ---------------------------------------------------------------------------
@@ -4522,12 +4502,26 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         }
         return applyFrame(step.k.head, step.value, step.k.tail)
       }
-      case 'Eval':
-        return stepNode(step.node, step.env, step.k)
+      case 'Eval': {
+        const { node, env, k } = step
+        if (snapshotState?.onNodeEval) {
+          // Lazy — only allocate the Continuation object if the hook actually calls getContinuation().
+          const result = snapshotState.onNodeEval(node, () => ({
+            env,
+            k,
+            resume: () => {},
+            getSnapshots: () => [...snapshotState.snapshots],
+          }))
+          if (result instanceof Promise) {
+            return result.then(() => stepNode(node, env, k))
+          }
+        }
+        return stepNode(node, env, k)
+      }
       case 'Apply':
         return applyFrame(step.frame, step.value, step.k)
       case 'Perform':
-        return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState, step.skipCheckpointCapture)
+        return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
         return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
       case 'Race':
@@ -4752,13 +4746,14 @@ export async function evaluateWithEffects(
   deserializeOptions?: DeserializeOptions,
   autoCheckpoint?: boolean,
   terminalSnapshot?: boolean,
+  onNodeEval?: SnapshotState['onNodeEval'],
 ): Promise<RunResult> {
   mergeSourceMap(contextStack, ast.sourceMap)
   const abortController = new AbortController()
   const signal = abortController.signal
   const initial = buildInitialStep(ast.body, contextStack)
 
-  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint, terminalSnapshot)
+  return runEffectLoop(initial, handlers, signal, undefined, maxSnapshots, deserializeOptions, autoCheckpoint, terminalSnapshot, onNodeEval)
 }
 
 /**
@@ -5070,6 +5065,7 @@ async function runEffectLoop(
   deserializeOptions?: DeserializeOptions,
   autoCheckpoint?: boolean,
   terminalSnapshot?: boolean,
+  onNodeEval?: SnapshotState['onNodeEval'],
 ): Promise<RunResult> {
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
@@ -5078,6 +5074,19 @@ async function runEffectLoop(
     ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
     ...(autoCheckpoint ? { autoCheckpoint } : {}),
     ...(terminalSnapshot ? { terminalSnapshot } : {}),
+    ...(onNodeEval ? { onNodeEval } : {}),
+  }
+
+  // Capture a snapshot at program start so time travel can rewind to the very beginning.
+  if (snapshotState.autoCheckpoint) {
+    const continuation = serializeToObject(initial.type === 'Eval' ? initial.k : null)
+    snapshotState.snapshots.push(createSnapshot({
+      continuation,
+      timestamp: Date.now(),
+      index: snapshotState.nextSnapshotIndex++,
+      executionId: snapshotState.executionId,
+      message: 'Program start',
+    }))
   }
 
   let step: Step | Promise<Step> = initial

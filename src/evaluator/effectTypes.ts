@@ -9,6 +9,8 @@
 import type { Any } from '../interface'
 import type { DvalaError } from '../errors'
 import type { ContinuationStack } from './frames'
+import type { AstNode } from '../parser/types'
+import type { ContextStack } from './ContextStack'
 import { toJS } from '../utils/interop'
 
 // ---------------------------------------------------------------------------
@@ -95,6 +97,22 @@ export function createSnapshot(fields: Omit<Snapshot, 'id'>): Snapshot {
 // ---------------------------------------------------------------------------
 
 /**
+ * Lazy accessor for the current execution context at a node evaluation point.
+ * Only allocated when the caller actually invokes `getContinuation()` — the
+ * coverage path never calls it, so there is no allocation on the hot path.
+ */
+export interface Continuation {
+  /** Current lexical environment — read variable bindings from here. */
+  env: ContextStack
+  /** Continuation stack — use to reconstruct the call stack for display. */
+  k: ContinuationStack
+  /** Resume execution from this point (for debugger "continue" / "step"). */
+  resume: () => void
+  /** All post-effect snapshots taken so far — enables time travel. */
+  getSnapshots: () => Snapshot[]
+}
+
+/**
  * Mutable snapshot state that lives for the duration of a single
  * `runEffectLoop` invocation. Threaded through tick → dispatchPerform →
  * dispatchHostHandler so that host handlers can access and create snapshots.
@@ -112,11 +130,18 @@ export interface SnapshotState {
   /** Maximum number of snapshots to retain. Oldest are evicted when exceeded. */
   readonly maxSnapshots?: number
 
-  /** When true, automatically capture a checkpoint before every non-checkpoint effect. */
+  /** When true, automatically capture a checkpoint at program start and after every non-checkpoint effect. */
   readonly autoCheckpoint?: boolean
 
   /** When true, always create a terminal snapshot on completion/error/halt even if autoCheckpoint is false. */
   readonly terminalSnapshot?: boolean
+
+  /**
+   * Optional hook called on every AST node evaluation. Used for coverage tracking and debugging.
+   * `getContinuation` is lazy — only call it when you need env/k/resume (e.g. on a breakpoint hit).
+   * For coverage, record `node[2]` (the node ID) and return without calling `getContinuation()`.
+   */
+  onNodeEval?: (node: AstNode, getContinuation: () => Continuation) => void | Promise<void>
 }
 
 // ---------------------------------------------------------------------------

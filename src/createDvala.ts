@@ -13,7 +13,7 @@ import { initCoreDvalaSources } from './builtin/normalExpressions/initCoreDvala'
 import { Cache } from './Cache'
 import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
-import type { Handlers, RunResult } from './evaluator/effectTypes'
+import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { toJS } from './utils/interop'
 import { isPersistentMap, isPersistentVector } from './utils/persistent'
@@ -43,8 +43,8 @@ export type DvalaRunOptions =
  * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean }
+  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval'] }
+  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval'] }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
@@ -220,7 +220,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
           values: bindings,
           modules,
-        }, !disableAutoCheckpoint, terminalSnapshot)
+        }, !disableAutoCheckpoint, terminalSnapshot, runOptions?.onNodeEval)
         if (result.type === 'completed') {
           // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
           return { ...result, value: toJS(result.value as never), definedBindings: contextStack.getModuleScopeBindings() }
