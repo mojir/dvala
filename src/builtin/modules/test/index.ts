@@ -27,12 +27,15 @@ export interface TestCollector {
   tests: TestEntry[]
   /** Stack of describe group names for nested describe blocks */
   describeStack: string[]
+  /** Depth of skip2() nesting — tests registered while > 0 are automatically skipped */
+  skipDepth: number
 }
 
 export function createTestCollector(): TestCollector {
   return {
     tests: [],
     describeStack: [],
+    skipDepth: 0,
   }
 }
 
@@ -56,7 +59,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
         collector.tests.push({
           fullName: fullName(name),
           body,
-          skip: false,
+          skip: collector.skipDepth > 0,
         })
         return null
       },

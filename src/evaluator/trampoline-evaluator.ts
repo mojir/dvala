@@ -250,6 +250,16 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
       return { type: 'Value', value: evaluateReservedSymbol(node as ReservedNode, env), k }
     case NodeTypes.Call:
       return stepNormalExpression(node as NormalExpressionNode, env, k)
+    case NodeTypes.MacroCall: {
+      // #name expr — prefix macro call, restricted to macros only
+      const [fnNode, argNodes] = node[1] as [AstNode, AstNode[]]
+      const sourceCodeInfo = env.resolve(node[2])
+      const callee = env.evaluateSymbol(fnNode as SymbolNode)
+      if (!isMacroFunction(callee)) {
+        throw new TypeError(`# prefix requires a macro, but '${fnNode[1] as string}' is not a macro`, sourceCodeInfo)
+      }
+      return callMacro(callee, argNodes, env, sourceCodeInfo, k)
+    }
     case NodeTypes.If: {
       const [conditionNode, thenNode, elseNode] = node[1] as [AstNode, AstNode, AstNode?]
       const frame: IfBranchFrame = {

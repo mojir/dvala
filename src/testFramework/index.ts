@@ -50,6 +50,20 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
           resume(null)
         },
       },
+      {
+        pattern: 'test.pushSkip',
+        handler: ({ resume }) => {
+          collector.skipDepth++
+          resume(null)
+        },
+      },
+      {
+        pattern: 'test.popSkip',
+        handler: ({ resume }) => {
+          collector.skipDepth--
+          resume(null)
+        },
+      },
     ]
 
     // Create a Dvala runner with the test module included alongside all builtins

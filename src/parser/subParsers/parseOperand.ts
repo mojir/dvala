@@ -151,6 +151,18 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     return parseArray(ctx)
   }
 
+  // #name expr — prefix macro call, consumes a full expression
+  if (token[0] === 'MacroPrefix') {
+    const debugInfo = token[2]
+    const nodeId = ctx.allocateNodeId(debugInfo)
+    ctx.advance()
+    const operand = ctx.parseExpression()
+    const symNode = withSourceCodeInfo([NodeTypes.Sym, token[1], 0], debugInfo, ctx)
+    const node: AstNode = [NodeTypes.MacroCall, [symNode, [operand]], nodeId]
+    ctx.setNodeEnd(nodeId)
+    return node
+  }
+
   const tokenType = token[0] as Exclude<
     TokenType,
     | 'Operator' // Handled above
@@ -166,6 +178,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     | 'SingleLineComment' // Should have been removed
     | 'Whitespace' // Should have been removed
     | 'MacroQualified' // Handled in parseExpression
+    | 'MacroPrefix' // Handled above
   >
   switch (tokenType) {
     case 'Number':

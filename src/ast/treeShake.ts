@@ -218,6 +218,10 @@ function isSideEffectFree(node: AstNode): boolean {
       return false
     }
 
+    // #name expr — macro calls are code transformations, not side-effect-free
+    case NodeTypes.MacroCall:
+      return false
+
     // If expression is pure if all branches are pure
     case NodeTypes.If: {
       const parts = node[1] as AstNode[]
