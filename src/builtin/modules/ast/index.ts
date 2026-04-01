@@ -470,36 +470,6 @@ const astFunctions: BuiltinNormalExpressions = {
     },
   },
 
-  // --- Decorator helper ---
-  'decorate': {
-    evaluate: ([node, transformedValue], sourceCodeInfo): Any => {
-      assertAstNode(node, sourceCodeInfo)
-      // If the node is a Let binding, wrap the transformed value back in the Let
-      // with the original binding target. Otherwise return the transformed value as-is.
-      if (nodeElem(node, 0) === NodeTypes.Let) {
-        const payload = nodeElem(node, 1) as Any
-        const target = isPersistentVector(payload) ? (payload as unknown as Arr).get(0) : (payload as unknown as unknown[])[0]
-        return toAny([NodeTypes.Let, [target, transformedValue], 0])
-      }
-      return transformedValue as Any
-    },
-    arity: toFixedArity(2),
-    docs: {
-      category: 'ast',
-      returns: { type: 'array' },
-      args: {
-        node: { type: 'array', description: 'The original AST node — either a let-binding or any expression.' },
-        transformedValue: { type: 'array', description: 'The transformed value expression AST.' },
-      },
-      variants: [{ argumentNames: ['node', 'transformedValue'] }],
-      description: 'Decorator helper for macros: if `node` is a let-binding, replaces its value with `transformedValue` while keeping the binding target. Otherwise returns `transformedValue` as-is. Use inside a macro to support both `#myMacro expr` and `#myMacro let x = expr`.',
-      examples: [
-        'let { decorate, num } = import("ast");\ndecorate(num(1), num(42))',
-        'let { decorate, num, sym } = import("ast");\ndecorate(["Let", [["symbol", [sym("x"), null], 0], num(1)], 0], num(42))',
-      ],
-    },
-  },
-
   // --- Pretty printing ---
   'prettyPrint': {
     evaluate: ([node], sourceCodeInfo): string => {
@@ -527,12 +497,38 @@ const astFunctions: BuiltinNormalExpressions = {
 // Module export
 // ---------------------------------------------------------------------------
 
-// Build docs from the additional module-level docs
-const additionalDocs: Record<string, FunctionDocs> = {}
+// Dvala-implemented functions for the ast module
+// decorate checks for Let nodes using first(ast) == "Let" instead of isLet()
+// because module source doesn't have access to the module's own TS functions
+const astSource = `{
+  decorate: (ast, transform) ->
+    if first(ast) == "Let" then
+      ["Let", [first(second(ast)), transform(second(second(ast)))], 0]
+    else
+      transform(ast)
+    end
+}`
+
+// Docs for functions defined in astSource (not in astFunctions)
+const additionalDocs: Record<string, FunctionDocs> = {
+  'decorate': {
+    category: 'ast',
+    returns: { type: 'array' },
+    args: {
+      ast: { type: 'array', description: 'The original AST node — either a let-binding or any expression.' },
+      transform: { type: 'function', description: 'A function that receives the value AST and returns transformed AST.' },
+    },
+    variants: [{ argumentNames: ['ast', 'transform'] }],
+    description: 'Decorator helper for macros: extracts the value from a let-binding (or uses the node directly), passes it to `transform`, and rewraps the result in the let. Use inside a macro to support both `#myMacro expr` and `#myMacro let x = expr` with the same transform logic.',
+    examples: [
+      'let { decorate, num } = import("ast");\ndecorate(num(1), (value) -> ["Call", [["Builtin", "+", 0], [value, value]], 0])',
+    ],
+  },
+}
 
 export const astModule: DvalaModule = {
   name: 'ast',
   functions: astFunctions,
-  source: '{}',
+  source: astSource,
   docs: { ...moduleDocsFromFunctions(astFunctions), ...additionalDocs },
 }

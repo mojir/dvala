@@ -226,7 +226,7 @@ let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 ---
 
-## Prefix Syntax: `#name`
+## Prefix Syntax: #name
 
 The `#` prefix provides a concise way to call single-argument macros. Instead of `myMacro(expr)`, write `#myMacro expr`:
 
@@ -277,23 +277,22 @@ x
 
 In the first form, the macro receives `21`. In the second, it receives the entire `let x = 21` AST. A simple macro like `double` doesn't know how to handle a `let` node — it just doubles the whole expression, which isn't useful.
 
-To write a macro that handles both, use `decorate` from the `ast` module:
+To write a macro that handles both, use `decorate` from the `ast` module. It extracts the value from a `let` binding (or uses the node directly), passes it to a transform function, and rewraps the result:
 
 ```dvala
 let { assertEqual } = import("assertion");
-let { decorate, isLet, payload } = import("ast");
+let { decorate } = import("ast");
 
-let double = macro (ast) -> do
-  let value = if isLet(ast) then second(payload(ast)) else ast end;
-  decorate(ast, quote $^{value} + $^{value} end)
-end;
+let double = macro (ast) -> decorate(ast, (value) ->
+  quote $^{value} + $^{value} end
+);
 
 assertEqual(#double 21, 42);
 #double let x = 21;
 assertEqual(x, 42)
 ```
 
-`decorate(node, transformedValue)` checks if `node` is a `let` binding — if so, it replaces the value while keeping the binding target. Otherwise it returns `transformedValue` directly. This lets the same macro work in both positions.
+The transform function receives the value AST and returns new AST. `decorate` handles the `let` unwrapping and rewrapping automatically.
 
 ---
 
@@ -578,4 +577,4 @@ let bad = macro (ast) -> quote let x = $^{ast} end;
 | `@dvala.macro.expand` | Effect emitted by named macros |
 | `a \|> myMacro` | Pipe into macro (desugared at parse time) |
 | `#myMacro expr` | Prefix macro call (macro-only, chains: `#a #b x`) |
-| `decorate(node, value)` | Decorator helper — rewraps let bindings with transformed value |
+| `decorate(ast, transform)` | Decorator helper — extracts value, calls transform, rewraps let |
