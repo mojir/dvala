@@ -3,6 +3,7 @@ import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
+import type { FileResolver } from './evaluator/ContextStack'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evaluator/trampoline-evaluator'
 import { tokenize } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
@@ -27,6 +28,10 @@ export interface CreateDvalaOptions {
   debug?: boolean
   /** Disable time travel features (auto-checkpointing and terminal snapshots). Enabled by default. */
   disableAutoCheckpoint?: boolean
+  /** Resolve file imports (paths starting with ./, ../, /) at runtime. */
+  fileResolver?: FileResolver
+  /** Base directory for resolving file imports. Default: '.' */
+  fileResolverBaseDir?: string
 }
 
 /**
@@ -103,6 +108,8 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const factoryBindings = options?.bindings
   const factoryEffectHandlers = options?.effectHandlers
   const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
+  const factoryFileResolver = options?.fileResolver
+  const factoryFileResolverBaseDir = options?.fileResolverBaseDir
   const debug = options?.debug ?? false
   // Always use an internal AST cache to ensure deterministic node IDs
   // when the same source is run multiple times.
@@ -178,7 +185,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
       assertNotPureWithHandlers(pure, effectHandlers)
 
-      const contextStack = createContextStack({ bindings }, modules, pure)
+      const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
 
       if (isDvalaBundle(source)) {
         // New AST bundle format: single pre-parsed AST with all modules inlined.
@@ -218,7 +225,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       assertNotPureWithHandlers(pure, effectHandlers)
 
       try {
-        const contextStack = createContextStack({ bindings }, modules, pure)
+        const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
 
         // For AST bundles, use the pre-parsed AST directly.
         // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
