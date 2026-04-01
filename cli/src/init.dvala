@@ -1,0 +1,32 @@
+// dvala init — interactive project initialization script.
+//
+// Bindings provided by the TS host:
+//   configExists : boolean  — whether dvala.json already exists
+//   dirName      : string   — basename of cwd (default project name)
+//
+// Returns: { name, entryFile, tests }
+
+let askForTests = () -> perform(
+  @dvala.io.confirm,
+  { question: "Configure tests?", options: { default: true }}
+);
+
+// If dvala.json exists, ask before overwriting
+if configExists then
+  let overwrite = perform(
+    @dvala.io.confirm,
+    { question: "dvala.json already exists. Overwrite?", options: { default: false }}
+  );
+  if not(overwrite) then raise("Aborted.") end
+end;
+
+let name = perform(@dvala.io.read, `Project name (${dirName}): `) || "";
+
+let entryFile = perform(
+  @dvala.io.confirm,
+  { question: "Create entry file?", options: { default: true } }
+);
+
+let tests = if entryFile then askForTests() else false end;
+
+{ name, entryFile, tests }

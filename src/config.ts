@@ -82,29 +82,24 @@ const defaults: DvalaConfig = {
 }
 
 /**
- * Find and load dvala.json by walking up from the given directory.
+ * Load dvala.json from the given directory (or cwd).
+ * Does NOT walk up the folder tree — the config must be in the specified directory.
  * Returns null if no dvala.json is found.
  */
-export function findConfig(startDir?: string): ResolvedConfig | null {
-  const start = path.resolve(startDir ?? process.cwd())
-  let dir = start
+export function findConfig(dir?: string): ResolvedConfig | null {
+  const rootDir = path.resolve(dir ?? process.cwd())
+  const configPath = path.join(rootDir, CONFIG_FILENAME)
 
-  while (true) {
-    const configPath = path.join(dir, CONFIG_FILENAME)
-    if (fs.existsSync(configPath)) {
-      const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-      const config: DvalaConfig = {
-        ...defaults,
-        ...raw,
-        build: { ...buildDefaults, ...raw.build },
-        coverage: { ...coverageDefaults, ...raw.coverage },
-      }
-      return { config, configPath, rootDir: dir }
-    }
-    const parent = path.dirname(dir)
-    if (parent === dir) {
-      return null
-    }
-    dir = parent
+  if (!fs.existsSync(configPath)) {
+    return null
   }
+
+  const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+  const config: DvalaConfig = {
+    ...defaults,
+    ...raw,
+    build: { ...buildDefaults, ...raw.build },
+    coverage: { ...coverageDefaults, ...raw.coverage },
+  }
+  return { config, configPath, rootDir }
 }

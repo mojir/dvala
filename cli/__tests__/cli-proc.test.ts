@@ -22,7 +22,7 @@ describe('proc Integration Tests', () => {
 
   function runDvala(expression: string): string {
     try {
-      const result = execSync(`node '${dvalaCliPath}' eval '${expression}'`, {
+      const result = execSync(`node '${dvalaCliPath}' run '${expression}'`, {
         encoding: 'utf8',
         stdio: 'pipe',
         cwd: __dirname, // Ensure we run in the correct directory

@@ -2,7 +2,7 @@
  * E2E tests for all CLI commands.
  * Runs the built CLI binary via execSync.
  */
-import { execSync } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -40,37 +40,34 @@ describe('CLI commands', () => {
     }
   }
 
-  // --- eval ---
-  describe('eval', () => {
-    it('evaluates a simple expression', () => {
-      expect(exec('eval "1 + 2"')).toBe('3')
+  // --- run ---
+  describe('run', () => {
+    it('runs inline code', () => {
+      expect(exec('run "1 + 2"')).toBe('3')
     })
 
-    it('evaluates with context', () => {
-      expect(exec('eval "x + 1" -c \'{"x": 10}\'')).toBe('11')
+    it('runs inline code with context', () => {
+      expect(exec('run "x + 1" -c \'{"x": 10}\'')).toBe('11')
     })
 
-    it('evaluates with --pure', () => {
-      expect(exec('eval --pure "abs(-5)"')).toBe('5')
+    it('runs inline code with --pure', () => {
+      expect(exec('run --pure "abs(-5)"')).toBe('5')
     })
 
     it('suppresses output with --silent', () => {
-      expect(exec('eval -s "42"')).toBe('')
+      expect(exec('run -s "42"')).toBe('')
     })
-  })
 
-  // --- run ---
-  describe('run', () => {
-    it('runs a .dvala file', () => {
+    it('runs a .dvala file with -f', () => {
       // Use a simple file without file imports (run doesn't bundle imports)
-      const result = exec(`run ${exampleProjectDir}/lib/math.dvala`)
+      const result = exec(`run -f ${exampleProjectDir}/lib/math.dvala`)
       expect(result).toContain('clamp')
     })
 
-    it('runs a .json bundle', () => {
+    it('runs a .json bundle with -f', () => {
       const bundlePath = path.join(tmpDir, 'test-bundle.json')
       exec(`build ${exampleProjectDir} -o ${bundlePath}`)
-      const result = exec(`run ${bundlePath}`)
+      const result = exec(`run -f ${bundlePath}`)
       expect(result).toContain('avg')
     })
   })
@@ -109,8 +106,8 @@ describe('CLI commands', () => {
       // Without expansion: Macro nodes present
       expect(withoutContent).toContain('"Macro"')
       // Both should produce runnable bundles
-      const withResult = exec(`run ${withPath}`)
-      const withoutResult = exec(`run ${withoutPath}`)
+      const withResult = exec(`run -f ${withPath}`)
+      const withoutResult = exec(`run -f ${withoutPath}`)
       expect(withResult).toContain('doubled')
       expect(withoutResult).toContain('doubled')
     })
@@ -127,8 +124,8 @@ describe('CLI commands', () => {
       const unshakenSize = fs.statSync(unshakenPath).size
       expect(unshakenSize).toBeGreaterThan(shakenSize)
       // Both produce correct output
-      expect(exec(`run ${shakenPath}`)).toContain('result')
-      expect(exec(`run ${unshakenPath}`)).toContain('result')
+      expect(exec(`run -f ${shakenPath}`)).toContain('result')
+      expect(exec(`run -f ${unshakenPath}`)).toContain('result')
     })
 
     it('fails without dvala.json', () => {
@@ -142,7 +139,7 @@ describe('CLI commands', () => {
     it('runs tests from a project directory', () => {
       const result = exec(`test ${exampleProjectDir}`)
       expect(result).toContain('passed')
-      expect(result).toContain('3 test files')
+      expect(result).toContain('5 test files')
     })
 
     it('runs a single test file', () => {
@@ -191,6 +188,146 @@ describe('CLI commands', () => {
         if (fs.existsSync(coverageDir))
           fs.rmSync(coverageDir, { recursive: true })
       }
+    })
+  })
+
+  // --- init ---
+  describe('init', () => {
+    /**
+     * Spawn `dvala init` and feed answers line-by-line as prompts appear.
+     * Returns stdout once the process exits.
+     */
+    function runInit(answers: string[], cwd: string): Promise<{ code: number; stdout: string; stderr: string }> {
+      return new Promise(resolve => {
+        const child = spawn('node', [dvalaCliPath, 'init'], {
+          cwd,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+        })
+
+        let stdout = ''
+        let stderr = ''
+        let answerIdx = 0
+
+        child.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString()
+          // Feed next answer when a prompt appears
+          if (answerIdx < answers.length) {
+            child.stdin.write(`${answers[answerIdx]}\n`)
+            answerIdx++
+          }
+        })
+        child.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+        child.on('close', (code: number) => resolve({ code, stdout, stderr }))
+      })
+    }
+
+    it('creates dvala.json with entry file and no tests', async () => {
+      const dir = path.join(tmpDir, 'init-defaults')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(dir, { recursive: true })
+
+      // Name (default), create entry file (yes/default), configure tests (no/default)
+      const { code, stdout } = await runInit(['', 'y', 'n'], dir)
+
+      expect(code).toBe(0)
+      expect(stdout).toContain('Created dvala.json')
+      expect(stdout).toContain('Created main.dvala')
+
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.name).toBe('init-defaults')
+      expect(config.entry).toBe('main.dvala')
+      expect(config.tests).toBeUndefined()
+
+      expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(true)
+      expect(fs.existsSync(path.join(dir, 'tests', 'main.test.dvala'))).toBe(false)
+    })
+
+    it('uses custom project name when provided', async () => {
+      const dir = path.join(tmpDir, 'init-custom-name')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(dir, { recursive: true })
+
+      const { code } = await runInit(['my-project', 'y', 'n'], dir)
+
+      expect(code).toBe(0)
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.name).toBe('my-project')
+    })
+
+    it('creates dvala.json with no entry file', async () => {
+      const dir = path.join(tmpDir, 'init-no-entry')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(dir, { recursive: true })
+
+      // Name (default), create entry file (no) — tests question is skipped
+      const { code, stdout } = await runInit(['', 'n'], dir)
+
+      expect(code).toBe(0)
+      expect(stdout).toContain('Created dvala.json')
+
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.name).toBe('init-no-entry')
+      expect(config.entry).toBeUndefined()
+      expect(config.tests).toBeUndefined()
+
+      expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(false)
+    })
+
+    it('creates entry file and tests when both confirmed', async () => {
+      const dir = path.join(tmpDir, 'init-with-tests')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(dir, { recursive: true })
+
+      // Name (default), create entry file (yes), configure tests (yes)
+      const { code, stdout } = await runInit(['', 'y', 'y'], dir)
+
+      expect(code).toBe(0)
+      expect(stdout).toContain('Created main.dvala')
+      expect(stdout).toContain('Created tests/main.test.dvala')
+
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.name).toBe('init-with-tests')
+      expect(config.entry).toBe('main.dvala')
+      expect(config.tests).toBe('**/*.test.dvala')
+
+      expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(true)
+      expect(fs.existsSync(path.join(dir, 'tests', 'main.test.dvala'))).toBe(true)
+
+      // Starter test file should be valid Dvala
+      const testContent = fs.readFileSync(path.join(dir, 'tests', 'main.test.dvala'), 'utf-8')
+      expect(testContent).toContain('test(')
+    })
+
+    it('asks to overwrite when dvala.json exists and aborts on decline', async () => {
+      const dir = path.join(tmpDir, 'init-exists-decline')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'dvala.json'), '{"entry":"old.dvala"}')
+
+      const { code, stdout } = await runInit(['n'], dir)
+
+      expect(code).toBe(0)
+      expect(stdout).toContain('already exists')
+      expect(stdout).toContain('Aborted')
+      // Original file untouched
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.entry).toBe('old.dvala')
+    })
+
+    it('overwrites dvala.json when confirmed', async () => {
+      const dir = path.join(tmpDir, 'init-exists-accept')
+      fs.mkdirSync(dir, { recursive: true })
+      fs.writeFileSync(path.join(dir, 'dvala.json'), '{"entry":"old.dvala","tests":"old/**/*.test.dvala"}')
+
+      // Accept overwrite, name (default), create entry file (yes), configure tests (yes)
+      const { code, stdout } = await runInit(['y', '', 'y', 'y'], dir)
+
+      expect(code).toBe(0)
+      expect(stdout).toContain('Created dvala.json')
+      const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
+      expect(config.name).toBe('init-exists-accept')
+      expect(config.entry).toBe('main.dvala')
+      expect(config.tests).toBe('**/*.test.dvala')
     })
   })
 
@@ -272,7 +409,7 @@ describe('CLI commands', () => {
     it('shows help text', () => {
       const result = exec('help')
       expect(result).toContain('Usage')
-      expect(result).toContain('eval')
+      expect(result).toContain('run')
       expect(result).toContain('build')
       expect(result).toContain('test')
     })

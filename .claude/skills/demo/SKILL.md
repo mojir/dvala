@@ -11,7 +11,7 @@ If `$ARGUMENTS` is provided, use it as the Dvala code. Otherwise, look at the cu
 ## Steps
 
 1. Determine the Dvala code to demo
-2. Verify it runs correctly with `dvala eval '<code>'`
+2. Verify it runs correctly with `dvala run '<code>'`
 3. Generate the playground URL:
    ```bash
    node -e "const code = '<escaped-code>'; console.log('http://localhost:9901/?state=' + btoa(encodeURIComponent(JSON.stringify({'dvala-code': code}))))"
