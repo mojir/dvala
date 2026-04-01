@@ -1,6 +1,6 @@
 let { test, describe } = import("test");
 let { assertEqual, assertTrue } = import("assertion");
-let { pi, distance, midpoint, circleArea, scale } = import("../lib/geometry.dvala");
+let { pi, distance, midpoint, circleArea, scale } = import("../lib/geometry");
 
 describe("distance", -> do
   test("horizontal", -> assertEqual(distance(0, 0, 3, 0), 3));

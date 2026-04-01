@@ -1,6 +1,6 @@
 let { test, describe } = import("test");
 let { assertTrue } = import("assertion");
-let constants = import("../lib/constants.dvala");
+let constants = import("../lib/constants");
 
 describe("constants", -> do
   test("pi is approximately 3.14", -> do

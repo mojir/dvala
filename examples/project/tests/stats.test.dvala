@@ -1,6 +1,6 @@
 let { test, describe } = import("test");
 let { assertEqual } = import("assertion");
-let { sum, average, variance } = import("../lib/stats.dvala");
+let { sum, average, variance } = import("../lib/stats");
 
 describe("sum", -> do
   test("of list", -> assertEqual(sum([1, 2, 3, 4]), 10));

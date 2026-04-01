@@ -1,7 +1,7 @@
-let { clamp, lerp } = import("./lib/math.dvala");
-let { average } = import("./lib/stats.dvala");
-let { pi } = import("./lib/constants.dvala");
-let { double, withDefault } = import("./lib/macros.dvala");
+let { clamp, lerp } = import("./lib/math");
+let { average } = import("./lib/stats");
+let { pi } = import("./lib/constants");
+let { double, withDefault } = import("./lib/macros");
 
 let values = [3, 7, 2, 9, 4];
 let avg = average(values);

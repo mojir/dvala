@@ -1,6 +1,6 @@
 let { test, describe } = import("test");
 let { assertEqual, assertTrue, assertFalse } = import("assertion");
-let { clamp, lerp, inRange } = import("../lib/math.dvala");
+let { clamp, lerp, inRange } = import("../lib/math");
 
 describe("clamp", -> do
   test("within range", -> assertEqual(clamp(5, 0, 10), 5));
