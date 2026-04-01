@@ -7,4 +7,5 @@ let one = 1;
 
 test("add", -> assertEqual(add(one, 2), 3));
 
-skip("sub", -> assertEqual(sub(one, 2), -1));
+#skip
+test("sub", -> assertEqual(sub(one, 2), -1));

@@ -27,7 +27,7 @@ export interface TestCollector {
   tests: TestEntry[]
   /** Stack of describe group names for nested describe blocks */
   describeStack: string[]
-  /** Depth of skip2() nesting — tests registered while > 0 are automatically skipped */
+  /** Depth of #skip nesting — tests registered while > 0 are automatically skipped */
   skipDepth: number
 }
 
@@ -71,21 +71,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
       evaluate: () => null,
       arity: { min: 2, max: 2 },
     },
-    'skip': {
-      evaluate: ([name, body], sourceCodeInfo): null => {
-        assertString(name, sourceCodeInfo)
-        if (!isDvalaFunction(body)) {
-          throw new TypeError('Second argument to skip must be a function', sourceCodeInfo ?? undefined)
-        }
-        collector.tests.push({
-          fullName: fullName(name),
-          body,
-          skip: true,
-        })
-        return null
-      },
-      arity: { min: 2, max: 2 },
-    },
+    // skip is implemented as a macro in test.dvala — wraps expressions in pushSkip/popSkip effects
   }
 
   for (const [key, docs] of Object.entries(moduleDocs)) {

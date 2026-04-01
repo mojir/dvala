@@ -161,12 +161,19 @@ The runner discovers all `*.test.dvala` files, runs them in parallel, and prints
 
 ### Skipping Tests
 
-Use `skip` to mark a test as pending without removing it:
+Use `#skip` to mark a test or group as skipped. It is a macro — use the `#` prefix:
 
 ```dvala no-run
-let { test, skip } = import("test");
+let { test, describe, skip } = import("test");
 
-skip("not implemented yet", -> assertEqual(todo(), 42))
+#skip
+test("not implemented yet", -> assertEqual(1, 2));
+
+#skip
+describe("entire group", -> do
+  test("foo", -> assertEqual(1, 2));
+  test("bar", -> assertEqual(2, 3));
+end)
 ```
 
 Skipped tests appear in the summary but are not executed — they never fail the suite.
@@ -222,5 +229,5 @@ dvala test --coverage --coverage-dir reports/coverage
 - The `assertion` module provides `assertEqual`, `assertFails`, `assertFailsWith`, and more.
 - Effects decouple logic from I/O: substitute a test handler for the real one and test the return value in isolation.
 - A minimal test runner is just a handler that catches `@dvala.error`.
-- The built-in test framework (`dvala test`) provides `describe`, `test`, and `skip` with structured output and parallel execution.
+- The built-in test framework (`dvala test`) provides `describe`, `test`, and `#skip` (a macro) with structured output and parallel execution.
 - `dvala test --coverage` generates line and expression coverage reports in LCOV and/or HTML format.
