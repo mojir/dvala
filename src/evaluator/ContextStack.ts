@@ -27,9 +27,17 @@ export type ContextStack = ContextStackImpl
 
 /**
  * Resolves a file import path to source code.
- * Called by the evaluator when it encounters import("./path").
- * Receives the import path as written and the directory of the importing file.
- * Must return the file contents as a string.
+ *
+ * Called by the evaluator when it encounters `import("./path")`, `import("../path")`,
+ * or `import("/path")`. Bare module names like `import("math")` are handled separately
+ * as built-in modules and never reach the resolver.
+ *
+ * @param importPath - The import path as written in the source code (e.g. `"./lib/math"`)
+ * @param fromDir - The directory of the file containing the import expression.
+ *   For the top-level file this is `fileResolverBaseDir`; for nested imports it's
+ *   the resolved directory of the importing file.
+ * @returns The file's source code as a string
+ * @throws Should throw if the file cannot be found
  */
 export type FileResolver = (importPath: string, fromDir: string) => string
 

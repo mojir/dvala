@@ -20,17 +20,51 @@ import { isPersistentMap, isPersistentVector } from './utils/persistent'
 import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
+  /** Built-in modules to register (e.g. `allBuiltinModules`). */
   modules?: DvalaModule[]
+  /** Global bindings available to all `run()` / `runAsync()` calls. Must be JSON-serializable. */
   bindings?: Record<string, unknown>
+  /** Factory-level effect handlers, checked after per-call handlers. */
   effectHandlers?: Handlers
+  /** Maximum number of cached ASTs. Default: 100. */
   cache?: number
   /** Enable debug tokenization: captures source positions for better error messages. */
   debug?: boolean
   /** Disable time travel features (auto-checkpointing and terminal snapshots). Enabled by default. */
   disableAutoCheckpoint?: boolean
-  /** Resolve file imports (paths starting with ./, ../, /) at runtime. */
+  /**
+   * Callback to resolve file imports (`import("./path")`) at runtime.
+   * Receives `(importPath, fromDir)` where `importPath` is the string from the
+   * import expression and `fromDir` is the directory of the importing file.
+   * Must return the file's source code as a string.
+   *
+   * Without a resolver, file imports throw a TypeError.
+   * The `.dvala` extension is optional in import paths — the resolver should
+   * try the exact path first, then append `.dvala`.
+   *
+   * Results are cached automatically: the same import path is only resolved once.
+   * Circular imports are detected and reported as errors.
+   *
+   * @example
+   * ```typescript
+   * createDvala({
+   *   fileResolver: (importPath, fromDir) => {
+   *     const resolved = path.resolve(fromDir, importPath)
+   *     if (fs.existsSync(resolved)) return fs.readFileSync(resolved, 'utf-8')
+   *     const withExt = resolved + '.dvala'
+   *     if (fs.existsSync(withExt)) return fs.readFileSync(withExt, 'utf-8')
+   *     throw new Error(`File not found: ${importPath}`)
+   *   },
+   *   fileResolverBaseDir: './my-project',
+   * })
+   * ```
+   */
   fileResolver?: FileResolver
-  /** Base directory for resolving file imports. Default: '.' */
+  /**
+   * Base directory for the first file import resolution.
+   * Nested imports resolve relative to their own file's directory automatically.
+   * Default: `'.'`
+   */
   fileResolverBaseDir?: string
 }
 
