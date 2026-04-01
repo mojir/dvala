@@ -25,6 +25,14 @@ interface CreateContextStackParams {
 
 export type ContextStack = ContextStackImpl
 
+/**
+ * Resolves a file import path to source code.
+ * Called by the evaluator when it encounters import("./path").
+ * Receives the import path as written and the directory of the importing file.
+ * Must return the file contents as a string.
+ */
+export type FileResolver = (importPath: string, fromDir: string) => string
+
 export class ContextStackImpl {
   private _contexts: Context[]
   public globalContext: Context
@@ -33,6 +41,11 @@ export class ContextStackImpl {
   private valueModules: Map<string, unknown>
   public pure: boolean
   public sourceMap?: SourceMap
+  public fileResolver?: FileResolver
+  /** Directory of the currently evaluating file — used to resolve relative imports */
+  public currentFileDir: string
+  // Track files currently being evaluated to detect circular imports
+  private _resolvingFiles: Set<string>
   constructor({
     contexts,
     values: hostValues,
@@ -40,6 +53,9 @@ export class ContextStackImpl {
     valueModules,
     pure,
     sourceMap,
+    fileResolver,
+    currentFileDir,
+    resolvingFiles,
   }: {
     contexts: Context[]
     values?: Record<string, unknown>
@@ -47,6 +63,9 @@ export class ContextStackImpl {
     valueModules?: Map<string, unknown>
     pure?: boolean
     sourceMap?: SourceMap
+    fileResolver?: FileResolver
+    currentFileDir?: string
+    resolvingFiles?: Set<string>
   }) {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
@@ -55,6 +74,9 @@ export class ContextStackImpl {
     this.valueModules = valueModules ?? new Map<string, unknown>()
     this.pure = pure ?? false
     this.sourceMap = sourceMap
+    this.fileResolver = fileResolver
+    this.currentFileDir = currentFileDir ?? '.'
+    this._resolvingFiles = resolvingFiles ?? new Set()
   }
 
   public resolve(nodeId: number): SourceCodeInfo | undefined {
@@ -145,6 +167,18 @@ export class ContextStackImpl {
     this.valueModules.set(name, value)
   }
 
+  public isResolvingFile(path: string): boolean {
+    return this._resolvingFiles.has(path)
+  }
+
+  public markFileResolving(path: string): void {
+    this._resolvingFiles.add(path)
+  }
+
+  public unmarkFileResolving(path: string): void {
+    this._resolvingFiles.delete(path)
+  }
+
   public create(context: Context): ContextStack {
     const globalContext = this.globalContext
     const contextStack = new ContextStackImpl({
@@ -154,6 +188,9 @@ export class ContextStackImpl {
       valueModules: this.valueModules,
       pure: this.pure,
       sourceMap: this.sourceMap,
+      fileResolver: this.fileResolver,
+      currentFileDir: this.currentFileDir,
+      resolvingFiles: this._resolvingFiles,
     })
     contextStack.globalContext = globalContext
     return contextStack
@@ -287,7 +324,7 @@ function assertNotShadowingKeyword(name: string): void {
   }
 }
 
-export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap): ContextStack {
+export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap, fileResolver?: FileResolver, currentFileDir?: string): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
@@ -313,6 +350,8 @@ export function createContextStack(params: CreateContextStackParams = {}, module
     modules,
     pure,
     sourceMap,
+    fileResolver,
+    currentFileDir,
   })
   return params.globalModuleScope ? contextStack : contextStack.create({})
 }

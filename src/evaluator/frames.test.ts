@@ -87,6 +87,7 @@ describe('frame types', () => {
       MatchSlot: true,
       NanCheck: true,
       ImportMerge: true,
+      FileResolve: true,
       AlgebraicHandle: true,
       HandlerTransform: true,
       HandlerClause: true,
@@ -95,7 +96,7 @@ describe('frame types', () => {
       MacroEval: true,
       CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(43)
+    expect(Object.keys(frameTypes)).toHaveLength(44)
   })
 
   it('should support ContinuationStack as null (empty persistent list)', () => {
@@ -144,6 +145,7 @@ describe('frame types', () => {
         case 'MatchSlot': return 'destructure'
         case 'NanCheck': return 'post'
         case 'ImportMerge': return 'import'
+        case 'FileResolve': return 'import'
         case 'AlgebraicHandle': return 'effect'
         case 'HandlerTransform': return 'effect'
         case 'HandlerClause': return 'effect'

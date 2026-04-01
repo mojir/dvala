@@ -35,6 +35,7 @@ export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from
 // Factory API
 export { createDvala } from './createDvala'
 export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRunner } from './createDvala'
+export type { FileResolver } from './evaluator/ContextStack'
 
 // Standalone tooling
 export { tokenizeSource, parseTokenStream, transformSymbols, untokenize, getUndefinedSymbols, getAutoCompleter } from './tooling'

@@ -114,6 +114,7 @@ import type {
   ResumeCallFrame,
   WithHandlerSetupFrame,
   IfBranchFrame,
+  FileResolveFrame,
   ImportMergeFrame,
   JuxtFrame,
   LetBindCompleteFrame,
@@ -659,10 +660,39 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
     case NodeTypes.Import: {
       const moduleName = node[1] as string
       const sourceCodeInfo = env.resolve(node[2])
-      // Check for value modules first (file modules from bundles)
+      // Check for value modules first (file modules from bundles, or cached file imports)
       const valueModule = env.getValueModule(moduleName)
       if (valueModule.found) {
         return { type: 'Value', value: valueModule.value as Any, k }
+      }
+      // File import — resolve at runtime via fileResolver
+      const isFileImport = moduleName.startsWith('./') || moduleName.startsWith('../') || moduleName.startsWith('/')
+      if (isFileImport) {
+        if (!env.fileResolver) {
+          throw new TypeError(`File imports require a file resolver. Cannot import '${moduleName}'`, sourceCodeInfo)
+        }
+        if (env.isResolvingFile(moduleName)) {
+          throw new TypeError(`Circular import detected: '${moduleName}'`, sourceCodeInfo)
+        }
+        env.markFileResolving(moduleName)
+        const source = env.fileResolver(moduleName, env.currentFileDir)
+        const fileNodes = parse(minifyTokenStream(tokenize(source, false, undefined), { removeWhiteSpace: true }))
+        // Create a new env with the imported file's directory as context
+        const fileEnv = env.create({})
+        // Compute the imported file's directory for nested imports
+        const importedFileDir = moduleName.substring(0, moduleName.lastIndexOf('/')) || '.'
+        const previousFileDir = env.currentFileDir
+        // Set currentFileDir so nested imports resolve relative to the imported file
+        fileEnv.currentFileDir = importedFileDir.startsWith('/')
+          ? importedFileDir
+          : `${env.currentFileDir}/${importedFileDir}`.replace(/\/\.\//g, '/').replace(/\/+/g, '/')
+        // After evaluation, cache the result, restore dir, and unmark
+        const resolveFrame: FileResolveFrame = { type: 'FileResolve', moduleName, previousFileDir, env }
+        if (fileNodes.length === 1) {
+          return { type: 'Eval', node: fileNodes[0]!, env: fileEnv, k: cons(resolveFrame, k) }
+        }
+        const sequenceFrame: SequenceFrame = { type: 'Sequence', nodes: fileNodes, index: 1, env: fileEnv }
+        return { type: 'Eval', node: fileNodes[0]!, env: fileEnv, k: cons(sequenceFrame, cons(resolveFrame, k)) }
       }
       // Fall back to builtin modules
       const dvalaModule = env.getModule(moduleName)
@@ -1405,6 +1435,13 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       }
       frame.env.registerValueModule(frame.moduleName, merged)
       return { type: 'Value', value: merged, k }
+    }
+    case 'FileResolve': {
+      // File evaluation complete — cache the result, restore dir, and unmark
+      frame.env.unmarkFileResolving(frame.moduleName)
+      frame.env.registerValueModule(frame.moduleName, value)
+      frame.env.currentFileDir = frame.previousFileDir
+      return { type: 'Value', value, k }
     }
     case 'CodeTemplateBuild':
       return applyCodeTemplateBuild(frame, value, k)

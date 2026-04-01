@@ -874,6 +874,13 @@ export interface ImportMergeFrame {
   sourceCodeInfo?: SourceCodeInfo
 }
 
+export interface FileResolveFrame {
+  type: 'FileResolve'
+  moduleName: string
+  previousFileDir: string
+  env: ContextStack
+}
+
 export type Frame =
   // Program flow
   | SequenceFrame
@@ -930,6 +937,7 @@ export type Frame =
   | NanCheckFrame
   // Module import
   | ImportMergeFrame
+  | FileResolveFrame
   // Macro expansion
   | MacroEvalFrame
   // Code template

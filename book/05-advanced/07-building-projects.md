@@ -98,7 +98,16 @@ let math = import("./lib/math.dvala");
 math.add(2, 3)
 ```
 
-Any path starting with `./`, `../`, or `/` is treated as a file import. Bare names like `import("math")` refer to built-in modules and are resolved at runtime, not by the bundler.
+Any path starting with `./`, `../`, or `/` is treated as a file import. Bare names like `import("math")` refer to built-in modules.
+
+File imports are resolved at runtime — `dvala run`, `dvala repl`, and even inline code can import files directly:
+
+```sh
+$ dvala run 'let m = import("./lib/math.dvala"); m.add(2, 3)'
+5
+```
+
+Imports are cached: if two files both import the same dependency, it's only evaluated once. Circular imports are detected and reported as errors. Nested imports work naturally — if `lib/math.dvala` imports `./helpers.dvala`, the path resolves relative to `lib/`.
 
 A typical project might look like this:
 
@@ -127,8 +136,6 @@ let math = import("./lib/math.dvala");
 
 math.add(10, math.mul(3, 4))
 ```
-
-Circular dependencies are detected and reported as errors at build time. Diamond imports — where two files both import a third — are handled correctly: the shared dependency is included only once.
 
 ## The Build Command
 
@@ -210,6 +217,31 @@ if (bundle) {
 
 `deserializeBundle` validates the structure and reconstructs internal types (source maps use `Map`, which JSON does not support natively). It returns `null` if the file is not a valid bundle.
 
+## File Imports from TypeScript
+
+If your Dvala code uses file imports and you're running it from a TypeScript host (not the CLI), pass a `fileResolver` to `createDvala`:
+
+```typescript
+import { createDvala } from '@mojir/dvala'
+import fs from 'node:fs'
+import path from 'node:path'
+
+const projectDir = './my-project'
+const dvala = createDvala({
+  fileResolver: (importPath, fromDir) => {
+    const resolved = path.resolve(fromDir, importPath)
+    return fs.readFileSync(resolved, 'utf-8')
+  },
+  fileResolverBaseDir: projectDir,
+})
+
+dvala.run(fs.readFileSync('./my-project/main.dvala', 'utf-8'))
+```
+
+The resolver receives the import path as written (e.g. `"./lib/math.dvala"`) and the directory of the importing file. Nested imports resolve relative to their own file, not the project root.
+
+This is also how you'd support file imports in non-Node environments — in a browser, the resolver could fetch from a virtual filesystem or server.
+
 ## Build Options
 
 CLI flags override the corresponding `dvala.json` settings:
@@ -226,8 +258,9 @@ Stripping source maps is useful for production deployments where file size matte
 
 - Create a project with `dvala init` — it generates `dvala.json` and starter files.
 - A project is a directory with `dvala.json` specifying the entry file, tests, REPL, and build options.
-- File imports use relative paths (`./`, `../`, `/`); built-in module names are untouched by the bundler.
-- `dvala build` resolves all file imports, deduplicates shared dependencies, and produces a self-contained JSON bundle.
+- File imports use relative paths (`./`, `../`, `/`) and are resolved at runtime — they work in `dvala run`, the REPL, and inline code.
+- Imports are cached (diamond-safe) and circular imports are detected.
+- `dvala build` bundles all file imports into a single JSON file for production deployment.
 - `dvala run -f dist/app.json` runs a bundle directly, skipping the parse step for faster startup.
 - The REPL integrates with projects via the `repl` field — use `:reload` to refresh bindings after edits.
 - Bundles can be loaded from TypeScript via `deserializeBundle()` and passed to `dvala.run()`.

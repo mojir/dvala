@@ -157,8 +157,19 @@ const config = processArguments(process.argv.slice(2))
 
 const cliModules = getCliModules()
 
+// Create a file resolver that resolves paths relative to the importing file's directory
+function createFileResolver(): (importPath: string, fromDir: string) => string {
+  return (importPath: string, fromDir: string) => {
+    const resolved = path.resolve(fromDir, importPath)
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`File not found: ${importPath} (resolved to ${resolved})`)
+    }
+    return fs.readFileSync(resolved, 'utf-8')
+  }
+}
+
 function makeDvala(bindings: Record<string, unknown>, pure: boolean) {
-  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], bindings })
+  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], bindings, fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
   return {
     run: (program: string | DvalaBundle) => runner.run(program, { pure }),
   }
