@@ -222,13 +222,13 @@ describe('CLI commands', () => {
       })
     }
 
-    it('creates dvala.json with entry file and no tests', async () => {
+    it('creates dvala.json with entry file, no tests, no repl', async () => {
       const dir = path.join(tmpDir, 'init-defaults')
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      // Name (default), create entry file (yes/default), configure tests (no/default)
-      const { code, stdout } = await runInit(['', 'y', 'n'], dir)
+      // Name (default), create entry file (yes), configure tests (no), configure repl (no)
+      const { code, stdout } = await runInit(['', 'y', 'n', 'n'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created dvala.json')
@@ -238,9 +238,15 @@ describe('CLI commands', () => {
       expect(config.name).toBe('init-defaults')
       expect(config.entry).toBe('main.dvala')
       expect(config.tests).toBeUndefined()
+      expect(config.repl).toBeUndefined()
 
       expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(true)
       expect(fs.existsSync(path.join(dir, 'tests', 'main.test.dvala'))).toBe(false)
+
+      // Entry file should contain the template content
+      const mainContent = fs.readFileSync(path.join(dir, 'main.dvala'), 'utf-8')
+      expect(mainContent).toContain('greet')
+      expect(mainContent).toContain('add')
     })
 
     it('uses custom project name when provided', async () => {
@@ -248,7 +254,7 @@ describe('CLI commands', () => {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      const { code } = await runInit(['my-project', 'y', 'n'], dir)
+      const { code } = await runInit(['my-project', 'y', 'n', 'n'], dir)
 
       expect(code).toBe(0)
       const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
@@ -260,7 +266,7 @@ describe('CLI commands', () => {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      // Name (default), create entry file (no) — tests question is skipped
+      // Name (default), create entry file (no) — tests and repl questions are skipped
       const { code, stdout } = await runInit(['', 'n'], dir)
 
       expect(code).toBe(0)
@@ -270,33 +276,37 @@ describe('CLI commands', () => {
       expect(config.name).toBe('init-no-entry')
       expect(config.entry).toBeUndefined()
       expect(config.tests).toBeUndefined()
+      expect(config.repl).toBeUndefined()
 
       expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(false)
     })
 
-    it('creates entry file and tests when both confirmed', async () => {
-      const dir = path.join(tmpDir, 'init-with-tests')
+    it('creates entry file, tests, and repl when all confirmed', async () => {
+      const dir = path.join(tmpDir, 'init-full')
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      // Name (default), create entry file (yes), configure tests (yes)
-      const { code, stdout } = await runInit(['', 'y', 'y'], dir)
+      // Name (default), create entry file (yes), configure tests (yes), configure repl (yes)
+      const { code, stdout } = await runInit(['', 'y', 'y', 'y'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created main.dvala')
       expect(stdout).toContain('Created tests/main.test.dvala')
 
       const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
-      expect(config.name).toBe('init-with-tests')
+      expect(config.name).toBe('init-full')
       expect(config.entry).toBe('main.dvala')
       expect(config.tests).toBe('**/*.test.dvala')
+      expect(config.repl).toBe('main.dvala')
 
       expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(true)
       expect(fs.existsSync(path.join(dir, 'tests', 'main.test.dvala'))).toBe(true)
 
-      // Starter test file should be valid Dvala
+      // Test file should import from main and test its functions
       const testContent = fs.readFileSync(path.join(dir, 'tests', 'main.test.dvala'), 'utf-8')
-      expect(testContent).toContain('test(')
+      expect(testContent).toContain('import("../main")')
+      expect(testContent).toContain('greet')
+      expect(testContent).toContain('add')
     })
 
     it('asks to overwrite when dvala.json exists and aborts on decline', async () => {
@@ -319,8 +329,8 @@ describe('CLI commands', () => {
       fs.mkdirSync(dir, { recursive: true })
       fs.writeFileSync(path.join(dir, 'dvala.json'), '{"entry":"old.dvala","tests":"old/**/*.test.dvala"}')
 
-      // Accept overwrite, name (default), create entry file (yes), configure tests (yes)
-      const { code, stdout } = await runInit(['y', '', 'y', 'y'], dir)
+      // Accept overwrite, name (default), create entry file (yes), tests (yes), repl (yes)
+      const { code, stdout } = await runInit(['y', '', 'y', 'y', 'y'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created dvala.json')
@@ -328,6 +338,7 @@ describe('CLI commands', () => {
       expect(config.name).toBe('init-exists-accept')
       expect(config.entry).toBe('main.dvala')
       expect(config.tests).toBe('**/*.test.dvala')
+      expect(config.repl).toBe('main.dvala')
     })
   })
 

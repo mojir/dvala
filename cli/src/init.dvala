@@ -4,11 +4,16 @@
 //   configExists : boolean  — whether dvala.json already exists
 //   dirName      : string   — basename of cwd (default project name)
 //
-// Returns: { name, entryFile, tests }
+// Returns: { name, entryFile, tests, repl }
 
 let askForTests = () -> perform(
   @dvala.io.confirm,
   { question: "Configure tests?", options: { default: true }}
+);
+
+let askForRepl = () -> perform(
+  @dvala.io.confirm,
+  { question: "Configure REPL?", options: { default: true }}
 );
 
 // If dvala.json exists, ask before overwriting
@@ -29,4 +34,6 @@ let entryFile = perform(
 
 let tests = if entryFile then askForTests() else false end;
 
-{ name, entryFile, tests }
+let repl = if entryFile then askForRepl() else false end;
+
+{ name, entryFile, tests, repl }

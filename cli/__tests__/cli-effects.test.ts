@@ -59,7 +59,7 @@ function replEval(code: string, answers: string[] = []): Promise<string> {
 
       // When the result marker appears, quit
       if (sentCode && stdout.includes(':END>>')) {
-        child.stdin.write('`quit\n')
+        child.stdin.write(':quit\n')
       }
     })
 

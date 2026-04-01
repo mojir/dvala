@@ -41,10 +41,14 @@ export interface CoverageConfig {
 }
 
 export interface DvalaConfig {
+  /** Project name */
+  name: string
   /** Glob pattern for test file discovery, relative to project root. Default: "**\/*.test.dvala" */
   tests: string
   /** Entry file for bundling. Default: "main.dvala" */
   entry: string
+  /** File to pre-load in the REPL. Omit for a clean REPL. */
+  repl: string
   /** Build pipeline options */
   build: BuildConfig
   /** Coverage reporting options */
@@ -75,8 +79,10 @@ const coverageDefaults: CoverageConfig = {
 }
 
 const defaults: DvalaConfig = {
+  name: '',
   tests: '**/*.test.dvala',
   entry: 'main.dvala',
+  repl: '',
   build: buildDefaults,
   coverage: coverageDefaults,
 }
