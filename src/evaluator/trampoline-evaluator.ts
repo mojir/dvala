@@ -37,6 +37,7 @@ import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
 import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
+import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
 import { parse } from '../parser'
@@ -1681,6 +1682,12 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
 
 function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): Step {
   const { target, env, sourceCodeInfo } = frame
+
+  // Name inference: when binding a simple symbol to an unnamed function,
+  // stamp the binding name onto the function (like JS's `let foo = () => {}` → foo.name === "foo")
+  if (target[0] === 'symbol' && isUserDefinedFunction(value) && value.name === undefined) {
+    value.name = target[1][0][1]
+  }
 
   // Push completion frame to receive the binding record
   const completeFrame: LetBindCompleteFrame = {
@@ -4589,6 +4596,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
           return effectStep
         }
 
+        patchedError.attachCallStack(reconstructCallStack(step.k))
         throw patchedError
       }
     }
@@ -4632,7 +4640,8 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         const arg: Any = buildErrorPayload(patchedError)
         return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: patchedError.sourceCodeInfo }
       }
-      // No handler matched — re-throw with patched location.
+      // No handler matched — attach call stack and re-throw.
+      patchedError.attachCallStack(reconstructCallStack(kForDispatch))
       throw patchedError
     }
     // Non-DvalaError — re-throw as-is.
