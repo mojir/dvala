@@ -157,14 +157,19 @@ const config = processArguments(process.argv.slice(2))
 
 const cliModules = getCliModules()
 
-// Create a file resolver that resolves paths relative to the importing file's directory
+// Create a file resolver that resolves paths relative to the importing file's directory.
+// Tries the exact path first, then appends .dvala if not found.
 function createFileResolver(): (importPath: string, fromDir: string) => string {
   return (importPath: string, fromDir: string) => {
     const resolved = path.resolve(fromDir, importPath)
-    if (!fs.existsSync(resolved)) {
-      throw new Error(`File not found: ${importPath} (resolved to ${resolved})`)
+    if (fs.existsSync(resolved)) {
+      return fs.readFileSync(resolved, 'utf-8')
     }
-    return fs.readFileSync(resolved, 'utf-8')
+    const withExtension = `${resolved}.dvala`
+    if (fs.existsSync(withExtension)) {
+      return fs.readFileSync(withExtension, 'utf-8')
+    }
+    throw new Error(`File not found: ${importPath} (tried ${resolved} and ${withExtension})`)
   }
 }
 

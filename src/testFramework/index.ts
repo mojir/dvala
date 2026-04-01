@@ -3,16 +3,22 @@ import { globSync } from 'glob'
 import path from 'node:path'
 import { createDvala } from '../createDvala'
 import { allBuiltinModules } from '../allModules'
-import { bundle } from '../bundler'
 import { createTestCollector, createTestModule } from '../builtin/modules/test'
 import type { TestEntry } from '../builtin/modules/test'
 import type { AstNode } from '../parser/types'
 import type { Handlers } from '../evaluator/effectTypes'
+import type { FileResolver } from '../evaluator/ContextStack'
 import type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
 import { formatTap } from './formatTap'
 
-/** Regex to detect file imports: import("./..."), import("../..."), or import("/...") */
-const fileImportPattern = /import\(\s*["']\.{0,2}\/[^"']+["']\s*\)/
+// File resolver for the test framework — resolves paths with .dvala extension fallback
+const testFileResolver: FileResolver = (importPath: string, fromDir: string) => {
+  const resolved = path.resolve(fromDir, importPath)
+  if (fs.existsSync(resolved)) return fs.readFileSync(resolved, 'utf-8')
+  const withExt = `${resolved}.dvala`
+  if (fs.existsSync(withExt)) return fs.readFileSync(withExt, 'utf-8')
+  throw new Error(`File not found: ${importPath} (tried ${resolved} and ${withExt})`)
+}
 
 interface RunTestParams {
   testPath: string
@@ -66,8 +72,14 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
       },
     ]
 
-    // Create a Dvala runner with the test module included alongside all builtins
-    const dvala = createDvala({ debug: true, modules: [...allBuiltinModules, testModule] })
+    // Create a Dvala runner with the test module and runtime file resolution
+    const testFileDir = path.dirname(path.resolve(filePath))
+    const dvala = createDvala({
+      debug: true,
+      modules: [...allBuiltinModules, testModule],
+      fileResolver: testFileResolver,
+      fileResolverBaseDir: testFileDir,
+    })
 
     // When coverage is requested, accumulate a hit map across file load + all test bodies
     const coverageMap = coverage ? new Map<number, number>() : undefined
@@ -75,16 +87,12 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
       ? (node: AstNode) => { const id = node[2]; coverageMap.set(id, (coverageMap.get(id) ?? 0) + 1) }
       : undefined
 
-    // If the test file uses file imports, bundle it first so that
-    // import("./path.dvala") calls are resolved and available at runtime
-    const hasFileImports = fileImportPattern.test(source)
-    const runSource = hasFileImports ? bundle(filePath) : source
-
     // Evaluate the test file — this populates the collector with test registrations
-    const fileResult = await dvala.runAsync(runSource, hasFileImports
-      ? { effectHandlers: testEffectHandlers, onNodeEval }
-      : { filePath, effectHandlers: testEffectHandlers, onNodeEval },
-    )
+    const fileResult = await dvala.runAsync(source, {
+      filePath,
+      effectHandlers: testEffectHandlers,
+      onNodeEval,
+    })
 
     if (fileResult.type !== 'completed') {
       const error = fileResult.type === 'error' ? fileResult.error : new Error(`Unexpected result type: ${fileResult.type}`)
