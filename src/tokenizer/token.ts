@@ -24,6 +24,7 @@ export const tokenTypes = [
   'TemplateString',
   'QuoteSplice',
   'MacroQualified',
+  'MacroPrefix',
   'Whitespace',
 ] as const
 
@@ -59,6 +60,8 @@ export type TemplateStringToken = GenericToken<'TemplateString'>
 export type QuoteSpliceToken = GenericToken<'QuoteSplice'>
 /** Token for `macro@qualified.name` — value is the qualified name (without macro@ prefix). */
 export type MacroQualifiedToken = GenericToken<'MacroQualified'>
+/** Token for `#name` prefix macro call syntax — value is the macro name (without #). */
+export type MacroPrefixToken = GenericToken<'MacroPrefix'>
 export type WhitespaceToken = GenericToken<'Whitespace'>
 
 export type Token =
@@ -83,6 +86,7 @@ export type Token =
   | TemplateStringToken
   | QuoteSpliceToken
   | MacroQualifiedToken
+  | MacroPrefixToken
   | WhitespaceToken
 
 export type TokenDescriptor<T extends Token> = [length: number, token?: T]
@@ -350,6 +354,10 @@ export function asTemplateStringToken(token: Token | undefined): TemplateStringT
 
 export function isMacroQualifiedToken(token: Token | undefined): token is MacroQualifiedToken {
   return token?.[0] === 'MacroQualified'
+}
+
+export function isMacroPrefixToken(token: Token | undefined): token is MacroPrefixToken {
+  return token?.[0] === 'MacroPrefix'
 }
 
 /** Convert lightweight token debug info to SourceCodeInfo for error reporting. */

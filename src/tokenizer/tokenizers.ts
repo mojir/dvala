@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -79,6 +79,19 @@ const tokenizeRegexpShorthand: Tokenizer<RegexpShorthandToken> = (input, positio
   }
 
   return [length, ['RegexpShorthand', `#${token[1]}${options}`]]
+}
+
+// Tokenize `#name` prefix macro call syntax. Value is the name without `#`.
+// Must run after tokenizeRegexpShorthand (#"...") and tokenizeShebang (#!) to avoid conflicts.
+const tokenizeMacroPrefix: Tokenizer<MacroPrefixToken> = (input, position) => {
+  if (input[position] !== '#') return NO_MATCH
+  const nextChar = input[position + 1]
+  if (!nextChar || !jsIdentifierFirstCharRegExp.test(nextChar)) return NO_MATCH
+
+  let i = position + 2
+  while (i < input.length && jsIdentifierCharRegExp.test(input[i]!)) i++
+  const name = input.slice(position + 1, i)
+  return [i - position, ['MacroPrefix', name]]
 }
 
 function tokenizeToken<T extends Token>(
@@ -550,6 +563,7 @@ export const tokenizers = [
   tokenizeQuoteSplice,
   tokenizeTemplateString,
   tokenizeRegexpShorthand,
+  tokenizeMacroPrefix,
   tokenizeBasePrefixedNumber,
   tokenizeNumber,
   tokenizeOperator,

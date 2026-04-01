@@ -111,8 +111,8 @@ function processNodes(nodes: AstNode[], macros: Map<string, unknown>, dvala: Ret
 function expandNodeRecursive(node: AstNode, macros: Map<string, unknown>, dvala: ReturnType<typeof createDvala>, positions: SourceMap['positions'] | undefined): AstNode {
   const [type, payload, nodeId] = node
 
-  // Check if this is a Call to a known macro
-  if (type === NodeTypes.Call) {
+  // Check if this is a Call or MacroCall (#name expr) to a known macro
+  if (type === NodeTypes.Call || type === NodeTypes.MacroCall) {
     const [fnNode, args] = payload as [AstNode, AstNode[]]
     if (fnNode[0] === NodeTypes.Sym) {
       const name = fnNode[1] as string

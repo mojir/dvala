@@ -41,6 +41,8 @@ export const NodeTypes = {
   // InlinedData wraps already-resolved data inside CodeTmpl bodies.
   // Prevents double conversion when astToData processes nested templates.
   InlinedData: 'InlinedData',
+  // #name expr — prefix macro call, desugars to name(expr) but restricted to macros only
+  MacroCall: 'MacroCall',
 } as const
 
 const NodeTypesSet = new Set<string>(Object.values(NodeTypes))

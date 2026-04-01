@@ -226,6 +226,77 @@ let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 
 ---
 
+## Prefix Syntax: `#name`
+
+The `#` prefix provides a concise way to call single-argument macros. Instead of `myMacro(expr)`, write `#myMacro expr`:
+
+```dvala
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+#double 21
+```
+
+This is equivalent to `double(21)` — the `#` is purely syntactic sugar. All three forms below produce the same result:
+
+```dvala
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+[double(21), #double 21, 21 |> double]
+```
+
+The `#` prefix consumes one operand, so it chains naturally — each `#` wraps the next:
+
+```dvala
+let double = macro (ast) -> quote $^{ast} + $^{ast} end;
+let inc = macro (ast) -> quote $^{ast} + 1 end;
+#double #inc 10
+```
+
+Here `#double #inc 10` parses as `double(inc(10))` — `inc(10)` expands to `11`, then `double(11)` expands to `11 + 11`.
+
+Unlike regular call syntax, the `#` prefix enforces that the name must resolve to a macro. Calling a non-macro with `#` is a runtime error:
+
+```dvala throws
+let f = x -> x * 2;
+#f 21
+```
+
+### Decorating Bindings
+
+The `#` prefix consumes a full expression, including `let` bindings. This means both forms below are valid:
+
+```dvala
+let double = macro (x) -> quote $^{x} + $^{x} end;
+let x = #double 21;
+x
+```
+
+```dvala no-run
+let double = macro (x) -> quote $^{x} + $^{x} end;
+#double let x = 21;
+x
+```
+
+In the first form, the macro receives `21`. In the second, it receives the entire `let x = 21` AST. A simple macro like `double` doesn't know how to handle a `let` node — it just doubles the whole expression, which isn't useful.
+
+To write a macro that handles both, use `decorate` from the `ast` module:
+
+```dvala
+let { assertEqual } = import("assertion");
+let { decorate, isLet, payload } = import("ast");
+
+let double = macro (ast) -> do
+  let value = if isLet(ast) then second(payload(ast)) else ast end;
+  decorate(ast, quote $^{value} + $^{value} end)
+end;
+
+assertEqual(#double 21, 42);
+#double let x = 21;
+assertEqual(x, 42)
+```
+
+`decorate(node, transformedValue)` checks if `node` is a `let` binding — if so, it replaces the value while keeping the binding target. Otherwise it returns `transformedValue` directly. This lets the same macro work in both positions.
+
+---
+
 ## Hygiene
 
 Macros generate code that runs in the caller's scope. Without care, a macro's internal variable names could collide with the caller's variables.
@@ -506,3 +577,5 @@ let bad = macro (ast) -> quote let x = $^{ast} end;
 | Hygiene | Quote block bindings auto-gensymed |
 | `@dvala.macro.expand` | Effect emitted by named macros |
 | `a \|> myMacro` | Pipe into macro (desugared at parse time) |
+| `#myMacro expr` | Prefix macro call (macro-only, chains: `#a #b x`) |
+| `decorate(node, value)` | Decorator helper — rewraps let bindings with transformed value |

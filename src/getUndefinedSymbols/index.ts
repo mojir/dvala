@@ -67,6 +67,20 @@ function findUnresolvedSymbolsInNode(node: AstNode, contextStack: ContextStack, 
       }
       return unresolvedSymbols
     }
+    // #name expr — check both the macro name and the argument
+    case NodeTypes.MacroCall: {
+      const [symNode, args] = node[1] as [AstNode, AstNode[]]
+      const unresolvedSymbols = new Set<string>()
+      if (symNode[0] === NodeTypes.Sym) {
+        const lookUpResult = contextStack.lookUp(symNode as UserDefinedSymbolNode)
+        if (lookUpResult === null)
+          unresolvedSymbols.add(symNode[1] as string)
+      }
+      for (const arg of args) {
+        findUnresolvedSymbolsInNode(arg, contextStack, builtin)?.forEach(s => unresolvedSymbols.add(s))
+      }
+      return unresolvedSymbols
+    }
     // SpecialExpression nodes are never produced by the parser — all special
     // expressions are converted to native NodeTypes (And, Or, Qq, etc.) at parse time.
     case NodeTypes.SpecialExpression:

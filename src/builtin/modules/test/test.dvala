@@ -3,5 +3,10 @@
     perform(@test.pushDescribe, name);
     body();
     perform(@test.popDescribe, null)
-  end
+  end,
+  skip2: macro (expr) -> quote do
+    perform(@test.pushSkip, null);
+    $^{expr};
+    perform(@test.popSkip, null)
+  end end
 }

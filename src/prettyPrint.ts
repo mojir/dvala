@@ -47,6 +47,7 @@ const NodeTypes = {
   WithHandler: 'WithHandler',
   CodeTmpl: 'CodeTmpl',
   Splice: 'Splice',
+  MacroCall: 'MacroCall',
 } as const
 
 type AstNode = [string, unknown, number]
@@ -102,6 +103,10 @@ function printNode(node: AstNode, ind: number): string {
       return `@${payload}`
     case NodeTypes.Call:
       return printCall(payload as [unknown[], unknown[]], ind)
+    case NodeTypes.MacroCall: {
+      const [fnNode, args] = payload as [AstNode, AstNode[]]
+      return `#${printNode(fnNode, ind)} ${args.map(a => printNode(a, ind)).join(', ')}`
+    }
     case NodeTypes.If:
       return printIf(payload as unknown[][], ind)
     case NodeTypes.Block:
