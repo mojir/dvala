@@ -34,6 +34,14 @@ export interface BundleOptions {
   sourceMap?: boolean
 }
 
+// Resolve a file path, trying exact path first then appending .dvala
+function resolveWithExtension(filePath: string): string {
+  if (fs.existsSync(filePath)) return filePath
+  const withExt = `${filePath}.dvala`
+  if (fs.existsSync(withExt)) return withExt
+  throw new Error(`File not found: ${filePath}`)
+}
+
 /**
  * Bundles a Dvala entry file and all its file imports into a DvalaBundle.
  *
@@ -42,7 +50,7 @@ export interface BundleOptions {
  * and produces a single AST with file modules inlined as let bindings.
  */
 export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle {
-  const absoluteEntryPath = path.resolve(entryPath)
+  const absoluteEntryPath = resolveWithExtension(path.resolve(entryPath))
   const entryDir = path.dirname(absoluteEntryPath)
   const includeSourceMap = options?.sourceMap ?? true
 
@@ -113,42 +121,41 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
   // --- Helper functions (closures over the maps above) ---
 
   function resolveFile(absoluteFilePath: string, stack: string[]): void {
+    // Resolve with .dvala fallback
+    const resolved = resolveWithExtension(absoluteFilePath)
+
     // Circular dependency detection
-    if (stack.includes(absoluteFilePath)) {
-      const cycle = [...stack.slice(stack.indexOf(absoluteFilePath)), absoluteFilePath]
+    if (stack.includes(resolved)) {
+      const cycle = [...stack.slice(stack.indexOf(resolved)), resolved]
       throw new Error(`Circular dependency detected: ${cycle.join(' → ')}`)
     }
 
     // Already resolved (deduplication)
-    if (fileSources.has(absoluteFilePath)) {
+    if (fileSources.has(resolved)) {
       return
     }
 
-    if (!fs.existsSync(absoluteFilePath)) {
-      throw new Error(`File not found: ${absoluteFilePath}`)
-    }
-
-    const source = fs.readFileSync(absoluteFilePath, 'utf-8')
-    fileSources.set(absoluteFilePath, source)
+    const source = fs.readFileSync(resolved, 'utf-8')
+    fileSources.set(resolved, source)
 
     // Parse to AST
-    const tokenStream = tokenize(source, includeSourceMap, absoluteFilePath)
+    const tokenStream = tokenize(source, includeSourceMap, resolved)
     const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
     const parsedAst = parseToAst(minified, allocateNodeId)
-    fileAsts.set(absoluteFilePath, parsedAst)
+    fileAsts.set(resolved, parsedAst)
 
     const deps = new Set<string>()
-    dependencies.set(absoluteFilePath, deps)
+    dependencies.set(resolved, deps)
 
-    const dir = path.dirname(absoluteFilePath)
+    const dir = path.dirname(resolved)
 
     // Find file imports from the source text (regex is simpler than walking AST for discovery)
     for (const match of source.matchAll(fileImportPattern)) {
       const importPath = (match[1] ?? match[2])!
-      const resolvedPath = path.resolve(dir, importPath)
+      const resolvedDep = resolveWithExtension(path.resolve(dir, importPath))
 
-      deps.add(resolvedPath)
-      resolveFile(resolvedPath, [...stack, absoluteFilePath])
+      deps.add(resolvedDep)
+      resolveFile(resolvedDep, [...stack, resolved])
     }
   }
 
@@ -242,7 +249,7 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
       // Import nodes from parsed source contain the original path string (e.g. "./lib/math.dvala")
       if (moduleName.startsWith('./') || moduleName.startsWith('../') || moduleName.startsWith('/')) {
         const dir = path.dirname(sourceFilePath)
-        const resolvedPath = path.resolve(dir, moduleName)
+        const resolvedPath = resolveWithExtension(path.resolve(dir, moduleName))
         const varName = bindingNames.get(resolvedPath)
         if (varName) {
           return [NodeTypes.Sym, varName, nodeId]
