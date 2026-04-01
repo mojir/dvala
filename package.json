@@ -266,7 +266,7 @@
       "clean": "if-file-deleted"
     },
     "build-cli": {
-      "command": "rolldown -c rolldown.config.cli.mjs",
+      "command": "rolldown -c rolldown.config.cli.mjs && chmod +x dist/cli/cli.js",
       "files": [
         "cli/src/**",
         "src/**",
@@ -281,7 +281,7 @@
       "clean": "if-file-deleted"
     },
     "build-mcp": {
-      "command": "rolldown -c rolldown.config.mcp-server.mjs",
+      "command": "rolldown -c rolldown.config.mcp-server.mjs && chmod +x dist/mcp-server/server.js",
       "files": [
         "mcp-server/src/**",
         "src/**",
