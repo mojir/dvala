@@ -1,4 +1,4 @@
-# Dvala Code Coverage & Debugger
+# Dvala Code Coverage
 
 **Status:** Draft
 **Created:** 2026-03-31
@@ -11,9 +11,8 @@ Three-part initiative built on a shared foundation:
 
 - **Part 1 — Preparation**: wire source positions and the `onNodeEval` hook into the evaluator, fix snapshot timing
 - **Part 2 — Code Coverage**: collect hit node IDs, produce coverage reports
-- **Part 3 — Debugger**: breakpoints, variable inspection, time travel
 
-Parts 2 and 3 are independent once Part 1 is done.
+Debugger design has been split into a separate document: `2026-04-02_debugger.md`.
 
 ---
 
@@ -64,34 +63,6 @@ New behavior:
 **Output format**: LCOV for line-level (unlocks VS Code gutter + CI). Node-level format can be added later for precise expression highlighting.
 
 **API**: `dvala test --coverage`
-
----
-
-## Part 3 — Debugger
-
-Built on the same `onNodeEval` hook.
-
-| Capability | Mechanism |
-|---|---|
-| Continue | `resume()` from `getContinuation()` |
-| Inspect variables | `env` from `getContinuation()` |
-| Call stack display | `k` from `getContinuation()` |
-| Step over / into / out | host tracks depth across `onNodeEval` calls |
-| Time travel (step back) | `getSnapshots()` → retrigger → pure re-execution to target node |
-| Alter effect result / crash recovery | rewind to snapshot after effect N-1, re-handle effect N differently |
-
-**Breakpoint protocol**: host maintains a `Set<nodeId>` of breakpoints. On each `onNodeEval` call, host checks if `node[2]` is in the set. If yes, calls `getContinuation()` and holds `resume()` until "continue" is clicked.
-
-**Time travel algorithm**:
-```
-rewind(targetNodeId):
-  snapshot = latest snapshot with position ≤ target
-  retrigger(snapshot)
-    → pure re-execution, deterministic
-    → onNodeEval stops when targetNodeId is reached
-```
-
-No effect history needed — pure re-execution is always correct.
 
 ---
 
