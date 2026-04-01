@@ -839,7 +839,7 @@ async function runInit(): Promise<void> {
     }
   }
 
-  console.log(`\nDone! Run ${fmt.bright.white('dvala repl')} to get started.`)
+  console.log(`\nDone! Run ${fmt.bright.white('dvala')} to get started.`)
 }
 
 function getErrorMessage(error: unknown) {
