@@ -57,27 +57,23 @@ export const moduleDocs: Record<string, FunctionDocs> = {
   },
   'skip': {
     category: 'test',
-    description: 'Registers a skipped test case. The test will be reported but not executed.',
+    description: 'A macro that marks its argument as skipped. Works with both `test` and `describe` — any tests registered inside the expression are reported but not executed. Use with the `#` prefix: `#skip test(...)` or `#skip describe(...)`.',
     returns: {
       type: 'null',
     },
     args: {
-      name: {
-        type: 'string',
-        description: 'The name of the skipped test case.',
-      },
-      body: {
-        type: 'function',
-        description: 'A zero-argument function containing the test assertions (will not be run).',
+      expr: {
+        type: 'any',
+        description: 'A test or describe expression to skip (received as unevaluated AST).',
       },
     },
     variants: [
       {
-        argumentNames: ['name', 'body'],
+        argumentNames: ['expr'],
       },
     ],
     examples: [
-      'let { skip } = import("test");\nskip("not ready yet", -> assertEqual(todo(), 42))',
+      'let { test, skip } = import("test");\n#skip test("not ready yet", -> assertEqual(1, 2))',
     ],
     seeAlso: ['test.test', 'test.describe'],
     hideOperatorForm: true,
