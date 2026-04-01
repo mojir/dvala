@@ -130,8 +130,11 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   for (const result of results) {
     if (!result.coverageMap || !result.sourceMap) continue
 
-    // Count all nodes in the sourceMap as "found" expressions (hit count defaults to 0)
+    // Count non-structural-leaf nodes in the sourceMap as "found" expressions (hit count defaults to 0).
+    // Structural leaves (Sym, Builtin, Special, Reserved, Effect) are skipped by the evaluator's
+    // onNodeEval hook, so including them would artificially deflate expression coverage percentages.
     for (const [nodeId, pos] of result.sourceMap.positions) {
+      if (pos.structuralLeaf) continue
       const sourceMeta = result.sourceMap.sources[pos.source]
       if (!sourceMeta?.path || sourceMeta.path === '<anonymous>') continue
 
@@ -214,6 +217,8 @@ function parseFileStats(filePath: string): { byLine: Map<number, number>; byExpr
     for (const [nodeId, pos] of ast.sourceMap.positions) {
       // Only count nodes belonging to this file (source index 0 — the only source)
       if (pos.source !== 0) continue
+      // Structural leaves are never tracked by onNodeEval — exclude from expr counts
+      if (pos.structuralLeaf) continue
       byExpr.set(nodeId, 0)
       const line = pos.start[0]
       if (!byLine.has(line)) byLine.set(line, 0)

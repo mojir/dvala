@@ -236,6 +236,8 @@ export interface SourceMapPosition {
   source: number // index into sources[]
   start: [number, number] // [line, column], 0-based
   end: [number, number] // [line, column], 0-based
+  /** True for Sym/Builtin/Special/Reserved/Effect — never tracked by the evaluator's onNodeEval hook */
+  structuralLeaf?: boolean
 }
 
 export interface SourceMap {
