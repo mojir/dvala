@@ -56,7 +56,7 @@ describe('the cli-fs Integration Tests', () => {
 
   function runDvala(expression: string): string {
     try {
-      const result = execSync(`node '${dvalaCliPath}' eval '${expression}'`, {
+      const result = execSync(`node '${dvalaCliPath}' run '${expression}'`, {
         cwd: testDir,
         encoding: 'utf8',
         stdio: 'pipe',

@@ -7,7 +7,7 @@ argument-hint: "<dvala-code>"
 Run the provided Dvala code and show the result.
 
 ```bash
-dvala eval '$ARGUMENTS'
+dvala run '$ARGUMENTS'
 ```
 
 If the code fails, show the error and suggest a fix.

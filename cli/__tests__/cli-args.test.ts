@@ -36,104 +36,100 @@ describe('cLI argument parsing', () => {
   }
 
   // =============================================================
-  // eval: options AFTER positional (existing behavior, should pass)
+  // run: options AFTER positional (existing behavior)
   // =============================================================
-  describe('eval - options after positional (existing)', () => {
-    test('should evaluate a simple expression', () => {
-      expect(exec('eval \'1 + 2\'')).toBe('3')
+  describe('run - options after positional', () => {
+    test('should run a simple expression', () => {
+      expect(exec('run \'1 + 2\'')).toBe('3')
     })
 
     test('should accept --pure after expression', () => {
-      expect(exec('eval \'1 + 2\' --pure')).toBe('3')
+      expect(exec('run \'1 + 2\' --pure')).toBe('3')
     })
 
     test('--pure accepts all core builtins (none are impure)', () => {
-      expect(exec('eval \'map([1, 2], inc)\' --pure')).toBe('[ 2, 3 ]')
+      expect(exec('run \'map([1, 2], inc)\' --pure')).toBe('[ 2, 3 ]')
     })
 
     test('should accept --silent after expression', () => {
-      expect(exec('eval \'1 + 2\' --silent')).toBe('')
+      expect(exec('run \'1 + 2\' --silent')).toBe('')
     })
 
     test('should accept -s after expression', () => {
-      expect(exec('eval \'1 + 2\' -s')).toBe('')
+      expect(exec('run \'1 + 2\' -s')).toBe('')
     })
 
     test('should accept -c after expression', () => {
-      expect(exec('eval \'x + 1\' -c \'{"x": 10}\'')).toBe('11')
+      expect(exec('run \'x + 1\' -c \'{"x": 10}\'')).toBe('11')
     })
 
     test('should accept --context=JSON after expression', () => {
-      expect(exec('eval \'x + 1\' --context=\'{"x": 10}\'')).toBe('11')
+      expect(exec('run \'x + 1\' --context=\'{"x": 10}\'')).toBe('11')
     })
   })
 
   // =============================================================
-  // eval: options BEFORE positional (new behavior, expected to fail)
+  // run: options BEFORE positional
   // =============================================================
-  describe('eval - options before positional (new)', () => {
+  describe('run - options before positional', () => {
     test('should accept --pure before expression', () => {
-      expect(exec('eval --pure \'1 + 2\'')).toBe('3')
+      expect(exec('run --pure \'1 + 2\'')).toBe('3')
     })
 
     test('--pure before expression accepts all core builtins', () => {
-      expect(exec('eval --pure \'map([1, 2], inc)\'')).toBe('[ 2, 3 ]')
+      expect(exec('run --pure \'map([1, 2], inc)\'')).toBe('[ 2, 3 ]')
     })
 
     test('should accept --silent before expression', () => {
-      expect(exec('eval --silent \'1 + 2\'')).toBe('')
+      expect(exec('run --silent \'1 + 2\'')).toBe('')
     })
 
     test('should accept -s before expression', () => {
-      expect(exec('eval -s \'1 + 2\'')).toBe('')
+      expect(exec('run -s \'1 + 2\'')).toBe('')
     })
 
     test('should accept -c before expression', () => {
-      expect(exec('eval -c \'{"x": 10}\' \'x + 1\'')).toBe('11')
+      expect(exec('run -c \'{"x": 10}\' \'x + 1\'')).toBe('11')
     })
 
     test('should accept --context=JSON before expression', () => {
-      expect(exec('eval --context=\'{"x": 10}\' \'x + 1\'')).toBe('11')
+      expect(exec('run --context=\'{"x": 10}\' \'x + 1\'')).toBe('11')
     })
 
     test('should accept mixed options before and after expression', () => {
-      expect(exec('eval --pure \'1 + 2\' --silent')).toBe('')
+      expect(exec('run --pure \'1 + 2\' --silent')).toBe('')
     })
   })
 
   // =============================================================
-  // --context with space-separated value (bug fix, expected to fail)
+  // --context with space-separated value
   // =============================================================
   describe('--context with space-separated value', () => {
-    test('should accept --context JSON (space-separated) with eval', () => {
-      expect(exec('eval \'x + 1\' --context \'{"x": 10}\'')).toBe('11')
+    test('should accept --context JSON (space-separated)', () => {
+      expect(exec('run \'x + 1\' --context \'{"x": 10}\'')).toBe('11')
     })
 
-    test('should accept --context-file FILE (space-separated) with eval', () => {
+    test('should accept --context-file FILE (space-separated)', () => {
       const ctxFile = path.join(fixturesDir, 'ctx.json')
       fs.writeFileSync(ctxFile, '{"x": 10}')
-      expect(exec(`eval 'x + 1' --context-file '${ctxFile}'`)).toBe('11')
+      expect(exec(`run 'x + 1' --context-file '${ctxFile}'`)).toBe('11')
     })
   })
 
   // =============================================================
-  // run: options before and after positional
+  // run with -f flag for files
   // =============================================================
-  describe('run - option ordering', () => {
-    test('should accept options after filename (existing)', () => {
-      expect(exec('run simple.dvala --pure')).toBe('6')
+  describe('run - file with -f flag', () => {
+    test('should accept -f with options after', () => {
+      expect(exec('run -f simple.dvala --pure')).toBe('6')
     })
 
-    test('should accept options before filename (new)', () => {
-      expect(exec('run --pure simple.dvala')).toBe('6')
+    test('should accept options before -f', () => {
+      expect(exec('run --pure -f simple.dvala')).toBe('6')
     })
 
-    test('should accept --pure before filename', () => {
-      expect(exec('run --pure simple.dvala')).toBe('6')
-    })
-
-    test('should accept --silent before and --pure after expression', () => {
-      expect(exec('eval --silent \'1 + 2\' --pure')).toBe('')
+    test('should accept --silent before and --pure after -f', () => {
+      expect(exec('run --silent -f simple.dvala --pure')).toBe('')
     })
   })
 })

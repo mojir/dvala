@@ -20,7 +20,7 @@ export const binaryFunctionalOperatorPrecedence = 3
  */
 // Node types the evaluator never fires onNodeEval for — excluding them gives accurate expr coverage.
 // Includes AST structural leaves (Sym, Builtin, etc.) and binding target types (symbol, literal, etc.).
-const structuralLeafTypes: Set<string> = new Set([
+const structuralLeafTypes = new Set<string>([
   NodeTypes.Sym, NodeTypes.Builtin, NodeTypes.Special, NodeTypes.Reserved, NodeTypes.Effect, NodeTypes.Binding,
   'symbol', 'rest', 'object', 'array', 'literal', 'wildcard',
 ])

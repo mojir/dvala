@@ -9,17 +9,17 @@ description: Load BEFORE writing, debugging, or reasoning about Dvala language c
 
 Use `dvala` CLI subcommands to look up documentation, run code, and inspect internals:
 
-- `dvala eval '<code>'` — execute Dvala code and print the result
+- `dvala run '<code>'` — execute Dvala code and print the result (also accepts `-f <file>`)
 - `dvala doc <name>` — show documentation for a function, expression, effect, shorthand, or datatype
 - `dvala list` — list core functions and special expressions
 - `dvala list <module>` — list functions in a module
 - `dvala list --modules` — list all available modules
 - `dvala list --datatypes` — list all datatypes
-- `dvala tokenize '<code>' [--debug]` — tokenize source to JSON
-- `dvala parse '<code>' [--debug]` — parse source to AST JSON
+- `dvala tokenize '<code>' [--debug]` — tokenize source to JSON (also accepts `-f <file>`)
+- `dvala parse '<code>' [--debug]` — parse source to AST JSON (also accepts `-f <file>`)
 - `dvala examples` — show example programs
 
-Before suggesting Dvala code to the user, verify it works by running it with `dvala eval`.
+Before suggesting Dvala code to the user, verify it works by running it with `dvala run`.
 
 ## Expressions & Blocks
 

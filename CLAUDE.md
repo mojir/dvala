@@ -110,13 +110,13 @@ Use the project skills and agents proactively — don't do manually what a skill
 For Dvala language syntax, semantics, macros, and AST format, use the `/dvala` skill (loaded on demand).
 
 Use `dvala` CLI subcommands to look up documentation and run code:
-- `dvala eval '<code>'` — execute Dvala code
+- `dvala run '<code>'` — execute Dvala code (also accepts `-f <file>` or no args for project entry)
 - `dvala doc <name>` — documentation for a function/expression
 - `dvala list [module] [--modules] [--datatypes]` — list functions
-- `dvala tokenize '<code>' [--debug]` / `dvala parse '<code>' [--debug]` — inspect internals
+- `dvala tokenize '<code>' [--debug]` / `dvala parse '<code>' [--debug]` — inspect internals (also accept `-f <file>`)
 - `dvala examples` — example programs
 
-Before suggesting Dvala code to the user, verify it works by running it with `dvala eval`.
+Before suggesting Dvala code to the user, verify it works by running it with `dvala run`.
 
 ## Playground Architecture
 
