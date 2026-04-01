@@ -94,20 +94,20 @@ Other REPL commands: `:help`, `:context`, `:builtins`, `:quit`.
 Within a project, files import each other using relative paths:
 
 ```dvala no-run
-let math = import("./lib/math.dvala");
+let math = import("./lib/math");
 math.add(2, 3)
 ```
 
-Any path starting with `./`, `../`, or `/` is treated as a file import. Bare names like `import("math")` refer to built-in modules.
+Any path starting with `./`, `../`, or `/` is treated as a file import. Bare names like `import("math")` refer to built-in modules. The `.dvala` extension is optional — `import("./lib/math")` and `import("./lib/math.dvala")` are equivalent.
 
-File imports are resolved at runtime — `dvala run`, `dvala repl`, and even inline code can import files directly:
+File imports are resolved at runtime — `dvala run`, `dvala repl`, `dvala test`, and even inline code can import files directly:
 
 ```sh
-$ dvala run 'let m = import("./lib/math.dvala"); m.add(2, 3)'
+$ dvala run 'let m = import("./lib/math"); m.add(2, 3)'
 5
 ```
 
-Imports are cached: if two files both import the same dependency, it's only evaluated once. Circular imports are detected and reported as errors. Nested imports work naturally — if `lib/math.dvala` imports `./helpers.dvala`, the path resolves relative to `lib/`.
+Imports are cached: if two files both import the same dependency, it's only evaluated once. Circular imports are detected and reported as errors. Nested imports work naturally — if `lib/math.dvala` imports `./helpers`, the path resolves relative to `lib/`.
 
 A typical project might look like this:
 
@@ -132,7 +132,7 @@ let mul = (a, b) -> a * b;
 And `main.dvala` imports it:
 
 ```dvala no-run
-let math = import("./lib/math.dvala");
+let math = import("./lib/math");
 
 math.add(10, math.mul(3, 4))
 ```
@@ -230,7 +230,10 @@ const projectDir = './my-project'
 const dvala = createDvala({
   fileResolver: (importPath, fromDir) => {
     const resolved = path.resolve(fromDir, importPath)
-    return fs.readFileSync(resolved, 'utf-8')
+    if (fs.existsSync(resolved)) return fs.readFileSync(resolved, 'utf-8')
+    const withExt = resolved + '.dvala'
+    if (fs.existsSync(withExt)) return fs.readFileSync(withExt, 'utf-8')
+    throw new Error(`File not found: ${importPath}`)
   },
   fileResolverBaseDir: projectDir,
 })
@@ -238,7 +241,7 @@ const dvala = createDvala({
 dvala.run(fs.readFileSync('./my-project/main.dvala', 'utf-8'))
 ```
 
-The resolver receives the import path as written (e.g. `"./lib/math.dvala"`) and the directory of the importing file. Nested imports resolve relative to their own file, not the project root.
+The resolver receives the import path as written (e.g. `"./lib/math"`) and the directory of the importing file. The `.dvala` extension is optional — try the exact path first, then append `.dvala`. Nested imports resolve relative to their own file, not the project root.
 
 This is also how you'd support file imports in non-Node environments — in a browser, the resolver could fetch from a virtual filesystem or server.
 

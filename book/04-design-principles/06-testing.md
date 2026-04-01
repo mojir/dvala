@@ -134,7 +134,7 @@ Dvala ships a structured test runner built on top of the same effect and asserti
 ```dvala no-run
 let { test, describe } = import("test");
 let { assertEqual, assertTrue } = import("assertion");
-let { clamp } = import("./math.dvala");
+let { clamp } = import("./math");
 
 describe("clamp", -> do
   test("within range", -> assertEqual(clamp(5, 0, 10), 5));

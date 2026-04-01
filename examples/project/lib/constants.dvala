@@ -1,4 +1,4 @@
-let { double } = import("./macros.dvala");
+let { double } = import("./macros");
 
 {
   pi: double(3.14159265358979 / 2),
