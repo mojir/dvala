@@ -37,6 +37,8 @@ import { getInlineCodeFormatter } from './cliFormatterRules'
 import { Colors, createColorizer } from './colorizer'
 import { createReadlineInterface } from './createReadlineInterface'
 import initScript from './init.dvala'
+import mainTemplate from './templates/main.dvala'
+import mainTestTemplate from './templates/main.test.dvala'
 import { getCliModules } from './js-interop/Cli'
 import '../../src/initReferenceData'
 
@@ -63,6 +65,7 @@ interface PrintOptions {
 interface ReplConfig {
   subcommand: 'repl'
   loadFilename: Maybe<string>
+  projectName: Maybe<string>
   context: Record<string, unknown>
 }
 
@@ -144,10 +147,10 @@ const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
 const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake', '--coverage'])
 
-const commands = ['`help', '`quit', '`builtins', '`context']
+const commands = [':help', ':quit', ':builtins', ':context', ':reload']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
 const nameRegExp = new RegExp(`^(.*?)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
-const helpRegExp = new RegExp(`^\`help\\s+(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}+)\\s*$`)
+const helpRegExp = new RegExp(`^:help\\s+(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}+)\\s*$`)
 const expressions = [...normalExpressionKeys, ...specialExpressionKeys]
 
 const config = processArguments(process.argv.slice(2))
@@ -158,6 +161,18 @@ function makeDvala(bindings: Record<string, unknown>, pure: boolean) {
   const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], bindings })
   return {
     run: (program: string | DvalaBundle) => runner.run(program, { pure }),
+  }
+}
+
+// Evaluate a file and merge its result (if object) into the context bindings
+function loadFileIntoContext(filename: string, context: Record<string, unknown>) {
+  const dvala = makeDvala(context, false)
+  const content = fs.readFileSync(filename, { encoding: 'utf-8' })
+  const result = dvala.run(content)
+  if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
+    for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
+      context[key] = value
+    }
   }
 }
 
@@ -230,16 +245,9 @@ switch (config.subcommand) {
   }
   case 'repl': {
     if (config.loadFilename) {
-      const dvala = makeDvala(config.context, false)
-      const content = fs.readFileSync(config.loadFilename, { encoding: 'utf-8' })
-      const result = dvala.run(content)
-      if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
-        for (const [key, value] of Object.entries(result as Record<string, unknown>)) {
-          config.context[key] = value
-        }
-      }
+      loadFileIntoContext(config.loadFilename, config.context)
     }
-    runREPL(config.context)
+    runREPL(config.context, config.projectName, config.loadFilename)
     break
   }
   case 'doc': {
@@ -351,6 +359,31 @@ function resolveEntryCode(subcommand: string): string {
     process.exit(1)
   }
   return fs.readFileSync(entryPath, 'utf-8')
+}
+
+/**
+ * When no -l flag is given, check dvala.json for a `repl` field to auto-load.
+ * Also picks up the project name for the prompt.
+ */
+function resolveReplConfig(loadFilename: Maybe<string>, context: Record<string, unknown>): ReplConfig {
+  if (loadFilename) {
+    return { subcommand: 'repl', loadFilename, projectName: null, context }
+  }
+  const resolved = findConfig()
+  if (!resolved || !resolved.config.repl) {
+    return { subcommand: 'repl', loadFilename: null, projectName: resolved?.config.name || null, context }
+  }
+  const replPath = path.join(resolved.rootDir, resolved.config.repl)
+  if (!fs.existsSync(replPath)) {
+    printErrorMessage(`REPL file not found: ${replPath} (configured in dvala.json "repl" field)`)
+    process.exit(1)
+  }
+  return {
+    subcommand: 'repl',
+    loadFilename: replPath,
+    projectName: resolved.config.name || null,
+    context,
+  }
 }
 
 function readFileContent(filePath: string): string {
@@ -748,7 +781,7 @@ async function runInit(): Promise<void> {
   if (runResult.type !== 'completed')
     throw new Error('Init script did not complete')
 
-  const result = runResult.value as { name: string; entryFile: boolean; tests: boolean }
+  const result = runResult.value as { name: string; entryFile: boolean; tests: boolean; repl: boolean }
   const projectName = result.name || dirName
 
   // Build dvala.json config
@@ -762,31 +795,30 @@ async function runInit(): Promise<void> {
   if (result.tests) {
     projectConfig.tests = testsGlob
   }
+  if (result.repl) {
+    projectConfig.repl = entryFileName
+  }
 
   // Write dvala.json
   fs.writeFileSync(configPath, `${JSON.stringify(projectConfig, null, 2)}\n`)
   console.log(`\nCreated ${fmt.bright.white('dvala.json')}`)
 
-  // Create entry file if requested
+  // Write entry file from template if requested
   if (result.entryFile) {
     const entryPath = path.join(process.cwd(), entryFileName)
     if (!fs.existsSync(entryPath)) {
-      fs.writeFileSync(entryPath, `"Hello from ${projectName}!"\n`)
+      fs.writeFileSync(entryPath, mainTemplate)
       console.log(`Created ${fmt.bright.white(entryFileName)}`)
     }
   }
 
-  // Create a tests directory with a sample test file if requested
+  // Write test file from template if requested
   if (result.tests) {
     const testsDir = path.join(process.cwd(), 'tests')
     const sampleTestPath = path.join(testsDir, 'main.test.dvala')
     if (!fs.existsSync(sampleTestPath)) {
       fs.mkdirSync(testsDir, { recursive: true })
-      fs.writeFileSync(sampleTestPath, `let { test } = import("test");
-let { assertEqual } = import("assertion");
-
-test("it works", -> assertEqual(1 + 1, 2))
-`)
+      fs.writeFileSync(sampleTestPath, mainTestTemplate)
       console.log(`Created ${fmt.bright.white('tests/main.test.dvala')}`)
     }
   }
@@ -967,7 +999,7 @@ function parseRunOptions(args: string[], startIndex: number): { context: Record<
 function processArguments(args: string[]): Config {
   // Global flags (no subcommand)
   if (args.length === 0) {
-    return { subcommand: 'repl', loadFilename: null, context: {} }
+    return resolveReplConfig(null, {})
   }
 
   const first = args[0]!
@@ -1160,7 +1192,7 @@ function processArguments(args: string[]): Config {
             process.exit(1)
         }
       }
-      return { subcommand: 'repl', loadFilename, context }
+      return resolveReplConfig(loadFilename, context)
     }
     case 'doc': {
       const name = args[1]
@@ -1261,16 +1293,29 @@ function processArguments(args: string[]): Config {
   }
 }
 
-function runREPL(initialBindings: Record<string, unknown>) {
-  console.log(`Welcome to Dvala v${version}.
-Type ${fmt.italic('`help')} for more information.`)
+function runREPL(initialBindings: Record<string, unknown>, projectName: Maybe<string>, loadFilename: Maybe<string>) {
+  const prompt = projectName
+    ? fmt.bright.gray(`${projectName}> `)
+    : PROMPT
+
+  if (projectName) {
+    console.log(`Welcome to Dvala v${version} — ${fmt.bright.white(projectName)}`)
+  } else {
+    console.log(`Welcome to Dvala v${version}.`)
+  }
+  console.log(`Type ${fmt.italic(':help')} for more information.`)
 
   let bindings = initialBindings
+
+  if (Object.keys(bindings).length > 0) {
+    console.log()
+    printContext(bindings)
+  }
 
   const rl = createReadlineInterface({
     completer,
     historySize: HIST_SIZE,
-    prompt: PROMPT,
+    prompt,
   })
 
   async function readLine(message: string): Promise<string> {
@@ -1287,22 +1332,35 @@ Type ${fmt.italic('`help')} for more information.`)
     if (helpMatch) {
       const name = helpMatch[1]!
       console.log(getCliDocumentation(fmt, name))
-    } else if (line.startsWith('`')) {
+    } else if (line.startsWith(':')) {
       switch (line) {
-        case '`builtins':
+        case ':builtins':
           printBuiltins()
           break
-        case '`help':
+        case ':help':
           printHelp()
           break
-        case '`context':
+        case ':context':
           printContext(bindings)
           break
-        case '`quit':
+        case ':reload':
+          if (loadFilename) {
+            try {
+              bindings = {}
+              loadFileIntoContext(loadFilename, bindings)
+              console.log(`Reloaded ${fmt.bright.white(path.basename(loadFilename))}`)
+            } catch (error) {
+              printErrorMessage(`${error}`)
+            }
+          } else {
+            printErrorMessage('No file to reload (REPL was started without a load file)')
+          }
+          break
+        case ':quit':
           rl.close()
           break
         default:
-          printErrorMessage(`Unrecognized command ${Colors.Italic}${line}${Colors.ResetItalic}, try ${Colors.Italic}\`help${Colors.ResetItalic}`)
+          printErrorMessage(`Unrecognized command ${Colors.Italic}${line}${Colors.ResetItalic}, try ${Colors.Italic}:help${Colors.ResetItalic}`)
       }
     } else if (line) {
       bindings = await execute(line, bindings, readLine)
@@ -1333,11 +1391,12 @@ function getDocString(reference: Reference) {
 
 function printHelp() {
   console.log(`
-\`builtins                 Print all builtin functions
-\`context                  Print context
-\`help                     Print this help message
-\`help [builtin function]  Print help for [builtin function]
-\`quit                     Quit
+:builtins                 Print all builtin functions
+:context                  Print context
+:reload                   Reload the project REPL file
+:help                     Print this help message
+:help [builtin function]  Print help for [builtin function]
+:quit                     Quit
 `.trim())
 }
 
@@ -1409,11 +1468,11 @@ function printContext(bindings: Record<string, unknown>) {
 }
 
 function completer(line: string) {
-  const helpMatch = line.match(/`help\s+(.*)/)
+  const helpMatch = line.match(/:help\s+(.*)/)
   if (helpMatch)
-    return [expressions.filter(c => c.startsWith(helpMatch[1]!)).map(c => `\`help ${c} `), line]
+    return [expressions.filter(c => c.startsWith(helpMatch[1]!)).map(c => `:help ${c} `), line]
 
-  if (line.startsWith('`'))
+  if (line.startsWith(':'))
     return [commands.filter(c => c.startsWith(line)).map(c => `${c} `), line]
 
   const expressionMatch = expressionRegExp.exec(line)

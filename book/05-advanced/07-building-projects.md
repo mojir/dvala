@@ -2,14 +2,37 @@
 
 When a program grows beyond a single file you need a way to split it into modules, manage dependencies, and produce a deployable artifact. Dvala handles this with **projects** — a directory with a `dvala.json` configuration file — and the `dvala build` command, which bundles everything into a single portable JSON file.
 
+## Creating a Project
+
+The fastest way to start is `dvala init`:
+
+```sh
+$ mkdir my-project && cd my-project
+$ dvala init
+```
+
+This interactive command asks for a project name, whether to create an entry file, tests, and REPL configuration. It generates a `dvala.json` and starter files:
+
+```text
+my-project/
+├── dvala.json
+├── main.dvala
+└── tests/
+    └── main.test.dvala
+```
+
+The generated `main.dvala` exports some functions, and `main.test.dvala` imports and tests them — a working project out of the box. Run `dvala test` to verify, or `dvala run` to execute the entry file.
+
 ## Projects and dvala.json
 
-A project is any directory that contains a `dvala.json` file. The configuration is minimal:
+A project is any directory that contains a `dvala.json` file. All CLI commands (`run`, `test`, `build`, `tokenize`, `parse`) look for `dvala.json` in the current directory. The configuration is minimal:
 
 ```json
 {
+  "name": "my-project",
   "entry": "main.dvala",
   "tests": "**/*.test.dvala",
+  "repl": "main.dvala",
   "build": {
     "expandMacros": true,
     "treeShake": true,
@@ -26,13 +49,45 @@ All fields have sensible defaults so an empty `dvala.json` works:
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `entry` | `"main.dvala"` | Entry file for `dvala build` |
+| `name` | — | Project name (shown in the REPL prompt) |
+| `entry` | `"main.dvala"` | Entry file for `dvala run`, `dvala build`, etc. |
 | `tests` | `"**/*.test.dvala"` | Glob pattern for `dvala test` |
+| `repl` | — | File to pre-load when starting the REPL |
 | `build.expandMacros` | `true` | Expand macros at build time |
 | `build.treeShake` | `true` | Remove unused bindings |
 | `build.sourceMap` | `true` | Include source maps in the bundle |
 
-`dvala build` walks up from the current directory until it finds `dvala.json`, so you can run the command from anywhere inside the project.
+When you run commands like `dvala run`, `dvala tokenize`, or `dvala parse` with no arguments, they use the `entry` file from `dvala.json`.
+
+## The Interactive REPL
+
+When you start `dvala` (or `dvala repl`) in a project directory with a `repl` field, the REPL automatically loads that file and makes its exported bindings available:
+
+```sh
+$ cd my-project
+$ dvala
+Welcome to Dvala v0.1.2 — my-project
+Type :help for more information.
+
+greet = (name) -> `Hello, ${name}!`
+add = (a, b) -> a + b
+
+my-project> greet("World")
+"Hello, World!"
+```
+
+The project name appears in the prompt, and all bindings from the loaded file are ready to use. This is ideal for library projects where you want to explore your API interactively.
+
+Use `:reload` to re-evaluate the REPL file after editing — no need to restart:
+
+```sh
+my-project> :reload
+Reloaded main.dvala
+```
+
+Other REPL commands: `:help`, `:context`, `:builtins`, `:quit`.
+
+> **Tip:** For app-style projects where the entry file runs side effects, either omit the `repl` field (for a clean REPL) or create a separate `repl.dvala` that imports just the parts you want to explore.
 
 ## File Imports
 
@@ -126,10 +181,10 @@ Built-in module imports (`import("math")`, `import("string")`, etc.) pass throug
 
 ## Running a Bundle
 
-`dvala run` accepts both source files and bundles. It detects which is which from the file extension:
+`dvala run -f` accepts both source files and bundles. It detects which is which from the file extension:
 
 ```sh
-$ dvala run dist/app.json
+$ dvala run -f dist/app.json
 ```
 
 Running a bundle skips the tokenizer and parser entirely — the AST is loaded directly. This makes startup substantially faster, which matters for CLI tools and short-lived scripts.
@@ -169,8 +224,10 @@ Stripping source maps is useful for production deployments where file size matte
 
 ## Summary
 
-- A project is a directory with `dvala.json` specifying the entry file and build options.
+- Create a project with `dvala init` — it generates `dvala.json` and starter files.
+- A project is a directory with `dvala.json` specifying the entry file, tests, REPL, and build options.
 - File imports use relative paths (`./`, `../`, `/`); built-in module names are untouched by the bundler.
 - `dvala build` resolves all file imports, deduplicates shared dependencies, and produces a self-contained JSON bundle.
-- `dvala run dist/app.json` runs a bundle directly, skipping the parse step for faster startup.
+- `dvala run -f dist/app.json` runs a bundle directly, skipping the parse step for faster startup.
+- The REPL integrates with projects via the `repl` field — use `:reload` to refresh bindings after edits.
 - Bundles can be loaded from TypeScript via `deserializeBundle()` and passed to `dvala.run()`.

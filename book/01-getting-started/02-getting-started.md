@@ -79,6 +79,16 @@ Install the Dvala CLI globally to use it from the command line:
 npm install --global @mojir/dvala
 ```
 
+### Initialize a Project
+
+Create a new project with `dvala init`:
+
+```sh
+$ dvala init
+```
+
+This walks you through creating a `dvala.json`, an entry file, tests, and REPL configuration. See the [Building Projects](tutorial-building-projects) chapter for details.
+
 ### Interactive REPL
 
 Start an interactive session by running `dvala` with no arguments:
@@ -87,33 +97,37 @@ Start an interactive session by running `dvala` with no arguments:
 $ dvala
 ```
 
-### Evaluate Expressions
+Inside the REPL, type `:help` to see available commands. In a project directory with a `repl` field in `dvala.json`, the REPL automatically loads that file and makes its bindings available.
+
+### Run Code
+
+`dvala run` handles inline code, files, and project entries:
 
 ```sh
-$ dvala eval "5 + 3"
+$ dvala run "5 + 3"
 8
 
-$ dvala eval "[1, 2, 3, 4] filter isOdd map inc"
+$ dvala run "[1, 2, 3, 4] filter isOdd map inc"
 [2, 4]
-```
 
-### Run Files
+$ dvala run -f script.dvala
 
-```sh
-$ dvala run script.dvala
+$ dvala run                  # runs the entry file from dvala.json
 ```
 
 ### Other Commands
 
 | Command | Description |
 |---|---|
-| `dvala eval <expr>` | Evaluate a Dvala expression |
-| `dvala run <file>` | Run a `.dvala` source file |
+| `dvala run [code]` | Run inline code, a file (`-f`), or the project entry |
 | `dvala build [dir]` | Bundle a project into a single JSON file (reads `dvala.json`) |
-| `dvala test <file>` | Run a `.test.dvala` test file |
+| `dvala test [file]` | Run tests (single file or project-wide via `dvala.json`) |
+| `dvala init` | Initialize a new project |
 | `dvala repl` | Start the interactive REPL (default) |
 | `dvala doc <name>` | Show documentation for any built-in function or expression |
 | `dvala list [module]` | List all available built-in functions |
+| `dvala tokenize [code]` | Tokenize code, a file (`-f`), or the project entry |
+| `dvala parse [code]` | Parse code, a file (`-f`), or the project entry |
 
 `dvala doc` and `dvala list` are the fastest way to explore the standard library without leaving the terminal:
 
