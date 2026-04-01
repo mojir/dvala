@@ -24,6 +24,7 @@ import { runTestFile, runTestSuite } from '../../src/testFramework'
 import { globSync } from 'glob'
 import type { CoverageFilter } from '../../src/testFramework/coverage'
 import { computeCoverageSummary, generateSuiteLcov } from '../../src/testFramework/coverage'
+import { generateCoverageHtmlFiles } from '../../src/testFramework/coverageHtml'
 import type { TestRunResult } from '../../src/testFramework/result'
 import { formatTap } from '../../src/testFramework/formatTap'
 import { formatConsole } from '../../src/testFramework/formatConsole'
@@ -144,7 +145,7 @@ type Config = ReplConfig | RunConfig | EvalConfig | TestConfig | BuildConfig | D
 
 const historyResults: unknown[] = []
 const formatValue = getInlineCodeFormatter(fmt)
-const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake'])
+const booleanFlags = new Set(['-s', '--silent', '--pure', '--debug', '--modules', '--datatypes', '--no-sourcemap', '--no-expand-macros', '--no-tree-shake', '--coverage'])
 
 const commands = ['`help', '`quit', '`builtins', '`context']
 const expressionRegExp = new RegExp(`^(.*\\(\\s*)(${polishSymbolFirstCharacterClass}${polishSymbolCharacterClass}*)$`)
@@ -474,8 +475,15 @@ function writeCoverage(results: TestRunResult[], coverageConfig: CoverageConfig,
       const lcov = generateSuiteLcov(results)
       const outFile = path.join(outDir, 'lcov.info')
       fs.writeFileSync(outFile, lcov, 'utf-8')
+    } else if (reporter === 'html') {
+      const summaries = computeCoverageSummary(results, filter)
+      const htmlFiles = generateCoverageHtmlFiles(summaries, baseDir)
+      for (const [relPath, content] of htmlFiles) {
+        const outFile = path.join(outDir, relPath)
+        fs.mkdirSync(path.dirname(outFile), { recursive: true })
+        fs.writeFileSync(outFile, content, 'utf-8')
+      }
     }
-    // "html" reporter: not yet implemented
   }
 }
 

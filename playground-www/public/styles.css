@@ -911,6 +911,18 @@ a.disabled {
   position: relative;
 }
 
+.doc-page__example-lang {
+  position: absolute;
+  bottom: var(--space-1);
+  right: var(--space-2);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
 .doc-page__example-action-bar {
   display: flex;
   position: absolute;

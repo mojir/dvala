@@ -1,0 +1,6 @@
+let double = macro (x) -> quote $^{x} + $^{x} end;
+
+let used = 21;
+let unused = 9999;
+
+{ result: double(used) }

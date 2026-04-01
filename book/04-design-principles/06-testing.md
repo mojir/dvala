@@ -127,9 +127,100 @@ let runTest = (name, fn) ->
 
 Each test is isolated: a failure in one does not abort the others. The result is a plain array you can inspect, format, or feed into further processing — no test framework required.
 
+## The Built-in Test Framework
+
+Dvala ships a structured test runner built on top of the same effect and assertion primitives shown above. Test files are named `*.test.dvala` and use the `test` module:
+
+```dvala no-run
+let { test, describe } = import("test");
+let { assertEqual, assertTrue } = import("assertion");
+let { clamp } = import("./math.dvala");
+
+describe("clamp", -> do
+  test("within range", -> assertEqual(clamp(5, 0, 10), 5));
+  test("below min",   -> assertEqual(clamp(-5, 0, 10), 0));
+  test("above max",   -> assertEqual(clamp(15, 0, 10), 10));
+end)
+```
+
+`describe` groups related tests under a name. `test` registers a single case — a thunk that either returns (pass) or throws (fail). Nesting `describe` blocks is allowed.
+
+Run the suite from your project root (requires a `dvala.json`):
+
+```bash
+dvala test
+```
+
+The runner discovers all `*.test.dvala` files, runs them in parallel, and prints a summary:
+
+```text
+✓ tests/math.test.dvala (12 tests, 0.007s)
+
+ Tests  12 passed (12)
+```
+
+### Skipping Tests
+
+Use `skip` to mark a test as pending without removing it:
+
+```dvala no-run
+let { test, skip } = import("test");
+
+skip("not implemented yet", -> assertEqual(todo(), 42))
+```
+
+Skipped tests appear in the summary but are not executed — they never fail the suite.
+
+### Running a Single File
+
+Pass a file path directly to run without a `dvala.json`:
+
+```bash
+dvala test tests/math.test.dvala
+```
+
+### Coverage
+
+Add `--coverage` to collect line and expression coverage across all source files:
+
+```bash
+dvala test --coverage
+```
+
+A summary table is always printed to stdout:
+
+```text
+--------------|---------|---------|----------------------
+File          | % Lines | % Exprs | Uncovered Line #s
+--------------|---------|---------|----------------------
+lib/math.dvala|     100 |   31.58 |
+lib/stats.dvala|    100 |      38 |
+--------------|---------|---------|----------------------
+```
+
+By default an LCOV report is written to `coverage/lcov.info`. To also generate a browsable HTML report, add `"reporter": ["lcov", "html"]` to your `dvala.json`:
+
+```json
+{
+  "coverage": {
+    "reporter": ["lcov", "html"]
+  }
+}
+```
+
+The HTML report shows each source file with lines highlighted green (covered) or red (uncovered). Files that were never imported during tests appear at 0% — Dvala parses them statically to count their lines.
+
+Override the output directory with `--coverage-dir`:
+
+```bash
+dvala test --coverage --coverage-dir reports/coverage
+```
+
 ## Summary
 
 - Pure functions need no setup or teardown — call the function, check the result.
 - The `assertion` module provides `assertEqual`, `assertFails`, `assertFailsWith`, and more.
 - Effects decouple logic from I/O: substitute a test handler for the real one and test the return value in isolation.
 - A minimal test runner is just a handler that catches `@dvala.error`.
+- The built-in test framework (`dvala test`) provides `describe`, `test`, and `skip` with structured output and parallel execution.
+- `dvala test --coverage` generates line and expression coverage reports in LCOV and/or HTML format.
