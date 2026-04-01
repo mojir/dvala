@@ -1,3 +1,9 @@
+## Git Workflow
+
+- **NEVER commit directly to `main`.** Always work on a feature branch.
+- Before starting work, check the current branch. If on `main`, create and switch to a new branch.
+- When work is complete, ask the user if they want to create a pull request to `main`.
+
 ## Key Commands
 
 - `npm run check` — full pipeline: lint + typecheck + test + build
