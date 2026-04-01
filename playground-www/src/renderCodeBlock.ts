@@ -40,8 +40,9 @@ export function renderCodeBlock(options: CodeBlockOptions): string {
 
   // Execution output (Dvala only)
   const output = isDvala && !noRun ? runExampleCode(code) : null
+  const isError = output !== null && output.startsWith('Error:')
   const outputHtml = output !== null
-    ? `<div class="doc-page__example-output">${formatOutput(output)}</div>`
+    ? `<div class="doc-page__example-output${isError ? ' doc-page__example-output--error' : ''}">${formatOutput(output)}</div>`
     : ''
 
   // Action buttons

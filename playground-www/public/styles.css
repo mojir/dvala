@@ -907,6 +907,10 @@ a.disabled {
   color: var(--color-text-dim);
 }
 
+.doc-page__example-output--error {
+  color: var(--color-error);
+}
+
 .doc-page__example-code-wrap {
   position: relative;
 }
