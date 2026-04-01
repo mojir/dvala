@@ -62,9 +62,9 @@ describe('CLI commands', () => {
   // --- run ---
   describe('run', () => {
     it('runs a .dvala file', () => {
-      // Use a simple file without file imports (run doesn't resolve imports)
-      const result = exec(`run ${exampleProjectDir}/lib/constants.dvala`)
-      expect(result).toContain('pi')
+      // Use a simple file without file imports (run doesn't bundle imports)
+      const result = exec(`run ${exampleProjectDir}/lib/math.dvala`)
+      expect(result).toContain('clamp')
     })
 
     it('runs a .json bundle', () => {
@@ -116,16 +116,19 @@ describe('CLI commands', () => {
     })
 
     it('builds with --no-tree-shake produces larger bundle', () => {
+      // Use a dedicated fixture with a known unused binding so the test is
+      // independent of changes to the example project files.
+      const fixtureDir = path.join(__dirname, 'fixtures/treeshake-project')
       const shakenPath = path.join(tmpDir, 'shaken.json')
       const unshakenPath = path.join(tmpDir, 'unshaken.json')
-      exec(`build ${exampleProjectDir} -o ${shakenPath}`)
-      exec(`build ${exampleProjectDir} --no-tree-shake -o ${unshakenPath}`)
+      exec(`build ${fixtureDir} -o ${shakenPath}`)
+      exec(`build ${fixtureDir} --no-tree-shake -o ${unshakenPath}`)
       const shakenSize = fs.statSync(shakenPath).size
       const unshakenSize = fs.statSync(unshakenPath).size
       expect(unshakenSize).toBeGreaterThan(shakenSize)
       // Both produce correct output
-      expect(exec(`run ${shakenPath}`)).toContain('doubled')
-      expect(exec(`run ${unshakenPath}`)).toContain('doubled')
+      expect(exec(`run ${shakenPath}`)).toContain('result')
+      expect(exec(`run ${unshakenPath}`)).toContain('result')
     })
 
     it('fails without dvala.json', () => {

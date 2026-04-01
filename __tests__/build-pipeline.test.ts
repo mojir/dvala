@@ -6,6 +6,9 @@ import { expandMacros } from '../src/ast/expandMacros'
 import { treeShake } from '../src/ast/treeShake'
 import { serializeBundle, deserializeBundle } from '../src/bundler/serialize'
 import { findConfig } from '../src/config'
+import { parseToAst } from '../src/parser'
+import { tokenize } from '../src/tokenizer/tokenize'
+import { minifyTokenStream } from '../src/tokenizer/minifyTokenStream'
 
 const exampleProjectDir = path.resolve(__dirname, '../examples/project')
 
@@ -122,23 +125,28 @@ describe('build pipeline', () => {
   })
 
   it('tree-shaking removes unused bindings after macro expansion', () => {
-    const resolved = findConfig(exampleProjectDir)!
-    const entryPath = path.resolve(resolved.rootDir, resolved.config.entry)
-    const bundled = bundle(entryPath)
-    const expanded = { ...bundled, ast: expandMacros(bundled.ast) }
+    // Use a self-contained program with a known unused binding so the test
+    // is not sensitive to changes in the example project files.
+    const dvala = createDvala()
+    const used = dvala.run('let x = 1; let unused = 99999; x') as number
+    expect(used).toBe(1)
+
+    // Parse into a bundle-like structure so we can call expandMacros + treeShake
+    const source = 'let x = 1; let unused = 99999; x'
+    let id = 0
+    const tokens = minifyTokenStream(tokenize(source, false, undefined), { removeWhiteSpace: true })
+    const ast = parseToAst(tokens, () => id++)
+    const fakeBundle = { version: 1 as const, ast }
+
+    const expanded = { ...fakeBundle, ast: expandMacros(fakeBundle.ast) }
     const shaken = { ...expanded, ast: treeShake(expanded.ast) }
 
-    // Shaken bundle should be smaller (fewer AST nodes)
     const expandedSize = JSON.stringify(expanded.ast.body).length
     const shakenSize = JSON.stringify(shaken.ast.body).length
     expect(shakenSize).toBeLessThan(expandedSize)
 
-    // Still runnable and produces correct results
-    const dvala = createDvala()
-    const output = dvala.run(shaken) as Record<string, number>
-    expect(output.avg).toBe(5)
-    expect(output.doubled).toBe(10)
-    expect(output.safe).toBe(42)
+    // The shaken program still evaluates correctly
+    expect(dvala.run(shaken) as number).toBe(1)
   })
 
   it('build config includes treeShake default', () => {

@@ -4505,15 +4505,22 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Eval': {
         const { node, env, k } = step
         if (snapshotState?.onNodeEval) {
+          // Skip structural leaf nodes — symbol/builtin/special/reserved lookups and effect refs
+          // are always covered whenever their parent expression is covered, so they add no useful
+          // information for coverage or debugging.
+          const t = node[0]
+          const isStructuralLeaf = t === NodeTypes.Sym || t === NodeTypes.Builtin || t === NodeTypes.Special || t === NodeTypes.Reserved || t === NodeTypes.Effect
           // Lazy — only allocate the Continuation object if the hook actually calls getContinuation().
-          const result = snapshotState.onNodeEval(node, () => ({
-            env,
-            k,
-            resume: () => {},
-            getSnapshots: () => [...snapshotState.snapshots],
-          }))
-          if (result instanceof Promise) {
-            return result.then(() => stepNode(node, env, k))
+          if (!isStructuralLeaf) {
+            const result = snapshotState.onNodeEval(node, () => ({
+              env,
+              k,
+              resume: () => {},
+              getSnapshots: () => [...snapshotState.snapshots],
+            }))
+            if (result instanceof Promise) {
+              return result.then(() => stepNode(node, env, k))
+            }
           }
         }
         return stepNode(node, env, k)

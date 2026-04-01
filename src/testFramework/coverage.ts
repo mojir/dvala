@@ -83,6 +83,10 @@ export interface FileCoverageSummary {
   exprsHit: number
   /** 1-based line numbers that were never hit */
   uncoveredLines: number[]
+  /** 0-based line → max hit count across all test runs. 0 = found but never hit. */
+  lineHits: Map<number, number>
+  /** Source file content, when available */
+  source?: string
 }
 
 export interface CoverageFilter {
@@ -121,6 +125,7 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   //   exprHits: nodeId → max hit count (0 = seen but never evaluated)
   const byPath = new Map<string, Map<number, number>>()
   const exprHitsByPath = new Map<string, Map<number, number>>()
+  const sourceByPath = new Map<string, string>()
 
   for (const result of results) {
     if (!result.coverageMap || !result.sourceMap) continue
@@ -130,9 +135,12 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       const sourceMeta = result.sourceMap.sources[pos.source]
       if (!sourceMeta?.path || sourceMeta.path === '<anonymous>') continue
 
+      // Capture source content the first time we see this file
+      if (sourceMeta.content && !sourceByPath.has(sourceMeta.path))
+        sourceByPath.set(sourceMeta.path, sourceMeta.content)
+
       let exprHits = exprHitsByPath.get(sourceMeta.path)
       if (!exprHits) { exprHits = new Map(); exprHitsByPath.set(sourceMeta.path, exprHits) }
-      // Initialise to 0 if not yet seen — don't overwrite a hit from another result
       if (!exprHits.has(nodeId)) exprHits.set(nodeId, 0)
 
       let byLine = byPath.get(sourceMeta.path)
@@ -161,11 +169,12 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
   // For files that were never evaluated, parse them to get line/expr counts at 0%
   if (filter?.allFiles) {
     for (const filePath of filter.allFiles) {
-      if (byPath.has(filePath)) continue // already covered
+      if (byPath.has(filePath)) continue
       const stats = parseFileStats(filePath)
       if (!stats) continue
       byPath.set(filePath, stats.byLine)
       exprHitsByPath.set(filePath, stats.byExpr)
+      sourceByPath.set(filePath, stats.source)
     }
   }
 
@@ -180,8 +189,9 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
       const exprHits = exprHitsByPath.get(filePath)!
       const exprsFound = exprHits.size
       const exprsHit = [...exprHits.values()].filter(c => c > 0).length
+      const source = sourceByPath.get(filePath)
 
-      return { path: filePath, linesHit, linesFound: lines.length, exprsFound, exprsHit, uncoveredLines }
+      return { path: filePath, linesHit, linesFound: lines.length, exprsFound, exprsHit, uncoveredLines, lineHits: byLine, source }
     })
 }
 
@@ -189,7 +199,7 @@ export function computeCoverageSummary(results: TestRunResult[], filter?: Covera
  * Parse a .dvala file and return its line and expression maps initialised to 0.
  * Used for files that were never evaluated during tests (all: true mode).
  */
-function parseFileStats(filePath: string): { byLine: Map<number, number>; byExpr: Map<number, number> } | null {
+function parseFileStats(filePath: string): { byLine: Map<number, number>; byExpr: Map<number, number>; source: string } | null {
   try {
     const source = fs.readFileSync(filePath, 'utf-8')
     const tokenStream = tokenize(source, /* debug */ true, filePath)
@@ -209,7 +219,7 @@ function parseFileStats(filePath: string): { byLine: Map<number, number>; byExpr
       if (!byLine.has(line)) byLine.set(line, 0)
     }
 
-    return { byLine, byExpr }
+    return { byLine, byExpr, source }
   } catch {
     return null
   }

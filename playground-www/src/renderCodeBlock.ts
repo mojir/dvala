@@ -56,9 +56,11 @@ export function renderCodeBlock(options: CodeBlockOptions): string {
     ? `<div class="doc-page__example-action-bar">${buttons.join('')}</div>`
     : ''
 
+  const langLabel = language !== 'dvala' ? `<span class="doc-page__example-lang">${escapeHtml(language)}</span>` : ''
+
   return `<div class="doc-page__example">
   <div class="doc-page__example-code-wrap">
-    <pre class="doc-page__example-code"><code>${highlighted}</code></pre>
+    ${langLabel}<pre class="doc-page__example-code"><code>${highlighted}</code></pre>
     ${actionBar}
   </div>
   ${outputHtml}

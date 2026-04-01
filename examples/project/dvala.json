@@ -1,3 +1,6 @@
 {
-  "tests": "tests/**/*.test.dvala"
+  "tests": "tests/**/*.test.dvala",
+  "coverage": {
+    "reporter": ["html", "lcov"]
+  }
 }
