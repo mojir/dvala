@@ -32,13 +32,14 @@ export class ParserContext {
     }
   }
 
-  public allocateNodeId(debugInfo?: TokenDebugInfo): number {
+  public allocateNodeId(debugInfo?: TokenDebugInfo, structuralLeaf?: boolean): number {
     const id = this.allocateId()
     if (this.sourceMap && debugInfo) {
       const position: SourceMapPosition = {
         source: 0, // single source for now
         start: [debugInfo[0], debugInfo[1]], // already 0-based
         end: [debugInfo[0], debugInfo[1]], // placeholder — updated by setNodeEnd()
+        ...(structuralLeaf ? { structuralLeaf: true } : {}),
       }
       this.sourceMap.positions.set(id, position)
     }

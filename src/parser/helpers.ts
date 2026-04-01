@@ -18,8 +18,16 @@ export const binaryFunctionalOperatorPrecedence = 3
  * Assign a node ID from the parser context. When debug mode is active,
  * the source position is recorded in the source map.
  */
+// Node types the evaluator never fires onNodeEval for — excluding them gives accurate expr coverage.
+// Includes AST structural leaves (Sym, Builtin, etc.) and binding target types (symbol, literal, etc.).
+const structuralLeafTypes: Set<string> = new Set([
+  NodeTypes.Sym, NodeTypes.Builtin, NodeTypes.Special, NodeTypes.Reserved, NodeTypes.Effect, NodeTypes.Binding,
+  'symbol', 'rest', 'object', 'array', 'literal', 'wildcard',
+])
+
 export function withSourceCodeInfo<T extends AstNode | BindingTarget>(node: T, debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): T {
-  node[2] = ctx.allocateNodeId(debugInfo)
+  const isLeaf = structuralLeafTypes.has(node[0])
+  node[2] = ctx.allocateNodeId(debugInfo, isLeaf || undefined)
   return node
 }
 
