@@ -361,21 +361,16 @@ function findDefAtPosition(defs: SymbolDef[], line: number, column: number): Sym
   return null
 }
 
-/** Find the reference closest to a given source position. */
+/** Find the reference at a given source position (cursor must be within the name span). */
 function findRefAtPosition(refs: SymbolRef[], line: number, column: number): SymbolRef | null {
-  // Find exact line match first, then closest column
-  const onLine = refs.filter(r => r.location.line === line)
-  if (onLine.length === 0) return null
-  // Find the ref whose column is closest to (but not after) the given column
-  let best: SymbolRef | null = null
-  for (const ref of onLine) {
-    if (ref.location.column <= column) {
-      if (!best || ref.location.column > best.location.column) {
-        best = ref
-      }
+  for (const ref of refs) {
+    if (ref.location.line === line
+      && column >= ref.location.column
+      && column < ref.location.column + ref.name.length) {
+      return ref
     }
   }
-  return best
+  return null
 }
 
 /**
@@ -426,6 +421,18 @@ function extractImports(nodes: AstNode[], fromFile: string, imports: Map<string,
   }
 }
 
+/** Known AST node type strings — used to identify AstNode tuples in payload arrays. */
+const knownNodeTypes = new Set<string>(Object.values(NodeTypes))
+
+/** Check if a value looks like an AstNode: [knownType, payload, number]. */
+function isAstNode(value: unknown): value is AstNode {
+  return Array.isArray(value)
+    && value.length === 3
+    && typeof value[0] === 'string'
+    && knownNodeTypes.has(value[0])
+    && typeof value[2] === 'number'
+}
+
 function walkForImports(node: AstNode, fromFile: string, imports: Map<string, string>): void {
   const [type, payload] = node
   if (type === NodeTypes.Import) {
@@ -443,12 +450,12 @@ function walkForImports(node: AstNode, fromFile: string, imports: Map<string, st
   // Recurse into payload to find nested imports (e.g., inside let bindings)
   if (Array.isArray(payload)) {
     for (const child of payload) {
-      if (Array.isArray(child) && child.length === 3 && typeof child[0] === 'string' && typeof child[2] === 'number') {
-        walkForImports(child as AstNode, fromFile, imports)
+      if (isAstNode(child)) {
+        walkForImports(child, fromFile, imports)
       } else if (Array.isArray(child)) {
         for (const c of child) {
-          if (Array.isArray(c) && c.length === 3 && typeof c[0] === 'string' && typeof c[2] === 'number') {
-            walkForImports(c as AstNode, fromFile, imports)
+          if (isAstNode(c)) {
+            walkForImports(c, fromFile, imports)
           }
         }
       }
@@ -474,7 +481,7 @@ function positionInRange(line: number, column: number, range: ScopeRange): boole
 
 /** Approximate area of a scope range (for sorting inner-before-outer). */
 function rangeArea(range: ScopeRange): number {
-  return (range.endLine - range.startLine) * 1000 + (range.endColumn - range.startColumn)
+  return (range.endLine - range.startLine) * 100000 + (range.endColumn - range.startColumn)
 }
 
 /** Simple string hash for change detection. */

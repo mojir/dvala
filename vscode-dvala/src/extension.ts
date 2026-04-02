@@ -158,6 +158,7 @@ function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
 let outputChannel: vscode.OutputChannel | undefined
 let statusBarItem: vscode.StatusBarItem | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
   if (!diagnosticCollection) {
@@ -399,10 +400,11 @@ export function activate(context: vscode.ExtensionContext): void {
         items.push(symbolDefToCompletionItem(def))
       }
 
-      // Add exported symbols from imported files
+      // Add exported symbols from imported files (index them lazily if not yet cached)
       const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
       if (fileSymbols) {
         for (const importedPath of fileSymbols.imports.values()) {
+          workspaceIndex.updateFile(importedPath)
           const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
           if (importedSymbols) {
             for (const exp of importedSymbols.exports) {
@@ -535,33 +537,30 @@ export function activate(context: vscode.ExtensionContext): void {
 
       // Second try: cursor is on a definition from a destructured import
       // (e.g. `let { average } = import("./lib/stats")`) — navigate to the symbol
-      // definition inside the imported file, not just the file itself
+      // definition inside the imported file, not just the file itself.
+      // Uses the pre-built imports map instead of regex-parsing the line.
       const symbolAtPos = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, line1, col1)
       if (symbolAtPos?.def?.kind === 'import') {
-        const importMatch = /import\(\s*"([^"]+)"\s*\)/.exec(lineText)
-        if (importMatch && importMatch[1]!.startsWith('.')) {
-          const dir = path.dirname(document.uri.fsPath)
-          const resolved = path.resolve(dir, importMatch[1]!)
-          for (const candidate of [resolved, `${resolved}.dvala`]) {
-            try {
-              fs.accessSync(candidate)
-              // Index the imported file and find the specific symbol definition
-              // or exported object key
-              workspaceIndex.updateFile(candidate)
-              const importedSymbols = workspaceIndex.getFileSymbols(candidate)
-              const targetDef = importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0)
-                ?? importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
-              if (targetDef) {
-                const targetPos = new vscode.Position(
-                  Math.max(0, targetDef.location.line - 1),
-                  Math.max(0, targetDef.location.column - 1),
-                )
-                return new vscode.Location(vscode.Uri.file(candidate), targetPos)
-              }
-              // Symbol not found in the imported file — navigate to file start
-              return new vscode.Location(vscode.Uri.file(candidate), new vscode.Position(0, 0))
+        const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
+        if (fileSymbols) {
+          for (const resolvedPath of fileSymbols.imports.values()) {
+            workspaceIndex.updateFile(resolvedPath)
+            const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
+            const targetDef = importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0)
+              ?? importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
+            if (targetDef) {
+              const targetPos = new vscode.Position(
+                Math.max(0, targetDef.location.line - 1),
+                Math.max(0, targetDef.location.column - 1),
+              )
+              return new vscode.Location(vscode.Uri.file(resolvedPath), targetPos)
             }
-            catch { /* try next */ }
+            // Symbol not found in this imported file — try next import
+          }
+          // Symbol not found in any import — navigate to the first import file
+          const firstImport = fileSymbols.imports.values().next().value
+          if (firstImport) {
+            return new vscode.Location(vscode.Uri.file(firstImport), new vscode.Position(0, 0))
           }
         }
       }
@@ -602,8 +601,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const workspaceIndex = new WorkspaceIndex()
   const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined
-
   /** Update the workspace index for a document and refresh diagnostics. */
   function indexDocument(document: vscode.TextDocument): void {
     if (document.languageId !== 'dvala') return
@@ -700,6 +697,11 @@ export function activate(context: vscode.ExtensionContext): void {
     },
 
     provideRenameEdits(document, position, newName) {
+      // Validate that newName is a valid Dvala identifier
+      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(newName)) {
+        throw new Error(`'${newName}' is not a valid identifier`)
+      }
+
       indexDocument(document)
       const symbol = workspaceIndex.getSymbolAtPosition(
         document.uri.fsPath,
@@ -725,7 +727,6 @@ export function activate(context: vscode.ExtensionContext): void {
   // Document Symbol provider — powers the outline view (Cmd+Shift+O) and breadcrumbs
   const documentSymbolProvider = vscode.languages.registerDocumentSymbolProvider('dvala', {
     provideDocumentSymbols(document) {
-      // Ensure the file is indexed
       indexDocument(document)
       const symbols = workspaceIndex.getDocumentSymbols(document.uri.fsPath)
       return symbols.map(def => {
@@ -733,11 +734,12 @@ export function activate(context: vscode.ExtensionContext): void {
         const col = Math.max(0, def.location.column - 1)
         const pos = new vscode.Position(line, col)
         const range = new vscode.Range(pos, pos)
-        return new vscode.SymbolInformation(
+        return new vscode.DocumentSymbol(
           def.name,
+          def.kind,
           symbolKind(def),
-          '',
-          new vscode.Location(document.uri, range),
+          range,
+          range,
         )
       })
     },
@@ -789,6 +791,7 @@ function symbolKind(def: SymbolDef): vscode.SymbolKind {
 }
 
 export function deactivate(): void {
+  if (debounceTimer) clearTimeout(debounceTimer)
   outputChannel?.dispose()
   statusBarItem?.dispose()
   diagnosticCollection?.dispose()
