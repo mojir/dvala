@@ -109,6 +109,54 @@
         "path": "./snippets/dvala.json"
       }
     ],
+    "breakpoints": [
+      { "language": "dvala" }
+    ],
+    "debuggers": [
+      {
+        "type": "dvala",
+        "label": "Dvala Debug",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "languages": ["dvala"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the .dvala file to debug"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on the first line of the program",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "dvala",
+            "request": "launch",
+            "name": "Debug Dvala File",
+            "program": "${file}"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Dvala: Debug File",
+            "description": "Launch and debug a Dvala file",
+            "body": {
+              "type": "dvala",
+              "request": "launch",
+              "name": "Debug Dvala File",
+              "program": "^\"${1:\\${file\\}}\""
+            }
+          }
+        ]
+      }
+    ],
     "keybindings": [
       {
         "command": "dvala.runSelection",
@@ -140,5 +188,9 @@
     "@types/node": "^25.3.5",
     "@types/vscode": "^1.109.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@vscode/debugadapter": "^1.68.0",
+    "@vscode/debugprotocol": "^1.68.0"
   }
 }

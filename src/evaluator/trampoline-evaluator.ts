@@ -1685,7 +1685,7 @@ function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): St
 
   // Name inference: when binding a simple symbol to an unnamed function,
   // stamp the binding name onto the function (like JS's `let foo = () => {}` → foo.name === "foo")
-  if (target[0] === 'symbol' && isUserDefinedFunction(value) && value.name === undefined) {
+  if (target[0] === 'symbol' && (isUserDefinedFunction(value) || isMacroFunction(value)) && value.name === undefined) {
     value.name = target[1][0][1]
   }
 
@@ -4191,14 +4191,15 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
   if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
     const renamed = renameMap.get(payload)
     if (renamed) {
-      return toAny([type, renamed, 0])
+      return toAny([type, renamed, -1])
     }
   }
 
-  // Use nodeId 0 for all generated nodes — code template AST is synthetic data
+  // Use nodeId -1 for all generated nodes — code template AST is synthetic data.
+  // Must not collide with real source map nodeIds (which start at 0).
   // Leaf nodes with primitive payloads — return as data tuple
   if (!Array.isArray(payload)) {
-    return toAny([type, payload, 0])
+    return toAny([type, payload, -1])
   }
 
   // CodeTmpl nodes contain both inner splices (indices 0..N-1, for the inner template)
@@ -4213,7 +4214,7 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     // scope names like macro parameters) but WITHOUT outer splice values (inner splice
     // expressions don't contain outer splice placeholders).
     const convertedSpliceExprs = innerSpliceExprs.map(e => astToData(e, [], renameMap))
-    return toAny([type, [convertedBody, convertedSpliceExprs], 0])
+    return toAny([type, [convertedBody, convertedSpliceExprs], -1])
   }
 
   // Let nodes need special handling: the binding target may contain splices that
@@ -4222,12 +4223,12 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     const [target, valueNode] = payload as [AstNode, AstNode]
     const convertedValue = astToData(valueNode, spliceValues, renameMap)
     const convertedTarget = convertBindingTarget(target as unknown[], spliceValues, renameMap)
-    return toAny([type, [convertedTarget, convertedValue], 0])
+    return toAny([type, [convertedTarget, convertedValue], -1])
   }
 
   // Recursive: convert array payloads, with implicit spread for splices
   const convertedPayload = convertArrayPayload(payload, spliceValues, renameMap)
-  return toAny([type, convertedPayload, 0])
+  return toAny([type, convertedPayload, -1])
 }
 
 /**
@@ -4244,22 +4245,22 @@ function astToDataWithCodeTmplAwareness(
     const index = payload as number
     if (index < innerCount) {
       // Inner splice — preserve as data tuple for the inner template to resolve
-      return toAny([type, index, 0])
+      return toAny([type, index, -1])
     }
     // Outer splice — resolve with adjusted index, wrapped in InlinedData to prevent double conversion
-    return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, 0])
+    return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, -1])
   }
 
   // For everything else, delegate to standard astToData but with inner-awareness for nested arrays
   if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
     const renamed = renameMap.get(payload)
     if (renamed) {
-      return toAny([type, renamed, 0])
+      return toAny([type, renamed, -1])
     }
   }
 
   if (!Array.isArray(payload)) {
-    return toAny([type, payload, 0])
+    return toAny([type, payload, -1])
   }
 
   // Recurse into array payloads, maintaining inner-awareness for Splice nodes
@@ -4277,11 +4278,11 @@ function astToDataWithCodeTmplAwareness(
     if (item.length >= 2 && item[0] === NodeTypes.Splice) {
       const spliceIndex = item[1] as number
       if (spliceIndex < innerCount) {
-        result.push(toAny([NodeTypes.Splice, spliceIndex, 0]))
+        result.push(toAny([NodeTypes.Splice, spliceIndex, -1]))
       } else {
         const spliceValue = spliceValues[spliceIndex - innerCount]!
         // Wrap in InlinedData to prevent double conversion
-        result.push(toAny([NodeTypes.InlinedData, spliceValue, 0]))
+        result.push(toAny([NodeTypes.InlinedData, spliceValue, -1]))
       }
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       result.push(astToDataWithCodeTmplAwareness(item as AstNode, spliceValues, renameMap, innerCount))
@@ -4291,7 +4292,7 @@ function astToDataWithCodeTmplAwareness(
       )))
     }
   }
-  return toAny([type, result, 0])
+  return toAny([type, result, -1])
 }
 
 /**
@@ -4325,14 +4326,14 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
 
     // If the splice resolved to a Sym node, keep as symbol binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Sym) {
-      return toAny(['symbol', [resolvedName, convertedDefault], 0])
+      return toAny(['symbol', [resolvedName, convertedDefault], -1])
     }
 
     // If it resolved to an Array AST → convert to array binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Array) {
       const elements = resolvedName[1] as Any[]
       const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
-      return toAny(['array', [targets, convertedDefault], 0])
+      return toAny(['array', [targets, convertedDefault], -1])
     }
 
     // If it resolved to an Object AST → convert to object binding target
@@ -4347,11 +4348,11 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
         const key = keyNode[1] as string
         record[key] = expressionAstToBindingTarget(valNode)
       }
-      return toAny(['object', [record, convertedDefault], 0])
+      return toAny(['object', [record, convertedDefault], -1])
     }
 
     // Fallback: return as-is (will error at evaluation time if invalid)
-    return toAny(['symbol', [resolvedName, convertedDefault], 0])
+    return toAny(['symbol', [resolvedName, convertedDefault], -1])
   }
 
   // Array binding target: ["array", [targets[], default], id] — recurse into nested targets
@@ -4361,7 +4362,7 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
       t === null ? null : convertBindingTarget(t as AstNode, spliceValues, renameMap),
     )
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
-    return toAny(['array', [convertedTargets, convertedDefault], 0])
+    return toAny(['array', [convertedTargets, convertedDefault], -1])
   }
 
   // Object binding target: ["object", [record, default], id] — recurse into nested targets
@@ -4372,14 +4373,14 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
       convertedRecord[key] = convertBindingTarget(value as AstNode, spliceValues, renameMap)
     }
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
-    return toAny(['object', [convertedRecord, convertedDefault], 0])
+    return toAny(['object', [convertedRecord, convertedDefault], -1])
   }
 
   // Rest, literal, wildcard, or other — convert generically
   if (Array.isArray(targetPayload)) {
-    return toAny([targetType, convertArrayPayload(targetPayload, spliceValues, renameMap), 0])
+    return toAny([targetType, convertArrayPayload(targetPayload, spliceValues, renameMap), -1])
   }
-  return toAny([targetType, targetPayload, 0])
+  return toAny([targetType, targetPayload, -1])
 }
 
 /**
@@ -4394,14 +4395,14 @@ function expressionAstToBindingTarget(astData: Any): Any {
 
   // Sym → symbol binding target
   if (nodeType === NodeTypes.Sym) {
-    return toAny(['symbol', [astData, null], 0])
+    return toAny(['symbol', [astData, null], -1])
   }
 
   // Array → array binding target (recurse into elements)
   if (nodeType === NodeTypes.Array) {
     const elements = node[1] as unknown as Any[]
     const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
-    return toAny(['array', [targets, null], 0])
+    return toAny(['array', [targets, null], -1])
   }
 
   // Object → object binding target (recurse into entries)
@@ -4414,7 +4415,7 @@ function expressionAstToBindingTarget(astData: Any): Any {
       const key = keyNode[1] as string
       record[key] = expressionAstToBindingTarget(valNode)
     }
-    return toAny(['object', [record, null], 0])
+    return toAny(['object', [record, null], -1])
   }
 
   // Spread → rest binding target
