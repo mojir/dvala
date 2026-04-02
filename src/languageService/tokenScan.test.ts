@@ -59,4 +59,25 @@ describe('scanTokensForDefinitions', () => {
     const defs = scan('')
     expect(defs).toHaveLength(0)
   })
+
+  it('classifies shallow handlers', () => {
+    const defs = scan('let h = shallow handler @my.eff(x) -> resume(x) end')
+    expect(defs[0]!.kind).toBe('handler')
+  })
+
+  it('classifies simple let import', () => {
+    const defs = scan('let lib = import("./lib")')
+    expect(defs[0]!.kind).toBe('import')
+  })
+
+  it('classifies variable when RHS is not a keyword', () => {
+    const defs = scan('let x = someFunction()')
+    expect(defs[0]!.kind).toBe('variable')
+  })
+
+  it('classifies variable when no = follows name', () => {
+    // Edge case: `let x` without `=` (invalid code but token scanner should handle it)
+    const defs = scan('let x')
+    expect(defs[0]!.kind).toBe('variable')
+  })
 })

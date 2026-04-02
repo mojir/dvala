@@ -97,7 +97,63 @@ function buildCompletionItems(): vscode.CompletionItem[] {
   return items
 }
 
+/**
+ * Find the function call context at a cursor position.
+ * Scans backward to find the unmatched '(' and extracts the function name.
+ */
+function findCallContext(document: vscode.TextDocument, position: vscode.Position): { functionName: string; activeParam: number } | null {
+  // Grab text from a few lines above to the cursor
+  const startLine = Math.max(0, position.line - 10)
+  const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
+
+  let depth = 0
+  let commaCount = 0
+  for (let i = text.length - 1; i >= 0; i--) {
+    const ch = text[i]
+    if (ch === ')') depth++
+    else if (ch === '(') {
+      if (depth === 0) {
+        // Found the unmatched opening paren — extract function name before it
+        const before = text.substring(0, i).trimEnd()
+        const nameMatch = before.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
+        if (nameMatch) {
+          return { functionName: nameMatch[1]!, activeParam: commaCount }
+        }
+        return null
+      }
+      depth--
+    }
+    else if (ch === ',' && depth === 0) commaCount++
+  }
+  return null
+}
+
 const completionItems = buildCompletionItems()
+
+/** Map a user-defined SymbolDef to a VS Code completion item. */
+function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
+  const kindMap: Record<string, vscode.CompletionItemKind> = {
+    variable: vscode.CompletionItemKind.Variable,
+    function: vscode.CompletionItemKind.Function,
+    macro: vscode.CompletionItemKind.Method,
+    handler: vscode.CompletionItemKind.Event,
+    parameter: vscode.CompletionItemKind.Variable,
+    import: vscode.CompletionItemKind.Module,
+  }
+
+  const item = new vscode.CompletionItem(def.name, kindMap[def.kind] ?? vscode.CompletionItemKind.Variable)
+  item.detail = def.kind
+  // Sort user symbols after builtins (builtins have default sort)
+  item.sortText = `1_${def.name}`
+
+  // Add snippet with parameter placeholders for functions/macros
+  if (def.params && def.params.length > 0) {
+    const snippetArgs = def.params.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
+    item.insertText = new vscode.SnippetString(`${def.name}(${snippetArgs})`)
+  }
+
+  return item
+}
 
 let outputChannel: vscode.OutputChannel | undefined
 let statusBarItem: vscode.StatusBarItem | undefined
@@ -328,10 +384,87 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   const completionProvider = vscode.languages.registerCompletionItemProvider('dvala', {
-    provideCompletionItems() {
-      return completionItems
+    provideCompletionItems(document, position) {
+      indexDocument(document)
+      const items: vscode.CompletionItem[] = [...completionItems]
+      const seen = new Set(completionItems.map(i => typeof i.label === 'string' ? i.label : i.label.label))
+
+      // Add user-defined symbols visible at the cursor position (scope-aware)
+      const line1 = position.line + 1
+      const col1 = position.character + 1
+      const inScopeDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, line1, col1)
+      for (const def of inScopeDefs) {
+        if (seen.has(def.name)) continue
+        seen.add(def.name)
+        items.push(symbolDefToCompletionItem(def))
+      }
+
+      // Add exported symbols from imported files
+      const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
+      if (fileSymbols) {
+        for (const importedPath of fileSymbols.imports.values()) {
+          const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
+          if (importedSymbols) {
+            for (const exp of importedSymbols.exports) {
+              if (seen.has(exp.name)) continue
+              seen.add(exp.name)
+              items.push(symbolDefToCompletionItem(exp))
+            }
+          }
+        }
+      }
+
+      return items
     },
   })
+
+  // Signature Help — parameter hints when typing inside function calls
+  const signatureHelpProvider = vscode.languages.registerSignatureHelpProvider('dvala',
+    {
+      provideSignatureHelp(document, position) {
+        const callCtx = findCallContext(document, position)
+        if (!callCtx) return undefined
+
+        const { functionName, activeParam } = callCtx
+        const help = new vscode.SignatureHelp()
+        help.activeParameter = activeParam
+
+        // Check builtins first
+        const ref = allReference[functionName] ?? referenceByTitle[functionName]
+        if (ref && isFunctionReference(ref)) {
+          for (const variant of ref.variants) {
+            const paramLabels = variant.argumentNames.map(name => {
+              const argInfo = ref.args[name]
+              const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
+              return typeStr ? `${name}: ${typeStr}` : name
+            })
+            const sig = new vscode.SignatureInformation(
+              `${functionName}(${paramLabels.join(', ')})`,
+            )
+            sig.parameters = paramLabels.map(label => new vscode.ParameterInformation(label))
+            help.signatures.push(sig)
+          }
+          return help
+        }
+
+        // Check user-defined functions/macros
+        indexDocument(document)
+        const defs = workspaceIndex.getDefinitions(document.uri.fsPath)
+        const funcDef = defs.find(d => d.name === functionName && d.params)
+        if (funcDef?.params) {
+          const sig = new vscode.SignatureInformation(
+            `${functionName}(${funcDef.params.join(', ')})`,
+          )
+          sig.parameters = funcDef.params.map(name => new vscode.ParameterInformation(name))
+          help.signatures.push(sig)
+          return help
+        }
+
+        return undefined
+      },
+    },
+    '(', ',',
+  )
 
   const hoverProvider = vscode.languages.registerHoverProvider('dvala', {
     provideHover(document, position) {
@@ -386,18 +519,51 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       // 2. Check if cursor is on a user-defined symbol — use the workspace index
-      indexDocument(document) // ensure file is indexed
-      const def = workspaceIndex.findDefinition(
-        document.uri.fsPath,
-        position.line + 1, // VS Code is 0-based, our index is 1-based
-        position.character + 1,
-      )
+      indexDocument(document)
+      const line1 = position.line + 1 // VS Code is 0-based, our index is 1-based
+      const col1 = position.character + 1
+
+      // First try: cursor is on a reference → navigate to its definition
+      const def = workspaceIndex.findDefinition(document.uri.fsPath, line1, col1)
       if (def) {
         const defPos = new vscode.Position(
           Math.max(0, def.location.line - 1),
           Math.max(0, def.location.column - 1),
         )
         return new vscode.Location(vscode.Uri.file(def.location.file), defPos)
+      }
+
+      // Second try: cursor is on a definition from a destructured import
+      // (e.g. `let { average } = import("./lib/stats")`) — navigate to the symbol
+      // definition inside the imported file, not just the file itself
+      const symbolAtPos = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, line1, col1)
+      if (symbolAtPos?.def?.kind === 'import') {
+        const importMatch = /import\(\s*"([^"]+)"\s*\)/.exec(lineText)
+        if (importMatch && importMatch[1]!.startsWith('.')) {
+          const dir = path.dirname(document.uri.fsPath)
+          const resolved = path.resolve(dir, importMatch[1]!)
+          for (const candidate of [resolved, `${resolved}.dvala`]) {
+            try {
+              fs.accessSync(candidate)
+              // Index the imported file and find the specific symbol definition
+              // or exported object key
+              workspaceIndex.updateFile(candidate)
+              const importedSymbols = workspaceIndex.getFileSymbols(candidate)
+              const targetDef = importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0)
+                ?? importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
+              if (targetDef) {
+                const targetPos = new vscode.Position(
+                  Math.max(0, targetDef.location.line - 1),
+                  Math.max(0, targetDef.location.column - 1),
+                )
+                return new vscode.Location(vscode.Uri.file(candidate), targetPos)
+              }
+              // Symbol not found in the imported file — navigate to file start
+              return new vscode.Location(vscode.Uri.file(candidate), new vscode.Position(0, 0))
+            }
+            catch { /* try next */ }
+          }
+        }
       }
 
       return undefined
@@ -577,9 +743,36 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Workspace Symbol provider — Cmd+T to search all symbols across files
+  const workspaceSymbolProvider = vscode.languages.registerWorkspaceSymbolProvider({
+    provideWorkspaceSymbols(query) {
+      const results: vscode.SymbolInformation[] = []
+      const lowerQuery = query.toLowerCase()
+
+      for (const doc of vscode.workspace.textDocuments) {
+        if (doc.languageId !== 'dvala') continue
+        const defs = workspaceIndex.getDocumentSymbols(doc.uri.fsPath)
+        for (const def of defs) {
+          if (lowerQuery && !def.name.toLowerCase().includes(lowerQuery)) continue
+          const line = Math.max(0, def.location.line - 1)
+          const col = Math.max(0, def.location.column - 1)
+          const pos = new vscode.Position(line, col)
+          results.push(new vscode.SymbolInformation(
+            def.name,
+            symbolKind(def),
+            '',
+            new vscode.Location(vscode.Uri.file(def.location.file), pos),
+          ))
+        }
+      }
+
+      return results
+    },
+  })
+
   context.subscriptions.push(
-    runFile, runBlock, runSelection, completionProvider, hoverProvider, definitionProvider, goToSource,
-    referenceProvider, renameProvider, documentSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
+    runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
+    referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
   )
 }
 

@@ -1,6 +1,6 @@
 # Dvala Language Service
 
-**Status:** Draft
+**Status:** Complete
 **Created:** 2026-04-02
 
 ## Goal

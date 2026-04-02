@@ -13,7 +13,7 @@
 import { NodeTypes } from '../constants/constants'
 import { bindingTargetTypes } from '../parser/types'
 import type { AstNode, BindingTarget, SourceMap, SourceMapPosition } from '../parser/types'
-import type { SymbolDef, SymbolRef } from './types'
+import type { ScopeRange, SymbolDef, SymbolRef } from './types'
 
 /** Scope entry: maps symbol name → definition */
 type Scope = Map<string, SymbolDef>
@@ -27,6 +27,10 @@ interface BuilderState {
   filePath: string
   /** Set of all builtin names — references to these skip resolution */
   builtinNames: Set<string>
+  /** Completed scope ranges (populated when scopes are popped) */
+  scopeRanges: ScopeRange[]
+  /** Stack of in-progress scope ranges (parallel to scopes stack) */
+  activeScopeRanges: { nodeId: number; definitions: SymbolDef[] }[]
 }
 
 /**
@@ -38,7 +42,7 @@ export function buildSymbolTable(
   sourceMap: SourceMap | undefined,
   filePath: string,
   builtinNames: Set<string>,
-): { definitions: SymbolDef[]; references: SymbolRef[] } {
+): { definitions: SymbolDef[]; references: SymbolRef[]; scopeRanges: ScopeRange[] } {
   const state: BuilderState = {
     definitions: [],
     references: [],
@@ -47,12 +51,14 @@ export function buildSymbolTable(
     sourceMap,
     filePath,
     builtinNames,
+    scopeRanges: [],
+    activeScopeRanges: [], // top-level scope has no range (covers entire file)
   }
 
   // Walk all top-level nodes as a sequence (let bindings are additive)
   walkSequence(nodes, state)
 
-  return { definitions: state.definitions, references: state.references }
+  return { definitions: state.definitions, references: state.references, scopeRanges: state.scopeRanges }
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +100,7 @@ function walkNode(node: AstNode, state: BuilderState): void {
     case NodeTypes.Macro: {
       // Function/macro: [BindingTarget[], AstNode[]] — params and body
       const [params, body] = payload as [BindingTarget[], AstNode[]]
-      pushScope(state)
+      pushScope(state, nodeId)
       for (const param of params) {
         registerBindingTarget(param, state, 'parameter')
       }
@@ -106,7 +112,7 @@ function walkNode(node: AstNode, state: BuilderState): void {
     case NodeTypes.Block: {
       // do...end block: new scope for inner let bindings
       const bodyNodes = payload as AstNode[]
-      pushScope(state)
+      pushScope(state, nodeId)
       walkSequence(bodyNodes, state)
       popScope(state)
       break
@@ -119,15 +125,24 @@ function walkNode(node: AstNode, state: BuilderState): void {
         [BindingTarget, AstNode[]] | null,
       ]
       for (const clause of clauses) {
-        pushScope(state)
+        pushScope(state, nodeId)
         for (const param of clause.params) {
           registerBindingTarget(param, state, 'parameter')
         }
+        // `resume` is implicitly available in handler clause scope (injected by the evaluator)
+        const resumeDef: SymbolDef = {
+          name: 'resume',
+          kind: 'function',
+          nodeId,
+          location: nodeLocation(nodeId, state),
+          scope: state.scopeDepth,
+        }
+        registerDef(resumeDef, state)
         walkSequence(clause.body, state)
         popScope(state)
       }
       if (transform) {
-        pushScope(state)
+        pushScope(state, nodeId)
         registerBindingTarget(transform[0], state, 'parameter')
         walkSequence(transform[1], state)
         popScope(state)
@@ -139,7 +154,7 @@ function walkNode(node: AstNode, state: BuilderState): void {
       // do with handler; body end: [handlerExpr, bodyNodes]
       const [handlerExpr, bodyNodes] = payload as [AstNode, AstNode[]]
       walkNode(handlerExpr, state)
-      pushScope(state)
+      pushScope(state, nodeId)
       walkSequence(bodyNodes, state)
       popScope(state)
       break
@@ -148,13 +163,14 @@ function walkNode(node: AstNode, state: BuilderState): void {
     case NodeTypes.For: {
       // for: [LoopBindingNode[], bodyExpr]
       const [bindings, bodyExpr] = payload as [unknown[], AstNode]
-      pushScope(state)
+      pushScope(state, nodeId)
       for (const binding of bindings) {
         // LoopBindingNode: [[BindingTarget, collectionExpr], letBindings[], whenExpr?, whileExpr?]
-        const [[target, collectionExpr], letBindings] = binding as [
+        const [[target, collectionExpr], letBindings, whenExpr, whileExpr] = binding as [
           [BindingTarget, AstNode],
           [BindingTarget, AstNode][],
-          ...unknown[],
+          AstNode | null,
+          AstNode | null,
         ]
         walkNode(collectionExpr, state)
         registerBindingTarget(target, state, 'variable')
@@ -162,6 +178,8 @@ function walkNode(node: AstNode, state: BuilderState): void {
           walkNode(letValue, state)
           registerBindingTarget(letTarget, state, 'variable')
         }
+        if (whenExpr) walkNode(whenExpr, state)
+        if (whileExpr) walkNode(whileExpr, state)
       }
       walkNode(bodyExpr, state)
       popScope(state)
@@ -169,21 +187,12 @@ function walkNode(node: AstNode, state: BuilderState): void {
     }
 
     case NodeTypes.Loop: {
-      // loop: [LoopBindingNode[], bodyExpr] — same structure as for
-      const [bindings, bodyExpr] = payload as [unknown[], AstNode]
-      pushScope(state)
-      for (const binding of bindings) {
-        const [[target, initExpr], letBindings] = binding as [
-          [BindingTarget, AstNode],
-          [BindingTarget, AstNode][],
-          ...unknown[],
-        ]
+      // loop: [[BindingTarget, initExpr][], bodyExpr] — flat pairs, no let/when/while
+      const [bindings, bodyExpr] = payload as [[BindingTarget, AstNode][], AstNode]
+      pushScope(state, nodeId)
+      for (const [target, initExpr] of bindings) {
         walkNode(initExpr, state)
         registerBindingTarget(target, state, 'variable')
-        for (const [letTarget, letValue] of letBindings) {
-          walkNode(letValue, state)
-          registerBindingTarget(letTarget, state, 'variable')
-        }
       }
       walkNode(bodyExpr, state)
       popScope(state)
@@ -195,7 +204,7 @@ function walkNode(node: AstNode, state: BuilderState): void {
       const [expr, cases] = payload as [AstNode, [BindingTarget, AstNode, AstNode | undefined][]]
       walkNode(expr, state)
       for (const [pattern, body, guard] of cases) {
-        pushScope(state)
+        pushScope(state, nodeId)
         registerBindingTarget(pattern, state, 'variable')
         if (guard) walkNode(guard, state)
         walkNode(body, state)
@@ -328,14 +337,30 @@ function walkNode(node: AstNode, state: BuilderState): void {
 // Scope management
 // ---------------------------------------------------------------------------
 
-function pushScope(state: BuilderState): void {
+/** Push a new scope, associated with the AST node that creates it. */
+function pushScope(state: BuilderState, nodeId?: number): void {
   state.scopeDepth++
   state.scopes.push(new Map())
+  state.activeScopeRanges.push({ nodeId: nodeId ?? -1, definitions: [] })
 }
 
+/** Pop a scope and finalize its range using the source map position of the owning node. */
 function popScope(state: BuilderState): void {
   state.scopes.pop()
   state.scopeDepth--
+  const active = state.activeScopeRanges.pop()
+  if (active && active.nodeId >= 0 && active.definitions.length > 0 && state.sourceMap) {
+    const pos = state.sourceMap.positions.get(active.nodeId)
+    if (pos) {
+      state.scopeRanges.push({
+        startLine: pos.start[0] + 1,
+        startColumn: pos.start[1] + 1,
+        endLine: pos.end[0] + 1,
+        endColumn: pos.end[1] + 1,
+        definitions: active.definitions,
+      })
+    }
+  }
 }
 
 function lookupScope(name: string, state: BuilderState): SymbolDef | null {
@@ -358,6 +383,7 @@ function currentScope(state: BuilderState): Scope {
 /**
  * Register all names from a binding target as definitions in the current scope.
  * Determines the kind based on the RHS expression when available.
+ * Extracts parameter names for function/macro definitions.
  */
 function registerBindingTarget(
   target: BindingTarget,
@@ -366,7 +392,40 @@ function registerBindingTarget(
   rhsNode?: AstNode,
 ): void {
   const kind = rhsNode ? classifyRhs(rhsNode, defaultKind) : defaultKind
+  const defsBefore = state.definitions.length
   walkBindingTarget(target, state, kind)
+
+  // Attach parameter names to function/macro definitions
+  if (rhsNode && (kind === 'function' || kind === 'macro')) {
+    const params = extractParamNames(rhsNode)
+    if (params) {
+      // Apply to all definitions just registered (usually one, but handles destructuring)
+      for (let i = defsBefore; i < state.definitions.length; i++) {
+        state.definitions[i]!.params = params
+      }
+    }
+  }
+}
+
+/** Extract parameter names from a Function or Macro AST node. */
+function extractParamNames(rhs: AstNode): string[] | undefined {
+  const type = rhs[0]
+  if (type !== NodeTypes.Function && type !== NodeTypes.Macro) return undefined
+  const [params] = rhs[1] as [BindingTarget[]]
+  return params.map(p => {
+    // Simple symbol binding target: [symbolNode, defaultExpr?]
+    if (p[0] === bindingTargetTypes.symbol) {
+      const [symbolNode] = p[1] as [AstNode, AstNode | undefined]
+      return symbolNode[1] as string
+    }
+    if (p[0] === bindingTargetTypes.rest) {
+      return `...${(p[1] as [string, AstNode | undefined])[0]}`
+    }
+    // Destructuring patterns — use a placeholder
+    if (p[0] === bindingTargetTypes.object) return '{...}'
+    if (p[0] === bindingTargetTypes.array) return '[...]'
+    return '_'
+  })
 }
 
 /** Classify a let binding's kind from the RHS AST node. */
@@ -377,6 +436,17 @@ function classifyRhs(rhs: AstNode, fallback: SymbolDef['kind']): SymbolDef['kind
   if (type === NodeTypes.Handler) return 'handler'
   if (type === NodeTypes.Import) return 'import'
   return fallback
+}
+
+/** Register a single definition: adds to definitions list, current scope, and active scope range. */
+function registerDef(def: SymbolDef, state: BuilderState): void {
+  state.definitions.push(def)
+  currentScope(state).set(def.name, def)
+  // Track in the active scope range (if any) for position-aware lookups
+  const activeRange = state.activeScopeRanges[state.activeScopeRanges.length - 1]
+  if (activeRange) {
+    activeRange.definitions.push(def)
+  }
 }
 
 /** Recursively walk a binding target, registering each name as a definition. */
@@ -390,8 +460,7 @@ function walkBindingTarget(target: BindingTarget, state: BuilderState, kind: Sym
       const name = symbolNode[1] as string
       const location = nodeLocation(symbolNode[2], state)
       const def: SymbolDef = { name, kind, nodeId: symbolNode[2], location, scope: state.scopeDepth }
-      state.definitions.push(def)
-      currentScope(state).set(name, def)
+      registerDef(def, state)
       // Walk default expression if present
       if (defaultExpr) walkNode(defaultExpr, state)
       break
@@ -401,8 +470,7 @@ function walkBindingTarget(target: BindingTarget, state: BuilderState, kind: Sym
       const [name, defaultExpr] = targetPayload as [string, AstNode | undefined]
       const location = nodeLocation(targetNodeId, state)
       const def: SymbolDef = { name, kind, nodeId: targetNodeId, location, scope: state.scopeDepth }
-      state.definitions.push(def)
-      currentScope(state).set(name, def)
+      registerDef(def, state)
       if (defaultExpr) walkNode(defaultExpr, state)
       break
     }
