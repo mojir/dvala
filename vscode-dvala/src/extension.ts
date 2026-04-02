@@ -356,6 +356,41 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Go to Definition for import("./path") — Cmd+click or F12 on the import path
+  // navigates to the imported file
+  const definitionProvider = vscode.languages.registerDefinitionProvider('dvala', {
+    provideDefinition(document, position) {
+      const line = document.lineAt(position.line).text
+      // Match import("...") and check if cursor is inside the string
+      const importRegex = /import\(\s*"([^"]+)"\s*\)/g
+      let match
+      while ((match = importRegex.exec(line)) !== null) {
+        const stringStart = match.index + match[0].indexOf('"') + 1
+        const stringEnd = stringStart + match[1].length
+        if (position.character >= stringStart && position.character <= stringEnd) {
+          const importPath = match[1]
+          // Only handle relative imports
+          if (!importPath.startsWith('.')) return undefined
+          const dir = path.dirname(document.uri.fsPath)
+          const resolved = path.resolve(dir, importPath)
+          // Try exact path first, then with .dvala extension
+          for (const candidate of [resolved, `${resolved}.dvala`]) {
+            const uri = vscode.Uri.file(candidate)
+            try {
+              // Check if file exists by trying to stat it synchronously
+              require('fs').accessSync(candidate)
+              return new vscode.Location(uri, new vscode.Position(0, 0))
+            }
+            catch {
+              // File doesn't exist, try next candidate
+            }
+          }
+        }
+      }
+      return undefined
+    },
+  })
+
   // "Go to Definition" in the debug Variables pane — sends a custom DAP request
   // to resolve the source location, then opens the file at that position
   const goToSource = vscode.commands.registerCommand('dvala.debug.goToSource', async (variable: { variable: { variablesReference: number; name: string } }) => {
@@ -382,7 +417,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   })
 
-  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider, goToSource)
+  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider, definitionProvider, goToSource)
 }
 
 export function deactivate(): void {
