@@ -65,6 +65,11 @@
         "command": "dvala.runBlock",
         "title": "Run Dvala Block",
         "icon": "$(play)"
+      },
+      {
+        "command": "dvala.debug.goToSource",
+        "title": "Go to Definition",
+        "icon": "$(go-to-file)"
       }
     ],
     "menus": {
@@ -77,6 +82,13 @@
         {
           "command": "dvala.runBlock",
           "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "debug/variables/context": [
+        {
+          "command": "dvala.debug.goToSource",
+          "when": "debugType == dvala",
           "group": "navigation"
         }
       ],

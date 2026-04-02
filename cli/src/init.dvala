@@ -16,6 +16,11 @@ let askForRepl = () -> perform(
   { question: "Configure REPL?", options: { default: true }}
 );
 
+let askForVscode = () -> perform(
+  @dvala.io.confirm,
+  { question: "Configure VSCode settings?", options: { default: true }}
+);
+
 // If dvala.json exists, ask before overwriting
 if configExists then
   let overwrite = perform(
@@ -36,4 +41,6 @@ let tests = if entryFile then askForTests() else false end;
 
 let repl = if entryFile then askForRepl() else false end;
 
-{ name, entryFile, tests, repl }
+let vscode = if entryFile then askForVscode() else false end;
+
+{ name, entryFile, tests, repl, vscode }

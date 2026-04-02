@@ -40,7 +40,7 @@ import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError
 import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
-import { parse } from '../parser'
+import { parse, parseToAst } from '../parser'
 import type {
   Ast,
   AstNode,
@@ -677,7 +677,34 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         }
         env.markFileResolving(moduleName)
         const source = env.fileResolver(moduleName, env.currentFileDir)
-        const fileNodes = parse(minifyTokenStream(tokenize(source, false, undefined), { removeWhiteSpace: true }))
+        // Resolve the absolute file path for source map tracking
+        const rawPath = moduleName.startsWith('/')
+          ? moduleName
+          : `${env.currentFileDir}/${moduleName}`
+        // Normalize: resolve . and .. segments, collapse multiple slashes
+        const parts = rawPath.split('/')
+        const resolved: string[] = []
+        for (const part of parts) {
+          if (part === '' || part === '.') continue
+          if (part === '..' && resolved.length > 0 && resolved[resolved.length - 1] !== '..') resolved.pop()
+          else resolved.push(part)
+        }
+        const resolvedPath = (rawPath.startsWith('/') ? '/' : '') + resolved.join('/')
+        const resolvedPathWithExt = resolvedPath.endsWith('.dvala') ? resolvedPath : `${resolvedPath}.dvala`
+        // Use the shared allocateNodeId and debug flag from the context stack so that
+        // runtime imports get unique nodeIds and source map entries for coverage tracking.
+        const tokenStream = tokenize(source, env.debug, env.debug ? resolvedPathWithExt : undefined)
+        const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
+        const ast = env.allocateNodeId ? parseToAst(minified, env.allocateNodeId) : { body: parse(minified), sourceMap: undefined }
+        // Merge the imported file's source map into the accumulated one
+        if (ast.sourceMap && env.sourceMap) {
+          const sourceOffset = env.sourceMap.sources.length
+          env.sourceMap.sources.push(...ast.sourceMap.sources)
+          for (const [nodeId, pos] of ast.sourceMap.positions) {
+            env.sourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
+          }
+        }
+        const fileNodes = ast.body
         // Create a new env with the imported file's directory as context
         const fileEnv = env.create({})
         // Compute the imported file's directory for nested imports
@@ -4715,6 +4742,9 @@ function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
  */
 function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undefined): void {
   if (!sourceMap) return
+  // Skip if already the same object (e.g. when createDvala shares the accumulated
+  // sourceMap with both the AST and the context stack)
+  if (sourceMap === contextStack.sourceMap) return
   if (!contextStack.sourceMap) {
     contextStack.sourceMap = { sources: [...sourceMap.sources], positions: new Map(sourceMap.positions) }
     return

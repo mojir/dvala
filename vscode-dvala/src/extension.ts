@@ -356,7 +356,33 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
-  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider)
+  // "Go to Definition" in the debug Variables pane — sends a custom DAP request
+  // to resolve the source location, then opens the file at that position
+  const goToSource = vscode.commands.registerCommand('dvala.debug.goToSource', async (variable: { variable: { variablesReference: number; name: string } }) => {
+    const session = vscode.debug.activeDebugSession
+    if (!session || session.type !== 'dvala') return
+
+    const varRef = variable?.variable?.variablesReference
+    const varName = variable?.variable?.name
+    if (!varRef && !varName) return
+
+    try {
+      const loc = await session.customRequest('dvalaGetSourceLocation', { variablesReference: varRef, name: varName })
+      if (loc?.file) {
+        const uri = vscode.Uri.file(loc.file)
+        const line = Math.max(0, (loc.line ?? 1) - 1)
+        const col = Math.max(0, (loc.column ?? 1) - 1)
+        const pos = new vscode.Position(line, col)
+        const doc = await vscode.workspace.openTextDocument(uri)
+        await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos) })
+      }
+    }
+    catch {
+      // No source location for this variable — silently ignore
+    }
+  })
+
+  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider, goToSource)
 }
 
 export function deactivate(): void {
