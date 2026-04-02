@@ -4,7 +4,7 @@
 //   configExists : boolean  — whether dvala.json already exists
 //   dirName      : string   — basename of cwd (default project name)
 //
-// Returns: { name, entryFile, tests, repl }
+// Returns: { name, entryFile, tests, repl, vscode }
 
 let askForTests = () -> perform(
   @dvala.io.confirm,

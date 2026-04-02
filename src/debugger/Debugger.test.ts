@@ -255,7 +255,7 @@ describe('Debugger', () => {
       expect(stopCount).toBeGreaterThanOrEqual(1)
     })
 
-    it('stepOver skips into function bodies', async () => {
+    it('stepOver does not descend into function bodies', async () => {
       const code = 'let f = () -> 1 + 2; f()'
       const stoppedNodes: number[] = []
 

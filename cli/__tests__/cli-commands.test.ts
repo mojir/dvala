@@ -346,6 +346,21 @@ describe('CLI commands', () => {
       expect(config.tests).toBe('**/*.test.dvala')
       expect(config.repl).toBe('main.dvala')
     })
+
+    it('does not overwrite existing .vscode/launch.json', async () => {
+      const dir = path.join(tmpDir, 'init-vscode-exists')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(path.join(dir, '.vscode'), { recursive: true })
+      fs.writeFileSync(path.join(dir, '.vscode', 'launch.json'), '{"custom":true}')
+
+      // Name (default), create entry file (yes), tests (no), repl (no), vscode (yes)
+      const { code } = await runInit(['', 'y', 'n', 'n', 'y'], dir)
+
+      expect(code).toBe(0)
+      // Existing launch.json should not be overwritten
+      const launchContent = fs.readFileSync(path.join(dir, '.vscode', 'launch.json'), 'utf-8')
+      expect(JSON.parse(launchContent)).toEqual({ custom: true })
+    })
   })
 
   // --- doc ---

@@ -677,7 +677,9 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         }
         env.markFileResolving(moduleName)
         const source = env.fileResolver(moduleName, env.currentFileDir)
-        // Resolve the absolute file path for source map tracking
+        // Resolve the absolute file path for source map tracking.
+        // Note: this inline normalization assumes forward-slash paths (Unix/macOS).
+        // The `path` module is intentionally not imported here for browser compatibility.
         const rawPath = moduleName.startsWith('/')
           ? moduleName
           : `${env.currentFileDir}/${moduleName}`
