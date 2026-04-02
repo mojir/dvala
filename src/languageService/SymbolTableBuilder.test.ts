@@ -5,9 +5,10 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
 import { builtin } from '../builtin'
 
-// Collect all builtin names for the builder
+// Collect all builtin names — must mirror WorkspaceIndex.ts
 const builtinNames = new Set<string>([
   ...Object.keys(builtin.normalExpressions),
+  ...Object.keys(builtin.specialExpressions),
   'true', 'false', 'null', 'E', 'PI', 'Infinity',
 ])
 
