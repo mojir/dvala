@@ -13,11 +13,11 @@ import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
 import { builtin } from '../builtin'
 import { NodeTypes } from '../constants/constants'
-import type { AstNode } from '../parser/types'
+import type { AstNode, SourceMap } from '../parser/types'
 import type { ParseError } from '../errors'
 import { buildSymbolTable } from './SymbolTableBuilder'
 import { scanTokensForDefinitions } from './tokenScan'
-import type { FileSymbols, SymbolDef, SymbolRef } from './types'
+import type { FileSymbols, ScopeRange, SymbolDef, SymbolRef } from './types'
 
 // All builtin symbol names — used to skip them during reference resolution
 const builtinNames = new Set<string>([
@@ -73,7 +73,7 @@ export class WorkspaceIndex {
     const minified = minifyTokenStream(tokens, { removeWhiteSpace: true })
     const parseResult = parseRecoverable(minified)
 
-    const { definitions, references } = buildSymbolTable(
+    const { definitions, references, scopeRanges } = buildSymbolTable(
       parseResult.body,
       parseResult.sourceMap,
       absolutePath,
@@ -84,12 +84,18 @@ export class WorkspaceIndex {
     const imports = new Map<string, string>()
     extractImports(parseResult.body, absolutePath, imports)
 
+    // Extract exported names from the file's final expression (if it's an object literal).
+    // This is the standard Dvala module pattern: `let ...; { name1, name2 }`
+    const exports = extractExports(parseResult.body, parseResult.sourceMap, absolutePath)
+
     const fileSymbols: FileSymbols = {
       filePath: absolutePath,
       definitions,
       references,
       imports,
+      exports,
       parseErrors: parseResult.errors,
+      scopeRanges,
     }
 
     // Update cache
@@ -248,6 +254,51 @@ export class WorkspaceIndex {
   }
 
   /**
+   * Get all symbols visible at a given position in a file.
+   * Includes top-level definitions defined before the cursor,
+   * plus definitions from all enclosing scope ranges.
+   */
+  getSymbolsInScope(filePath: string, line: number, column: number): SymbolDef[] {
+    const absolutePath = path.resolve(filePath)
+    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    if (!fileSymbols) {
+      // Fall back to token-scanned definitions (all top-level)
+      return this.cache.get(absolutePath)?.tokenDefs ?? []
+    }
+
+    const result: SymbolDef[] = []
+    const seen = new Set<string>()
+
+    // Collect definitions from enclosing scope ranges (innermost first for shadowing)
+    // Sort by area ascending so inner scopes come first
+    const enclosing = fileSymbols.scopeRanges
+      .filter(sr => positionInRange(line, column, sr))
+      .sort((a, b) => rangeArea(a) - rangeArea(b))
+
+    for (const scope of enclosing) {
+      for (const def of scope.definitions) {
+        if (!seen.has(def.name)) {
+          seen.add(def.name)
+          result.push(def)
+        }
+      }
+    }
+
+    // Add top-level definitions that appear before the cursor position
+    // (let bindings are sequential — can't reference a name before it's defined)
+    for (const def of fileSymbols.definitions) {
+      if (def.scope !== 0) continue
+      if (seen.has(def.name)) continue
+      if (def.location.line < line || (def.location.line === line && def.location.column <= column)) {
+        seen.add(def.name)
+        result.push(def)
+      }
+    }
+
+    return result
+  }
+
+  /**
    * Get diagnostics for a file: parse errors + unresolved symbol references.
    */
   getDiagnostics(filePath: string): { parseErrors: ParseError[]; unresolvedRefs: SymbolRef[] } {
@@ -327,6 +378,47 @@ function findRefAtPosition(refs: SymbolRef[], line: number, column: number): Sym
   return best
 }
 
+/**
+ * Extract exported symbol names from the file's return value.
+ * Detects the Dvala module pattern where the last expression is an object literal:
+ *   `let ...; { pi: ..., e: ... }`
+ * The object keys become the file's exports.
+ */
+function extractExports(nodes: AstNode[], sourceMap: SourceMap | undefined, filePath: string): SymbolDef[] {
+  if (nodes.length === 0) return []
+  const lastNode = nodes[nodes.length - 1]!
+  if (lastNode[0] !== NodeTypes.Object) return []
+
+  const exports: SymbolDef[] = []
+  const entries = lastNode[1] as (AstNode[] | AstNode)[]
+  for (const entry of entries) {
+    // Key-value pair: [keyNode, valueNode] where keyNode is a Str node
+    if (Array.isArray(entry) && Array.isArray(entry[0])) {
+      const keyNode = (entry as [AstNode, AstNode])[0]
+      if (keyNode[0] === NodeTypes.Str) {
+        const name = keyNode[1] as string
+        const nodeId = keyNode[2]
+        const location = resolveLocation(nodeId, sourceMap, filePath)
+        exports.push({ name, kind: 'variable', nodeId, location, scope: 0 })
+      }
+    }
+  }
+  return exports
+}
+
+/** Resolve a node ID to a source location. */
+function resolveLocation(nodeId: number, sourceMap: SourceMap | undefined, filePath: string): { file: string; line: number; column: number } {
+  if (!sourceMap) return { file: filePath, line: 0, column: 0 }
+  const pos = sourceMap.positions.get(nodeId)
+  if (!pos) return { file: filePath, line: 0, column: 0 }
+  const source = sourceMap.sources[pos.source]
+  return {
+    file: source?.path ?? filePath,
+    line: pos.start[0] + 1,
+    column: pos.start[1] + 1,
+  }
+}
+
 /** Extract import paths from AST nodes and resolve them to absolute paths. */
 function extractImports(nodes: AstNode[], fromFile: string, imports: Map<string, string>): void {
   for (const node of nodes) {
@@ -370,6 +462,19 @@ function resolveImportPath(filePath: string): string | null {
   const withExt = `${filePath}.dvala`
   if (fs.existsSync(withExt)) return withExt
   return null
+}
+
+/** Check if a 1-based position is inside a scope range. */
+function positionInRange(line: number, column: number, range: ScopeRange): boolean {
+  if (line < range.startLine || line > range.endLine) return false
+  if (line === range.startLine && column < range.startColumn) return false
+  if (line === range.endLine && column > range.endColumn) return false
+  return true
+}
+
+/** Approximate area of a scope range (for sorting inner-before-outer). */
+function rangeArea(range: ScopeRange): number {
+  return (range.endLine - range.startLine) * 1000 + (range.endColumn - range.startColumn)
 }
 
 /** Simple string hash for change detection. */
