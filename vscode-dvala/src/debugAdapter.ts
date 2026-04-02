@@ -15,27 +15,26 @@ import {
   StoppedEvent,
   TerminatedEvent,
 } from '@vscode/debugadapter'
+import type { DebugProtocol } from '@vscode/debugprotocol'
+import { stringifyValue } from '../../common/utils'
+import { allBuiltinModules } from '../../src/allModules'
+import { bundle } from '../../src/bundler'
+import { createDvala } from '../../src/createDvala'
+import { Debugger } from '../../src/debugger/Debugger'
+import type { DebugStoppedEvent } from '../../src/debugger/Debugger'
+import { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from '../../src/debugger/SourceMapUtils'
+import type { ContinuationStack } from '../../src/evaluator/frames'
+import type { Continuation, Handlers } from '../../src/evaluator/effectTypes'
+import type { AstNode, BindingTarget, DvalaFunction, EffectRef, HandlerFunction, RegularExpression, SourceMap } from '../../src/parser/types'
+import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
+import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
+import { toJS } from '../../src/utils/interop'
+import { isPersistentMap, isPersistentVector } from '../../src/utils/persistent'
 
 const LOG_FILE = '/tmp/dvala-dap.log'
 function log(msg: string): void {
   appendFileSync(LOG_FILE, `${new Date().toISOString()} ${msg}\n`)
 }
-import type { DebugProtocol } from '@vscode/debugprotocol'
-import { createDvala } from '../../src/createDvala'
-import { allBuiltinModules } from '../../src/allModules'
-import { bundle } from '../../src/bundler'
-import { Debugger } from '../../src/debugger/Debugger'
-import type { DebugStoppedEvent } from '../../src/debugger/Debugger'
-import { findNodeIdForLine, getNodeEndLine, getNodeFile, getNodeLine } from '../../src/debugger/SourceMapUtils'
-import type { Continuation, Handlers } from '../../src/evaluator/effectTypes'
-import type { AstNode, SourceMap } from '../../src/parser/types'
-import { stringifyValue } from '../../common/utils'
-import { toJS } from '../../src/utils/interop'
-import { isPersistentMap, isPersistentVector } from '../../src/utils/persistent'
-import { isDvalaFunction } from '../../src/typeGuards/dvalaFunction'
-import { isEffect, isRegularExpression } from '../../src/typeGuards/dvala'
-import type { BindingTarget, DvalaFunction, EffectRef, HandlerFunction, RegularExpression } from '../../src/parser/types'
-import type { ContinuationStack } from '../../src/evaluator/frames'
 
 // DAP uses a single thread for Dvala (no concurrency)
 const THREAD_ID = 1
@@ -55,6 +54,8 @@ class DvalaDebugSession extends DebugSession {
   private currentNode: AstNode | null = null
   private sourceMap: SourceMap | null = null
   private programPath: string = ''
+  // Shared Dvala instance for expression evaluation (conditional breakpoints, debug console, hover)
+  private evalDvala = createDvala({ modules: allBuiltinModules })
   // For expandable variables: maps variablesReference IDs to JS values or rich Dvala types
   private variableRefs = new Map<number, Record<string, unknown> | unknown[]>()
   private functionRefs = new Map<number, DvalaFunction>()
@@ -66,6 +67,8 @@ class DvalaDebugSession extends DebugSession {
   // Variable name → declaration source location (built from AST bindings at launch)
   private bindingLocations = new Map<string, { file: string; line: number; column: number }>()
   private nextVarRef = 3 // 1 = LOCALS_REF, 2 = HANDLERS_REF
+  // Cached handler variables built in scopesRequest, consumed in variablesRequest
+  private cachedHandlerVars: DebugProtocol.Variable[] = []
   // Track breakpoint nodeIds per file so we only clear the right ones
   private breakpointsByFile = new Map<string, Set<number>>()
   // Buffer breakpoint requests that arrive before launch (DAP sends them early)
@@ -159,8 +162,7 @@ class DvalaDebugSession extends DebugSession {
     // expression using the current scope's bindings, returns the result value
     const conditionEvaluator = async (expression: string, continuation: Continuation) => {
       const bindings = Debugger.extractBindings(continuation)
-      const evalDvala = createDvala({ modules: allBuiltinModules })
-      const result = await evalDvala.runAsync(expression, { bindings, pure: true })
+      const result = await this.evalDvala.runAsync(expression, { bindings, pure: true })
       if (result.type === 'completed') return result.value
       return undefined
     }
@@ -217,6 +219,8 @@ class DvalaDebugSession extends DebugSession {
       this.stepOverDepth = null
       this.currentNode = event.node
       this.currentContinuation = event.continuation
+      // Reset variable refs on each stop — they're only valid while paused
+      this.resetVariableRefs()
       this.sendEvent(new StoppedEvent(event.reason, THREAD_ID))
     }, conditionEvaluator)
 
@@ -374,6 +378,17 @@ class DvalaDebugSession extends DebugSession {
     return path.relative(dir, filePath) || path.basename(filePath)
   }
 
+  /** Reset all variable/location ref maps. Called on each StoppedEvent. */
+  private resetVariableRefs(): void {
+    this.variableRefs.clear()
+    this.functionRefs.clear()
+    this.effectRefs.clear()
+    this.regexpRefs.clear()
+    this.locationRefs.clear()
+    this.nextLocationRef = 1
+    this.nextVarRef = 3
+  }
+
   /** Re-issue the last step command to skip past a node without breaking depth tracking. */
   private reissueLastStep(): void {
     switch (this.lastStepCommand) {
@@ -512,15 +527,15 @@ class DvalaDebugSession extends DebugSession {
     response: DebugProtocol.ScopesResponse,
     _args: DebugProtocol.ScopesArguments,
   ): void {
-    // Show Effect Handlers scope only when there are active handlers
-    const hasHandlers = this.currentContinuation
-      ? this.countActiveHandlers(this.currentContinuation.k) > 0
-      : false
+    // Build handler variables once; show the scope only if non-empty
+    this.cachedHandlerVars = this.currentContinuation
+      ? this.buildHandlerVariables(this.currentContinuation.k)
+      : []
 
     const scopes: DebugProtocol.Scope[] = [
       { name: 'Locals', variablesReference: LOCALS_REF, expensive: false },
     ]
-    if (hasHandlers) {
+    if (this.cachedHandlerVars.length > 0) {
       scopes.push({ name: 'Effect Handlers', variablesReference: HANDLERS_REF, expensive: false })
     }
     response.body = { scopes }
@@ -538,15 +553,6 @@ class DvalaDebugSession extends DebugSession {
         this.sendResponse(response)
         return
       }
-      // Reset variable refs on each stop (they're only valid while paused)
-      this.variableRefs.clear()
-      this.functionRefs.clear()
-      this.effectRefs.clear()
-      this.regexpRefs.clear()
-      this.locationRefs.clear()
-      this.nextLocationRef = 1
-      this.nextVarRef = 3
-
       const vars = Debugger.getVariables(this.currentContinuation)
       const variables: DebugProtocol.Variable[] = vars.map(v => this.toSmartVariable(v.name, v.value))
       response.body = { variables }
@@ -554,14 +560,9 @@ class DvalaDebugSession extends DebugSession {
       return
     }
 
-    // Effect Handlers scope: show active handlers from the continuation stack
+    // Effect Handlers scope: use cached vars built in scopesRequest
     if (args.variablesReference === HANDLERS_REF) {
-      if (!this.currentContinuation) {
-        response.body = { variables: [] }
-        this.sendResponse(response)
-        return
-      }
-      response.body = { variables: this.buildHandlerVariables(this.currentContinuation.k) }
+      response.body = { variables: this.cachedHandlerVars }
       this.sendResponse(response)
       return
     }
@@ -865,19 +866,6 @@ class DvalaDebugSession extends DebugSession {
     return { value: v.value, variablesReference: v.variablesReference }
   }
 
-  /** Count active effect handlers in the continuation stack. */
-  private countActiveHandlers(k: ContinuationStack): number {
-    let count = 0
-    let node = k
-    while (node !== null) {
-      const type = node.head.type
-      if (type === 'AlgebraicHandle' || type === 'HandlerClause' || type === 'HandlerTransform') {
-        count++
-      }
-      node = node.tail
-    }
-    return count
-  }
 
   /** Build expandable variables for all active effect handlers on the stack. */
   private buildHandlerVariables(k: ContinuationStack): DebugProtocol.Variable[] {
@@ -942,7 +930,7 @@ class DvalaDebugSession extends DebugSession {
     const walk = (nodes: AstNode[]): void => {
       for (const node of nodes) {
         const [type, payload, nodeId] = node
-        if (type === 'Binding' || type === 'Let') {
+        if (type === 'Let') {
           // payload: [BindingTarget, valueAstNode]
           const [target] = payload as [BindingTarget, AstNode]
           const name = this.extractTopLevelBindingName(target)
@@ -1013,8 +1001,7 @@ class DvalaDebugSession extends DebugSession {
 
     // Evaluate the expression with the current scope's bindings
     const bindings = Debugger.extractBindings(this.currentContinuation)
-    const evalDvala = createDvala({ modules: allBuiltinModules })
-    const result = await evalDvala.runAsync(expr, { bindings, pure: true })
+    const result = await this.evalDvala.runAsync(expr, { bindings, pure: true })
 
     if (result.type === 'completed') {
       // Make the result expandable for collections and functions

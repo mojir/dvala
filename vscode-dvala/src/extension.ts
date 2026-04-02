@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
@@ -378,7 +379,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const uri = vscode.Uri.file(candidate)
             try {
               // Check if file exists by trying to stat it synchronously
-              require('fs').accessSync(candidate)
+              fs.accessSync(candidate)
               return new vscode.Location(uri, new vscode.Position(0, 0))
             }
             catch {

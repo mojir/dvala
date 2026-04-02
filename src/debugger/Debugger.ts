@@ -95,7 +95,7 @@ export class Debugger {
     this.resume()
   }
 
-  /** Step to next node at the same or shallower depth (skip into function calls). */
+  /** Step to next node at the same or shallower depth (skip over function calls). */
   public stepOver(): void {
     this.stepCommand = 'stepOver'
     this.resume()
