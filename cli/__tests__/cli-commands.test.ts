@@ -227,8 +227,8 @@ describe('CLI commands', () => {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      // Name (default), create entry file (yes), configure tests (no), configure repl (no)
-      const { code, stdout } = await runInit(['', 'y', 'n', 'n'], dir)
+      // Name (default), create entry file (yes), configure tests (no), configure repl (no), configure vscode (no)
+      const { code, stdout } = await runInit(['', 'y', 'n', 'n', 'n'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created dvala.json')
@@ -254,7 +254,7 @@ describe('CLI commands', () => {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      const { code } = await runInit(['my-project', 'y', 'n', 'n'], dir)
+      const { code } = await runInit(['my-project', 'y', 'n', 'n', 'n'], dir)
 
       expect(code).toBe(0)
       const config = JSON.parse(fs.readFileSync(path.join(dir, 'dvala.json'), 'utf-8'))
@@ -286,8 +286,8 @@ describe('CLI commands', () => {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.mkdirSync(dir, { recursive: true })
 
-      // Name (default), create entry file (yes), configure tests (yes), configure repl (yes)
-      const { code, stdout } = await runInit(['', 'y', 'y', 'y'], dir)
+      // Name (default), create entry file (yes), configure tests (yes), configure repl (yes), configure vscode (yes)
+      const { code, stdout } = await runInit(['', 'y', 'y', 'y', 'y'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created main.dvala')
@@ -301,6 +301,12 @@ describe('CLI commands', () => {
 
       expect(fs.existsSync(path.join(dir, 'main.dvala'))).toBe(true)
       expect(fs.existsSync(path.join(dir, 'tests', 'main.test.dvala'))).toBe(true)
+      expect(fs.existsSync(path.join(dir, '.vscode', 'launch.json'))).toBe(true)
+
+      // launch.json should contain the dvala debug configuration
+      const launchConfig = JSON.parse(fs.readFileSync(path.join(dir, '.vscode', 'launch.json'), 'utf-8'))
+      expect(launchConfig.configurations[0].type).toBe('dvala')
+      expect(launchConfig.configurations[0].request).toBe('launch')
 
       // Test file should import from main and test its functions
       const testContent = fs.readFileSync(path.join(dir, 'tests', 'main.test.dvala'), 'utf-8')
@@ -329,8 +335,8 @@ describe('CLI commands', () => {
       fs.mkdirSync(dir, { recursive: true })
       fs.writeFileSync(path.join(dir, 'dvala.json'), '{"entry":"old.dvala","tests":"old/**/*.test.dvala"}')
 
-      // Accept overwrite, name (default), create entry file (yes), tests (yes), repl (yes)
-      const { code, stdout } = await runInit(['y', '', 'y', 'y', 'y'], dir)
+      // Accept overwrite, name (default), create entry file (yes), tests (yes), repl (yes), vscode (yes)
+      const { code, stdout } = await runInit(['y', '', 'y', 'y', 'y', 'y'], dir)
 
       expect(code).toBe(0)
       expect(stdout).toContain('Created dvala.json')
@@ -339,6 +345,21 @@ describe('CLI commands', () => {
       expect(config.entry).toBe('main.dvala')
       expect(config.tests).toBe('**/*.test.dvala')
       expect(config.repl).toBe('main.dvala')
+    })
+
+    it('does not overwrite existing .vscode/launch.json', async () => {
+      const dir = path.join(tmpDir, 'init-vscode-exists')
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.mkdirSync(path.join(dir, '.vscode'), { recursive: true })
+      fs.writeFileSync(path.join(dir, '.vscode', 'launch.json'), '{"custom":true}')
+
+      // Name (default), create entry file (yes), tests (no), repl (no), vscode (yes)
+      const { code } = await runInit(['', 'y', 'n', 'n', 'y'], dir)
+
+      expect(code).toBe(0)
+      // Existing launch.json should not be overwritten
+      const launchContent = fs.readFileSync(path.join(dir, '.vscode', 'launch.json'), 'utf-8')
+      expect(JSON.parse(launchContent)).toEqual({ custom: true })
     })
   })
 

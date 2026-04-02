@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { allReference, isFunctionReference, isCustomReference } from '../../reference/index'
@@ -356,7 +357,68 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
-  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider)
+  // Go to Definition for import("./path") — Cmd+click or F12 on the import path
+  // navigates to the imported file
+  const definitionProvider = vscode.languages.registerDefinitionProvider('dvala', {
+    provideDefinition(document, position) {
+      const line = document.lineAt(position.line).text
+      // Match import("...") and check if cursor is inside the string
+      const importRegex = /import\(\s*"([^"]+)"\s*\)/g
+      let match
+      while ((match = importRegex.exec(line)) !== null) {
+        const stringStart = match.index + match[0].indexOf('"') + 1
+        const stringEnd = stringStart + match[1].length
+        if (position.character >= stringStart && position.character <= stringEnd) {
+          const importPath = match[1]
+          // Only handle relative imports
+          if (!importPath.startsWith('.')) return undefined
+          const dir = path.dirname(document.uri.fsPath)
+          const resolved = path.resolve(dir, importPath)
+          // Try exact path first, then with .dvala extension
+          for (const candidate of [resolved, `${resolved}.dvala`]) {
+            const uri = vscode.Uri.file(candidate)
+            try {
+              // Check if file exists by trying to stat it synchronously
+              fs.accessSync(candidate)
+              return new vscode.Location(uri, new vscode.Position(0, 0))
+            }
+            catch {
+              // File doesn't exist, try next candidate
+            }
+          }
+        }
+      }
+      return undefined
+    },
+  })
+
+  // "Go to Definition" in the debug Variables pane — sends a custom DAP request
+  // to resolve the source location, then opens the file at that position
+  const goToSource = vscode.commands.registerCommand('dvala.debug.goToSource', async (variable: { variable: { variablesReference: number; name: string } }) => {
+    const session = vscode.debug.activeDebugSession
+    if (!session || session.type !== 'dvala') return
+
+    const varRef = variable?.variable?.variablesReference
+    const varName = variable?.variable?.name
+    if (!varRef && !varName) return
+
+    try {
+      const loc = await session.customRequest('dvalaGetSourceLocation', { variablesReference: varRef, name: varName })
+      if (loc?.file) {
+        const uri = vscode.Uri.file(loc.file)
+        const line = Math.max(0, (loc.line ?? 1) - 1)
+        const col = Math.max(0, (loc.column ?? 1) - 1)
+        const pos = new vscode.Position(line, col)
+        const doc = await vscode.workspace.openTextDocument(uri)
+        await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos) })
+      }
+    }
+    catch {
+      // No source location for this variable — silently ignore
+    }
+  })
+
+  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider, definitionProvider, goToSource)
 }
 
 export function deactivate(): void {

@@ -37,9 +37,10 @@ import type { LoopBindingNode } from '../builtin/specialExpressions/loops'
 import type { MatchCase } from '../builtin/specialExpressions/match'
 import { MAX_MACRO_EXPANSION_DEPTH, NodeTypes } from '../constants/constants'
 import { ArithmeticError, AssertionError, DvalaError, MacroError, ReferenceError, RuntimeError, TypeError, UserError } from '../errors'
+import { reconstructCallStack } from './callStack'
 import { getUndefinedSymbols } from '../getUndefinedSymbols'
 import type { Any, Arr, Obj } from '../interface'
-import { parse } from '../parser'
+import { parse, parseToAst } from '../parser'
 import type {
   Ast,
   AstNode,
@@ -676,7 +677,36 @@ export function stepNode(node: AstNode, env: ContextStack, k: ContinuationStack)
         }
         env.markFileResolving(moduleName)
         const source = env.fileResolver(moduleName, env.currentFileDir)
-        const fileNodes = parse(minifyTokenStream(tokenize(source, false, undefined), { removeWhiteSpace: true }))
+        // Resolve the absolute file path for source map tracking.
+        // Note: this inline normalization assumes forward-slash paths (Unix/macOS).
+        // The `path` module is intentionally not imported here for browser compatibility.
+        const rawPath = moduleName.startsWith('/')
+          ? moduleName
+          : `${env.currentFileDir}/${moduleName}`
+        // Normalize: resolve . and .. segments, collapse multiple slashes
+        const parts = rawPath.split('/')
+        const resolved: string[] = []
+        for (const part of parts) {
+          if (part === '' || part === '.') continue
+          if (part === '..' && resolved.length > 0 && resolved[resolved.length - 1] !== '..') resolved.pop()
+          else resolved.push(part)
+        }
+        const resolvedPath = (rawPath.startsWith('/') ? '/' : '') + resolved.join('/')
+        const resolvedPathWithExt = resolvedPath.endsWith('.dvala') ? resolvedPath : `${resolvedPath}.dvala`
+        // Use the shared allocateNodeId and debug flag from the context stack so that
+        // runtime imports get unique nodeIds and source map entries for coverage tracking.
+        const tokenStream = tokenize(source, env.debug, env.debug ? resolvedPathWithExt : undefined)
+        const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
+        const ast = env.allocateNodeId ? parseToAst(minified, env.allocateNodeId) : { body: parse(minified), sourceMap: undefined }
+        // Merge the imported file's source map into the accumulated one
+        if (ast.sourceMap && env.sourceMap) {
+          const sourceOffset = env.sourceMap.sources.length
+          env.sourceMap.sources.push(...ast.sourceMap.sources)
+          for (const [nodeId, pos] of ast.sourceMap.positions) {
+            env.sourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
+          }
+        }
+        const fileNodes = ast.body
         // Create a new env with the imported file's directory as context
         const fileEnv = env.create({})
         // Compute the imported file's directory for nested imports
@@ -1681,6 +1711,12 @@ function applyObjectBuild(frame: ObjectBuildFrame, value: Any, k: ContinuationSt
 
 function applyLetBind(frame: LetBindFrame, value: Any, k: ContinuationStack): Step {
   const { target, env, sourceCodeInfo } = frame
+
+  // Name inference: when binding a simple symbol to an unnamed function,
+  // stamp the binding name onto the function (like JS's `let foo = () => {}` → foo.name === "foo")
+  if (target[0] === 'symbol' && (isUserDefinedFunction(value) || isMacroFunction(value)) && value.name === undefined) {
+    value.name = target[1][0][1]
+  }
 
   // Push completion frame to receive the binding record
   const completeFrame: LetBindCompleteFrame = {
@@ -4184,14 +4220,15 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
   if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
     const renamed = renameMap.get(payload)
     if (renamed) {
-      return toAny([type, renamed, 0])
+      return toAny([type, renamed, -1])
     }
   }
 
-  // Use nodeId 0 for all generated nodes — code template AST is synthetic data
+  // Use nodeId -1 for all generated nodes — code template AST is synthetic data.
+  // Must not collide with real source map nodeIds (which start at 0).
   // Leaf nodes with primitive payloads — return as data tuple
   if (!Array.isArray(payload)) {
-    return toAny([type, payload, 0])
+    return toAny([type, payload, -1])
   }
 
   // CodeTmpl nodes contain both inner splices (indices 0..N-1, for the inner template)
@@ -4206,7 +4243,7 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     // scope names like macro parameters) but WITHOUT outer splice values (inner splice
     // expressions don't contain outer splice placeholders).
     const convertedSpliceExprs = innerSpliceExprs.map(e => astToData(e, [], renameMap))
-    return toAny([type, [convertedBody, convertedSpliceExprs], 0])
+    return toAny([type, [convertedBody, convertedSpliceExprs], -1])
   }
 
   // Let nodes need special handling: the binding target may contain splices that
@@ -4215,12 +4252,12 @@ function astToData(node: AstNode, spliceValues: Any[], renameMap?: Map<string, s
     const [target, valueNode] = payload as [AstNode, AstNode]
     const convertedValue = astToData(valueNode, spliceValues, renameMap)
     const convertedTarget = convertBindingTarget(target as unknown[], spliceValues, renameMap)
-    return toAny([type, [convertedTarget, convertedValue], 0])
+    return toAny([type, [convertedTarget, convertedValue], -1])
   }
 
   // Recursive: convert array payloads, with implicit spread for splices
   const convertedPayload = convertArrayPayload(payload, spliceValues, renameMap)
-  return toAny([type, convertedPayload, 0])
+  return toAny([type, convertedPayload, -1])
 }
 
 /**
@@ -4237,22 +4274,22 @@ function astToDataWithCodeTmplAwareness(
     const index = payload as number
     if (index < innerCount) {
       // Inner splice — preserve as data tuple for the inner template to resolve
-      return toAny([type, index, 0])
+      return toAny([type, index, -1])
     }
     // Outer splice — resolve with adjusted index, wrapped in InlinedData to prevent double conversion
-    return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, 0])
+    return toAny([NodeTypes.InlinedData, spliceValues[index - innerCount]!, -1])
   }
 
   // For everything else, delegate to standard astToData but with inner-awareness for nested arrays
   if (type === NodeTypes.Sym && renameMap && typeof payload === 'string') {
     const renamed = renameMap.get(payload)
     if (renamed) {
-      return toAny([type, renamed, 0])
+      return toAny([type, renamed, -1])
     }
   }
 
   if (!Array.isArray(payload)) {
-    return toAny([type, payload, 0])
+    return toAny([type, payload, -1])
   }
 
   // Recurse into array payloads, maintaining inner-awareness for Splice nodes
@@ -4270,11 +4307,11 @@ function astToDataWithCodeTmplAwareness(
     if (item.length >= 2 && item[0] === NodeTypes.Splice) {
       const spliceIndex = item[1] as number
       if (spliceIndex < innerCount) {
-        result.push(toAny([NodeTypes.Splice, spliceIndex, 0]))
+        result.push(toAny([NodeTypes.Splice, spliceIndex, -1]))
       } else {
         const spliceValue = spliceValues[spliceIndex - innerCount]!
         // Wrap in InlinedData to prevent double conversion
-        result.push(toAny([NodeTypes.InlinedData, spliceValue, 0]))
+        result.push(toAny([NodeTypes.InlinedData, spliceValue, -1]))
       }
     } else if (item.length >= 2 && typeof item[0] === 'string') {
       result.push(astToDataWithCodeTmplAwareness(item as AstNode, spliceValues, renameMap, innerCount))
@@ -4284,7 +4321,7 @@ function astToDataWithCodeTmplAwareness(
       )))
     }
   }
-  return toAny([type, result, 0])
+  return toAny([type, result, -1])
 }
 
 /**
@@ -4318,14 +4355,14 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
 
     // If the splice resolved to a Sym node, keep as symbol binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Sym) {
-      return toAny(['symbol', [resolvedName, convertedDefault], 0])
+      return toAny(['symbol', [resolvedName, convertedDefault], -1])
     }
 
     // If it resolved to an Array AST → convert to array binding target
     if (Array.isArray(resolvedName) && resolvedName[0] === NodeTypes.Array) {
       const elements = resolvedName[1] as Any[]
       const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
-      return toAny(['array', [targets, convertedDefault], 0])
+      return toAny(['array', [targets, convertedDefault], -1])
     }
 
     // If it resolved to an Object AST → convert to object binding target
@@ -4340,11 +4377,11 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
         const key = keyNode[1] as string
         record[key] = expressionAstToBindingTarget(valNode)
       }
-      return toAny(['object', [record, convertedDefault], 0])
+      return toAny(['object', [record, convertedDefault], -1])
     }
 
     // Fallback: return as-is (will error at evaluation time if invalid)
-    return toAny(['symbol', [resolvedName, convertedDefault], 0])
+    return toAny(['symbol', [resolvedName, convertedDefault], -1])
   }
 
   // Array binding target: ["array", [targets[], default], id] — recurse into nested targets
@@ -4354,7 +4391,7 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
       t === null ? null : convertBindingTarget(t as AstNode, spliceValues, renameMap),
     )
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
-    return toAny(['array', [convertedTargets, convertedDefault], 0])
+    return toAny(['array', [convertedTargets, convertedDefault], -1])
   }
 
   // Object binding target: ["object", [record, default], id] — recurse into nested targets
@@ -4365,14 +4402,14 @@ function convertBindingTarget(target: unknown[], spliceValues: Any[], renameMap?
       convertedRecord[key] = convertBindingTarget(value as AstNode, spliceValues, renameMap)
     }
     const convertedDefault = defaultNode ? astToData(defaultNode, spliceValues, renameMap) : null
-    return toAny(['object', [convertedRecord, convertedDefault], 0])
+    return toAny(['object', [convertedRecord, convertedDefault], -1])
   }
 
   // Rest, literal, wildcard, or other — convert generically
   if (Array.isArray(targetPayload)) {
-    return toAny([targetType, convertArrayPayload(targetPayload, spliceValues, renameMap), 0])
+    return toAny([targetType, convertArrayPayload(targetPayload, spliceValues, renameMap), -1])
   }
-  return toAny([targetType, targetPayload, 0])
+  return toAny([targetType, targetPayload, -1])
 }
 
 /**
@@ -4387,14 +4424,14 @@ function expressionAstToBindingTarget(astData: Any): Any {
 
   // Sym → symbol binding target
   if (nodeType === NodeTypes.Sym) {
-    return toAny(['symbol', [astData, null], 0])
+    return toAny(['symbol', [astData, null], -1])
   }
 
   // Array → array binding target (recurse into elements)
   if (nodeType === NodeTypes.Array) {
     const elements = node[1] as unknown as Any[]
     const targets = elements.map((elem: Any) => expressionAstToBindingTarget(elem))
-    return toAny(['array', [targets, null], 0])
+    return toAny(['array', [targets, null], -1])
   }
 
   // Object → object binding target (recurse into entries)
@@ -4407,7 +4444,7 @@ function expressionAstToBindingTarget(astData: Any): Any {
       const key = keyNode[1] as string
       record[key] = expressionAstToBindingTarget(valNode)
     }
-    return toAny(['object', [record, null], 0])
+    return toAny(['object', [record, null], -1])
   }
 
   // Spread → rest binding target
@@ -4589,6 +4626,7 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
           return effectStep
         }
 
+        patchedError.attachCallStack(reconstructCallStack(step.k))
         throw patchedError
       }
     }
@@ -4632,7 +4670,8 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
         const arg: Any = buildErrorPayload(patchedError)
         return { type: 'Perform', effect, arg, k: kForDispatch, sourceCodeInfo: patchedError.sourceCodeInfo }
       }
-      // No handler matched — re-throw with patched location.
+      // No handler matched — attach call stack and re-throw.
+      patchedError.attachCallStack(reconstructCallStack(kForDispatch))
       throw patchedError
     }
     // Non-DvalaError — re-throw as-is.
@@ -4705,6 +4744,9 @@ function buildInitialStep(nodes: AstNode[], env: ContextStack): Step {
  */
 function mergeSourceMap(contextStack: ContextStack, sourceMap: SourceMap | undefined): void {
   if (!sourceMap) return
+  // Skip if already the same object (e.g. when createDvala shares the accumulated
+  // sourceMap with both the AST and the context stack)
+  if (sourceMap === contextStack.sourceMap) return
   if (!contextStack.sourceMap) {
     contextStack.sourceMap = { sources: [...sourceMap.sources], positions: new Map(sourceMap.positions) }
     return

@@ -16,7 +16,7 @@
 
 import { ArithmeticError, RuntimeError, TypeError } from '../errors'
 import type { Arity, FunctionDocs } from '../builtin/interface'
-import type { Any, UnknownRecord } from '../interface'
+import type { Any } from '../interface'
 import { isEffect, isRegularExpression } from '../typeGuards/dvala'
 import { isDvalaFunction } from '../typeGuards/dvalaFunction'
 import { toFixedArity } from '../utils/arity'
@@ -75,7 +75,8 @@ function formatForOutput(value: unknown): string {
   if (isDvalaFunction(value)) {
     if (value.functionType === 'Builtin')
       return `<builtin function ${value.normalBuiltinSymbolType}>`
-    return `<function ${(value as unknown as UnknownRecord).n ?? '\u03BB'}>`
+    const kind = value.functionType === 'Macro' ? 'macro' : 'function'
+    return `<${kind} ${'name' in value && value.name ? value.name : '\u03BB'}>`
   }
 
   if (isEffect(value))

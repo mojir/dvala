@@ -16,9 +16,10 @@ function isNode(value: unknown): value is AstNode {
 }
 
 export function valueToString(value: unknown): string {
-  if (isDvalaFunction(value))
-
-    return `<function ${(value as any).name || '\u03BB'}>`
+  if (isDvalaFunction(value)) {
+    const kind = value.functionType === 'Macro' ? 'macro' : 'function'
+    return `<${kind} ${(value as any).name || '\u03BB'}>`
+  }
 
   if (isNode(value))
     return `${value[0]}-node`

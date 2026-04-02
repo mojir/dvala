@@ -1,4 +1,5 @@
 import { getCodeMarker } from '../src/utils/debug/getCodeMarker'
+import type { CallStackEntry } from './evaluator/callStack'
 import type { Arr } from './interface'
 import type { SourceCodeInfo } from './tokenizer/token'
 
@@ -34,6 +35,8 @@ export class DvalaError extends Error {
   public readonly shortMessage: string
   /** Machine-readable error category for the structured @dvala.error payload. */
   readonly errorType: string = 'RuntimeError'
+  /** Call stack entries attached when the error propagates out of the evaluator. */
+  public callStack?: CallStackEntry[]
   constructor(err: unknown, sourceCodeInfo: SourceCodeInfo | undefined) {
     const message = err instanceof Error
       ? err.message
@@ -44,6 +47,27 @@ export class DvalaError extends Error {
     this.sourceCodeInfo = sourceCodeInfo
     Object.setPrototypeOf(this, DvalaError.prototype)
     this.name = 'DvalaError'
+  }
+
+  /**
+   * Attach a call stack to this error and update the message.
+   * Called when the error is about to propagate out of the evaluator
+   * (not when caught by an algebraic handler).
+   */
+  public attachCallStack(entries: CallStackEntry[]): void {
+    if (entries.length === 0)
+      return
+    this.callStack = entries
+    // Rebuild the full message with the call stack appended
+    const stackStr = entries
+      .map(entry => {
+        const location = entry.sourceCodeInfo
+          ? `${entry.sourceCodeInfo.filePath ?? ''}:${entry.sourceCodeInfo.position.line}:${entry.sourceCodeInfo.position.column}`
+          : '<unknown>'
+        return `  at ${entry.name}  ${location}`
+      })
+      .join('\n')
+    this.message = `${this.message}\n${stackStr}`
   }
 
   public getCodeMarker(): string | undefined {
