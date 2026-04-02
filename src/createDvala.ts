@@ -259,11 +259,12 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       assertNotPureWithHandlers(pure, effectHandlers)
 
       try {
-        const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
+        const forceDebug = !!runOptions?.onNodeEval
+        const effectiveDebug = debug || forceDebug
+        const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir, effectiveDebug ? allocateNodeId : undefined, effectiveDebug)
 
         // For AST bundles, use the pre-parsed AST directly.
         // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
-        const forceDebug = !!runOptions?.onNodeEval
         const ast = isDvalaBundle(source) ? source.ast : buildAst(source, runOptions?.filePath, forceDebug)
         // For bundles, merge the bundle's sourceMap into accumulatedSourceMap so that
         // onNodeEval callers can resolve nodeIds to positions after the run.
@@ -276,6 +277,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
             for (const [nodeId, pos] of source.ast.sourceMap.positions)
               accumulatedSourceMap.positions.set(nodeId, { ...pos, source: pos.source + sourceOffset })
           }
+        }
+        // Share the accumulated source map with the context stack so that
+        // runtime file imports can merge their positions into it for coverage.
+        if (accumulatedSourceMap) {
+          contextStack.sourceMap = accumulatedSourceMap
         }
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const terminalSnapshot = runOptions?.terminalSnapshot

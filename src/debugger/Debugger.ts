@@ -25,6 +25,16 @@ export interface Variable {
 
 export type StepCommand = 'continue' | 'stepOver' | 'stepInto' | 'stepOut'
 
+/**
+ * Evaluate a condition expression using the current scope's bindings.
+ * Returns the result value, or undefined if evaluation failed.
+ */
+export type ConditionEvaluator = (expression: string, continuation: Continuation) => Promise<unknown>
+
+interface Breakpoint {
+  condition?: string
+}
+
 // ---------------------------------------------------------------------------
 // Debugger controller
 // ---------------------------------------------------------------------------
@@ -41,24 +51,26 @@ export type StepCommand = 'continue' | 'stepOver' | 'stepInto' | 'stepOut'
  *    to resume execution
  */
 export class Debugger {
-  private breakpoints = new Set<number>()
+  private breakpoints = new Map<number, Breakpoint>()
   private onStopped: (event: DebugStoppedEvent) => void
+  private conditionEvaluator: ConditionEvaluator | null
 
   // Stepping state
   private pendingResolve: (() => void) | null = null
   private stepCommand: StepCommand | null = null
   private stepDepth: number = 0
 
-  constructor(onStopped: (event: DebugStoppedEvent) => void) {
+  constructor(onStopped: (event: DebugStoppedEvent) => void, conditionEvaluator?: ConditionEvaluator) {
     this.onStopped = onStopped
+    this.conditionEvaluator = conditionEvaluator ?? null
   }
 
   // -------------------------------------------------------------------------
   // Breakpoint management
   // -------------------------------------------------------------------------
 
-  public setBreakpoint(nodeId: number): void {
-    this.breakpoints.add(nodeId)
+  public setBreakpoint(nodeId: number, condition?: string): void {
+    this.breakpoints.set(nodeId, { condition })
   }
 
   public removeBreakpoint(nodeId: number): void {
@@ -70,7 +82,7 @@ export class Debugger {
   }
 
   public getBreakpoints(): Set<number> {
-    return new Set(this.breakpoints)
+    return new Set(this.breakpoints.keys())
   }
 
   // -------------------------------------------------------------------------
@@ -133,6 +145,30 @@ export class Debugger {
     return reconstructCallStack(continuation.k)
   }
 
+  /**
+   * Extract visible variable bindings as a plain record — suitable for passing
+   * to `dvala.runAsync(expr, { bindings })` for expression evaluation.
+   */
+  public static extractBindings(continuation: Continuation): Record<string, unknown> {
+    const vars = Debugger.getVariables(continuation)
+    const bindings: Record<string, unknown> = {}
+    for (const { name, value } of vars) {
+      bindings[name] = value
+    }
+    return bindings
+  }
+
+  /** Count call depth by counting FnBody frames in the continuation stack. */
+  public static countCallDepth(continuation: Continuation): number {
+    let depth = 0
+    let node = continuation.k
+    while (node !== null) {
+      if (node.head.type === 'FnBody') depth++
+      node = node.tail
+    }
+    return depth
+  }
+
   // -------------------------------------------------------------------------
   // onNodeEval hook — pass this to dvala.runAsync()
   // -------------------------------------------------------------------------
@@ -149,9 +185,23 @@ export class Debugger {
   ): void | Promise<void> => {
     const nodeId = node[2]
 
-    // Fast path: breakpoint hit — always stop
-    if (this.breakpoints.has(nodeId)) {
-      return this.stop('breakpoint', node, getContinuation())
+    // Breakpoint check — may need async condition evaluation
+    const bp = this.breakpoints.get(nodeId)
+    if (bp !== undefined) {
+      const continuation = getContinuation()
+
+      // Unconditional breakpoint — always stop
+      if (!bp.condition) {
+        return this.stop('breakpoint', node, continuation)
+      }
+
+      // Conditional breakpoint — evaluate condition, stop only if truthy
+      if (this.conditionEvaluator) {
+        return this.evaluateCondition(bp.condition, node, continuation)
+      }
+
+      // No evaluator provided — treat as unconditional
+      return this.stop('breakpoint', node, continuation)
     }
 
     // No active step command — don't stop
@@ -168,7 +218,7 @@ export class Debugger {
       case 'stepOver': {
         // Stop when call depth is at or below the depth where stepOver was issued
         const continuation = getContinuation()
-        const currentDepth = this.countCallDepth(continuation)
+        const currentDepth = Debugger.countCallDepth(continuation)
         if (currentDepth <= this.stepDepth) {
           return this.stop('step', node, continuation)
         }
@@ -178,7 +228,7 @@ export class Debugger {
       case 'stepOut': {
         // Stop when call depth is strictly below the depth where stepOut was issued
         const continuation = getContinuation()
-        const currentDepth = this.countCallDepth(continuation)
+        const currentDepth = Debugger.countCallDepth(continuation)
         if (currentDepth < this.stepDepth) {
           return this.stop('step', node, continuation)
         }
@@ -191,9 +241,25 @@ export class Debugger {
   // Internal
   // -------------------------------------------------------------------------
 
+  private async evaluateCondition(
+    condition: string,
+    node: AstNode,
+    continuation: Continuation,
+  ): Promise<void> {
+    try {
+      const result = await this.conditionEvaluator!(condition, continuation)
+      // Stop only if the condition evaluates to a truthy value
+      if (result) {
+        return this.stop('breakpoint', node, continuation)
+      }
+    } catch {
+      // Condition evaluation failed — skip this breakpoint silently
+    }
+  }
+
   private stop(reason: StopReason, node: AstNode, continuation: Continuation): Promise<void> {
     // Record depth for subsequent step commands
-    this.stepDepth = this.countCallDepth(continuation)
+    this.stepDepth = Debugger.countCallDepth(continuation)
     this.stepCommand = null
 
     return new Promise<void>(resolve => {
@@ -210,15 +276,4 @@ export class Debugger {
     }
   }
 
-  private countCallDepth(continuation: Continuation): number {
-    let depth = 0
-    let node = continuation.k
-    while (node !== null) {
-      if (node.head.type === 'FnBody') {
-        depth++
-      }
-      node = node.tail
-    }
-    return depth
-  }
 }

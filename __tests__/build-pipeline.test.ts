@@ -36,7 +36,8 @@ describe('build pipeline', () => {
     const result = bundle(entryPath)
 
     const dvala = createDvala()
-    const output = dvala.run(result) as Record<string, number>
+    const raw = dvala.run(result) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.avg).toBe(5)
     expect(output.clamped).toBe(5)
     expect(output.interpolated).toBeCloseTo(1.5708, 3)
@@ -49,7 +50,8 @@ describe('build pipeline', () => {
     const expanded = { ...result, ast: expandMacros(result.ast) }
 
     const dvala = createDvala()
-    const output = dvala.run(expanded) as Record<string, number>
+    const raw = dvala.run(expanded) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.avg).toBe(5)
     expect(output.clamped).toBe(5)
   })
@@ -65,7 +67,8 @@ describe('build pipeline', () => {
 
     expect(restored).not.toBeNull()
     const dvala = createDvala()
-    const output = dvala.run(restored!) as Record<string, number>
+    const raw = dvala.run(restored!) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.avg).toBe(5)
   })
 
@@ -78,7 +81,8 @@ describe('build pipeline', () => {
 
     // Still runnable
     const dvala = createDvala()
-    const output = dvala.run(result) as Record<string, number>
+    const raw = dvala.run(result) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.avg).toBe(5)
   })
 
@@ -103,7 +107,8 @@ describe('build pipeline', () => {
 
     // The expanded bundle is still runnable and produces correct results
     const dvala = createDvala()
-    const output = dvala.run(expanded) as Record<string, number>
+    const raw = dvala.run(expanded) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.doubled).toBe(10) // double(5) → 5 + 5
     expect(output.safe).toBe(42) // withDefault(null, 42) → if isNull(null) then 42 else null end
   })
@@ -119,7 +124,8 @@ describe('build pipeline', () => {
 
     // Still runnable (macros expand at runtime)
     const dvala = createDvala()
-    const output = dvala.run(bundled) as Record<string, number>
+    const raw = dvala.run(bundled) as Record<string, unknown>
+    const output = raw.result as Record<string, number>
     expect(output.doubled).toBe(10)
     expect(output.safe).toBe(42)
   })
