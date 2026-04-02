@@ -10,22 +10,22 @@ describe('quote...end code templates', () => {
     it('should parse a simple quote', () => {
       // A quote returns AST data, not an evaluated value
       const result = run('quote 42 end')
-      // Should be an AST node: ["Num", 42, 0]
-      expect(result).toEqual(['Num', 42, 0])
+      // Should be an AST node: ["Num", 42, -1]
+      expect(result).toEqual(['Num', 42, -1])
     })
 
     it('should parse a string literal template', () => {
       const result = run('quote "hello" end')
-      expect(result).toEqual(['Str', 'hello', 0])
+      expect(result).toEqual(['Str', 'hello', -1])
     })
 
     it('should parse a symbol reference template', () => {
       const result = run('quote x end')
-      expect(result).toEqual(['Sym', 'x', 0])
+      expect(result).toEqual(['Sym', 'x', -1])
     })
 
     it('should parse a boolean template', () => {
-      expect(run('quote true end')).toEqual(['Reserved', 'true', 0])
+      expect(run('quote true end')).toEqual(['Reserved', 'true', -1])
     })
 
     it('should parse a binary expression template', () => {
@@ -40,29 +40,29 @@ describe('quote...end code templates', () => {
   describe('splice interpolation ($^{})', () => {
     it('should splice a simple expression', () => {
       // $^{expr} evaluates expr and inserts the result into the AST
-      const result = run('let node = ["Num", 99, 0]; quote $^{node} end')
+      const result = run('let node = ["Num", 99, -1]; quote $^{node} end')
       // The splice inserts the value of `node` directly
-      expect(result).toEqual(['Num', 99, 0])
+      expect(result).toEqual(['Num', 99, -1])
     })
 
     it('should splice into a larger expression', () => {
       const result = run(`
-        let a = ["Num", 1, 0];
-        let b = ["Num", 2, 0];
+        let a = ["Num", 1, -1];
+        let b = ["Num", 2, -1];
         quote $^{a} + $^{b} end
       `)
-      // Should produce: ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 2, 0]]], 0]
+      // Should produce: ["Call", [["Builtin", "+", -1], [["Num", 1, -1], ["Num", 2, -1]]], -1]
       const arr = result as unknown[]
       expect(arr[0]).toBe('Call')
       const payload = arr[1] as unknown[]
       const args = payload[1] as unknown[][]
-      expect(args[0]).toEqual(['Num', 1, 0])
-      expect(args[1]).toEqual(['Num', 2, 0])
+      expect(args[0]).toEqual(['Num', 1, -1])
+      expect(args[1]).toEqual(['Num', 2, -1])
     })
 
     it('should evaluate splice expressions in the current scope', () => {
-      const result = run('let x = 42; quote $^{["Num", x, 0]} end')
-      expect(result).toEqual(['Num', 42, 0])
+      const result = run('let x = 42; quote $^{["Num", x, -1]} end')
+      expect(result).toEqual(['Num', 42, -1])
     })
   })
 
@@ -108,30 +108,30 @@ describe('quote...end code templates', () => {
     it('should spread an array of AST nodes into function arguments', () => {
       // When $^{expr} evaluates to an array of AST nodes, they spread into the parent
       const result = run(`
-        let args = [["Num", 1, 0], ["Num", 2, 0]];
+        let args = [["Num", 1, -1], ["Num", 2, -1]];
         quote +($^{args}) end
       `)
-      // Should produce: ["Call", [["Builtin", "+", 0], [["Num", 1, 0], ["Num", 2, 0]]], 0]
+      // Should produce: ["Call", [["Builtin", "+", -1], [["Num", 1, -1], ["Num", 2, -1]]], -1]
       const arr = result as unknown[]
       expect(arr[0]).toBe('Call')
       const payload = arr[1] as unknown[]
       const fnArgs = payload[1] as unknown[][]
-      expect(fnArgs).toEqual([['Num', 1, 0], ['Num', 2, 0]])
+      expect(fnArgs).toEqual([['Num', 1, -1], ['Num', 2, -1]])
     })
 
     it('should not spread a single AST node', () => {
       // A single AST node (starts with string) is inserted as-is, not spread
       const result = run(`
-        let node = ["Num", 42, 0];
+        let node = ["Num", 42, -1];
         quote $^{node} end
       `)
-      expect(result).toEqual(['Num', 42, 0])
+      expect(result).toEqual(['Num', 42, -1])
     })
 
     it('should spread nodes in a block context', () => {
       // A macro that wraps statements in a do...end block
       const result = run(`
-        let stmts = [["Num", 1, 0], ["Num", 42, 0]];
+        let stmts = [["Num", 1, -1], ["Num", 42, -1]];
         let block = quote do $^{stmts} end end;
         block
       `)
@@ -140,8 +140,8 @@ describe('quote...end code templates', () => {
       expect(arr[0]).toBe('Block')
       const body = arr[1] as unknown[][]
       expect(body.length).toBe(2)
-      expect(body[0]).toEqual(['Num', 1, 0])
-      expect(body[1]).toEqual(['Num', 42, 0])
+      expect(body[0]).toEqual(['Num', 1, -1])
+      expect(body[1]).toEqual(['Num', 42, -1])
     })
   })
 

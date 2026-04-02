@@ -1,0 +1,83 @@
+// Debug showcase — demonstrates inspectable variables in the debugger.
+//
+// Usage:
+//   1. Set a breakpoint on the last line ("result")
+//   2. Launch "Debug Dvala" (F5)
+//   3. Expand variables in the Variables pane to explore metadata
+//
+// What to look for:
+//   - Functions show: type, name, arity, defined at, parameters, closure
+//   - Macros show: type, name, qualifiedName, parameters
+//   - Handlers show: clauses, shallow flag, transform
+//   - Effects show: qualified name
+//   - RegExps show: source, flags
+//   - Composed functions (comp, juxt, complement) show their inner functions
+//   - The "Effect Handlers" scope appears inside do-with blocks
+
+let { clamp } = import("./lib/math");
+let { juxt, complement, fnull } = import("functional");
+
+// --- User-defined functions with closures ---
+
+let multiplier = 3;
+let scale = (x) -> x * multiplier;
+
+let makeAdder = (n) -> (x) -> x + n;
+let add10 = makeAdder(10);
+
+// --- Composition and higher-order functions ---
+
+let isPositive = (x) -> x > 0;
+let isNonPositive = complement(isPositive);
+let describeSign = juxt(isPositive, isNonPositive);
+
+let safeDivide = fnull((a, b) -> a / b, 0, 1);
+
+let doubleThenClamp = comp((x) -> clamp(x, 0, 20), scale);
+
+// --- Macro ---
+
+let double = macro (x) -> quote $^{x} + $^{x} end;
+
+// --- Effect and RegExp ---
+
+let myEffect = @debug.demo;
+let pattern = regexp("\\d+", "g");
+
+// --- Handler ---
+
+let logger = handler
+  @debug.log(msg) -> do
+    perform(@dvala.io.print, "LOG: " ++ msg ++ "\n");
+    resume(null)
+  end
+transform
+  result -> { result, logged: true }
+end;
+
+// --- Use the handler (creates Effect Handlers scope) ---
+
+let result = do with logger;
+  perform(@debug.log, "starting computation");
+
+  let scaled = scale(7);
+  let added = add10(scaled);
+  let signs = describeSign(added);
+  let safe = safeDivide(null, null);
+  let doubled = double(5);
+  let clamped = doubleThenClamp(8);
+
+  perform(@debug.log, "done");
+  {
+    scaled,
+    added,
+    signs,
+    safe,
+    doubled,
+    clamped,
+    pattern,
+    myEffect
+  }
+end;
+
+result

@@ -797,7 +797,7 @@ async function runInit(): Promise<void> {
   if (runResult.type !== 'completed')
     throw new Error('Init script did not complete')
 
-  const result = runResult.value as { name: string; entryFile: boolean; tests: boolean; repl: boolean }
+  const result = runResult.value as { name: string; entryFile: boolean; tests: boolean; repl: boolean; vscode: boolean }
   const projectName = result.name || dirName
 
   // Build dvala.json config
@@ -836,6 +836,28 @@ async function runInit(): Promise<void> {
       fs.mkdirSync(testsDir, { recursive: true })
       fs.writeFileSync(sampleTestPath, mainTestTemplate)
       console.log(`Created ${fmt.bright.white('tests/main.test.dvala')}`)
+    }
+  }
+
+  // Write .vscode/launch.json if requested
+  if (result.vscode) {
+    const vscodeDir = path.join(process.cwd(), '.vscode')
+    const launchJsonPath = path.join(vscodeDir, 'launch.json')
+    if (!fs.existsSync(launchJsonPath)) {
+      fs.mkdirSync(vscodeDir, { recursive: true })
+      const launchJson = {
+        version: '0.2.0',
+        configurations: [
+          {
+            type: 'dvala',
+            request: 'launch',
+            name: 'Debug Dvala',
+            program: '${file}',
+          },
+        ],
+      }
+      fs.writeFileSync(launchJsonPath, `${JSON.stringify(launchJson, null, 2)}\n`)
+      console.log(`Created ${fmt.bright.white('.vscode/launch.json')}`)
     }
   }
 

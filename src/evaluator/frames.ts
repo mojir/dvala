@@ -561,6 +561,7 @@ export interface EvalArgsFrame {
  */
 export interface CallFnFrame {
   type: 'CallFn'
+  fnName?: string // function name for call stack display (may be unknown for anonymous expressions)
   params: Arr // pre-evaluated arguments
   placeholders: number[] // placeholder indices (for partial application)
   env: ContextStack

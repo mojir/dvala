@@ -207,7 +207,7 @@
       "output": []
     },
     "typecheck": {
-      "command": "tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
+      "command": "npm install --prefix vscode-dvala && tsc -p ./tsconfig.compile.json --noEmit && tsc -p vscode-dvala/tsconfig.json --noEmit",
       "files": [
         "src/**/*.ts",
         "common/**/*.ts",

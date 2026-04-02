@@ -52,6 +52,10 @@ export class ContextStackImpl {
   public fileResolver?: FileResolver
   /** Directory of the currently evaluating file — used to resolve relative imports */
   public currentFileDir: string
+  /** Node ID allocator — shared with the parser so runtime imports get unique IDs */
+  public allocateNodeId?: () => number
+  /** Whether debug mode (source map building) is active */
+  public debug: boolean
   // Track files currently being evaluated to detect circular imports
   private _resolvingFiles: Set<string>
   constructor({
@@ -64,6 +68,8 @@ export class ContextStackImpl {
     fileResolver,
     currentFileDir,
     resolvingFiles,
+    allocateNodeId,
+    debug,
   }: {
     contexts: Context[]
     values?: Record<string, unknown>
@@ -74,6 +80,8 @@ export class ContextStackImpl {
     fileResolver?: FileResolver
     currentFileDir?: string
     resolvingFiles?: Set<string>
+    allocateNodeId?: () => number
+    debug?: boolean
   }) {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
@@ -85,6 +93,8 @@ export class ContextStackImpl {
     this.fileResolver = fileResolver
     this.currentFileDir = currentFileDir ?? '.'
     this._resolvingFiles = resolvingFiles ?? new Set()
+    this.allocateNodeId = allocateNodeId
+    this.debug = debug ?? false
   }
 
   public resolve(nodeId: number): SourceCodeInfo | undefined {
@@ -199,6 +209,8 @@ export class ContextStackImpl {
       fileResolver: this.fileResolver,
       currentFileDir: this.currentFileDir,
       resolvingFiles: this._resolvingFiles,
+      allocateNodeId: this.allocateNodeId,
+      debug: this.debug,
     })
     contextStack.globalContext = globalContext
     return contextStack
@@ -332,7 +344,7 @@ function assertNotShadowingKeyword(name: string): void {
   }
 }
 
-export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap, fileResolver?: FileResolver, currentFileDir?: string): ContextStack {
+export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap, fileResolver?: FileResolver, currentFileDir?: string, allocateNodeId?: () => number, debug?: boolean): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
@@ -360,6 +372,8 @@ export function createContextStack(params: CreateContextStackParams = {}, module
     sourceMap,
     fileResolver,
     currentFileDir,
+    allocateNodeId,
+    debug,
   })
   return params.globalModuleScope ? contextStack : contextStack.create({})
 }

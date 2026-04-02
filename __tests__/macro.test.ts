@@ -135,7 +135,7 @@ describe('macro system', () => {
         let pick = macro (a, b) -> a;
         macroexpand(pick, quote 1 end, quote 2 end)
       `)
-      expect(result).toEqual(['Num', 1, 0])
+      expect(result).toEqual(['Num', 1, -1])
     })
   })
 
