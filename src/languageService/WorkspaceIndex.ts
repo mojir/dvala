@@ -177,6 +177,69 @@ export class WorkspaceIndex {
   }
 
   /**
+   * Get the symbol name at a given position (could be a definition or reference site).
+   * Returns the name and the definition it resolves to (if any).
+   */
+  getSymbolAtPosition(filePath: string, line: number, column: number): { name: string; def: SymbolDef | null } | null {
+    const absolutePath = path.resolve(filePath)
+    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    if (!fileSymbols) return null
+
+    // Check definitions first (cursor on a `let x = ...` definition site)
+    const defAtPos = findDefAtPosition(fileSymbols.definitions, line, column)
+    if (defAtPos) return { name: defAtPos.name, def: defAtPos }
+
+    // Check references (cursor on a usage site)
+    const refAtPos = findRefAtPosition(fileSymbols.references, line, column)
+    if (refAtPos) return { name: refAtPos.name, def: refAtPos.resolvedDef }
+
+    return null
+  }
+
+  /**
+   * Find all locations of a symbol: the definition site + all reference sites.
+   * Used by "Find All References" which should include the declaration.
+   */
+  findAllOccurrences(filePath: string, symbolName: string): { file: string; line: number; column: number; nameLength: number }[] {
+    const absolutePath = path.resolve(filePath)
+    const results: { file: string; line: number; column: number; nameLength: number }[] = []
+
+    // Collect from current file
+    const fileSymbols = this.cache.get(absolutePath)?.symbols
+    if (fileSymbols) {
+      // Definition sites
+      for (const def of fileSymbols.definitions) {
+        if (def.name === symbolName) {
+          results.push({ ...def.location, nameLength: def.name.length })
+        }
+      }
+      // Reference sites
+      for (const ref of fileSymbols.references) {
+        if (ref.name === symbolName) {
+          results.push({ ...ref.location, nameLength: ref.name.length })
+        }
+      }
+    }
+
+    // Collect from files that import this file
+    const importers = this.reverseImports.get(absolutePath)
+    if (importers) {
+      for (const importerPath of importers) {
+        const importerSymbols = this.cache.get(importerPath)?.symbols
+        if (importerSymbols) {
+          for (const ref of importerSymbols.references) {
+            if (ref.name === symbolName) {
+              results.push({ ...ref.location, nameLength: ref.name.length })
+            }
+          }
+        }
+      }
+    }
+
+    return results
+  }
+
+  /**
    * Get top-level document symbols for the outline view.
    */
   getDocumentSymbols(filePath: string): SymbolDef[] {
@@ -236,6 +299,16 @@ export class WorkspaceIndex {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Find the definition at a given source position. */
+function findDefAtPosition(defs: SymbolDef[], line: number, column: number): SymbolDef | null {
+  for (const def of defs) {
+    if (def.location.line === line && column >= def.location.column && column < def.location.column + def.name.length) {
+      return def
+    }
+  }
+  return null
+}
 
 /** Find the reference closest to a given source position. */
 function findRefAtPosition(refs: SymbolRef[], line: number, column: number): SymbolRef | null {

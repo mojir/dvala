@@ -93,6 +93,47 @@ describe('WorkspaceIndex', () => {
     })
   })
 
+  describe('getSymbolAtPosition', () => {
+    it('finds symbol name at a definition site', () => {
+      index.updateFile('test.dvala', 'let x = 1; x + 1')
+      const symbols = index.getFileSymbols('test.dvala')
+      const xDef = symbols!.definitions.find(d => d.name === 'x')
+      const result = index.getSymbolAtPosition('test.dvala', xDef!.location.line, xDef!.location.column)
+      expect(result?.name).toBe('x')
+    })
+
+    it('finds symbol name at a reference site', () => {
+      index.updateFile('test.dvala', 'let x = 1; x + 1')
+      const symbols = index.getFileSymbols('test.dvala')
+      const xRef = symbols!.references.find(r => r.name === 'x')
+      const result = index.getSymbolAtPosition('test.dvala', xRef!.location.line, xRef!.location.column)
+      expect(result?.name).toBe('x')
+    })
+
+    it('returns null for empty position', () => {
+      index.updateFile('test.dvala', 'let x = 1')
+      const result = index.getSymbolAtPosition('test.dvala', 999, 999)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('findAllOccurrences', () => {
+    it('finds both definition and references', () => {
+      index.updateFile('test.dvala', 'let x = 1; x + x')
+      const occurrences = index.findAllOccurrences('test.dvala', 'x')
+      // 1 definition + 2 references = 3 occurrences
+      expect(occurrences).toHaveLength(3)
+    })
+
+    it('includes nameLength for each occurrence', () => {
+      index.updateFile('test.dvala', 'let myVar = 1; myVar + 1')
+      const occurrences = index.findAllOccurrences('test.dvala', 'myVar')
+      for (const occ of occurrences) {
+        expect(occ.nameLength).toBe(5)
+      }
+    })
+  })
+
   describe('invalidation', () => {
     it('invalidates cached file', () => {
       index.updateFile('test.dvala', 'let x = 1')
