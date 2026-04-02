@@ -496,6 +496,66 @@ export function activate(context: vscode.ExtensionContext): void {
     lsDiagnostics.delete(doc.uri)
   })
 
+  // Reference provider — Find All References (Shift+F12)
+  const referenceProvider = vscode.languages.registerReferenceProvider('dvala', {
+    provideReferences(document, position) {
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) return []
+
+      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      return occurrences.map(occ => new vscode.Location(
+        vscode.Uri.file(occ.file),
+        new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
+      ))
+    },
+  })
+
+  // Rename provider — F2 to rename a symbol across the file
+  const renameProvider = vscode.languages.registerRenameProvider('dvala', {
+    prepareRename(document, position) {
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) throw new Error('Cannot rename this element')
+
+      // Find the word range at the cursor position
+      const range = document.getWordRangeAtPosition(position, DVALA_WORD_PATTERN)
+      if (!range) throw new Error('Cannot rename this element')
+
+      return { range, placeholder: symbol.name }
+    },
+
+    provideRenameEdits(document, position, newName) {
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) return undefined
+
+      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      const edit = new vscode.WorkspaceEdit()
+
+      for (const occ of occurrences) {
+        const uri = vscode.Uri.file(occ.file)
+        const start = new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1))
+        const end = new vscode.Position(start.line, start.character + occ.nameLength)
+        edit.replace(uri, new vscode.Range(start, end), newName)
+      }
+
+      return edit
+    },
+  })
+
   // Document Symbol provider — powers the outline view (Cmd+Shift+O) and breadcrumbs
   const documentSymbolProvider = vscode.languages.registerDocumentSymbolProvider('dvala', {
     provideDocumentSymbols(document) {
@@ -519,7 +579,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     runFile, runBlock, runSelection, completionProvider, hoverProvider, definitionProvider, goToSource,
-    documentSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
+    referenceProvider, renameProvider, documentSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
   )
 }
 
