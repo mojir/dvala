@@ -12,10 +12,8 @@ if (extPkg.version !== rootPkg.version) {
   console.log(`Updated extension version to ${rootPkg.version}`)
 }
 
-await esbuild.build({
-  entryPoints: ['vscode-dvala/src/extension.ts'],
+const sharedOptions = {
   bundle: true,
-  outfile: 'vscode-dvala/out/extension.js',
   external: ['vscode'],
   format: 'cjs',
   platform: 'node',
@@ -23,7 +21,20 @@ await esbuild.build({
   target: 'node18',
   loader: { '.dvala': 'text' },
   logLevel: 'info',
-})
+}
+
+await Promise.all([
+  esbuild.build({
+    ...sharedOptions,
+    entryPoints: ['vscode-dvala/src/extension.ts'],
+    outfile: 'vscode-dvala/out/extension.js',
+  }),
+  esbuild.build({
+    ...sharedOptions,
+    entryPoints: ['vscode-dvala/src/debugAdapter.ts'],
+    outfile: 'vscode-dvala/out/debugAdapter.js',
+  }),
+])
 
 execSync(`../node_modules/.bin/vsce package --no-dependencies --out out/dvala-${rootPkg.version}.vsix`, {
   cwd: 'vscode-dvala',

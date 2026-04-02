@@ -1,4 +1,3 @@
-import type { UnknownRecord } from '../src/interface'
 import { isMatrix } from '../src/typeGuards/annotatedCollections'
 import { isEffect, isRegularExpression } from '../src/typeGuards/dvala'
 import { isDvalaFunction } from '../src/typeGuards/dvalaFunction'
@@ -9,8 +8,8 @@ export function stringifyValue(value: unknown, html: boolean): string {
   if (isDvalaFunction(value)) {
     if (value.functionType === 'Builtin')
       return `${lt}builtin function ${value.normalBuiltinSymbolType}${gt}`
-    else
-      return `${lt}function ${(value as unknown as UnknownRecord).n ?? '\u03BB'}${gt}`
+    const kind = value.functionType === 'Macro' ? 'macro' : 'function'
+    return `${lt}${kind} ${'name' in value && value.name ? value.name : '\u03BB'}${gt}`
   }
   if (value === null)
     return 'null'

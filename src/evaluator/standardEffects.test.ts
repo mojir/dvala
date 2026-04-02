@@ -731,7 +731,7 @@ describe('standardEffects', () => {
     it('should format a DvalaFunction inside an array', () => {
       const handler = getStandardEffectHandler('dvala.io.print')!
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-      const fn = { [FUNCTION_SYMBOL]: true, functionType: 'UserDefined', n: 'myFn' }
+      const fn = { [FUNCTION_SYMBOL]: true, functionType: 'UserDefined', name: 'myFn' }
       try {
         void handler(asAny([fn]), emptyK)
         expect(spy).toHaveBeenCalledWith('[\n  "<function myFn>"\n]')

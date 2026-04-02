@@ -11,9 +11,9 @@ let doubled = double(avg);
 let safe = withDefault(null, 42);
 
 {
-  avg: avg,
-  clamped: clamped,
-  interpolated: interpolated,
-  doubled: doubled,
-  safe: safe
+  avg,
+  clamped,
+  interpolated,
+  doubled,
+  safe
 }

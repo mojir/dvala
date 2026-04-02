@@ -1,5 +1,5 @@
-import fs from 'node:fs'
-import path from 'node:path'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { NodeTypes } from '../constants/constants'
 import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
@@ -99,10 +99,11 @@ export function bundle(entryPath: string, options?: BundleOptions): DvalaBundle 
     mergeSourceMapInto(mergedSourceMap, ast.sourceMap)
 
     // Create: let __module_X = do <module body> end;
-    const blockNode: AstNode = [NodeTypes.Block, ast.body, 0]
-    const symNode: AstNode = [NodeTypes.Sym, varName, 0]
-    const bindingTarget = ['symbol', [symNode, null], 0]
-    const letNode: AstNode = [NodeTypes.Let, [bindingTarget, blockNode], 0]
+    // Use the shared allocator so synthetic nodeIds don't collide with real ones.
+    const blockNode: AstNode = [NodeTypes.Block, ast.body, allocateNodeId()]
+    const symNode: AstNode = [NodeTypes.Sym, varName, allocateNodeId()]
+    const bindingTarget = ['symbol', [symNode, null], allocateNodeId()]
+    const letNode: AstNode = [NodeTypes.Let, [bindingTarget, blockNode], allocateNodeId()]
     mergedBody.push(letNode)
   }
 
