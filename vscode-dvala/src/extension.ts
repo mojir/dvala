@@ -7,6 +7,8 @@ import { createDvala } from '../../src/createDvala'
 import { allBuiltinModules } from '../../src/allModules'
 import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
+import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
+import type { SymbolDef } from '../../src/languageService/types'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -95,11 +97,68 @@ function buildCompletionItems(): vscode.CompletionItem[] {
   return items
 }
 
+/**
+ * Find the function call context at a cursor position.
+ * Scans backward to find the unmatched '(' and extracts the function name.
+ */
+function findCallContext(document: vscode.TextDocument, position: vscode.Position): { functionName: string; activeParam: number } | null {
+  // Grab text from a few lines above to the cursor
+  const startLine = Math.max(0, position.line - 10)
+  const text = document.getText(new vscode.Range(new vscode.Position(startLine, 0), position))
+
+  let depth = 0
+  let commaCount = 0
+  for (let i = text.length - 1; i >= 0; i--) {
+    const ch = text[i]
+    if (ch === ')') depth++
+    else if (ch === '(') {
+      if (depth === 0) {
+        // Found the unmatched opening paren — extract function name before it
+        const before = text.substring(0, i).trimEnd()
+        const nameMatch = before.match(/([a-zA-Z_$][a-zA-Z0-9_$]*)$/)
+        if (nameMatch) {
+          return { functionName: nameMatch[1]!, activeParam: commaCount }
+        }
+        return null
+      }
+      depth--
+    }
+    else if (ch === ',' && depth === 0) commaCount++
+  }
+  return null
+}
+
 const completionItems = buildCompletionItems()
+
+/** Map a user-defined SymbolDef to a VS Code completion item. */
+function symbolDefToCompletionItem(def: SymbolDef): vscode.CompletionItem {
+  const kindMap: Record<string, vscode.CompletionItemKind> = {
+    variable: vscode.CompletionItemKind.Variable,
+    function: vscode.CompletionItemKind.Function,
+    macro: vscode.CompletionItemKind.Method,
+    handler: vscode.CompletionItemKind.Event,
+    parameter: vscode.CompletionItemKind.Variable,
+    import: vscode.CompletionItemKind.Module,
+  }
+
+  const item = new vscode.CompletionItem(def.name, kindMap[def.kind] ?? vscode.CompletionItemKind.Variable)
+  item.detail = def.kind
+  // Sort user symbols after builtins (builtins have default sort)
+  item.sortText = `1_${def.name}`
+
+  // Add snippet with parameter placeholders for functions/macros
+  if (def.params && def.params.length > 0) {
+    const snippetArgs = def.params.map((name, i) => `\${${i + 1}:${name}}`).join(', ')
+    item.insertText = new vscode.SnippetString(`${def.name}(${snippetArgs})`)
+  }
+
+  return item
+}
 
 let outputChannel: vscode.OutputChannel | undefined
 let statusBarItem: vscode.StatusBarItem | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 function getDiagnosticCollection(): vscode.DiagnosticCollection {
   if (!diagnosticCollection) {
@@ -326,10 +385,88 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   const completionProvider = vscode.languages.registerCompletionItemProvider('dvala', {
-    provideCompletionItems() {
-      return completionItems
+    provideCompletionItems(document, position) {
+      indexDocument(document)
+      const items: vscode.CompletionItem[] = [...completionItems]
+      const seen = new Set(completionItems.map(i => typeof i.label === 'string' ? i.label : i.label.label))
+
+      // Add user-defined symbols visible at the cursor position (scope-aware)
+      const line1 = position.line + 1
+      const col1 = position.character + 1
+      const inScopeDefs = workspaceIndex.getSymbolsInScope(document.uri.fsPath, line1, col1)
+      for (const def of inScopeDefs) {
+        if (seen.has(def.name)) continue
+        seen.add(def.name)
+        items.push(symbolDefToCompletionItem(def))
+      }
+
+      // Add exported symbols from imported files (index them lazily if not yet cached)
+      const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
+      if (fileSymbols) {
+        for (const importedPath of fileSymbols.imports.values()) {
+          workspaceIndex.updateFile(importedPath)
+          const importedSymbols = workspaceIndex.getFileSymbols(importedPath)
+          if (importedSymbols) {
+            for (const exp of importedSymbols.exports) {
+              if (seen.has(exp.name)) continue
+              seen.add(exp.name)
+              items.push(symbolDefToCompletionItem(exp))
+            }
+          }
+        }
+      }
+
+      return items
     },
   })
+
+  // Signature Help — parameter hints when typing inside function calls
+  const signatureHelpProvider = vscode.languages.registerSignatureHelpProvider('dvala',
+    {
+      provideSignatureHelp(document, position) {
+        const callCtx = findCallContext(document, position)
+        if (!callCtx) return undefined
+
+        const { functionName, activeParam } = callCtx
+        const help = new vscode.SignatureHelp()
+        help.activeParameter = activeParam
+
+        // Check builtins first
+        const ref = allReference[functionName] ?? referenceByTitle[functionName]
+        if (ref && isFunctionReference(ref)) {
+          for (const variant of ref.variants) {
+            const paramLabels = variant.argumentNames.map(name => {
+              const argInfo = ref.args[name]
+              const typeStr = argInfo ? (Array.isArray(argInfo.type) ? argInfo.type.join(' | ') : argInfo.type) : ''
+              return typeStr ? `${name}: ${typeStr}` : name
+            })
+            const sig = new vscode.SignatureInformation(
+              `${functionName}(${paramLabels.join(', ')})`,
+            )
+            sig.parameters = paramLabels.map(label => new vscode.ParameterInformation(label))
+            help.signatures.push(sig)
+          }
+          return help
+        }
+
+        // Check user-defined functions/macros
+        indexDocument(document)
+        const defs = workspaceIndex.getDefinitions(document.uri.fsPath)
+        const funcDef = defs.find(d => d.name === functionName && d.params)
+        if (funcDef?.params) {
+          const sig = new vscode.SignatureInformation(
+            `${functionName}(${funcDef.params.join(', ')})`,
+          )
+          sig.parameters = funcDef.params.map(name => new vscode.ParameterInformation(name))
+          help.signatures.push(sig)
+          return help
+        }
+
+        return undefined
+      },
+    },
+    '(', ',',
+  )
 
   const hoverProvider = vscode.languages.registerHoverProvider('dvala', {
     provideHover(document, position) {
@@ -357,37 +494,77 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
-  // Go to Definition for import("./path") — Cmd+click or F12 on the import path
-  // navigates to the imported file
+  // Go to Definition — handles both import paths and user-defined symbols
   const definitionProvider = vscode.languages.registerDefinitionProvider('dvala', {
     provideDefinition(document, position) {
-      const line = document.lineAt(position.line).text
-      // Match import("...") and check if cursor is inside the string
+      const lineText = document.lineAt(position.line).text
+
+      // 1. Check if cursor is inside an import("...") string
       const importRegex = /import\(\s*"([^"]+)"\s*\)/g
       let match
-      while ((match = importRegex.exec(line)) !== null) {
+      while ((match = importRegex.exec(lineText)) !== null) {
         const stringStart = match.index + match[0].indexOf('"') + 1
         const stringEnd = stringStart + match[1].length
         if (position.character >= stringStart && position.character <= stringEnd) {
           const importPath = match[1]
-          // Only handle relative imports
           if (!importPath.startsWith('.')) return undefined
           const dir = path.dirname(document.uri.fsPath)
           const resolved = path.resolve(dir, importPath)
-          // Try exact path first, then with .dvala extension
           for (const candidate of [resolved, `${resolved}.dvala`]) {
-            const uri = vscode.Uri.file(candidate)
             try {
-              // Check if file exists by trying to stat it synchronously
               fs.accessSync(candidate)
-              return new vscode.Location(uri, new vscode.Position(0, 0))
+              return new vscode.Location(vscode.Uri.file(candidate), new vscode.Position(0, 0))
             }
-            catch {
-              // File doesn't exist, try next candidate
-            }
+            catch { /* try next */ }
           }
         }
       }
+
+      // 2. Check if cursor is on a user-defined symbol — use the workspace index
+      indexDocument(document)
+      const line1 = position.line + 1 // VS Code is 0-based, our index is 1-based
+      const col1 = position.character + 1
+
+      // First try: cursor is on a reference → navigate to its definition
+      const def = workspaceIndex.findDefinition(document.uri.fsPath, line1, col1)
+      if (def) {
+        const defPos = new vscode.Position(
+          Math.max(0, def.location.line - 1),
+          Math.max(0, def.location.column - 1),
+        )
+        return new vscode.Location(vscode.Uri.file(def.location.file), defPos)
+      }
+
+      // Second try: cursor is on a definition from a destructured import
+      // (e.g. `let { average } = import("./lib/stats")`) — navigate to the symbol
+      // definition inside the imported file, not just the file itself.
+      // Uses the pre-built imports map instead of regex-parsing the line.
+      const symbolAtPos = workspaceIndex.getSymbolAtPosition(document.uri.fsPath, line1, col1)
+      if (symbolAtPos?.def?.kind === 'import') {
+        const fileSymbols = workspaceIndex.getFileSymbols(document.uri.fsPath)
+        if (fileSymbols) {
+          for (const resolvedPath of fileSymbols.imports.values()) {
+            workspaceIndex.updateFile(resolvedPath)
+            const importedSymbols = workspaceIndex.getFileSymbols(resolvedPath)
+            const targetDef = importedSymbols?.definitions.find(d => d.name === symbolAtPos.name && d.scope === 0)
+              ?? importedSymbols?.exports.find(d => d.name === symbolAtPos.name)
+            if (targetDef) {
+              const targetPos = new vscode.Position(
+                Math.max(0, targetDef.location.line - 1),
+                Math.max(0, targetDef.location.column - 1),
+              )
+              return new vscode.Location(vscode.Uri.file(resolvedPath), targetPos)
+            }
+            // Symbol not found in this imported file — try next import
+          }
+          // Symbol not found in any import — navigate to the first import file
+          const firstImport = fileSymbols.imports.values().next().value
+          if (firstImport) {
+            return new vscode.Location(vscode.Uri.file(firstImport), new vscode.Position(0, 0))
+          }
+        }
+      }
+
       return undefined
     },
   })
@@ -418,10 +595,203 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   })
 
-  context.subscriptions.push(runFile, runBlock, runSelection, completionProvider, hoverProvider, definitionProvider, goToSource)
+  // ---------------------------------------------------------------------------
+  // Language Service: workspace index, document symbols, diagnostics
+  // ---------------------------------------------------------------------------
+
+  const workspaceIndex = new WorkspaceIndex()
+  const lsDiagnostics = vscode.languages.createDiagnosticCollection('dvala-ls')
+  /** Update the workspace index for a document and refresh diagnostics. */
+  function indexDocument(document: vscode.TextDocument): void {
+    if (document.languageId !== 'dvala') return
+    const filePath = document.uri.fsPath
+    workspaceIndex.updateFile(filePath, document.getText())
+    refreshDiagnostics(document)
+  }
+
+  /** Push diagnostics (parse errors + unresolved symbols) to VS Code. */
+  function refreshDiagnostics(document: vscode.TextDocument): void {
+    const { parseErrors, unresolvedRefs } = workspaceIndex.getDiagnostics(document.uri.fsPath)
+    const diagnostics: vscode.Diagnostic[] = []
+
+    for (const err of parseErrors) {
+      if (err.sourceCodeInfo) {
+        const line = Math.max(0, err.sourceCodeInfo.position.line - 1)
+        const col = Math.max(0, err.sourceCodeInfo.position.column - 1)
+        const range = new vscode.Range(line, col, line, col + 1)
+        const diag = new vscode.Diagnostic(range, err.message, vscode.DiagnosticSeverity.Error)
+        diag.source = 'dvala'
+        diagnostics.push(diag)
+      }
+    }
+
+    for (const ref of unresolvedRefs) {
+      const line = Math.max(0, ref.location.line - 1)
+      const col = Math.max(0, ref.location.column - 1)
+      const range = new vscode.Range(line, col, line, col + ref.name.length)
+      const diag = new vscode.Diagnostic(range, `Undefined symbol '${ref.name}'`, vscode.DiagnosticSeverity.Error)
+      diag.source = 'dvala'
+      diagnostics.push(diag)
+    }
+
+    lsDiagnostics.set(document.uri, diagnostics)
+  }
+
+  // Index all open dvala documents on activation
+  for (const doc of vscode.workspace.textDocuments) {
+    indexDocument(doc)
+  }
+
+  // Re-index on document change (debounced)
+  const onDidChange = vscode.workspace.onDidChangeTextDocument(event => {
+    if (event.document.languageId !== 'dvala') return
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => indexDocument(event.document), 300)
+  })
+
+  // Index newly opened documents
+  const onDidOpen = vscode.workspace.onDidOpenTextDocument(doc => {
+    indexDocument(doc)
+  })
+
+  // Clear diagnostics when a document is closed
+  const onDidClose = vscode.workspace.onDidCloseTextDocument(doc => {
+    lsDiagnostics.delete(doc.uri)
+  })
+
+  // Reference provider — Find All References (Shift+F12)
+  const referenceProvider = vscode.languages.registerReferenceProvider('dvala', {
+    provideReferences(document, position) {
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) return []
+
+      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      return occurrences.map(occ => new vscode.Location(
+        vscode.Uri.file(occ.file),
+        new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1)),
+      ))
+    },
+  })
+
+  // Rename provider — F2 to rename a symbol across the file
+  const renameProvider = vscode.languages.registerRenameProvider('dvala', {
+    prepareRename(document, position) {
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) throw new Error('Cannot rename this element')
+
+      // Find the word range at the cursor position
+      const range = document.getWordRangeAtPosition(position, DVALA_WORD_PATTERN)
+      if (!range) throw new Error('Cannot rename this element')
+
+      return { range, placeholder: symbol.name }
+    },
+
+    provideRenameEdits(document, position, newName) {
+      // Validate that newName is a valid Dvala identifier
+      if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(newName)) {
+        throw new Error(`'${newName}' is not a valid identifier`)
+      }
+
+      indexDocument(document)
+      const symbol = workspaceIndex.getSymbolAtPosition(
+        document.uri.fsPath,
+        position.line + 1,
+        position.character + 1,
+      )
+      if (!symbol) return undefined
+
+      const occurrences = workspaceIndex.findAllOccurrences(document.uri.fsPath, symbol.name)
+      const edit = new vscode.WorkspaceEdit()
+
+      for (const occ of occurrences) {
+        const uri = vscode.Uri.file(occ.file)
+        const start = new vscode.Position(Math.max(0, occ.line - 1), Math.max(0, occ.column - 1))
+        const end = new vscode.Position(start.line, start.character + occ.nameLength)
+        edit.replace(uri, new vscode.Range(start, end), newName)
+      }
+
+      return edit
+    },
+  })
+
+  // Document Symbol provider — powers the outline view (Cmd+Shift+O) and breadcrumbs
+  const documentSymbolProvider = vscode.languages.registerDocumentSymbolProvider('dvala', {
+    provideDocumentSymbols(document) {
+      indexDocument(document)
+      const symbols = workspaceIndex.getDocumentSymbols(document.uri.fsPath)
+      return symbols.map(def => {
+        const line = Math.max(0, def.location.line - 1)
+        const col = Math.max(0, def.location.column - 1)
+        const pos = new vscode.Position(line, col)
+        const range = new vscode.Range(pos, pos)
+        return new vscode.DocumentSymbol(
+          def.name,
+          def.kind,
+          symbolKind(def),
+          range,
+          range,
+        )
+      })
+    },
+  })
+
+  // Workspace Symbol provider — Cmd+T to search all symbols across files
+  const workspaceSymbolProvider = vscode.languages.registerWorkspaceSymbolProvider({
+    provideWorkspaceSymbols(query) {
+      const results: vscode.SymbolInformation[] = []
+      const lowerQuery = query.toLowerCase()
+
+      for (const doc of vscode.workspace.textDocuments) {
+        if (doc.languageId !== 'dvala') continue
+        const defs = workspaceIndex.getDocumentSymbols(doc.uri.fsPath)
+        for (const def of defs) {
+          if (lowerQuery && !def.name.toLowerCase().includes(lowerQuery)) continue
+          const line = Math.max(0, def.location.line - 1)
+          const col = Math.max(0, def.location.column - 1)
+          const pos = new vscode.Position(line, col)
+          results.push(new vscode.SymbolInformation(
+            def.name,
+            symbolKind(def),
+            '',
+            new vscode.Location(vscode.Uri.file(def.location.file), pos),
+          ))
+        }
+      }
+
+      return results
+    },
+  })
+
+  context.subscriptions.push(
+    runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
+    referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
+  )
+}
+
+/** Map SymbolDef.kind to VS Code SymbolKind for the outline view. */
+function symbolKind(def: SymbolDef): vscode.SymbolKind {
+  switch (def.kind) {
+    case 'function': return vscode.SymbolKind.Function
+    case 'macro': return vscode.SymbolKind.Method
+    case 'handler': return vscode.SymbolKind.Event
+    case 'import': return vscode.SymbolKind.Module
+    case 'parameter': return vscode.SymbolKind.Variable
+    case 'variable': return vscode.SymbolKind.Variable
+  }
 }
 
 export function deactivate(): void {
+  if (debounceTimer) clearTimeout(debounceTimer)
   outputChannel?.dispose()
   statusBarItem?.dispose()
   diagnosticCollection?.dispose()
