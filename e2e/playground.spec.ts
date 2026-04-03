@@ -243,7 +243,7 @@ test.describe('examples', () => {
     // Wait for the examples page to render in #dynamic-page
     await page.waitForFunction(() => {
       const dynPage = document.getElementById('dynamic-page')
-      return dynPage !== null && dynPage.querySelector('.content-page') !== null
+      return dynPage !== null && dynPage.querySelector('.book-page') !== null
     }, { timeout: 5000 })
 
     // Click the first "Load in playground" button

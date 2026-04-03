@@ -24,7 +24,7 @@ import * as router from './router'
 import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
-import { renderExamplePage } from './components/examplePage'
+import { renderExampleDetailPage, renderExampleIndexPage } from './components/examplePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
 import { renderBookIndexPage, renderChapterPage, allChapters, bookSections } from './components/chapterPage'
@@ -629,6 +629,113 @@ export function toggleBookSearch(event: Event): void {
   requestAnimationFrame(() => input.focus())
 
   // Close on outside click (not on input blur, so mouse clicks on results work)
+  const closeOnOutside = (e: Event) => {
+    if (!dropdown.contains(e.target as Node)) {
+      dropdown.remove()
+      document.removeEventListener('click', closeOnOutside)
+      document.removeEventListener('keydown', onKey)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', closeOnOutside), 0)
+}
+
+// ─── Example search ────────────────────────────────────────────────────────────
+
+export function toggleExampleSearch(event: Event): void {
+  event.stopPropagation()
+  const btn = event.currentTarget as HTMLElement
+
+  const existing = document.getElementById('example-search-dropdown')
+  if (existing) { existing.remove(); return }
+
+  const dropdown = document.createElement('div')
+  dropdown.id = 'example-search-dropdown'
+  dropdown.className = 'chapter-search-dropdown'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'Search examples…'
+  input.className = 'chapter-search-input'
+  dropdown.appendChild(input)
+
+  const results = document.createElement('div')
+  results.className = 'chapter-search-results'
+  dropdown.appendChild(results)
+
+  const data = window.referenceData
+  const allExamples = data?.examples ?? []
+
+  // Navigate to a search result and close the dropdown
+  const selectEntry = (ex: Example) => {
+    dropdown.remove()
+    document.removeEventListener('keydown', onKey)
+    router.navigate(`/examples/${ex.id}`)
+  }
+
+  let currentResults: Example[] = []
+  const renderResults = (query: string) => {
+    results.innerHTML = ''
+    const q = query.trim().toLowerCase()
+    if (!q) { currentResults = []; return }
+    currentResults = allExamples.filter(ex =>
+      ex.name.toLowerCase().includes(q)
+      || ex.description.toLowerCase().includes(q)
+      || ex.category.toLowerCase().includes(q),
+    )
+    if (currentResults.length === 0) {
+      const empty = document.createElement('div')
+      empty.className = 'chapter-search-empty'
+      empty.textContent = 'No results'
+      results.appendChild(empty)
+      return
+    }
+    currentResults.forEach((ex, i) => {
+      const item = document.createElement('div')
+      item.className = 'chapter-search-result'
+      item.dataset.index = String(i)
+      const labelEl = document.createElement('span')
+      labelEl.className = 'chapter-search-result__label'
+      labelEl.textContent = ex.name
+      const ctxEl = document.createElement('span')
+      ctxEl.className = 'chapter-search-result__context'
+      ctxEl.textContent = ex.category
+      item.appendChild(labelEl)
+      item.appendChild(ctxEl)
+      item.addEventListener('mousedown', e => { e.preventDefault(); selectEntry(ex) })
+      item.addEventListener('mouseover', () => setActive(i))
+      results.appendChild(item)
+    })
+  }
+
+  let activeIndex = -1
+  const setActive = (i: number) => {
+    const items = results.querySelectorAll<HTMLElement>('.chapter-search-result')
+    items.forEach((el, idx) => el.classList.toggle('chapter-search-result--active', idx === i))
+    activeIndex = i
+    if (i >= 0) items[i]?.scrollIntoView({ block: 'nearest' })
+  }
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { dropdown.remove(); document.removeEventListener('keydown', onKey); return }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(activeIndex + 1, currentResults.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(activeIndex - 1, 0)) }
+    if (e.key === 'Enter' && activeIndex >= 0) {
+      const entry = currentResults[activeIndex]
+      if (entry) selectEntry(entry)
+    }
+  }
+  document.addEventListener('keydown', onKey)
+
+  input.addEventListener('input', () => { activeIndex = -1; renderResults(input.value) })
+
+  // Position fixed below the button
+  document.body.appendChild(dropdown)
+  const rect = btn.getBoundingClientRect()
+  dropdown.style.top = `${rect.bottom + 4}px`
+  dropdown.style.right = `${window.innerWidth - rect.right}px`
+
+  requestAnimationFrame(() => input.focus())
+
   const closeOnOutside = (e: Event) => {
     if (!dropdown.contains(e.target as Node)) {
       dropdown.remove()
@@ -1485,8 +1592,8 @@ function guardCodeReplacement(proceed: () => void) {
     proceed()
     return
   }
-  // Any untitled program with code in the editor is unsaved work
-  if (getState('dvala-code').trim()) {
+  // Only show the modal if the user has actually edited an untitled program
+  if (getState('dvala-code-edited') && getState('dvala-code').trim()) {
     showSaveOrDiscardModal(proceed)
     return
   }
@@ -2955,9 +3062,16 @@ function routeToPath(appPath: string): void {
     dynPage.innerHTML = renderModulesPage()
     pageTitle = 'Modules | Dvala'
   } else if (path === 'examples') {
-    dynPage.innerHTML = renderExamplePage()
+    dynPage.innerHTML = renderExampleIndexPage()
     sidebarLinkId = 'example-page_link'
     pageTitle = 'Examples | Dvala'
+  } else if (path.startsWith('examples/')) {
+    const exId = path.slice('examples/'.length)
+    dynPage.innerHTML = renderExampleDetailPage(exId)
+    sidebarLinkId = 'example-page_link'
+    const data = window.referenceData
+    const ex = data?.examples.find(e => e.id === exId)
+    pageTitle = ex ? `${ex.name} | Dvala Examples` : 'Examples | Dvala'
   } else if (path === 'book') {
     dynPage.innerHTML = renderBookIndexPage()
     sidebarLinkId = 'book-page_link'
@@ -3012,6 +3126,7 @@ export async function run() {
 
   appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
 
+  document.body.classList.add('dvala-running')
   const dvalaParams = getDvalaParamsFromContext()
 
   // Snapshot UI state that playground effects may modify
@@ -3026,14 +3141,35 @@ export async function run() {
     route: location.pathname,
   }
 
+  // Execution timeout: 5 seconds, reset on every host effect
+  const TIMEOUT_MS = 5000
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let rejectTimeout: ((err: Error) => void) | null = null
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    rejectTimeout = reject
+    timeoutId = setTimeout(() => reject(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
+  })
+  const resetTimeout = () => {
+    if (timeoutId !== null) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => rejectTimeout?.(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
+  }
+  // Wrap each effect handler to reset the timeout on every host effect
+  const wrappedHandlers = dvalaParams.effectHandlers.map(reg => ({
+    ...reg,
+    handler: (ctx: EffectContext) => { resetTimeout(); return reg.handler(ctx) },
+  }))
+
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
-    const runResult = await getDvala().runAsync(code, pure
-      ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-      : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint, terminalSnapshot: true },
-    )
+    const runResult = await Promise.race([
+      getDvala().runAsync(code, pure
+        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+        : { bindings: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+      ),
+      timeoutPromise,
+    ])
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'error')
@@ -3060,6 +3196,8 @@ export async function run() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId)
+    document.body.classList.remove('dvala-running')
     // Restore UI state modified by playground effects
     if (getState('dvala-code') !== uiSnapshot.dvalaCode) {
       elements.dvalaTextArea.value = uiSnapshot.dvalaCode

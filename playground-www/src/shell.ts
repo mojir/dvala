@@ -156,7 +156,7 @@ function getPlaygroundPanel(): string {
               onblur="Playground.onProgramTitleBlur()">
           </div>
           <div class="panel-header__actions" onclick="event.stopPropagation()">
-            <a href="#" role="button" onclick="Playground.run()" title="Run (Ctrl+R)">${playIcon} Run</a>
+            <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
             <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code">${undoIcon}</a>
             <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code">${redoIcon}</a>
             <a href="#" role="button" onclick="Playground.newFile()" title="New file" aria-label="New file">${newFileIcon}</a>

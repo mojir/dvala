@@ -1544,6 +1544,145 @@ a.disabled {
 }
 
 /* ============================================================
+   Example cards (categorized index page)
+   ============================================================ */
+.example-category {
+  margin-bottom: var(--space-5);
+}
+
+.example-category__title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--color-text);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.example-category__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.example-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-dim);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+}
+
+.example-card:hover {
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px var(--color-shadow);
+}
+
+.example-card__link,
+.example-card__link:link,
+.example-card__link:visited,
+.example-card__link:hover,
+.example-card__link:active,
+.book-page__content .example-card__link,
+.book-page__content .example-card__link:link,
+.book-page__content .example-card__link:visited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  cursor: pointer;
+}
+
+.example-card__title {
+  font-weight: bold;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.example-card__desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+.example-card__cta {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border-dim);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
+}
+
+.example-card__cta:hover {
+  background: var(--color-surface-3);
+  color: var(--color-text-bright);
+}
+
+/* Load-in-playground button in example detail header */
+.example-header__load-btn {
+  font-size: var(--font-size-sm) !important;
+  width: auto !important;
+  padding: 0 var(--space-2) !important;
+  white-space: nowrap;
+}
+
+/* Hidden card/category during search filtering */
+.example-card--hidden {
+  display: none;
+}
+
+.example-category--hidden {
+  display: none;
+}
+
+/* ============================================================
+   Example detail page
+   ============================================================ */
+.example-detail__category {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  margin: 0 0 var(--space-2) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.example-detail__desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  margin: 0 0 var(--space-4) 0;
+  line-height: 1.6;
+}
+
+.example-detail__code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin: 0 0 var(--space-4) 0;
+  white-space: pre;
+}
+
+.example-detail__code code {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text);
+  background: none;
+  padding: 0;
+}
+
+
+/* ============================================================
    Search dialog
    ============================================================ */
 .search-dialog {
@@ -1669,6 +1808,29 @@ a.disabled {
   display: flex;
   align-items: center;
   gap: 0.25em;
+}
+
+/* Run button — running state */
+.run-btn__busy {
+  display: none;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.dvala-running .run-btn__idle { display: none; }
+.dvala-running .run-btn__busy { display: inline-flex; }
+
+.spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-text-bright);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Panel vertical resize dividers */
