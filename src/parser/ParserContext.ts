@@ -127,6 +127,11 @@ export class ParserContext {
     return this.position
   }
 
+  /** Set the token cursor position directly. Used by error recovery to skip past failed statements. */
+  public setPosition(pos: number): void {
+    this.position = pos
+  }
+
   public getTokenAt(pos: number): Token | undefined {
     return this.tokens[pos]
   }

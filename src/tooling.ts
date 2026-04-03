@@ -15,7 +15,8 @@ import type { DvalaModule } from './builtin/modules/interface'
 import { tokenize } from './tokenizer/tokenize'
 import type { TokenStream } from './tokenizer/tokenize'
 import { minifyTokenStream } from './tokenizer/minifyTokenStream'
-import { parseToAst } from './parser'
+import { parseRecoverable, parseToAst } from './parser'
+import type { RecoverableParseResult } from './parser'
 import type { Ast } from './parser/types'
 import { transformSymbolTokens } from './transformer'
 import { untokenize } from './untokenizer'
@@ -37,6 +38,16 @@ export function tokenizeSource(source: string, debug = false, filePath?: string)
 export function parseTokenStream(tokenStream: TokenStream): Ast {
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
   return parseToAst(minified)
+}
+
+/**
+ * Parse a token stream with error recovery.
+ * Returns a partial AST (successfully parsed statements) and a list of errors.
+ * Useful for language service features that need to work on broken files.
+ */
+export function parseTokenStreamRecoverable(tokenStream: TokenStream): RecoverableParseResult {
+  const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
+  return parseRecoverable(minified)
 }
 
 /**
