@@ -1578,7 +1578,6 @@ let s24 = [
   isArray([]), isObject({}), isFunction(inc), isEffect(@dvala.io.print),
   isInteger(3), isInteger(3.5), isEven(4), isOdd(3),
   isZero(0), isPos(1), isNeg(-1), isEmpty([]), isNotEmpty([1]),
-  isFinite(42), isFinite(1 / 0),
 ];
 
 // --- 25: Collection ops ---

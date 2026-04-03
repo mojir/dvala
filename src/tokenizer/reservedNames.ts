@@ -23,13 +23,10 @@ export const numberReservedSymbolRecord = {
   'E': Math.E,
   'PI': Math.PI,
   'PHI': phi,
-  'POSITIVE_INFINITY': Number.POSITIVE_INFINITY,
-  'NEGATIVE_INFINITY': Number.NEGATIVE_INFINITY,
   'MAX_SAFE_INTEGER': Number.MAX_SAFE_INTEGER,
   'MIN_SAFE_INTEGER': Number.MIN_SAFE_INTEGER,
   'MAX_VALUE': Number.MAX_VALUE,
   'MIN_VALUE': Number.MIN_VALUE,
-  'NaN': Number.NaN,
 } as const satisfies Record<string, number>
 
 export const reservedSymbolRecord = {

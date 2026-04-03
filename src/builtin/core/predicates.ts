@@ -77,7 +77,7 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
       args: { x: { type: 'any' } },
       variants: [{ argumentNames: ['x'] }],
       description: 'Returns `true` if `x` is a number, otherwise `false`.',
-      seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'isFinite', 'number', 'isString', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
+      seeAlso: ['isInteger', 'isZero', 'isPos', 'isNeg', 'number', 'isString', 'isBoolean', 'isNull', 'isFunction', 'typeOf'],
       examples: [
         'isNumber(0)',
         'isNumber(2)',
@@ -398,69 +398,6 @@ export const predicatesNormalExpression: BuiltinNormalExpressions = {
         'isEffect(null)',
         'isEffect({})',
         'isEffect([1, 2, 3])',
-      ],
-    },
-  },
-
-  'isFinite': {
-    evaluate: ([value], sourceCodeInfo): boolean => {
-      assertNumber(value, sourceCodeInfo)
-      return Number.isFinite(value)
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'predicate',
-      returns: { type: 'boolean' },
-      args: { x: { type: 'number' } },
-      variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if `x` is finite, otherwise `false`.',
-      seeAlso: ['isPositiveInfinity', 'isNegativeInfinity', 'isNumber'],
-      examples: [
-        'isFinite(1.0)',
-        'isFinite(1 / 0)',
-        'isFinite(-1 / 0)',
-      ],
-    },
-  },
-
-  'isPositiveInfinity': {
-    evaluate: ([value], sourceCodeInfo): boolean => {
-      assertNumber(value, sourceCodeInfo)
-      return value === Number.POSITIVE_INFINITY
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'predicate',
-      returns: { type: 'boolean' },
-      args: { x: { type: 'number' } },
-      variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if `x` equals positive infinity, otherwise `false`.',
-      seeAlso: ['isNegativeInfinity', 'isFinite'],
-      examples: [
-        'isPositiveInfinity(1.0)',
-        'isPositiveInfinity(1 / 0)',
-        'isPositiveInfinity(-1 / 0)',
-      ],
-    },
-  },
-
-  'isNegativeInfinity': {
-    evaluate: ([value], sourceCodeInfo): boolean => {
-      assertNumber(value, sourceCodeInfo)
-      return value === Number.NEGATIVE_INFINITY
-    },
-    arity: toFixedArity(1),
-    docs: {
-      category: 'predicate',
-      returns: { type: 'boolean' },
-      args: { x: { type: 'number' } },
-      variants: [{ argumentNames: ['x'] }],
-      description: 'Returns `true` if `x` equals negative infinity, otherwise `false`.',
-      seeAlso: ['isPositiveInfinity', 'isFinite'],
-      examples: [
-        'isNegativeInfinity(1.0)',
-        'isNegativeInfinity(1 / 0)',
-        'isNegativeInfinity(-1 / 0)',
       ],
     },
   },

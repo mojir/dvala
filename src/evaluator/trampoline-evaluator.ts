@@ -128,7 +128,7 @@ import type {
   MatchFrame,
   MatchSlotContext,
   MatchSlotFrame,
-  NanCheckFrame,
+  FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
   ParallelResumeFrame,
@@ -802,7 +802,7 @@ function stepTemplateString(node: TemplateStringNode, env: ContextStack, k: Cont
 
 /**
  * Normal expressions: evaluate arguments left-to-right, then dispatch.
- * Push EvalArgsFrame + NanCheckFrame, then start evaluating the first arg.
+ * Push EvalArgsFrame + FiniteCheckFrame, then start evaluating the first arg.
  */
 function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: ContinuationStack): Step | Promise<Step> {
   const argNodes = node[1][1]
@@ -822,8 +822,8 @@ function stepNormalExpression(node: NormalExpressionNode, env: ContextStack, k: 
     }
   }
 
-  // NaN guard wraps the final result
-  const nanFrame: NanCheckFrame = { type: 'NanCheck', sourceCodeInfo }
+  // Finite-number guard wraps the final result
+  const nanFrame: FiniteCheckFrame = { type: 'FiniteCheck', sourceCodeInfo }
 
   // Argument evaluator frame
   const evalArgsFrame: EvalArgsFrame = {
@@ -1438,8 +1438,8 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyEveryPred(frame, value, k)
     case 'SomePred':
       return applySomePred(frame, value, k)
-    case 'NanCheck':
-      return applyNanCheck(frame, value, k)
+    case 'FiniteCheck':
+      return applyFiniteCheck(frame, value, k)
     case 'ImportMerge': {
       const dvalaFunctions = isObj(value) ? value : PersistentMap.empty()
       // Set dvalaImpl on module expressions for functions overridden by .dvala source
@@ -3943,9 +3943,9 @@ function applySomePred(frame: SomePredFrame, value: Any, k: ContinuationStack): 
   return dispatchFunction(check.fn, PersistentVector.from([check.param]), [], env, sourceCodeInfo, cons<Frame>(nextFrame, k))
 }
 
-function applyNanCheck(frame: NanCheckFrame, value: Any, k: ContinuationStack): Step {
-  if (typeof value === 'number' && Number.isNaN(value)) {
-    throw new ArithmeticError('Number is NaN', frame.sourceCodeInfo)
+function applyFiniteCheck(frame: FiniteCheckFrame, value: Any, k: ContinuationStack): Step {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new ArithmeticError('Number is not finite', frame.sourceCodeInfo)
   }
   // Skip annotate() — PersistentVector is now the native array type (HAMT Phase 1).
   // annotate() would convert PVs to plain arrays, breaking assertSeq/assertColl.

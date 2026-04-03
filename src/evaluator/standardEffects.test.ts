@@ -706,28 +706,6 @@ describe('standardEffects', () => {
   // ── replaceSpecialValues branches (triggered via print on arrays/objects) ──
 
   describe('formatForOutput / replaceSpecialValues special value branches', () => {
-    it('should format Infinity inside an array as ∞', () => {
-      const handler = getStandardEffectHandler('dvala.io.print')!
-      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-      try {
-        void handler(asAny([Number.POSITIVE_INFINITY]), emptyK)
-        expect(spy).toHaveBeenCalledWith('[\n  "∞"\n]')
-      } finally {
-        spy.mockRestore()
-      }
-    })
-
-    it('should format -Infinity inside an array as -∞', () => {
-      const handler = getStandardEffectHandler('dvala.io.print')!
-      const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-      try {
-        void handler(asAny([Number.NEGATIVE_INFINITY]), emptyK)
-        expect(spy).toHaveBeenCalledWith('[\n  "-∞"\n]')
-      } finally {
-        spy.mockRestore()
-      }
-    })
-
     it('should format a DvalaFunction inside an array', () => {
       const handler = getStandardEffectHandler('dvala.io.print')!
       const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)

@@ -386,10 +386,6 @@ PI;    // => 3.141592653589793
 E;     // => 2.718281828459045 (Euler's number)
 PHI;   // => 1.618033988749895 (Golden ratio)
 
-// Infinity values
-POSITIVE_INFINITY; // => Infinity
-NEGATIVE_INFINITY; // => -Infinity
-
 // Integer and float limits
 MAX_SAFE_INTEGER;  // => 9007199254740991
 MIN_SAFE_INTEGER;  // => -9007199254740991
