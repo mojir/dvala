@@ -7,8 +7,9 @@
 import type { Example } from '../../../reference/examples'
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
-import { searchIcon } from '../icons'
+import { hamburgerIcon, playIcon, searchIcon } from '../icons'
 import { tokenizeToHtml } from '../SyntaxOverlay'
+import { renderPageHeader } from './pageHeader'
 
 declare global {
   interface Window {
@@ -62,7 +63,7 @@ export function renderExampleIndexPage(): string {
     <span class="example-card__desc">${escapeHtml(ex.description)}</span>
   </a>
   <button class="example-card__cta" onclick="event.stopPropagation(); Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})">
-    Load in playground
+    Load ${playIcon}
   </button>
 </div>`
     }).join('\n')
@@ -76,14 +77,20 @@ export function renderExampleIndexPage(): string {
 </section>`
   }).join('\n')
 
+  const first = data.examples[0] ?? null
+  const exampleActions = `
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>`
+
   return `
 <div class="book-page">
-  <div class="chapter-header">
-    <span class="chapter-header__title">Examples</span>
-    <div class="chapter-header__actions">
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>
-    </div>
-  </div>
+  ${renderPageHeader({
+    title: 'Examples',
+    actions: exampleActions,
+    prev: null,
+    up: null,
+    next: first ? { path: `/examples/${first.id}`, title: first.name } : null,
+  })}
   <div class="book-page__content">
     ${sections}
   </div>
@@ -101,20 +108,26 @@ export function renderExampleDetailPage(id: string): string {
     return `<div class="book-page"><p>Example not found: <code>${escapeHtml(id)}</code></p></div>`
   }
 
-  const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
+  const allExamples = data.examples
+  const idx = allExamples.indexOf(ex)
+  const prev = idx > 0 ? allExamples[idx - 1] : null
+  const next = idx < allExamples.length - 1 ? allExamples[idx + 1] : null
 
-  const backBtn = `<a class="chapter-header__nav-btn" href="${href('/examples')}" onclick="event.preventDefault();Playground.navigate('/examples')" title="Back to examples">←</a>`
+  const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
+  const detailActions = `
+      <button class="chapter-header__toc-btn example-header__load-btn" onclick="Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})">Load ${playIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>`
 
   return `
 <div class="book-page">
-  <div class="chapter-header">
-    ${backBtn}
-    <span class="chapter-header__title">${escapeHtml(ex.name)}</span>
-    <div class="chapter-header__actions">
-      <button class="chapter-header__toc-btn example-header__load-btn" onclick="Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})">Load in playground</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>
-    </div>
-  </div>
+  ${renderPageHeader({
+    title: ex.name,
+    actions: detailActions,
+    prev: prev ? { path: `/examples/${prev.id}`, title: prev.name } : { path: '/examples', title: 'Back to Examples' },
+    up: { path: '/examples', title: 'Back to Examples' },
+    next: next ? { path: `/examples/${next.id}`, title: next.name } : null,
+  })}
   <div class="book-page__content">
     <p class="example-detail__category">${escapeHtml(ex.category)}</p>
     <p class="example-detail__desc">${escapeHtml(ex.description)}</p>
