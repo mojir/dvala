@@ -12,6 +12,7 @@ import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
 import { builtin } from '../builtin'
+import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 import { NodeTypes } from '../constants/constants'
 import type { AstNode, SourceMap } from '../parser/types'
 import type { ParseError } from '../errors'
@@ -23,7 +24,7 @@ import type { FileSymbols, ScopeRange, SymbolDef, SymbolRef } from './types'
 const builtinNames = new Set<string>([
   ...Object.keys(builtin.normalExpressions),
   ...Object.keys(builtin.specialExpressions),
-  'true', 'false', 'null', 'E', 'PI', 'Infinity',
+  ...Object.keys(reservedSymbolRecord),
 ])
 
 interface CachedFile {

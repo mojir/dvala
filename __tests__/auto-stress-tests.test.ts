@@ -1133,7 +1133,7 @@ describe('stress: error propagation through effect stacks', () => {
         perform(@my.eff, 1)
       end
     `)
-    expect(result).toBe('Number is NaN')
+    expect(result).toBe('Number is not finite')
   })
 
   it('host handler fail() caught by local do/with', async () => {
@@ -1207,7 +1207,7 @@ describe('stress: error propagation through effect stacks', () => {
       return
 
     const r2 = await resumeContinuation(r1.snapshot, 0)
-    // 0/0 = NaN → dvala.error
+    // 0/0 = not finite → dvala.error
     expect(r2.type).toBe('completed')
     if (r2.type === 'completed') {
       expect(r2.value).toContain('div-error:')

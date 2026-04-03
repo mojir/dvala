@@ -18,7 +18,7 @@ import type {
   Frame,
   IfBranchFrame,
   LetBindFrame,
-  NanCheckFrame,
+  FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
   QqFrame,
@@ -95,7 +95,7 @@ describe('tick', () => {
   })
 
   it('should dispatch ApplyStep via applyFrame', () => {
-    const frame: NanCheckFrame = { type: 'NanCheck' }
+    const frame: FiniteCheckFrame = { type: 'FiniteCheck' }
     const step: Step = { type: 'Apply', frame, value: 42, k: null }
     const next = tick(step) as Step
     expect(next).toEqual({ type: 'Value', value: 42, k: null })
@@ -229,9 +229,9 @@ describe('stepNode', () => {
       const step = stepNodeSync(node, emptyEnv(), null)
       expect(step.type).toBe('Eval')
       if (step.type === 'Eval') {
-        expect(listSize(step.k)).toBe(2) // EvalArgsFrame + NanCheckFrame
+        expect(listSize(step.k)).toBe(2) // EvalArgsFrame + FiniteCheckFrame
         expect(step.k?.head!.type).toBe('EvalArgs')
-        expect(step.k?.tail?.head!.type).toBe('NanCheck')
+        expect(step.k?.tail?.head!.type).toBe('FiniteCheck')
       }
     })
 
@@ -785,9 +785,9 @@ describe('applyFrame', () => {
     })
   })
 
-  describe('nanCheckFrame', () => {
-    it('should pass non-NaN values through', () => {
-      const frame: NanCheckFrame = { type: 'NanCheck' }
+  describe('finiteCheckFrame', () => {
+    it('should pass finite values through', () => {
+      const frame: FiniteCheckFrame = { type: 'FiniteCheck' }
       const step = applyFrameSync(frame, 42, null)
       expect(step.type).toBe('Value')
       if (step.type === 'Value') {
@@ -796,8 +796,18 @@ describe('applyFrame', () => {
     })
 
     it('should throw on NaN value', () => {
-      const frame: NanCheckFrame = { type: 'NanCheck' }
-      expect(() => applyFrameSync(frame, Number.NaN, null)).toThrow('NaN')
+      const frame: FiniteCheckFrame = { type: 'FiniteCheck' }
+      expect(() => applyFrameSync(frame, Number.NaN, null)).toThrow('Number is not finite')
+    })
+
+    it('should throw on positive Infinity', () => {
+      const frame: FiniteCheckFrame = { type: 'FiniteCheck' }
+      expect(() => applyFrameSync(frame, Number.POSITIVE_INFINITY, null)).toThrow('Number is not finite')
+    })
+
+    it('should throw on negative Infinity', () => {
+      const frame: FiniteCheckFrame = { type: 'FiniteCheck' }
+      expect(() => applyFrameSync(frame, Number.NEGATIVE_INFINITY, null)).toThrow('Number is not finite')
     })
   })
 

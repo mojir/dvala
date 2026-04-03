@@ -4,7 +4,7 @@ import type { SourceCodeInfo } from '../../../tokenizer/token'
 import { assertMatrix, assertVector, isMatrix, isVector } from '../../../typeGuards/annotatedCollections'
 import { isNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
-import { RuntimeError } from '../../../errors'
+import { ArithmeticError, RuntimeError } from '../../../errors'
 import type { BuiltinNormalExpressions } from '../../interface'
 import { moduleDocsFromFunctions } from '../interface'
 import type { DvalaModule } from '../interface'
@@ -29,6 +29,15 @@ function getNumberVectorOrMatrixOperation(
   return ['number', param]
 }
 
+// Applies fn and throws if the result is not finite (NaN or Infinity).
+function checkedMathFn(fn: (val: number) => number, val: number, sourceCodeInfo: SourceCodeInfo | undefined): number {
+  const result = fn(val)
+  if (!Number.isFinite(result)) {
+    throw new ArithmeticError('Number is not finite', sourceCodeInfo)
+  }
+  return result
+}
+
 // Wraps a scalar math function to work element-wise on numbers, vectors, and matrices.
 // Return is cast to Any because number[], number[][] are annotated plain JS arrays (not PersistentVector).
 function unaryMathOp(
@@ -39,9 +48,9 @@ function unaryMathOp(
     if (operation === 'number') {
       return fn(operand)
     } else if (operation === 'vector') {
-      return fromJS(operand.map(val => fn(val)))
+      return fromJS(operand.map(val => checkedMathFn(fn, val, sourceCodeInfo)))
     } else {
-      return fromJS(operand.map(row => row.map(val => fn(val))))
+      return fromJS(operand.map(row => row.map(val => checkedMathFn(fn, val, sourceCodeInfo))))
     }
   }
 }
@@ -95,9 +104,9 @@ asin(1)`,
         `let { asin } = import("math");
 asin(-0.5)`,
         `let { asin } = import("math");
-asin([1, 2, 3])`,
+asin([0, 0.5, 1])`,
         `let { asin } = import("math");
-asin([[1, 2], [3, 4]])`,
+asin([[0, 0.5], [-0.5, -1]])`,
       ],
     },
   },
