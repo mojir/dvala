@@ -1323,16 +1323,8 @@ export function saveAs() {
   })
 }
 
-function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void) {
-  const overlay = document.createElement('div')
-  overlay.style.cssText = 'position:fixed; inset:0; background:var(--color-overlay); z-index:200; display:flex; align-items:center; justify-content:center;'
-
-  const dialog = document.createElement('div')
-  dialog.style.cssText = 'background:var(--color-surface); border-radius:8px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; min-width:20rem; max-width:90vw;'
-
-  const titleEl = document.createElement('div')
-  titleEl.textContent = title
-  titleEl.style.cssText = 'font-size:1rem; color:var(--color-text); font-weight:600;'
+function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void, onCancel?: () => void) {
+  const dismiss = () => { popModal(); onCancel?.() }
 
   const input = document.createElement('input')
   input.type = 'text'
@@ -1340,34 +1332,41 @@ function showNameInputModal(title: string, defaultValue: string, onConfirm: (nam
   input.spellcheck = false
   input.style.cssText = 'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
 
-  const buttons = document.createElement('div')
-  buttons.style.cssText = 'display:flex; justify-content:flex-end; gap:0.5rem;'
-
-  const cancelBtn = document.createElement('button')
-  cancelBtn.textContent = 'Cancel'
-  cancelBtn.className = 'toolbar-btn'
-  cancelBtn.onclick = () => overlay.remove()
-
-  const okBtn = document.createElement('button')
-  okBtn.textContent = 'Save'
-  okBtn.className = 'toolbar-btn'
-  okBtn.onclick = () => {
-    const name = input.value.trim()
-    if (!name) return
-    overlay.remove()
-    onConfirm(name)
-  }
-
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') okBtn.click()
-    else if (e.key === 'Escape') overlay.remove()
+    if (e.key === 'Enter') {
+      const name = input.value.trim()
+      if (!name) return
+      popModal()
+      onConfirm(name)
+    } else if (e.key === 'Escape') {
+      dismiss()
+    }
   })
 
-  buttons.append(cancelBtn, okBtn)
-  dialog.append(titleEl, input, buttons)
-  overlay.append(dialog)
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
-  document.body.appendChild(overlay)
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    onClose: onCancel,
+    footerActions: [
+      { label: 'Cancel', action: dismiss },
+      {
+        label: 'Save',
+        primary: true,
+        action: () => {
+          const name = input.value.trim()
+          if (!name) return
+          popModal()
+          onConfirm(name)
+        },
+      },
+    ],
+  })
+
+  const row = document.createElement('div')
+  row.className = 'modal-body-row'
+  row.appendChild(input)
+  body.appendChild(row)
+
+  pushPanel(panel, title)
   setTimeout(() => { input.focus(); input.select() }, 0)
 }
 
@@ -1471,25 +1470,91 @@ function flushPendingAutoSave() {
 
 /**
  * Guards a code-replacing action.
- * - If a saved program is active, flush any pending auto-save and proceed immediately.
- * - If the editor has unsaved edits (no program ID), show a confirmation modal first.
+ * - If a saved program is active, flush any pending auto-save and detach from it
+ *   (so the saved program is not overwritten), then proceed.
+ * - If the editor has unsaved edits (no program ID), show a modal offering to
+ *   save, discard, or cancel.
  */
 function guardCodeReplacement(proceed: () => void) {
   if (getState('current-program-id') !== null) {
+    // Saved program is open — flush auto-save so nothing is lost,
+    // then detach so the incoming code doesn't overwrite the saved program.
     flushPendingAutoSave()
+    saveState({ 'current-program-id': null, 'dvala-code-edited': false })
     updateCSS()
     proceed()
     return
   }
-  if (getState('dvala-code-edited')) {
-    void showInfoModal(
-      'Unsaved program',
-      'The current program is not saved. Proceeding will discard it.',
-      proceed,
-    )
+  // Any untitled program with code in the editor is unsaved work
+  if (getState('dvala-code').trim()) {
+    showSaveOrDiscardModal(proceed)
     return
   }
   proceed()
+}
+
+/**
+ * Shows a modal asking the user to save the current unsaved program, discard it,
+ * or cancel the action.
+ */
+function showSaveOrDiscardModal(proceed: () => void) {
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    footerActions: [
+      { label: 'Cancel Import', action: () => popModal() },
+      {
+        label: 'Discard Program',
+        action: () => {
+          popModal()
+          proceed()
+        },
+      },
+      {
+        label: 'Save Program',
+        primary: true,
+        action: () => {
+          popModal()
+          // Show the save-as name input; after saving, proceed with the guarded action.
+          // If cancelled, re-show this modal.
+          showNameInputModal('Save program', '', name => {
+            const programs = getSavedPrograms()
+            const duplicate = programs.find(p => p.name === name)
+            const doSave = () => {
+              const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
+              const now = Date.now()
+              const newProgram: SavedProgram = {
+                id: crypto.randomUUID(),
+                name,
+                code: getState('dvala-code'),
+                context: getState('context'),
+                createdAt: now,
+                updatedAt: now,
+                locked: false,
+              }
+              setSavedPrograms([newProgram, ...filtered])
+              notifyProgramAdded()
+              updateCSS()
+              populateSavedProgramsList({ animateNewId: newProgram.id })
+              showToast(`Saved as "${name}"`)
+              proceed()
+            }
+            if (duplicate) {
+              void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
+            } else {
+              doSave()
+            }
+          }, () => showSaveOrDiscardModal(proceed))
+        },
+      },
+    ],
+  })
+
+  const messageEl = document.createElement('div')
+  messageEl.className = 'modal-body-row'
+  messageEl.textContent = 'The current program has unsaved changes.'
+  body.appendChild(messageEl)
+
+  pushPanel(panel, 'Unsaved program')
 }
 
 function scheduleAutoSave() {
@@ -2691,13 +2756,20 @@ function getDataFromUrl() {
 
   const urlState = urlParams.get('state')
   if (urlState) {
-    if (applyEncodedState(urlState))
-      showToast('State loaded from URL')
-    else
-      showToast('Invalid state URL parameter', { severity: 'error' })
-
+    // Always clean the URL immediately so a refresh doesn't re-trigger
     urlParams.delete('state')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
+
+    // Guard against overwriting saved or unsaved work
+    guardCodeReplacement(() => {
+      saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+      if (applyEncodedState(urlState))
+        showToast('State loaded from URL')
+      else
+        showToast('Invalid state URL parameter', { severity: 'error' })
+      applyState()
+    })
+    return // applyState() is called inside the guard callback
   }
 
   const urlSnapshot = urlParams.get('snapshot')
