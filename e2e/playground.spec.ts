@@ -553,8 +553,8 @@ test.describe('api reference navigation', () => {
 /** Save current code as a named program via the saveAs modal. */
 async function saveAsProgram(page: Page, name: string) {
   await page.evaluate(() => (window as any).Playground.saveAs())
-  // The name input modal overlay uses a CSS variable — match by the overlay's structural role
-  const input = page.locator('[style*="--color-overlay"] input[type="text"]')
+  // The name input modal uses the snapshot-modal overlay with a modal-panel inside
+  const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
   await input.waitFor({ timeout: 2000 })
   await input.fill(name)
   await input.press('Enter')
