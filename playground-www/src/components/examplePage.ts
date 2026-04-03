@@ -62,9 +62,7 @@ export function renderExampleIndexPage(): string {
     <span class="example-card__title">${escapeHtml(ex.name)}</span>
     <span class="example-card__desc">${escapeHtml(ex.description)}</span>
   </a>
-  <button class="example-card__cta" onclick="event.stopPropagation(); Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})">
-    Load ${playIcon}
-  </button>
+  <button class="example-card__play" onclick="event.stopPropagation(); Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})" title="Load in playground">${playIcon}</button>
 </div>`
     }).join('\n')
 
