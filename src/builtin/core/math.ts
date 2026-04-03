@@ -1,4 +1,4 @@
-import { RuntimeError } from '../../errors'
+import { ArithmeticError, RuntimeError } from '../../errors'
 import type { Any, Arr } from '../../interface'
 import type { SourceCodeInfo } from '../../tokenizer/token'
 import { assertMatrix, assertNonEmptyVector, assertVector, isMatrix, isVector } from '../../typeGuards/annotatedCollections'
@@ -81,6 +81,19 @@ function getNumberVectorOrMatrixOperation(
   return ['number', paramsArr as number[]]
 }
 
+// Applies fn and throws if the result is not finite (NaN or Infinity).
+// Used for element-wise vector/matrix operations where the FiniteCheckFrame
+// only sees the top-level array, not individual numeric elements.
+function checkedFn(fn: (a: number, b: number) => number, a: number, b: number, sourceCodeInfo: SourceCodeInfo | undefined): number
+function checkedFn(fn: (a: number) => number, a: number, b: undefined, sourceCodeInfo: SourceCodeInfo | undefined): number
+function checkedFn(fn: (...args: number[]) => number, a: number, b: number | undefined, sourceCodeInfo: SourceCodeInfo | undefined): number {
+  const result = b === undefined ? fn(a) : fn(a, b)
+  if (!Number.isFinite(result)) {
+    throw new ArithmeticError('Number is not finite', sourceCodeInfo)
+  }
+  return result
+}
+
 function unaryMathOp(
   fn: (val: number) => number,
 ): (params: Arr, sourceCodeInfo: SourceCodeInfo | undefined) => Any {
@@ -90,9 +103,9 @@ function unaryMathOp(
       return fn(operands[0]!)
     } else if (operation === 'vector') {
       // number[] is a Dvala vector (annotated plain JS array) — cast to Any
-      return operands[0]!.map(val => fn(val)) as unknown as Any
+      return operands[0]!.map(val => checkedFn(fn, val, undefined, sourceCodeInfo)) as unknown as Any
     } else {
-      return operands[0]!.map(row => row.map(val => fn(val))) as unknown as Any
+      return operands[0]!.map(row => row.map(val => checkedFn(fn, val, undefined, sourceCodeInfo))) as unknown as Any
     }
   }
 }
@@ -105,9 +118,9 @@ function binaryMathOp(
     if (operation === 'number') {
       return fn(operands[0]!, operands[1]!)
     } else if (operation === 'vector') {
-      return operands[0]!.map((val, i) => fn(val, operands[1]![i]!)) as unknown as Any
+      return operands[0]!.map((val, i) => checkedFn(fn, val, operands[1]![i]!, sourceCodeInfo)) as unknown as Any
     } else {
-      return operands[0]!.map((row, i) => row.map((val, j) => fn(val, operands[1]![i]![j]!))) as unknown as Any
+      return operands[0]!.map((row, i) => row.map((val, j) => checkedFn(fn, val, operands[1]![i]![j]!, sourceCodeInfo))) as unknown as Any
     }
   }
 }
@@ -124,10 +137,10 @@ function reduceMathOp(
       return operands.reduce((a, b) => fn(a, b), identity)
     } else if (operation === 'vector') {
       const [first, ...rest] = operands
-      return rest.reduce((acc, v) => acc.map((val, i) => fn(val, v[i]!)), first!) as unknown as Any
+      return rest.reduce((acc, v) => acc.map((val, i) => checkedFn(fn, val, v[i]!, sourceCodeInfo)), first!) as unknown as Any
     } else {
       const [first, ...rest] = operands
-      return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => fn(val, m[i]![j]!))), first!) as unknown as Any
+      return rest.reduce((acc, m) => acc.map((row, i) => row.map((val, j) => checkedFn(fn, val, m[i]![j]!, sourceCodeInfo))), first!) as unknown as Any
     }
   }
 }
@@ -352,7 +365,6 @@ export const mathNormalExpression: BuiltinNormalExpressions = {
         'quot(-5, 3)',
         '5 quot -3',
         '-5 quot -3',
-        'quot(5, 0)',
         'quot(0, 5)',
         '[1, 2, 3] quot 2',
         '2 quot [1, 2, 3]',

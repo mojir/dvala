@@ -598,8 +598,12 @@ describe('getUndefinedSymbols', () => {
 // ---------------------------------------------------------------------------
 
 describe('error quality', () => {
-  it('division by zero produces NaN error', () => {
-    expect(() => dvala.run('0 / 0')).toThrow('NaN')
+  it('division by zero produces not-finite error', () => {
+    expect(() => dvala.run('0 / 0')).toThrow('Number is not finite')
+  })
+
+  it('division producing Infinity throws not-finite error', () => {
+    expect(() => dvala.run('1 / 0')).toThrow('Number is not finite')
   })
 
   it('undefined symbol error includes symbol name', () => {

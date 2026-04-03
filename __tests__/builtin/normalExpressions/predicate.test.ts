@@ -329,36 +329,6 @@ describe('predicates', () => {
       })
     })
 
-    describe('isFinite', () => {
-      it('samples', () => {
-        expect(dvala.run('isFinite(1)')).toBe(true)
-        expect(dvala.run('isFinite(0)')).toBe(true)
-        expect(dvala.run('isFinite(1 / 0)')).toBe(false)
-        expect(dvala.run('isFinite(-1 / 0)')).toBe(false)
-        expect(() => dvala.run('isFinite(sqrt(-1))')).toThrow(DvalaError)
-      })
-    })
-
-    describe('isPositiveInfinity', () => {
-      it('samples', () => {
-        expect(dvala.run('isPositiveInfinity(1)')).toBe(false)
-        expect(dvala.run('isPositiveInfinity(0)')).toBe(false)
-        expect(dvala.run('isPositiveInfinity(1 / 0)')).toBe(true)
-        expect(dvala.run('isPositiveInfinity(-1 / 0)')).toBe(false)
-        expect(() => dvala.run('isPositiveInfinity(sqrt(-1))')).toThrow(DvalaError)
-      })
-    })
-
-    describe('isNegativeInfinity', () => {
-      it('samples', () => {
-        expect(dvala.run('isNegativeInfinity(1)')).toBe(false)
-        expect(dvala.run('isNegativeInfinity(0)')).toBe(false)
-        expect(dvala.run('isNegativeInfinity(1 / 0)')).toBe(false)
-        expect(dvala.run('isNegativeInfinity(-1 / 0)')).toBe(true)
-        expect(() => dvala.run('isNegativeInfinity(sqrt(-1))')).toThrow(DvalaError)
-      })
-    })
-
     describe('isTrue', () => {
       it('samples', () => {
         expect(dvala.run('isTrue(false)')).toBe(false)

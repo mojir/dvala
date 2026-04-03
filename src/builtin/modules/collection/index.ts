@@ -306,7 +306,7 @@ cu.updateIn(
         'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x + i)',
         'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x * i)',
         'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x - i)',
-        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x / i)',
+        'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x / inc(i))',
         'let cu = import("collection"); cu.mapi([1, 2, 3], (x, i) -> x % inc(i))',
       ],
     },

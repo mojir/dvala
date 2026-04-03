@@ -823,13 +823,13 @@ export interface SomePredFrame {
 // ---------------------------------------------------------------------------
 
 /**
- * NaN guard after evaluating a normal expression.
+ * Finite-number guard after evaluating a normal expression.
  *
- * Normal expressions go through a NaN check: if the result is `NaN`, a
- * `DvalaError` is thrown. This frame wraps that check.
+ * Normal expressions go through a finiteness check: if the result is `NaN`
+ * or `Infinity`, an `ArithmeticError` is thrown. This frame wraps that check.
  */
-export interface NanCheckFrame {
-  type: 'NanCheck'
+export interface FiniteCheckFrame {
+  type: 'FiniteCheck'
   sourceCodeInfo?: SourceCodeInfo
 }
 
@@ -853,7 +853,7 @@ export interface NanCheckFrame {
  * - **Exception & effect handling**: AlgebraicHandleFrame
  * - **Function calls**: EvalArgsFrame, CallFnFrame, FnBodyFrame
  * - **Destructuring**: FnArgBindFrame, BindingSlotFrame, MatchSlotFrame
- * - **Post-processing**: NanCheckFrame
+ * - **Post-processing**: FiniteCheckFrame
  */
 // ---------------------------------------------------------------------------
 // Module import
@@ -935,7 +935,7 @@ export type Frame =
   | BindingSlotFrame
   | MatchSlotFrame
   // Post-processing
-  | NanCheckFrame
+  | FiniteCheckFrame
   // Module import
   | ImportMergeFrame
   | FileResolveFrame

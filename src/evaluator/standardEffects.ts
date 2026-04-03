@@ -60,7 +60,7 @@ function isNode(): boolean {
  * - Functions: `<function name>` or `<builtin function name>`.
  * - Effects: `<effect name>`.
  * - RegExps (Dvala regular expressions): `/pattern/flags`.
- * - Arrays and objects: JSON.stringify with 2-space indent (Infinity → "∞").
+ * - Arrays and objects: JSON.stringify with 2-space indent.
  */
 function formatForOutput(value: unknown): string {
   if (typeof value === 'string')
@@ -88,15 +88,11 @@ function formatForOutput(value: unknown): string {
   if (typeof value === 'object' && value instanceof RegExp)
     return `${value}`
 
-  // Arrays and objects — JSON.stringify with infinity handling
+  // Arrays and objects — JSON.stringify with special value handling
   return JSON.stringify(replaceSpecialValues(value), null, 2)
 }
 
 function replaceSpecialValues(value: unknown): unknown {
-  if (value === Number.POSITIVE_INFINITY)
-    return '∞'
-  if (value === Number.NEGATIVE_INFINITY)
-    return '-∞'
   if (isDvalaFunction(value))
     return formatForOutput(value)
   if (isEffect(value))

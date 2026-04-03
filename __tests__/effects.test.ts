@@ -3537,7 +3537,7 @@ describe('step 1 — handler...end with do...with', () => {
 })
 
 describe('step 2 — dvala.error standard effect', () => {
-  it('do...with catches runtime error (NaN)', () => {
+  it('do...with catches runtime error (not finite)', () => {
     expect(dvala.run(`
       do
         with handler @dvala.error(arg) -> resume(42) end;
@@ -3553,7 +3553,7 @@ describe('step 2 — dvala.error standard effect', () => {
         0 / 0
       end
     `)
-    expect(result).toBe('Number is NaN')
+    expect(result).toBe('Number is not finite')
   })
 
   it('handler return value resumes at the error site', () => {

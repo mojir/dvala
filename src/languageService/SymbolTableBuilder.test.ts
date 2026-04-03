@@ -4,12 +4,13 @@ import { tokenize } from '../tokenizer/tokenize'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { parseRecoverable } from '../parser'
 import { builtin } from '../builtin'
+import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 
 // Collect all builtin names — must mirror WorkspaceIndex.ts
 const builtinNames = new Set<string>([
   ...Object.keys(builtin.normalExpressions),
   ...Object.keys(builtin.specialExpressions),
-  'true', 'false', 'null', 'E', 'PI', 'Infinity',
+  ...Object.keys(reservedSymbolRecord),
 ])
 
 function build(source: string) {
