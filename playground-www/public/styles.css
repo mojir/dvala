@@ -1022,6 +1022,7 @@ a.disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  padding-left: var(--space-2);
 }
 
 .chapter-header__actions {
@@ -1029,6 +1030,12 @@ a.disabled {
   align-items: center;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.chapter-header__nav-group {
+  display: flex;
+  align-items: center;
+  margin-left: var(--space-1);
 }
 
 .chapter-header__toc-btn {
@@ -1055,8 +1062,8 @@ a.disabled {
 .chapter-toc-dropdown {
   position: fixed;
   z-index: 300;
-  background: var(--color-surface-3);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface-dim);
+  border: 1px solid var(--color-border-dim);
   border-radius: 4px;
   padding: var(--space-1) 0;
   min-width: 14rem;
@@ -1183,7 +1190,7 @@ a.disabled {
   gap: 1px;
 }
 
-.chapter-search-result:hover,
+.chapter-search-results:not(.keyboard-nav) .chapter-search-result:hover,
 .chapter-search-result--active {
   background: var(--color-surface);
 }
@@ -1608,7 +1615,10 @@ a.disabled {
 }
 
 .example-card__cta {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
   width: 100%;
   background: none;
   border: none;
@@ -1622,6 +1632,13 @@ a.disabled {
   text-align: center;
 }
 
+.example-card__cta svg,
+.example-header__load-btn svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex-shrink: 0;
+}
+
 .example-card__cta:hover {
   background: var(--color-surface-3);
   color: var(--color-text-bright);
@@ -1629,10 +1646,13 @@ a.disabled {
 
 /* Load-in-playground button in example detail header */
 .example-header__load-btn {
-  font-size: var(--font-size-sm) !important;
+  font-size: var(--font-size-base) !important;
   width: auto !important;
   padding: 0 var(--space-2) !important;
   white-space: nowrap;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.4em;
 }
 
 /* Hidden card/category during search filtering */

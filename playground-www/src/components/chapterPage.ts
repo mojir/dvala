@@ -7,8 +7,17 @@
  */
 
 import { href, navigate } from '../router'
-import { hamburgerIcon, searchIcon } from '../icons'
+import { downloadIcon, hamburgerIcon, searchIcon } from '../icons'
 import { renderDvalaMarkdown, slugifyHeading } from '../renderDvalaMarkdown'
+import { renderPageHeader } from './pageHeader'
+
+// Shared header actions for all book pages (index + chapters)
+function bookHeaderActions(): string {
+  return `
+      <a class="chapter-header__toc-btn example-header__load-btn" href="${href('/the-dvala-book.pdf')}" download="the-dvala-book.pdf" aria-label="Download PDF" title="Download PDF">Download ${downloadIcon}</a>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleBookSearch(event)" aria-label="Search chapters">${searchIcon}</button>`
+}
 
 export interface ChapterEntry {
   id: string // URL slug, e.g. "getting-started-intro"
@@ -63,10 +72,6 @@ export const allChapters: ChapterEntry[] = bookSections.flatMap(f => f.entries)
 export function renderBookIndexPage(): string {
   const next = allChapters[0] ?? null
 
-  const nextBtn = next
-    ? `<a class="chapter-header__nav-btn" href="${href(`/book/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${next.id}')" title="${escapeHtml(next.title)}">→</a>`
-    : '<span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">→</span>'
-
   const sections = bookSections.map(folder => `
 <section class="book-toc__group">
   <h3 class="book-toc__group-title">${escapeHtml(folder.name)}</h3>
@@ -85,19 +90,14 @@ export function renderBookIndexPage(): string {
 
   return `
 <div class="book-page">
-  <div class="chapter-header">
-    <span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">←</span>
-    <span class="chapter-header__title">The Book</span>
-    <div class="chapter-header__actions">
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleBookSearch(event)" aria-label="Search chapters">${searchIcon}</button>
-    </div>
-    ${nextBtn}
-  </div>
+  ${renderPageHeader({
+    title: 'The Book',
+    actions: bookHeaderActions(),
+    prev: null,
+    up: null,
+    next: next ? { path: `/book/${next.id}`, title: next.title } : null,
+  })}
   <div class="book-page__content">
-    <div class="book-toc__header">
-      <a class="book-toc__download" href="${href('/the-dvala-book.pdf')}" download="the-dvala-book.pdf">↓ Download PDF</a>
-    </div>
     <div class="book-toc">
       ${sections}
     </div>
@@ -129,25 +129,15 @@ export function renderChapterPage(id: string): string {
     }).join('')}</nav>`
     : ''
 
-  const prevBtn = prev
-    ? `<a class="chapter-header__nav-btn" href="${href(`/book/${prev.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${prev.id}')" title="${escapeHtml(prev.title)}">←</a>`
-    : '<span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">←</span>'
-
-  const nextBtn = next
-    ? `<a class="chapter-header__nav-btn" href="${href(`/book/${next.id}`)}" onclick="event.preventDefault();Playground.navigate('/book/${next.id}')" title="${escapeHtml(next.title)}">→</a>`
-    : '<span class="chapter-header__nav-btn chapter-header__nav-btn--disabled">→</span>'
-
   return `
 <div class="book-page">
-  <div class="chapter-header">
-    ${prevBtn}
-    <span class="chapter-header__title">${escapeHtml(entry.title)}</span>
-    <div class="chapter-header__actions">
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleBookSearch(event)" aria-label="Search chapters">${searchIcon}</button>
-    </div>
-    ${nextBtn}
-  </div>
+  ${renderPageHeader({
+    title: entry.title,
+    actions: bookHeaderActions(),
+    prev: prev ? { path: `/book/${prev.id}`, title: prev.title } : { path: '/book', title: 'Back to The Book' },
+    up: { path: '/book', title: 'Back to The Book' },
+    next: next ? { path: `/book/${next.id}`, title: next.title } : null,
+  })}
   <div class="book-page__content">
     ${subToc}
     ${contentHtml}

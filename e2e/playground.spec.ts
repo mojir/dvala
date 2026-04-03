@@ -1078,10 +1078,11 @@ test.describe('chapter pages', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
-    // First chapter — prev should be disabled
-    await expect(page.locator('.chapter-header__nav-btn--disabled').first()).toBeVisible()
-    // Click next
-    await page.locator('.chapter-header__nav-btn').last().click()
+    // First chapter — prev (←) should link back to /book, not be disabled
+    const navGroup = page.locator('.chapter-header__nav-group')
+    await expect(navGroup).toBeVisible()
+    // Click → (last nav button in the group) to go to next chapter
+    await navGroup.locator('.chapter-header__nav-btn').last().click()
     // Should navigate to the second chapter
     await expect(page.locator('.chapter-header__title')).not.toContainText('Intro')
   })
