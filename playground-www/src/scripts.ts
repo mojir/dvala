@@ -24,10 +24,14 @@ import * as router from './router'
 import { renderDocPage } from './components/docPage'
 import { renderCorePage } from './components/corePage'
 import { renderModulesPage } from './components/modulesPage'
-import { renderExamplePage } from './components/examplePage'
+import { renderExampleDetailPage, renderExampleIndexPage } from './components/examplePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
 import { renderBookIndexPage, renderChapterPage, allChapters, bookSections } from './components/chapterPage'
+import { toggleSearchDropdown } from './components/searchDropdown'
+import type { SearchResult } from './components/searchDropdown'
+import { toggleTocDropdown } from './components/tocDropdown'
+import type { TocItem } from './components/tocDropdown'
 import { slugifyHeading } from './renderDvalaMarkdown'
 import { playgroundEffectReference } from './playgroundEffects'
 import {
@@ -335,99 +339,46 @@ export function closeMoreMenu() {
 
 export function toggleTocMenu(event: Event): void {
   event.stopPropagation()
-  const btn = event.currentTarget as HTMLElement
-
-  const existing = document.getElementById('chapter-toc-dropdown')
-  if (existing) {
-    existing.remove()
-    return
-  }
-
-  // Derive active chapter id and active h2 slug from current URL
   const currentChapterId = router.currentPath().replace(/^\/book\//, '')
   const currentHash = location.hash.replace(/^#/, '')
 
-  const dropdown = document.createElement('div')
-  dropdown.id = 'chapter-toc-dropdown'
-  dropdown.className = 'chapter-toc-dropdown'
-
-  // Overview link
-  const overview = document.createElement('a')
-  overview.className = 'chapter-toc-dropdown__item chapter-toc-dropdown__item--overview'
-  overview.textContent = 'Overview'
-  overview.addEventListener('click', () => { dropdown.remove(); router.navigate('/book') })
-  dropdown.appendChild(overview)
-
-  let activeEl: HTMLElement | null = null
-
-  const check = '<span class="chapter-toc-dropdown__check">✓</span>'
-
-  // Sections + chapters
-  for (const section of bookSections) {
-    const label = document.createElement('div')
-    label.className = 'chapter-toc-dropdown__section'
-    label.textContent = section.name
-    dropdown.appendChild(label)
-
-    for (const entry of section.entries) {
-      const isActiveChapter = entry.id === currentChapterId
-      // Only mark the chapter itself when no h2 section is active
-      const chapterMarked = isActiveChapter && !currentHash
-      const a = document.createElement('a')
-      a.className = `chapter-toc-dropdown__item${chapterMarked ? ' chapter-toc-dropdown__item--active' : ''}`
-      a.innerHTML = (chapterMarked ? check : '<span class="chapter-toc-dropdown__check"></span>') + entry.title
-      a.addEventListener('click', () => { dropdown.remove(); router.navigate(`/book/${entry.id}`) })
-      dropdown.appendChild(a)
-      if (chapterMarked) activeEl = a
-
-      // h2 sub-items
-      const h2s = [...entry.raw.matchAll(/^##\s+(.+)$/gm)]
-      for (const m of h2s) {
-        const text = m[1]!.trim()
-        const slug = slugifyHeading(text)
-        const isActiveSub = isActiveChapter && currentHash === slug
-        const sub = document.createElement('a')
-        sub.className = `chapter-toc-dropdown__subitem${isActiveSub ? ' chapter-toc-dropdown__subitem--active' : ''}`
-        sub.innerHTML = (isActiveSub ? check : '<span class="chapter-toc-dropdown__check"></span>') + text
-        sub.addEventListener('click', () => {
-          dropdown.remove()
-          const alreadyOnChapter = router.currentPath() === `/book/${entry.id}`
-          if (!alreadyOnChapter) router.navigate(`/book/${entry.id}`)
-          setTimeout(() => {
-            const el = document.getElementById(slug)
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth' })
-              history.replaceState(null, '', `${location.pathname}#${slug}`)
-            }
-          }, alreadyOnChapter ? 0 : 80)
+  toggleTocDropdown(event.currentTarget as HTMLElement, {
+    id: 'chapter-toc-dropdown',
+    overview: { label: 'Overview', onSelect: () => router.navigate('/book') },
+    sections: bookSections.map(section => ({
+      title: section.name,
+      items: section.entries.flatMap(entry => {
+        const isActiveChapter = entry.id === currentChapterId
+        const chapterItem: TocItem = {
+          label: entry.title,
+          active: isActiveChapter && !currentHash,
+          onSelect: () => router.navigate(`/book/${entry.id}`),
+        }
+        const h2s = [...entry.raw.matchAll(/^##\s+(.+)$/gm)]
+        const subItems: TocItem[] = h2s.map(m => {
+          const text = m[1]!.trim()
+          const slug = slugifyHeading(text)
+          return {
+            label: text,
+            type: 'subitem' as const,
+            active: isActiveChapter && currentHash === slug,
+            onSelect: () => {
+              const alreadyOnChapter = router.currentPath() === `/book/${entry.id}`
+              if (!alreadyOnChapter) router.navigate(`/book/${entry.id}`)
+              setTimeout(() => {
+                const el = document.getElementById(slug)
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' })
+                  history.replaceState(null, '', `${location.pathname}#${slug}`)
+                }
+              }, alreadyOnChapter ? 0 : 80)
+            },
+          }
         })
-        dropdown.appendChild(sub)
-        if (isActiveSub) activeEl = sub
-      }
-    }
-  }
-
-  // Position fixed below the button
-  document.body.appendChild(dropdown)
-  const rect = btn.getBoundingClientRect()
-  dropdown.style.top = `${rect.bottom + 4}px`
-  dropdown.style.right = `${window.innerWidth - rect.right}px`
-
-  // Scroll active item to vertical center of the dropdown
-  if (activeEl) {
-    const elTop = activeEl.offsetTop
-    const elHeight = activeEl.offsetHeight
-    dropdown.scrollTop = elTop - dropdown.clientHeight / 2 + elHeight / 2
-  }
-
-  // Close on outside click
-  const closeOnOutside = (e: Event) => {
-    if (!dropdown.contains(e.target as Node)) {
-      dropdown.remove()
-      document.removeEventListener('click', closeOnOutside)
-    }
-  }
-  setTimeout(() => document.addEventListener('click', closeOnOutside), 0)
+        return [chapterItem, ...subItems]
+      }),
+    })),
+  })
 }
 
 // Build a flat search index from all chapters, h2 headings, prose paragraphs, and code blocks.
@@ -509,134 +460,124 @@ function getBookSearchIndex(): BookSearchEntry[] {
 
 export function toggleBookSearch(event: Event): void {
   event.stopPropagation()
-  const btn = event.currentTarget as HTMLElement
-
-  const existing = document.getElementById('chapter-search-dropdown')
-  if (existing) { existing.remove(); return }
-
-  // Also close TOC dropdown if open
-  document.getElementById('chapter-toc-dropdown')?.remove()
-
-  const dropdown = document.createElement('div')
-  dropdown.id = 'chapter-search-dropdown'
-  dropdown.className = 'chapter-search-dropdown'
-
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.placeholder = 'Search chapters…'
-  input.className = 'chapter-search-input'
-  dropdown.appendChild(input)
-
-  const results = document.createElement('div')
-  results.className = 'chapter-search-results'
-  dropdown.appendChild(results)
-
-  // Navigate to a search result and close the dropdown
-  const selectEntry = (entry: BookSearchEntry) => {
-    dropdown.remove()
-    document.removeEventListener('keydown', onKey)
-    if (entry.hash) {
-      const alreadyOnChapter = router.currentPath() === `/book/${entry.chapterId}`
-      if (!alreadyOnChapter) router.navigate(`/book/${entry.chapterId}`)
-      setTimeout(() => {
-        const el = document.getElementById(entry.hash)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth' })
-          history.replaceState(null, '', `${location.pathname}#${entry.hash}`)
-        }
-      }, alreadyOnChapter ? 0 : 80)
-    } else {
-      router.navigate(`/book/${entry.chapterId}`)
-    }
-  }
-
-  // Populate results list based on current query.
-  // Chapter and section hits (type 'chapter'/'section') take priority over body content hits.
-  let currentResults: BookSearchEntry[] = []
-  const renderResults = (query: string) => {
-    results.innerHTML = ''
-    const q = query.trim().toLowerCase()
-    if (!q) { currentResults = []; return }
-    const index = getBookSearchIndex()
-    const priorityHits = index.filter(e => (e.type === 'chapter' || e.type === 'section') && (e.label.toLowerCase().includes(q) || e.context.toLowerCase().includes(q)))
-    const bodyHits = index.filter(e => (e.type === 'content' || e.type === 'code') && (e.snippet.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)))
-    // Cap body hits so they don't drown out chapter/section matches
-    currentResults = [...priorityHits, ...bodyHits.slice(0, Math.max(0, 14 - priorityHits.length))]
-    if (currentResults.length === 0) {
-      const empty = document.createElement('div')
-      empty.className = 'chapter-search-empty'
-      empty.textContent = 'No results'
-      results.appendChild(empty)
-      return
-    }
-    // Insert a visual divider before the first body (content/code) result
-    const firstContentIdx = currentResults.findIndex(e => e.type === 'content' || e.type === 'code')
-    currentResults.forEach((entry, i) => {
-      if (i === firstContentIdx && i > 0) {
-        const sep = document.createElement('div')
-        sep.className = 'chapter-search-separator'
-        results.appendChild(sep)
+  toggleSearchDropdown<BookSearchEntry>(event.currentTarget as HTMLElement, {
+    id: 'chapter-search-dropdown',
+    placeholder: 'Search chapters…',
+    onBeforeOpen: () => document.getElementById('chapter-toc-dropdown')?.remove(),
+    search: (query: string) => {
+      const q = query.toLowerCase()
+      const index = getBookSearchIndex()
+      const priorityHits = index
+        .filter(e => (e.type === 'chapter' || e.type === 'section') && (e.label.toLowerCase().includes(q) || e.context.toLowerCase().includes(q)))
+        .map(e => ({
+          data: e,
+          label: e.label,
+          context: e.context,
+          modifier: e.type === 'section' ? 'section' : undefined,
+        }))
+      const bodyHits = index
+        .filter(e => (e.type === 'content' || e.type === 'code') && (e.snippet.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)))
+        .slice(0, Math.max(0, 14 - priorityHits.length))
+        .map(e => ({
+          data: e,
+          label: e.label,
+          context: e.context,
+          modifier: e.type === 'code' ? 'code' : 'content',
+        }))
+      return [{ results: priorityHits }, { results: bodyHits }]
+    },
+    onSelect: (entry: BookSearchEntry) => {
+      if (entry.hash) {
+        const alreadyOnChapter = router.currentPath() === `/book/${entry.chapterId}`
+        if (!alreadyOnChapter) router.navigate(`/book/${entry.chapterId}`)
+        setTimeout(() => {
+          const el = document.getElementById(entry.hash)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' })
+            history.replaceState(null, '', `${location.pathname}#${entry.hash}`)
+          }
+        }, alreadyOnChapter ? 0 : 80)
+      } else {
+        router.navigate(`/book/${entry.chapterId}`)
       }
-      const item = document.createElement('div')
-      const modClass = entry.type === 'section' ? ' chapter-search-result--section'
-        : entry.type === 'content' ? ' chapter-search-result--content'
-          : entry.type === 'code' ? ' chapter-search-result--code' : ''
-      item.className = `chapter-search-result${modClass}`
-      item.dataset.index = String(i)
-      const labelEl = document.createElement('span')
-      labelEl.className = 'chapter-search-result__label'
-      labelEl.textContent = entry.label
-      const ctxEl = document.createElement('span')
-      ctxEl.className = 'chapter-search-result__context'
-      ctxEl.textContent = entry.context
-      item.appendChild(labelEl)
-      item.appendChild(ctxEl)
-      item.addEventListener('mousedown', e => { e.preventDefault(); selectEntry(entry) })
-      item.addEventListener('mouseover', () => setActive(i))
-      results.appendChild(item)
-    })
+    },
+  })
+}
+
+// ─── Example search ────────────────────────────────────────────────────────────
+
+/** Extract a short snippet around the first match of `q` in `text`. */
+function extractCodeSnippet(text: string, q: string): string {
+  const idx = text.toLowerCase().indexOf(q.toLowerCase())
+  if (idx === -1) return ''
+  const lineStart = text.lastIndexOf('\n', idx) + 1
+  const lineEnd = text.indexOf('\n', idx)
+  const line = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim()
+  return line.length > 80 ? `${line.slice(0, 80)}…` : line
+}
+
+export function toggleExampleSearch(event: Event): void {
+  event.stopPropagation()
+  const allExamples = window.referenceData?.examples ?? []
+
+  toggleSearchDropdown<Example>(event.currentTarget as HTMLElement, {
+    id: 'example-search-dropdown',
+    placeholder: 'Search examples…',
+    search: (query: string) => {
+      const q = query.toLowerCase()
+      const priorityHits: SearchResult<Example>[] = []
+      const codeHits: SearchResult<Example>[] = []
+      for (const ex of allExamples) {
+        const nameMatch = ex.name.toLowerCase().includes(q)
+          || ex.description.toLowerCase().includes(q)
+          || ex.category.toLowerCase().includes(q)
+        const codeMatch = ex.code.toLowerCase().includes(q)
+        if (nameMatch) {
+          priorityHits.push({ data: ex, label: ex.name, context: ex.category })
+        }
+        if (codeMatch) {
+          codeHits.push({ data: ex, label: extractCodeSnippet(ex.code, q), context: ex.name, modifier: 'code' })
+        }
+      }
+      return [
+        { results: priorityHits },
+        { results: codeHits.slice(0, Math.max(0, 14 - priorityHits.length)) },
+      ]
+    },
+    onSelect: (ex: Example) => router.navigate(`/examples/${ex.id}`),
+  })
+}
+
+// ─── Example TOC menu ──────────────────────────────────────────────────────────
+
+export function toggleExampleTocMenu(event: Event): void {
+  event.stopPropagation()
+  const data = window.referenceData
+  if (!data) return
+
+  const path = router.currentPath()
+  const currentExampleId = path.startsWith('/examples/') ? path.slice('/examples/'.length) : ''
+
+  // Group examples by category
+  const categoryMap = new Map<string, Example[]>()
+  for (const ex of data.examples) {
+    const cat = ex.category || 'Other'
+    if (!categoryMap.has(cat)) categoryMap.set(cat, [])
+    categoryMap.get(cat)!.push(ex)
   }
 
-  // Keyboard-driven active item tracking
-  let activeIndex = -1
-  const setActive = (i: number) => {
-    const items = results.querySelectorAll<HTMLElement>('.chapter-search-result')
-    items.forEach((el, idx) => el.classList.toggle('chapter-search-result--active', idx === i))
-    activeIndex = i
-    if (i >= 0) items[i]?.scrollIntoView({ block: 'nearest' })
-  }
-
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') { dropdown.remove(); document.removeEventListener('keydown', onKey); return }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(activeIndex + 1, currentResults.length - 1)) }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(activeIndex - 1, 0)) }
-    if (e.key === 'Enter' && activeIndex >= 0) {
-      const entry = currentResults[activeIndex]
-      if (entry) selectEntry(entry)
-    }
-  }
-  document.addEventListener('keydown', onKey)
-
-  input.addEventListener('input', () => { activeIndex = -1; renderResults(input.value) })
-
-  // Position fixed below the button
-  document.body.appendChild(dropdown)
-  const rect = btn.getBoundingClientRect()
-  dropdown.style.top = `${rect.bottom + 4}px`
-  dropdown.style.right = `${window.innerWidth - rect.right}px`
-
-  // Autofocus after mount
-  requestAnimationFrame(() => input.focus())
-
-  // Close on outside click (not on input blur, so mouse clicks on results work)
-  const closeOnOutside = (e: Event) => {
-    if (!dropdown.contains(e.target as Node)) {
-      dropdown.remove()
-      document.removeEventListener('click', closeOnOutside)
-      document.removeEventListener('keydown', onKey)
-    }
-  }
-  setTimeout(() => document.addEventListener('click', closeOnOutside), 0)
+  toggleTocDropdown(event.currentTarget as HTMLElement, {
+    id: 'example-toc-dropdown',
+    overview: { label: 'Overview', onSelect: () => router.navigate('/examples') },
+    sections: Array.from(categoryMap.entries()).map(([category, examples]) => ({
+      title: category,
+      items: examples.map(ex => ({
+        label: ex.name,
+        active: ex.id === currentExampleId,
+        onSelect: () => router.navigate(`/examples/${ex.id}`),
+      })),
+    })),
+  })
 }
 
 const expandedApiSections = new Set<string>()
@@ -1485,8 +1426,8 @@ function guardCodeReplacement(proceed: () => void) {
     proceed()
     return
   }
-  // Any untitled program with code in the editor is unsaved work
-  if (getState('dvala-code').trim()) {
+  // Only show the modal if the user has actually edited an untitled program
+  if (getState('dvala-code-edited') && getState('dvala-code').trim()) {
     showSaveOrDiscardModal(proceed)
     return
   }
@@ -2955,9 +2896,16 @@ function routeToPath(appPath: string): void {
     dynPage.innerHTML = renderModulesPage()
     pageTitle = 'Modules | Dvala'
   } else if (path === 'examples') {
-    dynPage.innerHTML = renderExamplePage()
+    dynPage.innerHTML = renderExampleIndexPage()
     sidebarLinkId = 'example-page_link'
     pageTitle = 'Examples | Dvala'
+  } else if (path.startsWith('examples/')) {
+    const exId = path.slice('examples/'.length)
+    dynPage.innerHTML = renderExampleDetailPage(exId)
+    sidebarLinkId = 'example-page_link'
+    const data = window.referenceData
+    const ex = data?.examples.find(e => e.id === exId)
+    pageTitle = ex ? `${ex.name} | Dvala Examples` : 'Examples | Dvala'
   } else if (path === 'book') {
     dynPage.innerHTML = renderBookIndexPage()
     sidebarLinkId = 'book-page_link'
@@ -3012,6 +2960,7 @@ export async function run() {
 
   appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
 
+  document.body.classList.add('dvala-running')
   const dvalaParams = getDvalaParamsFromContext()
 
   // Snapshot UI state that playground effects may modify
@@ -3026,14 +2975,35 @@ export async function run() {
     route: location.pathname,
   }
 
+  // Execution timeout: 5 seconds, reset on every host effect
+  const TIMEOUT_MS = 5000
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let rejectTimeout: ((err: Error) => void) | null = null
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    rejectTimeout = reject
+    timeoutId = setTimeout(() => reject(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
+  })
+  const resetTimeout = () => {
+    if (timeoutId !== null) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => rejectTimeout?.(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
+  }
+  // Wrap each effect handler to reset the timeout on every host effect
+  const wrappedHandlers = dvalaParams.effectHandlers.map(reg => ({
+    ...reg,
+    handler: (ctx: EffectContext) => { resetTimeout(); return reg.handler(ctx) },
+  }))
+
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
-    const runResult = await getDvala().runAsync(code, pure
-      ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-      : { bindings: dvalaParams.bindings, effectHandlers: dvalaParams.effectHandlers, disableAutoCheckpoint, terminalSnapshot: true },
-    )
+    const runResult = await Promise.race([
+      getDvala().runAsync(code, pure
+        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+        : { bindings: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+      ),
+      timeoutPromise,
+    ])
     if (runResult.type === 'error') {
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'error')
@@ -3060,6 +3030,8 @@ export async function run() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId)
+    document.body.classList.remove('dvala-running')
     // Restore UI state modified by playground effects
     if (getState('dvala-code') !== uiSnapshot.dvalaCode) {
       elements.dvalaTextArea.value = uiSnapshot.dvalaCode

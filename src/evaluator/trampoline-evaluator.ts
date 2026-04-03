@@ -5223,11 +5223,17 @@ async function runEffectLoop(
     })
   }
 
+  // Periodically yield to the event loop so that timeouts, UI updates, and
+  // other macrotasks can run even during long pure-computation loops.
+  const YIELD_INTERVAL = 10_000
+  let tickCount = 0
+
   for (;;) {
     try {
       for (;;) {
         if (step instanceof Promise) {
           step = await step
+          tickCount = 0
         }
         if (step.type === 'Value' && step.k === null) {
           const snapshot = createTerminalSnapshot({ result: step.value })
@@ -5237,6 +5243,12 @@ async function runEffectLoop(
         }
 
         step = tick(step, handlers, signal, snapshotState)
+
+        // Yield every YIELD_INTERVAL ticks to keep the event loop responsive
+        if (++tickCount >= YIELD_INTERVAL) {
+          tickCount = 0
+          await new Promise<void>(resolve => setTimeout(resolve, 0))
+        }
       }
     } catch (error) {
       if (isResumeFromSignal(error)) {
