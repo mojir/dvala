@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Any } from '../src/interface'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
-import { examples } from '../reference/examples'
+import { EXAMPLE_DESCRIPTION_MAX_LENGTH, examples } from '../reference/examples'
 import { tokenizeSource, parseTokenStream } from '../src/tooling'
 import type { HandlerRegistration } from '../src/evaluator/effectTypes'
 
@@ -133,6 +133,14 @@ function getMockHandlers(): HandlerRegistration[] {
     },
   ]
 }
+
+describe('examples — description length', () => {
+  for (const example of examples) {
+    it(`description within ${EXAMPLE_DESCRIPTION_MAX_LENGTH} chars: ${example.name}`, () => {
+      expect(example.description.length).toBeLessThanOrEqual(EXAMPLE_DESCRIPTION_MAX_LENGTH)
+    })
+  }
+})
 
 describe('examples — tokenize and parse', () => {
   for (const example of examples) {

@@ -1,7 +1,10 @@
+export const EXAMPLE_DESCRIPTION_MAX_LENGTH = 120
+
 export interface Example {
   id: string
   name: string
   description: string
+  category: string
   code: string
   context?: {
     bindings?: Record<string, unknown>
@@ -11,17 +14,10 @@ export interface Example {
 
 export const examples: Example[] = [
   {
-    id: 'default',
-    name: 'Simple Dvala program',
-    description: 'A super simple example.',
-    code: `
-10 + 20
-    `.trim(),
-  },
-  {
     id: 'collection-accessor',
     name: 'Collection accessors',
     description: 'Syntactic sugar for accessing object, array and string elements.',
+    category: 'Basics',
     code: `
 // Access object properies with .
 // Access string and array elements with []
@@ -45,6 +41,7 @@ perform(@dvala.io.print, [1, 2, 3][2]);
     id: 'template-strings',
     name: 'Template strings',
     description: 'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',
+    category: 'Basics',
     code: `
 // Template strings embed expressions with \${...}
 let name = "Alice";
@@ -63,6 +60,7 @@ for (i in range(count(items))) ->
     id: 'simple-context-example',
     name: 'Using context',
     description: 'Simple example using bindings and a host effect handler.',
+    category: 'Effects & Context',
     context: {
       bindings: { x: 15, y: 27 },
       effectHandlers: [
@@ -77,6 +75,7 @@ perform(@host.plus, [x, y])
     id: 'async-example',
     name: 'Async host effects',
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
+    category: 'Effects & Context',
     context: {
       effectHandlers: [
         { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
@@ -123,6 +122,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
     id: 'async-interactive',
     name: 'Interactive async',
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
+    category: 'Effects & Context',
     context: {
       effectHandlers: [
         { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
@@ -213,6 +213,7 @@ main()
     id: 'text-based-game',
     name: 'A game',
     description: 'Text based adventure game.',
+    category: 'Projects',
     code: `
 // Functional Text Adventure Game in Dvala
 
@@ -565,222 +566,28 @@ startGame()
     `.trim(),
   },
   {
-    id: 'determinant',
-    name: 'Determinant',
-    description: 'Determinant function for square matrices.',
+    id: 'fibonacci',
+    name: 'Fibonacci',
+    description: 'Fibonacci with self-recursion and tail-recursive loop/recur.',
+    category: 'Basics',
     code: `
-// Determinant function for square matrices
-let determinant = (matrix) -> do
-  // Check if input is an array
-  if not(isArray(matrix)) then
-    perform(@dvala.error, { message: "Input must be an array" });
+// Recursive — simple but exponential time, blows the stack for large n
+let fib = (n) ->
+  if n <= 1 then n
+  else self(n - 1) + self(n - 2)
   end;
 
-  // Check if matrix is empty
-  if isEmpty(matrix) then
-    perform(@dvala.error, { message: "Matrix cannot be empty" });
-  end;
+// Tail-recursive — loop/recur reuses the current frame, O(n) time
+let fibTCO = (n) ->
+  loop (i = n, a = 0, b = 1) ->
+    if i <= 0 then a
+    else recur(i - 1, b, a + b)
+    end;
 
-  let rows = count(matrix);
-  
-  // Get first row to check column count
-  let firstRow = first(matrix);
-  
-  // Check if first row is an array
-  if not(isArray(firstRow)) then
-    perform(@dvala.error, { message: "Input must be a 2D array" });
-  end;
-  
-  let cols = count(firstRow);
-  
-  // Ensure matrix is square
-  if rows != cols then
-    perform(@dvala.error, { message: "Matrix must be square" });
-  end;
-  
-  // Base case: 1x1 matrix
-  if rows == 1 then
-    matrix[0][0];
-  else
-    // Base case: 2x2 matrix
-    if rows == 2 then
-      let a = matrix[0][0];
-      let b = matrix[0][1];
-      let c = matrix[1][0];
-      let d = matrix[1][1];
-      
-      a * d - b * c;
-    else
-      // For larger matrices, use cofactor expansion along first row
-      // Use reduce to calculate the determinant without mutating variables
-      reduce(
-        range(cols),
-        (acc, j) -> do
-          let minor = getMinor(matrix, 0, j);
-          let cofactor = determinant(minor);
-          let signFactor = if isEven(j) then 1 else -1 end;
-          let term = signFactor * matrix[0][j] * cofactor;
-          
-          acc + term;
-        end,
-        0,
-      );
-  end
-end;
-
-// Helper function to get minor (submatrix) by removing specific row and column
-let getMinor = (matrix, rowToRemove, colToRemove) -> do
-  // Use map with filter to create the new matrix without mutating
-  map(
-    range(count(matrix)),
-    i -> do
-      if i == rowToRemove then
-        null; // This will be filtered out
-      else
-        let row = get(matrix, i);
-        // Filter out the column to remove
-        map(
-          range(count(row)),
-          j -> do
-            if j == colToRemove then
-              null; // This will be filtered out
-            else
-              get(row, j)
-            end
-          end
-        ) filter (item -> item != null);
-      end
-    end
-  ) filter (row -> row != null);
-end;
-  
-// 4x4 invertible matrix
-let matrix4x4 = [
-  [4,  3,  2,  2],
-  [0,  1, -3,  3],
-  [0, -1,  3,  3],
-  [0,  3,  1,  1]
-];
-determinant(matrix4x4);
-    `.trim(),
-  },
-  {
-    id: 'matrix-multiplication',
-    name: 'Matrix multiplication',
-    description: 'Matrix multiplication with correct syntax.',
-    code: `
-// Matrix multiplication with correct syntax
-let matrixMultiply = (matrixA, matrixB) -> do
-  // Check if inputs are arrays
-  if not(isArray(matrixA)) then perform(@dvala.error, { message: "First input must be an array" }) end;
-  if not(isArray(matrixB)) then perform(@dvala.error, { message: "Second input must be an array" }) end;
-
-  // Check if matrices are not empty
-  if isEmpty(matrixA) || isEmpty(matrixB) then perform(@dvala.error, { message: "Matrices cannot be empty" }) end;
-
-  // Check if matrices are 2D arrays
-  if not(isArray(first(matrixA))) then perform(@dvala.error, { message: "First input must be a 2D array" }) end;
-  if not(isArray(first(matrixB))) then perform(@dvala.error, { message: "Second input must be a 2D array" }) end;
-
-  // Get dimensions
-  let rowsA = count(matrixA);
-  let colsA = count(first(matrixA));
-  let rowsB = count(matrixB);
-  let colsB = count(first(matrixB));
-
-  // Check if all rows have consistent length
-  if some(matrixA, row -> not(isArray(row)) || count(row) != colsA) then
-    perform(@dvala.error, { message: "First matrix has inconsistent row lengths" })
-  end;
-
-  if some(matrixB, row -> not(isArray(row)) || count(row) != colsB) then
-    perform(@dvala.error, { message: "Second matrix has inconsistent row lengths" })
-  end;
-
-  // Check if matrices can be multiplied
-  if not(colsA == rowsB) then
-    perform(@dvala.error, { message: "Matrix dimensions mismatch: first matrix columns must equal second matrix rows" });
-  end;
-
-  // Create a row of the result matrix
-  let createRow = (rowIndex) -> do
-    for (j in range(colsB)) -> do
-      reduce(
-        range(colsA),
-        (sum, k) -> do
-          let aValue = matrixA[rowIndex][k];
-          let bValue = matrixB[k][j];
-          sum + (aValue * bValue);
-        end,
-        0
-      )
-    end
-  end;
-
-  // Create the result matrix row by row
-  for (i in range(rowsA)) -> createRow(i);
-end;
-
-let matrixA = [
-  [1, 2, 3],
-  [4, 5, 6]
-];
-
-let matrixB = [
-  [7, 8],
-  [9, 10],
-  [11, 12]
-];
-
-matrixMultiply(matrixA, matrixB);
-`.trim(),
-  },
-  {
-    id: 'phone-number-formatter',
-    name: 'Phone number formatter',
-    description: 'Pretty prints a US phone number.',
-    code: `
-let formatPhoneNumber = (data) -> do
-  if isString(data) then
-    let phoneNumber = if data[0] == "+" then slice(data, 2) else data end;
-    let length = count(phoneNumber);
-
-    if length > 6 then
-      "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3, 6) ++ "-" ++ slice(phoneNumber, 6)
-    else if length > 3 then
-      "(" ++ slice(phoneNumber, 0, 3) ++ ") " ++ slice(phoneNumber, 3)
-    else if length > 0 then
-      "(" ++ slice(phoneNumber, 0)
-    else ""
-    end
-  else
-    ""
-  end
-end;
-
-
-perform(@dvala.io.print, formatPhoneNumber);
-perform(@dvala.io.print, formatPhoneNumber(123234));
-perform(@dvala.io.print, formatPhoneNumber("123234"));
-perform(@dvala.io.print, formatPhoneNumber("1232343456"));
-perform(@dvala.io.print, formatPhoneNumber("+11232343456789"));
-perform(@dvala.io.print, formatPhoneNumber("+11232343456"));
-  `.trim(),
-  },
-  {
-    id: 'factorial',
-    name: 'Factorial',
-    description: 'A recursive implementation of the factorial function.',
-    code: `
-let factorial = (x) -> do
-  if x == 1 then
-    1
-  else
-    x * self(x - 1)
-  end
-end;
-
-factorial(5)
+perform(@dvala.io.print, "recursive  fib(10) = " ++ str(fib(10)));
+perform(@dvala.io.print, "tail-rec   fib(10) = " ++ str(fibTCO(10)));
+perform(@dvala.io.print, "tail-rec   fib(50) = " ++ str(fibTCO(50)));
+perform(@dvala.io.print, "tail-rec   fib(90) = " ++ str(fibTCO(90)))
   `.trim(),
 
   },
@@ -788,6 +595,7 @@ factorial(5)
     id: 'sort',
     name: 'Sort',
     description: 'Sort an array of numbers.',
+    category: 'Basics',
     code: `
 let l = [7, 39, 45, 0, 23, 1, 50, 100, 12, -5];
 let numberComparer = (a, b) -> do
@@ -801,90 +609,10 @@ sort(l, numberComparer)
       `.trim(),
   },
   {
-    id: 'isoDateString',
-    name: 'Is ISO date string',
-    description: 'Check if string is formatted as an ISO date string.',
-    code: `
-let isIsoDateString = (data) -> do
-  let m = data reMatch #"^(\\d{4})-(\\d{2})-(\\d{2})$";
-
-  if m then
-    let [year, month, day] = slice(m, 1) map number;
-    let leapYear = isZero(year mod 4) && (not(isZero(year mod 100)) || isZero(year mod 400));
-
-    let invalid = 
-      (year < 1900 || year > 2100)
-      || (month < 1 || month > 12)
-      || (day < 1 || day > 31)
-      || day > 30 && (month == 4 || month == 6 || month == 9 || month == 11)
-      || month == 2 && (leapYear && day > 29 || not(leapYear) && day > 28);
-
-    not(invalid)
-  else
-    false
-  end
-end;
-
-perform(@dvala.io.print, isIsoDateString("1978-12-21"));
-perform(@dvala.io.print, isIsoDateString("197-12-21"));
-  `.trim(),
-  },
-
-  {
-    id: 'labelFromValue',
-    name: 'labelFromValue',
-    description: 'Find label to corresponding value in array of { label, value }-objects.',
-    code: `
-let labelFromValue = (items, value) -> do
-  let entry = items some (-> value == $["value"]);
-  if entry == null then
-    null
-  else
-    entry["label"]
-  end
-end;
-
-
-let items = [
-  { label: "Name", value: "name" },
-  { label: "Age", value: "age" }
-];
-
-labelFromValue(items, "name");
-  `.trim(),
-  },
-  {
-    id: 'labelsFromValues',
-    name: 'labelsFromValues',
-    description: 'Find labels to corresponding values in array of { label, value }-objects.',
-    code: `
-let labelsFromValues = ($array, $values) -> do
-  for (
-    value in $values
-    let label = do
-      let entry = $array some -> value == $["value"];
-      if entry == null then
-        value
-      else
-        entry["label"]
-      end
-    end
-  ) -> label
-end;
-
-let arr = [
-  { label: "Name", value: "name" },
-  { label: "Age", value: "age" },
-  { label: "Email", value: "email" },
-];
-
-labelsFromValues(arr, ["name", "age"])
-`.trim(),
-  },
-  {
     id: 'fizzbuzz',
     name: 'FizzBuzz',
     description: 'The classic FizzBuzz challenge using a for comprehension with let bindings and if/else if.',
+    category: 'Basics',
     code: `
 // FizzBuzz: print numbers 1 to 30, but
 //   multiples of 3 → "Fizz"
@@ -908,6 +636,7 @@ fizzbuzz join ", "
     id: 'playground-demo',
     name: 'Playground Effects Demo',
     description: 'Showcases playground.* effects — Dvala code that controls the playground UI. Load this in the playground and press Run.',
+    category: 'Effects & Context',
     code: `
 // Playground Effects Demo
 // This program uses playground.* effects to control the UI.
@@ -938,6 +667,7 @@ perform(@playground.ui.showToast, ["Original restored!", "success"]);
     id: 'macros-intro',
     name: 'Macros — Introduction',
     description: 'Macros receive AST (unevaluated code) and return new AST. Quote...end blocks make AST construction ergonomic.',
+    category: 'Macros',
     code: `
 // A macro receives its arguments as AST — not evaluated values.
 // It returns new AST which is then evaluated in the caller's scope.
@@ -968,6 +698,7 @@ perform(@dvala.io.print, 21 |> double |> negate);   // -42
     id: 'macros-advanced',
     name: 'Macros — Advanced',
     description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
+    category: 'Macros',
     code: `
 let { prettyPrint } = import("ast");
 
@@ -1003,7 +734,8 @@ perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp
   {
     id: 'macro-inception',
     name: 'Macro Inception',
-    description: 'Macros that generate other macros — the $^^{} splice escapes two quote levels. Inspired by Clojure nested quasiquote patterns.',
+    description: 'Macros that generate other macros — $^^{} escapes two quote levels for nested code generation.',
+    category: 'Macros',
     code: `
 // === Macro Inception — macros that write macros ===
 // Dvala's nested quote...end with $^^{} is analogous to
@@ -1065,7 +797,8 @@ perform(@dvala.io.print, "stringify(1 + 2) = " ++ stringify(1 + 2))
   {
     id: 'ast-coverage',
     name: 'AST node coverage',
-    description: 'Exercises all special expressions, operators, destructuring, effects, and node types. Useful for testing the AST tree viewer.',
+    description: 'Exercises all special expressions, operators, destructuring, effects, and node types.',
+    category: 'Test Fixtures',
     code: `
 // === AST Node Coverage ===
 // Covers: all special expressions, key operators, effects, destructuring, spreading
@@ -1221,7 +954,8 @@ let neg = -num;
   {
     id: 'macro-toolkit',
     name: 'Macro toolkit',
-    description: 'Builds a reusable macro toolkit step by step: unless, dbg, assert/assertEq, thread, tryOr — showing code generation, AST inspection, contracts, and macroexpand.',
+    description: 'A reusable toolkit: unless, dbg, assert, thread, tryOr — code generation, AST inspection, and macroexpand.',
+    category: 'Macros',
     context: {
       effectHandlers: [
         { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
@@ -1411,7 +1145,8 @@ print("── done ──")
   {
     id: 'ast-coverage-extended',
     name: 'AST coverage (extended)',
-    description: 'Comprehensive test covering all operators, destructuring variants, function forms, arity, all standard effects, handler chains, match patterns, for clauses, collection ops, and more. Used for baseline performance testing.',
+    description: 'Comprehensive coverage of operators, destructuring, functions, effects, match patterns, and collections.',
+    category: 'Test Fixtures',
     context: {
       effectHandlers: [
         // I/O — deterministic, no console output
