@@ -30,7 +30,7 @@ describe('powerSet', () => {
       expect(runNth('nth:countPowerSet(3)')).toEqual(8)
       expect(runNth('nth:countPowerSet(4)')).toEqual(16)
       expect(runNth('nth:countPowerSet(5)')).toEqual(32)
-      expect(runNth('nth:countPowerSet(54)')).toBe(Number.POSITIVE_INFINITY)
+      expect(() => runNth('nth:countPowerSet(54)')).toThrow('exceeds safe integer range')
     })
   })
 })

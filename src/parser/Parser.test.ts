@@ -134,21 +134,11 @@ describe('parser', () => {
     })
   })
 
-  describe('const NaN', () => {
-    it('samples', () => {
-      expect(dvala.run('NaN')).toBeNaN()
-    })
-  })
-
-  describe('const POSITIVE_INFINITY', () => {
-    it('samples', () => {
-      expect(dvala.run('POSITIVE_INFINITY')).toBe(Number.POSITIVE_INFINITY)
-    })
-  })
-
-  describe('const NEGATIVE_INFINITY', () => {
-    it('samples', () => {
-      expect(dvala.run('(NEGATIVE_INFINITY)')).toBe(Number.NEGATIVE_INFINITY)
+  describe('removed non-finite constants', () => {
+    it('should throw on NaN, POSITIVE_INFINITY, NEGATIVE_INFINITY', () => {
+      expect(() => dvala.run('NaN')).toThrow()
+      expect(() => dvala.run('POSITIVE_INFINITY')).toThrow()
+      expect(() => dvala.run('NEGATIVE_INFINITY')).toThrow()
     })
   })
 

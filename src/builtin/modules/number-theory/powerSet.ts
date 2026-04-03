@@ -1,4 +1,5 @@
 import type { Any, Arr } from '../../../interface'
+import { ArithmeticError } from '../../../errors'
 import { assertArray } from '../../../typeGuards/array'
 import { assertNumber } from '../../../typeGuards/number'
 import { toFixedArity } from '../../../utils/arity'
@@ -30,9 +31,9 @@ export const powerSetNormalExpressions: BuiltinNormalExpressions = {
   'countPowerSet': {
     evaluate: ([n], sourceCodeInfo): number => {
       assertNumber(n, sourceCodeInfo, { integer: true, nonNegative: true })
-      if (n >= 53) {
-        // Number.MAX_SAFE_INTEGER is 2^53 - 1
-        return Infinity
+      // 2^53 exceeds MAX_SAFE_INTEGER, so cap at 52
+      if (n > 52) {
+        throw new ArithmeticError(`countPowerSet(${n}) exceeds safe integer range`, sourceCodeInfo)
       }
 
       return 2 ** n

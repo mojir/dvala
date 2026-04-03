@@ -129,8 +129,8 @@ range(
     evaluate: ([seq, depth], sourceCodeInfo): Arr => {
       assertArray(seq, sourceCodeInfo)
 
-      const actualDepth = depth === undefined || depth === Number.POSITIVE_INFINITY
-        ? Number.POSITIVE_INFINITY
+      const actualDepth = depth === undefined
+        ? Number.MAX_SAFE_INTEGER
         : asNumber(depth, sourceCodeInfo, { integer: true, nonNegative: true })
 
       // Use PV-aware flatten since Array.prototype.flat() doesn't descend into PersistentVectors
@@ -142,7 +142,7 @@ range(
       returns: { type: 'any', array: true },
       args: {
         x: { type: ['array', 'any'], description: 'If `x` is not an array, `[ ]` is returned.' },
-        depth: { type: 'integer', description: 'The depth level specifying how deep a nested array structure should be flattened. Defaults to `Infinity`.' },
+        depth: { type: 'integer', description: 'The depth level specifying how deep a nested array structure should be flattened. Defaults to full depth.' },
       },
       variants: [{ argumentNames: ['x'] }, { argumentNames: ['x', 'depth'] }],
       description: 'Takes a nested array `x` and flattens it.',

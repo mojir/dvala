@@ -28,7 +28,7 @@ import type {
   LoopBindFrame,
   LoopIterateFrame,
   MatchFrame,
-  NanCheckFrame,
+  FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
   ParallelResumeFrame,
@@ -85,7 +85,7 @@ describe('frame types', () => {
       FnRestArgComplete: true,
       BindingSlot: true,
       MatchSlot: true,
-      NanCheck: true,
+      FiniteCheck: true,
       ImportMerge: true,
       FileResolve: true,
       AlgebraicHandle: true,
@@ -143,7 +143,7 @@ describe('frame types', () => {
         case 'FnRestArgComplete': return 'destructure'
         case 'BindingSlot': return 'destructure'
         case 'MatchSlot': return 'destructure'
-        case 'NanCheck': return 'post'
+        case 'FiniteCheck': return 'post'
         case 'ImportMerge': return 'import'
         case 'FileResolve': return 'import'
         case 'AlgebraicHandle': return 'effect'
@@ -211,7 +211,7 @@ describe('frame types', () => {
       'FnRestArgComplete',
       'BindingSlot',
       'MatchSlot',
-      'NanCheck',
+      'FiniteCheck',
       'ImportMerge',
     ]
     const uniqueTypes = new Set(types)
@@ -254,7 +254,7 @@ describe('frame types', () => {
     const _fnArgSlotComplete: FnArgSlotCompleteFrame['type'] = 'FnArgSlotComplete'
     const _fnRestArgComplete: FnRestArgCompleteFrame['type'] = 'FnRestArgComplete'
     const _bindingSlot: BindingSlotFrame['type'] = 'BindingSlot'
-    const _nanCheck: NanCheckFrame['type'] = 'NanCheck'
+    const _nanCheck: FiniteCheckFrame['type'] = 'FiniteCheck'
     const _codeTemplateBuild: CodeTemplateBuildFrame['type'] = 'CodeTemplateBuild'
 
     // All type assignments above are verified by TypeScript at compile time.
@@ -291,7 +291,7 @@ describe('frame types', () => {
     expect(_fnArgSlotComplete).toBe('FnArgSlotComplete')
     expect(_fnRestArgComplete).toBe('FnRestArgComplete')
     expect(_bindingSlot).toBe('BindingSlot')
-    expect(_nanCheck).toBe('NanCheck')
+    expect(_nanCheck).toBe('FiniteCheck')
     expect(_codeTemplateBuild).toBe('CodeTemplateBuild')
   })
 })

@@ -289,12 +289,16 @@ describe('evaluateNode via getUndefinedSymbols', () => {
 })
 
 // ---------------------------------------------------------------------------
-// NaN check in recursive path
+// Finite check in recursive path
 // ---------------------------------------------------------------------------
 
-describe('naN check in recursive evaluator', () => {
-  it('should throw on NaN result from normal expression callback', () => {
-    expect(() => dvala.run('0 / 0')).toThrow('NaN')
+describe('finite check in recursive evaluator', () => {
+  it('should throw on non-finite result from normal expression callback', () => {
+    expect(() => dvala.run('0 / 0')).toThrow('Number is not finite')
+  })
+
+  it('should throw on Infinity result from division', () => {
+    expect(() => dvala.run('1 / 0')).toThrow('Number is not finite')
   })
 })
 
@@ -1067,7 +1071,7 @@ describe('?? — null coalescing with multiple null args', () => {
 
 // ---------------------------------------------------------------------------
 // Recursive evaluator paths via assertion module callbacks
-// Lines 145-146: NaN check in evaluateNodeRecursive
+// Lines 145-146: finite check in evaluateNodeRecursive
 // Lines 180-191: evaluateParamsRecursive (spread, params)
 // Lines 207-220: partial application through recursive path
 // Lines 240-258: anonymous function expression through recursive path
@@ -1076,8 +1080,8 @@ describe('?? — null coalescing with multiple null args', () => {
 // ---------------------------------------------------------------------------
 
 describe('recursive evaluator — specific code paths via assertion module', () => {
-  it('should hit NaN check in recursive evaluator (lines 145-146)', () => {
-    // 0 / 0 produces NaN → evaluateNodeRecursive NaN check throws
+  it('should hit finite check in recursive evaluator (lines 145-146)', () => {
+    // 0 / 0 produces NaN → evaluateNodeRecursive finite check throws
     // assertFails catches the error
     expect(dvalaFull.run(`
       let { assertFails } = import("assertion");
