@@ -4383,3 +4383,192 @@ describe('handler clause scope isolation', () => {
     expect(result).toBe(99)
   })
 })
+
+describe('shallow handler — extended coverage', () => {
+  it('do with (shallow handler); installs handler for block scope', () => {
+    const result = dvala.run(`
+      do
+        with (shallow handler @test.eff() -> resume(42) end);
+        perform(@test.eff)
+      end
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('do with (shallow handler); does not reinstall after first effect', () => {
+    expect(() =>
+      dvala.run(`
+        do
+          with (shallow handler @test.eff() -> resume(1) end);
+          perform(@test.eff);
+          perform(@test.eff)
+        end
+      `),
+    ).toThrow('Unhandled effect')
+  })
+
+  it('multiple clauses: only one fires before handler is consumed', () => {
+    // Shallow handler with two clauses — after first effect, entire handler is gone
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.a() -> resume(10)
+        @test.b() -> resume(20)
+      end;
+      h(-> perform(@test.a))
+    `)
+    expect(result).toBe(10)
+  })
+
+  it('shallow handler consumed after first effect regardless of which clause', () => {
+    // After any clause fires, the entire shallow handler is removed
+    expect(() =>
+      dvala.run(`
+        let h = shallow handler
+          @test.a() -> resume(1)
+          @test.b() -> resume(2)
+        end;
+        h(-> do perform(@test.a); perform(@test.b) end)
+      `),
+    ).toThrow('Unhandled effect')
+  })
+
+  it('nested shallow + deep: deep handler reinstalls, shallow does not', () => {
+    const result = dvala.run(`
+      let deep = handler
+        @test.deep() -> resume("deep")
+      end;
+      let shallow1 = shallow handler
+        @test.shallow() -> resume("shallow")
+      end;
+      deep(-> shallow1(-> do
+        perform(@test.shallow);
+        perform(@test.deep);
+        perform(@test.deep);
+        "ok"
+      end))
+    `)
+    expect(result).toBe('ok')
+  })
+
+  it('nested shallow + deep: shallow consumed, deep still active', () => {
+    expect(() =>
+      dvala.run(`
+        let deep = handler
+          @test.deep() -> resume("deep")
+        end;
+        let shallow1 = shallow handler
+          @test.shallow() -> resume("shallow")
+        end;
+        deep(-> shallow1(-> do
+          perform(@test.shallow);
+          perform(@test.shallow)
+        end))
+      `),
+    ).toThrow('Unhandled effect')
+  })
+
+  it('iterator pattern: collect yielded values via recursive shallow handler', () => {
+    // Each shallow handler catches one @test.yield, captures resume, then
+    // re-applies the handler to collect the next yield.
+    const result = dvala.run(`
+      let collectYields = (thunk) -> do
+        let h = shallow handler
+          @test.yield(v) -> do let k = resume; let pair = [v, k]; pair end
+        end;
+        let step = h(thunk);
+        if isArray(step) then
+          [step[0]] ++ collectYields(-> step[1](null))
+        else
+          []
+        end
+      end;
+
+      let producer = -> do
+        perform(@test.yield, "a");
+        perform(@test.yield, "b");
+        perform(@test.yield, "c");
+        "done"
+      end;
+
+      collectYields(producer)
+    `)
+    expect(result).toEqual(['a', 'b', 'c'])
+  })
+
+  it('state: get without set returns initial value', () => {
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do let k = resume; withState(s)(-> k(s)) end
+          @state.set(v) -> do let k = resume; withState(v)(-> k(null)) end
+        end;
+      withState(42)(-> perform(@state.get))
+    `)
+    expect(result).toBe(42)
+  })
+
+  it('state: set then get with intermediate computation', () => {
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do let k = resume; withState(s)(-> k(s)) end
+          @state.set(v) -> do let k = resume; withState(v)(-> k(null)) end
+        end;
+      withState(0)(-> do
+        perform(@state.set, 5);
+        let x = 10 + 20;
+        perform(@state.get) + x
+      end)
+    `)
+    expect(result).toBe(35)
+  })
+
+  it('state: nested withState shadows outer (same effect names)', () => {
+    // Nested withState uses the same @state.* effect names, so inner shadows outer.
+    // This is a known limitation — createState (future) solves this with unique names.
+    const result = dvala.run(`
+      let withState = (s) ->
+        shallow handler
+          @state.get() -> do let k = resume; withState(s)(-> k(s)) end
+          @state.set(v) -> do let k = resume; withState(v)(-> k(null)) end
+        end;
+      withState(0)(-> do
+        perform(@state.set, 100);
+        let inner = withState(0)(-> do
+          perform(@state.set, 999);
+          perform(@state.get)
+        end);
+        inner
+      end)
+    `)
+    // Inner result is 999 — outer state (100) is not accessible from here
+    expect(result).toBe(999)
+  })
+
+  it('shallow handler with abort (no resume)', () => {
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.abort(v) -> v * 10
+      end;
+      h(-> do
+        let x = perform(@test.abort, 5);
+        x + 999
+      end)
+    `)
+    // Abort: handler returns 50 directly, continuation is discarded
+    expect(result).toBe(50)
+  })
+
+  it('shallow handler: resume called multiple times (multi-shot)', () => {
+    const result = dvala.run(`
+      let h = shallow handler
+        @test.choose(options) -> do
+          let k = resume;
+          map(options, k)
+        end
+      end;
+      h(-> perform(@test.choose, [1, 2, 3]) * 10)
+    `)
+    expect(result).toEqual([10, 20, 30])
+  })
+})
