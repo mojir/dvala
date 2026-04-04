@@ -432,6 +432,7 @@ export function getFsModule(): DvalaModule {
   init()
   return {
     name: 'cliFs',
+    description: 'File system operations: read, write, list, copy, and manage files and directories.',
     functions: {
       'readFile': jsFnToExpression(readFile),
       'readJson': jsFnToExpression(readJson),

@@ -467,6 +467,7 @@ function applyPlaceholders(templateString: string, placeholders: unknown[], sour
 
 export const stringUtilsModule: DvalaModule = {
   name: 'string',
+  description: 'String manipulation: pad, repeat, capitalize, camelCase, and word wrapping.',
   functions: stringUtilsFunctions,
   source: stringModuleSource,
   docs: moduleDocsFromFunctions(stringUtilsFunctions),

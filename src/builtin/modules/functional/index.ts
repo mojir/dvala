@@ -226,6 +226,7 @@ everyPred(isString, -> count($) > 3)(
 
 export const functionalUtilsModule: DvalaModule = {
   name: 'functional',
+  description: 'Higher-order function utilities: compose, partial, memoize, and juxtapose.',
   functions: functionalUtilsNormalExpression,
   source: functionalModuleSource,
   docs: moduleDocsFromFunctions(functionalUtilsNormalExpression),

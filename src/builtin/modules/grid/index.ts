@@ -546,6 +546,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 
 export const gridModule: DvalaModule = {
   name: 'grid',
+  description: '2D grid operations: creation, transformation, transposition, and cell mapping.',
   functions: gridFunctions,
   source: gridModuleSource,
   docs: moduleDocs,

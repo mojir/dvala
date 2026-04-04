@@ -390,6 +390,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 
 export const assertModule: DvalaModule = {
   name: 'assertion',
+  description: 'Runtime assertions with detailed error messages for testing and validation.',
   functions: assertNormalExpression,
   source: assertionModuleSource,
   docs: moduleDocs,

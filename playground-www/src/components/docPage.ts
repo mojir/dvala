@@ -11,6 +11,9 @@ import { isFunctionReference, isCustomReference, makeLinkName } from '../../../r
 import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
 import { renderCodeBlock } from '../renderCodeBlock'
+import { renderPageHeader } from './pageHeader'
+import type { Breadcrumb } from './pageHeader'
+import { getRefEntries, REF_SECTIONS, refActions } from './referencePage'
 
 declare global {
   interface Window {
@@ -73,10 +76,45 @@ export function renderDocPage(linkName: string): string {
   }
 
   if (!ref || !foundKey) {
-    return `<div class="doc-page"><p class="doc-page__not-found">No documentation found for <code>${escapeHtml(decodedLinkName)}</code>.</p></div>`
+    return `<div class="book-page"><div class="book-page__content"><p class="doc-page__not-found">No documentation found for <code>${escapeHtml(decodedLinkName)}</code>.</p></div></div>`
   }
 
-  return renderReference(foundKey, ref, data)
+  // Find prev/next in the flat reference list
+  const entries = getRefEntries(data)
+  const idx = entries.findIndex(e => e.linkName === linkName)
+  const entry = idx >= 0 ? entries[idx] : null
+  const prev = idx > 0 ? entries[idx - 1] : null
+  const next = idx < entries.length - 1 ? entries[idx + 1] : null
+
+  // Build breadcrumbs: Reference > Section > [Module >] Title
+  const breadcrumbs: Breadcrumb[] = [{ label: 'Reference', path: '/ref' }]
+  if (entry) {
+    const section = REF_SECTIONS.find(s => s.id === entry.section)
+    if (section) {
+      breadcrumbs.push({ label: section.title, path: `/ref/${section.id}` })
+    }
+    // For modules, add the module name as an extra level
+    if (entry.section === 'modules') {
+      breadcrumbs.push({ label: entry.group, path: `/ref/modules/${entry.group}` })
+    }
+  }
+  breadcrumbs.push({ label: ref.title })
+
+  const content = renderReference(foundKey, ref, data)
+
+  return `
+<div class="book-page">
+  ${renderPageHeader({
+    breadcrumbs,
+    actions: refActions(),
+    prev: prev ? { path: `/ref/${prev.linkName}`, title: prev.title } : { path: '/ref', title: 'Back to Reference' },
+    up: { path: '/ref', title: 'Back to Reference' },
+    next: next ? { path: `/ref/${next.linkName}`, title: next.title } : null,
+  })}
+  <div class="book-page__content">
+    ${content}
+  </div>
+</div>`.trim()
 }
 
 function seeAlsoInfo(name: string, data: ReferenceData): { title: string; linkName: string } {
@@ -122,7 +160,6 @@ function renderReference(key: string, ref: Reference, data: ReferenceData): stri
 
   return `
 <div class="doc-page">
-  <h1 class="doc-page__title">${ref.category === 'effect' || ref.category === 'playground-effect' ? '@' : ''}${escapeHtml(ref.title)}</h1>
   <div class="doc-page__category">${escapeHtml(ref.category)}</div>
 
   ${variants ? `<div class="doc-page__section">

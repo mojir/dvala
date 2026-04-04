@@ -463,6 +463,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 
 export const vectorModule: DvalaModule = {
   name: 'vector',
+  description: 'Statistical functions: mean, median, stdev, quartiles, histograms, and outliers.',
   functions: vectorFunctions,
   source: vectorModuleSource,
   docs: moduleDocs,

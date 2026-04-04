@@ -472,6 +472,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 
 export const numberTheoryModule: DvalaModule = {
   name: 'numberTheory',
+  description: 'Number theory sequences and predicates: primes, Fibonacci, Catalan, and more.',
   functions: combinatoricalNormalExpression,
   source: numberTheoryModuleSource,
   docs: moduleDocs,

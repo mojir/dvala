@@ -258,6 +258,7 @@ for (const [key, docs] of Object.entries(moduleDocs)) {
 
 export const matrixModule: DvalaModule = {
   name: 'matrix',
+  description: 'Matrix algebra: multiplication, determinant, inverse, rank, and decomposition.',
   functions: matrixNormalExpression,
   source: matrixModuleSource,
   docs: moduleDocs,
