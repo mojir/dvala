@@ -1,6 +1,6 @@
 # Stateful Handlers
 
-**Status:** Draft
+**Status:** Implemented (core feature; stdlib deferred to createState)
 **Created:** 2026-03-30
 
 ## Goal
@@ -175,9 +175,9 @@ Adding `shallow` as an opt-in keyword is a minimal, non-breaking change. Existin
 
 ## Implementation Plan
 
-1. Add `shallow: boolean` flag to `AlgebraicHandleFrame`
-2. In the `Resume` case, skip reinstallation when `shallow === true`
-3. Parser: recognize `shallow` before `handler` keyword, set flag on the `Handler` AST node
-4. Evaluator: when installing a handler from a `shallow handler` value, set `shallow: true` on the frame
-5. Tests: state threading, iterator, early-termination patterns
-6. Stdlib: add `withState` to `effectHandler` module
+1. ~~Add `shallow: boolean` flag to `AlgebraicHandleFrame`~~ ✅
+2. ~~In the `Resume` case, skip reinstallation when `shallow === true`~~ ✅
+3. ~~Parser: recognize `shallow` before `handler` keyword, set flag on the `Handler` AST node~~ ✅
+4. ~~Evaluator: when installing a handler from a `shallow handler` value, set `shallow: true` on the frame~~ ✅
+5. Tests: expand coverage — iterator, early-termination, nested shallow+deep, `do with` syntax ← **in progress**
+6. ~~Stdlib: add `withState` to `effectHandler` module~~ → Deferred to `createState` primitive (see [parameterized effects design](2026-04-04_parameterized-effects-createState.md))
