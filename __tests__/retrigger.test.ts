@@ -396,7 +396,7 @@ describe('retrigger()', () => {
     if (r1.type !== 'suspended')
       return
 
-    const dummyModule = { name: 'test-mod', functions: {} }
+    const dummyModule = { name: 'test-mod', description: 'Test module.', functions: {} }
     const r2 = await retrigger(r1.snapshot, {
       modules: [dummyModule],
       handlers: [

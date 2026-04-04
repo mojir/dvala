@@ -22,6 +22,8 @@ export interface SearchResult<T> {
 /** Groups of results separated by visual dividers. */
 export interface SearchResultGroup<T> {
   results: SearchResult<T>[]
+  /** Optional label shown above the group (e.g. "Also found in..."). */
+  label?: string
 }
 
 export interface SearchDropdownOptions<T> {
@@ -31,8 +33,8 @@ export interface SearchDropdownOptions<T> {
   placeholder: string
   /** Called on each input change. Return one or more groups of results. */
   search: (query: string) => SearchResultGroup<T>[]
-  /** Called when a result is selected (click or Enter). */
-  onSelect: (item: T) => void
+  /** Called when a result is selected (click or Enter). Receives the data item and the full result. */
+  onSelect: (item: T, result: SearchResult<T>) => void
   /** Optional: additional cleanup to run before opening (e.g. close sibling dropdowns). */
   onBeforeOpen?: () => void
 }
@@ -62,16 +64,16 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
   dropdown.appendChild(results)
 
   // Flat list of current results for keyboard navigation
-  let currentItems: T[] = []
+  let currentResults: SearchResult<T>[] = []
 
   const close = () => {
     dropdown.remove()
     document.removeEventListener('keydown', onKey)
   }
 
-  const selectItem = (item: T) => {
+  const selectResult = (result: SearchResult<T>) => {
     close()
-    options.onSelect(item)
+    options.onSelect(result.data, result)
   }
 
   // Keyboard-driven active item tracking.
@@ -89,11 +91,11 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
   const renderResults = (query: string) => {
     results.innerHTML = ''
     const q = query.trim()
-    if (!q) { currentItems = []; return }
+    if (!q) { currentResults = []; return }
 
     const groups = options.search(q)
     const allResults = groups.flatMap(g => g.results)
-    currentItems = allResults.map(r => r.data)
+    currentResults = allResults
 
     if (allResults.length === 0) {
       const empty = document.createElement('div')
@@ -105,11 +107,19 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
 
     let globalIndex = 0
     groups.forEach((group, groupIdx) => {
+      if (group.results.length === 0) return
       // Insert divider between groups (not before the first)
-      if (groupIdx > 0 && group.results.length > 0) {
+      if (groupIdx > 0) {
         const sep = document.createElement('div')
         sep.className = 'chapter-search-separator'
         results.appendChild(sep)
+      }
+      // Optional group label
+      if (group.label) {
+        const labelEl = document.createElement('div')
+        labelEl.className = 'chapter-search-group-label'
+        labelEl.textContent = group.label
+        results.appendChild(labelEl)
       }
 
       for (const result of group.results) {
@@ -129,7 +139,7 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
 
         item.appendChild(labelEl)
         item.appendChild(ctxEl)
-        item.addEventListener('mousedown', e => { e.preventDefault(); selectItem(result.data) })
+        item.addEventListener('mousedown', e => { e.preventDefault(); selectResult(result) })
         item.addEventListener('mousemove', () => setActive(idx))
         results.appendChild(item)
       }
@@ -138,16 +148,21 @@ export function toggleSearchDropdown<T>(btn: HTMLElement, options: SearchDropdow
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') { close(); return }
-    if (e.key === 'ArrowDown') { e.preventDefault(); results.classList.add('keyboard-nav'); setActive(Math.min(activeIndex + 1, currentItems.length - 1)) }
+    if (e.key === 'ArrowDown') { e.preventDefault(); results.classList.add('keyboard-nav'); setActive(Math.min(activeIndex + 1, currentResults.length - 1)) }
     if (e.key === 'ArrowUp') { e.preventDefault(); results.classList.add('keyboard-nav'); setActive(Math.max(activeIndex - 1, 0)) }
     if (e.key === 'Enter' && activeIndex >= 0) {
-      const item = currentItems[activeIndex]
-      if (item) selectItem(item)
+      const result = currentResults[activeIndex]
+      if (result) selectResult(result)
     }
   }
   document.addEventListener('keydown', onKey)
 
-  input.addEventListener('input', () => { activeIndex = -1; renderResults(input.value) })
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  input.addEventListener('input', () => {
+    activeIndex = -1
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => renderResults(input.value), 120)
+  })
 
   // Position fixed below the button
   document.body.appendChild(dropdown)

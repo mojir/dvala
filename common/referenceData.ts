@@ -9,12 +9,17 @@ export interface SearchEntry {
   linkName: string // URL path segment, e.g. "map" or "math.sin"
 }
 
+export interface ModuleInfo {
+  name: string
+  description: string
+}
+
 export interface ReferenceData {
   version: string
   api: Record<string, Reference> // core functions, special expressions, shorthands, datatypes
   modules: Record<string, Reference> // module functions, keyed by "module.fn"
   effects: Record<string, Reference> // effects
-  moduleCategories: string[] // ordered list of module category names
+  moduleCategories: ModuleInfo[] // ordered list of modules with descriptions
   coreCategories: string[] // ordered list of core category names
   searchEntries: SearchEntry[]
   examples: Example[]

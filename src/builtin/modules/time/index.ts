@@ -50,6 +50,7 @@ const timeFunctions: BuiltinNormalExpressions = {
 
 export const timeModule: DvalaModule = {
   name: 'time',
+  description: 'Date and time formatting, parsing, and calendar utilities.',
   functions: timeFunctions,
   source: '{}',
   docs: moduleDocsFromFunctions(timeFunctions),

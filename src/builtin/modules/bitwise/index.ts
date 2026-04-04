@@ -155,6 +155,7 @@ const bitwiseUtilsNormalExpression: BuiltinNormalExpressions = {
 
 export const bitwiseUtilsModule: DvalaModule = {
   name: 'bitwise',
+  description: 'Bitwise utility functions for AND, OR, XOR, shift, and bit manipulation.',
   functions: bitwiseUtilsNormalExpression,
   source: bitwiseModuleSource,
   docs: moduleDocsFromFunctions(bitwiseUtilsNormalExpression),

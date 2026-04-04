@@ -83,6 +83,7 @@ function jsFnToExpression(jsFn: JsFunction): BuiltinNormalExpressions[string] {
 export function getProcModule(): DvalaModule {
   return {
     name: 'cliProc',
+    description: 'Process utilities: working directory, exit, PID, and umask management.',
     functions: {
       'getCwd': jsFnToExpression(getCwd),
       'exit': jsFnToExpression(exit),
