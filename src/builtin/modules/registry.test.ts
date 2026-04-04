@@ -71,6 +71,7 @@ describe('module registration', () => {
 
     const temperatureModule: DvalaModule = {
       name: 'temperature',
+      description: 'Temperature conversion utilities.',
       functions: temperatureFunctions,
     }
 

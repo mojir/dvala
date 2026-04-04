@@ -528,6 +528,7 @@ const additionalDocs: Record<string, FunctionDocs> = {
 
 export const astModule: DvalaModule = {
   name: 'ast',
+  description: 'AST node constructors, predicates, and pretty-printing for metaprogramming.',
   functions: astFunctions,
   source: astSource,
   docs: { ...moduleDocsFromFunctions(astFunctions), ...additionalDocs },

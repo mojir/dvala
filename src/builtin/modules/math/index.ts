@@ -512,6 +512,7 @@ toDeg([[0, PI], [PI / 2, 3 * PI / 2]])`,
 
 export const mathUtilsModule: DvalaModule = {
   name: 'math',
+  description: 'Mathematical functions: trigonometry, logarithms, rounding, and constants.',
   functions: mathUtilsFunctions,
   source: mathModuleSource,
   docs: moduleDocsFromFunctions(mathUtilsFunctions),

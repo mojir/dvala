@@ -179,7 +179,7 @@ a.disabled {
   cursor: default;
 }
 
-/* Links inside rich content areas get underlines */
+/* Links inside prose content areas get underlines — but not structural/nav links */
 .content a,
 .content a:link,
 .content a:visited,
@@ -191,6 +191,22 @@ a.disabled {
 .book-page__content a:link,
 .book-page__content a:visited {
   text-decoration: underline;
+}
+
+/* Structural links inside book-page__content should NOT have underlines */
+.book-page__content .example-card__link,
+.book-page__content .example-card__link:link,
+.book-page__content .example-card__link:visited,
+.book-page__content .ref-card,
+.book-page__content .ref-card:link,
+.book-page__content .ref-card:visited,
+.book-page__content .ref-index__link,
+.book-page__content .ref-index__link:link,
+.book-page__content .ref-index__link:visited,
+.book-page__content .chapter-subtoc__link,
+.book-page__content .chapter-subtoc__link:link,
+.book-page__content .chapter-subtoc__link:visited {
+  text-decoration: none;
 }
 
 /* ============================================================
@@ -1025,6 +1041,33 @@ a.disabled {
   padding-left: var(--space-2);
 }
 
+.chapter-header__breadcrumbs {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+}
+
+.chapter-header__breadcrumb-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: normal;
+  font-size: 1.1rem;
+}
+
+.chapter-header__breadcrumb-link:hover {
+  color: var(--color-text-bright);
+}
+
+.chapter-header__breadcrumb-sep {
+  color: var(--color-text-dim);
+  font-weight: normal;
+  font-size: 1.1rem;
+}
+
+.chapter-header__breadcrumb-current {
+  color: var(--color-text);
+}
+
 .chapter-header__actions {
   display: flex;
   align-items: center;
@@ -1152,8 +1195,7 @@ a.disabled {
   background: var(--color-surface-3);
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  min-width: 20rem;
-  max-width: 28rem;
+  width: 28rem;
   max-height: 70vh;
   overflow: hidden;
   display: flex;
@@ -1207,6 +1249,14 @@ a.disabled {
   height: 1px;
   background: var(--color-border-dim);
   margin: var(--space-1) 0;
+}
+
+.chapter-search-group-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-dim);
+  padding: var(--space-1) var(--space-3) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .chapter-search-result--content .chapter-search-result__label {
@@ -1667,6 +1717,126 @@ a.disabled {
 
 .example-category--hidden {
   display: none;
+}
+
+/* ============================================================
+   Reference card grid (top-level /ref page)
+   ============================================================ */
+.ref-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.ref-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-dim);
+  padding: var(--space-4);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+
+.ref-card:hover {
+  border-color: var(--color-border);
+  box-shadow: 0 2px 8px var(--color-shadow);
+}
+
+.book-page__content .ref-card,
+.book-page__content .ref-card:link,
+.book-page__content .ref-card:visited {
+  text-decoration: none;
+  color: inherit;
+}
+
+.ref-card__title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+.ref-card__desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+.ref-card__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: auto;
+}
+
+/* ============================================================
+   Reference section listing page
+   ============================================================ */
+.ref-index__section {
+  margin-bottom: var(--space-5);
+}
+
+.ref-index__section-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--color-text);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.ref-index__group {
+  margin-bottom: var(--space-4);
+}
+
+.ref-index__group-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-2) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--font-size-sm);
+}
+
+.ref-index__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ref-index__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.ref-index__link {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ref-index__link:hover {
+  color: var(--color-text-bright);
+}
+
+.ref-index__desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ref-module__desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text-dim);
+  margin: 0 0 var(--space-4) 0;
+  line-height: 1.5;
 }
 
 /* ============================================================

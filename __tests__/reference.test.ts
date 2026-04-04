@@ -7,6 +7,7 @@ import { normalExpressions } from '../src/builtin/normalExpressions'
 import { isReservedSymbol } from '../src/tokenizer/reservedNames'
 import { createDvala } from '../src/createDvala'
 import { allBuiltinModules } from '../src/allModules'
+import { MODULE_DESCRIPTION_MAX_LENGTH } from '../src/builtin/modules/interface'
 import { specialExpressionTypes } from '../src/builtin/specialExpressionTypes'
 import { type ApiName, categories } from '../reference/api'
 import '../src/initReferenceData'
@@ -155,6 +156,15 @@ describe('seeAlso', () => {
     }
     expect(invalidRefs, `Invalid seeAlso refs: ${invalidRefs.join(', ')}`).toEqual([])
   })
+})
+
+describe('module descriptions', () => {
+  for (const mod of allBuiltinModules) {
+    it(`${mod.name} description within ${MODULE_DESCRIPTION_MAX_LENGTH} chars`, () => {
+      expect(mod.description).toBeTruthy()
+      expect(mod.description.length).toBeLessThanOrEqual(MODULE_DESCRIPTION_MAX_LENGTH)
+    })
+  }
 })
 
 describe('moduleReference', () => {

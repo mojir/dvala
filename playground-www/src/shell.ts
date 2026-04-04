@@ -64,6 +64,7 @@ function getShellHTML(): string {
       <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
       <a href="#" role="button" id="book-page_link" onclick="Playground.navigate('/book')">${bookIcon} The Book</a>
       <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
+      <a href="#" role="button" id="ref-page_link" onclick="Playground.navigate('/ref')">${codeIcon} Reference</a>
     </div>
     <div class="sidebar-nav-item-row">
       <a href="#" role="button" id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
@@ -81,7 +82,6 @@ function getShellHTML(): string {
       <a href="#" role="button" id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">${gearIcon} Settings</a>
     </div>
     <div class="sidebar-spacer"></div>
-    <div id="api-ref-sections"></div>
     <a class="sidebar-github" href="https://github.com/mojir/dvala" target="_blank" rel="noopener">${githubIcon} GitHub</a>
     <div id="sidebar-version" class="sidebar-version"></div>
   </nav>
