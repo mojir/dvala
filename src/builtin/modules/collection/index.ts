@@ -659,6 +659,7 @@ cu.notEvery(
 
 export const collectionUtilsModule: DvalaModule = {
   name: 'collection',
+  description: 'Advanced collection operations: groupBy, frequencies, partition, and more.',
   functions: collectionUtilsFunctions,
   source: collectionModuleSource,
   docs: moduleDocsFromFunctions(collectionUtilsFunctions),

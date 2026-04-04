@@ -78,6 +78,7 @@ const chooseDocs: Record<string, FunctionDocs> = {
 
 export const handlerModule: DvalaModule = {
   name: 'effectHandler',
+  description: 'Utilities for creating and composing algebraic effect handlers.',
   functions: {},
   source: handlerModuleSource,
   docs: { ...handlerDocs, ...chooseDocs },

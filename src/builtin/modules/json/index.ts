@@ -64,6 +64,7 @@ const jsonFunctions: BuiltinNormalExpressions = {
 
 export const jsonModule: DvalaModule = {
   name: 'json',
+  description: 'JSON serialization and deserialization with pretty-printing support.',
   functions: jsonFunctions,
   source: '{}',
   docs: moduleDocsFromFunctions(jsonFunctions),

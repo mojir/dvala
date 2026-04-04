@@ -791,6 +791,7 @@ function partitionHelper(n: number, step: number, seq: Seq, pad: Arr | undefined
 
 export const sequenceUtilsModule: DvalaModule = {
   name: 'sequence',
+  description: 'Sequence generation and transformation: iterate, unfold, windows, and chunks.',
   functions: sequenceUtilsFunctions,
   source: sequenceModuleSource,
   docs: moduleDocsFromFunctions(sequenceUtilsFunctions),

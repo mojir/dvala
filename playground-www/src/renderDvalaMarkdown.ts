@@ -7,6 +7,7 @@
 
 import { marked } from 'marked'
 import { renderCodeBlock } from './renderCodeBlock'
+import { href } from './router'
 
 /** Converts heading text to a URL-safe id, matching the sub-TOC anchor generation. */
 export function slugifyHeading(text: string): string {
@@ -19,6 +20,21 @@ const renderer = new marked.Renderer()
 renderer.heading = ({ text, depth }) => {
   const id = slugifyHeading(text)
   return `<h${depth} id="${id}">${text}</h${depth}>\n`
+}
+
+// Rewrite cross-references between book .md files to SPA routes.
+// e.g. "../05-advanced/04-suspension.md" → "/book/advanced-suspension"
+renderer.link = ({ href: rawHref, text }) => {
+  const mdMatch = rawHref.match(/(?:\.\.\/)?(\d+-([^/]+))\/(\d+-([^/]+))\.md(?:#(.+))?$/)
+  if (mdMatch) {
+    const sectionSlug = mdMatch[2]! // "advanced"
+    const chapterSlug = mdMatch[4]! // "suspension"
+    const hash = mdMatch[5] ? `#${mdMatch[5]}` : ''
+    const chapterId = `${sectionSlug}-${chapterSlug}`
+    const bookHref = href(`/book/${chapterId}`)
+    return `<a href="${bookHref}${hash}" onclick="event.preventDefault();Playground.navigate('/book/${chapterId}')${hash ? `;setTimeout(()=>{const el=document.getElementById('${mdMatch[5]}');if(el)el.scrollIntoView()},80)` : ''}">${text}</a>`
+  }
+  return `<a href="${rawHref}">${text}</a>`
 }
 
 renderer.code = ({ text, lang }) => {

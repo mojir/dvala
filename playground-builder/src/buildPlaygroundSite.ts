@@ -2,7 +2,8 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { apiReference, effectReference, getLinkName, isFunctionReference, isCustomReference, isEffectReference, moduleReference } from '../../reference'
 import type { Reference } from '../../reference'
-import { moduleCategories, coreCategories } from '../../reference/api'
+import { coreCategories } from '../../reference/api'
+import { allBuiltinModules } from '../../src/allModules'
 import { examples } from '../../reference/examples'
 import { isBookSection, chapters, bookItems } from '../../reference/book'
 import { allAppRoutes } from '../../common/appRoutes'
@@ -60,7 +61,7 @@ function buildReferenceData(): ReferenceData {
     api: apiReference,
     modules: moduleReference,
     effects: effectReference,
-    moduleCategories: moduleCategories as string[],
+    moduleCategories: allBuiltinModules.map(m => ({ name: m.name, description: m.description })),
     coreCategories: coreCategories as string[],
     searchEntries,
     examples,
@@ -361,7 +362,7 @@ suspendable and resumable execution, and time-travel debugging.</p>
     if (!modulesByCategory[cat]) modulesByCategory[cat] = []
     modulesByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
   }
-  const moduleSections = (moduleCategories as string[]).map(cat => {
+  const moduleSections = allBuiltinModules.map(m => m.name).map(cat => {
     const items = modulesByCategory[cat]
     if (!items) return ''
     const listItems = items.map(i =>

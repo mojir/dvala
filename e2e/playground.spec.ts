@@ -506,22 +506,16 @@ test.describe('api reference navigation', () => {
     await waitForInit(page)
   })
 
-  test('clicking a sidebar API section expands it', async ({ page }) => {
-    // Expand "Core functions" section
-    await page.evaluate(() => (window as any).Playground.toggleApiSection('core-functions'))
-
-    const content = page.locator('#api-content-core-functions')
-    await expect(content).toHaveClass(/expanded/)
+  test('reference index page renders section cards', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.navigate('/ref'))
+    await expect(page.locator('.ref-card').first()).toBeVisible()
+    await expect(page.locator('.ref-card__title').first()).toContainText('Core API')
   })
 
-  test('clicking an expanded section collapses it', async ({ page }) => {
-    // First expand
-    await page.evaluate(() => (window as any).Playground.toggleApiSection('special-expressions', false))
-    await expect(page.locator('#api-content-special-expressions')).toHaveClass(/expanded/)
-
-    // Then collapse
-    await page.evaluate(() => (window as any).Playground.toggleApiSection('special-expressions', false))
-    await expect(page.locator('#api-content-special-expressions')).not.toHaveClass(/expanded/)
+  test('clicking a section card navigates to section page', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.navigate('/ref'))
+    await page.locator('.ref-card').first().click()
+    await expect(page.locator('.ref-index__group-title').first()).toBeVisible()
   })
 
   test('search result navigates to correct doc page', async ({ page }) => {

@@ -1,3 +1,5 @@
+export const MODULE_DESCRIPTION_MAX_LENGTH = 120
+
 import type { BuiltinNormalExpressions, FunctionDocs } from '../../builtin/interface'
 import type { AstNode } from '../../parser/types'
 
@@ -8,6 +10,8 @@ import type { AstNode } from '../../parser/types'
 export interface DvalaModule {
   /** The name of the module (e.g., 'grid', 'vec', 'mat') */
   name: string
+  /** Short description of what the module provides (max 120 chars). */
+  description: string
   /** The functions provided by this module, keyed by their short name (e.g., 'transpose') */
   functions: BuiltinNormalExpressions
   /**

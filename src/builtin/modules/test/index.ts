@@ -81,6 +81,7 @@ export function createTestModule(collector: TestCollector): DvalaModule {
 
   return {
     name: 'test',
+    description: 'Lightweight test framework with describe, it, and assertion helpers.',
     functions: testNormalExpressions,
     source: testModuleSource,
     docs: moduleDocs,

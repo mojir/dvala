@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { stringifyValue } from '../../common/utils'
 import type { Example } from '../../reference/examples'
-import { getLinkName, makeLinkName } from '../../reference'
+import { getLinkName } from '../../reference'
 import type { Any, UnknownRecord } from '../../src/interface'
 import type { Ast } from '../../src/parser/types'
 import { createDvala } from '../../src/createDvala'
@@ -22,9 +22,9 @@ import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
-import { renderCorePage } from './components/corePage'
-import { renderModulesPage } from './components/modulesPage'
 import { renderExampleDetailPage, renderExampleIndexPage } from './components/examplePage'
+import { getRefEntries, REF_SECTIONS, renderReferenceIndexPage, renderReferenceModulePage, renderReferenceSectionPage } from './components/referencePage'
+import type { RefEntry } from './components/referencePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
 import { renderBookIndexPage, renderChapterPage, allChapters, bookSections } from './components/chapterPage'
@@ -458,56 +458,22 @@ function getBookSearchIndex(): BookSearchEntry[] {
   return _bookSearchIndex
 }
 
-export function toggleBookSearch(event: Event): void {
-  event.stopPropagation()
-  toggleSearchDropdown<BookSearchEntry>(event.currentTarget as HTMLElement, {
-    id: 'chapter-search-dropdown',
-    placeholder: 'Search chapters…',
-    onBeforeOpen: () => document.getElementById('chapter-toc-dropdown')?.remove(),
-    search: (query: string) => {
-      const q = query.toLowerCase()
-      const index = getBookSearchIndex()
-      const priorityHits = index
-        .filter(e => (e.type === 'chapter' || e.type === 'section') && (e.label.toLowerCase().includes(q) || e.context.toLowerCase().includes(q)))
-        .map(e => ({
-          data: e,
-          label: e.label,
-          context: e.context,
-          modifier: e.type === 'section' ? 'section' : undefined,
-        }))
-      const bodyHits = index
-        .filter(e => (e.type === 'content' || e.type === 'code') && (e.snippet.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)))
-        .slice(0, Math.max(0, 14 - priorityHits.length))
-        .map(e => ({
-          data: e,
-          label: e.label,
-          context: e.context,
-          modifier: e.type === 'code' ? 'code' : 'content',
-        }))
-      return [{ results: priorityHits }, { results: bodyHits }]
-    },
-    onSelect: (entry: BookSearchEntry) => {
-      if (entry.hash) {
-        const alreadyOnChapter = router.currentPath() === `/book/${entry.chapterId}`
-        if (!alreadyOnChapter) router.navigate(`/book/${entry.chapterId}`)
-        setTimeout(() => {
-          const el = document.getElementById(entry.hash)
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth' })
-            history.replaceState(null, '', `${location.pathname}#${entry.hash}`)
-          }
-        }, alreadyOnChapter ? 0 : 80)
-      } else {
-        router.navigate(`/book/${entry.chapterId}`)
-      }
-    },
-  })
+// ─── Unified cross-domain search ───────────────────────────────────────────────
+//
+// All search dropdowns (Book, Examples, Reference) use a single unified search
+// that returns results from the current domain first, then progressively
+// discloses results from other domains.
+
+/** A search hit with a navigation path, used across all domains. */
+interface UnifiedHit {
+  path: string
+  domain: string
+  /** Stashed book entry for hash-scroll navigation. */
+  bookEntry?: BookSearchEntry
 }
 
-// ─── Example search ────────────────────────────────────────────────────────────
-
 /** Extract a short snippet around the first match of `q` in `text`. */
-function extractCodeSnippet(text: string, q: string): string {
+function extractSnippet(text: string, q: string): string {
   const idx = text.toLowerCase().indexOf(q.toLowerCase())
   if (idx === -1) return ''
   const lineStart = text.lastIndexOf('\n', idx) + 1
@@ -516,106 +482,289 @@ function extractCodeSnippet(text: string, q: string): string {
   return line.length > 80 ? `${line.slice(0, 80)}…` : line
 }
 
+/** Cached map from reference title → concatenated example code. */
+let refExampleCodeCache: Map<string, string> | null = null
+let refExampleCodeDataRef: typeof window.referenceData = undefined
+
+function getRefExampleCode(entry: RefEntry): string {
+  const data = window.referenceData
+  if (!data) return ''
+  // Rebuild cache if data changed
+  if (refExampleCodeDataRef !== data) {
+    refExampleCodeDataRef = data
+    refExampleCodeCache = new Map()
+    const allRefs = { ...data.api, ...data.modules, ...data.effects, ...playgroundEffectReference }
+    for (const ref of Object.values(allRefs)) {
+      const code = ref.examples.map((ex: string | { code: string }) => typeof ex === 'string' ? ex : ex.code).join('\n')
+      refExampleCodeCache.set(ref.title, code)
+    }
+  }
+  return refExampleCodeCache!.get(entry.title) ?? ''
+}
+
+/** Determine the current domain from the URL path. */
+function getCurrentDomain(): string {
+  const path = router.currentPath()
+  if (path.startsWith('/book')) return 'book'
+  if (path.startsWith('/examples')) return 'examples'
+  if (path.startsWith('/ref')) return 'reference'
+  return ''
+}
+
+// Pre-lowercased search indices — built lazily, rebuilt if data changes
+
+interface BookSearchCache { labelLower: string; contextLower: string; snippetLower: string; entry: BookSearchEntry }
+let bookSearchCache: BookSearchCache[] | null = null
+
+function getBookSearchCache(): BookSearchCache[] {
+  if (!bookSearchCache) {
+    bookSearchCache = getBookSearchIndex().map(e => ({
+      labelLower: e.label.toLowerCase(),
+      contextLower: e.context.toLowerCase(),
+      snippetLower: (e.snippet ?? '').toLowerCase(),
+      entry: e,
+    }))
+  }
+  return bookSearchCache
+}
+
+interface ExampleSearchCache { nameLower: string; descLower: string; catLower: string; codeLower: string; ex: Example }
+let exampleSearchCache: ExampleSearchCache[] | null = null
+let exampleSearchDataRef: typeof window.referenceData = undefined
+
+function getExampleSearchCache(): ExampleSearchCache[] {
+  const data = window.referenceData
+  if (data !== exampleSearchDataRef || !exampleSearchCache) {
+    exampleSearchDataRef = data
+    exampleSearchCache = (data?.examples ?? []).map(ex => ({
+      nameLower: `${ex.name} ${ex.description} ${ex.category}`.toLowerCase(),
+      descLower: '', // included in nameLower
+      catLower: '',
+      codeLower: ex.code.toLowerCase(),
+      ex,
+    }))
+  }
+  return exampleSearchCache
+}
+
+interface RefSearchCache { textLower: string; codeLower: string; entry: RefEntry }
+let refSearchCache: RefSearchCache[] | null = null
+let refSearchDataRef: typeof window.referenceData = undefined
+
+function getRefSearchCache(): RefSearchCache[] {
+  const data = window.referenceData
+  if (data !== refSearchDataRef || !refSearchCache) {
+    refSearchDataRef = data
+    if (!data) { refSearchCache = []; return refSearchCache }
+    const entries = getRefEntries(data)
+    refSearchCache = entries.map(e => ({
+      textLower: `${e.title} ${e.description} ${e.group}`.toLowerCase(),
+      codeLower: getRefExampleCode(e).toLowerCase(),
+      entry: e,
+    }))
+  }
+  return refSearchCache
+}
+
+// Cap for secondary (code) results per domain to avoid scanning all entries
+const MAX_SECONDARY = 8
+
+/** Search the Book domain. */
+function searchBook(q: string): { priority: SearchResult<UnifiedHit>[]; secondary: SearchResult<UnifiedHit>[] } {
+  const cache = getBookSearchCache()
+  const priority: SearchResult<UnifiedHit>[] = []
+  const secondary: SearchResult<UnifiedHit>[] = []
+  for (const c of cache) {
+    const e = c.entry
+    if (e.type === 'chapter' || e.type === 'section') {
+      if (c.labelLower.includes(q) || c.contextLower.includes(q)) {
+        priority.push({
+          data: { path: `/book/${e.chapterId}`, domain: 'book', bookEntry: e } satisfies UnifiedHit,
+          label: e.label, context: e.context,
+          modifier: e.type === 'section' ? 'section' as const : undefined,
+        })
+      }
+    } else if (secondary.length < MAX_SECONDARY) {
+      if (c.snippetLower.includes(q) || c.labelLower.includes(q)) {
+        secondary.push({
+          data: { path: `/book/${e.chapterId}`, domain: 'book', bookEntry: e } satisfies UnifiedHit,
+          label: e.label, context: e.context,
+          modifier: e.type === 'code' ? 'code' : 'content',
+        })
+      }
+    }
+  }
+  return { priority, secondary }
+}
+
+/** Search the Examples domain. */
+function searchExamples(q: string): { priority: SearchResult<UnifiedHit>[]; secondary: SearchResult<UnifiedHit>[] } {
+  const cache = getExampleSearchCache()
+  const priority: SearchResult<UnifiedHit>[] = []
+  const secondary: SearchResult<UnifiedHit>[] = []
+  for (const c of cache) {
+    const ex = c.ex
+    if (c.nameLower.includes(q)) {
+      priority.push({ data: { path: `/examples/${ex.id}`, domain: 'examples' }, label: ex.name, context: ex.category })
+    }
+    if (secondary.length < MAX_SECONDARY && c.codeLower.includes(q)) {
+      secondary.push({ data: { path: `/examples/${ex.id}`, domain: 'examples' }, label: extractSnippet(ex.code, q), context: ex.name, modifier: 'code' })
+    }
+  }
+  return { priority, secondary }
+}
+
+/** Search the Reference domain. */
+function searchReference(q: string): { priority: SearchResult<UnifiedHit>[]; secondary: SearchResult<UnifiedHit>[] } {
+  const cache = getRefSearchCache()
+  const priority: SearchResult<UnifiedHit>[] = []
+  const secondary: SearchResult<UnifiedHit>[] = []
+  for (const c of cache) {
+    const e = c.entry
+    if (c.textLower.includes(q)) {
+      priority.push({ data: { path: `/ref/${e.linkName}`, domain: 'reference' }, label: e.title, context: `${e.section} › ${e.group}` })
+    }
+    if (secondary.length < MAX_SECONDARY && c.codeLower.includes(q)) {
+      secondary.push({ data: { path: `/ref/${e.linkName}`, domain: 'reference' }, label: extractSnippet(getRefExampleCode(e), q), context: e.title, modifier: 'code' })
+    }
+  }
+  return { priority, secondary }
+}
+
+const DOMAIN_LABELS: Record<string, string> = {
+  book: 'The Book',
+  examples: 'Examples',
+  reference: 'Reference',
+}
+
+/** Run a unified search across all domains, prioritizing the current one. */
+function unifiedSearch(q: string): { results: SearchResult<UnifiedHit>[]; label?: string }[] {
+  const currentDomain = getCurrentDomain()
+  const domains = [
+    { id: 'book', search: searchBook },
+    { id: 'examples', search: searchExamples },
+    { id: 'reference', search: searchReference },
+  ]
+
+  // Current domain first, then others
+  const local = domains.find(d => d.id === currentDomain)
+  const others = domains.filter(d => d.id !== currentDomain)
+
+  const groups: { results: SearchResult<UnifiedHit>[]; label?: string }[] = []
+
+  // Local domain results (no label)
+  if (local) {
+    const { priority, secondary } = local.search(q)
+    groups.push({ results: priority.slice(0, 14) })
+    groups.push({ results: secondary.slice(0, Math.max(0, 8 - priority.length)) })
+  }
+
+  // Other domain results with labels
+  const localTotal = groups.reduce((sum, g) => sum + g.results.length, 0)
+  let remainingCap = Math.max(0, 14 - localTotal)
+
+  for (const other of others) {
+    if (remainingCap <= 0) break
+    const { priority, secondary } = other.search(q)
+    const hits = [...priority.slice(0, remainingCap)]
+    const codeSlots = Math.max(0, Math.min(remainingCap - hits.length, 4))
+    if (codeSlots > 0) hits.push(...secondary.slice(0, codeSlots))
+    if (hits.length > 0) {
+      const prefix = localTotal > 0 ? 'Also in' : 'Found in'
+      groups.push({ results: hits, label: `${prefix} ${DOMAIN_LABELS[other.id] ?? other.id}` })
+      remainingCap -= hits.length
+    }
+  }
+
+  return groups
+}
+
+/** Navigate to a unified search hit, handling book hash scrolling. */
+function navigateToHit(hit: UnifiedHit): void {
+  if (hit.bookEntry?.hash) {
+    const alreadyOnChapter = router.currentPath() === `/book/${hit.bookEntry.chapterId}`
+    if (!alreadyOnChapter) router.navigate(`/book/${hit.bookEntry.chapterId}`)
+    setTimeout(() => {
+      const el = document.getElementById(hit.bookEntry!.hash)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+        history.replaceState(null, '', `${location.pathname}#${hit.bookEntry!.hash}`)
+      }
+    }, alreadyOnChapter ? 0 : 80)
+    return
+  }
+  router.navigate(hit.path)
+}
+
+export function toggleBookSearch(event: Event): void {
+  event.stopPropagation()
+  document.getElementById('chapter-toc-dropdown')?.remove()
+  openUnifiedSearch(event.currentTarget as HTMLElement)
+}
+
 export function toggleExampleSearch(event: Event): void {
   event.stopPropagation()
-  const allExamples = window.referenceData?.examples ?? []
+  openUnifiedSearch(event.currentTarget as HTMLElement)
+}
 
-  toggleSearchDropdown<Example>(event.currentTarget as HTMLElement, {
-    id: 'example-search-dropdown',
-    placeholder: 'Search examples…',
-    search: (query: string) => {
-      const q = query.toLowerCase()
-      const priorityHits: SearchResult<Example>[] = []
-      const codeHits: SearchResult<Example>[] = []
-      for (const ex of allExamples) {
-        const nameMatch = ex.name.toLowerCase().includes(q)
-          || ex.description.toLowerCase().includes(q)
-          || ex.category.toLowerCase().includes(q)
-        const codeMatch = ex.code.toLowerCase().includes(q)
-        if (nameMatch) {
-          priorityHits.push({ data: ex, label: ex.name, context: ex.category })
-        }
-        if (codeMatch) {
-          codeHits.push({ data: ex, label: extractCodeSnippet(ex.code, q), context: ex.name, modifier: 'code' })
-        }
-      }
-      return [
-        { results: priorityHits },
-        { results: codeHits.slice(0, Math.max(0, 14 - priorityHits.length)) },
-      ]
-    },
-    onSelect: (ex: Example) => router.navigate(`/examples/${ex.id}`),
+export function toggleRefSearch(event: Event): void {
+  event.stopPropagation()
+  openUnifiedSearch(event.currentTarget as HTMLElement)
+}
+
+function openUnifiedSearch(btn: HTMLElement): void {
+  toggleSearchDropdown<UnifiedHit>(btn, {
+    id: 'unified-search-dropdown',
+    placeholder: 'Search…',
+    search: (query: string) => unifiedSearch(query.toLowerCase()),
+    onSelect: (hit: UnifiedHit) => navigateToHit(hit),
   })
 }
 
-// ─── Example TOC menu ──────────────────────────────────────────────────────────
+// ─── Reference TOC menu ────────────────────────────────────────────────────────
 
-export function toggleExampleTocMenu(event: Event): void {
+export function toggleRefTocMenu(event: Event): void {
   event.stopPropagation()
   const data = window.referenceData
   if (!data) return
 
+  const allEntries = getRefEntries(data)
   const path = router.currentPath()
-  const currentExampleId = path.startsWith('/examples/') ? path.slice('/examples/'.length) : ''
+  const currentSubPath = path.startsWith('/ref/') ? path.slice('/ref/'.length) : ''
 
-  // Group examples by category
-  const categoryMap = new Map<string, Example[]>()
-  for (const ex of data.examples) {
-    const cat = ex.category || 'Other'
-    if (!categoryMap.has(cat)) categoryMap.set(cat, [])
-    categoryMap.get(cat)!.push(ex)
-  }
+  // Build TOC: sections with their groups only — no individual leaf entries
+  const tocSections = REF_SECTIONS.map(section => {
+    const sectionEntries = allEntries.filter(e => e.section === section.id)
+
+    // Collect unique groups
+    const groups = new Map<string, number>()
+    for (const entry of sectionEntries) {
+      groups.set(entry.group, (groups.get(entry.group) ?? 0) + 1)
+    }
+
+    // For modules: each group links to /ref/modules/:name
+    // For others: groups link to the section page
+    const items: TocItem[] = Array.from(groups.entries()).map(([groupName]) => {
+      const groupPath = section.id === 'modules' ? `/ref/modules/${groupName}` : `/ref/${section.id}`
+      const isActive = section.id === 'modules'
+        ? currentSubPath === `modules/${groupName}`
+        : currentSubPath === section.id
+      return {
+        label: groupName,
+        type: 'subitem' as const,
+        active: isActive,
+        onSelect: () => router.navigate(groupPath),
+      }
+    })
+
+    return { title: section.title, items }
+  })
 
   toggleTocDropdown(event.currentTarget as HTMLElement, {
-    id: 'example-toc-dropdown',
-    overview: { label: 'Overview', onSelect: () => router.navigate('/examples') },
-    sections: Array.from(categoryMap.entries()).map(([category, examples]) => ({
-      title: category,
-      items: examples.map(ex => ({
-        label: ex.name,
-        active: ex.id === currentExampleId,
-        onSelect: () => router.navigate(`/examples/${ex.id}`),
-      })),
-    })),
+    id: 'ref-toc-dropdown',
+    overview: { label: 'Overview', onSelect: () => router.navigate('/ref') },
+    sections: tocSections,
   })
-}
-
-const expandedApiSections = new Set<string>()
-
-const chevronRight = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41L13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'
-const chevronDown = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6l-6-6z"/></svg>'
-
-function expandCollapsible(el: HTMLElement, animate = true) {
-  if (!animate) {
-    el.style.transition = 'none'
-    el.classList.add('expanded')
-    el.style.maxHeight = 'none'
-    void el.offsetHeight
-    el.style.transition = ''
-    return
-  }
-  el.classList.add('expanded')
-  el.style.maxHeight = `${el.scrollHeight}px`
-  el.addEventListener('transitionend', () => {
-    if (el.classList.contains('expanded'))
-      el.style.maxHeight = 'none'
-  }, { once: true })
-}
-
-function collapseCollapsible(el: HTMLElement, animate = true) {
-  if (!animate) {
-    el.style.transition = 'none'
-    el.classList.remove('expanded')
-    el.style.maxHeight = '0'
-    void el.offsetHeight
-    el.style.transition = ''
-    return
-  }
-  // Pin current rendered height so the transition starts from actual height
-  el.style.maxHeight = `${el.getBoundingClientRect().height}px`
-  void el.offsetHeight
-  el.classList.remove('expanded')
-  el.style.maxHeight = '0'
 }
 
 export function showBookPage() {
@@ -1624,128 +1773,6 @@ export function clearUnlockedSnapshots() {
   })
 }
 
-export function toggleApiSection(sectionId: string, animate = true) {
-  const chevron = document.getElementById(`api-chevron-${sectionId}`)
-  const content = document.getElementById(`api-content-${sectionId}`)
-
-  if (!content)
-    return
-
-  const isExpanded = expandedApiSections.has(sectionId)
-
-  // Collapse all expanded API sections
-  for (const id of Array.from(expandedApiSections)) {
-    const c = document.getElementById(`api-content-${id}`)
-    const ch = document.getElementById(`api-chevron-${id}`)
-    if (c)
-      collapseCollapsible(c, animate)
-    if (ch)
-      ch.innerHTML = chevronRight
-    expandedApiSections.delete(id)
-  }
-
-  if (!isExpanded) {
-    expandedApiSections.add(sectionId)
-    expandCollapsible(content, animate)
-    if (chevron)
-      chevron.innerHTML = chevronDown
-  }
-}
-
-const expandedModules = new Set<string>()
-
-export function toggleModuleCategory(categoryKey: string, animate = true) {
-  const sanitizedKey = categoryKey.replace(/\s+/g, '-')
-  const chevron = document.getElementById(`ns-chevron-${sanitizedKey}`)
-  const content = document.getElementById(`ns-content-${sanitizedKey}`)
-
-  if (!chevron || !content)
-    return
-
-  const isExpanded = expandedModules.has(categoryKey)
-
-  // Collapse all expanded module categories
-  for (const key of Array.from(expandedModules)) {
-    const sk = key.replace(/\s+/g, '-')
-    const c = document.getElementById(`ns-content-${sk}`)
-    const ch = document.getElementById(`ns-chevron-${sk}`)
-    if (c)
-      collapseCollapsible(c, animate)
-    if (ch)
-      ch.innerHTML = chevronRight
-    expandedModules.delete(key)
-  }
-
-  if (!isExpanded) {
-    expandedModules.add(categoryKey)
-    expandCollapsible(content, animate)
-    chevron.innerHTML = chevronDown
-  }
-
-}
-
-const expandedStandardEffectGroups = new Set<string>()
-
-export function toggleStandardEffectGroup(groupKey: string, animate = true) {
-  const sanitizedKey = groupKey.replace(/\s+/g, '-')
-  const chevron = document.getElementById(`se-chevron-${sanitizedKey}`)
-  const content = document.getElementById(`se-content-${sanitizedKey}`)
-
-  if (!chevron || !content)
-    return
-
-  const isExpanded = expandedStandardEffectGroups.has(groupKey)
-
-  // Collapse all expanded standard effect groups
-  for (const key of Array.from(expandedStandardEffectGroups)) {
-    const sk = key.replace(/\s+/g, '-')
-    const c = document.getElementById(`se-content-${sk}`)
-    const ch = document.getElementById(`se-chevron-${sk}`)
-    if (c)
-      collapseCollapsible(c, animate)
-    if (ch)
-      ch.innerHTML = chevronRight
-    expandedStandardEffectGroups.delete(key)
-  }
-
-  if (!isExpanded) {
-    expandedStandardEffectGroups.add(groupKey)
-    expandCollapsible(content, animate)
-    chevron.innerHTML = chevronDown
-  }
-}
-
-const expandedPlaygroundEffectGroups = new Set<string>()
-
-export function togglePlaygroundEffectGroup(groupKey: string, animate = true) {
-  const sanitizedKey = groupKey.replace(/\s+/g, '-')
-  const chevron = document.getElementById(`pe-chevron-${sanitizedKey}`)
-  const content = document.getElementById(`pe-content-${sanitizedKey}`)
-
-  if (!chevron || !content)
-    return
-
-  const isExpanded = expandedPlaygroundEffectGroups.has(groupKey)
-
-  // Collapse all expanded playground effect groups
-  for (const key of Array.from(expandedPlaygroundEffectGroups)) {
-    const sk = key.replace(/\s+/g, '-')
-    const c = document.getElementById(`pe-content-${sk}`)
-    const ch = document.getElementById(`pe-chevron-${sk}`)
-    if (c)
-      collapseCollapsible(c, animate)
-    if (ch)
-      ch.innerHTML = chevronRight
-    expandedPlaygroundEffectGroups.delete(key)
-  }
-
-  if (!isExpanded) {
-    expandedPlaygroundEffectGroups.add(groupKey)
-    expandCollapsible(content, animate)
-    chevron.innerHTML = chevronDown
-  }
-}
-
 export function openAddContextMenu() {
   elements.newContextName.value = getState('new-context-name')
   elements.newContextValue.value = getState('new-context-value')
@@ -1806,198 +1833,6 @@ function populateSidebarVersion(): void {
   const el = document.getElementById('sidebar-version')
   if (!data || !el) return
   el.textContent = `v${data.version}`
-}
-
-function populateSidebarApiSections(): void {
-  const data = window.referenceData
-  const container = document.getElementById('api-ref-sections')
-  if (!data || !container) return
-
-  let html = '<div class="sidebar-section-label">API Reference</div>\n'
-
-  // Group core API entries by category
-  const byCategory: Record<string, { title: string; linkName: string }[]> = {}
-  for (const [key, r] of Object.entries(data.api)) {
-    const cat = r.category
-    if (!byCategory[cat]) byCategory[cat] = []
-    const linkName = makeLinkName(cat, key)
-    byCategory[cat].push({ title: r.title, linkName })
-  }
-
-  const makeLink = (linkName: string, title: string) =>
-    `<a id="${linkName}_link" href="${router.href(`/ref/${linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${linkName}')">${escapeHtml(title)}</a>`
-
-  const makeSection = (id: string, label: string, links: string[]) =>
-    `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('${id}')">
-  <span>${label}</span><span id="api-chevron-${id}">${chevronRight}</span>
-</div>
-<div id="api-content-${id}" class="sidebar-collapsible-content">
-  ${links.join('\n  ')}
-</div>\n`
-
-  // Special expressions
-  const specialLinks = (byCategory['special-expression'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
-  if (specialLinks.length > 0)
-    html += makeSection('special-expressions', 'Special expressions', specialLinks)
-
-  // Core functions — everything except special-expression, shorthand, datatype
-  const coreCats = data.coreCategories.filter(c => c !== 'special-expression' && c !== 'shorthand' && c !== 'datatype')
-  const coreFnEntries: { title: string; linkName: string }[] = []
-  for (const cat of coreCats) {
-    coreFnEntries.push(...(byCategory[cat] ?? []))
-  }
-  coreFnEntries.sort((a, b) => a.title.localeCompare(b.title))
-  const coreFnLinks = coreFnEntries.map(e => makeLink(e.linkName, e.title))
-  if (coreFnLinks.length > 0)
-    html += makeSection('core-functions', 'Core functions', coreFnLinks)
-
-  // Standard effects — grouped by sub-namespace (io, random, time, etc.)
-  if (Object.keys(data.effects).length > 0) {
-    const seByGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
-    for (const [key, r] of Object.entries(data.effects)) {
-      // title is e.g. "dvala.io.print" → group "io", shortName "print"
-      // title is e.g. "dvala.sleep" → group "other", shortName "sleep"
-      const parts = r.title.split('.')
-      const hasSubGroup = parts.length > 2
-      const group = hasSubGroup ? parts[1]! : 'other'
-      const shortName = hasSubGroup ? parts.slice(2).join('.') : parts.slice(1).join('.')
-      if (!seByGroup[group]) seByGroup[group] = []
-      seByGroup[group].push({ key, shortName, title: r.title })
-    }
-
-    const seGroupOrder = ['io', 'random', 'time', 'other']
-    const seGroupLabels: Record<string, string> = {
-      io: 'IO',
-      random: 'Random',
-      time: 'Time',
-      other: 'Other',
-    }
-
-    let seHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('effects')">
-  <span>Standard effects</span><span id="api-chevron-effects">${chevronRight}</span>
-</div>
-<div id="api-content-effects" class="sidebar-collapsible-content">`
-
-    for (const group of seGroupOrder) {
-      const entries = seByGroup[group]
-      if (!entries || entries.length === 0) continue
-      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
-      const label = seGroupLabels[group] ?? group
-      const fnLinks = entries.map(e => {
-        const linkName = makeLinkName('effect', e.key)
-        return makeLink(linkName, `@${e.title}`)
-      }).join('\n    ')
-      seHtml += `
-  <div class="sidebar-collapsible-header" onclick="Playground.toggleStandardEffectGroup('${escapeHtml(group)}')">
-    <span>${escapeHtml(label)}</span><span id="se-chevron-${group}">${chevronRight}</span>
-  </div>
-  <div id="se-content-${group}" class="sidebar-collapsible-content">
-    ${fnLinks}
-  </div>`
-    }
-
-    seHtml += '\n</div>'
-    html += seHtml
-  }
-
-  // Shorthands
-  const shorthandLinks = (byCategory['shorthand'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
-  if (shorthandLinks.length > 0)
-    html += makeSection('shorthands', 'Shorthands', shorthandLinks)
-
-  // Datatypes
-  const datatypeLinks = (byCategory['datatype'] ?? []).sort((a, b) => a.title.localeCompare(b.title)).map(e => makeLink(e.linkName, e.title))
-  if (datatypeLinks.length > 0)
-    html += makeSection('datatypes', 'Datatypes', datatypeLinks)
-
-  // Render modules section with sub-sections per module
-  const byModule: Record<string, { key: string; fnName: string }[]> = {}
-  for (const key of Object.keys(data.modules)) {
-    const dotIdx = key.indexOf('.')
-    if (dotIdx === -1) continue
-    const moduleName = key.slice(0, dotIdx)
-    if (!byModule[moduleName]) byModule[moduleName] = []
-    byModule[moduleName].push({ key, fnName: key.slice(dotIdx + 1) })
-  }
-
-  let modulesHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('modules')">
-  <span>Modules</span><span id="api-chevron-modules">${chevronRight}</span>
-</div>
-<div id="api-content-modules" class="sidebar-collapsible-content">`
-
-  for (const moduleName of data.moduleCategories) {
-    const fns = byModule[moduleName]
-    if (!fns || fns.length === 0) continue
-    fns.sort((a, b) => a.fnName.localeCompare(b.fnName))
-    const sanitized = moduleName.replace(/\s+/g, '-')
-    const fnLinks = fns.map(e => {
-      const encodedKey = encodeURIComponent(e.key)
-      return `<a id="${encodedKey}_link" href="${router.href(`/ref/${encodedKey}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${encodedKey}')">${escapeHtml(e.fnName)}</a>`
-    }).join('\n    ')
-    modulesHtml += `
-  <div class="sidebar-collapsible-header" onclick="Playground.toggleModuleCategory('${escapeHtml(moduleName)}')">
-    <span>${escapeHtml(moduleName)}</span><span id="ns-chevron-${sanitized}">${chevronRight}</span>
-  </div>
-  <div id="ns-content-${sanitized}" class="sidebar-collapsible-content">
-    ${fnLinks}
-  </div>`
-  }
-
-  modulesHtml += '\n</div>'
-  html += modulesHtml
-
-  // Playground Reference — separate section for playground-only effects
-  if (Object.keys(playgroundEffectReference).length > 0) {
-    html += '<div class="sidebar-spacer"></div>\n'
-    html += '<div class="sidebar-section-label">Playground Reference</div>\n'
-
-    const byGroup: Record<string, { key: string; shortName: string; title: string }[]> = {}
-    for (const [key, r] of Object.entries(playgroundEffectReference)) {
-      const parts = r.title.split('.')
-      const group = parts[1] ?? 'other'
-      const shortName = parts.slice(2).join('.')
-      if (!byGroup[group]) byGroup[group] = []
-      byGroup[group].push({ key, shortName, title: r.title })
-    }
-
-    const groupOrder = ['ui', 'editor', 'context', 'exec', 'programs', 'router']
-    const groupLabels: Record<string, string> = {
-      ui: 'UI',
-      editor: 'Editor',
-      context: 'Context',
-      exec: 'Execution',
-      programs: 'Programs',
-      router: 'Router',
-    }
-
-    let peHtml = `<div class="sidebar-collapsible-header" onclick="Playground.toggleApiSection('playground-effects')">
-  <span>Playground effects</span><span id="api-chevron-playground-effects">${chevronRight}</span>
-</div>
-<div id="api-content-playground-effects" class="sidebar-collapsible-content">`
-
-    for (const group of groupOrder) {
-      const entries = byGroup[group]
-      if (!entries || entries.length === 0) continue
-      entries.sort((a, b) => a.shortName.localeCompare(b.shortName))
-      const label = groupLabels[group] ?? group
-      const fnLinks = entries.map(e => {
-        const linkName = makeLinkName('playground-effect', e.key)
-        return makeLink(linkName, `@${e.title}`)
-      }).join('\n    ')
-      peHtml += `
-  <div class="sidebar-collapsible-header" onclick="Playground.togglePlaygroundEffectGroup('${escapeHtml(group)}')">
-    <span>${escapeHtml(label)}</span><span id="pe-chevron-${group}">${chevronRight}</span>
-  </div>
-  <div id="pe-content-${group}" class="sidebar-collapsible-content">
-    ${fnLinks}
-  </div>`
-    }
-
-    peHtml += '\n</div>'
-    html += peHtml
-  }
-
-  container.innerHTML = html
 }
 
 function onDocumentClick(event: Event) {
@@ -2361,7 +2196,6 @@ window.onload = async function () {
   renderShell()
   applyLayout()
   injectPlaygroundEffects()
-  populateSidebarApiSections()
   populateSidebarVersion()
   await initSnapshotStorage()
   await initPrograms()
@@ -2873,6 +2707,12 @@ function routeToPath(appPath: string): void {
     return
   }
 
+  // Legacy routes — redirect before rendering
+  if (path === 'core' || path === 'modules') {
+    router.navigate('/ref', true)
+    return
+  }
+
   // For all other paths, render dynamically into #dynamic-page
   inactivateAll()
   closeSearch()
@@ -2882,19 +2722,17 @@ function routeToPath(appPath: string): void {
   if (!dynPage) return
 
   // Determine which sidebar link to highlight
-  let sidebarLinkId: string | null = null
+  let sidebarLinkId: string | null = null // eslint-disable-line no-useless-assignment
   let pageTitle = 'Dvala'
 
   if (!path || path === '/') {
     dynPage.innerHTML = renderStartPage()
     sidebarLinkId = 'home-page_link'
     pageTitle = 'Dvala - Suspendable Functional Language for JavaScript'
-  } else if (path === 'core') {
-    dynPage.innerHTML = renderCorePage()
-    pageTitle = 'Core API | Dvala'
-  } else if (path === 'modules') {
-    dynPage.innerHTML = renderModulesPage()
-    pageTitle = 'Modules | Dvala'
+  } else if (path === 'ref') {
+    dynPage.innerHTML = renderReferenceIndexPage()
+    sidebarLinkId = 'ref-page_link'
+    pageTitle = 'Reference | Dvala'
   } else if (path === 'examples') {
     dynPage.innerHTML = renderExampleIndexPage()
     sidebarLinkId = 'example-page_link'
@@ -2922,12 +2760,26 @@ function routeToPath(appPath: string): void {
       if (target) target.scrollIntoView()
     }
   } else if (path.startsWith('ref/')) {
-    const linkName = path.slice('ref/'.length)
-    dynPage.innerHTML = renderDocPage(linkName)
-    const data = window.referenceData
-    if (data) {
-      const entry = data.searchEntries.find(e => e.linkName === linkName)
-      pageTitle = entry ? `${entry.title} | Dvala Reference` : 'Reference | Dvala'
+    const subPath = path.slice('ref/'.length)
+    sidebarLinkId = 'ref-page_link'
+    // Check if it's a section page (core, modules, effects, playground)
+    const section = REF_SECTIONS.find(s => s.id === subPath)
+    if (section) {
+      dynPage.innerHTML = renderReferenceSectionPage(subPath)
+      pageTitle = `${section.title} | Dvala Reference`
+    } else if (subPath.startsWith('modules/')) {
+      // Module detail page: /ref/modules/:name
+      const moduleName = subPath.slice('modules/'.length)
+      dynPage.innerHTML = renderReferenceModulePage(moduleName)
+      pageTitle = `${moduleName} | Dvala Reference`
+    } else {
+      // Individual doc page
+      dynPage.innerHTML = renderDocPage(subPath)
+      const data = window.referenceData
+      if (data) {
+        const entry = data.searchEntries.find(e => e.linkName === subPath)
+        pageTitle = entry ? `${entry.title} | Dvala Reference` : 'Reference | Dvala'
+      }
     }
   } else {
     dynPage.innerHTML = renderStartPage()
@@ -5885,50 +5737,6 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     }
     if (link) {
       link.classList.add('active-sidebar-entry')
-
-      // If the link is inside a collapsed API section, expand it first
-      const apiContent = link.closest('[id^="api-content-"]')
-      if (apiContent && apiContent instanceof HTMLElement && !apiContent.classList.contains('expanded')) {
-        const sectionId = apiContent.id.replace('api-content-', '')
-        toggleApiSection(sectionId, false)
-      }
-
-      // If the link is inside a collapsed module section, expand it first
-      const nsContent = link.closest('[id^="ns-content-"]')
-      if (nsContent && nsContent instanceof HTMLElement && !nsContent.classList.contains('expanded')) {
-        const categoryKey = nsContent.id.replace('ns-content-', '').replace(/-/g, ' ')
-        toggleModuleCategory(categoryKey, false)
-        // Also expand the parent 'modules' API section if collapsed
-        const modulesContent = document.getElementById('api-content-modules')
-        if (modulesContent && !modulesContent.classList.contains('expanded')) {
-          toggleApiSection('modules', false)
-        }
-      }
-
-      // If the link is inside a collapsed standard effect group, expand it first
-      const seContent = link.closest('[id^="se-content-"]')
-      if (seContent && seContent instanceof HTMLElement && !seContent.classList.contains('expanded')) {
-        const groupKey = seContent.id.replace('se-content-', '')
-        toggleStandardEffectGroup(groupKey, false)
-        // Also expand the parent 'effects' API section if collapsed
-        const seParent = document.getElementById('api-content-effects')
-        if (seParent && !seParent.classList.contains('expanded')) {
-          toggleApiSection('effects', false)
-        }
-      }
-
-      // If the link is inside a collapsed playground effect group, expand it first
-      const peContent = link.closest('[id^="pe-content-"]')
-      if (peContent && peContent instanceof HTMLElement && !peContent.classList.contains('expanded')) {
-        const groupKey = peContent.id.replace('pe-content-', '')
-        togglePlaygroundEffectGroup(groupKey, false)
-        // Also expand the parent 'playground-effects' API section if collapsed
-        const peParent = document.getElementById('api-content-playground-effects')
-        if (peParent && !peParent.classList.contains('expanded')) {
-          toggleApiSection('playground-effects', false)
-        }
-      }
-
       if (scroll !== 'none')
         link.scrollIntoView({ block: 'center', behavior: scroll })
     }

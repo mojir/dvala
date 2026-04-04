@@ -422,6 +422,7 @@ const convertFunctions: BuiltinNormalExpressions = {
 
 export const convertModule: DvalaModule = {
   name: 'convert',
+  description: 'Unit conversions for length, weight, temperature, speed, and more.',
   functions: convertFunctions,
   source: convertModuleSource,
   docs: moduleDocsFromFunctions(convertFunctions),
