@@ -12,12 +12,12 @@ import {
   analyzeIcon,
   cameraIcon,
   codeIcon,
+  copyIcon,
   debugIcon,
   formatIcon,
   gearIcon,
   githubIcon,
   hamburgerIcon,
-  newFileIcon,
   pauseIcon,
   playIcon,
   redoIcon,
@@ -28,6 +28,7 @@ import {
   treeIcon,
   undoIcon,
 } from './icons'
+import { renderEditorMenu } from './editorMenu'
 
 export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
@@ -83,6 +84,35 @@ function getShellHTML(): string {
 }
 
 function getPlaygroundPanel(): string {
+  const moreMenu = renderEditorMenu({
+    id: 'more-menu',
+    items: [
+      { action: 'Playground.closeMoreMenu();Playground.run()', icon: playIcon, label: 'Run', shortcut: 'Ctrl+R' },
+      { action: 'Playground.closeMoreMenu();void Playground.runSync()', icon: syncIcon, label: 'Run sync', shortcut: '⇧Ctrl+R' },
+      { action: 'Playground.closeMoreMenu();Playground.analyze()', icon: analyzeIcon, label: 'Analyze', shortcut: 'Ctrl+A' },
+      { action: 'Playground.closeMoreMenu();Playground.tokenize()', icon: codeIcon, label: 'Tokenize', shortcut: 'Ctrl+T' },
+      { action: 'Playground.closeMoreMenu();Playground.parse()', icon: treeIcon, label: 'Parse', shortcut: 'Ctrl+P' },
+      { action: 'Playground.closeMoreMenu();Playground.format()', icon: formatIcon, label: 'Format', shortcut: 'Ctrl+F' },
+      { action: 'Playground.closeMoreMenu();Playground.saveAs()', icon: saveIcon, label: 'Save as…' },
+    ],
+  })
+
+  const programsHeaderMenu = renderEditorMenu({
+    id: 'programs-header-menu',
+    items: [
+      { action: 'Playground.closeProgramsHeaderMenu();Playground.openImportProgramModal()', icon: addIcon, label: 'Import' },
+      { action: 'Playground.closeProgramsHeaderMenu();Playground.clearUnlockedPrograms()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+    ],
+  })
+
+  const snapshotsHeaderMenu = renderEditorMenu({
+    id: 'snapshots-header-menu',
+    items: [
+      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.openImportSnapshotModal()', icon: addIcon, label: 'Import' },
+      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.clearUnlockedSnapshots()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+    ],
+  })
+
   return `
     <div id="editor-toolbar">
       <div class="editor-toolbar__left">
@@ -96,98 +126,93 @@ function getPlaygroundPanel(): string {
         <button id="exec-stop-btn-inline" class="exec-btn-inline" title="Stop" style="display:none;">${stopIcon}</button>
         <div>
           <a href="#" role="button" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
-            <div id="more-menu" class="dropdown-menu" style="display:none;">
-              <div class="dropdown-menu__body">
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.run()" class="menu-item">${playIcon}<span>Run</span><span class="menu-shortcut">Ctrl+R</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();void Playground.runSync()" class="menu-item">${syncIcon}<span>Run sync</span><span class="menu-shortcut">⇧Ctrl+R</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.analyze()" class="menu-item">${analyzeIcon}<span>Analyze</span><span class="menu-shortcut">Ctrl+A</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.tokenize()" class="menu-item">${codeIcon}<span>Tokenize</span><span class="menu-shortcut">Ctrl+T</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.parse()" class="menu-item">${treeIcon}<span>Parse</span><span class="menu-shortcut">Ctrl+P</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.format()" class="menu-item">${formatIcon}<span>Format</span><span class="menu-shortcut">Ctrl+F</span></a>
-                <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.saveAs()" class="menu-item">${saveIcon}<span>Save as…</span></a>
-              </div>
-            </div>
+            ${moreMenu}
           </a>
         </div>
       </div>
     </div>
 
     <div id="editor-top" class="editor-top">
-      <div id="side-panel">
-        <div class="side-panel__icons">
-          <button class="side-panel__icon side-panel__icon--active" id="side-icon-programs" onclick="Playground.showSideTab('programs')" title="Programs">${saveIcon}</button>
-          <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
-          <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Context">${codeIcon}</button>
+      <div id="side-panel-icons" class="side-panel__icons">
+        <button class="side-panel__icon side-panel__icon--active" id="side-icon-programs" onclick="Playground.showSideTab('programs')" title="Programs">${copyIcon}</button>
+        <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
+        <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Context">${codeIcon}</button>
+      </div>
+
+      <div id="side-panel-header" class="panel-header">
+        <div id="side-header-programs">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSavedProgramsPage()" class="panel-header__title panel-header__title-link">Programs</a>
         </div>
-        <div class="side-panel__content">
-          <div id="side-tab-programs" class="side-panel__tab">
-            <div class="panel-header">
-              <span class="panel-header__title">Programs</span>
-              <div class="panel-header__actions">
-                <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New program" title="New program">${addIcon}</a>
-              </div>
-            </div>
-            <div id="explorer-program-list" class="explorer-list fancy-scroll"></div>
+        <div id="side-header-snapshots" style="display:none;">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSnapshotsPage()" class="panel-header__title panel-header__title-link">Snapshots</a>
+        </div>
+        <div id="side-header-context" style="display:none;">
+          <span class="panel-header__title">Context</span>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-programs">
+          <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New program" title="New program">${addIcon}</a>
+          <a href="#" role="button" id="programs-header-menu-button" onclick="event.preventDefault();Playground.openProgramsHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Programs actions" title="Programs actions">
+            ${hamburgerIcon}
+            ${programsHeaderMenu}
+          </a>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-snapshots" style="display:none;">
+          <a href="#" role="button" id="snapshots-header-menu-button" onclick="event.preventDefault();Playground.openSnapshotsHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Snapshot actions" title="Snapshot actions">
+            ${hamburgerIcon}
+            ${snapshotsHeaderMenu}
+          </a>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-context" style="display:none;"></div>
+      </div>
+
+      <div id="dvala-panel-header" class="panel-header">
+        <div id="dvala-panel-header-content">
+          <div id="dvala-header-editor" class="panel-header__code-title">
+            <span id="dvala-code-title-string" class="panel-header__title-string"></span>
+            <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
+            <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
+            <input id="dvala-code-title-input" type="text" style="display:none;">
           </div>
+          <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
+        </div>
+        <div class="panel-header__actions" id="dvala-panel-header-actions">
+          <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
+          <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
+          <a href="#" role="button" id="program-close-btn" onclick="Playground.closeActiveProgram()" title="Close program" style="display:none;">✕</a>
+          <a href="#" role="button" id="snapshot-close-btn" onclick="Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
+        </div>
+      </div>
+
+      <div id="side-panel-content" class="side-panel__content">
+        <div id="side-tab-programs" class="side-panel__tab">
+          <div id="explorer-program-list" class="explorer-list fancy-scroll"></div>
+           <div id="explorer-program-stats" class="program-stats-panel"></div>
+        </div>
           <div id="side-tab-snapshots" class="side-panel__tab" style="display:none;">
-            <div class="panel-header">
-              <span class="panel-header__title">Snapshots</span>
-            </div>
             <div id="side-snapshots-list" class="explorer-list fancy-scroll"></div>
           </div>
           <div id="side-tab-context" class="side-panel__tab" style="display:none;">
-            <div class="panel-header">
-              <span class="panel-header__title">Context</span>
-              <div class="panel-header__actions">
-                <a href="#" role="button" onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn" aria-label="Add context">${addIcon}
-                  <div id="add-context-menu" class="dropdown-menu" style="display:none;">
-                    <div class="dropdown-menu__body">
-                      <div class="dropdown-menu__field-group">
-                        <label for="new-context-name" class="dropdown-menu__label">Name</label>
-                        <input id="new-context-name" class="dropdown-menu__input">
-                        <label for="new-context-value" class="dropdown-menu__label">Value (JSON)</label>
-                        <textarea id="new-context-value" rows="5" class="dropdown-menu__textarea fancy-scroll"></textarea>
-                        <button class="button dropdown-menu__add-btn" onclick="Playground.addContextEntry()">Add</button>
-                        <span id="new-context-error" class="dropdown-menu__error" style="display:none;"></span>
-                      </div>
-                      <a href="#" role="button" onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
-                    </div>
-                  </div>
-                </a>
-                <a href="#" role="button" id="context-undo-button" onclick="Playground.undoContextHistory()" aria-label="Undo context">${undoIcon}</a>
-                <a href="#" role="button" id="context-redo-button" onclick="Playground.redoContextHistory()" aria-label="Redo context">${redoIcon}</a>
-              </div>
-            </div>
             <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON"></textarea>
+            <a id="context-undo-button" style="display:none;"></a>
+            <a id="context-redo-button" style="display:none;"></a>
+            <div id="add-context-menu" style="display:none;">
+              <input id="new-context-name">
+              <textarea id="new-context-value"></textarea>
+              <span id="new-context-error" style="display:none;"></span>
+            </div>
           </div>
-        </div>
       </div>
 
       <div id="resize-divider-1"></div>
 
       <div id="dvala-panel">
-        <div class="panel-header">
-          <div id="dvala-panel-header-content">
-            <div id="dvala-header-editor" class="panel-header__code-title">
-              <span id="dvala-code-title-string" class="panel-header__title-string"></span>
-              <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
-              <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
-              <input id="dvala-code-title-input" type="text" style="display:none;">
-            </div>
-            <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
-          </div>
-          <div class="panel-header__actions" id="dvala-panel-header-actions">
-            <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
-            <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
-            <a href="#" role="button" id="snapshot-close-btn" onclick="Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
-          </div>
-        </div>
         <div id="dvala-editor-view">
           <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
         </div>
         <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>
         <div id="dvala-snapshot-view" style="display:none;">
           <div id="snapshot-content" class="snapshot-content fancy-scroll"></div>
+          <div id="snapshot-footer"></div>
         </div>
       </div>
     </div>

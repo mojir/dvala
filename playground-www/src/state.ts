@@ -1,12 +1,11 @@
 import type { UnknownRecord } from '../../src/interface'
-import type { HistoryEntry, HistoryStatus } from './StateHistory'
-import { StateHistory } from './StateHistory'
 
 export const defaultState = {
   'sidebar-width': 350 as number,
   'playground-height': 350 as number,
   'resize-divider-1-percent': 20 as number,
   'resize-divider-2-percent': 70 as number,
+  'active-side-tab': 'programs' as 'programs' | 'snapshots' | 'context',
   'context': '' as string,
   'context-scroll-top': 0 as number,
   'context-selection-start': 0 as number,
@@ -41,9 +40,6 @@ type State = {
 type Key = keyof typeof defaultState
 type StorageKey = `playground-${Key}`
 
-let contextHistoryListener: undefined | ((status: HistoryStatus) => void)
-let dvalaCodeHistoryListener: undefined | ((status: HistoryStatus) => void)
-
 const state: State = {
   ...defaultState,
 }
@@ -53,43 +49,6 @@ const state: State = {
 
   ;(state as UnknownRecord)[key] = typeof value === 'string' ? JSON.parse(value) : defaultState[key]
 })
-
-const contextHistory = new StateHistory(createContextHistoryEntry(), status => {
-  contextHistoryListener?.(status)
-})
-
-const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntry(), status => {
-  dvalaCodeHistoryListener?.(status)
-})
-
-function createContextHistoryEntry(): HistoryEntry {
-  return {
-    text: state.context,
-    selectionStart: state['context-selection-start'],
-    selectionEnd: state['context-selection-end'],
-  }
-}
-
-function createDvalaCodeHistoryEntry(): HistoryEntry {
-  return {
-    text: state['dvala-code'],
-    selectionStart: state['dvala-code-selection-start'],
-    selectionEnd: state['dvala-code-selection-end'],
-  }
-}
-
-function pushHistory() {
-  contextHistory.push(createContextHistoryEntry())
-  dvalaCodeHistory.push(createDvalaCodeHistoryEntry())
-}
-
-export function setContextHistoryListener(listener: (status: HistoryStatus) => void) {
-  contextHistoryListener = listener
-}
-
-export function setDvalaCodeHistoryListener(listener: (status: HistoryStatus) => void) {
-  dvalaCodeHistoryListener = listener
-}
 
 export function updateState(newState: Partial<State>) {
   Object.entries(newState).forEach(entry => {
@@ -105,9 +64,7 @@ export function saveState(newState: Partial<State>, pushToHistory = true) {
     setState(key, value)
     localStorage.setItem(getStorageKey(key), JSON.stringify(value))
   })
-  if (pushToHistory) {
-    pushHistory()
-  }
+  void pushToHistory
 }
 
 function setState<T extends keyof State>(key: T, value: State[T]) {
@@ -117,8 +74,6 @@ function setState<T extends keyof State>(key: T, value: State[T]) {
 export function clearAllStates() {
   localStorage.clear()
   Object.assign(state, defaultState)
-  dvalaCodeHistory.reset(createDvalaCodeHistoryEntry())
-  contextHistory.reset(createContextHistoryEntry())
 }
 
 export function clearState(...keys: Key[]) {
@@ -126,7 +81,6 @@ export function clearState(...keys: Key[]) {
     localStorage.removeItem(getStorageKey(key))
     ;(state as UnknownRecord)[key] = defaultState[key]
   })
-  pushHistory()
 }
 
 export function getState<T extends keyof State>(key: T): State[T] {
@@ -150,65 +104,9 @@ export function encodeState() {
 
 export function applyEncodedState(encodedState: string): boolean {
   try {
-    saveState(JSON.parse(decodeURIComponent(atob(encodedState))) as Partial<State>, true)
+    saveState(JSON.parse(decodeURIComponent(atob(encodedState))) as Partial<State>, false)
     return true
   } catch (_error) {
-    return false
-  }
-}
-
-export function undoContext() {
-  try {
-    const historyEntry = contextHistory.undo()
-    saveState({
-      'context': historyEntry.text,
-      'context-selection-start': historyEntry.selectionStart,
-      'context-selection-end': historyEntry.selectionEnd,
-    }, false)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function redoContext() {
-  try {
-    const historyEntry = contextHistory.redo()
-    saveState({
-      'context': historyEntry.text,
-      'context-selection-start': historyEntry.selectionStart,
-      'context-selection-end': historyEntry.selectionEnd,
-    }, false)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function undoDvalaCode() {
-  try {
-    const historyEntry = dvalaCodeHistory.undo()
-    saveState({
-      'dvala-code': historyEntry.text,
-      'dvala-code-selection-start': historyEntry.selectionStart,
-      'dvala-code-selection-end': historyEntry.selectionEnd,
-    }, false)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function redoDvalaCode() {
-  try {
-    const historyEntry = dvalaCodeHistory.redo()
-    saveState({
-      'dvala-code': historyEntry.text,
-      'dvala-code-selection-start': historyEntry.selectionStart,
-      'dvala-code-selection-end': historyEntry.selectionEnd,
-    }, false)
-    return true
-  } catch {
     return false
   }
 }
