@@ -116,10 +116,11 @@ function getPlaygroundPanel(): string {
   return `
     <div id="editor-toolbar">
       <div class="editor-toolbar__left">
-        <a href="#" role="button" id="dvala-panel-debug-info" class="panel-header__debug-icon" onclick="event.preventDefault();Playground.toggleDebug()" title="Toggle debug mode">${debugIcon}</a>
-        <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
+        <span id="editor-toolbar-title" class="editor-toolbar__title"></span>
       </div>
       <div class="editor-toolbar__right">
+        <a href="#" role="button" id="dvala-panel-debug-info" class="panel-header__debug-icon" onclick="event.preventDefault();Playground.toggleDebug()" title="Toggle debug mode">${debugIcon}</a>
+        <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
         <span id="execution-status-inline" class="execution-status-inline" style="display:none;">Running</span>
         <button id="exec-play-btn-inline" class="exec-btn-inline" title="Resume" style="display:none;">${playIcon}</button>
         <button id="exec-pause-btn-inline" class="exec-btn-inline" title="Pause" style="display:none;">${pauseIcon}</button>
@@ -162,7 +163,9 @@ function getPlaygroundPanel(): string {
             ${snapshotsHeaderMenu}
           </a>
         </div>
-        <div class="panel-header__actions" id="side-header-actions-context" style="display:none;"></div>
+        <div class="panel-header__actions" id="side-header-actions-context" style="display:none;">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.openContextJsonModal()" class="panel-header__icon-btn" aria-label="Show full context JSON" title="Show full context JSON">${codeIcon}</a>
+        </div>
       </div>
 
       <div id="dvala-panel-header" class="panel-header">
@@ -178,8 +181,8 @@ function getPlaygroundPanel(): string {
         <div class="panel-header__actions" id="dvala-panel-header-actions">
           <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
           <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
-          <a href="#" role="button" id="program-close-btn" onclick="Playground.closeActiveProgram()" title="Close program" style="display:none;">✕</a>
-          <a href="#" role="button" id="snapshot-close-btn" onclick="Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
+          <a href="#" role="button" id="program-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeActiveProgram()" title="Close program" style="display:none;">✕</a>
+          <a href="#" role="button" id="snapshot-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
         </div>
       </div>
 
@@ -192,7 +195,8 @@ function getPlaygroundPanel(): string {
             <div id="side-snapshots-list" class="explorer-list fancy-scroll"></div>
           </div>
           <div id="side-tab-context" class="side-panel__tab" style="display:none;">
-            <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON"></textarea>
+            <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON" style="display:none;"></textarea>
+            <div id="context-entry-list" class="explorer-list fancy-scroll"></div>
             <a id="context-undo-button" style="display:none;"></a>
             <a id="context-redo-button" style="display:none;"></a>
             <div id="add-context-menu" style="display:none;">
@@ -208,6 +212,9 @@ function getPlaygroundPanel(): string {
       <div id="dvala-panel">
         <div id="dvala-editor-view">
           <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
+        </div>
+        <div id="context-detail-view" style="display:none;">
+          <textarea id="context-detail-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context binding JSON"></textarea>
         </div>
         <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>
         <div id="dvala-snapshot-view" style="display:none;">

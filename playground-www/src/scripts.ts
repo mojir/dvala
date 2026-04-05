@@ -19,7 +19,7 @@ import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import type { EditorMenuItem } from './editorMenu'
 import { renderEditorMenu } from './editorMenu'
-import { copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
+import { addIcon, copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -82,6 +82,7 @@ const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
 const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
 const MAX_PROGRAM_HISTORY_STEPS = 99
+const CONTEXT_UI_STATE_KEY = '__playground'
 const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), syncDvalaCodeHistoryButtons, MAX_PROGRAM_HISTORY_STEPS)
 let activeDvalaCodeHistoryProgramId: string | null = null
 let closeEditorMenuListener: ((event: MouseEvent) => void) | null = null
@@ -178,8 +179,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       },
       getContextContent: () => elements.contextTextArea.value,
       setContextContent: json => {
-        elements.contextTextArea.value = json
-        saveState({ context: json }, false)
+        setContext(json, false)
       },
       getSavedPrograms: () => getSavedPrograms(),
       saveProgram: (name, code) => {
@@ -274,6 +274,9 @@ const elements = {
   get newContextValue() { return document.getElementById('new-context-value') as HTMLTextAreaElement },
   get newContextError() { return document.getElementById('new-context-error') as HTMLSpanElement },
   get contextTextArea() { return document.getElementById('context-textarea') as HTMLTextAreaElement },
+  get contextEntryList() { return document.getElementById('context-entry-list') as HTMLDivElement },
+  get contextDetailView() { return document.getElementById('context-detail-view') as HTMLDivElement },
+  get contextDetailTextArea() { return document.getElementById('context-detail-textarea') as HTMLTextAreaElement },
   get outputResult() { return document.getElementById('output-result') as HTMLElement },
   get dvalaTextArea() { return document.getElementById('dvala-textarea') as HTMLTextAreaElement },
   get resizePlayground() { return document.getElementById('resize-playground') as HTMLElement },
@@ -285,6 +288,7 @@ const elements = {
   get contextRedoButton() { return document.getElementById('context-redo-button') as HTMLAnchorElement },
   get dvalaCodeUndoButton() { return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement },
   get dvalaCodeRedoButton() { return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement },
+  get editorToolbarTitle() { return document.getElementById('editor-toolbar-title') as HTMLSpanElement },
   get contextTitle() { return document.getElementById('context-title') as HTMLDivElement },
   get dvalaCodeTitle() { return document.getElementById('dvala-code-title') as HTMLDivElement },
   get dvalaCodeTitleString() { return document.getElementById('dvala-code-title-string') as HTMLSpanElement },
@@ -377,11 +381,23 @@ let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
 let currentSnapshot: Snapshot | null = null
 let snapshotExecutionControlsVisible = false
+let activeContextEntryKind: ContextEntryKind = getState('current-context-entry-kind')
+let activeContextBindingName: string | null = getState('current-context-binding-name')
+let isSyncingContextDetail = false
+let contextDetailHasParseError = false
 const modalStack: { panel: HTMLElement; label: string; icon?: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
 
 // Toast hint for effect modals that can't be dismissed with Escape
 const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
+type ContextEntryKind = 'binding' | 'effect-handler'
+type ContextUiSectionKey = 'bindings' | 'effectHandlers'
+type StoredContextEffectHandler = { pattern: string; handler: unknown }
+
+const CONTEXT_EFFECT_HANDLERS_KEY = 'effectHandlers'
+const DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE = `async ({ resume }) => {
+  resume(null);
+}`
 
 function calculateDimensions() {
   return {
@@ -1010,6 +1026,7 @@ const ICONS = {
   save: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2M17 21v-8H7v8M7 3v5h8"/></svg>',
   duplicate: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/></svg>',
   edit: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/><path fill="currentColor" d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>',
+  warning: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.06L1.87 20.5c-.38.65.09 1.5.87 1.5h18.52c.78 0 1.25-.85.87-1.5zm0 4.69c.41 0 .75.34.75.75v5.5a.75.75 0 0 1-1.5 0V8.5c0-.41.34-.75.75-.75m0 10.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/></svg>',
   share: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
 }
 
@@ -1359,7 +1376,7 @@ export function loadSavedProgram(id: string) {
     }, false)
     activateCurrentProgramHistory(false)
     elements.dvalaTextArea.value = program.code
-    elements.contextTextArea.value = program.context
+    setContext(program.context, false)
     syntaxOverlay.update()
     syntaxOverlay.scrollContainer.scrollTo(0, 0)
     syncCodePanelView('programs')
@@ -1414,6 +1431,16 @@ function syncPlaygroundUrlState(tabId: SideTabId) {
     url.searchParams.set('snapshotId', snapshotId)
   else
     url.searchParams.delete('snapshotId')
+
+  if (tabId === 'context' && activeContextBindingName)
+    url.searchParams.set('bindingName', activeContextBindingName)
+  else
+    url.searchParams.delete('bindingName')
+
+  if (tabId === 'context' && activeContextEntryKind === 'effect-handler')
+    url.searchParams.set('contextEntryKind', 'effect-handler')
+  else
+    url.searchParams.delete('contextEntryKind')
 
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
@@ -1540,12 +1567,24 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
 
   // Sync the code panel view and header
   syncCodePanelView(normalizedTabId)
+  updateCSS()
 }
 
 /** Sync the code panel: show editor, snapshot, or empty view + update header accordingly. */
+function setEditorEmptyState(emptyView: HTMLElement, title: string, description: string, buttonLabel: string, action: string) {
+  emptyView.innerHTML = `
+    <div class="dvala-empty-view__content">
+      <div class="dvala-empty-view__title">${escapeHtml(title)}</div>
+      <div class="dvala-empty-view__description">${escapeHtml(description)}</div>
+      <button type="button" class="button button--primary dvala-empty-view__button" onclick="${action}">${escapeHtml(buttonLabel)}</button>
+    </div>
+  `
+}
+
 function syncCodePanelView(sideTab?: string) {
   const tab = sideTab ?? getCurrentSideTab()
   const editorView = document.getElementById('dvala-editor-view')
+  const contextDetailView = document.getElementById('context-detail-view')
   const snapshotView = document.getElementById('dvala-snapshot-view')
   const emptyView = document.getElementById('dvala-empty-view')
   const headerEditor = document.getElementById('dvala-header-editor')
@@ -1558,6 +1597,7 @@ function syncCodePanelView(sideTab?: string) {
 
   // Hide all views
   editorView.style.display = 'none'
+  if (contextDetailView) contextDetailView.style.display = 'none'
   snapshotView.style.display = 'none'
   emptyView.style.display = 'none'
   if (headerEditor) headerEditor.style.display = 'none'
@@ -1576,13 +1616,20 @@ function syncCodePanelView(sideTab?: string) {
       if (programCloseBtn) programCloseBtn.style.display = ''
     } else {
       emptyView.style.display = 'flex'
-      emptyView.textContent = 'Select a program to edit'
+      setEditorEmptyState(
+        emptyView,
+        'Select a program to edit',
+        'Create a new program to start writing, or pick one from the Programs list when you are ready.',
+        'New program',
+        'Playground.newFile()',
+      )
     }
   } else if (tab === 'snapshots') {
     if (activeSnapshotKey && snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
       if (activeSnapshot) {
         replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
+        updateCSS()
         return
       }
       activeSnapshotKey = null
@@ -1595,14 +1642,28 @@ function syncCodePanelView(sideTab?: string) {
       if (closeBtn) closeBtn.style.display = ''
     } else {
       emptyView.style.display = 'flex'
-      emptyView.textContent = 'Select a snapshot to view'
+      setEditorEmptyState(
+        emptyView,
+        'Select a snapshot to view',
+        'Import a snapshot here, or run a program and save a checkpoint to create a new entry.',
+        'Import snapshot',
+        'Playground.openImportSnapshotModal()',
+      )
     }
   } else {
-    // Context or other — show editor
-    editorView.style.display = 'flex'
+    const context = getParsedContext()
+    const bindingNames = getContextBindingNames(context)
+    const effectHandlerNames = getContextEffectHandlerNames(context)
+    ensureActiveContextSelection(context)
+
     if (headerEditor) headerEditor.style.display = 'flex'
-    if (undoBtn) undoBtn.style.display = ''
-    if (redoBtn) redoBtn.style.display = ''
+    if (bindingNames.length > 0 || effectHandlerNames.length > 0) {
+      if (contextDetailView) contextDetailView.style.display = 'flex'
+      syncContextDetailEditor()
+    } else {
+      emptyView.style.display = 'flex'
+      emptyView.textContent = 'Select or add a context entry to edit'
+    }
   }
 }
 
@@ -1815,8 +1876,8 @@ function clearActiveProgramSelection() {
     'dvala-code-edited': false,
   }, false)
   activateCurrentProgramHistory(true)
-  applyState()
   syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
+  applyState()
   populateExplorerProgramList()
   populateSavedProgramsList()
 }
@@ -1957,7 +2018,7 @@ export function duplicateProgram(id: string) {
   }, false)
   activateCurrentProgramHistory(true)
   elements.dvalaTextArea.value = copy.code
-  elements.contextTextArea.value = copy.context
+  setContext(copy.context, false)
   syntaxOverlay.update()
   notifyProgramAdded()
   updateCSS()
@@ -2000,14 +2061,20 @@ export function saveAs() {
   })
 }
 
-function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void, onCancel?: () => void) {
+function showNameInputModal(
+  title: string,
+  defaultValue: string,
+  onConfirm: (name: string) => void,
+  onCancel?: () => void,
+  options?: { prefix?: string },
+) {
   const dismiss = () => { popModal(); onCancel?.() }
 
   const input = document.createElement('input')
   input.type = 'text'
   input.value = defaultValue
   input.spellcheck = false
-  input.style.cssText = 'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+  input.style.cssText = `background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;${options?.prefix ? ' border-top-left-radius:0; border-bottom-left-radius:0; border-left:none;' : ''}`
 
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
@@ -2040,11 +2107,80 @@ function showNameInputModal(title: string, defaultValue: string, onConfirm: (nam
 
   const row = document.createElement('div')
   row.className = 'modal-body-row'
+  if (options?.prefix) {
+    row.style.display = 'flex'
+    row.style.alignItems = 'stretch'
+
+    const prefix = document.createElement('span')
+    prefix.textContent = options.prefix
+    prefix.setAttribute('aria-hidden', 'true')
+    prefix.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; padding:0 0.65rem; border:1px solid var(--color-scrollbar-track); border-right:none; border-radius:4px 0 0 4px; background:var(--color-surface); color:var(--color-text-dim); font-family:var(--font-mono); font-size:0.9rem; flex-shrink:0; user-select:none;'
+
+    row.appendChild(prefix)
+  }
+
   row.appendChild(input)
   body.appendChild(row)
 
   pushPanel(panel, title)
   setTimeout(() => { input.focus(); input.select() }, 0)
+}
+
+export function openContextJsonModal() {
+  const dismiss = () => popModal()
+  let formattedContext: string
+
+  try {
+    const runtimeContext = getRuntimeContextObject(getParsedContext())
+
+    formattedContext = Object.keys(runtimeContext).length > 0
+      ? JSON.stringify(runtimeContext, null, 2)
+      : '{}'
+  } catch {
+    formattedContext = getState('context')
+  }
+
+  const { panel, body } = createModalPanel({
+    size: 'large',
+    footerActions: [
+      {
+        label: 'Copy',
+        action: () => {
+          void navigator.clipboard.writeText(formattedContext)
+          showToast('Context JSON copied to clipboard')
+        },
+      },
+      { label: 'Close', action: dismiss },
+    ],
+  })
+
+  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
+  if (copyButton)
+    copyButton.innerHTML = `${copyIcon} Copy`
+
+  body.style.padding = '0'
+
+  const pre = document.createElement('pre')
+  pre.className = 'fancy-scroll'
+  pre.textContent = formattedContext
+  pre.setAttribute('aria-label', 'Full context JSON')
+  pre.tabIndex = 0
+  pre.style.margin = '0'
+  pre.style.minHeight = '26rem'
+  pre.style.height = '60vh'
+  pre.style.padding = 'var(--space-2)'
+  pre.style.overflow = 'auto'
+  pre.style.background = 'var(--color-code-bg)'
+  pre.style.color = 'var(--color-text)'
+  pre.style.fontFamily = 'var(--font-mono)'
+  pre.style.fontSize = 'var(--font-size-sm)'
+  pre.style.whiteSpace = 'pre'
+  body.appendChild(pre)
+
+  pushPanel(panel, 'Context JSON')
+  setTimeout(() => {
+    pre.focus()
+  }, 0)
 }
 
 // ─── Program title editing ────────────────────────────────────────────────────
@@ -2484,16 +2620,21 @@ export function clearIndexedDbData() {
 }
 
 function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
+  updateContextState(value, pushToHistory, scroll)
+}
+
+function updateContextState(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', syncDetail = true) {
+  const previousValue = getState('context')
   elements.contextTextArea.value = value
 
-  if (pushToHistory) {
+  if (pushToHistory && value !== previousValue) {
     saveState({
       'context': value,
       'context-selection-start': elements.contextTextArea.selectionStart,
       'context-selection-end': elements.contextTextArea.selectionEnd,
     }, true)
     scheduleAutoSave()
-  } else {
+  } else if (value !== previousValue) {
     saveState({ context: value }, false)
   }
 
@@ -2501,6 +2642,14 @@ function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bot
     elements.contextTextArea.scrollTo(0, 0)
   else if (scroll === 'bottom')
     elements.contextTextArea.scrollTo({ top: elements.contextTextArea.scrollHeight, behavior: 'smooth' })
+
+  renderContextEntryList()
+  if (syncDetail && getCurrentSideTab() === 'context')
+    syncCodePanelView('context')
+  else if (syncDetail)
+    syncContextDetailEditor()
+
+  updateCSS()
 }
 
 function getParsedContext(): Record<string, unknown> {
@@ -2509,6 +2658,822 @@ function getParsedContext(): Record<string, unknown> {
   } catch (_e) {
     return {}
   }
+}
+
+function persistActiveContextSelection(syncUrl = getCurrentSideTab() === 'context') {
+  saveState({
+    'current-context-binding-name': activeContextBindingName,
+    'current-context-entry-kind': activeContextEntryKind,
+  }, false)
+  if (syncUrl)
+    syncPlaygroundUrlState('context')
+}
+
+function getContextBindings(context: Record<string, unknown>): UnknownRecord {
+  const bindings = context.bindings
+  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings))
+    return {}
+
+  return asUnknownRecord(bindings)
+}
+
+function compareContextEntryNames(left: string, right: string): number {
+  return left.toLowerCase().localeCompare(right.toLowerCase())
+}
+
+function sortContextEffectHandlers(handlers: StoredContextEffectHandler[]): StoredContextEffectHandler[] {
+  return [...handlers].sort((left, right) => compareContextEntryNames(left.pattern, right.pattern))
+}
+
+function getContextEffectHandlers(context: Record<string, unknown>): StoredContextEffectHandler[] {
+  const effectHandlers = context[CONTEXT_EFFECT_HANDLERS_KEY]
+  if (!Array.isArray(effectHandlers))
+    return []
+
+  return effectHandlers.filter((entry): entry is StoredContextEffectHandler => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+      return false
+
+    const record = asUnknownRecord(entry)
+    return typeof record.pattern === 'string' && Object.prototype.hasOwnProperty.call(record, 'handler')
+  })
+}
+
+function getContextEffectHandler(context: Record<string, unknown>, pattern: string): StoredContextEffectHandler | null {
+  return getContextEffectHandlers(context).find(handler => handler.pattern === pattern) ?? null
+}
+
+function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
+  const runtimeContext = { ...context }
+  const runtimeBindings = Object.fromEntries(
+    Object.entries(getContextBindings(context)).filter(([name]) => isContextBindingActive(context, name)),
+  )
+  const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) => isContextEffectHandlerActive(context, pattern))
+
+  if (Object.keys(runtimeBindings).length > 0)
+    runtimeContext.bindings = runtimeBindings
+  else
+    delete runtimeContext.bindings
+
+  if (runtimeEffectHandlers.length > 0)
+    runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
+  else
+    delete runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY]
+
+  delete runtimeContext[CONTEXT_UI_STATE_KEY]
+  return runtimeContext
+}
+
+function getContextUiState(context: Record<string, unknown>): UnknownRecord {
+  const uiState = context[CONTEXT_UI_STATE_KEY]
+  if (!uiState || typeof uiState !== 'object' || Array.isArray(uiState))
+    return {}
+
+  return asUnknownRecord(uiState)
+}
+
+function getContextUiSectionState(context: Record<string, unknown>, key: ContextUiSectionKey): UnknownRecord {
+  const section = getContextUiState(context)[key]
+  if (!section || typeof section !== 'object' || Array.isArray(section))
+    return {}
+
+  return asUnknownRecord(section)
+}
+
+function getContextBindingUiState(context: Record<string, unknown>): UnknownRecord {
+  return getContextUiSectionState(context, 'bindings')
+}
+
+function getContextEffectHandlerUiState(context: Record<string, unknown>): UnknownRecord {
+  return getContextUiSectionState(context, 'effectHandlers')
+}
+
+function getContextBindingUiEntry(context: Record<string, unknown>, name: string): UnknownRecord {
+  const bindingEntry = getContextBindingUiState(context)[name]
+  if (!bindingEntry || typeof bindingEntry !== 'object' || Array.isArray(bindingEntry))
+    return {}
+
+  return asUnknownRecord(bindingEntry)
+}
+
+function getContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string): UnknownRecord {
+  const handlerEntry = getContextEffectHandlerUiState(context)[pattern]
+  if (!handlerEntry || typeof handlerEntry !== 'object' || Array.isArray(handlerEntry))
+    return {}
+
+  return asUnknownRecord(handlerEntry)
+}
+
+function getContextBindingInvalidDraft(context: Record<string, unknown>, name: string): string | null {
+  const invalidDraft = getContextBindingUiEntry(context, name).invalidJson
+  return typeof invalidDraft === 'string' ? invalidDraft : null
+}
+
+function getContextEffectHandlerInvalidDraft(context: Record<string, unknown>, pattern: string): string | null {
+  const invalidDraft = getContextEffectHandlerUiEntry(context, pattern).invalidHandler
+  return typeof invalidDraft === 'string' ? invalidDraft : null
+}
+
+function getContextBindingNames(context: Record<string, unknown>): string[] {
+  const bindingNames = Object.keys(getContextBindings(context))
+  const invalidDraftNames = Object.keys(getContextBindingUiState(context)).filter(name => getContextBindingInvalidDraft(context, name) !== null)
+
+  return [...new Set([...bindingNames, ...invalidDraftNames])]
+    .sort(compareContextEntryNames)
+}
+
+function getContextEffectHandlerNames(context: Record<string, unknown>): string[] {
+  const handlerNames = getContextEffectHandlers(context).map(({ pattern }) => pattern)
+  const invalidDraftNames = Object.keys(getContextEffectHandlerUiState(context)).filter(name => getContextEffectHandlerInvalidDraft(context, name) !== null)
+
+  return [...new Set([...handlerNames, ...invalidDraftNames])]
+    .sort(compareContextEntryNames)
+}
+
+function updateContextUiSectionEntry(context: Record<string, unknown>, key: ContextUiSectionKey, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  const uiState = { ...getContextUiState(context) }
+  const sectionState = { ...getContextUiSectionState(context, key) }
+  const currentEntry = sectionState[name]
+  const nextEntry = updater(currentEntry && typeof currentEntry === 'object' && !Array.isArray(currentEntry) ? { ...asUnknownRecord(currentEntry) } : {})
+
+  if (Object.keys(nextEntry).length > 0)
+    sectionState[name] = nextEntry
+  else
+    delete sectionState[name]
+
+  if (Object.keys(sectionState).length > 0)
+    uiState[key] = sectionState
+  else
+    delete uiState[key]
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+}
+
+function updateContextBindingUiEntry(context: Record<string, unknown>, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  updateContextUiSectionEntry(context, 'bindings', name, updater)
+}
+
+function updateContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  updateContextUiSectionEntry(context, 'effectHandlers', pattern, updater)
+}
+
+function isContextBindingActive(context: Record<string, unknown>, name: string): boolean {
+  const bindingState = getContextBindingUiState(context)[name]
+  if (!bindingState || typeof bindingState !== 'object' || Array.isArray(bindingState))
+    return true
+
+  return asUnknownRecord(bindingState).active !== false
+}
+
+function isContextEffectHandlerActive(context: Record<string, unknown>, pattern: string): boolean {
+  const handlerState = getContextEffectHandlerUiState(context)[pattern]
+  if (!handlerState || typeof handlerState !== 'object' || Array.isArray(handlerState))
+    return true
+
+  return asUnknownRecord(handlerState).active !== false
+}
+
+function formatContextJson(context: Record<string, unknown>): string {
+  const nextContext = { ...context }
+  const uiState = getContextUiState(nextContext)
+  const bindingUiState = getContextBindingUiState(nextContext)
+  const effectHandlerUiState = getContextEffectHandlerUiState(nextContext)
+
+  if (Object.keys(bindingUiState).length > 0)
+    uiState.bindings = bindingUiState
+  else
+    delete uiState.bindings
+
+  if (Object.keys(effectHandlerUiState).length > 0)
+    uiState.effectHandlers = effectHandlerUiState
+  else
+    delete uiState.effectHandlers
+
+  if (Object.keys(uiState).length > 0)
+    nextContext[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete nextContext[CONTEXT_UI_STATE_KEY]
+
+  return JSON.stringify(nextContext, null, 2)
+}
+
+function contextEntryExists(context: Record<string, unknown>, kind: ContextEntryKind, name: string): boolean {
+  if (kind === 'binding')
+    return getContextBindingNames(context).includes(name)
+
+  return getContextEffectHandlerNames(context).includes(name)
+}
+
+function ensureActiveContextSelection(context: Record<string, unknown>) {
+  const bindingNames = getContextBindingNames(context)
+  const effectHandlerNames = getContextEffectHandlerNames(context)
+  const preferredName = activeContextBindingName ?? getState('current-context-binding-name')
+  const preferredKind = activeContextEntryKind ?? getState('current-context-entry-kind')
+  if (preferredName && contextEntryExists(context, preferredKind, preferredName)) {
+    if (activeContextBindingName !== preferredName || activeContextEntryKind !== preferredKind) {
+      activeContextBindingName = preferredName
+      activeContextEntryKind = preferredKind
+      persistActiveContextSelection()
+    }
+    return
+  }
+
+  const nextSelection = bindingNames.length > 0
+    ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
+    : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
+
+  if (activeContextBindingName !== nextSelection.name || activeContextEntryKind !== nextSelection.kind) {
+    activeContextBindingName = nextSelection.name
+    activeContextEntryKind = nextSelection.kind
+    persistActiveContextSelection()
+  }
+}
+
+function setContextBindingActive(context: Record<string, unknown>, name: string, active: boolean) {
+  updateContextBindingUiEntry(context, name, entry => {
+    if (active)
+      delete entry.active
+    else
+      entry.active = false
+    return entry
+  })
+}
+
+function setContextEffectHandlerActive(context: Record<string, unknown>, pattern: string, active: boolean) {
+  updateContextEffectHandlerUiEntry(context, pattern, entry => {
+    if (active)
+      delete entry.active
+    else
+      entry.active = false
+    return entry
+  })
+}
+
+function syncContextDetailValidity(isValid: boolean) {
+  elements.contextDetailTextArea.toggleAttribute('aria-invalid', !isValid)
+}
+
+function isStoredContextBindingJsonValid(value: unknown): boolean {
+  try {
+    const serialized = JSON.stringify(value)
+    if (serialized === undefined)
+      return false
+    JSON.parse(serialized)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function compileContextEffectHandlerSource(value: string): EffectHandler {
+  const fn = eval(`(${value})`) as unknown
+  if (typeof fn !== 'function')
+    throw new TypeError('Effect handler must be a JavaScript function')
+
+  return fn as EffectHandler
+}
+
+function isStoredContextEffectHandlerValid(value: unknown): boolean {
+  if (typeof value !== 'string')
+    return false
+
+  try {
+    compileContextEffectHandlerSource(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function hasContextBindingParseError(context: Record<string, unknown>, name: string): boolean {
+  const bindings = getContextBindings(context)
+  if (getContextBindingInvalidDraft(context, name) !== null)
+    return true
+
+  if (!Object.prototype.hasOwnProperty.call(bindings, name))
+    return false
+
+  if (activeContextBindingName === name && contextDetailHasParseError)
+    return true
+
+  return !isStoredContextBindingJsonValid(bindings[name])
+}
+
+function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
+  const handler = getContextEffectHandler(context, pattern)
+  if (getContextEffectHandlerInvalidDraft(context, pattern) !== null)
+    return true
+
+  if (!handler)
+    return false
+
+  if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern && contextDetailHasParseError)
+    return true
+
+  return !isStoredContextEffectHandlerValid(handler.handler)
+}
+
+function syncContextDetailEditor() {
+  const context = getParsedContext()
+  const bindings = getContextBindings(context)
+  ensureActiveContextSelection(context)
+  const activeName = activeContextBindingName
+  const activeHandler = activeName ? getContextEffectHandler(context, activeName) : null
+
+  isSyncingContextDetail = true
+  contextDetailHasParseError = false
+  if (activeContextEntryKind === 'binding' && activeName && Object.prototype.hasOwnProperty.call(bindings, activeName)) {
+    elements.contextDetailTextArea.readOnly = false
+    const invalidDraft = getContextBindingInvalidDraft(context, activeName)
+    if (invalidDraft !== null) {
+      elements.contextDetailTextArea.value = invalidDraft
+      contextDetailHasParseError = true
+    } else {
+      elements.contextDetailTextArea.value = JSON.stringify(bindings[activeName], null, 2)
+    }
+  } else if (activeContextEntryKind === 'effect-handler' && activeName && activeHandler) {
+    elements.contextDetailTextArea.readOnly = false
+    const invalidDraft = getContextEffectHandlerInvalidDraft(context, activeName)
+    if (invalidDraft !== null) {
+      elements.contextDetailTextArea.value = invalidDraft
+      contextDetailHasParseError = true
+    } else if (typeof activeHandler.handler === 'string') {
+      elements.contextDetailTextArea.value = activeHandler.handler
+      contextDetailHasParseError = !isStoredContextEffectHandlerValid(activeHandler.handler)
+    } else {
+      elements.contextDetailTextArea.value = String(activeHandler.handler)
+      contextDetailHasParseError = true
+    }
+  } else if (activeName) {
+    const invalidBindingDraft = getContextBindingInvalidDraft(context, activeName)
+    const invalidHandlerDraft = getContextEffectHandlerInvalidDraft(context, activeName)
+    if (activeContextEntryKind === 'binding' && invalidBindingDraft !== null) {
+      elements.contextDetailTextArea.readOnly = false
+      elements.contextDetailTextArea.value = invalidBindingDraft
+      contextDetailHasParseError = true
+    } else if (activeContextEntryKind === 'effect-handler' && invalidHandlerDraft !== null) {
+      elements.contextDetailTextArea.readOnly = false
+      elements.contextDetailTextArea.value = invalidHandlerDraft
+      contextDetailHasParseError = true
+    } else {
+      elements.contextDetailTextArea.readOnly = true
+      elements.contextDetailTextArea.value = ''
+    }
+  } else {
+    elements.contextDetailTextArea.readOnly = true
+    elements.contextDetailTextArea.value = ''
+  }
+  isSyncingContextDetail = false
+  syncContextDetailValidity(!contextDetailHasParseError)
+}
+
+function renderContextEntryList() {
+  const context = getParsedContext()
+  ensureActiveContextSelection(context)
+
+  const items: string[] = [
+    `<div class="explorer-group-label explorer-group-label--with-action">
+      <span>Bindings</span>
+      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextBinding()" title="Add binding" aria-label="Add binding">${addIcon}</button>
+    </div>`,
+  ]
+  const bindingNames = getContextBindingNames(context)
+
+  if (bindingNames.length === 0) {
+    items.push('<div class="explorer-empty">No bindings yet</div>')
+  } else {
+    bindingNames.forEach((name, index) => {
+      const isActive = isContextBindingActive(context, name)
+      const hasParseError = hasContextBindingParseError(context, name)
+      const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+      const menuId = `context-binding-menu-${index}`
+      const encodedName = encodeURIComponent(name)
+      const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
+      const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
+      const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
+      const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+      ]
+
+      items.push(`
+        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.stopPropagation()" onclick="event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
+          <span class="explorer-item__name">${escapeHtml(name)}</span>
+          ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
+          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+          </span>
+        </div>`)
+    })
+  }
+
+  items.push(`<div class="explorer-group-label explorer-group-label--with-action">
+    <span>Effect Handlers</span>
+    <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
+  </div>`)
+
+  const effectHandlerNames = getContextEffectHandlerNames(context)
+  if (effectHandlerNames.length === 0) {
+    items.push('<div class="explorer-empty">No effect handlers yet</div>')
+  } else {
+    effectHandlerNames.forEach((pattern, index) => {
+      const isActive = isContextEffectHandlerActive(context, pattern)
+      const hasParseError = hasContextEffectHandlerParseError(context, pattern)
+      const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+      const menuId = `context-effect-handler-menu-${index}`
+      const encodedPattern = encodeURIComponent(pattern)
+      const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+      ]
+
+      items.push(`
+        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.stopPropagation()" onclick="event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
+          <span class="explorer-item__name">${escapeHtml(pattern)}</span>
+          ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
+          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+          </span>
+        </div>`)
+    })
+  }
+
+  elements.contextEntryList.innerHTML = items.join('')
+}
+
+function commitContextDetailEdits(showError = false): boolean {
+  if (isSyncingContextDetail || !activeContextBindingName)
+    return true
+
+  if (activeContextEntryKind === 'effect-handler') {
+    try {
+      compileContextEffectHandlerSource(elements.contextDetailTextArea.value)
+      const context = getParsedContext()
+      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
+      handlers.push({ pattern: activeContextBindingName, handler: elements.contextDetailTextArea.value })
+      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+        delete entry.invalidHandler
+        return entry
+      })
+      const nextContext = formatContextJson(context)
+      contextDetailHasParseError = false
+      if (nextContext !== getState('context'))
+        updateContextState(nextContext, true, undefined, false)
+      else
+        renderContextEntryList()
+      syncContextDetailValidity(true)
+      return true
+    } catch (error) {
+      const context = getParsedContext()
+      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
+      if (handlers.length > 0)
+        context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      else
+        delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+        entry.invalidHandler = elements.contextDetailTextArea.value
+        return entry
+      })
+      const nextContext = formatContextJson(context)
+      contextDetailHasParseError = true
+      if (nextContext !== getState('context'))
+        updateContextState(nextContext, true, undefined, false)
+      else
+        renderContextEntryList()
+      syncContextDetailValidity(false)
+      if (showError)
+        showToast((error as Error).message || 'Effect handler is invalid', { severity: 'error' })
+      return false
+    }
+  }
+
+  try {
+    const parsedValue = JSON.parse(elements.contextDetailTextArea.value) as unknown
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    bindings[activeContextBindingName] = parsedValue
+    context.bindings = bindings
+    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+      delete entry.invalidJson
+      return entry
+    })
+    const nextContext = formatContextJson(context)
+    contextDetailHasParseError = false
+    if (nextContext !== getState('context'))
+      updateContextState(nextContext, true, undefined, false)
+    else
+      renderContextEntryList()
+    syncContextDetailValidity(true)
+    return true
+  } catch (_error) {
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    delete bindings[activeContextBindingName]
+    context.bindings = bindings
+    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+      entry.invalidJson = elements.contextDetailTextArea.value
+      return entry
+    })
+    const nextContext = formatContextJson(context)
+    contextDetailHasParseError = true
+    if (nextContext !== getState('context'))
+      updateContextState(nextContext, true, undefined, false)
+    else
+      renderContextEntryList()
+    syncContextDetailValidity(false)
+    if (showError)
+      showToast('Binding JSON is invalid', { severity: 'error' })
+    return false
+  }
+}
+
+export function selectContextBinding(name: string) {
+  activeContextEntryKind = 'binding'
+  if (activeContextBindingName === name) {
+    focusContext()
+    return
+  }
+
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  activeContextBindingName = name
+  persistActiveContextSelection()
+  syncContextDetailEditor()
+  renderContextEntryList()
+  syncCodePanelView('context')
+  updateCSS()
+  focusContext()
+}
+
+export function selectContextEffectHandler(pattern: string) {
+  activeContextEntryKind = 'effect-handler'
+  if (activeContextBindingName === pattern) {
+    focusContext()
+    return
+  }
+
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  activeContextBindingName = pattern
+  persistActiveContextSelection()
+  syncContextDetailEditor()
+  renderContextEntryList()
+  syncCodePanelView('context')
+  updateCSS()
+  focusContext()
+}
+
+export function toggleContextBindingActive(name: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  setContextBindingActive(context, name, !isContextBindingActive(context, name))
+  updateContextState(formatContextJson(context), true)
+}
+
+export function toggleContextEffectHandlerActive(pattern: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  setContextEffectHandlerActive(context, pattern, !isContextEffectHandlerActive(context, pattern))
+  updateContextState(formatContextJson(context), true)
+}
+
+export function removeContextBinding(name: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  const bindings = { ...getContextBindings(context) }
+  delete bindings[name]
+  context.bindings = bindings
+
+  const bindingUiState = { ...getContextBindingUiState(context) }
+  delete bindingUiState[name]
+  const uiState = { ...getContextUiState(context) }
+  if (Object.keys(bindingUiState).length > 0)
+    uiState.bindings = bindingUiState
+  else
+    delete uiState.bindings
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+
+  if (activeContextBindingName === name)
+    activeContextBindingName = null
+
+  updateContextState(formatContextJson(context), true)
+}
+
+export function removeContextEffectHandler(pattern: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  const handlers = getContextEffectHandlers(context).filter(entry => entry.pattern !== pattern)
+  if (handlers.length > 0)
+    context[CONTEXT_EFFECT_HANDLERS_KEY] = handlers
+  else
+    delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+
+  const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
+  delete effectHandlerUiState[pattern]
+  const uiState = { ...getContextUiState(context) }
+  if (Object.keys(effectHandlerUiState).length > 0)
+    uiState.effectHandlers = effectHandlerUiState
+  else
+    delete uiState.effectHandlers
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+
+  if (activeContextBindingName === pattern)
+    activeContextBindingName = null
+
+  updateContextState(formatContextJson(context), true)
+}
+
+export function renameContextBinding(name: string) {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Rename binding', name, newName => {
+    if (newName === name)
+      return
+
+    const context = getParsedContext()
+    if (getContextBindingNames(context).includes(newName)) {
+      showToast(`Binding "${newName}" already exists`, { severity: 'error' })
+      setTimeout(() => renameContextBinding(name), 0)
+      return
+    }
+
+    const bindings = { ...getContextBindings(context) }
+    if (Object.prototype.hasOwnProperty.call(bindings, name)) {
+      bindings[newName] = bindings[name]
+      delete bindings[name]
+      context.bindings = bindings
+    }
+
+    const bindingUiState = { ...getContextBindingUiState(context) }
+    if (Object.prototype.hasOwnProperty.call(bindingUiState, name)) {
+      bindingUiState[newName] = bindingUiState[name]
+      delete bindingUiState[name]
+    }
+
+    const uiState = { ...getContextUiState(context) }
+    if (Object.keys(bindingUiState).length > 0)
+      uiState.bindings = bindingUiState
+    else
+      delete uiState.bindings
+
+    if (Object.keys(uiState).length > 0)
+      context[CONTEXT_UI_STATE_KEY] = uiState
+    else
+      delete context[CONTEXT_UI_STATE_KEY]
+
+    if (activeContextBindingName === name)
+      activeContextBindingName = newName
+
+    updateContextState(formatContextJson(context), true)
+    focusContext()
+  })
+}
+
+export function renameContextEffectHandler(pattern: string) {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Rename effect handler', pattern, newPattern => {
+    if (newPattern === pattern)
+      return
+
+    const context = getParsedContext()
+    if (getContextEffectHandlerNames(context).includes(newPattern)) {
+      showToast(`Effect handler "${newPattern}" already exists`, { severity: 'error' })
+      setTimeout(() => renameContextEffectHandler(pattern), 0)
+      return
+    }
+
+    const handlers = getContextEffectHandlers(context).map(entry => {
+      if (entry.pattern !== pattern)
+        return entry
+
+      return { ...entry, pattern: newPattern }
+    })
+
+    if (handlers.length > 0)
+      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+    else
+      delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+
+    const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
+    if (Object.prototype.hasOwnProperty.call(effectHandlerUiState, pattern)) {
+      effectHandlerUiState[newPattern] = effectHandlerUiState[pattern]
+      delete effectHandlerUiState[pattern]
+    }
+
+    const uiState = { ...getContextUiState(context) }
+    if (Object.keys(effectHandlerUiState).length > 0)
+      uiState.effectHandlers = effectHandlerUiState
+    else
+      delete uiState.effectHandlers
+
+    if (Object.keys(uiState).length > 0)
+      context[CONTEXT_UI_STATE_KEY] = uiState
+    else
+      delete context[CONTEXT_UI_STATE_KEY]
+
+    if (activeContextBindingName === pattern)
+      activeContextBindingName = newPattern
+
+    updateContextState(formatContextJson(context), true)
+    focusContext()
+  }, undefined, { prefix: '@' })
+}
+
+export function promptAddContextBinding() {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (!hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Add binding', '', name => {
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    if (getContextBindingNames(context).includes(name)) {
+      showToast(`Binding "${name}" already exists`, { severity: 'error' })
+      setTimeout(() => promptAddContextBinding(), 0)
+      return
+    }
+
+    bindings[name] = {}
+    context.bindings = bindings
+    if (!hasInvalidActiveBinding) {
+      activeContextEntryKind = 'binding'
+      activeContextBindingName = name
+    }
+
+    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveBinding)
+
+    if (hasInvalidActiveBinding)
+      showToast(`Added binding "${name}"`)
+
+    focusContext()
+  })
+}
+
+export function promptAddContextEffectHandler() {
+  const hasInvalidActiveEntry = contextDetailHasParseError
+  if (!hasInvalidActiveEntry && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Add effect handler', '', pattern => {
+    const context = getParsedContext()
+    if (getContextEffectHandlerNames(context).includes(pattern)) {
+      showToast(`Effect handler "${pattern}" already exists`, { severity: 'error' })
+      setTimeout(() => promptAddContextEffectHandler(), 0)
+      return
+    }
+
+    const handlers = getContextEffectHandlers(context)
+    handlers.push({ pattern, handler: DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE })
+    context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+
+    if (!hasInvalidActiveEntry) {
+      activeContextEntryKind = 'effect-handler'
+      activeContextBindingName = pattern
+    }
+
+    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
+
+    if (hasInvalidActiveEntry)
+      showToast(`Added effect handler "${pattern}"`)
+
+    focusContext()
+  }, undefined, { prefix: '@' })
 }
 
 export function addContextEntry() {
@@ -2528,7 +3493,9 @@ export function addContextEntry() {
     const bindings: UnknownRecord = Object.assign({}, context.bindings)
     bindings[name] = parsedValue
     context.bindings = bindings
-    setContext(JSON.stringify(context, null, 2), true)
+    activeContextEntryKind = 'binding'
+    activeContextBindingName = name
+    setContext(formatContextJson(context), true)
 
     closeAddContextMenu()
   } catch (_e) {
@@ -2539,44 +3506,6 @@ export function addContextEntry() {
 
   clearState('new-context-name')
   clearState('new-context-value')
-}
-
-function formatContextJson(context: Record<string, unknown>): string {
-  const parts: string[] = ['{']
-  const entries = Object.entries(context)
-  entries.forEach(([key, value], i) => {
-    const comma = i < entries.length - 1 ? ',' : ''
-    if (Array.isArray(value)) {
-      const items = value as Record<string, unknown>[]
-      if (items.length === 0) {
-        parts.push(`  ${JSON.stringify(key)}: []${comma}`)
-      } else {
-        parts.push(`  ${JSON.stringify(key)}: [`)
-        items.forEach((item, j) => {
-          const itemComma = j < items.length - 1 ? ',' : ''
-          const itemEntries = Object.entries(item)
-          parts.push('    {')
-          itemEntries.forEach(([itemKey, itemValue], k) => {
-            const fieldComma = k < itemEntries.length - 1 ? ',' : ''
-            parts.push(`      ${JSON.stringify(itemKey)}: ${JSON.stringify(itemValue)}${fieldComma}`)
-          })
-          parts.push(`    }${itemComma}`)
-        })
-        parts.push(`  ]${comma}`)
-      }
-    } else {
-      const record = value as Record<string, unknown>
-      const subEntries = Object.entries(record)
-      parts.push(`  ${JSON.stringify(key)}: {`)
-      subEntries.forEach(([subKey, subValue], j) => {
-        const subComma = j < subEntries.length - 1 ? ',' : ''
-        parts.push(`    ${JSON.stringify(subKey)}: ${JSON.stringify(subValue)}${subComma}`)
-      })
-      parts.push(`  }${comma}`)
-    }
-  })
-  parts.push('}')
-  return parts.join('\n')
 }
 
 export function addSampleContext() {
@@ -2616,9 +3545,10 @@ export function addSampleContext() {
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
   const sampleEffectHandlers: { pattern: string; handler: string }[] = [
-    { pattern: 'host.greet', handler: 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }' },
-    { pattern: 'host.add', handler: 'async ({ args: [a, b], resume }) => { resume(a + b) }' },
-    { pattern: 'host.delay', handler: `async ({ args: [ms], resume }) => {
+    { pattern: 'host.greet', handler: 'async ({ arg, resume }) => { const [name] = Array.isArray(arg) ? arg : [arg]; resume(`Hello, ${name}!`) }' },
+    { pattern: 'host.add', handler: 'async ({ arg, resume }) => { const [a, b] = Array.isArray(arg) ? arg : [arg]; resume(a + b) }' },
+    { pattern: 'host.delay', handler: `async ({ arg, resume }) => {
+  const [ms] = Array.isArray(arg) ? arg : [arg];
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
 }` },
@@ -2937,6 +3867,23 @@ window.onload = async function () {
     saveState({ 'focused-panel': null })
     updateCSS()
   })
+  elements.contextDetailTextArea.addEventListener('keydown', evt => {
+    keydownHandler(evt, () => {
+      commitContextDetailEdits(false)
+    })
+  })
+  elements.contextDetailTextArea.addEventListener('input', () => {
+    commitContextDetailEdits(false)
+  })
+  elements.contextDetailTextArea.addEventListener('focusin', () => {
+    saveState({ 'focused-panel': 'context' })
+    updateCSS()
+  })
+  elements.contextDetailTextArea.addEventListener('focusout', () => {
+    commitContextDetailEdits(false)
+    saveState({ 'focused-panel': null })
+    updateCSS()
+  })
 
   elements.dvalaTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => {
@@ -3000,6 +3947,17 @@ function getDataFromUrl() {
   const urlParams = new URLSearchParams(window.location.search)
   const activeView = normalizeSideTab(urlParams.get('view'))
   saveState({ 'active-side-tab': activeView }, false)
+
+  const urlBindingName = urlParams.get('bindingName')
+  const urlContextEntryKind = urlParams.get('contextEntryKind') === 'effect-handler' ? 'effect-handler' : 'binding'
+  if (activeView === 'context') {
+    activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
+    activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
+    saveState({
+      'current-context-binding-name': activeContextBindingName,
+      'current-context-entry-kind': activeContextEntryKind,
+    }, false)
+  }
 
   const urlProgramId = urlParams.get('programId')
   if (activeView === 'programs' && urlProgramId && getState('current-program-id') !== urlProgramId) {
@@ -3501,8 +4459,7 @@ export async function run() {
       saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
     }
     if (getState('context') !== uiSnapshot.context) {
-      elements.contextTextArea.value = uiSnapshot.context
-      saveState({ context: uiSnapshot.context }, false)
+      setContext(uiSnapshot.context, false)
     }
     syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
     syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
@@ -3728,7 +4685,7 @@ export function togglePlaygroundDeveloper() {
 }
 
 export function focusContext() {
-  elements.contextTextArea.focus()
+  elements.contextDetailTextArea.focus()
 }
 
 export function focusDvalaCode() {
@@ -6136,22 +7093,16 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
         ? JSON.parse(contextString) as UnknownRecord
         : {}
 
-    const parsedHandlers = (parsedContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
-    const bindings = asUnknownRecord(parsedContext.bindings ?? {})
+    const runtimeContext = getRuntimeContextObject(parsedContext)
+    const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
+    const bindings = getContextBindings(runtimeContext)
 
     const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
-        console.log(pattern, value)
         throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function string`)
       }
 
-      const fn = eval(value) as EffectHandler
-
-      if (typeof fn !== 'function') {
-        throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function`)
-      }
-
-      return { pattern, handler: fn }
+      return { pattern, handler: compileContextEffectHandlerSource(value) }
     })
 
     const hasPattern = (p: string) => effectHandlers.some(h => h.pattern === p)
@@ -6335,17 +7286,32 @@ function updateCSS() {
   const currentProgramId = getState('current-program-id')
   const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
   const isLocked = currentProgram?.locked ?? false
-  elements.dvalaCodeTitleString.textContent = currentProgram
+  const isContextTab = getCurrentSideTab() === 'context'
+  const context = isContextTab ? getParsedContext() : null
+  const contextBindings = context ? getContextBindings(context) : null
+  const contextEffectHandler = activeContextBindingName && context ? getContextEffectHandler(context, activeContextBindingName) : null
+  const contextTitle = activeContextBindingName && context && (
+    (activeContextEntryKind === 'binding' && ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, activeContextBindingName))
+      || getContextBindingInvalidDraft(context, activeContextBindingName) !== null))
+    || (activeContextEntryKind === 'effect-handler' && (contextEffectHandler !== null || getContextEffectHandlerInvalidDraft(context, activeContextBindingName) !== null))
+  )
+    ? activeContextBindingName
+    : ''
+  const currentProgramTitle = currentProgram
     ? currentProgram.name
     : getState('dvala-code').trim().length > 0
       ? 'Untitled Program'
       : ''
+  const showCodePendingIndicator = !isContextTab && !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
+  elements.dvalaCodeTitleString.textContent = isContextTab
+    ? contextTitle
+    : currentProgramTitle
+  elements.editorToolbarTitle.textContent = currentProgramTitle
   elements.dvalaTextArea.readOnly = isLocked
   elements.dvalaTextArea.classList.toggle('panel-textarea--locked', isLocked)
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()
-  const showIndicator = !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
-  elements.dvalaCodePendingIndicator.style.display = showIndicator ? 'inline-block' : 'none'
+  elements.dvalaCodePendingIndicator.style.display = showCodePendingIndicator ? 'inline-block' : 'none'
   if (elements.contextTitle) elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
