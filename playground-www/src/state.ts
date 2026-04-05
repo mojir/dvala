@@ -30,6 +30,8 @@ export const defaultState = {
   'playground-developer': false as boolean,
   'focused-panel': null as 'dvala-code' | 'context' | null,
   'current-program-id': null as string | null,
+  'current-context-entry-kind': 'binding' as 'binding' | 'effect-handler',
+  'current-context-binding-name': null as string | null,
   'dvala-code-edited': false as boolean,
 } as const
 
