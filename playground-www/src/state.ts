@@ -6,7 +6,7 @@ export const defaultState = {
   'sidebar-width': 350 as number,
   'playground-height': 350 as number,
   'resize-divider-1-percent': 20 as number,
-  'resize-divider-2-percent': 60 as number,
+  'resize-divider-2-percent': 70 as number,
   'context': '' as string,
   'context-scroll-top': 0 as number,
   'context-selection-start': 0 as number,
