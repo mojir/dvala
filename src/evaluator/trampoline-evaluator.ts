@@ -4892,11 +4892,22 @@ export async function resumeWithEffects(
   initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
-  const abortController = new AbortController()
-  const signal = abortController.signal
   const initial: Step = { type: 'Value', value, k }
 
-  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions, initialSnapshotState?.autoCheckpoint)
+  return continueWithEffects(initial, handlers, initialSnapshotState, deserializeOptions)
+}
+
+export async function continueWithEffects(
+  initial: Step,
+  handlers?: Handlers,
+  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
+  deserializeOptions?: DeserializeOptions,
+  terminalSnapshot?: boolean,
+): Promise<RunResult> {
+  const abortController = new AbortController()
+  const signal = abortController.signal
+
+  return runEffectLoop(initial, handlers, signal, initialSnapshotState, initialSnapshotState?.maxSnapshots, deserializeOptions, initialSnapshotState?.autoCheckpoint, terminalSnapshot)
 }
 
 /**
@@ -5175,7 +5186,11 @@ async function runEffectLoop(
 
   // Capture a snapshot at program start so time travel can rewind to the very beginning.
   if (snapshotState.autoCheckpoint) {
-    const continuation = serializeToObject(initial.type === 'Eval' ? initial.k : null)
+    const continuation = serializeToObject(
+      initial.type === 'Eval' ? initial.k : null,
+      undefined,
+      initial.type === 'Eval' ? initial : undefined,
+    )
     snapshotState.snapshots.push(createSnapshot({
       continuation,
       timestamp: Date.now(),
