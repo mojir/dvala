@@ -11,7 +11,7 @@
  */
 
 /** Routes that get pre-rendered stub pages for SEO / crawlers. */
-export const stubRoutes = ['about', 'book', 'examples', 'core', 'modules', 'ref'] as const
+export const stubRoutes = ['about', 'book', 'examples', 'core', 'modules', 'playground', 'ref'] as const
 
 /** Routes that are SPA-only (user-specific, no crawling needed). */
 export const dynamicOnlyRoutes = ['saved', 'snapshots', 'settings'] as const

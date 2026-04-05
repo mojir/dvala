@@ -202,7 +202,8 @@ const elements = {
   get playground() { return document.getElementById('playground') as HTMLElement },
   get sidebar() { return document.getElementById('sidebar') as HTMLElement },
   get mainPanel() { return document.getElementById('main-panel') as HTMLElement },
-  get contextPanel() { return document.getElementById('context-panel') as HTMLElement },
+  get contextPanel() { return document.getElementById('context-panel') as HTMLElement }, // legacy — may be null
+  get explorerPanel() { return document.getElementById('explorer-panel') as HTMLElement },
   get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
   get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
   get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
@@ -268,8 +269,12 @@ type MoveParams = {
   startMoveY: number
   heightBeforeMove: number
 } | {
-  id: 'resize-divider-1' | 'resize-divider-2'
+  id: 'resize-divider-1'
   startMoveX: number
+  percentBeforeMove: number
+} | {
+  id: 'resize-divider-2'
+  startMoveY: number
   percentBeforeMove: number
 } | {
   id: 'resize-sidebar'
@@ -1072,6 +1077,7 @@ function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<
 }
 
 function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateNewSaved?: boolean } = {}) {
+  populateSideSnapshotsList()
   const { animateNewTerminal = false, animateNewSaved = false } = options
   const list = document.getElementById('snapshots-list')
   const empty = document.getElementById('snapshots-empty')
@@ -1148,6 +1154,8 @@ function animateProgramCardRemoval(id: string): Promise<void> {
 }
 
 function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
+  ensureActiveProgram()
+  populateExplorerProgramList()
   const { animateNewId } = options
   const list = document.getElementById('saved-programs-list')
   const empty = document.getElementById('saved-programs-empty')
@@ -1235,6 +1243,14 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
 export function loadSavedProgram(id: string) {
   const program = getSavedPrograms().find(p => p.id === id)
   if (!program) return
+  // Close snapshot view if open — switching to a program means editing
+  if (snapshotViewStack.length > 0) {
+    snapshotViewStack.length = 0
+    activeSnapshotKey = null
+    currentSnapshot = null
+    hideExecutionControlBar()
+  }
+  syncCodePanelView('programs')
   if (getState('current-program-id') === id) return
   guardCodeReplacement(() => {
     saveState({ 'dvala-code': program.code, 'context': program.context, 'current-program-id': program.id, 'dvala-code-edited': false })
@@ -1244,6 +1260,323 @@ export function loadSavedProgram(id: string) {
     syntaxOverlay.scrollContainer.scrollTo(0, 0)
     updateCSS()
     populateSavedProgramsList()
+  })
+}
+
+// ─── Explorer panel (compact program list in editor tab) ─────────────────────
+
+const SIDE_SNAPSHOTS_VISIBLE = 9
+let sideSnapshotsShowAll = false
+// Track which snapshot is actively viewed in the code panel: 'terminal:0', 'saved:2', or null
+let activeSnapshotKey: string | null = null
+
+export function toggleSideSnapshotsShowAll() {
+  sideSnapshotsShowAll = !sideSnapshotsShowAll
+  populateSideSnapshotsList()
+}
+
+function populateSideSnapshotsList() {
+  const list = document.getElementById('side-snapshots-list')
+  if (!list) return
+
+  const terminalEntries = getTerminalSnapshots()
+  const savedEntries = getSavedSnapshots()
+
+  if (terminalEntries.length === 0 && savedEntries.length === 0) {
+    list.innerHTML = '<div class="explorer-empty">No snapshots</div>'
+    return
+  }
+
+  const items: string[] = []
+
+  if (terminalEntries.length > 0) {
+    items.push('<div class="explorer-group-label">Recent Runs</div>')
+    const ordinals = ['Last', '2nd Last', '3rd Last']
+    const visibleCount = sideSnapshotsShowAll ? terminalEntries.length : Math.min(SIDE_SNAPSHOTS_VISIBLE, terminalEntries.length)
+    for (let i = 0; i < visibleCount; i++) {
+      const entry = terminalEntries[i]!
+      const label = `${ordinals[i] ?? `${i + 1}th Last`} Run`
+      const colorVar = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
+      const activeClass = activeSnapshotKey === `terminal:${i}` ? ' explorer-item--active' : ''
+      items.push(`
+        <div class="explorer-item${activeClass}" onclick="Playground.openTerminalSnapshot(${i})" title="${escapeHtml(label)}">
+          <span class="explorer-item__dot" style="background:${colorVar};"></span>
+          <span class="explorer-item__name">${escapeHtml(label)}</span>
+        </div>`)
+    }
+    if (terminalEntries.length > SIDE_SNAPSHOTS_VISIBLE) {
+      if (sideSnapshotsShowAll) {
+        items.push('<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show less</div>')
+      } else {
+        items.push(`<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show all (${terminalEntries.length})</div>`)
+      }
+    }
+  }
+
+  if (savedEntries.length > 0) {
+    items.push('<div class="explorer-group-label">Saved</div>')
+    savedEntries.forEach((entry, i) => {
+      const label = entry.name || `Snapshot ${i + 1}`
+      const lockHtml = entry.locked ? '<span class="explorer-item__lock" title="Locked">🔒</span>' : ''
+      const savedActiveClass = activeSnapshotKey === `saved:${i}` ? ' explorer-item--active' : ''
+      items.push(`
+        <div class="explorer-item${savedActiveClass}" onclick="Playground.openSavedSnapshot(${i})" title="${escapeHtml(label)}">
+          ${lockHtml}
+          <span class="explorer-item__name">${escapeHtml(label)}</span>
+        </div>`)
+    })
+  }
+
+  list.innerHTML = items.join('')
+}
+
+export function showSideTab(tabId: string) {
+  // Hide all side tabs, show the selected one
+  document.querySelectorAll('.side-panel__tab').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
+  })
+  const tab = document.getElementById(`side-tab-${tabId}`)
+  if (tab) tab.style.display = ''
+
+  // Update icon active state
+  document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
+  const icon = document.getElementById(`side-icon-${tabId}`)
+  if (icon) icon.classList.add('side-panel__icon--active')
+
+  // Sync the code panel view and header
+  syncCodePanelView(tabId)
+}
+
+/** Sync the code panel: show editor, snapshot, or empty view + update header accordingly. */
+function syncCodePanelView(sideTab?: string) {
+  const tab = sideTab ?? getCurrentSideTab()
+  const editorView = document.getElementById('dvala-editor-view')
+  const snapshotView = document.getElementById('dvala-snapshot-view')
+  const emptyView = document.getElementById('dvala-empty-view')
+  const headerEditor = document.getElementById('dvala-header-editor')
+  const headerSnapshot = document.getElementById('dvala-header-snapshot')
+  const undoBtn = document.getElementById('dvala-code-undo-button')
+  const redoBtn = document.getElementById('dvala-code-redo-button')
+  const closeBtn = document.getElementById('snapshot-close-btn')
+  if (!editorView || !snapshotView || !emptyView) return
+
+  // Hide all views
+  editorView.style.display = 'none'
+  snapshotView.style.display = 'none'
+  emptyView.style.display = 'none'
+  if (headerEditor) headerEditor.style.display = 'none'
+  if (headerSnapshot) headerSnapshot.style.display = 'none'
+  if (undoBtn) undoBtn.style.display = 'none'
+  if (redoBtn) redoBtn.style.display = 'none'
+  if (closeBtn) closeBtn.style.display = 'none'
+
+  if (tab === 'programs') {
+    if (getState('current-program-id')) {
+      editorView.style.display = 'flex'
+      if (headerEditor) headerEditor.style.display = 'flex'
+      if (undoBtn) undoBtn.style.display = ''
+      if (redoBtn) redoBtn.style.display = ''
+    } else {
+      emptyView.style.display = 'flex'
+      emptyView.textContent = 'Select a program to edit'
+    }
+  } else if (tab === 'snapshots') {
+    if (activeSnapshotKey && snapshotViewStack.length > 0) {
+      snapshotView.style.display = 'flex'
+      if (headerSnapshot) headerSnapshot.style.display = 'flex'
+      if (closeBtn) closeBtn.style.display = ''
+    } else {
+      emptyView.style.display = 'flex'
+      emptyView.textContent = 'Select a snapshot to view'
+    }
+  } else {
+    // Context or other — show editor
+    editorView.style.display = 'flex'
+    if (headerEditor) headerEditor.style.display = 'flex'
+    if (undoBtn) undoBtn.style.display = ''
+    if (redoBtn) redoBtn.style.display = ''
+  }
+}
+
+function getCurrentSideTab(): string {
+  const active = document.querySelector('.side-panel__icon--active')
+  if (!active) return 'programs'
+  const id = active.id
+  if (id === 'side-icon-snapshots') return 'snapshots'
+  if (id === 'side-icon-context') return 'context'
+  return 'programs'
+}
+
+/**
+ * Create a new untitled program and return its ID.
+ * Generates a unique name: "Untitled Program", "Untitled Program (2)", etc.
+ */
+function createUntitledProgram(code = '', context = ''): string {
+  const programs = getSavedPrograms()
+  const baseName = 'Untitled Program'
+  let name = baseName
+  let n = 2
+  while (programs.some(p => p.name === name)) {
+    name = `${baseName} (${n})`
+    n++
+  }
+  const now = Date.now()
+  const newProgram: SavedProgram = {
+    id: crypto.randomUUID(),
+    name,
+    code,
+    context,
+    createdAt: now,
+    updatedAt: now,
+    locked: false,
+  }
+  setSavedPrograms([newProgram, ...programs])
+  return newProgram.id
+}
+
+/**
+ * Ensure a saved program is always active. If current-program-id is null,
+ * create an untitled program from the current editor state.
+ */
+function ensureActiveProgram(): void {
+  if (getState('current-program-id') !== null) return
+  const id = createUntitledProgram(getState('dvala-code'), getState('context'))
+  saveState({ 'current-program-id': id, 'dvala-code-edited': false })
+  updateCSS()
+  populateSavedProgramsList()
+}
+
+function populateExplorerProgramList() {
+  const list = document.getElementById('explorer-program-list')
+  if (!list) return
+
+  const programs = getSavedPrograms()
+  const currentId = getState('current-program-id')
+
+  if (programs.length === 0) {
+    list.innerHTML = '<div class="explorer-empty">No saved programs</div>'
+    return
+  }
+
+  list.innerHTML = programs.map(p => {
+    const isActive = p.id === currentId
+    const activeClass = isActive ? ' explorer-item--active' : ''
+    const lockHtml = p.locked ? '<span class="explorer-item__lock" title="Locked">🔒</span>' : ''
+    const menuId = `explorer-menu-${p.id}`
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.loadSavedProgram('${p.id}')" title="${escapeHtml(p.name)}">
+        ${lockHtml}
+        <span class="explorer-item__name">${escapeHtml(p.name)}</span>
+        <span class="explorer-item__actions" onclick="event.stopPropagation()">
+          <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More">⋯</button>
+          <div id="${menuId}" class="explorer-menu" style="display:none;">
+            <button onclick="Playground.closeExplorerMenus();Playground.renameProgram('${p.id}')">Rename</button>
+            <button onclick="Playground.closeExplorerMenus();Playground.downloadProgram('${p.id}')">Export</button>
+            <button onclick="Playground.closeExplorerMenus();Playground.shareProgram('${p.id}')">Share</button>
+            <button onclick="Playground.closeExplorerMenus();Playground.deleteSavedProgram('${p.id}')">Delete</button>
+          </div>
+        </span>
+      </div>`
+  }).join('')
+}
+
+export function renameProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+  showNameInputModal('Rename program', program.name, name => {
+    const programs = getSavedPrograms()
+    const duplicate = programs.find(p => p.name === name && p.id !== id)
+    const doRename = () => {
+      const updated = programs.map(p => p.id === id ? { ...p, name, updatedAt: Date.now() } : p).filter(p => !duplicate || p.id !== duplicate.id)
+      setSavedPrograms(updated)
+      updateCSS()
+      populateSavedProgramsList()
+      showToast(`Renamed to "${name}"`)
+    }
+    if (duplicate) {
+      void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doRename)
+    } else {
+      doRename()
+    }
+  })
+}
+
+export function shareProgram(id: string) {
+  const program = getSavedPrograms().find(p => p.id === id)
+  if (!program) return
+
+  const dismiss = () => popModal()
+
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    footerActions: [
+      { label: 'Cancel', action: dismiss },
+      {
+        label: 'Copy link',
+        primary: true,
+        action: () => {
+          const includeContext = (document.getElementById('share-include-context') as HTMLInputElement)?.checked ?? false
+          const sharedState: Record<string, unknown> = { 'dvala-code': program.code }
+          if (includeContext && program.context.trim()) {
+            sharedState['context'] = program.context
+          }
+          const base = document.querySelector('base')?.href ?? `${location.origin}/`
+          const encoded = btoa(encodeURIComponent(JSON.stringify(sharedState)))
+          const href = `${base}playground?state=${encoded}`
+          if (href.length > MAX_URL_LENGTH) {
+            popModal()
+            showToast('Program is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
+            return
+          }
+          void navigator.clipboard.writeText(href).then(() => {
+            showToast('Link copied to clipboard')
+          })
+          popModal()
+        },
+      },
+    ],
+  })
+
+  const content = document.createElement('div')
+  content.className = 'modal-body-row'
+  content.innerHTML = `
+    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(program.name)}</strong> as a link.</p>
+    <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
+      <input type="checkbox" id="share-include-context" ${program.context.trim() ? '' : 'disabled'}>
+      Include context${program.context.trim() ? '' : ' (empty)'}
+    </label>
+  `
+  body.appendChild(content)
+
+  pushPanel(panel, 'Share program')
+}
+
+export function toggleExplorerMenu(menuId: string, btn: HTMLElement) {
+  closeExplorerMenus()
+  const menu = document.getElementById(menuId)
+  if (!menu) return
+  menu.style.display = 'block'
+  // Position below the button
+  const rect = btn.getBoundingClientRect()
+  menu.style.position = 'fixed'
+  menu.style.top = `${rect.bottom + 2}px`
+  menu.style.right = `${window.innerWidth - rect.right}px`
+  menu.style.left = 'auto'
+  // Close on outside click
+  setTimeout(() => {
+    const close = (e: Event) => {
+      if (!menu.contains(e.target as Node)) {
+        menu.style.display = 'none'
+        document.removeEventListener('click', close)
+      }
+    }
+    document.addEventListener('click', close)
+  }, 0)
+}
+
+export function closeExplorerMenus() {
+  document.querySelectorAll('.explorer-menu').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
   })
 }
 
@@ -1566,85 +1899,9 @@ function flushPendingAutoSave() {
  *   save, discard, or cancel.
  */
 function guardCodeReplacement(proceed: () => void) {
-  if (getState('current-program-id') !== null) {
-    // Saved program is open — flush auto-save so nothing is lost,
-    // then detach so the incoming code doesn't overwrite the saved program.
-    flushPendingAutoSave()
-    saveState({ 'current-program-id': null, 'dvala-code-edited': false })
-    updateCSS()
-    proceed()
-    return
-  }
-  // Only show the modal if the user has actually edited an untitled program
-  if (getState('dvala-code-edited') && getState('dvala-code').trim()) {
-    showSaveOrDiscardModal(proceed)
-    return
-  }
+  // Always a saved program — just flush and proceed
+  flushPendingAutoSave()
   proceed()
-}
-
-/**
- * Shows a modal asking the user to save the current unsaved program, discard it,
- * or cancel the action.
- */
-function showSaveOrDiscardModal(proceed: () => void) {
-  const { panel, body } = createModalPanel({
-    size: 'small',
-    footerActions: [
-      { label: 'Cancel Import', action: () => popModal() },
-      {
-        label: 'Discard Program',
-        action: () => {
-          popModal()
-          proceed()
-        },
-      },
-      {
-        label: 'Save Program',
-        primary: true,
-        action: () => {
-          popModal()
-          // Show the save-as name input; after saving, proceed with the guarded action.
-          // If cancelled, re-show this modal.
-          showNameInputModal('Save program', '', name => {
-            const programs = getSavedPrograms()
-            const duplicate = programs.find(p => p.name === name)
-            const doSave = () => {
-              const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
-              const now = Date.now()
-              const newProgram: SavedProgram = {
-                id: crypto.randomUUID(),
-                name,
-                code: getState('dvala-code'),
-                context: getState('context'),
-                createdAt: now,
-                updatedAt: now,
-                locked: false,
-              }
-              setSavedPrograms([newProgram, ...filtered])
-              notifyProgramAdded()
-              updateCSS()
-              populateSavedProgramsList({ animateNewId: newProgram.id })
-              showToast(`Saved as "${name}"`)
-              proceed()
-            }
-            if (duplicate) {
-              void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
-            } else {
-              doSave()
-            }
-          }, () => showSaveOrDiscardModal(proceed))
-        },
-      },
-    ],
-  })
-
-  const messageEl = document.createElement('div')
-  messageEl.className = 'modal-body-row'
-  messageEl.textContent = 'The current program has unsaved changes.'
-  body.appendChild(messageEl)
-
-  pushPanel(panel, 'Unsaved program')
 }
 
 function scheduleAutoSave() {
@@ -1672,6 +1929,8 @@ export function openSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
+  activeSnapshotKey = `saved:${index}`
+  populateSideSnapshotsList()
   void openSnapshotModal(entry.snapshot)
 }
 
@@ -1679,6 +1938,8 @@ export function openTerminalSnapshot(index: number) {
   const entries = getTerminalSnapshots()
   const entry = entries[index]
   if (!entry) return
+  activeSnapshotKey = `terminal:${index}`
+  populateSideSnapshotsList()
   void openSnapshotModal(entry.snapshot)
 }
 
@@ -1854,25 +2115,23 @@ function onDocumentClick(event: Event) {
 }
 
 function applyLayout() {
-  const { windowWidth, windowHeight } = calculateDimensions()
+  const { windowWidth } = calculateDimensions()
 
-  const playgroundHeight = Math.min(getState('playground-height'), windowHeight)
-  const sidebarWidth = getState('sidebar-width')
+  // Horizontal split: explorer | code
+  const explorerWidth = (windowWidth * getState('resize-divider-1-percent')) / 100
+  const dvalaPanelWidth = windowWidth - explorerWidth - 5 // 5px for divider
 
-  const contextPanelWidth = (windowWidth * getState('resize-divider-1-percent')) / 100
-  const outputPanelWidth = (windowWidth * (100 - getState('resize-divider-2-percent'))) / 100
-  const dvalaPanelWidth = windowWidth - contextPanelWidth - outputPanelWidth
+  const sidePanel = document.getElementById('side-panel')
+  if (sidePanel) sidePanel.style.width = `${explorerWidth}px`
+  if (elements.dvalaPanel) elements.dvalaPanel.style.width = `${dvalaPanelWidth}px`
 
-  elements.playground.style.height = `${playgroundHeight}px`
-  elements.contextPanel.style.width = `${contextPanelWidth}px`
-  elements.dvalaPanel.style.width = `${dvalaPanelWidth}px`
-  elements.outputPanel.style.width = `${outputPanelWidth}px`
-  elements.sidebar.style.width = `${sidebarWidth}px`
-  elements.sidebar.style.bottom = `${playgroundHeight}px`
-  elements.mainPanel.style.left = `${sidebarWidth + 5}px`
-  elements.mainPanel.style.bottom = `${playgroundHeight}px`
-  elements.resizeSidebar.style.left = `${sidebarWidth}px`
-  elements.resizeSidebar.style.bottom = `${playgroundHeight}px`
+  // Vertical split: output height as percentage of tab height
+  const tabPlayground = document.getElementById('tab-playground')
+  if (tabPlayground && elements.outputPanel) {
+    const tabHeight = tabPlayground.clientHeight
+    const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
+    elements.outputPanel.style.height = `${outputHeight}px`
+  }
   elements.wrapper.style.display = 'block'
 }
 
@@ -2104,7 +2363,8 @@ export function addSampleContext() {
 export function newFile() {
   guardCodeReplacement(() => {
     flushPendingAutoSave()
-    saveState({ 'dvala-code': '', 'current-program-id': null, 'dvala-code-edited': false }, true)
+    const id = createUntitledProgram()
+    saveState({ 'dvala-code': '', 'current-program-id': id, 'dvala-code-edited': false }, true)
     elements.dvalaTextArea.value = ''
     syntaxOverlay.update()
     updateCSS()
@@ -2202,21 +2462,21 @@ window.onload = async function () {
   initExecutionControlBar()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
-  elements.contextUndoButton.classList.add('disabled')
-  elements.contextRedoButton.classList.add('disabled')
+  elements.contextUndoButton?.classList.add('disabled')
+  elements.contextRedoButton?.classList.add('disabled')
   elements.dvalaCodeUndoButton.classList.add('disabled')
   elements.dvalaCodeRedoButton.classList.add('disabled')
   setContextHistoryListener(status => {
     if (status.canUndo) {
-      elements.contextUndoButton.classList.remove('disabled')
+      elements.contextUndoButton?.classList.remove('disabled')
     } else {
-      elements.contextUndoButton.classList.add('disabled')
+      elements.contextUndoButton?.classList.add('disabled')
     }
 
     if (status.canRedo) {
-      elements.contextRedoButton.classList.remove('disabled')
+      elements.contextRedoButton?.classList.remove('disabled')
     } else {
-      elements.contextRedoButton.classList.add('disabled')
+      elements.contextRedoButton?.classList.add('disabled')
     }
   })
 
@@ -2245,16 +2505,6 @@ window.onload = async function () {
     closeContextMenu()
   })
 
-  elements.resizePlayground.onmousedown = event => {
-    event.preventDefault()
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'playground',
-      startMoveY: event.clientY,
-      heightBeforeMove: getState('playground-height'),
-    }
-  }
-
   elements.resizeDevider1.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
@@ -2270,18 +2520,8 @@ window.onload = async function () {
     document.body.classList.add('no-select')
     moveParams = {
       id: 'resize-divider-2',
-      startMoveX: event.clientX,
+      startMoveY: event.clientY,
       percentBeforeMove: getState('resize-divider-2-percent'),
-    }
-  }
-
-  elements.resizeSidebar.onmousedown = event => {
-    event.preventDefault()
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'resize-sidebar',
-      startMoveX: event.clientX,
-      widthBeforeMove: getState('sidebar-width'),
     }
   }
 
@@ -2289,34 +2529,20 @@ window.onload = async function () {
   window.onmouseup = () => {
     document.body.classList.remove('no-select')
     if (moveParams !== null) {
-      if (moveParams.id === 'playground')
-        saveState({ 'playground-height': getState('playground-height') }, false)
-      else if (moveParams.id === 'resize-divider-1')
+      if (moveParams.id === 'resize-divider-1')
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
-      else if (moveParams.id === 'resize-sidebar')
-        saveState({ 'sidebar-width': getState('sidebar-width') }, false)
     }
     moveParams = null
   }
 
   window.onmousemove = (event: MouseEvent) => {
-    const { windowHeight, windowWidth } = calculateDimensions()
+    const { windowWidth, windowHeight } = calculateDimensions()
     if (moveParams === null)
       return
 
-    if (moveParams.id === 'playground') {
-      let playgroundHeight = moveParams.heightBeforeMove + moveParams.startMoveY - event.clientY
-      if (playgroundHeight < 30)
-        playgroundHeight = 30
-
-      if (playgroundHeight > windowHeight)
-        playgroundHeight = windowHeight
-
-      updateState({ 'playground-height': playgroundHeight })
-      applyLayout()
-    } else if (moveParams.id === 'resize-divider-1') {
+    if (moveParams.id === 'resize-divider-1') {
       let resizeDivider1XPercent
         = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
       if (resizeDivider1XPercent < 10)
@@ -2328,25 +2554,16 @@ window.onload = async function () {
       updateState({ 'resize-divider-1-percent': resizeDivider1XPercent })
       applyLayout()
     } else if (moveParams.id === 'resize-divider-2') {
-      let resizeDivider2XPercent
-        = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
-      if (resizeDivider2XPercent < getState('resize-divider-1-percent') + 10)
-        resizeDivider2XPercent = getState('resize-divider-1-percent') + 10
+      const tabPlayground = document.getElementById('tab-playground')
+      const tabHeight = tabPlayground?.clientHeight ?? windowHeight
+      let resizeDivider2YPercent
+        = moveParams.percentBeforeMove + ((event.clientY - moveParams.startMoveY) / tabHeight) * 100
+      if (resizeDivider2YPercent < 10)
+        resizeDivider2YPercent = 10
+      if (resizeDivider2YPercent > 90)
+        resizeDivider2YPercent = 90
 
-      if (resizeDivider2XPercent > 90)
-        resizeDivider2XPercent = 90
-
-      updateState({ 'resize-divider-2-percent': resizeDivider2XPercent })
-      applyLayout()
-    } else if (moveParams.id === 'resize-sidebar') {
-      let sidebarWidth = moveParams.widthBeforeMove + (event.clientX - moveParams.startMoveX)
-      if (sidebarWidth < 150)
-        sidebarWidth = 150
-
-      if (sidebarWidth > windowWidth * 0.5)
-        sidebarWidth = windowWidth * 0.5
-
-      updateState({ 'sidebar-width': sidebarWidth })
+      updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
       applyLayout()
     }
   }
@@ -2535,16 +2752,73 @@ function getDataFromUrl() {
     urlParams.delete('state')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
 
-    // Guard against overwriting saved or unsaved work
-    guardCodeReplacement(() => {
-      saveState({ 'current-program-id': null, 'dvala-code-edited': false })
-      if (applyEncodedState(urlState))
-        showToast('State loaded from URL')
-      else
-        showToast('Invalid state URL parameter', { severity: 'error' })
-      applyState()
-    })
-    return // applyState() is called inside the guard callback
+    // Decode the incoming state to check for context
+    let incomingState: Record<string, unknown>
+    try {
+      incomingState = JSON.parse(decodeURIComponent(atob(urlState))) as Record<string, unknown>
+    } catch {
+      showToast('Invalid state URL parameter', { severity: 'error' })
+      return
+    }
+
+    const incomingContext = typeof incomingState['context'] === 'string' ? incomingState['context'].trim() : ''
+    const currentContext = getState('context').trim()
+
+    const applyImport = (contextMode: 'ignore' | 'replace' | 'append') => {
+      guardCodeReplacement(() => {
+        // Handle context based on user choice
+        if (contextMode === 'ignore') {
+          delete incomingState['context']
+        } else if (contextMode === 'append' && currentContext) {
+          // Merge context: parse both as JSON, merge bindings and handlers
+          try {
+            const current = JSON.parse(currentContext) as Record<string, unknown>
+            const incoming = JSON.parse(incomingContext) as Record<string, unknown>
+            const merged: Record<string, unknown> = {}
+            // Merge bindings
+            const currentBindings = (current.bindings ?? {}) as Record<string, unknown>
+            const incomingBindings = (incoming.bindings ?? {}) as Record<string, unknown>
+            merged.bindings = { ...currentBindings, ...incomingBindings }
+            // Merge effect handlers
+            const currentHandlers = (current.effectHandlers ?? []) as unknown[]
+            const incomingHandlers = (incoming.effectHandlers ?? []) as unknown[]
+            merged.effectHandlers = [...currentHandlers, ...incomingHandlers]
+            incomingState['context'] = JSON.stringify(merged, null, 2)
+          } catch {
+            // If merge fails, just replace
+            incomingState['context'] = incomingContext
+          }
+        }
+        // Apply the state
+        saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+        if (applyEncodedState(btoa(encodeURIComponent(JSON.stringify(incomingState)))))
+          showToast('State loaded from URL')
+        else
+          showToast('Failed to apply state', { severity: 'error' })
+        applyState()
+      })
+    }
+
+    // If incoming state has context AND current state has context, ask the user
+    if (incomingContext && currentContext) {
+      const { panel, body } = createModalPanel({
+        size: 'small',
+        footerActions: [
+          { label: 'Ignore context', action: () => { popModal(); applyImport('ignore') } },
+          { label: 'Replace', action: () => { popModal(); applyImport('replace') } },
+          { label: 'Append', primary: true, action: () => { popModal(); applyImport('append') } },
+        ],
+      })
+      const msg = document.createElement('div')
+      msg.className = 'modal-body-row'
+      msg.textContent = 'The shared link includes context data, and you already have context. What should happen with the incoming context?'
+      body.appendChild(msg)
+      pushPanel(panel, 'Import context')
+    } else {
+      // No conflict — just apply (replace or no context)
+      applyImport('replace')
+    }
+    return
   }
 
   const urlSnapshot = urlParams.get('snapshot')
@@ -2688,8 +2962,52 @@ const STATIC_PAGES = new Set(['settings-page', 'saved-programs-page', 'snapshots
  * Dynamic content pages render HTML into #dynamic-page.
  * Static pages (settings, saved-programs, snapshots) use the old show/hide mechanism.
  */
+/** Switch the visible tab pane. */
+function activateTab(tabId: string): void {
+  document.querySelectorAll('.tab-pane').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
+  })
+  const pane = document.getElementById(`tab-${tabId}`)
+  if (pane) pane.style.display = ''
+  // Re-apply layout when switching to playground so panels resize correctly
+  if (tabId === 'playground') applyLayout()
+}
+
+/** Highlight the active tab button. */
+function highlightTabButton(buttonId: string): void {
+  document.querySelectorAll('.tab-bar__tab').forEach(el => el.classList.remove('tab-bar__tab--active'))
+  const btn = document.getElementById(`tab-btn-${buttonId}`)
+  if (btn) btn.classList.add('tab-bar__tab--active')
+}
+
+/** Map a route path to a tab ID (pane). All non-playground routes share the home pane. */
+function getTabForPath(path: string): string {
+  if (path === 'playground') return 'playground'
+  return 'home'
+}
+
+/** Map a route path to the tab button to highlight. */
+function getTabButtonForPath(path: string): string {
+  if (path === 'playground') return 'playground'
+  if (path.startsWith('book')) return 'book'
+  if (path.startsWith('examples')) return 'examples'
+  if (path.startsWith('ref')) return 'ref'
+  if (path === 'settings' || path.startsWith('settings/')) return 'settings'
+  return 'home'
+}
+
 function routeToPath(appPath: string): void {
   const path = appPath.replace(/^\//, '')
+
+  // Activate the correct tab pane and highlight the tab button
+  activateTab(getTabForPath(path))
+  highlightTabButton(getTabButtonForPath(path))
+
+  // Playground tab doesn't need dynamic content rendering
+  if (path === 'playground') {
+    document.title = 'Playground | Dvala'
+    return
+  }
 
   // Determine if this is a static page that already exists in the DOM
   let staticPageId: string | null = null
@@ -2796,22 +3114,15 @@ function routeToPath(appPath: string): void {
   }
 }
 
-function truncateCode(code: string) {
-  const oneLiner = tokenizeSource(code).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
-  const count = 100
-  if (oneLiner.length <= count)
-    return oneLiner
-  else
-    return `${oneLiner.substring(0, count - 3)}...`
-}
 export async function run() {
   addOutputSeparator()
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection' : 'Run'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
+  const startTime = performance.now()
   document.body.classList.add('dvala-running')
   const dvalaParams = getDvalaParamsFromContext()
 
@@ -2827,7 +3138,9 @@ export async function run() {
     route: location.pathname,
   }
 
-  // Execution timeout: 5 seconds, reset on every host effect
+  // Execution timeout: 5 seconds, paused while a host effect handler is running.
+  // This prevents async handlers (like dvala.io.read waiting for user input) from
+  // triggering the timeout.
   const TIMEOUT_MS = 5000
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let rejectTimeout: ((err: Error) => void) | null = null
@@ -2835,14 +3148,26 @@ export async function run() {
     rejectTimeout = reject
     timeoutId = setTimeout(() => reject(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
   })
+  const pauseTimeout = () => {
+    if (timeoutId !== null) { clearTimeout(timeoutId); timeoutId = null }
+  }
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId)
     timeoutId = setTimeout(() => rejectTimeout?.(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
   }
-  // Wrap each effect handler to reset the timeout on every host effect
+  // Wrap each effect handler: pause timeout during handler, resume after
   const wrappedHandlers = dvalaParams.effectHandlers.map(reg => ({
     ...reg,
-    handler: (ctx: EffectContext) => { resetTimeout(); return reg.handler(ctx) },
+    handler: (ctx: EffectContext) => {
+      pauseTimeout()
+      const result = reg.handler(ctx)
+      // If handler returns a Promise (async), resume timeout when it settles
+      if (result instanceof Promise) {
+        return result.finally(() => resetTimeout())
+      }
+      resetTimeout()
+      return result
+    },
   }))
 
   const hijacker = hijackConsole()
@@ -2882,6 +3207,8 @@ export async function run() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    const elapsed = performance.now() - startTime
+    appendOutput(elapsed < 1000 ? `${Math.round(elapsed)}ms` : `${(elapsed / 1000).toFixed(2)}s`, 'comment')
     if (timeoutId !== null) clearTimeout(timeoutId)
     document.body.classList.remove('dvala-running')
     // Restore UI state modified by playground effects
@@ -2912,8 +3239,9 @@ export function runSync() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection (sync)' : 'Run sync'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
+  const startTime = performance.now()
   const dvalaParams = getDvalaParamsFromContext()
 
   const hijacker = hijackConsole()
@@ -2928,6 +3256,8 @@ export function runSync() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    const elapsed = performance.now() - startTime
+    appendOutput(elapsed < 1000 ? `${Math.round(elapsed)}ms` : `${(elapsed / 1000).toFixed(2)}s`, 'comment')
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -2940,7 +3270,7 @@ export function analyze() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Analyze selection' : 'Analyze'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
@@ -2982,7 +3312,7 @@ export function parse() {
     showAstTreeModal(ast, title)
   } catch (error) {
     addOutputSeparator()
-    appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+    appendOutput(title, 'comment')
     appendOutput(error, 'error')
     focusDvalaCode()
   }
@@ -3018,7 +3348,7 @@ export function tokenize() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Tokenize selection' : 'Tokenize'
 
-  appendOutput(`${title}${getState('debug') ? ' (debug):' : ':'} ${truncateCode(code)}`, 'comment')
+  appendOutput(`${title}${getState('debug') ? ' (debug)' : ''}`, 'comment')
 
   const hijacker = hijackConsole()
   try {
@@ -3043,7 +3373,7 @@ export function format() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Format selection' : 'Format'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
   setDvalaCode(code, true)
 
@@ -3684,30 +4014,89 @@ function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
 
 let resolveSnapshotModal: (() => void) | null = null
 
-export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
+// ─── Inline snapshot view (in code panel) ────────────────────────────────────
+
+interface SnapshotBreadcrumb {
+  label: string
+  snapshot: Snapshot
+}
+
+const snapshotViewStack: SnapshotBreadcrumb[] = []
+
+function renderSnapshotBreadcrumbs() {
+  const container = document.getElementById('dvala-header-snapshot')
+  if (!container) return
+
+  container.innerHTML = snapshotViewStack.map((bc, i) => {
+    const isLast = i === snapshotViewStack.length - 1
+    if (isLast) {
+      return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
+    }
+    return `<a class="snapshot-breadcrumbs__link" href="#" onclick="event.preventDefault();Playground.navigateSnapshotBreadcrumb(${i})">${escapeHtml(bc.label)}</a><span class="snapshot-breadcrumbs__sep">›</span>`
+  }).join('')
+}
+
+function showSnapshotInPanel(snapshot: Snapshot) {
+  const content = document.getElementById('snapshot-content')
+  if (!content) return
+
+  // Set current snapshot for the control bar and other functions
+  currentSnapshot = snapshot
+
+  // Render the snapshot panel content (reuse existing panel builder)
   const error = getSnapshotError(snapshot)
   const panel = createSnapshotPanel(snapshot, error)
+  // Extract just the body content from the panel (skip modal header/footer)
+  const body = panel.querySelector('.modal-panel__body')
+  const footer = panel.querySelector('.modal-panel__footer')
+  content.innerHTML = ''
+  if (body) content.appendChild(body)
+  if (footer) content.appendChild(footer)
 
-  // If an effect panel is at the top of the stack, replace it with the snapshot panel.
-  // Uses instant swap to avoid jarring transitions.
-  const top = modalStack[modalStack.length - 1]
-  if (top?.isEffect) {
-    modalStack.pop()
-    top.panel.remove()
-  }
+  // Update breadcrumbs and sync the panel view
+  renderSnapshotBreadcrumbs()
+  syncCodePanelView('snapshots')
 
-  pushPanel(panel, 'Snapshot', snapshot)
-
-  // Show control bar for all snapshots
+  // Show execution control bar
   if (snapshot.terminal === true) {
     showExecutionControlBarTerminal()
   } else {
     showExecutionControlBarPaused()
   }
+}
+
+export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
+  // Push onto the breadcrumb stack and render in the code panel
+  const label = snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${snapshotViewStack.length}`
+  snapshotViewStack.push({ label, snapshot })
+  showSnapshotInPanel(snapshot)
 
   return new Promise<void>(resolve => {
     resolveSnapshotModal = resolve
   })
+}
+
+export function navigateSnapshotBreadcrumb(index: number) {
+  // Pop back to the given breadcrumb level
+  while (snapshotViewStack.length > index + 1) {
+    snapshotViewStack.pop()
+  }
+  const bc = snapshotViewStack[index]
+  if (bc) showSnapshotInPanel(bc.snapshot)
+}
+
+export function closeSnapshotView() {
+  // Clear stack and active snapshot
+  snapshotViewStack.length = 0
+  activeSnapshotKey = null
+  populateSideSnapshotsList()
+  currentSnapshot = null
+  resolveSnapshotModal?.()
+  resolveSnapshotModal = null
+  hideExecutionControlBar()
+
+  // Sync view — will show empty or editor depending on side tab
+  syncCodePanelView()
 }
 
 export function slideBackSnapshotModal() {
@@ -4988,64 +5377,12 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
   })
 }
 
-function printlnHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>(resolve => {
-    const value = ctx.arg
-    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-
-    const submit = () => {
-      ctx.resume(value)
-      resolve()
-      resolveCurrentEffect()
-      focusDvalaCode()
-    }
-
-    const failEffect = makeFailHelper(ctx, resolve)
-
-    registerPendingEffect({
-      ctx,
-      title: 'Output',
-      renderBody(el) {
-        const outputWrap = document.createElement('div')
-        outputWrap.className = 'println-output'
-        const pre = document.createElement('pre')
-        pre.className = 'println-content'
-        pre.textContent = text
-        outputWrap.appendChild(pre)
-        const copyBtn = document.createElement('span')
-        copyBtn.className = 'println-copy-btn'
-        copyBtn.innerHTML = copyIcon
-        copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
-        outputWrap.appendChild(copyBtn)
-        el.appendChild(outputWrap)
-      },
-      renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
-        const failBtn = document.createElement('button')
-        failBtn.className = 'button button--danger'
-        failBtn.textContent = 'Fail…'
-        failBtn.addEventListener('click', failEffect.enter)
-        const btn = document.createElement('button')
-        btn.className = 'button button--primary'
-        btn.textContent = 'OK'
-        btn.addEventListener('click', submit)
-        el.appendChild(failBtn)
-        el.appendChild(btn)
-      },
-      onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
-        if (evt.key === 'Enter' || evt.key === 'Escape') {
-          evt.preventDefault()
-          submit()
-          return true
-        }
-        return false
-      },
-      resolve,
-    })
-  })
+// Non-blocking print handler — appends to output panel and resumes immediately
+function outputPrintHandler(ctx: EffectContext): void {
+  const value = ctx.arg
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  appendOutput(text, 'output')
+  ctx.resume(value)
 }
 
 function ioErrorHandler(ctx: EffectContext): Promise<void> {
@@ -5534,7 +5871,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     if (!hasPattern('dvala.io.read'))
       effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
     if (!hasPattern('dvala.io.print'))
-      effectHandlers.push({ pattern: 'dvala.io.print', handler: printlnHandler })
+      effectHandlers.push({ pattern: 'dvala.io.print', handler: outputPrintHandler })
     if (!hasPattern('dvala.io.error'))
       effectHandlers.push({ pattern: 'dvala.io.error', handler: ioErrorHandler })
 
@@ -5579,6 +5916,7 @@ function getSelectedDvalaCode(): {
 }
 
 function applyState(scrollToTop = false) {
+  ensureActiveProgram()
   const contextTextAreaSelectionStart = getState('context-selection-start')
   const contextTextAreaSelectionEnd = getState('context-selection-end')
   const dvalaTextAreaSelectionStart = getState('dvala-code-selection-start')
@@ -5682,7 +6020,6 @@ function updateCSS() {
   if (devTabBtn)
     devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
-  elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
   const currentProgramId = getState('current-program-id')
   const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
   const isLocked = currentProgram?.locked ?? false
@@ -5696,7 +6033,7 @@ function updateCSS() {
   }
   const showIndicator = !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
   elements.dvalaCodePendingIndicator.style.display = showIndicator ? 'inline-block' : 'none'
-  elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
+  if (elements.contextTitle) elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
 
