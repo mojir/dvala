@@ -7,8 +7,8 @@
 import type { Example } from '../../../reference/examples'
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
-import { hamburgerIcon, playIcon, searchIcon } from '../icons'
-import { tokenizeToHtml } from '../SyntaxOverlay'
+import { hamburgerIcon, playIcon } from '../icons'
+import { renderCodeBlock } from '../renderCodeBlock'
 import { renderPageHeader } from './pageHeader'
 
 declare global {
@@ -77,8 +77,7 @@ export function renderExampleIndexPage(): string {
 
   const first = data.examples[0] ?? null
   const exampleActions = `
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>`
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 
   return `
 <div class="book-page">
@@ -111,11 +110,8 @@ export function renderExampleDetailPage(id: string): string {
   const prev = idx > 0 ? allExamples[idx - 1] : null
   const next = idx < allExamples.length - 1 ? allExamples[idx + 1] : null
 
-  const encodedExample = btoa(encodeURIComponent(JSON.stringify(ex)))
   const detailActions = `
-      <button class="chapter-header__toc-btn example-header__load-btn" onclick="Playground.setPlayground(${escapeAttr(JSON.stringify(ex.name))}, ${escapeAttr(JSON.stringify(encodedExample))})">Load ${playIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleSearch(event)" aria-label="Search examples">${searchIcon}</button>`
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleExampleTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 
   return `
 <div class="book-page">
@@ -133,7 +129,7 @@ export function renderExampleDetailPage(id: string): string {
   <div class="book-page__content">
     <p class="example-detail__category">${escapeHtml(ex.category)}</p>
     <p class="example-detail__desc">${escapeHtml(ex.description)}</p>
-    <pre class="example-detail__code"><code>${tokenizeToHtml(ex.code)}</code></pre>
+    ${renderCodeBlock({ code: ex.code })}
   </div>
 </div>`.trim()
 }
@@ -147,3 +143,4 @@ function escapeHtml(str: string): string {
 function escapeAttr(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
+

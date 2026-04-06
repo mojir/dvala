@@ -2,7 +2,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { apiReference, effectReference, getLinkName, isFunctionReference, isCustomReference, isEffectReference, moduleReference } from '../../reference'
 import type { Reference } from '../../reference'
-import { coreCategories } from '../../reference/api'
+import { coreCategoryDescriptions, coreCategories } from '../../reference/api'
 import { allBuiltinModules } from '../../src/allModules'
 import { examples } from '../../reference/examples'
 import { isBookSection, chapters, bookItems } from '../../reference/book'
@@ -62,7 +62,7 @@ function buildReferenceData(): ReferenceData {
     modules: moduleReference,
     effects: effectReference,
     moduleCategories: allBuiltinModules.map(m => ({ name: m.name, description: m.description })),
-    coreCategories: coreCategories as string[],
+    coreCategories: coreCategories.map(name => ({ name, description: coreCategoryDescriptions[name] ?? '' })),
     searchEntries,
     examples,
   }
@@ -337,7 +337,7 @@ function writeStubPages() {
     if (!coreByCategory[cat]) coreByCategory[cat] = []
     coreByCategory[cat].push({ title: ref.title, linkName: getLinkName(ref), description: shortDescription(ref.description) })
   }
-  const coreSections = (coreCategories as string[]).map(cat => {
+  const coreSections = coreCategories.map(cat => {
     const items = coreByCategory[cat]
     if (!items) return ''
     const listItems = items.map(i =>

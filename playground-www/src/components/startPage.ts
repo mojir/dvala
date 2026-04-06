@@ -5,7 +5,7 @@
 
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
-import { bookIcon, codeIcon, githubIcon, labIcon } from '../icons'
+import { bookIcon, codeIcon, githubIcon, labIcon, playIcon } from '../icons'
 import { getPageHeader } from '../utils'
 
 // Feature card markdown content
@@ -63,17 +63,21 @@ export function renderStartPage(): string {
   ${getPageHeader({ tagline: true })}
   <div class="content-page__body start-page__body">
     <nav class="start-page__nav">
-      <a class="start-page__nav-link" href="${href('/book')}" onclick="event.preventDefault();Playground.navigate('/book')">
-        <span class="start-page__nav-icon">${bookIcon}</span>
-        <span>The Book</span>
+      <a class="start-page__nav-link start-page__nav-link--editor" href="#" onclick="event.preventDefault();Playground.navigateToTab('editor')">
+        <span class="start-page__nav-icon">${playIcon}</span>
+        <span>Editor</span>
+      </a>
+      <a class="start-page__nav-link" href="${href('/ref')}" onclick="event.preventDefault();Playground.navigate('/ref')">
+        <span class="start-page__nav-icon">${codeIcon}</span>
+        <span>Reference</span>
       </a>
       <a class="start-page__nav-link" href="${href('/examples')}" onclick="event.preventDefault();Playground.navigate('/examples')">
         <span class="start-page__nav-icon">${labIcon}</span>
         <span>Examples</span>
       </a>
-      <a class="start-page__nav-link" href="${href('/ref')}" onclick="event.preventDefault();Playground.navigate('/ref')">
-        <span class="start-page__nav-icon">${codeIcon}</span>
-        <span>Reference</span>
+      <a class="start-page__nav-link" href="${href('/book')}" onclick="event.preventDefault();Playground.navigate('/book')">
+        <span class="start-page__nav-icon">${bookIcon}</span>
+        <span>The Book</span>
       </a>
     </nav>
 
