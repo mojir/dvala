@@ -261,11 +261,7 @@ document.head.appendChild(animationStyles)
 
 const elements = {
   get wrapper() { return document.getElementById('wrapper') as HTMLElement },
-  get playground() { return document.getElementById('playground') as HTMLElement },
-  get sidebar() { return document.getElementById('sidebar') as HTMLElement },
   get mainPanel() { return document.getElementById('main-panel') as HTMLElement },
-  get contextPanel() { return document.getElementById('context-panel') as HTMLElement }, // legacy — may be null
-  get explorerPanel() { return document.getElementById('explorer-panel') as HTMLElement },
   get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
   get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
   get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
@@ -280,10 +276,8 @@ const elements = {
   get contextDetailTextArea() { return document.getElementById('context-detail-textarea') as HTMLTextAreaElement },
   get outputResult() { return document.getElementById('output-result') as HTMLElement },
   get dvalaTextArea() { return document.getElementById('dvala-textarea') as HTMLTextAreaElement },
-  get resizePlayground() { return document.getElementById('resize-playground') as HTMLElement },
   get resizeDevider1() { return document.getElementById('resize-divider-1') as HTMLElement },
   get resizeDevider2() { return document.getElementById('resize-divider-2') as HTMLElement },
-  get resizeSidebar() { return document.getElementById('resize-sidebar') as HTMLElement },
   get dvalaPanelDebugInfo() { return document.getElementById('dvala-panel-debug-info') as HTMLDivElement },
   get contextUndoButton() { return document.getElementById('context-undo-button') as HTMLAnchorElement },
   get contextRedoButton() { return document.getElementById('context-redo-button') as HTMLAnchorElement },
@@ -333,10 +327,6 @@ const elements = {
 }
 
 type MoveParams = {
-  id: 'playground'
-  startMoveY: number
-  heightBeforeMove: number
-} | {
   id: 'resize-divider-1'
   startMoveX: number
   percentBeforeMove: number
@@ -344,10 +334,6 @@ type MoveParams = {
   id: 'resize-divider-2'
   startMoveY: number
   percentBeforeMove: number
-} | {
-  id: 'resize-sidebar'
-  startMoveX: number
-  widthBeforeMove: number
 }
 
 type OutputType =
@@ -1001,11 +987,6 @@ const ICONS = {
   edit: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/><path fill="currentColor" d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>',
   warning: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.06L1.87 20.5c-.38.65.09 1.5.87 1.5h18.52c.78 0 1.25-.85.87-1.5zm0 4.69c.41 0 .75.34.75.75v5.5a.75.75 0 0 1-1.5 0V8.5c0-.41.34-.75.75-.75m0 10.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/></svg>',
   share: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
-}
-
-export function toggleContextMenu(menuId: string, triggerEl?: HTMLElement): void {
-  if (!triggerEl) return
-  toggleEditorMenu(menuId, triggerEl)
 }
 
 export function closeContextMenu(): void {
@@ -2031,87 +2012,6 @@ export function openContextJsonModal() {
   setTimeout(() => {
     pre.focus()
   }, 0)
-}
-
-// ─── File title editing ───────────────────────────────────────────────────────
-
-export function onFileTitleClick(event: MouseEvent) {
-  event.stopPropagation()
-  const currentId = getState('current-file-id')
-  if (currentId && getSavedFiles().find(p => p.id === currentId)?.locked) return
-  const input = elements.dvalaCodeTitleInput
-  const span = elements.dvalaCodeTitleString
-  input.value = currentId ? elements.dvalaCodeTitleString.textContent ?? '' : ''
-  span.style.display = 'none'
-  input.style.display = ''
-  input.focus()
-  input.select()
-}
-
-export function onFileTitleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    elements.dvalaCodeTitleInput.blur()
-  } else if (event.key === 'Escape') {
-    elements.dvalaCodeTitleInput.style.display = 'none'
-    elements.dvalaCodeTitleString.style.display = ''
-  }
-}
-
-export function onFileTitleBlur() {
-  const input = elements.dvalaCodeTitleInput
-  const name = input.value.trim()
-  input.style.display = 'none'
-  elements.dvalaCodeTitleString.style.display = ''
-  if (!name) return
-  commitFileName(name)
-}
-
-function commitFileName(name: string) {
-  const files = getSavedFiles()
-  const currentId = getState('current-file-id')
-  const normalizedName = normalizeSavedFileName(name)
-  const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== currentId)
-
-  if (duplicate) {
-    void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it with the current code and context?`, () => {
-      const without = files.filter(entry => entry.id !== duplicate.id)
-      saveOrRenameFile(normalizedName, without, currentId)
-    })
-  } else {
-    saveOrRenameFile(normalizedName, files, currentId)
-  }
-}
-
-function saveOrRenameFile(name: string, files: SavedFile[], currentId: string | null) {
-  const now = Date.now()
-  if (currentId) {
-    const updated = files.map(entry =>
-      entry.id === currentId
-        ? { ...entry, name, code: getState('dvala-code'), context: getState('context'), updatedAt: now }
-        : entry,
-    )
-    setSavedFiles(updated)
-  } else {
-    persistScratchFromCurrentState()
-    const createdFile: SavedFile = {
-      id: crypto.randomUUID(),
-      name,
-      code: getState('dvala-code'),
-      context: getState('context'),
-      createdAt: now,
-      updatedAt: now,
-      locked: false,
-    }
-    setSavedFiles([createdFile, ...files])
-    saveState({ 'current-file-id': createdFile.id }, false)
-    activateCurrentFileHistory(true)
-    updateCSS()
-    populateSavedFilesList({ animateNewId: createdFile.id })
-    return
-  }
-  updateCSS()
-  populateSavedFilesList()
 }
 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
