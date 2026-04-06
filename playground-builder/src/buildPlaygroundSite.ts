@@ -160,6 +160,23 @@ function stubPage(opts: { route: string; title: string; description: string; bod
     <meta property="og:description" content="${desc}">
     <meta property="og:url" content="${canonicalUrl}">
     <meta property="og:image" content="${BASE_URL}/images/dvala-logo.webp">
+    <script>
+      // Redirect JS-enabled clients (human users) to the interactive SPA.
+      // JS-disabled crawlers fall through and see the static content below.
+      ;(function() {
+        var appRoutes = ${JSON.stringify([...allAppRoutes])}
+        var l = window.location
+        var firstSeg = l.pathname.split('/').filter(Boolean)[0]
+        var keep = (firstSeg && appRoutes.indexOf(firstSeg) !== -1) ? 0 : 1
+        l.replace(
+          l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          l.pathname.split('/').slice(0, 1 + keep).join('/') + '/?/' +
+          l.pathname.split('/').slice(1 + keep).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+        )
+      }())
+    </script>
     <style>body{font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:1rem;color:#e0e0e0;background:#1a1a1a}a{color:#6cb6ff}pre{background:#2d2d2d;padding:1rem;overflow-x:auto;border-radius:4px}code{font-family:monospace}nav{margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid #333}nav a{margin-right:1rem}h1,h2,h3{color:#fff}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:0.5rem;border-bottom:1px solid #333}</style>
   </head>
   <body>
