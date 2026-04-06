@@ -23,8 +23,6 @@ export function renderSidebar(currentPath: string): string {
     ${renderNavItem('/book', 'The Book', currentPath)}
     ${renderNavItem('/examples', 'Examples', currentPath)}
     ${renderNavItem('/ref', 'Reference', currentPath)}
-    ${renderNavItem('/saved', 'Programs', currentPath)}
-    ${renderNavItem('/snapshots', 'Snapshots', currentPath)}
     ${renderNavItem('/settings', 'Settings', currentPath)}
   </ul>
 </nav>`.trim()

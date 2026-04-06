@@ -1,4 +1,4 @@
-import type { SavedProgram } from './programStorage'
+import type { SavedFile } from './fileStorage'
 
 export interface PlaygroundAPI {
   ui: {
@@ -18,7 +18,7 @@ export interface PlaygroundAPI {
     getContent(): string
     setContent(json: string): void
   }
-  programs: {
+  files: {
     save(name: string, code?: string): void
     load(name: string): string
     list(): string[]
@@ -44,8 +44,8 @@ export interface PlaygroundDeps {
   setEditorCursor(position: number): void
   getContextContent(): string
   setContextContent(json: string): void
-  getSavedPrograms(): SavedProgram[]
-  saveProgram(name: string, code: string): void
+  getSavedFiles(): SavedFile[]
+  saveFile(name: string, code: string): void
   runCode(code: string): Promise<unknown>
   navigateTo(route: string): void
   navigateBack(): void
@@ -63,6 +63,22 @@ const toastSeverityMap: Record<string, 'info' | 'error'> = {
 
 export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
   let lastToastTime = 0
+  const filesApi = {
+    save(name: string, code?: string) {
+      const content = code ?? deps.getEditorContent()
+      deps.saveFile(name, content)
+    },
+    load(name: string): string {
+      const file = deps.getSavedFiles().find(entry => entry.name === name)
+      if (!file) {
+        throw new Error(`File "${name}" not found`)
+      }
+      return file.code
+    },
+    list(): string[] {
+      return deps.getSavedFiles().map(entry => entry.name)
+    },
+  }
 
   return {
     ui: {
@@ -123,22 +139,7 @@ export function createPlaygroundAPI(deps: PlaygroundDeps): PlaygroundAPI {
         deps.setContextContent(json)
       },
     },
-    programs: {
-      save(name: string, code?: string) {
-        const content = code ?? deps.getEditorContent()
-        deps.saveProgram(name, content)
-      },
-      load(name: string): string {
-        const program = deps.getSavedPrograms().find(p => p.name === name)
-        if (!program) {
-          throw new Error(`Program "${name}" not found`)
-        }
-        return program.code
-      },
-      list(): string[] {
-        return deps.getSavedPrograms().map(p => p.name)
-      },
-    },
+    files: filesApi,
     exec: {
       run(code: string): Promise<unknown> {
         return Promise.race([

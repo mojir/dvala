@@ -133,6 +133,10 @@ export function renderChapterPage(id: string): string {
 <div class="book-page">
   ${renderPageHeader({
     title: entry.title,
+    breadcrumbs: [
+      { label: 'The Book', path: '/book' },
+      { label: entry.title },
+    ],
     actions: bookHeaderActions(),
     prev: prev ? { path: `/book/${prev.id}`, title: prev.title } : { path: '/book', title: 'Back to The Book' },
     up: { path: '/book', title: 'Back to The Book' },
