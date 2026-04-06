@@ -142,9 +142,11 @@ export function renderChapterPage(id: string): string {
     up: { path: '/book', title: 'Back to The Book' },
     next: next ? { path: `/book/${next.id}`, title: next.title } : null,
   })}
-  <div class="book-page__content">
-    ${subToc}
-    ${contentHtml}
+  <div class="book-chapter__layout">
+    <div class="book-page__content">
+      ${contentHtml}
+    </div>
+    ${subToc ? `<aside class="book-chapter__sidebar">${subToc}</aside>` : ''}
   </div>
 </div>`.trim()
 }
