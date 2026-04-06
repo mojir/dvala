@@ -1,4 +1,4 @@
-export { categories, categoryRecord, coreCategories, isDataType, moduleCategories } from '../src/builtin/interface'
+export { categories, categoryRecord, coreCategoryDescriptions, coreCategories, isDataType, moduleCategories } from '../src/builtin/interface'
 export type { Category, DataType } from '../src/builtin/interface'
 
 function getNumberTheorySequenceNames<T extends string>(name: T): [`numberTheory.${T}Seq`, `numberTheory.${T}Nth`, `numberTheory.${T}TakeWhile`, `numberTheory.is${Capitalize<T>}`] {

@@ -63,7 +63,7 @@ function buildRefEntries(data: ReferenceData): RefEntry[] {
       group: cat,
     })
   }
-  for (const cat of data.coreCategories) {
+  for (const { name: cat } of data.coreCategories) {
     const catEntries = coreByCategory[cat]
     if (catEntries) entries.push(...catEntries)
   }
@@ -150,7 +150,7 @@ export function renderReferenceIndexPage(): string {
 <a class="ref-card" href="${href(`/ref/${section.id}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${section.id}')">
   <span class="ref-card__title">${escapeHtml(section.title)}</span>
   <span class="ref-card__desc">${escapeHtml(section.description)}</span>
-  <span class="ref-card__count">${count} entries</span>
+  <span class="ref-card__count">${plural(count, 'entry')}</span>
 </a>`
   }).join('\n')
 
@@ -196,11 +196,16 @@ export function renderReferenceSectionPage(sectionId: string): string {
       groups.get(entry.group)!.push(entry)
     }
 
-    const categoryCards = Array.from(groups.entries()).map(([categoryName, categoryEntries]) => `
+    const categoryCards = Array.from(groups.entries()).map(([categoryName, categoryEntries]) => {
+      const catInfo = data.coreCategories.find(c => c.name === categoryName)
+      const desc = catInfo?.description ?? ''
+      return `
 <a class="ref-card" href="${href(`/ref/core/${encodeURIComponent(categoryName)}`)}" onclick="event.preventDefault();Playground.navigate('/ref/core/${encodeURIComponent(categoryName)}')">
   <span class="ref-card__title">${escapeHtml(categoryName)}</span>
-  <span class="ref-card__count">${categoryEntries.length} functions</span>
-</a>`).join('\n')
+  ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
+  <span class="ref-card__count">${plural(categoryEntries.length, 'function')}</span>
+</a>`
+    }).join('\n')
 
     return `
 <div class="book-page">
@@ -237,7 +242,7 @@ export function renderReferenceSectionPage(sectionId: string): string {
 <a class="ref-card" href="${href(`/ref/modules/${moduleName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/modules/${moduleName}')">
   <span class="ref-card__title">${escapeHtml(moduleName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
-  <span class="ref-card__count">${moduleEntries.length} functions</span>
+  <span class="ref-card__count">${plural(moduleEntries.length, 'function')}</span>
 </a>`
     }).join('\n')
 
@@ -405,6 +410,10 @@ function refActions(): string {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
+}
 
 function getShortDescription(description: string): string {
   // Take first paragraph (up to blank line); within that, stop at a markdown line break (two trailing spaces)
