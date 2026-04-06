@@ -30,6 +30,7 @@ export const defaultState = {
   'disable-playground-effects': false as boolean,
   'disable-auto-checkpoint': false as boolean,
   'playground-developer': false as boolean,
+  'light-mode': null as boolean | null, // null = follow OS preference
   'focused-panel': null as 'dvala-code' | 'context' | null,
   'current-file-id': null as string | null,
   'current-context-entry-kind': 'binding' as 'binding' | 'effect-handler',

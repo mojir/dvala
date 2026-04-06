@@ -36,6 +36,50 @@ export function renderShell(): void {
   wrapper.innerHTML = getShellHTML()
 }
 
+function getSettingsDropdown(): string {
+  const row = (id: string, label: string, title: string, onclick: string) => `
+    <div class="settings-dropdown__row" title="${title}">
+      <span class="settings-dropdown__label">${label}</span>
+      <label class="settings-toggle">
+        <input type="checkbox" id="${id}" onclick="${onclick}">
+        <span class="settings-toggle-slider"></span>
+      </label>
+    </div>`
+
+  return `
+  <div id="settings-dropdown" class="editor-menu settings-dropdown" style="display:none;">
+    <div class="settings-dropdown__section">Appearance</div>
+    <div class="settings-dropdown__row" title="Switch between light and dark theme. System follows your OS preference.">
+      <span class="settings-dropdown__label">Theme</span>
+      <div class="theme-segment" id="theme-segment">
+        <button class="theme-segment__btn" id="theme-btn-system" onclick="Playground.setTheme(null)">System</button>
+        <button class="theme-segment__btn" id="theme-btn-light" onclick="Playground.setTheme(true)">Light</button>
+        <button class="theme-segment__btn" id="theme-btn-dark" onclick="Playground.setTheme(false)">Dark</button>
+      </div>
+    </div>
+
+    <div class="settings-dropdown__section settings-dropdown__section--gap">Runtime</div>
+    ${row('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
+    ${row('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
+    ${row('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at file start and after each effect.', 'Playground.toggleAutoCheckpoint()')}
+
+    <div class="settings-dropdown__section settings-dropdown__section--gap">Effects</div>
+    ${row('settings-disable-handlers-toggle', 'Disable standard handlers', 'Disables handlers for dvala.* effects (io, sleep, time, random, etc.).', 'Playground.toggleDisableStandardHandlers()')}
+    ${row('settings-disable-playground-effects-toggle', 'Disable playground effects', 'Disables handlers for playground.* effects (editor, storage, ui, exec).', 'Playground.toggleDisablePlaygroundEffects()')}
+    ${row('settings-intercept-effects-toggle', 'Intercept effects', 'Show a modal when certain effects are triggered.', 'Playground.toggleInterceptEffects()')}
+    <div id="settings-intercept-sub-toggles" class="settings-sub-toggles" style="display:none;">
+      ${row('settings-intercept-error-toggle', 'Intercept errors', 'Intercepts dvala.error effects.', 'Playground.toggleInterceptError()')}
+      ${row('settings-checkpoint-toggle', 'Intercept checkpoints', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
+      ${row('settings-intercept-unhandled-toggle', 'Intercept unhandled', 'Shows modal for effects without a handler.', 'Playground.toggleInterceptUnhandled()')}
+    </div>
+    ${row('settings-playground-developer-toggle', 'Playground developer', 'Enables the Developer tab in the settings page.', 'Playground.togglePlaygroundDeveloper()')}
+
+    <div class="settings-dropdown__footer">
+      <button class="settings-dropdown__more-btn" onclick="Playground.closeSettingsDropdown();Playground.navigateToTab('settings')">Actions &amp; Storage →</button>
+    </div>
+  </div>`
+}
+
 function getShellHTML(): string {
   return `
   <nav id="tab-bar">
@@ -45,9 +89,10 @@ function getShellHTML(): string {
       <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigateToTab('ref')">Reference</a>
       <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigateToTab('examples')">Examples</a>
       <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigateToTab('book')">The Book</a>
-      <a class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" href="#" onclick="event.preventDefault();Playground.navigateToTab('settings')" title="Settings">${gearIcon}</a>
+      <button class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" onclick="Playground.toggleSettingsDropdown(this)" title="Settings">${gearIcon}</button>
     </div>
   </nav>
+  ${getSettingsDropdown()}
 
   <div id="tab-content">
     <div id="tab-home" class="tab-pane">
@@ -300,50 +345,13 @@ function getModals(): string {
 }
 
 function getSettingsPage(): string {
-  const toggle = (id: string, label: string, description: string, onclick: string) => `
-    <div class="settings-toggle-row">
-      <div class="settings-toggle-row__labels">
-        <span class="settings-toggle-row__label">${label}</span>
-        <span class="settings-toggle-row__desc">${description}</span>
-      </div>
-      <label class="settings-toggle">
-        <input type="checkbox" id="${id}" onclick="${onclick}">
-        <span class="settings-toggle-slider"></span>
-      </label>
-    </div>`
-
-  const tabBtn = (id: string, label: string) =>
-    `<button id="settings-tab-btn-${id}" class="settings-tab-btn" onclick="Playground.showSettingsTab('${id}')">${label}</button>`
-
   return `
   <div id="settings-page" class="content content-page">
-    <h1 class="content-page__title">Settings</h1>
+    <h1 class="content-page__title">Actions &amp; Storage</h1>
     <div class="settings-page__body">
       <div class="settings-tabs">
-        ${tabBtn('dvala', 'Dvala')}
-        ${tabBtn('playground', 'Playground')}
-        ${tabBtn('actions', 'Actions')}
+        <button id="settings-tab-btn-actions" class="settings-tab-btn" onclick="Playground.showSettingsTab('actions')">Actions</button>
         <button id="settings-tab-btn-developer" class="settings-tab-btn" style="display:none" onclick="Playground.showSettingsTab('developer')">Developer</button>
-      </div>
-
-      <div id="settings-tab-dvala" class="settings-tab-content">
-        <p class="settings-tab-content__desc">Configure the Dvala language runtime behavior.</p>
-        ${toggle('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
-        ${toggle('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
-        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at file start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
-      </div>
-
-      <div id="settings-tab-playground" class="settings-tab-content">
-        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running files.</p>
-        ${toggle('settings-disable-handlers-toggle', 'Disable standard effect handlers', 'Disables handlers for dvala.* effects (io, sleep, time, random, etc.).', 'Playground.toggleDisableStandardHandlers()')}
-        ${toggle('settings-disable-playground-effects-toggle', 'Disable playground effects', 'Disables handlers for playground.* effects (editor, storage, ui, exec).', 'Playground.toggleDisablePlaygroundEffects()')}
-        ${toggle('settings-intercept-effects-toggle', 'Intercept effects', 'Show a modal when certain effects are triggered.', 'Playground.toggleInterceptEffects()')}
-        <div id="settings-intercept-sub-toggles" class="settings-sub-toggles" style="display:none;">
-          ${toggle('settings-intercept-error-toggle', 'Intercept errors', 'Intercepts dvala.error effects.', 'Playground.toggleInterceptError()')}
-          ${toggle('settings-checkpoint-toggle', 'Intercept checkpoints', 'Intercepts dvala.checkpoint effects.', 'Playground.toggleInterceptCheckpoint()')}
-          ${toggle('settings-intercept-unhandled-toggle', 'Intercept unhandled', 'Shows modal for effects without a handler.', 'Playground.toggleInterceptUnhandled()')}
-        </div>
-        ${toggle('settings-playground-developer-toggle', 'Playground developer', 'Enables the Developer tab with color palette and design tokens.', 'Playground.togglePlaygroundDeveloper()')}
       </div>
 
       <div id="settings-tab-developer" class="settings-tab-content">
