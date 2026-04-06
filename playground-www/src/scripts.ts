@@ -2328,7 +2328,7 @@ export function share() {
   const currentSnapshotId = getActiveSnapshotUrlId()
   if (currentSnapshotId)
     params.set('snapshotId', currentSnapshotId)
-  const href = `${base}?${params.toString()}`
+  const href = `${base}playground?${params.toString()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
     return
