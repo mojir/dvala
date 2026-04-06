@@ -2,7 +2,7 @@
   "publisher": "mojir",
   "name": "dvala",
   "displayName": "Dvala",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Syntax highlighting and run support for the Dvala programming language",
   "license": "MIT",
   "repository": {
@@ -122,7 +122,9 @@
       }
     ],
     "breakpoints": [
-      { "language": "dvala" }
+      {
+        "language": "dvala"
+      }
     ],
     "debuggers": [
       {
@@ -130,10 +132,14 @@
         "label": "Dvala Debug",
         "program": "./out/debugAdapter.js",
         "runtime": "node",
-        "languages": ["dvala"],
+        "languages": [
+          "dvala"
+        ],
         "configurationAttributes": {
           "launch": {
-            "required": ["program"],
+            "required": [
+              "program"
+            ],
             "properties": {
               "program": {
                 "type": "string",
