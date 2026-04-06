@@ -1108,6 +1108,333 @@ test.describe('chapter pages', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Editor toolbar
+// ---------------------------------------------------------------------------
+
+test.describe('editor toolbar', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await navigateToPlayground(page)
+  })
+
+  test('filename pill displays scratch title', async ({ page }) => {
+    const pill = page.locator('#editor-toolbar .editor-toolbar__title')
+    await expect(pill).toBeVisible()
+    await expect(pill).toContainText('<scratch>')
+  })
+
+  test('filename pill updates when a file is loaded', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await setDvalaCode(page, '1 + 1')
+    await saveAsFile(page, 'pill-test')
+
+    const pill = page.locator('#editor-toolbar .editor-toolbar__title')
+    await expect(pill).toContainText('pill-test')
+  })
+
+  test('run button is visible and styled as a button', async ({ page }) => {
+    const runBtn = page.locator('#run-btn')
+    await expect(runBtn).toBeVisible()
+    // verify it has a border (button treatment)
+    const border = await runBtn.evaluate(el => getComputedStyle(el).border)
+    expect(border).toMatch(/\dpx/)
+  })
+
+  test('more menu button is visible and styled as a button', async ({ page }) => {
+    const moreBtn = page.locator('#more-btn')
+    await expect(moreBtn).toBeVisible()
+    const border = await moreBtn.evaluate(el => getComputedStyle(el).border)
+    expect(border).toMatch(/\dpx/)
+  })
+
+  test('more menu opens on click and contains Run option', async ({ page }) => {
+    await page.locator('#more-btn').click()
+    const menu = page.locator('#more-menu')
+    await expect(menu).toBeVisible()
+    await expect(menu).toContainText('Run')
+  })
+
+  test('debug toggle is in the more menu', async ({ page }) => {
+    await page.locator('#more-btn').click()
+    await expect(page.locator('#more-menu')).toContainText('Toggle debug')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Scratch behaviour
+// ---------------------------------------------------------------------------
+
+test.describe('scratch', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('scratch item appears at top of file list with no context menu button', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    const scratchItem = page.locator('#explorer-file-list .explorer-item').first()
+    await expect(scratchItem).toBeVisible()
+    await expect(scratchItem).toContainText('<scratch>')
+    // no context menu button inside scratch item
+    await expect(scratchItem.locator('button')).toHaveCount(0)
+  })
+
+  test('stats panel is hidden when scratch is active', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    // scratch is active by default after resetPlayground
+    const stats = page.locator('#explorer-file-stats')
+    // hidden (display:none or not visible)
+    await expect(stats).toBeHidden()
+  })
+
+  test('stats panel appears when a saved file is selected', async ({ page }) => {
+    await setDvalaCode(page, '42')
+    await saveAsFile(page, 'stats-test')
+
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    // click the saved file (second item)
+    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
+
+    const stats = page.locator('#explorer-file-stats')
+    await expect(stats).toBeVisible({ timeout: 3000 })
+    await expect(stats).toContainText('stats-test')
+  })
+
+  test('opening scratch after file switches back to scratch', async ({ page }) => {
+    await setDvalaCode(page, '100')
+    await saveAsFile(page, 'switch-test')
+    // now switch back to scratch via the item
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    await page.locator('#explorer-file-list .explorer-item').first().click()
+
+    const pill = page.locator('#editor-toolbar .editor-toolbar__title')
+    await expect(pill).toContainText('<scratch>')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// File operations
+// ---------------------------------------------------------------------------
+
+test.describe('file operations', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await navigateToPlayground(page)
+  })
+
+  test('renaming a file updates its name in the list', async ({ page }) => {
+    await setDvalaCode(page, '1')
+    await saveAsFile(page, 'original-name')
+
+    // Extract the file id from the explorer item
+    const fileId = await page.evaluate(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      for (const item of items) {
+        const onclick = item.getAttribute('onclick') ?? ''
+        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
+        if (match?.[1]) return match[1]
+      }
+      return null
+    })
+    expect(fileId).toBeTruthy()
+
+    // Rename via JS API
+    await page.evaluate((id: string) => {
+      (window as any).Playground.renameFile(id)
+    }, fileId!)
+
+    // Fill in the rename input
+    const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
+    await input.waitFor({ timeout: 2000 })
+    await input.fill('renamed-file')
+    await input.press('Enter')
+
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    await expect(page.locator('#explorer-file-list')).toContainText('renamed-file')
+  })
+
+  test('duplicating a file adds a second entry', async ({ page }) => {
+    await setDvalaCode(page, '2 + 2')
+    await saveAsFile(page, 'dup-source')
+
+    const fileId = await page.evaluate(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      for (const item of items) {
+        const onclick = item.getAttribute('onclick') ?? ''
+        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
+        if (match?.[1]) return match[1]
+      }
+      return null
+    })
+
+    await page.evaluate((id: string) => (window as any).Playground.duplicateFile(id), fileId!)
+
+    await page.waitForFunction(() => {
+      // scratch + original + duplicate = 3 items
+      return document.querySelectorAll('#explorer-file-list .explorer-item').length >= 3
+    }, { timeout: 3000 })
+
+    const count = await page.locator('#explorer-file-list .explorer-item').count()
+    expect(count).toBeGreaterThanOrEqual(3)
+  })
+
+  test('locking a file makes the editor read-only', async ({ page }) => {
+    await setDvalaCode(page, 'locked')
+    await saveAsFile(page, 'lock-me')
+
+    const fileId = await page.evaluate(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      for (const item of items) {
+        const onclick = item.getAttribute('onclick') ?? ''
+        const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
+        if (match?.[1]) return match[1]
+      }
+      return null
+    })
+
+    await page.evaluate((id: string) => (window as any).Playground.toggleFileLock(id), fileId!)
+
+    // Load the locked file
+    await page.evaluate((id: string) => (window as any).Playground.loadSavedFile(id), fileId!)
+    await navigateToPlayground(page)
+
+    const textarea = page.locator('#dvala-textarea')
+    const isReadOnly = await textarea.evaluate(el => (el as HTMLTextAreaElement).readOnly)
+    expect(isReadOnly).toBe(true)
+  })
+
+  test('closing an open file returns to scratch', async ({ page }) => {
+    await setDvalaCode(page, '7')
+    await saveAsFile(page, 'close-me')
+
+    // The close button is shown when the files side tab is active
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    const closeBtn = page.locator('#file-close-btn')
+    await expect(closeBtn).toBeVisible({ timeout: 3000 })
+    await closeBtn.click()
+
+    const pill = page.locator('#editor-toolbar .editor-toolbar__title')
+    await expect(pill).toContainText('<scratch>')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tab state persistence
+// ---------------------------------------------------------------------------
+
+test.describe('tab state persistence', () => {
+  test('switching tabs preserves position in reference tab', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+
+    // Navigate deep into a ref page
+    await page.evaluate(() => (window as any).Playground.navigate('/ref/core/math'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+
+    // Switch to editor tab
+    await navigateToPlayground(page)
+
+    // Switch back to ref tab — should restore to /ref/core/math, not /ref root
+    await page.evaluate(() => (window as any).Playground.navigateToTab('ref'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+
+    expect(page.url()).toContain('/ref/core/math')
+  })
+
+  test('switching tabs preserves position in examples tab', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+
+    // Navigate to the examples index then into one example
+    await page.evaluate(() => (window as any).Playground.navigate('/examples'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.querySelector('.book-page') !== null
+    }, { timeout: 5000 })
+
+    // Click the first example link
+    const firstLink = page.locator('#dynamic-page a[onclick*="navigate"]').first()
+    const href = await firstLink.getAttribute('onclick')
+    await firstLink.click()
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+    const urlAfterExample = page.url()
+
+    // Switch to editor tab
+    await navigateToPlayground(page)
+
+    // Switch back to examples — should be on the same example page
+    await page.evaluate(() => (window as any).Playground.navigateToTab('examples'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+
+    expect(page.url()).toBe(urlAfterExample)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Breadcrumbs
+// ---------------------------------------------------------------------------
+
+test.describe('breadcrumbs', () => {
+  test('examples detail page shows breadcrumb with "Examples" link', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+
+    await page.evaluate(() => (window as any).Playground.navigate('/examples'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.querySelector('.book-page') !== null
+    }, { timeout: 5000 })
+
+    // Click the first example
+    await page.locator('#dynamic-page a[onclick*="navigate"]').first().click()
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
+    }, { timeout: 5000 })
+
+    const breadcrumb = page.locator('#dynamic-page .chapter-header__breadcrumbs')
+    await expect(breadcrumb).toBeVisible()
+    await expect(breadcrumb).toContainText('Examples')
+  })
+
+  test('book chapter shows breadcrumb with chapter title but not section folder', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await page.evaluate(() => (window as any).Playground.navigate('/book/getting-started-intro'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.querySelector('.chapter-header__breadcrumbs') !== null
+    }, { timeout: 5000 })
+
+    const breadcrumb = page.locator('#dynamic-page .chapter-header__breadcrumbs')
+    await expect(breadcrumb).toContainText('The Book')
+    await expect(breadcrumb).toContainText('Intro')
+    // section folder ("Getting Started") should NOT appear — breadcrumb is The Book › Intro
+    await expect(breadcrumb).not.toContainText('Getting Started')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // About route removal
 // ---------------------------------------------------------------------------
 
