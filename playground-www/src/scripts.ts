@@ -25,7 +25,7 @@ import { renderShell } from './shell'
 import * as router from './router'
 import { renderDocPage } from './components/docPage'
 import { renderExampleDetailPage, renderExampleIndexPage } from './components/examplePage'
-import { getRefEntries, REF_SECTIONS, renderReferenceIndexPage, renderReferenceModulePage, renderReferenceSectionPage } from './components/referencePage'
+import { getRefEntries, REF_SECTIONS, renderReferenceCategoryPage, renderReferenceIndexPage, renderReferenceModulePage, renderReferenceSectionPage } from './components/referencePage'
 import type { RefEntry } from './components/referencePage'
 import { getFeatureCard, renderStartPage } from './components/startPage'
 import { renderDvalaMarkdown } from './renderDvalaMarkdown'
@@ -910,13 +910,18 @@ export function toggleRefTocMenu(event: Event): void {
       groups.set(entry.group, (groups.get(entry.group) ?? 0) + 1)
     }
 
-    // For modules: each group links to /ref/modules/:name
-    // For others: groups link to the section page
+    // For modules/core: each group links to its own detail page; others link to the section page
     const items: TocItem[] = Array.from(groups.entries()).map(([groupName]) => {
-      const groupPath = section.id === 'modules' ? `/ref/modules/${groupName}` : `/ref/${section.id}`
+      const groupPath = section.id === 'modules'
+        ? `/ref/modules/${groupName}`
+        : section.id === 'core'
+          ? `/ref/core/${encodeURIComponent(groupName)}`
+          : `/ref/${section.id}`
       const isActive = section.id === 'modules'
         ? currentSubPath === `modules/${groupName}`
-        : currentSubPath === section.id
+        : section.id === 'core'
+          ? currentSubPath === `core/${encodeURIComponent(groupName)}`
+          : currentSubPath === section.id
       return {
         label: groupName,
         type: 'subitem' as const,
@@ -4205,6 +4210,11 @@ function routeToPath(appPath: string): void {
     if (section) {
       dynPage.innerHTML = renderReferenceSectionPage(subPath)
       pageTitle = `${section.title} | Dvala Reference`
+    } else if (subPath.startsWith('core/')) {
+      // Core category page: /ref/core/:category
+      const categoryName = decodeURIComponent(subPath.slice('core/'.length))
+      dynPage.innerHTML = renderReferenceCategoryPage(categoryName)
+      pageTitle = `${categoryName} | Dvala Reference`
     } else if (subPath.startsWith('modules/')) {
       // Module detail page: /ref/modules/:name
       const moduleName = subPath.slice('modules/'.length)
