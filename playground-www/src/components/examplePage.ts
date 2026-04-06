@@ -121,6 +121,10 @@ export function renderExampleDetailPage(id: string): string {
 <div class="book-page">
   ${renderPageHeader({
     title: ex.name,
+    breadcrumbs: [
+      { label: 'Examples', path: '/examples' },
+      { label: ex.name },
+    ],
     actions: detailActions,
     prev: prev ? { path: `/examples/${prev.id}`, title: prev.name } : { path: '/examples', title: 'Back to Examples' },
     up: { path: '/examples', title: 'Back to Examples' },

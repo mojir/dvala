@@ -5,7 +5,7 @@
 
 import type { ReferenceData } from '../../../common/referenceData'
 import { href } from '../router'
-import { bookIcon, codeIcon, labIcon } from '../icons'
+import { bookIcon, codeIcon, githubIcon, labIcon } from '../icons'
 import { getPageHeader } from '../utils'
 
 // Feature card markdown content
@@ -139,6 +139,11 @@ export function renderStartPage(): string {
         </div>
       </div>
     </section>
+
+    <footer class="start-page__footer">
+      ${data ? `<span class="start-page__version">v${data.version}</span>` : ''}
+      <a class="start-page__github" href="https://github.com/mojir/dvala" target="_blank" rel="noopener">${githubIcon} GitHub</a>
+    </footer>
   </div>
 </div>`.trim()
 }

@@ -272,25 +272,6 @@ function renderRefBody(ref: Reference): string {
 // ---------------------------------------------------------------------------
 
 function writeStubPages() {
-  // --- About ---
-  writeStubFile('about', stubPage({
-    route: '/about/',
-    title: 'About Dvala',
-    description: 'Dvala is a suspendable, time-traveling functional language for JavaScript with algebraic effects.',
-    body: `<h1>About Dvala</h1>
-<p>Dvala is a pure functional language that runs on JavaScript. It features algebraic effects,
-suspendable and resumable execution, and time-travel debugging.</p>
-<h2>Key Features</h2>
-<ul>
-  <li><strong>Algebraic Effects</strong> &mdash; structured side-effect handling with <code>perform</code> and <code>handle...with</code></li>
-  <li><strong>Suspendable &amp; Resumable</strong> &mdash; pause execution and resume later, even across different runtimes</li>
-  <li><strong>Time-Travel Debugging</strong> &mdash; step forward and backward through program execution</li>
-  <li><strong>Pure Functional</strong> &mdash; immutable data, no side effects in the language core</li>
-  <li><strong>JavaScript Interop</strong> &mdash; embed Dvala in any JavaScript environment</li>
-</ul>
-<p>Learn more in <a href="${BASE_URL}/book/">The Book</a> or explore the <a href="${BASE_URL}/core/">core API</a>.</p>`,
-  }))
-
   // --- Book index ---
   const bookListHtml = bookItems.map(item => {
     if (isBookSection(item)) {
@@ -572,11 +553,9 @@ function writeSitemap() {
   // Static pages
   const staticPages = [
     '/',
-    '/about/',
     '/book/',
     '/examples/',
-    '/core/',
-    '/modules/',
+    '/ref/',
   ]
 
   // Chapter pages

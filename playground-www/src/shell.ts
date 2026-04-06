@@ -1,10 +1,10 @@
 /**
- * Renders the static app shell (sidebar + playground panel + modals) into #wrapper.
+ * Renders the static app shell (tab bar + tab content areas + modals) into #wrapper.
  * Called once at app startup before scripts.ts accesses DOM elements.
  *
- * The #main-panel content area is left empty — the router renders page content there.
- * Settings, saved-programs, and snapshots pages are included here because scripts.ts
- * populates and shows/hides them directly.
+ * Layout: horizontal tab bar at top, tab content fills remaining viewport.
+ * The Playground tab contains the three-panel editor (context | code | output).
+ * Other tabs render dynamic page content via the router.
  */
 
 import {
@@ -12,27 +12,23 @@ import {
   analyzeIcon,
   cameraIcon,
   codeIcon,
+  copyIcon,
   debugIcon,
   formatIcon,
   gearIcon,
   githubIcon,
   hamburgerIcon,
-  homeIcon,
-  bookIcon,
-  labIcon,
-  newFileIcon,
   pauseIcon,
   playIcon,
   redoIcon,
   saveIcon,
-  searchIcon,
   stopIcon,
   syncIcon,
   trashIcon,
   treeIcon,
   undoIcon,
 } from './icons'
-import { getPageHeader } from './utils'
+import { renderEditorMenu } from './editorMenu'
 
 export function renderShell(): void {
   const wrapper = document.getElementById('wrapper')
@@ -42,51 +38,29 @@ export function renderShell(): void {
 
 function getShellHTML(): string {
   return `
-  <main id="main-panel" class="fancy-scroll">
-    <div id="dynamic-page"></div>
-    ${getSettingsPage()}
-    ${getSavedProgramsPage()}
-    ${getSnapshotsPage()}
-  </main>
-
-  <div id="resize-sidebar"></div>
-
-  <nav id="sidebar" class="fancy-scroll-background">
-    <div class="sidebar-logo-wrap">
-      <img src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
+  <nav id="tab-bar">
+    <img class="tab-bar__logo" src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
+    <div class="tab-bar__tabs">
+      <a class="tab-bar__tab" id="tab-btn-playground" href="#" onclick="event.preventDefault();Playground.navigateToTab('playground')">Editor</a>
+      <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigateToTab('ref')">Reference</a>
+      <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigateToTab('examples')">Examples</a>
+      <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigateToTab('book')">The Book</a>
+      <a class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" href="#" onclick="event.preventDefault();Playground.navigateToTab('settings')" title="Settings">${gearIcon}</a>
     </div>
-    <div class="sidebar-search-row" onclick="Playground.openSearch()">
-      <span class="sidebar-search-icon">${searchIcon}</span>
-      <span>Search</span>
-      <span class="sidebar-search-kbd">F3</span>
-    </div>
-    <div class="sidebar-nav-list">
-      <a href="#" role="button" id="home-page_link" onclick="Playground.navigate('/')">${homeIcon} Home</a>
-      <a href="#" role="button" id="book-page_link" onclick="Playground.navigate('/book')">${bookIcon} The Book</a>
-      <a href="#" role="button" id="example-page_link" onclick="Playground.navigate('/examples')">${labIcon} Examples</a>
-      <a href="#" role="button" id="ref-page_link" onclick="Playground.navigate('/ref')">${codeIcon} Reference</a>
-    </div>
-    <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="saved-programs-page_link" onclick="Playground.showSavedProgramsPage()">
-        ${saveIcon} Programs
-      </a>
-      <span id="programs-nav-indicator" class="nav-indicator"></span>
-    </div>
-    <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="snapshots-page_link" onclick="Playground.showSnapshotsPage()">
-        ${cameraIcon} Snapshots
-      </a>
-      <span id="snapshots-nav-indicator" class="nav-indicator"></span>
-    </div>
-    <div class="sidebar-nav-item-row">
-      <a href="#" role="button" id="settings-page_link" onclick="Playground.showPage('settings-page','smooth')">${gearIcon} Settings</a>
-    </div>
-    <div class="sidebar-spacer"></div>
-    <a class="sidebar-github" href="https://github.com/mojir/dvala" target="_blank" rel="noopener">${githubIcon} GitHub</a>
-    <div id="sidebar-version" class="sidebar-version"></div>
   </nav>
 
-  ${getPlaygroundPanel()}
+  <div id="tab-content">
+    <div id="tab-home" class="tab-pane">
+      <main id="main-panel" class="fancy-scroll">
+        <div id="dynamic-page"></div>
+        ${getSettingsPage()}
+      </main>
+    </div>
+
+    <div id="tab-playground" class="tab-pane" style="display:none;">
+      ${getPlaygroundPanel()}
+    </div>
+  </div>
 
   ${getModals()}
 
@@ -108,90 +82,156 @@ function getShellHTML(): string {
 }
 
 function getPlaygroundPanel(): string {
-  return `
-  <div id="playground">
-    <div id="resize-playground"></div>
-    <div id="panels-container">
+  const moreMenu = renderEditorMenu({
+    id: 'more-menu',
+    items: [
+      { action: 'Playground.closeMoreMenu();Playground.run()', icon: playIcon, label: 'Run', shortcut: 'Ctrl+R' },
+      { action: 'Playground.closeMoreMenu();void Playground.runSync()', icon: syncIcon, label: 'Run sync', shortcut: '⇧Ctrl+R' },
+      { action: 'Playground.closeMoreMenu();Playground.analyze()', icon: analyzeIcon, label: 'Analyze', shortcut: 'Ctrl+A' },
+      { action: 'Playground.closeMoreMenu();Playground.tokenize()', icon: codeIcon, label: 'Tokenize', shortcut: 'Ctrl+T' },
+      { action: 'Playground.closeMoreMenu();Playground.parse()', icon: treeIcon, label: 'Parse', shortcut: 'Ctrl+P' },
+      { action: 'Playground.closeMoreMenu();Playground.format()', icon: formatIcon, label: 'Format', shortcut: 'Ctrl+F' },
+      { action: 'Playground.closeMoreMenu();Playground.saveAs()', icon: saveIcon, label: 'Save as…' },
+      { action: 'Playground.closeMoreMenu();Playground.toggleDebug()', icon: debugIcon, label: 'Toggle debug' },
+    ],
+  })
 
-      <div id="context-panel">
-        <div class="panel-header" onclick="Playground.focusContext()">
-          <div id="context-title" class="panel-header__title">Context</div>
-          <div class="panel-header__actions">
-            <a href="#" role="button" onclick="Playground.openAddContextMenu()" class="panel-header__icon-btn" aria-label="Add context">${addIcon}
-              <div id="add-context-menu" class="dropdown-menu" style="display:none;">
-                <div class="dropdown-menu__body">
-                  <div class="dropdown-menu__field-group">
-                    <label for="new-context-name" class="dropdown-menu__label">Name</label>
-                    <input id="new-context-name" class="dropdown-menu__input">
-                    <label for="new-context-value" class="dropdown-menu__label">Value (JSON)</label>
-                    <textarea id="new-context-value" rows="5" class="dropdown-menu__textarea fancy-scroll"></textarea>
-                    <button class="button dropdown-menu__add-btn" onclick="Playground.addContextEntry()">Add</button>
-                    <span id="new-context-error" class="dropdown-menu__error" style="display:none;"></span>
-                  </div>
-                  <a href="#" role="button" onclick="Playground.closeAddContextMenu();Playground.addSampleContext();">Add sample context</a>
-                </div>
-              </div>
-            </a>
-            <a href="#" role="button" id="context-undo-button" onclick="Playground.undoContextHistory()" aria-label="Undo context">${undoIcon}</a>
-            <a href="#" role="button" id="context-redo-button" onclick="Playground.redoContextHistory()" aria-label="Redo context">${redoIcon}</a>
-          </div>
+  const filesHeaderMenu = renderEditorMenu({
+    id: 'files-header-menu',
+    items: [
+      { action: 'Playground.closeFilesHeaderMenu();Playground.openImportFileModal()', icon: addIcon, label: 'Import' },
+      { action: 'Playground.closeFilesHeaderMenu();Playground.clearUnlockedFiles()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+    ],
+  })
+
+  const snapshotsHeaderMenu = renderEditorMenu({
+    id: 'snapshots-header-menu',
+    items: [
+      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.openImportSnapshotModal()', icon: addIcon, label: 'Import' },
+      { action: 'Playground.closeSnapshotsHeaderMenu();Playground.clearUnlockedSnapshots()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+    ],
+  })
+
+  return `
+    <div id="editor-toolbar">
+      <div class="editor-toolbar__left">
+        <span id="editor-toolbar-title" class="editor-toolbar__title"></span>
+      </div>
+      <div class="editor-toolbar__right">
+        <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
+        <span id="execution-status-inline" class="execution-status-inline" style="display:none;">Running</span>
+        <button id="exec-play-btn-inline" class="exec-btn-inline" title="Resume" style="display:none;">${playIcon}</button>
+        <button id="exec-pause-btn-inline" class="exec-btn-inline" title="Pause" style="display:none;">${pauseIcon}</button>
+        <button id="exec-stop-btn-inline" class="exec-btn-inline" title="Stop" style="display:none;">${stopIcon}</button>
+        <div>
+          <a href="#" role="button" id="more-btn" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
+            ${moreMenu}
+          </a>
         </div>
-        <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON"></textarea>
+      </div>
+    </div>
+
+    <div id="editor-top" class="editor-top">
+      <div id="side-panel-icons" class="side-panel__icons">
+        <button class="side-panel__icon side-panel__icon--active" id="side-icon-files" onclick="Playground.showSideTab('files')" title="Files">${copyIcon}</button>
+        <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
+        <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Context">${codeIcon}</button>
+      </div>
+
+      <div id="side-panel-header" class="panel-header">
+        <div id="side-header-files">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSideTab('files')" class="panel-header__title panel-header__title-link">Files</a>
+        </div>
+        <div id="side-header-snapshots" style="display:none;">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSideTab('snapshots')" class="panel-header__title panel-header__title-link">Snapshots</a>
+        </div>
+        <div id="side-header-context" style="display:none;">
+          <span class="panel-header__title">Context</span>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-files">
+          <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New file" title="New file">${addIcon}</a>
+          <a href="#" role="button" id="files-header-menu-button" onclick="event.preventDefault();Playground.openFilesHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Files actions" title="Files actions">
+            ${hamburgerIcon}
+            ${filesHeaderMenu}
+          </a>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-snapshots" style="display:none;">
+          <a href="#" role="button" id="snapshots-header-menu-button" onclick="event.preventDefault();Playground.openSnapshotsHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Snapshot actions" title="Snapshot actions">
+            ${hamburgerIcon}
+            ${snapshotsHeaderMenu}
+          </a>
+        </div>
+        <div class="panel-header__actions" id="side-header-actions-context" style="display:none;">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.openContextJsonModal()" class="panel-header__icon-btn" aria-label="Show full context JSON" title="Show full context JSON">${codeIcon}</a>
+        </div>
+      </div>
+
+      <div id="dvala-panel-header" class="panel-header">
+        <div id="dvala-panel-header-content">
+          <div id="dvala-header-editor" class="panel-header__code-title">
+            <span id="dvala-code-title-string" class="panel-header__title-string"></span>
+            <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
+            <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
+            <input id="dvala-code-title-input" type="text" style="display:none;">
+          </div>
+          <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
+        </div>
+        <div class="panel-header__actions" id="dvala-panel-header-actions">
+            <a href="#" role="button" id="save-scratch-btn" onclick="event.preventDefault();Playground.saveScratch()" class="panel-header__icon-btn" title="Save scratch" style="display:none;">${saveIcon}<span>Save scratch</span></a>
+          <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
+          <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
+          <a href="#" role="button" id="file-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeActiveFile()" title="Close file" style="display:none;">✕</a>
+          <a href="#" role="button" id="snapshot-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
+        </div>
+      </div>
+
+      <div id="side-panel-content" class="side-panel__content">
+        <div id="side-tab-files" class="side-panel__tab">
+          <div id="explorer-file-list" class="explorer-list fancy-scroll"></div>
+           <div id="explorer-file-stats" class="file-stats-panel"></div>
+        </div>
+          <div id="side-tab-snapshots" class="side-panel__tab" style="display:none;">
+            <div id="side-snapshots-list" class="explorer-list fancy-scroll"></div>
+          </div>
+          <div id="side-tab-context" class="side-panel__tab" style="display:none;">
+            <textarea id="context-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context JSON" style="display:none;"></textarea>
+            <div id="context-entry-list" class="explorer-list fancy-scroll"></div>
+            <a id="context-undo-button" style="display:none;"></a>
+            <a id="context-redo-button" style="display:none;"></a>
+            <div id="add-context-menu" style="display:none;">
+              <input id="new-context-name">
+              <textarea id="new-context-value"></textarea>
+              <span id="new-context-error" style="display:none;"></span>
+            </div>
+          </div>
       </div>
 
       <div id="resize-divider-1"></div>
 
       <div id="dvala-panel">
-        <div class="panel-header" onclick="Playground.focusDvalaCode()">
-          <div id="dvala-code-title" class="panel-header__code-title">
-            <a href="#" role="button" id="dvala-panel-debug-info" class="panel-header__debug-icon" onclick="event.preventDefault();event.stopPropagation();Playground.toggleDebug()" title="Toggle debug mode">${debugIcon}</a>
-            <span id="dvala-code-title-string" class="panel-header__title-string" onclick="Playground.onProgramTitleClick(event)" title="Click to rename"></span>
-            <span id="dvala-code-pending-indicator" class="pending-indicator" style="display:none;" title="Unsaved"></span>
-            <span id="dvala-code-locked-indicator" class="locked-indicator" style="display:none;" title="Read-only"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm3-2V7a4 4 0 1 1 8 0v4m-4 4v2"/></svg> Read-only</span>
-            <input id="dvala-code-title-input" type="text" spellcheck="false" placeholder="Program name"
-              class="panel-header__title-input"
-              style="display:none;"
-              aria-label="Program name"
-              onkeydown="Playground.onProgramTitleKeydown(event)"
-              onblur="Playground.onProgramTitleBlur()">
-          </div>
-          <div class="panel-header__actions" onclick="event.stopPropagation()">
-            <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
-            <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code">${undoIcon}</a>
-            <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code">${redoIcon}</a>
-            <a href="#" role="button" onclick="Playground.newFile()" title="New file" aria-label="New file">${newFileIcon}</a>
-            <div>
-              <a href="#" role="button" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
-                <div id="more-menu" class="dropdown-menu" style="display:none;">
-                  <div class="dropdown-menu__body">
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.run()" class="menu-item">${playIcon}<span>Run</span><span class="menu-shortcut">Ctrl+R</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();void Playground.runSync()" class="menu-item">${syncIcon}<span>Run sync</span><span class="menu-shortcut">⇧Ctrl+R</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.analyze()" class="menu-item">${analyzeIcon}<span>Analyze</span><span class="menu-shortcut">Ctrl+A</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.tokenize()" class="menu-item">${codeIcon}<span>Tokenize</span><span class="menu-shortcut">Ctrl+T</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.parse()" class="menu-item">${treeIcon}<span>Parse</span><span class="menu-shortcut">Ctrl+P</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.format()" class="menu-item">${formatIcon}<span>Format</span><span class="menu-shortcut">Ctrl+F</span></a>
-                    <a href="#" role="button" onclick="Playground.closeMoreMenu();Playground.saveAs()" class="menu-item">${saveIcon}<span>Save as…</span></a>
-                  </div>
-                </div>
-              </a>
-            </div>
-          </div>
+        <div id="dvala-editor-view">
+          <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
         </div>
-        <textarea id="dvala-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Dvala code editor"></textarea>
-      </div>
-
-      <div id="resize-divider-2"></div>
-
-      <div id="output-panel">
-        <div class="panel-header">
-          <span class="panel-header__title">Output</span>
-          <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn" aria-label="Clear output">${trashIcon}</a>
+        <div id="context-detail-view" style="display:none;">
+          <textarea id="context-detail-textarea" class="panel-textarea fancy-scroll" spellcheck="false" aria-label="Context binding JSON"></textarea>
         </div>
-        <div id="output-result" class="fancy-scroll"></div>
+        <div id="dvala-empty-view" class="dvala-empty-view" style="display:none;"></div>
+        <div id="dvala-snapshot-view" style="display:none;">
+          <div id="snapshot-content" class="snapshot-content fancy-scroll"></div>
+          <div id="snapshot-footer"></div>
+        </div>
       </div>
-
     </div>
-  </div>
+
+    <div id="resize-divider-2"></div>
+
+    <div id="output-panel">
+      <div class="panel-header">
+        <span class="panel-header__title">Output</span>
+        <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
+      </div>
+      <div id="output-result" class="fancy-scroll"></div>
+    </div>
 
   `
 }
@@ -213,7 +253,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-snapshots"> Saved snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-recent-snapshots"> Recent snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-layout"> Layout</label>
-      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-programs"> Saved programs</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-files"> Saved files</label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doExport()">Export</button>
@@ -230,7 +270,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-snapshots"><span id="import-opt-saved-snapshots-label">Saved snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-recent-snapshots"><span id="import-opt-recent-snapshots-label">Recent snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-layout"><span id="import-opt-layout-label">Layout</span></label>
-      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-programs"><span id="import-opt-saved-programs-label">Saved programs</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-files"><span id="import-opt-saved-files-label">Saved files</span></label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doImport()">Import</button>
@@ -277,7 +317,6 @@ function getSettingsPage(): string {
 
   return `
   <div id="settings-page" class="content content-page">
-    ${getPageHeader()}
     <h1 class="content-page__title">Settings</h1>
     <div class="settings-page__body">
       <div class="settings-tabs">
@@ -291,11 +330,11 @@ function getSettingsPage(): string {
         <p class="settings-tab-content__desc">Configure the Dvala language runtime behavior.</p>
         ${toggle('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
         ${toggle('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
-        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at program start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
+        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at file start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
       </div>
 
       <div id="settings-tab-playground" class="settings-tab-content">
-        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running programs.</p>
+        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running files.</p>
         ${toggle('settings-disable-handlers-toggle', 'Disable standard effect handlers', 'Disables handlers for dvala.* effects (io, sleep, time, random, etc.).', 'Playground.toggleDisableStandardHandlers()')}
         ${toggle('settings-disable-playground-effects-toggle', 'Disable playground effects', 'Disables handlers for playground.* effects (editor, storage, ui, exec).', 'Playground.toggleDisablePlaygroundEffects()')}
         ${toggle('settings-intercept-effects-toggle', 'Intercept effects', 'Show a modal when certain effects are triggered.', 'Playground.toggleInterceptEffects()')}
@@ -373,38 +412,6 @@ function getSettingsPage(): string {
         </div>
       </div>
     </div>
-  </div>`
-}
-
-function getSavedProgramsPage(): string {
-  return `
-  <div id="saved-programs-page" class="content content-page">
-    ${getPageHeader()}
-    <div class="list-page__header">
-      <span class="list-page__heading">Programs</span>
-      <div class="list-page__actions">
-        <button id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
-        <button onclick="Playground.openImportProgramModal()" class="list-page__action-btn">${addIcon} Import</button>
-      </div>
-    </div>
-    <div id="saved-programs-list" class="list-page__list"></div>
-    <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
-  </div>`
-}
-
-function getSnapshotsPage(): string {
-  return `
-  <div id="snapshots-page" class="content content-page">
-    ${getPageHeader()}
-    <div class="list-page__header">
-      <span class="list-page__heading">Snapshots</span>
-      <div class="list-page__actions">
-        <button id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
-        <button onclick="Playground.openImportSnapshotModal()" class="list-page__action-btn">${addIcon} Import</button>
-      </div>
-    </div>
-    <div id="snapshots-list" class="list-page__list"></div>
-    <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
   </div>`
 }
 

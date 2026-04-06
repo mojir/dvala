@@ -4,6 +4,7 @@ import { resume as baseResume } from '../src/resume'
 import type { ResumeOptions } from '../src/resume'
 import type { Handlers, Snapshot } from '../src/evaluator/effectTypes'
 import { qualifiedNameMatchesPattern, findMatchingHandlers, generateUUID } from '../src/evaluator/effectTypes'
+import { extractCheckpointSnapshots } from '../src/evaluator/suspension'
 import { mathUtilsModule } from '../src/builtin/modules/math'
 import type { Any } from '../src/interface'
 import { PersistentMap } from '../src/utils/persistent'
@@ -2039,6 +2040,41 @@ describe('phase 4 — Suspension & Resume', () => {
 
       const r2 = await resumeContinuation(r1.snapshot, 21, { disableAutoCheckpoint: false })
       expect(r2).toMatchObject({ type: 'completed', value: 42 })
+    })
+
+    it('should resume the extracted Program start checkpoint from a terminal snapshot', async () => {
+      const outputs: string[] = []
+      const result = await dvala.runAsync(`
+        let weight = 80;
+        let height = 1.8;
+        let bmi = weight / height ^ 2;
+        perform(@dvala.io.print, \`BMI: \${round(bmi, 1)}\`);
+        perform(@dvala.io.print, \`BMI: \${round(bmi, 2)}\`)
+      `, {
+        disableAutoCheckpoint: false,
+        terminalSnapshot: true,
+        effectHandlers: [
+          { pattern: 'dvala.io.print', handler: async ({ arg, resume: r }) => { outputs.push(arg as string); r(null) } },
+        ],
+      })
+
+      expect(result.type).toBe('completed')
+      if (result.type !== 'completed' || !result.snapshot) return
+
+      const checkpoints = extractCheckpointSnapshots(result.snapshot.continuation)
+      expect(checkpoints[0]?.message).toBe('Program start')
+
+      const replayOutputs: string[] = []
+      const replay = await resumeContinuation(checkpoints[0]!, null, {
+        disableAutoCheckpoint: false,
+        handlers: [
+          { pattern: 'dvala.io.print', handler: async ({ arg, resume: r }) => { replayOutputs.push(arg as string); r(null) } },
+        ],
+      })
+
+      expect(outputs).toEqual(['BMI: 24.7', 'BMI: 24.69'])
+      expect(replay).toMatchObject({ type: 'completed', value: null })
+      expect(replayOutputs).toEqual(['BMI: 24.7', 'BMI: 24.69'])
     })
   })
 

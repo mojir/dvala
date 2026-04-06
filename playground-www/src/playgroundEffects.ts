@@ -201,44 +201,44 @@ function derivePlaygroundEffectReference(): Record<string, EffectReference> {
       ],
     },
 
-    // ── Programs ──
+    // ── Files ──
     {
-      name: 'playground.programs.save',
-      group: 'Programs',
-      description: 'Save a program. Defaults to current editor content.',
+      name: 'playground.files.save',
+      group: 'Files',
+      description: 'Save a file. Defaults to current editor content.',
       args: {
-        name: { type: 'string', description: 'Name for the saved program.' },
+        name: { type: 'string', description: 'Name for the saved file.' },
         code: { type: 'string', description: 'Source code to save. Defaults to current editor content.' },
       },
       returns: { type: 'null' },
       variants: [{ argumentNames: ['name'] }, { argumentNames: ['name', 'code'] }],
       examples: [
-        { code: 'perform(@playground.programs.save, "my-program")', noRun: true },
-        { code: 'perform(@playground.programs.save, ["hello", "1 + 2"])', noRun: true },
+        { code: 'perform(@playground.files.save, "my-file")', noRun: true },
+        { code: 'perform(@playground.files.save, ["hello", "1 + 2"])', noRun: true },
       ],
     },
     {
-      name: 'playground.programs.load',
-      group: 'Programs',
-      description: 'Load a saved program by name. Fails if not found.',
+      name: 'playground.files.load',
+      group: 'Files',
+      description: 'Load a saved file by name. Fails if not found.',
       args: {
-        name: { type: 'string', description: 'Name of the saved program to load.' },
+        name: { type: 'string', description: 'Name of the saved file to load.' },
       },
       returns: { type: 'string' },
       variants: [{ argumentNames: ['name'] }],
       examples: [
-        { code: 'let code = perform(@playground.programs.load, "my-program")', noRun: true },
+        { code: 'let code = perform(@playground.files.load, "my-file")', noRun: true },
       ],
     },
     {
-      name: 'playground.programs.list',
-      group: 'Programs',
-      description: 'List all saved program names.',
+      name: 'playground.files.list',
+      group: 'Files',
+      description: 'List all saved file names.',
       args: {},
       returns: { type: 'string', array: true },
       variants: [{ argumentNames: [] }],
       examples: [
-        { code: 'let names = perform(@playground.programs.list)', noRun: true },
+        { code: 'let names = perform(@playground.files.list)', noRun: true },
       ],
     },
 
