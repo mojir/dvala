@@ -41,11 +41,11 @@ function getShellHTML(): string {
   <nav id="tab-bar">
     <img class="tab-bar__logo" src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
     <div class="tab-bar__tabs">
-      <a class="tab-bar__tab" id="tab-btn-playground" href="#" onclick="event.preventDefault();Playground.navigate('/playground')">Editor</a>
-      <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigate('/ref')">Reference</a>
-      <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigate('/examples')">Examples</a>
-      <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigate('/book')">The Book</a>
-      <a class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" href="#" onclick="event.preventDefault();Playground.navigate('/settings')" title="Settings">${gearIcon}</a>
+      <a class="tab-bar__tab" id="tab-btn-playground" href="#" onclick="event.preventDefault();Playground.navigateToTab('playground')">Editor</a>
+      <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigateToTab('ref')">Reference</a>
+      <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigateToTab('examples')">Examples</a>
+      <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigateToTab('book')">The Book</a>
+      <a class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" href="#" onclick="event.preventDefault();Playground.navigateToTab('settings')" title="Settings">${gearIcon}</a>
     </div>
   </nav>
 
@@ -54,8 +54,6 @@ function getShellHTML(): string {
       <main id="main-panel" class="fancy-scroll">
         <div id="dynamic-page"></div>
         ${getSettingsPage()}
-        ${getSavedProgramsPage()}
-        ${getSnapshotsPage()}
       </main>
     </div>
 
@@ -94,14 +92,15 @@ function getPlaygroundPanel(): string {
       { action: 'Playground.closeMoreMenu();Playground.parse()', icon: treeIcon, label: 'Parse', shortcut: 'Ctrl+P' },
       { action: 'Playground.closeMoreMenu();Playground.format()', icon: formatIcon, label: 'Format', shortcut: 'Ctrl+F' },
       { action: 'Playground.closeMoreMenu();Playground.saveAs()', icon: saveIcon, label: 'Save as…' },
+      { action: 'Playground.closeMoreMenu();Playground.toggleDebug()', icon: debugIcon, label: 'Toggle debug' },
     ],
   })
 
-  const programsHeaderMenu = renderEditorMenu({
-    id: 'programs-header-menu',
+  const filesHeaderMenu = renderEditorMenu({
+    id: 'files-header-menu',
     items: [
-      { action: 'Playground.closeProgramsHeaderMenu();Playground.openImportProgramModal()', icon: addIcon, label: 'Import' },
-      { action: 'Playground.closeProgramsHeaderMenu();Playground.clearUnlockedPrograms()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
+      { action: 'Playground.closeFilesHeaderMenu();Playground.openImportFileModal()', icon: addIcon, label: 'Import' },
+      { action: 'Playground.closeFilesHeaderMenu();Playground.clearUnlockedFiles()', danger: true, icon: trashIcon, label: 'Remove unlocked' },
     ],
   })
 
@@ -119,14 +118,13 @@ function getPlaygroundPanel(): string {
         <span id="editor-toolbar-title" class="editor-toolbar__title"></span>
       </div>
       <div class="editor-toolbar__right">
-        <a href="#" role="button" id="dvala-panel-debug-info" class="panel-header__debug-icon" onclick="event.preventDefault();Playground.toggleDebug()" title="Toggle debug mode">${debugIcon}</a>
         <a href="#" role="button" id="run-btn" onclick="Playground.run()" title="Run (Ctrl+R)"><span class="run-btn__idle">${playIcon} Run</span><span class="run-btn__busy"><span class="spinner"></span> Running…</span></a>
         <span id="execution-status-inline" class="execution-status-inline" style="display:none;">Running</span>
         <button id="exec-play-btn-inline" class="exec-btn-inline" title="Resume" style="display:none;">${playIcon}</button>
         <button id="exec-pause-btn-inline" class="exec-btn-inline" title="Pause" style="display:none;">${pauseIcon}</button>
         <button id="exec-stop-btn-inline" class="exec-btn-inline" title="Stop" style="display:none;">${stopIcon}</button>
         <div>
-          <a href="#" role="button" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
+          <a href="#" role="button" id="more-btn" onclick="Playground.openMoreMenu(this)" aria-label="More actions">${hamburgerIcon}
             ${moreMenu}
           </a>
         </div>
@@ -135,26 +133,26 @@ function getPlaygroundPanel(): string {
 
     <div id="editor-top" class="editor-top">
       <div id="side-panel-icons" class="side-panel__icons">
-        <button class="side-panel__icon side-panel__icon--active" id="side-icon-programs" onclick="Playground.showSideTab('programs')" title="Programs">${copyIcon}</button>
+        <button class="side-panel__icon side-panel__icon--active" id="side-icon-files" onclick="Playground.showSideTab('files')" title="Files">${copyIcon}</button>
         <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
         <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Context">${codeIcon}</button>
       </div>
 
       <div id="side-panel-header" class="panel-header">
-        <div id="side-header-programs">
-          <a href="#" role="button" onclick="event.preventDefault();Playground.showSavedProgramsPage()" class="panel-header__title panel-header__title-link">Programs</a>
+        <div id="side-header-files">
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSideTab('files')" class="panel-header__title panel-header__title-link">Files</a>
         </div>
         <div id="side-header-snapshots" style="display:none;">
-          <a href="#" role="button" onclick="event.preventDefault();Playground.showSnapshotsPage()" class="panel-header__title panel-header__title-link">Snapshots</a>
+          <a href="#" role="button" onclick="event.preventDefault();Playground.showSideTab('snapshots')" class="panel-header__title panel-header__title-link">Snapshots</a>
         </div>
         <div id="side-header-context" style="display:none;">
           <span class="panel-header__title">Context</span>
         </div>
-        <div class="panel-header__actions" id="side-header-actions-programs">
-          <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New program" title="New program">${addIcon}</a>
-          <a href="#" role="button" id="programs-header-menu-button" onclick="event.preventDefault();Playground.openProgramsHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Programs actions" title="Programs actions">
+        <div class="panel-header__actions" id="side-header-actions-files">
+          <a href="#" role="button" onclick="Playground.newFile()" class="panel-header__icon-btn" aria-label="New file" title="New file">${addIcon}</a>
+          <a href="#" role="button" id="files-header-menu-button" onclick="event.preventDefault();Playground.openFilesHeaderMenu(this)" class="panel-header__icon-btn" aria-label="Files actions" title="Files actions">
             ${hamburgerIcon}
-            ${programsHeaderMenu}
+            ${filesHeaderMenu}
           </a>
         </div>
         <div class="panel-header__actions" id="side-header-actions-snapshots" style="display:none;">
@@ -179,17 +177,18 @@ function getPlaygroundPanel(): string {
           <div id="dvala-header-snapshot" class="snapshot-breadcrumbs" style="display:none;"></div>
         </div>
         <div class="panel-header__actions" id="dvala-panel-header-actions">
+            <a href="#" role="button" id="save-scratch-btn" onclick="event.preventDefault();Playground.saveScratch()" class="panel-header__icon-btn" title="Save scratch" style="display:none;">${saveIcon}<span>Save scratch</span></a>
           <a href="#" role="button" id="dvala-code-undo-button" onclick="Playground.undoDvalaCodeHistory()" aria-label="Undo code" style="display:none;">${undoIcon}</a>
           <a href="#" role="button" id="dvala-code-redo-button" onclick="Playground.redoDvalaCodeHistory()" aria-label="Redo code" style="display:none;">${redoIcon}</a>
-          <a href="#" role="button" id="program-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeActiveProgram()" title="Close program" style="display:none;">✕</a>
+          <a href="#" role="button" id="file-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeActiveFile()" title="Close file" style="display:none;">✕</a>
           <a href="#" role="button" id="snapshot-close-btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.closeSnapshotView()" title="Back to editor" style="display:none;">✕</a>
         </div>
       </div>
 
       <div id="side-panel-content" class="side-panel__content">
-        <div id="side-tab-programs" class="side-panel__tab">
-          <div id="explorer-program-list" class="explorer-list fancy-scroll"></div>
-           <div id="explorer-program-stats" class="program-stats-panel"></div>
+        <div id="side-tab-files" class="side-panel__tab">
+          <div id="explorer-file-list" class="explorer-list fancy-scroll"></div>
+           <div id="explorer-file-stats" class="file-stats-panel"></div>
         </div>
           <div id="side-tab-snapshots" class="side-panel__tab" style="display:none;">
             <div id="side-snapshots-list" class="explorer-list fancy-scroll"></div>
@@ -229,7 +228,7 @@ function getPlaygroundPanel(): string {
     <div id="output-panel">
       <div class="panel-header">
         <span class="panel-header__title">Output</span>
-        <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn" aria-label="Clear output">${trashIcon}</a>
+        <a href="#" role="button" onclick="Playground.resetOutput()" class="panel-header__icon-btn output-clear-btn" aria-label="Clear output">${trashIcon} Clear</a>
       </div>
       <div id="output-result" class="fancy-scroll"></div>
     </div>
@@ -254,7 +253,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-snapshots"> Saved snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-recent-snapshots"> Recent snapshots</label>
       <label class="modal-checklist__item"><input type="checkbox" id="export-opt-layout"> Layout</label>
-      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-programs"> Saved programs</label>
+      <label class="modal-checklist__item"><input type="checkbox" id="export-opt-saved-files"> Saved files</label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doExport()">Export</button>
@@ -271,7 +270,7 @@ function getModals(): string {
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-snapshots"><span id="import-opt-saved-snapshots-label">Saved snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-recent-snapshots"><span id="import-opt-recent-snapshots-label">Recent snapshots</span></label>
       <label class="modal-checklist__item"><input type="checkbox" id="import-opt-layout"><span id="import-opt-layout-label">Layout</span></label>
-      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-programs"><span id="import-opt-saved-programs-label">Saved programs</span></label>
+      <label class="modal-checklist__item"><input type="checkbox" id="import-opt-saved-files"><span id="import-opt-saved-files-label">Saved files</span></label>
     </div>
     <div class="modal-btn-row">
       <button class="button" onclick="Playground.doImport()">Import</button>
@@ -331,11 +330,11 @@ function getSettingsPage(): string {
         <p class="settings-tab-content__desc">Configure the Dvala language runtime behavior.</p>
         ${toggle('settings-debug-toggle', 'Debug mode', 'Injects source code info into the AST for better error messages.', 'Playground.toggleDebug()')}
         ${toggle('settings-pure-toggle', 'Pure mode', 'Restricts execution to pure expressions only.', 'Playground.togglePure()')}
-        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at program start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
+        ${toggle('settings-auto-checkpoint-toggle', 'Disable auto checkpoint', 'When enabled, runtime captures snapshots at file start and after each effect (enables time travel).', 'Playground.toggleAutoCheckpoint()')}
       </div>
 
       <div id="settings-tab-playground" class="settings-tab-content">
-        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running programs.</p>
+        <p class="settings-tab-content__desc">Configure how the playground handles effects and interacts with running files.</p>
         ${toggle('settings-disable-handlers-toggle', 'Disable standard effect handlers', 'Disables handlers for dvala.* effects (io, sleep, time, random, etc.).', 'Playground.toggleDisableStandardHandlers()')}
         ${toggle('settings-disable-playground-effects-toggle', 'Disable playground effects', 'Disables handlers for playground.* effects (editor, storage, ui, exec).', 'Playground.toggleDisablePlaygroundEffects()')}
         ${toggle('settings-intercept-effects-toggle', 'Intercept effects', 'Show a modal when certain effects are triggered.', 'Playground.toggleInterceptEffects()')}
@@ -413,36 +412,6 @@ function getSettingsPage(): string {
         </div>
       </div>
     </div>
-  </div>`
-}
-
-function getSavedProgramsPage(): string {
-  return `
-  <div id="saved-programs-page" class="content content-page">
-    <div class="list-page__header">
-      <span class="list-page__heading">Programs</span>
-      <div class="list-page__actions">
-        <button id="saved-programs-clear-all" onclick="Playground.clearUnlockedPrograms()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
-        <button onclick="Playground.openImportProgramModal()" class="list-page__action-btn">${addIcon} Import</button>
-      </div>
-    </div>
-    <div id="saved-programs-list" class="list-page__list"></div>
-    <div id="saved-programs-empty" class="list-page__empty">No saved programs yet.</div>
-  </div>`
-}
-
-function getSnapshotsPage(): string {
-  return `
-  <div id="snapshots-page" class="content content-page">
-    <div class="list-page__header">
-      <span class="list-page__heading">Snapshots</span>
-      <div class="list-page__actions">
-        <button id="snapshots-clear-all" onclick="Playground.clearUnlockedSnapshots()" class="list-page__action-btn">${trashIcon} Remove unlocked</button>
-        <button onclick="Playground.openImportSnapshotModal()" class="list-page__action-btn">${addIcon} Import</button>
-      </div>
-    </div>
-    <div id="snapshots-list" class="list-page__list"></div>
-    <div id="snapshots-empty" class="list-page__empty">No snapshots yet.</div>
   </div>`
 }
 

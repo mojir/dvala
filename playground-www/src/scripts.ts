@@ -46,20 +46,23 @@ import {
 } from './snapshotStorage'
 import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
 import {
-  clearAllPrograms,
-  getSavedPrograms,
-  initPrograms,
-  setSavedPrograms,
-} from './programStorage'
-import type { SavedProgram } from './programStorage'
+  DVALA_FILE_SUFFIX,
+  clearAllFiles,
+  getSavedFiles,
+  initFiles,
+  normalizeSavedFileName,
+  setSavedFiles,
+  stripSavedFileSuffix,
+} from './fileStorage'
+import type { SavedFile } from './fileStorage'
 import {
-  clearAllProgramHistories,
-  deleteProgramHistory,
-  getProgramHistory,
-  initProgramHistories,
-  pruneProgramHistories,
-  setProgramHistory,
-} from './programHistoryStorage'
+  clearAllFileHistories,
+  deleteFileHistory,
+  getFileHistory,
+  initFileHistories,
+  pruneFileHistories,
+  setFileHistory,
+} from './fileHistoryStorage'
 import {
   applyEncodedState,
   clearAllStates,
@@ -81,10 +84,10 @@ import { createEffectHandlers } from './createEffectHandlers'
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
 const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
-const MAX_PROGRAM_HISTORY_STEPS = 99
+const MAX_FILE_HISTORY_STEPS = 99
 const CONTEXT_UI_STATE_KEY = '__playground'
-const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), syncDvalaCodeHistoryButtons, MAX_PROGRAM_HISTORY_STEPS)
-let activeDvalaCodeHistoryProgramId: string | null = null
+const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), syncDvalaCodeHistoryButtons, MAX_FILE_HISTORY_STEPS)
+let activeDvalaCodeHistoryFileId: string | null = null
 let closeEditorMenuListener: ((event: MouseEvent) => void) | null = null
 
 function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
@@ -95,32 +98,29 @@ function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
   }
 }
 
-function isCurrentProgramLocked(): boolean {
-  const currentProgramId = getState('current-program-id')
-  return currentProgramId !== null && getSavedPrograms().some(program => program.id === currentProgramId && program.locked)
+function isCurrentFileLocked(): boolean {
+  const currentFileId = getState('current-file-id')
+  return currentFileId !== null && getSavedFiles().some(file => file.id === currentFileId && file.locked)
 }
 
 function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
-  const isLocked = isCurrentProgramLocked()
+  const isLocked = isCurrentFileLocked()
   elements.dvalaCodeUndoButton.classList.toggle('disabled', isLocked || !status.canUndo)
   elements.dvalaCodeRedoButton.classList.toggle('disabled', isLocked || !status.canRedo)
 }
 
 function persistActiveDvalaCodeHistory() {
-  if (activeDvalaCodeHistoryProgramId)
-    setProgramHistory(activeDvalaCodeHistoryProgramId, dvalaCodeHistory.serialize())
+  if (activeDvalaCodeHistoryFileId)
+    setFileHistory(activeDvalaCodeHistoryFileId, dvalaCodeHistory.serialize())
 }
 
-function switchDvalaCodeHistory(programId: string | null, initialEntry = createDvalaCodeHistoryEntryFromState(), reset = false) {
+function switchDvalaCodeHistory(fileId: string | null, initialEntry = createDvalaCodeHistoryEntryFromState(), reset = false) {
   persistActiveDvalaCodeHistory()
-  activeDvalaCodeHistoryProgramId = programId
+  // Scratch has no file ID but still gets its history persisted under '<scratch>'
+  const effectiveId = fileId ?? '<scratch>'
+  activeDvalaCodeHistoryFileId = effectiveId
 
-  if (programId === null) {
-    dvalaCodeHistory.reset(initialEntry)
-    return
-  }
-
-  const persistedHistory = reset ? undefined : getProgramHistory(programId)
+  const persistedHistory = reset ? undefined : getFileHistory(effectiveId)
   if (persistedHistory) {
     dvalaCodeHistory.hydrate(persistedHistory, initialEntry)
   } else {
@@ -134,8 +134,8 @@ function pushActiveDvalaCodeHistoryEntry() {
   persistActiveDvalaCodeHistory()
 }
 
-function activateCurrentProgramHistory(reset = false) {
-  switchDvalaCodeHistory(getState('current-program-id'), createDvalaCodeHistoryEntryFromState(), reset)
+function activateCurrentFileHistory(reset = false) {
+  switchDvalaCodeHistory(getState('current-file-id'), createDvalaCodeHistoryEntryFromState(), reset)
 }
 
 // ---------------------------------------------------------------------------
@@ -181,32 +181,33 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       setContextContent: json => {
         setContext(json, false)
       },
-      getSavedPrograms: () => getSavedPrograms(),
-      saveProgram: (name, code) => {
-        const programs = getSavedPrograms()
-        const existing = programs.find(p => p.name === name)
+      getSavedFiles: () => getSavedFiles(),
+      saveFile: (name, code) => {
+        const files = getSavedFiles()
+        const normalizedName = normalizeSavedFileName(name)
+        const existing = files.find(entry => entry.name === normalizedName)
         const now = Date.now()
         if (existing) {
           existing.code = code
           existing.updatedAt = now
-          setSavedPrograms([...programs])
+          setSavedFiles([...files])
         } else {
-          const newProgram: SavedProgram = {
+          const createdFile: SavedFile = {
             id: crypto.randomUUID(),
-            name,
+            name: normalizedName,
             code,
             context: '',
             createdAt: now,
             updatedAt: now,
             locked: false,
           }
-          setSavedPrograms([newProgram, ...programs])
+          setSavedFiles([createdFile, ...files])
         }
       },
       runCode: async code => {
         const result = await getDvala().runAsync(code, { bindings: {}, effectHandlers: [], pure: false })
         if (result.type === 'error') throw result.error
-        if (result.type === 'suspended') throw new Error('Program suspended')
+        if (result.type === 'suspended') throw new Error('File suspended')
         return result.value
       },
       navigateTo: route => {
@@ -268,7 +269,7 @@ const elements = {
   get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
   get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
   get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
-  get programsHeaderMenu() { return document.getElementById('programs-header-menu') as HTMLElement },
+  get filesHeaderMenu() { return document.getElementById('files-header-menu') as HTMLElement },
   get addContextMenu() { return document.getElementById('add-context-menu') as HTMLElement },
   get newContextName() { return document.getElementById('new-context-name') as HTMLInputElement },
   get newContextValue() { return document.getElementById('new-context-value') as HTMLTextAreaElement },
@@ -295,6 +296,7 @@ const elements = {
   get dvalaCodeTitleInput() { return document.getElementById('dvala-code-title-input') as HTMLInputElement },
   get dvalaCodePendingIndicator() { return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement },
   get dvalaCodeLockedIndicator() { return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement },
+  get saveScratchButton() { return document.getElementById('save-scratch-btn') as HTMLAnchorElement },
   get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
   get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
   get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
@@ -310,8 +312,8 @@ const elements = {
   get importOptRecentSnapshotsLabel() { return document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement },
   get importOptLayout() { return document.getElementById('import-opt-layout') as HTMLInputElement },
   get importOptLayoutLabel() { return document.getElementById('import-opt-layout-label') as HTMLLabelElement },
-  get importOptSavedPrograms() { return document.getElementById('import-opt-saved-programs') as HTMLInputElement },
-  get importOptSavedProgramsLabel() { return document.getElementById('import-opt-saved-programs-label') as HTMLLabelElement },
+  get importOptSavedFiles() { return document.getElementById('import-opt-saved-files') as HTMLInputElement },
+  get importOptSavedFilesLabel() { return document.getElementById('import-opt-saved-files-label') as HTMLLabelElement },
   get importResultModal() { return document.getElementById('import-result-modal') as HTMLDivElement },
   get importResultContent() { return document.getElementById('import-result-content') as HTMLDivElement },
   get exportModal() { return document.getElementById('export-modal') as HTMLDivElement },
@@ -321,7 +323,7 @@ const elements = {
   get exportOptSavedSnapshots() { return document.getElementById('export-opt-saved-snapshots') as HTMLInputElement },
   get exportOptRecentSnapshots() { return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement },
   get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
-  get exportOptSavedPrograms() { return document.getElementById('export-opt-saved-programs') as HTMLInputElement },
+  get exportOptSavedFiles() { return document.getElementById('export-opt-saved-files') as HTMLInputElement },
   get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
   get executionControlBar() { return document.getElementById('execution-control-bar') as HTMLDivElement },
   get executionStatus() { return document.getElementById('execution-status') as HTMLSpanElement },
@@ -415,11 +417,11 @@ export function closeMoreMenu() {
   closeAllEditorMenus()
 }
 
-export function openProgramsHeaderMenu(triggerEl: HTMLElement) {
-  toggleEditorMenu('programs-header-menu', triggerEl)
+export function openFilesHeaderMenu(triggerEl: HTMLElement) {
+  toggleEditorMenu('files-header-menu', triggerEl)
 }
 
-export function closeProgramsHeaderMenu() {
+export function closeFilesHeaderMenu() {
   closeAllEditorMenus()
 }
 
@@ -982,32 +984,10 @@ function renderColorPalette(): void {
   container.innerHTML = html
 }
 
-export function showSnapshotsPage() {
-  populateSnapshotsList()
-  showPage('snapshots-page', 'smooth')
-}
-
-export function showSavedProgramsPage() {
-  populateSavedProgramsList()
-  showPage('saved-programs-page', 'smooth')
-}
-
-function notifyProgramAdded() {
-  const programsPage = document.getElementById('saved-programs-page')
-  if (programsPage?.classList.contains('active-content')) return
-  const indicator = document.getElementById('programs-nav-indicator')
-  if (indicator) indicator.style.display = 'inline-block'
-  const navLink = document.getElementById('saved-programs-page_link')
-  if (navLink) navLink.style.color = 'var(--color-text-bright)'
+function notifyFileAdded() {
 }
 
 function notifySnapshotAdded() {
-  const snapshotsPage = document.getElementById('snapshots-page')
-  if (snapshotsPage?.classList.contains('active-content')) return
-  const indicator = document.getElementById('snapshots-nav-indicator')
-  if (indicator) indicator.style.display = 'inline-block'
-  const navLink = document.getElementById('snapshots-page_link')
-  if (navLink) navLink.style.color = 'var(--color-text-bright)'
 }
 
 function formatTime(date: Date): string {
@@ -1216,7 +1196,7 @@ function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateN
 
   // Terminal snapshots with group label
   if (terminalEntries.length > 0) {
-    cards.push(renderGroupLabel('Completed Programs'))
+    cards.push(renderGroupLabel('Completed Files'))
     // Always render first N cards normally
     for (let i = 0; i < Math.min(VISIBLE_TERMINAL_SNAPSHOTS, terminalEntries.length); i++) {
       cards.push(renderSnapshotCard(terminalEntries[i]!, i, animateNewTerminal && i === 0))
@@ -1255,10 +1235,10 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// ─── Saved Programs ───────────────────────────────────────────────────────────
+// ─── Saved Files ──────────────────────────────────────────────────────────────
 
-function animateProgramCardRemoval(id: string): Promise<void> {
-  const card = document.querySelector(`.snapshot-card[data-program-id="${id}"]`)
+function animateFileCardRemoval(id: string): Promise<void> {
+  const card = document.querySelector(`.snapshot-card[data-file-id="${id}"]`)
   if (!card) return Promise.resolve()
   return new Promise(resolve => {
     card.classList.add('removing')
@@ -1267,19 +1247,19 @@ function animateProgramCardRemoval(id: string): Promise<void> {
   })
 }
 
-function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
-  populateExplorerProgramList()
+function populateSavedFilesList(options: { animateNewId?: string } = {}) {
+  populateExplorerFileList()
   const { animateNewId } = options
-  const list = document.getElementById('saved-programs-list')
-  const empty = document.getElementById('saved-programs-empty')
-  const clearBtn = document.getElementById('saved-programs-clear-all')
+  const list = document.getElementById('saved-files-list')
+  const empty = document.getElementById('saved-files-empty')
+  const clearBtn = document.getElementById('saved-files-clear-all')
   if (!list || !empty) return
 
-  const programs = getSavedPrograms()
+  const files = getSavedFiles()
   if (clearBtn)
-    clearBtn.style.visibility = programs.some(p => !p.locked) ? 'visible' : 'hidden'
+    clearBtn.style.visibility = files.some(entry => !entry.locked) ? 'visible' : 'hidden'
 
-  if (programs.length === 0) {
+  if (files.length === 0) {
     list.innerHTML = ''
     empty.style.display = 'block'
     return
@@ -1290,29 +1270,29 @@ function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
   const weekMs = todayMs - 6 * 24 * 60 * 60 * 1000
   const monthMs = todayMs - 29 * 24 * 60 * 60 * 1000
 
-  const groups: { label: string; programs: SavedProgram[] }[] = [
-    { label: 'Today', programs: [] },
-    { label: 'Last Week', programs: [] },
-    { label: 'Last Month', programs: [] },
-    { label: 'Older', programs: [] },
+  const groups: { label: string; files: SavedFile[] }[] = [
+    { label: 'Today', files: [] },
+    { label: 'Last Week', files: [] },
+    { label: 'Last Month', files: [] },
+    { label: 'Older', files: [] },
   ]
 
-  for (const p of programs) {
-    if (p.updatedAt >= todayMs) groups[0]!.programs.push(p)
-    else if (p.updatedAt >= weekMs) groups[1]!.programs.push(p)
-    else if (p.updatedAt >= monthMs) groups[2]!.programs.push(p)
-    else groups[3]!.programs.push(p)
+  for (const entry of files) {
+    if (entry.updatedAt >= todayMs) groups[0]!.files.push(entry)
+    else if (entry.updatedAt >= weekMs) groups[1]!.files.push(entry)
+    else if (entry.updatedAt >= monthMs) groups[2]!.files.push(entry)
+    else groups[3]!.files.push(entry)
   }
 
   empty.style.display = 'none'
   list.innerHTML = groups
-    .filter(g => g.programs.length > 0)
-    .flatMap(g => [renderGroupLabel(g.label), ...g.programs.map(p => renderProgramCard(p, p.id === animateNewId))])
+    .filter(group => group.files.length > 0)
+    .flatMap(group => [renderGroupLabel(group.label), ...group.files.map(entry => renderFileCard(entry, entry.id === animateNewId))])
     .join('')
 }
 
-function renderProgramCard(program: SavedProgram, animateIn = false): string {
-  const tokenStream = tokenizeSource(program.code)
+function renderFileCard(file: SavedFile, animateIn = false): string {
+  const tokenStream = tokenizeSource(file.code)
   const meaningfulTokens = tokenStream.tokens
   let firstMeaningful = 0
   while (firstMeaningful < meaningfulTokens.length) {
@@ -1322,29 +1302,29 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
   }
   const trimmedCode = untokenize({ ...tokenStream, tokens: meaningfulTokens.slice(firstMeaningful) })
   const displaySnippet = trimmedCode.split('\n').slice(0, 3).join('\n')
-  const isActive = getState('current-program-id') === program.id
+  const isActive = getState('current-file-id') === file.id
   const borderColor = 'var(--color-scrollbar-track)'
   const animateClass = animateIn ? 'animate-in' : ''
-  const lockIcon = program.locked
+  const lockIcon = file.locked
     ? `<span style="color:var(--color-primary); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
     : ''
-  const menuId = `program-menu-${program.id}`
+  const menuId = `file-menu-${file.id}`
   const menuItems: EditorMenuItem[] = [
-    { label: program.locked ? 'Unlock' : 'Lock', icon: program.locked ? ICONS.unlock : ICONS.lock, action: `Playground.toggleProgramLock('${program.id}')` },
-    { label: 'Create copy', icon: ICONS.duplicate, action: `Playground.duplicateProgram('${program.id}')` },
-    { label: 'Download', icon: ICONS.download, action: `Playground.downloadProgram('${program.id}')` },
-    { danger: true, label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedProgram('${program.id}')` },
+    { label: file.locked ? 'Unlock' : 'Lock', icon: file.locked ? ICONS.unlock : ICONS.lock, action: `Playground.toggleFileLock('${file.id}')` },
+    { label: 'Create copy', icon: ICONS.duplicate, action: `Playground.duplicateFile('${file.id}')` },
+    { label: 'Download', icon: ICONS.download, action: `Playground.downloadFile('${file.id}')` },
+    { danger: true, label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedFile('${file.id}')` },
   ]
   return `
-    <div class="snapshot-card ${animateClass}" data-program-id="${program.id}" onclick="Playground.loadSavedProgram('${program.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:var(--color-surface); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
+    <div class="snapshot-card ${animateClass}" data-file-id="${file.id}" onclick="Playground.loadSavedFile('${file.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:var(--color-surface); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
       <div style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:0;">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           ${lockIcon}
-          <span style="font-size:1rem; color:var(--color-text);">${escapeHtml(program.name)}</span>
+          <span style="font-size:1rem; color:var(--color-text); font-family:var(--font-mono);">${escapeHtml(file.name)}</span>
           ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-primary); border:1px solid var(--color-primary); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
         </div>
-        ${program.code.trim() ? `<div style="font-size:0.8rem; color:var(--color-text-dim); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-text-dim); padding:1px 0;">EMPTY PROGRAM</span>'}
-        <div style="font-size:0.75rem; color:var(--color-text-dim);">${formatTime(new Date(program.updatedAt))}</div>
+        ${file.code.trim() ? `<div style="font-size:0.8rem; color:var(--color-text-dim); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-text-dim); padding:1px 0;">EMPTY FILE</span>'}
+        <div style="font-size:0.75rem; color:var(--color-text-dim);">${formatTime(new Date(file.updatedAt))}</div>
       </div>
       <div onclick="event.stopPropagation()">
         ${renderContextMenu(menuItems, menuId)}
@@ -1353,52 +1333,134 @@ function renderProgramCard(program: SavedProgram, animateIn = false): string {
   `
 }
 
-export function loadSavedProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  // Close snapshot view if open — switching to a program means editing
-  if (snapshotViewStack.length > 0) {
-    snapshotViewStack.length = 0
-    activeSnapshotKey = null
-    currentSnapshot = null
-    hideExecutionControlBar()
-  }
-  if (getState('current-program-id') === id) return
-  guardCodeReplacement(() => {
-    saveState({
-      'dvala-code': program.code,
-      'context': program.context,
-      'current-program-id': program.id,
-      'dvala-code-edited': false,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
-      'dvala-code-scroll-top': 0,
-    }, false)
-    activateCurrentProgramHistory(false)
-    elements.dvalaTextArea.value = program.code
-    setContext(program.context, false)
-    syntaxOverlay.update()
-    syntaxOverlay.scrollContainer.scrollTo(0, 0)
-    syncCodePanelView('programs')
-    syncPlaygroundUrlState('programs')
-    updateCSS()
-    populateExplorerProgramList()
-    populateSavedProgramsList()
-  })
+export function loadSavedFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  if (isScratchActive())
+    persistScratchFromCurrentState()
+  closeSnapshotViewIfNeeded()
+  if (getState('current-file-id') === id) return
+  cancelScratchEditedClear()
+  flushPendingAutoSave()
+  saveState({
+    'dvala-code': file.code,
+    'context': file.context,
+    'current-file-id': file.id,
+    'dvala-code-edited': false,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'dvala-code-scroll-top': 0,
+  }, false)
+  activateCurrentFileHistory(false)
+  elements.dvalaTextArea.value = file.code
+  setContext(file.context, false)
+  syntaxOverlay.update()
+  syntaxOverlay.scrollContainer.scrollTo(0, 0)
+  syncCodePanelView('files')
+  syncPlaygroundUrlState('files')
+  updateCSS()
+  populateExplorerFileList()
+  populateSavedFilesList()
 }
 
-// ─── Explorer panel (compact program list in editor tab) ─────────────────────
+// ─── Explorer panel (compact file list in editor tab) ────────────────────────
 
 const SIDE_SNAPSHOTS_VISIBLE = 9
+const SCRATCH_TITLE = '<scratch>'
 let sideSnapshotsShowAll = false
 // Track which snapshot is actively viewed in the code panel: 'terminal:0', 'saved:2', or null
 let activeSnapshotKey: string | null = null
 
-type SideTabId = 'programs' | 'snapshots' | 'context'
+type SideTabId = 'files' | 'snapshots' | 'context'
+
+function isScratchActive(): boolean {
+  return getState('current-file-id') === null
+}
+
+function getScratchCode(): string {
+  return isScratchActive() ? getState('dvala-code') : getState('scratch-code')
+}
+
+function getScratchContext(): string {
+  return isScratchActive() ? getState('context') : getState('scratch-context')
+}
+
+function hasScratchContent(): boolean {
+  return getScratchCode().trim().length > 0 || getScratchContext().trim().length > 0
+}
+
+function persistScratchFromCurrentState() {
+  if (!isScratchActive()) return
+  saveState({
+    'scratch-code': getState('dvala-code'),
+    'scratch-context': getState('context'),
+  }, false)
+}
+
+function closeSnapshotViewIfNeeded() {
+  if (snapshotViewStack.length === 0) return
+  snapshotViewStack.length = 0
+  activeSnapshotKey = null
+  currentSnapshot = null
+  hideExecutionControlBar()
+}
+
+function openScratchInEditor(options: { code?: string; context?: string; toast?: string; focusCode?: boolean; navigateToPlayground?: boolean; force?: boolean } = {}) {
+  // Guard: if loading new code into scratch and it already has content, confirm first.
+  // The `force` flag skips this — used when the caller has already confirmed (e.g. clearScratch).
+  if (!options.force && options.code !== undefined && hasScratchContent() && getState('dvala-code-edited')) {
+    void showInfoModal('Overwrite scratch?', 'The scratch buffer has content. Discard it?', () => {
+      openScratchInEditor({ ...options, force: true })
+    })
+    return
+  }
+
+  const code = options.code ?? getState('scratch-code')
+  const context = options.context ?? getState('scratch-context')
+
+  flushPendingAutoSave()
+
+  saveState({
+    'scratch-code': code,
+    'scratch-context': context,
+  }, false)
+
+  closeSnapshotViewIfNeeded()
+
+  saveState({
+    'active-side-tab': 'files',
+    context,
+    'context-scroll-top': 0,
+    'context-selection-start': 0,
+    'context-selection-end': 0,
+    'current-file-id': null,
+    'dvala-code': code,
+    'dvala-code-edited': false,
+    'dvala-code-scroll-top': 0,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'focused-panel': 'dvala-code',
+  }, false)
+
+  activateCurrentFileHistory(true)
+
+  if (options.navigateToPlayground)
+    router.navigate('/playground')
+
+  syncPlaygroundUrlState('files')
+  applyState()
+  populateExplorerFileList()
+
+  if (options.focusCode)
+    focusDvalaCode()
+
+  if (options.toast)
+    showToast(options.toast)
+}
 
 function normalizeSideTab(tabId: string | null | undefined): SideTabId {
   if (tabId === 'snapshots' || tabId === 'context') return tabId
-  return 'programs'
+  return 'files'
 }
 
 function getActiveSnapshotUrlId(): string | null {
@@ -1421,10 +1483,10 @@ function syncPlaygroundUrlState(tabId: SideTabId) {
   const url = new URL(window.location.href)
   url.searchParams.set('view', tabId)
 
-  if (tabId === 'programs' && getState('current-program-id'))
-    url.searchParams.set('programId', getState('current-program-id')!)
+  if (tabId === 'files' && getState('current-file-id'))
+    url.searchParams.set('fileId', getState('current-file-id')!)
   else
-    url.searchParams.delete('programId')
+    url.searchParams.delete('fileId')
 
   const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
   if (snapshotId)
@@ -1465,7 +1527,7 @@ function populateSideSnapshotsList() {
   const items: string[] = []
 
   if (terminalEntries.length > 0) {
-    items.push('<div class="explorer-group-label">Completed Programs</div>')
+    items.push('<div class="explorer-group-label">Completed Files</div>')
     const ordinals = ['Last', '2nd Last', '3rd Last']
     const visibleCount = sideSnapshotsShowAll ? terminalEntries.length : Math.min(SIDE_SNAPSHOTS_VISIBLE, terminalEntries.length)
     for (let i = 0; i < visibleCount; i++) {
@@ -1591,7 +1653,7 @@ function syncCodePanelView(sideTab?: string) {
   const headerSnapshot = document.getElementById('dvala-header-snapshot')
   const undoBtn = document.getElementById('dvala-code-undo-button')
   const redoBtn = document.getElementById('dvala-code-redo-button')
-  const programCloseBtn = document.getElementById('program-close-btn')
+  const fileCloseBtn = document.getElementById('file-close-btn')
   const closeBtn = document.getElementById('snapshot-close-btn')
   if (!editorView || !snapshotView || !emptyView) return
 
@@ -1604,26 +1666,15 @@ function syncCodePanelView(sideTab?: string) {
   if (headerSnapshot) headerSnapshot.style.display = 'none'
   if (undoBtn) undoBtn.style.display = 'none'
   if (redoBtn) redoBtn.style.display = 'none'
-  if (programCloseBtn) programCloseBtn.style.display = 'none'
+  if (fileCloseBtn) fileCloseBtn.style.display = 'none'
   if (closeBtn) closeBtn.style.display = 'none'
 
-  if (tab === 'programs') {
-    if (getState('current-program-id')) {
-      editorView.style.display = 'flex'
-      if (headerEditor) headerEditor.style.display = 'flex'
-      if (undoBtn) undoBtn.style.display = ''
-      if (redoBtn) redoBtn.style.display = ''
-      if (programCloseBtn) programCloseBtn.style.display = ''
-    } else {
-      emptyView.style.display = 'flex'
-      setEditorEmptyState(
-        emptyView,
-        'Select a program to edit',
-        'Create a new program to start writing, or pick one from the Programs list when you are ready.',
-        'New program',
-        'Playground.newFile()',
-      )
-    }
+  if (tab === 'files') {
+    editorView.style.display = 'flex'
+    if (headerEditor) headerEditor.style.display = 'flex'
+    if (undoBtn) undoBtn.style.display = ''
+    if (redoBtn) redoBtn.style.display = ''
+    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
   } else if (tab === 'snapshots') {
     if (activeSnapshotKey && snapshotViewStack.length === 0) {
       const activeSnapshot = getActiveSnapshotDetails()
@@ -1645,7 +1696,7 @@ function syncCodePanelView(sideTab?: string) {
       setEditorEmptyState(
         emptyView,
         'Select a snapshot to view',
-        'Import a snapshot here, or run a program and save a checkpoint to create a new entry.',
+        'Import a snapshot here, or run a file and save a checkpoint to create a new entry.',
         'Import snapshot',
         'Playground.openImportSnapshotModal()',
       )
@@ -1673,24 +1724,33 @@ function getCurrentSideTab(): string {
   const id = active.id
   if (id === 'side-icon-snapshots') return 'snapshots'
   if (id === 'side-icon-context') return 'context'
-  return 'programs'
+  return 'files'
+}
+
+function getUniqueSavedFileName(name: string, existingNames: Iterable<string>): string {
+  const normalizedName = normalizeSavedFileName(name)
+  const usedNames = new Set(existingNames)
+  if (!usedNames.has(normalizedName)) return normalizedName
+
+  const baseName = stripSavedFileSuffix(normalizedName)
+  let n = 2
+  let candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
+  while (usedNames.has(candidate)) {
+    n++
+    candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
+  }
+  return candidate
 }
 
 /**
- * Create a new untitled program and return its ID.
- * Generates a unique name: "Untitled Program", "Untitled Program (2)", etc.
+ * Create a new untitled file and return its ID.
+ * Generates a unique name: "Untitled File.dvala", "Untitled File (2).dvala", etc.
  */
-function createUntitledProgram(code = '', context = ''): string {
-  const programs = getSavedPrograms()
-  const baseName = 'Untitled Program'
-  let name = baseName
-  let n = 2
-  while (programs.some(p => p.name === name)) {
-    name = `${baseName} (${n})`
-    n++
-  }
+function createUntitledFile(code = '', context = ''): string {
+  const files = getSavedFiles()
+  const name = getUniqueSavedFileName('Untitled File', files.map(entry => entry.name))
   const now = Date.now()
-  const newProgram: SavedProgram = {
+  const createdFile: SavedFile = {
     id: crypto.randomUUID(),
     name,
     code,
@@ -1699,28 +1759,46 @@ function createUntitledProgram(code = '', context = ''): string {
     updatedAt: now,
     locked: false,
   }
-  setSavedPrograms([newProgram, ...programs])
-  return newProgram.id
+  setSavedFiles([createdFile, ...files])
+  return createdFile.id
 }
 
-function populateExplorerProgramList() {
-  const list = document.getElementById('explorer-program-list')
-  const stats = document.getElementById('explorer-program-stats')
+function populateExplorerFileList() {
+  const list = document.getElementById('explorer-file-list')
+  const stats = document.getElementById('explorer-file-stats')
   if (!list) return
 
-  const programs = getSavedPrograms()
-  const currentId = getState('current-program-id')
+  const files = getSavedFiles()
+  const currentId = getState('current-file-id')
+  const scratchCode = getScratchCode()
 
-  const renderProgramStats = () => {
+  const renderScratchExplorerItem = () => {
+    const activeClass = currentId === null ? ' explorer-item--active' : ''
+
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.openScratch()" title="Scratch">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(SCRATCH_TITLE)}</span>
+      </div>`
+  }
+
+  const renderFileStats = () => {
     if (!stats) return
-    const currentProgram = currentId ? programs.find(program => program.id === currentId) : null
-    if (!currentProgram) {
-      stats.innerHTML = ''
+    // No stats panel when scratch is active
+    if (currentId === null) {
       stats.style.display = 'none'
       return
     }
+    const currentFile = currentId ? files.find(entry => entry.id === currentId) : null
+    const currentTitle = currentFile ? currentFile.name : SCRATCH_TITLE
+    const currentCode = currentFile ? currentFile.code : scratchCode
+    const lockIcon = currentFile?.locked
+      ? `<span class="file-stats-panel__lock" title="Locked">${ICONS.lock}</span>`
+      : ''
+    const timeMarkup = currentFile
+      ? `<div class="file-stats-panel__time">${formatTime(new Date(currentFile.updatedAt))}</div>`
+      : '<div class="file-stats-panel__time">Local scratch</div>'
 
-    const tokenStream = tokenizeSource(currentProgram.code)
+    const tokenStream = tokenizeSource(currentCode)
     const meaningfulTokens = tokenStream.tokens
     let firstMeaningful = 0
     while (firstMeaningful < meaningfulTokens.length) {
@@ -1728,84 +1806,82 @@ function populateExplorerProgramList() {
       if (type !== 'Whitespace' && type !== 'SingleLineComment' && type !== 'MultiLineComment') break
       firstMeaningful++
     }
-    const lineCount = currentProgram.code === '' ? 0 : currentProgram.code.split('\n').length
-    const charCount = currentProgram.code.length
-    const lockIcon = currentProgram.locked
-      ? `<span class="program-stats-panel__lock" title="Locked">${ICONS.lock}</span>`
-      : ''
+    const lineCount = currentCode === '' ? 0 : currentCode.split('\n').length
+    const charCount = currentCode.length
 
     stats.style.display = 'block'
     stats.innerHTML = `
-      <div class="program-stats-panel__header">
-        <div class="program-stats-panel__title-row">
-          <span class="program-stats-panel__title">${escapeHtml(currentProgram.name)}</span>
+      <div class="file-stats-panel__header">
+        <div class="file-stats-panel__title-row">
+          <span class="file-stats-panel__title" style="font-family:var(--font-mono);">${escapeHtml(currentTitle)}</span>
           ${lockIcon}
         </div>
-        <div class="program-stats-panel__time">${formatTime(new Date(currentProgram.updatedAt))}</div>
+        ${timeMarkup}
       </div>
-      <div class="program-stats-panel__meta">
+      <div class="file-stats-panel__meta">
         <span>${lineCount} ${lineCount === 1 ? 'line' : 'lines'}</span>
         <span>${charCount} chars</span>
       </div>`
   }
 
-  if (programs.length === 0) {
-    list.innerHTML = '<div class="explorer-empty">No saved programs</div>'
-    renderProgramStats()
+  if (files.length === 0) {
+    list.innerHTML = `${renderScratchExplorerItem()}<div class="explorer-empty">No saved files</div>`
+    renderFileStats()
     return
   }
 
-  list.innerHTML = programs.map(p => {
-    const isActive = p.id === currentId
+  list.innerHTML = [renderScratchExplorerItem(), ...files.map(entry => {
+    const isActive = entry.id === currentId
     const activeClass = isActive ? ' explorer-item--active' : ''
-    const lockHtml = p.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
-    const menuId = `explorer-menu-${p.id}`
+    const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
+    const menuId = `explorer-menu-${entry.id}`
     const menuItems: EditorMenuItem[] = [
-      { action: `Playground.closeExplorerMenus();Playground.renameProgram('${p.id}')`, icon: ICONS.edit, label: 'Rename' },
-      { action: `Playground.closeExplorerMenus();Playground.duplicateProgram('${p.id}')`, icon: ICONS.duplicate, label: 'Duplicate' },
-      { action: `Playground.closeExplorerMenus();Playground.toggleProgramLock('${p.id}')`, icon: p.locked ? ICONS.unlock : ICONS.lock, label: p.locked ? 'Unlock' : 'Lock' },
-      { action: `Playground.closeExplorerMenus();Playground.downloadProgram('${p.id}')`, icon: ICONS.download, label: 'Export' },
-      { action: `Playground.closeExplorerMenus();Playground.shareProgram('${p.id}')`, icon: ICONS.share, label: 'Share' },
-      { action: `Playground.closeExplorerMenus();Playground.deleteSavedProgram('${p.id}')`, danger: true, icon: ICONS.trash, label: 'Delete' },
+      { action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`, icon: ICONS.edit, label: 'Rename' },
+      { action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`, icon: ICONS.duplicate, label: 'Duplicate' },
+      { action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`, icon: entry.locked ? ICONS.unlock : ICONS.lock, label: entry.locked ? 'Unlock' : 'Lock' },
+      { action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`, icon: ICONS.download, label: 'Export' },
+      { action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`, icon: ICONS.share, label: 'Share' },
+      { action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`, danger: true, icon: ICONS.trash, label: 'Delete' },
     ]
     return `
-      <div class="explorer-item${activeClass}" onclick="Playground.loadSavedProgram('${p.id}')" title="${escapeHtml(p.name)}">
-        <span class="explorer-item__name">${escapeHtml(p.name)}</span>
+      <div class="explorer-item${activeClass}" onclick="Playground.loadSavedFile('${entry.id}')" title="${escapeHtml(entry.name)}">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(entry.name)}</span>
         ${lockHtml}
         <span class="explorer-item__actions" onclick="event.stopPropagation()">
           <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
           ${renderEditorMenu({ id: menuId, items: menuItems })}
         </span>
       </div>`
-  }).join('')
+  })].join('')
 
-  renderProgramStats()
+  renderFileStats()
 }
 
-export function renameProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  showNameInputModal('Rename program', program.name, name => {
-    const programs = getSavedPrograms()
-    const duplicate = programs.find(p => p.name === name && p.id !== id)
+export function renameFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  showNameInputModal('Rename file', file.name, name => {
+    const files = getSavedFiles()
+    const normalizedName = normalizeSavedFileName(name)
+    const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== id)
     const doRename = () => {
-      const updated = programs.map(p => p.id === id ? { ...p, name, updatedAt: Date.now() } : p).filter(p => !duplicate || p.id !== duplicate.id)
-      setSavedPrograms(updated)
+      const updated = files.map(entry => entry.id === id ? { ...entry, name: normalizedName, updatedAt: Date.now() } : entry).filter(entry => !duplicate || entry.id !== duplicate.id)
+      setSavedFiles(updated)
       updateCSS()
-      populateSavedProgramsList()
-      showToast(`Renamed to "${name}"`)
+      populateSavedFilesList()
+      showToast(`Renamed to "${normalizedName}"`)
     }
     if (duplicate) {
-      void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doRename)
+      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doRename)
     } else {
       doRename()
     }
   })
 }
 
-export function shareProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
+export function shareFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
 
   const dismiss = () => popModal()
 
@@ -1818,9 +1894,9 @@ export function shareProgram(id: string) {
         primary: true,
         action: () => {
           const includeContext = (document.getElementById('share-include-context') as HTMLInputElement)?.checked ?? false
-          const sharedState: Record<string, unknown> = { 'dvala-code': program.code }
-          if (includeContext && program.context.trim()) {
-            sharedState['context'] = program.context
+          const sharedState: Record<string, unknown> = { 'dvala-code': file.code }
+          if (includeContext && file.context.trim()) {
+            sharedState['context'] = file.context
           }
           const base = document.querySelector('base')?.href ?? `${location.origin}/`
           const encoded = btoa(encodeURIComponent(JSON.stringify(sharedState)))
@@ -1828,11 +1904,11 @@ export function shareProgram(id: string) {
             state: encoded,
             view: getState('active-side-tab'),
           })
-          params.set('programId', program.id)
+          params.set('fileId', file.id)
           const href = `${base}playground?${params.toString()}`
           if (href.length > MAX_URL_LENGTH) {
             popModal()
-            showToast('Program is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
+            showToast('File is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
             return
           }
           void navigator.clipboard.writeText(href).then(() => {
@@ -1847,15 +1923,15 @@ export function shareProgram(id: string) {
   const content = document.createElement('div')
   content.className = 'modal-body-row'
   content.innerHTML = `
-    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(program.name)}</strong> as a link.</p>
+    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(file.name)}</strong> as a link.</p>
     <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
-      <input type="checkbox" id="share-include-context" ${program.context.trim() ? '' : 'disabled'}>
-      Include context${program.context.trim() ? '' : ' (empty)'}
+      <input type="checkbox" id="share-include-context" ${file.context.trim() ? '' : 'disabled'}>
+      Include context${file.context.trim() ? '' : ' (empty)'}
     </label>
   `
   body.appendChild(content)
 
-  pushPanel(panel, 'Share program')
+  pushPanel(panel, 'Share file')
 }
 
 export function toggleExplorerMenu(menuId: string, btn: HTMLElement) {
@@ -1866,85 +1942,106 @@ export function closeExplorerMenus() {
   closeAllEditorMenus()
 }
 
-function clearActiveProgramSelection() {
-  saveState({
-    'current-program-id': null,
-    'dvala-code': '',
-    'dvala-code-selection-start': 0,
-    'dvala-code-selection-end': 0,
-    'dvala-code-scroll-top': 0,
-    'dvala-code-edited': false,
-  }, false)
-  activateCurrentProgramHistory(true)
-  syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
-  applyState()
-  populateExplorerProgramList()
-  populateSavedProgramsList()
+function clearActiveFileSelection() {
+  openScratchInEditor()
 }
 
-export function closeActiveProgram() {
-  clearActiveProgramSelection()
+export function closeActiveFile() {
+  clearActiveFileSelection()
 }
 
-export function deleteSavedProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  const doDelete = async () => {
-    await animateProgramCardRemoval(id)
-    deleteProgramHistory(id)
-    const updated = getSavedPrograms().filter(p => p.id !== id)
-    setSavedPrograms(updated)
-    if (getState('current-program-id') === id) {
-      clearActiveProgramSelection()
+export function openScratch() {
+  openScratchInEditor({ focusCode: true })
+}
+
+export function saveScratch() {
+  if (!hasScratchContent()) return
+  saveAs()
+}
+
+export function clearScratch() {
+  const clear = () => {
+    saveState({
+      'scratch-code': '',
+      'scratch-context': '',
+    }, false)
+
+    if (isScratchActive())
+      openScratchInEditor({ code: '', context: '', focusCode: true, toast: 'Scratch cleared', force: true })
+    else {
+      populateExplorerFileList()
+      updateCSS()
+      showToast('Scratch cleared')
     }
-    populateSavedProgramsList()
   }
-  if (program.locked) {
-    void showInfoModal('Delete program', 'This program is locked. Are you sure you want to permanently delete it?', doDelete)
+
+  if (!hasScratchContent()) {
+    clear()
+    return
+  }
+
+  void showInfoModal('Clear scratch', 'This will clear the scratch buffer.', clear)
+}
+
+export function deleteSavedFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  const doDelete = async () => {
+    await animateFileCardRemoval(id)
+    deleteFileHistory(id)
+    const updated = getSavedFiles().filter(p => p.id !== id)
+    setSavedFiles(updated)
+    if (getState('current-file-id') === id) {
+      clearActiveFileSelection()
+    }
+    populateSavedFilesList()
+  }
+  if (file.locked) {
+    void showInfoModal('Delete file', 'This file is locked. Are you sure you want to permanently delete it?', doDelete)
   } else {
     void doDelete()
   }
 }
 
-export function downloadProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  const filename = `${program.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
-  const { id: _id, ...exportData } = program
+export function downloadFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  const filename = `${file.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
+  const { id: _id, ...exportData } = file
   void saveFile(JSON.stringify(exportData, null, 2), filename)
 }
 
-export function toggleProgramLock(id: string) {
-  const programs = getSavedPrograms()
-  const updated = programs.map(p => p.id === id ? { ...p, locked: !p.locked } : p)
-  setSavedPrograms(updated)
-  populateSavedProgramsList()
-  if (id === getState('current-program-id')) updateCSS()
+export function toggleFileLock(id: string) {
+  const files = getSavedFiles()
+  const updated = files.map(entry => entry.id === id ? { ...entry, locked: !entry.locked } : entry)
+  setSavedFiles(updated)
+  populateSavedFilesList()
+  if (id === getState('current-file-id')) updateCSS()
 }
 
-export function clearAllSavedPrograms() {
-  clearAllPrograms()
-  clearAllProgramHistories()
-  clearActiveProgramSelection()
-  populateSavedProgramsList()
+export function clearAllSavedFiles() {
+  clearAllFiles()
+  clearAllFileHistories()
+  clearActiveFileSelection()
+  populateSavedFilesList()
 }
 
-export function clearUnlockedPrograms() {
-  void showInfoModal('Remove unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
-    const unlocked = getSavedPrograms().filter(p => !p.locked)
-    await Promise.all(unlocked.map(p => animateProgramCardRemoval(p.id)))
-    unlocked.forEach(program => deleteProgramHistory(program.id))
-    const kept = getSavedPrograms().filter(p => p.locked)
-    setSavedPrograms(kept)
-    if (!kept.find(p => p.id === getState('current-program-id'))) {
-      clearActiveProgramSelection()
+export function clearUnlockedFiles() {
+  void showInfoModal('Remove unlocked files', 'This will delete all unlocked files. Locked files will be kept.', async () => {
+    const unlocked = getSavedFiles().filter(p => !p.locked)
+    await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
+    unlocked.forEach(entry => deleteFileHistory(entry.id))
+    const kept = getSavedFiles().filter(p => p.locked)
+    setSavedFiles(kept)
+    if (!kept.find(p => p.id === getState('current-file-id'))) {
+      clearActiveFileSelection()
     }
-    populateSavedProgramsList()
-    showToast('Unlocked programs cleared')
+    populateSavedFilesList()
+    showToast('Unlocked files cleared')
   })
 }
 
-export function openImportProgramModal() {
+export function openImportFileModal() {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = '.json'
@@ -1961,32 +2058,27 @@ export function openImportProgramModal() {
         return
       }
       if (typeof parsed !== 'object' || parsed === null || !('name' in parsed) || !('code' in parsed)) {
-        void showInfoModal('Import failed', 'Not a valid program object (requires at least "name" and "code").')
+        void showInfoModal('Import failed', 'Not a valid file object (requires at least "name" and "code").')
         return
       }
       const raw = parsed as Record<string, unknown>
       const now = Date.now()
-      const existing = getSavedPrograms()
+      const existing = getSavedFiles()
       const existingNames = new Set(existing.map(p => p.name))
-      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported Program'
-      const uniqueName = (base: string) => {
-        if (!existingNames.has(base)) return base
-        let i = 1
-        while (existingNames.has(`${base} (${i})`)) i++
-        return `${base} (${i})`
-      }
-      const imported: SavedProgram = {
+      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported File'
+      const name = getUniqueSavedFileName(rawName, existingNames)
+      const imported: SavedFile = {
         id: crypto.randomUUID(),
-        name: uniqueName(rawName),
+        name,
         code: typeof raw['code'] === 'string' ? raw['code'] : '',
         context: typeof raw['context'] === 'string' ? raw['context'] : '',
         createdAt: typeof raw['createdAt'] === 'number' ? raw['createdAt'] : now,
         updatedAt: typeof raw['updatedAt'] === 'number' ? raw['updatedAt'] : now,
         locked: typeof raw['locked'] === 'boolean' ? raw['locked'] : false,
       }
-      setSavedPrograms([imported, ...existing])
-      notifyProgramAdded()
-      populateSavedProgramsList({ animateNewId: imported.id })
+      setSavedFiles([imported, ...existing])
+      notifyFileAdded()
+      populateSavedFilesList({ animateNewId: imported.id })
       showToast(`Imported "${imported.name}"`)
     }
     reader.readAsText(file)
@@ -1994,67 +2086,71 @@ export function openImportProgramModal() {
   input.click()
 }
 
-export function duplicateProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
+export function duplicateFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
   const now = Date.now()
-  const copy: SavedProgram = {
+  const name = getUniqueSavedFileName(`Copy of ${file.name}`, getSavedFiles().map(entry => entry.name))
+  const copy: SavedFile = {
     id: crypto.randomUUID(),
-    name: `Copy of ${program.name}`,
-    code: program.code,
-    context: program.context,
+    name,
+    code: file.code,
+    context: file.context,
     createdAt: now,
     updatedAt: now,
     locked: false,
   }
-  setSavedPrograms([copy, ...getSavedPrograms()])
+  setSavedFiles([copy, ...getSavedFiles()])
   saveState({
     'dvala-code': copy.code,
     'context': copy.context,
-    'current-program-id': copy.id,
+    'current-file-id': copy.id,
     'dvala-code-selection-start': 0,
     'dvala-code-selection-end': 0,
     'dvala-code-scroll-top': 0,
   }, false)
-  activateCurrentProgramHistory(true)
+  activateCurrentFileHistory(true)
   elements.dvalaTextArea.value = copy.code
   setContext(copy.context, false)
   syntaxOverlay.update()
-  notifyProgramAdded()
+  notifyFileAdded()
   updateCSS()
-  populateSavedProgramsList({ animateNewId: copy.id })
+  populateSavedFilesList({ animateNewId: copy.id })
   showToast(`Created "${copy.name}"`)
 }
 
 export function saveAs() {
-  const currentId = getState('current-program-id')
-  const currentProgram = currentId ? getSavedPrograms().find(p => p.id === currentId) : null
-  const defaultName = currentProgram ? `Copy of ${currentProgram.name}` : ''
+  const currentId = getState('current-file-id')
+  const currentFile = currentId ? getSavedFiles().find(entry => entry.id === currentId) : null
+  const defaultName = currentFile ? `Copy of ${currentFile.name}` : ''
   showNameInputModal('Save as', defaultName, name => {
-    const programs = getSavedPrograms()
-    const duplicate = programs.find(p => p.name === name)
+    const files = getSavedFiles()
+    const normalizedName = normalizeSavedFileName(name)
+    const duplicate = files.find(entry => entry.name === normalizedName)
     const doSave = () => {
-      const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
+      const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
-      const newProgram: SavedProgram = {
+      if (!currentId)
+        persistScratchFromCurrentState()
+      const createdFile: SavedFile = {
         id: crypto.randomUUID(),
-        name,
+        name: normalizedName,
         code: getState('dvala-code'),
         context: getState('context'),
         createdAt: now,
         updatedAt: now,
         locked: false,
       }
-      setSavedPrograms([newProgram, ...filtered])
-      saveState({ 'current-program-id': newProgram.id }, false)
-      activateCurrentProgramHistory(true)
-      notifyProgramAdded()
+      setSavedFiles([createdFile, ...filtered])
+      saveState({ 'current-file-id': createdFile.id }, false)
+      activateCurrentFileHistory(true)
+      notifyFileAdded()
       updateCSS()
-      populateSavedProgramsList({ animateNewId: newProgram.id })
-      showToast(`Saved as "${name}"`)
+      populateSavedFilesList({ animateNewId: createdFile.id })
+      showToast(`Saved as "${normalizedName}"`)
     }
     if (duplicate) {
-      void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
+      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doSave)
     } else {
       doSave()
     }
@@ -2183,12 +2279,12 @@ export function openContextJsonModal() {
   }, 0)
 }
 
-// ─── Program title editing ────────────────────────────────────────────────────
+// ─── File title editing ───────────────────────────────────────────────────────
 
-export function onProgramTitleClick(event: MouseEvent) {
+export function onFileTitleClick(event: MouseEvent) {
   event.stopPropagation()
-  const currentId = getState('current-program-id')
-  if (currentId && getSavedPrograms().find(p => p.id === currentId)?.locked) return
+  const currentId = getState('current-file-id')
+  if (currentId && getSavedFiles().find(p => p.id === currentId)?.locked) return
   const input = elements.dvalaCodeTitleInput
   const span = elements.dvalaCodeTitleString
   input.value = currentId ? elements.dvalaCodeTitleString.textContent ?? '' : ''
@@ -2198,7 +2294,7 @@ export function onProgramTitleClick(event: MouseEvent) {
   input.select()
 }
 
-export function onProgramTitleKeydown(event: KeyboardEvent) {
+export function onFileTitleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault()
     elements.dvalaCodeTitleInput.blur()
@@ -2208,41 +2304,43 @@ export function onProgramTitleKeydown(event: KeyboardEvent) {
   }
 }
 
-export function onProgramTitleBlur() {
+export function onFileTitleBlur() {
   const input = elements.dvalaCodeTitleInput
   const name = input.value.trim()
   input.style.display = 'none'
   elements.dvalaCodeTitleString.style.display = ''
   if (!name) return
-  commitProgramName(name)
+  commitFileName(name)
 }
 
-function commitProgramName(name: string) {
-  const programs = getSavedPrograms()
-  const currentId = getState('current-program-id')
-  const duplicate = programs.find(p => p.name === name && p.id !== currentId)
+function commitFileName(name: string) {
+  const files = getSavedFiles()
+  const currentId = getState('current-file-id')
+  const normalizedName = normalizeSavedFileName(name)
+  const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== currentId)
 
   if (duplicate) {
-    void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it with the current code and context?`, () => {
-      const without = programs.filter(p => p.id !== duplicate.id)
-      saveOrRenameProgram(name, without, currentId)
+    void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it with the current code and context?`, () => {
+      const without = files.filter(entry => entry.id !== duplicate.id)
+      saveOrRenameFile(normalizedName, without, currentId)
     })
   } else {
-    saveOrRenameProgram(name, programs, currentId)
+    saveOrRenameFile(normalizedName, files, currentId)
   }
 }
 
-function saveOrRenameProgram(name: string, programs: SavedProgram[], currentId: string | null) {
+function saveOrRenameFile(name: string, files: SavedFile[], currentId: string | null) {
   const now = Date.now()
   if (currentId) {
-    const updated = programs.map(p =>
-      p.id === currentId
-        ? { ...p, name, code: getState('dvala-code'), context: getState('context'), updatedAt: now }
-        : p,
+    const updated = files.map(entry =>
+      entry.id === currentId
+        ? { ...entry, name, code: getState('dvala-code'), context: getState('context'), updatedAt: now }
+        : entry,
     )
-    setSavedPrograms(updated)
+    setSavedFiles(updated)
   } else {
-    const newProgram: SavedProgram = {
+    persistScratchFromCurrentState()
+    const createdFile: SavedFile = {
       id: crypto.randomUUID(),
       name,
       code: getState('dvala-code'),
@@ -2251,68 +2349,85 @@ function saveOrRenameProgram(name: string, programs: SavedProgram[], currentId: 
       updatedAt: now,
       locked: false,
     }
-    setSavedPrograms([newProgram, ...programs])
-    saveState({ 'current-program-id': newProgram.id }, false)
-    activateCurrentProgramHistory(true)
-    notifyProgramAdded()
+    setSavedFiles([createdFile, ...files])
+    saveState({ 'current-file-id': createdFile.id }, false)
+    activateCurrentFileHistory(true)
+    notifyFileAdded()
     updateCSS()
-    populateSavedProgramsList({ animateNewId: newProgram.id })
+    populateSavedFilesList({ animateNewId: createdFile.id })
     return
   }
   updateCSS()
-  populateSavedProgramsList()
+  populateSavedFilesList()
 }
 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+// Timer to clear the scratch "edited" indicator after a short delay (mirrors auto-save UX)
+let scratchEditedTimer: ReturnType<typeof setTimeout> | null = null
+const PENDING_INDICATOR_DELAY = 1000
+
+function scheduleScratchEditedClear() {
+  // dvala-code-edited persists as the durable "user touched scratch" flag.
+  // The timer only drives the transient pending indicator via scratchEditedTimer !== null.
+  saveState({ 'dvala-code-edited': true }, false)
+  if (scratchEditedTimer) clearTimeout(scratchEditedTimer)
+  scratchEditedTimer = setTimeout(() => {
+    scratchEditedTimer = null
+    updateCSS()
+  }, PENDING_INDICATOR_DELAY)
+}
+
+function cancelScratchEditedClear() {
+  if (!scratchEditedTimer) return
+  clearTimeout(scratchEditedTimer)
+  scratchEditedTimer = null
+}
 
 function flushPendingAutoSave() {
   if (!autoSaveTimer) return
   clearTimeout(autoSaveTimer)
   autoSaveTimer = null
-  const id = getState('current-program-id')
+  const id = getState('current-file-id')
   if (id) {
-    const updated = getSavedPrograms().map(p =>
+    const updated = getSavedFiles().map(p =>
       p.id === id
         ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
         : p,
     )
-    setSavedPrograms(updated)
+    setSavedFiles(updated)
   }
 }
 
 /**
- * Guards a code-replacing action.
- * - If a saved program is active, flush any pending auto-save and detach from it
- *   (so the saved program is not overwritten), then proceed.
- * - If the editor has unsaved edits (no program ID), show a modal offering to
- *   save, discard, or cancel.
+ * Guards a code-replacing action that switches the editor to scratch mode.
+ * Flushes any pending auto-save for the current file, then proceeds.
+ * Scratch content is guarded separately in openScratchInEditor.
  */
 function guardCodeReplacement(proceed: () => void) {
-  // Always a saved program — just flush and proceed
   flushPendingAutoSave()
   proceed()
 }
 
 function scheduleAutoSave() {
-  const currentId = getState('current-program-id')
+  const currentId = getState('current-file-id')
   if (!currentId) return
-  if (getSavedPrograms().find(p => p.id === currentId)?.locked) return
+  if (getSavedFiles().find(p => p.id === currentId)?.locked) return
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     autoSaveTimer = null
-    const id = getState('current-program-id')
+    const id = getState('current-file-id')
     if (!id) return
-    const updated = getSavedPrograms().map(p =>
+    const updated = getSavedFiles().map(p =>
       p.id === id
         ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
         : p,
     )
-    setSavedPrograms(updated)
-    populateSavedProgramsList()
+    setSavedFiles(updated)
+    populateSavedFilesList()
     updateCSS()
-  }, 3000)
+  }, PENDING_INDICATOR_DELAY)
   updateCSS()
 }
 
@@ -2450,9 +2565,9 @@ export function share() {
     state: encodeState(),
     view: getState('active-side-tab'),
   })
-  const currentProgramId = getState('current-program-id')
-  if (currentProgramId)
-    params.set('programId', currentProgramId)
+  const currentFileId = getState('current-file-id')
+  if (currentFileId)
+    params.set('fileId', currentFileId)
   const currentSnapshotId = getActiveSnapshotUrlId()
   if (currentSnapshotId)
     params.set('snapshotId', currentSnapshotId)
@@ -2591,7 +2706,7 @@ function updateStorageUsage() {
     const bytes = new TextEncoder().encode(JSON.stringify({
       saved: getSavedSnapshots(),
       terminal: getTerminalSnapshots(),
-      programs: getSavedPrograms(),
+      files: getSavedFiles(),
     })).length
     idbEl.textContent = formatStorageSize(bytes)
   }
@@ -2606,14 +2721,14 @@ export function clearLocalStorageData() {
 }
 
 export function clearIndexedDbData() {
-  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved programs.', () => {
+  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved files.', () => {
     clearAllSnapshots()
-    clearAllPrograms()
-    clearAllProgramHistories()
-    saveState({ 'current-program-id': null }, false)
-    activateCurrentProgramHistory(true)
+    clearAllFiles()
+    clearAllFileHistories()
+    saveState({ 'current-file-id': null }, false)
+    activateCurrentFileHistory(true)
     populateSnapshotsList()
-    populateSavedProgramsList()
+    populateSavedFilesList()
     updateCSS()
     updateStorageUsage()
   })
@@ -3062,7 +3177,7 @@ function renderContextEntryList() {
 
       items.push(`
         <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.stopPropagation()" onclick="event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
           <span class="explorer-item__name">${escapeHtml(name)}</span>
           ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
           <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
@@ -3099,7 +3214,7 @@ function renderContextEntryList() {
 
       items.push(`
         <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.stopPropagation()" onclick="event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
           <span class="explorer-item__name">${escapeHtml(pattern)}</span>
           ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
           <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
@@ -3562,25 +3677,26 @@ export function addSampleContext() {
 }
 
 export function newFile() {
-  guardCodeReplacement(() => {
-    flushPendingAutoSave()
-    const id = createUntitledProgram()
-    saveState({
-      'dvala-code': '',
-      'current-program-id': id,
-      'dvala-code-edited': false,
-      'dvala-code-selection-start': 0,
-      'dvala-code-selection-end': 0,
-      'dvala-code-scroll-top': 0,
-    }, false)
-    activateCurrentProgramHistory(true)
-    elements.dvalaTextArea.value = ''
-    syntaxOverlay.update()
-    showSideTab('programs')
-    updateCSS()
-    populateSavedProgramsList()
-    focusDvalaCode()
-  })
+  flushPendingAutoSave()
+  if (isScratchActive())
+    persistScratchFromCurrentState()
+  const id = createUntitledFile()
+  saveState({
+    'active-side-tab': 'files',
+    'dvala-code': '',
+    'current-file-id': id,
+    'dvala-code-edited': false,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'dvala-code-scroll-top': 0,
+  }, false)
+  activateCurrentFileHistory(true)
+  elements.dvalaTextArea.value = ''
+  syntaxOverlay.update()
+  showSideTab('files')
+  updateCSS()
+  populateSavedFilesList()
+  focusDvalaCode()
 }
 
 /**
@@ -3591,8 +3707,8 @@ export function newFile() {
 function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', onProceed?: () => void) {
   if (onProceed !== undefined) {
     guardCodeReplacement(() => {
-      saveState({ 'current-program-id': null, 'dvala-code-edited': false }, false)
-      activateCurrentProgramHistory(true)
+      saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+      activateCurrentFileHistory(true)
       setDvalaCode(value, pushToHistory, scroll)
       onProceed()
     })
@@ -3627,8 +3743,8 @@ export function resetOutput() {
 
 export function resetPlayground() {
   flushPendingAutoSave()
-  saveState({ 'current-program-id': null, 'dvala-code-edited': false }, false)
-  activateCurrentProgramHistory(true)
+  saveState({ 'current-file-id': null, 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  activateCurrentFileHistory(true)
   setDvalaCode('', true)
   setContext('', true)
   resetOutput()
@@ -3671,9 +3787,9 @@ window.onload = async function () {
   injectPlaygroundEffects()
   populateSidebarVersion()
   await initSnapshotStorage()
-  await initProgramHistories()
-  await initPrograms()
-  pruneProgramHistories(getSavedPrograms().map(program => program.id))
+  await initFileHistories()
+  await initFiles()
+  pruneFileHistories(['<scratch>', ...getSavedFiles().map(file => file.id)])
   initExecutionControlBar()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
@@ -3888,13 +4004,15 @@ window.onload = async function () {
   elements.dvalaTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => {
       setDvalaCode(elements.dvalaTextArea.value, true)
-      saveState({ 'dvala-code-edited': true })
+      if (getState('current-file-id') === null) scheduleScratchEditedClear()
+      else saveState({ 'dvala-code-edited': true })
       updateCSS()
     })
   })
   elements.dvalaTextArea.addEventListener('input', () => {
     setDvalaCode(elements.dvalaTextArea.value, true)
-    saveState({ 'dvala-code-edited': true })
+    if (getState('current-file-id') === null) scheduleScratchEditedClear()
+    else saveState({ 'dvala-code-edited': true })
     updateCSS()
     syntaxOverlay.update()
   })
@@ -3931,7 +4049,7 @@ window.onload = async function () {
 
   applyState(true)
   populateSnapshotsList()
-  populateSavedProgramsList()
+  populateSavedFilesList()
 
   router.init(appPath => {
     routeToPath(appPath)
@@ -3959,14 +4077,16 @@ function getDataFromUrl() {
     }, false)
   }
 
-  const urlProgramId = urlParams.get('programId')
-  if (activeView === 'programs' && urlProgramId && getState('current-program-id') !== urlProgramId) {
-    const program = getSavedPrograms().find(entry => entry.id === urlProgramId)
-    if (program) {
+  const urlFileId = urlParams.get('fileId')
+  if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
+    const file = getSavedFiles().find(entry => entry.id === urlFileId)
+    if (file) {
+      if (isScratchActive())
+        persistScratchFromCurrentState()
       saveState({
-        'context': program.context,
-        'current-program-id': program.id,
-        'dvala-code': program.code,
+        'context': file.context,
+        'current-file-id': file.id,
+        'dvala-code': file.code,
         'dvala-code-edited': false,
         'dvala-code-scroll-top': 0,
         'dvala-code-selection-end': 0,
@@ -4030,8 +4150,8 @@ function getDataFromUrl() {
           }
         }
         // Apply the state
-        saveState({ 'current-program-id': null, 'dvala-code-edited': false }, false)
-        activateCurrentProgramHistory(true)
+        saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+        activateCurrentFileHistory(true)
         if (applyEncodedState(btoa(encodeURIComponent(JSON.stringify(incomingState)))))
           showToast('State loaded from URL')
         else
@@ -4189,19 +4309,33 @@ function pageIdToAppPath(pageId: string): string {
   if (pageId.startsWith('chapter-')) return `/book/${pageId.slice(8)}`
   // special static pages — map to router paths expected by routeToPath
   if (pageId === 'settings-page') return '/settings'
-  if (pageId === 'saved-programs-page') return '/saved'
-  if (pageId === 'snapshots-page') return '/snapshots'
   // reference pages: pageId is the linkName like 'collection-map'
   return `/ref/${pageId}`
 }
 
 /** Static page IDs that live as real DOM elements (show/hide via active-content). */
-const STATIC_PAGES = new Set(['settings-page', 'saved-programs-page', 'snapshots-page'])
+const STATIC_PAGES = new Set(['settings-page'])
+
+// ─── Tab state memory ─────────────────────────────────────────────────────────
+
+// Remembers the last visited path per top-level tab so switching back restores position.
+const lastTabPath: Record<string, string> = {
+  ref: '/ref',
+  examples: '/examples',
+  book: '/book',
+  settings: '/settings',
+  home: '/',
+}
+
+/** Navigate to the last remembered path for a top-level tab section. */
+export function navigateToTab(section: string): void {
+  router.navigate(lastTabPath[section] ?? `/${section}`)
+}
 
 /**
  * Route to the given app-relative path.
  * Dynamic content pages render HTML into #dynamic-page.
- * Static pages (settings, saved-programs, snapshots) use the old show/hide mechanism.
+ * Static pages (settings) use the old show/hide mechanism.
  */
 /** Switch the visible tab pane. */
 function activateTab(tabId: string): void {
@@ -4242,7 +4376,12 @@ function routeToPath(appPath: string): void {
 
   // Activate the correct tab pane and highlight the tab button
   activateTab(getTabForPath(path))
-  highlightTabButton(getTabButtonForPath(path))
+  const tabButton = getTabButtonForPath(path)
+  highlightTabButton(tabButton)
+
+  // Remember the last visited path for this tab section (used by navigateToTab)
+  if (tabButton !== 'playground' && tabButton in lastTabPath)
+    lastTabPath[tabButton] = appPath || '/'
 
   // Playground tab doesn't need dynamic content rendering
   if (path === 'playground') {
@@ -4253,8 +4392,6 @@ function routeToPath(appPath: string): void {
   // Determine if this is a static page that already exists in the DOM
   let staticPageId: string | null = null
   if (path === 'settings' || path.startsWith('settings/')) staticPageId = 'settings-page'
-  else if (path === 'saved') staticPageId = 'saved-programs-page'
-  else if (path === 'snapshots') staticPageId = 'snapshots-page'
 
   if (staticPageId && STATIC_PAGES.has(staticPageId)) {
     // Clear any dynamic page content, then show the static page
@@ -4429,12 +4566,12 @@ export async function run() {
       throw runResult.error
     }
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended', 'comment')
+      appendOutput('File suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
       return
     }
     if (runResult.type === 'halted') {
-      appendOutput('Program halted', 'comment')
+      appendOutput('File halted', 'comment')
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'halted')
       }
@@ -4561,15 +4698,6 @@ export function parse() {
 function showAstTreeModal(ast: Ast, title: string) {
   const { panel, body } = createModalPanel({
     size: 'large',
-    hamburgerItems: [
-      {
-        label: 'Copy JSON',
-        action: () => {
-          void navigator.clipboard.writeText(JSON.stringify(ast, null, 2))
-          showToast('AST copied to clipboard')
-        },
-      },
-    ],
     onClose: () => { popModal(); focusDvalaCode() },
   })
 
@@ -5565,7 +5693,7 @@ export function doExport() {
   const includeSaved = elements.exportOptSavedSnapshots.checked
   const includeRecent = elements.exportOptRecentSnapshots.checked
   const includeLayout = elements.exportOptLayout.checked
-  const includePrograms = elements.exportOptSavedPrograms.checked
+  const includeFiles = elements.exportOptSavedFiles.checked
 
   const allowedKeys = new Set<string>([
     ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
@@ -5596,7 +5724,7 @@ export function doExport() {
     data,
     ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
     ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
-    ...(includePrograms ? { savedPrograms: getSavedPrograms() } : {}),
+    ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
   }, null, 2)
 
   const now = new Date()
@@ -5636,7 +5764,7 @@ type ExportPayload = {
   data: Record<string, string>
   savedSnapshots?: SavedSnapshot[]
   recentSnapshots?: TerminalSnapshotEntry[]
-  savedPrograms?: SavedProgram[]
+  savedFiles?: SavedFile[]
 }
 
 function isExportPayload(value: unknown): value is ExportPayload {
@@ -5686,7 +5814,7 @@ export function importPlayground() {
         const hasLayout = hasCategoryInPayload(parsed, importCategoryKeys.layout)
         const hasSaved = (parsed.savedSnapshots?.length ?? 0) > 0
         const hasRecent = (parsed.recentSnapshots?.length ?? 0) > 0
-        const hasPrograms = (parsed.savedPrograms?.length ?? 0) > 0
+        const hasFiles = (parsed.savedFiles?.length ?? 0) > 0
 
         const setup = (el: HTMLInputElement, label: HTMLLabelElement, present: boolean) => {
           el.checked = present
@@ -5701,7 +5829,7 @@ export function importPlayground() {
         setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
         setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
         setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
-        setup(elements.importOptSavedPrograms, elements.importOptSavedProgramsLabel, hasPrograms)
+        setup(elements.importOptSavedFiles, elements.importOptSavedFilesLabel, hasFiles)
 
         elements.importOptionsModal.style.display = 'flex'
       } catch {
@@ -5771,20 +5899,28 @@ export function doImport() {
       skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
-  if (elements.importOptSavedPrograms.checked && payload.savedPrograms) {
-    const existingIds = new Set(getSavedPrograms().map(p => p.id))
-    const toAdd = payload.savedPrograms.filter(p => !existingIds.has(p.id))
-    const conflicts = payload.savedPrograms.length - toAdd.length
+  const payloadFiles = payload.savedFiles
+  if (elements.importOptSavedFiles.checked && payloadFiles) {
+    const existingIds = new Set(getSavedFiles().map(p => p.id))
+    const existingNames = new Set(getSavedFiles().map(p => p.name))
+    const toAdd = payloadFiles
+      .filter(p => !existingIds.has(p.id))
+      .map(file => {
+        const normalizedName = getUniqueSavedFileName(file.name, existingNames)
+        existingNames.add(normalizedName)
+        return { ...file, name: normalizedName }
+      })
+    const conflicts = payloadFiles.length - toAdd.length
     if (toAdd.length > 0) {
-      setSavedPrograms([...getSavedPrograms(), ...toAdd])
-      imported.push(`${toAdd.length} saved program${toAdd.length !== 1 ? 's' : ''}`)
+      setSavedFiles([...getSavedFiles(), ...toAdd])
+      imported.push(`${toAdd.length} saved file${toAdd.length !== 1 ? 's' : ''}`)
     }
     if (conflicts > 0)
-      skipped.push(`${conflicts} saved program${conflicts !== 1 ? 's' : ''} (already exist)`)
+      skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   populateSnapshotsList()
-  populateSavedProgramsList()
+  populateSavedFilesList()
   pendingImportPayload = null
 
   const importedHtml = imported.length > 0
@@ -5832,7 +5968,7 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
   setTerminalSnapshots(entries)
   notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
-  const toastMessages = { completed: 'Program completed — snapshot captured', error: 'Program failed — snapshot captured', halted: 'Program halted — snapshot captured' }
+  const toastMessages = { completed: 'File completed — snapshot captured', error: 'File failed — snapshot captured', halted: 'File halted — snapshot captured' }
   showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
 }
 
@@ -6014,12 +6150,12 @@ export async function resumeSnapshot() {
       throw runResult.error
     }
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended', 'comment')
+      appendOutput('File suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
       return
     }
     if (runResult.type === 'halted') {
-      appendOutput('Program halted', 'comment')
+      appendOutput('File halted', 'comment')
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'halted')
       }
@@ -7192,8 +7328,8 @@ function applyState(scrollToTop = false) {
   elements.dvalaTextArea.selectionStart = dvalaTextAreaSelectionStart
   elements.dvalaTextArea.selectionEnd = dvalaTextAreaSelectionEnd
 
-  if (activeDvalaCodeHistoryProgramId !== getState('current-program-id'))
-    activateCurrentProgramHistory(false)
+  if (activeDvalaCodeHistoryFileId !== getState('current-file-id'))
+    activateCurrentFileHistory(false)
 
   showSideTab(getState('active-side-tab'), { persist: false, syncUrl: false })
   updateCSS()
@@ -7213,7 +7349,7 @@ function applyState(scrollToTop = false) {
 
 function updateCSS() {
   const debug = getState('debug')
-  elements.dvalaPanelDebugInfo.classList.toggle('active', debug)
+  elements.dvalaPanelDebugInfo?.classList.toggle('active', debug)
 
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
   if (debugToggle)
@@ -7283,9 +7419,9 @@ function updateCSS() {
   if (devTabBtn)
     devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
-  const currentProgramId = getState('current-program-id')
-  const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
-  const isLocked = currentProgram?.locked ?? false
+  const currentFileId = getState('current-file-id')
+  const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
+  const isLocked = currentFile?.locked ?? false
   const isContextTab = getCurrentSideTab() === 'context'
   const context = isContextTab ? getParsedContext() : null
   const contextBindings = context ? getContextBindings(context) : null
@@ -7297,21 +7433,27 @@ function updateCSS() {
   )
     ? activeContextBindingName
     : ''
-  const currentProgramTitle = currentProgram
-    ? currentProgram.name
-    : getState('dvala-code').trim().length > 0
-      ? 'Untitled Program'
-      : ''
-  const showCodePendingIndicator = !isContextTab && !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
-  elements.dvalaCodeTitleString.textContent = isContextTab
-    ? contextTitle
-    : currentProgramTitle
-  elements.editorToolbarTitle.textContent = currentProgramTitle
+  const currentFileTitle = currentFile
+    ? currentFile.name
+    : SCRATCH_TITLE
+  const showCodePendingIndicator = !isContextTab && !isLocked && (autoSaveTimer !== null || (currentFileId === null && scratchEditedTimer !== null))
+  const showSaveScratchButton = currentFileId === null && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
+  // Title string: only shown for context tab (shows binding/handler name)
+  elements.dvalaCodeTitleString.textContent = isContextTab ? contextTitle : ''
+  elements.dvalaCodeTitleString.style.display = isContextTab ? '' : 'none'
+  elements.editorToolbarTitle.textContent = currentFileTitle
+  // Context entry names (bindings, effect handlers) also use monospace
+  const fileTitleFontFamily = (!isContextTab || contextTitle) ? 'var(--font-mono)' : ''
+  elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
+  elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
+  elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
   elements.dvalaTextArea.readOnly = isLocked
   elements.dvalaTextArea.classList.toggle('panel-textarea--locked', isLocked)
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
+  elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
   syncDvalaCodeHistoryButtons()
-  elements.dvalaCodePendingIndicator.style.display = showCodePendingIndicator ? 'inline-block' : 'none'
+  // Pending indicator: only shown for context tab (file edits tracked via toolbar pill)
+  elements.dvalaCodePendingIndicator.style.display = (isContextTab && showCodePendingIndicator) ? 'inline-block' : 'none'
   if (elements.contextTitle) elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
@@ -7336,20 +7478,6 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     if (id === 'settings-page') {
       tab = tab || 'dvala'
       showSettingsTab(tab)
-    }
-    if (id === 'saved-programs-page') {
-      populateSavedProgramsList()
-      const indicator = document.getElementById('programs-nav-indicator')
-      if (indicator) indicator.style.display = 'none'
-      const navLink = document.getElementById('saved-programs-page_link')
-      if (navLink) navLink.style.color = ''
-    }
-    if (id === 'snapshots-page') {
-      populateSnapshotsList()
-      const indicator = document.getElementById('snapshots-nav-indicator')
-      if (indicator) indicator.style.display = 'none'
-      const navLink = document.getElementById('snapshots-page_link')
-      if (navLink) navLink.style.color = ''
     }
     if (link) {
       link.classList.add('active-sidebar-entry')
@@ -7398,48 +7526,36 @@ export function copyCode(encodedCode: string) {
 
 export function loadEncodedCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
-  setDvalaCode(code, true, 'top', () => {
-    showToast('Code loaded in editor')
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-  })
+  openScratchInEditor({ code, context: '', focusCode: true, navigateToPlayground: true, toast: 'Code loaded in editor' })
 }
 
 export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
-  guardCodeReplacement(() => {
-    saveState({ 'current-program-id': null, 'dvala-code-edited': false }, false)
-    activateCurrentProgramHistory(true)
+  const context = example.context
+    ? formatContextJson(example.context as Record<string, unknown>)
+    : ''
+  const code = example.code ? example.code : ''
+  const size = Math.max(name.length + 10, 40)
+  const paddingLeft = Math.floor((size - name.length) / 2)
+  const paddingRight = Math.ceil((size - name.length) / 2)
 
-    const context = example.context
-      ? formatContextJson(example.context as Record<string, unknown>)
-      : ''
-
-    setContext(context, true, 'top')
-
-    const code = example.code ? example.code : ''
-    const size = Math.max(name.length + 10, 40)
-    const paddingLeft = Math.floor((size - name.length) / 2)
-    const paddingRight = Math.ceil((size - name.length) / 2)
-    setDvalaCode(`
+  openScratchInEditor({
+    code: `
 /*${'*'.repeat(size)}**
  *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
  *${'*'.repeat(size)}**/
 
 ${code}
-`.trimStart(), true, 'top')
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-    showToast(`Example loaded: ${name}`)
+`.trimStart(),
+    context,
+    focusCode: true,
+    navigateToPlayground: true,
+    toast: `Example loaded: ${name}`,
   })
 }
 
 export function loadCode(code: string) {
-  setDvalaCode(code, true, 'top', () => {
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-    showToast('Code loaded')
-  })
+  openScratchInEditor({ code, context: '', focusCode: true, navigateToPlayground: true, toast: 'Code loaded' })
 }
 
 function hijackConsole() {

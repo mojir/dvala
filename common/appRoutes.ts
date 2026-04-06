@@ -14,7 +14,7 @@
 export const stubRoutes = ['about', 'book', 'examples', 'core', 'modules', 'playground', 'ref'] as const
 
 /** Routes that are SPA-only (user-specific, no crawling needed). */
-export const dynamicOnlyRoutes = ['saved', 'snapshots', 'settings'] as const
+export const dynamicOnlyRoutes = ['settings'] as const
 
 /** All top-level app route segments. */
 export const allAppRoutes = [...stubRoutes, ...dynamicOnlyRoutes] as const

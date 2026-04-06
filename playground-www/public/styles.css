@@ -2004,7 +2004,7 @@ a.disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-3);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
@@ -2023,18 +2023,34 @@ a.disabled {
 }
 
 .editor-toolbar__title {
-  display: block;
+  display: inline-block;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
   color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dim);
+  border-radius: 999px;
+  padding: 0.15em 0.75em;
 }
 
 .editor-toolbar__right {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.editor-toolbar__right > div,
+.editor-toolbar__right > div > a {
+  display: flex;
+  align-items: center;
+}
+
+.editor-toolbar__right > div:last-child {
+  margin-left: var(--space-2);
 }
 
 .exec-btn-inline {
@@ -2283,6 +2299,58 @@ a.disabled {
   display: flex;
   align-items: center;
   gap: 0.25em;
+}
+
+/* Run button */
+#run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.2em 0.65em;
+  font-size: var(--font-size-sm);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#run-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+#run-btn .run-btn__idle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+}
+
+#run-btn .run-btn__idle svg {
+  font-size: 0.8em;
+}
+
+.dvala-running #run-btn .run-btn__busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+/* More menu button */
+#more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dim);
+  border-radius: var(--radius-sm);
+  padding: 0.2em 0.5em;
+  font-size: var(--font-size-sm);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#more-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
 }
 
 /* Run button — running state */
@@ -2896,7 +2964,7 @@ button:focus {
   margin-bottom: var(--space-2);
 }
 
-/* Nav indicator dots (programs, snapshots) */
+/* Nav indicator dots (files, snapshots) */
 .nav-indicator {
   display: none;
   width: 7px;
@@ -2965,6 +3033,12 @@ button:focus {
   cursor: pointer;
   display: flex;
   align-items: center;
+}
+
+#save-scratch-btn,
+.output-clear-btn {
+  font-size: var(--font-size-sm);
+  gap: 0.3em;
 }
 
 .panel-header__code-title {
@@ -3037,8 +3111,8 @@ button:focus {
 }
 
 /* ============================================================
-   Explorer panel (program list in editor tab)
-   ============================================================ */
+  Explorer panel (file list in editor tab)
+  ============================================================ */
 .explorer-list {
   flex: 1;
   overflow-y: auto;
@@ -3074,6 +3148,10 @@ button:focus {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#context-entry-list .explorer-item__name {
+  font-family: var(--font-mono);
 }
 
 .explorer-item__checkbox {
@@ -3251,7 +3329,7 @@ button:focus {
   text-align: center;
 }
 
-.program-stats-panel {
+.file-stats-panel {
   display: none;
   padding: var(--space-2);
   border-top: 1px solid var(--color-border-subtle);
@@ -3260,21 +3338,21 @@ button:focus {
   min-width: 0;
 }
 
-.program-stats-panel__header {
+.file-stats-panel__header {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
 }
 
-.program-stats-panel__title-row {
+.file-stats-panel__title-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
 
-.program-stats-panel__title {
+.file-stats-panel__title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3283,7 +3361,7 @@ button:focus {
   color: var(--color-text);
 }
 
-.program-stats-panel__lock {
+.file-stats-panel__lock {
   display: inline-flex;
   align-items: center;
   color: var(--color-primary);
@@ -3291,8 +3369,8 @@ button:focus {
   flex-shrink: 0;
 }
 
-.program-stats-panel__time,
-.program-stats-panel__meta {
+.file-stats-panel__time,
+.file-stats-panel__meta {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
@@ -4016,8 +4094,8 @@ button:focus {
 }
 
 /* ============================================================
-   List pages (saved programs, snapshots)
-   ============================================================ */
+  List pages (saved files, snapshots)
+  ============================================================ */
 .list-page__header {
   display: flex;
   justify-content: space-between;
@@ -4062,7 +4140,7 @@ button:focus {
 }
 
 #snapshots-list,
-#saved-programs-list {
+#saved-files-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-2);
@@ -4070,7 +4148,7 @@ button:focus {
 
 #snapshots-list .list-group-label,
 #snapshots-list button:not(.snapshot-card),
-#saved-programs-list .list-group-label {
+#saved-files-list .list-group-label {
   grid-column: 1 / -1;
 }
 
