@@ -894,31 +894,21 @@ export function toggleNavMenu(event: Event): void {
   menu.style.top = `${rect.bottom + 4}px`
   menu.style.left = `${rect.left}px`
 
+  const close = () => {
+    menu.remove()
+    document.removeEventListener('click', closeOnClick)
+    document.removeEventListener('keydown', closeOnKey)
+  }
+  const closeOnClick = () => close()
+  const closeOnKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+
   setTimeout(() => {
-    document.addEventListener('click', function close() {
-      menu.remove()
-      document.removeEventListener('click', close)
-    })
+    document.addEventListener('click', closeOnClick)
+    document.addEventListener('keydown', closeOnKey)
   }, 0)
 }
 
 export function toggleHeaderSearch(event: Event): void {
-  event.stopPropagation()
-  openUnifiedSearch(event.currentTarget as HTMLElement)
-}
-
-export function toggleBookSearch(event: Event): void {
-  event.stopPropagation()
-  document.getElementById('chapter-toc-dropdown')?.remove()
-  openUnifiedSearch(event.currentTarget as HTMLElement)
-}
-
-export function toggleExampleSearch(event: Event): void {
-  event.stopPropagation()
-  openUnifiedSearch(event.currentTarget as HTMLElement)
-}
-
-export function toggleRefSearch(event: Event): void {
   event.stopPropagation()
   openUnifiedSearch(event.currentTarget as HTMLElement)
 }

@@ -78,6 +78,7 @@
   --radius-md: 8px;
   --sidebar-default-width: 350px;
   --panel-header-height: 1.8rem;
+  --tab-bar-height: 40px;
 }
 
 /* ============================================================
@@ -3998,12 +3999,6 @@ h2.discrete {
 
   .tab-bar__icons {
     margin-left: 0;
-  }
-
-  .chapter-search-dropdown {
-    left: 0 !important;
-    right: 0 !important;
-    width: auto !important;
   }
 
   /* ── Page header (chapter/reference/examples sticky header) ── */
