@@ -4318,6 +4318,9 @@ function routeToPath(appPath: string): void {
     const link = document.getElementById(sidebarLinkId)
     if (link) link.classList.add('active-sidebar-entry')
   }
+
+  // Re-apply CSS state (e.g. logo swap) after injecting new dynamic HTML
+  updateCSS()
 }
 
 export async function run() {
