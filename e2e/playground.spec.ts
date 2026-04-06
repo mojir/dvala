@@ -311,7 +311,8 @@ test.describe('share', () => {
       return captured
     })
 
-    expect(shareUrl).toContain('?state=')
+    expect(shareUrl).toContain('/playground?')
+    expect(shareUrl).toContain('state=')
 
     // Verify the encoded state round-trips back to the original code
     const stateParam = new URL(shareUrl).searchParams.get('state')
