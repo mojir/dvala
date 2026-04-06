@@ -24,7 +24,7 @@ async function waitForInit(page: Page) {
 
 /** Navigate to the playground (editor) tab so the editor is visible. */
 async function navigateToPlayground(page: Page) {
-  await page.evaluate(() => (window as any).Playground.navigateToTab('playground'))
+  await page.evaluate(() => (window as any).Playground.navigateToTab('editor'))
   await page.locator('#dvala-textarea').waitFor({ state: 'visible', timeout: 3000 })
 }
 
@@ -82,7 +82,7 @@ test.describe('playground loads', () => {
     await expect(page.locator('#tab-bar')).toBeVisible()
     // Navigate to playground tab to verify editor elements
     await navigateToPlayground(page)
-    await expect(page.locator('#tab-playground')).toBeVisible()
+    await expect(page.locator('#tab-editor')).toBeVisible()
     await expect(page.locator('#dvala-textarea')).toBeVisible()
     await expect(page.locator('#output-result')).toBeVisible()
   })
@@ -311,7 +311,7 @@ test.describe('share', () => {
       return captured
     })
 
-    expect(shareUrl).toContain('/playground?')
+    expect(shareUrl).toContain('/editor?')
     expect(shareUrl).toContain('state=')
 
     // Verify the encoded state round-trips back to the original code
@@ -1332,6 +1332,55 @@ test.describe('file operations', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('tab state persistence', () => {
+  test('switching away from editor and back preserves side panel state in URL', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    // Switch to context side panel
+    await page.evaluate(() => (window as any).Playground.showSideTab('context'))
+    await page.waitForFunction(() => window.location.search.includes('view=context'), { timeout: 3000 })
+    expect(page.url()).toContain('view=context')
+
+    // Navigate away to book tab
+    await page.evaluate(() => (window as any).Playground.navigateToTab('book'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+
+    // Navigate back to editor tab
+    await page.evaluate(() => (window as any).Playground.navigateToTab('editor'))
+    await page.locator('#tab-editor').waitFor({ state: 'visible', timeout: 3000 })
+
+    // URL should reflect the context panel state
+    expect(page.url()).toContain('view=context')
+  })
+  test('switching away from editor and back preserves snapshot side panel', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+    await navigateToPlayground(page)
+
+    // Click the snapshots side panel icon
+    await page.locator('#side-icon-snapshots').click()
+    await page.waitForFunction(() => window.location.search.includes('view=snapshots'), { timeout: 3000 })
+
+    // Click the Reference tab
+    await page.evaluate(() => (window as any).Playground.navigateToTab('ref'))
+    await page.waitForFunction(() => {
+      const dynPage = document.getElementById('dynamic-page')
+      return dynPage !== null && dynPage.innerHTML.length > 0
+    }, { timeout: 5000 })
+
+    // Click the Editor tab
+    await page.locator('#tab-btn-editor').click()
+    await page.locator('#tab-editor').waitFor({ state: 'visible', timeout: 3000 })
+
+    // Snapshots icon should still be active and URL should reflect snapshots panel
+    await expect(page.locator('#side-icon-snapshots')).toHaveClass(/side-panel__icon--active/)
+    expect(page.url()).toContain('view=snapshots')
+  })
+
   test('switching tabs preserves position in reference tab', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)

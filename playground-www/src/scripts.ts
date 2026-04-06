@@ -1180,7 +1180,7 @@ function openScratchInEditor(options: { code?: string; context?: string; toast?:
   activateCurrentFileHistory(true)
 
   if (options.navigateToPlayground)
-    router.navigate('/playground')
+    router.navigate('/editor')
 
   syncPlaygroundUrlState('files')
   applyState()
@@ -1448,7 +1448,14 @@ function syncCodePanelView(sideTab?: string) {
       syncContextDetailEditor()
     } else {
       emptyView.style.display = 'flex'
-      emptyView.textContent = 'Select or add a context entry to edit'
+      emptyView.innerHTML = `
+        <div class="dvala-empty-view__content">
+          <div class="dvala-empty-view__title">No context entries</div>
+          <div class="dvala-empty-view__description">Add a binding or effect handler to set up the execution context.</div>
+          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextBinding()">Add binding</button>
+          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
+        </div>
+      `
     }
   }
 }
@@ -1640,7 +1647,7 @@ export function shareFile(id: string) {
             view: getState('active-side-tab'),
           })
           params.set('fileId', file.id)
-          const href = `${base}playground?${params.toString()}`
+          const href = `${base}editor?${params.toString()}`
           if (href.length > MAX_URL_LENGTH) {
             popModal()
             showToast('File is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
@@ -2223,7 +2230,7 @@ export function share() {
   const currentSnapshotId = getActiveSnapshotUrlId()
   if (currentSnapshotId)
     params.set('snapshotId', currentSnapshotId)
-  const href = `${base}playground?${params.toString()}`
+  const href = `${base}editor?${params.toString()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
     return
@@ -2294,7 +2301,7 @@ function applyLayout() {
   }
 
   // Vertical split: output height as percentage of tab height
-  const tabPlayground = document.getElementById('tab-playground')
+  const tabPlayground = document.getElementById('tab-editor')
   if (tabPlayground && elements.outputPanel) {
     const tabHeight = tabPlayground.clientHeight
     const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
@@ -3503,7 +3510,7 @@ window.onload = async function () {
       updateState({ 'resize-divider-1-percent': resizeDivider1XPercent })
       applyLayout()
     } else if (moveParams.id === 'resize-divider-2') {
-      const tabPlayground = document.getElementById('tab-playground')
+      const tabPlayground = document.getElementById('tab-editor')
       const tabHeight = tabPlayground?.clientHeight ?? windowHeight
       let resizeDivider2YPercent
         = moveParams.percentBeforeMove + ((event.clientY - moveParams.startMoveY) / tabHeight) * 100
@@ -3993,7 +4000,7 @@ function activateTab(tabId: string): void {
   const pane = document.getElementById(`tab-${tabId}`)
   if (pane) pane.style.display = ''
   // Re-apply layout when switching to playground so panels resize correctly
-  if (tabId === 'playground') applyLayout()
+  if (tabId === 'editor') applyLayout()
 }
 
 /** Highlight the active tab button. */
@@ -4003,15 +4010,15 @@ function highlightTabButton(buttonId: string): void {
   if (btn) btn.classList.add('tab-bar__tab--active')
 }
 
-/** Map a route path to a tab ID (pane). All non-playground routes share the home pane. */
+/** Map a route path to a tab ID (pane). All non-editor routes share the home pane. */
 function getTabForPath(path: string): string {
-  if (path === 'playground') return 'playground'
+  if (path === 'editor') return 'editor'
   return 'home'
 }
 
 /** Map a route path to the tab button to highlight. */
 function getTabButtonForPath(path: string): string {
-  if (path === 'playground') return 'playground'
+  if (path === 'editor') return 'editor'
   if (path.startsWith('book')) return 'book'
   if (path.startsWith('examples')) return 'examples'
   if (path.startsWith('ref')) return 'ref'
@@ -4028,12 +4035,14 @@ function routeToPath(appPath: string): void {
   highlightTabButton(tabButton)
 
   // Remember the last visited path for this tab section (used by navigateToTab)
-  if (tabButton !== 'playground' && tabButton in lastTabPath)
+  if (tabButton !== 'editor' && tabButton in lastTabPath)
     lastTabPath[tabButton] = appPath || '/'
 
-  // Playground tab doesn't need dynamic content rendering
-  if (path === 'playground') {
-    document.title = 'Playground | Dvala'
+  // Editor tab doesn't need dynamic content rendering — just re-sync the URL to reflect
+  // the current side panel state (e.g. ?view=context), which is lost when navigating away.
+  if (path === 'editor') {
+    document.title = 'Editor | Dvala'
+    syncPlaygroundUrlState(normalizeSideTab(getState('active-side-tab')))
     return
   }
 
