@@ -1100,7 +1100,7 @@ export function loadSavedFile(id: string) {
 
 // ─── Explorer panel (compact file list in editor tab) ────────────────────────
 
-const SIDE_SNAPSHOTS_VISIBLE = 9
+const SIDE_SNAPSHOTS_VISIBLE = 5
 const SCRATCH_TITLE = '<scratch>'
 let sideSnapshotsShowAll = false
 // Track which snapshot is actively viewed in the code panel: 'terminal:0', 'saved:2', or null
@@ -1342,6 +1342,10 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
   const icon = document.getElementById(`side-icon-${normalizedTabId}`)
   if (icon) icon.classList.add('side-panel__icon--active')
+
+  // Clear the "new snapshot" indicator when entering the snapshot view.
+  if (normalizedTabId === 'snapshots')
+    document.getElementById('side-icon-snapshots')?.classList.remove('side-panel__icon--has-new')
 
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
@@ -2881,9 +2885,15 @@ function renderContextEntryList() {
   }
 
   elements.contextEntryList.innerHTML = items.join('')
+
+  // Show a red dot on the sidebar context icon when any entry has a parse error.
+  const hasAnyError =
+    getContextBindingNames(context).some(name => hasContextBindingParseError(context, name)) ||
+    getContextEffectHandlerNames(context).some(pattern => hasContextEffectHandlerParseError(context, pattern))
+  document.getElementById('side-icon-context')?.classList.toggle('side-panel__icon--has-error', hasAnyError)
 }
 
-function commitContextDetailEdits(showError = false): boolean {
+function commitContextDetailEdits(): boolean {
   if (isSyncingContextDetail || !activeContextBindingName)
     return true
 
@@ -2906,7 +2916,7 @@ function commitContextDetailEdits(showError = false): boolean {
         renderContextEntryList()
       syncContextDetailValidity(true)
       return true
-    } catch (error) {
+    } catch (_error) {
       const context = getParsedContext()
       const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
       if (handlers.length > 0)
@@ -2924,8 +2934,6 @@ function commitContextDetailEdits(showError = false): boolean {
       else
         renderContextEntryList()
       syncContextDetailValidity(false)
-      if (showError)
-        showToast((error as Error).message || 'Effect handler is invalid', { severity: 'error' })
       return false
     }
   }
@@ -2964,22 +2972,24 @@ function commitContextDetailEdits(showError = false): boolean {
     else
       renderContextEntryList()
     syncContextDetailValidity(false)
-    if (showError)
-      showToast('Binding JSON is invalid', { severity: 'error' })
     return false
   }
 }
 
 export function selectContextBinding(name: string) {
-  activeContextEntryKind = 'binding'
-  if (activeContextBindingName === name) {
+  // Early return only if we're already on this exact binding — check both name and kind to avoid
+  // incorrectly short-circuiting when switching from an effect handler with the same name.
+  if (activeContextEntryKind === 'binding' && activeContextBindingName === name) {
     focusContext()
     return
   }
 
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  // Commit edits using the *current* kind before switching — setting activeContextEntryKind
+  // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
+  activeContextEntryKind = 'binding'
   activeContextBindingName = name
   persistActiveContextSelection()
   syncContextDetailEditor()
@@ -2990,15 +3000,18 @@ export function selectContextBinding(name: string) {
 }
 
 export function selectContextEffectHandler(pattern: string) {
-  activeContextEntryKind = 'effect-handler'
-  if (activeContextBindingName === pattern) {
+  // Early return only if we're already on this exact handler — check both pattern and kind.
+  if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern) {
     focusContext()
     return
   }
 
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  // Commit edits using the *current* kind before switching — setting activeContextEntryKind
+  // beforehand would cause commitContextDetailEdits to misinterpret the active editor content.
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
+  activeContextEntryKind = 'effect-handler'
   activeContextBindingName = pattern
   persistActiveContextSelection()
   syncContextDetailEditor()
@@ -3009,7 +3022,7 @@ export function selectContextEffectHandler(pattern: string) {
 }
 
 export function toggleContextBindingActive(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
   const context = getParsedContext()
@@ -3018,7 +3031,7 @@ export function toggleContextBindingActive(name: string) {
 }
 
 export function toggleContextEffectHandlerActive(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
   const context = getParsedContext()
@@ -3027,7 +3040,7 @@ export function toggleContextEffectHandlerActive(pattern: string) {
 }
 
 export function removeContextBinding(name: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
   const context = getParsedContext()
@@ -3055,7 +3068,7 @@ export function removeContextBinding(name: string) {
 }
 
 export function removeContextEffectHandler(pattern: string) {
-  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+  if (!contextDetailHasParseError && !commitContextDetailEdits())
     return
 
   const context = getParsedContext()
@@ -3086,7 +3099,7 @@ export function removeContextEffectHandler(pattern: string) {
 
 export function renameContextBinding(name: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits())
     return
 
   showNameInputModal('Rename binding', name, newName => {
@@ -3134,7 +3147,7 @@ export function renameContextBinding(name: string) {
 
 export function renameContextEffectHandler(pattern: string) {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits())
     return
 
   showNameInputModal('Rename effect handler', pattern, newPattern => {
@@ -3187,7 +3200,7 @@ export function renameContextEffectHandler(pattern: string) {
 
 export function promptAddContextBinding() {
   const hasInvalidActiveBinding = contextDetailHasParseError
-  if (!hasInvalidActiveBinding && !commitContextDetailEdits(true))
+  if (!hasInvalidActiveBinding && !commitContextDetailEdits())
     return
 
   showNameInputModal('Add binding', '', name => {
@@ -3217,7 +3230,7 @@ export function promptAddContextBinding() {
 
 export function promptAddContextEffectHandler() {
   const hasInvalidActiveEntry = contextDetailHasParseError
-  if (!hasInvalidActiveEntry && !commitContextDetailEdits(true))
+  if (!hasInvalidActiveEntry && !commitContextDetailEdits())
     return
 
   showNameInputModal('Add effect handler', '', pattern => {
@@ -3640,18 +3653,18 @@ window.onload = async function () {
   })
   elements.contextDetailTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => {
-      commitContextDetailEdits(false)
+      commitContextDetailEdits()
     })
   })
   elements.contextDetailTextArea.addEventListener('input', () => {
-    commitContextDetailEdits(false)
+    commitContextDetailEdits()
   })
   elements.contextDetailTextArea.addEventListener('focusin', () => {
     saveState({ 'focused-panel': 'context' })
     updateCSS()
   })
   elements.contextDetailTextArea.addEventListener('focusout', () => {
-    commitContextDetailEdits(false)
+    commitContextDetailEdits()
     saveState({ 'focused-panel': null })
     updateCSS()
   })
@@ -5609,6 +5622,12 @@ let currentCheckpointSnapshot: Snapshot | null = null
 
 const MAX_TERMINAL_SNAPSHOTS = 99
 
+function markSnapshotIconNew() {
+  // Show a blue dot on the snapshot sidebar icon only when not already viewing snapshots.
+  if (getCurrentSideTab() !== 'snapshots')
+    document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--has-new')
+}
+
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
     kind: 'terminal',
@@ -5623,7 +5642,25 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
     entries.length = MAX_TERMINAL_SNAPSHOTS
   }
   setTerminalSnapshots(entries)
+
+  // The new entry was prepended, so any active terminal:N selection now points to index N+1.
+  // Update activeSnapshotKey to keep the same snapshot selected rather than drifting to the new one.
+  // If the shifted index falls outside the visible range (and showAll is off), deselect so the
+  // main panel doesn't show a snapshot that has no corresponding highlight in the sidebar.
+  if (activeSnapshotKey?.startsWith('terminal:')) {
+    const prevIndex = parseInt(activeSnapshotKey.slice('terminal:'.length), 10)
+    const nextIndex = prevIndex + 1
+    const visibleLimit = sideSnapshotsShowAll ? entries.length : SIDE_SNAPSHOTS_VISIBLE
+    if (nextIndex < entries.length && nextIndex < visibleLimit) {
+      activeSnapshotKey = `terminal:${nextIndex}`
+    } else {
+      activeSnapshotKey = null
+      syncCodePanelView()
+    }
+  }
+
   populateSnapshotsList({ animateNewTerminal: true })
+  markSnapshotIconNew()
   const toastMessages = { completed: 'File completed — snapshot captured', error: 'File failed — snapshot captured', halted: 'File halted — snapshot captured' }
   showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
 }
@@ -5688,6 +5725,7 @@ export function saveCheckpoint() {
     setSavedSnapshots(existing)
 
     populateSnapshotsList({ animateNewSaved: true })
+    markSnapshotIconNew()
     showToast(`Checkpoint saved (${existing.length} total)`)
   })
 }
@@ -5753,6 +5791,7 @@ export function saveSnapshot() {
     setSavedSnapshots(existing)
 
     populateSnapshotsList({ animateNewSaved: true })
+    markSnapshotIconNew()
     showToast(`Snapshot saved (${existing.length} total)`)
   })
 }

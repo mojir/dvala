@@ -1550,21 +1550,24 @@ a.disabled {
   list-style: none;
   margin: 0;
   padding: 0;
+  /* Table layout: name column auto-sizes to widest entry, desc wraps in remaining width */
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .ref-index__item {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
+  display: table-row;
 }
 
 .ref-index__link {
+  display: table-cell;
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   color: var(--color-text);
+  padding: var(--space-1) var(--space-4) var(--space-1) 0;
   white-space: nowrap;
-  flex-shrink: 0;
+  vertical-align: baseline;
 }
 
 .ref-index__link:hover {
@@ -1572,11 +1575,13 @@ a.disabled {
 }
 
 .ref-index__desc {
+  display: table-cell;
   font-size: var(--font-size-sm);
   color: var(--color-text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: var(--space-1) 0;
+  line-height: 1.5;
+  vertical-align: baseline;
+  word-break: break-word;
 }
 
 .ref-module__desc {
@@ -1798,7 +1803,7 @@ a.disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0.5rem;
   padding: calc(var(--panel-header-height) + var(--space-2)) var(--space-2) var(--space-2);
   background: var(--color-surface-dim);
   flex-shrink: 0;
@@ -1837,6 +1842,35 @@ a.disabled {
 .side-panel__icon--active {
   color: var(--color-text-bright);
   background: var(--color-surface-3);
+}
+
+.side-panel__icon--has-error,
+.side-panel__icon--has-new {
+  position: relative;
+}
+
+.side-panel__icon--has-error::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-error);
+  pointer-events: none;
+}
+
+.side-panel__icon--has-new::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  pointer-events: none;
 }
 
 .side-panel__content {
