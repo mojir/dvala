@@ -7,6 +7,7 @@
  */
 
 import { tokenizeToHtml } from './SyntaxOverlay'
+import { playIcon } from './icons'
 import { runExampleCode } from './runExampleCode'
 
 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m0 16H8V7h11z"/></svg>'
@@ -48,7 +49,7 @@ export function renderCodeBlock(options: CodeBlockOptions): string {
   // Action buttons
   const buttons: string[] = []
   if (!noEdit) {
-    buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">Use in playground</button>`)
+    buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">${playIcon} Load</button>`)
   }
   if (!noCopy) {
     buttons.push(`<button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>`)

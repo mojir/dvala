@@ -16,7 +16,6 @@ import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
 import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
-import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
 import type { EditorMenuItem } from './editorMenu'
 import { renderEditorMenu } from './editorMenu'
 import { addIcon, copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
@@ -760,10 +759,11 @@ const DOMAIN_LABELS: Record<string, string> = {
 /** Run a unified search across all domains, prioritizing the current one. */
 function unifiedSearch(q: string): { results: SearchResult<UnifiedHit>[]; label?: string }[] {
   const currentDomain = getCurrentDomain()
+  // Order mirrors the tab bar: Reference, Examples, The Book
   const domains = [
-    { id: 'book', search: searchBook },
-    { id: 'examples', search: searchExamples },
     { id: 'reference', search: searchReference },
+    { id: 'examples', search: searchExamples },
+    { id: 'book', search: searchBook },
   ]
 
   // Current domain first, then others
@@ -862,6 +862,49 @@ function initChapterScrollSpy(): void {
   const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.10)
   const initial = scrolledPast.at(-1) ?? headings[0]
   if (initial) setActive(initial.id)
+}
+
+export function toggleNavMenu(event: Event): void {
+  event.stopPropagation()
+  const existing = document.getElementById('nav-menu-dropdown')
+  if (existing) { existing.remove(); return }
+
+  const btn = event.currentTarget as HTMLElement
+  const menu = document.createElement('div')
+  menu.id = 'nav-menu-dropdown'
+  menu.className = 'nav-menu-dropdown'
+
+  const items: { label: string; action: () => void }[] = [
+    { label: 'Home', action: () => router.navigate('/') },
+    { label: 'Reference', action: () => router.navigate('/ref') },
+    { label: 'Examples', action: () => router.navigate('/examples') },
+    { label: 'The Book', action: () => router.navigate('/book') },
+  ]
+
+  for (const item of items) {
+    const el = document.createElement('button')
+    el.className = 'nav-menu-dropdown__item'
+    el.textContent = item.label
+    el.addEventListener('click', () => { menu.remove(); item.action() })
+    menu.appendChild(el)
+  }
+
+  document.body.appendChild(menu)
+  const rect = btn.getBoundingClientRect()
+  menu.style.top = `${rect.bottom + 4}px`
+  menu.style.left = `${rect.left}px`
+
+  setTimeout(() => {
+    document.addEventListener('click', function close() {
+      menu.remove()
+      document.removeEventListener('click', close)
+    })
+  }, 0)
+}
+
+export function toggleHeaderSearch(event: Event): void {
+  event.stopPropagation()
+  openUnifiedSearch(event.currentTarget as HTMLElement)
 }
 
 export function toggleBookSearch(event: Event): void {
@@ -3536,7 +3579,8 @@ window.onload = async function () {
   document.addEventListener('click', onDocumentClick, true)
 
   elements.mainPanel.addEventListener('scroll', () => {
-    closeContextMenu()
+    // Close context/editor menus on scroll, but keep settings open (user may scroll while adjusting settings)
+    document.querySelectorAll<HTMLElement>('.editor-menu:not(#settings-dropdown)').forEach(el => { el.style.display = 'none' })
   })
 
   window.addEventListener('resize', () => {
@@ -3554,6 +3598,17 @@ window.onload = async function () {
     }
   }
 
+  elements.resizeDevider1.addEventListener('touchstart', event => {
+    event.preventDefault()
+    const touch = event.touches[0]!
+    document.body.classList.add('no-select')
+    moveParams = {
+      id: 'resize-divider-1',
+      startMoveX: touch.clientX,
+      percentBeforeMove: getState('resize-divider-1-percent'),
+    }
+  }, { passive: false })
+
   elements.resizeDevider2.onmousedown = event => {
     event.preventDefault()
     document.body.classList.add('no-select')
@@ -3563,6 +3618,17 @@ window.onload = async function () {
       percentBeforeMove: getState('resize-divider-2-percent'),
     }
   }
+
+  elements.resizeDevider2.addEventListener('touchstart', event => {
+    event.preventDefault()
+    const touch = event.touches[0]!
+    document.body.classList.add('no-select')
+    moveParams = {
+      id: 'resize-divider-2',
+      startMoveY: touch.clientY,
+      percentBeforeMove: getState('resize-divider-2-percent'),
+    }
+  }, { passive: false })
 
   window.onresize = layout
   window.onmouseup = () => {
@@ -3576,14 +3642,25 @@ window.onload = async function () {
     moveParams = null
   }
 
-  window.onmousemove = (event: MouseEvent) => {
+  window.addEventListener('touchend', () => {
+    document.body.classList.remove('no-select')
+    if (moveParams !== null) {
+      if (moveParams.id === 'resize-divider-1')
+        saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
+      else if (moveParams.id === 'resize-divider-2')
+        saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
+    }
+    moveParams = null
+  })
+
+  const applyMoveEvent = (clientX: number, clientY: number) => {
     const { windowWidth, windowHeight } = calculateDimensions()
     if (moveParams === null)
       return
 
     if (moveParams.id === 'resize-divider-1') {
       let resizeDivider1XPercent
-        = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
+        = moveParams.percentBeforeMove + ((clientX - moveParams.startMoveX) / windowWidth) * 100
       if (resizeDivider1XPercent < 10)
         resizeDivider1XPercent = 10
 
@@ -3596,7 +3673,7 @@ window.onload = async function () {
       const tabPlayground = document.getElementById('tab-editor')
       const tabHeight = tabPlayground?.clientHeight ?? windowHeight
       let resizeDivider2YPercent
-        = moveParams.percentBeforeMove + ((event.clientY - moveParams.startMoveY) / tabHeight) * 100
+        = moveParams.percentBeforeMove + ((clientY - moveParams.startMoveY) / tabHeight) * 100
       if (resizeDivider2YPercent < 10)
         resizeDivider2YPercent = 10
       if (resizeDivider2YPercent > 90)
@@ -3607,10 +3684,19 @@ window.onload = async function () {
     }
   }
 
-  window.addEventListener('keydown', evt => {
-    if (handleSearchKeyDown(evt))
-      return
+  window.onmousemove = (event: MouseEvent) => {
+    applyMoveEvent(event.clientX, event.clientY)
+  }
 
+  window.addEventListener('touchmove', (event: TouchEvent) => {
+    if (moveParams === null) return
+    // Prevent page scroll while dragging a divider
+    event.preventDefault()
+    const touch = event.touches[0]!
+    applyMoveEvent(touch.clientX, touch.clientY)
+  }, { passive: false })
+
+  window.addEventListener('keydown', evt => {
     // Unified effect panel: delegate key events to the current effect's handler first
     if (pendingEffects.length > 0) {
       const entry = pendingEffects[currentEffectIndex]
@@ -3618,6 +3704,11 @@ window.onload = async function () {
         return
     }
 
+    if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
+      evt.preventDefault()
+      document.getElementById('tab-btn-search')?.click()
+      return
+    }
     if (evt.ctrlKey) {
       switch (evt.key) {
         case 'r':
@@ -3793,10 +3884,6 @@ window.onload = async function () {
     routeToPath(appPath)
   })
 
-  onSearchClose(() => {
-    applyState()
-  })
-  initSearchDialog()
 }
 
 function getDataFromUrl() {
@@ -4153,7 +4240,6 @@ function routeToPath(appPath: string): void {
 
   // For all other paths, render dynamically into #dynamic-page
   inactivateAll()
-  closeSearch()
   elements.mainPanel.scrollTo({ top: 0 })
 
   // Tear down chapter scroll-spy when leaving a chapter page.
@@ -7253,7 +7339,6 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
   setTimeout(() => {
     inactivateAll()
 
-    closeSearch()
     const page = document.getElementById(id)
     const linkElementId = `${(!id || id === 'index') ? 'home-page' : id}_link`
     const link = document.getElementById(linkElementId)
