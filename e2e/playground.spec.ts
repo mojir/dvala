@@ -525,8 +525,8 @@ test.describe('api reference navigation', () => {
   })
 
   test('clicking a section card navigates to section page', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.navigate('/ref'))
-    await page.locator('.ref-card').first().click()
+    // Effects section uses grouped listing with group titles
+    await page.evaluate(() => (window as any).Playground.navigate('/ref/effects'))
     await expect(page.locator('.ref-index__group-title').first()).toBeVisible()
   })
 

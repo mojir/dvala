@@ -83,6 +83,26 @@ export const moduleCategories: Category[] = ['assertion', 'ast', 'bitwise', 'col
 // Core categories (always available) — special-expression first, rest alphabetical
 export const coreCategories: Category[] = ['special-expression', 'array', 'assertion', 'bitwise', 'collection', 'datatype', 'functional', 'math', 'meta', 'misc', 'object', 'predicate', 'regular-expression', 'sequence', 'shorthand', 'string']
 
+// Short descriptions for each core category, shown on the reference card grid.
+export const coreCategoryDescriptions: Record<string, string> = {
+  'special-expression': 'Flow control, binding, functions, effects, and macros.',
+  'array': 'Create and transform ordered sequences of values.',
+  'assertion': 'Throw errors when conditions are not met.',
+  'bitwise': 'Bitwise operations on integers.',
+  'collection': 'Operations shared across arrays, objects, and strings.',
+  'datatype': 'Inspect and assert value types at runtime.',
+  'functional': 'Higher-order functions: compose, curry, and partial application.',
+  'math': 'Arithmetic, rounding, and numeric operations.',
+  'meta': 'Inspect and manipulate Dvala expressions at runtime.',
+  'misc': 'Miscellaneous utilities.',
+  'object': 'Create and transform key-value objects.',
+  'predicate': 'Test values: equality, comparison, and type checks.',
+  'regular-expression': 'Create and match regular expressions.',
+  'sequence': 'Operations on arrays and strings as ordered sequences.',
+  'shorthand': 'Concise syntax aliases for common operations.',
+  'string': 'Create and transform text strings.',
+}
+
 // --- FunctionDocs types ---
 
 export interface TypedValue {
