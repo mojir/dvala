@@ -816,6 +816,54 @@ function navigateToHit(hit: UnifiedHit): void {
   router.navigate(hit.path)
 }
 
+// Tracks the current IntersectionObserver so it can be torn down on navigation.
+let chapterScrollSpyObserver: IntersectionObserver | null = null
+
+function initChapterScrollSpy(): void {
+  // Tear down any previous observer from a prior chapter page.
+  chapterScrollSpyObserver?.disconnect()
+  chapterScrollSpyObserver = null
+
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.chapter-subtoc__link'))
+  if (links.length === 0) return
+
+  // Map anchor slug → sidebar link element for fast lookup.
+  const linkMap = new Map(links.map(a => [a.getAttribute('href')?.slice(1) ?? '', a]))
+  const headings = Array.from(linkMap.keys())
+    .map(id => document.getElementById(id))
+    .filter((el): el is HTMLElement => el !== null)
+
+  let activeId = ''
+
+  const setActive = (id: string) => {
+    if (id === activeId) return
+    activeId = id
+    for (const [slug, a] of linkMap)
+      a.classList.toggle('chapter-subtoc__link--active', slug === id)
+  }
+
+  // Use IntersectionObserver to track which heading is near the top of the viewport.
+  chapterScrollSpyObserver = new IntersectionObserver(
+    entries => {
+      for (const entry of entries) {
+        if (entry.isIntersecting)
+          setActive(entry.target.id)
+      }
+      // If nothing is intersecting (scrolled past all headings), keep the last active.
+    },
+    { rootMargin: '-10% 0px -80% 0px', threshold: 0 },
+  )
+
+  for (const heading of headings)
+    chapterScrollSpyObserver.observe(heading)
+
+  // On load, find the last heading that has already scrolled past the top of the viewport.
+  // This correctly restores the active section after a reload with a scroll position.
+  const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.15)
+  const initial = scrolledPast.at(-1) ?? headings[0]
+  if (initial) setActive(initial.id)
+}
+
 export function toggleBookSearch(event: Event): void {
   event.stopPropagation()
   document.getElementById('chapter-toc-dropdown')?.remove()
@@ -892,6 +940,8 @@ export function showBookPage() {
 }
 
 export function showSettingsTab(id: string) {
+  // Dvala and Playground tabs moved to the dropdown — fall back to actions if requested
+  if (id === 'dvala' || id === 'playground') id = 'actions'
   document.querySelectorAll('.settings-tab-btn').forEach(el => el.classList.remove('active'))
   document.querySelectorAll('.settings-tab-content').forEach(el => el.classList.remove('active'))
   document.getElementById(`settings-tab-btn-${id}`)?.classList.add('active')
@@ -3450,7 +3500,16 @@ function addOutputElement(element: HTMLElement) {
 }
 
 window.onload = async function () {
+  // Apply the theme attribute before rendering the shell to avoid a flash of the wrong theme.
+  // We can't call updateCSS() here because the DOM elements it references don't exist yet.
+  const lightModePref = getState('light-mode')
+  const isLight = lightModePref !== null
+    ? lightModePref
+    : window.matchMedia('(prefers-color-scheme: light)').matches
+  document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
+
   renderShell()
+  updateCSS()
   applyLayout()
   injectPlaygroundEffects()
   populateSidebarVersion()
@@ -4127,6 +4186,7 @@ function routeToPath(appPath: string): void {
       const target = document.getElementById(location.hash.slice(1))
       if (target) target.scrollIntoView()
     }
+    initChapterScrollSpy()
   } else if (path.startsWith('ref/')) {
     const subPath = path.slice('ref/'.length)
     sidebarLinkId = 'ref-page_link'
@@ -4476,6 +4536,20 @@ export function toggleDisablePlaygroundEffects() {
 
 export function toggleAutoCheckpoint() {
   saveState({ 'disable-auto-checkpoint': !getState('disable-auto-checkpoint') })
+  updateCSS()
+}
+
+export function toggleSettingsDropdown(triggerEl: HTMLElement) {
+  toggleEditorMenu('settings-dropdown', triggerEl, 4)
+}
+
+export function closeSettingsDropdown() {
+  closeAllEditorMenus()
+}
+
+export function setTheme(value: boolean | null) {
+  // null = follow OS, true = always light, false = always dark
+  saveState({ 'light-mode': value })
   updateCSS()
 }
 
@@ -7027,6 +7101,24 @@ function applyState(scrollToTop = false) {
 }
 
 function updateCSS() {
+  // Apply or remove the light theme attribute based on stored preference or OS setting.
+  const lightModePref = getState('light-mode')
+  const isLight = lightModePref !== null
+    ? lightModePref
+    : window.matchMedia('(prefers-color-scheme: light)').matches
+  document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark')
+
+  // Sync the theme segmented control: null=System, true=Light, false=Dark
+  const activeThemeId = lightModePref === null ? 'theme-btn-system' : lightModePref ? 'theme-btn-light' : 'theme-btn-dark'
+  for (const id of ['theme-btn-system', 'theme-btn-light', 'theme-btn-dark'])
+    document.getElementById(id)?.classList.toggle('theme-segment__btn--active', id === activeThemeId)
+
+  // Swap to the print logo (dark text) in light mode, back to the default (white text) in dark mode.
+  const logoSrc = isLight ? 'images/dvala-logo-print.webp' : 'images/dvala-logo.webp'
+  document.querySelectorAll<HTMLImageElement>('img[src*="dvala-logo"]').forEach(img => {
+    img.src = logoSrc
+  })
+
   const debug = getState('debug')
   elements.dvalaPanelDebugInfo?.classList.toggle('active', debug)
 
@@ -7155,7 +7247,7 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
 
     page.classList.add('active-content')
     if (id === 'settings-page') {
-      tab = tab || 'dvala'
+      tab = tab || 'actions'
       showSettingsTab(tab)
     }
     if (link) {
