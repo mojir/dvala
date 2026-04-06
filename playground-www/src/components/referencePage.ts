@@ -12,7 +12,7 @@ import type { ReferenceData } from '../../../common/referenceData'
 import { makeLinkName } from '../../../reference'
 import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
-import { hamburgerIcon, searchIcon } from '../icons'
+import { hamburgerIcon } from '../icons'
 import { renderPageHeader } from './pageHeader'
 
 declare global {
@@ -405,8 +405,7 @@ export function renderReferenceCategoryPage(categoryName: string): string {
 
 function refActions(): string {
   return `
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefSearch(event)" aria-label="Search reference">${searchIcon}</button>`
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────

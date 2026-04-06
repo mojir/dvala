@@ -18,6 +18,7 @@ import {
   gearIcon,
   githubIcon,
   hamburgerIcon,
+  searchIcon,
   pauseIcon,
   playIcon,
   redoIcon,
@@ -83,12 +84,16 @@ function getSettingsDropdown(): string {
 function getShellHTML(): string {
   return `
   <nav id="tab-bar">
+    <button class="tab-bar__nav-hamburger" id="tab-btn-nav-menu" onclick="Playground.toggleNavMenu(event)" title="Navigation">${hamburgerIcon}</button>
     <img class="tab-bar__logo" src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
     <div class="tab-bar__tabs">
       <a class="tab-bar__tab" id="tab-btn-editor" href="#" onclick="event.preventDefault();Playground.navigateToTab('editor')">Editor</a>
       <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigateToTab('ref')">Reference</a>
       <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigateToTab('examples')">Examples</a>
       <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigateToTab('book')">The Book</a>
+    </div>
+    <div class="tab-bar__icons">
+      <button class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-search" onclick="Playground.toggleHeaderSearch(event)" title="Search">${searchIcon}</button>
       <button class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" onclick="Playground.toggleSettingsDropdown(this)" title="Settings">${gearIcon}</button>
     </div>
   </nav>
@@ -109,16 +114,6 @@ function getShellHTML(): string {
 
   ${getModals()}
 
-  <div id="search-dialog-overlay">
-    <div class="search-dialog-overlay__inner">
-      <div id="search-dialog" class="search-dialog">
-        <input id="search-input" type="text" placeholder="Search..." class="search-dialog__input" aria-label="Search functions, modules, effects">
-        <div id="search-intro">Type to search functions, modules, effects…</div>
-        <div id="no-search-result" style="display:none;">No results</div>
-        <div id="search-result" class="search-dialog__results fancy-scroll" style="display:none;"></div>
-      </div>
-    </div>
-  </div>
 
   ${getMobileOverlay()}
 
@@ -433,10 +428,10 @@ function getMobileOverlay(): string {
     </div>
 
     <div class="mobile-overlay__note">
-      <div class="mobile-overlay__note-title">Desktop Required</div>
+      <div class="mobile-overlay__note-title">Editor requires a larger screen</div>
       <p class="mobile-overlay__note-text">
-        The Dvala Playground is an interactive code editor that requires a larger screen.
-        Please visit on a desktop or laptop to explore Dvala.
+        The code editor needs more space than a phone can offer.
+        Visit on a desktop or laptop to write and run Dvala code.
       </p>
     </div>
 

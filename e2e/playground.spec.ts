@@ -224,25 +224,33 @@ test.describe('navigation', () => {
 })
 
 test.describe('search', () => {
-  test('opens search with Ctrl+K, types, and closes with Escape', async ({ page }) => {
+  test('opens search from header button, types, and closes with Escape', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
 
-    // Open search via keyboard
-    await page.keyboard.press('Control+k')
-    await expect(page.locator('#search-dialog')).toBeVisible()
+    // Open search via header button
+    await page.locator('#tab-btn-search').click()
+    await expect(page.locator('#unified-search-dropdown')).toBeVisible()
 
     // Type a search query
-    await page.locator('#search-input').fill('map')
-    // Results or no-results should appear
-    const hasResults = await page.locator('#search-result').isVisible()
-    const hasNoResults = await page.locator('#no-search-result').isVisible()
-    expect(hasResults || hasNoResults).toBe(true)
+    await page.locator('#unified-search-dropdown .chapter-search-input').fill('map')
+    // Results should appear
+    await expect(page.locator('#unified-search-dropdown .chapter-search-result').first()).toBeVisible()
 
     // Close with Escape
     await page.keyboard.press('Escape')
+    await expect(page.locator('#unified-search-dropdown')).toBeHidden()
+  })
+
+  test('opens search with Ctrl+K shortcut', async ({ page }) => {
+    await page.goto('')
+    await waitForInit(page)
+
+    await page.keyboard.press('Control+k')
+    await expect(page.locator('#unified-search-dropdown')).toBeVisible()
+
     await page.keyboard.press('Escape')
-    await expect(page.locator('#search-dialog-overlay')).toBeHidden()
+    await expect(page.locator('#unified-search-dropdown')).toBeHidden()
   })
 })
 
@@ -531,12 +539,12 @@ test.describe('api reference navigation', () => {
   })
 
   test('search result navigates to correct doc page', async ({ page }) => {
-    // Open search and type 'map'
-    await page.keyboard.press('Control+k')
-    await page.locator('#search-input').fill('map')
+    // Open header search and type 'map'
+    await page.locator('#tab-btn-search').click()
+    await page.locator('#unified-search-dropdown .chapter-search-input').fill('map')
 
-    // Click first result (search results are div.search-dialog__entry elements)
-    const firstResult = page.locator('#search-result .search-dialog__entry').first()
+    // Click first result
+    const firstResult = page.locator('#unified-search-dropdown .chapter-search-result').first()
     await firstResult.waitFor({ timeout: 3000 })
     const resultText = await firstResult.textContent()
     await firstResult.click()
