@@ -1870,7 +1870,6 @@ export function duplicateFile(id: string) {
   elements.dvalaTextArea.value = copy.code
   setContext(copy.context, false)
   syntaxOverlay.update()
-  notifyFileAdded()
   updateCSS()
   populateSavedFilesList({ animateNewId: copy.id })
   showToast(`Created "${copy.name}"`)
@@ -2109,7 +2108,6 @@ function saveOrRenameFile(name: string, files: SavedFile[], currentId: string | 
     setSavedFiles([createdFile, ...files])
     saveState({ 'current-file-id': createdFile.id }, false)
     activateCurrentFileHistory(true)
-    notifyFileAdded()
     updateCSS()
     populateSavedFilesList({ animateNewId: createdFile.id })
     return
@@ -5721,7 +5719,6 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
     entries.length = MAX_TERMINAL_SNAPSHOTS
   }
   setTerminalSnapshots(entries)
-  notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
   const toastMessages = { completed: 'File completed — snapshot captured', error: 'File failed — snapshot captured', halted: 'File halted — snapshot captured' }
   showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
