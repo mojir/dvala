@@ -13,7 +13,7 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
@@ -984,11 +984,6 @@ function renderColorPalette(): void {
   container.innerHTML = html
 }
 
-function notifyFileAdded() {
-}
-
-function notifySnapshotAdded() {
-}
 
 function formatTime(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -1010,21 +1005,6 @@ const ICONS = {
   share: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
 }
 
-function renderContextMenu(items: EditorMenuItem[], menuId: string): string {
-  return `
-    <div style="position: relative;">
-      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}', this)" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="More actions">${ICONS.menu}</button>
-      ${renderEditorMenu({
-        id: menuId,
-        items: items.map(item => ({
-          ...item,
-          action: `event.stopPropagation(); Playground.closeContextMenu(); ${item.action}`,
-        })),
-      })}
-    </div>
-  `
-}
-
 export function toggleContextMenu(menuId: string, triggerEl?: HTMLElement): void {
   if (!triggerEl) return
   toggleEditorMenu(menuId, triggerEl)
@@ -1042,21 +1022,6 @@ document.addEventListener('click', e => {
   if (anchor?.getAttribute('href') === '#')
     e.preventDefault()
 }, true)
-
-function buildTerminalDetailLine(snapshot: Snapshot): string {
-  const meta = snapshot.meta as { result?: unknown; error?: { message?: string } } | undefined
-  if (meta?.error?.message) {
-    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">error:</span> ${escapeHtml(String(meta.error.message))}</div>`
-  }
-  if (meta?.result !== undefined) {
-    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">result:</span> ${escapeHtml(String(meta.result))}</div>`
-  }
-  return ''
-}
-
-function getSnapshotDisplayMessage(snapshot: Snapshot): string {
-  return snapshot.message || (snapshot.effectName ? `Effect: ${snapshot.effectName}` : 'Checkpoint')
-}
 
 function getTerminalSnapshotLabel(index: number): string {
   const ordinals = ['Last', '2nd Last', '3rd Last']
@@ -1087,77 +1052,6 @@ function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot } | nul
   return null
 }
 
-function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index: number, animateIn = false): string {
-  const { snapshot, savedAt } = entry
-  const animateClass = animateIn ? 'animate-in' : ''
-  const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
-  const sizeStr = snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(1)} MB` : `${(snapshotBytes / 1024).toFixed(1)} KB`
-  const timestamp = `<div style="font-size: 0.75rem; color: var(--color-text-dim); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
-
-  let type: 'terminal' | 'saved'
-  let title: string
-  let titlePrefix: string
-  let message: string
-  let detailLine: string
-  let borderColor: string
-  let menuItems: EditorMenuItem[]
-  let actionButtons: string
-  let onclick: string
-
-  if (entry.kind === 'terminal') {
-    const ordinals = ['Last', '2nd Last', '3rd Last']
-    type = 'terminal'
-    title = `${ordinals[index] ?? `${index + 1}th Last`} Run`
-    titlePrefix = ''
-    message = snapshot.message
-    detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
-    borderColor = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
-    menuItems = [
-      { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
-      { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
-      { label: 'Download', icon: ICONS.download, action: `Playground.downloadTerminalSnapshotByIndex(${index})` },
-      { label: 'Delete', icon: ICONS.trash, action: `Playground.clearTerminalSnapshot(${index})` },
-    ]
-    actionButtons = ''
-    onclick = `Playground.openTerminalSnapshot(${index})`
-  } else {
-    const isCompleted = snapshot.terminal === true
-    const meta = snapshot.meta as { error?: unknown; halted?: boolean } | undefined
-    type = 'saved'
-    title = entry.name || `Snapshot #${index + 1}`
-    titlePrefix = entry.locked ? `<span style="color: var(--color-primary); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
-    message = getSnapshotDisplayMessage(snapshot)
-    detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
-    borderColor = isCompleted ? (meta?.error ? 'var(--color-error)' : meta?.halted ? 'var(--color-primary)' : 'var(--color-success)') : 'var(--color-border)'
-    menuItems = [
-      { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
-      { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
-      { label: 'Download', icon: ICONS.download, action: `Playground.downloadSavedSnapshotByIndex(${index})` },
-      { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedSnapshot(${index})` },
-    ]
-    actionButtons = isCompleted ? '' : `<button class="snapshot-btn" onclick="event.stopPropagation(); Playground.runSavedSnapshot(${index})" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="Run snapshot">${ICONS.play}</button>`
-    onclick = `Playground.openSavedSnapshot(${index})`
-  }
-
-  return `
-    <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: var(--color-surface); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
-      <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
-        <div style="font-size: 1rem; color: var(--color-text); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}${entry.kind === 'saved' && snapshot.terminal !== true ? '<span style="font-size: 0.65rem; color: var(--color-text-dim); font-family: sans-serif; font-weight: bold; letter-spacing: 0.05em;">SUSPENDED</span>' : ''}</div>
-        <div style="font-size: 0.8rem; color: var(--color-text-dim);">${escapeHtml(message)}</div>
-        ${detailLine}
-      </div>
-      <div style="display: flex; gap: 2px; align-items: flex-start;" onclick="event.stopPropagation()">
-        ${actionButtons}
-        ${renderContextMenu(menuItems, `${type}-menu-${index}`)}
-      </div>
-    </div>
-  `
-}
-
-function renderGroupLabel(label: string): string {
-  return `<div class="list-group-label" style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
-}
-
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
   const card = document.querySelector(`.snapshot-card[data-type="${type}"][data-index="${index}"]`)
   if (!card) return Promise.resolve()
@@ -1171,64 +1065,8 @@ function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<
 }
 
 function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateNewSaved?: boolean } = {}) {
+  void options
   populateSideSnapshotsList()
-  const { animateNewTerminal = false, animateNewSaved = false } = options
-  const list = document.getElementById('snapshots-list')
-  const empty = document.getElementById('snapshots-empty')
-  const clearBtn = document.getElementById('snapshots-clear-all')
-  if (!list || !empty) return
-
-  const terminalEntries = getTerminalSnapshots()
-  const savedEntries = getSavedSnapshots()
-  const hasContent = terminalEntries.length > 0 || savedEntries.length > 0
-
-  if (!hasContent) {
-    list.innerHTML = ''
-    empty.style.display = 'block'
-    if (clearBtn) clearBtn.style.visibility = 'hidden'
-    return
-  }
-
-  empty.style.display = 'none'
-  if (clearBtn) clearBtn.style.visibility = terminalEntries.length > 0 || savedEntries.some(e => !e.locked) ? 'visible' : 'hidden'
-
-  const cards: string[] = []
-
-  // Terminal snapshots with group label
-  if (terminalEntries.length > 0) {
-    cards.push(renderGroupLabel('Completed Files'))
-    // Always render first N cards normally
-    for (let i = 0; i < Math.min(VISIBLE_TERMINAL_SNAPSHOTS, terminalEntries.length); i++) {
-      cards.push(renderSnapshotCard(terminalEntries[i]!, i, animateNewTerminal && i === 0))
-    }
-    const hiddenCount = terminalEntries.length - VISIBLE_TERMINAL_SNAPSHOTS
-    if (hiddenCount > 0) {
-      // Wrap extra cards in collapsible container
-      const displayStyle = showAllTerminalSnapshots ? 'display: contents;' : 'display: none;'
-      cards.push(`<div id="terminal-snapshots-overflow" style="${displayStyle}">`)
-      for (let i = VISIBLE_TERMINAL_SNAPSHOTS; i < terminalEntries.length; i++) {
-        cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
-      }
-      cards.push('</div>')
-      const toggleStyle = 'background: none; border: none; color: var(--color-text-dim); font-size: 0.75rem; cursor: pointer; padding: 0.5rem 0; text-align: center; width: 100%;'
-      if (showAllTerminalSnapshots) {
-        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show less</button>`)
-      } else {
-        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show all (${terminalEntries.length})</button>`)
-      }
-    }
-  }
-
-  // Saved snapshots with group label
-  if (savedEntries.length > 0) {
-    cards.push(renderGroupLabel('Saved Snapshots'))
-    savedEntries.forEach((entry, index) => {
-      // Only animate the first (newest) saved entry if animateNewSaved is true
-      cards.push(renderSnapshotCard(entry, index, animateNewSaved && index === 0))
-    })
-  }
-
-  list.innerHTML = cards.join('')
 }
 
 function escapeHtml(str: string): string {
@@ -1248,89 +1086,8 @@ function animateFileCardRemoval(id: string): Promise<void> {
 }
 
 function populateSavedFilesList(options: { animateNewId?: string } = {}) {
+  void options
   populateExplorerFileList()
-  const { animateNewId } = options
-  const list = document.getElementById('saved-files-list')
-  const empty = document.getElementById('saved-files-empty')
-  const clearBtn = document.getElementById('saved-files-clear-all')
-  if (!list || !empty) return
-
-  const files = getSavedFiles()
-  if (clearBtn)
-    clearBtn.style.visibility = files.some(entry => !entry.locked) ? 'visible' : 'hidden'
-
-  if (files.length === 0) {
-    list.innerHTML = ''
-    empty.style.display = 'block'
-    return
-  }
-
-  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
-  const todayMs = startOfToday.getTime()
-  const weekMs = todayMs - 6 * 24 * 60 * 60 * 1000
-  const monthMs = todayMs - 29 * 24 * 60 * 60 * 1000
-
-  const groups: { label: string; files: SavedFile[] }[] = [
-    { label: 'Today', files: [] },
-    { label: 'Last Week', files: [] },
-    { label: 'Last Month', files: [] },
-    { label: 'Older', files: [] },
-  ]
-
-  for (const entry of files) {
-    if (entry.updatedAt >= todayMs) groups[0]!.files.push(entry)
-    else if (entry.updatedAt >= weekMs) groups[1]!.files.push(entry)
-    else if (entry.updatedAt >= monthMs) groups[2]!.files.push(entry)
-    else groups[3]!.files.push(entry)
-  }
-
-  empty.style.display = 'none'
-  list.innerHTML = groups
-    .filter(group => group.files.length > 0)
-    .flatMap(group => [renderGroupLabel(group.label), ...group.files.map(entry => renderFileCard(entry, entry.id === animateNewId))])
-    .join('')
-}
-
-function renderFileCard(file: SavedFile, animateIn = false): string {
-  const tokenStream = tokenizeSource(file.code)
-  const meaningfulTokens = tokenStream.tokens
-  let firstMeaningful = 0
-  while (firstMeaningful < meaningfulTokens.length) {
-    const type = meaningfulTokens[firstMeaningful]![0]
-    if (type !== 'Whitespace' && type !== 'SingleLineComment' && type !== 'MultiLineComment') break
-    firstMeaningful++
-  }
-  const trimmedCode = untokenize({ ...tokenStream, tokens: meaningfulTokens.slice(firstMeaningful) })
-  const displaySnippet = trimmedCode.split('\n').slice(0, 3).join('\n')
-  const isActive = getState('current-file-id') === file.id
-  const borderColor = 'var(--color-scrollbar-track)'
-  const animateClass = animateIn ? 'animate-in' : ''
-  const lockIcon = file.locked
-    ? `<span style="color:var(--color-primary); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
-    : ''
-  const menuId = `file-menu-${file.id}`
-  const menuItems: EditorMenuItem[] = [
-    { label: file.locked ? 'Unlock' : 'Lock', icon: file.locked ? ICONS.unlock : ICONS.lock, action: `Playground.toggleFileLock('${file.id}')` },
-    { label: 'Create copy', icon: ICONS.duplicate, action: `Playground.duplicateFile('${file.id}')` },
-    { label: 'Download', icon: ICONS.download, action: `Playground.downloadFile('${file.id}')` },
-    { danger: true, label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedFile('${file.id}')` },
-  ]
-  return `
-    <div class="snapshot-card ${animateClass}" data-file-id="${file.id}" onclick="Playground.loadSavedFile('${file.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:var(--color-surface); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
-      <div style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          ${lockIcon}
-          <span style="font-size:1rem; color:var(--color-text); font-family:var(--font-mono);">${escapeHtml(file.name)}</span>
-          ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-primary); border:1px solid var(--color-primary); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
-        </div>
-        ${file.code.trim() ? `<div style="font-size:0.8rem; color:var(--color-text-dim); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-text-dim); padding:1px 0;">EMPTY FILE</span>'}
-        <div style="font-size:0.75rem; color:var(--color-text-dim);">${formatTime(new Date(file.updatedAt))}</div>
-      </div>
-      <div onclick="event.stopPropagation()">
-        ${renderContextMenu(menuItems, menuId)}
-      </div>
-    </div>
-  `
 }
 
 export function loadSavedFile(id: string) {
@@ -2077,7 +1834,7 @@ export function openImportFileModal() {
         locked: typeof raw['locked'] === 'boolean' ? raw['locked'] : false,
       }
       setSavedFiles([imported, ...existing])
-      notifyFileAdded()
+
       populateSavedFilesList({ animateNewId: imported.id })
       showToast(`Imported "${imported.name}"`)
     }
@@ -2144,7 +1901,7 @@ export function saveAs() {
       setSavedFiles([createdFile, ...filtered])
       saveState({ 'current-file-id': createdFile.id }, false)
       activateCurrentFileHistory(true)
-      notifyFileAdded()
+
       updateCSS()
       populateSavedFilesList({ animateNewId: createdFile.id })
       showToast(`Saved as "${normalizedName}"`)
@@ -2470,7 +2227,7 @@ export function saveTerminalSnapshotToSaved(index: number) {
     const deduped = savedEntries.filter(e => e.snapshot.id !== entry.snapshot.id)
     deduped.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(deduped)
-    notifySnapshotAdded()
+
     // Animate removal from terminal snapshots
     await animateCardRemoval('terminal', index)
     entries.splice(index, 1)
@@ -5167,7 +4924,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
       const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
       existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), locked: false, name: name || undefined })
       setSavedSnapshots(existing)
-      notifySnapshotAdded()
+
       populateSnapshotsList({ animateNewSaved: true })
       showToast(`Snapshot saved (${existing.length} total)`)
     })
@@ -5949,8 +5706,6 @@ export function closeImportResultModal() {
 let currentCheckpointSnapshot: Snapshot | null = null
 
 const MAX_TERMINAL_SNAPSHOTS = 99
-const VISIBLE_TERMINAL_SNAPSHOTS = 3
-let showAllTerminalSnapshots = false
 
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
@@ -5978,22 +5733,6 @@ export async function clearTerminalSnapshot(index: number): Promise<void> {
   entries.splice(index, 1)
   setTerminalSnapshots(entries)
   populateSnapshotsList()
-}
-
-export function toggleShowAllTerminalSnapshots(): void {
-  showAllTerminalSnapshots = !showAllTerminalSnapshots
-  const overflow = document.getElementById('terminal-snapshots-overflow')
-  if (overflow) {
-    overflow.style.display = showAllTerminalSnapshots ? 'contents' : 'none'
-    // Update button text
-    const btn = overflow.nextElementSibling as HTMLButtonElement | null
-    if (btn) {
-      const entries = getTerminalSnapshots()
-      btn.textContent = showAllTerminalSnapshots ? 'Show less' : `Show all (${entries.length})`
-    }
-  } else {
-    populateSnapshotsList()
-  }
 }
 
 function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
@@ -6046,7 +5785,7 @@ export function saveCheckpoint() {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    notifySnapshotAdded()
+
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Checkpoint saved (${existing.length} total)`)
   })
@@ -6111,7 +5850,7 @@ export function saveSnapshot() {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    notifySnapshotAdded()
+
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Snapshot saved (${existing.length} total)`)
   })
