@@ -857,9 +857,9 @@ function initChapterScrollSpy(): void {
   for (const heading of headings)
     chapterScrollSpyObserver.observe(heading)
 
-  // On load, find the last heading that has already scrolled past the top of the viewport.
-  // This correctly restores the active section after a reload with a scroll position.
-  const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.15)
+  // On load, find the last heading that has already scrolled past the observer's threshold
+  // (matching the rootMargin '-10% 0px -80% 0px' used above, i.e. 10% from the top).
+  const scrolledPast = headings.filter(h => h.getBoundingClientRect().top < window.innerHeight * 0.10)
   const initial = scrolledPast.at(-1) ?? headings[0]
   if (initial) setActive(initial.id)
 }
@@ -3510,6 +3510,12 @@ window.onload = async function () {
 
   renderShell()
   updateCSS()
+
+  // When the user changes their OS theme while the tab is open, re-apply if on System preference.
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+    if (getState('light-mode') === null) updateCSS()
+  })
+
   applyLayout()
   injectPlaygroundEffects()
   populateSidebarVersion()
@@ -4144,6 +4150,10 @@ function routeToPath(appPath: string): void {
   inactivateAll()
   closeSearch()
   elements.mainPanel.scrollTo({ top: 0 })
+
+  // Tear down chapter scroll-spy when leaving a chapter page.
+  chapterScrollSpyObserver?.disconnect()
+  chapterScrollSpyObserver = null
 
   const dynPage = document.getElementById('dynamic-page')
   if (!dynPage) return
