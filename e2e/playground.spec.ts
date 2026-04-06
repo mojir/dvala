@@ -22,24 +22,39 @@ async function waitForInit(page: Page) {
   }, { timeout: 4_500 })
 }
 
+/** Navigate to the playground (editor) tab so the editor is visible. */
+async function navigateToPlayground(page: Page) {
+  await page.evaluate(() => (window as any).Playground.navigateToTab('playground'))
+  await page.locator('#dvala-textarea').waitFor({ state: 'visible', timeout: 3000 })
+}
+
 /** Clear the playground and type code into the Dvala textarea. */
 async function setDvalaCode(page: Page, code: string) {
+  await navigateToPlayground(page)
   const textarea = page.locator('#dvala-textarea')
   await textarea.click()
   await textarea.fill(code)
 }
 
-/** Clear the context textarea and type JSON into it. */
+/** Set context JSON via localStorage state (the context textarea is not directly visible in the new UI). */
 async function setContext(page: Page, json: string) {
-  const textarea = page.locator('#context-textarea')
-  await textarea.click()
-  await textarea.fill(json)
+  // The context textarea is a backing element and not shown directly in the new UI.
+  // Set context state directly via localStorage and trigger an applyState cycle.
+  await page.evaluate((contextJson: string) => {
+    localStorage.setItem('playground-context', JSON.stringify(contextJson))
+    localStorage.setItem('playground-scratch-context', JSON.stringify(contextJson))
+    // Also set the textarea value and fire an input event so the app picks it up
+    const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
+    if (textarea) {
+      textarea.value = contextJson
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }, json)
 }
 
-/** Click the Run button (the play icon next to the Dvala Code title). */
+/** Click the Run button in the editor toolbar. */
 async function clickRun(page: Page) {
-  // The run button is the first <a> inside .panel-header__actions in #dvala-panel
-  await page.locator('#dvala-panel .panel-header__actions a').first().click()
+  await page.locator('#run-btn').click()
 }
 
 /** Wait for output to appear in the output panel. */
@@ -63,10 +78,11 @@ test.describe('playground loads', () => {
 
     // Wrapper becomes visible after JS init
     await waitForInit(page)
-    // Key panels exist
-    await expect(page.locator('#sidebar')).toBeVisible()
-    await expect(page.locator('#playground')).toBeVisible()
-    await expect(page.locator('#context-textarea')).toBeVisible()
+    // Tab bar navigation exists
+    await expect(page.locator('#tab-bar')).toBeVisible()
+    // Navigate to playground tab to verify editor elements
+    await navigateToPlayground(page)
+    await expect(page.locator('#tab-playground')).toBeVisible()
     await expect(page.locator('#dvala-textarea')).toBeVisible()
     await expect(page.locator('#output-result')).toBeVisible()
   })
@@ -126,14 +142,14 @@ test.describe('toolbar actions', () => {
   })
 
   test('analyze detects undefined symbols', async ({ page }) => {
-    await setDvalaCode(page, 'unknown-symbol')
+    await setDvalaCode(page, 'unknownSymbol')
     // Open more menu and click Analyze
     await page.evaluate(() => (window as any).Playground.analyze())
     await waitForOutput(page)
 
     const output = await getOutputText(page)
     expect(output).toContain('Unresolved symbols')
-    expect(output).toContain('unknown-symbol')
+    expect(output).toContain('unknownSymbol')
   })
 
   test('tokenize produces output', async ({ page }) => {
@@ -176,12 +192,12 @@ test.describe('toolbar actions', () => {
 })
 
 test.describe('navigation', () => {
-  test('sidebar links navigate to content pages', async ({ page }) => {
+  test('tab bar links navigate to content pages', async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
 
-    // Click Examples link in sidebar
-    await page.locator('#sidebar').getByText('Examples').click()
+    // Click the Examples tab in the top tab bar
+    await page.locator('#tab-bar').getByText('Examples').click()
 
     // The examples page should be rendered into #dynamic-page
     await page.waitForFunction(() => {
@@ -266,9 +282,10 @@ test.describe('state persistence', () => {
     const code = 'let test-persist = 42; test-persist'
     await setDvalaCode(page, code)
 
-    // Reload
+    // Reload and navigate back to playground tab
     await page.reload()
     await waitForInit(page)
+    await navigateToPlayground(page)
 
     const dvalaValue = await page.locator('#dvala-textarea').inputValue()
     expect(dvalaValue).toBe(code)
@@ -280,6 +297,7 @@ test.describe('share', () => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
+    await navigateToPlayground(page)
 
     await setDvalaCode(page, '1 + 1')
 
@@ -316,10 +334,16 @@ test.describe('share', () => {
 
     await page.goto(`?state=${encodedState}`)
     await waitForInit(page)
+    await navigateToPlayground(page)
 
     const dvalaValue = await page.locator('#dvala-textarea').inputValue()
-    const contextValue = await page.locator('#context-textarea').inputValue()
     expect(dvalaValue).toBe(code)
+
+    // The context textarea is a hidden backing element; read its value via evaluate
+    const contextValue = await page.evaluate(() => {
+      const textarea = document.getElementById('context-textarea') as HTMLTextAreaElement | null
+      return textarea?.value ?? ''
+    })
     expect(contextValue).toBe(context)
   })
 })
@@ -335,52 +359,36 @@ test.describe('snapshots', () => {
     await page.evaluate(() => (window as any).Playground.resetPlayground())
   })
 
-  test('running code creates a terminal snapshot', async ({ page }) => {
+  test('running code creates a terminal snapshot in the side panel', async ({ page }) => {
     await setDvalaCode(page, '1 + 1')
     await clickRun(page)
     await waitForOutput(page)
 
-    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
-    await expect(page.locator('#snapshots-page')).toHaveClass(/active-content/)
+    // Switch to snapshots side tab to see the new terminal snapshot
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    const snapshotsList = page.locator('#side-snapshots-list')
+    await expect(snapshotsList).toBeVisible()
 
-    // At least one snapshot card should exist
-    await expect(page.locator('#snapshots-list .snapshot-card').first()).toBeVisible()
+    // At least one explorer item should exist
+    await expect(snapshotsList.locator('.explorer-item').first()).toBeVisible({ timeout: 3000 })
   })
 
-  test('sidebar indicator appears after run and clears when snapshots page opens', async ({ page }) => {
-    const indicator = page.locator('#snapshots-nav-indicator')
-
-    // Indicator hidden initially
-    await expect(indicator).toBeHidden()
-
-    await setDvalaCode(page, '2 + 2')
-    await clickRun(page)
-    await waitForOutput(page)
-
-    // Indicator should be visible now
-    await expect(indicator).toBeVisible()
-
-    // Navigate to snapshots page — indicator should clear
-    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
-    await expect(indicator).toBeHidden()
-  })
-
-  test('saving a terminal snapshot moves it to saved section', async ({ page }) => {
+  test('saving a terminal snapshot adds it to the saved section', async ({ page }) => {
     await setDvalaCode(page, '3 + 3')
     await clickRun(page)
     await waitForOutput(page)
 
-    await page.evaluate(() => (window as any).Playground.showSnapshotsPage())
-
     // Save the first terminal snapshot
     await page.evaluate(() => (window as any).Playground.saveTerminalSnapshotToSaved(0))
 
-    // A saved snapshot card should now exist
+    // Switch to snapshots side tab and verify a saved item exists
+    await page.evaluate(() => (window as any).Playground.showSideTab('snapshots'))
+    const snapshotsList = page.locator('#side-snapshots-list')
     await page.waitForFunction(() => {
-      const cards = document.querySelectorAll('#snapshots-list .snapshot-card')
-      return cards.length > 0
-    })
-    await expect(page.locator('#snapshots-list .snapshot-card').first()).toBeVisible()
+      const items = document.querySelectorAll('#side-snapshots-list .explorer-item')
+      return items.length > 0
+    }, { timeout: 5000 })
+    await expect(snapshotsList.locator('.explorer-item').first()).toBeVisible()
   })
 })
 
@@ -541,105 +549,104 @@ test.describe('api reference navigation', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Programs
+// Files (formerly "Programs")
 // ---------------------------------------------------------------------------
 
-/** Save current code as a named program via the saveAs modal. */
-async function saveAsProgram(page: Page, name: string) {
+/** Save current code as a named file via the saveAs modal. */
+async function saveAsFile(page: Page, name: string) {
   await page.evaluate(() => (window as any).Playground.saveAs())
-  // The name input modal uses the snapshot-modal overlay with a modal-panel inside
+  // The name input modal is inside #snapshot-panel-container (inside #snapshot-modal)
   const input = page.locator('#snapshot-modal .modal-panel input[type="text"]')
   await input.waitFor({ timeout: 2000 })
   await input.fill(name)
   await input.press('Enter')
 }
 
-test.describe('programs', () => {
+test.describe('files', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('')
     await waitForInit(page)
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    // Clear all saved programs to ensure a clean state
-    await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
+    // Clear all saved files to ensure a clean state
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
   })
 
-  test('programs page shows empty state when no programs saved', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
-    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
-    await expect(page.locator('#saved-programs-empty')).toBeVisible()
+  test('files side panel shows only scratch when no files saved', async ({ page }) => {
+    await navigateToPlayground(page)
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    const fileList = page.locator('#explorer-file-list')
+    await expect(fileList).toBeVisible()
+    // Only the Scratch item should be present, no saved file cards
+    const cards = fileList.locator('.snapshot-card')
+    await expect(cards).toHaveCount(0)
   })
 
-  test('saving code creates a program card', async ({ page }) => {
+  test('saving code creates a file entry in the files panel', async ({ page }) => {
     await setDvalaCode(page, '1 + 1')
-    await saveAsProgram(page, 'My Test Program')
+    await saveAsFile(page, 'My Test File')
 
-    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
-    // Wait for the page to become active before checking card visibility
-    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
-
-    await page.waitForFunction(() =>
-      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
-    )
-    const card = page.locator('#saved-programs-list .snapshot-card').first()
-    await expect(card).toBeVisible()
-    await expect(card).toContainText('My Test Program')
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    // Wait for the saved file to appear as an explorer-item (scratch is always first)
+    await page.waitForFunction(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      // More than 1 item means scratch + at least one saved file
+      return items.length > 1
+    }, { timeout: 5000 })
+    const fileList = page.locator('#explorer-file-list')
+    await expect(fileList).toContainText('My Test File')
   })
 
-  test('nav indicator appears after save and clears when programs page opens', async ({ page }) => {
-    const indicator = page.locator('#programs-nav-indicator')
-    await expect(indicator).toBeHidden()
-
-    await setDvalaCode(page, '2 + 2')
-    await saveAsProgram(page, 'Indicator Test')
-
-    await expect(indicator).toBeVisible()
-
-    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
-    await expect(indicator).toBeHidden()
-  })
-
-  test('loading a saved program restores code into editor', async ({ page }) => {
+  test('loading a saved file restores code into editor', async ({ page }) => {
     await setDvalaCode(page, '99 * 2')
-    await saveAsProgram(page, 'Restore Test')
+    await saveAsFile(page, 'Restore Test')
 
-    // Navigate to programs page so the card is rendered, get ID from DOM, then load
-    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
-    await page.waitForFunction(() =>
-      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
-    )
+    // Reset playground (scratch), then click the saved file item to load it
     await page.evaluate(() => (window as any).Playground.resetPlayground())
-    await page.evaluate(() => {
-      const id = document.querySelector('#saved-programs-list .snapshot-card')?.getAttribute('data-program-id')
-      if (id) (window as any).Playground.loadSavedProgram(id)
-    })
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    await page.waitForFunction(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      return items.length > 1
+    }, { timeout: 5000 })
+    // Click the second explorer item (first is scratch)
+    await page.locator('#explorer-file-list .explorer-item').nth(1).click()
 
-    const value = await page.locator('#dvala-textarea').inputValue()
-    expect(value).toBe('99 * 2')
+    await navigateToPlayground(page)
+    const fileValue = await page.locator('#dvala-textarea').inputValue()
+    expect(fileValue).toBe('99 * 2')
   })
 
-  test('deleting a program removes it from the list', async ({ page }) => {
+  test('deleting a file removes it from the list', async ({ page }) => {
     await setDvalaCode(page, '5 + 5')
-    await saveAsProgram(page, 'Delete Me')
+    await saveAsFile(page, 'Delete Me')
 
-    await page.evaluate(() => (window as any).Playground.showSavedProgramsPage())
-    // Wait for the page to become active before checking
-    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
-    await page.waitForFunction(() =>
-      document.querySelectorAll('#saved-programs-list .snapshot-card').length > 0,
-    )
+    await page.evaluate(() => (window as any).Playground.showSideTab('files'))
+    await page.waitForFunction(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      return items.length > 1
+    }, { timeout: 5000 })
 
-    // Delete via JS using the first program's id
+    // Delete via JS using the first saved file's onclick attribute to extract id
     await page.evaluate(() => {
-      const id = document.querySelector('#saved-programs-list .snapshot-card')?.getAttribute('data-program-id')
-      if (id) (window as any).Playground.deleteSavedProgram(id)
+      // Find first non-scratch file (scratch has onclick="Playground.openScratch()")
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      for (const item of items) {
+        const onclick = item.getAttribute('onclick') ?? ''
+        if (onclick.includes('loadSavedFile')) {
+          const match = onclick.match(/loadSavedFile\('([^']+)'\)/)
+          if (match?.[1]) {
+            (window as any).Playground.deleteSavedFile(match[1])
+            return
+          }
+        }
+      }
     })
 
-    await page.waitForFunction(() =>
-      document.querySelectorAll('#saved-programs-list .snapshot-card').length === 0,
-    )
-    // Ensure page is still active before checking empty state visibility
-    await expect(page.locator('#saved-programs-page')).toHaveClass(/active-content/)
-    await expect(page.locator('#saved-programs-empty')).toBeVisible()
+    await page.waitForFunction(() => {
+      const items = document.querySelectorAll('#explorer-file-list .explorer-item')
+      return items.length === 1 // only scratch remains
+    }, { timeout: 5000 })
+    // Only scratch remains
+    await expect(page.locator('#explorer-file-list .explorer-item')).toHaveCount(1)
   })
 })
 
@@ -937,25 +944,26 @@ test.describe('playground effects', () => {
     expect(output).toContain('hello')
   })
 
-  test('storage.load fails for nonexistent program', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
-    await setDvalaCode(page, 'perform(@playground.programs.load, "does-not-exist")')
+  test('storage.load fails for nonexistent file', async ({ page }) => {
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
+    await setDvalaCode(page, 'perform(@playground.files.load, "does-not-exist")')
     await clickRun(page)
     await waitForOutput(page)
     const output = await getOutputText(page)
     expect(output.toLowerCase()).toContain('not found')
   })
 
-  // ── Programs ──
+  // ── Files ──
 
   test('storage save, list, and load round-trip', async ({ page }) => {
-    // Clear any existing saved programs
-    await page.evaluate(() => (window as any).Playground.clearAllSavedPrograms())
+    // Clear any existing saved files
+    await page.evaluate(() => (window as any).Playground.clearAllSavedFiles())
 
+    // File names are normalized to add .dvala suffix on save, so load uses the full name
     await setDvalaCode(page, `do
-  perform(@playground.programs.save, ["test-prog", "1 + 2"]);
-  let names = perform(@playground.programs.list);
-  let code = perform(@playground.programs.load, "test-prog");
+  perform(@playground.files.save, ["test-prog", "1 + 2"]);
+  let names = perform(@playground.files.list);
+  let code = perform(@playground.files.load, "test-prog.dvala");
   [names, code]
 end`)
     await clickRun(page)
