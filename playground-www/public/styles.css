@@ -1283,7 +1283,7 @@ a.disabled {
 
 .book-page__content {
   line-height: 1.7;
-  margin-top: var(--space-4);
+  padding-top: var(--space-6);
 }
 
 .book-page__content h1,
