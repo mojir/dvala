@@ -4027,7 +4027,9 @@ function getTabButtonForPath(path: string): string {
 }
 
 function routeToPath(appPath: string): void {
-  const path = appPath.replace(/^\//, '')
+  // Strip leading and trailing slashes — GitHub Pages serves stub pages at /examples/ (trailing slash),
+  // which would otherwise cause 'examples/' to match startsWith('examples/') with an empty sub-path.
+  const path = appPath.replace(/^\//, '').replace(/\/$/, '')
 
   // Activate the correct tab pane and highlight the tab button
   activateTab(getTabForPath(path))
