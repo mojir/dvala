@@ -27,7 +27,7 @@ export function renderCorePage(): string {
     byCategory[cat].push({ key, title: key, description: shortDesc, linkName })
   }
 
-  const sections = data.coreCategories.map(cat => {
+  const sections = data.coreCategories.map(({ name: cat }) => {
     const entries = byCategory[cat]
     if (!entries || entries.length === 0) return ''
     return `

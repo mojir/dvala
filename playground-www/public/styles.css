@@ -78,6 +78,7 @@
   --radius-md: 8px;
   --sidebar-default-width: 350px;
   --panel-header-height: 1.8rem;
+  --tab-bar-height: 40px;
 }
 
 /* ============================================================
@@ -378,9 +379,66 @@ a.disabled {
 }
 
 .tab-bar__tab--icon {
-  margin-left: auto;
   padding: var(--space-1);
   font-size: 1.2rem;
+}
+
+/* Push the icon group (search + settings) to the right as a unit */
+.tab-bar__icons {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Mobile nav hamburger — hidden on desktop */
+.tab-bar__nav-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  font-size: 1.2rem;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tab-bar__nav-hamburger:hover {
+  color: var(--color-text-bright);
+}
+
+/* Nav menu dropdown */
+.nav-menu-dropdown {
+  position: fixed;
+  z-index: 10000;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px var(--color-shadow);
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) 0;
+}
+
+.nav-menu-dropdown__item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.nav-menu-dropdown__item:hover {
+  background: var(--color-surface);
+  color: var(--color-text-bright);
 }
 
 #tab-content {
@@ -920,12 +978,16 @@ a.disabled {
 }
 
 .doc-page__example-use-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: 0.8rem;
   font-family: var(--font-sans, sans-serif);
   white-space: nowrap;
   border: 1px solid var(--color-text-faintest);
   border-radius: 4px;
   padding: 0.3em 0.8em;
+  background: var(--color-bg);
 }
 
 .doc-page__example-use-btn:hover {
@@ -964,6 +1026,7 @@ a.disabled {
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) 0 var(--space-2) 0;
@@ -1132,7 +1195,7 @@ a.disabled {
 
 .chapter-search-dropdown {
   position: fixed;
-  z-index: 300;
+  z-index: 10000;
   background: var(--color-surface-3);
   border: 1px solid var(--color-border);
   border-radius: 4px;
@@ -1270,7 +1333,7 @@ a.disabled {
 .book-page {
   padding: 0 var(--space-3);
   max-width: 60rem;
-  margin-top: -1rem;
+  margin-top: 0;
   margin-left: auto;
   margin-right: auto;
   padding-bottom: var(--space-8);
@@ -1283,7 +1346,7 @@ a.disabled {
 
 .book-page__content {
   line-height: 1.7;
-  margin-top: var(--space-4);
+  padding-top: var(--space-6);
 }
 
 .book-page__content h1,
@@ -1293,6 +1356,7 @@ a.disabled {
   margin-bottom: var(--space-3);
   scroll-margin-top: 5rem;
 }
+
 
 .book-page__content h1 {
   font-size: var(--font-size-xl);
@@ -1469,6 +1533,10 @@ a.disabled {
    ============================================================ */
 .example-category {
   margin-bottom: var(--space-5);
+}
+
+.book-page__content .example-category:first-child .example-category__title {
+  margin-top: 0;
 }
 
 .example-category__title {
@@ -1736,71 +1804,6 @@ a.disabled {
   padding: 0;
 }
 
-
-/* ============================================================
-   Search dialog
-   ============================================================ */
-.search-dialog {
-  background: var(--color-bg);
-  border: 3px solid var(--color-surface);
-  border-radius: var(--radius-sm);
-  width: 800px;
-  display: flex;
-  flex-direction: column;
-  max-height: 100%;
-}
-
-.search-dialog__input {
-  padding: var(--space-3);
-  font-size: 1.1rem;
-  background: var(--color-surface);
-  border: none;
-  color: var(--color-text);
-  outline: none;
-}
-
-.search-dialog__results {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.search-dialog__entry {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-border);
-  transition: background 0.1s;
-}
-
-.search-dialog__entry:hover,
-.search-dialog__entry--focused {
-  background: var(--color-surface-dim);
-}
-
-.search-dialog__entry-title {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-}
-
-.search-dialog__entry-category {
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-dim);
-}
-
-.search-dialog__entry-desc {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* ============================================================
    Playground panel
@@ -2697,21 +2700,6 @@ button:focus {
    Shell structural classes
    ============================================================ */
 
-/* Search dialog overlay */
-#search-dialog-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--color-overlay);
-  z-index: 200;
-}
-
-.search-dialog-overlay__inner {
-  display: flex;
-  justify-content: center;
-  padding-top: 80px;
-  max-height: calc(100% - 80px);
-}
 
 /* search-intro / no-result messages inside the search dialog */
 #search-intro,
@@ -3055,7 +3043,7 @@ button:focus {
 
 .editor-menu {
   position: fixed;
-  z-index: 300;
+  z-index: 10000;
   background: var(--color-surface-dim);
   border: 1px solid var(--color-border-dim);
   border-radius: 6px;
@@ -3674,6 +3662,10 @@ button:focus {
   gap: var(--space-3);
 }
 
+.modal-panel__body .book-page {
+  margin-top: 0;
+}
+
 .modal-panel__body::-webkit-scrollbar-track { background-color: transparent; }
 .modal-panel__body::-webkit-scrollbar { width: 8px; height: 8px; }
 .modal-panel__body::-webkit-scrollbar-thumb { background-color: var(--color-scrollbar); border: none; }
@@ -3960,24 +3952,123 @@ h2.discrete {
 }
 
 @media (max-width: 640px) {
-  #mobile-overlay {
+  /* Mobile overlay only appears when the editor tab is active, below the tab bar */
+  #wrapper:has(#tab-btn-editor.tab-bar__tab--active) #mobile-overlay {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     position: fixed;
-    inset: 0;
+    top: var(--tab-bar-height, 40px);
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: var(--color-bg);
     z-index: 9999;
     padding: var(--space-6);
   }
 
-  #main-panel,
+  /* Hide editor-specific panels — they live inside #tab-editor anyway */
   #sidebar,
   #playground,
   #resize-sidebar,
   #resize-playground {
     display: none !important;
+  }
+
+  /* ── Tab bar: 3-column [hamburger] [logo centered] [icons] ── */
+  #tab-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    padding: 0 var(--space-2);
+    gap: 0;
+  }
+
+  .tab-bar__nav-hamburger {
+    display: flex;
+  }
+
+  .tab-bar__logo {
+    justify-self: center;
+    margin: 0;
+  }
+
+  .tab-bar__tabs {
+    display: none;
+  }
+
+  .tab-bar__icons {
+    margin-left: 0;
+  }
+
+  /* ── Page header (chapter/reference/examples sticky header) ── */
+
+  /* Title: full-width, centered */
+  .chapter-header__title {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Hide breadcrumb links and separators — show only the current page name */
+  .chapter-header__breadcrumb-link,
+  .chapter-header__breadcrumb-sep {
+    display: none;
+  }
+
+  /* Actions row: full-width, arrows on left / other buttons on right */
+  .chapter-header__actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  /* On mobile, icon only — hide the label and tuck it next to the hamburger */
+  .book-header__download-label {
+    display: none;
+  }
+
+  .book-header__download {
+    margin-left: auto;
+    margin-right: var(--space-1);
+  }
+
+  /* Hide Load button on code blocks */
+  .doc-page__example-use-btn {
+    display: none;
+  }
+
+  /* ── Content pages ── */
+  .book-page {
+    padding: 0 var(--space-2);
+  }
+
+  .book-page__content {
+    padding-top: var(--space-4);
+  }
+
+  /* ── Start page ── */
+  .start-page__nav {
+    gap: var(--space-4);
+  }
+
+  .start-page__nav-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .about-features__grid,
+  .about-stats__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Reference ── */
+  .ref-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Examples ── */
+  .example-category__grid {
+    grid-template-columns: 1fr;
   }
 
   .mobile-overlay__header {
@@ -4042,7 +4133,35 @@ h2.discrete {
     width: 1.25em;
     height: 1.25em;
   }
+
+  /* Hide Editor link on start page */
+  .start-page__nav-link--editor {
+    display: none;
+  }
+
+  /* TOC dropdown full width */
+  .chapter-toc-dropdown {
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+  }
+
+  /* Search dropdown full width */
+  .chapter-search-dropdown {
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+  }
+
+  /* Settings dropdown full width */
+  .settings-dropdown {
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
 }
+
 
 /* ============================================================
    AST Tree Viewer

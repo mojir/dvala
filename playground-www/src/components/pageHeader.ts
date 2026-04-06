@@ -61,12 +61,12 @@ export function renderPageHeader(options: PageHeaderOptions): string {
   <div class="chapter-header">
     ${renderTitle(options)}
     <div class="chapter-header__actions">
-      ${options.actions ?? ''}
       <div class="chapter-header__nav-group">
         ${navBtn(options.prev, '←')}
         ${navBtn(options.up, '↑')}
         ${navBtn(options.next, '→')}
       </div>
+      ${options.actions ?? ''}
     </div>
   </div>`
 }

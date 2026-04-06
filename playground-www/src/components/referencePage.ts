@@ -12,7 +12,7 @@ import type { ReferenceData } from '../../../common/referenceData'
 import { makeLinkName } from '../../../reference'
 import { playgroundEffectReference } from '../playgroundEffects'
 import { href } from '../router'
-import { hamburgerIcon, searchIcon } from '../icons'
+import { hamburgerIcon } from '../icons'
 import { renderPageHeader } from './pageHeader'
 
 declare global {
@@ -63,7 +63,7 @@ function buildRefEntries(data: ReferenceData): RefEntry[] {
       group: cat,
     })
   }
-  for (const cat of data.coreCategories) {
+  for (const { name: cat } of data.coreCategories) {
     const catEntries = coreByCategory[cat]
     if (catEntries) entries.push(...catEntries)
   }
@@ -150,7 +150,7 @@ export function renderReferenceIndexPage(): string {
 <a class="ref-card" href="${href(`/ref/${section.id}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${section.id}')">
   <span class="ref-card__title">${escapeHtml(section.title)}</span>
   <span class="ref-card__desc">${escapeHtml(section.description)}</span>
-  <span class="ref-card__count">${count} entries</span>
+  <span class="ref-card__count">${plural(count, 'entry', 'entries')}</span>
 </a>`
   }).join('\n')
 
@@ -188,6 +188,45 @@ export function renderReferenceSectionPage(sectionId: string): string {
   const prevSection = sectionIdx > 0 ? REF_SECTIONS[sectionIdx - 1] : null
   const nextSection = sectionIdx < REF_SECTIONS.length - 1 ? REF_SECTIONS[sectionIdx + 1] : null
 
+  // For core: show cards for each category instead of a flat listing
+  if (sectionId === 'core') {
+    const groups = new Map<string, RefEntry[]>()
+    for (const entry of sectionEntries) {
+      if (!groups.has(entry.group)) groups.set(entry.group, [])
+      groups.get(entry.group)!.push(entry)
+    }
+
+    const categoryCards = Array.from(groups.entries()).map(([categoryName, categoryEntries]) => {
+      const catInfo = data.coreCategories.find(c => c.name === categoryName)
+      const desc = catInfo?.description ?? ''
+      return `
+<a class="ref-card" href="${href(`/ref/core/${encodeURIComponent(categoryName)}`)}" onclick="event.preventDefault();Playground.navigate('/ref/core/${encodeURIComponent(categoryName)}')">
+  <span class="ref-card__title">${escapeHtml(categoryName)}</span>
+  ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
+  <span class="ref-card__count">${plural(categoryEntries.length, 'function', 'functions')}</span>
+</a>`
+    }).join('\n')
+
+    return `
+<div class="book-page">
+  ${renderPageHeader({
+    breadcrumbs: [
+      { label: 'Reference', path: '/ref' },
+      { label: section.title },
+    ],
+    actions: refActions(),
+    prev: prevSection ? { path: `/ref/${prevSection.id}`, title: prevSection.title } : { path: '/ref', title: 'Back to Reference' },
+    up: { path: '/ref', title: 'Back to Reference' },
+    next: nextSection ? { path: `/ref/${nextSection.id}`, title: nextSection.title } : null,
+  })}
+  <div class="book-page__content">
+    <div class="ref-card-grid">
+      ${categoryCards}
+    </div>
+  </div>
+</div>`.trim()
+  }
+
   // For modules: show cards for each module instead of a flat listing
   if (sectionId === 'modules') {
     const groups = new Map<string, RefEntry[]>()
@@ -203,7 +242,7 @@ export function renderReferenceSectionPage(sectionId: string): string {
 <a class="ref-card" href="${href(`/ref/modules/${moduleName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/modules/${moduleName}')">
   <span class="ref-card__title">${escapeHtml(moduleName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
-  <span class="ref-card__count">${moduleEntries.length} functions</span>
+  <span class="ref-card__count">${plural(moduleEntries.length, 'function', 'functions')}</span>
 </a>`
     }).join('\n')
 
@@ -316,15 +355,64 @@ export function renderReferenceModulePage(moduleName: string): string {
 </div>`.trim()
 }
 
+// ─── Core category detail page ────────────────────────────────────────────────
+
+export function renderReferenceCategoryPage(categoryName: string): string {
+  const data = window.referenceData
+  if (!data) return '<div class="book-page"><p>Loading…</p></div>'
+
+  const entries = getRefEntries(data)
+  const categoryEntries = entries.filter(e => e.section === 'core' && e.group === categoryName)
+  if (categoryEntries.length === 0) {
+    return `<div class="book-page"><p>Category not found: <code>${escapeHtml(categoryName)}</code></p></div>`
+  }
+
+  // Prev/next among core categories (in declaration order)
+  const allCategories = [...new Set(entries.filter(e => e.section === 'core').map(e => e.group))]
+  const idx = allCategories.indexOf(categoryName)
+  const prevCategory = idx > 0 ? allCategories[idx - 1]! : null
+  const nextCategory = idx < allCategories.length - 1 ? allCategories[idx + 1]! : null
+
+  const listHtml = `
+    <ul class="ref-index__list">
+      ${categoryEntries.map(e => `
+      <li class="ref-index__item">
+        <a class="ref-index__link" href="${href(`/ref/${e.linkName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${e.linkName}')">${escapeHtml(e.title)}</a>
+        <span class="ref-index__desc">${escapeHtml(e.description)}</span>
+      </li>`).join('')}
+    </ul>`
+
+  return `
+<div class="book-page">
+  ${renderPageHeader({
+    breadcrumbs: [
+      { label: 'Reference', path: '/ref' },
+      { label: 'Core API', path: '/ref/core' },
+      { label: categoryName },
+    ],
+    actions: refActions(),
+    prev: prevCategory ? { path: `/ref/core/${encodeURIComponent(prevCategory)}`, title: prevCategory } : { path: '/ref/core', title: 'Back to Core API' },
+    up: { path: '/ref/core', title: 'Back to Core API' },
+    next: nextCategory ? { path: `/ref/core/${encodeURIComponent(nextCategory)}`, title: nextCategory } : null,
+  })}
+  <div class="book-page__content">
+    ${listHtml}
+  </div>
+</div>`.trim()
+}
+
 // ─── Shared header actions ─────────────────────────────────────────────────────
 
 function refActions(): string {
   return `
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>
-      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefSearch(event)" aria-label="Search reference">${searchIcon}</button>`
+      <button class="chapter-header__toc-btn" onclick="Playground.toggleRefTocMenu(event)" aria-label="Table of contents">${hamburgerIcon}</button>`
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function plural(n: number, singular: string, pluralForm: string): string {
+  return `${n} ${n === 1 ? singular : pluralForm}`
+}
 
 function getShortDescription(description: string): string {
   // Take first paragraph (up to blank line); within that, stop at a markdown line break (two trailing spaces)

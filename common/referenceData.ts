@@ -14,13 +14,18 @@ export interface ModuleInfo {
   description: string
 }
 
+export interface CoreCategoryInfo {
+  name: string
+  description: string
+}
+
 export interface ReferenceData {
   version: string
   api: Record<string, Reference> // core functions, special expressions, shorthands, datatypes
   modules: Record<string, Reference> // module functions, keyed by "module.fn"
   effects: Record<string, Reference> // effects
   moduleCategories: ModuleInfo[] // ordered list of modules with descriptions
-  coreCategories: string[] // ordered list of core category names
+  coreCategories: CoreCategoryInfo[] // ordered list of core categories with descriptions
   searchEntries: SearchEntry[]
   examples: Example[]
 }
