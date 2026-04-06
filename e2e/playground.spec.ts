@@ -405,11 +405,14 @@ test.describe('settings', () => {
   })
 
   test('disable auto checkpoint toggle persists across reload', async ({ page }) => {
-    await page.evaluate(() => (window as any).Playground.showPage('settings-page', 'smooth'))
-    await expect(page.locator('#settings-page')).toHaveClass(/active-content/)
+    // Toggle is now in the settings dropdown — open it via JS to access the checkbox
+    await page.evaluate(() => {
+      const btn = document.getElementById('tab-btn-settings') as HTMLElement | null
+      if (btn) (window as any).Playground.toggleSettingsDropdown(btn)
+    })
+    await expect(page.locator('#settings-dropdown')).toBeVisible()
 
     const toggle = page.locator('#settings-auto-checkpoint-toggle')
-    await toggle.scrollIntoViewIfNeeded()
     const wasChecked = await toggle.isChecked()
 
     // The checkbox is visually hidden — use the JS function to toggle
