@@ -179,7 +179,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       },
       getContextContent: () => elements.contextTextArea.value,
       setContextContent: json => {
-        setContext(json, false)
+        updateContextState(json, false)
       },
       getSavedFiles: () => getSavedFiles(),
       saveFile: (name, code) => {
@@ -664,7 +664,7 @@ function getBookSearchCache(): BookSearchCache[] {
   return bookSearchCache
 }
 
-interface ExampleSearchCache { nameLower: string; descLower: string; catLower: string; codeLower: string; ex: Example }
+interface ExampleSearchCache { nameLower: string; codeLower: string; ex: Example }
 let exampleSearchCache: ExampleSearchCache[] | null = null
 let exampleSearchDataRef: typeof window.referenceData = undefined
 
@@ -674,8 +674,6 @@ function getExampleSearchCache(): ExampleSearchCache[] {
     exampleSearchDataRef = data
     exampleSearchCache = (data?.examples ?? []).map(ex => ({
       nameLower: `${ex.name} ${ex.description} ${ex.category}`.toLowerCase(),
-      descLower: '', // included in nameLower
-      catLower: '',
       codeLower: ex.code.toLowerCase(),
       ex,
     }))
@@ -1110,7 +1108,7 @@ export function loadSavedFile(id: string) {
   }, false)
   activateCurrentFileHistory(false)
   elements.dvalaTextArea.value = file.code
-  setContext(file.context, false)
+  updateContextState(file.context, false)
   syntaxOverlay.update()
   syntaxOverlay.scrollContainer.scrollTo(0, 0)
   syncCodePanelView('files')
@@ -1156,7 +1154,7 @@ function persistScratchFromCurrentState() {
 
 function closeSnapshotViewIfNeeded() {
   if (snapshotViewStack.length === 0) return
-  snapshotViewStack.length = 0
+  snapshotViewStack.splice(0)
   activeSnapshotKey = null
   currentSnapshot = null
   hideExecutionControlBar()
@@ -1868,7 +1866,7 @@ export function duplicateFile(id: string) {
   }, false)
   activateCurrentFileHistory(true)
   elements.dvalaTextArea.value = copy.code
-  setContext(copy.context, false)
+  updateContextState(copy.context, false)
   syntaxOverlay.update()
   updateCSS()
   populateSavedFilesList({ animateNewId: copy.id })
@@ -2487,10 +2485,6 @@ export function clearIndexedDbData() {
     updateCSS()
     updateStorageUsage()
   })
-}
-
-function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
-  updateContextState(value, pushToHistory, scroll)
 }
 
 function updateContextState(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', syncDetail = true) {
@@ -3365,7 +3359,7 @@ export function addContextEntry() {
     context.bindings = bindings
     activeContextEntryKind = 'binding'
     activeContextBindingName = name
-    setContext(formatContextJson(context), true)
+    updateContextState(formatContextJson(context), true)
 
     closeAddContextMenu()
   } catch (_e) {
@@ -3428,7 +3422,7 @@ export function addSampleContext() {
   const existingPatterns = new Set(existing.map(h => h.pattern))
   context.effectHandlers = [...existing, ...sampleEffectHandlers.filter(h => !existingPatterns.has(h.pattern))]
 
-  setContext(formatContextJson(context), true)
+  updateContextState(formatContextJson(context), true)
 }
 
 export function newFile() {
@@ -3501,7 +3495,7 @@ export function resetPlayground() {
   saveState({ 'current-file-id': null, 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
   activateCurrentFileHistory(true)
   setDvalaCode('', true)
-  setContext('', true)
+  updateContextState('', true)
   resetOutput()
 }
 
@@ -3714,10 +3708,10 @@ window.onload = async function () {
     }
   })
   elements.contextTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => setContext(elements.contextTextArea.value, true))
+    keydownHandler(evt, () => updateContextState(elements.contextTextArea.value, true))
   })
   elements.contextTextArea.addEventListener('input', () => {
-    setContext(elements.contextTextArea.value, true)
+    updateContextState(elements.contextTextArea.value, true)
   })
   elements.contextTextArea.addEventListener('scroll', () => {
     saveState({ 'context-scroll-top': elements.contextTextArea.scrollTop })
@@ -4351,7 +4345,7 @@ export async function run() {
       saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
     }
     if (getState('context') !== uiSnapshot.context) {
-      setContext(uiSnapshot.context, false)
+      updateContextState(uiSnapshot.context, false)
     }
     syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
     syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
@@ -5200,7 +5194,7 @@ function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = snapsho
 }
 
 function replaceSnapshotView(snapshot: Snapshot, label = 'Snapshot') {
-  snapshotViewStack.length = 0
+  snapshotViewStack.splice(0)
   snapshotViewStack.push({ label, snapshot })
   showSnapshotInPanel(snapshot, false)
 }
@@ -5227,7 +5221,7 @@ export function navigateSnapshotBreadcrumb(index: number) {
 
 export function closeSnapshotView() {
   // Clear stack and active snapshot
-  snapshotViewStack.length = 0
+  snapshotViewStack.splice(0)
   activeSnapshotKey = null
   populateSideSnapshotsList()
   currentSnapshot = null
@@ -7056,7 +7050,7 @@ function applyState(scrollToTop = false) {
   setOutput(getState('output'), false)
   getDataFromUrl()
 
-  setContext(getState('context'), false)
+  updateContextState(getState('context'), false)
   elements.contextTextArea.selectionStart = contextTextAreaSelectionStart
   elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
 
