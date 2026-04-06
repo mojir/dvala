@@ -41,7 +41,7 @@ function getShellHTML(): string {
   <nav id="tab-bar">
     <img class="tab-bar__logo" src="images/dvala-logo.webp" alt="Dvala" width="800" height="232" onclick="Playground.navigate('/')">
     <div class="tab-bar__tabs">
-      <a class="tab-bar__tab" id="tab-btn-playground" href="#" onclick="event.preventDefault();Playground.navigateToTab('playground')">Editor</a>
+      <a class="tab-bar__tab" id="tab-btn-editor" href="#" onclick="event.preventDefault();Playground.navigateToTab('editor')">Editor</a>
       <a class="tab-bar__tab" id="tab-btn-ref" href="#" onclick="event.preventDefault();Playground.navigateToTab('ref')">Reference</a>
       <a class="tab-bar__tab" id="tab-btn-examples" href="#" onclick="event.preventDefault();Playground.navigateToTab('examples')">Examples</a>
       <a class="tab-bar__tab" id="tab-btn-book" href="#" onclick="event.preventDefault();Playground.navigateToTab('book')">The Book</a>
@@ -57,7 +57,7 @@ function getShellHTML(): string {
       </main>
     </div>
 
-    <div id="tab-playground" class="tab-pane" style="display:none;">
+    <div id="tab-editor" class="tab-pane" style="display:none;">
       ${getPlaygroundPanel()}
     </div>
   </div>

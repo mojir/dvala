@@ -177,8 +177,12 @@ export function openSearch(): void {
 export function closeSearch(): void {
   const overlay = document.getElementById('search-dialog-overlay')
   if (!overlay) return
+  // Only fire the close callback if search was actually open — the callback triggers
+  // applyState() which reads URL params, and calling it spuriously (e.g. during page
+  // navigation when search was already hidden) would reset editor side-panel state.
+  const wasOpen = overlay.style.display !== 'none'
   overlay.style.display = 'none'
-  _onCloseCallback?.()
+  if (wasOpen) _onCloseCallback?.()
 }
 
 function escapeHtml(str: string): string {

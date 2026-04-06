@@ -1693,7 +1693,7 @@ a.disabled {
    Playground panel
    ============================================================ */
 /* Editor layout: toolbar + vertical split (top area + output) */
-#tab-playground {
+#tab-editor {
   display: flex;
   flex-direction: column;
 }
