@@ -2159,7 +2159,7 @@ a.disabled {
 
 .side-panel__icon:hover {
   color: var(--color-text-bright);
-  background: #555;
+  background: var(--color-surface-3);
 }
 
 .side-panel__icon--active {
