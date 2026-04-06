@@ -13,11 +13,13 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource, untokenize } from '../../src/tooling'
+import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import { closeSearch, handleSearchKeyDown, initSearchDialog, onSearchClose } from './components/searchDialog'
-import { copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
+import type { EditorMenuItem } from './editorMenu'
+import { renderEditorMenu } from './editorMenu'
+import { addIcon, copyIcon, downloadIcon, hamburgerIcon, saveIcon, shareIcon } from './icons'
 import { renderCodeBlock } from './renderCodeBlock'
 import { renderShell } from './shell'
 import * as router from './router'
@@ -44,12 +46,23 @@ import {
 } from './snapshotStorage'
 import type { SavedSnapshot, TerminalSnapshotEntry } from './snapshotStorage'
 import {
-  clearAllPrograms,
-  getSavedPrograms,
-  initPrograms,
-  setSavedPrograms,
-} from './programStorage'
-import type { SavedProgram } from './programStorage'
+  DVALA_FILE_SUFFIX,
+  clearAllFiles,
+  getSavedFiles,
+  initFiles,
+  normalizeSavedFileName,
+  setSavedFiles,
+  stripSavedFileSuffix,
+} from './fileStorage'
+import type { SavedFile } from './fileStorage'
+import {
+  clearAllFileHistories,
+  deleteFileHistory,
+  getFileHistory,
+  initFileHistories,
+  pruneFileHistories,
+  setFileHistory,
+} from './fileHistoryStorage'
 import {
   applyEncodedState,
   clearAllStates,
@@ -57,15 +70,11 @@ import {
   defaultState,
   encodeState,
   getState,
-  redoContext,
-  redoDvalaCode,
   saveState,
-  setContextHistoryListener,
-  setDvalaCodeHistoryListener,
-  undoContext,
-  undoDvalaCode,
   updateState,
 } from './state'
+import type { HistoryEntry, HistoryStatus } from './StateHistory'
+import { StateHistory } from './StateHistory'
 import { decodeSnapshot, encodeSnapshot } from './snapshotUtils'
 import { SyntaxOverlay } from './SyntaxOverlay'
 import { isMac, throttle } from './utils'
@@ -75,6 +84,59 @@ import { createEffectHandlers } from './createEffectHandlers'
 const dvalaDebug = createDvala({ debug: true, modules: allBuiltinModules })
 const dvalaNoDebug = createDvala({ debug: false, modules: allBuiltinModules })
 const getDvala = (forceDebug?: 'debug') => forceDebug || getState('debug') ? dvalaDebug : dvalaNoDebug
+const MAX_FILE_HISTORY_STEPS = 99
+const CONTEXT_UI_STATE_KEY = '__playground'
+const dvalaCodeHistory = new StateHistory(createDvalaCodeHistoryEntryFromState(), syncDvalaCodeHistoryButtons, MAX_FILE_HISTORY_STEPS)
+let activeDvalaCodeHistoryFileId: string | null = null
+let closeEditorMenuListener: ((event: MouseEvent) => void) | null = null
+
+function createDvalaCodeHistoryEntryFromState(): HistoryEntry {
+  return {
+    text: getState('dvala-code'),
+    selectionStart: getState('dvala-code-selection-start'),
+    selectionEnd: getState('dvala-code-selection-end'),
+  }
+}
+
+function isCurrentFileLocked(): boolean {
+  const currentFileId = getState('current-file-id')
+  return currentFileId !== null && getSavedFiles().some(file => file.id === currentFileId && file.locked)
+}
+
+function syncDvalaCodeHistoryButtons(status: HistoryStatus = dvalaCodeHistory.getStatus()) {
+  const isLocked = isCurrentFileLocked()
+  elements.dvalaCodeUndoButton.classList.toggle('disabled', isLocked || !status.canUndo)
+  elements.dvalaCodeRedoButton.classList.toggle('disabled', isLocked || !status.canRedo)
+}
+
+function persistActiveDvalaCodeHistory() {
+  if (activeDvalaCodeHistoryFileId)
+    setFileHistory(activeDvalaCodeHistoryFileId, dvalaCodeHistory.serialize())
+}
+
+function switchDvalaCodeHistory(fileId: string | null, initialEntry = createDvalaCodeHistoryEntryFromState(), reset = false) {
+  persistActiveDvalaCodeHistory()
+  // Scratch has no file ID but still gets its history persisted under '<scratch>'
+  const effectiveId = fileId ?? '<scratch>'
+  activeDvalaCodeHistoryFileId = effectiveId
+
+  const persistedHistory = reset ? undefined : getFileHistory(effectiveId)
+  if (persistedHistory) {
+    dvalaCodeHistory.hydrate(persistedHistory, initialEntry)
+  } else {
+    dvalaCodeHistory.reset(initialEntry)
+    persistActiveDvalaCodeHistory()
+  }
+}
+
+function pushActiveDvalaCodeHistoryEntry() {
+  dvalaCodeHistory.push(createDvalaCodeHistoryEntryFromState())
+  persistActiveDvalaCodeHistory()
+}
+
+function activateCurrentFileHistory(reset = false) {
+  switchDvalaCodeHistory(getState('current-file-id'), createDvalaCodeHistoryEntryFromState(), reset)
+}
 
 // ---------------------------------------------------------------------------
 // Playground effect handlers (playground.*)
@@ -117,35 +179,35 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
       },
       getContextContent: () => elements.contextTextArea.value,
       setContextContent: json => {
-        elements.contextTextArea.value = json
-        saveState({ context: json }, false)
+        updateContextState(json, false)
       },
-      getSavedPrograms: () => getSavedPrograms(),
-      saveProgram: (name, code) => {
-        const programs = getSavedPrograms()
-        const existing = programs.find(p => p.name === name)
+      getSavedFiles: () => getSavedFiles(),
+      saveFile: (name, code) => {
+        const files = getSavedFiles()
+        const normalizedName = normalizeSavedFileName(name)
+        const existing = files.find(entry => entry.name === normalizedName)
         const now = Date.now()
         if (existing) {
           existing.code = code
           existing.updatedAt = now
-          setSavedPrograms([...programs])
+          setSavedFiles([...files])
         } else {
-          const newProgram: SavedProgram = {
+          const createdFile: SavedFile = {
             id: crypto.randomUUID(),
-            name,
+            name: normalizedName,
             code,
             context: '',
             createdAt: now,
             updatedAt: now,
             locked: false,
           }
-          setSavedPrograms([newProgram, ...programs])
+          setSavedFiles([createdFile, ...files])
         }
       },
       runCode: async code => {
         const result = await getDvala().runAsync(code, { bindings: {}, effectHandlers: [], pure: false })
         if (result.type === 'error') throw result.error
-        if (result.type === 'suspended') throw new Error('Program suspended')
+        if (result.type === 'suspended') throw new Error('File suspended')
         return result.value
       },
       navigateTo: route => {
@@ -199,35 +261,36 @@ document.head.appendChild(animationStyles)
 
 const elements = {
   get wrapper() { return document.getElementById('wrapper') as HTMLElement },
-  get playground() { return document.getElementById('playground') as HTMLElement },
-  get sidebar() { return document.getElementById('sidebar') as HTMLElement },
   get mainPanel() { return document.getElementById('main-panel') as HTMLElement },
-  get contextPanel() { return document.getElementById('context-panel') as HTMLElement },
   get dvalaPanel() { return document.getElementById('dvala-panel') as HTMLElement },
   get outputPanel() { return document.getElementById('output-panel') as HTMLElement },
   get moreMenu() { return document.getElementById('more-menu') as HTMLElement },
+  get filesHeaderMenu() { return document.getElementById('files-header-menu') as HTMLElement },
   get addContextMenu() { return document.getElementById('add-context-menu') as HTMLElement },
   get newContextName() { return document.getElementById('new-context-name') as HTMLInputElement },
   get newContextValue() { return document.getElementById('new-context-value') as HTMLTextAreaElement },
   get newContextError() { return document.getElementById('new-context-error') as HTMLSpanElement },
   get contextTextArea() { return document.getElementById('context-textarea') as HTMLTextAreaElement },
+  get contextEntryList() { return document.getElementById('context-entry-list') as HTMLDivElement },
+  get contextDetailView() { return document.getElementById('context-detail-view') as HTMLDivElement },
+  get contextDetailTextArea() { return document.getElementById('context-detail-textarea') as HTMLTextAreaElement },
   get outputResult() { return document.getElementById('output-result') as HTMLElement },
   get dvalaTextArea() { return document.getElementById('dvala-textarea') as HTMLTextAreaElement },
-  get resizePlayground() { return document.getElementById('resize-playground') as HTMLElement },
   get resizeDevider1() { return document.getElementById('resize-divider-1') as HTMLElement },
   get resizeDevider2() { return document.getElementById('resize-divider-2') as HTMLElement },
-  get resizeSidebar() { return document.getElementById('resize-sidebar') as HTMLElement },
   get dvalaPanelDebugInfo() { return document.getElementById('dvala-panel-debug-info') as HTMLDivElement },
   get contextUndoButton() { return document.getElementById('context-undo-button') as HTMLAnchorElement },
   get contextRedoButton() { return document.getElementById('context-redo-button') as HTMLAnchorElement },
   get dvalaCodeUndoButton() { return document.getElementById('dvala-code-undo-button') as HTMLAnchorElement },
   get dvalaCodeRedoButton() { return document.getElementById('dvala-code-redo-button') as HTMLAnchorElement },
+  get editorToolbarTitle() { return document.getElementById('editor-toolbar-title') as HTMLSpanElement },
   get contextTitle() { return document.getElementById('context-title') as HTMLDivElement },
   get dvalaCodeTitle() { return document.getElementById('dvala-code-title') as HTMLDivElement },
   get dvalaCodeTitleString() { return document.getElementById('dvala-code-title-string') as HTMLSpanElement },
   get dvalaCodeTitleInput() { return document.getElementById('dvala-code-title-input') as HTMLInputElement },
   get dvalaCodePendingIndicator() { return document.getElementById('dvala-code-pending-indicator') as HTMLSpanElement },
   get dvalaCodeLockedIndicator() { return document.getElementById('dvala-code-locked-indicator') as HTMLSpanElement },
+  get saveScratchButton() { return document.getElementById('save-scratch-btn') as HTMLAnchorElement },
   get snapshotModal() { return document.getElementById('snapshot-modal') as HTMLDivElement },
   get snapshotPanelContainer() { return document.getElementById('snapshot-panel-container') as HTMLDivElement },
   get importOptionsModal() { return document.getElementById('import-options-modal') as HTMLDivElement },
@@ -243,8 +306,8 @@ const elements = {
   get importOptRecentSnapshotsLabel() { return document.getElementById('import-opt-recent-snapshots-label') as HTMLLabelElement },
   get importOptLayout() { return document.getElementById('import-opt-layout') as HTMLInputElement },
   get importOptLayoutLabel() { return document.getElementById('import-opt-layout-label') as HTMLLabelElement },
-  get importOptSavedPrograms() { return document.getElementById('import-opt-saved-programs') as HTMLInputElement },
-  get importOptSavedProgramsLabel() { return document.getElementById('import-opt-saved-programs-label') as HTMLLabelElement },
+  get importOptSavedFiles() { return document.getElementById('import-opt-saved-files') as HTMLInputElement },
+  get importOptSavedFilesLabel() { return document.getElementById('import-opt-saved-files-label') as HTMLLabelElement },
   get importResultModal() { return document.getElementById('import-result-modal') as HTMLDivElement },
   get importResultContent() { return document.getElementById('import-result-content') as HTMLDivElement },
   get exportModal() { return document.getElementById('export-modal') as HTMLDivElement },
@@ -254,7 +317,7 @@ const elements = {
   get exportOptSavedSnapshots() { return document.getElementById('export-opt-saved-snapshots') as HTMLInputElement },
   get exportOptRecentSnapshots() { return document.getElementById('export-opt-recent-snapshots') as HTMLInputElement },
   get exportOptLayout() { return document.getElementById('export-opt-layout') as HTMLInputElement },
-  get exportOptSavedPrograms() { return document.getElementById('export-opt-saved-programs') as HTMLInputElement },
+  get exportOptSavedFiles() { return document.getElementById('export-opt-saved-files') as HTMLInputElement },
   get toastContainer() { return document.getElementById('toast-container') as HTMLDivElement },
   get executionControlBar() { return document.getElementById('execution-control-bar') as HTMLDivElement },
   get executionStatus() { return document.getElementById('execution-status') as HTMLSpanElement },
@@ -264,17 +327,13 @@ const elements = {
 }
 
 type MoveParams = {
-  id: 'playground'
-  startMoveY: number
-  heightBeforeMove: number
-} | {
-  id: 'resize-divider-1' | 'resize-divider-2'
+  id: 'resize-divider-1'
   startMoveX: number
   percentBeforeMove: number
 } | {
-  id: 'resize-sidebar'
-  startMoveX: number
-  widthBeforeMove: number
+  id: 'resize-divider-2'
+  startMoveY: number
+  percentBeforeMove: number
 }
 
 type OutputType =
@@ -309,11 +368,24 @@ let effectPanelFooterEl: HTMLElement | null = null
 let effectNavEl: HTMLElement | null = null
 let effectNavCounterEl: HTMLSpanElement | null = null
 let currentSnapshot: Snapshot | null = null
+let snapshotExecutionControlsVisible = false
+let activeContextEntryKind: ContextEntryKind = getState('current-context-entry-kind')
+let activeContextBindingName: string | null = getState('current-context-binding-name')
+let isSyncingContextDetail = false
+let contextDetailHasParseError = false
 const modalStack: { panel: HTMLElement; label: string; icon?: string; snapshot: Snapshot | null; isEffect?: boolean }[] = []
 let overlayCloseAnimation: Animation | null = null
 
 // Toast hint for effect modals that can't be dismissed with Escape
 const EFFECT_MODAL_ESCAPE_HINT = 'Escape not supported here'
+type ContextEntryKind = 'binding' | 'effect-handler'
+type ContextUiSectionKey = 'bindings' | 'effectHandlers'
+type StoredContextEffectHandler = { pattern: string; handler: unknown }
+
+const CONTEXT_EFFECT_HANDLERS_KEY = 'effectHandlers'
+const DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE = `async ({ resume }) => {
+  resume(null);
+}`
 
 function calculateDimensions() {
   return {
@@ -323,18 +395,68 @@ function calculateDimensions() {
 }
 
 export function openMoreMenu(triggerEl?: HTMLElement) {
-  if (triggerEl) {
-    const rect = triggerEl.getBoundingClientRect()
-    elements.moreMenu.style.position = 'fixed'
-    elements.moreMenu.style.top = `${rect.bottom}px`
-    elements.moreMenu.style.right = `${window.innerWidth - rect.right}px`
-    elements.moreMenu.style.left = 'auto'
-  }
-  elements.moreMenu.style.display = 'block'
+  if (!triggerEl) return
+  toggleEditorMenu('more-menu', triggerEl)
 }
 
 export function closeMoreMenu() {
-  elements.moreMenu.style.display = 'none'
+  closeAllEditorMenus()
+}
+
+export function openFilesHeaderMenu(triggerEl: HTMLElement) {
+  toggleEditorMenu('files-header-menu', triggerEl)
+}
+
+export function closeFilesHeaderMenu() {
+  closeAllEditorMenus()
+}
+
+export function openSnapshotsHeaderMenu(triggerEl: HTMLElement) {
+  toggleEditorMenu('snapshots-header-menu', triggerEl)
+}
+
+export function closeSnapshotsHeaderMenu() {
+  closeAllEditorMenus()
+}
+
+function positionEditorMenu(menu: HTMLElement, triggerEl: HTMLElement, offsetY = 0) {
+  const rect = triggerEl.getBoundingClientRect()
+  menu.style.position = 'fixed'
+  menu.style.top = `${rect.bottom + offsetY}px`
+  menu.style.right = `${Math.max(0, window.innerWidth - rect.right)}px`
+  menu.style.left = 'auto'
+}
+
+function closeAllEditorMenus() {
+  document.querySelectorAll('.editor-menu').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
+  })
+  if (closeEditorMenuListener) {
+    document.removeEventListener('click', closeEditorMenuListener)
+    closeEditorMenuListener = null
+  }
+}
+
+function toggleEditorMenu(menuId: string, triggerEl: HTMLElement, offsetY = 0) {
+  const menu = document.getElementById(menuId)
+  if (!menu) return
+
+  const isOpen = menu.style.display === 'block'
+  closeAllEditorMenus()
+  if (isOpen) return
+
+  positionEditorMenu(menu, triggerEl, offsetY)
+  menu.style.display = 'block'
+  closeEditorMenuListener = event => {
+    const target = event.target as Node | null
+    if (!target || (!menu.contains(target) && !triggerEl.contains(target)))
+      closeAllEditorMenus()
+  }
+
+  setTimeout(() => {
+    if (closeEditorMenuListener)
+      document.addEventListener('click', closeEditorMenuListener)
+  }, 0)
 }
 
 export function toggleTocMenu(event: Event): void {
@@ -528,7 +650,7 @@ function getBookSearchCache(): BookSearchCache[] {
   return bookSearchCache
 }
 
-interface ExampleSearchCache { nameLower: string; descLower: string; catLower: string; codeLower: string; ex: Example }
+interface ExampleSearchCache { nameLower: string; codeLower: string; ex: Example }
 let exampleSearchCache: ExampleSearchCache[] | null = null
 let exampleSearchDataRef: typeof window.referenceData = undefined
 
@@ -538,8 +660,6 @@ function getExampleSearchCache(): ExampleSearchCache[] {
     exampleSearchDataRef = data
     exampleSearchCache = (data?.examples ?? []).map(ex => ({
       nameLower: `${ex.name} ${ex.description} ${ex.category}`.toLowerCase(),
-      descLower: '', // included in nameLower
-      catLower: '',
       codeLower: ex.code.toLowerCase(),
       ex,
     }))
@@ -848,34 +968,6 @@ function renderColorPalette(): void {
   container.innerHTML = html
 }
 
-export function showSnapshotsPage() {
-  populateSnapshotsList()
-  showPage('snapshots-page', 'smooth')
-}
-
-export function showSavedProgramsPage() {
-  populateSavedProgramsList()
-  showPage('saved-programs-page', 'smooth')
-}
-
-function notifyProgramAdded() {
-  const programsPage = document.getElementById('saved-programs-page')
-  if (programsPage?.classList.contains('active-content')) return
-  const indicator = document.getElementById('programs-nav-indicator')
-  if (indicator) indicator.style.display = 'inline-block'
-  const navLink = document.getElementById('saved-programs-page_link')
-  if (navLink) navLink.style.color = 'var(--color-text-bright)'
-}
-
-function notifySnapshotAdded() {
-  const snapshotsPage = document.getElementById('snapshots-page')
-  if (snapshotsPage?.classList.contains('active-content')) return
-  const indicator = document.getElementById('snapshots-nav-indicator')
-  if (indicator) indicator.style.display = 'inline-block'
-  const navLink = document.getElementById('snapshots-page_link')
-  if (navLink) navLink.style.color = 'var(--color-text-bright)'
-}
-
 function formatTime(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -891,65 +983,13 @@ const ICONS = {
   download: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5l5 5l5-5m-5 5V3"/></svg>',
   save: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2M17 21v-8H7v8M7 3v5h8"/></svg>',
   duplicate: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/></svg>',
-}
-
-interface ContextMenuItem {
-  label: string
-  icon: string
-  action: string
-}
-
-function renderContextMenu(items: ContextMenuItem[], menuId: string): string {
-  const menuItems = items.map(item => `
-    <button onclick="event.stopPropagation(); Playground.closeContextMenu(); ${item.action}" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; background: none; border: none; color: var(--color-text); font-size: 0.875rem; cursor: pointer; text-align: left;" onmouseover="this.style.background='var(--color-border-dim)'" onmouseout="this.style.background='none'">
-      <span style="display: flex; align-items: center;">${item.icon}</span>
-      <span>${escapeHtml(item.label)}</span>
-    </button>
-  `).join('')
-
-  return `
-    <div style="position: relative;">
-      <button class="snapshot-btn" onclick="event.stopPropagation(); Playground.toggleContextMenu('${menuId}', this)" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="More actions">${ICONS.menu}</button>
-      <div id="${menuId}" class="snapshot-context-menu" style="display: none; position: fixed; min-width: 150px; background: var(--color-surface-dim); border: 1px solid var(--color-border-dim); border-radius: 6px; box-shadow: 0 4px 12px var(--color-shadow-deep); z-index: 1000; overflow: hidden;">
-        ${menuItems}
-      </div>
-    </div>
-  `
-}
-
-export function toggleContextMenu(menuId: string, triggerEl?: HTMLElement): void {
-  const menu = document.getElementById(menuId)
-  if (!menu) return
-
-  // Close all other context menus first
-  document.querySelectorAll('.snapshot-context-menu').forEach(m => {
-    if (m.id !== menuId) (m as HTMLElement).style.display = 'none'
-  })
-
-  if (menu.style.display === 'block') {
-    menu.style.display = 'none'
-    return
-  }
-
-  if (triggerEl) {
-    const rect = triggerEl.getBoundingClientRect()
-    menu.style.top = `${rect.bottom}px`
-    menu.style.right = `${window.innerWidth - rect.right}px`
-    menu.style.left = 'auto'
-  }
-  menu.style.display = 'block'
+  edit: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/><path fill="currentColor" d="M20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>',
+  warning: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.06L1.87 20.5c-.38.65.09 1.5.87 1.5h18.52c.78 0 1.25-.85.87-1.5zm0 4.69c.41 0 .75.34.75.75v5.5a.75.75 0 0 1-1.5 0V8.5c0-.41.34-.75.75-.75m0 10.5a1 1 0 1 1 0-2a1 1 0 0 1 0 2"/></svg>',
+  share: '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66a2.92 2.92 0 1 0 2.92-2.92"/></svg>',
 }
 
 export function closeContextMenu(): void {
-  document.querySelectorAll('.snapshot-context-menu').forEach(m => {
-    (m as HTMLElement).style.display = 'none'
-  })
-}
-
-function isAnyContextMenuOpen(): boolean {
-  return Array.from(document.querySelectorAll('.snapshot-context-menu')).some(
-    m => (m as HTMLElement).style.display !== 'none',
-  )
+  closeAllEditorMenus()
 }
 
 // Prevent all href="#" anchors from scrolling to top / navigating.
@@ -961,102 +1001,33 @@ document.addEventListener('click', e => {
     e.preventDefault()
 }, true)
 
-// Close context menu when clicking outside
-document.addEventListener('click', e => {
-  const target = e.target as HTMLElement
-  if (!target.closest('.snapshot-context-menu') && !target.closest('[onclick*="toggleContextMenu"]')) {
-    if (isAnyContextMenuOpen()) {
-      closeContextMenu()
-      e.stopPropagation()
-      e.preventDefault()
-    }
-  }
-}, true)
-
-function buildTerminalDetailLine(snapshot: Snapshot): string {
-  const meta = snapshot.meta as { result?: unknown; error?: { message?: string } } | undefined
-  if (meta?.error?.message) {
-    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">error:</span> ${escapeHtml(String(meta.error.message))}</div>`
-  }
-  if (meta?.result !== undefined) {
-    return `<div style="font-size: 0.8rem; color: var(--color-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: var(--color-text-dim);">result:</span> ${escapeHtml(String(meta.result))}</div>`
-  }
-  return ''
+function getTerminalSnapshotLabel(index: number): string {
+  const ordinals = ['Last', '2nd Last', '3rd Last']
+  return `${ordinals[index] ?? `${index + 1}th Last`} Run`
 }
 
-function getSnapshotDisplayMessage(snapshot: Snapshot): string {
-  return snapshot.message || (snapshot.effectName ? `Effect: ${snapshot.effectName}` : 'Checkpoint')
+function getSavedSnapshotLabel(entry: SavedSnapshot, index: number): string {
+  return entry.name || `Snapshot ${index + 1}`
 }
 
-function renderSnapshotCard(entry: TerminalSnapshotEntry | SavedSnapshot, index: number, animateIn = false): string {
-  const { snapshot, savedAt } = entry
-  const animateClass = animateIn ? 'animate-in' : ''
-  const snapshotBytes = new TextEncoder().encode(JSON.stringify(snapshot)).length
-  const sizeStr = snapshotBytes >= 1024 * 1024 ? `${(snapshotBytes / (1024 * 1024)).toFixed(1)} MB` : `${(snapshotBytes / 1024).toFixed(1)} KB`
-  const timestamp = `<div style="font-size: 0.75rem; color: var(--color-text-dim); display: flex; gap: 0.75rem;">${formatTime(new Date(savedAt))}<span>${sizeStr}</span></div>`
+function getActiveSnapshotDetails(): { label: string; snapshot: Snapshot } | null {
+  if (!activeSnapshotKey) return null
 
-  let type: 'terminal' | 'saved'
-  let title: string
-  let titlePrefix: string
-  let message: string
-  let detailLine: string
-  let borderColor: string
-  let menuItems: ContextMenuItem[]
-  let actionButtons: string
-  let onclick: string
-
-  if (entry.kind === 'terminal') {
-    const ordinals = ['Last', '2nd Last', '3rd Last']
-    type = 'terminal'
-    title = `${ordinals[index] ?? `${index + 1}th Last`} Run`
-    titlePrefix = ''
-    message = snapshot.message
-    detailLine = `${buildTerminalDetailLine(snapshot)}${timestamp}`
-    borderColor = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
-    menuItems = [
-      { label: 'Open', icon: ICONS.eye, action: `Playground.openTerminalSnapshot(${index})` },
-      { label: 'Save', icon: ICONS.save, action: `Playground.saveTerminalSnapshotToSaved(${index})` },
-      { label: 'Download', icon: ICONS.download, action: `Playground.downloadTerminalSnapshotByIndex(${index})` },
-      { label: 'Delete', icon: ICONS.trash, action: `Playground.clearTerminalSnapshot(${index})` },
-    ]
-    actionButtons = ''
-    onclick = `Playground.openTerminalSnapshot(${index})`
-  } else {
-    const isCompleted = snapshot.terminal === true
-    const meta = snapshot.meta as { error?: unknown; halted?: boolean } | undefined
-    type = 'saved'
-    title = entry.name || `Snapshot #${index + 1}`
-    titlePrefix = entry.locked ? `<span style="color: var(--color-primary); display: flex; align-items: center;" title="Locked">${ICONS.lock}</span>` : ''
-    message = getSnapshotDisplayMessage(snapshot)
-    detailLine = `${isCompleted ? buildTerminalDetailLine(snapshot) : ''}${timestamp}`
-    borderColor = isCompleted ? (meta?.error ? 'var(--color-error)' : meta?.halted ? 'var(--color-primary)' : 'var(--color-success)') : 'var(--color-border)'
-    menuItems = [
-      { label: 'Open', icon: ICONS.eye, action: `Playground.openSavedSnapshot(${index})` },
-      { label: entry.locked ? 'Unlock' : 'Lock', icon: entry.locked ? ICONS.lock : ICONS.unlock, action: `Playground.toggleSnapshotLock(${index})` },
-      { label: 'Download', icon: ICONS.download, action: `Playground.downloadSavedSnapshotByIndex(${index})` },
-      { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedSnapshot(${index})` },
-    ]
-    actionButtons = isCompleted ? '' : `<button class="snapshot-btn" onclick="event.stopPropagation(); Playground.runSavedSnapshot(${index})" style="background: none; border: none; padding: 2px; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; border-radius: 4px; color: var(--color-text-secondary);" title="Run snapshot">${ICONS.play}</button>`
-    onclick = `Playground.openSavedSnapshot(${index})`
+  if (activeSnapshotKey.startsWith('terminal:')) {
+    const index = Number(activeSnapshotKey.slice('terminal:'.length))
+    const entry = getTerminalSnapshots()[index]
+    if (!entry) return null
+    return { label: getTerminalSnapshotLabel(index), snapshot: entry.snapshot }
   }
 
-  return `
-    <div class="snapshot-card ${animateClass}" data-type="${type}" data-index="${index}" onclick="${onclick}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; background: var(--color-surface); border-radius: 8px; border-left: 3px solid ${borderColor}; cursor: pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
-      <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0;">
-        <div style="font-size: 1rem; color: var(--color-text); display: flex; align-items: center; gap: 0.5rem;">${titlePrefix}${escapeHtml(title)}${entry.kind === 'saved' && snapshot.terminal !== true ? '<span style="font-size: 0.65rem; color: var(--color-text-dim); font-family: sans-serif; font-weight: bold; letter-spacing: 0.05em;">SUSPENDED</span>' : ''}</div>
-        <div style="font-size: 0.8rem; color: var(--color-text-dim);">${escapeHtml(message)}</div>
-        ${detailLine}
-      </div>
-      <div style="display: flex; gap: 2px; align-items: flex-start;" onclick="event.stopPropagation()">
-        ${actionButtons}
-        ${renderContextMenu(menuItems, `${type}-menu-${index}`)}
-      </div>
-    </div>
-  `
-}
+  if (activeSnapshotKey.startsWith('saved:')) {
+    const index = Number(activeSnapshotKey.slice('saved:'.length))
+    const entry = getSavedSnapshots()[index]
+    if (!entry) return null
+    return { label: getSavedSnapshotLabel(entry, index), snapshot: entry.snapshot }
+  }
 
-function renderGroupLabel(label: string): string {
-  return `<div class="list-group-label" style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0;">${escapeHtml(label)}</div>`
+  return null
 }
 
 function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<void> {
@@ -1072,73 +1043,18 @@ function animateCardRemoval(type: 'terminal' | 'saved', index: number): Promise<
 }
 
 function populateSnapshotsList(options: { animateNewTerminal?: boolean; animateNewSaved?: boolean } = {}) {
-  const { animateNewTerminal = false, animateNewSaved = false } = options
-  const list = document.getElementById('snapshots-list')
-  const empty = document.getElementById('snapshots-empty')
-  const clearBtn = document.getElementById('snapshots-clear-all')
-  if (!list || !empty) return
-
-  const terminalEntries = getTerminalSnapshots()
-  const savedEntries = getSavedSnapshots()
-  const hasContent = terminalEntries.length > 0 || savedEntries.length > 0
-
-  if (!hasContent) {
-    list.innerHTML = ''
-    empty.style.display = 'block'
-    if (clearBtn) clearBtn.style.visibility = 'hidden'
-    return
-  }
-
-  empty.style.display = 'none'
-  if (clearBtn) clearBtn.style.visibility = terminalEntries.length > 0 || savedEntries.some(e => !e.locked) ? 'visible' : 'hidden'
-
-  const cards: string[] = []
-
-  // Terminal snapshots with group label
-  if (terminalEntries.length > 0) {
-    cards.push(renderGroupLabel('Completed Programs'))
-    // Always render first N cards normally
-    for (let i = 0; i < Math.min(VISIBLE_TERMINAL_SNAPSHOTS, terminalEntries.length); i++) {
-      cards.push(renderSnapshotCard(terminalEntries[i]!, i, animateNewTerminal && i === 0))
-    }
-    const hiddenCount = terminalEntries.length - VISIBLE_TERMINAL_SNAPSHOTS
-    if (hiddenCount > 0) {
-      // Wrap extra cards in collapsible container
-      const displayStyle = showAllTerminalSnapshots ? 'display: contents;' : 'display: none;'
-      cards.push(`<div id="terminal-snapshots-overflow" style="${displayStyle}">`)
-      for (let i = VISIBLE_TERMINAL_SNAPSHOTS; i < terminalEntries.length; i++) {
-        cards.push(renderSnapshotCard(terminalEntries[i]!, i, false))
-      }
-      cards.push('</div>')
-      const toggleStyle = 'background: none; border: none; color: var(--color-text-dim); font-size: 0.75rem; cursor: pointer; padding: 0.5rem 0; text-align: center; width: 100%;'
-      if (showAllTerminalSnapshots) {
-        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show less</button>`)
-      } else {
-        cards.push(`<button style="${toggleStyle}" onclick="Playground.toggleShowAllTerminalSnapshots()">Show all (${terminalEntries.length})</button>`)
-      }
-    }
-  }
-
-  // Saved snapshots with group label
-  if (savedEntries.length > 0) {
-    cards.push(renderGroupLabel('Saved Snapshots'))
-    savedEntries.forEach((entry, index) => {
-      // Only animate the first (newest) saved entry if animateNewSaved is true
-      cards.push(renderSnapshotCard(entry, index, animateNewSaved && index === 0))
-    })
-  }
-
-  list.innerHTML = cards.join('')
+  void options
+  populateSideSnapshotsList()
 }
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// ─── Saved Programs ───────────────────────────────────────────────────────────
+// ─── Saved Files ──────────────────────────────────────────────────────────────
 
-function animateProgramCardRemoval(id: string): Promise<void> {
-  const card = document.querySelector(`.snapshot-card[data-program-id="${id}"]`)
+function animateFileCardRemoval(id: string): Promise<void> {
+  const card = document.querySelector(`.snapshot-card[data-file-id="${id}"]`)
   if (!card) return Promise.resolve()
   return new Promise(resolve => {
     card.classList.add('removing')
@@ -1147,165 +1063,720 @@ function animateProgramCardRemoval(id: string): Promise<void> {
   })
 }
 
-function populateSavedProgramsList(options: { animateNewId?: string } = {}) {
-  const { animateNewId } = options
-  const list = document.getElementById('saved-programs-list')
-  const empty = document.getElementById('saved-programs-empty')
-  const clearBtn = document.getElementById('saved-programs-clear-all')
-  if (!list || !empty) return
+function populateSavedFilesList(options: { animateNewId?: string } = {}) {
+  void options
+  populateExplorerFileList()
+}
 
-  const programs = getSavedPrograms()
-  if (clearBtn)
-    clearBtn.style.visibility = programs.some(p => !p.locked) ? 'visible' : 'hidden'
+export function loadSavedFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  if (isScratchActive())
+    persistScratchFromCurrentState()
+  closeSnapshotViewIfNeeded()
+  if (getState('current-file-id') === id) return
+  cancelScratchEditedClear()
+  flushPendingAutoSave()
+  saveState({
+    'dvala-code': file.code,
+    'context': file.context,
+    'current-file-id': file.id,
+    'dvala-code-edited': false,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'dvala-code-scroll-top': 0,
+  }, false)
+  activateCurrentFileHistory(false)
+  elements.dvalaTextArea.value = file.code
+  updateContextState(file.context, false)
+  syntaxOverlay.update()
+  syntaxOverlay.scrollContainer.scrollTo(0, 0)
+  syncCodePanelView('files')
+  syncPlaygroundUrlState('files')
+  updateCSS()
+  populateExplorerFileList()
+  populateSavedFilesList()
+}
 
-  if (programs.length === 0) {
-    list.innerHTML = ''
-    empty.style.display = 'block'
+// ─── Explorer panel (compact file list in editor tab) ────────────────────────
+
+const SIDE_SNAPSHOTS_VISIBLE = 9
+const SCRATCH_TITLE = '<scratch>'
+let sideSnapshotsShowAll = false
+// Track which snapshot is actively viewed in the code panel: 'terminal:0', 'saved:2', or null
+let activeSnapshotKey: string | null = null
+
+type SideTabId = 'files' | 'snapshots' | 'context'
+
+function isScratchActive(): boolean {
+  return getState('current-file-id') === null
+}
+
+function getScratchCode(): string {
+  return isScratchActive() ? getState('dvala-code') : getState('scratch-code')
+}
+
+function getScratchContext(): string {
+  return isScratchActive() ? getState('context') : getState('scratch-context')
+}
+
+function hasScratchContent(): boolean {
+  return getScratchCode().trim().length > 0 || getScratchContext().trim().length > 0
+}
+
+function persistScratchFromCurrentState() {
+  if (!isScratchActive()) return
+  saveState({
+    'scratch-code': getState('dvala-code'),
+    'scratch-context': getState('context'),
+  }, false)
+}
+
+function closeSnapshotViewIfNeeded() {
+  if (snapshotViewStack.length === 0) return
+  snapshotViewStack.splice(0)
+  activeSnapshotKey = null
+  currentSnapshot = null
+  hideExecutionControlBar()
+}
+
+function openScratchInEditor(options: { code?: string; context?: string; toast?: string; focusCode?: boolean; navigateToPlayground?: boolean; force?: boolean } = {}) {
+  // Guard: if loading new code into scratch and it already has content, confirm first.
+  // The `force` flag skips this — used when the caller has already confirmed (e.g. clearScratch).
+  if (!options.force && options.code !== undefined && hasScratchContent() && getState('dvala-code-edited')) {
+    void showInfoModal('Overwrite scratch?', 'The scratch buffer has content. Discard it?', () => {
+      openScratchInEditor({ ...options, force: true })
+    })
     return
   }
 
-  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
-  const todayMs = startOfToday.getTime()
-  const weekMs = todayMs - 6 * 24 * 60 * 60 * 1000
-  const monthMs = todayMs - 29 * 24 * 60 * 60 * 1000
+  const code = options.code ?? getState('scratch-code')
+  const context = options.context ?? getState('scratch-context')
 
-  const groups: { label: string; programs: SavedProgram[] }[] = [
-    { label: 'Today', programs: [] },
-    { label: 'Last Week', programs: [] },
-    { label: 'Last Month', programs: [] },
-    { label: 'Older', programs: [] },
-  ]
+  flushPendingAutoSave()
 
-  for (const p of programs) {
-    if (p.updatedAt >= todayMs) groups[0]!.programs.push(p)
-    else if (p.updatedAt >= weekMs) groups[1]!.programs.push(p)
-    else if (p.updatedAt >= monthMs) groups[2]!.programs.push(p)
-    else groups[3]!.programs.push(p)
-  }
+  saveState({
+    'scratch-code': code,
+    'scratch-context': context,
+  }, false)
 
-  empty.style.display = 'none'
-  list.innerHTML = groups
-    .filter(g => g.programs.length > 0)
-    .flatMap(g => [renderGroupLabel(g.label), ...g.programs.map(p => renderProgramCard(p, p.id === animateNewId))])
-    .join('')
+  closeSnapshotViewIfNeeded()
+
+  saveState({
+    'active-side-tab': 'files',
+    context,
+    'context-scroll-top': 0,
+    'context-selection-start': 0,
+    'context-selection-end': 0,
+    'current-file-id': null,
+    'dvala-code': code,
+    'dvala-code-edited': false,
+    'dvala-code-scroll-top': 0,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'focused-panel': 'dvala-code',
+  }, false)
+
+  activateCurrentFileHistory(true)
+
+  if (options.navigateToPlayground)
+    router.navigate('/playground')
+
+  syncPlaygroundUrlState('files')
+  applyState()
+  populateExplorerFileList()
+
+  if (options.focusCode)
+    focusDvalaCode()
+
+  if (options.toast)
+    showToast(options.toast)
 }
 
-function renderProgramCard(program: SavedProgram, animateIn = false): string {
-  const tokenStream = tokenizeSource(program.code)
-  const meaningfulTokens = tokenStream.tokens
-  let firstMeaningful = 0
-  while (firstMeaningful < meaningfulTokens.length) {
-    const type = meaningfulTokens[firstMeaningful]![0]
-    if (type !== 'Whitespace' && type !== 'SingleLineComment' && type !== 'MultiLineComment') break
-    firstMeaningful++
+function normalizeSideTab(tabId: string | null | undefined): SideTabId {
+  if (tabId === 'snapshots' || tabId === 'context') return tabId
+  return 'files'
+}
+
+function getActiveSnapshotUrlId(): string | null {
+  if (!activeSnapshotKey) return null
+
+  if (activeSnapshotKey.startsWith('terminal:')) {
+    const index = Number(activeSnapshotKey.slice('terminal:'.length))
+    return getTerminalSnapshots()[index]?.snapshot.id ?? null
   }
-  const trimmedCode = untokenize({ ...tokenStream, tokens: meaningfulTokens.slice(firstMeaningful) })
-  const displaySnippet = trimmedCode.split('\n').slice(0, 3).join('\n')
-  const isActive = getState('current-program-id') === program.id
-  const borderColor = 'var(--color-scrollbar-track)'
-  const animateClass = animateIn ? 'animate-in' : ''
-  const lockIcon = program.locked
-    ? `<span style="color:var(--color-primary); display:flex; align-items:center;" title="Locked">${ICONS.lock}</span>`
-    : ''
-  const menuId = `program-menu-${program.id}`
-  const menuItems: ContextMenuItem[] = [
-    { label: program.locked ? 'Unlock' : 'Lock', icon: program.locked ? ICONS.unlock : ICONS.lock, action: `Playground.toggleProgramLock('${program.id}')` },
-    { label: 'Create copy', icon: ICONS.duplicate, action: `Playground.duplicateProgram('${program.id}')` },
-    { label: 'Download', icon: ICONS.download, action: `Playground.downloadProgram('${program.id}')` },
-    { label: 'Delete', icon: ICONS.trash, action: `Playground.deleteSavedProgram('${program.id}')` },
-  ]
-  return `
-    <div class="snapshot-card ${animateClass}" data-program-id="${program.id}" onclick="Playground.loadSavedProgram('${program.id}')" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding:1rem; background:var(--color-surface); border-radius:8px; border-left:3px solid ${borderColor}; cursor:pointer;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='var(--color-surface)'">
-      <div style="display:flex; flex-direction:column; gap:0.25rem; flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          ${lockIcon}
-          <span style="font-size:1rem; color:var(--color-text);">${escapeHtml(program.name)}</span>
-          ${isActive ? '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-primary); border:1px solid var(--color-primary); border-radius:3px; padding:1px 5px;">ACTIVE</span>' : ''}
-        </div>
-        ${program.code.trim() ? `<div style="font-size:0.8rem; color:var(--color-text-dim); font-family:monospace; white-space:pre; overflow:hidden; line-height:1.4; max-height:calc(1.4em * 3);">${escapeHtml(displaySnippet)}</div>` : '<span style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; color:var(--color-text-dim); padding:1px 0;">EMPTY PROGRAM</span>'}
-        <div style="font-size:0.75rem; color:var(--color-text-dim);">${formatTime(new Date(program.updatedAt))}</div>
-      </div>
-      <div onclick="event.stopPropagation()">
-        ${renderContextMenu(menuItems, menuId)}
-      </div>
+
+  if (activeSnapshotKey.startsWith('saved:')) {
+    const index = Number(activeSnapshotKey.slice('saved:'.length))
+    return getSavedSnapshots()[index]?.snapshot.id ?? null
+  }
+
+  return null
+}
+
+function syncPlaygroundUrlState(tabId: SideTabId) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('view', tabId)
+
+  if (tabId === 'files' && getState('current-file-id'))
+    url.searchParams.set('fileId', getState('current-file-id')!)
+  else
+    url.searchParams.delete('fileId')
+
+  const snapshotId = tabId === 'snapshots' ? getActiveSnapshotUrlId() : null
+  if (snapshotId)
+    url.searchParams.set('snapshotId', snapshotId)
+  else
+    url.searchParams.delete('snapshotId')
+
+  if (tabId === 'context' && activeContextBindingName)
+    url.searchParams.set('bindingName', activeContextBindingName)
+  else
+    url.searchParams.delete('bindingName')
+
+  if (tabId === 'context' && activeContextEntryKind === 'effect-handler')
+    url.searchParams.set('contextEntryKind', 'effect-handler')
+  else
+    url.searchParams.delete('contextEntryKind')
+
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+export function toggleSideSnapshotsShowAll() {
+  sideSnapshotsShowAll = !sideSnapshotsShowAll
+  populateSideSnapshotsList()
+}
+
+function populateSideSnapshotsList() {
+  const list = document.getElementById('side-snapshots-list')
+  if (!list) return
+
+  const terminalEntries = getTerminalSnapshots()
+  const savedEntries = getSavedSnapshots()
+
+  if (terminalEntries.length === 0 && savedEntries.length === 0) {
+    list.innerHTML = '<div class="explorer-empty">No snapshots</div>'
+    return
+  }
+
+  const items: string[] = []
+
+  if (terminalEntries.length > 0) {
+    items.push('<div class="explorer-group-label">Completed Files</div>')
+    const ordinals = ['Last', '2nd Last', '3rd Last']
+    const visibleCount = sideSnapshotsShowAll ? terminalEntries.length : Math.min(SIDE_SNAPSHOTS_VISIBLE, terminalEntries.length)
+    for (let i = 0; i < visibleCount; i++) {
+      const entry = terminalEntries[i]!
+      const label = `${ordinals[i] ?? `${i + 1}th Last`} Run`
+      const colorVar = entry.resultType === 'error' ? 'var(--color-error)' : entry.resultType === 'halted' ? 'var(--color-primary)' : 'var(--color-success)'
+      const activeClass = activeSnapshotKey === `terminal:${i}` ? ' explorer-item--active' : ''
+      const menuId = `side-terminal-menu-${i}`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();Playground.openTerminalSnapshot(${i})`, icon: ICONS.eye, label: 'Open' },
+        { action: `Playground.closeExplorerMenus();Playground.saveTerminalSnapshotToSaved(${i})`, icon: ICONS.save, label: 'Save' },
+        { action: `Playground.closeExplorerMenus();Playground.downloadTerminalSnapshotByIndex(${i})`, icon: ICONS.download, label: 'Download' },
+        { action: `Playground.closeExplorerMenus();Playground.clearTerminalSnapshot(${i})`, danger: true, icon: ICONS.trash, label: 'Delete' },
+      ]
+      items.push(`
+        <div class="explorer-item${activeClass}" onclick="Playground.openTerminalSnapshot(${i})" title="${escapeHtml(label)}">
+          <span class="explorer-item__dot" style="background:${colorVar};"></span>
+          <span class="explorer-item__name">${escapeHtml(label)}</span>
+          <span class="explorer-item__actions" onclick="event.stopPropagation()">
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+            <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          </span>
+        </div>`)
+    }
+    if (terminalEntries.length > SIDE_SNAPSHOTS_VISIBLE) {
+      if (sideSnapshotsShowAll) {
+        items.push('<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show less</div>')
+      } else {
+        items.push(`<div class="explorer-show-more" onclick="Playground.toggleSideSnapshotsShowAll()">Show all (${terminalEntries.length})</div>`)
+      }
+    }
+  }
+
+  if (savedEntries.length > 0) {
+    items.push('<div class="explorer-group-label">Saved Snapshots</div>')
+    savedEntries.forEach((entry, i) => {
+      const label = entry.name || `Snapshot ${i + 1}`
+      const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
+      const savedActiveClass = activeSnapshotKey === `saved:${i}` ? ' explorer-item--active' : ''
+      const isSuspended = entry.snapshot.terminal !== true
+      const menuId = `side-saved-menu-${i}`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();Playground.openSavedSnapshot(${i})`, icon: ICONS.eye, label: 'Open' },
+        { action: `Playground.closeExplorerMenus();Playground.toggleSnapshotLock(${i})`, icon: entry.locked ? ICONS.unlock : ICONS.lock, label: entry.locked ? 'Unlock' : 'Lock' },
+        { action: `Playground.closeExplorerMenus();Playground.downloadSavedSnapshotByIndex(${i})`, icon: ICONS.download, label: 'Download' },
+        { action: `Playground.closeExplorerMenus();Playground.deleteSavedSnapshot(${i})`, danger: true, icon: ICONS.trash, label: 'Delete' },
+      ]
+      const runButton = isSuspended
+        ? `<button class="explorer-item__btn" onclick="event.stopPropagation();Playground.runSavedSnapshot(${i})" title="Run snapshot">${ICONS.play}</button>`
+        : ''
+      items.push(`
+        <div class="explorer-item${savedActiveClass}" onclick="Playground.openSavedSnapshot(${i})" title="${escapeHtml(label)}">
+          <span class="explorer-item__name">${escapeHtml(label)}</span>
+          ${lockHtml}
+          <span class="explorer-item__actions" onclick="event.stopPropagation()">
+            ${runButton}
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+            <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          </span>
+        </div>`)
+    })
+  }
+
+  list.innerHTML = items.join('')
+}
+
+export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl?: boolean } = {}) {
+  const normalizedTabId = normalizeSideTab(tabId)
+  // Hide all side tabs, show the selected one
+  document.querySelectorAll('.side-panel__tab').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
+  })
+  const tab = document.getElementById(`side-tab-${normalizedTabId}`)
+  if (tab) tab.style.display = ''
+
+  // Update icon active state
+  document.querySelectorAll('.side-panel__icon').forEach(el => el.classList.remove('side-panel__icon--active'))
+  const icon = document.getElementById(`side-icon-${normalizedTabId}`)
+  if (icon) icon.classList.add('side-panel__icon--active')
+
+  document.querySelectorAll('[id^="side-header-"]').forEach(el => {
+    if (el.id === 'side-panel-header') return
+    if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
+      (el as HTMLElement).style.display = 'none'
+    }
+  })
+
+  const header = document.getElementById(`side-header-${normalizedTabId}`)
+  if (header) header.style.display = ''
+
+  const actions = document.getElementById(`side-header-actions-${normalizedTabId}`)
+  if (actions) actions.style.display = ''
+
+  if (options.persist !== false)
+    saveState({ 'active-side-tab': normalizedTabId }, false)
+
+  if (options.syncUrl !== false)
+    syncPlaygroundUrlState(normalizedTabId)
+
+  // Sync the code panel view and header
+  syncCodePanelView(normalizedTabId)
+  updateCSS()
+}
+
+/** Sync the code panel: show editor, snapshot, or empty view + update header accordingly. */
+function setEditorEmptyState(emptyView: HTMLElement, title: string, description: string, buttonLabel: string, action: string) {
+  emptyView.innerHTML = `
+    <div class="dvala-empty-view__content">
+      <div class="dvala-empty-view__title">${escapeHtml(title)}</div>
+      <div class="dvala-empty-view__description">${escapeHtml(description)}</div>
+      <button type="button" class="button button--primary dvala-empty-view__button" onclick="${action}">${escapeHtml(buttonLabel)}</button>
     </div>
   `
 }
 
-export function loadSavedProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  if (getState('current-program-id') === id) return
-  guardCodeReplacement(() => {
-    saveState({ 'dvala-code': program.code, 'context': program.context, 'current-program-id': program.id, 'dvala-code-edited': false })
-    elements.dvalaTextArea.value = program.code
-    elements.contextTextArea.value = program.context
-    syntaxOverlay.update()
-    syntaxOverlay.scrollContainer.scrollTo(0, 0)
-    updateCSS()
-    populateSavedProgramsList()
+function syncCodePanelView(sideTab?: string) {
+  const tab = sideTab ?? getCurrentSideTab()
+  const editorView = document.getElementById('dvala-editor-view')
+  const contextDetailView = document.getElementById('context-detail-view')
+  const snapshotView = document.getElementById('dvala-snapshot-view')
+  const emptyView = document.getElementById('dvala-empty-view')
+  const headerEditor = document.getElementById('dvala-header-editor')
+  const headerSnapshot = document.getElementById('dvala-header-snapshot')
+  const undoBtn = document.getElementById('dvala-code-undo-button')
+  const redoBtn = document.getElementById('dvala-code-redo-button')
+  const fileCloseBtn = document.getElementById('file-close-btn')
+  const closeBtn = document.getElementById('snapshot-close-btn')
+  if (!editorView || !snapshotView || !emptyView) return
+
+  // Hide all views
+  editorView.style.display = 'none'
+  if (contextDetailView) contextDetailView.style.display = 'none'
+  snapshotView.style.display = 'none'
+  emptyView.style.display = 'none'
+  if (headerEditor) headerEditor.style.display = 'none'
+  if (headerSnapshot) headerSnapshot.style.display = 'none'
+  if (undoBtn) undoBtn.style.display = 'none'
+  if (redoBtn) redoBtn.style.display = 'none'
+  if (fileCloseBtn) fileCloseBtn.style.display = 'none'
+  if (closeBtn) closeBtn.style.display = 'none'
+
+  if (tab === 'files') {
+    editorView.style.display = 'flex'
+    if (headerEditor) headerEditor.style.display = 'flex'
+    if (undoBtn) undoBtn.style.display = ''
+    if (redoBtn) redoBtn.style.display = ''
+    if (fileCloseBtn && getState('current-file-id')) fileCloseBtn.style.display = ''
+  } else if (tab === 'snapshots') {
+    if (activeSnapshotKey && snapshotViewStack.length === 0) {
+      const activeSnapshot = getActiveSnapshotDetails()
+      if (activeSnapshot) {
+        replaceSnapshotView(activeSnapshot.snapshot, activeSnapshot.label)
+        updateCSS()
+        return
+      }
+      activeSnapshotKey = null
+      populateSideSnapshotsList()
+    }
+
+    if (activeSnapshotKey && snapshotViewStack.length > 0) {
+      snapshotView.style.display = 'flex'
+      if (headerSnapshot) headerSnapshot.style.display = 'flex'
+      if (closeBtn) closeBtn.style.display = ''
+    } else {
+      emptyView.style.display = 'flex'
+      setEditorEmptyState(
+        emptyView,
+        'Select a snapshot to view',
+        'Import a snapshot here, or run a file and save a checkpoint to create a new entry.',
+        'Import snapshot',
+        'Playground.openImportSnapshotModal()',
+      )
+    }
+  } else {
+    const context = getParsedContext()
+    const bindingNames = getContextBindingNames(context)
+    const effectHandlerNames = getContextEffectHandlerNames(context)
+    ensureActiveContextSelection(context)
+
+    if (headerEditor) headerEditor.style.display = 'flex'
+    if (bindingNames.length > 0 || effectHandlerNames.length > 0) {
+      if (contextDetailView) contextDetailView.style.display = 'flex'
+      syncContextDetailEditor()
+    } else {
+      emptyView.style.display = 'flex'
+      emptyView.textContent = 'Select or add a context entry to edit'
+    }
+  }
+}
+
+function getCurrentSideTab(): string {
+  const active = document.querySelector('.side-panel__icon--active')
+  if (!active) return getState('active-side-tab')
+  const id = active.id
+  if (id === 'side-icon-snapshots') return 'snapshots'
+  if (id === 'side-icon-context') return 'context'
+  return 'files'
+}
+
+function getUniqueSavedFileName(name: string, existingNames: Iterable<string>): string {
+  const normalizedName = normalizeSavedFileName(name)
+  const usedNames = new Set(existingNames)
+  if (!usedNames.has(normalizedName)) return normalizedName
+
+  const baseName = stripSavedFileSuffix(normalizedName)
+  let n = 2
+  let candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
+  while (usedNames.has(candidate)) {
+    n++
+    candidate = `${baseName} (${n})${DVALA_FILE_SUFFIX}`
+  }
+  return candidate
+}
+
+/**
+ * Create a new untitled file and return its ID.
+ * Generates a unique name: "Untitled File.dvala", "Untitled File (2).dvala", etc.
+ */
+function createUntitledFile(code = '', context = ''): string {
+  const files = getSavedFiles()
+  const name = getUniqueSavedFileName('Untitled File', files.map(entry => entry.name))
+  const now = Date.now()
+  const createdFile: SavedFile = {
+    id: crypto.randomUUID(),
+    name,
+    code,
+    context,
+    createdAt: now,
+    updatedAt: now,
+    locked: false,
+  }
+  setSavedFiles([createdFile, ...files])
+  return createdFile.id
+}
+
+function populateExplorerFileList() {
+  const list = document.getElementById('explorer-file-list')
+  const stats = document.getElementById('explorer-file-stats')
+  if (!list) return
+
+  const files = getSavedFiles()
+  const currentId = getState('current-file-id')
+  const scratchCode = getScratchCode()
+
+  const renderScratchExplorerItem = () => {
+    const activeClass = currentId === null ? ' explorer-item--active' : ''
+
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.openScratch()" title="Scratch">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(SCRATCH_TITLE)}</span>
+      </div>`
+  }
+
+  const renderFileStats = () => {
+    if (!stats) return
+    // No stats panel when scratch is active
+    if (currentId === null) {
+      stats.style.display = 'none'
+      return
+    }
+    const currentFile = currentId ? files.find(entry => entry.id === currentId) : null
+    const currentTitle = currentFile ? currentFile.name : SCRATCH_TITLE
+    const currentCode = currentFile ? currentFile.code : scratchCode
+    const lockIcon = currentFile?.locked
+      ? `<span class="file-stats-panel__lock" title="Locked">${ICONS.lock}</span>`
+      : ''
+    const timeMarkup = currentFile
+      ? `<div class="file-stats-panel__time">${formatTime(new Date(currentFile.updatedAt))}</div>`
+      : '<div class="file-stats-panel__time">Local scratch</div>'
+
+    const tokenStream = tokenizeSource(currentCode)
+    const meaningfulTokens = tokenStream.tokens
+    let firstMeaningful = 0
+    while (firstMeaningful < meaningfulTokens.length) {
+      const type = meaningfulTokens[firstMeaningful]![0]
+      if (type !== 'Whitespace' && type !== 'SingleLineComment' && type !== 'MultiLineComment') break
+      firstMeaningful++
+    }
+    const lineCount = currentCode === '' ? 0 : currentCode.split('\n').length
+    const charCount = currentCode.length
+
+    stats.style.display = 'block'
+    stats.innerHTML = `
+      <div class="file-stats-panel__header">
+        <div class="file-stats-panel__title-row">
+          <span class="file-stats-panel__title" style="font-family:var(--font-mono);">${escapeHtml(currentTitle)}</span>
+          ${lockIcon}
+        </div>
+        ${timeMarkup}
+      </div>
+      <div class="file-stats-panel__meta">
+        <span>${lineCount} ${lineCount === 1 ? 'line' : 'lines'}</span>
+        <span>${charCount} chars</span>
+      </div>`
+  }
+
+  if (files.length === 0) {
+    list.innerHTML = `${renderScratchExplorerItem()}<div class="explorer-empty">No saved files</div>`
+    renderFileStats()
+    return
+  }
+
+  list.innerHTML = [renderScratchExplorerItem(), ...files.map(entry => {
+    const isActive = entry.id === currentId
+    const activeClass = isActive ? ' explorer-item--active' : ''
+    const lockHtml = entry.locked ? `<span class="explorer-item__lock" title="Locked">${ICONS.lock}</span>` : ''
+    const menuId = `explorer-menu-${entry.id}`
+    const menuItems: EditorMenuItem[] = [
+      { action: `Playground.closeExplorerMenus();Playground.renameFile('${entry.id}')`, icon: ICONS.edit, label: 'Rename' },
+      { action: `Playground.closeExplorerMenus();Playground.duplicateFile('${entry.id}')`, icon: ICONS.duplicate, label: 'Duplicate' },
+      { action: `Playground.closeExplorerMenus();Playground.toggleFileLock('${entry.id}')`, icon: entry.locked ? ICONS.unlock : ICONS.lock, label: entry.locked ? 'Unlock' : 'Lock' },
+      { action: `Playground.closeExplorerMenus();Playground.downloadFile('${entry.id}')`, icon: ICONS.download, label: 'Export' },
+      { action: `Playground.closeExplorerMenus();Playground.shareFile('${entry.id}')`, icon: ICONS.share, label: 'Share' },
+      { action: `Playground.closeExplorerMenus();Playground.deleteSavedFile('${entry.id}')`, danger: true, icon: ICONS.trash, label: 'Delete' },
+    ]
+    return `
+      <div class="explorer-item${activeClass}" onclick="Playground.loadSavedFile('${entry.id}')" title="${escapeHtml(entry.name)}">
+        <span class="explorer-item__name" style="font-family:var(--font-mono);">${escapeHtml(entry.name)}</span>
+        ${lockHtml}
+        <span class="explorer-item__actions" onclick="event.stopPropagation()">
+          <button class="explorer-item__btn" onclick="Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          ${renderEditorMenu({ id: menuId, items: menuItems })}
+        </span>
+      </div>`
+  })].join('')
+
+  renderFileStats()
+}
+
+export function renameFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  showNameInputModal('Rename file', file.name, name => {
+    const files = getSavedFiles()
+    const normalizedName = normalizeSavedFileName(name)
+    const duplicate = files.find(entry => entry.name === normalizedName && entry.id !== id)
+    const doRename = () => {
+      const updated = files.map(entry => entry.id === id ? { ...entry, name: normalizedName, updatedAt: Date.now() } : entry).filter(entry => !duplicate || entry.id !== duplicate.id)
+      setSavedFiles(updated)
+      updateCSS()
+      populateSavedFilesList()
+      showToast(`Renamed to "${normalizedName}"`)
+    }
+    if (duplicate) {
+      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doRename)
+    } else {
+      doRename()
+    }
   })
 }
 
-export function deleteSavedProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  const doDelete = async () => {
-    await animateProgramCardRemoval(id)
-    const updated = getSavedPrograms().filter(p => p.id !== id)
-    setSavedPrograms(updated)
-    if (getState('current-program-id') === id) {
-      saveState({ 'current-program-id': null })
+export function shareFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+
+  const dismiss = () => popModal()
+
+  const { panel, body } = createModalPanel({
+    size: 'small',
+    footerActions: [
+      { label: 'Cancel', action: dismiss },
+      {
+        label: 'Copy link',
+        primary: true,
+        action: () => {
+          const includeContext = (document.getElementById('share-include-context') as HTMLInputElement)?.checked ?? false
+          const sharedState: Record<string, unknown> = { 'dvala-code': file.code }
+          if (includeContext && file.context.trim()) {
+            sharedState['context'] = file.context
+          }
+          const base = document.querySelector('base')?.href ?? `${location.origin}/`
+          const encoded = btoa(encodeURIComponent(JSON.stringify(sharedState)))
+          const params = new URLSearchParams({
+            state: encoded,
+            view: getState('active-side-tab'),
+          })
+          params.set('fileId', file.id)
+          const href = `${base}playground?${params.toString()}`
+          if (href.length > MAX_URL_LENGTH) {
+            popModal()
+            showToast('File is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
+            return
+          }
+          void navigator.clipboard.writeText(href).then(() => {
+            showToast('Link copied to clipboard')
+          })
+          popModal()
+        },
+      },
+    ],
+  })
+
+  const content = document.createElement('div')
+  content.className = 'modal-body-row'
+  content.innerHTML = `
+    <p style="margin:0 0 var(--space-3);">Share <strong>${escapeHtml(file.name)}</strong> as a link.</p>
+    <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
+      <input type="checkbox" id="share-include-context" ${file.context.trim() ? '' : 'disabled'}>
+      Include context${file.context.trim() ? '' : ' (empty)'}
+    </label>
+  `
+  body.appendChild(content)
+
+  pushPanel(panel, 'Share file')
+}
+
+export function toggleExplorerMenu(menuId: string, btn: HTMLElement) {
+  toggleEditorMenu(menuId, btn, 2)
+}
+
+export function closeExplorerMenus() {
+  closeAllEditorMenus()
+}
+
+function clearActiveFileSelection() {
+  openScratchInEditor()
+}
+
+export function closeActiveFile() {
+  clearActiveFileSelection()
+}
+
+export function openScratch() {
+  openScratchInEditor({ focusCode: true })
+}
+
+export function saveScratch() {
+  if (!hasScratchContent()) return
+  saveAs()
+}
+
+export function clearScratch() {
+  const clear = () => {
+    saveState({
+      'scratch-code': '',
+      'scratch-context': '',
+    }, false)
+
+    if (isScratchActive())
+      openScratchInEditor({ code: '', context: '', focusCode: true, toast: 'Scratch cleared', force: true })
+    else {
+      populateExplorerFileList()
       updateCSS()
+      showToast('Scratch cleared')
     }
-    populateSavedProgramsList()
   }
-  if (program.locked) {
-    void showInfoModal('Delete program', 'This program is locked. Are you sure you want to permanently delete it?', doDelete)
+
+  if (!hasScratchContent()) {
+    clear()
+    return
+  }
+
+  void showInfoModal('Clear scratch', 'This will clear the scratch buffer.', clear)
+}
+
+export function deleteSavedFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  const doDelete = async () => {
+    await animateFileCardRemoval(id)
+    deleteFileHistory(id)
+    const updated = getSavedFiles().filter(p => p.id !== id)
+    setSavedFiles(updated)
+    if (getState('current-file-id') === id) {
+      clearActiveFileSelection()
+    }
+    populateSavedFilesList()
+  }
+  if (file.locked) {
+    void showInfoModal('Delete file', 'This file is locked. Are you sure you want to permanently delete it?', doDelete)
   } else {
     void doDelete()
   }
 }
 
-export function downloadProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
-  const filename = `${program.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
-  const { id: _id, ...exportData } = program
+export function downloadFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
+  const filename = `${file.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
+  const { id: _id, ...exportData } = file
   void saveFile(JSON.stringify(exportData, null, 2), filename)
 }
 
-export function toggleProgramLock(id: string) {
-  const programs = getSavedPrograms()
-  const updated = programs.map(p => p.id === id ? { ...p, locked: !p.locked } : p)
-  setSavedPrograms(updated)
-  populateSavedProgramsList()
-  if (id === getState('current-program-id')) updateCSS()
+export function toggleFileLock(id: string) {
+  const files = getSavedFiles()
+  const updated = files.map(entry => entry.id === id ? { ...entry, locked: !entry.locked } : entry)
+  setSavedFiles(updated)
+  populateSavedFilesList()
+  if (id === getState('current-file-id')) updateCSS()
 }
 
-export function clearAllSavedPrograms() {
-  clearAllPrograms()
-  saveState({ 'current-program-id': null })
-  populateSavedProgramsList()
-  updateCSS()
+export function clearAllSavedFiles() {
+  clearAllFiles()
+  clearAllFileHistories()
+  clearActiveFileSelection()
+  populateSavedFilesList()
 }
 
-export function clearUnlockedPrograms() {
-  void showInfoModal('Remove unlocked programs', 'This will delete all unlocked programs. Locked programs will be kept.', async () => {
-    const unlocked = getSavedPrograms().filter(p => !p.locked)
-    await Promise.all(unlocked.map(p => animateProgramCardRemoval(p.id)))
-    const kept = getSavedPrograms().filter(p => p.locked)
-    setSavedPrograms(kept)
-    if (!kept.find(p => p.id === getState('current-program-id'))) {
-      saveState({ 'current-program-id': null })
-      updateCSS()
+export function clearUnlockedFiles() {
+  void showInfoModal('Remove unlocked files', 'This will delete all unlocked files. Locked files will be kept.', async () => {
+    const unlocked = getSavedFiles().filter(p => !p.locked)
+    await Promise.all(unlocked.map(entry => animateFileCardRemoval(entry.id)))
+    unlocked.forEach(entry => deleteFileHistory(entry.id))
+    const kept = getSavedFiles().filter(p => p.locked)
+    setSavedFiles(kept)
+    if (!kept.find(p => p.id === getState('current-file-id'))) {
+      clearActiveFileSelection()
     }
-    populateSavedProgramsList()
-    showToast('Unlocked programs cleared')
+    populateSavedFilesList()
+    showToast('Unlocked files cleared')
   })
 }
 
-export function openImportProgramModal() {
+export function openImportFileModal() {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = '.json'
@@ -1322,32 +1793,27 @@ export function openImportProgramModal() {
         return
       }
       if (typeof parsed !== 'object' || parsed === null || !('name' in parsed) || !('code' in parsed)) {
-        void showInfoModal('Import failed', 'Not a valid program object (requires at least "name" and "code").')
+        void showInfoModal('Import failed', 'Not a valid file object (requires at least "name" and "code").')
         return
       }
       const raw = parsed as Record<string, unknown>
       const now = Date.now()
-      const existing = getSavedPrograms()
+      const existing = getSavedFiles()
       const existingNames = new Set(existing.map(p => p.name))
-      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported Program'
-      const uniqueName = (base: string) => {
-        if (!existingNames.has(base)) return base
-        let i = 1
-        while (existingNames.has(`${base} (${i})`)) i++
-        return `${base} (${i})`
-      }
-      const imported: SavedProgram = {
+      const rawName = typeof raw['name'] === 'string' ? raw['name'] : 'Imported File'
+      const name = getUniqueSavedFileName(rawName, existingNames)
+      const imported: SavedFile = {
         id: crypto.randomUUID(),
-        name: uniqueName(rawName),
+        name,
         code: typeof raw['code'] === 'string' ? raw['code'] : '',
         context: typeof raw['context'] === 'string' ? raw['context'] : '',
         createdAt: typeof raw['createdAt'] === 'number' ? raw['createdAt'] : now,
         updatedAt: typeof raw['updatedAt'] === 'number' ? raw['updatedAt'] : now,
         locked: typeof raw['locked'] === 'boolean' ? raw['locked'] : false,
       }
-      setSavedPrograms([imported, ...existing])
-      notifyProgramAdded()
-      populateSavedProgramsList({ animateNewId: imported.id })
+      setSavedFiles([imported, ...existing])
+
+      populateSavedFilesList({ animateNewId: imported.id })
       showToast(`Imported "${imported.name}"`)
     }
     reader.readAsText(file)
@@ -1355,72 +1821,90 @@ export function openImportProgramModal() {
   input.click()
 }
 
-export function duplicateProgram(id: string) {
-  const program = getSavedPrograms().find(p => p.id === id)
-  if (!program) return
+export function duplicateFile(id: string) {
+  const file = getSavedFiles().find(entry => entry.id === id)
+  if (!file) return
   const now = Date.now()
-  const copy: SavedProgram = {
+  const name = getUniqueSavedFileName(`Copy of ${file.name}`, getSavedFiles().map(entry => entry.name))
+  const copy: SavedFile = {
     id: crypto.randomUUID(),
-    name: `Copy of ${program.name}`,
-    code: program.code,
-    context: program.context,
+    name,
+    code: file.code,
+    context: file.context,
     createdAt: now,
     updatedAt: now,
     locked: false,
   }
-  setSavedPrograms([copy, ...getSavedPrograms()])
-  saveState({ 'dvala-code': copy.code, 'context': copy.context, 'current-program-id': copy.id })
+  setSavedFiles([copy, ...getSavedFiles()])
+  saveState({
+    'dvala-code': copy.code,
+    'context': copy.context,
+    'current-file-id': copy.id,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'dvala-code-scroll-top': 0,
+  }, false)
+  activateCurrentFileHistory(true)
   elements.dvalaTextArea.value = copy.code
-  elements.contextTextArea.value = copy.context
+  updateContextState(copy.context, false)
   syntaxOverlay.update()
-  notifyProgramAdded()
   updateCSS()
-  populateSavedProgramsList({ animateNewId: copy.id })
+  populateSavedFilesList({ animateNewId: copy.id })
   showToast(`Created "${copy.name}"`)
 }
 
 export function saveAs() {
-  const currentId = getState('current-program-id')
-  const currentProgram = currentId ? getSavedPrograms().find(p => p.id === currentId) : null
-  const defaultName = currentProgram ? `Copy of ${currentProgram.name}` : ''
+  const currentId = getState('current-file-id')
+  const currentFile = currentId ? getSavedFiles().find(entry => entry.id === currentId) : null
+  const defaultName = currentFile ? `Copy of ${currentFile.name}` : ''
   showNameInputModal('Save as', defaultName, name => {
-    const programs = getSavedPrograms()
-    const duplicate = programs.find(p => p.name === name)
+    const files = getSavedFiles()
+    const normalizedName = normalizeSavedFileName(name)
+    const duplicate = files.find(entry => entry.name === normalizedName)
     const doSave = () => {
-      const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
+      const filtered = duplicate ? files.filter(entry => entry.id !== duplicate.id) : files
       const now = Date.now()
-      const newProgram: SavedProgram = {
+      if (!currentId)
+        persistScratchFromCurrentState()
+      const createdFile: SavedFile = {
         id: crypto.randomUUID(),
-        name,
+        name: normalizedName,
         code: getState('dvala-code'),
         context: getState('context'),
         createdAt: now,
         updatedAt: now,
         locked: false,
       }
-      setSavedPrograms([newProgram, ...filtered])
-      saveState({ 'current-program-id': newProgram.id })
-      notifyProgramAdded()
+      setSavedFiles([createdFile, ...filtered])
+      saveState({ 'current-file-id': createdFile.id }, false)
+      activateCurrentFileHistory(true)
+
       updateCSS()
-      populateSavedProgramsList({ animateNewId: newProgram.id })
-      showToast(`Saved as "${name}"`)
+      populateSavedFilesList({ animateNewId: createdFile.id })
+      showToast(`Saved as "${normalizedName}"`)
     }
     if (duplicate) {
-      void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
+      void showInfoModal('Replace existing file?', `"${normalizedName}" already exists. Replace it?`, doSave)
     } else {
       doSave()
     }
   })
 }
 
-function showNameInputModal(title: string, defaultValue: string, onConfirm: (name: string) => void, onCancel?: () => void) {
+function showNameInputModal(
+  title: string,
+  defaultValue: string,
+  onConfirm: (name: string) => void,
+  onCancel?: () => void,
+  options?: { prefix?: string },
+) {
   const dismiss = () => { popModal(); onCancel?.() }
 
   const input = document.createElement('input')
   input.type = 'text'
   input.value = defaultValue
   input.spellcheck = false
-  input.style.cssText = 'background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;'
+  input.style.cssText = `background:var(--color-surface-dim); border:1px solid var(--color-scrollbar-track); border-radius:4px; padding:0.4rem 0.6rem; color:var(--color-text); font-size:0.9rem; outline:none; width:100%; box-sizing:border-box;${options?.prefix ? ' border-top-left-radius:0; border-bottom-left-radius:0; border-left:none;' : ''}`
 
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
@@ -1453,6 +1937,18 @@ function showNameInputModal(title: string, defaultValue: string, onConfirm: (nam
 
   const row = document.createElement('div')
   row.className = 'modal-body-row'
+  if (options?.prefix) {
+    row.style.display = 'flex'
+    row.style.alignItems = 'stretch'
+
+    const prefix = document.createElement('span')
+    prefix.textContent = options.prefix
+    prefix.setAttribute('aria-hidden', 'true')
+    prefix.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; padding:0 0.65rem; border:1px solid var(--color-scrollbar-track); border-right:none; border-radius:4px 0 0 4px; background:var(--color-surface); color:var(--color-text-dim); font-family:var(--font-mono); font-size:0.9rem; flex-shrink:0; user-select:none;'
+
+    row.appendChild(prefix)
+  }
+
   row.appendChild(input)
   body.appendChild(row)
 
@@ -1460,211 +1956,130 @@ function showNameInputModal(title: string, defaultValue: string, onConfirm: (nam
   setTimeout(() => { input.focus(); input.select() }, 0)
 }
 
-// ─── Program title editing ────────────────────────────────────────────────────
+export function openContextJsonModal() {
+  const dismiss = () => popModal()
+  let formattedContext: string
 
-export function onProgramTitleClick(event: MouseEvent) {
-  event.stopPropagation()
-  const currentId = getState('current-program-id')
-  if (currentId && getSavedPrograms().find(p => p.id === currentId)?.locked) return
-  const input = elements.dvalaCodeTitleInput
-  const span = elements.dvalaCodeTitleString
-  input.value = currentId ? elements.dvalaCodeTitleString.textContent ?? '' : ''
-  span.style.display = 'none'
-  input.style.display = ''
-  input.focus()
-  input.select()
-}
+  try {
+    const runtimeContext = getRuntimeContextObject(getParsedContext())
 
-export function onProgramTitleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    elements.dvalaCodeTitleInput.blur()
-  } else if (event.key === 'Escape') {
-    elements.dvalaCodeTitleInput.style.display = 'none'
-    elements.dvalaCodeTitleString.style.display = ''
+    formattedContext = Object.keys(runtimeContext).length > 0
+      ? JSON.stringify(runtimeContext, null, 2)
+      : '{}'
+  } catch {
+    formattedContext = getState('context')
   }
-}
 
-export function onProgramTitleBlur() {
-  const input = elements.dvalaCodeTitleInput
-  const name = input.value.trim()
-  input.style.display = 'none'
-  elements.dvalaCodeTitleString.style.display = ''
-  if (!name) return
-  commitProgramName(name)
-}
+  const { panel, body } = createModalPanel({
+    size: 'large',
+    footerActions: [
+      {
+        label: 'Copy',
+        action: () => {
+          void navigator.clipboard.writeText(formattedContext)
+          showToast('Context JSON copied to clipboard')
+        },
+      },
+      { label: 'Close', action: dismiss },
+    ],
+  })
 
-function commitProgramName(name: string) {
-  const programs = getSavedPrograms()
-  const currentId = getState('current-program-id')
-  const duplicate = programs.find(p => p.name === name && p.id !== currentId)
+  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
+  if (copyButton)
+    copyButton.innerHTML = `${copyIcon} Copy`
 
-  if (duplicate) {
-    void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it with the current code and context?`, () => {
-      const without = programs.filter(p => p.id !== duplicate.id)
-      saveOrRenameProgram(name, without, currentId)
-    })
-  } else {
-    saveOrRenameProgram(name, programs, currentId)
-  }
-}
+  body.style.padding = '0'
 
-function saveOrRenameProgram(name: string, programs: SavedProgram[], currentId: string | null) {
-  const now = Date.now()
-  if (currentId) {
-    const updated = programs.map(p =>
-      p.id === currentId
-        ? { ...p, name, code: getState('dvala-code'), context: getState('context'), updatedAt: now }
-        : p,
-    )
-    setSavedPrograms(updated)
-  } else {
-    const newProgram: SavedProgram = {
-      id: crypto.randomUUID(),
-      name,
-      code: getState('dvala-code'),
-      context: getState('context'),
-      createdAt: now,
-      updatedAt: now,
-      locked: false,
-    }
-    setSavedPrograms([newProgram, ...programs])
-    saveState({ 'current-program-id': newProgram.id })
-    notifyProgramAdded()
-    updateCSS()
-    populateSavedProgramsList({ animateNewId: newProgram.id })
-    return
-  }
-  updateCSS()
-  populateSavedProgramsList()
+  const pre = document.createElement('pre')
+  pre.className = 'fancy-scroll'
+  pre.textContent = formattedContext
+  pre.setAttribute('aria-label', 'Full context JSON')
+  pre.tabIndex = 0
+  pre.style.margin = '0'
+  pre.style.minHeight = '26rem'
+  pre.style.height = '60vh'
+  pre.style.padding = 'var(--space-2)'
+  pre.style.overflow = 'auto'
+  pre.style.background = 'var(--color-code-bg)'
+  pre.style.color = 'var(--color-text)'
+  pre.style.fontFamily = 'var(--font-mono)'
+  pre.style.fontSize = 'var(--font-size-sm)'
+  pre.style.whiteSpace = 'pre'
+  body.appendChild(pre)
+
+  pushPanel(panel, 'Context JSON')
+  setTimeout(() => {
+    pre.focus()
+  }, 0)
 }
 
 // ─── Auto-save ────────────────────────────────────────────────────────────────
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+// Timer to clear the scratch "edited" indicator after a short delay (mirrors auto-save UX)
+let scratchEditedTimer: ReturnType<typeof setTimeout> | null = null
+const PENDING_INDICATOR_DELAY = 1000
+
+function scheduleScratchEditedClear() {
+  // dvala-code-edited persists as the durable "user touched scratch" flag.
+  // The timer only drives the transient pending indicator via scratchEditedTimer !== null.
+  saveState({ 'dvala-code-edited': true }, false)
+  if (scratchEditedTimer) clearTimeout(scratchEditedTimer)
+  scratchEditedTimer = setTimeout(() => {
+    scratchEditedTimer = null
+    updateCSS()
+  }, PENDING_INDICATOR_DELAY)
+}
+
+function cancelScratchEditedClear() {
+  if (!scratchEditedTimer) return
+  clearTimeout(scratchEditedTimer)
+  scratchEditedTimer = null
+}
 
 function flushPendingAutoSave() {
   if (!autoSaveTimer) return
   clearTimeout(autoSaveTimer)
   autoSaveTimer = null
-  const id = getState('current-program-id')
+  const id = getState('current-file-id')
   if (id) {
-    const updated = getSavedPrograms().map(p =>
+    const updated = getSavedFiles().map(p =>
       p.id === id
         ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
         : p,
     )
-    setSavedPrograms(updated)
+    setSavedFiles(updated)
   }
 }
 
 /**
- * Guards a code-replacing action.
- * - If a saved program is active, flush any pending auto-save and detach from it
- *   (so the saved program is not overwritten), then proceed.
- * - If the editor has unsaved edits (no program ID), show a modal offering to
- *   save, discard, or cancel.
+ * Guards a code-replacing action that switches the editor to scratch mode.
+ * Flushes any pending auto-save for the current file, then proceeds.
+ * Scratch content is guarded separately in openScratchInEditor.
  */
 function guardCodeReplacement(proceed: () => void) {
-  if (getState('current-program-id') !== null) {
-    // Saved program is open — flush auto-save so nothing is lost,
-    // then detach so the incoming code doesn't overwrite the saved program.
-    flushPendingAutoSave()
-    saveState({ 'current-program-id': null, 'dvala-code-edited': false })
-    updateCSS()
-    proceed()
-    return
-  }
-  // Only show the modal if the user has actually edited an untitled program
-  if (getState('dvala-code-edited') && getState('dvala-code').trim()) {
-    showSaveOrDiscardModal(proceed)
-    return
-  }
+  flushPendingAutoSave()
   proceed()
 }
 
-/**
- * Shows a modal asking the user to save the current unsaved program, discard it,
- * or cancel the action.
- */
-function showSaveOrDiscardModal(proceed: () => void) {
-  const { panel, body } = createModalPanel({
-    size: 'small',
-    footerActions: [
-      { label: 'Cancel Import', action: () => popModal() },
-      {
-        label: 'Discard Program',
-        action: () => {
-          popModal()
-          proceed()
-        },
-      },
-      {
-        label: 'Save Program',
-        primary: true,
-        action: () => {
-          popModal()
-          // Show the save-as name input; after saving, proceed with the guarded action.
-          // If cancelled, re-show this modal.
-          showNameInputModal('Save program', '', name => {
-            const programs = getSavedPrograms()
-            const duplicate = programs.find(p => p.name === name)
-            const doSave = () => {
-              const filtered = duplicate ? programs.filter(p => p.id !== duplicate.id) : programs
-              const now = Date.now()
-              const newProgram: SavedProgram = {
-                id: crypto.randomUUID(),
-                name,
-                code: getState('dvala-code'),
-                context: getState('context'),
-                createdAt: now,
-                updatedAt: now,
-                locked: false,
-              }
-              setSavedPrograms([newProgram, ...filtered])
-              notifyProgramAdded()
-              updateCSS()
-              populateSavedProgramsList({ animateNewId: newProgram.id })
-              showToast(`Saved as "${name}"`)
-              proceed()
-            }
-            if (duplicate) {
-              void showInfoModal('Replace existing program?', `"${name}" already exists. Replace it?`, doSave)
-            } else {
-              doSave()
-            }
-          }, () => showSaveOrDiscardModal(proceed))
-        },
-      },
-    ],
-  })
-
-  const messageEl = document.createElement('div')
-  messageEl.className = 'modal-body-row'
-  messageEl.textContent = 'The current program has unsaved changes.'
-  body.appendChild(messageEl)
-
-  pushPanel(panel, 'Unsaved program')
-}
-
 function scheduleAutoSave() {
-  const currentId = getState('current-program-id')
+  const currentId = getState('current-file-id')
   if (!currentId) return
-  if (getSavedPrograms().find(p => p.id === currentId)?.locked) return
+  if (getSavedFiles().find(p => p.id === currentId)?.locked) return
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     autoSaveTimer = null
-    const id = getState('current-program-id')
+    const id = getState('current-file-id')
     if (!id) return
-    const updated = getSavedPrograms().map(p =>
+    const updated = getSavedFiles().map(p =>
       p.id === id
         ? { ...p, code: getState('dvala-code'), context: getState('context'), updatedAt: Date.now() }
         : p,
     )
-    setSavedPrograms(updated)
-    populateSavedProgramsList()
+    setSavedFiles(updated)
+    populateSavedFilesList()
     updateCSS()
-  }, 3000)
+  }, PENDING_INDICATOR_DELAY)
   updateCSS()
 }
 
@@ -1672,14 +2087,22 @@ export function openSavedSnapshot(index: number) {
   const entries = getSavedSnapshots()
   const entry = entries[index]
   if (!entry) return
-  void openSnapshotModal(entry.snapshot)
+  activeSnapshotKey = `saved:${index}`
+  populateSideSnapshotsList()
+  showSideTab('snapshots')
+  replaceSnapshotView(entry.snapshot, getSavedSnapshotLabel(entry, index))
+  syncPlaygroundUrlState('snapshots')
 }
 
 export function openTerminalSnapshot(index: number) {
   const entries = getTerminalSnapshots()
   const entry = entries[index]
   if (!entry) return
-  void openSnapshotModal(entry.snapshot)
+  activeSnapshotKey = `terminal:${index}`
+  populateSideSnapshotsList()
+  showSideTab('snapshots')
+  replaceSnapshotView(entry.snapshot, getTerminalSnapshotLabel(index))
+  syncPlaygroundUrlState('snapshots')
 }
 
 export function runSavedSnapshot(index: number) {
@@ -1699,7 +2122,7 @@ export function saveTerminalSnapshotToSaved(index: number) {
     const deduped = savedEntries.filter(e => e.snapshot.id !== entry.snapshot.id)
     deduped.unshift({ kind: 'saved', snapshot: entry.snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(deduped)
-    notifySnapshotAdded()
+
     // Animate removal from terminal snapshots
     await animateCardRemoval('terminal', index)
     entries.splice(index, 1)
@@ -1790,7 +2213,17 @@ export function closeAddContextMenu() {
 
 export function share() {
   const base = document.querySelector('base')?.href ?? `${location.origin}/`
-  const href = `${base}?state=${encodeState()}`
+  const params = new URLSearchParams({
+    state: encodeState(),
+    view: getState('active-side-tab'),
+  })
+  const currentFileId = getState('current-file-id')
+  if (currentFileId)
+    params.set('fileId', currentFileId)
+  const currentSnapshotId = getActiveSnapshotUrlId()
+  if (currentSnapshotId)
+    params.set('snapshotId', currentSnapshotId)
+  const href = `${base}playground?${params.toString()}`
   if (href.length > MAX_URL_LENGTH) {
     showToast('Content is too large to share as a URL. Try reducing the code or context size.', { severity: 'error' })
     return
@@ -1838,9 +2271,6 @@ function populateSidebarVersion(): void {
 function onDocumentClick(event: Event) {
   const target = event.target as HTMLInputElement | undefined
 
-  if (!target?.closest('#more-menu') && elements.moreMenu.style.display === 'block')
-    closeMoreMenu()
-
   if (!target?.closest('#add-context-menu') && elements.addContextMenu.style.display === 'block')
     closeAddContextMenu()
 
@@ -1854,54 +2284,42 @@ function onDocumentClick(event: Event) {
 }
 
 function applyLayout() {
-  const { windowWidth, windowHeight } = calculateDimensions()
+  calculateDimensions()
 
-  const playgroundHeight = Math.min(getState('playground-height'), windowHeight)
-  const sidebarWidth = getState('sidebar-width')
+  // Set grid column widths for the editor-top area
+  const sidePercent = getState('resize-divider-1-percent')
+  const editorTop = document.getElementById('editor-top')
+  if (editorTop) {
+    editorTop.style.gridTemplateColumns = `auto ${sidePercent}% 5px 1fr`
+  }
 
-  const contextPanelWidth = (windowWidth * getState('resize-divider-1-percent')) / 100
-  const outputPanelWidth = (windowWidth * (100 - getState('resize-divider-2-percent'))) / 100
-  const dvalaPanelWidth = windowWidth - contextPanelWidth - outputPanelWidth
-
-  elements.playground.style.height = `${playgroundHeight}px`
-  elements.contextPanel.style.width = `${contextPanelWidth}px`
-  elements.dvalaPanel.style.width = `${dvalaPanelWidth}px`
-  elements.outputPanel.style.width = `${outputPanelWidth}px`
-  elements.sidebar.style.width = `${sidebarWidth}px`
-  elements.sidebar.style.bottom = `${playgroundHeight}px`
-  elements.mainPanel.style.left = `${sidebarWidth + 5}px`
-  elements.mainPanel.style.bottom = `${playgroundHeight}px`
-  elements.resizeSidebar.style.left = `${sidebarWidth}px`
-  elements.resizeSidebar.style.bottom = `${playgroundHeight}px`
+  // Vertical split: output height as percentage of tab height
+  const tabPlayground = document.getElementById('tab-playground')
+  if (tabPlayground && elements.outputPanel) {
+    const tabHeight = tabPlayground.clientHeight
+    const outputHeight = (tabHeight * (100 - getState('resize-divider-2-percent'))) / 100
+    elements.outputPanel.style.height = `${outputHeight}px`
+  }
   elements.wrapper.style.display = 'block'
 }
 
 const layout = throttle(applyLayout)
 
-export const undoContextHistory = throttle(() => {
-  ignoreSelectionChange = true
-  if (undoContext()) {
-    applyState()
-    focusContext()
-  }
-  setTimeout(() => ignoreSelectionChange = false)
-})
-
-export const redoContextHistory = throttle(() => {
-  ignoreSelectionChange = true
-  if (redoContext()) {
-    applyState()
-    focusContext()
-  }
-  setTimeout(() => ignoreSelectionChange = false)
-})
-
 export const undoDvalaCodeHistory = throttle(() => {
   if (elements.dvalaTextArea.readOnly) return
   ignoreSelectionChange = true
-  if (undoDvalaCode()) {
+  try {
+    const historyEntry = dvalaCodeHistory.undo()
+    persistActiveDvalaCodeHistory()
+    saveState({
+      'dvala-code': historyEntry.text,
+      'dvala-code-selection-start': historyEntry.selectionStart,
+      'dvala-code-selection-end': historyEntry.selectionEnd,
+    }, false)
     applyState()
     focusDvalaCode()
+  } catch {
+    // no-op
   }
   setTimeout(() => ignoreSelectionChange = false)
 })
@@ -1909,9 +2327,18 @@ export const undoDvalaCodeHistory = throttle(() => {
 export const redoDvalaCodeHistory = throttle(() => {
   if (elements.dvalaTextArea.readOnly) return
   ignoreSelectionChange = true
-  if (redoDvalaCode()) {
+  try {
+    const historyEntry = dvalaCodeHistory.redo()
+    persistActiveDvalaCodeHistory()
+    saveState({
+      'dvala-code': historyEntry.text,
+      'dvala-code-selection-start': historyEntry.selectionStart,
+      'dvala-code-selection-end': historyEntry.selectionEnd,
+    }, false)
     applyState()
     focusDvalaCode()
+  } catch {
+    // no-op
   }
   setTimeout(() => ignoreSelectionChange = false)
 })
@@ -1928,7 +2355,11 @@ function updateStorageUsage() {
     localEl.textContent = formatStorageSize(bytes)
   }
   if (idbEl) {
-    const bytes = new TextEncoder().encode(JSON.stringify({ saved: getSavedSnapshots(), terminal: getTerminalSnapshots() })).length
+    const bytes = new TextEncoder().encode(JSON.stringify({
+      saved: getSavedSnapshots(),
+      terminal: getTerminalSnapshots(),
+      files: getSavedFiles(),
+    })).length
     idbEl.textContent = formatStorageSize(bytes)
   }
 }
@@ -1942,28 +2373,31 @@ export function clearLocalStorageData() {
 }
 
 export function clearIndexedDbData() {
-  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved programs.', () => {
+  void showInfoModal('Clear IndexedDB', 'This will delete all saved snapshots, recent snapshots, and saved files.', () => {
     clearAllSnapshots()
-    clearAllPrograms()
-    saveState({ 'current-program-id': null })
+    clearAllFiles()
+    clearAllFileHistories()
+    saveState({ 'current-file-id': null }, false)
+    activateCurrentFileHistory(true)
     populateSnapshotsList()
-    populateSavedProgramsList()
+    populateSavedFilesList()
     updateCSS()
     updateStorageUsage()
   })
 }
 
-function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom') {
+function updateContextState(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', syncDetail = true) {
+  const previousValue = getState('context')
   elements.contextTextArea.value = value
 
-  if (pushToHistory) {
+  if (pushToHistory && value !== previousValue) {
     saveState({
       'context': value,
       'context-selection-start': elements.contextTextArea.selectionStart,
       'context-selection-end': elements.contextTextArea.selectionEnd,
     }, true)
     scheduleAutoSave()
-  } else {
+  } else if (value !== previousValue) {
     saveState({ context: value }, false)
   }
 
@@ -1971,6 +2405,14 @@ function setContext(value: string, pushToHistory: boolean, scroll?: 'top' | 'bot
     elements.contextTextArea.scrollTo(0, 0)
   else if (scroll === 'bottom')
     elements.contextTextArea.scrollTo({ top: elements.contextTextArea.scrollHeight, behavior: 'smooth' })
+
+  renderContextEntryList()
+  if (syncDetail && getCurrentSideTab() === 'context')
+    syncCodePanelView('context')
+  else if (syncDetail)
+    syncContextDetailEditor()
+
+  updateCSS()
 }
 
 function getParsedContext(): Record<string, unknown> {
@@ -1979,6 +2421,822 @@ function getParsedContext(): Record<string, unknown> {
   } catch (_e) {
     return {}
   }
+}
+
+function persistActiveContextSelection(syncUrl = getCurrentSideTab() === 'context') {
+  saveState({
+    'current-context-binding-name': activeContextBindingName,
+    'current-context-entry-kind': activeContextEntryKind,
+  }, false)
+  if (syncUrl)
+    syncPlaygroundUrlState('context')
+}
+
+function getContextBindings(context: Record<string, unknown>): UnknownRecord {
+  const bindings = context.bindings
+  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings))
+    return {}
+
+  return asUnknownRecord(bindings)
+}
+
+function compareContextEntryNames(left: string, right: string): number {
+  return left.toLowerCase().localeCompare(right.toLowerCase())
+}
+
+function sortContextEffectHandlers(handlers: StoredContextEffectHandler[]): StoredContextEffectHandler[] {
+  return [...handlers].sort((left, right) => compareContextEntryNames(left.pattern, right.pattern))
+}
+
+function getContextEffectHandlers(context: Record<string, unknown>): StoredContextEffectHandler[] {
+  const effectHandlers = context[CONTEXT_EFFECT_HANDLERS_KEY]
+  if (!Array.isArray(effectHandlers))
+    return []
+
+  return effectHandlers.filter((entry): entry is StoredContextEffectHandler => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+      return false
+
+    const record = asUnknownRecord(entry)
+    return typeof record.pattern === 'string' && Object.prototype.hasOwnProperty.call(record, 'handler')
+  })
+}
+
+function getContextEffectHandler(context: Record<string, unknown>, pattern: string): StoredContextEffectHandler | null {
+  return getContextEffectHandlers(context).find(handler => handler.pattern === pattern) ?? null
+}
+
+function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
+  const runtimeContext = { ...context }
+  const runtimeBindings = Object.fromEntries(
+    Object.entries(getContextBindings(context)).filter(([name]) => isContextBindingActive(context, name)),
+  )
+  const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) => isContextEffectHandlerActive(context, pattern))
+
+  if (Object.keys(runtimeBindings).length > 0)
+    runtimeContext.bindings = runtimeBindings
+  else
+    delete runtimeContext.bindings
+
+  if (runtimeEffectHandlers.length > 0)
+    runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
+  else
+    delete runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY]
+
+  delete runtimeContext[CONTEXT_UI_STATE_KEY]
+  return runtimeContext
+}
+
+function getContextUiState(context: Record<string, unknown>): UnknownRecord {
+  const uiState = context[CONTEXT_UI_STATE_KEY]
+  if (!uiState || typeof uiState !== 'object' || Array.isArray(uiState))
+    return {}
+
+  return asUnknownRecord(uiState)
+}
+
+function getContextUiSectionState(context: Record<string, unknown>, key: ContextUiSectionKey): UnknownRecord {
+  const section = getContextUiState(context)[key]
+  if (!section || typeof section !== 'object' || Array.isArray(section))
+    return {}
+
+  return asUnknownRecord(section)
+}
+
+function getContextBindingUiState(context: Record<string, unknown>): UnknownRecord {
+  return getContextUiSectionState(context, 'bindings')
+}
+
+function getContextEffectHandlerUiState(context: Record<string, unknown>): UnknownRecord {
+  return getContextUiSectionState(context, 'effectHandlers')
+}
+
+function getContextBindingUiEntry(context: Record<string, unknown>, name: string): UnknownRecord {
+  const bindingEntry = getContextBindingUiState(context)[name]
+  if (!bindingEntry || typeof bindingEntry !== 'object' || Array.isArray(bindingEntry))
+    return {}
+
+  return asUnknownRecord(bindingEntry)
+}
+
+function getContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string): UnknownRecord {
+  const handlerEntry = getContextEffectHandlerUiState(context)[pattern]
+  if (!handlerEntry || typeof handlerEntry !== 'object' || Array.isArray(handlerEntry))
+    return {}
+
+  return asUnknownRecord(handlerEntry)
+}
+
+function getContextBindingInvalidDraft(context: Record<string, unknown>, name: string): string | null {
+  const invalidDraft = getContextBindingUiEntry(context, name).invalidJson
+  return typeof invalidDraft === 'string' ? invalidDraft : null
+}
+
+function getContextEffectHandlerInvalidDraft(context: Record<string, unknown>, pattern: string): string | null {
+  const invalidDraft = getContextEffectHandlerUiEntry(context, pattern).invalidHandler
+  return typeof invalidDraft === 'string' ? invalidDraft : null
+}
+
+function getContextBindingNames(context: Record<string, unknown>): string[] {
+  const bindingNames = Object.keys(getContextBindings(context))
+  const invalidDraftNames = Object.keys(getContextBindingUiState(context)).filter(name => getContextBindingInvalidDraft(context, name) !== null)
+
+  return [...new Set([...bindingNames, ...invalidDraftNames])]
+    .sort(compareContextEntryNames)
+}
+
+function getContextEffectHandlerNames(context: Record<string, unknown>): string[] {
+  const handlerNames = getContextEffectHandlers(context).map(({ pattern }) => pattern)
+  const invalidDraftNames = Object.keys(getContextEffectHandlerUiState(context)).filter(name => getContextEffectHandlerInvalidDraft(context, name) !== null)
+
+  return [...new Set([...handlerNames, ...invalidDraftNames])]
+    .sort(compareContextEntryNames)
+}
+
+function updateContextUiSectionEntry(context: Record<string, unknown>, key: ContextUiSectionKey, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  const uiState = { ...getContextUiState(context) }
+  const sectionState = { ...getContextUiSectionState(context, key) }
+  const currentEntry = sectionState[name]
+  const nextEntry = updater(currentEntry && typeof currentEntry === 'object' && !Array.isArray(currentEntry) ? { ...asUnknownRecord(currentEntry) } : {})
+
+  if (Object.keys(nextEntry).length > 0)
+    sectionState[name] = nextEntry
+  else
+    delete sectionState[name]
+
+  if (Object.keys(sectionState).length > 0)
+    uiState[key] = sectionState
+  else
+    delete uiState[key]
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+}
+
+function updateContextBindingUiEntry(context: Record<string, unknown>, name: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  updateContextUiSectionEntry(context, 'bindings', name, updater)
+}
+
+function updateContextEffectHandlerUiEntry(context: Record<string, unknown>, pattern: string, updater: (entry: UnknownRecord) => UnknownRecord) {
+  updateContextUiSectionEntry(context, 'effectHandlers', pattern, updater)
+}
+
+function isContextBindingActive(context: Record<string, unknown>, name: string): boolean {
+  const bindingState = getContextBindingUiState(context)[name]
+  if (!bindingState || typeof bindingState !== 'object' || Array.isArray(bindingState))
+    return true
+
+  return asUnknownRecord(bindingState).active !== false
+}
+
+function isContextEffectHandlerActive(context: Record<string, unknown>, pattern: string): boolean {
+  const handlerState = getContextEffectHandlerUiState(context)[pattern]
+  if (!handlerState || typeof handlerState !== 'object' || Array.isArray(handlerState))
+    return true
+
+  return asUnknownRecord(handlerState).active !== false
+}
+
+function formatContextJson(context: Record<string, unknown>): string {
+  const nextContext = { ...context }
+  const uiState = getContextUiState(nextContext)
+  const bindingUiState = getContextBindingUiState(nextContext)
+  const effectHandlerUiState = getContextEffectHandlerUiState(nextContext)
+
+  if (Object.keys(bindingUiState).length > 0)
+    uiState.bindings = bindingUiState
+  else
+    delete uiState.bindings
+
+  if (Object.keys(effectHandlerUiState).length > 0)
+    uiState.effectHandlers = effectHandlerUiState
+  else
+    delete uiState.effectHandlers
+
+  if (Object.keys(uiState).length > 0)
+    nextContext[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete nextContext[CONTEXT_UI_STATE_KEY]
+
+  return JSON.stringify(nextContext, null, 2)
+}
+
+function contextEntryExists(context: Record<string, unknown>, kind: ContextEntryKind, name: string): boolean {
+  if (kind === 'binding')
+    return getContextBindingNames(context).includes(name)
+
+  return getContextEffectHandlerNames(context).includes(name)
+}
+
+function ensureActiveContextSelection(context: Record<string, unknown>) {
+  const bindingNames = getContextBindingNames(context)
+  const effectHandlerNames = getContextEffectHandlerNames(context)
+  const preferredName = activeContextBindingName ?? getState('current-context-binding-name')
+  const preferredKind = activeContextEntryKind ?? getState('current-context-entry-kind')
+  if (preferredName && contextEntryExists(context, preferredKind, preferredName)) {
+    if (activeContextBindingName !== preferredName || activeContextEntryKind !== preferredKind) {
+      activeContextBindingName = preferredName
+      activeContextEntryKind = preferredKind
+      persistActiveContextSelection()
+    }
+    return
+  }
+
+  const nextSelection = bindingNames.length > 0
+    ? { kind: 'binding' as const, name: bindingNames[0] ?? null }
+    : { kind: 'effect-handler' as const, name: effectHandlerNames[0] ?? null }
+
+  if (activeContextBindingName !== nextSelection.name || activeContextEntryKind !== nextSelection.kind) {
+    activeContextBindingName = nextSelection.name
+    activeContextEntryKind = nextSelection.kind
+    persistActiveContextSelection()
+  }
+}
+
+function setContextBindingActive(context: Record<string, unknown>, name: string, active: boolean) {
+  updateContextBindingUiEntry(context, name, entry => {
+    if (active)
+      delete entry.active
+    else
+      entry.active = false
+    return entry
+  })
+}
+
+function setContextEffectHandlerActive(context: Record<string, unknown>, pattern: string, active: boolean) {
+  updateContextEffectHandlerUiEntry(context, pattern, entry => {
+    if (active)
+      delete entry.active
+    else
+      entry.active = false
+    return entry
+  })
+}
+
+function syncContextDetailValidity(isValid: boolean) {
+  elements.contextDetailTextArea.toggleAttribute('aria-invalid', !isValid)
+}
+
+function isStoredContextBindingJsonValid(value: unknown): boolean {
+  try {
+    const serialized = JSON.stringify(value)
+    if (serialized === undefined)
+      return false
+    JSON.parse(serialized)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function compileContextEffectHandlerSource(value: string): EffectHandler {
+  const fn = eval(`(${value})`) as unknown
+  if (typeof fn !== 'function')
+    throw new TypeError('Effect handler must be a JavaScript function')
+
+  return fn as EffectHandler
+}
+
+function isStoredContextEffectHandlerValid(value: unknown): boolean {
+  if (typeof value !== 'string')
+    return false
+
+  try {
+    compileContextEffectHandlerSource(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function hasContextBindingParseError(context: Record<string, unknown>, name: string): boolean {
+  const bindings = getContextBindings(context)
+  if (getContextBindingInvalidDraft(context, name) !== null)
+    return true
+
+  if (!Object.prototype.hasOwnProperty.call(bindings, name))
+    return false
+
+  if (activeContextBindingName === name && contextDetailHasParseError)
+    return true
+
+  return !isStoredContextBindingJsonValid(bindings[name])
+}
+
+function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
+  const handler = getContextEffectHandler(context, pattern)
+  if (getContextEffectHandlerInvalidDraft(context, pattern) !== null)
+    return true
+
+  if (!handler)
+    return false
+
+  if (activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern && contextDetailHasParseError)
+    return true
+
+  return !isStoredContextEffectHandlerValid(handler.handler)
+}
+
+function syncContextDetailEditor() {
+  const context = getParsedContext()
+  const bindings = getContextBindings(context)
+  ensureActiveContextSelection(context)
+  const activeName = activeContextBindingName
+  const activeHandler = activeName ? getContextEffectHandler(context, activeName) : null
+
+  isSyncingContextDetail = true
+  contextDetailHasParseError = false
+  if (activeContextEntryKind === 'binding' && activeName && Object.prototype.hasOwnProperty.call(bindings, activeName)) {
+    elements.contextDetailTextArea.readOnly = false
+    const invalidDraft = getContextBindingInvalidDraft(context, activeName)
+    if (invalidDraft !== null) {
+      elements.contextDetailTextArea.value = invalidDraft
+      contextDetailHasParseError = true
+    } else {
+      elements.contextDetailTextArea.value = JSON.stringify(bindings[activeName], null, 2)
+    }
+  } else if (activeContextEntryKind === 'effect-handler' && activeName && activeHandler) {
+    elements.contextDetailTextArea.readOnly = false
+    const invalidDraft = getContextEffectHandlerInvalidDraft(context, activeName)
+    if (invalidDraft !== null) {
+      elements.contextDetailTextArea.value = invalidDraft
+      contextDetailHasParseError = true
+    } else if (typeof activeHandler.handler === 'string') {
+      elements.contextDetailTextArea.value = activeHandler.handler
+      contextDetailHasParseError = !isStoredContextEffectHandlerValid(activeHandler.handler)
+    } else {
+      elements.contextDetailTextArea.value = String(activeHandler.handler)
+      contextDetailHasParseError = true
+    }
+  } else if (activeName) {
+    const invalidBindingDraft = getContextBindingInvalidDraft(context, activeName)
+    const invalidHandlerDraft = getContextEffectHandlerInvalidDraft(context, activeName)
+    if (activeContextEntryKind === 'binding' && invalidBindingDraft !== null) {
+      elements.contextDetailTextArea.readOnly = false
+      elements.contextDetailTextArea.value = invalidBindingDraft
+      contextDetailHasParseError = true
+    } else if (activeContextEntryKind === 'effect-handler' && invalidHandlerDraft !== null) {
+      elements.contextDetailTextArea.readOnly = false
+      elements.contextDetailTextArea.value = invalidHandlerDraft
+      contextDetailHasParseError = true
+    } else {
+      elements.contextDetailTextArea.readOnly = true
+      elements.contextDetailTextArea.value = ''
+    }
+  } else {
+    elements.contextDetailTextArea.readOnly = true
+    elements.contextDetailTextArea.value = ''
+  }
+  isSyncingContextDetail = false
+  syncContextDetailValidity(!contextDetailHasParseError)
+}
+
+function renderContextEntryList() {
+  const context = getParsedContext()
+  ensureActiveContextSelection(context)
+
+  const items: string[] = [
+    `<div class="explorer-group-label explorer-group-label--with-action">
+      <span>Bindings</span>
+      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextBinding()" title="Add binding" aria-label="Add binding">${addIcon}</button>
+    </div>`,
+  ]
+  const bindingNames = getContextBindingNames(context)
+
+  if (bindingNames.length === 0) {
+    items.push('<div class="explorer-empty">No bindings yet</div>')
+  } else {
+    bindingNames.forEach((name, index) => {
+      const isActive = isContextBindingActive(context, name)
+      const hasParseError = hasContextBindingParseError(context, name)
+      const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+      const menuId = `context-binding-menu-${index}`
+      const encodedName = encodeURIComponent(name)
+      const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
+      const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
+      const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
+      const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+      ]
+
+      items.push(`
+        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
+          <span class="explorer-item__name">${escapeHtml(name)}</span>
+          ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
+          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+          </span>
+        </div>`)
+    })
+  }
+
+  items.push(`<div class="explorer-group-label explorer-group-label--with-action">
+    <span>Effect Handlers</span>
+    <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
+  </div>`)
+
+  const effectHandlerNames = getContextEffectHandlerNames(context)
+  if (effectHandlerNames.length === 0) {
+    items.push('<div class="explorer-empty">No effect handlers yet</div>')
+  } else {
+    effectHandlerNames.forEach((pattern, index) => {
+      const isActive = isContextEffectHandlerActive(context, pattern)
+      const hasParseError = hasContextEffectHandlerParseError(context, pattern)
+      const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+      const menuId = `context-effect-handler-menu-${index}`
+      const encodedPattern = encodeURIComponent(pattern)
+      const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+      const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
+      const menuItems: EditorMenuItem[] = [
+        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+      ]
+
+      items.push(`
+        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
+          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
+          <span class="explorer-item__name">${escapeHtml(pattern)}</span>
+          ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
+          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+            ${renderEditorMenu({ id: menuId, items: menuItems })}
+          </span>
+        </div>`)
+    })
+  }
+
+  elements.contextEntryList.innerHTML = items.join('')
+}
+
+function commitContextDetailEdits(showError = false): boolean {
+  if (isSyncingContextDetail || !activeContextBindingName)
+    return true
+
+  if (activeContextEntryKind === 'effect-handler') {
+    try {
+      compileContextEffectHandlerSource(elements.contextDetailTextArea.value)
+      const context = getParsedContext()
+      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
+      handlers.push({ pattern: activeContextBindingName, handler: elements.contextDetailTextArea.value })
+      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+        delete entry.invalidHandler
+        return entry
+      })
+      const nextContext = formatContextJson(context)
+      contextDetailHasParseError = false
+      if (nextContext !== getState('context'))
+        updateContextState(nextContext, true, undefined, false)
+      else
+        renderContextEntryList()
+      syncContextDetailValidity(true)
+      return true
+    } catch (error) {
+      const context = getParsedContext()
+      const handlers = getContextEffectHandlers(context).filter(({ pattern }) => pattern !== activeContextBindingName)
+      if (handlers.length > 0)
+        context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+      else
+        delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+      updateContextEffectHandlerUiEntry(context, activeContextBindingName, entry => {
+        entry.invalidHandler = elements.contextDetailTextArea.value
+        return entry
+      })
+      const nextContext = formatContextJson(context)
+      contextDetailHasParseError = true
+      if (nextContext !== getState('context'))
+        updateContextState(nextContext, true, undefined, false)
+      else
+        renderContextEntryList()
+      syncContextDetailValidity(false)
+      if (showError)
+        showToast((error as Error).message || 'Effect handler is invalid', { severity: 'error' })
+      return false
+    }
+  }
+
+  try {
+    const parsedValue = JSON.parse(elements.contextDetailTextArea.value) as unknown
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    bindings[activeContextBindingName] = parsedValue
+    context.bindings = bindings
+    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+      delete entry.invalidJson
+      return entry
+    })
+    const nextContext = formatContextJson(context)
+    contextDetailHasParseError = false
+    if (nextContext !== getState('context'))
+      updateContextState(nextContext, true, undefined, false)
+    else
+      renderContextEntryList()
+    syncContextDetailValidity(true)
+    return true
+  } catch (_error) {
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    delete bindings[activeContextBindingName]
+    context.bindings = bindings
+    updateContextBindingUiEntry(context, activeContextBindingName, entry => {
+      entry.invalidJson = elements.contextDetailTextArea.value
+      return entry
+    })
+    const nextContext = formatContextJson(context)
+    contextDetailHasParseError = true
+    if (nextContext !== getState('context'))
+      updateContextState(nextContext, true, undefined, false)
+    else
+      renderContextEntryList()
+    syncContextDetailValidity(false)
+    if (showError)
+      showToast('Binding JSON is invalid', { severity: 'error' })
+    return false
+  }
+}
+
+export function selectContextBinding(name: string) {
+  activeContextEntryKind = 'binding'
+  if (activeContextBindingName === name) {
+    focusContext()
+    return
+  }
+
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  activeContextBindingName = name
+  persistActiveContextSelection()
+  syncContextDetailEditor()
+  renderContextEntryList()
+  syncCodePanelView('context')
+  updateCSS()
+  focusContext()
+}
+
+export function selectContextEffectHandler(pattern: string) {
+  activeContextEntryKind = 'effect-handler'
+  if (activeContextBindingName === pattern) {
+    focusContext()
+    return
+  }
+
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  activeContextBindingName = pattern
+  persistActiveContextSelection()
+  syncContextDetailEditor()
+  renderContextEntryList()
+  syncCodePanelView('context')
+  updateCSS()
+  focusContext()
+}
+
+export function toggleContextBindingActive(name: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  setContextBindingActive(context, name, !isContextBindingActive(context, name))
+  updateContextState(formatContextJson(context), true)
+}
+
+export function toggleContextEffectHandlerActive(pattern: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  setContextEffectHandlerActive(context, pattern, !isContextEffectHandlerActive(context, pattern))
+  updateContextState(formatContextJson(context), true)
+}
+
+export function removeContextBinding(name: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  const bindings = { ...getContextBindings(context) }
+  delete bindings[name]
+  context.bindings = bindings
+
+  const bindingUiState = { ...getContextBindingUiState(context) }
+  delete bindingUiState[name]
+  const uiState = { ...getContextUiState(context) }
+  if (Object.keys(bindingUiState).length > 0)
+    uiState.bindings = bindingUiState
+  else
+    delete uiState.bindings
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+
+  if (activeContextBindingName === name)
+    activeContextBindingName = null
+
+  updateContextState(formatContextJson(context), true)
+}
+
+export function removeContextEffectHandler(pattern: string) {
+  if (!contextDetailHasParseError && !commitContextDetailEdits(true))
+    return
+
+  const context = getParsedContext()
+  const handlers = getContextEffectHandlers(context).filter(entry => entry.pattern !== pattern)
+  if (handlers.length > 0)
+    context[CONTEXT_EFFECT_HANDLERS_KEY] = handlers
+  else
+    delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+
+  const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
+  delete effectHandlerUiState[pattern]
+  const uiState = { ...getContextUiState(context) }
+  if (Object.keys(effectHandlerUiState).length > 0)
+    uiState.effectHandlers = effectHandlerUiState
+  else
+    delete uiState.effectHandlers
+
+  if (Object.keys(uiState).length > 0)
+    context[CONTEXT_UI_STATE_KEY] = uiState
+  else
+    delete context[CONTEXT_UI_STATE_KEY]
+
+  if (activeContextBindingName === pattern)
+    activeContextBindingName = null
+
+  updateContextState(formatContextJson(context), true)
+}
+
+export function renameContextBinding(name: string) {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (activeContextBindingName !== name && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Rename binding', name, newName => {
+    if (newName === name)
+      return
+
+    const context = getParsedContext()
+    if (getContextBindingNames(context).includes(newName)) {
+      showToast(`Binding "${newName}" already exists`, { severity: 'error' })
+      setTimeout(() => renameContextBinding(name), 0)
+      return
+    }
+
+    const bindings = { ...getContextBindings(context) }
+    if (Object.prototype.hasOwnProperty.call(bindings, name)) {
+      bindings[newName] = bindings[name]
+      delete bindings[name]
+      context.bindings = bindings
+    }
+
+    const bindingUiState = { ...getContextBindingUiState(context) }
+    if (Object.prototype.hasOwnProperty.call(bindingUiState, name)) {
+      bindingUiState[newName] = bindingUiState[name]
+      delete bindingUiState[name]
+    }
+
+    const uiState = { ...getContextUiState(context) }
+    if (Object.keys(bindingUiState).length > 0)
+      uiState.bindings = bindingUiState
+    else
+      delete uiState.bindings
+
+    if (Object.keys(uiState).length > 0)
+      context[CONTEXT_UI_STATE_KEY] = uiState
+    else
+      delete context[CONTEXT_UI_STATE_KEY]
+
+    if (activeContextBindingName === name)
+      activeContextBindingName = newName
+
+    updateContextState(formatContextJson(context), true)
+    focusContext()
+  })
+}
+
+export function renameContextEffectHandler(pattern: string) {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (activeContextBindingName !== pattern && !hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Rename effect handler', pattern, newPattern => {
+    if (newPattern === pattern)
+      return
+
+    const context = getParsedContext()
+    if (getContextEffectHandlerNames(context).includes(newPattern)) {
+      showToast(`Effect handler "${newPattern}" already exists`, { severity: 'error' })
+      setTimeout(() => renameContextEffectHandler(pattern), 0)
+      return
+    }
+
+    const handlers = getContextEffectHandlers(context).map(entry => {
+      if (entry.pattern !== pattern)
+        return entry
+
+      return { ...entry, pattern: newPattern }
+    })
+
+    if (handlers.length > 0)
+      context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+    else
+      delete context[CONTEXT_EFFECT_HANDLERS_KEY]
+
+    const effectHandlerUiState = { ...getContextEffectHandlerUiState(context) }
+    if (Object.prototype.hasOwnProperty.call(effectHandlerUiState, pattern)) {
+      effectHandlerUiState[newPattern] = effectHandlerUiState[pattern]
+      delete effectHandlerUiState[pattern]
+    }
+
+    const uiState = { ...getContextUiState(context) }
+    if (Object.keys(effectHandlerUiState).length > 0)
+      uiState.effectHandlers = effectHandlerUiState
+    else
+      delete uiState.effectHandlers
+
+    if (Object.keys(uiState).length > 0)
+      context[CONTEXT_UI_STATE_KEY] = uiState
+    else
+      delete context[CONTEXT_UI_STATE_KEY]
+
+    if (activeContextBindingName === pattern)
+      activeContextBindingName = newPattern
+
+    updateContextState(formatContextJson(context), true)
+    focusContext()
+  }, undefined, { prefix: '@' })
+}
+
+export function promptAddContextBinding() {
+  const hasInvalidActiveBinding = contextDetailHasParseError
+  if (!hasInvalidActiveBinding && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Add binding', '', name => {
+    const context = getParsedContext()
+    const bindings = { ...getContextBindings(context) }
+    if (getContextBindingNames(context).includes(name)) {
+      showToast(`Binding "${name}" already exists`, { severity: 'error' })
+      setTimeout(() => promptAddContextBinding(), 0)
+      return
+    }
+
+    bindings[name] = {}
+    context.bindings = bindings
+    if (!hasInvalidActiveBinding) {
+      activeContextEntryKind = 'binding'
+      activeContextBindingName = name
+    }
+
+    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveBinding)
+
+    if (hasInvalidActiveBinding)
+      showToast(`Added binding "${name}"`)
+
+    focusContext()
+  })
+}
+
+export function promptAddContextEffectHandler() {
+  const hasInvalidActiveEntry = contextDetailHasParseError
+  if (!hasInvalidActiveEntry && !commitContextDetailEdits(true))
+    return
+
+  showNameInputModal('Add effect handler', '', pattern => {
+    const context = getParsedContext()
+    if (getContextEffectHandlerNames(context).includes(pattern)) {
+      showToast(`Effect handler "${pattern}" already exists`, { severity: 'error' })
+      setTimeout(() => promptAddContextEffectHandler(), 0)
+      return
+    }
+
+    const handlers = getContextEffectHandlers(context)
+    handlers.push({ pattern, handler: DEFAULT_CONTEXT_EFFECT_HANDLER_SOURCE })
+    context[CONTEXT_EFFECT_HANDLERS_KEY] = sortContextEffectHandlers(handlers)
+
+    if (!hasInvalidActiveEntry) {
+      activeContextEntryKind = 'effect-handler'
+      activeContextBindingName = pattern
+    }
+
+    updateContextState(formatContextJson(context), true, undefined, !hasInvalidActiveEntry)
+
+    if (hasInvalidActiveEntry)
+      showToast(`Added effect handler "${pattern}"`)
+
+    focusContext()
+  }, undefined, { prefix: '@' })
 }
 
 export function addContextEntry() {
@@ -1998,7 +3256,9 @@ export function addContextEntry() {
     const bindings: UnknownRecord = Object.assign({}, context.bindings)
     bindings[name] = parsedValue
     context.bindings = bindings
-    setContext(JSON.stringify(context, null, 2), true)
+    activeContextEntryKind = 'binding'
+    activeContextBindingName = name
+    updateContextState(formatContextJson(context), true)
 
     closeAddContextMenu()
   } catch (_e) {
@@ -2009,44 +3269,6 @@ export function addContextEntry() {
 
   clearState('new-context-name')
   clearState('new-context-value')
-}
-
-function formatContextJson(context: Record<string, unknown>): string {
-  const parts: string[] = ['{']
-  const entries = Object.entries(context)
-  entries.forEach(([key, value], i) => {
-    const comma = i < entries.length - 1 ? ',' : ''
-    if (Array.isArray(value)) {
-      const items = value as Record<string, unknown>[]
-      if (items.length === 0) {
-        parts.push(`  ${JSON.stringify(key)}: []${comma}`)
-      } else {
-        parts.push(`  ${JSON.stringify(key)}: [`)
-        items.forEach((item, j) => {
-          const itemComma = j < items.length - 1 ? ',' : ''
-          const itemEntries = Object.entries(item)
-          parts.push('    {')
-          itemEntries.forEach(([itemKey, itemValue], k) => {
-            const fieldComma = k < itemEntries.length - 1 ? ',' : ''
-            parts.push(`      ${JSON.stringify(itemKey)}: ${JSON.stringify(itemValue)}${fieldComma}`)
-          })
-          parts.push(`    }${itemComma}`)
-        })
-        parts.push(`  ]${comma}`)
-      }
-    } else {
-      const record = value as Record<string, unknown>
-      const subEntries = Object.entries(record)
-      parts.push(`  ${JSON.stringify(key)}: {`)
-      subEntries.forEach(([subKey, subValue], j) => {
-        const subComma = j < subEntries.length - 1 ? ',' : ''
-        parts.push(`    ${JSON.stringify(subKey)}: ${JSON.stringify(subValue)}${subComma}`)
-      })
-      parts.push(`  }${comma}`)
-    }
-  })
-  parts.push('}')
-  return parts.join('\n')
 }
 
 export function addSampleContext() {
@@ -2086,9 +3308,10 @@ export function addSampleContext() {
   context.bindings = Object.assign(sampleBindings, context.bindings)
 
   const sampleEffectHandlers: { pattern: string; handler: string }[] = [
-    { pattern: 'host.greet', handler: 'async ({ args: [name], resume }) => { resume(`Hello, ${name}!`) }' },
-    { pattern: 'host.add', handler: 'async ({ args: [a, b], resume }) => { resume(a + b) }' },
-    { pattern: 'host.delay', handler: `async ({ args: [ms], resume }) => {
+    { pattern: 'host.greet', handler: 'async ({ arg, resume }) => { const [name] = Array.isArray(arg) ? arg : [arg]; resume(`Hello, ${name}!`) }' },
+    { pattern: 'host.add', handler: 'async ({ arg, resume }) => { const [a, b] = Array.isArray(arg) ? arg : [arg]; resume(a + b) }' },
+    { pattern: 'host.delay', handler: `async ({ arg, resume }) => {
+  const [ms] = Array.isArray(arg) ? arg : [arg];
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
 }` },
@@ -2098,19 +3321,30 @@ export function addSampleContext() {
   const existingPatterns = new Set(existing.map(h => h.pattern))
   context.effectHandlers = [...existing, ...sampleEffectHandlers.filter(h => !existingPatterns.has(h.pattern))]
 
-  setContext(formatContextJson(context), true)
+  updateContextState(formatContextJson(context), true)
 }
 
 export function newFile() {
-  guardCodeReplacement(() => {
-    flushPendingAutoSave()
-    saveState({ 'dvala-code': '', 'current-program-id': null, 'dvala-code-edited': false }, true)
-    elements.dvalaTextArea.value = ''
-    syntaxOverlay.update()
-    updateCSS()
-    populateSavedProgramsList()
-    focusDvalaCode()
-  })
+  flushPendingAutoSave()
+  if (isScratchActive())
+    persistScratchFromCurrentState()
+  const id = createUntitledFile()
+  saveState({
+    'active-side-tab': 'files',
+    'dvala-code': '',
+    'current-file-id': id,
+    'dvala-code-edited': false,
+    'dvala-code-selection-start': 0,
+    'dvala-code-selection-end': 0,
+    'dvala-code-scroll-top': 0,
+  }, false)
+  activateCurrentFileHistory(true)
+  elements.dvalaTextArea.value = ''
+  syntaxOverlay.update()
+  showSideTab('files')
+  updateCSS()
+  populateSavedFilesList()
+  focusDvalaCode()
 }
 
 /**
@@ -2121,7 +3355,8 @@ export function newFile() {
 function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'bottom', onProceed?: () => void) {
   if (onProceed !== undefined) {
     guardCodeReplacement(() => {
-      saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+      saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+      activateCurrentFileHistory(true)
       setDvalaCode(value, pushToHistory, scroll)
       onProceed()
     })
@@ -2136,7 +3371,8 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
       'dvala-code': value,
       'dvala-code-selection-start': elements.dvalaTextArea.selectionStart,
       'dvala-code-selection-end': elements.dvalaTextArea.selectionEnd,
-    }, true)
+    }, false)
+    pushActiveDvalaCodeHistoryEntry()
     scheduleAutoSave()
   } else {
     saveState({ 'dvala-code': value }, false)
@@ -2155,9 +3391,10 @@ export function resetOutput() {
 
 export function resetPlayground() {
   flushPendingAutoSave()
-  saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+  saveState({ 'current-file-id': null, 'dvala-code-edited': false, 'scratch-code': '', 'scratch-context': '' }, false)
+  activateCurrentFileHistory(true)
   setDvalaCode('', true)
-  setContext('', true)
+  updateContextState('', true)
   resetOutput()
 }
 
@@ -2198,41 +3435,13 @@ window.onload = async function () {
   injectPlaygroundEffects()
   populateSidebarVersion()
   await initSnapshotStorage()
-  await initPrograms()
+  await initFileHistories()
+  await initFiles()
+  pruneFileHistories(['<scratch>', ...getSavedFiles().map(file => file.id)])
   initExecutionControlBar()
   syntaxOverlay = new SyntaxOverlay('dvala-textarea')
 
-  elements.contextUndoButton.classList.add('disabled')
-  elements.contextRedoButton.classList.add('disabled')
-  elements.dvalaCodeUndoButton.classList.add('disabled')
-  elements.dvalaCodeRedoButton.classList.add('disabled')
-  setContextHistoryListener(status => {
-    if (status.canUndo) {
-      elements.contextUndoButton.classList.remove('disabled')
-    } else {
-      elements.contextUndoButton.classList.add('disabled')
-    }
-
-    if (status.canRedo) {
-      elements.contextRedoButton.classList.remove('disabled')
-    } else {
-      elements.contextRedoButton.classList.add('disabled')
-    }
-  })
-
-  setDvalaCodeHistoryListener(status => {
-    if (status.canUndo) {
-      elements.dvalaCodeUndoButton.classList.remove('disabled')
-    } else {
-      elements.dvalaCodeUndoButton.classList.add('disabled')
-    }
-
-    if (status.canRedo) {
-      elements.dvalaCodeRedoButton.classList.remove('disabled')
-    } else {
-      elements.dvalaCodeRedoButton.classList.add('disabled')
-    }
-  })
+  syncDvalaCodeHistoryButtons()
 
   document.addEventListener('click', onDocumentClick, true)
 
@@ -2244,16 +3453,6 @@ window.onload = async function () {
     closeMoreMenu()
     closeContextMenu()
   })
-
-  elements.resizePlayground.onmousedown = event => {
-    event.preventDefault()
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'playground',
-      startMoveY: event.clientY,
-      heightBeforeMove: getState('playground-height'),
-    }
-  }
 
   elements.resizeDevider1.onmousedown = event => {
     event.preventDefault()
@@ -2270,18 +3469,8 @@ window.onload = async function () {
     document.body.classList.add('no-select')
     moveParams = {
       id: 'resize-divider-2',
-      startMoveX: event.clientX,
+      startMoveY: event.clientY,
       percentBeforeMove: getState('resize-divider-2-percent'),
-    }
-  }
-
-  elements.resizeSidebar.onmousedown = event => {
-    event.preventDefault()
-    document.body.classList.add('no-select')
-    moveParams = {
-      id: 'resize-sidebar',
-      startMoveX: event.clientX,
-      widthBeforeMove: getState('sidebar-width'),
     }
   }
 
@@ -2289,64 +3478,41 @@ window.onload = async function () {
   window.onmouseup = () => {
     document.body.classList.remove('no-select')
     if (moveParams !== null) {
-      if (moveParams.id === 'playground')
-        saveState({ 'playground-height': getState('playground-height') }, false)
-      else if (moveParams.id === 'resize-divider-1')
+      if (moveParams.id === 'resize-divider-1')
         saveState({ 'resize-divider-1-percent': getState('resize-divider-1-percent') }, false)
       else if (moveParams.id === 'resize-divider-2')
         saveState({ 'resize-divider-2-percent': getState('resize-divider-2-percent') }, false)
-      else if (moveParams.id === 'resize-sidebar')
-        saveState({ 'sidebar-width': getState('sidebar-width') }, false)
     }
     moveParams = null
   }
 
   window.onmousemove = (event: MouseEvent) => {
-    const { windowHeight, windowWidth } = calculateDimensions()
+    const { windowWidth, windowHeight } = calculateDimensions()
     if (moveParams === null)
       return
 
-    if (moveParams.id === 'playground') {
-      let playgroundHeight = moveParams.heightBeforeMove + moveParams.startMoveY - event.clientY
-      if (playgroundHeight < 30)
-        playgroundHeight = 30
-
-      if (playgroundHeight > windowHeight)
-        playgroundHeight = windowHeight
-
-      updateState({ 'playground-height': playgroundHeight })
-      applyLayout()
-    } else if (moveParams.id === 'resize-divider-1') {
+    if (moveParams.id === 'resize-divider-1') {
       let resizeDivider1XPercent
         = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
       if (resizeDivider1XPercent < 10)
         resizeDivider1XPercent = 10
 
-      if (resizeDivider1XPercent > getState('resize-divider-2-percent') - 10)
-        resizeDivider1XPercent = getState('resize-divider-2-percent') - 10
+      if (resizeDivider1XPercent > 50)
+        resizeDivider1XPercent = 50
 
       updateState({ 'resize-divider-1-percent': resizeDivider1XPercent })
       applyLayout()
     } else if (moveParams.id === 'resize-divider-2') {
-      let resizeDivider2XPercent
-        = moveParams.percentBeforeMove + ((event.clientX - moveParams.startMoveX) / windowWidth) * 100
-      if (resizeDivider2XPercent < getState('resize-divider-1-percent') + 10)
-        resizeDivider2XPercent = getState('resize-divider-1-percent') + 10
+      const tabPlayground = document.getElementById('tab-playground')
+      const tabHeight = tabPlayground?.clientHeight ?? windowHeight
+      let resizeDivider2YPercent
+        = moveParams.percentBeforeMove + ((event.clientY - moveParams.startMoveY) / tabHeight) * 100
+      if (resizeDivider2YPercent < 10)
+        resizeDivider2YPercent = 10
+      if (resizeDivider2YPercent > 90)
+        resizeDivider2YPercent = 90
 
-      if (resizeDivider2XPercent > 90)
-        resizeDivider2XPercent = 90
-
-      updateState({ 'resize-divider-2-percent': resizeDivider2XPercent })
-      applyLayout()
-    } else if (moveParams.id === 'resize-sidebar') {
-      let sidebarWidth = moveParams.widthBeforeMove + (event.clientX - moveParams.startMoveX)
-      if (sidebarWidth < 150)
-        sidebarWidth = 150
-
-      if (sidebarWidth > windowWidth * 0.5)
-        sidebarWidth = windowWidth * 0.5
-
-      updateState({ 'sidebar-width': sidebarWidth })
+      updateState({ 'resize-divider-2-percent': resizeDivider2YPercent })
       applyLayout()
     }
   }
@@ -2428,25 +3594,23 @@ window.onload = async function () {
       void resumeSnapshot()
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && !evt.shiftKey && evt.key === 'z') {
-      evt.preventDefault()
-      if (document.activeElement === elements.contextTextArea)
-        undoContextHistory()
-      else if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly)
+      if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly) {
+        evt.preventDefault()
         undoDvalaCodeHistory()
+      }
     }
     if (((isMac() && evt.metaKey) || (!isMac && evt.ctrlKey)) && evt.shiftKey && evt.key === 'z') {
-      evt.preventDefault()
-      if (document.activeElement === elements.contextTextArea)
-        redoContextHistory()
-      else if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly)
+      if (document.activeElement === elements.dvalaTextArea && !elements.dvalaTextArea.readOnly) {
+        evt.preventDefault()
         redoDvalaCodeHistory()
+      }
     }
   })
   elements.contextTextArea.addEventListener('keydown', evt => {
-    keydownHandler(evt, () => setContext(elements.contextTextArea.value, true))
+    keydownHandler(evt, () => updateContextState(elements.contextTextArea.value, true))
   })
   elements.contextTextArea.addEventListener('input', () => {
-    setContext(elements.contextTextArea.value, true)
+    updateContextState(elements.contextTextArea.value, true)
   })
   elements.contextTextArea.addEventListener('scroll', () => {
     saveState({ 'context-scroll-top': elements.contextTextArea.scrollTop })
@@ -2467,17 +3631,36 @@ window.onload = async function () {
     saveState({ 'focused-panel': null })
     updateCSS()
   })
+  elements.contextDetailTextArea.addEventListener('keydown', evt => {
+    keydownHandler(evt, () => {
+      commitContextDetailEdits(false)
+    })
+  })
+  elements.contextDetailTextArea.addEventListener('input', () => {
+    commitContextDetailEdits(false)
+  })
+  elements.contextDetailTextArea.addEventListener('focusin', () => {
+    saveState({ 'focused-panel': 'context' })
+    updateCSS()
+  })
+  elements.contextDetailTextArea.addEventListener('focusout', () => {
+    commitContextDetailEdits(false)
+    saveState({ 'focused-panel': null })
+    updateCSS()
+  })
 
   elements.dvalaTextArea.addEventListener('keydown', evt => {
     keydownHandler(evt, () => {
       setDvalaCode(elements.dvalaTextArea.value, true)
-      saveState({ 'dvala-code-edited': true })
+      if (getState('current-file-id') === null) scheduleScratchEditedClear()
+      else saveState({ 'dvala-code-edited': true })
       updateCSS()
     })
   })
   elements.dvalaTextArea.addEventListener('input', () => {
     setDvalaCode(elements.dvalaTextArea.value, true)
-    saveState({ 'dvala-code-edited': true })
+    if (getState('current-file-id') === null) scheduleScratchEditedClear()
+    else saveState({ 'dvala-code-edited': true })
     updateCSS()
     syntaxOverlay.update()
   })
@@ -2514,7 +3697,7 @@ window.onload = async function () {
 
   applyState(true)
   populateSnapshotsList()
-  populateSavedProgramsList()
+  populateSavedFilesList()
 
   router.init(appPath => {
     routeToPath(appPath)
@@ -2528,6 +3711,48 @@ window.onload = async function () {
 
 function getDataFromUrl() {
   const urlParams = new URLSearchParams(window.location.search)
+  const activeView = normalizeSideTab(urlParams.get('view'))
+  saveState({ 'active-side-tab': activeView }, false)
+
+  const urlBindingName = urlParams.get('bindingName')
+  const urlContextEntryKind = urlParams.get('contextEntryKind') === 'effect-handler' ? 'effect-handler' : 'binding'
+  if (activeView === 'context') {
+    activeContextBindingName = urlBindingName ?? getState('current-context-binding-name')
+    activeContextEntryKind = urlBindingName ? urlContextEntryKind : getState('current-context-entry-kind')
+    saveState({
+      'current-context-binding-name': activeContextBindingName,
+      'current-context-entry-kind': activeContextEntryKind,
+    }, false)
+  }
+
+  const urlFileId = urlParams.get('fileId')
+  if (activeView === 'files' && urlFileId && getState('current-file-id') !== urlFileId) {
+    const file = getSavedFiles().find(entry => entry.id === urlFileId)
+    if (file) {
+      if (isScratchActive())
+        persistScratchFromCurrentState()
+      saveState({
+        'context': file.context,
+        'current-file-id': file.id,
+        'dvala-code': file.code,
+        'dvala-code-edited': false,
+        'dvala-code-scroll-top': 0,
+        'dvala-code-selection-end': 0,
+        'dvala-code-selection-start': 0,
+      }, false)
+    }
+  }
+
+  const urlSnapshotId = urlParams.get('snapshotId')
+  if (activeView === 'snapshots' && urlSnapshotId && getActiveSnapshotUrlId() !== urlSnapshotId) {
+    const savedIndex = getSavedSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
+    if (savedIndex >= 0) {
+      activeSnapshotKey = `saved:${savedIndex}`
+    } else {
+      const terminalIndex = getTerminalSnapshots().findIndex(entry => entry.snapshot.id === urlSnapshotId)
+      activeSnapshotKey = terminalIndex >= 0 ? `terminal:${terminalIndex}` : null
+    }
+  }
 
   const urlState = urlParams.get('state')
   if (urlState) {
@@ -2535,16 +3760,74 @@ function getDataFromUrl() {
     urlParams.delete('state')
     history.replaceState(null, '', `${location.pathname}${urlParams.toString() ? '?' : ''}${urlParams.toString()}`)
 
-    // Guard against overwriting saved or unsaved work
-    guardCodeReplacement(() => {
-      saveState({ 'current-program-id': null, 'dvala-code-edited': false })
-      if (applyEncodedState(urlState))
-        showToast('State loaded from URL')
-      else
-        showToast('Invalid state URL parameter', { severity: 'error' })
-      applyState()
-    })
-    return // applyState() is called inside the guard callback
+    // Decode the incoming state to check for context
+    let incomingState: Record<string, unknown>
+    try {
+      incomingState = JSON.parse(decodeURIComponent(atob(urlState))) as Record<string, unknown>
+    } catch {
+      showToast('Invalid state URL parameter', { severity: 'error' })
+      return
+    }
+
+    const incomingContext = typeof incomingState['context'] === 'string' ? incomingState['context'].trim() : ''
+    const currentContext = getState('context').trim()
+
+    const applyImport = (contextMode: 'ignore' | 'replace' | 'append') => {
+      guardCodeReplacement(() => {
+        // Handle context based on user choice
+        if (contextMode === 'ignore') {
+          delete incomingState['context']
+        } else if (contextMode === 'append' && currentContext) {
+          // Merge context: parse both as JSON, merge bindings and handlers
+          try {
+            const current = JSON.parse(currentContext) as Record<string, unknown>
+            const incoming = JSON.parse(incomingContext) as Record<string, unknown>
+            const merged: Record<string, unknown> = {}
+            // Merge bindings
+            const currentBindings = (current.bindings ?? {}) as Record<string, unknown>
+            const incomingBindings = (incoming.bindings ?? {}) as Record<string, unknown>
+            merged.bindings = { ...currentBindings, ...incomingBindings }
+            // Merge effect handlers
+            const currentHandlers = (current.effectHandlers ?? []) as unknown[]
+            const incomingHandlers = (incoming.effectHandlers ?? []) as unknown[]
+            merged.effectHandlers = [...currentHandlers, ...incomingHandlers]
+            incomingState['context'] = JSON.stringify(merged, null, 2)
+          } catch {
+            // If merge fails, just replace
+            incomingState['context'] = incomingContext
+          }
+        }
+        // Apply the state
+        saveState({ 'current-file-id': null, 'dvala-code-edited': false }, false)
+        activateCurrentFileHistory(true)
+        if (applyEncodedState(btoa(encodeURIComponent(JSON.stringify(incomingState)))))
+          showToast('State loaded from URL')
+        else
+          showToast('Failed to apply state', { severity: 'error' })
+        applyState()
+      })
+    }
+
+    // If incoming state has context AND current state has context, ask the user
+    if (incomingContext && currentContext) {
+      const { panel, body } = createModalPanel({
+        size: 'small',
+        footerActions: [
+          { label: 'Ignore context', action: () => { popModal(); applyImport('ignore') } },
+          { label: 'Replace', action: () => { popModal(); applyImport('replace') } },
+          { label: 'Append', primary: true, action: () => { popModal(); applyImport('append') } },
+        ],
+      })
+      const msg = document.createElement('div')
+      msg.className = 'modal-body-row'
+      msg.textContent = 'The shared link includes context data, and you already have context. What should happen with the incoming context?'
+      body.appendChild(msg)
+      pushPanel(panel, 'Import context')
+    } else {
+      // No conflict — just apply (replace or no context)
+      applyImport('replace')
+    }
+    return
   }
 
   const urlSnapshot = urlParams.get('snapshot')
@@ -2674,28 +3957,89 @@ function pageIdToAppPath(pageId: string): string {
   if (pageId.startsWith('chapter-')) return `/book/${pageId.slice(8)}`
   // special static pages — map to router paths expected by routeToPath
   if (pageId === 'settings-page') return '/settings'
-  if (pageId === 'saved-programs-page') return '/saved'
-  if (pageId === 'snapshots-page') return '/snapshots'
   // reference pages: pageId is the linkName like 'collection-map'
   return `/ref/${pageId}`
 }
 
 /** Static page IDs that live as real DOM elements (show/hide via active-content). */
-const STATIC_PAGES = new Set(['settings-page', 'saved-programs-page', 'snapshots-page'])
+const STATIC_PAGES = new Set(['settings-page'])
+
+// ─── Tab state memory ─────────────────────────────────────────────────────────
+
+// Remembers the last visited path per top-level tab so switching back restores position.
+const lastTabPath: Record<string, string> = {
+  ref: '/ref',
+  examples: '/examples',
+  book: '/book',
+  settings: '/settings',
+  home: '/',
+}
+
+/** Navigate to the last remembered path for a top-level tab section. */
+export function navigateToTab(section: string): void {
+  router.navigate(lastTabPath[section] ?? `/${section}`)
+}
 
 /**
  * Route to the given app-relative path.
  * Dynamic content pages render HTML into #dynamic-page.
- * Static pages (settings, saved-programs, snapshots) use the old show/hide mechanism.
+ * Static pages (settings) use the old show/hide mechanism.
  */
+/** Switch the visible tab pane. */
+function activateTab(tabId: string): void {
+  document.querySelectorAll('.tab-pane').forEach(el => {
+    (el as HTMLElement).style.display = 'none'
+  })
+  const pane = document.getElementById(`tab-${tabId}`)
+  if (pane) pane.style.display = ''
+  // Re-apply layout when switching to playground so panels resize correctly
+  if (tabId === 'playground') applyLayout()
+}
+
+/** Highlight the active tab button. */
+function highlightTabButton(buttonId: string): void {
+  document.querySelectorAll('.tab-bar__tab').forEach(el => el.classList.remove('tab-bar__tab--active'))
+  const btn = document.getElementById(`tab-btn-${buttonId}`)
+  if (btn) btn.classList.add('tab-bar__tab--active')
+}
+
+/** Map a route path to a tab ID (pane). All non-playground routes share the home pane. */
+function getTabForPath(path: string): string {
+  if (path === 'playground') return 'playground'
+  return 'home'
+}
+
+/** Map a route path to the tab button to highlight. */
+function getTabButtonForPath(path: string): string {
+  if (path === 'playground') return 'playground'
+  if (path.startsWith('book')) return 'book'
+  if (path.startsWith('examples')) return 'examples'
+  if (path.startsWith('ref')) return 'ref'
+  if (path === 'settings' || path.startsWith('settings/')) return 'settings'
+  return 'home'
+}
+
 function routeToPath(appPath: string): void {
   const path = appPath.replace(/^\//, '')
+
+  // Activate the correct tab pane and highlight the tab button
+  activateTab(getTabForPath(path))
+  const tabButton = getTabButtonForPath(path)
+  highlightTabButton(tabButton)
+
+  // Remember the last visited path for this tab section (used by navigateToTab)
+  if (tabButton !== 'playground' && tabButton in lastTabPath)
+    lastTabPath[tabButton] = appPath || '/'
+
+  // Playground tab doesn't need dynamic content rendering
+  if (path === 'playground') {
+    document.title = 'Playground | Dvala'
+    return
+  }
 
   // Determine if this is a static page that already exists in the DOM
   let staticPageId: string | null = null
   if (path === 'settings' || path.startsWith('settings/')) staticPageId = 'settings-page'
-  else if (path === 'saved') staticPageId = 'saved-programs-page'
-  else if (path === 'snapshots') staticPageId = 'snapshots-page'
 
   if (staticPageId && STATIC_PAGES.has(staticPageId)) {
     // Clear any dynamic page content, then show the static page
@@ -2796,22 +4140,15 @@ function routeToPath(appPath: string): void {
   }
 }
 
-function truncateCode(code: string) {
-  const oneLiner = tokenizeSource(code).tokens.map(t => t[0] === 'Whitespace' ? ' ' : t[1]).join('').trim()
-  const count = 100
-  if (oneLiner.length <= count)
-    return oneLiner
-  else
-    return `${oneLiner.substring(0, count - 3)}...`
-}
 export async function run() {
   addOutputSeparator()
   const selectedCode = getSelectedDvalaCode()
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection' : 'Run'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
+  const startTime = performance.now()
   document.body.classList.add('dvala-running')
   const dvalaParams = getDvalaParamsFromContext()
 
@@ -2827,7 +4164,9 @@ export async function run() {
     route: location.pathname,
   }
 
-  // Execution timeout: 5 seconds, reset on every host effect
+  // Execution timeout: 5 seconds, paused while a host effect handler is running.
+  // This prevents async handlers (like dvala.io.read waiting for user input) from
+  // triggering the timeout.
   const TIMEOUT_MS = 5000
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let rejectTimeout: ((err: Error) => void) | null = null
@@ -2835,14 +4174,26 @@ export async function run() {
     rejectTimeout = reject
     timeoutId = setTimeout(() => reject(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
   })
+  const pauseTimeout = () => {
+    if (timeoutId !== null) { clearTimeout(timeoutId); timeoutId = null }
+  }
   const resetTimeout = () => {
     if (timeoutId !== null) clearTimeout(timeoutId)
     timeoutId = setTimeout(() => rejectTimeout?.(new Error('Execution timed out (5s). Infinite loop?')), TIMEOUT_MS)
   }
-  // Wrap each effect handler to reset the timeout on every host effect
+  // Wrap each effect handler: pause timeout during handler, resume after
   const wrappedHandlers = dvalaParams.effectHandlers.map(reg => ({
     ...reg,
-    handler: (ctx: EffectContext) => { resetTimeout(); return reg.handler(ctx) },
+    handler: (ctx: EffectContext) => {
+      pauseTimeout()
+      const result = reg.handler(ctx)
+      // If handler returns a Promise (async), resume timeout when it settles
+      if (result instanceof Promise) {
+        return result.finally(() => resetTimeout())
+      }
+      resetTimeout()
+      return result
+    },
   }))
 
   const hijacker = hijackConsole()
@@ -2863,12 +4214,12 @@ export async function run() {
       throw runResult.error
     }
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended', 'comment')
+      appendOutput('File suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
       return
     }
     if (runResult.type === 'halted') {
-      appendOutput('Program halted', 'comment')
+      appendOutput('File halted', 'comment')
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'halted')
       }
@@ -2882,6 +4233,8 @@ export async function run() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    const elapsed = performance.now() - startTime
+    appendOutput(elapsed < 1000 ? `${Math.round(elapsed)}ms` : `${(elapsed / 1000).toFixed(2)}s`, 'comment')
     if (timeoutId !== null) clearTimeout(timeoutId)
     document.body.classList.remove('dvala-running')
     // Restore UI state modified by playground effects
@@ -2891,8 +4244,7 @@ export async function run() {
       saveState({ 'dvala-code': uiSnapshot.dvalaCode }, false)
     }
     if (getState('context') !== uiSnapshot.context) {
-      elements.contextTextArea.value = uiSnapshot.context
-      saveState({ context: uiSnapshot.context }, false)
+      updateContextState(uiSnapshot.context, false)
     }
     syntaxOverlay.scrollContainer.scrollTop = uiSnapshot.scrollTop
     syntaxOverlay.scrollContainer.scrollLeft = uiSnapshot.scrollLeft
@@ -2912,8 +4264,9 @@ export function runSync() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Run selection (sync)' : 'Run sync'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
+  const startTime = performance.now()
   const dvalaParams = getDvalaParamsFromContext()
 
   const hijacker = hijackConsole()
@@ -2928,6 +4281,8 @@ export function runSync() {
   } catch (error) {
     appendOutput(error, 'error')
   } finally {
+    const elapsed = performance.now() - startTime
+    appendOutput(elapsed < 1000 ? `${Math.round(elapsed)}ms` : `${(elapsed / 1000).toFixed(2)}s`, 'comment')
     hijacker.releaseConsole()
     focusDvalaCode()
   }
@@ -2940,7 +4295,7 @@ export function analyze() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Analyze selection' : 'Analyze'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
@@ -2982,7 +4337,7 @@ export function parse() {
     showAstTreeModal(ast, title)
   } catch (error) {
     addOutputSeparator()
-    appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+    appendOutput(title, 'comment')
     appendOutput(error, 'error')
     focusDvalaCode()
   }
@@ -2991,15 +4346,6 @@ export function parse() {
 function showAstTreeModal(ast: Ast, title: string) {
   const { panel, body } = createModalPanel({
     size: 'large',
-    hamburgerItems: [
-      {
-        label: 'Copy JSON',
-        action: () => {
-          void navigator.clipboard.writeText(JSON.stringify(ast, null, 2))
-          showToast('AST copied to clipboard')
-        },
-      },
-    ],
     onClose: () => { popModal(); focusDvalaCode() },
   })
 
@@ -3018,7 +4364,7 @@ export function tokenize() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Tokenize selection' : 'Tokenize'
 
-  appendOutput(`${title}${getState('debug') ? ' (debug):' : ':'} ${truncateCode(code)}`, 'comment')
+  appendOutput(`${title}${getState('debug') ? ' (debug)' : ''}`, 'comment')
 
   const hijacker = hijackConsole()
   try {
@@ -3043,7 +4389,7 @@ export function format() {
   const code = selectedCode.code || getState('dvala-code')
   const title = selectedCode.code ? 'Format selection' : 'Format'
 
-  appendOutput(`${title}: ${truncateCode(code)}`, 'comment')
+  appendOutput(title, 'comment')
 
   setDvalaCode(code, true)
 
@@ -3115,7 +4461,7 @@ export function togglePlaygroundDeveloper() {
 }
 
 export function focusContext() {
-  elements.contextTextArea.focus()
+  elements.contextDetailTextArea.focus()
 }
 
 export function focusDvalaCode() {
@@ -3469,7 +4815,7 @@ function createSnapshotPanel(snapshot: Snapshot, error?: DvalaErrorJSON): HTMLEl
       const existing = getSavedSnapshots().filter(s => s.snapshot.id !== snap.id)
       existing.unshift({ kind: 'saved', snapshot: snap, savedAt: Date.now(), locked: false, name: name || undefined })
       setSavedSnapshots(existing)
-      notifySnapshotAdded()
+
       populateSnapshotsList({ animateNewSaved: true })
       showToast(`Snapshot saved (${existing.length} total)`)
     })
@@ -3642,27 +4988,28 @@ function createModalPanel(options?: ModalPanelOptions): { panel: HTMLElement; bo
 /** Slide in a "Save As" form panel within the snapshot modal. */
 function pushSavePanel(onSave: (name: string) => void) {
   const panel = document.createElement('div')
-  panel.className = 'snapshot-panel fancy-scroll'
+  panel.className = 'modal-panel'
   panel.innerHTML = `
     <div class="modal-header">
       <div data-ref="breadcrumbs" class="snapshot-panel__breadcrumbs"></div>
     </div>
-    <div class="snapshot-panel__body" style="display:flex;flex-direction:column;gap:var(--space-2);">
+    <div class="modal-panel__body" style="display:flex;flex-direction:column;gap:var(--space-2);">
       <label for="save-snapshot-name" class="snapshot-panel__section-label">Name (optional)</label>
       <input id="save-snapshot-name" type="text" class="readline-input" placeholder="My snapshot…" style="width:100%;box-sizing:border-box;">
     </div>
-    <div class="snapshot-panel__buttons">
+    <div class="modal-panel__footer">
       <button class="button cancel-btn">Cancel</button>
       <button class="button button--primary save-btn" style="margin-left:auto;">Save</button>
     </div>
   `
   const input = panel.querySelector('input') as HTMLInputElement
-  const doSave = () => { onSave(input.value.trim()); slideBackSnapshotModal() }
-  panel.querySelector('.cancel-btn')!.addEventListener('click', () => slideBackSnapshotModal())
+  const dismissSavePanel = () => popModal()
+  const doSave = () => { onSave(input.value.trim()); dismissSavePanel() }
+  panel.querySelector('.cancel-btn')!.addEventListener('click', dismissSavePanel)
   panel.querySelector('.save-btn')!.addEventListener('click', doSave)
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') doSave()
-    else if (e.key === 'Escape') slideBackSnapshotModal()
+    else if (e.key === 'Escape') dismissSavePanel()
   })
   pushPanel(panel, 'Save As')
   setTimeout(() => input.focus(), 260)
@@ -3684,35 +5031,121 @@ function getSnapshotError(snapshot: Snapshot): DvalaErrorJSON | undefined {
 
 let resolveSnapshotModal: (() => void) | null = null
 
-export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
-  const error = getSnapshotError(snapshot)
-  const panel = createSnapshotPanel(snapshot, error)
+// ─── Inline snapshot view (in code panel) ────────────────────────────────────
 
-  // If an effect panel is at the top of the stack, replace it with the snapshot panel.
-  // Uses instant swap to avoid jarring transitions.
-  const top = modalStack[modalStack.length - 1]
-  if (top?.isEffect) {
-    modalStack.pop()
-    top.panel.remove()
+interface SnapshotBreadcrumb {
+  label: string
+  snapshot: Snapshot
+}
+
+const snapshotViewStack: SnapshotBreadcrumb[] = []
+
+function renderSnapshotBreadcrumbs() {
+  const container = document.getElementById('dvala-header-snapshot')
+  if (!container) return
+
+  container.innerHTML = snapshotViewStack.map((bc, i) => {
+    const isLast = i === snapshotViewStack.length - 1
+    if (isLast) {
+      return `<span class="snapshot-breadcrumbs__current">${escapeHtml(bc.label)}</span>`
+    }
+    return `<a class="snapshot-breadcrumbs__link" href="#" onclick="event.preventDefault();Playground.navigateSnapshotBreadcrumb(${i})">${escapeHtml(bc.label)}</a><span class="snapshot-breadcrumbs__sep">›</span>`
+  }).join('')
+}
+
+function syncSnapshotExecutionControls() {
+  if (!snapshotExecutionControlsVisible || !currentSnapshot) {
+    hideExecutionControlBar()
+    return
   }
 
-  pushPanel(panel, 'Snapshot', snapshot)
-
-  // Show control bar for all snapshots
-  if (snapshot.terminal === true) {
+  if (currentSnapshot.terminal === true) {
     showExecutionControlBarTerminal()
   } else {
     showExecutionControlBarPaused()
   }
+}
+
+function showSnapshotInPanel(snapshot: Snapshot, showExecutionControls = snapshotExecutionControlsVisible) {
+  const content = document.getElementById('snapshot-content')
+  const footerHost = document.getElementById('snapshot-footer')
+  if (!content || !footerHost) return
+
+  // Set current snapshot for the control bar and other functions
+  currentSnapshot = snapshot
+  snapshotExecutionControlsVisible = showExecutionControls
+
+  // Render the snapshot panel content (reuse existing panel builder)
+  const error = getSnapshotError(snapshot)
+  const panel = createSnapshotPanel(snapshot, error)
+  // Extract just the body content from the panel (skip modal header/footer)
+  const body = panel.querySelector('.modal-panel__body')
+  const footer = panel.querySelector('.modal-panel__footer')
+  content.innerHTML = ''
+  footerHost.innerHTML = ''
+  if (body) content.appendChild(body)
+  if (footer) footerHost.appendChild(footer)
+
+  // Update breadcrumbs and sync the panel view
+  renderSnapshotBreadcrumbs()
+  syncCodePanelView('snapshots')
+  syncSnapshotExecutionControls()
+}
+
+function replaceSnapshotView(snapshot: Snapshot, label = 'Snapshot') {
+  snapshotViewStack.splice(0)
+  snapshotViewStack.push({ label, snapshot })
+  showSnapshotInPanel(snapshot, false)
+}
+
+export function openSnapshotModal(snapshot: Snapshot): Promise<void> {
+  // Push onto the breadcrumb stack and render in the code panel
+  const label = snapshotViewStack.length === 0 ? 'Snapshot' : `Checkpoint ${snapshotViewStack.length}`
+  snapshotViewStack.push({ label, snapshot })
+  showSnapshotInPanel(snapshot, true)
 
   return new Promise<void>(resolve => {
     resolveSnapshotModal = resolve
   })
 }
 
+export function navigateSnapshotBreadcrumb(index: number) {
+  // Pop back to the given breadcrumb level
+  while (snapshotViewStack.length > index + 1) {
+    snapshotViewStack.pop()
+  }
+  const bc = snapshotViewStack[index]
+  if (bc) showSnapshotInPanel(bc.snapshot)
+}
+
+export function closeSnapshotView() {
+  // Clear stack and active snapshot
+  snapshotViewStack.splice(0)
+  activeSnapshotKey = null
+  populateSideSnapshotsList()
+  currentSnapshot = null
+  snapshotExecutionControlsVisible = false
+  resolveSnapshotModal?.()
+  resolveSnapshotModal = null
+  hideExecutionControlBar()
+
+  // Sync view — will show empty or editor depending on side tab
+  syncCodePanelView()
+  syncPlaygroundUrlState(normalizeSideTab(getCurrentSideTab()))
+}
+
 export function slideBackSnapshotModal() {
   if (modalStack.length <= 1) return
   popModal()
+}
+
+function restoreInlineSnapshotContext() {
+  currentSnapshot = snapshotViewStack[snapshotViewStack.length - 1]?.snapshot ?? null
+  if (getCurrentSideTab() === 'snapshots' && currentSnapshot && snapshotExecutionControlsVisible) {
+    syncSnapshotExecutionControls()
+    return
+  }
+  hideExecutionControlBar()
 }
 
 /** Pop the current panel. Last panel fades out; sub-panels slide out. */
@@ -3723,10 +5156,9 @@ export function popModal() {
     // Clear state immediately so follow-up effects see a clean stack
     const dyingPanel = modalStack[0]!.panel
     modalStack.length = 0
-    currentSnapshot = null
     resolveSnapshotModal?.()
     resolveSnapshotModal = null
-    hideExecutionControlBar()
+    restoreInlineSnapshotContext()
 
     // Fade out overlay and panel together
     const overlay = elements.snapshotModal
@@ -3760,8 +5192,7 @@ export function closeAllModals() {
   elements.snapshotPanelContainer.style.maxWidth = ''
   elements.snapshotPanelContainer.innerHTML = ''
   modalStack.length = 0
-  currentSnapshot = null
-  hideExecutionControlBar()
+  restoreInlineSnapshotContext()
   resolveSnapshotModal?.()
   resolveSnapshotModal = null
 }
@@ -3910,7 +5341,7 @@ export function doExport() {
   const includeSaved = elements.exportOptSavedSnapshots.checked
   const includeRecent = elements.exportOptRecentSnapshots.checked
   const includeLayout = elements.exportOptLayout.checked
-  const includePrograms = elements.exportOptSavedPrograms.checked
+  const includeFiles = elements.exportOptSavedFiles.checked
 
   const allowedKeys = new Set<string>([
     ...(includeCode ? codeKeys.map(k => `playground-${k}`) : []),
@@ -3941,7 +5372,7 @@ export function doExport() {
     data,
     ...(includeSaved ? { savedSnapshots: getSavedSnapshots() } : {}),
     ...(includeRecent ? { recentSnapshots: getTerminalSnapshots() } : {}),
-    ...(includePrograms ? { savedPrograms: getSavedPrograms() } : {}),
+    ...(includeFiles ? { savedFiles: getSavedFiles() } : {}),
   }, null, 2)
 
   const now = new Date()
@@ -3981,7 +5412,7 @@ type ExportPayload = {
   data: Record<string, string>
   savedSnapshots?: SavedSnapshot[]
   recentSnapshots?: TerminalSnapshotEntry[]
-  savedPrograms?: SavedProgram[]
+  savedFiles?: SavedFile[]
 }
 
 function isExportPayload(value: unknown): value is ExportPayload {
@@ -4031,7 +5462,7 @@ export function importPlayground() {
         const hasLayout = hasCategoryInPayload(parsed, importCategoryKeys.layout)
         const hasSaved = (parsed.savedSnapshots?.length ?? 0) > 0
         const hasRecent = (parsed.recentSnapshots?.length ?? 0) > 0
-        const hasPrograms = (parsed.savedPrograms?.length ?? 0) > 0
+        const hasFiles = (parsed.savedFiles?.length ?? 0) > 0
 
         const setup = (el: HTMLInputElement, label: HTMLLabelElement, present: boolean) => {
           el.checked = present
@@ -4046,7 +5477,7 @@ export function importPlayground() {
         setup(elements.importOptLayout, elements.importOptLayoutLabel, hasLayout)
         setup(elements.importOptSavedSnapshots, elements.importOptSavedSnapshotsLabel, hasSaved)
         setup(elements.importOptRecentSnapshots, elements.importOptRecentSnapshotsLabel, hasRecent)
-        setup(elements.importOptSavedPrograms, elements.importOptSavedProgramsLabel, hasPrograms)
+        setup(elements.importOptSavedFiles, elements.importOptSavedFilesLabel, hasFiles)
 
         elements.importOptionsModal.style.display = 'flex'
       } catch {
@@ -4116,20 +5547,28 @@ export function doImport() {
       skipped.push(`${conflicts} recent snapshot${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
-  if (elements.importOptSavedPrograms.checked && payload.savedPrograms) {
-    const existingIds = new Set(getSavedPrograms().map(p => p.id))
-    const toAdd = payload.savedPrograms.filter(p => !existingIds.has(p.id))
-    const conflicts = payload.savedPrograms.length - toAdd.length
+  const payloadFiles = payload.savedFiles
+  if (elements.importOptSavedFiles.checked && payloadFiles) {
+    const existingIds = new Set(getSavedFiles().map(p => p.id))
+    const existingNames = new Set(getSavedFiles().map(p => p.name))
+    const toAdd = payloadFiles
+      .filter(p => !existingIds.has(p.id))
+      .map(file => {
+        const normalizedName = getUniqueSavedFileName(file.name, existingNames)
+        existingNames.add(normalizedName)
+        return { ...file, name: normalizedName }
+      })
+    const conflicts = payloadFiles.length - toAdd.length
     if (toAdd.length > 0) {
-      setSavedPrograms([...getSavedPrograms(), ...toAdd])
-      imported.push(`${toAdd.length} saved program${toAdd.length !== 1 ? 's' : ''}`)
+      setSavedFiles([...getSavedFiles(), ...toAdd])
+      imported.push(`${toAdd.length} saved file${toAdd.length !== 1 ? 's' : ''}`)
     }
     if (conflicts > 0)
-      skipped.push(`${conflicts} saved program${conflicts !== 1 ? 's' : ''} (already exist)`)
+      skipped.push(`${conflicts} saved file${conflicts !== 1 ? 's' : ''} (already exist)`)
   }
 
   populateSnapshotsList()
-  populateSavedProgramsList()
+  populateSavedFilesList()
   pendingImportPayload = null
 
   const importedHtml = imported.length > 0
@@ -4158,8 +5597,6 @@ export function closeImportResultModal() {
 let currentCheckpointSnapshot: Snapshot | null = null
 
 const MAX_TERMINAL_SNAPSHOTS = 99
-const VISIBLE_TERMINAL_SNAPSHOTS = 3
-let showAllTerminalSnapshots = false
 
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
@@ -4175,9 +5612,8 @@ function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'err
     entries.length = MAX_TERMINAL_SNAPSHOTS
   }
   setTerminalSnapshots(entries)
-  notifySnapshotAdded()
   populateSnapshotsList({ animateNewTerminal: true })
-  const toastMessages = { completed: 'Program completed — snapshot captured', error: 'Program failed — snapshot captured', halted: 'Program halted — snapshot captured' }
+  const toastMessages = { completed: 'File completed — snapshot captured', error: 'File failed — snapshot captured', halted: 'File halted — snapshot captured' }
   showToast(toastMessages[resultType], resultType === 'error' ? { severity: 'error' } : undefined)
 }
 
@@ -4187,22 +5623,6 @@ export async function clearTerminalSnapshot(index: number): Promise<void> {
   entries.splice(index, 1)
   setTerminalSnapshots(entries)
   populateSnapshotsList()
-}
-
-export function toggleShowAllTerminalSnapshots(): void {
-  showAllTerminalSnapshots = !showAllTerminalSnapshots
-  const overflow = document.getElementById('terminal-snapshots-overflow')
-  if (overflow) {
-    overflow.style.display = showAllTerminalSnapshots ? 'contents' : 'none'
-    // Update button text
-    const btn = overflow.nextElementSibling as HTMLButtonElement | null
-    if (btn) {
-      const entries = getTerminalSnapshots()
-      btn.textContent = showAllTerminalSnapshots ? 'Show less' : `Show all (${entries.length})`
-    }
-  } else {
-    populateSnapshotsList()
-  }
 }
 
 function promptSnapshotName(onSave: (name: string) => void | Promise<void>) {
@@ -4255,7 +5675,7 @@ export function saveCheckpoint() {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    notifySnapshotAdded()
+
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Checkpoint saved (${existing.length} total)`)
   })
@@ -4320,7 +5740,7 @@ export function saveSnapshot() {
     const existing = getSavedSnapshots().filter(e => e.snapshot.id !== snapshot.id)
     existing.unshift({ kind: 'saved', snapshot, savedAt: Date.now(), locked: false, name: name || undefined })
     setSavedSnapshots(existing)
-    notifySnapshotAdded()
+
     populateSnapshotsList({ animateNewSaved: true })
     showToast(`Snapshot saved (${existing.length} total)`)
   })
@@ -4359,12 +5779,12 @@ export async function resumeSnapshot() {
       throw runResult.error
     }
     if (runResult.type === 'suspended') {
-      appendOutput('Program suspended', 'comment')
+      appendOutput('File suspended', 'comment')
       void openSnapshotModal(runResult.snapshot)
       return
     }
     if (runResult.type === 'halted') {
-      appendOutput('Program halted', 'comment')
+      appendOutput('File halted', 'comment')
       if (runResult.snapshot) {
         saveTerminalSnapshot(runResult.snapshot, 'halted')
       }
@@ -4988,64 +6408,12 @@ function readlineHandler(ctx: EffectContext): Promise<void> {
   })
 }
 
-function printlnHandler(ctx: EffectContext): Promise<void> {
-  return new Promise<void>(resolve => {
-    const value = ctx.arg
-    const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
-
-    const submit = () => {
-      ctx.resume(value)
-      resolve()
-      resolveCurrentEffect()
-      focusDvalaCode()
-    }
-
-    const failEffect = makeFailHelper(ctx, resolve)
-
-    registerPendingEffect({
-      ctx,
-      title: 'Output',
-      renderBody(el) {
-        const outputWrap = document.createElement('div')
-        outputWrap.className = 'println-output'
-        const pre = document.createElement('pre')
-        pre.className = 'println-content'
-        pre.textContent = text
-        outputWrap.appendChild(pre)
-        const copyBtn = document.createElement('span')
-        copyBtn.className = 'println-copy-btn'
-        copyBtn.innerHTML = copyIcon
-        copyBtn.addEventListener('click', () => { void navigator.clipboard.writeText(text) })
-        outputWrap.appendChild(copyBtn)
-        el.appendChild(outputWrap)
-      },
-      renderFooter(el) {
-        if (failEffect.renderFooterOverride(el))
-          return
-        const failBtn = document.createElement('button')
-        failBtn.className = 'button button--danger'
-        failBtn.textContent = 'Fail…'
-        failBtn.addEventListener('click', failEffect.enter)
-        const btn = document.createElement('button')
-        btn.className = 'button button--primary'
-        btn.textContent = 'OK'
-        btn.addEventListener('click', submit)
-        el.appendChild(failBtn)
-        el.appendChild(btn)
-      },
-      onKeyDown(evt) {
-        if (failEffect.onKeyDown(evt))
-          return true
-        if (evt.key === 'Enter' || evt.key === 'Escape') {
-          evt.preventDefault()
-          submit()
-          return true
-        }
-        return false
-      },
-      resolve,
-    })
-  })
+// Non-blocking print handler — appends to output panel and resumes immediately
+function outputPrintHandler(ctx: EffectContext): void {
+  const value = ctx.arg
+  const text = typeof value === 'string' ? value : stringifyValue(value as Any, false)
+  appendOutput(text, 'output')
+  ctx.resume(value)
 }
 
 function ioErrorHandler(ctx: EffectContext): Promise<void> {
@@ -5490,22 +6858,16 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
         ? JSON.parse(contextString) as UnknownRecord
         : {}
 
-    const parsedHandlers = (parsedContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
-    const bindings = asUnknownRecord(parsedContext.bindings ?? {})
+    const runtimeContext = getRuntimeContextObject(parsedContext)
+    const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
+    const bindings = getContextBindings(runtimeContext)
 
     const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
-        console.log(pattern, value)
         throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function string`)
       }
 
-      const fn = eval(value) as EffectHandler
-
-      if (typeof fn !== 'function') {
-        throw new TypeError(`Invalid handler value. "${pattern}" should be a javascript function`)
-      }
-
-      return { pattern, handler: fn }
+      return { pattern, handler: compileContextEffectHandlerSource(value) }
     })
 
     const hasPattern = (p: string) => effectHandlers.some(h => h.pattern === p)
@@ -5534,7 +6896,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     if (!hasPattern('dvala.io.read'))
       effectHandlers.push({ pattern: 'dvala.io.read', handler: readlineHandler })
     if (!hasPattern('dvala.io.print'))
-      effectHandlers.push({ pattern: 'dvala.io.print', handler: printlnHandler })
+      effectHandlers.push({ pattern: 'dvala.io.print', handler: outputPrintHandler })
     if (!hasPattern('dvala.io.error'))
       effectHandlers.push({ pattern: 'dvala.io.error', handler: ioErrorHandler })
 
@@ -5587,7 +6949,7 @@ function applyState(scrollToTop = false) {
   setOutput(getState('output'), false)
   getDataFromUrl()
 
-  setContext(getState('context'), false)
+  updateContextState(getState('context'), false)
   elements.contextTextArea.selectionStart = contextTextAreaSelectionStart
   elements.contextTextArea.selectionEnd = contextTextAreaSelectionEnd
 
@@ -5595,6 +6957,10 @@ function applyState(scrollToTop = false) {
   elements.dvalaTextArea.selectionStart = dvalaTextAreaSelectionStart
   elements.dvalaTextArea.selectionEnd = dvalaTextAreaSelectionEnd
 
+  if (activeDvalaCodeHistoryFileId !== getState('current-file-id'))
+    activateCurrentFileHistory(false)
+
+  showSideTab(getState('active-side-tab'), { persist: false, syncUrl: false })
   updateCSS()
   layout()
 
@@ -5612,7 +6978,7 @@ function applyState(scrollToTop = false) {
 
 function updateCSS() {
   const debug = getState('debug')
-  elements.dvalaPanelDebugInfo.classList.toggle('active', debug)
+  elements.dvalaPanelDebugInfo?.classList.toggle('active', debug)
 
   const debugToggle = document.getElementById('settings-debug-toggle') as HTMLInputElement | null
   if (debugToggle)
@@ -5682,21 +7048,42 @@ function updateCSS() {
   if (devTabBtn)
     devTabBtn.style.display = getState('playground-developer') ? '' : 'none'
 
-  elements.dvalaCodeTitle.style.color = (getState('focused-panel') === 'dvala-code') ? 'white' : ''
-  const currentProgramId = getState('current-program-id')
-  const currentProgram = currentProgramId ? getSavedPrograms().find(p => p.id === currentProgramId) : null
-  const isLocked = currentProgram?.locked ?? false
-  elements.dvalaCodeTitleString.textContent = currentProgram ? currentProgram.name : 'Untitled Program'
+  const currentFileId = getState('current-file-id')
+  const currentFile = currentFileId ? getSavedFiles().find(entry => entry.id === currentFileId) : null
+  const isLocked = currentFile?.locked ?? false
+  const isContextTab = getCurrentSideTab() === 'context'
+  const context = isContextTab ? getParsedContext() : null
+  const contextBindings = context ? getContextBindings(context) : null
+  const contextEffectHandler = activeContextBindingName && context ? getContextEffectHandler(context, activeContextBindingName) : null
+  const contextTitle = activeContextBindingName && context && (
+    (activeContextEntryKind === 'binding' && ((contextBindings && Object.prototype.hasOwnProperty.call(contextBindings, activeContextBindingName))
+      || getContextBindingInvalidDraft(context, activeContextBindingName) !== null))
+    || (activeContextEntryKind === 'effect-handler' && (contextEffectHandler !== null || getContextEffectHandlerInvalidDraft(context, activeContextBindingName) !== null))
+  )
+    ? activeContextBindingName
+    : ''
+  const currentFileTitle = currentFile
+    ? currentFile.name
+    : SCRATCH_TITLE
+  const showCodePendingIndicator = !isContextTab && !isLocked && (autoSaveTimer !== null || (currentFileId === null && scratchEditedTimer !== null))
+  const showSaveScratchButton = currentFileId === null && hasScratchContent() && getCurrentSideTab() !== 'snapshots'
+  // Title string: only shown for context tab (shows binding/handler name)
+  elements.dvalaCodeTitleString.textContent = isContextTab ? contextTitle : ''
+  elements.dvalaCodeTitleString.style.display = isContextTab ? '' : 'none'
+  elements.editorToolbarTitle.textContent = currentFileTitle
+  // Context entry names (bindings, effect handlers) also use monospace
+  const fileTitleFontFamily = (!isContextTab || contextTitle) ? 'var(--font-mono)' : ''
+  elements.dvalaCodeTitleString.style.fontFamily = fileTitleFontFamily
+  elements.dvalaCodeTitleInput.style.fontFamily = fileTitleFontFamily
+  elements.editorToolbarTitle.style.fontFamily = !isContextTab ? 'var(--font-mono)' : ''
   elements.dvalaTextArea.readOnly = isLocked
   elements.dvalaTextArea.classList.toggle('panel-textarea--locked', isLocked)
   elements.dvalaCodeLockedIndicator.style.display = isLocked ? 'inline-flex' : 'none'
-  if (isLocked) {
-    elements.dvalaCodeUndoButton.classList.add('disabled')
-    elements.dvalaCodeRedoButton.classList.add('disabled')
-  }
-  const showIndicator = !isLocked && (autoSaveTimer !== null || (currentProgramId === null && getState('dvala-code-edited') && getState('dvala-code').trim().length > 0))
-  elements.dvalaCodePendingIndicator.style.display = showIndicator ? 'inline-block' : 'none'
-  elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
+  elements.saveScratchButton.style.display = showSaveScratchButton ? 'inline-flex' : 'none'
+  syncDvalaCodeHistoryButtons()
+  // Pending indicator: only shown for context tab (file edits tracked via toolbar pill)
+  elements.dvalaCodePendingIndicator.style.display = (isContextTab && showCodePendingIndicator) ? 'inline-block' : 'none'
+  if (elements.contextTitle) elements.contextTitle.style.color = (getState('focused-panel') === 'context') ? 'white' : ''
 
 }
 
@@ -5720,20 +7107,6 @@ export function showPage(id: string, scroll: 'smooth' | 'instant' | 'none', hist
     if (id === 'settings-page') {
       tab = tab || 'dvala'
       showSettingsTab(tab)
-    }
-    if (id === 'saved-programs-page') {
-      populateSavedProgramsList()
-      const indicator = document.getElementById('programs-nav-indicator')
-      if (indicator) indicator.style.display = 'none'
-      const navLink = document.getElementById('saved-programs-page_link')
-      if (navLink) navLink.style.color = ''
-    }
-    if (id === 'snapshots-page') {
-      populateSnapshotsList()
-      const indicator = document.getElementById('snapshots-nav-indicator')
-      if (indicator) indicator.style.display = 'none'
-      const navLink = document.getElementById('snapshots-page_link')
-      if (navLink) navLink.style.color = ''
     }
     if (link) {
       link.classList.add('active-sidebar-entry')
@@ -5782,47 +7155,36 @@ export function copyCode(encodedCode: string) {
 
 export function loadEncodedCode(encodedCode: string) {
   const code = decodeURIComponent(atob(encodedCode))
-  setDvalaCode(code, true, 'top', () => {
-    showToast('Code loaded in editor')
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-  })
+  openScratchInEditor({ code, context: '', focusCode: true, navigateToPlayground: true, toast: 'Code loaded in editor' })
 }
 
 export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
-  guardCodeReplacement(() => {
-    saveState({ 'current-program-id': null, 'dvala-code-edited': false })
+  const context = example.context
+    ? formatContextJson(example.context as Record<string, unknown>)
+    : ''
+  const code = example.code ? example.code : ''
+  const size = Math.max(name.length + 10, 40)
+  const paddingLeft = Math.floor((size - name.length) / 2)
+  const paddingRight = Math.ceil((size - name.length) / 2)
 
-    const context = example.context
-      ? formatContextJson(example.context as Record<string, unknown>)
-      : ''
-
-    setContext(context, true, 'top')
-
-    const code = example.code ? example.code : ''
-    const size = Math.max(name.length + 10, 40)
-    const paddingLeft = Math.floor((size - name.length) / 2)
-    const paddingRight = Math.ceil((size - name.length) / 2)
-    setDvalaCode(`
+  openScratchInEditor({
+    code: `
 /*${'*'.repeat(size)}**
  *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
  *${'*'.repeat(size)}**/
 
 ${code}
-`.trimStart(), true, 'top')
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-    showToast(`Example loaded: ${name}`)
+`.trimStart(),
+    context,
+    focusCode: true,
+    navigateToPlayground: true,
+    toast: `Example loaded: ${name}`,
   })
 }
 
 export function loadCode(code: string) {
-  setDvalaCode(code, true, 'top', () => {
-    saveState({ 'focused-panel': 'dvala-code' })
-    applyState()
-    showToast('Code loaded')
-  })
+  openScratchInEditor({ code, context: '', focusCode: true, navigateToPlayground: true, toast: 'Code loaded' })
 }
 
 function hijackConsole() {

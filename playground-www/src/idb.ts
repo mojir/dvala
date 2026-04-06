@@ -1,9 +1,10 @@
 const DB_NAME = 'dvala-playground'
-const DB_VERSION = 2
+const DB_VERSION = 4
 
 export const SAVED_SNAPSHOTS_STORE = 'saved-snapshots'
 export const TERMINAL_SNAPSHOTS_STORE = 'terminal-snapshots'
-export const SAVED_PROGRAMS_STORE = 'saved-programs'
+export const SAVED_FILES_STORE = 'saved-files'
+export const FILE_HISTORIES_STORE = 'file-histories'
 
 let dbInstance: IDBDatabase | null = null
 
@@ -20,8 +21,10 @@ export function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(SAVED_SNAPSHOTS_STORE)
       if (!db.objectStoreNames.contains(TERMINAL_SNAPSHOTS_STORE))
         db.createObjectStore(TERMINAL_SNAPSHOTS_STORE)
-      if (!db.objectStoreNames.contains(SAVED_PROGRAMS_STORE))
-        db.createObjectStore(SAVED_PROGRAMS_STORE)
+      if (!db.objectStoreNames.contains(SAVED_FILES_STORE))
+        db.createObjectStore(SAVED_FILES_STORE)
+      if (!db.objectStoreNames.contains(FILE_HISTORIES_STORE))
+        db.createObjectStore(FILE_HISTORIES_STORE)
     }
     request.onsuccess = e => {
       dbInstance = (e.target as IDBOpenDBRequest).result

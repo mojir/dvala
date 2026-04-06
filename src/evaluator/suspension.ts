@@ -35,6 +35,7 @@ import { dedupSubTrees, expandPoolRefs } from './dedupSubTrees'
 import type { Context } from './interface'
 import type { Snapshot } from './effectTypes'
 import type { ContinuationStack } from './frames'
+import type { Step } from './step'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,6 +61,7 @@ interface SuspensionBlobData {
   version: number
   contextStacks: SerializedContextStack[]
   k: unknown // ContinuationStack with ContextStacks replaced by refs
+  initialStep?: unknown // Program-start snapshots store the first Eval step explicitly
   meta?: Any
   snapshots?: unknown[] // Snapshot[] preserved across suspend/resume
   nextSnapshotIndex?: number
@@ -101,7 +103,7 @@ function isPMMarker(value: unknown): value is PMMarker {
  * Validates that all values are serializable.
  * Throws a descriptive `DvalaError` if non-serializable values are found.
  */
-export function serializeToObject(k: ContinuationStack, meta?: unknown): SuspensionBlobData {
+export function serializeToObject(k: ContinuationStack, meta?: unknown, initialStep?: Step): SuspensionBlobData {
   // Phase 1: Collect all unique ContextStack instances
   const csMap = new Map<ContextStackImpl, number>()
   let nextId = 0
@@ -136,6 +138,9 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown): Suspens
   collectContextStacks(k)
   if (meta !== undefined) {
     collectContextStacks(meta)
+  }
+  if (initialStep !== undefined) {
+    collectContextStacks(initialStep)
   }
 
   // Phase 2: Serialize values, replacing ContextStacks with refs
@@ -202,11 +207,13 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown): Suspens
 
   // Serialize meta
   const serializedMeta = meta !== undefined ? serializeValue(meta, 'meta') : undefined
+  const serializedInitialStep = initialStep !== undefined ? serializeValue(initialStep, 'initialStep') : undefined
 
   const blobData: SuspensionBlobData = {
     version: SUSPENSION_VERSION,
     contextStacks: serializedContextStacks,
     k: serializedK,
+    ...(serializedInitialStep !== undefined ? { initialStep: serializedInitialStep } : {}),
     ...(serializedMeta !== undefined ? { meta: serializedMeta as Any } : {}),
   }
 
@@ -330,7 +337,7 @@ export interface DeserializeOptions {
 export function deserializeFromObject(
   blobData: unknown,
   options?: DeserializeOptions,
-): { k: ContinuationStack; meta?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number } {
+): { k: ContinuationStack; meta?: Any; snapshots: Snapshot[]; nextSnapshotIndex: number; initialStep?: Step } {
   let data = blobData as SuspensionBlobData
 
   if (data.version !== SUSPENSION_VERSION) {
@@ -347,6 +354,7 @@ export function deserializeFromObject(
       ...data,
       contextStacks: expandPoolRefs(data.contextStacks, pool) as SerializedContextStack[],
       k: expandPoolRefs(data.k, pool),
+      ...(data.initialStep !== undefined ? { initialStep: expandPoolRefs(data.initialStep, pool) as Step } : {}),
       ...(data.meta !== undefined ? { meta: expandPoolRefs(data.meta, pool) as Any } : {}),
       ...(data.snapshots ? { snapshots: data.snapshots.map(s => expandPoolRefs(s, pool)) } : {}),
     }
@@ -436,10 +444,12 @@ export function deserializeFromObject(
 
   // Resolve meta
   const resolvedMeta = data.meta !== undefined ? resolveValue(data.meta) as Any : undefined
+  const resolvedInitialStep = data.initialStep !== undefined ? resolveValue(data.initialStep) as Step : undefined
 
   return {
     k: resolvedK,
     meta: resolvedMeta,
+    ...(resolvedInitialStep !== undefined ? { initialStep: resolvedInitialStep } : {}),
     snapshots: (data.snapshots ?? []) as Snapshot[],
     nextSnapshotIndex: data.nextSnapshotIndex ?? 0,
   }
