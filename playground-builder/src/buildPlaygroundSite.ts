@@ -467,12 +467,17 @@ function writeIndexPage() {
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"></noscript>
     <link rel="stylesheet" href="styles.css">
     <script>
-      // GitHub Pages SPA routing: restore path from query param set by 404.html
+      // GitHub Pages SPA routing: restore path from query param set by 404.html.
+      // 404.html encodes the path as: /?/<path>&<search> where the first '&' separates
+      // the encoded path segment from the original query params (which had '&' → '~and~').
       ;(function(l) {
         if (l.search[1] === '/') {
           var decoded = l.search.slice(1).replace(/~and~/g, '&')
+          var sep = decoded.indexOf('&')
+          var appPath = sep >= 0 ? decoded.slice(0, sep) : decoded
+          var appSearch = sep >= 0 ? '?' + decoded.slice(sep + 1) : ''
           window.history.replaceState(null, null,
-            l.pathname.slice(0, -1) + decoded + (decoded.slice(-1) === '?' ? '' : l.hash))
+            l.pathname.slice(0, -1) + appPath + appSearch + l.hash)
         }
       }(window.location))
     </script>
