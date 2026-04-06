@@ -327,12 +327,15 @@ function refActions(): string {
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function getShortDescription(description: string): string {
-  const match = /(.*?) {2}\n|\n\n|$/.exec(description)
-  return (match?.[1] ?? description)
+  // Take first paragraph (up to blank line); within that, stop at a markdown line break (two trailing spaces)
+
+  const firstParagraph = description.split('\n\n')[0]!
+
+  const beforeLineBreak = firstParagraph.split(/ {2}\n/)[0]!
+  return beforeLineBreak
     .replace(/`([^`]*)`/g, '$1')
     .replace(/\*\*([^*]*)\*\*/g, '$1')
     .replace(/\*([^*]*)\*/g, '$1')
-    .slice(0, 120)
 }
 
 function escapeHtml(str: string): string {
