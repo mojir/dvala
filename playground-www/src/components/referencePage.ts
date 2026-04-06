@@ -150,7 +150,7 @@ export function renderReferenceIndexPage(): string {
 <a class="ref-card" href="${href(`/ref/${section.id}`)}" onclick="event.preventDefault();Playground.navigate('/ref/${section.id}')">
   <span class="ref-card__title">${escapeHtml(section.title)}</span>
   <span class="ref-card__desc">${escapeHtml(section.description)}</span>
-  <span class="ref-card__count">${plural(count, 'entry')}</span>
+  <span class="ref-card__count">${plural(count, 'entry', 'entries')}</span>
 </a>`
   }).join('\n')
 
@@ -203,7 +203,7 @@ export function renderReferenceSectionPage(sectionId: string): string {
 <a class="ref-card" href="${href(`/ref/core/${encodeURIComponent(categoryName)}`)}" onclick="event.preventDefault();Playground.navigate('/ref/core/${encodeURIComponent(categoryName)}')">
   <span class="ref-card__title">${escapeHtml(categoryName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
-  <span class="ref-card__count">${plural(categoryEntries.length, 'function')}</span>
+  <span class="ref-card__count">${plural(categoryEntries.length, 'function', 'functions')}</span>
 </a>`
     }).join('\n')
 
@@ -242,7 +242,7 @@ export function renderReferenceSectionPage(sectionId: string): string {
 <a class="ref-card" href="${href(`/ref/modules/${moduleName}`)}" onclick="event.preventDefault();Playground.navigate('/ref/modules/${moduleName}')">
   <span class="ref-card__title">${escapeHtml(moduleName)}</span>
   ${desc ? `<span class="ref-card__desc">${escapeHtml(desc)}</span>` : ''}
-  <span class="ref-card__count">${plural(moduleEntries.length, 'function')}</span>
+  <span class="ref-card__count">${plural(moduleEntries.length, 'function', 'functions')}</span>
 </a>`
     }).join('\n')
 
@@ -410,8 +410,8 @@ function refActions(): string {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
+function plural(n: number, singular: string, pluralForm: string): string {
+  return `${n} ${n === 1 ? singular : pluralForm}`
 }
 
 function getShortDescription(description: string): string {
