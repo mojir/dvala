@@ -152,7 +152,7 @@ export function asReservedSymbolToken<T extends ReservedSymbol>(token: Token | u
   return token
 }
 
-export function isShebangToken(token: Token | undefined): token is SingleLineCommentToken {
+export function isShebangToken(token: Token | undefined): token is ShebangToken {
   return token?.[0] === 'Shebang'
 }
 

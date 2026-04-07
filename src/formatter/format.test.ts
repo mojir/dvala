@@ -213,6 +213,11 @@ describe('formatter — inline block comments', () => {
     'f(a /*A*/, b /*B*/, c)',
     'f(a /*A*/, b /*B*/, c);',
   ))
+
+  it('keeps inline comment when the next token wraps to a later line', () => check(
+    'let x = longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE',
+    'let x =\n  longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE;',
+  ))
 })
 
 // ---------------------------------------------------------------------------
@@ -310,6 +315,10 @@ describe('formatter — shebang', () => {
     '#!/usr/bin/env dvala\nlet x = 1;',
     '#!/usr/bin/env dvala\nlet x = 1;',
   ))
+  it('returns shebang line for shebang-only file', () => check(
+    '#!/usr/bin/env dvala',
+    '#!/usr/bin/env dvala',
+  ))
 })
 
 // ---------------------------------------------------------------------------
@@ -401,6 +410,52 @@ describe('formatter — round-trip stability', () => {
 // ---------------------------------------------------------------------------
 // Operator precedence — parentheses preservation
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Trailing lambda
+// ---------------------------------------------------------------------------
+
+describe('formatter — trailing lambda', () => {
+  it('keeps leading args on opening line with -> do...end block', () => check(
+    'test("pi is approximately 3.14", -> do assertTrue(constants.pi > 3.14); assertTrue(constants.pi < 3.15) end)',
+    'test("pi is approximately 3.14", -> do\n  assertTrue(constants.pi > 3.14);\n  assertTrue(constants.pi < 3.15)\nend);',
+  ))
+
+  it('works with multiple leading args', () => check(
+    'describe("math", "group", -> do assertTrue(1 == 1); assertTrue(2 == 2) end)',
+    'describe("math", "group", -> do\n  assertTrue(1 == 1);\n  assertTrue(2 == 2)\nend);',
+  ))
+
+  it('falls back to exploded form when opening line would exceed 80 cols', () => check(
+    // Single-statement `-> do ... end` simplifies to `-> expr`, which is not a
+    // do...end block, so the trailing-lambda path is skipped and the standard
+    // exploded form is used instead.
+    'veryLongFunctionName("a very long description string that pushes the line over the limit", -> do assertTrue(x) end)',
+    'veryLongFunctionName(\n  "a very long description string that pushes the line over the limit",\n  -> assertTrue(x),\n);',
+  ))
+
+  it('single-expression lambda is not affected', () => check(
+    'test("desc", -> someExpression)',
+    'test("desc", -> someExpression);',
+  ))
+
+  it('single-arg lambda call is not affected (guard: argNodes.length >= 2)', () => check(
+    // Only one arg (the lambda itself) — trailing-lambda form must not apply;
+    // the standard exploded form is used instead.
+    'run(-> do assertTrue(x); assertTrue(y) end)',
+    'run(\n  -> do\n    assertTrue(x);\n    assertTrue(y)\n  end,\n);',
+  ))
+
+  it('works when the trailing lambda has explicit parameters', () => check(
+    'register("handler", (event) -> do handle(event); log(event) end)',
+    'register("handler", (event) -> do\n  handle(event);\n  log(event)\nend);',
+  ))
+
+  it('is stable across two format passes', () => {
+    const source = 'test("pi is approximately 3.14", -> do assertTrue(constants.pi > 3.14); assertTrue(constants.pi < 3.15) end)'
+    expect(format(format(source)).trimEnd()).toBe(format(source).trimEnd())
+  })
+})
 
 describe('formatter — operator precedence parens', () => {
   it('preserves parens when lower-precedence op is left arg of higher-precedence op', () => check(

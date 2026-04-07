@@ -61,12 +61,9 @@ export function fromJS(value: unknown): Any {
     return vec
   }
 
-  if (typeof value === 'object') {
-    let map = PersistentMap.empty<Any>()
-    for (const [k, v] of Object.entries(value as Record<string, unknown>))
-      map = map.assoc(k, fromJS(v))
-    return map
-  }
-
-  return value as Any
+  // typeof value === 'object' is guaranteed by the early return above
+  let map = PersistentMap.empty<Any>()
+  for (const [k, v] of Object.entries(value as Record<string, unknown>))
+    map = map.assoc(k, fromJS(v))
+  return map
 }

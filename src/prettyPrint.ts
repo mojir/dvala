@@ -334,6 +334,28 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
     if (fits(flat, ind)) return flat
   }
 
+  // Trailing lambda: when the last arg is a `-> do...end` block, keep all
+  // leading args on the opening line and let the block hang at the call's
+  // indent level — mirrors the `f("desc", -> do ... end)` convention common
+  // in test frameworks and avoids the awkward exploded-args form.
+  const lastArg = argNodes.at(-1)
+  if (argNodes.length >= 2 && lastArg![0] === NodeTypes.Function) {
+    const leadingArgStrs = argNodes.slice(0, -1).map(a => printNode(a, ind))
+    if (allSingleLine(...leadingArgStrs)) {
+      // Render the lambda at the call's own indent so `end` aligns with the call.
+      const lambdaStr = printNode(lastArg!, ind)
+      // Only use trailing form for `-> do...end` blocks (multi-line with `end` closer).
+      // Single-expression lambdas (`->`) fall through to the standard exploded form.
+      if (!allSingleLine(lambdaStr) && lambdaStr.endsWith(`${indent(ind)}end`)) {
+        const cutAt = lambdaStr.indexOf('\n')
+        const openingLine = `${fnStr}(${leadingArgStrs.join(', ')}, ${lambdaStr.slice(0, cutAt)}`
+        if (fits(openingLine, ind)) {
+          return `${openingLine}${lambdaStr.slice(cutAt)})`
+        }
+      }
+    }
+  }
+
   // Multi-line args
   const argsStr = argNodes.map(a => `${indent(ind + 1)}${printNode(a, ind + 1)}`).join(',\n')
   return `${fnStr}(\n${argsStr},\n${indent(ind)})`

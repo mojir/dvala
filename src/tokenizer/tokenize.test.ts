@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { minifyTokenStream } from './minifyTokenStream'
 import { tokenize } from './tokenize'
 
 describe('tokenenizers', () => {
@@ -32,5 +33,16 @@ describe('tokenenizers', () => {
   test('tokenize shebang', () => {
     expect(tokenize('#!...\n10', false, undefined).tokens.length).toBe(3)
     expect(tokenize('#!...', false, undefined).tokens.length).toBe(1)
+  })
+  test('shebang token is filtered out by minifyTokenStream', () => {
+    // Regression: tokenizeShebang previously emitted 'SingleLineComment' instead
+    // of 'Shebang', causing isShebangToken to always return false and the shebang
+    // to pass through minification as a comment token rather than being stripped.
+    const stream = tokenize('#!/usr/bin/env dvala\nlet x = 1', false, undefined)
+    expect(stream.tokens[0]![0]).toBe('Shebang')
+    const minified = minifyTokenStream(stream, { removeWhiteSpace: true })
+    const types = minified.tokens.map(t => t[0])
+    expect(types).not.toContain('Shebang')
+    expect(types).not.toContain('SingleLineComment')
   })
 })

@@ -1,5 +1,5 @@
 import { isSymbolicOperator } from './operators'
-import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
+import type { BasePrefixedNumberToken, EffectNameToken, ErrorToken, LBraceToken, LBracketToken, LParenToken, MacroPrefixToken, MacroQualifiedToken, MultiLineCommentToken, NumberToken, OperatorToken, QuoteSpliceToken, RBraceToken, RBracketToken, RParenToken, RegexpShorthandToken, ReservedSymbolToken, ShebangToken, SingleLineCommentToken, StringToken, SymbolToken, TemplateStringToken, Token, TokenDescriptor, WhitespaceToken } from './token'
 import type { ReservedSymbol } from './reservedNames'
 import { reservedSymbolRecord } from './reservedNames'
 
@@ -401,7 +401,7 @@ export const tokenizeMultiLineComment: Tokenizer<MultiLineCommentToken> = (input
   return NO_MATCH
 }
 
-export const tokenizeShebang: Tokenizer<SingleLineCommentToken> = (input, position) => {
+export const tokenizeShebang: Tokenizer<ShebangToken> = (input, position) => {
   if (input[position] === '#' && input[position + 1] === '!') {
     let length = 2
     let value = '#!'
@@ -410,7 +410,7 @@ export const tokenizeShebang: Tokenizer<SingleLineCommentToken> = (input, positi
       length += 1
     }
 
-    return [length, ['SingleLineComment', value]]
+    return [length, ['Shebang', value]]
   }
   return NO_MATCH
 }
