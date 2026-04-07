@@ -4,7 +4,13 @@ let { pi } = import("./lib/constants");
 let { double, withDefault } = import("./lib/macros");
 let { withLogging } = import("./lib/logging");
 
-let values = [3, 7, 2, 9, 4];
+let values = [
+  3,
+  7,
+  2,
+  9,
+  4,
+];
 
 withLogging(
   -> do
@@ -15,7 +21,13 @@ withLogging(
     let interpolated = lerp(0, pi, 0.5);
     let doubled = double(avg);
     let safe = withDefault(null, 42);
-    { avg, clamped, interpolated, doubled, safe }
+    {
+      avg,
+      clamped,
+      interpolated,
+      doubled,
+      safe,
+    }
   end,
 );
 

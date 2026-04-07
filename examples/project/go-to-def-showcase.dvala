@@ -22,14 +22,23 @@ let { name, age } = { name: "Alice", age: 30 };
 
 // === 6. Array destructuring ===
 let [first, second] = [10, 20];
-let [head, ...tail] = [1, 2, 3, 4, 5];
+let [head, ...tail] = [
+  1,
+  2,
+  3,
+  4,
+  5,
+];
 
 // === 7. Import destructuring (cross-file) ===
 let { clamp, lerp } = import("./lib/math");
 let { average } = import("./lib/stats");
 
 // === 8. Do block scoping ===
-let blockResult = do let inner = answer * 2; inner + 1 end;
+let blockResult = do
+  let inner = answer * 2;
+  inner + 1
+end;
 
 // === 9. Match — pattern bindings ===
 let matchResult = match { kind: "circle", radius: 5 }
@@ -39,7 +48,13 @@ let matchResult = match { kind: "circle", radius: 5 }
 end;
 
 // === 10. Match — array patterns with rest ===
-let arrayMatch = match [1, 2, 3, 4, 5]
+let arrayMatch = match [
+  1,
+  2,
+  3,
+  4,
+  5,
+]
   case [] then "empty"
   case [only] then "single: " ++ str(only)
   case [a, b, ...rest] then "first: " ++ str(a) ++ " second: " ++ str(b) ++ " rest: " ++ str(rest)
@@ -53,8 +68,16 @@ let guardMatch = match answer
 end;
 
 // === 12. For loop bindings ===
-let doubled = for (i in [1, 2, 3, 4, 5]) -> multiply(i, 2);
-let filtered = for (i in range(20) let sq = multiply(i, i) when sq > 10 while sq < 200) -> sq;
+let doubled = for (i in [
+  1,
+  2,
+  3,
+  4,
+  5,
+]) ->
+  multiply(i, 2);
+let filtered =
+  for (i in range(20) let sq = multiply(i, i) when sq > 10 while sq < 200) -> sq;
 
 // === 13. Loop/recur bindings ===
 let factorial = loop (n = 10, acc = 1) ->
@@ -63,7 +86,10 @@ let factorial = loop (n = 10, acc = 1) ->
 // === 14. Handler — clause params + implicit resume ===
 let logger = handler
   @showcase.log(msg) -> resume("logged: " ++ msg)
-  @showcase.double(val) -> do let doubled = multiply(val, 2); resume(doubled) end
+  @showcase.double(val) -> do
+    let doubled = multiply(val, 2);
+    resume(doubled)
+  end
 transform
   result -> { result, completed: true }
 end;
@@ -71,9 +97,9 @@ end;
 // === 15. Do-with block — handler usage ===
 let handled = do
   with logger;
-    let logResult = perform(@showcase.log, greeting);
-    let doubleResult = perform(@showcase.double, answer);
-    { logResult, doubleResult }
+  let logResult = perform(@showcase.log, greeting);
+  let doubleResult = perform(@showcase.double, answer);
+  { logResult, doubleResult }
 end;
 
 // === 16. All references — verify everything resolves ===

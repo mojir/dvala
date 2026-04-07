@@ -174,7 +174,11 @@ The output is a self-contained JSON file — a **DvalaBundle** — with this str
 Internally, each file module is inlined as a `let` binding. Given the example above, the merged AST is logically equivalent to:
 
 ```dvala
-let __module_lib_math = do let add = (a, b) -> a + b; let mul = (a, b) -> a * b; { add, mul } end;
+let __module_lib_math = do
+  let add = (a, b) -> a + b;
+  let mul = (a, b) -> a * b;
+  { add, mul }
+end;
 
 let math = __module_lib_math;
 math.add(10, math.mul(3, 4));

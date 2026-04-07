@@ -74,12 +74,18 @@ Compound nodes nest other nodes in their payload:
 
 ```dvala
 // A macro that inspects its argument's AST type
-let showType = macro (ast) -> do let nodeType = first(ast); ["Str", nodeType, 0] end;
+let showType = macro (ast) -> do
+  let nodeType = first(ast);
+  ["Str", nodeType, 0]
+end;
 showType(42);
 ```
 
 ```dvala
-let showType = macro (ast) -> do let nodeType = first(ast); ["Str", nodeType, 0] end;
+let showType = macro (ast) -> do
+  let nodeType = first(ast);
+  ["Str", nodeType, 0]
+end;
 showType(x + 1);
 ```
 
@@ -133,7 +139,10 @@ The macro receives the AST of `21` (or `inc(5)`), splices it into `$^{ast} + $^{
 Quote blocks can contain multiple statements. The result is an array of AST nodes:
 
 ```dvala
-let twoStatements = quote let x = 1; x + 1 end;
+let twoStatements = quote
+  let x = 1;
+  x + 1
+end;
 typeOf(twoStatements);
 ```
 
@@ -162,13 +171,15 @@ Macros can create new control flow constructs that functions cannot:
 
 ```dvala
 // unless: execute body only if condition is false
-let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+let unless =
+  macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, 42);
 ```
 
 ```dvala
-let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+let unless =
+  macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(true, 42);
 ```
@@ -238,7 +249,8 @@ The `#` prefix consumes one operand, so it chains naturally — each `#` wraps t
 ```dvala
 let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 let inc = macro (ast) -> quote $^{ast} + 1 end;
-#double #inc 10;
+#double
+#inc 10;
 ```
 
 Here `#double #inc 10` parses as `double(inc(10))` — `inc(10)` expands to `11`, then `double(11)` expands to `11 + 11`.
@@ -274,10 +286,12 @@ To write a macro that handles both, use `decorate` from the `ast` module. It ext
 let { assertEqual } = import("assertion");
 let { decorate } = import("ast");
 
-let double = macro (ast) -> decorate(ast, (value) -> quote $^{value} + $^{value} end);
+let double =
+  macro (ast) -> decorate(ast, (value) -> quote $^{value} + $^{value} end);
 
 assertEqual(#double 21, 42);
-#double let x = 21;
+#double
+let x = 21;
 assertEqual(x, 42);
 ```
 
@@ -293,7 +307,13 @@ Dvala solves this automatically: **literal bindings in quote blocks are auto-gen
 
 ```dvala
 // The macro introduces "tmp" internally
-let withTemp = macro (ast) -> quote do let tmp = $^{ast}; tmp * 2 end end;
+let withTemp = macro (ast) ->
+  quote
+    do
+    let tmp = $^{ast};
+    tmp * 2
+  end
+end;
 
 // The caller also has "tmp"
 let tmp = 999;
@@ -354,13 +374,12 @@ let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 
 // Named macro emits the effect — handler can intercept
 do
-  with handler
-    @dvala.macro.expand(arg) -> do
-      perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
-      resume(["Num", 99, 0])
-    end
+  with handler @dvala.macro.expand(arg) -> do
+    perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
+    resume(["Num", 99, 0])
+  end
   end;
-    double(21)
+  double(21)
 end;
 // Return the expansion result as AST
 ```
@@ -373,7 +392,7 @@ let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 // Anonymous — handler is NOT called
 do
   with handler @dvala.macro.expand(arg) -> resume(["Num", 99, 0]) end;
-    double(21)
+  double(21)
 end;
 ```
 
@@ -414,7 +433,8 @@ prettyPrint(macroexpand(double, quote 21 end));
 
 ```dvala
 let { prettyPrint } = import("ast");
-let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+let unless =
+  macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 prettyPrint(macroexpand(unless, quote x > 10 end, quote 42 end));
 ```
 
@@ -437,7 +457,12 @@ Available constructors: `num`, `strNode`, `bool`, `nil`, `sym`, `builtin`, `effe
 
 ```dvala
 let { isNum, isCall, isAstNode, num } = import("ast");
-[isNum(num(42)), isCall(num(42)), isAstNode(num(42)), isAstNode(42)];
+[
+  isNum(num(42)),
+  isCall(num(42)),
+  isAstNode(num(42)),
+  isAstNode(42),
+];
 ```
 
 Available predicates: `isNum`, `isStr`, `isSym`, `isBuiltin`, `isCall`, `isIf`, `isBlock`, `isLet`, `isFn`, `isBool`, `isNil`, `isEffectNode`, `isAstNode`.
@@ -473,7 +498,12 @@ let describe = macro (ast) -> do
   result
 end;
 
-[describe(42), describe("hi"), describe(1 + 2), describe(true)];
+[
+  describe(42),
+  describe("hi"),
+  describe(1 + 2),
+  describe(true),
+];
 ```
 
 This is powerful for macros that need to inspect and transform specific AST shapes.

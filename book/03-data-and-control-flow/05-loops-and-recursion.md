@@ -7,7 +7,13 @@ Dvala provides `for` comprehensions for building arrays and `loop`/`recur` for t
 `for` iterates over a collection and returns a new array:
 
 ```dvala
-for (x in [1, 2, 3, 4]) -> x * 2;
+for (x in [
+  1,
+  2,
+  3,
+  4,
+]) ->
+  x * 2;
 ```
 
 ## Filtering with when

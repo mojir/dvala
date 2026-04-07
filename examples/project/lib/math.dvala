@@ -1,6 +1,9 @@
 let clamp = (value, lo, hi) -> min(max(value, lo), hi);
 
-let lerp = (a, b, t) -> do let diff = b - a; a + diff * t end;
+let lerp = (a, b, t) -> do
+  let diff = b - a;
+  a + diff * t
+end;
 
 let inRange = (value, lo, hi) -> value >= lo && value <= hi;
 

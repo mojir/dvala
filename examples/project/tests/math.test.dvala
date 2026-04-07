@@ -36,7 +36,10 @@ describe(
     test("above", -> assertFalse(inRange(11, 0, 10)));
     test(
       "at boundaries",
-      -> do assertTrue(inRange(0, 0, 10)); assertTrue(inRange(10, 0, 10)) end,
+      -> do
+        assertTrue(inRange(0, 0, 10));
+        assertTrue(inRange(10, 0, 10))
+      end,
     )
   end,
 );
