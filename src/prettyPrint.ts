@@ -634,13 +634,14 @@ function printLoop(payload: [unknown[][], unknown[]], ind: number): string {
   const bindings = (bindingsArr as unknown[][][]).map(([target, value]) => {
     return `${printBindingTarget(target as unknown[])} = ${printNode(value as AstNode, ind)}`
   })
-  const bodyStr = printNode(body as AstNode, ind)
+  // Body is a root slot — pass isRoot so #macro decorator style applies inside loop bodies
+  const bodyStr = printNode(body as AstNode, ind, true)
   if (allSingleLine(...bindings, bodyStr)) {
     const flat = `loop (${bindings.join(', ')}) -> ${bodyStr}`
     if (fits(flat, ind)) return flat
   }
 
-  return `loop (${bindings.join(', ')}) ->\n${indent(ind + 1)}${printNode(body as AstNode, ind + 1)}`
+  return `loop (${bindings.join(', ')}) ->\n${indent(ind + 1)}${printNode(body as AstNode, ind + 1, true)}`
 }
 
 function printFor(payload: [unknown[][], unknown[]], ind: number): string {
@@ -661,13 +662,14 @@ function printFor(payload: [unknown[][], unknown[]], ind: number): string {
     if (whileGuard) s += ` while ${printNode(whileGuard as AstNode, ind)}`
     levels.push(s)
   }
-  const bodyStr = printNode(body as AstNode, ind)
+  // Body is a root slot — pass isRoot so #macro decorator style applies inside for bodies
+  const bodyStr = printNode(body as AstNode, ind, true)
   if (allSingleLine(...levels, bodyStr)) {
     const flat = `for (${levels.join(', ')}) -> ${bodyStr}`
     if (fits(flat, ind)) return flat
   }
 
-  return `for (${levels.join(', ')}) ->\n${indent(ind + 1)}${printNode(body as AstNode, ind + 1)}`
+  return `for (${levels.join(', ')}) ->\n${indent(ind + 1)}${printNode(body as AstNode, ind + 1, true)}`
 }
 
 function printMatch(payload: [unknown[], unknown[][]], ind: number): string {
@@ -734,8 +736,9 @@ function printTemplateString(segments: unknown[][]): string {
 
 function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): string {
   const [bodyAst, spliceExprs] = payload
-  // Print body nodes, replacing Splice nodes with $^{spliceExpr}
-  const bodyParts = bodyAst.map(node => printNodeWithSplices(node as AstNode, spliceExprs, ind))
+  // Print body nodes, replacing Splice nodes with $^{spliceExpr}.
+  // Each body node is a root slot, so pass isRoot=true for decorator style.
+  const bodyParts = bodyAst.map(node => printNodeWithSplices(node as AstNode, spliceExprs, ind, true))
 
   // Single statement: try flat
   if (bodyParts.length === 1 && allSingleLine(bodyParts[0]!)) {
@@ -751,7 +754,7 @@ function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): st
 }
 
 /** Print an AST node, but render Splice nodes as $^{expr} using the splice expressions list. */
-function printNodeWithSplices(node: AstNode, spliceExprs: unknown[][], ind: number): string {
+function printNodeWithSplices(node: AstNode, spliceExprs: unknown[][], ind: number, isRoot = false): string {
   const [type, payload] = node
   if (type === NodeTypes.Splice) {
     const index = payload as number
@@ -762,7 +765,7 @@ function printNodeWithSplices(node: AstNode, spliceExprs: unknown[][], ind: numb
     throw new Error(`Invalid splice index ${index} in code template`)
   }
   // Walk AST and substitute Splice nodes before printing
-  return printNode(substituteSplices(node, spliceExprs), ind)
+  return printNode(substituteSplices(node, spliceExprs), ind, isRoot)
 }
 
 /** Recursively replace Splice nodes with synthetic AST that prints as $^{expr}. */
