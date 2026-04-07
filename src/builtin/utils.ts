@@ -1,6 +1,11 @@
+import type { SpecialExpressionName } from '.'
 import { RuntimeError } from '../errors'
 import type { ContextStack } from '../evaluator/ContextStack'
 import type { AstNode, BindingTarget } from '../parser/types'
+import { isReservedSymbol } from '../tokenizer/reservedNames'
+import type { SourceCodeInfo } from '../tokenizer/token'
+import type { Builtin } from './interface'
+import { specialExpressionTypes } from './specialExpressionTypes'
 
 /**
  * Formatting hint stored in Function node payloads.
@@ -10,11 +15,6 @@ export interface FunctionHints {
   /** True when authored as shorthand: `-> $ + 1` rather than `($) -> $ + 1`. */
   isShorthand?: boolean
 }
-import type { SourceCodeInfo } from '../tokenizer/token'
-import { isReservedSymbol } from '../tokenizer/reservedNames'
-import type { Builtin } from './interface'
-import { specialExpressionTypes } from './specialExpressionTypes'
-import type { SpecialExpressionName } from '.'
 
 export type Function = [BindingTarget[], AstNode[], FunctionHints?]
 

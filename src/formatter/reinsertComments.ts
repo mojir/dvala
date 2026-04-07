@@ -42,7 +42,7 @@ export function reinsertComments(
   epilogue: AnchoredComment[],
   commentsByStatement: Map<number, AnchoredComment[]>,
   shebang: string | null,
-  /** Blank lines to emit between statement i and i+1 (already capped at 2). */
+  /** Blank lines to emit between statement i and i+1 (already capped at 1). */
   blankLinesBetweenStatements: number[] = [],
 ): string {
   const parts: string[] = []
@@ -142,6 +142,10 @@ function formatCommentLines(comment: AnchoredComment, indent: string): string[] 
   if (comment.kind === 'line') {
     return [`${indent}${comment.text}\n`]
   }
+  // TODO: continuation lines of a multi-line block comment already have internal
+  // indentation from the original source. Prepending `indent` to each line
+  // double-indents them. Reflowing internal indentation requires understanding
+  // the author's intent, so we leave it as-is for now.
   const lines = comment.text.split('\n')
   return [`${lines.map(l => `${indent}${l}`).join('\n')}\n`]
 }

@@ -134,7 +134,7 @@ export function format(source: string): string {
   }
 
   // ── blank lines between statements ───────────────────────────────────────
-  // Preserve original blank line counts (capped at 2) between consecutive
+  // Preserve original blank line counts (capped at 1) between consecutive
   // statements. When comments exist between two statements the standalone-
   // comment mechanism already controls the spacing — set to 0 in that case.
 
@@ -185,6 +185,10 @@ function findStmtMinifiedStarts(
       const di = t[2]
       return di !== undefined && di[0] === line && di[1] === col
     })
+    // TODO: idx === -1 means prettyPrint rewrote the leading token (e.g. a
+    // structural rewrite changed the first token's position). Falling back to 0
+    // makes stmtMinStart wrong for this statement, so inline comments will fall
+    // back to trailing via the token-count mismatch guard. Safe but silent.
     return idx >= 0 ? idx : 0
   })
 }
