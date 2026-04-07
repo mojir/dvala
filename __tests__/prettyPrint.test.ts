@@ -712,4 +712,30 @@ describe('prettyPrint — MacroCall decorator formatting', () => {
     const result = pp('#foo (someVeryLongParameterName, anotherVeryLongParameterName) -> someVeryLongBodyExpression')
     expect(result).toMatch(/^#foo\n {2}/)
   })
+
+  it('let operand inside loop body: decorator style', () => {
+    // loop body is a root slot — #foo should use decorator style
+    const result = pp('loop (i = 0) -> #foo let x = i')
+    expect(result).toContain('#foo\n')
+    expect(result).toContain('let x = i')
+  })
+
+  it('let operand inside for body: decorator style', () => {
+    const result = pp('for (x in xs) -> #foo let y = x')
+    expect(result).toContain('#foo\n')
+    expect(result).toContain('let y = x')
+  })
+
+  it('let operand inside quote body: decorator style', () => {
+    const result = pp('quote #foo let x = 1 end')
+    expect(result).toContain('#foo\n')
+    expect(result).toContain('let x = 1')
+  })
+
+  it('chained macros inside quote body: each on own line', () => {
+    const result = pp('quote #foo #bar let x = 1 end')
+    expect(result).toContain('#foo\n')
+    expect(result).toContain('#bar\n')
+    expect(result).toContain('let x = 1')
+  })
 })
