@@ -1,24 +1,12 @@
 let pi = 3.14159265358979;
 
-let distance = (x1, y1, x2, y2) ->
-  sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2);
+let distance = (x1, y1, x2, y2) -> sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2);
 
-let midpoint = (x1, y1, x2, y2) -> {
-  x: (x1 + x2) / 2,
-  y: (y1 + y2) / 2
-};
+let midpoint = (x1, y1, x2, y2) -> { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
 
 let circleArea = (r) -> pi * r ^ 2;
 
-let scale = (point, factor) -> {
-  x: point.x * factor,
-  y: point.y * factor
-};
+let scale = (point, factor) -> { x: point.x * factor, y: point.y * factor };
 
-{
-  pi,
-  distance,
-  midpoint,
-  circleArea,
-  scale
-}
+{ pi, distance, midpoint, circleArea, scale };
+

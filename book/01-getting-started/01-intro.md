@@ -52,7 +52,7 @@ All data is immutable and all functions are pure. No side effects, no surprises.
 ```dvala
 let original = [1, 2, 3];
 let extended = push(original, 4);
-original // => [1, 2, 3] — unchanged
+original; // => [1, 2, 3] — unchanged
 ```
 
 ## Expression-Oriented
@@ -61,7 +61,7 @@ There are no statements. Everything — `if`, `let`, `loop`, `match` — is an e
 
 ```dvala
 let label = if 42 >= 0 then "positive" else "negative" end;
-label
+label;
 ```
 
 ## Extensible with Macros
@@ -69,10 +69,9 @@ label
 Macros receive unevaluated code (AST) and return transformed code. Code templates make this ergonomic:
 
 ```dvala
-let unless = macro (cond, body) ->
-  quote if not($^{cond}) then $^{body} else null end end;
+let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
-unless(false, "this runs!")
+unless(false, "this runs!");
 ```
 
 Macro bindings are automatically gensymed — no accidental name collisions with the caller's scope. See the [Macros](#macros) chapter for the full story.
@@ -90,19 +89,13 @@ let people = [
   { name: "Carol", age: 35 },
 ];
 
-people
-  |> _ filter (-> $.age >= 30)
-  |> _ map "name"
+map(_, "name")(filter(_, -> $.age >= 30)(people));
 ```
 
 ```dvala
-let factorial = n ->
-  if n <= 1
-    then 1
-    else n * self(n - 1)
-  end;
+let factorial = (n) -> if n <= 1 then 1 else n * self(n - 1) end;
 
-factorial(10)
+factorial(10);
 ```
 
 `self` refers to the enclosing function, enabling recursion without naming the function twice. See the [Functions](../02-core-language/04-functions.md) chapter for details.

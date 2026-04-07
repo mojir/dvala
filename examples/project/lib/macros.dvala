@@ -1,16 +1,12 @@
 // Utility macros for the project
-
 // double: duplicates an expression in a sum
 // Usage: double(21) expands to: 21 + 21
 let double = macro (x) -> quote $^{x} + $^{x} end;
 
 // withDefault: if value is null, use the default
 // Usage: withDefault(maybeNull, 0) expands to: if isNull(maybeNull) then 0 else maybeNull end
-let withDefault = macro (value, fallback) -> quote
-  if isNull($^{value}) then $^{fallback} else $^{value} end
-end;
+let withDefault = macro (value, fallback) ->
+  quote if isNull($^{value}) then $^{fallback} else $^{value} end end;
 
-{
-  double,
-  withDefault
-}
+{ double, withDefault };
+

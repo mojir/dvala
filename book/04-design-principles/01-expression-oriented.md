@@ -21,7 +21,7 @@ In statement-oriented languages, `if` controls flow. In Dvala, `if` **is** a val
 
 ```dvala
 let status = if 10 > 5 then "big" else "small" end;
-status
+status;
 ```
 
 ## Blocks Return Their Last Expression
@@ -29,12 +29,8 @@ status
 A `do...end` block is an expression whose value is its last sub-expression:
 
 ```dvala
-let result = do
-  let a = 10;
-  let b = 20;
-  a + b
-end;
-result
+let result = do let a = 10; let b = 20; a + b end;
+result;
 ```
 
 This eliminates the need for explicit `return` statements. The value flows naturally.
@@ -44,12 +40,8 @@ This eliminates the need for explicit `return` statements. The value flows natur
 Pattern matching produces a value directly:
 
 ```dvala
-let describe = (n) ->
-  match n % 2
-    case 0 then "even"
-    case 1 then "odd"
-  end;
-describe(7)
+let describe = (n) -> match n % 2 case 0 then "even" case 1 then "odd" end;
+describe(7);
 ```
 
 ## if/else if Returns a Value
@@ -58,12 +50,10 @@ Multi-branch conditionals are also expressions:
 
 ```dvala
 let grade = (score) ->
-  if score >= 90 then "A"
-  else if score >= 80 then "B"
-  else if score >= 70 then "C"
-  else "F"
-  end;
-grade(85)
+  if score >= 90 then
+    "A"
+  else if score >= 80 then "B" else if score >= 70 then "C" else "F" end;
+grade(85);
 ```
 
 ## loop Returns a Value
@@ -71,12 +61,8 @@ grade(85)
 Even iteration produces a value — the body's value when `recur` is not called:
 
 ```dvala
-let gcd = (a, b) ->
-  loop (x = a, y = b) ->
-    if y == 0 then x
-    else recur(y, x % y)
-    end;
-gcd(48, 18)
+let gcd = (a, b) -> loop (x = a, y = b) -> if y == 0 then x else recur(y, x % y) end;
+gcd(48, 18);
 ```
 
 ## for Returns an Array
@@ -85,7 +71,7 @@ Comprehensions are expressions that produce arrays:
 
 ```dvala
 let squares = for (x in range(6)) -> x * x;
-squares
+squares;
 ```
 
 ## Effects Return Values
@@ -93,12 +79,8 @@ squares
 Even error handling with handlers returns a value:
 
 ```dvala
-let safeSqrt = (x) ->
-  do
-    with handler @dvala.error(arg) -> resume(null) end;
-    sqrt(x)
-  end;
-[safeSqrt(16), safeSqrt(-1)]
+let safeSqrt = (x) -> do with handler @dvala.error(arg) -> resume(null) end; sqrt(x) end;
+[safeSqrt(16), safeSqrt(-1)];
 ```
 
 ## No Statements, No Void
@@ -114,20 +96,14 @@ In Dvala:
 Because everything is an expression, constructs compose freely. You can nest any expression inside any other:
 
 ```dvala
-map(
-  [1, 2, 3, 4, 5],
-  x -> if isOdd(x) then x * x else x end
-)
+map([1, 2, 3, 4, 5], (x) -> if isOdd(x) then x * x else x end);
 ```
 
 ```dvala
 let classify = (xs) ->
   for (x in xs) ->
-    if x < 0 then "negative"
-    else if x == 0 then "zero"
-    else "positive"
-    end;
-classify([-3, 0, 5, -1, 7])
+    if x < 0 then "negative" else if x == 0 then "zero" else "positive" end;
+classify([-3, 0, 5, -1, 7]);
 ```
 
 ## Summary

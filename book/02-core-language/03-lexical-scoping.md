@@ -13,7 +13,7 @@ Dvala is lexically scoped throughout. Every variable reference resolves to the n
 ```dvala
 let x = 10;
 let y = 20;
-x + y
+x + y;
 ```
 
 ## Nested Scopes
@@ -22,20 +22,14 @@ x + y
 
 ```dvala
 let outer = 5;
-do
-  let inner = 10;
-  outer + inner
-end
+do let inner = 10; outer + inner end;
 ```
 
 But outer scopes cannot see inner bindings — they are confined to their block:
 
 ```dvala
-let result = do
-  let secret = 42;
-  secret
-end;
-result
+let result = do let secret = 42; secret end;
+result;
 ```
 
 ## Closures
@@ -43,12 +37,9 @@ result
 A **closure** is a function that captures variables from its enclosing scope. The captured bindings travel with the function, even after the enclosing scope has returned:
 
 ```dvala
-let makeAdder = (n) -> do
-  let add = (x) -> n + x;
-  add
-end;
+let makeAdder = (n) -> do let add = (x) -> n + x; add end;
 let addTen = makeAdder(10);
-addTen(5)
+addTen(5);
 ```
 
 Here `add` captures `n` from `makeAdder`'s scope. When `addTen` is called later, it still has access to `n = 10`.
@@ -59,11 +50,8 @@ An inner binding can **shadow** an outer one with the same name. The outer bindi
 
 ```dvala
 let x = 5;
-let result = do
-  let x = 99;
-  x
-end;
-[result, x]
+let result = do let x = 99; x end;
+[result, x];
 ```
 
 The inner `x` is 99, but the outer `x` remains 5. Shadowing creates a new binding — it does not modify the original.
@@ -74,12 +62,9 @@ A function always refers to the environment where it was **defined**, not where 
 
 ```dvala
 let x = 10;
-let addX = y -> x + y;
-let result = do
-  let x = 20;
-  addX(5)
-end;
-result
+let addX = (y) -> x + y;
+let result = do let x = 20; addX(5) end;
+result;
 ```
 
 Even though `x` is shadowed to 20 in the `do` block, `addX` uses its own captured `x = 10`. The result is 15, not 25.
@@ -91,7 +76,7 @@ Parameters create local bindings that shadow any outer variables of the same nam
 ```dvala
 let x = 100;
 let f = (x) -> x * 2;
-f(7)
+f(7);
 ```
 
 The parameter `x` shadows the outer `x = 100`. The function returns 14.
@@ -101,17 +86,10 @@ The parameter `x` shadows the outer `x = 100`. The function returns 14.
 Each call to a closure-creating function produces an independent closure with its own captured state:
 
 ```dvala
-let makeCounter = () -> do
-  let n = 0;
-  let step = () -> do
-    let n = n + 1;
-    n
-  end;
-  step
-end;
+let makeCounter = () -> do let n = 0; let step = () -> do let n = n + 1; n end; step end;
 let c1 = makeCounter();
 let c2 = makeCounter();
-[c1(), c1(), c2()]
+[c1(), c1(), c2()];
 ```
 
 `c1` and `c2` are independent. Note: because Dvala has no mutation, each call to `c1()` starts from `n = 0` and returns 1. If you need a counter that increments across calls, the idiomatic approach is to maintain state in an effect handler — see the [Effects & Handlers](../05-advanced/02-effects.md) chapter for the shallow handler state pattern.
@@ -122,7 +100,7 @@ Closures work naturally with `map`, `filter`, and other higher-order functions:
 
 ```dvala
 let multiplier = 3;
-map([1, 2, 3, 4], x -> x * multiplier)
+map([1, 2, 3, 4], (x) -> x * multiplier);
 ```
 
 The lambda captures `multiplier` from the enclosing scope.
@@ -134,7 +112,7 @@ Closures can nest — each level captures from the level above:
 ```dvala
 let a = 1;
 let f = (b) -> (c) -> a + b + c;
-f(10)(100)
+f(10)(100);
 ```
 
 The innermost function captures both `a` (from the top level) and `b` (from the first function).
