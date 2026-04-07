@@ -7,7 +7,20 @@ Dvala has powerful features for building readable data transformation pipelines:
 Use `|>` to pass a value through a chain of transformations. Use `_` to mark where the piped value goes. The `_` placeholder is the same mechanism as partial application in operators — see the [Operators](../02-core-language/02-operators.md) chapter for how it works outside of pipes.
 
 ```dvala
-reduce(_, +, 0)(map(_, -> $ * $)(filter(_, isOdd)([1, 2, 3, 4, 5, 6])));
+reduce(_, +, 0)(
+  map(_, -> $ * $)(
+    filter(_, isOdd)(
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+      ],
+    ),
+  ),
+);
 ```
 
 ## Pipe Without Placeholder
@@ -23,7 +36,15 @@ join(_, "-")(reverse(split(_, " ")(upperCase("hello world"))));
 Any two-argument function can be used as an infix operator. The left value becomes the first argument:
 
 ```dvala
-filter([1, 2, 3, 4], isOdd);
+filter(
+  [
+    1,
+    2,
+    3,
+    4,
+  ],
+  isOdd,
+);
 ```
 
 ```dvala
@@ -35,7 +56,20 @@ map([1, 2, 3], inc);
 Chain multiple operator-style calls for a fluent reading:
 
 ```dvala
-map(filter([1, 2, 3, 4, 5, 6], isEven), -> $ * $);
+map(
+  filter(
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+    ],
+    isEven,
+  ),
+  -> $ * $,
+);
 ```
 
 ## Arrays as Functions

@@ -55,7 +55,16 @@ Extended sequence operations — `sortBy`, `distinct`, `groupBy`, and more:
 
 ```dvala
 let seq = import("sequence");
-seq.distinct([1, 2, 2, 3, 3, 3]);
+seq.distinct(
+  [
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+  ],
+);
 ```
 
 ```dvala
@@ -79,7 +88,14 @@ Statistical functions for number arrays:
 
 ```dvala
 let vec = import("vector");
-vec.cumsum([1, 2, 3, 4]);
+vec.cumsum(
+  [
+    1,
+    2,
+    3,
+    4,
+  ],
+);
 ```
 
 ## Linear Algebra Module

@@ -132,14 +132,22 @@ Each clause matches an effect by name, binds the payload to a parameter, and run
 // Resume: handler provides a value, body continues
 let h = handler @dvala.error(err) -> resume(0) end;
 // error → handler resumes with 0 // continues: 0 + 1 = 1
-do with h; let x = 0 / 0; x + 1 end;
+do
+  with h;
+  let x = 0 / 0;
+  x + 1
+end;
 ```
 
 ```dvala
 // Abort: handler returns a value, body is abandoned
 let h = handler @dvala.error(err) -> "caught" end;
 // error → handler aborts with "caught" // never reached
-do with h; let x = 0 / 0; x + 1 end;
+do
+  with h;
+  let x = 0 / 0;
+  x + 1
+end;
 ```
 
 ### Installing handlers with `with h;`
@@ -149,8 +157,8 @@ Use `with handler;` inside a `do...end` block to install a handler for the rest 
 ```dvala
 do
   with handler @my.double(x) -> resume(x * 2) end;
-    let x = perform(@my.double, 21);
-    x + 1
+  let x = perform(@my.double, 21);
+  x + 1
 end;
 ```
 
@@ -174,7 +182,7 @@ A single handler can match multiple effects:
 ```dvala
 do
   with handler @a(x) -> resume(x * 2) @b(x) -> resume(x * 3) end;
-    perform(@a, 10) + perform(@b, 20)
+  perform(@a, 10) + perform(@b, 20)
 end;
 ```
 
@@ -185,8 +193,8 @@ Multiple `with` statements install handlers in layers. Inner handlers take prece
 ```dvala
 do
   with handler @outer(x) -> resume(`outer: ${x}`) end;
-    with handler @inner(x) -> resume(`inner: ${x}`) end;
-      `${perform(@inner, "hi")} ${perform(@outer, "there")}`
+  with handler @inner(x) -> resume(`inner: ${x}`) end;
+  `${perform(@inner, "hi")} ${perform(@outer, "there")}`
 end;
 ```
 
@@ -207,14 +215,16 @@ let double = handler
 transform
   x -> x * 2
 end;
-do with double; 21 end;
+do
+  with double;
+  21
+end;
 ```
 
 ### Transform with effect clauses
 
 ```dvala
-let h = handler
-  @dvala.error(err) -> { ok: false, error: err.message }
+let h = handler @dvala.error(err) -> { ok: false, error: err.message }
 transform
   x -> { ok: true, data: x }
 end;
@@ -224,8 +234,7 @@ h(-> 42);
 ```
 
 ```dvala
-let h = handler
-  @dvala.error(err) -> { ok: false, error: err.message }
+let h = handler @dvala.error(err) -> { ok: false, error: err.message }
 transform
   x -> { ok: true, data: x }
 end;
@@ -251,7 +260,11 @@ transform
 end;
 
 // outer: applies second // inner: applies first // → 5+10=15 → 15*2=30
-do with double; with addTen; 5 end;
+do
+  with double;
+  with addTen;
+  5
+end;
 ```
 
 ---
@@ -262,7 +275,11 @@ When a handler calls `resume(value)`, the continuation runs to completion, and `
 
 ```dvala
 // result = what the body evaluates to
-let h = handler @my.eff(x) -> do let result = resume(x); result + 100 end end;
+let h = handler @my.eff(x) -> do
+  let result = resume(x);
+  result + 100
+end
+end;
 
 h(-> perform(@my.eff, 5) * 2);
 ```
@@ -282,9 +299,20 @@ This enables patterns like wrapping, logging, and pure state accumulation.
 When `resume` is called, the handler is **reinstalled around the continuation** (deep handler semantics, following Koka/Eff/OCaml 5). This means effects performed during the resumed continuation are handled by the same handler.
 
 ```dvala
-let counter = handler @inc() -> do let result = resume(null); result + 1 end end;
+let counter = handler @inc() -> do
+  let result = resume(null);
+  result + 1
+end
+end;
 
-counter(-> do perform(@inc); perform(@inc); perform(@inc); 0 end);
+counter(
+  -> do
+    perform(@inc);
+    perform(@inc);
+    perform(@inc);
+    0
+  end,
+);
 ```
 
 Each `perform(@inc)` hits the reinstalled handler. The result builds up: `0+1+1+1 = 3`.
@@ -305,7 +333,11 @@ Consider implementing mutable state via effects. `@get` returns the current valu
 let state = (s) -> handler @get() -> resume(s) @set(v) -> resume(null) end;
 
 // should update state to 1 // should return 1... but returns 0
-do with state(0); perform(@set, 1); perform(@get) end;
+do
+  with state(0);
+  perform(@set, 1);
+  perform(@get)
+end;
 ```
 
 This returns `0`. Why? Reinstallation is the culprit.
@@ -323,11 +355,21 @@ This sounds like a limitation, but it's exactly the feature we need: if the hand
 ```dvala
 let state = (s) ->
   handler
-    @get() -> do with state(s); resume(s) end
-    @set(v) -> do with state(v); resume(null) end
+    @get() -> do
+      with state(s);
+      resume(s)
+    end
+    @set(v) -> do
+      with state(v);
+      resume(null)
+    end
   end;
 
-do with state(0); perform(@set, 1); perform(@get) end;
+do
+  with state(0);
+  perform(@set, 1);
+  perform(@get)
+end;
 ```
 
 This returns `1`. The trace:
@@ -365,18 +407,22 @@ The single-value pattern extends naturally to multiple named variables. Instead 
 ```dvala
 let states = (store) ->
   handler
-    @get(name) -> do with states(store); resume(get(store, name)) end
+    @get(name) -> do
+      with states(store);
+      resume(get(store, name))
+    end
     @set(pair) -> do
       let [name, v] = pair;
-      with states(assoc(store, name, v)); resume(null)
+      with states(assoc(store, name, v));
+      resume(null)
     end
   end;
 
 do
   with states({ x: 0, y: 0 });
-    perform(@set, ["x", 5]);
-    perform(@set, ["y", 20]);
-    [perform(@get, "x"), perform(@get, "y")]
+  perform(@set, ["x", 5]);
+  perform(@set, ["y", 20]);
+  [perform(@get, "x"), perform(@get, "y")]
 end;
 ```
 
@@ -392,18 +438,22 @@ let setState = macro (name, v) -> quote perform(@set, [$^{name}, $^{v}]) end;
 
 let states = (store) ->
   handler
-    @get(name) -> do with states(store); resume(get(store, name)) end
+    @get(name) -> do
+      with states(store);
+      resume(get(store, name))
+    end
     @set(pair) -> do
       let [name, v] = pair;
-      with states(assoc(store, name, v)); resume(null)
+      with states(assoc(store, name, v));
+      resume(null)
     end
   end;
 
 do
   with states({ x: 0, y: 0 });
-    setState("x", 5);
-    setState("y", 20);
-    [getState("x"), getState("y")]
+  setState("x", 5);
+  setState("y", 20);
+  [getState("x"), getState("y")]
 end;
 ```
 
@@ -430,17 +480,16 @@ Shallow handlers are useful anywhere the handler needs **different behaviour at 
 
 ```dvala
 let takeFirst = (n) ->
-  handler
-    @yield(x) -> if n == 0 then [] else [x, ...takeFirst(n - 1)(-> resume(null))] end
+  handler @yield(x) -> if n == 0 then [] else [x, ...takeFirst(n - 1)(-> resume(null))] end
   end;
 
 do
   with takeFirst(3);
-    perform(@yield, "a");
-    perform(@yield, "b");
-    perform(@yield, "c");
-    perform(@yield, "d");
-    []
+  perform(@yield, "a");
+  perform(@yield, "b");
+  perform(@yield, "c");
+  perform(@yield, "d");
+  []
 end; // never reached
 ```
 
@@ -458,7 +507,10 @@ The simplest multi-shot pattern — call `resume` twice, collect both results:
 
 ```dvala
 let h = handler @flip() -> [resume(true)] ++ [resume(false)] end;
-do with h; if perform(@flip) then 1 else 2 end end;
+do
+  with h;
+  if perform(@flip) then 1 else 2 end
+end;
 ```
 
 `resume(true)` runs the body with `true` → evaluates to `1`. `resume(false)` runs it with `false` → evaluates to `2`. The clause concatenates both into `[1, 2]`.
@@ -468,17 +520,16 @@ do with h; if perform(@flip) then 1 else 2 end end;
 The `@choose` effect picks one value from a list. A handler that explores **all** branches uses `reduce` with multi-shot resume:
 
 ```dvala
-let chooseAll = handler
-  @choose(options) -> reduce(options, (acc, x) -> acc ++ resume(x), [])
+let chooseAll = handler @choose(options) -> reduce(options, (acc, x) -> acc ++ resume(x), [])
 transform
   result -> [result]
 end;
 
 do
   with chooseAll;
-    let a = perform(@choose, [1, 2]);
-    let b = perform(@choose, [10, 20]);
-    [a, b]
+  let a = perform(@choose, [1, 2]);
+  let b = perform(@choose, [10, 20]);
+  [a, b]
 end;
 ```
 
@@ -500,7 +551,11 @@ Calling `resume` zero times is just a normal abort:
 
 ```dvala
 let h = handler @stop() -> "stopped" end;
-do with h; perform(@stop); "never reached" end;
+do
+  with h;
+  perform(@stop);
+  "never reached"
+end;
 ```
 
 ---
@@ -510,18 +565,20 @@ do with h; perform(@stop); "never reached" end;
 The combination of `resume`-returns-value + transform enables **pure state accumulation** without mutation. This is the canonical motivation for the transform clause in the algebraic effects literature.
 
 ```dvala
-let logger = handler
-  @log(msg) -> do let [result, logs] = resume(null); [result, [msg, ...logs]] end
+let logger = handler @log(msg) -> do
+  let [result, logs] = resume(null);
+  [result, [msg, ...logs]]
+end
 transform
   x -> [x, []]
 end;
 
 do
   with logger;
-    perform(@log, "start");
-    let x = 42;
-    perform(@log, `computed: ${x}`);
-    x
+  perform(@log, "start");
+  let x = 42;
+  perform(@log, `computed: ${x}`);
+  x
 end;
 ```
 
@@ -543,13 +600,19 @@ Handler clause bodies run **outside** the handler scope (the handler frame is po
 This enables middleware-style handlers that intercept, transform, and forward effects:
 
 ```dvala
-let addAuth = handler
-  @fetch(url) -> do let result = perform(@fetch, `${url}?auth=token`); resume(result) end
+let addAuth = handler @fetch(url) -> do
+  let result = perform(@fetch, `${url}?auth=token`);
+  resume(result)
+end
 end;
 
 let fetcher = handler @fetch(url) -> resume(`data from ${url}`) end;
 
-do with fetcher; with addAuth; perform(@fetch, "/users") end;
+do
+  with fetcher;
+  with addAuth;
+  perform(@fetch, "/users")
+end;
 ```
 
 The `addAuth` handler intercepts `@fetch`, re-performs it with authentication (propagates to `fetcher`), and resumes the body with the result.
@@ -565,7 +628,7 @@ To raise an error, perform `dvala.error`:
 ```dvala
 do
   with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
-    perform(@dvala.error, { message: "oops" })
+  perform(@dvala.error, { message: "oops" })
 end;
 ```
 
@@ -573,14 +636,15 @@ Runtime errors — like division by zero or calling a function with invalid argu
 
 ```dvala
 do
-  with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end; 0 / 0
+  with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
+  0 / 0
 end;
 ```
 
 ```dvala
 do
   with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
-    sqrt(-1)
+  sqrt(-1)
 end;
 ```
 
@@ -592,8 +656,8 @@ do
     @my.read(x) -> resume(42)
     @dvala.error(err) -> resume(`error: ${err.message}`)
   end;
-    let x = perform(@my.read);
-    sqrt(x * -1)
+  let x = perform(@my.read);
+  sqrt(x * -1)
 end;
 ```
 
@@ -633,7 +697,10 @@ Returns a handler that catches `@dvala.error` and aborts with `value`:
 
 ```dvala
 let { fallback } = import("effectHandler");
-do with fallback(0); 0 / 0 end;
+do
+  with fallback(0);
+  0 / 0
+end;
 ```
 
 Or using the function call form:
@@ -649,7 +716,10 @@ Retries `bodyFn()` up to `n` times on `@dvala.error`. On final failure, propagat
 
 ```dvala
 let { retry, fallback } = import("effectHandler");
-do with handler @dvala.error(msg) -> "gave up" end; retry(3, -> 0 / 0) end;
+do
+  with handler @dvala.error(msg) -> "gave up" end;
+  retry(3, -> 0 / 0)
+end;
 ```
 
 ### Nondeterminism handlers
@@ -693,7 +763,19 @@ Picks one option **at random** at each `@choose`. Uses `@dvala.random.item` inte
 
 ```dvala
 let { chooseRandom } = import("effectHandler");
-chooseRandom(-> perform(@choose, [1, 2, 3, 4, 5]));
+chooseRandom(
+  ->
+    perform(
+      @choose,
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+      ],
+    ),
+);
 ```
 
 #### `chooseTake(n, bodyFn)`
@@ -702,7 +784,20 @@ Like `chooseAll` but stops after collecting `n` results. Branches beyond the lim
 
 ```dvala
 let { chooseTake } = import("effectHandler");
-chooseTake(2, -> perform(@choose, [1, 2, 3, 4, 5]) * 10);
+chooseTake(
+  2,
+  ->
+    perform(
+      @choose,
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+      ],
+    ) * 10,
+);
 ```
 
 ---

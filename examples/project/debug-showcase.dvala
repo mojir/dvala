@@ -40,8 +40,10 @@ let myEffect = @debug.demo;
 let pattern = regexp("\\d+", "g");
 
 // --- Handler ---
-let logger = handler
-  @debug.log(msg) -> do perform(@dvala.io.print, "LOG: " ++ msg ++ "\n"); resume(null) end
+let logger = handler @debug.log(msg) -> do
+  perform(@dvala.io.print, "LOG: " ++ msg ++ "\n");
+  resume(null)
+end
 transform
   result -> { result, logged: true }
 end;
@@ -49,15 +51,25 @@ end;
 // --- Use the handler (creates Effect Handlers scope) ---
 let result = do
   with logger;
-    perform(@debug.log, "starting computation");
-    let scaled = scale(7);
-    let added = add10(scaled);
-    let signs = describeSign(added);
-    let safe = safeDivide(null, null);
-    let doubled = double(5);
-    let clamped = doubleThenClamp(8);
-    perform(@debug.log, "done");
-    { scaled, added, signs, safe, doubled, clamped, pattern, myEffect }
+  perform(@debug.log, "starting computation");
+  let scaled = scale(7);
+  let added = add10(scaled);
+  let signs = describeSign(added);
+  let safe = safeDivide(null, null);
+  let doubled = double(5);
+  let clamped = doubleThenClamp(8);
+  perform(@debug.log, "done");
+  {
+    scaled,
+    added,
+    signs,
+    safe,
+    doubled,
+    clamped,
+    pattern,
+    myEffect,
+  }
 end;
 
 result;
+

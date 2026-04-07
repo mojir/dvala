@@ -24,7 +24,10 @@ You can use `let` to create a **new** binding with the same name in a nested sco
 
 ```dvala
 let x = 10;
-do let x = x + 5; x end;
+do
+  let x = x + 5;
+  x
+end;
 ```
 
 The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new binding — it does not modify the original. Functions that captured the original `x` still see 10:
@@ -34,7 +37,10 @@ The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new bindi
 ```dvala
 let x = 10;
 let getX = () -> x;
-do let x = 99; getX() end;
+do
+  let x = 99;
+  getX()
+end;
 ```
 
 `getX` was defined when `x` was 10. Shadowing `x` to 99 in the inner scope does not affect `getX` — it still returns 10. This predictability is a direct consequence of immutability combined with lexical scoping.
@@ -78,7 +84,22 @@ This property — **referential transparency** — means you can reason about co
 Dvala programs transform data through **pipelines** of pure functions. Each step takes input and produces new output:
 
 ```dvala
-reverse(map(_, -> $ * $)(filter(_, isEven)([1, 2, 3, 4, 5, 6, 7, 8])));
+reverse(
+  map(_, -> $ * $)(
+    filter(_, isEven)(
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+      ],
+    ),
+  ),
+);
 ```
 
 No data was mutated. Each operation produced a fresh value.
@@ -89,7 +110,17 @@ Where imperative code would use a mutable accumulator, Dvala uses `reduce` or `l
 
 ```dvala
 // Sum of squares using reduce
-reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0);
+reduce(
+  [
+    1,
+    2,
+    3,
+    4,
+    5,
+  ],
+  (acc, x) -> acc + x * x,
+  0,
+);
 ```
 
 ```dvala

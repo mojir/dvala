@@ -67,7 +67,12 @@ match [1, 2, 3] case [1, x, 3] then x case _ then "no match" end;
 Use `...name` to capture remaining elements:
 
 ```dvala
-match [1, 2, 3, 4] case [x, ...xs] then xs end;
+match [
+  1,
+  2,
+  3,
+  4,
+] case [x, ...xs] then xs end;
 ```
 
 ### Matching by Length
@@ -83,7 +88,12 @@ let describe = (lst) ->
     case [x, ...xs] then "many elements"
   end;
 
-[describe([]), describe([1]), describe([1, 2]), describe([1, 2, 3])];
+[
+  describe([]),
+  describe([1]),
+  describe([1, 2]),
+  describe([1, 2, 3]),
+];
 ```
 
 ### Nested Arrays
@@ -210,9 +220,18 @@ end;
 ### Recursive List Sum
 
 ```dvala
-let sumList = (lst) -> match lst case [] then 0 case [x, ...xs] then x + sumList(xs) end;
+let sumList =
+  (lst) -> match lst case [] then 0 case [x, ...xs] then x + sumList(xs) end;
 
-sumList([1, 2, 3, 4, 5]);
+sumList(
+  [
+    1,
+    2,
+    3,
+    4,
+    5,
+  ],
+);
 ```
 
 ### Coordinate Classification

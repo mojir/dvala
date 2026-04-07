@@ -22,13 +22,19 @@ x + y;
 
 ```dvala
 let outer = 5;
-do let inner = 10; outer + inner end;
+do
+  let inner = 10;
+  outer + inner
+end;
 ```
 
 But outer scopes cannot see inner bindings — they are confined to their block:
 
 ```dvala
-let result = do let secret = 42; secret end;
+let result = do
+  let secret = 42;
+  secret
+end;
 result;
 ```
 
@@ -37,7 +43,10 @@ result;
 A **closure** is a function that captures variables from its enclosing scope. The captured bindings travel with the function, even after the enclosing scope has returned:
 
 ```dvala
-let makeAdder = (n) -> do let add = (x) -> n + x; add end;
+let makeAdder = (n) -> do
+  let add = (x) -> n + x;
+  add
+end;
 let addTen = makeAdder(10);
 addTen(5);
 ```
@@ -50,7 +59,10 @@ An inner binding can **shadow** an outer one with the same name. The outer bindi
 
 ```dvala
 let x = 5;
-let result = do let x = 99; x end;
+let result = do
+  let x = 99;
+  x
+end;
 [result, x];
 ```
 
@@ -63,7 +75,10 @@ A function always refers to the environment where it was **defined**, not where 
 ```dvala
 let x = 10;
 let addX = (y) -> x + y;
-let result = do let x = 20; addX(5) end;
+let result = do
+  let x = 20;
+  addX(5)
+end;
 result;
 ```
 
@@ -86,7 +101,14 @@ The parameter `x` shadows the outer `x = 100`. The function returns 14.
 Each call to a closure-creating function produces an independent closure with its own captured state:
 
 ```dvala
-let makeCounter = () -> do let n = 0; let step = () -> do let n = n + 1; n end; step end;
+let makeCounter = () -> do
+  let n = 0;
+  let step = () -> do
+    let n = n + 1;
+    n
+  end;
+  step
+end;
 let c1 = makeCounter();
 let c2 = makeCounter();
 [c1(), c1(), c2()];
@@ -100,7 +122,15 @@ Closures work naturally with `map`, `filter`, and other higher-order functions:
 
 ```dvala
 let multiplier = 3;
-map([1, 2, 3, 4], (x) -> x * multiplier);
+map(
+  [
+    1,
+    2,
+    3,
+    4,
+  ],
+  (x) -> x * multiplier,
+);
 ```
 
 The lambda captures `multiplier` from the enclosing scope.

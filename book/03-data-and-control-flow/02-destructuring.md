@@ -66,7 +66,13 @@ y;
 Collect remaining elements with `...`:
 
 ```dvala
-let [head, ...tail] = [1, 2, 3, 4, 5];
+let [head, ...tail] = [
+  1,
+  2,
+  3,
+  4,
+  5,
+];
 tail;
 ```
 

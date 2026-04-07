@@ -106,7 +106,7 @@ describe('prettyPrint — if/else', () => {
 })
 
 describe('prettyPrint — do blocks', () => {
-  it('simple block', () => { expect(pp('do 1; 2; 3 end')).toBe('do 1; 2; 3 end') })
+  it('simple block', () => { expect(pp('do 1; 2; 3 end')).toBe('do\n  1;\n  2;\n  3\nend') })
   it('long block breaks to multi-line', () => {
     const code = 'do let veryLongVariableNameOne = 42; let veryLongVariableNameTwo = 99; veryLongVariableNameOne + veryLongVariableNameTwo end'
     const result = pp(code)
@@ -128,7 +128,7 @@ describe('prettyPrint — functions', () => {
   it('simple lambda', () => { expect(pp('(x) -> x + 1')).toBe('(x) -> x + 1') })
   it('multi-param', () => { expect(pp('(a, b) -> a + b')).toBe('(a, b) -> a + b') })
   it('multi-statement body', () => {
-    expect(pp('(x) -> do let y = x * 2; y + 1 end')).toBe('(x) -> do let y = x * 2; y + 1 end')
+    expect(pp('(x) -> do let y = x * 2; y + 1 end')).toBe('(x) -> do\n  let y = x * 2;\n  y + 1\nend')
   })
   it('long lambda breaks body', () => {
     const code = '(someVeryLongParamName) -> someVeryLongParamName + someVeryLongParamName + someVeryLongParamName'
@@ -516,5 +516,200 @@ describe('prettyPrint — raw AST edge cases', () => {
     expect(prettyPrint(['wildcard', [], 0])).toBe('_')
     expect(prettyPrint(['array', [[['symbol', [['Sym', 'a', 0], undefined], 0]], undefined], 0])).toBe('[a]')
     expect(prettyPrint(['literal', [['Num', 42, 0]], 0])).toBe('42')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Session-specific rules: all formatting behaviours introduced or hardened
+// ---------------------------------------------------------------------------
+
+/** Assert that every semicolon in `s` appears at the end of its line. */
+function noMidLineSemicolons(s: string): void {
+  for (const line of s.split('\n')) {
+    const trimmed = line.trimEnd()
+    if (trimmed.includes(';')) {
+      expect(trimmed.endsWith(';')).toBe(true)
+    }
+  }
+}
+
+describe('prettyPrint — do block semicolons-last rule', () => {
+  it('two-statement do block always expands', () => {
+    expect(pp('do 1; 2 end')).toBe('do\n  1;\n  2\nend')
+  })
+  it('no mid-line semicolons in expanded do block', () => {
+    noMidLineSemicolons(pp('do let x = 1; let y = 2; x + y end'))
+  })
+  it('single-stmt do block whose body is multi-line also expands', () => {
+    // Inner do block is multi-line → outer single-stmt block cannot use flat form
+    const result = pp('do do 1; 2 end end')
+    expect(result).toContain('\n')
+    expect(result).toMatch(/^do\n/)
+  })
+})
+
+describe('prettyPrint — handler: single clause on same line', () => {
+  it('short single-clause handler stays on one line', () => {
+    expect(pp('handler @my.eff(x) -> resume(x) end')).toBe('handler @my.eff(x) -> resume(x) end')
+  })
+  it('single-clause with multi-statement body: clause stays inline with handler', () => {
+    const result = pp('handler @my.eff(x) -> do let y = x; resume(y) end end')
+    // Clause header is on the same opening line as `handler`
+    expect(result).toMatch(/^handler @my\.eff\(x\) -> do\n/)
+    // No mid-line semicolons inside the body
+    noMidLineSemicolons(result)
+    // Exactly two `end` keywords — one for do, one for handler
+    expect(result.match(/\bend\b/g)?.length).toBe(2)
+  })
+  it('single-clause handler with transform: clause inline, transform on new line', () => {
+    const result = pp('handler @my.eff(x) -> resume(x) transform r -> r * 2 end')
+    expect(result).toMatch(/^handler @my\.eff\(x\) -> resume\(x\)\n/)
+    expect(result).toContain('\ntransform\n')
+    expect(result).toContain('r -> r * 2')
+  })
+  it('multi-clause handler: each clause indented', () => {
+    // First clause has a multi-statement body → flat check fails; 2 clauses → multi-clause form
+    const result = pp('handler @my.a(x) -> do let r = x; resume(r) end @my.b(y) -> resume(y) end')
+    expect(result).toMatch(/^handler\n/)
+    expect(result).toContain('@my.a(x) ->')
+    expect(result).toContain('@my.b(y) -> resume(y)')
+  })
+})
+
+describe('prettyPrint — with handler body indentation', () => {
+  it('with h; body sits at same indent level as with', () => {
+    expect(pp('do with h; let x = 1; x end')).toBe('do\n  with h;\n  let x = 1;\n  x\nend')
+  })
+  it('with h; never flat (would put semicolon mid-line)', () => {
+    const result = pp('do with h; body end')
+    // Must expand — `with` cannot be on the same line as surrounding do content
+    expect(result).toContain('\n  with h;')
+  })
+})
+
+describe('prettyPrint — object inline threshold (max 3 entries)', () => {
+  it('object with 2 entries stays inline', () => {
+    expect(pp('{ a: 1, b: 2 }')).toBe('{ a: 1, b: 2 }')
+  })
+  it('object with exactly 3 entries stays inline', () => {
+    expect(pp('{ a: 1, b: 2, c: 3 }')).toBe('{ a: 1, b: 2, c: 3 }')
+  })
+  it('object with 4 entries expands to multi-line', () => {
+    const result = pp('{ a: 1, b: 2, c: 3, d: 4 }')
+    expect(result).toContain('\n')
+    expect(result).toMatch(/^\{/)
+  })
+  it('object with multi-line value expands even with ≤3 entries', () => {
+    // Value is a 4-entry object that itself expands → allSingleLine guard triggers
+    const result = pp('{ a: { x: 1, y: 2, z: 3, w: 4 } }')
+    expect(result).toContain('\n')
+  })
+})
+
+describe('prettyPrint — array inline threshold (max 3 elements)', () => {
+  it('array with exactly 3 elements stays inline', () => {
+    expect(pp('[1, 2, 3]')).toBe('[1, 2, 3]')
+  })
+  it('array with 4 elements expands to multi-line', () => {
+    const result = pp('[1, 2, 3, 4]')
+    expect(result).toContain('\n')
+    expect(result).toMatch(/^\[/)
+  })
+  it('array with a multi-line element expands even with ≤3 elements', () => {
+    // The single element is a 4-entry object → multi-line → allSingleLine guard fires
+    const result = pp('[{ a: 1, b: 2, c: 3, d: 4 }]')
+    expect(result).toContain('\n')
+  })
+})
+
+describe('prettyPrint — match: multi-line case body breaks after then', () => {
+  it('single-line case bodies stay on same line as then', () => {
+    expect(pp('match x case 0 then "zero" case _ then "other" end'))
+      .toBe('match x case 0 then "zero" case _ then "other" end')
+  })
+  it('multi-line case body produces a newline after then', () => {
+    // The do-block body expands → the case `then` line has no trailing body
+    const result = pp('match x case n then do let y = n + 1; y end case _ then 0 end')
+    const lines = result.split('\n')
+    // The `case n then` line must end there — body is on the next line
+    const caseLine = lines.find(l => l.includes('case n then'))
+    expect(caseLine?.trimEnd()).toBe('  case n then')
+    noMidLineSemicolons(result)
+  })
+})
+
+describe('prettyPrint — perform: line-breaking for large args', () => {
+  it('perform with small arg stays inline', () => {
+    expect(pp('perform(@my.eff, 42)')).toBe('perform(@my.eff, 42)')
+  })
+  it('perform with multi-line arg expands to multi-line form', () => {
+    // 4-entry object arg expands → allSingleLine guard triggers multi-line perform
+    const result = pp('perform(@my.eff, { a: 1, b: 2, c: 3, d: 4 })')
+    expect(result).toContain('\n')
+    expect(result).toMatch(/^perform\(/)
+  })
+})
+
+describe('prettyPrint — quote: multi-statement expansion', () => {
+  it('single-statement quote stays on one line when it fits', () => {
+    expect(pp('quote x + 1 end')).toBe('quote x + 1 end')
+  })
+  it('multi-statement quote always expands with semicolons at end of line', () => {
+    const result = pp('quote let x = 1; x + 1 end')
+    expect(result).toMatch(/^quote\n/)
+    expect(result).toContain('let x = 1')
+    expect(result).toContain('x + 1')
+    noMidLineSemicolons(result)
+  })
+})
+
+describe('prettyPrint — pipe chain: allSingleLine guard', () => {
+  it('pipe chain with a multi-line node breaks to multi-line form', () => {
+    // 4-element array expands; multi-step pipe (isPipe hint requires ≥2 |>) ensures
+    // the pipe chain renderer is used, then allSingleLine guard forces multi-line form
+    const result = pp('[1, 2, 3, 4] |> sort |> reverse')
+    expect(result).toContain('\n')
+    expect(result).toContain('|>')
+  })
+})
+
+describe('prettyPrint — call: allSingleLine guard', () => {
+  it('call with multi-line arg breaks to multi-line form', () => {
+    const result = pp('foo({ a: 1, b: 2, c: 3, d: 4 })')
+    expect(result).toContain('\n')
+    expect(result).toMatch(/^foo\(/)
+  })
+})
+
+describe('prettyPrint — MacroCall decorator formatting', () => {
+  it('short non-let operand stays flat (root)', () => {
+    expect(pp('#foo someValue')).toBe('#foo someValue')
+  })
+
+  it('let operand at root: decorator style, operand at same indent', () => {
+    expect(pp('#foo let x = 1')).toBe('#foo\nlet x = 1')
+  })
+
+  it('let operand with function value at root: decorator style', () => {
+    expect(pp('#foo let f = (x) -> x + 1')).toBe('#foo\nlet f = (x) -> x + 1')
+  })
+
+  it('chained macros at root: each on its own line, let at same indent', () => {
+    expect(pp('#foo #bar let x = 1')).toBe('#foo\n#bar\nlet x = 1')
+  })
+
+  it('let operand inside do block: decorator style at block indent', () => {
+    const result = pp('do #foo let x = 1; x end')
+    expect(result).toBe('do\n  #foo\n  let x = 1;\n  x\nend')
+  })
+
+  it('let operand as sub-expression (not root): stays flat', () => {
+    // #foo is not the root expression here — it is the value of an outer let
+    expect(pp('let a = #foo let b = 1')).toBe('let a = #foo let b = 1')
+  })
+
+  it('non-let operand too long: breaks with indent', () => {
+    const result = pp('#foo (someVeryLongParameterName, anotherVeryLongParameterName) -> someVeryLongBodyExpression')
+    expect(result).toMatch(/^#foo\n {2}/)
   })
 })
