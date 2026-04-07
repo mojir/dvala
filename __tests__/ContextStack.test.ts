@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { NodeTypes } from '../src/constants/constants'
 import { createContextStack } from '../src/evaluator/ContextStack'
+import type { SpecialSymbolNode } from '../src/parser/types'
 
 describe('contextStack', () => {
   it('should throw if adding duplicate', () => {
@@ -30,5 +32,12 @@ describe('contextStack', () => {
   it('should return unwrapped contextStack when globalModuleScope is true', () => {
     const contextStack = createContextStack({ globalModuleScope: true })
     expect(contextStack).toBeDefined()
+  })
+  it('throws for a special symbol type not usable as a first-class value', () => {
+    const contextStack = createContextStack()
+    // 'for' is a SpecialExpressionType but not handled in the evaluateSymbol switch —
+    // it can appear as a SpecialSymbolNode if written in operand position (e.g. `let f = for`)
+    const node = [NodeTypes.Special, 'for', 0] as unknown as SpecialSymbolNode
+    expect(() => contextStack.evaluateSymbol(node)).toThrow()
   })
 })
