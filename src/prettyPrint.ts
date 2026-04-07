@@ -10,7 +10,8 @@
  * - Dvala function: `let { prettyPrint } = import("ast")` — for in-language use
  */
 
-const MAX_WIDTH = 80
+import { MAX_WIDTH } from './formatter/config'
+
 const INDENT_SIZE = 2
 
 const NodeTypes = {
