@@ -330,6 +330,23 @@ describe('formatter — post-processing', () => {
   })
 })
 
+describe('formatter — comment-only files', () => {
+  it('preserves a single comment with no statements', () => check(
+    '// just a comment',
+    '// just a comment',
+  ))
+
+  it('preserves multiple comments with no statements', () => check(
+    '// line one\n// line two',
+    '// line one\n// line two',
+  ))
+
+  it('preserves comment-only file with shebang', () => check(
+    '#!/usr/bin/env dvala\n// only a comment',
+    '#!/usr/bin/env dvala\n// only a comment',
+  ))
+})
+
 describe('formatter — edge cases', () => {
   it('empty string returns empty string', () => {
     expect(format('')).toBe('')

@@ -51,8 +51,15 @@ export function format(source: string): string {
   const { body, sourceMap } = ast
 
   if (body.length === 0) {
-    const { shebang } = extractComments(source)
-    return shebang ? `${shebang}\n` : ''
+    const { comments, shebang } = extractComments(source)
+    if (comments.length === 0) {
+      return shebang ? `${shebang}\n` : ''
+    }
+    // File has only comments (no statements). Anchor all as preamble and
+    // reinsert so they are not silently discarded.
+    const preamble = comments.map(c => anchorComment(c, [], source))
+    const raw = reinsertComments([], preamble, [], new Map(), shebang)
+    return postProcess(raw)
   }
 
   const { comments, shebang } = extractComments(source)
