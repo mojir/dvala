@@ -12,9 +12,8 @@
  *   standalone — same as leading but preceded by one blank line.
  */
 
+import { MAX_WIDTH } from './config'
 import type { ExtractedComment } from './extractComments'
-
-const MAX_WIDTH = 80
 
 // ---------------------------------------------------------------------------
 // Types

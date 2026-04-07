@@ -19,16 +19,17 @@
  * never destroys partially-written code.
  */
 
-import { prettyPrint } from '../prettyPrint'
-import { tokenize } from '../tokenizer/tokenize'
-import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
-import { isOperatorToken } from '../tokenizer/token'
-import type { Token } from '../tokenizer/token'
-import { parseToAst } from '../parser'
-import type { AstNode, SourceMap } from '../parser/types'
+import { MAX_BLANK_LINES } from './config'
 import { extractComments } from './extractComments'
 import type { ExtractedComment } from './extractComments'
 import { reinsertComments } from './reinsertComments'
+import type { AstNode, SourceMap } from '../parser/types'
+import { parseToAst } from '../parser'
+import { prettyPrint } from '../prettyPrint'
+import { isOperatorToken } from '../tokenizer/token'
+import type { Token } from '../tokenizer/token'
+import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
+import { tokenize } from '../tokenizer/tokenize'
 import type { AnchoredComment } from './reinsertComments'
 
 // ---------------------------------------------------------------------------
@@ -163,7 +164,7 @@ export function format(source: string): string {
       for (let l = endLine + 1; l < nextStartLine; l++) {
         if ((sourceLines[l] ?? '').trim() === '') blanks++
       }
-      blankLinesBetweenStatements.push(Math.min(blanks, 1))
+      blankLinesBetweenStatements.push(Math.min(blanks, MAX_BLANK_LINES))
     }
   }
 
@@ -272,7 +273,7 @@ function computeBlankLinesBefore(lineIndex: number, source: string): number {
     if ((lines[i] ?? '').trim() === '') blanks++
     else break
   }
-  return Math.min(blanks, 1)
+  return Math.min(blanks, MAX_BLANK_LINES)
 }
 
 /**
