@@ -14,12 +14,12 @@ A normal expression evaluates **all** its arguments before executing. This is th
 
 ```dvala
 // + is normal: both 3 and 4 are evaluated, then added
-3 + 4
+3 + 4;
 ```
 
 ```dvala
 // map is normal: evaluates the array and the function, then applies
-map([1, 2, 3], inc)
+map([1, 2, 3], inc);
 ```
 
 Most of Dvala's built-in functions are normal expressions: arithmetic, string operations, array functions, predicates. When you see `f(a, b, c)`, all of `a`, `b`, and `c` are computed before `f` runs.
@@ -33,11 +33,7 @@ A special expression controls **when** and **whether** each argument is evaluate
 `if` evaluates the condition, then evaluates **only** the matching branch:
 
 ```dvala
-if true then
-  "this runs"
-else
-  "this does not"
-end
+if true then "this runs" else "this does not" end;
 ```
 
 If `if` were a normal expression, both branches would be evaluated before the decision — defeating the purpose.
@@ -47,13 +43,13 @@ If `if` were a normal expression, both branches would be evaluated before the de
 `&&` stops at the first falsy value. `||` stops at the first truthy value:
 
 ```dvala
-false && (1 / 0)
+false && 1 / 0;
 ```
 
 The division never happens because `&&` short-circuits on `false`.
 
 ```dvala
-42 || (1 / 0)
+42 || 1 / 0;
 ```
 
 Similarly, `||` returns 42 without evaluating the second operand.
@@ -65,7 +61,7 @@ Similarly, `||` returns 42 without evaluating the second operand.
 ```dvala
 let x = 10;
 let y = x + 5;
-y * 2
+y * 2;
 ```
 
 This requires special evaluation: `let` must bind `x` before evaluating `x + 5`.
@@ -76,11 +72,9 @@ This requires special evaluation: `let` must bind `x` before evaluating `x + 5`.
 
 ```dvala
 let temp = 25;
-if temp < 0 then "freezing"
-else if temp < 20 then "cold"
-else if temp < 30 then "pleasant"
-else "hot"
-end
+if temp < 0 then
+  "freezing"
+else if temp < 20 then "cold" else if temp < 30 then "pleasant" else "hot" end;
 ```
 
 ### loop / recur — Tail-Recursive Iteration
@@ -88,12 +82,7 @@ end
 `loop` creates bindings and `recur` jumps back with new values. Both are special because `recur` must be recognized at the tail position:
 
 ```dvala
-loop (i = 0, total = 0) ->
-  if i > 4 then
-    total
-  else
-    recur(i + 1, total + i)
-  end
+loop (i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
 ```
 
 ### match — Pattern Matching
@@ -105,7 +94,7 @@ match [1, 2, 3]
   case [a] then "one"
   case [a, b] then "two"
   case [a, b, c] then a + b + c
-end
+end;
 ```
 
 ### for — Iteration
@@ -113,7 +102,7 @@ end
 `for` creates a new array from a comprehension:
 
 ```dvala
-for (x in [1, 2, 3] when x > 1) -> x * 10
+for (x in [1, 2, 3] when x > 1) -> x * 10;
 ```
 
 ### @name / perform — Algebraic Effects
@@ -122,10 +111,7 @@ for (x in [1, 2, 3] when x > 1) -> x * 10
 
 ```dvala
 let e = @my.double;
-do
-  with handler @my.double(arg) -> resume(arg * 2) end;
-  perform(e, 21)
-end
+do with handler @my.double(arg) -> resume(arg * 2) end; perform(e, 21) end;
 ```
 
 ### do / block — Sequencing
@@ -133,11 +119,7 @@ end
 `do...end` groups expressions and evaluates them in order, returning the last:
 
 ```dvala
-do
-  let a = 1;
-  let b = 2;
-  a + b
-end
+do let a = 1; let b = 2; a + b end;
 ```
 
 ## The Complete List

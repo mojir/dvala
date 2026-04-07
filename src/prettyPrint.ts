@@ -10,7 +10,8 @@
  * - Dvala function: `let { prettyPrint } = import("ast")` — for in-language use
  */
 
-const MAX_WIDTH = 80
+import { MAX_WIDTH } from './formatter/config'
+
 const INDENT_SIZE = 2
 
 const NodeTypes = {
@@ -59,6 +60,24 @@ const infixOperators = new Set([
   '&', '|', 'xor', '<<', '>>', '>>>',
 ])
 
+// Operator precedence (higher number = tighter binding).
+// Mirrors src/parser/getPrecedence.ts — only the operators that reach
+// printCall as Call(Builtin, ...) are relevant here; `&&`, `||`, `??`
+// and `|>` are represented as separate AST node types so they cannot
+// appear in printArg, but are included for completeness.
+const operatorPrecedence: Record<string, number> = {
+  '|>': 2,
+  '&&': 4, '||': 4, '??': 4,
+  '&': 5, '|': 5, 'xor': 5,
+  '==': 6, '!=': 6,
+  '<': 7, '>': 7, '<=': 7, '>=': 7,
+  '++': 8,
+  '<<': 9, '>>': 9, '>>>': 9,
+  '+': 10, '-': 10,
+  '*': 11, '/': 11, '%': 11,
+  '^': 12,
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -92,7 +111,14 @@ function printNode(node: AstNode, ind: number): string {
     case NodeTypes.Num:
       return String(payload)
     case NodeTypes.Str:
-      return `"${String(payload).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+      // Escape backslash first, then special characters, then double-quote.
+      return `"${String(payload)
+        .replace(/\\/g, '\\\\')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+        .replace(/"/g, '\\"')
+      }"`
     case NodeTypes.Reserved:
       return String(payload)
     case NodeTypes.Sym:
@@ -157,9 +183,14 @@ function printNode(node: AstNode, ind: number): string {
       return payload === 'ref' ? 'resume' : `resume(${printNode(payload as AstNode, ind)})`
     case NodeTypes.WithHandler: {
       const [handlerExpr, bodyExprs] = payload as [unknown[], unknown[][]]
-      const handlerStr = printNode(handlerExpr as AstNode, ind)
-      const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind))
-      return `with ${handlerStr};\n${bodyStrs.map(s => `${indent(ind)}${s}`).join(';\n')}`
+      // Try flat inline form: `with handler ... end; body1; body2`
+      const handlerFlat = printNode(handlerExpr as AstNode, ind)
+      const bodyFlats = bodyExprs.map(b => printNode(b as AstNode, ind))
+      const flat = `with ${handlerFlat}; ${bodyFlats.join('; ')}`
+      if (!handlerFlat.includes('\n') && fits(flat, ind)) return flat
+      // Multi-line form — reuse handlerFlat (already computed above)
+      const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind + 1))
+      return `with ${handlerFlat};\n${bodyStrs.map(s => `${indent(ind + 1)}${s}`).join(';\n')}`
     }
     // Binding target types (from destructuring patterns, not evaluable code)
     case 'symbol':
@@ -178,10 +209,11 @@ function printNode(node: AstNode, ind: number): string {
 // Compound node printers
 // ---------------------------------------------------------------------------
 
-function printCall(payload: [unknown[], unknown[]], ind: number): string {
-  const [fn, args] = payload
+function printCall(payload: [unknown[], unknown[], unknown?], ind: number): string {
+  const [fn, args, rawHints] = payload
   const fnNode = fn as AstNode
   const argNodes = args as AstNode[]
+  const hints = rawHints as { isInfix?: boolean; isPipe?: boolean } | undefined
 
   // Smart rewrite: unary minus — 0 - x → -x
   if (fnNode[0] === NodeTypes.Builtin && fnNode[1] === '-' && argNodes.length === 2) {
@@ -199,14 +231,17 @@ function printCall(payload: [unknown[], unknown[]], ind: number): string {
     }
   }
 
-  // Smart rewrite: pipe chain — f(g(h(x))) → x |> h |> g |> f
-  const pipeChain = extractPipeChain(fnNode, argNodes)
-  if (pipeChain) {
-    const flat = pipeChain.map(n => printNode(n, ind)).join(' |> ')
-    if (fits(flat, ind)) return flat
-    // Multi-line pipe: each segment on its own line with |> prefix
-    const parts = pipeChain.map(n => printNode(n, ind + 1))
-    return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}|> ${p}`).join('\n')}`
+  // Pipe chain — only when authored with |> (isPipe hint).
+  // Without the hint, f(g(h(x))) stays as nested calls — preserves authorial intent.
+  if (hints?.isPipe) {
+    const pipeChain = extractPipeChain(fnNode, argNodes)
+    if (pipeChain) {
+      const flat = pipeChain.map(n => printNode(n, ind)).join(' |> ')
+      if (fits(flat, ind)) return flat
+      // Multi-line pipe: each segment on its own line with |> prefix
+      const parts = pipeChain.map(n => printNode(n, ind + 1))
+      return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}|> ${p}`).join('\n')}`
+    }
   }
 
   // Infix binary operators: a + b
@@ -215,8 +250,39 @@ function printCall(payload: [unknown[], unknown[]], ind: number): string {
   if (fnNode[0] === NodeTypes.Builtin && argNodes.length === 2 && !hasPlaceholder) {
     const op = fnNode[1] as string
     if (infixOperators.has(op)) {
-      return `${printNode(argNodes[0]!, ind)} ${op} ${printNode(argNodes[1]!, ind)}`
+      const outerPrec = operatorPrecedence[op] ?? 0
+      // Add parens around an infix sub-expression whose operator binds looser
+      // than the outer one (e.g. `(x - avg) ^ 2` must stay parenthesised).
+      const printArg = (argNode: AstNode, isRight: boolean): string => {
+        const str = printNode(argNode, ind)
+        // Only check binary infix calls (2 args, builtin operator in infixOperators)
+        if (argNode[0] === NodeTypes.Call) {
+          const callPayload = argNode[1] as [AstNode, AstNode[]]
+          const innerFn = callPayload[0]
+          const innerArgs = callPayload[1]
+          if (
+            innerFn[0] === NodeTypes.Builtin
+            && innerArgs.length === 2
+            && infixOperators.has(innerFn[1] as string)
+          ) {
+            const innerOp = innerFn[1] as string
+            const innerPrec = operatorPrecedence[innerOp] ?? 0
+            // Parens needed when inner binds looser, or same precedence on right side
+            // (handles right-assoc `^` correctly: `a ^ (b ^ c)` vs `(a ^ b) ^ c`).
+            if (innerPrec < outerPrec || (isRight && innerPrec === outerPrec)) {
+              return `(${str})`
+            }
+          }
+        }
+        return str
+      }
+      return `${printArg(argNodes[0]!, false)} ${op} ${printArg(argNodes[1]!, true)}`
     }
+  }
+
+  // User-defined infix call: a foo b (authored as infix, preserved via isInfix hint)
+  if (hints?.isInfix && fnNode[0] === NodeTypes.Sym && argNodes.length === 2) {
+    return `${printNode(argNodes[0]!, ind)} ${fnNode[1] as string} ${printNode(argNodes[1]!, ind)}`
   }
 
   // Regular function call — wrap callee in parens if it's a complex expression (lambda, etc.)
@@ -284,18 +350,40 @@ function printLet(payload: [unknown[], unknown[]], ind: number): string {
   return `let ${printBindingTarget(target)} = ${printNode(value as AstNode, ind)}`
 }
 
-function printFunction(payload: [unknown[][], unknown[][]], ind: number): string {
-  const [params, body] = payload
+function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: number): string {
+  const [params, body, rawHints] = payload
+  const hints = rawHints as { isShorthand?: boolean } | undefined
+
+  // Shorthand lambda: authored as `-> expr` with no explicit params.
+  // Preserve the form so the formatter does not add ($) prefix.
+  if (hints?.isShorthand) {
+    if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+      const flat = `-> ${printNode(body[0] as AstNode, ind)}`
+      if (fits(flat, ind)) return flat
+      return `->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    }
+    const flatBody = body.map(b => printNode(b as AstNode, ind)).join('; ')
+    const flat = `-> do ${flatBody} end`
+    if (fits(flat, ind)) return flat
+    const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1)}`)
+    return `-> do\n${lines.join(';\n')}\n${indent(ind)}end`
+  }
+
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
 
   if (body.length === 1) {
-    const flat = `(${paramStr}) -> ${printNode(body[0] as AstNode, ind)}`
-    if (fits(flat, ind)) return flat
-    // Break body to next line
-    return `(${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    // `with handler...end; body` is NOT a valid standalone expression — it can
+    // only appear inside a `do...end` block. Wrap it in do...end when it's a
+    // single-body function, treating it like a multi-statement body.
+    if ((body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+      const flat = `(${paramStr}) -> ${printNode(body[0] as AstNode, ind)}`
+      if (fits(flat, ind)) return flat
+      // Break body to next line
+      return `(${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    }
   }
 
-  // Multi-statement body: always use do...end
+  // Multi-statement body (or single WithHandler): always use do...end
   const flatBody = body.map(b => printNode(b as AstNode, ind)).join('; ')
   const flat = `(${paramStr}) -> do ${flatBody} end`
   if (fits(flat, ind)) return flat
@@ -309,12 +397,13 @@ function printMacro(payload: [unknown[][], unknown[][], string | null], ind: num
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
   const namePrefix = qualifiedName ? `macro@${qualifiedName}` : 'macro'
 
-  if (body.length === 1) {
+  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
     const flat = `${namePrefix} (${paramStr}) -> ${printNode(body[0] as AstNode, ind)}`
     if (fits(flat, ind)) return flat
     return `${namePrefix} (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
   }
 
+  // Multi-statement body (or single WithHandler): always use do...end.
   const flatBody = body.map(b => printNode(b as AstNode, ind)).join('; ')
   const flat = `${namePrefix} (${paramStr}) -> do ${flatBody} end`
   if (fits(flat, ind)) return flat
@@ -359,11 +448,18 @@ function formatObjectEntry(entry: unknown[], ind: number): string {
     return `...${printNode(entry[1] as AstNode, ind)}`
   }
   const [keyNode, valueNode] = entry as [AstNode, AstNode]
-  const value = printNode(valueNode, ind)
   if (keyNode[0] === NodeTypes.Str) {
-    return `${keyNode[1] as string}: ${value}`
+    const key = keyNode[1] as string
+    const isIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)
+    // Shorthand: { x: x } → { x } when key and value are the same identifier.
+    if (isIdentifier && valueNode[0] === NodeTypes.Sym && valueNode[1] === key) {
+      return key
+    }
+    // Non-identifier keys (e.g. "|>") must stay quoted to remain valid syntax.
+    const quotedKey = isIdentifier ? key : `"${key}"`
+    return `${quotedKey}: ${printNode(valueNode, ind)}`
   }
-  return `[${printNode(keyNode, ind)}]: ${value}`
+  return `[${printNode(keyNode, ind)}]: ${printNode(valueNode, ind)}`
 }
 
 function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
@@ -375,28 +471,55 @@ function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
   return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}${op} ${p}`).join('\n')}`
 }
 
+/**
+ * Print a handler clause body or transform body. Multi-statement bodies must
+ * be wrapped in `do...end` because the handler grammar does not allow bare
+ * semicolons at clause level — `@eff(x) -> let y = 1; y` is invalid syntax.
+ */
+function printHandlerBody(body: unknown[][], ind: number): string {
+  // `with handler...end; body` and `with expr; body` are NOT valid as
+  // standalone expressions — they require a `do...end` block context.
+  // Treat a single WithHandler node the same as a multi-statement body.
+  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+    return printNode(body[0] as AstNode, ind)
+  }
+  const stmts = body.map(b => printNode(b as AstNode, ind + 1)).join('; ')
+  const flat = `do ${stmts} end`
+  if (fits(flat, ind)) return flat
+  return `do\n${body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1)}`).join(';\n')}\n${indent(ind)}end`
+}
+
 function printHandler(payload: [unknown[], unknown], ind: number): string {
   const [clauses, transform] = payload as [
     { effectName: string; params: unknown[][]; body: unknown[][] }[],
     [unknown[], unknown[][]] | null,
   ]
 
-  const parts: string[] = ['handler']
-  for (const clause of clauses) {
+  // Build per-clause strings (without leading indentation for flat check)
+  const clauseStrs = clauses.map(clause => {
     const paramsStr = clause.params.length > 0
       ? `(${clause.params.map(p => printBindingTarget(p)).join(', ')})`
       : '()'
-    const bodyStr = clause.body.length === 1
-      ? printNode(clause.body[0] as AstNode, ind + 1)
-      : clause.body.map(b => printNode(b as AstNode, ind + 1)).join('; ')
-    parts.push(`${indent(ind + 1)}@${clause.effectName}${paramsStr} -> ${bodyStr}`)
+    const bodyStr = printHandlerBody(clause.body, ind + 1)
+    return { inline: `@${clause.effectName}${paramsStr} -> ${bodyStr}`, bodyStr }
+  })
+
+  // Try flat single-line form: `handler @eff(p) -> body end`
+  // Only when there's no transform and no clause body contains newlines.
+  if (!transform && clauseStrs.every(c => !c.bodyStr.includes('\n'))) {
+    const flat = `handler ${clauseStrs.map(c => c.inline).join(' ')} end`
+    if (fits(flat, ind)) return flat
+  }
+
+  // Multi-line form
+  const parts: string[] = ['handler']
+  for (const { inline } of clauseStrs) {
+    parts.push(`${indent(ind + 1)}${inline}`)
   }
   if (transform) {
     const [param, body] = transform
     const paramStr = printBindingTarget(param)
-    const bodyStr = (body).length === 1
-      ? printNode((body)[0] as AstNode, ind + 1)
-      : (body).map(b => printNode(b as AstNode, ind + 1)).join('; ')
+    const bodyStr = printHandlerBody(body, ind + 1)
     parts.push(`${indent(ind)}transform`)
     parts.push(`${indent(ind + 1)}${paramStr} -> ${bodyStr}`)
   }
@@ -548,7 +671,9 @@ function extractPipeChain(fnNode: AstNode, argNodes: AstNode[]): AstNode[] | nul
   let current = argNodes[0]!
 
   while (current[0] === NodeTypes.Call) {
-    const [innerFn, innerArgs] = current[1] as [AstNode, AstNode[]]
+    const [innerFn, innerArgs, innerHints] = current[1] as [AstNode, AstNode[], { isPipe?: boolean } | undefined]
+    // Only follow inner nodes that were also authored as pipe — stops at nested regular calls
+    if (!innerHints?.isPipe) break
     if (innerArgs.length !== 1) break
     if (innerFn[0] !== NodeTypes.Sym && innerFn[0] !== NodeTypes.Builtin) break
     chain.push(innerFn)
@@ -586,7 +711,8 @@ function printBindingTarget(target: unknown[]): string {
     }
     case 'array': {
       const [targets, defaultExpr] = targetPayload as [unknown[][], unknown[] | null]
-      const inner = targets.map(t => t ? printBindingTarget(t) : '_').join(', ')
+      // Empty slots (null) are represented as empty commas: [, , third]
+      const inner = targets.map(t => t ? printBindingTarget(t) : '').join(', ')
       if (defaultExpr) {
         return `[${inner}] = ${printNode(defaultExpr as AstNode, 0)}`
       }

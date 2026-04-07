@@ -1,5 +1,6 @@
 import type { DatatypeReference } from '.'
 import type { DatatypeName } from './api'
+import { snippet } from './dvala'
 
 export const datatype: Record<DatatypeName, DatatypeReference> = {
   '-type-number': {
@@ -8,8 +9,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `number`',
     examples: [
-      '42',
-      '3.14',
+      snippet('42'),
+      snippet('3.14'),
     ],
   },
   '-type-string': {
@@ -18,10 +19,10 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `string`. Strings are written with double quotes. Template strings use backticks and support `${...}` interpolation — any expression can appear inside the braces.',
     examples: [
-      '"hello"',
-      '""',
-      '`Hello, World!`',
-      '`${2} * ${3} = ${2 * 3}`',
+      snippet('"hello"'),
+      snippet('""'),
+      snippet('`Hello, World!`'),
+      snippet('`${2} * ${3} = ${2 * 3}`'),
     ],
   },
   '-type-object': {
@@ -30,8 +31,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An `object`, a collection of key-value pairs where keys are `strings`',
     examples: [
-      '{}',
-      '{ a: 1, b: 2}',
+      snippet('{}'),
+      snippet('{ a: 1, b: 2}'),
     ],
   },
   '-type-array': {
@@ -40,9 +41,9 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An `array`',
     examples: [
-      '[]',
-      '[1, 2, 3]',
-      '["a", null, true]',
+      snippet('[]'),
+      snippet('[1, 2, 3]'),
+      snippet('["a", null, true]'),
     ],
   },
   '-type-vector': {
@@ -51,8 +52,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An `array` of `numbers`',
     examples: [
-      '[]',
-      '[1, 2, 3]',
+      snippet('[]'),
+      snippet('[1, 2, 3]'),
     ],
   },
   '-type-matrix': {
@@ -61,9 +62,9 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `matrix`, a two-dimensional `array` with `numbers` where each row has the same number of columns. A `matrix` is also a `grid`.',
     examples: [
-      '[[42]]',
-      '[[1, 2], [3, 4]]',
-      '[[1, 2], [3, 4], [5, 6]]',
+      snippet('[[42]]'),
+      snippet('[[1, 2], [3, 4]]'),
+      snippet('[[1, 2], [3, 4], [5, 6]]'),
     ],
   },
   '-type-grid': {
@@ -72,9 +73,9 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `grid`, a two-dimensional `array` where each row has the same number of columns',
     examples: [
-      '[[]]',
-      '[[1, 2], [3, 4]]',
-      '[["a", "b"], [3, 4], [5, 6]]',
+      snippet('[[]]'),
+      snippet('[[1, 2], [3, 4]]'),
+      snippet('[["a", "b"], [3, 4], [5, 6]]'),
     ],
   },
   '-type-boolean': {
@@ -83,8 +84,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `boolean`',
     examples: [
-      'true',
-      'false',
+      snippet('true'),
+      snippet('false'),
     ],
   },
   '-type-function': {
@@ -93,10 +94,10 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A `function`',
     examples: [
-      'x -> x + 1',
-      '(a, b, c) -> (a + b) * c',
-      '() -> 42',
-      '-> $ + $2',
+      snippet('x -> x + 1'),
+      snippet('(a, b, c) -> (a + b) * c'),
+      snippet('() -> 42'),
+      snippet('-> $ + $2'),
     ],
   },
   '-type-integer': {
@@ -105,8 +106,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An `integer`',
     examples: [
-      '42',
-      '-42',
+      snippet('42'),
+      snippet('-42'),
     ],
   },
   '-type-any': {
@@ -115,10 +116,10 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: '`Any` value',
     examples: [
-      '42',
-      '"hello"',
-      'true',
-      'null',
+      snippet('42'),
+      snippet('"hello"'),
+      snippet('true'),
+      snippet('null'),
     ],
   },
   '-type-null': {
@@ -127,7 +128,7 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'The value `null`',
     examples: [
-      'null',
+      snippet('null'),
     ],
   },
   '-type-collection': {
@@ -136,9 +137,9 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A collection, an `object`, an `array` or a `string`',
     examples: [
-      '{ foo: 42 }',
-      '[1, 2, 3]',
-      '"hello"',
+      snippet('{ foo: 42 }'),
+      snippet('[1, 2, 3]'),
+      snippet('"hello"'),
     ],
   },
   '-type-sequence': {
@@ -147,8 +148,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A sequence, an `array` or a `string`',
     examples: [
-      '[1, 2, 3]',
-      '"hello"',
+      snippet('[1, 2, 3]'),
+      snippet('"hello"'),
     ],
   },
   '-type-regexp': {
@@ -157,9 +158,9 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'A regular expression',
     examples: [
-      'regexp("^\\\\s*(.*)$")',
-      '#"^\\s*(.*)$"',
-      '#"albert"ig',
+      snippet('regexp("^\\\\s*(.*)$")'),
+      snippet('#"^\\s*(.*)$"'),
+      snippet('#"albert"ig'),
     ],
   },
   '-type-effect': {
@@ -168,8 +169,8 @@ export const datatype: Record<DatatypeName, DatatypeReference> = {
     category: 'datatype',
     description: 'An effect, created with the `effect` special expression. Effects are used with `perform` to trigger algebraic effects.',
     examples: [
-      '@dvala.io.print',
-      '@dvala.time.now',
+      snippet('@dvala.io.print'),
+      snippet('@dvala.time.now'),
     ],
   },
   '-type-never': {

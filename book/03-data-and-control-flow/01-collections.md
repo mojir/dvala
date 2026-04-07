@@ -8,15 +8,15 @@ Arrays are ordered, mixed-type collections. Access elements by index:
 
 ```dvala
 let arr = [10, 20, 30, 40];
-arr[2]
+get(arr, 2);
 ```
 
 ```dvala
-first([1, 2, 3])
+first([1, 2, 3]);
 ```
 
 ```dvala
-rest([1, 2, 3])
+rest([1, 2, 3]);
 ```
 
 ## Map, Filter, Reduce
@@ -24,15 +24,15 @@ rest([1, 2, 3])
 The core trio for transforming collections:
 
 ```dvala
-map([1, 2, 3, 4], -> $ * $)
+map([1, 2, 3, 4], -> $ * $);
 ```
 
 ```dvala
-filter([1, 2, 3, 4, 5, 6], isEven)
+filter([1, 2, 3, 4, 5, 6], isEven);
 ```
 
 ```dvala
-reduce([1, 2, 3, 4], +, 0)
+reduce([1, 2, 3, 4], +, 0);
 ```
 
 ## More Sequence Operations
@@ -40,15 +40,15 @@ reduce([1, 2, 3, 4], +, 0)
 Slicing, reversing, sorting, and more:
 
 ```dvala
-slice([10, 20, 30, 40, 50], 1, 4)
+slice([10, 20, 30, 40, 50], 1, 4);
 ```
 
 ```dvala
-reverse([1, 2, 3])
+reverse([1, 2, 3]);
 ```
 
 ```dvala
-sort([3, 1, 4, 1, 5])
+sort([3, 1, 4, 1, 5]);
 ```
 
 ## Building Arrays
@@ -56,19 +56,19 @@ sort([3, 1, 4, 1, 5])
 Generate arrays with `range`, `repeat`, and `push`:
 
 ```dvala
-range(5)
+range(5);
 ```
 
 ```dvala
-range(2, 10, 3)
+range(2, 10, 3);
 ```
 
 ```dvala
-repeat("x", 4)
+repeat("x", 4);
 ```
 
 ```dvala
-push([1, 2], 3, 4)
+push([1, 2], 3, 4);
 ```
 
 ## Objects
@@ -77,20 +77,20 @@ Objects are key-value maps. Use `get`, `assoc`, and `dissoc` to work with them:
 
 ```dvala
 let user = { name: "Alice", age: 30 };
-get(user, "name")
+user.name;
 ```
 
 ```dvala
 let user = { name: "Alice", age: 30 };
-assoc(user, "age", 31)
+assoc(user, "age", 31);
 ```
 
 ```dvala
-keys({ a: 1, b: 2, c: 3 })
+keys({ a: 1, b: 2, c: 3 });
 ```
 
 ```dvala
-vals({ a: 1, b: 2, c: 3 })
+vals({ a: 1, b: 2, c: 3 });
 ```
 
 ## Merging Objects
@@ -98,7 +98,7 @@ vals({ a: 1, b: 2, c: 3 })
 Combine objects with `merge` — later keys win:
 
 ```dvala
-merge({ a: 1, b: 2 }, { b: 3, c: 4 })
+merge({ a: 1, b: 2 }, { b: 3, c: 4 });
 ```
 
 ## Finding Elements
@@ -106,18 +106,18 @@ merge({ a: 1, b: 2 }, { b: 3, c: 4 })
 `some` returns the **first element matching a predicate**, or `null` if none match:
 
 ```dvala
-some([1, 3, 4, 7], isEven)
+some([1, 3, 4, 7], isEven);
 ```
 
 ```dvala
-some([1, 3, 5], isEven)
+some([1, 3, 5], isEven);
 ```
 
 To check whether *all* elements satisfy a predicate, combine `filter` and `count`:
 
 ```dvala
 let xs = [2, 4, 6];
-count(filter(xs, isEven)) == count(xs)
+count(filter(xs, isEven)) == count(xs);
 ```
 
 ## Flattening
@@ -125,11 +125,11 @@ count(filter(xs, isEven)) == count(xs)
 `flatten` collapses one level of nesting. Combine with `map` for a flatMap pattern:
 
 ```dvala
-flatten([[1, 2], [3, 4], [5]])
+flatten([[1, 2], [3, 4], [5]]);
 ```
 
 ```dvala
-flatten(map([1, 2, 3], x -> [x, x * 10]))
+flatten(map([1, 2, 3], (x) -> [x, x * 10]));
 ```
 
 ## Collection Predicates
@@ -137,13 +137,13 @@ flatten(map([1, 2, 3], x -> [x, x * 10]))
 Test properties of collections:
 
 ```dvala
-isEmpty([])
+isEmpty([]);
 ```
 
 ```dvala
-contains([1, 2, 3], 1)
+contains([1, 2, 3], 1);
 ```
 
 ```dvala
-count("hello")
+count("hello");
 ```

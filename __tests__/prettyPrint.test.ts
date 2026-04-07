@@ -64,7 +64,7 @@ describe('prettyPrint — pipe chains', () => {
 
 describe('prettyPrint — function calls', () => {
   it('simple call', () => { expect(pp('f(x, y)')).toBe('f(x, y)') })
-  it('nested call', () => { expect(pp('f(g(x))')).toBe('x |> g |> f') })
+  it('nested call stays as nested call (no implicit pipe rewrite)', () => { expect(pp('f(g(x))')).toBe('f(g(x))') })
   it('lambda callee gets parens', () => {
     expect(pp('((x) -> x)(42)')).toBe('((x) -> x)(42)')
   })
@@ -500,12 +500,12 @@ describe('prettyPrint — raw AST edge cases', () => {
     expect(result).not.toContain('|>')
   })
 
-  it('null slot in array destructuring prints as _', () => {
-    // Array binding target with a null element: [a, , b] → the null becomes _
+  it('null slot in array destructuring prints as empty comma', () => {
+    // Array binding target with a null element: [a, , b] → null stays as empty slot
     const arrayTarget = ['array', [[['symbol', [['Sym', 'a', 0], undefined], 0], null, ['symbol', [['Sym', 'b', 0], undefined], 0]], undefined], 0]
     const letNode = ['Let', [arrayTarget, ['Array', [['Num', 1, 0], ['Num', 2, 0], ['Num', 3, 0]], 0]], 0]
     const result = prettyPrint(letNode)
-    expect(result).toBe('let [a, _, b] = [1, 2, 3]')
+    expect(result).toBe('let [a, , b] = [1, 2, 3]')
   })
 
   it('binding target type passed directly to printNode', () => {

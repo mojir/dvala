@@ -7,11 +7,11 @@ Strings are immutable sequences of characters. Dvala provides a rich set of buil
 Double-quoted strings with standard escape sequences:
 
 ```dvala
-"Hello, World!"
+"Hello, World!";
 ```
 
 ```dvala
-"Line 1\nLine 2\tTabbed"
+"Line 1\nLine 2\tTabbed";
 ```
 
 ## Template Strings
@@ -21,14 +21,14 @@ Backtick strings interpolate any expression with `${...}`:
 ```dvala
 let name = "Alice";
 let score = 42;
-`${name} scored ${score} points`
+`${name} scored ${score} points`;
 ```
 
 Any expression works inside `${}` — arithmetic, function calls, conditionals:
 
 ```dvala
 let temp = 22;
-`It is ${temp}°C — ${if temp > 20 then "warm" else "cold" end}`
+`It is ${temp}°C — ${if temp > 20 then "warm" else "cold" end}`;
 ```
 
 ## Building Strings
@@ -36,11 +36,11 @@ let temp = 22;
 Use `++` to concatenate, or `str` to build from multiple values of any type:
 
 ```dvala
-"Hello" ++ ", " ++ "World!"
+"Hello" ++ ", " ++ "World!";
 ```
 
 ```dvala
-str("Count: ", 42, " items (", true, ")")
+str("Count: ", 42, " items (", true, ")");
 ```
 
 `str` converts every argument to a string — useful when mixing types without a template string.
@@ -50,17 +50,17 @@ str("Count: ", 42, " items (", true, ")")
 `count` returns the number of characters:
 
 ```dvala
-count("hello")
+count("hello");
 ```
 
 ## Case
 
 ```dvala
-upperCase("hello world")
+upperCase("hello world");
 ```
 
 ```dvala
-lowerCase("HELLO WORLD")
+lowerCase("HELLO WORLD");
 ```
 
 ## Trimming
@@ -68,7 +68,7 @@ lowerCase("HELLO WORLD")
 `trim` removes leading and trailing whitespace:
 
 ```dvala
-trim("   hello   ")
+trim("   hello   ");
 ```
 
 ## Slicing
@@ -76,11 +76,11 @@ trim("   hello   ")
 `slice` extracts a substring by start (inclusive) and end (exclusive) index:
 
 ```dvala
-slice("hello world", 6, 11)
+slice("hello world", 6, 11);
 ```
 
 ```dvala
-slice("hello world", 0, 5)
+slice("hello world", 0, 5);
 ```
 
 ## Searching
@@ -88,13 +88,13 @@ slice("hello world", 0, 5)
 `contains` tests whether a substring is present:
 
 ```dvala
-contains("hello world", "world")
+contains("hello world", "world");
 ```
 
 `indexOf` returns the position of the first occurrence, or `-1` if not found:
 
 ```dvala
-indexOf("hello world", "o")
+indexOf("hello world", "o");
 ```
 
 ## Replace
@@ -102,11 +102,11 @@ indexOf("hello world", "o")
 `replace` substitutes the first occurrence of a string or regex:
 
 ```dvala
-replace("hello world", "world", "Dvala")
+replace("hello world", "world", "Dvala");
 ```
 
 ```dvala
-replace("aabbcc", #"b+", "X")
+replace("aabbcc", regexp("b+", ""), "X");
 ```
 
 ## Split and Join
@@ -114,22 +114,19 @@ replace("aabbcc", #"b+", "X")
 `split` breaks a string into an array:
 
 ```dvala
-split("one,two,three", ",")
+split("one,two,three", ",");
 ```
 
 `join` reassembles an array into a string:
 
 ```dvala
-join(["one", "two", "three"], " | ")
+join(["one", "two", "three"], " | ");
 ```
 
 Split and join compose naturally:
 
 ```dvala
-"hello world foo"
-  |> split(_, " ")
-  |> map(_, upperCase)
-  |> join(_, "-")
+join(_, "-")(map(_, upperCase)(split(_, " ")("hello world foo")));
 ```
 
 ## Strings as Sequences
@@ -137,23 +134,23 @@ Split and join compose naturally:
 Strings are sequences of single-character strings. All sequence functions work on them:
 
 ```dvala
-first("hello")
+first("hello");
 ```
 
 ```dvala
-rest("hello")
+rest("hello");
 ```
 
 ```dvala
-reverse("hello")
+reverse("hello");
 ```
 
 ```dvala
-map("hello", upperCase)
+map("hello", upperCase);
 ```
 
 ```dvala
-filter("hello world", -> $ != " ")
+filter("hello world", -> $ != " ");
 ```
 
 ## Regular Expressions
@@ -161,23 +158,23 @@ filter("hello world", -> $ != " ")
 Regexp literals use `#"..."` syntax — no backslash doubling needed:
 
 ```dvala
-reMatch("abc123", #"\d+")
+reMatch("abc123", regexp("\\d+", ""));
 ```
 
 With capture groups, `reMatch` returns an array: the full match followed by each group:
 
 ```dvala
-reMatch("2026-03-31", #"(\d{4})-(\d{2})-(\d{2})")
+reMatch("2026-03-31", regexp("(\\d{4})-(\\d{2})-(\\d{2})", ""));
 ```
 
 `reMatch` returns `null` when there is no match:
 
 ```dvala
-reMatch("no digits here", #"\d+")
+reMatch("no digits here", regexp("\\d+", ""));
 ```
 
 Use `replace` with a regex for pattern-based substitution:
 
 ```dvala
-replace("phone: 123-456-7890", #"\d{3}-\d{3}-\d{4}", "[REDACTED]")
+replace("phone: 123-456-7890", regexp("\\d{3}-\\d{3}-\\d{4}", ""), "[REDACTED]");
 ```

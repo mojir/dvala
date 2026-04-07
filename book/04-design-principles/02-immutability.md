@@ -13,7 +13,7 @@ In Dvala, once a name is bound to a value, it cannot be changed. There is no `=`
 ```dvala
 let x = 42;
 let y = x + 1;
-[x, y]
+[x, y];
 ```
 
 `x` is 42 forever in this scope. `y` is 43. Neither can be modified.
@@ -24,10 +24,7 @@ You can use `let` to create a **new** binding with the same name in a nested sco
 
 ```dvala
 let x = 10;
-do
-  let x = x + 5;
-  x
-end
+do let x = x + 5; x end;
 ```
 
 The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new binding — it does not modify the original. Functions that captured the original `x` still see 10:
@@ -37,10 +34,7 @@ The inner `x` is 15, but the outer `x` remains 10. Shadowing creates a new bindi
 ```dvala
 let x = 10;
 let getX = () -> x;
-do
-  let x = 99;
-  getX()
-end
+do let x = 99; getX() end;
 ```
 
 `getX` was defined when `x` was 10. Shadowing `x` to 99 in the inner scope does not affect `getX` — it still returns 10. This predictability is a direct consequence of immutability combined with lexical scoping.
@@ -52,7 +46,7 @@ Arrays and objects are immutable. Operations that seem to "modify" them actually
 ```dvala
 let original = [1, 2, 3];
 let extended = push(original, 4);
-[original, extended]
+[original, extended];
 ```
 
 The original array is unchanged. `push` returns a new array.
@@ -60,7 +54,7 @@ The original array is unchanged. `push` returns a new array.
 ```dvala
 let person = { name: "Alice", age: 30 };
 let older = assoc(person, "age", 31);
-[person, older]
+[person, older];
 ```
 
 `assoc` returns a new object. The original `person` is unmodified.
@@ -71,10 +65,10 @@ Because values never change, any expression can be replaced by its result withou
 
 ```dvala
 // These are identical — f(3) can be computed once and reused
-let f = x -> x * x + 1;
+let f = (x) -> x * x + 1;
 let a = f(3);
 let b = f(3);
-a == b
+a == b;
 ```
 
 This property — **referential transparency** — means you can reason about code by substitution, just like algebra.
@@ -84,10 +78,7 @@ This property — **referential transparency** — means you can reason about co
 Dvala programs transform data through **pipelines** of pure functions. Each step takes input and produces new output:
 
 ```dvala
-[1, 2, 3, 4, 5, 6, 7, 8]
-  |> filter(_, isEven)
-  |> map(_, -> $ * $)
-  |> reverse
+reverse(map(_, -> $ * $)(filter(_, isEven)([1, 2, 3, 4, 5, 6, 7, 8])));
 ```
 
 No data was mutated. Each operation produced a fresh value.
@@ -98,15 +89,12 @@ Where imperative code would use a mutable accumulator, Dvala uses `reduce` or `l
 
 ```dvala
 // Sum of squares using reduce
-reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0)
+reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0);
 ```
 
 ```dvala
 // Factorial using loop/recur
-loop (n = 6, acc = 1) ->
-  if n <= 1 then acc
-  else recur(n - 1, acc * n)
-  end
+loop (n = 6, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
 ```
 
 Each iteration creates new bindings rather than modifying existing ones.
@@ -117,10 +105,8 @@ Object operations always return new objects:
 
 ```dvala
 let config = { host: "localhost", port: 8080 };
-let updated = config
-  |> assoc(_, "port", 3000)
-  |> assoc(_, "debug", true);
-[config, updated]
+let updated = assoc(_, "debug", true)(assoc(_, "port", 3000)(config));
+[config, updated];
 ```
 
 ## Immutability Makes Serialization Possible

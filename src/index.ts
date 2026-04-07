@@ -38,5 +38,5 @@ export type { CreateDvalaOptions, DvalaRunOptions, DvalaRunAsyncOptions, DvalaRu
 export type { FileResolver } from './evaluator/ContextStack'
 
 // Standalone tooling
-export { tokenizeSource, parseTokenStream, transformSymbols, untokenize, getUndefinedSymbols, getAutoCompleter } from './tooling'
+export { tokenizeSource, parseTokenStream, transformSymbols, untokenize, getUndefinedSymbols, getAutoCompleter, formatSource } from './tooling'
 export type { TokenStream } from './tooling'

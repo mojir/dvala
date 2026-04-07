@@ -116,7 +116,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       if (isSpecialSymbolNode(operatorSymbol)) {
         throw new ParseError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
       }
-      left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx)
+      left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx, { isInfix: true })
     } else {
       break
     }

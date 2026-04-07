@@ -16,11 +16,8 @@ Recursive functions are elegant but dangerous. Each recursive call adds a frame 
 
 ```dvala
 // Beautiful but dangerous for large n
-let factorial = n ->
-  if n <= 1 then 1
-  else n * self(n - 1)
-  end;
-factorial(10)
+let factorial = (n) -> if n <= 1 then 1 else n * self(n - 1) end;
+factorial(10);
 ```
 
 This works for small inputs. But `factorial(100000)` would require 100,000 stack frames — a crash in most languages.
@@ -37,12 +34,7 @@ Following [Clojure](https://en.wikipedia.org/wiki/Clojure)'s design ([Hickey](ht
 
 ```dvala
 // Tail-recursive factorial — constant stack space
-loop (n = 10, acc = 1) ->
-  if n <= 1 then
-    acc
-  else
-    recur(n - 1, acc * n)
-  end
+loop (n = 10, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
 ```
 
 ## How loop/recur Works
@@ -65,22 +57,14 @@ The key technique is to add an **accumulator** parameter that carries the runnin
 Naive recursion:
 
 ```dvala
-let addUp = n ->
-  if n <= 0 then 0
-  else n + self(n - 1)
-  end;
-addUp(100)
+let addUp = (n) -> if n <= 0 then 0 else n + self(n - 1) end;
+addUp(100);
 ```
 
 With loop/recur:
 
 ```dvala
-loop (n = 100, acc = 0) ->
-  if n <= 0 then
-    acc
-  else
-    recur(n - 1, acc + n)
-  end
+loop (n = 100, acc = 0) -> if n <= 0 then acc else recur(n - 1, acc + n) end;
 ```
 
 ### Fibonacci
@@ -88,36 +72,21 @@ loop (n = 100, acc = 0) ->
 Naive recursion is exponential — `O(2^n)`:
 
 ```dvala
-let fib = n ->
-  if n <= 1 then n
-  else self(n - 1) + self(n - 2)
-  end;
-fib(10)
+let fib = (n) -> if n <= 1 then n else self(n - 1) + self(n - 2) end;
+fib(10);
 ```
 
 With loop/recur it becomes linear — `O(n)`:
 
 ```dvala
-loop (n = 10, a = 0, b = 1) ->
-  if n <= 0 then
-    a
-  else
-    recur(n - 1, b, a + b)
-  end
+loop (n = 10, a = 0, b = 1) -> if n <= 0 then a else recur(n - 1, b, a + b) end;
 ```
 
 ### Reverse a List
 
 ```dvala
 loop (xs = [1, 2, 3, 4, 5], acc = []) ->
-  if isEmpty(xs) then
-    acc
-  else
-    recur(
-      dropLast(xs, 1),
-      push(acc, last(xs))
-    )
-  end
+  if isEmpty(xs) then acc else recur(dropLast(xs, 1), push(acc, last(xs))) end;
 ```
 
 ## Self Recursion: When You Don't Need TCO
@@ -126,14 +95,12 @@ For naturally recursive problems with small depth, `self` provides simple recurs
 
 ```dvala
 let depth = (node) ->
-  if not(isObject(node)) then 0
+  if not(isObject(node)) then
+    0
   else
-    1 + max(
-      self(get(node, "left", 0)),
-      self(get(node, "right", 0))
-    )
+    1 + max(self(get(node, "left", 0)), self(get(node, "right", 0)))
   end;
-depth({ "left": { "left": 0, "right": 0 }, "right": 0 })
+depth({ left: { left: 0, right: 0 }, right: 0 });
 ```
 
 Use `self` when the recursion depth is naturally bounded — for example, a balanced binary tree rarely exceeds depth 30–40. Use `loop`/`recur` whenever the iteration count grows with input size (lists, ranges, counters) or is otherwise unbounded.
@@ -144,12 +111,12 @@ Many problems that seem recursive are actually iterations. Dvala's `for` compreh
 
 ```dvala
 // Sum of squares of odd numbers under 10
-for (x in range(10) when isOdd(x)) -> x * x
+for (x in range(10) when isOdd(x)) -> x * x;
 ```
 
 ```dvala
 // Cartesian product
-for (i in [1, 2, 3], j in ["a", "b"]) -> `${i}${j}`
+for (i in [1, 2, 3], j in ["a", "b"]) -> `${i}${j}`;
 ```
 
 ## Summary
