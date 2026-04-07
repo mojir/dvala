@@ -10,7 +10,7 @@
  * - Dvala function: `let { prettyPrint } = import("ast")` — for in-language use
  */
 
-import { MAX_INLINE_OBJECT_ENTRIES, MAX_WIDTH } from './formatter/config'
+import { MAX_INLINE_ENTRIES, MAX_WIDTH } from './formatter/config'
 
 const INDENT_SIZE = 2
 
@@ -489,7 +489,7 @@ function printArray(elements: unknown[][], ind: number): string {
   // Try flat only when element count is within the inline limit and no element
   // produces multi-line output. A multi-line element embedded in a flat array
   // produces broken indentation even when total character count fits.
-  if (elements.length <= MAX_INLINE_OBJECT_ENTRIES) {
+  if (elements.length <= MAX_INLINE_ENTRIES) {
     const flatParts = elements.map(e => printNode(e as AstNode, ind))
     if (flatParts.every(p => !p.includes('\n'))) {
       const flat = `[${flatParts.join(', ')}]`
@@ -505,7 +505,7 @@ function printObject(entries: unknown[][], ind: number): string {
   if (entries.length === 0) return '{}'
 
   // Try flat only when entry count is within the inline limit and all values are single-line
-  if (entries.length <= MAX_INLINE_OBJECT_ENTRIES) {
+  if (entries.length <= MAX_INLINE_ENTRIES) {
     const flatParts = entries.map(entry => formatObjectEntry(entry, ind))
     if (allSingleLine(...flatParts)) {
       const flat = `{ ${flatParts.join(', ')} }`
@@ -548,9 +548,9 @@ function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
   // Break: first at the current indent (it lives at the call site, not deeper),
   // rest indented with operator prefix. Using ind+1 for the first node would
   // over-indent any multi-line value it produces.
-  const firstPart = printNode(nodes[0] as AstNode, ind)
+  // Reuse parts[0] — already rendered at ind above, no need to render twice.
   const restParts = nodes.slice(1).map(n => printNode(n as AstNode, ind + 1))
-  return `${firstPart}\n${restParts.map(p => `${indent(ind + 1)}${op} ${p}`).join('\n')}`
+  return `${parts[0]!}\n${restParts.map(p => `${indent(ind + 1)}${op} ${p}`).join('\n')}`
 }
 
 /**
@@ -743,14 +743,11 @@ function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): st
     if (fits(flat, ind)) return flat
   }
 
-  // Multi-statement or doesn't fit: expand with semicolons at end of line
-  if (bodyParts.length > 1 || (bodyParts.length === 1 && !allSingleLine(bodyParts[0]!))) {
-    const lines = bodyParts.map(p => `${indent(ind + 1)}${p}`)
-    return `quote\n${lines.join(';\n')}\nend`
-  }
-
-  // Single statement that doesn't fit: break to next line
-  return `quote\n${indent(ind + 1)}${bodyParts[0]}\nend`
+  // Multi-statement, multi-line single statement, or too wide: expand.
+  // join(';\n') on a one-element array produces no semicolons — correct for
+  // a single statement that just didn't fit on one line.
+  const lines = bodyParts.map(p => `${indent(ind + 1)}${p}`)
+  return `quote\n${lines.join(';\n')}\nend`
 }
 
 /** Print an AST node, but render Splice nodes as $^{expr} using the splice expressions list. */

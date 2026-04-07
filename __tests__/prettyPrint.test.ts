@@ -524,7 +524,7 @@ describe('prettyPrint — raw AST edge cases', () => {
 // ---------------------------------------------------------------------------
 
 /** Assert that every semicolon in `s` appears at the end of its line. */
-function noMidLineSemicolons(s: string): void {
+function assertNoMidLineSemicolons(s: string): void {
   for (const line of s.split('\n')) {
     const trimmed = line.trimEnd()
     if (trimmed.includes(';')) {
@@ -538,7 +538,7 @@ describe('prettyPrint — do block semicolons-last rule', () => {
     expect(pp('do 1; 2 end')).toBe('do\n  1;\n  2\nend')
   })
   it('no mid-line semicolons in expanded do block', () => {
-    noMidLineSemicolons(pp('do let x = 1; let y = 2; x + y end'))
+    assertNoMidLineSemicolons(pp('do let x = 1; let y = 2; x + y end'))
   })
   it('single-stmt do block whose body is multi-line also expands', () => {
     // Inner do block is multi-line → outer single-stmt block cannot use flat form
@@ -557,7 +557,7 @@ describe('prettyPrint — handler: single clause on same line', () => {
     // Clause header is on the same opening line as `handler`
     expect(result).toMatch(/^handler @my\.eff\(x\) -> do\n/)
     // No mid-line semicolons inside the body
-    noMidLineSemicolons(result)
+    assertNoMidLineSemicolons(result)
     // Exactly two `end` keywords — one for do, one for handler
     expect(result.match(/\bend\b/g)?.length).toBe(2)
   })
@@ -634,7 +634,7 @@ describe('prettyPrint — match: multi-line case body breaks after then', () => 
     // The `case n then` line must end there — body is on the next line
     const caseLine = lines.find(l => l.includes('case n then'))
     expect(caseLine?.trimEnd()).toBe('  case n then')
-    noMidLineSemicolons(result)
+    assertNoMidLineSemicolons(result)
   })
 })
 
@@ -659,7 +659,7 @@ describe('prettyPrint — quote: multi-statement expansion', () => {
     expect(result).toMatch(/^quote\n/)
     expect(result).toContain('let x = 1')
     expect(result).toContain('x + 1')
-    noMidLineSemicolons(result)
+    assertNoMidLineSemicolons(result)
   })
 })
 
