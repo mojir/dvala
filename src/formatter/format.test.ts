@@ -173,14 +173,14 @@ describe('formatter — multiple statements', () => {
     'let x = 1;\n\nlet y = 2;',
   ))
 
-  it('two blank lines between statements are preserved', () => check(
+  it('two or more blank lines are reduced to one', () => check(
     'let x = 1;\n\n\nlet y = 2;',
-    'let x = 1;\n\n\nlet y = 2;',
+    'let x = 1;\n\nlet y = 2;',
   ))
 
-  it('three or more blank lines are reduced to two', () => check(
+  it('three or more blank lines are also reduced to one', () => check(
     'let x = 1;\n\n\n\nlet y = 2;',
-    'let x = 1;\n\n\nlet y = 2;',
+    'let x = 1;\n\nlet y = 2;',
   ))
 
   it('standalone comment with blank lines', () => check(
