@@ -61,19 +61,21 @@ const infixOperators = new Set([
 ])
 
 // Operator precedence (higher number = tighter binding).
-// Used to decide when an infix sub-expression needs parentheses.
+// Mirrors src/parser/getPrecedence.ts — only the operators that reach
+// printCall as Call(Builtin, ...) are relevant here; `&&`, `||`, `??`
+// and `|>` are represented as separate AST node types so they cannot
+// appear in printArg, but are included for completeness.
 const operatorPrecedence: Record<string, number> = {
-  '|>': 1,
-  '??': 2,
-  '||': 3,
-  '&&': 4,
-  '==': 5, '!=': 5,
-  '<': 6, '>': 6, '<=': 6, '>=': 6,
-  '++': 7,
-  '&': 8, '|': 8, 'xor': 8, '<<': 8, '>>': 8, '>>>': 8,
-  '+': 9, '-': 9,
-  '*': 10, '/': 10, '%': 10,
-  '^': 11,
+  '|>': 2,
+  '&&': 4, '||': 4, '??': 4,
+  '&': 5, '|': 5, 'xor': 5,
+  '==': 6, '!=': 6,
+  '<': 7, '>': 7, '<=': 7, '>=': 7,
+  '++': 8,
+  '<<': 9, '>>': 9, '>>>': 9,
+  '+': 10, '-': 10,
+  '*': 11, '/': 11, '%': 11,
+  '^': 12,
 }
 
 // ---------------------------------------------------------------------------
@@ -186,10 +188,9 @@ function printNode(node: AstNode, ind: number): string {
       const bodyFlats = bodyExprs.map(b => printNode(b as AstNode, ind))
       const flat = `with ${handlerFlat}; ${bodyFlats.join('; ')}`
       if (!handlerFlat.includes('\n') && fits(flat, ind)) return flat
-      // Multi-line form
-      const handlerStr = printNode(handlerExpr as AstNode, ind)
+      // Multi-line form — reuse handlerFlat (already computed above)
       const bodyStrs = bodyExprs.map(b => printNode(b as AstNode, ind + 1))
-      return `with ${handlerStr};\n${bodyStrs.map(s => `${indent(ind + 1)}${s}`).join(';\n')}`
+      return `with ${handlerFlat};\n${bodyStrs.map(s => `${indent(ind + 1)}${s}`).join(';\n')}`
     }
     // Binding target types (from destructuring patterns, not evaluable code)
     case 'symbol':
@@ -396,12 +397,13 @@ function printMacro(payload: [unknown[][], unknown[][], string | null], ind: num
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
   const namePrefix = qualifiedName ? `macro@${qualifiedName}` : 'macro'
 
-  if (body.length === 1) {
+  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
     const flat = `${namePrefix} (${paramStr}) -> ${printNode(body[0] as AstNode, ind)}`
     if (fits(flat, ind)) return flat
     return `${namePrefix} (${paramStr}) ->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
   }
 
+  // Multi-statement body (or single WithHandler): always use do...end.
   const flatBody = body.map(b => printNode(b as AstNode, ind)).join('; ')
   const flat = `${namePrefix} (${paramStr}) -> do ${flatBody} end`
   if (fits(flat, ind)) return flat
