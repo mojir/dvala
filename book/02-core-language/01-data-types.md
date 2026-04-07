@@ -13,7 +13,7 @@ let x = 42; // inline comment
 /* This spans
    multiple lines */
 let y = x + 1;
-y
+y;
 ```
 
 ## Numbers
@@ -21,23 +21,23 @@ y
 Numbers can be integers or floats. Dvala also supports hexadecimal, binary, octal, and scientific notation:
 
 ```dvala
-42
+42;
 ```
 
 ```dvala
-3.14
+3.14;
 ```
 
 ```dvala
-0xFF
+255;
 ```
 
 ```dvala
-0b1010
+10;
 ```
 
 ```dvala
--2.3e-2
+-0.023;
 ```
 
 Division by zero produces `Infinity` (or `-Infinity`), and invalid operations like `0 / 0` throw an error rather than silently producing `NaN`. `Infinity` is a valid number value but is **not** JSON-serializable — avoid it in data that will be snapshotted.
@@ -47,11 +47,11 @@ Division by zero produces `Infinity` (or `-Infinity`), and invalid operations li
 Strings are enclosed in double quotes and support escape sequences:
 
 ```dvala
-"Hello, World!"
+"Hello, World!";
 ```
 
 ```dvala
-"Line 1\nLine 2"
+"Line 1\nLine 2";
 ```
 
 ## Template Strings
@@ -60,13 +60,13 @@ Template strings use backticks and support `${...}` interpolation — any expres
 
 ```dvala
 let name = "World";
-`Hello, ${name}!`
+`Hello, ${name}!`;
 ```
 
 ```dvala
 let x = 7;
 let y = 6;
-`${x} * ${y} = ${x * y}`
+`${x} * ${y} = ${x * y}`;
 ```
 
 Interpolations can contain any expression — function calls, conditionals, and more:
@@ -74,7 +74,7 @@ Interpolations can contain any expression — function calls, conditionals, and 
 ```dvala
 let price = 9.99;
 let qty = 3;
-`Total: $${price * qty}`
+`Total: ${price * qty}`;
 ```
 
 ## Booleans and Null
@@ -82,11 +82,11 @@ let qty = 3;
 The boolean values `true` and `false`, plus `null`:
 
 ```dvala
-true
+true;
 ```
 
 ```dvala
-null
+null;
 ```
 
 ## Arrays
@@ -94,20 +94,20 @@ null
 Arrays hold ordered collections of any types:
 
 ```dvala
-[1, "two", true, null]
+[1, "two", true, null];
 ```
 
 Accessing out-of-bounds indices returns `null` (no error):
 
 ```dvala
 let arr = [10, 20, 30];
-[arr[0], arr[2], arr[99]]
+[get(arr, 0), get(arr, 2), get(arr, 99)];
 ```
 
 Use spread to merge arrays:
 
 ```dvala
-[1, 2, ...[3, 4], 5]
+[1, 2, ...[3, 4], 5];
 ```
 
 ## Objects
@@ -115,21 +115,21 @@ Use spread to merge arrays:
 Objects are key-value maps. Keys are strings:
 
 ```dvala
-{ name: "Alice", age: 30 }
+{ name: "Alice", age: 30 };
 ```
 
 Accessing properties with `.` or `[]` is null-safe — missing keys return `null`, and accessing properties on `null` propagates `null` instead of erroring:
 
 ```dvala
-let user = {name: "Alice"};
-[user.name, user.age, user.address.city]
+let user = { name: "Alice" };
+[user.name, user.age, user.address.city];
 ```
 
 Spread works in objects too:
 
 ```dvala
 let defaults = { theme: "dark", lang: "en" };
-{ ...defaults, lang: "sv" }
+{ ...defaults, lang: "sv" };
 ```
 
 ## Regular Expressions
@@ -137,7 +137,7 @@ let defaults = { theme: "dark", lang: "en" };
 Regexp literals start with `#"`. No need to escape backslashes:
 
 ```dvala
-reMatch("abc123", #"[a-z]+(\d+)")
+reMatch("abc123", regexp("[a-z]+(\\d+)", ""));
 ```
 
 ## Type Predicates
@@ -145,19 +145,19 @@ reMatch("abc123", #"[a-z]+(\d+)")
 Check the type of a value with predicate functions that end in `?`:
 
 ```dvala
-isNumber(42)
+isNumber(42);
 ```
 
 ```dvala
-isString("hello")
+isString("hello");
 ```
 
 ```dvala
-isArray([1, 2, 3])
+isArray([1, 2, 3]);
 ```
 
 ```dvala
-isObject({ a: 1 })
+isObject({ a: 1 });
 ```
 
 ## Structural Equality
@@ -165,13 +165,13 @@ isObject({ a: 1 })
 Values are compared by structure, not by reference. Two arrays with the same elements are equal:
 
 ```dvala
-[1, 2, 3] == [1, 2, 3]
+[1, 2, 3] == [1, 2, 3];
 ```
 
 ```dvala
-{ a: 1 } == { a: 1 }
+{ a: 1 } == { a: 1 };
 ```
 
 ```dvala
-{ a: 1, b: 2 } == { b: 2, a: 1 }
+{ a: 1, b: 2 } == { b: 2, a: 1 };
 ```

@@ -13,8 +13,8 @@ Dvala programs **never** write `await`. There is no async keyword, no promise ty
 Consider a simple function:
 
 ```dvala
-let double = x -> x * 2;
-double(21)
+let double = (x) -> x * 2;
+double(21);
 ```
 
 This function works identically whether `x` comes from a sync computation or an async one. The programmer never needs to know or care.
@@ -43,7 +43,7 @@ Dvala's effect system is the key integration point. When a program performs an e
 
 ```dvala
 let x = perform(@dvala.random);
-x * 100
+x * 100;
 ```
 
 In the playground, `dvala.random` resolves instantly. In a different host, the same effect could hit a network service — the Dvala program wouldn't change at all.
@@ -53,7 +53,7 @@ In the playground, `dvala.random` resolves instantly. In a different host, the s
 In colored languages, `map` over an async function requires a special `Promise.all(arr.map(...))` pattern. In Dvala, higher-order functions work transparently with async operations:
 
 ```dvala
-map([1, 2, 3, 4], inc)
+map([1, 2, 3, 4], inc);
 ```
 
 Whether `inc` is sync or async under the hood, `map` handles it without any special treatment. The trampoline resolves each step before continuing.

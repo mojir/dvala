@@ -1,3 +1,5 @@
+import { dvala } from './dvala'
+
 export const EXAMPLE_DESCRIPTION_MAX_LENGTH = 120
 
 export interface Example {
@@ -18,7 +20,7 @@ export const examples: Example[] = [
     name: 'Collection accessors',
     description: 'Syntactic sugar for accessing object, array and string elements.',
     category: 'Basics',
-    code: `
+    code: dvala`
 // Access object properies with .
 // Access string and array elements with []
 
@@ -34,15 +36,14 @@ perform(@dvala.io.print, data.string[0]);
 
 perform(@dvala.io.print, {a: 1, b: 2, c: 3}.b);
 perform(@dvala.io.print, "Albert"[3]);
-perform(@dvala.io.print, [1, 2, 3][2]);
-    `.trim(),
+perform(@dvala.io.print, [1, 2, 3][2]);`,
   },
   {
     id: 'template-strings',
     name: 'Template strings',
     description: 'Template strings use backticks and support ${...} interpolation for embedding expressions directly in strings.',
     category: 'Basics',
-    code: `
+    code: dvala`
 // Template strings embed expressions with \${...}
 let name = "Alice";
 let score = 42;
@@ -53,8 +54,7 @@ perform(@dvala.io.print, \`Score: \${score}/100\`);
 // Any expression works inside \${...}
 let items = ["apple", "banana", "cherry"];
 for (i in range(count(items))) ->
-  perform(@dvala.io.print, \`\${i + 1}. \${items[i]}\`)
-    `.trim(),
+  perform(@dvala.io.print, \`\${i + 1}. \${items[i]}\`)`,
   },
   {
     id: 'simple-context-example',
@@ -67,9 +67,8 @@ for (i in range(count(items))) ->
         { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
       ],
     },
-    code: `
-perform(@host.plus, [x, y])
-    `.trim(),
+    code: dvala`
+perform(@host.plus, [x, y])`,
   },
   {
     id: 'async-example',
@@ -98,7 +97,7 @@ perform(@host.plus, [x, y])
 }` },
       ],
     },
-    code: `
+    code: dvala`
 // Call async host effects with perform(effect, args...)
 
 // Simulate a delay
@@ -115,8 +114,7 @@ perform(@dvala.io.print, "City: " ++ user.city);
 // Fetch their posts
 let posts = perform(@host.fetchPosts, 1);
 perform(@dvala.io.print, "\\nFirst " ++ str(count(posts)) ++ " posts by " ++ user.name ++ ":");
-for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
-    `.trim(),
+for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);`,
   },
   {
     id: 'async-interactive',
@@ -142,7 +140,7 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);
 }` },
       ],
     },
-    code: `
+    code: dvala`
 // Interactive async example
 // Uses dvala.io.read for user input and host.fetch-* for API calls
 
@@ -206,15 +204,14 @@ let main = () -> do
     else null end
 end;
 
-main()
-    `.trim(),
+main()`,
   },
   {
     id: 'text-based-game',
     name: 'A game',
     description: 'Text based adventure game.',
     category: 'Projects',
-    code: `
+    code: dvala`
 // Functional Text Adventure Game in Dvala
 
 // Define locations
@@ -562,15 +559,14 @@ let startGame = () -> do
 end;
 
 // Call the function to start the game
-startGame()    
-    `.trim(),
+startGame()    `,
   },
   {
     id: 'fibonacci',
     name: 'Fibonacci',
     description: 'Fibonacci with self-recursion and tail-recursive loop/recur.',
     category: 'Basics',
-    code: `
+    code: dvala`
 // Recursive — simple but exponential time, blows the stack for large n
 let fib = (n) ->
   if n <= 1 then n
@@ -587,8 +583,7 @@ let fibTCO = (n) ->
 perform(@dvala.io.print, "recursive  fib(10) = " ++ str(fib(10)));
 perform(@dvala.io.print, "tail-rec   fib(10) = " ++ str(fibTCO(10)));
 perform(@dvala.io.print, "tail-rec   fib(50) = " ++ str(fibTCO(50)));
-perform(@dvala.io.print, "tail-rec   fib(90) = " ++ str(fibTCO(90)))
-  `.trim(),
+perform(@dvala.io.print, "tail-rec   fib(90) = " ++ str(fibTCO(90)))`,
 
   },
   {
@@ -596,7 +591,7 @@ perform(@dvala.io.print, "tail-rec   fib(90) = " ++ str(fibTCO(90)))
     name: 'Sort',
     description: 'Sort an array of numbers.',
     category: 'Basics',
-    code: `
+    code: dvala`
 let l = [7, 39, 45, 0, 23, 1, 50, 100, 12, -5];
 let numberComparer = (a, b) -> do
   if a < b then -1
@@ -605,15 +600,14 @@ let numberComparer = (a, b) -> do
   end
 end;
 
-sort(l, numberComparer)
-      `.trim(),
+sort(l, numberComparer)`,
   },
   {
     id: 'fizzbuzz',
     name: 'FizzBuzz',
     description: 'The classic FizzBuzz challenge using a for comprehension with let bindings and if/else if.',
     category: 'Basics',
-    code: `
+    code: dvala`
 // FizzBuzz: print numbers 1 to 30, but
 //   multiples of 3 → "Fizz"
 //   multiples of 5 → "Buzz"
@@ -629,15 +623,14 @@ let fizzbuzz = for (
   else str(n)
 end;
 
-fizzbuzz join ", "
-`.trim(),
+fizzbuzz join ", "`,
   },
   {
     id: 'playground-demo',
     name: 'Playground Effects Demo',
     description: 'Showcases playground.* effects — Dvala code that controls the playground UI. Load this in the playground and press Run.',
     category: 'Effects & Context',
-    code: `
+    code: dvala`
 // Playground Effects Demo
 // This program uses playground.* effects to control the UI.
 // It only works when run inside the playground.
@@ -660,15 +653,14 @@ perform(@dvala.sleep, 1500);
 perform(@playground.editor.setContent, original);
 perform(@playground.ui.showToast, ["Original restored!", "success"]);
 
-"Done!"
-`.trim(),
+"Done!"`,
   },
   {
     id: 'macros-intro',
     name: 'Macros — Introduction',
     description: 'Macros receive AST (unevaluated code) and return new AST. Quote...end blocks make AST construction ergonomic.',
     category: 'Macros',
-    code: `
+    code: dvala`
 // A macro receives its arguments as AST — not evaluated values.
 // It returns new AST which is then evaluated in the caller's scope.
 
@@ -691,15 +683,14 @@ perform(@dvala.io.print, unless(true, "skipped"));  // null
 
 // Macros work with |> pipe
 let negate = macro (ast) -> quote 0 - $^{ast} end;
-perform(@dvala.io.print, 21 |> double |> negate);   // -42
-    `.trim(),
+perform(@dvala.io.print, 21 |> double |> negate);   // -42`,
   },
   {
     id: 'macros-advanced',
     name: 'Macros — Advanced',
     description: 'Named macros, macroexpand for debugging, hygiene (auto-gensym), and the ast module for programmatic inspection.',
     category: 'Macros',
-    code: `
+    code: dvala`
 let { prettyPrint } = import("ast");
 
 // --- Named macros with qualified names ---
@@ -728,14 +719,14 @@ perform(@dvala.io.print, "result: " ++ str(result));     // 999 (not clobbered)
 // --- Named macros emit @dvala.macro.expand ---
 // Host handlers can intercept expansion of named macros
 perform(@dvala.io.print, "double is named: " ++ str(qualifiedName(double) != null));
-perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp) == null))
-    `.trim(),
+perform(@dvala.io.print, "anonymous has no name: " ++ str(qualifiedName(withTemp) == null))`,
   },
   {
     id: 'macro-inception',
     name: 'Macro Inception',
     description: 'Macros that generate other macros — $^^{} escapes two quote levels for nested code generation.',
     category: 'Macros',
+    // Formatter can't handle nested $^^{} double-escape splices — use raw string.
     code: `
 // === Macro Inception — macros that write macros ===
 // Dvala's nested quote...end with $^^{} is analogous to
@@ -791,15 +782,14 @@ let makeApplier = macro (fn) ->
 let doubleIt = makeApplier((x) -> x * 2);
 let stringify = makeApplier(str);
 perform(@dvala.io.print, "doubleIt(21) = " ++ str(doubleIt(21)));
-perform(@dvala.io.print, "stringify(1 + 2) = " ++ stringify(1 + 2))
-    `.trim(),
+perform(@dvala.io.print, "stringify(1 + 2) = " ++ stringify(1 + 2))`.trim(),
   },
   {
     id: 'ast-coverage',
     name: 'AST node coverage',
     description: 'Exercises all special expressions, operators, destructuring, effects, and node types.',
     category: 'Test Fixtures',
-    code: `
+    code: dvala`
 // === AST Node Coverage ===
 // Covers: all special expressions, key operators, effects, destructuring, spreading
 
@@ -948,8 +938,7 @@ let neg = -num;
   handled, piped2,
   mathMod.sin(0), mathMod.cos(0),
   reResult, neg
-]
-    `.trim(),
+]`,
   },
   {
     id: 'macro-toolkit',
@@ -961,7 +950,7 @@ let neg = -num;
         { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
       ],
     },
-    code: `
+    code: dvala`
 // ============================================================
 // Macro Toolkit — a practical collection of utility macros
 // ============================================================
@@ -1139,8 +1128,7 @@ print("safe division by zero handled!");
 assert(grade == "B" || grade == "C");
 unless(grade == "F", print("The class is doing fine!"));
 
-print("── done ──")
-    `.trim(),
+print("── done ──")`,
   },
   {
     id: 'ast-coverage-extended',
@@ -1170,7 +1158,7 @@ print("── done ──")
         { pattern: 'dvala.checkpoint', handler: '({ resume }) => { resume(null) }' },
       ],
     },
-    code: `
+    code: dvala`
 // === AST Node Coverage (Extended) ===
 // 29 sections — baseline for e2e and performance tests.
 
@@ -1503,7 +1491,6 @@ let s30 = [analysis];
 
 // --- Assemble ---
 let allResults = [...allPrev, ...s30];
-{ results: allResults, totalResults: count(allResults) }
-    `.trim(),
+{ results: allResults, totalResults: count(allResults) }`,
   },
 ]

@@ -37,5 +37,5 @@ The simplest way to explore Dvala is right here in the playground. Write code in
 
 ```dvala
 let greet = (name) -> `Hello, ${name}!`;
-greet("world")
+greet("world");
 ```

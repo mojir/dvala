@@ -52,11 +52,11 @@ describe('dvala code coverage', () => {
     expect(stats.uncoveredLines).toEqual([])
   })
 
-  it('math.dvala has partial coverage (isEven is untested)', async () => {
+  it('math.dvala has partial coverage (isOdd is untested)', async () => {
     const summaries = await getCoverage('math.test.dvala')
     const math = findFile(summaries, 'math.dvala')
 
-    // math.dvala exports isEven but geometry.test.dvala doesn't test it
+    // math.dvala defines isOdd but does not export or test it
     expect(math.linesHit).toBeGreaterThan(0)
     expect(math.linesHit).toBeLessThan(math.linesFound)
     expect(math.uncoveredLines.length).toBeGreaterThan(0)
