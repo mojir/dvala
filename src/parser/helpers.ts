@@ -8,7 +8,7 @@ import type { OperatorToken, TokenDebugInfo } from '../tokenizer/token'
 import { isOperatorToken, isReservedSymbolToken } from '../tokenizer/token'
 import { isBuiltinSymbolNode } from '../typeGuards/astNode'
 import { assertNumberOfParams } from '../utils/arity'
-import type { AstNode, BindingTarget, BuiltinSymbolNode, NormalExpressionNodeExpression, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
+import type { AstNode, BindingTarget, BuiltinSymbolNode, CallHints, NormalExpressionNodeExpression, NormalExpressionNodeWithName, SymbolNode, UserDefinedSymbolNode } from './types'
 import type { ParserContext } from './ParserContext'
 
 export const exponentiationPrecedence = 12
@@ -76,8 +76,8 @@ export function getSymbolName(symbol: SymbolNode): string {
   return symbol[1]
 }
 
-export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], debugInfo: TokenDebugInfo | undefined, ctx: ParserContext): NormalExpressionNodeWithName {
-  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.Call, [symbolNode, params], 0], debugInfo, ctx)
+export function createNamedNormalExpressionNode(symbolNode: BuiltinSymbolNode | UserDefinedSymbolNode, params: AstNode[], debugInfo: TokenDebugInfo | undefined, ctx: ParserContext, hints?: CallHints): NormalExpressionNodeWithName {
+  const node: NormalExpressionNodeWithName = withSourceCodeInfo([NodeTypes.Call, [symbolNode, params, hints], 0], debugInfo, ctx)
 
   if (isBuiltinSymbolNode(symbolNode)) {
     assertNumberOfParams(normalExpressions[symbolNode[1]]!.arity, node[1][1].length, ctx.resolveTokenDebugInfo(debugInfo))
@@ -128,8 +128,9 @@ export function fromBinaryOperatorToNode(operator: OperatorToken, symbolNode: Sy
     case '|':
       return createNamedNormalExpressionNode(symbolNode as BuiltinSymbolNode, [left, right], debugInfo, ctx)
     case '|>': {
-      // Value pipe: a |> b  →  b(a) — desugared at parse time so macros on the right see AST
-      const node = withSourceCodeInfo([NodeTypes.Call, [right, [left]], 0], debugInfo, ctx) as NormalExpressionNodeExpression
+      // Value pipe: a |> b  →  b(a) — desugared at parse time so macros on the right see AST.
+      // isPipe hint lets the formatter reproduce |> rather than nested call form.
+      const node = withSourceCodeInfo([NodeTypes.Call, [right, [left], { isPipe: true }], 0], debugInfo, ctx) as NormalExpressionNodeExpression
       ctx.setNodeEnd(node[2])
       return node
     }

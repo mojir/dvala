@@ -144,6 +144,7 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   const node: LambdaNode = withSourceCodeInfo([NodeTypes.Function, [
     functionArguments,
     nodes,
+    { isShorthand: true },
   ], 0], firstToken[2], ctx) as LambdaNode
 
   ctx.setNodeEnd(node[2])

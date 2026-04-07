@@ -13,7 +13,7 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
+import { formatSource, getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import type { EditorMenuItem } from './editorMenu'
@@ -4569,7 +4569,8 @@ export function format() {
   addOutputSeparator()
 
   const selectedCode = getSelectedDvalaCode()
-  const code = selectedCode.code || getState('dvala-code')
+  const rawCode = selectedCode.code || getState('dvala-code')
+  const code = formatSource(rawCode)
   const title = selectedCode.code ? 'Format selection' : 'Format'
 
   appendOutput(title, 'comment')
