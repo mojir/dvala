@@ -11,11 +11,11 @@ import { FUNCTION_SYMBOL } from '../../utils/symbols'
 import type { BuiltinNormalExpressions } from '../interface'
 
 function isEqual(params: Iterable<unknown>, sourceCodeInfo: SourceCodeInfo | undefined) {
-  // Destructure by iteration — works for both plain arrays and PersistentVector
+  // Destructure by iteration — works for both plain arrays and PersistentVector.
+  // arity: { min: 1 } on all callers guarantees at least one element, so
+  // firstResult.done is always false here.
   const iter = params[Symbol.iterator]()
-  const firstResult = iter.next()
-  if (firstResult.done) return true
-  const firstAny = asAny(firstResult.value, sourceCodeInfo)
+  const firstAny = asAny(iter.next().value, sourceCodeInfo)
   for (let next = iter.next(); !next.done; next = iter.next()) {
     if (!deepEqual(firstAny, asAny(next.value, sourceCodeInfo), sourceCodeInfo))
       return false
