@@ -186,6 +186,8 @@ describe('math functions', () => {
       expect(dvala.run('sqrt([1, 4, 9])')).toEqual([1, 2, 3])
       expect(dvala.run('sqrt([0])')).toEqual([0])
       expect(dvala.run('sqrt([])')).toEqual([])
+      // checkedFn throws when an element-wise result is non-finite
+      expect(() => dvala.run('sqrt([-1, 4])')).toThrow(DvalaError)
     })
     it('should take the square root of a matrix', () => {
       expect(dvala.run('sqrt([[1, 4], [9, 16]])')).toEqual([[1, 2], [3, 4]])
