@@ -156,7 +156,7 @@ export function format(source: string): string {
       for (let l = endLine + 1; l < nextStartLine; l++) {
         if ((sourceLines[l] ?? '').trim() === '') blanks++
       }
-      blankLinesBetweenStatements.push(Math.min(blanks, 2))
+      blankLinesBetweenStatements.push(Math.min(blanks, 1))
     }
   }
 
