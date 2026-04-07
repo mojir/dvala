@@ -1,6 +1,6 @@
-import { snippet } from './dvala'
 import type { ShorthandReference } from '.'
 import type { ShorthandName } from './api'
+import { snippet } from './dvala'
 
 export const shorthand: Record<ShorthandName, ShorthandReference> = {
   '-short-regexp': {

@@ -1,6 +1,6 @@
-import { snippet } from './dvala'
 import type { DatatypeReference } from '.'
 import type { DatatypeName } from './api'
+import { snippet } from './dvala'
 
 export const datatype: Record<DatatypeName, DatatypeReference> = {
   '-type-number': {

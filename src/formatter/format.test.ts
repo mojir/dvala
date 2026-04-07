@@ -397,3 +397,34 @@ describe('formatter — round-trip stability', () => {
     })
   }
 })
+
+// ---------------------------------------------------------------------------
+// Operator precedence — parentheses preservation
+// ---------------------------------------------------------------------------
+
+describe('formatter — operator precedence parens', () => {
+  it('preserves parens when lower-precedence op is left arg of higher-precedence op', () => check(
+    '(x - avg) ^ 2',
+    '(x - avg) ^ 2;',
+  ))
+
+  it('preserves parens for addition inside multiplication', () => check(
+    '(a + b) * c',
+    '(a + b) * c;',
+  ))
+
+  it('preserves parens for bitwise OR inside shift', () => check(
+    '(a | b) << 2',
+    '(a | b) << 2;',
+  ))
+
+  it('does not add unnecessary parens when inner op binds tighter', () => check(
+    'a + b * c',
+    'a + b * c;',
+  ))
+
+  it('does not add parens around function calls', () => check(
+    'mySum(arr) / count(arr)',
+    'mySum(arr) / count(arr);',
+  ))
+})
