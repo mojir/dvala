@@ -1,11 +1,10 @@
 // A logging effect that accumulates messages internally.
 // The handler captures all log entries — nothing leaks to the host.
 let withLogging = (thunk) -> do
-  let h = handler
-    @project.log(msg) -> do
-      let rest = resume(null);
-      { result: rest.result, logs: [msg] ++ rest.logs }
-    end
+  let h = handler @project.log(msg) -> do
+    let rest = resume(null);
+    { result: rest.result, logs: [msg] ++ rest.logs }
+  end
   transform
     result -> { result, logs: [] }
   end;

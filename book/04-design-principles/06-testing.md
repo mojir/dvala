@@ -19,7 +19,8 @@ This is not a simplified example — it is genuinely all that is required. Purit
 The built-in `assert` is enough for simple conditions, but the `assertion` module provides a richer vocabulary. Import what you need:
 
 ```dvala
-let { assertEqual, assertNotEqual, assertTrue, assertFails } = import("assertion");
+let { assertEqual, assertNotEqual, assertTrue, assertFails } =
+  import("assertion");
 
 let double = (x) -> x * 2;
 
@@ -45,7 +46,10 @@ assertEqual(zip([1, 2, 3], ["a", "b", "c"]), [[1, "a"], [2, "b"], [3, "c"]]);
 ```dvala
 let { assertFails, assertFailsWith } = import("assertion");
 
-let divide = (a, b) -> do assert(not(b == 0), "Division by zero"); a / b end;
+let divide = (a, b) -> do
+  assert(not(b == 0), "Division by zero");
+  a / b
+end;
 
 assertFailsWith(-> divide(10, 0), "Division by zero");
 assertFails(-> divide(10, 0));
@@ -60,7 +64,10 @@ Effects are the key to testing impure code without mocking frameworks. Because e
 Here is a function that performs an effect and then returns a value:
 
 ```dvala
-let greet = (name) -> do perform(@dvala.io.print, "Hello, " ++ name ++ "!"); name end;
+let greet = (name) -> do
+  perform(@dvala.io.print, "Hello, " ++ name ++ "!");
+  name
+end;
 ```
 
 In production you provide a real I/O handler. In a test, you suppress the output entirely and check only the return value:
@@ -68,11 +75,17 @@ In production you provide a real I/O handler. In a test, you suppress the output
 ```dvala
 let { assertEqual } = import("assertion");
 
-let greet = (name) -> do perform(@dvala.io.print, "Hello, " ++ name ++ "!"); name end;
+let greet = (name) -> do
+  perform(@dvala.io.print, "Hello, " ++ name ++ "!");
+  name
+end;
 
 let silence = handler @dvala.io.print(msg) -> resume(null) end;
 
-do with silence; assertEqual(greet("Alice"), "Alice") end;
+do
+  with silence;
+  assertEqual(greet("Alice"), "Alice")
+end;
 ```
 
 The handler intercepts the `@dvala.io.print` effect and resumes with `null` — the print never happens. The test verifies the return value in complete isolation from I/O.
@@ -86,7 +99,10 @@ let formatWelcome = -> "Welcome to " ++ perform(@app.config, "appName");
 
 let fakeConfig = handler @app.config(key) -> resume("TestApp") end;
 
-do with fakeConfig; assertEqual(formatWelcome(), "Welcome to TestApp") end;
+do
+  with fakeConfig;
+  assertEqual(formatWelcome(), "Welcome to TestApp")
+end;
 ```
 
 The test handler fixes the configuration to a known value. No config file, no environment variable, no setup.
@@ -100,8 +116,8 @@ let { assertEqual } = import("assertion");
 
 let runTest = (name, fn) -> do
   with handler @dvala.error(err) -> ["fail", name, err.message] end;
-    fn();
-    ["pass", name]
+  fn();
+  ["pass", name]
 end;
 
 [

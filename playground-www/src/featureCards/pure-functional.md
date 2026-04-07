@@ -20,7 +20,11 @@ label;
 ```
 
 ```dvala
-let result = do let x = 10; let y = 20; x + y end;
+let result = do
+  let x = 10;
+  let y = 20;
+  x + y
+end;
 result;
 ```
 

@@ -64,7 +64,16 @@ Higher-order functions preserve purity. When you pass a pure function to `map`, 
 
 ```dvala
 let transform = (xs) -> reduce(_, +, 0)(map(_, -> $ * $)(filter(_, isEven)(xs)));
-transform([1, 2, 3, 4, 5, 6]);
+transform(
+  [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+  ],
+);
 ```
 
 ## Dead Code Is Not Checked

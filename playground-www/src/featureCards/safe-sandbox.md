@@ -27,7 +27,16 @@ Without effect handlers, Dvala code can only compute — it cannot observe or mo
 
 ```dvala
 // Pure computation — no effects needed
-let data = [3, 1, 4, 1, 5, 9, 2, 6];
+let data = [
+  3,
+  1,
+  4,
+  1,
+  5,
+  9,
+  2,
+  6,
+];
 let sorted = sort(data);
 let unique = reduce(
   sorted,

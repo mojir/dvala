@@ -9,6 +9,7 @@ import { stringifyValue } from '../../common/utils'
 import type { Handlers } from '../../src/evaluator/effectTypes'
 import { WorkspaceIndex } from '../../src/languageService/WorkspaceIndex'
 import type { SymbolDef } from '../../src/languageService/types'
+import { formatSource } from '../../src/tooling'
 
 // Dvala identifier pattern: JS-style names, module-qualified (grid.foo)
 const DVALA_WORD_PATTERN = /[a-zA-Z_$][a-zA-Z0-9_$]*(?:\.[a-zA-Z_$][a-zA-Z0-9_$]*)*/
@@ -772,9 +773,24 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   })
 
+  // Document formatting provider — powers Format Document (Shift+Alt+F / Shift+Option+F)
+  const formattingProvider = vscode.languages.registerDocumentFormattingEditProvider('dvala', {
+    provideDocumentFormattingEdits(document) {
+      const source = document.getText()
+      const formatted = formatSource(source)
+      if (formatted === source) return []
+      const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(source.length),
+      )
+      return [vscode.TextEdit.replace(fullRange, formatted)]
+    },
+  })
+
   context.subscriptions.push(
     runFile, runBlock, runSelection, completionProvider, signatureHelpProvider, hoverProvider, definitionProvider, goToSource,
     referenceProvider, renameProvider, documentSymbolProvider, workspaceSymbolProvider, lsDiagnostics, onDidChange, onDidOpen, onDidClose,
+    formattingProvider,
   )
 }
 
