@@ -97,3 +97,5 @@ export function getAutoCompleter(program: string, position: number, params: Auto
     : [...standardEffectNames]
   return new AutoCompleter(program, position, { ...params, effectNames })
 }
+
+export { format as formatSource } from './formatter/format'

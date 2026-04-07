@@ -5,7 +5,7 @@ All data in Dvala is **immutable**. All functions are **pure**. There are no sid
 ```dvala
 let original = [1, 2, 3];
 let extended = push(original, 4);
-[original, extended]
+[original, extended];
 ```
 
 The original array is unchanged — `push` returns a new array.
@@ -16,16 +16,12 @@ There are no statements. `if`, `let`, `match`, `loop` — everything returns a v
 
 ```dvala
 let label = if 42 > 0 then "positive" else "negative" end;
-label
+label;
 ```
 
 ```dvala
-let result = do
-  let x = 10;
-  let y = 20;
-  x + y
-end;
-result
+let result = do let x = 10; let y = 20; x + y end;
+result;
 ```
 
 ## Pipelines
@@ -33,20 +29,18 @@ result
 Chain transformations with `|>`:
 
 ```dvala
-range(1, 11)
-  |> filter(_, isOdd)
-  |> map(_, -> $ ^ 2)
-  |> reduce(_, +, 0)
+reduce(_, +, 0)(map(_, -> $ ^ 2)(filter(_, isOdd)(range(1, 11))));
 ```
 
 ## Pattern Matching
 
 ```dvala
-let describe = (val) -> match val
-  case 0 then "zero"
-  case x when x < 0 then "negative"
-  case _ then "positive"
-end;
+let describe = (val) ->
+  match val
+    case 0 then "zero"
+    case x when x < 0 then "negative"
+    case _ then "positive"
+  end;
 
-[describe(-5), describe(0), describe(42)]
+[describe(-5), describe(0), describe(42)];
 ```

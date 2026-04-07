@@ -6,22 +6,16 @@ let { withLogging } = import("./lib/logging");
 
 let values = [3, 7, 2, 9, 4];
 
-withLogging(-> do
-  let avg = average(values);
-  perform(@project.log, "avg = " ++ str(avg));
+withLogging(
+  -> do
+    let avg = average(values);
+    perform(@project.log, "avg = " ++ str(avg));
+    let clamped = clamp(avg, 0, 5);
+    perform(@project.log, "clamped = " ++ str(clamped));
+    let interpolated = lerp(0, pi, 0.5);
+    let doubled = double(avg);
+    let safe = withDefault(null, 42);
+    { avg, clamped, interpolated, doubled, safe }
+  end,
+);
 
-  let clamped = clamp(avg, 0, 5);
-  perform(@project.log, "clamped = " ++ str(clamped));
-
-  let interpolated = lerp(0, pi, 0.5);
-  let doubled = double(avg);
-  let safe = withDefault(null, 42);
-
-  {
-    avg,
-    clamped,
-    interpolated,
-    doubled,
-    safe
-  }
-end)

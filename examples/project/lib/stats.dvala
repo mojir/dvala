@@ -8,8 +8,5 @@ let variance = (arr) -> do
   average(squaredDiffs)
 end;
 
-{
-  sum: mySum,
-  average: average,
-  variance: variance
-}
+{ sum: mySum, average, variance };
+

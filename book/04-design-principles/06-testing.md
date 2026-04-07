@@ -9,7 +9,7 @@ let add = (a, b) -> a + b;
 
 assert(add(2, 3) == 5);
 assert(add(-1, 1) == 0);
-assert(add(0, 0) == 0)
+assert(add(0, 0) == 0);
 ```
 
 This is not a simplified example — it is genuinely all that is required. Purity makes the test surface exactly as large as the function itself.
@@ -21,11 +21,11 @@ The built-in `assert` is enough for simple conditions, but the `assertion` modul
 ```dvala
 let { assertEqual, assertNotEqual, assertTrue, assertFails } = import("assertion");
 
-let double = x -> x * 2;
+let double = (x) -> x * 2;
 
 assertEqual(double(0), 0);
 assertEqual(double(21), 42);
-assertNotEqual(double(3), 7)
+assertNotEqual(double(3), 7);
 ```
 
 `assertEqual` compares structurally, so it works correctly for nested arrays and objects:
@@ -33,9 +33,9 @@ assertNotEqual(double(3), 7)
 ```dvala
 let { assertEqual } = import("assertion");
 
-let zip = (xs, ys) -> map(range(count(xs)), i -> [get(xs, i), get(ys, i)]);
+let zip = (xs, ys) -> map(range(count(xs)), (i) -> [get(xs, i), get(ys, i)]);
 
-assertEqual(zip([1, 2, 3], ["a", "b", "c"]), [[1, "a"], [2, "b"], [3, "c"]])
+assertEqual(zip([1, 2, 3], ["a", "b", "c"]), [[1, "a"], [2, "b"], [3, "c"]]);
 ```
 
 ## Testing Error Cases
@@ -45,13 +45,10 @@ assertEqual(zip([1, 2, 3], ["a", "b", "c"]), [[1, "a"], [2, "b"], [3, "c"]])
 ```dvala
 let { assertFails, assertFailsWith } = import("assertion");
 
-let divide = (a, b) -> do
-  assert(not(b == 0), "Division by zero");
-  a / b
-end;
+let divide = (a, b) -> do assert(not(b == 0), "Division by zero"); a / b end;
 
 assertFailsWith(-> divide(10, 0), "Division by zero");
-assertFails(-> divide(10, 0))
+assertFails(-> divide(10, 0));
 ```
 
 `assertFailsWith` checks the exact error message; `assertFails` only requires that *some* error is thrown.
@@ -63,10 +60,7 @@ Effects are the key to testing impure code without mocking frameworks. Because e
 Here is a function that performs an effect and then returns a value:
 
 ```dvala
-let greet = name -> do
-  perform(@dvala.io.print, "Hello, " ++ name ++ "!");
-  name
-end;
+let greet = (name) -> do perform(@dvala.io.print, "Hello, " ++ name ++ "!"); name end;
 ```
 
 In production you provide a real I/O handler. In a test, you suppress the output entirely and check only the return value:
@@ -74,16 +68,11 @@ In production you provide a real I/O handler. In a test, you suppress the output
 ```dvala
 let { assertEqual } = import("assertion");
 
-let greet = name -> do
-  perform(@dvala.io.print, "Hello, " ++ name ++ "!");
-  name
-end;
+let greet = (name) -> do perform(@dvala.io.print, "Hello, " ++ name ++ "!"); name end;
 
 let silence = handler @dvala.io.print(msg) -> resume(null) end;
 
-do with silence;
-  assertEqual(greet("Alice"), "Alice")
-end
+do with silence; assertEqual(greet("Alice"), "Alice") end;
 ```
 
 The handler intercepts the `@dvala.io.print` effect and resumes with `null` — the print never happens. The test verifies the return value in complete isolation from I/O.
@@ -97,9 +86,7 @@ let formatWelcome = -> "Welcome to " ++ perform(@app.config, "appName");
 
 let fakeConfig = handler @app.config(key) -> resume("TestApp") end;
 
-do with fakeConfig;
-  assertEqual(formatWelcome(), "Welcome to TestApp")
-end
+do with fakeConfig; assertEqual(formatWelcome(), "Welcome to TestApp") end;
 ```
 
 The test handler fixes the configuration to a known value. No config file, no environment variable, no setup.
@@ -111,18 +98,17 @@ Because a failed assertion performs `@dvala.error`, you can catch it with a hand
 ```dvala
 let { assertEqual } = import("assertion");
 
-let runTest = (name, fn) ->
-  do
-    with handler @dvala.error(err) -> ["fail", name, err.message] end;
+let runTest = (name, fn) -> do
+  with handler @dvala.error(err) -> ["fail", name, err.message] end;
     fn();
     ["pass", name]
-  end;
+end;
 
 [
-  runTest("double zero",    -> assertEqual(0 * 2, 0)),
+  runTest("double zero", -> assertEqual(0 * 2, 0)),
   runTest("double positive", -> assertEqual(5 * 2, 10)),
-  runTest("intentional",    -> assertEqual(1 + 1, 3))
-]
+  runTest("intentional", -> assertEqual(1 + 1, 3)),
+];
 ```
 
 Each test is isolated: a failure in one does not abort the others. The result is a plain array you can inspect, format, or feed into further processing — no test framework required.

@@ -7,11 +7,11 @@ Since everything in Dvala is an expression, all control flow constructs return v
 The basic conditional. Without `else`, the expression returns `null` when the condition is false — there is no "void" or "undefined", just `null`:
 
 ```dvala
-if 10 > 5 then "big" else "small" end
+if 10 > 5 then "big" else "small" end;
 ```
 
 ```dvala
-if false then "nope" end
+if false then "nope" end;
 ```
 
 ## If / Else If (Multi-branch)
@@ -20,10 +20,7 @@ if false then "nope" end
 
 ```dvala
 let x = 12;
-if x < 5 then "small"
-else if x < 15 then "medium"
-else "large"
-end
+if x < 5 then "small" else if x < 15 then "medium" else "large" end;
 ```
 
 ## Match (Pattern Matching)
@@ -32,11 +29,7 @@ end
 
 ```dvala
 let day = 3;
-match day
-  case 1 then "Mon"
-  case 2 then "Tue"
-  case 3 then "Wed"
-end
+match day case 1 then "Mon" case 2 then "Tue" case 3 then "Wed" end;
 ```
 
 ## Logical Short-circuit
@@ -44,11 +37,11 @@ end
 `&&` returns the first falsy value (or the last value). `||` returns the first truthy value (or the last value):
 
 ```dvala
-true && "second"
+true && "second";
 ```
 
 ```dvala
-null || false || "found it"
+null || false || "found it";
 ```
 
 ## Nullish Coalescing
@@ -56,11 +49,11 @@ null || false || "found it"
 `??` returns the left side if it is not `null`. Unlike `||`, it does not coalesce `false` or `0`:
 
 ```dvala
-0 ?? "default"
+0 ?? "default";
 ```
 
 ```dvala
-null ?? "default"
+null ?? "default";
 ```
 
 ## Do Blocks
@@ -68,11 +61,7 @@ null ?? "default"
 Group multiple expressions with `do` / `end`. The block returns its last expression:
 
 ```dvala
-do
-  let a = 10;
-  let b = 20;
-  a + b
-end
+do let a = 10; let b = 20; a + b end;
 ```
 
 ## Error Handling
@@ -84,15 +73,11 @@ Use `handler...end` with `do...with` to handle errors. `perform(@dvala.error, { 
 ```dvala
 do
   with handler @dvala.error(arg) -> resume(arg.message) end;
-  perform(@dvala.error, { message: "oops" })
-end
+    perform(@dvala.error, { message: "oops" })
+end;
 ```
 
 ```dvala
-let safeDiv = (a, b) ->
-  do
-    with handler @dvala.error(arg) -> resume("error") end;
-    a / b
-  end;
-safeDiv(10, 0)
+let safeDiv = (a, b) -> do with handler @dvala.error(arg) -> resume("error") end; a / b end;
+safeDiv(10, 0);
 ```

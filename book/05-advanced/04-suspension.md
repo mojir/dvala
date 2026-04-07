@@ -6,7 +6,7 @@ In programming language theory, a **continuation** represents "the rest of the c
 
 ```dvala
 let x = 2 + 3;
-x * 10
+x * 10;
 ```
 
 At the point where `2 + 3` is being evaluated, the continuation is: "take the result, bind it to `x`, then compute `x * 10`."

@@ -143,6 +143,7 @@
     "dvala": "node ./dist/cli/cli.js",
     "benchmark": "npm run build-dvala && npx tsx benchmarks/pds-baseline.ts",
     "demo": "node scripts/demo-link.mjs",
+    "format-snippets": "npx tsx scripts/format-sources.ts",
     "pdf": "node scripts/generate-pdf.mjs",
     "dev": "npx serve docs -p 9901 --single",
     "test:e2e": "npx playwright test",
