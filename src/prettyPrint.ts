@@ -338,7 +338,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
   // leading args on the opening line and let the block hang at the call's
   // indent level — mirrors the `f("desc", -> do ... end)` convention common
   // in test frameworks and avoids the awkward exploded-args form.
-  const lastArg = argNodes[argNodes.length - 1]
+  const lastArg = argNodes.at(-1)
   if (argNodes.length >= 2 && lastArg![0] === NodeTypes.Function) {
     const leadingArgStrs = argNodes.slice(0, -1).map(a => printNode(a, ind))
     if (allSingleLine(...leadingArgStrs)) {

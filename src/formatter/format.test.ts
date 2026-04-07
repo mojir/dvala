@@ -439,6 +439,18 @@ describe('formatter — trailing lambda', () => {
     'test("desc", -> someExpression);',
   ))
 
+  it('single-arg lambda call is not affected (guard: argNodes.length >= 2)', () => check(
+    // Only one arg (the lambda itself) — trailing-lambda form must not apply;
+    // the standard exploded form is used instead.
+    'run(-> do assertTrue(x); assertTrue(y) end)',
+    'run(\n  -> do\n    assertTrue(x);\n    assertTrue(y)\n  end,\n);',
+  ))
+
+  it('works when the trailing lambda has explicit parameters', () => check(
+    'register("handler", (event) -> do handle(event); log(event) end)',
+    'register("handler", (event) -> do\n  handle(event);\n  log(event)\nend);',
+  ))
+
   it('is stable across two format passes', () => {
     const source = 'test("pi is approximately 3.14", -> do assertTrue(constants.pi > 3.14); assertTrue(constants.pi < 3.15) end)'
     expect(format(format(source)).trimEnd()).toBe(format(source).trimEnd())
