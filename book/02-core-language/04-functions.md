@@ -56,7 +56,15 @@ map([1, 2, 3], -> $ * $);
 ```
 
 ```dvala
-map([1, 2, 3, 4], -> $ + 10);
+map(
+  [
+    1,
+    2,
+    3,
+    4,
+  ],
+  -> $ + 10,
+);
 ```
 
 ## Recursion with self
@@ -115,7 +123,15 @@ Functions can be passed as arguments. This is the heart of functional programmin
 
 ```dvala
 let double = (x) -> x * 2;
-map([1, 2, 3, 4], double);
+map(
+  [
+    1,
+    2,
+    3,
+    4,
+  ],
+  double,
+);
 ```
 
 ## Apply
@@ -123,5 +139,14 @@ map([1, 2, 3, 4], double);
 Call a function with an array of arguments using `apply`:
 
 ```dvala
-apply(+, [1, 2, 3, 4, 5]);
+apply(
+  +,
+  [
+    1,
+    2,
+    3,
+    4,
+    5,
+  ],
+);
 ```

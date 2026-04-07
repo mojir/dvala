@@ -21,7 +21,11 @@ Use `handler...end` to create handlers, and `with` to install them:
 ```dvala
 let { fallback } = import("effectHandler");
 
-do with fallback(0); let x = 0 / 0; x + 1 end;
+do
+  with fallback(0);
+  let x = 0 / 0;
+  x + 1
+end;
 ```
 
 ## Handler as Function
@@ -40,7 +44,7 @@ Define your own effects with `@name` and handle them:
 ```dvala
 do
   with handler @my.double(val) -> resume(val * 2) end;
-    let x = perform(@my.double, 21);
-    x
+  let x = perform(@my.double, 21);
+  x
 end;
 ```

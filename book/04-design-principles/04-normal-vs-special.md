@@ -111,7 +111,10 @@ for (x in [1, 2, 3] when x > 1) -> x * 10;
 
 ```dvala
 let e = @my.double;
-do with handler @my.double(arg) -> resume(arg * 2) end; perform(e, 21) end;
+do
+  with handler @my.double(arg) -> resume(arg * 2) end;
+  perform(e, 21)
+end;
 ```
 
 ### do / block — Sequencing
@@ -119,7 +122,11 @@ do with handler @my.double(arg) -> resume(arg * 2) end; perform(e, 21) end;
 `do...end` groups expressions and evaluates them in order, returning the last:
 
 ```dvala
-do let a = 1; let b = 2; a + b end;
+do
+  let a = 1;
+  let b = 2;
+  a + b
+end;
 ```
 
 ## The Complete List

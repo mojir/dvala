@@ -85,7 +85,13 @@ loop (n = 10, a = 0, b = 1) -> if n <= 0 then a else recur(n - 1, b, a + b) end;
 ### Reverse a List
 
 ```dvala
-loop (xs = [1, 2, 3, 4, 5], acc = []) ->
+loop (xs = [
+  1,
+  2,
+  3,
+  4,
+  5,
+], acc = []) ->
   if isEmpty(xs) then acc else recur(dropLast(xs, 1), push(acc, last(xs))) end;
 ```
 

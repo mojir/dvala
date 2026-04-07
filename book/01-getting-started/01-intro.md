@@ -69,7 +69,8 @@ label;
 Macros receive unevaluated code (AST) and return transformed code. Code templates make this ergonomic:
 
 ```dvala
-let unless = macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
+let unless =
+  macro (cond, body) -> quote if not($^{cond}) then $^{body} else null end end;
 
 unless(false, "this runs!");
 ```

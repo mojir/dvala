@@ -73,9 +73,9 @@ describe('formatter — functions', () => {
     'let f = (first, ...rest) -> rest;',
   ))
 
-  it('short do-block stays on one line', () => check(
+  it('multi-statement do-block always expands', () => check(
     'let f = (x) -> do\nlet y = x * 2;\ny + 1\nend',
-    'let f = (x) -> do let y = x * 2; y + 1 end;',
+    'let f = (x) -> do\n  let y = x * 2;\n  y + 1\nend;',
   ))
 })
 
