@@ -64,7 +64,7 @@ describe('prettyPrint — pipe chains', () => {
 
 describe('prettyPrint — function calls', () => {
   it('simple call', () => { expect(pp('f(x, y)')).toBe('f(x, y)') })
-  it('nested call', () => { expect(pp('f(g(x))')).toBe('x |> g |> f') })
+  it('nested call stays as nested call (no implicit pipe rewrite)', () => { expect(pp('f(g(x))')).toBe('f(g(x))') })
   it('lambda callee gets parens', () => {
     expect(pp('((x) -> x)(42)')).toBe('((x) -> x)(42)')
   })

@@ -178,10 +178,11 @@ function printNode(node: AstNode, ind: number): string {
 // Compound node printers
 // ---------------------------------------------------------------------------
 
-function printCall(payload: [unknown[], unknown[]], ind: number): string {
-  const [fn, args] = payload
+function printCall(payload: [unknown[], unknown[], unknown?], ind: number): string {
+  const [fn, args, rawHints] = payload
   const fnNode = fn as AstNode
   const argNodes = args as AstNode[]
+  const hints = rawHints as { isInfix?: boolean; isPipe?: boolean } | undefined
 
   // Smart rewrite: unary minus — 0 - x → -x
   if (fnNode[0] === NodeTypes.Builtin && fnNode[1] === '-' && argNodes.length === 2) {
@@ -199,14 +200,17 @@ function printCall(payload: [unknown[], unknown[]], ind: number): string {
     }
   }
 
-  // Smart rewrite: pipe chain — f(g(h(x))) → x |> h |> g |> f
-  const pipeChain = extractPipeChain(fnNode, argNodes)
-  if (pipeChain) {
-    const flat = pipeChain.map(n => printNode(n, ind)).join(' |> ')
-    if (fits(flat, ind)) return flat
-    // Multi-line pipe: each segment on its own line with |> prefix
-    const parts = pipeChain.map(n => printNode(n, ind + 1))
-    return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}|> ${p}`).join('\n')}`
+  // Pipe chain — only when authored with |> (isPipe hint).
+  // Without the hint, f(g(h(x))) stays as nested calls — preserves authorial intent.
+  if (hints?.isPipe) {
+    const pipeChain = extractPipeChain(fnNode, argNodes)
+    if (pipeChain) {
+      const flat = pipeChain.map(n => printNode(n, ind)).join(' |> ')
+      if (fits(flat, ind)) return flat
+      // Multi-line pipe: each segment on its own line with |> prefix
+      const parts = pipeChain.map(n => printNode(n, ind + 1))
+      return `${parts[0]!}\n${parts.slice(1).map(p => `${indent(ind + 1)}|> ${p}`).join('\n')}`
+    }
   }
 
   // Infix binary operators: a + b
@@ -217,6 +221,11 @@ function printCall(payload: [unknown[], unknown[]], ind: number): string {
     if (infixOperators.has(op)) {
       return `${printNode(argNodes[0]!, ind)} ${op} ${printNode(argNodes[1]!, ind)}`
     }
+  }
+
+  // User-defined infix call: a foo b (authored as infix, preserved via isInfix hint)
+  if (hints?.isInfix && fnNode[0] === NodeTypes.Sym && argNodes.length === 2) {
+    return `${printNode(argNodes[0]!, ind)} ${fnNode[1] as string} ${printNode(argNodes[1]!, ind)}`
   }
 
   // Regular function call — wrap callee in parens if it's a complex expression (lambda, etc.)
@@ -284,8 +293,25 @@ function printLet(payload: [unknown[], unknown[]], ind: number): string {
   return `let ${printBindingTarget(target)} = ${printNode(value as AstNode, ind)}`
 }
 
-function printFunction(payload: [unknown[][], unknown[][]], ind: number): string {
-  const [params, body] = payload
+function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: number): string {
+  const [params, body, rawHints] = payload
+  const hints = rawHints as { isShorthand?: boolean } | undefined
+
+  // Shorthand lambda: authored as `-> expr` with no explicit params.
+  // Preserve the form so the formatter does not add ($) prefix.
+  if (hints?.isShorthand) {
+    if (body.length === 1) {
+      const flat = `-> ${printNode(body[0] as AstNode, ind)}`
+      if (fits(flat, ind)) return flat
+      return `->\n${indent(ind + 1)}${printNode(body[0] as AstNode, ind + 1)}`
+    }
+    const flatBody = body.map(b => printNode(b as AstNode, ind)).join('; ')
+    const flat = `-> do ${flatBody} end`
+    if (fits(flat, ind)) return flat
+    const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1)}`)
+    return `-> do\n${lines.join(';\n')}\n${indent(ind)}end`
+  }
+
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
 
   if (body.length === 1) {
@@ -359,11 +385,15 @@ function formatObjectEntry(entry: unknown[], ind: number): string {
     return `...${printNode(entry[1] as AstNode, ind)}`
   }
   const [keyNode, valueNode] = entry as [AstNode, AstNode]
-  const value = printNode(valueNode, ind)
   if (keyNode[0] === NodeTypes.Str) {
-    return `${keyNode[1] as string}: ${value}`
+    const key = keyNode[1] as string
+    // Shorthand: { x: x } → { x } when key and value are the same identifier.
+    if (valueNode[0] === NodeTypes.Sym && valueNode[1] === key && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)) {
+      return key
+    }
+    return `${key}: ${printNode(valueNode, ind)}`
   }
-  return `[${printNode(keyNode, ind)}]: ${value}`
+  return `[${printNode(keyNode, ind)}]: ${printNode(valueNode, ind)}`
 }
 
 function printBinaryChain(nodes: unknown[][], op: string, ind: number): string {
@@ -548,7 +578,9 @@ function extractPipeChain(fnNode: AstNode, argNodes: AstNode[]): AstNode[] | nul
   let current = argNodes[0]!
 
   while (current[0] === NodeTypes.Call) {
-    const [innerFn, innerArgs] = current[1] as [AstNode, AstNode[]]
+    const [innerFn, innerArgs, innerHints] = current[1] as [AstNode, AstNode[], { isPipe?: boolean } | undefined]
+    // Only follow inner nodes that were also authored as pipe — stops at nested regular calls
+    if (!innerHints?.isPipe) break
     if (innerArgs.length !== 1) break
     if (innerFn[0] !== NodeTypes.Sym && innerFn[0] !== NodeTypes.Builtin) break
     chain.push(innerFn)

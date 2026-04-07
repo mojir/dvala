@@ -205,8 +205,19 @@ export type ReservedNode = AstNode<typeof NodeTypes.Reserved, ReservedSymbol>
 export type EffectNameNode = AstNode<typeof NodeTypes.Effect, string>
 export type SpecialExpressionNode<T extends [SpecialExpressionType, ...unknown[]] = [SpecialExpressionType, ...unknown[]]> = AstNode<typeof NodeTypes.SpecialExpression, T> // [name, params]
 
-export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.Call, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[]]> // [params, name]
-export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.Call, [AstNode, AstNode[]]> // [name, node as function] node can be string number object or array
+/**
+ * Formatting hints stored in Call node payloads.
+ * Set at parse time to preserve authored syntactic form through formatting.
+ */
+export interface CallHints {
+  /** True when authored as infix: `a foo b` rather than `foo(a, b)`. */
+  isInfix?: boolean
+  /** True when authored as pipe: `a |> b` rather than `b(a)`. */
+  isPipe?: boolean
+}
+
+export type NormalExpressionNodeWithName = AstNode<typeof NodeTypes.Call, [BuiltinSymbolNode | UserDefinedSymbolNode, AstNode[], CallHints?]> // [fn, args, hints?]
+export type NormalExpressionNodeExpression = AstNode<typeof NodeTypes.Call, [AstNode, AstNode[], CallHints?]> // [fn, args, hints?]
 export type NormalExpressionNode = NormalExpressionNodeWithName | NormalExpressionNodeExpression
 export const bindingTargetTypes = {
   symbol: 'symbol',
