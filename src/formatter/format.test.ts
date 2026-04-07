@@ -241,6 +241,11 @@ describe('formatter — trailing block comments', () => {
     'let x = 1; /* note */',
     'let x = 1; /* note */',
   ))
+
+  it('demotes trailing comment to leading when line would exceed 80 cols', () => check(
+    'let reallyLongVariableName = someReallyLongFunctionCall(argument); // this comment would push the line way past 80 chars',
+    '// this comment would push the line way past 80 chars\nlet reallyLongVariableName = someReallyLongFunctionCall(argument);',
+  ))
 })
 
 // ---------------------------------------------------------------------------
