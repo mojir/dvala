@@ -191,6 +191,46 @@ describe('cstFormat — line wrapping', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Comment preservation
+// ---------------------------------------------------------------------------
+
+describe('cstFormat — comments', () => {
+  it('preserves trailing line comment', () => {
+    const result = fmt('42 // hello')
+    expect(result).toContain('// hello')
+  })
+
+  it('preserves leading line comment', () => {
+    const result = fmt('// hello\n42')
+    expect(result).toContain('// hello')
+    expect(result).toContain('42')
+  })
+
+  it('preserves block comment', () => {
+    const result = fmt('/* hello */ 42')
+    expect(result).toContain('/* hello */')
+    expect(result).toContain('42')
+  })
+
+  it('preserves inline block comment in function call', () => {
+    const result = fmt('foo(/* arg */ 42)')
+    expect(result).toContain('/* arg */')
+    expect(result).toContain('42')
+  })
+
+  it('preserves comment between statements', () => {
+    const result = fmt('let x = 1;\n// middle\nlet y = 2')
+    expect(result).toContain('// middle')
+  })
+
+  it('preserves blank lines between statements', () => {
+    const result = fmt('let x = 1;\n\nlet y = 2')
+    // Should have a blank line between the two statements
+    expect(result).toMatch(/let x = 1;\n\nlet y = 2/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Idempotency
 // ---------------------------------------------------------------------------
 

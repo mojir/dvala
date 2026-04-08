@@ -107,6 +107,30 @@ function trailingComments(token: CstToken): Doc[] {
   return triviaComments(token.trailingTrivia)
 }
 
+/**
+ * Format a token with its comment trivia preserved.
+ * Leading block comments → `/* ... * / token_text`
+ * Trailing line comments → `token_text // ...` (with forced break)
+ * Trailing block comments → `token_text /* ... * /`
+ */
+function formatTokenWithTrivia(token: CstToken): Doc {
+  const leading = leadingComments(token)
+  const trailing = trailingComments(token)
+  const tokenDoc = text(token.text)
+
+  if (leading.length === 0 && trailing.length === 0) return tokenDoc
+
+  const parts: Doc[] = []
+  for (const c of leading) {
+    parts.push(c, text(' '))
+  }
+  parts.push(tokenDoc)
+  for (const c of trailing) {
+    parts.push(text(' '), c)
+  }
+  return concat(...parts)
+}
+
 /** Check if trivia contains a blank line (for preserving authored blank lines). */
 function triviaHasBlankLine(trivia: TriviaNode[]): boolean {
   for (const t of trivia) {
@@ -122,13 +146,26 @@ function triviaHasBlankLine(trivia: TriviaNode[]): boolean {
   return false
 }
 
+/** Count newlines in a trivia array. */
+function countNewlinesInTrivia(trivia: TriviaNode[]): number {
+  let count = 0
+  for (const t of trivia) {
+    if (t.kind === 'whitespace') {
+      for (const ch of t.text) {
+        if (ch === '\n') count++
+      }
+    }
+  }
+  return count
+}
+
 /**
- * Check if there's a blank line in the trivia between two adjacent tokens.
- * The blank line could be in the trailing trivia of the first token or
- * the leading trivia of the second token.
+ * Check if there's a blank line between two tokens by counting total
+ * newlines across both the trailing trivia of the previous token and
+ * the leading trivia of the next token. Two or more newlines = blank line.
  */
-function hasBlankLineBetween(prevToken: CstToken, nextToken: CstToken): boolean {
-  return triviaHasBlankLine(prevToken.trailingTrivia) || triviaHasBlankLine(nextToken.leadingTrivia)
+function hasBlankLineBetweenTokens(prevTrailing: TriviaNode[], nextLeading: TriviaNode[]): boolean {
+  return countNewlinesInTrivia(prevTrailing) + countNewlinesInTrivia(nextLeading) >= 2
 }
 
 // ---------------------------------------------------------------------------
@@ -315,9 +352,9 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
 
       let hasBlank = false
       if (semiToken) {
-        hasBlank = triviaHasBlankLine(semiToken.trailingTrivia) || triviaHasBlankLine(nextFirst.leadingTrivia)
+        hasBlank = hasBlankLineBetweenTokens(semiToken.trailingTrivia, nextFirst.leadingTrivia)
       } else {
-        hasBlank = hasBlankLineBetween(lastTok, nextFirst)
+        hasBlank = hasBlankLineBetweenTokens(lastTok.trailingTrivia, nextFirst.leadingTrivia)
       }
 
       if (hasBlank) {
@@ -431,7 +468,7 @@ function formatNode(node: UntypedCstNode): Doc {
 
 function formatLeaf(node: UntypedCstNode): Doc {
   const tok = nthToken(node, 0)
-  return text(tok.text)
+  return formatTokenWithTrivia(tok)
 }
 
 // ---------------------------------------------------------------------------
@@ -529,19 +566,31 @@ function formatCall(node: UntypedCstNode): Doc {
   const children = childNodes(node)
   const fn = children[0]!
   const args = children.slice(1)
+  // Get ( and ) tokens for trivia
+  const toks = tokens(node)
+  const openParen = toks.find(t => t.text === '(')
+  const closeParen = toks.find(t => t.text === ')')
 
   if (args.length === 0) {
-    return concat(formatNode(fn), text('('), text(')'))
+    return concat(
+      formatNode(fn),
+      openParen ? formatTokenWithTrivia(openParen) : text('('),
+      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+    )
   }
 
   const argDocs = args.map(a => formatNode(a))
+
+  // Check for comments on the open paren (e.g. `foo(/* arg */ 42)`)
+  const openDoc = openParen ? formatTokenWithTrivia(openParen) : text('(')
+
   return concat(
     formatNode(fn),
     group(concat(
-      text('('),
+      openDoc,
       nest(INDENT, concat(softLine, join(concat(text(','), line), argDocs))),
       softLine,
-      text(')'),
+      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
     )),
   )
 }
@@ -944,7 +993,7 @@ function formatFromChildren(node: UntypedCstNode): Doc {
       if (hasPrev && parts.length > 0 && !isPunctuation(child.text)) {
         parts.push(text(' '))
       }
-      parts.push(text(child.text))
+      parts.push(formatTokenWithTrivia(child))
     } else {
       if (hasPrev && parts.length > 0) {
         parts.push(text(' '))
