@@ -192,7 +192,7 @@ export function render(doc: Doc, width = 80): string {
           output.push(' ')
           pos += 1
         } else {
-          output.push('\n' + ' '.repeat(indent))
+          output.push(`\n${' '.repeat(indent)}`)
           pos = indent
         }
         break
@@ -201,19 +201,19 @@ export function render(doc: Doc, width = 80): string {
         if (mode === FLAT) {
           // nothing
         } else {
-          output.push('\n' + ' '.repeat(indent))
+          output.push(`\n${' '.repeat(indent)}`)
           pos = indent
         }
         break
 
       case 'hardline':
-        output.push('\n' + ' '.repeat(indent))
+        output.push(`\n${' '.repeat(indent)}`)
         pos = indent
         break
 
       case 'lineComment':
         output.push(d.text)
-        output.push('\n' + ' '.repeat(indent))
+        output.push(`\n${' '.repeat(indent)}`)
         pos = indent
         break
 

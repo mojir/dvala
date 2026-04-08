@@ -119,7 +119,7 @@ export class CstBuilder {
     if (this.stack.length !== 1) {
       throw new Error(
         `CstBuilder.finish(): expected exactly 1 node on stack, found ${this.stack.length}. ` +
-        `Mismatched startNode/endNode calls.`,
+        'Mismatched startNode/endNode calls.',
       )
     }
     this.finished = true

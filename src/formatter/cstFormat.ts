@@ -71,12 +71,12 @@ function nthChild(node: UntypedCstNode, n: number): UntypedCstNode {
 
 /** Get all child nodes. */
 function childNodes(node: UntypedCstNode): UntypedCstNode[] {
-  return node.children.filter(isNode) as UntypedCstNode[]
+  return node.children.filter(isNode)
 }
 
 /** Get all tokens. */
 function tokens(node: UntypedCstNode): CstToken[] {
-  return node.children.filter(isToken) as CstToken[]
+  return node.children.filter(isToken)
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ class ChildIterator {
   expectToken(tokenText: string): CstToken {
     const child = this.next()
     if (!isToken(child) || child.text !== tokenText) {
-      throw new Error(`Expected token '${tokenText}', got ${isToken(child) ? `'${child.text}'` : `node '${(child as UntypedCstNode).kind}'`}`)
+      throw new Error(`Expected token '${tokenText}', got ${isToken(child) ? `'${child.text}'` : `node '${(child).kind}'`}`)
     }
     return child
   }
@@ -246,14 +246,14 @@ class ChildIterator {
   /** Consume the next child, expecting it to be a token. Returns the token. */
   nextToken(): CstToken {
     const child = this.next()
-    if (!isToken(child)) throw new Error(`Expected token, got node '${(child as UntypedCstNode).kind}'`)
+    if (!isToken(child)) throw new Error(`Expected token, got node '${(child).kind}'`)
     return child
   }
 
   /** Consume the next child, expecting it to be a node. Returns the node. */
   nextNode(): UntypedCstNode {
     const child = this.next()
-    if (!isNode(child)) throw new Error(`Expected node, got token '${(child as CstToken).text}'`)
+    if (!isNode(child)) throw new Error(`Expected node, got token '${(child).text}'`)
     return child
   }
 
@@ -348,7 +348,7 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
     const child = iter.peek()!
     if (isToken(child) && stopTokens.includes(child.text)) break
     if (isToken(child) && child.text === ';') {
-      semiTokens.push(child as CstToken)
+      semiTokens.push(child)
       iter.next()
       continue
     }
@@ -359,7 +359,8 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
       if (iter.isNode()) {
         const node = iter.nextNode()
         // Create a synthetic node that wraps with + handler
-        stmts.push({ kind: 'WithStatement', children: [child, node] } as UntypedCstNode)
+        const withStmt: UntypedCstNode = { kind: 'WithStatement', children: [child, node] }
+        stmts.push(withStmt)
       }
     } else if (isNode(child)) {
       stmts.push(iter.nextNode())
@@ -534,14 +535,9 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
       // Check for blank lines between statements
       const lastTok = lastToken(stmt)
       const nextFirst = firstToken(statements[i + 1]!)
-      const semiToken = i < semicolonTokens.length ? semicolonTokens[i] : undefined
+      const prevTok = semiToken ?? lastTok
 
-      let hasBlank = false
-      if (semiToken) {
-        hasBlank = hasBlankLineBetweenTokens(semiToken.trailingTrivia, nextFirst.leadingTrivia)
-      } else {
-        hasBlank = hasBlankLineBetweenTokens(lastTok.trailingTrivia, nextFirst.leadingTrivia)
-      }
+      const hasBlank = hasBlankLineBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
 
       // If a trailing line comment was emitted, it already forced a newline.
       // Only emit an additional hardLine for blank lines.
@@ -1194,7 +1190,7 @@ function formatBlock(node: UntypedCstNode): Doc {
   // But force expansion if body has leading comments (they'd be lost in flat mode).
   if (bodyStmtCount === 1 && !withClause) {
     // Check if body has leading comments (on the first token of the body statement)
-    const bodyNodes = node.children.filter(isNode).filter(c => (c as UntypedCstNode).kind !== 'Block') as UntypedCstNode[]
+    const bodyNodes = node.children.filter(isNode).filter(c => (c).kind !== 'Block')
     const bodyFirstTok = bodyNodes.length > 0 ? firstToken(bodyNodes[bodyNodes.length - 1]!) : undefined
     const hasLeadingComments = bodyFirstTok?.leadingTrivia.some(t => t.kind === 'lineComment' || t.kind === 'blockComment')
 
