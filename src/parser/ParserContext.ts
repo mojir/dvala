@@ -112,17 +112,17 @@ export class ParserContext {
     // Collect trivia after the consumed token and split it:
     // same-line trivia → trailing of this token, next-line → pending for next
     this.skipTrivia()
-    cstToken.trailingTrivia = this.pendingLeadingTrivia.length > 0
-      ? [] // will be filled by the split below
-      : []
 
-    // If there's accumulated trivia, split at newline boundary
+    // Split accumulated trivia at the newline boundary:
+    // tokens before the first newline attach as trailing trivia on this token,
+    // tokens after become pending leading trivia for the next token.
     const collected = this.pendingLeadingTrivia
     if (collected.length > 0) {
       const { trailing, leading } = splitTriviaAtNewline(collected)
       cstToken.trailingTrivia = trailing
       this.pendingLeadingTrivia = leading
     } else {
+      cstToken.trailingTrivia = []
       this.pendingLeadingTrivia = []
     }
 

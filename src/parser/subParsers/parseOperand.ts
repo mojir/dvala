@@ -239,7 +239,8 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 // For `(...)`: scan to find the matching `)`, then check for `->`.
 // For a bare symbol: check if the next token is `->`.
 function looksLikeLambda(ctx: ParserContext): boolean {
-  const token = ctx.peek()
+  const token = ctx.tryPeek()
+  if (!token) return false
 
   if (isSymbolToken(token)) {
     return isOperatorToken(ctx.peekAhead(1), '->')
