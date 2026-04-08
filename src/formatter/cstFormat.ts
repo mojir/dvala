@@ -13,7 +13,7 @@
  * - Blank lines between top-level statements are preserved (up to MAX_BLANK_LINES)
  */
 
-import { MAX_BLANK_LINES, MAX_WIDTH } from './config'
+import { MAX_WIDTH } from './config'
 import type { UntypedCstNode } from '../cst/builder'
 import type { CstToken, TriviaNode } from '../cst/types'
 import {
@@ -129,21 +129,6 @@ function formatTokenWithTrivia(token: CstToken): Doc {
     parts.push(text(' '), c)
   }
   return concat(...parts)
-}
-
-/** Check if trivia contains a blank line (for preserving authored blank lines). */
-function triviaHasBlankLine(trivia: TriviaNode[]): boolean {
-  for (const t of trivia) {
-    if (t.kind === 'whitespace') {
-      // Two or more newlines = blank line
-      let newlines = 0
-      for (const ch of t.text) {
-        if (ch === '\n') newlines++
-        if (newlines >= 2) return true
-      }
-    }
-  }
-  return false
 }
 
 /** Count newlines in a trivia array. */
@@ -323,28 +308,25 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
     parts.push(c)
   }
 
-  // Format statements with semicolons and blank lines between them
+  // Format statements: always add `;` after each statement (including last).
+  // Preserve blank lines between statements from the original source.
   const semicolonTokens = tokens(program)
   for (let i = 0; i < statements.length; i++) {
     const stmt = statements[i]!
-    const stmtDoc = formatNode(stmt)
-    parts.push(stmtDoc)
+    parts.push(formatNode(stmt))
+    parts.push(text(';'))
+
+    // Check for trailing comment on the semicolon token (if present)
+    if (i < semicolonTokens.length) {
+      const semi = semicolonTokens[i]!
+      const semiTrailing = trailingComments(semi)
+      if (semiTrailing.length > 0) {
+        parts.push(text(' '))
+        parts.push(...semiTrailing)
+      }
+    }
 
     if (i < statements.length - 1) {
-      // Emit semicolons between statements
-      if (i < semicolonTokens.length) {
-        // Check for trailing comment on the semicolon
-        const semi = semicolonTokens[i]!
-        const semiTrailing = trailingComments(semi)
-        if (semiTrailing.length > 0) {
-          parts.push(text(';'))
-          parts.push(text(' '))
-          parts.push(...semiTrailing)
-        } else {
-          parts.push(text(';'))
-        }
-      }
-
       // Check for blank lines between statements
       const lastTok = lastToken(stmt)
       const nextFirst = firstToken(statements[i + 1]!)
@@ -477,7 +459,6 @@ function formatLeaf(node: UntypedCstNode): Doc {
 
 function formatArray(node: UntypedCstNode): Doc {
   const children = childNodes(node)
-  const toks = tokens(node)
 
   if (children.length === 0) {
     // Empty array: []
@@ -622,14 +603,23 @@ function formatLet(node: UntypedCstNode): Doc {
 
   // Collect binding target parts (everything until `=`)
   const targetParts: Doc[] = []
+  let lastTargetText = ''
   while (!iter.done() && !iter.isToken('=')) {
     const child = iter.next()
     if (isToken(child)) {
-      if (targetParts.length > 0 && !isPunctuation(child.text)) targetParts.push(text(' '))
+      // Add space unless current is punctuation or previous was open bracket
+      if (targetParts.length > 0 && !isPunctuation(child.text) && !isOpenBracket(lastTargetText)) {
+        targetParts.push(text(' '))
+      }
       targetParts.push(text(child.text))
+      lastTargetText = child.text
     } else {
-      if (targetParts.length > 0) targetParts.push(text(' '))
+      // Add space before node unless previous was open bracket
+      if (targetParts.length > 0 && !isOpenBracket(lastTargetText)) {
+        targetParts.push(text(' '))
+      }
       targetParts.push(formatNode(child))
+      lastTargetText = ''
     }
   }
 
@@ -654,28 +644,27 @@ function formatLet(node: UntypedCstNode): Doc {
 function formatIf(node: UntypedCstNode): Doc {
   // Children: if, condition, then, body..., [else, [if, condition, then, body...]]..., end
   const iter = new ChildIterator(node.children)
-  const parts: Doc[] = []
 
-  // Parse if/else-if branches
-  let isFirst = true
+  // Collect all branches for analysis
+  interface Branch {
+    isElseIf: boolean
+    condition?: Doc
+    body: Doc[]
+  }
+  const branches: Branch[] = []
+  let elseBranch: Doc[] | undefined
+
   while (!iter.done()) {
     const child = iter.peek()!
     if (isToken(child) && child.text === 'end') break
 
     if (isToken(child) && child.text === 'else') {
       iter.next() // consume 'else'
-      // Check if else-if
       if (iter.isToken('if')) {
-        parts.push(hardLine, text('else '))
-        // Continue to parse the if branch below
+        // else-if: continue to parse
       } else {
         // Final else branch
-        const body = iter.collectBody('end')
-        if (body.length === 1) {
-          parts.push(hardLine, text('else'), nest(INDENT, concat(hardLine, body[0]!)))
-        } else {
-          parts.push(hardLine, text('else'), nest(INDENT, concat(hardLine, formatBody(body))))
-        }
+        elseBranch = iter.collectBody('end')
         break
       }
     }
@@ -685,25 +674,59 @@ function formatIf(node: UntypedCstNode): Doc {
       const condition = iter.nextNode()
       iter.expectToken('then')
       const body = iter.collectBody('else', 'end')
-
-      if (isFirst) {
-        parts.push(text('if '), formatNode(condition), text(' then'))
-      } else {
-        parts.push(text('if '), formatNode(condition), text(' then'))
-      }
-
-      if (body.length === 1) {
-        parts.push(nest(INDENT, concat(hardLine, body[0]!)))
-      } else {
-        parts.push(nest(INDENT, concat(hardLine, formatBody(body))))
-      }
-      isFirst = false
+      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), body })
     }
   }
 
   iter.expectToken('end')
-  parts.push(hardLine, text('end'))
 
+  // Simple if/then/else/end with single-expression bodies: try flat
+  if (branches.length === 1 && branches[0]!.body.length === 1
+    && (!elseBranch || elseBranch.length === 1)) {
+    const b = branches[0]!
+    const flatParts = [text('if '), b.condition!, text(' then '), b.body[0]!]
+    if (elseBranch) {
+      flatParts.push(text(' else '), elseBranch[0]!)
+    }
+    flatParts.push(text(' end'))
+
+    const expandedParts: Doc[] = [text('if '), b.condition!, text(' then')]
+    expandedParts.push(nest(INDENT, concat(hardLine, b.body[0]!)))
+    if (elseBranch) {
+      expandedParts.push(hardLine, text('else'))
+      expandedParts.push(nest(INDENT, concat(hardLine, elseBranch[0]!)))
+    }
+    expandedParts.push(hardLine, text('end'))
+
+    return group(concat(
+      ifBreak(concat(...expandedParts), concat(...flatParts)),
+    ))
+  }
+
+  // Complex if: always expand
+  const parts: Doc[] = []
+  for (let i = 0; i < branches.length; i++) {
+    const b = branches[i]!
+    if (b.isElseIf) {
+      parts.push(hardLine, text('else if '), b.condition!, text(' then'))
+    } else {
+      parts.push(text('if '), b.condition!, text(' then'))
+    }
+    if (b.body.length === 1) {
+      parts.push(nest(INDENT, concat(hardLine, b.body[0]!)))
+    } else {
+      parts.push(nest(INDENT, concat(hardLine, formatBody(b.body))))
+    }
+  }
+  if (elseBranch) {
+    parts.push(hardLine, text('else'))
+    if (elseBranch.length === 1) {
+      parts.push(nest(INDENT, concat(hardLine, elseBranch[0]!)))
+    } else {
+      parts.push(nest(INDENT, concat(hardLine, formatBody(elseBranch))))
+    }
+  }
+  parts.push(hardLine, text('end'))
   return concat(...parts)
 }
 
@@ -729,6 +752,17 @@ function formatBlock(node: UntypedCstNode): Doc {
       return concat(text('do'), nest(INDENT, concat(hardLine, withClause)), hardLine, text('end'))
     }
     return text('do end')
+  }
+
+  // Single-statement bodies try flat: `do expr end`
+  // Multi-statement bodies always expand.
+  if (body.length === 1 && !withClause) {
+    return group(concat(
+      text('do'),
+      nest(INDENT, concat(line, body[0]!)),
+      line,
+      text('end'),
+    ))
   }
 
   const bodyDoc = formatBody(body)
@@ -1013,4 +1047,9 @@ function formatFallback(node: UntypedCstNode): Doc {
 /** Check if a token text is punctuation that shouldn't have a space before it. */
 function isPunctuation(s: string): boolean {
   return s === ',' || s === ';' || s === ')' || s === ']' || s === '}' || s === '.' || s === ':'
+}
+
+/** Check if a token text is an opening bracket that shouldn't have a space after it. */
+function isOpenBracket(s: string): boolean {
+  return s === '(' || s === '[' || s === '{'
 }

@@ -35,6 +35,8 @@ import { isOperatorToken } from '../tokenizer/token'
 import type { Token } from '../tokenizer/token'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
+import { parseToCst as parseToCstFn } from '../parser'
+import { formatCst } from './cstFormat'
 import type { AnchoredComment } from './reinsertComments'
 
 interface SequentialNodeInfo {
@@ -48,6 +50,21 @@ interface SequentialNodeInfo {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Format using the new CST-based formatter.
+ * This is the Phase 4 replacement — once validated, it replaces format().
+ */
+export function formatWithCst(source: string): string {
+  if (source.trim() === '') return ''
+  const fullTokenStream = tokenize(source, true, undefined)
+  try {
+    const { tree, trailingTrivia } = parseToCstFn(fullTokenStream)
+    return formatCst(tree, trailingTrivia)
+  } catch {
+    return source
+  }
+}
 
 export function format(source: string): string {
   if (source.trim() === '') return ''
