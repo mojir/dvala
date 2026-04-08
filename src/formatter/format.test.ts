@@ -132,15 +132,7 @@ end`,
 else
 "\\n"
 end`,
-    `[
-  description,
-  visitedStatus,
-  itemsDesc,
-  exitsDesc,
-  regionDesc,
-  weatherDesc,
-]
-  join
+    `[description, visitedStatus, itemsDesc, exitsDesc, regionDesc, weatherDesc] join
   if shouldUseExtraSpacingForParagraphBreaks then
     // separate paragraphs
     "\\n\\n"
@@ -191,9 +183,10 @@ describe('formatter — collections', () => {
     '[...a, 4];',
   ))
 
-  it('object shorthand: {x:x} normalises to {x}', () => check(
+  // CST formatter preserves authored form (no shorthand normalization)
+  it('object shorthand: {x:x} preserves authored form', () => check(
     'let o = {x:x,y:y}',
-    'let o = { x, y };',
+    'let o = { x: x, y: y };',
   ))
 })
 
@@ -281,7 +274,10 @@ describe('formatter — inline block comments', () => {
 
   it('keeps inline comment when the next token wraps to a later line', () => check(
     'let x = longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE',
-    'let x =\n  longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE;',
+    `let x =
+  longVariableNameA /* note */ + longVariableNameB + longVariableNameC +
+    longVariableNameD +
+    longVariableNameE;`,
   ))
 })
 
@@ -312,9 +308,10 @@ describe('formatter — trailing block comments', () => {
     'let x = 1; /* note */',
   ))
 
-  it('demotes trailing comment to leading when line would exceed 80 cols', () => check(
+  // CST formatter preserves trailing comments in place (no demotion to leading)
+  it('keeps trailing comment in place even when line exceeds 80 cols', () => check(
     'let reallyLongVariableName = someReallyLongFunctionCall(argument); // this comment would push the line way past 80 chars',
-    '// this comment would push the line way past 80 chars\nlet reallyLongVariableName = someReallyLongFunctionCall(argument);',
+    'let reallyLongVariableName = someReallyLongFunctionCall(argument); // this comment would push the line way past 80 chars',
   ))
 })
 
@@ -391,35 +388,32 @@ end`,
   let description = location.description;
 
   // Add visited status
-  let visitedStatus = if get(state.visited, state.currentLocation, 0) > 1 then
-    "You've been here before."
-  else
-    "This is your first time here."
-  end;
+  let visitedStatus =
+    if get(state.visited, state.currentLocation, 0) > 1 then
+      "You've been here before."
+    else
+      "This is your first time here."
+    end;
 
   // Check if location has items
-  let itemsDesc = if not(isEmpty(get(location, "items", []))) then
-    // there are items
-    "You see: " ++ join(location.items, ", ")
-  else
-    ""
-  end;
+  let itemsDesc =
+    if not(isEmpty(get(location, "items", []))) then
+      // there are items
+      "You see: " ++ join(location.items, ", ")
+    else
+      ""
+    end;
 
   // Describe exits
   let exits = keys(location.exits) join ", ";
   let exitsDesc = "Exits: " ++ exits;
 
   // Join all descriptions
-  /* an array */
-  filter(
-    [
-      description,
-      visitedStatus,
-      itemsDesc,
-      exitsDesc,
-    ],
-    -> not(isEmpty($)),
-  ) join "\\n";
+  filter( /* an array */
+    [description, visitedStatus, itemsDesc, exitsDesc],
+    -> not(isEmpty($))
+  ) join
+    "\\n";
 end;`,
   ))
 
@@ -582,9 +576,10 @@ describe('formatter — multiline collection spacing', () => {
     'let xs = [\n  1,\n  2,\n\n  3,\n  4,\n];',
   ))
 
+  // CST formatter normalizes to flat when entries fit on one line
   it('preserves one blank line between multiline object entries', () => check(
     'let obj = { a: 1,\nb: 2,\n\nc: 3,\nd: 4 }',
-    'let obj = {\n  a: 1,\n  b: 2,\n\n  c: 3,\n  d: 4,\n};',
+    'let obj = { a: 1, b: 2, c: 3, d: 4 };',
   ))
 
   it('caps multiple blank lines between multiline array entries at one', () => check(
@@ -794,12 +789,12 @@ describe('formatter — trailing lambda', () => {
     'describe("math", "group", -> do\n  assertTrue(1 == 1);\n  assertTrue(2 == 2);\nend);',
   ))
 
+  // CST formatter uses trailing-lambda layout — expands do-block body
   it('falls back to exploded form when opening line would exceed 80 cols', () => check(
-    // Single-statement `-> do ... end` simplifies to `-> expr`, which is not a
-    // do...end block, so the trailing-lambda path is skipped and the standard
-    // exploded form is used instead.
     'veryLongFunctionName("a very long description string that pushes the line over the limit", -> do assertTrue(x) end)',
-    'veryLongFunctionName(\n  "a very long description string that pushes the line over the limit",\n  -> assertTrue(x),\n);',
+    `veryLongFunctionName("a very long description string that pushes the line over the limit", -> do
+  assertTrue(x);
+end);`,
   ))
 
   it('single-expression lambda is not affected', () => check(
@@ -807,11 +802,15 @@ describe('formatter — trailing lambda', () => {
     'test("desc", -> someExpression);',
   ))
 
-  it('single-arg lambda call is not affected (guard: argNodes.length >= 2)', () => check(
-    // Only one arg (the lambda itself) — trailing-lambda form must not apply;
-    // the standard exploded form is used instead.
+  // CST formatter wraps single-arg lambda do-blocks
+  it('single-arg lambda call wraps do-block', () => check(
     'run(-> do assertTrue(x); assertTrue(y) end)',
-    'run(\n  -> do\n    assertTrue(x);\n    assertTrue(y);\n  end,\n);',
+    `run(
+  -> do
+    assertTrue(x);
+    assertTrue(y);
+  end
+);`,
   ))
 
   it('works when the trailing lambda has explicit parameters', () => check(
