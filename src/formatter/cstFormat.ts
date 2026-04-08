@@ -333,6 +333,15 @@ function formatBody(stmts: Doc[]): Doc {
  * Returns the body as a single Doc.
  */
 function formatBodyFromIter(iter: ChildIterator, ...stopTokens: string[]): Doc {
+  return formatBodyFromIterInternal(iter, true, stopTokens)
+}
+
+/** Same as formatBodyFromIter but without trailing semicolon on last statement. */
+function formatBodyFromIterNoTrailingSemi(iter: ChildIterator, ...stopTokens: string[]): Doc {
+  return formatBodyFromIterInternal(iter, false, stopTokens)
+}
+
+function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, stopTokens: string[]): Doc {
   const stmts: UntypedCstNode[] = []
   const semiTokens: CstToken[] = []
 
@@ -359,8 +368,8 @@ function formatBodyFromIter(iter: ChildIterator, ...stopTokens: string[]): Doc {
     const stmt = stmts[i]!
     parts.push(formatNode(stmt))
 
-    // Add semicolon (except after last statement in body)
-    if (i < stmts.length - 1) {
+    // Add semicolon: always between statements, optionally after last
+    if (i < stmts.length - 1 || trailingSemi) {
       parts.push(text(';'))
     }
 
@@ -437,14 +446,20 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
   if (statements.length === 0) {
     // File with only comments/shebang or empty
     const parts: Doc[] = []
-    // Check for shebang in trailing trivia
-    for (const t of trailingTrivia) {
+    for (let i = 0; i < trailingTrivia.length; i++) {
+      const t = trailingTrivia[i]!
       if (t.kind === 'shebang') {
-        parts.push(text(t.text))
+        parts.push(text(t.text), hardLine)
       } else if (t.kind === 'lineComment') {
         parts.push(lineComment(t.text))
       } else if (t.kind === 'blockComment') {
         parts.push(text(t.text), hardLine)
+      } else if (t.kind === 'whitespace' && triviaHasBlankLine([t])) {
+        // Preserve blank lines between comments
+        const nextT = trailingTrivia[i + 1]
+        if (nextT && (nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
+          parts.push(hardLine)
+        }
       }
     }
     if (parts.length === 0) return text('')
@@ -460,19 +475,11 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
     }
   }
 
-  // Emit file-level leading comments (before first statement)
-  const fileLeadingComments = leadingComments(firstToken(statements[0]!))
-
   const parts: Doc[] = [...shebangDocs]
 
-  // Leading comments before first statement
-  for (const c of fileLeadingComments) {
-    parts.push(c)
-    // Block comments that are leading get their own line
-    if (c.type === 'text') {
-      parts.push(hardLine)
-    }
-  }
+  // Emit file-level leading comments (before first statement) with blank lines
+  const firstTrivia = firstToken(statements[0]!).leadingTrivia
+  emitTriviaWithBlankLines(firstTrivia, parts)
 
   // Format statements: always add `;` after each statement (including last).
   // Trailing line comments go after the `;` on the same line.
@@ -543,16 +550,13 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
     }
   }
 
-  // File-level trailing comments (after last statement)
-  const fileTrailingComments = triviaComments(trailingTrivia)
-  if (fileTrailingComments.length > 0) {
-    // Need a newline between last statement and trailing comments
+  // File-level trailing comments (after last statement) with blank lines
+  const hasEpilogueComments = trailingTrivia.some(t => t.kind === 'lineComment' || t.kind === 'blockComment')
+  if (hasEpilogueComments) {
     if (!lastTrailingComment) {
       parts.push(hardLine)
     }
-    for (const c of fileTrailingComments) {
-      parts.push(c)
-    }
+    emitTriviaWithBlankLines(trailingTrivia, parts)
   }
 
   return concat(...parts)
@@ -960,7 +964,7 @@ function formatIf(node: UntypedCstNode): Doc {
       } else {
         // Final else branch — use formatBodyFromIter for comment handling
         elseBranchCount = countNodesUntil(iter, 'end')
-        elseBranchDoc = formatBodyFromIter(iter, 'end')
+        elseBranchDoc = formatBodyFromIterNoTrailingSemi(iter, 'end')
         break
       }
     }
@@ -970,7 +974,7 @@ function formatIf(node: UntypedCstNode): Doc {
       const condition = iter.nextNode()
       iter.expectToken('then')
       const bodyCount = countNodesUntil(iter, 'else', 'end')
-      const bodyDoc = formatBodyFromIter(iter, 'else', 'end')
+      const bodyDoc = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
       branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), bodyDoc, bodyCount })
     }
   }
@@ -1032,7 +1036,11 @@ function formatBlock(node: UntypedCstNode): Doc {
     withClause = concat(text('with '), formatNode(handler), text(';'))
   }
 
-  const bodyDoc = formatBodyFromIter(iter, 'end')
+  const bodyStmtCount = countNodesUntil(iter, 'end')
+  // Single-statement: no trailing ;. Multi-statement: trailing ;
+  const bodyDoc = bodyStmtCount <= 1
+    ? formatBodyFromIterNoTrailingSemi(iter, 'end')
+    : formatBodyFromIter(iter, 'end')
   iter.expectToken('end')
 
   if (bodyDoc.type === 'text' && bodyDoc.text === '') {
@@ -1043,7 +1051,6 @@ function formatBlock(node: UntypedCstNode): Doc {
   }
 
   // Single expression without with clause: try flat `do expr end`
-  const bodyStmtCount = countStatementsInNode(node, 'end')
   if (bodyStmtCount === 1 && !withClause) {
     return group(concat(
       text('do'),
@@ -1331,6 +1338,27 @@ function formatFallback(node: UntypedCstNode): Doc {
   return formatFromChildren(node)
 }
 
+/**
+ * Emit trivia (comments with blank lines preserved) into a Doc parts array.
+ * Used for preamble, epilogue, and inter-statement trivia.
+ */
+function emitTriviaWithBlankLines(trivia: TriviaNode[], parts: Doc[]): void {
+  for (let i = 0; i < trivia.length; i++) {
+    const t = trivia[i]!
+    if (t.kind === 'lineComment') {
+      parts.push(lineComment(t.text))
+    } else if (t.kind === 'blockComment') {
+      parts.push(text(t.text), hardLine)
+    } else if (t.kind === 'whitespace' && triviaHasBlankLine([t])) {
+      // Blank line — emit only if followed by a comment (not at end)
+      const nextT = trivia[i + 1]
+      if (nextT && (nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
+        parts.push(hardLine)
+      }
+    }
+  }
+}
+
 /** Count child nodes in an iterator until a stop token (without consuming). */
 function countNodesUntil(iter: ChildIterator, ...stopTokens: string[]): number {
   let count = 0
@@ -1346,18 +1374,7 @@ function countNodesUntil(iter: ChildIterator, ...stopTokens: string[]): number {
   return count
 }
 
-/** Count statement nodes in a node's children before a stop token. */
-function countStatementsInNode(node: UntypedCstNode, stopToken: string): number {
-  let count = 0
-  // Skip the first token (e.g., 'do') and count child nodes before stop token
-  let pastFirst = false
-  for (const child of node.children) {
-    if (!pastFirst && isToken(child)) { pastFirst = true; continue }
-    if (isToken(child) && child.text === stopToken) break
-    if (isNode(child)) count++
-  }
-  return count
-}
+// countStatementsInNode removed — use countNodesUntil(iter, ...) instead
 
 /** Check if a token text is punctuation that shouldn't have a space before it. */
 function isPunctuation(s: string): boolean {
