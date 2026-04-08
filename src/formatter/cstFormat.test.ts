@@ -103,6 +103,69 @@ describe('cstFormat — basic', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Complex constructs
+// ---------------------------------------------------------------------------
+
+describe('cstFormat — complex constructs', () => {
+  it('formats if/then/end', () => {
+    const result = fmt('if true then 1 end')
+    expect(result).toBe('if true then\n  1\nend\n')
+  })
+
+  it('formats if/then/else/end', () => {
+    const result = fmt('if x then 1 else 2 end')
+    expect(result).toBe('if x then\n  1\nelse\n  2\nend\n')
+  })
+
+  it('formats do/end block', () => {
+    const result = fmt('do 1; 2 end')
+    expect(result).toBe('do\n  1;\n  2\nend\n')
+  })
+
+  it('formats lambda', () => {
+    expect(fmt('(x) -> x + 1')).toBe('(x) -> x + 1\n')
+  })
+
+  it('formats shorthand lambda', () => {
+    expect(fmt('-> $ + 1')).toBe('-> $ + 1\n')
+  })
+
+  it('formats match expression', () => {
+    const result = fmt('match x case 1 then "one" case _ then "other" end')
+    expect(result).toBe('match x\n  case 1 then "one"\n  case _ then "other"\nend\n')
+  })
+
+  it('formats handler expression', () => {
+    const result = fmt('handler @my.eff(x) -> resume(x) end')
+    expect(result).toContain('handler')
+    expect(result).toContain('@my.eff')
+    expect(result).toContain('end')
+  })
+
+  it('formats resume with args', () => {
+    expect(fmt('resume(42)')).toBe('resume(42)\n')
+  })
+
+  it('formats bare resume', () => {
+    expect(fmt('resume')).toBe('resume\n')
+  })
+
+  it('formats nested if in else', () => {
+    const result = fmt('if a then 1 else if b then 2 else 3 end')
+    expect(result).toContain('else if')
+    expect(result).toContain('end')
+  })
+
+  it('formats do with handler', () => {
+    const src = 'do with h; 1 end'
+    const result = fmt(src)
+    expect(result).toContain('do')
+    expect(result).toContain('with h;')
+    expect(result).toContain('end')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Line wrapping
 // ---------------------------------------------------------------------------
 
