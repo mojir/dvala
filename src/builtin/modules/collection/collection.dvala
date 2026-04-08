@@ -261,4 +261,3 @@
       else if not(fn(nth(items, i))) then true else recur(i + 1) end;
   end,
 };
-

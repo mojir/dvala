@@ -15,4 +15,3 @@ let scale = (point, factor) -> { x: point.x * factor, y: point.y * factor };
   circleArea,
   scale,
 };
-

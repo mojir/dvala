@@ -3,4 +3,3 @@ let { assertEqual } = import("assertion");
 let extra = import("../lib/extra");
 
 test("bestNumber is 42", -> assertEqual(extra.bestNumber, 42));
-
