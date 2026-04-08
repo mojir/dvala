@@ -78,13 +78,21 @@ The following decisions were made through structured review on 2026-04-08.
 
 ### Parser strategy
 
-**Modify the existing parser in-place** to emit CST nodes, then lower to AST. No second parser. The Pratt parser structure can be adapted, and maintaining two parsers during migration is a bigger burden than modifying one.
+**Event-based instrumentation of the existing parser.** No second parser. The existing Pratt parser is instrumented to emit structured events (`startNode`, `token`, `endNode`) into a `CstBuilder` when CST mode is active. A post-parse step converts the event stream into the typed `CstNode` tree. This is the same approach used by rust-analyzer (rowan).
+
+Why events over a separate CST parser:
+- Zero drift risk — one parser, not two.
+- Syntax changes only need updates in one place. This matters because the type system plan will add new syntax forms (type annotations, effect declarations).
+- The existing parser's contextual logic (contextual keywords, quote/splice nesting) stays untouched.
+- The instrumentation is mechanical: each sub-parser gets a few `builder.startNode()` / `builder.endNode()` calls around its existing logic.
+
+In CST mode, `ParserContext` operates directly on the full token stream (including whitespace and comments). `peek()` skips trivia internally; `advance()` collects trivia and produces a `CstToken`. The minified token stream is not created for the CST path. This makes the parser the single owner of token consumption including trivia — no parallel arrays to keep in sync.
 
 ### Public API
 
-- `parse()` continues to return AST as today (internally: build CST, lower, return AST). Callers unchanged.
-- New `parseToCst()` returns the CST. Only the formatter calls this.
-- Eager lowering: the CST is not retained after lowering unless the caller explicitly requested it via `parseToCst()`.
+- `parse()` continues to return AST as today. Callers unchanged.
+- New `parseToCst()` returns the CST. Internally: parse with CST events enabled, build CstNode tree from events. Only the formatter calls this.
+- Eager: the CST event stream is not retained after tree construction.
 
 ### CST losslessness
 
@@ -213,33 +221,69 @@ The migration is complete when all of the following are true:
 - Old and new formatter paths may temporarily duplicate logic during migration.
 - Trivia attachment ambiguity: lossless guarantees no information is lost, but the formatter still needs rules to interpret what trivia means spatially.
 
+## Design Decisions (Phase 2)
+
+Decided through structured interview on 2026-04-08.
+
+### Q1: Typed or untyped intermediate tree? → Untyped first, then convert (B)
+
+The event stream produces an untyped tree (`{ kind: string, children: (CstToken | UntypedNode)[] }`). A separate conversion module interprets children positionally per node kind to produce the typed `CstNode` interfaces from `types.ts`. This keeps parser instrumentation minimal (just `startNode(kind)` / `endNode()`, no field name annotations) and concentrates schema knowledge in one place.
+
+### Q2: How to synchronize full and minified token streams? → Full stream directly (A)
+
+In CST mode, `ParserContext` operates on the full token stream. `peek()` skips trivia internally. `advance()` collects trivia and produces a `CstToken`. The minified stream is not created. This makes the parser the single owner of token consumption — no parallel arrays to keep in sync. The trivia splitting logic (same-line trails previous, next-line leads next) moves into the advance method.
+
+### Q3: How to handle parser backtracking? → Eliminate it
+
+The parser's `storePosition()` / `restorePosition()` is used only for lambda detection in two places in `parseOperand.ts`. Both can be replaced with simple lookahead scans:
+- Parenthesized: see `(` → scan forward counting paren depth until `)` → check if next token is `->`.
+- Symbol: see symbol → check if next token is `->`.
+
+This eliminates backtracking entirely, removing the need for event rollback in the CST builder.
+
+### Q4: Should `parse()` ever use CST mode internally? → Decide later (C)
+
+Start with separate paths: `parse()` stays unchanged, `parseToCst()` is opt-in. Measure CST overhead later and switch to a single CST→lower path only if negligible.
+
+### Open question for next session
+
+None — all Phase 2 design questions are resolved. Ready to implement.
+
 ## Implementation Plan
 
-### Phase 1 — CST types and full parser conversion
+### Phase 1 — CST types and token-level infrastructure ✅
 
-1. Define `CstToken` type (`{ leadingTrivia, token, trailingTrivia }`) and trivia types.
-2. Define typed `CstNode` interfaces for all Dvala syntax forms with named fields and source spans.
-3. Modify the existing parser to emit CST nodes for all syntax forms. Trivia attachment uses the split convention (same-line trails previous, next-line leads next).
-4. Implement `parseToCst()` public API.
-5. Verify losslessness: concatenating all leaf tokens in tree order reproduces the original source.
+1. ✅ Define `CstToken` type (`{ leadingTrivia, text, trailingTrivia }`) and `TriviaNode` types.
+2. ✅ Define typed `CstNode` interfaces for all Dvala syntax forms with named fields and source spans.
+3. ✅ Implement trivia attachment algorithm (split convention: same-line trails previous, next-line leads next).
+4. ✅ Implement `printCst()` tree printer for losslessness verification.
+5. ✅ Verify token-level losslessness: `printTokens(attachTrivia(tokenize(source))) === source` (70 tests).
 
-### Phase 2 — CST-to-AST lowering
+### Phase 2 — Event-based parser instrumentation
 
-6. Implement CST-to-AST lowering that produces the same AST shape as the current parser, including formatting hints (`isInfix`, `isPipe`, `isShorthand`) and `SourceMap`.
-7. Wire `parse()` to internally call `parseToCst()` then lower. Existing callers unchanged.
-8. Add semantic-equivalence tests: parse via old path vs. CST→lower path must produce identical AST for a broad corpus.
-9. Run `npm run check` to verify no regressions.
+6. **Refactor: replace lambda backtracking with lookahead** in `parseOperand.ts`. Remove `storePosition()` / `restorePosition()` from `ParserContext` if no other callers remain. Run tests to verify no regressions.
+7. Define `CstEvent` types: `StartNode(kind)`, `Token(cstToken)`, `EndNode()`. Define `UntypedCstNode` (`{ kind, children }`).
+8. Implement `CstBuilder` that accumulates events and produces an `UntypedCstNode` tree.
+9. Implement untyped→typed conversion module that maps `UntypedCstNode` children positionally to typed `CstNode` fields per node kind.
+10. Modify `ParserContext` to support CST mode: work on full token stream, `peek()` skips trivia, `advance()` collects trivia and feeds `CstToken` to builder.
+11. Instrument each sub-parser with `builder.startNode(kind)` / `builder.endNode()` calls. Existing AST construction stays untouched.
+12. Implement `parseToCst()` public API: tokenize fully → create CST-mode context → parse → build untyped tree → convert to typed `CstProgram`.
+13. Verify tree-level losslessness: `printCst(parseToCst(source)) === source` for a broad corpus.
 
 ### Phase 3 — CST-based formatter
 
-10. Build the new CST formatter that walks CST nodes directly, applying formatting rules and normalizing trivia placement.
-11. Port formatting behavior from `prettyPrint.ts` and the current reinsertion system to the new CST formatter.
-12. Add broad regression coverage for comments, authored forms, arrays, objects, infix layouts, pipes, nested statements, and file-level comments.
-13. Verify idempotency: `format(format(source)) === format(source)`.
+14. Build the new CST formatter that walks CST nodes directly, applying formatting rules and normalizing trivia placement.
+15. Port formatting behavior from `prettyPrint.ts` and the current reinsertion system to the new CST formatter.
+16. Add broad regression coverage for comments, authored forms, arrays, objects, infix layouts, pipes, nested statements, and file-level comments.
+17. Verify idempotency: `format(format(source)) === format(source)`.
 
 ### Phase 4 — Cleanup
 
-14. Remove the old comment extraction, anchoring, and reinsertion code (`extractComments.ts`, `reinsertComments.ts`, comment hint plumbing in `format.ts`).
-15. Remove the `prettyPrint` comment hint system (`withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints`) — only used by the old formatter path.
-16. Validate that `prettyPrint.ts` still works for runtime AST display.
-17. Run full `npm run check`.
+18. Remove the old comment extraction, anchoring, and reinsertion code (`extractComments.ts`, `reinsertComments.ts`, comment hint plumbing in `format.ts`).
+19. Remove the `prettyPrint` comment hint system (`withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints`) — only used by the old formatter path.
+20. Validate that `prettyPrint.ts` still works for runtime AST display.
+21. Run full `npm run check`.
+
+### Future — Grammar schema (optional)
+
+If the number of syntax forms grows significantly (type annotations, effect declarations, etc.), consider adopting a lightweight grammar DSL (similar to rust-analyzer's ungrammar) that generates the CstNode type definitions and builder API from a grammar specification. The event-based parser instrumentation would remain — only the types and builder would be derived from the grammar.
