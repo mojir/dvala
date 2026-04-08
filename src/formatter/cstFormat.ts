@@ -332,16 +332,22 @@ function formatBody(stmts: Doc[]): Doc {
  * This is the shared logic used by do blocks, if branches, etc.
  * Returns the body as a single Doc.
  */
-function formatBodyFromIter(iter: ChildIterator, ...stopTokens: string[]): Doc {
+interface BodyResult {
+  doc: Doc
+  /** Trailing line comment text from the last statement, if any.
+   *  NOT included in `doc` — the container should emit it after `doc`. */
+  lastTrailingComment?: string
+}
+
+function formatBodyFromIter(iter: ChildIterator, ...stopTokens: string[]): BodyResult {
   return formatBodyFromIterInternal(iter, true, stopTokens)
 }
 
-/** Same as formatBodyFromIter but without trailing semicolon on last statement. */
-function formatBodyFromIterNoTrailingSemi(iter: ChildIterator, ...stopTokens: string[]): Doc {
+function formatBodyFromIterNoTrailingSemi(iter: ChildIterator, ...stopTokens: string[]): BodyResult {
   return formatBodyFromIterInternal(iter, false, stopTokens)
 }
 
-function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, stopTokens: string[]): Doc {
+function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, stopTokens: string[]): BodyResult {
   const stmts: UntypedCstNode[] = []
   const semiTokens: CstToken[] = []
 
@@ -361,9 +367,16 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
     }
   }
 
-  if (stmts.length === 0) return text('')
+  if (stmts.length === 0) return { doc: text('') }
 
   const parts: Doc[] = []
+
+  // Emit leading comments on the FIRST statement
+  if (stmts.length > 0) {
+    const firstTrivia = firstToken(stmts[0]!).leadingTrivia
+    emitTriviaWithBlankLines(firstTrivia, parts)
+  }
+
   for (let i = 0; i < stmts.length; i++) {
     const stmt = stmts[i]!
     parts.push(formatNode(stmt))
@@ -380,7 +393,10 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
       : undefined
     const trailingLc = stmtTrailingComment ?? semiTrailingComment
 
-    if (trailingLc) {
+    // For the LAST statement, don't emit the trailing comment in the doc —
+    // return it separately so the container can place it correctly
+    // (avoiding double newlines from lineComment + container's hardLine).
+    if (trailingLc && i < stmts.length - 1) {
       parts.push(text(' '), lineComment(trailingLc))
     }
 
@@ -422,7 +438,12 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
     }
   }
 
-  return concat(...parts)
+  // Extract last statement's trailing comment (not included in parts)
+  const lastStmt = stmts[stmts.length - 1]!
+  const lastSemi = semiTokens[stmts.length - 1]
+  const lastTrailingLc = getTrailingLineComment(lastStmt)
+    ?? lastSemi?.trailingTrivia.find(t => t.kind === 'lineComment')?.text
+  return { doc: concat(...parts), lastTrailingComment: lastTrailingLc }
 }
 
 // ---------------------------------------------------------------------------
@@ -980,10 +1001,12 @@ function formatIf(node: UntypedCstNode): Doc {
     condition: Doc
     bodyDoc: Doc
     bodyCount: number
+    lastTrailingComment?: string
   }
   const branches: Branch[] = []
   let elseBranchDoc: Doc | undefined
   let elseBranchCount = 0
+  let elseLastComment: string | undefined
 
   while (!iter.done()) {
     const child = iter.peek()!
@@ -996,7 +1019,9 @@ function formatIf(node: UntypedCstNode): Doc {
       } else {
         // Final else branch — use formatBodyFromIter for comment handling
         elseBranchCount = countNodesUntil(iter, 'end')
-        elseBranchDoc = formatBodyFromIterNoTrailingSemi(iter, 'end')
+        const elseResult = formatBodyFromIterNoTrailingSemi(iter, 'end')
+        elseBranchDoc = elseResult.doc
+        elseLastComment = elseResult.lastTrailingComment
         break
       }
     }
@@ -1006,14 +1031,23 @@ function formatIf(node: UntypedCstNode): Doc {
       const condition = iter.nextNode()
       iter.expectToken('then')
       const bodyCount = countNodesUntil(iter, 'else', 'end')
-      const bodyDoc = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
-      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), bodyDoc, bodyCount })
+      const bodyResult = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
+      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), bodyDoc: bodyResult.doc, bodyCount, lastTrailingComment: bodyResult.lastTrailingComment })
     }
   }
 
   iter.expectToken('end')
 
   // Simple if/then/[else]/end with single-expression bodies: try flat
+  // Collect all trailing comments for emission after `end`
+  const allTrailingComments = [
+    branches[0]?.lastTrailingComment,
+    elseLastComment,
+  ].filter(Boolean) as string[]
+  const trailingCmtDoc = allTrailingComments.length > 0
+    ? concat(text(' '), text(allTrailingComments.join(' ')))
+    : text('')
+
   if (branches.length === 1 && branches[0]!.bodyCount === 1
     && (elseBranchDoc === undefined || elseBranchCount === 1)) {
     const b = branches[0]!
@@ -1021,13 +1055,17 @@ function formatIf(node: UntypedCstNode): Doc {
     if (elseBranchDoc) {
       flatParts.push(text(' else '), elseBranchDoc)
     }
-    flatParts.push(text(' end'))
+    flatParts.push(text(' end'), trailingCmtDoc)
 
     const expandedParts: Doc[] = [text('if '), b.condition, text(' then')]
     expandedParts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
+    if (b.lastTrailingComment) {
+      expandedParts.push(text(' '), text(b.lastTrailingComment))
+    }
     if (elseBranchDoc) {
       expandedParts.push(hardLine, text('else'))
       expandedParts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
+      if (elseLastComment) expandedParts.push(text(' '), text(elseLastComment))
     }
     expandedParts.push(hardLine, text('end'))
 
@@ -1045,10 +1083,15 @@ function formatIf(node: UntypedCstNode): Doc {
       parts.push(text('if '), b.condition, text(' then'))
     }
     parts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
+    // Trailing comment from this branch's body
+    if (b.lastTrailingComment) {
+      parts.push(text(' '), text(b.lastTrailingComment))
+    }
   }
   if (elseBranchDoc) {
     parts.push(hardLine, text('else'))
     parts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
+    if (elseLastComment) parts.push(text(' '), text(elseLastComment))
   }
   parts.push(hardLine, text('end'))
   return concat(...parts)
@@ -1070,9 +1113,10 @@ function formatBlock(node: UntypedCstNode): Doc {
 
   const bodyStmtCount = countNodesUntil(iter, 'end')
   // Single-statement: no trailing ;. Multi-statement: trailing ;
-  const bodyDoc = bodyStmtCount <= 1
+  const bodyResult = bodyStmtCount <= 1
     ? formatBodyFromIterNoTrailingSemi(iter, 'end')
     : formatBodyFromIter(iter, 'end')
+  const bodyDoc = bodyResult.doc
   iter.expectToken('end')
 
   if (bodyDoc.type === 'text' && bodyDoc.text === '') {
@@ -1096,7 +1140,10 @@ function formatBlock(node: UntypedCstNode): Doc {
     ? concat(hardLine, withClause, hardLine, bodyDoc)
     : concat(hardLine, bodyDoc)
 
-  return concat(text('do'), nest(INDENT, inner), hardLine, text('end'))
+  const trailingCmt = bodyResult.lastTrailingComment
+    ? concat(text(' '), text(bodyResult.lastTrailingComment))
+    : text('')
+  return concat(text('do'), nest(INDENT, inner), trailingCmt, hardLine, text('end'))
 }
 
 function formatLoop(node: UntypedCstNode): Doc {
