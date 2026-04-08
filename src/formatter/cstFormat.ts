@@ -692,9 +692,27 @@ function formatArray(node: UntypedCstNode): Doc {
     items.push(itemDoc)
   }
 
+  // Build separator docs — preserve blank lines between entries
+  const separators: Doc[] = []
+  for (let i = 0; i < children.length - 1; i++) {
+    const comma = i < commaTokens.length ? commaTokens[i] : undefined
+    const prevLast = lastToken(children[i]!)
+    const nextFirst = firstToken(children[i + 1]!)
+    const hasBlank = comma
+      ? hasBlankLineBetweenTokens(comma.trailingTrivia, nextFirst.leadingTrivia)
+      : hasBlankLineBetweenTokens(prevLast.trailingTrivia, nextFirst.leadingTrivia)
+    separators.push(hasBlank ? concat(text(','), hardLine, hardLine) : concat(text(','), line))
+  }
+
+  // Join items with their separators
+  const innerParts: Doc[] = [items[0]!]
+  for (let i = 1; i < items.length; i++) {
+    innerParts.push(separators[i - 1]!, items[i]!)
+  }
+
   return group(concat(
     text('['),
-    nest(INDENT, concat(softLine, join(concat(text(','), line), items))),
+    nest(INDENT, concat(softLine, concat(...innerParts))),
     softLine,
     text(']'),
   ))
@@ -838,9 +856,23 @@ function formatCall(node: UntypedCstNode): Doc {
     )
   }
 
-  const argDocs = args.map(a => formatNode(a))
+  // Build argument docs with comment trivia from comma/delimiter tokens
+  const commaTokens = toks.filter(t => t.text === ',')
+  const argDocs: Doc[] = []
+  for (let i = 0; i < args.length; i++) {
+    const argDoc = formatNode(args[i]!)
+    // Check for comment trivia on the comma before this arg
+    if (i > 0 && i - 1 < commaTokens.length) {
+      const comma = commaTokens[i - 1]!
+      const trailingBlocks = comma.trailingTrivia.filter(t => t.kind === 'blockComment')
+      if (trailingBlocks.length > 0) {
+        argDocs.push(concat(...trailingBlocks.map(t => concat(text(t.text), text(' '))), argDoc))
+        continue
+      }
+    }
+    argDocs.push(argDoc)
+  }
 
-  // Check for comments on the open paren (e.g. `foo(/* arg */ 42)`)
   const openDoc = openParen ? formatTokenWithTrivia(openParen) : text('(')
 
   return concat(
