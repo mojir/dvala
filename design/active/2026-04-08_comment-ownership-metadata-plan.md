@@ -332,7 +332,7 @@ The CST formatter lives in `src/formatter/`: `doc.ts` for the algebra, `cstForma
 
 ### Phase 2 — Event-based parser instrumentation
 
-6. **Refactor: replace lambda backtracking with lookahead** in `parseOperand.ts`. Remove `storePosition()` / `restorePosition()` from `ParserContext` if no other callers remain. Run tests to verify no regressions.
+6. ✅ **Refactor: replace lambda backtracking with lookahead** in `parseOperand.ts`. Added `looksLikeLambda()` lookahead function, removed `storePosition()` / `restorePosition()` from `ParserContext`. All tests pass.
 7. Add `CstErrorNode` to the CST type hierarchy (minimal: `{ kind: 'Error', tokens: CstToken[], span: SourceSpan }`). Update all existing tree walkers to handle it.
 8. Define `CstEvent` types: `StartNode(kind)`, `Token(cstToken)`, `EndNode()`. Define `UntypedCstNode` (`{ kind, children }`).
 9. Implement `CstBuilder` that accumulates events and produces an `UntypedCstNode` tree.
