@@ -8,6 +8,7 @@ import type { ParserContext } from '../ParserContext'
 import { parseImplicitBlock } from './parseImplicitBlock'
 
 export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
+  ctx.builder?.startNode('If')
   ctx.advance()
   const condition = ctx.parseExpression()
   assertReservedSymbolToken(ctx.tryPeek(), 'then')
@@ -29,6 +30,7 @@ export function parseIf(ctx: ParserContext, token: SymbolToken): IfNode {
 
   const node = withSourceCodeInfo([NodeTypes.If, [condition, thenExpression, elseExpression], 0], token[2], ctx) as IfNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
 

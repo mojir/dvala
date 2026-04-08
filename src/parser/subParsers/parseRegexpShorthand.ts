@@ -4,6 +4,7 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
 export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWithName {
+  ctx.builder?.startNode('RegexpShorthand')
   const token = ctx.peek()
   ctx.advance()
 
@@ -24,5 +25,6 @@ export function parseRegexpShorthand(ctx: ParserContext): NormalExpressionNodeWi
   ], token[2], ctx) as NormalExpressionNodeWithName
 
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

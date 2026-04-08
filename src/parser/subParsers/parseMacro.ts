@@ -13,6 +13,7 @@ export type MacroPayload = [LambdaNode[1][0], LambdaNode[1][1], string | null]
 export type MacroNode = [typeof NodeTypes.Macro, MacroPayload, number]
 
 export function parseMacro(ctx: ParserContext): MacroNode {
+  ctx.builder?.startNode('Macro')
   const token = ctx.peek()
   ctx.advance() // skip 'macro' or 'macro@qualified.name' token
 
@@ -39,5 +40,6 @@ export function parseMacro(ctx: ParserContext): MacroNode {
 
   const node = withSourceCodeInfo([NodeTypes.Macro, [functionArguments, bodyNodes, qualifiedName], 0], token[2], ctx) as MacroNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

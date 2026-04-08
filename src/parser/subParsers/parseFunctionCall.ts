@@ -39,8 +39,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   const params: AstNode[] = []
   while (!ctx.isAtEnd() && !isRParenToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
+      ctx.builder?.startNode('Spread')
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
+      ctx.builder?.endNode()
     } else {
       params.push(ctx.parseExpression())
     }

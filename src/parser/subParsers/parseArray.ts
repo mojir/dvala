@@ -7,13 +7,16 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
 export function parseArray(ctx: ParserContext): ArrayNode {
+  ctx.builder?.startNode('Array')
   const firstToken = asLBracketToken(ctx.tryPeek())
   ctx.advance()
   const params: AstNode[] = []
   while (!ctx.isAtEnd() && !isRBracketToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
+      ctx.builder?.startNode('Spread')
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
+      ctx.builder?.endNode()
     } else {
       params.push(ctx.parseExpression())
     }
@@ -31,5 +34,6 @@ export function parseArray(ctx: ParserContext): ArrayNode {
 
   const node = withSourceCodeInfo([NodeTypes.Array, params, 0], firstToken[2], ctx)
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node as ArrayNode
 }

@@ -14,6 +14,7 @@ import { withSourceCodeInfo } from '../helpers'
 export type WithHandlerNode = [typeof NodeTypes.WithHandler, [AstNode, AstNode[]], number]
 
 export function parseDo(ctx: ParserContext): DoNode {
+  ctx.builder?.startNode('Block')
   const token = asReservedSymbolToken(ctx.tryPeek(), 'do')
   ctx.advance()
 
@@ -39,6 +40,7 @@ export function parseDo(ctx: ParserContext): DoNode {
   ctx.advance()
   const node = withSourceCodeInfo([NodeTypes.Block, expressions, 0], token[2], ctx) as DoNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
 

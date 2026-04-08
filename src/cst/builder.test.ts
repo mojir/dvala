@@ -97,4 +97,76 @@ describe('CstBuilder', () => {
     const b = new CstBuilder()
     expect(() => b.token(tok('x'))).toThrow('no open node')
   })
+
+  // -- checkpoint / startNodeAt --
+
+  it('wraps children retroactively with startNodeAt', () => {
+    const b = new CstBuilder()
+    b.startNode('Program')
+    const cp = b.checkpoint() // 0
+    b.token(tok('1'))
+    // Now we discover it's a binary op — wrap from checkpoint
+    b.startNodeAt(cp, 'BinaryOp')
+    b.token(tok('+'))
+    b.token(tok('2'))
+    b.endNode()
+    b.endNode()
+    const tree = b.finish()
+
+    expect(tree.kind).toBe('Program')
+    expect(tree.children).toHaveLength(1)
+    const binOp = tree.children[0] as { kind: string; children: unknown[] }
+    expect(binOp.kind).toBe('BinaryOp')
+    expect(binOp.children).toHaveLength(3)
+    expect(binOp.children[0]).toEqual(tok('1'))
+    expect(binOp.children[1]).toEqual(tok('+'))
+    expect(binOp.children[2]).toEqual(tok('2'))
+  })
+
+  it('chains startNodeAt for left-associative operators', () => {
+    // a + b + c → BinaryOp(BinaryOp(a, +, b), +, c)
+    const b = new CstBuilder()
+    b.startNode('Program')
+    const cp = b.checkpoint()
+    b.token(tok('a'))
+    // First operator
+    b.startNodeAt(cp, 'BinaryOp')
+    b.token(tok('+'))
+    b.token(tok('b'))
+    b.endNode()
+    // Second operator — checkpoint still at 0, BinaryOp(a+b) is now at [0]
+    b.startNodeAt(cp, 'BinaryOp')
+    b.token(tok('+'))
+    b.token(tok('c'))
+    b.endNode()
+    b.endNode()
+    const tree = b.finish()
+
+    const outer = tree.children[0] as { kind: string; children: unknown[] }
+    expect(outer.kind).toBe('BinaryOp')
+    expect(outer.children).toHaveLength(3)
+    const inner = outer.children[0] as { kind: string; children: unknown[] }
+    expect(inner.kind).toBe('BinaryOp')
+    expect(inner.children).toHaveLength(3)
+  })
+
+  it('startNodeAt preserves siblings before checkpoint', () => {
+    const b = new CstBuilder()
+    b.startNode('Program')
+    b.token(tok('a'))
+    b.token(tok(';'))
+    const cp = b.checkpoint() // 2
+    b.token(tok('b'))
+    b.startNodeAt(cp, 'Wrapped')
+    b.endNode()
+    b.endNode()
+    const tree = b.finish()
+
+    expect(tree.children).toHaveLength(3)
+    expect(tree.children[0]).toEqual(tok('a'))
+    expect(tree.children[1]).toEqual(tok(';'))
+    const wrapped = tree.children[2] as { kind: string; children: unknown[] }
+    expect(wrapped.kind).toBe('Wrapped')
+    expect(wrapped.children).toEqual([tok('b')])
+  })
 })

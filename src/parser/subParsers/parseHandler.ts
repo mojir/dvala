@@ -38,6 +38,12 @@ export type HandlerNode = [typeof NodeTypes.Handler, [ParsedHandlerClause[], [Bi
  * Transform: optional, `transform x -> expr` (or `transform x -> do...end`).
  */
 export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
+  // startNode is emitted by the caller for `shallow handler` (since `shallow`
+  // is consumed in parseExpression before calling parseHandler). For non-shallow
+  // handlers, we start the node here.
+  if (!shallow) {
+    ctx.builder?.startNode('Handler')
+  }
   // `handler` is a contextual keyword (Symbol token, not ReservedSymbol)
   const token = ctx.tryPeek()!
   ctx.advance() // consume 'handler'
@@ -133,5 +139,6 @@ export function parseHandler(ctx: ParserContext, shallow = false): HandlerNode {
     ctx,
   ) as HandlerNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
