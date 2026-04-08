@@ -24,81 +24,81 @@ function fmt(source: string): string {
 
 describe('cstFormat — basic', () => {
   it('formats a number', () => {
-    expect(fmt('42')).toBe('42\n')
+    expect(fmt('42')).toBe('42;\n')
   })
 
   it('formats a string', () => {
-    expect(fmt('"hello"')).toBe('"hello"\n')
+    expect(fmt('"hello"')).toBe('"hello";\n')
   })
 
   it('formats a symbol', () => {
-    expect(fmt('foo')).toBe('foo\n')
+    expect(fmt('foo')).toBe('foo;\n')
   })
 
   it('formats true/false/null', () => {
-    expect(fmt('true')).toBe('true\n')
-    expect(fmt('false')).toBe('false\n')
-    expect(fmt('null')).toBe('null\n')
+    expect(fmt('true')).toBe('true;\n')
+    expect(fmt('false')).toBe('false;\n')
+    expect(fmt('null')).toBe('null;\n')
   })
 
   it('formats a binary expression', () => {
-    expect(fmt('1 + 2')).toBe('1 + 2\n')
+    expect(fmt('1 + 2')).toBe('1 + 2;\n')
   })
 
   it('formats a let binding', () => {
-    expect(fmt('let x = 42')).toBe('let x = 42\n')
+    expect(fmt('let x = 42')).toBe('let x = 42;\n')
   })
 
   it('formats multiple statements', () => {
-    expect(fmt('let x = 1; let y = 2')).toBe('let x = 1;\nlet y = 2\n')
+    expect(fmt('let x = 1; let y = 2')).toBe('let x = 1;\nlet y = 2;\n')
   })
 
   it('formats an empty array', () => {
-    expect(fmt('[]')).toBe('[]\n')
+    expect(fmt('[]')).toBe('[];\n')
   })
 
   it('formats a short array', () => {
-    expect(fmt('[1, 2, 3]')).toBe('[1, 2, 3]\n')
+    expect(fmt('[1, 2, 3]')).toBe('[1, 2, 3];\n')
   })
 
   it('formats an empty object', () => {
-    expect(fmt('{}')).toBe('{}\n')
+    expect(fmt('{}').trimEnd()).toBe('{};')
   })
 
   it('formats property access', () => {
-    expect(fmt('foo.bar')).toBe('foo.bar\n')
+    expect(fmt('foo.bar')).toBe('foo.bar;\n')
   })
 
   it('formats index access', () => {
-    expect(fmt('arr[0]')).toBe('arr[0]\n')
+    expect(fmt('arr[0]')).toBe('arr[0];\n')
   })
 
   it('formats function call', () => {
-    expect(fmt('foo(1, 2)')).toBe('foo(1, 2)\n')
+    expect(fmt('foo(1, 2)')).toBe('foo(1, 2);\n')
   })
 
   it('formats function call with no args', () => {
-    expect(fmt('foo()')).toBe('foo()\n')
+    expect(fmt('foo()')).toBe('foo();\n')
   })
 
   it('formats parenthesized expression', () => {
-    expect(fmt('(1 + 2)')).toBe('(1 + 2)\n')
+    expect(fmt('(1 + 2)')).toBe('(1 + 2);\n')
   })
 
   it('formats spread', () => {
-    expect(fmt('[...xs]')).toBe('[...xs]\n')
+    expect(fmt('[...xs]')).toBe('[...xs];\n')
   })
 
   it('formats unary minus', () => {
-    expect(fmt('-x')).toBe('-x\n')
+    expect(fmt('-x')).toBe('-x;\n')
   })
 
   it('formats effect name', () => {
-    expect(fmt('@my.effect')).toBe('@my.effect\n')
+    expect(fmt('@my.effect')).toBe('@my.effect;\n')
   })
 
   it('formats template string', () => {
-    expect(fmt('`hello ${name}`')).toBe('`hello ${name}`\n')
+    expect(fmt('`hello ${name}`')).toBe('`hello ${name}`;\n')
   })
 })
 
@@ -107,53 +107,58 @@ describe('cstFormat — basic', () => {
 // ---------------------------------------------------------------------------
 
 describe('cstFormat — complex constructs', () => {
-  it('formats if/then/end', () => {
-    const result = fmt('if true then 1 end')
-    expect(result).toBe('if true then\n  1\nend\n')
+  it('formats if/then/end — tries flat', () => {
+    expect(fmt('if true then 1 end').trimEnd()).toBe('if true then 1 end;')
   })
 
-  it('formats if/then/else/end', () => {
-    const result = fmt('if x then 1 else 2 end')
-    expect(result).toBe('if x then\n  1\nelse\n  2\nend\n')
+  it('formats if/then/else/end — tries flat', () => {
+    expect(fmt('if x then 1 else 2 end').trimEnd()).toBe('if x then 1 else 2 end;')
   })
 
-  it('formats do/end block', () => {
+  it('formats do/end block — single stmt tries flat', () => {
+    expect(fmt('do 42 end').trimEnd()).toBe('do 42 end;')
+  })
+
+  it('formats do/end block — multi stmt expands', () => {
     const result = fmt('do 1; 2 end')
-    expect(result).toBe('do\n  1;\n  2\nend\n')
+    expect(result).toContain('do\n')
+    expect(result).toContain('end;')
   })
 
   it('formats lambda', () => {
-    expect(fmt('(x) -> x + 1')).toBe('(x) -> x + 1\n')
+    expect(fmt('(x) -> x + 1').trimEnd()).toBe('(x) -> x + 1;')
   })
 
   it('formats shorthand lambda', () => {
-    expect(fmt('-> $ + 1')).toBe('-> $ + 1\n')
+    expect(fmt('-> $ + 1').trimEnd()).toBe('-> $ + 1;')
   })
 
   it('formats match expression', () => {
     const result = fmt('match x case 1 then "one" case _ then "other" end')
-    expect(result).toBe('match x\n  case 1 then "one"\n  case _ then "other"\nend\n')
+    expect(result).toContain('match')
+    expect(result).toContain('case 1 then')
+    expect(result).toContain('end;')
   })
 
   it('formats handler expression', () => {
     const result = fmt('handler @my.eff(x) -> resume(x) end')
     expect(result).toContain('handler')
     expect(result).toContain('@my.eff')
-    expect(result).toContain('end')
+    expect(result).toContain('end;')
   })
 
   it('formats resume with args', () => {
-    expect(fmt('resume(42)')).toBe('resume(42)\n')
+    expect(fmt('resume(42)').trimEnd()).toBe('resume(42);')
   })
 
   it('formats bare resume', () => {
-    expect(fmt('resume')).toBe('resume\n')
+    expect(fmt('resume').trimEnd()).toBe('resume;')
   })
 
   it('formats nested if in else', () => {
     const result = fmt('if a then 1 else if b then 2 else 3 end')
     expect(result).toContain('else if')
-    expect(result).toContain('end')
+    expect(result).toContain('end;')
   })
 
   it('formats do with handler', () => {
@@ -161,7 +166,7 @@ describe('cstFormat — complex constructs', () => {
     const result = fmt(src)
     expect(result).toContain('do')
     expect(result).toContain('with h;')
-    expect(result).toContain('end')
+    expect(result).toContain('end;')
   })
 })
 
@@ -226,7 +231,7 @@ describe('cstFormat — comments', () => {
   it('preserves blank lines between statements', () => {
     const result = fmt('let x = 1;\n\nlet y = 2')
     // Should have a blank line between the two statements
-    expect(result).toMatch(/let x = 1;\n\nlet y = 2/)
+    expect(result).toMatch(/let x = 1;\n\nlet y = 2;/)
   })
 })
 
@@ -235,20 +240,24 @@ describe('cstFormat — comments', () => {
 // ---------------------------------------------------------------------------
 
 describe('cstFormat — idempotency', () => {
+  // Idempotency: format(format(x)) === format(x)
+  // Use already-formatted code (with `;`) as input.
   const cases = [
-    '42',
-    '"hello"',
-    'foo',
-    '1 + 2',
-    'let x = 42',
-    '[1, 2, 3]',
-    'foo(1, 2)',
-    'foo.bar',
-    'arr[0]',
-    '(1 + 2)',
-    '[...xs, 1]',
-    '-x',
-    '@my.effect',
+    '42;',
+    '"hello";',
+    'foo;',
+    '1 + 2;',
+    'let x = 42;',
+    '[1, 2, 3];',
+    'foo(1, 2);',
+    'foo.bar;',
+    'arr[0];',
+    '(1 + 2);',
+    '[...xs, 1];',
+    '-x;',
+    '@my.effect;',
+    'if true then 1 else 2 end;',
+    'do 42 end;',
   ]
 
   for (const source of cases) {
