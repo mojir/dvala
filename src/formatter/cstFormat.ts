@@ -110,47 +110,84 @@ function trailingComments(token: CstToken): Doc[] {
 /**
  * Format a token with its comment trivia preserved.
  * Leading block comments → `/* ... * / token_text`
- * Trailing line comments → `token_text // ...` (with forced break)
  * Trailing block comments → `token_text /* ... * /`
+ * Trailing line comments are NOT emitted here — they force line breaks
+ * that conflict with the enclosing layout (semicolons, statement separators).
+ * Containers (program, block body) handle trailing line comments.
  */
 function formatTokenWithTrivia(token: CstToken): Doc {
   const leading = leadingComments(token)
-  const trailing = trailingComments(token)
   const tokenDoc = text(token.text)
 
-  if (leading.length === 0 && trailing.length === 0) return tokenDoc
+  // Only emit block comments from trailing trivia (not line comments)
+  const trailingBlockComments: Doc[] = []
+  for (const t of token.trailingTrivia) {
+    if (t.kind === 'blockComment') {
+      trailingBlockComments.push(text(t.text))
+    }
+  }
+
+  if (leading.length === 0 && trailingBlockComments.length === 0) return tokenDoc
 
   const parts: Doc[] = []
   for (const c of leading) {
     parts.push(c, text(' '))
   }
   parts.push(tokenDoc)
-  for (const c of trailing) {
+  for (const c of trailingBlockComments) {
     parts.push(text(' '), c)
   }
   return concat(...parts)
 }
 
-/** Count newlines in a trivia array. */
-function countNewlinesInTrivia(trivia: TriviaNode[]): number {
-  let count = 0
-  for (const t of trivia) {
-    if (t.kind === 'whitespace') {
-      for (const ch of t.text) {
-        if (ch === '\n') count++
-      }
-    }
+/**
+ * Get the trailing line comment from the last token of a subtree, if any.
+ * Used by containers to emit trailing line comments after semicolons.
+ */
+function getTrailingLineComment(node: UntypedCstNode): string | undefined {
+  const tok = lastToken(node)
+  for (const t of tok.trailingTrivia) {
+    if (t.kind === 'lineComment') return t.text
   }
-  return count
+  return undefined
 }
 
 /**
- * Check if there's a blank line between two tokens by counting total
- * newlines across both the trailing trivia of the previous token and
- * the leading trivia of the next token. Two or more newlines = blank line.
+ * Check if a trivia array contains a blank line — a whitespace node with
+ * two or more newlines. This detects actual blank lines (empty lines with
+ * no content) rather than newlines separated by comments.
+ */
+function triviaHasBlankLine(trivia: TriviaNode[]): boolean {
+  for (const t of trivia) {
+    if (t.kind === 'whitespace') {
+      let newlines = 0
+      for (const ch of t.text) {
+        if (ch === '\n') newlines++
+        if (newlines >= 2) return true
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Check if there's a blank line in the gap between two tokens.
+ * A blank line occurs when:
+ * 1. A single whitespace trivia node has 2+ newlines, OR
+ * 2. The trailing trivia ends with a newline AND the leading trivia starts
+ *    with a newline (the split convention put one newline on each side)
  */
 function hasBlankLineBetweenTokens(prevTrailing: TriviaNode[], nextLeading: TriviaNode[]): boolean {
-  return countNewlinesInTrivia(prevTrailing) + countNewlinesInTrivia(nextLeading) >= 2
+  if (triviaHasBlankLine(prevTrailing) || triviaHasBlankLine(nextLeading)) return true
+
+  // Check for newline at the boundary: trailing ends with \n and leading starts with \n
+  const lastTrailing = prevTrailing[prevTrailing.length - 1]
+  const firstLeading = nextLeading[0]
+  if (lastTrailing?.kind === 'whitespace' && lastTrailing.text.endsWith('\n')
+    && firstLeading?.kind === 'whitespace' && firstLeading.text.startsWith('\n')) {
+    return true
+  }
+  return false
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +302,11 @@ class ChildIterator {
 function formatBody(stmts: Doc[]): Doc {
   if (stmts.length === 0) return text('')
   if (stmts.length === 1) return stmts[0]!
-  return join(concat(text(';'), hardLine), stmts)
+  const parts: Doc[] = [stmts[0]!]
+  for (let i = 1; i < stmts.length; i++) {
+    parts.push(text(';'), hardLine, stmts[i]!)
+  }
+  return concat(...parts)
 }
 
 // ---------------------------------------------------------------------------
@@ -275,18 +316,32 @@ function formatBody(stmts: Doc[]): Doc {
 export function formatCst(tree: UntypedCstNode, trailingTrivia: TriviaNode[]): string {
   const doc = formatProgram(tree, trailingTrivia)
   let result = render(doc, MAX_WIDTH)
+  // Post-processing
+  result = result
+    .replace(/[ \t]+$/gm, '') // strip trailing whitespace on each line
+    .replace(/^\n+/, '') // strip leading blank lines
   // Ensure trailing newline
-  if (!result.endsWith('\n')) result += '\n'
+  if (result.length > 0 && !result.endsWith('\n')) result += '\n'
   return result
 }
 
 function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): Doc {
   const statements = childNodes(program)
   if (statements.length === 0) {
-    // File with only comments or empty
-    const commentDocs = triviaComments(trailingTrivia)
-    if (commentDocs.length === 0) return text('')
-    return concat(...commentDocs)
+    // File with only comments/shebang or empty
+    const parts: Doc[] = []
+    // Check for shebang in trailing trivia
+    for (const t of trailingTrivia) {
+      if (t.kind === 'shebang') {
+        parts.push(text(t.text))
+      } else if (t.kind === 'lineComment') {
+        parts.push(lineComment(t.text))
+      } else if (t.kind === 'blockComment') {
+        parts.push(text(t.text), hardLine)
+      }
+    }
+    if (parts.length === 0) return text('')
+    return concat(...parts)
   }
 
   // Check for shebang in leading trivia of the first token
@@ -313,6 +368,7 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
   }
 
   // Format statements: always add `;` after each statement (including last).
+  // Trailing line comments go after the `;` on the same line.
   // Preserve blank lines between statements from the original source.
   const semicolonTokens = tokens(program)
   for (let i = 0; i < statements.length; i++) {
@@ -320,14 +376,14 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
     parts.push(formatNode(stmt))
     parts.push(text(';'))
 
-    // Check for trailing comment on the semicolon token (if present)
-    if (i < semicolonTokens.length) {
-      const semi = semicolonTokens[i]!
-      const semiTrailing = trailingComments(semi)
-      if (semiTrailing.length > 0) {
-        parts.push(text(' '))
-        parts.push(...semiTrailing)
-      }
+    // Trailing line comment on the statement's last token or on the semicolon
+    const stmtTrailingComment = getTrailingLineComment(stmt)
+    const semiTrailingComment = i < semicolonTokens.length
+      ? semicolonTokens[i]!.trailingTrivia.find(t => t.kind === 'lineComment')?.text
+      : undefined
+    const trailingComment = stmtTrailingComment ?? semiTrailingComment
+    if (trailingComment) {
+      parts.push(text(' '), lineComment(trailingComment))
     }
 
     if (i < statements.length - 1) {
@@ -343,24 +399,51 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
         hasBlank = hasBlankLineBetweenTokens(lastTok.trailingTrivia, nextFirst.leadingTrivia)
       }
 
-      if (hasBlank) {
+      // If a trailing line comment was emitted, it already forced a newline.
+      // Only emit an additional hardLine for blank lines.
+      if (trailingComment) {
+        if (hasBlank) parts.push(hardLine) // one extra = blank line
+      } else if (hasBlank) {
         parts.push(hardLine, hardLine)
       } else {
         parts.push(hardLine)
       }
 
-      // Leading comments before next statement
-      const nextLeading = leadingComments(nextFirst)
-      for (const c of nextLeading) {
-        parts.push(c)
+      // Leading comments before next statement, with blank lines preserved
+      const nextTrivia = nextFirst.leadingTrivia
+      for (let t = 0; t < nextTrivia.length; t++) {
+        const trivia = nextTrivia[t]!
+        if (trivia.kind === 'lineComment') {
+          parts.push(lineComment(trivia.text))
+          // Check if there's a blank line after this comment (before the next content)
+          const nextWs = nextTrivia[t + 1]
+          if (nextWs && nextWs.kind === 'whitespace' && triviaHasBlankLine([nextWs])) {
+            parts.push(hardLine)
+          }
+        } else if (trivia.kind === 'blockComment') {
+          parts.push(text(trivia.text), hardLine)
+        }
+        // Whitespace trivia with blank lines before comments
+        if (trivia.kind === 'whitespace' && triviaHasBlankLine([trivia])) {
+          const nextTriv = nextTrivia[t + 1]
+          if (nextTriv && (nextTriv.kind === 'lineComment' || nextTriv.kind === 'blockComment')) {
+            parts.push(hardLine) // blank line before the comment
+          }
+        }
       }
     }
   }
 
-  // File-level trailing comments
+  // File-level trailing comments (after last statement)
   const fileTrailingComments = triviaComments(trailingTrivia)
-  for (const c of fileTrailingComments) {
-    parts.push(c)
+  if (fileTrailingComments.length > 0) {
+    // Need a newline between last statement and trailing comments
+    if (!trailingComment) {
+      parts.push(hardLine)
+    }
+    for (const c of fileTrailingComments) {
+      parts.push(c)
+    }
   }
 
   return concat(...parts)
@@ -465,11 +548,36 @@ function formatArray(node: UntypedCstNode): Doc {
   const children = childNodes(node)
 
   if (children.length === 0) {
-    // Empty array: []
     return text('[]')
   }
 
-  const items = children.map(c => formatNode(c))
+  // Build items with trivia from delimiter tokens preserved
+  const items: Doc[] = []
+  const toks = tokens(node)
+  // Tokens: [, commas..., ]
+  // First token is [, last is ], middle are commas
+  const commaTokens = toks.filter(t => t.text === ',')
+
+  for (let i = 0; i < children.length; i++) {
+    const itemDoc = formatNode(children[i]!)
+    // Check for comment trivia on the comma before this element
+    if (i > 0 && i - 1 < commaTokens.length) {
+      const comma = commaTokens[i - 1]!
+      const trailingCmts = trailingComments(comma)
+      if (trailingCmts.length > 0) {
+        items.push(concat(...trailingCmts, text(' '), itemDoc))
+        continue
+      }
+    }
+    // Check for comment trivia on the element's first token
+    const firstTok = firstToken(children[i]!)
+    const leadingCmts = leadingComments(firstTok)
+    if (leadingCmts.length > 0) {
+      items.push(concat(...leadingCmts, text(' '), itemDoc))
+      continue
+    }
+    items.push(itemDoc)
+  }
 
   return group(concat(
     text('['),
@@ -664,15 +772,34 @@ function formatLet(node: UntypedCstNode): Doc {
   while (!iter.done() && !iter.isToken('=')) {
     const child = iter.next()
     if (isToken(child)) {
+      const t = child.text
       // Add space unless current is punctuation or previous was open bracket
-      if (targetParts.length > 0 && !isPunctuation(child.text) && !isOpenBracket(lastTargetText)) {
+      // Special case: `{` and `}` in object destructuring get spaces inside
+      if (t === '{') {
+        if (targetParts.length > 0) targetParts.push(text(' '))
+        targetParts.push(text('{ '))
+        lastTargetText = '{ '
+        continue
+      }
+      if (t === '}') {
+        targetParts.push(text(' }'))
+        lastTargetText = '}'
+        continue
+      }
+      if (t === ',') {
+        targetParts.push(text(', '))
+        lastTargetText = ', '
+        continue
+      }
+      if (targetParts.length > 0 && !isPunctuation(t) && !isOpenBracket(lastTargetText)
+        && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
-      targetParts.push(text(child.text))
-      lastTargetText = child.text
+      targetParts.push(text(t))
+      lastTargetText = t
     } else {
-      // Add space before node unless previous was open bracket
-      if (targetParts.length > 0 && !isOpenBracket(lastTargetText)) {
+      // Add space before node unless previous was open bracket or already ends with space
+      if (targetParts.length > 0 && !isOpenBracket(lastTargetText) && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
       targetParts.push(formatNode(child))
