@@ -23,8 +23,8 @@ let withTemp = macro (ast) ->
   quote
     do
     let tmp = $^{ast};
-    tmp * 2
-  end
+    tmp * 2;
+  end;
 end;
 
 let tmp = 999;

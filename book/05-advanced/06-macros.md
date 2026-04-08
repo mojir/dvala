@@ -76,7 +76,7 @@ Compound nodes nest other nodes in their payload:
 // A macro that inspects its argument's AST type
 let showType = macro (ast) -> do
   let nodeType = first(ast);
-  ["Str", nodeType, 0]
+  ["Str", nodeType, 0];
 end;
 showType(42);
 ```
@@ -84,7 +84,7 @@ showType(42);
 ```dvala
 let showType = macro (ast) -> do
   let nodeType = first(ast);
-  ["Str", nodeType, 0]
+  ["Str", nodeType, 0];
 end;
 showType(x + 1);
 ```
@@ -141,7 +141,7 @@ Quote blocks can contain multiple statements. The result is an array of AST node
 ```dvala
 let twoStatements = quote
   let x = 1;
-  x + 1
+  x + 1;
 end;
 typeOf(twoStatements);
 ```
@@ -311,8 +311,8 @@ let withTemp = macro (ast) ->
   quote
     do
     let tmp = $^{ast};
-    tmp * 2
-  end
+    tmp * 2;
+  end;
 end;
 
 // The caller also has "tmp"
@@ -376,10 +376,10 @@ let double = macro@mylib.double (ast) -> quote $^{ast} + $^{ast} end;
 do
   with handler @dvala.macro.expand(arg) -> do
     perform(@dvala.io.print, `Expanding macro: ${qualifiedName(arg.fn)}`);
-    resume(["Num", 99, 0])
+    resume(["Num", 99, 0]);
   end
   end;
-  double(21)
+  double(21);
 end;
 // Return the expansion result as AST
 ```
@@ -392,7 +392,7 @@ let double = macro (ast) -> quote $^{ast} + $^{ast} end;
 // Anonymous — handler is NOT called
 do
   with handler @dvala.macro.expand(arg) -> resume(["Num", 99, 0]) end;
-  double(21)
+  double(21);
 end;
 ```
 
@@ -495,7 +495,7 @@ let describe = macro (ast) -> do
     case ["Call", _, _] then ["Str", "call expression", 0]
     case _ then ["Str", "something else", 0]
   end;
-  result
+  result;
 end;
 
 [

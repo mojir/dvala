@@ -24,7 +24,7 @@ let { fallback } = import("effectHandler");
 do
   with fallback(0);
   let x = 0 / 0;
-  x + 1
+  x + 1;
 end;
 ```
 
@@ -45,6 +45,6 @@ Define your own effects with `@name` and handle them:
 do
   with handler @my.double(val) -> resume(val * 2) end;
   let x = perform(@my.double, 21);
-  x
+  x;
 end;
 ```

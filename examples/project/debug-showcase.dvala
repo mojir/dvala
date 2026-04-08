@@ -42,7 +42,7 @@ let pattern = regexp("\\d+", "g");
 // --- Handler ---
 let logger = handler @debug.log(msg) -> do
   perform(@dvala.io.print, "LOG: " ++ msg ++ "\n");
-  resume(null)
+  resume(null);
 end
 transform
   result -> { result, logged: true }
@@ -68,7 +68,7 @@ let result = do
     clamped,
     pattern,
     myEffect,
-  }
+  };
 end;
 
 result;

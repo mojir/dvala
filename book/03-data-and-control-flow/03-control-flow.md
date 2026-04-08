@@ -64,7 +64,7 @@ Group multiple expressions with `do` / `end`. The block returns its last express
 do
   let a = 10;
   let b = 20;
-  a + b
+  a + b;
 end;
 ```
 
@@ -77,14 +77,14 @@ Use `handler...end` with `do...with` to handle errors. `perform(@dvala.error, { 
 ```dvala
 do
   with handler @dvala.error(arg) -> resume(arg.message) end;
-  perform(@dvala.error, { message: "oops" })
+  perform(@dvala.error, { message: "oops" });
 end;
 ```
 
 ```dvala
 let safeDiv = (a, b) -> do
   with handler @dvala.error(arg) -> resume("error") end;
-  a / b
+  a / b;
 end;
 safeDiv(10, 0);
 ```

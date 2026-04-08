@@ -24,7 +24,7 @@ x + y;
 let outer = 5;
 do
   let inner = 10;
-  outer + inner
+  outer + inner;
 end;
 ```
 
@@ -33,7 +33,7 @@ But outer scopes cannot see inner bindings — they are confined to their block:
 ```dvala
 let result = do
   let secret = 42;
-  secret
+  secret;
 end;
 result;
 ```
@@ -45,7 +45,7 @@ A **closure** is a function that captures variables from its enclosing scope. Th
 ```dvala
 let makeAdder = (n) -> do
   let add = (x) -> n + x;
-  add
+  add;
 end;
 let addTen = makeAdder(10);
 addTen(5);
@@ -61,7 +61,7 @@ An inner binding can **shadow** an outer one with the same name. The outer bindi
 let x = 5;
 let result = do
   let x = 99;
-  x
+  x;
 end;
 [result, x];
 ```
@@ -77,7 +77,7 @@ let x = 10;
 let addX = (y) -> x + y;
 let result = do
   let x = 20;
-  addX(5)
+  addX(5);
 end;
 result;
 ```
@@ -105,9 +105,9 @@ let makeCounter = () -> do
   let n = 0;
   let step = () -> do
     let n = n + 1;
-    n
+    n;
   end;
-  step
+  step;
 end;
 let c1 = makeCounter();
 let c2 = makeCounter();

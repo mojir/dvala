@@ -1,25 +1,28 @@
 {
-  mapcat: (arr, fn) -> do
-    flatten(map(arr, fn), 1)
-  end,
-
+  mapcat: (arr, fn) -> flatten(map(arr, fn), 1),
   position: (seq, fn) -> do
-    let items = if isNull(seq) then null
-      else if isString(seq) then for (i in range(count(seq))) -> nth(seq, i)
-      else seq
+    let items = if isNull(seq) then
+      null
+    else if isString(seq) then
+      for (i in range(count(seq))) -> nth(seq, i)
+    else
+      seq
     end;
-    if isNull(items) then null
+    if isNull(items) then
+      null
     else
       loop (i = 0) ->
-        if i >= count(items) then null
-        else if fn(nth(items, i)) then i
-        else recur(i + 1)
-        end
-    end
+        if i >= count(items) then
+          null
+        else if fn(nth(items, i)) then i else recur(i + 1) end
+    end;
   end,
-
   sortBy: (seq, keyfn, ...args) -> do
-    let items = if isString(seq) then for (i in range(count(seq))) -> nth(seq, i) else [...seq] end;
+    let items = if isString(seq) then
+      for (i in range(count(seq))) -> nth(seq, i)
+    else
+      [...seq]
+    end;
     let keyed = map(items, (elem) -> [keyfn(elem), elem]);
     let sorted = if count(args) == 0 then
       sort(keyed, (a, b) -> compare(first(a), first(b)))
@@ -27,61 +30,91 @@
       sort(keyed, (a, b) -> first(args)(first(a), first(b)))
     end;
     let result = map(sorted, second);
-    if isString(seq) then join(result, "") else result end
+    if isString(seq) then join(result, "") else result end;
   end,
-
   remove: (seq, fn) -> do
     let result = filter(
-      if isString(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end,
-      (elem) -> not(fn(elem))
+      if isString(seq) then
+        for (i in range(count(seq))) -> nth(seq, i)
+      else
+        seq
+      end,
+      (elem) -> not(fn(elem)),
     );
-    if isString(seq) then join(result, "") else result end
+    if isString(seq) then join(result, "") else result end;
   end,
-
   splitWith: (seq, fn) -> do
-    let items = if isString(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
+    let items = if isString(seq) then
+      for (i in range(count(seq))) -> nth(seq, i)
+    else
+      seq
+    end;
     let idx = loop (i = 0) ->
-      if i >= count(items) then -1
-      else if not(fn(nth(items, i))) then i
-      else recur(i + 1)
-      end;
+      if i >= count(items) then
+        -1
+      else if not(fn(nth(items, i))) then i else recur(i + 1) end;
     if idx == -1 then
       [seq, if isArray(seq) then [] else "" end]
     else
       [slice(seq, 0, idx), slice(seq, idx)]
-    end
+    end;
   end,
-
   groupBy: (seq, fn) -> do
-    let items = if isString(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
-    reduce(items, (result, val) -> do
-      let key = fn(val);
-      let existing = get(result, key);
-      assoc(result, key, if isNull(existing) then [val] else [...existing, val] end)
-    end, {})
+    let items = if isString(seq) then
+      for (i in range(count(seq))) -> nth(seq, i)
+    else
+      seq
+    end;
+    reduce(
+      items,
+      (result, val) -> do
+        let key = fn(val);
+        let existing = get(result, key);
+        assoc(
+          result,
+          key,
+          if isNull(existing) then [val] else [...existing, val] end,
+        );
+      end,
+      {},
+    );
   end,
-
   partitionBy: (seq, fn) -> do
-    let items = if isString(seq) then for (i in range(count(seq))) -> nth(seq, i) else seq end;
+    let items = if isString(seq) then
+      for (i in range(count(seq))) -> nth(seq, i)
+    else
+      seq
+    end;
     if count(items) == 0 then
       []
     else
       do
-        let result = reduce(rest(items), (acc, elem) -> do
-          let value = fn(elem);
-          if value != first(acc) then
-            [value, [...second(acc), [elem]]]
-          else
-            [value, [...slice(second(acc), 0, count(second(acc)) - 1), [...last(second(acc)), elem]]]
-          end
-        end, [fn(first(items)), [[first(items)]]]);
+        let result = reduce(
+          rest(items),
+          (acc, elem) -> do
+            let value = fn(elem);
+            if value != first(acc) then
+              [value, [...second(acc), [elem]]]
+            else
+              [
+                value,
+                [
+                  ...slice(second(acc), 0, count(second(acc)) - 1),
+                  [...last(second(acc)), elem],
+                ],
+              ]
+            end;
+          end,
+          [fn(first(items)), [[first(items)]]],
+        );
         let groups = second(result);
         if isString(seq) then
           map(groups, (group) -> join(group, ""))
         else
           groups
-        end
+        end;
       end
-    end
-  end
-}
+    end;
+  end,
+};
+

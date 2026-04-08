@@ -25,7 +25,7 @@ import type { ExtractedComment } from './extractComments'
 import { reinsertComments } from './reinsertComments'
 import type { AstNode, SourceMap } from '../parser/types'
 import { parseToAst } from '../parser'
-import { prettyPrint } from '../prettyPrint'
+import { prettyPrint, withPrettyPrintBlankLineHints } from '../prettyPrint'
 import { isOperatorToken } from '../tokenizer/token'
 import type { Token } from '../tokenizer/token'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
@@ -70,7 +70,10 @@ export function format(source: string): string {
     return sourceMap?.positions.get(node[2])?.start[0] ?? 0
   })
 
-  const statementStrings: string[] = body.map((node: AstNode) => prettyPrint(node))
+  const statementStrings: string[] = withPrettyPrintBlankLineHints(
+    createPrettyPrintBlankLineHints(body, sourceMap),
+    () => body.map((node: AstNode) => prettyPrint(node)),
+  )
 
   // Index in the minified token array where each statement's expression begins.
   const stmtMinifiedStarts = findStmtMinifiedStarts(body, minified.tokens, sourceMap)
@@ -225,20 +228,20 @@ function anchorComment(
 
   let statementIndex: number
   let blankLinesBefore = 0
+  let blankLinesAfter = 0
 
   if (placement === 'trailing' || placement === 'inline') {
     // Anchored to the statement whose line the comment sits on.
     statementIndex = findStatementForLine(anchorSourceLine, statementStartLines)
   } else {
+    blankLinesBefore = computeBlankLinesBefore(comment.sourceLine, source)
+    blankLinesAfter = computeBlankLinesAfter(comment, source, anchorSourceLine)
+
     // leading or standalone: anchored to the following statement.
     // Use comment.sourceLine (not anchorSourceLine) to detect preamble/epilogue:
     // anchorSourceLine points to the next code token's line, which could equal
     // statementStartLines[0] for a file-leading comment — that would incorrectly
     // map to statement 0 instead of preamble.
-    if (placement === 'standalone') {
-      blankLinesBefore = computeBlankLinesBefore(comment.sourceLine, source)
-    }
-
     const firstStmtLine = statementStartLines[0] ?? Infinity
     const lastStmtLine = statementStartLines[statementStartLines.length - 1] ?? -1
 
@@ -251,7 +254,7 @@ function anchorComment(
     }
   }
 
-  return { ...comment, statementIndex, blankLinesBefore }
+  return { ...comment, statementIndex, blankLinesBefore, blankLinesAfter }
 }
 
 function findStatementForLine(line: number, statementStartLines: number[]): number {
@@ -274,6 +277,131 @@ function computeBlankLinesBefore(lineIndex: number, source: string): number {
     else break
   }
   return Math.min(blanks, MAX_BLANK_LINES)
+}
+
+function computeBlankLinesAfter(comment: ExtractedComment, source: string, anchorSourceLine: number): number {
+  const lines = source.split('\n')
+  const commentEndLine = comment.kind === 'line'
+    ? comment.sourceLine
+    : comment.sourceLine + countNewlines(comment.text)
+
+  let blanks = 0
+  let nextNonEmptyLine = -1
+
+  for (let i = commentEndLine + 1; i < lines.length; i++) {
+    if ((lines[i] ?? '').trim() === '') {
+      blanks++
+    } else {
+      nextNonEmptyLine = i
+      break
+    }
+  }
+
+  if (nextNonEmptyLine !== anchorSourceLine) return 0
+  return Math.min(blanks, MAX_BLANK_LINES)
+}
+
+function countNewlines(s: string): number {
+  let count = 0
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\n') count++
+  }
+  return count
+}
+
+function createPrettyPrintBlankLineHints(body: AstNode[], sourceMap: SourceMap | undefined): Map<number, number> {
+  const hints = new Map<number, number>()
+  if (!sourceMap) return hints
+
+  const visit = (value: unknown): void => {
+    if (!Array.isArray(value)) return
+
+    if (isAstNode(value)) annotateNodeSpacing(value, sourceMap, hints)
+
+    value.forEach(visit)
+  }
+
+  body.forEach(visit)
+  return hints
+}
+
+function annotateNodeSpacing(node: AstNode, sourceMap: SourceMap, hints: Map<number, number>): void {
+  const [type, payload] = node
+
+  if (type === 'Array') {
+    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, hints)
+  } else if (type === 'Object') {
+    annotateObjectEntrySpacing(payload as unknown[][], sourceMap, hints)
+  } else if (type === 'Block') {
+    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, hints)
+  } else if (type === 'Function' || type === 'Macro') {
+    annotateSequentialNodeSpacing((payload as [unknown[], AstNode[]])[1], sourceMap, hints)
+  } else if (type === 'Handler') {
+    annotateHandlerBodySpacing(payload as [unknown[], unknown], sourceMap, hints)
+  } else if (type === 'CodeTmpl') {
+    annotateSequentialNodeSpacing((payload as [AstNode[], unknown[]])[0], sourceMap, hints)
+  }
+}
+
+function annotateHandlerBodySpacing(payload: [unknown[], unknown], sourceMap: SourceMap, hints: Map<number, number>): void {
+  const [clauses, transform] = payload
+
+  for (const clause of clauses as { body: AstNode[] }[]) {
+    annotateSequentialNodeSpacing(clause.body, sourceMap, hints)
+  }
+
+  if (transform) {
+    annotateSequentialNodeSpacing((transform as [unknown, AstNode[]])[1], sourceMap, hints)
+  }
+}
+
+function annotateSequentialNodeSpacing(nodes: AstNode[], sourceMap: SourceMap, hints: Map<number, number>): void {
+  for (let i = 1; i < nodes.length; i++) {
+    const previousPos = sourceMap.positions.get(nodes[i - 1]![2])
+    const currentPos = sourceMap.positions.get(nodes[i]![2])
+    if (!previousPos || !currentPos) continue
+
+    const blankLines = Math.min(Math.max(currentPos.start[0] - previousPos.end[0] - 1, 0), MAX_BLANK_LINES)
+    if (blankLines > 0)
+      hints.set(nodes[i]![2], blankLines)
+  }
+}
+
+function annotateObjectEntrySpacing(entries: unknown[][], sourceMap: SourceMap, hints: Map<number, number>): void {
+  for (let i = 1; i < entries.length; i++) {
+    const previousRange = getObjectEntryRange(entries[i - 1]!, sourceMap)
+    const currentRange = getObjectEntryRange(entries[i]!, sourceMap)
+    if (!previousRange || !currentRange) continue
+
+    const blankLines = Math.min(Math.max(currentRange.start[0] - previousRange.end[0] - 1, 0), MAX_BLANK_LINES)
+    if (blankLines > 0)
+      hints.set(currentRange.nodeId, blankLines)
+  }
+}
+
+function getObjectEntryRange(entry: unknown[], sourceMap: SourceMap): { nodeId: number; start: [number, number]; end: [number, number] } | null {
+  if (isAstNode(entry) && entry[0] === 'Spread') {
+    const position = sourceMap.positions.get(entry[2])
+    return position ? { nodeId: entry[2], start: position.start, end: position.end } : null
+  }
+
+  const keyNode = entry[0]
+  const valueNode = entry[1]
+  if (!isAstNode(keyNode) || !isAstNode(valueNode)) return null
+
+  const keyPosition = sourceMap.positions.get(keyNode[2])
+  const valuePosition = sourceMap.positions.get(valueNode[2])
+  if (!keyPosition || !valuePosition) return null
+
+  return {
+    nodeId: keyNode[2],
+    start: keyPosition.start,
+    end: valuePosition.end,
+  }
+}
+
+function isAstNode(value: unknown): value is AstNode {
+  return Array.isArray(value) && typeof value[0] === 'string' && typeof value[2] === 'number'
 }
 
 /**

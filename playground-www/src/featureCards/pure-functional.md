@@ -23,7 +23,7 @@ label;
 let result = do
   let x = 10;
   let y = 20;
-  x + y
+  x + y;
 end;
 result;
 ```

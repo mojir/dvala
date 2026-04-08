@@ -177,7 +177,7 @@ Internally, each file module is inlined as a `let` binding. Given the example ab
 let __module_lib_math = do
   let add = (a, b) -> a + b;
   let mul = (a, b) -> a * b;
-  { add, mul }
+  { add, mul };
 end;
 
 let math = __module_lib_math;

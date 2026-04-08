@@ -106,7 +106,10 @@ describe('prettyPrint — if/else', () => {
 })
 
 describe('prettyPrint — do blocks', () => {
-  it('simple block', () => { expect(pp('do 1; 2; 3 end')).toBe('do\n  1;\n  2;\n  3\nend') })
+  it('simple block', () => { expect(pp('do 1; 2; 3 end')).toBe('do\n  1;\n  2;\n  3;\nend') })
+  it('single-line block stays inline without semicolon before end', () => {
+    expect(pp('do 1 + 1 end')).toBe('do 1 + 1 end')
+  })
   it('long block breaks to multi-line', () => {
     const code = 'do let veryLongVariableNameOne = 42; let veryLongVariableNameTwo = 99; veryLongVariableNameOne + veryLongVariableNameTwo end'
     const result = pp(code)
@@ -128,7 +131,7 @@ describe('prettyPrint — functions', () => {
   it('simple lambda', () => { expect(pp('(x) -> x + 1')).toBe('(x) -> x + 1') })
   it('multi-param', () => { expect(pp('(a, b) -> a + b')).toBe('(a, b) -> a + b') })
   it('multi-statement body', () => {
-    expect(pp('(x) -> do let y = x * 2; y + 1 end')).toBe('(x) -> do\n  let y = x * 2;\n  y + 1\nend')
+    expect(pp('(x) -> do let y = x * 2; y + 1 end')).toBe('(x) -> do\n  let y = x * 2;\n  y + 1;\nend')
   })
   it('long lambda breaks body', () => {
     const code = '(someVeryLongParamName) -> someVeryLongParamName + someVeryLongParamName + someVeryLongParamName'
@@ -352,6 +355,9 @@ describe('prettyPrint — code templates (quote)', () => {
     const result = pp('quote let x = 42 end')
     expect(result).toContain('let x = 42')
   })
+  it('multi-line quote semicolon-terminates final line before end', () => {
+    expect(pp('quote let x = 1; x + 1 end')).toBe('quote\n  let x = 1;\n  x + 1;\nend')
+  })
 })
 
 describe('prettyPrint — binding targets', () => {
@@ -535,7 +541,7 @@ function assertNoMidLineSemicolons(s: string): void {
 
 describe('prettyPrint — do block semicolons-last rule', () => {
   it('two-statement do block always expands', () => {
-    expect(pp('do 1; 2 end')).toBe('do\n  1;\n  2\nend')
+    expect(pp('do 1; 2 end')).toBe('do\n  1;\n  2;\nend')
   })
   it('no mid-line semicolons in expanded do block', () => {
     assertNoMidLineSemicolons(pp('do let x = 1; let y = 2; x + y end'))
@@ -578,7 +584,7 @@ describe('prettyPrint — handler: single clause on same line', () => {
 
 describe('prettyPrint — with handler body indentation', () => {
   it('with h; body sits at same indent level as with', () => {
-    expect(pp('do with h; let x = 1; x end')).toBe('do\n  with h;\n  let x = 1;\n  x\nend')
+    expect(pp('do with h; let x = 1; x end')).toBe('do\n  with h;\n  let x = 1;\n  x;\nend')
   })
   it('with h; never flat (would put semicolon mid-line)', () => {
     const result = pp('do with h; body end')
@@ -700,7 +706,7 @@ describe('prettyPrint — MacroCall decorator formatting', () => {
 
   it('let operand inside do block: decorator style at block indent', () => {
     const result = pp('do #foo let x = 1; x end')
-    expect(result).toBe('do\n  #foo\n  let x = 1;\n  x\nend')
+    expect(result).toBe('do\n  #foo\n  let x = 1;\n  x;\nend')
   })
 
   it('let operand as sub-expression (not root): stays flat', () => {

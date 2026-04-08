@@ -3,12 +3,12 @@
 let withLogging = (thunk) -> do
   let h = handler @project.log(msg) -> do
     let rest = resume(null);
-    { result: rest.result, logs: [msg] ++ rest.logs }
+    { result: rest.result, logs: [msg] ++ rest.logs };
   end
   transform
     result -> { result, logs: [] }
   end;
-  h(thunk)
+  h(thunk);
 end;
 
 { withLogging };

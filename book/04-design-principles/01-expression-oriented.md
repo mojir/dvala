@@ -32,7 +32,7 @@ A `do...end` block is an expression whose value is its last sub-expression:
 let result = do
   let a = 10;
   let b = 20;
-  a + b
+  a + b;
 end;
 result;
 ```
@@ -86,7 +86,7 @@ Even error handling with handlers returns a value:
 ```dvala
 let safeSqrt = (x) -> do
   with handler @dvala.error(arg) -> resume(null) end;
-  sqrt(x)
+  sqrt(x);
 end;
 [safeSqrt(16), safeSqrt(-1)];
 ```
