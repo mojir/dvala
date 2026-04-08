@@ -306,6 +306,10 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
   // Leading comments before first statement
   for (const c of fileLeadingComments) {
     parts.push(c)
+    // Block comments that are leading get their own line
+    if (c.type === 'text') {
+      parts.push(hardLine)
+    }
   }
 
   // Format statements: always add `;` after each statement (including last).
@@ -476,26 +480,59 @@ function formatArray(node: UntypedCstNode): Doc {
 }
 
 function formatObject(node: UntypedCstNode): Doc {
-  // Object children: {, entries (as nodes or tokens), commas, }
-  // The untyped tree has entries as child nodes interspersed with
-  // comma and colon tokens. We need to reconstruct key: value pairs.
-  // For now, treat all child nodes as entries.
-  const children = childNodes(node)
+  // Object children: {, [key_tok, :, value_node | Spread_node], [,], ..., }
+  // Walk children to reconstruct entries.
+  const iter = new ChildIterator(node.children)
+  iter.expectToken('{')
 
-  if (children.length === 0) {
+  const entries: Doc[] = []
+  while (!iter.done() && !iter.isToken('}')) {
+    if (iter.isToken(',')) {
+      iter.next() // skip comma
+      continue
+    }
+    // Spread entry
+    if (iter.isNode() && (iter.peek() as UntypedCstNode).kind === 'Spread') {
+      entries.push(formatNode(iter.nextNode()))
+      continue
+    }
+    // Key-value entry: key [: value] or key [as alias]
+    // Key can be a token (symbol) or a node (string, template, computed)
+    const entryParts: Doc[] = []
+    // Collect key
+    if (iter.isNode()) {
+      entryParts.push(formatNode(iter.nextNode()))
+    } else {
+      entryParts.push(text(iter.nextToken().text))
+    }
+    // Check for computed key brackets
+    if (iter.isToken('[')) {
+      // Computed key was already handled — skip
+    }
+    // Check for colon
+    if (iter.isToken(':')) {
+      iter.next() // consume :
+      entryParts.push(text(': '))
+      // Value is the next node
+      if (iter.isNode()) {
+        entryParts.push(formatNode(iter.nextNode()))
+      }
+    }
+    entries.push(concat(...entryParts))
+  }
+
+  iter.expectToken('}')
+
+  if (entries.length === 0) {
     return text('{}')
   }
 
-  // Each child is either an ObjectEntry node (key: value) or Spread node.
-  // In the untyped tree, object entries aren't wrapped in their own node,
-  // so we need to reconstruct from tokens and child nodes.
-  // Fallback: format all children separated by commas.
-  const items = children.map(c => formatNode(c))
-
+  // Objects use spaces inside braces: { a: 1, b: 2 }
   return group(concat(
     text('{'),
-    nest(INDENT, concat(softLine, join(concat(text(','), line), items))),
-    softLine,
+    text(' '),
+    nest(INDENT, join(concat(text(','), line), entries)),
+    text(' '),
     text('}'),
   ))
 }
@@ -505,18 +542,38 @@ function formatObject(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatBinaryOp(node: UntypedCstNode): Doc {
-  const left = nthChild(node, 0)
-  const right = nthChild(node, 1)
-  // The operator is a token between the two child nodes
-  const opTokens = tokens(node)
-  const opText = opTokens.length > 0 ? opTokens[0]!.text : '?'
+  const children = childNodes(node)
+  const toks = tokens(node)
 
-  return group(concat(
-    formatNode(left),
-    text(' '),
-    text(opText),
-    nest(INDENT, concat(line, formatNode(right))),
-  ))
+  if (toks.length > 0) {
+    // Regular binary operator: [left_node, op_token, right_node]
+    const left = children[0]!
+    const right = children[1]!
+    const opText = toks[0]!.text
+
+    return group(concat(
+      formatNode(left),
+      text(' '),
+      text(opText),
+      nest(INDENT, concat(line, formatNode(right))),
+    ))
+  }
+
+  // Infix function call: [left_node, Symbol_node, right_node]
+  if (children.length >= 3) {
+    const left = children[0]!
+    const op = children[1]!
+    const right = children[2]!
+    return group(concat(
+      formatNode(left),
+      text(' '),
+      formatNode(op),
+      nest(INDENT, concat(line, formatNode(right))),
+    ))
+  }
+
+  // Fallback
+  return formatFromChildren(node)
 }
 
 function formatPrefixOp(node: UntypedCstNode): Doc {
