@@ -19,7 +19,7 @@ import type { CstToken, TriviaNode } from './types'
 // Token classification
 // ---------------------------------------------------------------------------
 
-function isTrivia(token: Token): boolean {
+export function isTrivia(token: Token): boolean {
   const type = token[0]
   return type === 'Whitespace'
     || type === 'SingleLineComment'
@@ -34,7 +34,7 @@ function isTrivia(token: Token): boolean {
  *   - MacroQualified: value "qualified.name" → raw "macro@qualified.name"
  *   - MacroPrefix: value "name" → raw "#name"
  */
-function rawTokenText(token: Token): string {
+export function rawTokenText(token: Token): string {
   switch (token[0]) {
     case 'EffectName': return `@${token[1]}`
     case 'MacroQualified': return `macro@${token[1]}`
@@ -43,7 +43,7 @@ function rawTokenText(token: Token): string {
   }
 }
 
-function toTriviaNode(token: Token): TriviaNode {
+export function toTriviaNode(token: Token): TriviaNode {
   switch (token[0]) {
     case 'Whitespace': return { kind: 'whitespace', text: token[1] }
     case 'SingleLineComment': return { kind: 'lineComment', text: token[1] }
@@ -67,7 +67,7 @@ function toTriviaNode(token: Token): TriviaNode {
  *
  * If no newline exists in the trivia, everything is trailing (same-line).
  */
-function splitTriviaAtNewline(trivia: TriviaNode[]): { trailing: TriviaNode[]; leading: TriviaNode[] } {
+export function splitTriviaAtNewline(trivia: TriviaNode[]): { trailing: TriviaNode[]; leading: TriviaNode[] } {
   for (let i = 0; i < trivia.length; i++) {
     const t = trivia[i]!
     const nlIndex = t.text.indexOf('\n')

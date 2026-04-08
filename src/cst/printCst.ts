@@ -312,6 +312,11 @@ function collectNodeTokens(node: CstNode, tokens: CstToken[]): void {
       collectNodeTokens(node.expression, tokens)
       tokens.push(node.closeBrace)
       break
+
+    // -- Error recovery (prints tokens verbatim) --
+    case 'Error':
+      for (const t of node.tokens) tokens.push(t)
+      break
   }
 }
 
