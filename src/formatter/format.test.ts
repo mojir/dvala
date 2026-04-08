@@ -94,9 +94,59 @@ describe('formatter — infix calls', () => {
     'let r = 1 add 2;',
   ))
 
+  it('built-in infix call stays as infix', () => check(
+    'let r = [1, 2, 3] join ", "',
+    'let r = [1, 2, 3] join ", ";',
+  ))
+
   it('prefix call stays as prefix', () => check(
     'let r = add(1, 2)',
     'let r = add(1, 2);',
+  ))
+
+  it('built-in prefix call stays as prefix', () => check(
+    'let r = join([1, 2, 3], ", ")',
+    'let r = join([1, 2, 3], ", ");',
+  ))
+
+  it('keeps multiline right operand below the operator', () => check(
+    `[a, b, c] join if shouldUseExtraSpacingForParagraphBreaks then
+// separate paragraphs
+"\\n\\n"
+else
+"\\n"
+end`,
+    `[a, b, c] join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
+  ))
+
+  it('moves the operator below a multiline left operand', () => check(
+    `[description, visitedStatus, itemsDesc, exitsDesc, regionDesc, weatherDesc] join if shouldUseExtraSpacingForParagraphBreaks then
+// separate paragraphs
+"\\n\\n"
+else
+"\\n"
+end`,
+    `[
+  description,
+  visitedStatus,
+  itemsDesc,
+  exitsDesc,
+  regionDesc,
+  weatherDesc,
+]
+  join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
   ))
 })
 
@@ -308,6 +358,218 @@ describe('formatter — standalone comments', () => {
     '// comment\n\nlet a = 1;',
     '// comment\n\nlet a = 1;',
   ))
+
+  it('preserves standalone comments inside multiline do blocks', () => check(
+    `let describeLocation = (state) -> do
+let location = get(locations, state.currentLocation);
+let description = location.description;
+
+// Add visited status
+let visitedStatus = if get(state.visited, state.currentLocation, 0) > 1 then
+  "You've been here before."
+else
+  "This is your first time here."
+end;
+
+// Check if location has items
+let itemsDesc = if not(isEmpty(get(location, "items", []))) then
+  // there are items
+  "You see: " ++ join(location.items, ", ")
+else
+  ""
+end;
+
+// Describe exits
+let exits = keys(location.exits) join ", ";
+let exitsDesc = "Exits: " ++ exits;
+
+// Join all descriptions
+filter(/* an array */ [description, visitedStatus, itemsDesc, exitsDesc], -> not(isEmpty($))) join "\\n"
+end`,
+    `let describeLocation = (state) -> do
+  let location = get(locations, state.currentLocation);
+  let description = location.description;
+
+  // Add visited status
+  let visitedStatus = if get(state.visited, state.currentLocation, 0) > 1 then
+    "You've been here before."
+  else
+    "This is your first time here."
+  end;
+
+  // Check if location has items
+  let itemsDesc = if not(isEmpty(get(location, "items", []))) then
+    // there are items
+    "You see: " ++ join(location.items, ", ")
+  else
+    ""
+  end;
+
+  // Describe exits
+  let exits = keys(location.exits) join ", ";
+  let exitsDesc = "Exits: " ++ exits;
+
+  // Join all descriptions
+  filter(
+    /* an array */ 
+    [
+      description,
+      visitedStatus,
+      itemsDesc,
+      exitsDesc,
+    ],
+    -> not(isEmpty($)),
+  ) join "\\n";
+end;`,
+  ))
+
+  it('preserves trailing comments inside multiline do blocks', () => check(
+    'do\nlet x = 1; // keep me\nx + 1\nend',
+    'do\n  let x = 1; // keep me\n  x + 1;\nend;',
+  ))
+})
+
+// ---------------------------------------------------------------------------
+// Comment placement — deep nesting
+// ---------------------------------------------------------------------------
+
+describe('formatter — deep nested comments', () => {
+  it('preserves comments through nested do and if blocks with mixed blank lines', () => check(
+    `let workflow = () -> do
+// start
+let first = do
+// phase one
+let value = do
+// deepest step
+perform(@dvala.io.print, "go");
+
+// final deep
+"ok"
+end;
+
+// phase two
+value
+end;
+
+// done
+first
+end`,
+    `let workflow = () -> do
+  // start
+  let first = do
+    // phase one
+    let value = do
+      // deepest step
+      perform(@dvala.io.print, "go");
+
+      // final deep
+      "ok";
+    end;
+
+    // phase two
+    value;
+  end;
+
+  // done
+  first;
+end;`,
+  ))
+
+  it('preserves comments inside trailing lambda do blocks', () => check(
+    `filter(items, -> do
+// keep filter comment
+let cleaned = trim($);
+
+// final check
+not(isEmpty(cleaned))
+end)`,
+    `filter(items, -> do
+  // keep filter comment
+  let cleaned = trim($);
+
+  // final check
+  not(isEmpty(cleaned));
+end);`,
+  ))
+
+  it('preserves comments across nested function and lambda bodies', () => check(
+    `let build = () -> do
+// before helper
+let helper = () -> do
+// helper start
+let render = -> do
+// render comment
+trim($)
+end;
+
+// helper done
+render(" hi ")
+end;
+
+// invoke helper
+helper()
+end`,
+    `let build = () -> do
+  // before helper
+  let helper = () -> do
+    // helper start
+    let render = -> do
+      // render comment
+      trim($);
+    end;
+
+    // helper done
+    render(" hi ");
+  end;
+
+  // invoke helper
+  helper();
+end;`,
+  ))
+
+  it('preserves line and block comments at multiple nested block levels', () => check(
+    `do
+/* outer */
+let x = do
+/* inner */
+let y = 1;
+
+/* before result */
+y + 1
+end;
+
+// final
+x
+end`,
+    `do
+  /* outer */
+  let x = do
+    /* inner */
+    let y = 1;
+
+    /* before result */
+    y + 1;
+  end;
+
+  // final
+  x;
+end;`,
+  ))
+
+  it('keeps top-level and nested comments in their own scopes', () => check(
+    `// top level intro
+
+let square = (x) -> do
+// inner note
+x * x
+end`,
+    `// top level intro
+
+let square = (x) -> do
+  // inner note
+  x * x;
+end;`,
+  ))
 })
 
 // ---------------------------------------------------------------------------
@@ -448,10 +710,60 @@ describe('formatter — round-trip stability', () => {
     'let f = -> $ + 1',
     'let x=1; // comment',
     'let r = 1 add 2',
+    'let r = [1, 2, 3] join ", "',
+    `[a, b, c] join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
     'let r = x |> f |> g',
     'let foo=(foo /*FOO*/, bar)->foo++bar',
-    '// header\nlet x = 1;\nlet y = x + 1; // done',
-    'if x>0 then\nlet r=x*2;\nr\nelse\n0\nend',
+    `// header
+let x = 1;
+let y = x + 1; // done`,
+    `if x>0 then
+let r=x*2;
+r
+else
+0
+end`,
+    `let workflow = () -> do
+  // start
+  let first = do
+    // phase one
+    let value = do
+      // deepest step
+      perform(@dvala.io.print, "go");
+
+      // final deep
+      "ok";
+    end;
+
+    // phase two
+    value;
+  end;
+
+  // done
+  first;
+end;`,
+    `let build = () -> do
+  // before helper
+  let helper = () -> do
+    // helper start
+    let render = -> do
+      // render comment
+      trim($);
+    end;
+
+    // helper done
+    render(" hi ");
+  end;
+
+  // invoke helper
+  helper();
+end;`,
   ]
 
   for (const source of cases) {

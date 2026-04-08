@@ -25,12 +25,25 @@ import type { ExtractedComment } from './extractComments'
 import { reinsertComments } from './reinsertComments'
 import type { AstNode, SourceMap } from '../parser/types'
 import { parseToAst } from '../parser'
-import { prettyPrint, withPrettyPrintBlankLineHints } from '../prettyPrint'
+import {
+  prettyPrint,
+  type PrettyPrintCommentHint,
+  withPrettyPrintBlankLineHints,
+  withPrettyPrintCommentHints,
+} from '../prettyPrint'
 import { isOperatorToken } from '../tokenizer/token'
 import type { Token } from '../tokenizer/token'
 import { minifyTokenStream } from '../tokenizer/minifyTokenStream'
 import { tokenize } from '../tokenizer/tokenize'
 import type { AnchoredComment } from './reinsertComments'
+
+interface SequentialNodeInfo {
+  depth: number
+  endLine: number
+  nodeId: number
+  startColumn: number
+  startLine: number
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -64,15 +77,25 @@ export function format(source: string): string {
   }
 
   const { comments, shebang } = extractComments(source)
+  const sourceLines = source.split('\n')
+  const { prettyPrintCommentHints, unhandledComments } = createPrettyPrintCommentHints(
+    comments,
+    body,
+    sourceMap,
+    sourceLines,
+  )
 
   // Source line (0-based) of each top-level statement's first token.
   const statementStartLines: number[] = body.map((node: AstNode) => {
     return sourceMap?.positions.get(node[2])?.start[0] ?? 0
   })
 
-  const statementStrings: string[] = withPrettyPrintBlankLineHints(
-    createPrettyPrintBlankLineHints(body, sourceMap),
-    () => body.map((node: AstNode) => prettyPrint(node)),
+  const statementStrings: string[] = withPrettyPrintCommentHints(
+    prettyPrintCommentHints,
+    () => withPrettyPrintBlankLineHints(
+      createPrettyPrintBlankLineHints(body, sourceMap, sourceLines),
+      () => body.map((node: AstNode) => prettyPrint(node)),
+    ),
   )
 
   // Index in the minified token array where each statement's expression begins.
@@ -84,7 +107,7 @@ export function format(source: string): string {
   const epilogue: AnchoredComment[] = []
   const commentsByStatement = new Map<number, AnchoredComment[]>()
 
-  for (const comment of comments) {
+  for (const comment of unhandledComments) {
     const anchored = anchorComment(comment, statementStartLines, source)
 
     if (anchored.statementIndex < 0) {
@@ -149,7 +172,6 @@ export function format(source: string): string {
   // statements. When comments exist between two statements the standalone-
   // comment mechanism already controls the spacing — set to 0 in that case.
 
-  const sourceLines = source.split('\n')
   const blankLinesBetweenStatements: number[] = []
 
   for (let i = 0; i < body.length - 1; i++) {
@@ -225,6 +247,7 @@ function anchorComment(
   source: string,
 ): AnchoredComment {
   const { placement, anchorSourceLine } = comment
+  const sourceLines = source.split('\n')
 
   let statementIndex: number
   let blankLinesBefore = 0
@@ -234,8 +257,8 @@ function anchorComment(
     // Anchored to the statement whose line the comment sits on.
     statementIndex = findStatementForLine(anchorSourceLine, statementStartLines)
   } else {
-    blankLinesBefore = computeBlankLinesBefore(comment.sourceLine, source)
-    blankLinesAfter = computeBlankLinesAfter(comment, source, anchorSourceLine)
+    blankLinesBefore = computeBlankLinesBefore(comment.sourceLine, sourceLines)
+    blankLinesAfter = computeBlankLinesAfter(comment, sourceLines, anchorSourceLine)
 
     // leading or standalone: anchored to the following statement.
     // Use comment.sourceLine (not anchorSourceLine) to detect preamble/epilogue:
@@ -269,8 +292,7 @@ function findStatementForLine(line: number, statementStartLines: number[]): numb
   return result
 }
 
-function computeBlankLinesBefore(lineIndex: number, source: string): number {
-  const lines = source.split('\n')
+function computeBlankLinesBefore(lineIndex: number, lines: string[]): number {
   let blanks = 0
   for (let i = lineIndex - 1; i >= 0; i--) {
     if ((lines[i] ?? '').trim() === '') blanks++
@@ -279,8 +301,7 @@ function computeBlankLinesBefore(lineIndex: number, source: string): number {
   return Math.min(blanks, MAX_BLANK_LINES)
 }
 
-function computeBlankLinesAfter(comment: ExtractedComment, source: string, anchorSourceLine: number): number {
-  const lines = source.split('\n')
+function computeBlankLinesAfter(comment: ExtractedComment, lines: string[], anchorSourceLine: number): number {
   const commentEndLine = comment.kind === 'line'
     ? comment.sourceLine
     : comment.sourceLine + countNewlines(comment.text)
@@ -309,14 +330,101 @@ function countNewlines(s: string): number {
   return count
 }
 
-function createPrettyPrintBlankLineHints(body: AstNode[], sourceMap: SourceMap | undefined): Map<number, number> {
+function createPrettyPrintCommentHints(
+  comments: ExtractedComment[],
+  body: AstNode[],
+  sourceMap: SourceMap | undefined,
+  sourceLines: string[],
+): {
+  prettyPrintCommentHints: {
+    leadingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
+    trailingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
+  }
+  unhandledComments: ExtractedComment[]
+} {
+  const leadingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
+  const trailingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
+  const unhandledComments: ExtractedComment[] = []
+  const sequentialNodes = collectSequentialNodeInfos(body, sourceMap)
+  const topLevelRanges = body
+    .map(node => {
+      const position = sourceMap?.positions.get(node[2])
+      if (!position) return null
+
+      return {
+        endLine: position.end[0],
+        startLine: position.start[0],
+      }
+    })
+    .filter(range => range !== null)
+
+  for (const comment of comments) {
+    if (comment.placement === 'inline') {
+      unhandledComments.push(comment)
+      continue
+    }
+
+    const isInsideTopLevelStatement = topLevelRanges.some(
+      range => comment.sourceLine >= range.startLine && comment.sourceLine <= range.endLine,
+    )
+    if (!isInsideTopLevelStatement) {
+      unhandledComments.push(comment)
+      continue
+    }
+
+    const target = comment.placement === 'trailing'
+      ? findNestedTrailingCommentTarget(comment, sequentialNodes)
+      : findNestedLeadingCommentTarget(comment, sequentialNodes)
+
+    if (!target) {
+      unhandledComments.push(comment)
+      continue
+    }
+
+    const hint: PrettyPrintCommentHint = {
+      blankLinesAfter: comment.placement === 'trailing'
+        ? 0
+        : computeBlankLinesAfter(comment, sourceLines, comment.anchorSourceLine),
+      blankLinesBefore: comment.placement === 'trailing'
+        ? 0
+        : computeBlankLinesBefore(comment.sourceLine, sourceLines),
+      kind: comment.kind,
+      text: comment.text,
+    }
+
+    if (comment.placement === 'trailing') {
+      const existing = trailingCommentsByNodeId.get(target.nodeId)
+      if (existing) existing.push(hint)
+      else trailingCommentsByNodeId.set(target.nodeId, [hint])
+      continue
+    }
+
+    const existing = leadingCommentsByNodeId.get(target.nodeId)
+    if (existing) existing.push(hint)
+    else leadingCommentsByNodeId.set(target.nodeId, [hint])
+  }
+
+  return {
+    prettyPrintCommentHints: {
+      leadingCommentsByNodeId,
+      trailingCommentsByNodeId,
+    },
+    unhandledComments,
+  }
+}
+
+function createPrettyPrintBlankLineHints(
+  body: AstNode[],
+  sourceMap: SourceMap | undefined,
+  sourceLines: string[],
+): Map<number, number> {
   const hints = new Map<number, number>()
   if (!sourceMap) return hints
 
   const visit = (value: unknown): void => {
     if (!Array.isArray(value)) return
 
-    if (isAstNode(value)) annotateNodeSpacing(value, sourceMap, hints)
+    if (isAstNode(value)) annotateNodeSpacing(value, sourceMap, sourceLines, hints)
 
     value.forEach(visit)
   }
@@ -325,58 +433,180 @@ function createPrettyPrintBlankLineHints(body: AstNode[], sourceMap: SourceMap |
   return hints
 }
 
-function annotateNodeSpacing(node: AstNode, sourceMap: SourceMap, hints: Map<number, number>): void {
+function annotateNodeSpacing(node: AstNode, sourceMap: SourceMap, sourceLines: string[], hints: Map<number, number>): void {
   const [type, payload] = node
 
   if (type === 'Array') {
-    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, hints)
+    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, sourceLines, hints)
   } else if (type === 'Object') {
-    annotateObjectEntrySpacing(payload as unknown[][], sourceMap, hints)
+    annotateObjectEntrySpacing(payload as unknown[][], sourceMap, sourceLines, hints)
   } else if (type === 'Block') {
-    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, hints)
+    annotateSequentialNodeSpacing(payload as AstNode[], sourceMap, sourceLines, hints)
   } else if (type === 'Function' || type === 'Macro') {
-    annotateSequentialNodeSpacing((payload as [unknown[], AstNode[]])[1], sourceMap, hints)
+    annotateSequentialNodeSpacing((payload as [unknown[], AstNode[]])[1], sourceMap, sourceLines, hints)
   } else if (type === 'Handler') {
-    annotateHandlerBodySpacing(payload as [unknown[], unknown], sourceMap, hints)
+    annotateHandlerBodySpacing(payload as [unknown[], unknown], sourceMap, sourceLines, hints)
   } else if (type === 'CodeTmpl') {
-    annotateSequentialNodeSpacing((payload as [AstNode[], unknown[]])[0], sourceMap, hints)
+    annotateSequentialNodeSpacing((payload as [AstNode[], unknown[]])[0], sourceMap, sourceLines, hints)
   }
 }
 
-function annotateHandlerBodySpacing(payload: [unknown[], unknown], sourceMap: SourceMap, hints: Map<number, number>): void {
+function annotateHandlerBodySpacing(
+  payload: [unknown[], unknown],
+  sourceMap: SourceMap,
+  sourceLines: string[],
+  hints: Map<number, number>,
+): void {
   const [clauses, transform] = payload
 
   for (const clause of clauses as { body: AstNode[] }[]) {
-    annotateSequentialNodeSpacing(clause.body, sourceMap, hints)
+    annotateSequentialNodeSpacing(clause.body, sourceMap, sourceLines, hints)
   }
 
   if (transform) {
-    annotateSequentialNodeSpacing((transform as [unknown, AstNode[]])[1], sourceMap, hints)
+    annotateSequentialNodeSpacing((transform as [unknown, AstNode[]])[1], sourceMap, sourceLines, hints)
   }
 }
 
-function annotateSequentialNodeSpacing(nodes: AstNode[], sourceMap: SourceMap, hints: Map<number, number>): void {
+function annotateSequentialNodeSpacing(
+  nodes: AstNode[],
+  sourceMap: SourceMap,
+  sourceLines: string[],
+  hints: Map<number, number>,
+): void {
   for (let i = 1; i < nodes.length; i++) {
     const previousPos = sourceMap.positions.get(nodes[i - 1]![2])
     const currentPos = sourceMap.positions.get(nodes[i]![2])
     if (!previousPos || !currentPos) continue
 
-    const blankLines = Math.min(Math.max(currentPos.start[0] - previousPos.end[0] - 1, 0), MAX_BLANK_LINES)
+    const blankLines = countBlankLinesBetween(previousPos.end[0], currentPos.start[0], sourceLines)
     if (blankLines > 0)
       hints.set(nodes[i]![2], blankLines)
   }
 }
 
-function annotateObjectEntrySpacing(entries: unknown[][], sourceMap: SourceMap, hints: Map<number, number>): void {
+function annotateObjectEntrySpacing(
+  entries: unknown[][],
+  sourceMap: SourceMap,
+  sourceLines: string[],
+  hints: Map<number, number>,
+): void {
   for (let i = 1; i < entries.length; i++) {
     const previousRange = getObjectEntryRange(entries[i - 1]!, sourceMap)
     const currentRange = getObjectEntryRange(entries[i]!, sourceMap)
     if (!previousRange || !currentRange) continue
 
-    const blankLines = Math.min(Math.max(currentRange.start[0] - previousRange.end[0] - 1, 0), MAX_BLANK_LINES)
+    const blankLines = countBlankLinesBetween(previousRange.end[0], currentRange.start[0], sourceLines)
     if (blankLines > 0)
       hints.set(currentRange.nodeId, blankLines)
   }
+}
+
+function collectSequentialNodeInfos(body: AstNode[], sourceMap: SourceMap | undefined): SequentialNodeInfo[] {
+  if (!sourceMap) return []
+
+  const infos: SequentialNodeInfo[] = []
+
+  const addSequentialNodes = (nodes: AstNode[], depth: number): void => {
+    for (const node of nodes) {
+      const position = sourceMap.positions.get(node[2])
+      if (position) {
+        infos.push({
+          depth,
+          endLine: position.end[0],
+          nodeId: node[2],
+          startColumn: position.start[1],
+          startLine: position.start[0],
+        })
+      }
+      visit(node, depth)
+    }
+  }
+
+  const visit = (value: unknown, depth: number): void => {
+    if (!Array.isArray(value)) return
+
+    if (isAstNode(value)) {
+      const [type, payload] = value
+      const position = sourceMap.positions.get(value[2])
+
+      if ((type === 'Array' || type === 'Object') && position) {
+        infos.push({
+          depth: depth + 1,
+          endLine: position.end[0],
+          nodeId: value[2],
+          startColumn: position.start[1],
+          startLine: position.start[0],
+        })
+      }
+
+      if (type === 'Block') {
+        addSequentialNodes(payload as AstNode[], depth + 1)
+      } else if (type === 'If') {
+        const [, thenNode, elseNode] = payload as [AstNode, AstNode, AstNode | null]
+        addSequentialNodes([thenNode], depth + 1)
+        if (elseNode) addSequentialNodes([elseNode], depth + 1)
+      } else if (type === 'Function' || type === 'Macro') {
+        addSequentialNodes((payload as [unknown[], AstNode[]])[1], depth + 1)
+      } else if (type === 'Handler') {
+        const [clauses, transform] = payload as [{ body: AstNode[] }[], [unknown, AstNode[]] | null]
+        for (const clause of clauses) addSequentialNodes(clause.body, depth + 1)
+        if (transform) addSequentialNodes(transform[1], depth + 1)
+      } else if (type === 'CodeTmpl') {
+        addSequentialNodes((payload as [AstNode[], unknown[]])[0], depth + 1)
+      }
+    }
+
+    for (const child of value) {
+      if (Array.isArray(child)) visit(child, depth)
+    }
+  }
+
+  addSequentialNodes(body, 0)
+  return infos
+}
+
+function findNestedLeadingCommentTarget(
+  comment: ExtractedComment,
+  sequentialNodes: SequentialNodeInfo[],
+): SequentialNodeInfo | undefined {
+  return sequentialNodes
+    .filter(node => {
+      return node.depth > 0
+        && node.startLine === comment.anchorSourceLine
+        && node.startColumn >= comment.anchorSourceColumn
+    })
+    .sort(compareEnclosingSequentialNodes)
+    .at(0)
+}
+
+function findNestedTrailingCommentTarget(
+  comment: ExtractedComment,
+  sequentialNodes: SequentialNodeInfo[],
+): SequentialNodeInfo | undefined {
+  return sequentialNodes
+    .filter(node => node.depth > 0 && node.startLine <= comment.anchorSourceLine && node.endLine >= comment.sourceLine)
+    .sort(compareEnclosingSequentialNodes)
+    .at(0)
+}
+
+function compareEnclosingSequentialNodes(a: SequentialNodeInfo, b: SequentialNodeInfo): number {
+  if (a.depth !== b.depth) return a.depth - b.depth
+
+  const aSpan = a.endLine - a.startLine
+  const bSpan = b.endLine - b.startLine
+  if (aSpan !== bSpan) return bSpan - aSpan
+
+  return a.startLine - b.startLine
+}
+
+function countBlankLinesBetween(previousEndLine: number, currentStartLine: number, sourceLines: string[]): number {
+  let blanks = 0
+  for (let line = previousEndLine + 1; line < currentStartLine; line++) {
+    if ((sourceLines[line] ?? '').trim() === '') blanks++
+  }
+
+  return Math.min(blanks, MAX_BLANK_LINES)
 }
 
 function getObjectEntryRange(entry: unknown[], sourceMap: SourceMap): { nodeId: number; start: [number, number]; end: [number, number] } | null {
