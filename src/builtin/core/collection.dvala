@@ -4,115 +4,129 @@
     let otherColls = slice(args, 0, count(args) - 1);
     let allColls = [firstColl, ...otherColls];
 
-    if isObject(firstColl) then do
-      let expectedKeys = keys(firstColl) |> sort;
-      for (obj in otherColls) -> do
-        if not(isObject(obj)) then
-          perform(@dvala.error, { message: "Expected object" })
+    if isObject(firstColl) then
+      do
+        let expectedKeys = keys(firstColl) |> sort;
+        for ( obj in otherColls) -> do
+          if not(isObject(obj)) then
+            perform(@dvala.error, { message: "Expected object" })
+          end;
+          let objKeys = keys(obj) |> sort;
+          if not(objKeys == expectedKeys) then
+            perform(
+              @dvala.error,
+              {
+                message: ++(
+                  "All objects must have the same keys. Expected: ",
+                  join(expectedKeys, ", "),
+                  ". Found: ",
+                  join(objKeys, ", ")
+                ),
+              }
+            )
+          end;
         end;
-        let objKeys = keys(obj) |> sort;
-        if not(objKeys == expectedKeys) then
-          perform(@dvala.error, { message: ++(
-            "All objects must have the same keys. Expected: ",
-            join(expectedKeys, ", "),
-            ". Found: ",
-            join(objKeys, ", ")
-          ) })
-        end
-      end;
-      reduce(keys(firstColl), (acc, k) -> do
-        let a = for (coll in allColls) -> coll(k);
-        assoc(acc, k, apply(fn, a))
-      end, {})
-    end
-
-    else if isString(firstColl) then do
-      for (s in otherColls) -> do
-        if not(isString(s)) then
-          perform(@dvala.error, { message: "Expected string" })
-        end
-      end;
-      let len = reduce(otherColls, (m, s) -> min(m, count(s)), count(firstColl));
-      let mapped = for (i in range(len)) -> do
-        let a = for (coll in allColls) -> nth(coll, i);
-        apply(fn, a)
-      end;
-      reduce(mapped, (acc, ch) -> do
-        if not(isString(ch)) then
-          perform(@dvala.error, { message: "Expected string" })
-        end;
-        ++(acc, ch)
-      end, "")
-    end
-
-    else do
-      for (x in otherColls) -> do
-        if not(isArray(x)) then
-          perform(@dvala.error, { message: "Expected array" })
-        end
-      end;
-      let len = reduce(otherColls, (m, x) -> min(m, count(x)), count(firstColl));
-      for (i in range(len)) -> do
-        let a = for (coll in allColls) -> nth(coll, i);
-        apply(fn, a)
+        reduce(
+          keys(firstColl),
+          (acc, k) -> do
+            let a = for ( coll in allColls) -> coll(k);
+            assoc(acc, k, apply(fn, a));
+          end,
+          {}
+        );
       end
-    end
-    end
+    else if isString(firstColl) then
+      do
+        for ( s in otherColls) -> do
+          if not(isString(s)) then
+            perform(@dvala.error, { message: "Expected string" })
+          end;
+        end;
+        let len =
+          reduce(otherColls, (m, s) -> min(m, count(s)), count(firstColl));
+        let mapped =
+          for ( i in range(len)) -> do
+            let a = for ( coll in allColls) -> nth(coll, i);
+            apply(fn, a);
+          end;
+        reduce(
+          mapped,
+          (acc, ch) -> do
+            if not(isString(ch)) then
+              perform(@dvala.error, { message: "Expected string" })
+            end;
+            ++(acc, ch);
+          end,
+          ""
+        );
+      end
+    else
+      do
+        for ( x in otherColls) -> do
+          if not(isArray(x)) then
+            perform(@dvala.error, { message: "Expected array" })
+          end;
+        end;
+        let len =
+          reduce(otherColls, (m, x) -> min(m, count(x)), count(firstColl));
+        for ( i in range(len)) -> do
+          let a = for ( coll in allColls) -> nth(coll, i);
+          apply(fn, a);
+        end;
+      end
+    end;
   end,
-
   filter: (coll, fn) -> do
     if isArray(coll) then
-      reduce(coll, (acc, elem) -> if fn(elem) then [...acc, elem] else acc end, [])
-
+      reduce(
+        coll,
+        (acc, elem) -> if fn(elem) then [...acc, elem] else acc end,
+        []
+      )
     else if isString(coll) then
       reduce(coll, (acc, ch) -> if fn(ch) then ++(acc, ch) else acc end, "")
-
     else if isObject(coll) then
-      reduce(keys(coll), (acc, k) -> do
-        if fn(coll(k)) then
-          assoc(acc, k, coll(k))
-        else
-          acc
-        end
-      end, {})
-
+      reduce(
+        keys(coll),
+        (acc, k) -> do
+          if fn(coll(k)) then assoc(acc, k, coll(k)) else acc end;
+        end,
+        {}
+      )
     else
       perform(@dvala.error, { message: "Expected collection" })
-    end
+    end;
   end,
-
   reduce: (coll, fn, initial) -> do
     if isString(coll) then
-      loop (acc = initial, i = 0) -> do
+      loop ( acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
         else
           recur(fn(acc, nth(coll, i)), i + 1)
-        end
+        end;
       end
-
     else if isArray(coll) then
-      loop (acc = initial, i = 0) -> do
+      loop ( acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
         else
           recur(fn(acc, nth(coll, i)), i + 1)
-        end
+        end;
       end
-
-    else if isObject(coll) then do
-      let values = vals(coll);
-      loop (acc = initial, i = 0) -> do
-        if i >= count(values) then
-          acc
-        else
-          recur(fn(acc, nth(values, i)), i + 1)
-        end
+    else if isObject(coll) then
+      do
+        let values = vals(coll);
+        loop ( acc = initial, i = 0) -> do
+          if i >= count(values) then
+            acc
+          else
+            recur(fn(acc, nth(values, i)), i + 1)
+          end;
+        end;
       end
-    end
-
     else
       perform(@dvala.error, { message: "Expected collection" })
-    end
-  end
-}
+    end;
+  end,
+};

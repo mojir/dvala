@@ -659,6 +659,8 @@ function formatNode(node: UntypedCstNode): Doc {
     // -- Quote / Splice --
     case 'Quote':
       return formatQuote(node)
+    case 'Splice':
+      return formatSplice(node)
 
     // WithStatement is a synthetic node created by formatBodyFromIterInternal
     // to wrap `with handler` pairs — format as space-separated children.
@@ -1449,10 +1451,39 @@ function formatMacroCall(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatQuote(node: UntypedCstNode): Doc {
-  // Children: quote, body tokens/nodes..., end
-  // Quote collects all internal tokens including nested blocks.
-  // Use the generic fallback for now — quote bodies are complex.
+  // Children: quote, body tokens/nodes (including Splice nodes)..., end
+  // Quote bodies contain raw Dvala tokens captured as code data.
+  // Splice children are structured nodes formatted by formatSplice.
   return formatFromChildren(node)
+}
+
+function formatSplice(node: UntypedCstNode): Doc {
+  // Children: $^{ marker token, expression tokens..., } close brace token
+  // Tight against braces, spaces between expression tokens: $^{a + b}
+  const children = node.children
+  if (children.length === 0) return text('')
+
+  const parts: Doc[] = []
+  // First child is the marker ($^{) — emit tight
+  parts.push(formatTokenWithTrivia(children[0] as CstToken))
+
+  // Middle children are the expression — space-separate non-punctuation
+  for (let i = 1; i < children.length - 1; i++) {
+    const child = children[i]!
+    if (isToken(child)) {
+      if (i > 1 && !isPunctuation(child.text)) parts.push(text(' '))
+      parts.push(formatTokenWithTrivia(child))
+    } else {
+      if (i > 1) parts.push(text(' '))
+      parts.push(formatNode(child))
+    }
+  }
+
+  // Last child is the close brace (}) — emit tight
+  if (children.length > 1) {
+    parts.push(formatTokenWithTrivia(children[children.length - 1] as CstToken))
+  }
+  return concat(...parts)
 }
 
 // ---------------------------------------------------------------------------

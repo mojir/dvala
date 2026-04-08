@@ -1,94 +1,126 @@
 let { test, describe } = import("test");
 let { assertEqual, assertTrue, assertThrows } = import("assertion");
-let { chooseAll, chooseFirst, chooseRandom, chooseTake } = import("effectHandler");
+let { chooseAll, chooseFirst, chooseRandom, chooseTake } =
+  import("effectHandler");
 
 describe("chooseAll", -> do
-  test("collects all results for a single choice", ->
-    assertEqual(chooseAll(-> perform(@choose, [1, 2, 3]) * 10), [10, 20, 30])
+  test(
+    "collects all results for a single choice",
+    -> assertEqual(chooseAll(-> perform(@choose, [1, 2, 3]) * 10), [10, 20, 30])
   );
 
-  test("cartesian product of two choices", ->
-    // Sort by composite key to get stable order for comparison
-    assertEqual(
-      sort(chooseAll(-> do
-        let a = perform(@choose, [1, 2]);
-        let b = perform(@choose, [10, 20]);
-        [a, b]
-      end) map (x -> x[0] * 100 + x[1])),
+  test(
+    "cartesian product of two choices",
+    -> assertEqual(
+      sort(
+        chooseAll(
+          -> do
+            let a = perform(@choose, [1, 2]);
+            let b = perform(@choose, [10, 20]);
+            [a, b];
+          end
+        ) map
+          (x -> x[0] * 100 + x[1])
+      ),
       [110, 120, 210, 220]
     )
   );
 
-  test("8 paths from 3 binary choices", ->
-    assertEqual(
-      sort(chooseAll(-> do
-        let a = perform(@choose, [0, 1]);
-        let b = perform(@choose, [0, 1]);
-        let c = perform(@choose, [0, 1]);
-        a * 4 + b * 2 + c
-      end)),
+  test(
+    "8 paths from 3 binary choices",
+    -> assertEqual(
+      sort(
+        chooseAll(
+          -> do
+            let a = perform(@choose, [0, 1]);
+            let b = perform(@choose, [0, 1]);
+            let c = perform(@choose, [0, 1]);
+            a * 4 + b * 2 + c;
+          end
+        )
+      ),
       [0, 1, 2, 3, 4, 5, 6, 7]
     )
   );
 
-  test("returns singleton when no choice is performed", ->
-    assertEqual(chooseAll(-> 42), [42])
+  test(
+    "returns singleton when no choice is performed",
+    -> assertEqual(chooseAll(-> 42), [42])
   );
 
-  test("transform wraps each branch result", ->
-    assertEqual(chooseAll(-> perform(@choose, ["a", "b"])), ["a", "b"])
-  )
+  test(
+    "transform wraps each branch result",
+    -> assertEqual(chooseAll(-> perform(@choose, ["a", "b"])), ["a", "b"])
+  );
 end);
 
 describe("chooseFirst", -> do
-  test("picks the first option", ->
-    assertEqual(chooseFirst(-> perform(@choose, [1, 2, 3]) * 10), 10)
+  test(
+    "picks the first option",
+    -> assertEqual(chooseFirst(-> perform(@choose, [1, 2, 3]) * 10), 10)
   );
 
-  test("works with a single option", ->
-    assertEqual(chooseFirst(-> perform(@choose, [99])), 99)
+  test(
+    "works with a single option",
+    -> assertEqual(chooseFirst(-> perform(@choose, [99])), 99)
   );
 
-  test("works with no choice performed", ->
-    assertEqual(chooseFirst(-> 42), 42)
-  );
+  test("works with no choice performed", -> assertEqual(chooseFirst(-> 42), 42));
 
-  test("only explores first branch of nested choices", ->
-    assertEqual(
-      chooseFirst(-> do
-        let a = perform(@choose, [1, 2]);
-        let b = perform(@choose, [10, 20]);
-        [a, b]
-      end),
+  test(
+    "only explores first branch of nested choices",
+    -> assertEqual(
+      chooseFirst(
+        -> do
+          let a = perform(@choose, [1, 2]);
+          let b = perform(@choose, [10, 20]);
+          [a, b];
+        end
+      ),
       [1, 10]
     )
-  )
+  );
 end);
 
 describe("chooseRandom", -> do
-  test("returns one of the given options", ->
-    assertTrue(contains([1, 2, 3], chooseRandom(-> perform(@choose, [1, 2, 3]))))
-  )
+  test(
+    "returns one of the given options",
+    -> assertTrue(
+      contains([1, 2, 3], chooseRandom(-> perform(@choose, [1, 2, 3])))
+    )
+  );
 end);
 
 describe("chooseTake", -> do
-  test("takes first n results", ->
-    assertEqual(chooseTake(2, -> perform(@choose, [1, 2, 3]) * 10), [10, 20])
+  test(
+    "takes first n results",
+    -> assertEqual(chooseTake(2, -> perform(@choose, [1, 2, 3]) * 10), [10, 20])
   );
 
-  test("returns all results when n >= total branches", ->
-    assertEqual(chooseTake(10, -> perform(@choose, [1, 2, 3]) * 10), [10, 20, 30])
+  test(
+    "returns all results when n >= total branches",
+    -> assertEqual(
+      chooseTake(10, -> perform(@choose, [1, 2, 3]) * 10),
+      [10, 20, 30]
+    )
   );
 
-  test("returns empty array when n = 0", ->
-    assertEqual(chooseTake(0, -> perform(@choose, [1, 2, 3])), [])
+  test(
+    "returns empty array when n = 0",
+    -> assertEqual(chooseTake(0, -> perform(@choose, [1, 2, 3])), [])
   );
 
-  test("stops early in cartesian product", ->
-    assertEqual(count(chooseTake(3, -> do
-      let a = perform(@choose, [1, 2, 3]);
-      let b = perform(@choose, [10, 20, 30]);
-      [a, b]
-    end)), 3)
-  )
-end)
+  test(
+    "stops early in cartesian product",
+    -> assertEqual(
+      count(
+        chooseTake(3, -> do
+          let a = perform(@choose, [1, 2, 3]);
+          let b = perform(@choose, [10, 20, 30]);
+          [a, b];
+        end)
+      ),
+      3
+    )
+  );
+end);

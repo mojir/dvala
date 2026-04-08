@@ -1,9 +1,8 @@
 {
   "|>": (a, b) -> b(a),
-
   apply: (fn, ...args) -> do
     let arr = last(args);
     let leading = slice(args, 0, count(args) - 1);
-    fn(...leading, ...arr)
-  end
-}
+    fn(...leading, ...arr);
+  end,
+};

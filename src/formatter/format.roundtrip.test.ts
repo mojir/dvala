@@ -74,24 +74,26 @@ describe('round-trip — feature card examples', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Example project .dvala files
+// All .dvala files in the repo (auto-discovered)
 // ---------------------------------------------------------------------------
 
-describe('round-trip — example project files', () => {
-  for (const filePath of collectFiles(path.join(root, 'examples'), '.dvala')) {
-    it(rel(filePath), () => {
-      const code = fs.readFileSync(filePath, 'utf-8').trimEnd()
-      expect(format(code).trimEnd()).toBe(code)
-    })
+// Directories excluded from .dvala round-trip testing (generated/temp content).
+const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'build', '.tmp-cli-test', '.wireit', 'coverage', 'test-results', '.cache'])
+
+function collectDvalaFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return []
+  const results: string[] = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (EXCLUDED_DIRS.has(entry.name)) continue
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) results.push(...collectDvalaFiles(fullPath))
+    else if (entry.name.endsWith('.dvala')) results.push(fullPath)
   }
-})
+  return results.sort()
+}
 
-// ---------------------------------------------------------------------------
-// Built-in module source .dvala files
-// ---------------------------------------------------------------------------
-
-describe('round-trip — built-in module source files', { timeout: BUILTIN_MODULE_ROUNDTRIP_TIMEOUT_MS }, () => {
-  for (const filePath of collectFiles(path.join(root, 'src/builtin/modules'), '.dvala').filter(file => !file.endsWith('.test.dvala'))) {
+describe('round-trip — all .dvala files', { timeout: BUILTIN_MODULE_ROUNDTRIP_TIMEOUT_MS }, () => {
+  for (const filePath of collectDvalaFiles(root)) {
     it(rel(filePath), () => {
       const code = fs.readFileSync(filePath, 'utf-8').trimEnd()
       expect(format(code).trimEnd()).toBe(code)

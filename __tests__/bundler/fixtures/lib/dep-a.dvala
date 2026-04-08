@@ -1,2 +1,2 @@
 let s = import("./shared.dvala");
-s + 1
+s + 1;

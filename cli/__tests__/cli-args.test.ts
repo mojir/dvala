@@ -20,9 +20,7 @@ describe('cLI argument parsing', () => {
       }
     }
 
-    // Create fixtures dir and a simple .dvala file for run tests
-    fs.mkdirSync(fixturesDir, { recursive: true })
-    fs.writeFileSync(path.join(fixturesDir, 'simple.dvala'), '1 + 2 + 3')
+    // Fixtures dir and simple.dvala are checked in — no need to create them
   })
 
   function exec(args: string): string {

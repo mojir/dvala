@@ -8,40 +8,45 @@
 //   4b. Rejected  → loop back to step 1 with LLM text + feedback
 
 let editDraft = (previous, feedback, attempt) -> do
-  perform(@dvala.io.print, "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")");
+  perform(
+    @dvala.io.print,
+    "✏️  STEP 1 — WRITE YOUR DRAFT (attempt " ++ str(attempt) ++ ")"
+  );
 
   if feedback != "" then
     perform(@dvala.io.print, "Approver feedback: \"" ++ feedback ++ "\"");
-    perform(@dvala.io.print, "Previous version:\n" ++ previous ++ "\n");
+    perform(@dvala.io.print, "Previous version:\n" ++ previous ++ "\n")
   end;
 
-  perform(@dvala.io.read, "Your draft:\n")
+  perform(@dvala.io.read, "Your draft:\n");
 end;
 
 let polish = (draft) -> do
   perform(@dvala.io.print, "\n🤖 STEP 2 — LLM POLISH");
   perform(@dvala.io.print, "Improving your draft...\n");
 
-  let polished = perform(@llm.ask,
-    "Improve this email for a professional audience. "
-    ++ "Keep it concise and engaging. "
-    ++ "Reply with only the improved email text, no commentary.\n\n"
-    ++ draft
-  );
+  let polished =
+    perform(
+      @llm.ask,
+      "Improve this email for a professional audience. " ++
+        "Keep it concise and engaging. " ++
+        "Reply with only the improved email text, no commentary.\n\n" ++
+        draft
+    );
 
   perform(@dvala.io.print, polished);
-  polished
+  polished;
 end;
 
 let requestApproval = (text, attempt) -> do
   perform(@dvala.io.print, "\n👤 STEP 3 — APPROVAL REQUEST");
   perform(@dvala.io.print, "Waiting for approver...\n");
 
-  perform(@human.approve, { text: text, attempt: attempt })
+  perform(@human.approve, { text: text, attempt: attempt });
 end;
 
 let run = (previous, feedback, attempt) -> do
-  let draft    = editDraft(previous, feedback, attempt);
+  let draft = editDraft(previous, feedback, attempt);
   let polished = polish(draft);
   let decision = requestApproval(polished, attempt);
 
@@ -52,10 +57,13 @@ let run = (previous, feedback, attempt) -> do
   else
     perform(@dvala.io.print, "\n↩️  REJECTED — looping back to author.\n");
     run(polished, decision.comment, attempt + 1)
-  end
+  end;
 end;
 
 perform(@dvala.io.print, "📧 EMAIL CAMPAIGN EDITOR");
-perform(@dvala.io.print, "Write a draft, let the LLM polish it, get it approved.\n");
+perform(
+  @dvala.io.print,
+  "Write a draft, let the LLM polish it, get it approved.\n"
+);
 
-run("", "", 1)
+run("", "", 1);
