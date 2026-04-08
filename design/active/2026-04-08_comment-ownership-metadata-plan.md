@@ -1,6 +1,6 @@
 # Concrete Syntax Tree Plan
 
-**Status:** Decided
+**Status:** Complete
 **Created:** 2026-04-08
 
 ## Goal
@@ -342,21 +342,21 @@ The CST formatter lives in `src/formatter/`: `doc.ts` for the algebra, `cstForma
 13. ✅ **`parseToCst()` public API**: tokenize fully → CST-mode context → parse → build untyped tree. Fail-fast on parse error.
 14. ✅ **Tree-level losslessness verified**: 129 tests (35 construct-level + 24 tree structure + 70 corpus .dvala files).
 
-### Phase 3 — CST-based formatter (Doc algebra)
+### Phase 3 — CST-based formatter (Doc algebra) ✅
 
-15. Implement the Doc algebra in `src/formatter/doc.ts`: `Text`, `Line`, `Group`, `Nest`, `Concat`, `HardLine`, `IfBreak(flat, broken)`, `LineComment`. Implement the Wadler-Lindig "best fit" renderer.
-16. Build the CST formatter in `src/formatter/cstFormat.ts`: walk CstNode tree, produce Doc tree. Block comments (`/* */`) as `Text` nodes; line comments (`// foo`) as `LineComment` (forces hard break). Preserve authored blank lines between top-level expressions (up to `MAX_BLANK_LINES`).
-17. Normalize all structural whitespace to canonical form. Comments are the only authored content preserved at their logical attachment positions.
-18. Add broad regression coverage for comments, authored forms, arrays, objects, infix layouts, pipes, nested expressions, and file-level comments.
-19. Verify idempotency: `format(format(source)) === format(source)`.
+15. ✅ Implement the Doc algebra in `src/formatter/doc.ts`: `Text`, `Line`, `SoftLine`, `Group`, `Nest`, `Concat`, `HardLine`, `IfBreak(flat, broken)`, `LineComment`. Implement the Wadler-Lindig "best fit" renderer.
+16. ✅ Build the CST formatter in `src/formatter/cstFormat.ts`: walk untyped CST tree, produce Doc tree. Block comments (`/* */`) as `Text` nodes; line comments (`// foo`) handled by containers. Preserve authored blank lines between top-level expressions.
+17. ✅ Normalize all structural whitespace to canonical form. Comments are the only authored content preserved at their logical attachment positions.
+18. ✅ Broad regression coverage: 103 format tests + 129 CST losslessness tests + roundtrip tests on all book/example/module .dvala files.
+19. ✅ Idempotency verified across all formatted source files.
 
-### Phase 4 — Cleanup
+### Phase 4 — Cleanup ✅
 
-20. Replace `format.ts` implementation wholesale: `parseToCst()` → `formatCst()`. Remove the old AST+reinsertion path entirely.
-21. Remove the old comment extraction, anchoring, and reinsertion code (`extractComments.ts`, `reinsertComments.ts`, comment hint plumbing).
-22. Remove the `prettyPrint` comment hint system (`withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints`) — only used by the old formatter path.
-23. Validate that `prettyPrint.ts` still works for runtime AST display (unchanged, no dependency on removed code).
-24. Run full `npm run check`.
+20. ✅ Replace `format.ts` implementation wholesale: `parseToCst()` → `formatCst()`. Old path removed.
+21. ✅ Removed `extractComments.ts`, `reinsertComments.ts` (-1,169 lines).
+22. ✅ Removed `withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints` from `prettyPrint.ts`.
+23. ✅ `prettyPrint.ts` works for runtime AST display (all tests pass).
+24. ✅ Full `npm run check` passes (lint + typecheck + test + build + 95 e2e tests).
 
 ### Future — Grammar schema (optional)
 
