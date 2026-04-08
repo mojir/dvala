@@ -138,7 +138,7 @@ function formatTokenWithTrivia(token: CstToken): Doc {
   }
   parts.push(tokenDoc)
   for (const c of trailingBlocks) {
-    parts.push(c, text(' '))
+    parts.push(text(' '), c)
   }
   return concat(...parts)
 }
@@ -512,13 +512,19 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
     parts.push(formatNode(stmt))
     parts.push(text(';'))
 
-    // Trailing line comment on the statement's last token or on the semicolon
+    // Trailing comments on the statement's last token or on the semicolon
     const stmtTrailingComment = getTrailingLineComment(stmt)
-    const semiTrailingComment = i < semicolonTokens.length
-      ? semicolonTokens[i]!.trailingTrivia.find(t => t.kind === 'lineComment')?.text
-      : undefined
-    const trailingComment = stmtTrailingComment ?? semiTrailingComment
+    const semiToken = i < semicolonTokens.length ? semicolonTokens[i] : undefined
+    const semiTrailingLine = semiToken?.trailingTrivia.find(t => t.kind === 'lineComment')?.text
+    const semiTrailingBlocks = semiToken?.trailingTrivia.filter(t => t.kind === 'blockComment') ?? []
+    const trailingComment = stmtTrailingComment ?? semiTrailingLine
     lastTrailingComment = trailingComment
+
+    // Emit trailing block comments from semicolon (e.g., `1; /* note */`)
+    for (const bc of semiTrailingBlocks) {
+      parts.push(text(' '), text(bc.text))
+    }
+    // Emit trailing line comment
     if (trailingComment) {
       parts.push(text(' '), lineComment(trailingComment))
     }
@@ -896,6 +902,28 @@ function formatCall(node: UntypedCstNode): Doc {
 
   const openDoc = openParen ? formatTokenWithTrivia(openParen) : text('(')
 
+  // Trailing lambda pattern: when the last arg is a lambda (Function node)
+  // and there are 2+ args, keep leading args on the opening line.
+  // Format: `fn(arg1, arg2, -> do\n  body\nend)`
+  const lastArg = args[args.length - 1]!
+  const isTrailingLambda = args.length >= 2
+    && (lastArg.kind === 'Function')
+    // Check if the lambda body contains a Block (do...end)
+    && childNodes(lastArg).some(c => c.kind === 'Block')
+
+  if (isTrailingLambda) {
+    const leadingArgDocs = argDocs.slice(0, -1)
+    const trailingArgDoc = argDocs[argDocs.length - 1]!
+    return group(concat(
+      formatNode(fn),
+      openDoc,
+      join(concat(text(','), text(' ')), leadingArgDocs),
+      text(', '),
+      trailingArgDoc,
+      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+    ))
+  }
+
   return concat(
     formatNode(fn),
     group(concat(
@@ -978,12 +1006,27 @@ function formatLet(node: UntypedCstNode): Doc {
   // Value is the remaining node
   const value = iter.nextNode()
 
+  const header = concat(text('let'), text(' '), concat(...targetParts), text(' = '))
+  const valueDoc = formatNode(value)
+
+  // For Function/Block values (lambda with do-block), don't break at `=`.
+  // The value's internal formatting handles its own indentation.
+  if (value.kind === 'Function' || value.kind === 'Block') {
+    return concat(header, valueDoc)
+  }
+
+  // For Array/Object values, keep `= [` or `= {` on the opening line.
+  if (value.kind === 'Array' || value.kind === 'Object') {
+    return concat(header, valueDoc)
+  }
+
+  // For other values: try flat, break at `=` if too long
   return group(concat(
     text('let'),
     text(' '),
     concat(...targetParts),
     text(' ='),
-    nest(INDENT, concat(line, formatNode(value))),
+    nest(INDENT, concat(line, valueDoc)),
   ))
 }
 
@@ -1429,9 +1472,10 @@ function emitTriviaWithBlankLines(trivia: TriviaNode[], parts: Doc[]): void {
     } else if (t.kind === 'blockComment') {
       parts.push(text(t.text), hardLine)
     } else if (t.kind === 'whitespace' && triviaHasBlankLine([t])) {
-      // Blank line — emit only if followed by a comment (not at end)
+      // Blank line — emit if followed by a comment OR at end of trivia
+      // (at end = blank line between comments and the next statement)
       const nextT = trivia[i + 1]
-      if (nextT && (nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
+      if (!nextT || nextT.kind === 'lineComment' || nextT.kind === 'blockComment') {
         parts.push(hardLine)
       }
     }
