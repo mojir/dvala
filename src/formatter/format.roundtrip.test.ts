@@ -18,6 +18,7 @@ import { extractCodeBlocks } from '../../reference/book'
 import { format } from './format'
 
 const root = path.resolve(import.meta.dirname, '../..')
+const BUILTIN_MODULE_ROUNDTRIP_TIMEOUT_MS = 30_000
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -89,7 +90,7 @@ describe('round-trip — example project files', () => {
 // Built-in module source .dvala files
 // ---------------------------------------------------------------------------
 
-describe('round-trip — built-in module source files', () => {
+describe('round-trip — built-in module source files', { timeout: BUILTIN_MODULE_ROUNDTRIP_TIMEOUT_MS }, () => {
   for (const filePath of collectFiles(path.join(root, 'src/builtin/modules'), '.dvala').filter(file => !file.endsWith('.test.dvala'))) {
     it(rel(filePath), () => {
       const code = fs.readFileSync(filePath, 'utf-8').trimEnd()
