@@ -1459,31 +1459,11 @@ function formatQuote(node: UntypedCstNode): Doc {
 
 function formatSplice(node: UntypedCstNode): Doc {
   // Children: $^{ marker token, expression tokens..., } close brace token
-  // Tight against braces, spaces between expression tokens: $^{a + b}
-  const children = node.children
-  if (children.length === 0) return text('')
-
-  const parts: Doc[] = []
-  // First child is the marker ($^{) — emit tight
-  parts.push(formatTokenWithTrivia(children[0] as CstToken))
-
-  // Middle children are the expression — space-separate non-punctuation
-  for (let i = 1; i < children.length - 1; i++) {
-    const child = children[i]!
-    if (isToken(child)) {
-      if (i > 1 && !isPunctuation(child.text)) parts.push(text(' '))
-      parts.push(formatTokenWithTrivia(child))
-    } else {
-      if (i > 1) parts.push(text(' '))
-      parts.push(formatNode(child))
-    }
-  }
-
-  // Last child is the close brace (}) — emit tight
-  if (children.length > 1) {
-    parts.push(formatTokenWithTrivia(children[children.length - 1] as CstToken))
-  }
-  return concat(...parts)
+  // Uses the same needsSpaceBetween logic as formatFromChildren so that
+  // function calls, property access, etc. are spaced correctly.
+  // The $^{ marker ends with '{' so isOpenBracket suppresses the space after it,
+  // and '}' is punctuation so no space appears before it.
+  return formatFromChildren(node)
 }
 
 // ---------------------------------------------------------------------------
@@ -1498,22 +1478,25 @@ function formatSplice(node: UntypedCstNode): Doc {
  */
 function formatFromChildren(node: UntypedCstNode): Doc {
   const parts: Doc[] = []
-  let hasPrev = false
+  let prevText = '' // last emitted token text, or '_' after a child node
 
   for (const child of node.children) {
     if (isToken(child)) {
-      // Add space before tokens (except punctuation that doesn't need it)
-      if (hasPrev && parts.length > 0 && !isPunctuation(child.text)) {
+      if (prevText && needsSpaceBetween(prevText, child.text)) {
         parts.push(text(' '))
       }
       parts.push(formatTokenWithTrivia(child))
+      prevText = child.text
     } else {
-      if (hasPrev && parts.length > 0) {
+      // Space before a child node unless preceded by an open bracket or dot
+      if (prevText && !isOpenBracket(prevText) && prevText !== '.') {
         parts.push(text(' '))
       }
       parts.push(formatNode(child))
+      // After a child node, assume its last token is non-special so the
+      // next token gets normal spacing (space before non-punctuation).
+      prevText = '_'
     }
-    hasPrev = true
   }
 
   return concat(...parts)
@@ -1567,7 +1550,30 @@ function isPunctuation(s: string): boolean {
   return s === ',' || s === ';' || s === ')' || s === ']' || s === '}' || s === '.' || s === ':'
 }
 
-/** Check if a token text is an opening bracket that shouldn't have a space after it. */
+/** Check if a token ends with an opening bracket — no space should follow it. */
 function isOpenBracket(s: string): boolean {
-  return s === '(' || s === '[' || s === '{'
+  const last = s[s.length - 1]
+  return last === '(' || last === '[' || last === '{'
+}
+
+/**
+ * Determine whether a space is needed before the current token, given the
+ * previous token text. Handles function calls (no space before `(`),
+ * property access (no space after `.`), and brackets (no space after open,
+ * no space before close).
+ */
+function needsSpaceBetween(prev: string, cur: string): boolean {
+  if (isPunctuation(cur)) return false // no space before ), ], }, ., ,, ;, :
+  if (isOpenBracket(prev)) return false // no space after (, [, {
+  if (prev === '.') return false // no space after .  (property access)
+  if (cur === '(' && !isOperatorText(prev)) return false // function call: foo(x)
+  return true
+}
+
+/** Check if text looks like an operator (not an identifier or literal). */
+function isOperatorText(s: string): boolean {
+  if (s.length === 0) return false
+  const ch = s[0]!
+  // Operators start with symbolic characters; identifiers/numbers/strings don't
+  return '+-*/%<>=!&|^~?'.includes(ch) || s === 'not' || s === 'and' || s === 'or'
 }

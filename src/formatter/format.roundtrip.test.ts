@@ -100,4 +100,3 @@ describe('round-trip — all .dvala files', { timeout: BUILTIN_MODULE_ROUNDTRIP_
     })
   }
 })
-

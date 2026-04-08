@@ -100,7 +100,8 @@ reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0);
 
 ```dvala
 // Factorial using loop/recur
-loop ( n = 6, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+loop(n = 6, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+
 ```
 
 Each iteration creates new bindings rather than modifying existing ones.

@@ -73,12 +73,13 @@ grade(85);
 Even iteration produces a value — the body's value when `recur` is not called:
 
 ```dvala
-let gcd = (a, b) -> loop ( x = a, y = b) -> if y == 0 then
+let gcd = (a, b) -> loop(x = a, y = b) -> if y == 0 then
   x
 else
   recur(y, x % y)
 end;
 gcd(48, 18);
+
 ```
 
 ## for Returns an Array
@@ -86,8 +87,9 @@ gcd(48, 18);
 Comprehensions are expressions that produce arrays:
 
 ```dvala
-let squares = for ( x in range(6)) -> x * x;
+let squares = for(x in range(6)) -> x * x;
 squares;
+
 ```
 
 ## Effects Return Values
@@ -121,7 +123,7 @@ map([1, 2, 3, 4, 5], (x) -> if isOdd(x) then x * x else x end);
 ```
 
 ```dvala
-let classify = (xs) -> for ( x in xs) -> if x < 0 then
+let classify = (xs) -> for(x in xs) -> if x < 0 then
   "negative"
 else if x == 0 then
   "zero"
@@ -129,6 +131,7 @@ else
   "positive"
 end;
 classify([-3, 0, 5, -1, 7]);
+
 ```
 
 ## Summary

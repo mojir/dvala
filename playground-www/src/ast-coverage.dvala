@@ -73,11 +73,11 @@ let factorial = (n) -> do if n <= 1 then 1 else n * self(n - 1) end end;
 
 // --- Loop with recur ---
 let loopSum =
-  loop ( i = 0, acc = 0) -> if i >= 10 then acc else recur(i + 1, acc + i) end;
+  loop(i = 0, acc = 0) -> if i >= 10 then acc else recur(i + 1, acc + i) end;
 
 // --- For comprehension with let, when ---
 let fizz =
-  for ( n in range(1, 16) let div3 = isZero(n % 3) let div5 = isZero(n % 5) when div3 ||
+  for(n in range(1, 16) let div3 = isZero(n % 3) let div5 = isZero(n % 5) when div3 ||
     div5) -> if div3 && div5 then
     "FizzBuzz"
   else if div3 then

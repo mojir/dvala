@@ -7,7 +7,7 @@
     if isObject(firstColl) then
       do
         let expectedKeys = keys(firstColl) |> sort;
-        for ( obj in otherColls) -> do
+        for(obj in otherColls) -> do
           if not(isObject(obj)) then
             perform(@dvala.error, { message: "Expected object" })
           end;
@@ -29,7 +29,7 @@
         reduce(
           keys(firstColl),
           (acc, k) -> do
-            let a = for ( coll in allColls) -> coll(k);
+            let a = for(coll in allColls) -> coll(k);
             assoc(acc, k, apply(fn, a));
           end,
           {}
@@ -37,7 +37,7 @@
       end
     else if isString(firstColl) then
       do
-        for ( s in otherColls) -> do
+        for(s in otherColls) -> do
           if not(isString(s)) then
             perform(@dvala.error, { message: "Expected string" })
           end;
@@ -45,8 +45,8 @@
         let len =
           reduce(otherColls, (m, s) -> min(m, count(s)), count(firstColl));
         let mapped =
-          for ( i in range(len)) -> do
-            let a = for ( coll in allColls) -> nth(coll, i);
+          for(i in range(len)) -> do
+            let a = for(coll in allColls) -> nth(coll, i);
             apply(fn, a);
           end;
         reduce(
@@ -62,15 +62,15 @@
       end
     else
       do
-        for ( x in otherColls) -> do
+        for(x in otherColls) -> do
           if not(isArray(x)) then
             perform(@dvala.error, { message: "Expected array" })
           end;
         end;
         let len =
           reduce(otherColls, (m, x) -> min(m, count(x)), count(firstColl));
-        for ( i in range(len)) -> do
-          let a = for ( coll in allColls) -> nth(coll, i);
+        for(i in range(len)) -> do
+          let a = for(coll in allColls) -> nth(coll, i);
           apply(fn, a);
         end;
       end
@@ -99,7 +99,7 @@
   end,
   reduce: (coll, fn, initial) -> do
     if isString(coll) then
-      loop ( acc = initial, i = 0) -> do
+      loop(acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
         else
@@ -107,7 +107,7 @@
         end;
       end
     else if isArray(coll) then
-      loop ( acc = initial, i = 0) -> do
+      loop(acc = initial, i = 0) -> do
         if i >= count(coll) then
           acc
         else
@@ -117,7 +117,7 @@
     else if isObject(coll) then
       do
         let values = vals(coll);
-        loop ( acc = initial, i = 0) -> do
+        loop(acc = initial, i = 0) -> do
           if i >= count(values) then
             acc
           else

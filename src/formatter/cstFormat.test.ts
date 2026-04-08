@@ -200,6 +200,26 @@ describe('cstFormat — complex constructs', () => {
     const result = fmt('quote quote $^^{z} end end').trimEnd()
     expect(result).toBe('quote quote $^^{z} end end;')
   })
+
+  it('formats splice with function call — no space before parens', () => {
+    expect(fmt('quote $^{foo(x)} end').trimEnd()).toBe('quote $^{foo(x)} end;')
+  })
+
+  it('formats splice with property access — no space after dot', () => {
+    expect(fmt('quote $^{x.y} end').trimEnd()).toBe('quote $^{x.y} end;')
+  })
+
+  it('formats splice with array literal', () => {
+    expect(fmt('quote $^{[1, 2]} end').trimEnd()).toBe('quote $^{[1, 2]} end;')
+  })
+
+  it('formats quote body with function call — no space before parens', () => {
+    expect(fmt('quote foo(x) end').trimEnd()).toBe('quote foo(x) end;')
+  })
+
+  it('formats quote body with property access — no space after dot', () => {
+    expect(fmt('quote x.y end').trimEnd()).toBe('quote x.y end;')
+  })
 })
 
 // ---------------------------------------------------------------------------

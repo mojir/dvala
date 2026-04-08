@@ -88,7 +88,8 @@ end;
 `loop` creates bindings and `recur` jumps back with new values. Both are special because `recur` must be recognized at the tail position:
 
 ```dvala
-loop ( i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
+loop(i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
+
 ```
 
 ### match — Pattern Matching
@@ -108,7 +109,8 @@ end;
 `for` creates a new array from a comprehension:
 
 ```dvala
-for ( x in [1, 2, 3] when x > 1) -> x * 10;
+for(x in [1, 2, 3] when x > 1) -> x * 10;
+
 ```
 
 ### @name / perform — Algebraic Effects

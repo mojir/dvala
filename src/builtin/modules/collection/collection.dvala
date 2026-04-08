@@ -22,7 +22,7 @@
   end,
   filteri: (coll, fn) -> if isArray(coll) then
     reduce(
-      for ( i in range(count(coll))) -> [nth(coll, i), i],
+      for(i in range(count(coll))) -> [nth(coll, i), i],
       (acc, pair) -> if fn(first(pair), second(pair)) then
         [...acc, first(pair)]
       else
@@ -32,7 +32,7 @@
     )
   else if isString(coll) then
     reduce(
-      for ( i in range(count(coll))) -> [nth(coll, i), i],
+      for(i in range(count(coll))) -> [nth(coll, i), i],
       (acc, pair) -> if fn(first(pair), second(pair)) then
         acc ++ first(pair)
       else
@@ -50,10 +50,10 @@
     perform(@dvala.error, "Expected collection")
   end,
   mapi: (coll, fn) -> if isArray(coll) then
-    for ( i in range(count(coll))) -> fn(nth(coll, i), i)
+    for(i in range(count(coll))) -> fn(nth(coll, i), i)
   else if isString(coll) then
     reduce(
-      for ( i in range(count(coll))) -> fn(nth(coll, i), i),
+      for(i in range(count(coll))) -> fn(nth(coll, i), i),
       (acc, ch) -> acc ++ ch,
       ""
     )
@@ -63,7 +63,7 @@
     perform(@dvala.error, "Expected collection")
   end,
   reducei: (coll, fn, initial) -> if isString(coll) then
-    loop ( acc = initial, i = 0) -> do
+    loop(acc = initial, i = 0) -> do
       if i >= count(coll) then
         acc
       else
@@ -71,7 +71,7 @@
       end;
     end
   else if isArray(coll) then
-    loop ( acc = initial, i = 0) -> do
+    loop(acc = initial, i = 0) -> do
       if i >= count(coll) then
         acc
       else
@@ -95,14 +95,14 @@
   reduceiRight: (coll, fn, initial) -> if isString(coll) then
     do
       let len = count(coll);
-      loop ( acc = initial, i = len - 1) -> do
+      loop(acc = initial, i = len - 1) -> do
         if i < 0 then acc else recur(fn(acc, nth(coll, i), i), i - 1) end;
       end;
     end
   else if isArray(coll) then
     do
       let len = count(coll);
-      loop ( acc = initial, i = len - 1) -> do
+      loop(acc = initial, i = len - 1) -> do
         if i < 0 then acc else recur(fn(acc, nth(coll, i), i), i - 1) end;
       end;
     end
@@ -117,12 +117,12 @@
         if count(coll) == 0 then
           []
         else
-          for ( i in range(count(coll))) -> nth(coll, i)
+          for(i in range(count(coll))) -> nth(coll, i)
         end
       else if isArray(coll) then
         coll
       else if isObject(coll) then
-        for ( k in keys(coll)) -> coll(k)
+        for(k in keys(coll)) -> coll(k)
       else
         perform(@dvala.error, "Expected collection")
       end;
@@ -145,7 +145,7 @@
         [initial]
       else
         reduce(
-          for ( i in range(count(coll))) -> [nth(coll, i), i],
+          for(i in range(count(coll))) -> [nth(coll, i), i],
           (acc, pair) -> do
             let prev = last(acc);
             [...acc, fn(prev, first(pair), second(pair))];
@@ -160,7 +160,7 @@
         [initial]
       else
         reduce(
-          for ( i in range(count(coll))) -> [nth(coll, i), i],
+          for(i in range(count(coll))) -> [nth(coll, i), i],
           (acc, pair) -> do
             let prev = last(acc);
             [...acc, fn(prev, first(pair), second(pair))];
@@ -193,13 +193,13 @@
       if isArray(coll) then
         coll
       else if isString(coll) then
-        for ( i in range(count(coll))) -> nth(coll, i)
+        for(i in range(count(coll))) -> nth(coll, i)
       else if isObject(coll) then
-        for ( k in keys(coll)) -> [k, coll(k)]
+        for(k in keys(coll)) -> [k, coll(k)]
       else
         perform(@dvala.error, "Expected collection")
       end;
-    loop ( i = 0) -> if i >= count(items) then
+    loop(i = 0) -> if i >= count(items) then
       true
     else if not(fn(nth(items, i))) then
       false
@@ -212,13 +212,13 @@
       if isArray(coll) then
         coll
       else if isString(coll) then
-        for ( i in range(count(coll))) -> nth(coll, i)
+        for(i in range(count(coll))) -> nth(coll, i)
       else if isObject(coll) then
-        for ( k in keys(coll)) -> [k, coll(k)]
+        for(k in keys(coll)) -> [k, coll(k)]
       else
         perform(@dvala.error, "Expected collection")
       end;
-    loop ( i = 0) -> if i >= count(items) then
+    loop(i = 0) -> if i >= count(items) then
       false
     else if fn(nth(items, i)) then
       true
@@ -231,13 +231,13 @@
       if isArray(coll) then
         coll
       else if isString(coll) then
-        for ( i in range(count(coll))) -> nth(coll, i)
+        for(i in range(count(coll))) -> nth(coll, i)
       else if isObject(coll) then
-        for ( k in keys(coll)) -> [k, coll(k)]
+        for(k in keys(coll)) -> [k, coll(k)]
       else
         perform(@dvala.error, "Expected collection")
       end;
-    loop ( i = 0) -> if i >= count(items) then
+    loop(i = 0) -> if i >= count(items) then
       true
     else if fn(nth(items, i)) then
       false
@@ -250,13 +250,13 @@
       if isArray(coll) then
         coll
       else if isString(coll) then
-        for ( i in range(count(coll))) -> nth(coll, i)
+        for(i in range(count(coll))) -> nth(coll, i)
       else if isObject(coll) then
-        for ( k in keys(coll)) -> [k, coll(k)]
+        for(k in keys(coll)) -> [k, coll(k)]
       else
         perform(@dvala.error, "Expected collection")
       end;
-    loop ( i = 0) -> if i >= count(items) then
+    loop(i = 0) -> if i >= count(items) then
       false
     else if not(fn(nth(items, i))) then
       true

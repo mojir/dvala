@@ -2,7 +2,7 @@
   fallback: (value) -> handler
     @dvala.error(msg) -> value
   end,
-  retry: (n, bodyFn) -> loop ( remaining = n) -> do
+  retry: (n, bodyFn) -> loop(remaining = n) -> do
     with handler
       @dvala.error(msg) -> if remaining > 0 then
         recur(remaining - 1)

@@ -4,5 +4,5 @@
     body();
     perform(@test.popDescribe, null);
   end,
-  skip: macro ( expr) -> quote do perform ( @test.pushSkip, null); $^{expr}; perform ( @test.popSkip, null); end; end,
+  skip: macro(expr) -> quote do perform(@test.pushSkip, null); $^{expr}; perform(@test.popSkip, null); end; end,
 };
