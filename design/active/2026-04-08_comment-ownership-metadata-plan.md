@@ -333,14 +333,14 @@ The CST formatter lives in `src/formatter/`: `doc.ts` for the algebra, `cstForma
 ### Phase 2 — Event-based parser instrumentation
 
 6. ✅ **Refactor: replace lambda backtracking with lookahead** in `parseOperand.ts`. Added `looksLikeLambda()` lookahead function, removed `storePosition()` / `restorePosition()` from `ParserContext`. All tests pass.
-7. Add `CstErrorNode` to the CST type hierarchy (minimal: `{ kind: 'Error', tokens: CstToken[], span: SourceSpan }`). Update all existing tree walkers to handle it.
-8. Define `CstEvent` types: `StartNode(kind)`, `Token(cstToken)`, `EndNode()`. Define `UntypedCstNode` (`{ kind, children }`).
-9. Implement `CstBuilder` that accumulates events and produces an `UntypedCstNode` tree.
-10. Implement untyped→typed conversion module that maps `UntypedCstNode` children positionally to typed `CstNode` fields per node kind.
-11. Modify `ParserContext` to support CST mode: work on full token stream, `peek()` skips trivia, `advance()` collects trivia and feeds `CstToken` to builder.
-12. Instrument sub-parsers top-down with `builder.startNode(kind)` / `builder.endNode()` calls. Start with `CstProgram` → top-level expressions → nested sub-structures (branches, bindings, entries, arguments). Each layer verified with losslessness tests before proceeding. Existing AST construction stays untouched.
-13. Implement `parseToCst()` public API: tokenize fully → create CST-mode context → parse → build untyped tree → convert to typed `CstProgram`. Fail-fast on parse error (no error recovery yet).
-14. Verify tree-level losslessness: `printCst(parseToCst(source)) === source` for a broad corpus.
+7. ✅ **Add `CstErrorNode`** to the CST type hierarchy. All existing tree walkers updated.
+8. ✅ **Define `CstEvent` types** and `UntypedCstNode`.
+9. ✅ **Implement `CstBuilder`** with `startNode`/`token`/`endNode` events, `checkpoint()`/`startNodeAt()` for Pratt parser wrapping.
+10. Untyped→typed conversion module — deferred to Phase 3 (only needed by the CST formatter).
+11. ✅ **ParserContext CST mode**: full token stream, `peek()` skips trivia, `advance()` collects trivia with split convention and feeds `CstToken` to builder.
+12. ✅ **Instrument all 18 sub-parsers** top-down with `startNode`/`endNode`. Checkpoint-based wrapping for BinaryOp, PropertyAccess, IndexAccess, Call. Existing AST construction untouched.
+13. ✅ **`parseToCst()` public API**: tokenize fully → CST-mode context → parse → build untyped tree. Fail-fast on parse error.
+14. ✅ **Tree-level losslessness verified**: 129 tests (35 construct-level + 24 tree structure + 70 corpus .dvala files).
 
 ### Phase 3 — CST-based formatter (Doc algebra)
 
