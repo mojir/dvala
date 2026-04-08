@@ -10,12 +10,12 @@
  * - Whitespace trivia is ignored (replaced by Doc-generated whitespace)
  * - Block comments (/* ... * /) become Text nodes in the Doc
  * - Line comments (// ...) become LineComment nodes (force hard break)
- * - Blank lines between top-level statements are preserved (up to MAX_BLANK_LINES)
+ * - Blank lines between top-level statements are preserved (up to 1 blank line)
  */
 
-import { MAX_WIDTH } from './config'
 import type { UntypedCstNode } from '../cst/builder'
 import type { CstToken, TriviaNode } from '../cst/types'
+import { MAX_WIDTH } from './config'
 import {
   type Doc,
   concat,
@@ -373,11 +373,9 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
 
   const parts: Doc[] = []
 
-  // Emit leading comments on the FIRST statement
-  if (stmts.length > 0) {
-    const firstTrivia = firstToken(stmts[0]!).leadingTrivia
-    emitTriviaWithBlankLines(firstTrivia, parts)
-  }
+  // Emit leading comments on the first statement
+  const firstTrivia = firstToken(stmts[0]!).leadingTrivia
+  emitTriviaWithBlankLines(firstTrivia, parts)
 
   for (let i = 0; i < stmts.length; i++) {
     const stmt = stmts[i]!
@@ -661,6 +659,11 @@ function formatNode(node: UntypedCstNode): Doc {
     // -- Quote / Splice --
     case 'Quote':
       return formatQuote(node)
+
+    // WithStatement is a synthetic node created by formatBodyFromIterInternal
+    // to wrap `with handler` pairs — format as space-separated children.
+    case 'WithStatement':
+      return formatFromChildren(node)
 
     default:
       // Fallback: concatenate all token texts

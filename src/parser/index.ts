@@ -1,12 +1,11 @@
-import type { TokenStream } from '../tokenizer/tokenize'
+import { CstBuilder, type UntypedCstNode } from '../cst/builder'
+import type { TriviaNode } from '../cst/types'
 import { ParseError } from '../errors'
 import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
-import type { AstNode, Ast, SourceMap } from './types'
-import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
+import type { TokenStream } from '../tokenizer/tokenize'
 import type { ParserContext } from './ParserContext'
-import { CstBuilder } from '../cst/builder'
-import type { UntypedCstNode } from '../cst/builder'
-import type { TriviaNode } from '../cst/types'
+import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
+import type { AstNode, Ast, SourceMap } from './types'
 
 export { createParserContext, parseExpression }
 
