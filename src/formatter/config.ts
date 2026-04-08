@@ -1,8 +1,7 @@
 /**
  * Shared formatting configuration constants.
  *
- * Used by prettyPrint (structural formatting) and reinsertComments (comment
- * reinsertion) to ensure consistent behaviour across both phases.
+ * Used by the CST formatter (cstFormat.ts) and prettyPrint (runtime display).
  */
 
 /** Maximum line width in columns. Lines are wrapped or trailing comments demoted at this limit. */

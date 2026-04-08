@@ -53,44 +53,9 @@ const NodeTypes = {
 
 type AstNode = [string, unknown, number]
 
-export interface PrettyPrintCommentHint {
-  blankLinesAfter: number
-  blankLinesBefore: number
-  kind: 'block' | 'line'
-  text: string
-}
-
-export interface PrettyPrintCommentHints {
-  leadingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
-  trailingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
-}
-
-let blankLinesBeforeNodeId = new Map<number, number>()
-let leadingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
-let trailingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
-
-export function withPrettyPrintBlankLineHints<T>(hints: Map<number, number>, fn: () => T): T {
-  const previousHints = blankLinesBeforeNodeId
-  blankLinesBeforeNodeId = hints
-  try {
-    return fn()
-  } finally {
-    blankLinesBeforeNodeId = previousHints
-  }
-}
-
-export function withPrettyPrintCommentHints<T>(hints: PrettyPrintCommentHints, fn: () => T): T {
-  const previousLeading = leadingCommentsByNodeId
-  const previousTrailing = trailingCommentsByNodeId
-  leadingCommentsByNodeId = hints.leadingCommentsByNodeId
-  trailingCommentsByNodeId = hints.trailingCommentsByNodeId
-  try {
-    return fn()
-  } finally {
-    leadingCommentsByNodeId = previousLeading
-    trailingCommentsByNodeId = previousTrailing
-  }
-}
+// Comment hint system removed — prettyPrint is now only used for runtime
+// AST display (REPL, playground), not for formatting. The CST formatter
+// in src/formatter/cstFormat.ts handles all formatting with comment support.
 
 // Infix binary operators rendered as `a op b`
 const infixOperators = new Set([
@@ -150,67 +115,15 @@ function fitsOnLastLine(text: string, suffix: string): boolean {
   return lastLine.length + suffix.length <= MAX_WIDTH
 }
 
-function getBlankLinesBefore(nodeId: number): number {
-  return blankLinesBeforeNodeId.get(nodeId) ?? 0
-}
+// Stub functions — comment hints removed, always return empty/false/0.
+// These are called throughout prettyPrint but now always produce no output.
+function getBlankLinesBefore(_nodeId: number): number { return 0 }
+function hasNodeLevelComments(_nodeId: number): boolean { return false }
 
-function getLeadingComments(nodeId: number): PrettyPrintCommentHint[] {
-  return leadingCommentsByNodeId.get(nodeId) ?? []
-}
-
-function getTrailingComments(nodeId: number): PrettyPrintCommentHint[] {
-  return trailingCommentsByNodeId.get(nodeId) ?? []
-}
-
-function hasNodeLevelComments(nodeId: number): boolean {
-  return getLeadingComments(nodeId).length > 0 || getTrailingComments(nodeId).length > 0
-}
-
-function formatCommentHintLines(comment: PrettyPrintCommentHint, indentPrefix: string): string {
-  if (comment.kind === 'line') return `${indentPrefix}${comment.text}\n`
-
-  const lines = comment.text.split('\n')
-  return `${lines.map(line => `${indentPrefix}${line}`).join('\n')}\n`
-}
-
-function renderLeadingComments(
-  nodeId: number,
-  indentPrefix: string,
-  skipFirstBlankLinesBefore: boolean,
-): string {
-  const comments = getLeadingComments(nodeId)
-  if (comments.length === 0) return ''
-
-  let rendered = ''
-
-  comments.forEach((comment, index) => {
-    const blankLinesBefore = skipFirstBlankLinesBefore && index === 0
-      ? 0
-      : comment.blankLinesBefore
-
-    if (blankLinesBefore > 0) rendered += '\n'.repeat(blankLinesBefore)
-    rendered += formatCommentHintLines(comment, indentPrefix)
-    if (comment.blankLinesAfter > 0) rendered += '\n'.repeat(comment.blankLinesAfter)
-  })
-
-  return rendered
-}
-
-function appendTrailingComments(nodeId: number, line: string): string {
-  const trailingComments = getTrailingComments(nodeId)
-  if (trailingComments.length === 0) return `${line};`
-
-  const trailingText = trailingComments.map(comment => comment.text).join(' ')
-  return `${line}; ${trailingText}`
-}
-
-function appendNodeTrailingComments(nodeId: number, line: string): string {
-  const trailingComments = getTrailingComments(nodeId)
-  if (trailingComments.length === 0) return line
-
-  const trailingText = trailingComments.map(comment => comment.text).join(' ')
-  return `${line} ${trailingText}`
-}
+// Comment hint rendering removed — stubs that produce no comment output.
+function renderLeadingComments(_nodeId: number, _indentPrefix: string, _skip: boolean): string { return '' }
+function appendTrailingComments(_nodeId: number, line: string): string { return `${line};` }
+function appendNodeTrailingComments(_nodeId: number, line: string): string { return line }
 
 function renderCommentedNode(node: AstNode, ind: number): string {
   const nodeStr = printNode(node, ind)
