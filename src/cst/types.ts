@@ -459,6 +459,22 @@ export interface CstMacroCall {
   span: SourceSpan
 }
 
+// -- Error (placeholder for future error recovery) -------------------------
+
+/**
+ * A bag of tokens the parser couldn't structure. The type exists so tree
+ * walkers compile against it from day one; `parseToCst()` throws on parse
+ * errors for now — no partial trees are produced.
+ *
+ * The formatter prints error nodes verbatim (concatenating their tokens).
+ */
+export interface CstErrorNode {
+  kind: 'Error'
+  /** The tokens the parser couldn't structure into a typed node. */
+  tokens: CstToken[]
+  span: SourceSpan
+}
+
 // -- Quote / Splice ---------------------------------------------------------
 
 export interface CstQuote {
@@ -599,6 +615,8 @@ export type CstNode =
   // Quotes
   | CstQuote
   | CstSplice
+  // Error recovery
+  | CstErrorNode
 
 // ---------------------------------------------------------------------------
 // Program — the root CST node

@@ -22,8 +22,16 @@ import { parseOperand } from './parseOperand'
 import { parseQuote } from './parseQuote'
 import { parseSymbol } from './parseSymbol'
 
+import type { CstBuilder } from '../../cst/builder'
+
 export function createParserContext(tokenStream: TokenStream, allocateId: () => number): ParserContext {
   const ctx = new ParserContext(tokenStream, allocateId)
+  ctx.parseExpression = (precedence = 0) => parseExpression(ctx, precedence)
+  return ctx
+}
+
+export function createCstParserContext(tokenStream: TokenStream, allocateId: () => number, builder: CstBuilder): ParserContext {
+  const ctx = new ParserContext(tokenStream, allocateId, builder)
   ctx.parseExpression = (precedence = 0) => parseExpression(ctx, precedence)
   return ctx
 }
