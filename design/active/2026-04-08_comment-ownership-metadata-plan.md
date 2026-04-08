@@ -135,7 +135,7 @@ Named fields are self-documenting, catch errors at compile time, and are practic
 
 ### Formatter architecture
 
-**The formatter operates directly on CST nodes.** No intermediate formatting IR. The current `prettyPrint.ts` approach of recursive printing with `fits()` checks works well for Dvala. A document algebra (Wadler-Lindig) would be overkill at current scale — and can be added later as a mechanical refactor if needed, since it only changes the return type of the tree walk.
+**The formatter operates on CST nodes via a Wadler-Lindig document algebra.** The CST formatter walks the typed CstNode tree and produces a `Doc` tree (Text, Line, Group, Nest, Concat, HardLine, IfBreak, LineComment). A renderer takes a target line width and produces the formatted string. This was originally considered overkill, but reassessed during the Phase 3 interview: because comments are now part of the tree and participate in line-breaking decisions, the algebra's automatic width accounting pays for itself. See Q7 for the full rationale.
 
 ### `prettyPrint.ts` and formatting hints
 
@@ -178,12 +178,10 @@ The CST-based formatter must correctly preserve all formatter-relevant comment c
 
 - File preamble comments.
 - File epilogue comments.
-- Leading comments on top-level statements.
-- Trailing comments on top-level statements.
-- Leading comments on nested statements.
-- Trailing comments on nested statements.
-- Leading comments on expression nodes.
-- Trailing comments on expression nodes.
+- Leading comments on top-level expressions.
+- Trailing comments on top-level expressions.
+- Leading comments on nested expressions.
+- Trailing comments on nested expressions.
 - Inline comments that belong between specific rendered tokens or specific child nodes.
 - Collection-local comments, including comments before array elements and object entries.
 - Comments attached to call arguments, infix operands, pipe segments, branches, handlers, quotes, and templates.
@@ -249,6 +247,79 @@ Start with separate paths: `parse()` stays unchanged, `parseToCst()` is opt-in. 
 
 None — all Phase 2 design questions are resolved. Ready to implement.
 
+## Design Decisions (Phase 3)
+
+Decided through structured interview on 2026-04-08.
+
+### Q5: Should `parseToCst()` support error recovery? → Type-level support now, implement later (C)
+
+Add a minimal `CstErrorNode` to the type hierarchy so the tree shape is stable from day one. `parseToCst()` throws on error for now — no partial trees, no recovery logic. All tree walkers (formatter, `printCst()`, future LSP visitors) handle the `CstErrorNode` case from the start. When error recovery is implemented later, consumers already compile.
+
+The error node is intentionally minimal — just a bag of tokens the parser couldn't structure:
+```ts
+interface CstErrorNode {
+  kind: 'Error'
+  tokens: CstToken[]
+  span: SourceSpan
+}
+```
+
+No attempt to capture "what the parser was trying to parse" or partial children — that's recovery-time knowledge. The formatter prints error nodes verbatim.
+
+Why not fail-fast only: the project has a language server, making error recovery a real future need. Designing the type now avoids a breaking tree-shape change later.
+
+### Q6: Incremental instrumentation strategy → Top-down incremental (B)
+
+Instrument the parser top-down: `CstProgram` → top-level expressions → nested sub-structures (branches, bindings, entries, arguments). Each layer adds events for a batch of node kinds with losslessness tests. Multiple smaller commits.
+
+Why top-down: the event-based approach is inherently layered — outer nodes wrap inner nodes. Each step is testable independently. Mismatched `startNode`/`endNode` bugs are caught early in small scope rather than debugged across 43+ node types at once.
+
+### Q7: CST formatter output model → Document algebra (C)
+
+The CST formatter uses a Wadler-Lindig document algebra: CST → Doc → string. The `Doc` type is a small algebraic data type (~30 lines: Text, Line, Group, Nest, Concat, HardLine, IfBreak, LineComment). A renderer (~60-80 lines) takes a target line width and produces the formatted string.
+
+Why document algebra over direct string building: the CST formatter is new code, and comments are now part of the tree participating in formatting decisions. With direct string building, every construct needs manual `fits()` checks that account for trivia width. The document algebra handles this naturally — comments are `Text` nodes in the doc tree, and the renderer accounts for their width when deciding breaks. The per-node-kind formatting functions are comparable effort either way; the algebra just replaces manual measurement with declarative structure.
+
+The original plan considered and rejected this as "overkill at current scale." The reassessment is that the CST formatter changes the problem: comments-in-the-tree makes line-breaking significantly more complex, and the algebra's ~100 lines of infrastructure pays for itself quickly.
+
+### Q8: Normalization scope → Normalize everything, preserve comments (A)
+
+The formatter normalizes all structural whitespace to canonical form: indentation, line breaks, trailing whitespace, semicolons. Comments are the only authored content that survives, preserved at their logical position (leading/trailing/inline relative to the node they're attached to).
+
+This matches the current formatter's behavior and keeps the rule simple: the formatter owns all whitespace. The document algebra makes this clean — build the canonical Doc tree, insert comment docs at attachment points, the renderer produces deterministic output.
+
+### Q9: Comment handling in the Doc algebra → Inline with structure, LineComment forces hard break (A+C)
+
+Block comments (`/* */`) become plain `Text` nodes in the Doc tree — they're inline content and participate in width calculations naturally. Line comments (`// foo`) get a `LineComment` variant (or `Concat(Text("// foo"), HardLine)`) so the renderer knows a hard break must follow — without this, the fitting logic might try to place content after a line comment on the same line.
+
+No separate comment pass (B rejected) — comments are already precisely located on CST tokens, so there's no reason to detach and reattach them.
+
+### Q10: IfBreak combinator → Include IfBreak, add GroupRef later if needed (B)
+
+The Doc algebra includes `IfBreak(flat, broken)` — a node that renders its `flat` child when the enclosing group fits on one line, `broken` child when it breaks. This enables trailing commas in multi-line collections, conditional separators, and different delimiter styles.
+
+`GroupRef` (allowing `IfBreak` to reference a specific group's break state rather than just the nearest enclosing one) is omitted for now. It's a forward-compatible extension that can be added if an edge case requires cross-group break coordination.
+
+### Q11: Blank lines between top-level expressions → Preserve authored, cap at max (A)
+
+Blank lines are the one whitespace signal where authorial intent matters for readability — they indicate visual grouping of related definitions. The formatter preserves authored blank lines (up to `MAX_BLANK_LINES`) but doesn't add them.
+
+Implementation: when emitting top-level separators in the Doc tree, check the CST trivia between expressions. If it contains a blank line, emit `HardLine, HardLine`; otherwise just `HardLine`.
+
+### Q12: Reuse prettyPrint.ts → Fully independent (A)
+
+The CST formatter is a fully independent module. `prettyPrint.ts` stays untouched as the runtime AST-to-code tool for REPL output, playground display, and the `ast` module's `prettyPrint` function. These contexts have no source text and no CST.
+
+No shared logic, no shared abstractions. The formatting policy (80-col target, indent size, when to break) is a handful of constants replicated in the new formatter. The logic is fundamentally different because the Doc algebra handles the hard parts.
+
+### Q13: File organization → `src/formatter/`, replace wholesale (C)
+
+The CST formatter lives in `src/formatter/`: `doc.ts` for the algebra, `cstFormat.ts` for the formatter. `format.ts` remains the public entry point.
+
+`format.ts` does not need to be a "stable entry point" or support gradual switching between old and new paths. When the CST formatter is ready, the implementation is replaced wholesale — the old AST+reinsertion path is removed entirely.
+
+`src/cst/` stays focused on types, trivia attachment, and tree construction — not formatting policy.
+
 ## Implementation Plan
 
 ### Phase 1 — CST types and token-level infrastructure ✅
@@ -262,27 +333,30 @@ None — all Phase 2 design questions are resolved. Ready to implement.
 ### Phase 2 — Event-based parser instrumentation
 
 6. **Refactor: replace lambda backtracking with lookahead** in `parseOperand.ts`. Remove `storePosition()` / `restorePosition()` from `ParserContext` if no other callers remain. Run tests to verify no regressions.
-7. Define `CstEvent` types: `StartNode(kind)`, `Token(cstToken)`, `EndNode()`. Define `UntypedCstNode` (`{ kind, children }`).
-8. Implement `CstBuilder` that accumulates events and produces an `UntypedCstNode` tree.
-9. Implement untyped→typed conversion module that maps `UntypedCstNode` children positionally to typed `CstNode` fields per node kind.
-10. Modify `ParserContext` to support CST mode: work on full token stream, `peek()` skips trivia, `advance()` collects trivia and feeds `CstToken` to builder.
-11. Instrument each sub-parser with `builder.startNode(kind)` / `builder.endNode()` calls. Existing AST construction stays untouched.
-12. Implement `parseToCst()` public API: tokenize fully → create CST-mode context → parse → build untyped tree → convert to typed `CstProgram`.
-13. Verify tree-level losslessness: `printCst(parseToCst(source)) === source` for a broad corpus.
+7. Add `CstErrorNode` to the CST type hierarchy (minimal: `{ kind: 'Error', tokens: CstToken[], span: SourceSpan }`). Update all existing tree walkers to handle it.
+8. Define `CstEvent` types: `StartNode(kind)`, `Token(cstToken)`, `EndNode()`. Define `UntypedCstNode` (`{ kind, children }`).
+9. Implement `CstBuilder` that accumulates events and produces an `UntypedCstNode` tree.
+10. Implement untyped→typed conversion module that maps `UntypedCstNode` children positionally to typed `CstNode` fields per node kind.
+11. Modify `ParserContext` to support CST mode: work on full token stream, `peek()` skips trivia, `advance()` collects trivia and feeds `CstToken` to builder.
+12. Instrument sub-parsers top-down with `builder.startNode(kind)` / `builder.endNode()` calls. Start with `CstProgram` → top-level expressions → nested sub-structures (branches, bindings, entries, arguments). Each layer verified with losslessness tests before proceeding. Existing AST construction stays untouched.
+13. Implement `parseToCst()` public API: tokenize fully → create CST-mode context → parse → build untyped tree → convert to typed `CstProgram`. Fail-fast on parse error (no error recovery yet).
+14. Verify tree-level losslessness: `printCst(parseToCst(source)) === source` for a broad corpus.
 
-### Phase 3 — CST-based formatter
+### Phase 3 — CST-based formatter (Doc algebra)
 
-14. Build the new CST formatter that walks CST nodes directly, applying formatting rules and normalizing trivia placement.
-15. Port formatting behavior from `prettyPrint.ts` and the current reinsertion system to the new CST formatter.
-16. Add broad regression coverage for comments, authored forms, arrays, objects, infix layouts, pipes, nested statements, and file-level comments.
-17. Verify idempotency: `format(format(source)) === format(source)`.
+15. Implement the Doc algebra in `src/formatter/doc.ts`: `Text`, `Line`, `Group`, `Nest`, `Concat`, `HardLine`, `IfBreak(flat, broken)`, `LineComment`. Implement the Wadler-Lindig "best fit" renderer.
+16. Build the CST formatter in `src/formatter/cstFormat.ts`: walk CstNode tree, produce Doc tree. Block comments (`/* */`) as `Text` nodes; line comments (`// foo`) as `LineComment` (forces hard break). Preserve authored blank lines between top-level expressions (up to `MAX_BLANK_LINES`).
+17. Normalize all structural whitespace to canonical form. Comments are the only authored content preserved at their logical attachment positions.
+18. Add broad regression coverage for comments, authored forms, arrays, objects, infix layouts, pipes, nested expressions, and file-level comments.
+19. Verify idempotency: `format(format(source)) === format(source)`.
 
 ### Phase 4 — Cleanup
 
-18. Remove the old comment extraction, anchoring, and reinsertion code (`extractComments.ts`, `reinsertComments.ts`, comment hint plumbing in `format.ts`).
-19. Remove the `prettyPrint` comment hint system (`withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints`) — only used by the old formatter path.
-20. Validate that `prettyPrint.ts` still works for runtime AST display.
-21. Run full `npm run check`.
+20. Replace `format.ts` implementation wholesale: `parseToCst()` → `formatCst()`. Remove the old AST+reinsertion path entirely.
+21. Remove the old comment extraction, anchoring, and reinsertion code (`extractComments.ts`, `reinsertComments.ts`, comment hint plumbing).
+22. Remove the `prettyPrint` comment hint system (`withPrettyPrintCommentHints`, `withPrettyPrintBlankLineHints`) — only used by the old formatter path.
+23. Validate that `prettyPrint.ts` still works for runtime AST display (unchanged, no dependency on removed code).
+24. Run full `npm run check`.
 
 ### Future — Grammar schema (optional)
 

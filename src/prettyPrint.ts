@@ -53,7 +53,21 @@ const NodeTypes = {
 
 type AstNode = [string, unknown, number]
 
+export interface PrettyPrintCommentHint {
+  blankLinesAfter: number
+  blankLinesBefore: number
+  kind: 'block' | 'line'
+  text: string
+}
+
+export interface PrettyPrintCommentHints {
+  leadingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
+  trailingCommentsByNodeId: Map<number, PrettyPrintCommentHint[]>
+}
+
 let blankLinesBeforeNodeId = new Map<number, number>()
+let leadingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
+let trailingCommentsByNodeId = new Map<number, PrettyPrintCommentHint[]>()
 
 export function withPrettyPrintBlankLineHints<T>(hints: Map<number, number>, fn: () => T): T {
   const previousHints = blankLinesBeforeNodeId
@@ -62,6 +76,19 @@ export function withPrettyPrintBlankLineHints<T>(hints: Map<number, number>, fn:
     return fn()
   } finally {
     blankLinesBeforeNodeId = previousHints
+  }
+}
+
+export function withPrettyPrintCommentHints<T>(hints: PrettyPrintCommentHints, fn: () => T): T {
+  const previousLeading = leadingCommentsByNodeId
+  const previousTrailing = trailingCommentsByNodeId
+  leadingCommentsByNodeId = hints.leadingCommentsByNodeId
+  trailingCommentsByNodeId = hints.trailingCommentsByNodeId
+  try {
+    return fn()
+  } finally {
+    leadingCommentsByNodeId = previousLeading
+    trailingCommentsByNodeId = previousTrailing
   }
 }
 
@@ -112,8 +139,95 @@ function allSingleLine(...strs: string[]): boolean {
   return strs.every(s => !s.includes('\n'))
 }
 
+function appendToLastLine(text: string, suffix: string): string {
+  const lastBreak = text.lastIndexOf('\n')
+  if (lastBreak === -1) return `${text}${suffix}`
+  return `${text.slice(0, lastBreak + 1)}${text.slice(lastBreak + 1)}${suffix}`
+}
+
+function fitsOnLastLine(text: string, suffix: string): boolean {
+  const lastLine = text.slice(text.lastIndexOf('\n') + 1)
+  return lastLine.length + suffix.length <= MAX_WIDTH
+}
+
 function getBlankLinesBefore(nodeId: number): number {
   return blankLinesBeforeNodeId.get(nodeId) ?? 0
+}
+
+function getLeadingComments(nodeId: number): PrettyPrintCommentHint[] {
+  return leadingCommentsByNodeId.get(nodeId) ?? []
+}
+
+function getTrailingComments(nodeId: number): PrettyPrintCommentHint[] {
+  return trailingCommentsByNodeId.get(nodeId) ?? []
+}
+
+function hasNodeLevelComments(nodeId: number): boolean {
+  return getLeadingComments(nodeId).length > 0 || getTrailingComments(nodeId).length > 0
+}
+
+function formatCommentHintLines(comment: PrettyPrintCommentHint, indentPrefix: string): string {
+  if (comment.kind === 'line') return `${indentPrefix}${comment.text}\n`
+
+  const lines = comment.text.split('\n')
+  return `${lines.map(line => `${indentPrefix}${line}`).join('\n')}\n`
+}
+
+function renderLeadingComments(
+  nodeId: number,
+  indentPrefix: string,
+  skipFirstBlankLinesBefore: boolean,
+): string {
+  const comments = getLeadingComments(nodeId)
+  if (comments.length === 0) return ''
+
+  let rendered = ''
+
+  comments.forEach((comment, index) => {
+    const blankLinesBefore = skipFirstBlankLinesBefore && index === 0
+      ? 0
+      : comment.blankLinesBefore
+
+    if (blankLinesBefore > 0) rendered += '\n'.repeat(blankLinesBefore)
+    rendered += formatCommentHintLines(comment, indentPrefix)
+    if (comment.blankLinesAfter > 0) rendered += '\n'.repeat(comment.blankLinesAfter)
+  })
+
+  return rendered
+}
+
+function appendTrailingComments(nodeId: number, line: string): string {
+  const trailingComments = getTrailingComments(nodeId)
+  if (trailingComments.length === 0) return `${line};`
+
+  const trailingText = trailingComments.map(comment => comment.text).join(' ')
+  return `${line}; ${trailingText}`
+}
+
+function appendNodeTrailingComments(nodeId: number, line: string): string {
+  const trailingComments = getTrailingComments(nodeId)
+  if (trailingComments.length === 0) return line
+
+  const trailingText = trailingComments.map(comment => comment.text).join(' ')
+  return `${line} ${trailingText}`
+}
+
+function renderCommentedNode(node: AstNode, ind: number): string {
+  const nodeStr = printNode(node, ind)
+  const indentPrefix = indent(ind)
+  const leading = renderLeadingComments(node[2], indentPrefix, false)
+  const base = `${indentPrefix}${nodeStr}`
+
+  if (!nodeStr.includes('\n')) {
+    return `${leading}${appendNodeTrailingComments(node[2], base)}`
+  }
+
+  return `${leading}${base}`
+}
+
+function renderIndentedNode(node: AstNode, ind: number): string {
+  if (hasNodeLevelComments(node[2])) return renderCommentedNode(node, ind)
+  return `${indent(ind)}${printNode(node, ind)}`
 }
 
 function formatStatementLines(nodeIds: number[], lines: string[]): string {
@@ -121,15 +235,18 @@ function formatStatementLines(nodeIds: number[], lines: string[]): string {
 
   lines.forEach((line, index) => {
     if (index > 0) {
-      body += ';\n'
+      body += '\n'
       const blankLines = getBlankLinesBefore(nodeIds[index]!)
       if (blankLines > 0)
         body += '\n'.repeat(blankLines)
     }
-    body += line
+
+    const indentPrefix = /^(\s*)/.exec(line)?.[1] ?? ''
+    body += renderLeadingComments(nodeIds[index]!, indentPrefix, index > 0)
+    body += appendTrailingComments(nodeIds[index]!, line)
   })
 
-  return `${body};`
+  return body
 }
 
 // ---------------------------------------------------------------------------
@@ -344,16 +461,41 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
     }
   }
 
-  // User-defined infix call: a foo b (authored as infix, preserved via isInfix hint)
-  if (hints?.isInfix && fnNode[0] === NodeTypes.Sym && argNodes.length === 2) {
+  // Authored infix call: preserve `a foo b` for both user-defined and builtin
+  // named callees when the parser recorded infix intent.
+  if (
+    hints?.isInfix
+    && (fnNode[0] === NodeTypes.Sym || fnNode[0] === NodeTypes.Builtin)
+    && argNodes.length === 2
+  ) {
+    const operator = fnNode[1] as string
     const leftStr = printNode(argNodes[0]!, ind)
     const rightStr = printNode(argNodes[1]!, ind)
-    if (allSingleLine(leftStr, rightStr)) {
-      const flat = `${leftStr} ${fnNode[1] as string} ${rightStr}`
+    const isLeftSingleLine = allSingleLine(leftStr)
+    const isRightSingleLine = allSingleLine(rightStr)
+
+    if (isLeftSingleLine && isRightSingleLine) {
+      const flat = `${leftStr} ${operator} ${rightStr}`
       if (fits(flat, ind)) return flat
+      return `${leftStr}\n${indent(ind + 1)}${operator} ${rightStr}`
     }
-    // Multi-line: operator as prefix on the continuation line
-    return `${leftStr}\n${indent(ind + 1)}${fnNode[1] as string} ${printNode(argNodes[1]!, ind + 1)}`
+
+    if (!isRightSingleLine) {
+      const rightMultiline = printNode(argNodes[1]!, ind + 1)
+
+      if (isLeftSingleLine) {
+        return `${leftStr} ${operator}\n${indent(ind + 1)}${rightMultiline}`
+      }
+
+      return `${leftStr}\n${indent(ind + 1)}${operator}\n${indent(ind + 1)}${rightMultiline}`
+    }
+
+    const trailingInfix = ` ${operator} ${rightStr}`
+    if (fitsOnLastLine(leftStr, trailingInfix)) {
+      return appendToLastLine(leftStr, trailingInfix)
+    }
+
+    return `${leftStr}\n${indent(ind + 1)}${operator} ${rightStr}`
   }
 
   // Regular function call — wrap callee in parens if it's a complex expression (lambda, etc.)
@@ -361,7 +503,8 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
   const needsParens = fnNode[0] === NodeTypes.Function || fnNode[0] === NodeTypes.Macro
   const fnStr = needsParens ? `(${rawFnStr})` : rawFnStr
   const argStrs = argNodes.map(a => printNode(a, ind))
-  if (allSingleLine(rawFnStr, ...argStrs)) {
+  const hasArgNodeComments = argNodes.some(a => hasNodeLevelComments(a[2]))
+  if (!hasArgNodeComments && allSingleLine(rawFnStr, ...argStrs)) {
     const flat = `${fnStr}(${argStrs.join(', ')})`
     if (fits(flat, ind)) return flat
   }
@@ -389,7 +532,7 @@ function printCall(payload: [unknown[], unknown[], unknown?], ind: number): stri
   }
 
   // Multi-line args
-  const argsStr = argNodes.map(a => `${indent(ind + 1)}${printNode(a, ind + 1)}`).join(',\n')
+  const argsStr = argNodes.map(a => renderIndentedNode(a, ind + 1)).join(',\n')
   return `${fnStr}(\n${argsStr},\n${indent(ind)})`
 }
 
@@ -397,6 +540,8 @@ function printIf(parts: unknown[][], ind: number): string {
   const cond = printNode(parts[0] as AstNode, ind)
   const thenNode = parts[1] as AstNode
   const elseNode = parts.length > 2 && parts[2] ? parts[2] as AstNode : null
+  const hasThenComments = hasNodeLevelComments(thenNode[2])
+  const hasElseComments = elseNode ? hasNodeLevelComments(elseNode[2]) : false
 
   // Else-if chain: when else branch is another If, emit "else if ..." without extra "end"
   const isElseIf = elseNode && (elseNode)[0] === NodeTypes.If
@@ -407,40 +552,43 @@ function printIf(parts: unknown[][], ind: number): string {
     const elseStr = isElseIf
       ? printIf((elseNode)[1] as unknown[][], ind)
       : printNode(elseNode, ind)
-    if (allSingleLine(cond, thenStr, elseStr)) {
+    if (!hasThenComments && !hasElseComments && allSingleLine(cond, thenStr, elseStr)) {
       const flat = isElseIf
         ? `if ${cond} then ${thenStr} else ${elseStr}`
         : `if ${cond} then ${thenStr} else ${elseStr} end`
       if (fits(flat, ind)) return flat
     }
   } else {
-    if (allSingleLine(cond, thenStr)) {
+    if (!hasThenComments && allSingleLine(cond, thenStr)) {
       const flat = `if ${cond} then ${thenStr} end`
       if (fits(flat, ind)) return flat
     }
   }
 
   // Multi-line
-  const thenMulti = printNode(thenNode, ind + 1)
+  const thenMulti = renderCommentedNode(thenNode, ind + 1)
   if (elseNode) {
     if (isElseIf) {
       // else if — keep same indent, no extra end
       const elseIfStr = printIf((elseNode)[1] as unknown[][], ind)
-      return `if ${cond} then\n${indent(ind + 1)}${thenMulti}\n${indent(ind)}else ${elseIfStr}`
+      return `if ${cond} then\n${thenMulti}\n${indent(ind)}else ${elseIfStr}`
     }
-    const elseMulti = printNode(elseNode, ind + 1)
-    return `if ${cond} then\n${indent(ind + 1)}${thenMulti}\n${indent(ind)}else\n${indent(ind + 1)}${elseMulti}\n${indent(ind)}end`
+    const elseMulti = renderCommentedNode(elseNode, ind + 1)
+    return `if ${cond} then\n${thenMulti}\n${indent(ind)}else\n${elseMulti}\n${indent(ind)}end`
   }
-  return `if ${cond} then\n${indent(ind + 1)}${thenMulti}\n${indent(ind)}end`
+  return `if ${cond} then\n${thenMulti}\n${indent(ind)}end`
 }
 
 function printBlock(stmts: unknown[][], ind: number): string {
   // Single statement: try flat (no semicolons needed, only when single-line)
   if (stmts.length === 1) {
-    const stmt = printNode(stmts[0] as AstNode, ind)
-    if (allSingleLine(stmt)) {
-      const flat = `do ${stmt} end`
-      if (fits(flat, ind)) return flat
+    const stmtNode = stmts[0] as AstNode
+    if (!hasNodeLevelComments(stmtNode[2])) {
+      const stmt = printNode(stmtNode, ind)
+      if (allSingleLine(stmt)) {
+        const flat = `do ${stmt} end`
+        if (fits(flat, ind)) return flat
+      }
     }
   }
   // Multiple statements (or single that doesn't fit): always expand.
@@ -468,7 +616,7 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
   // Shorthand lambda: authored as `-> expr` with no explicit params.
   // Preserve the form so the formatter does not add ($) prefix.
   if (hints?.isShorthand) {
-    if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+    if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
       const bodyStr = printNode(body[0] as AstNode, ind)
       if (allSingleLine(bodyStr)) {
         const flat = `-> ${bodyStr}`
@@ -487,7 +635,7 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
     // `with handler...end; body` is NOT a valid standalone expression — it can
     // only appear inside a `do...end` block. Wrap it in do...end when it's a
     // single-body function, treating it like a multi-statement body.
-    if ((body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+    if ((body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
       const bodyStr = printNode(body[0] as AstNode, ind)
       if (allSingleLine(bodyStr)) {
         const flat = `(${paramStr}) -> ${bodyStr}`
@@ -508,7 +656,7 @@ function printMacro(payload: [unknown[][], unknown[][], string | null], ind: num
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
   const namePrefix = qualifiedName ? `macro@${qualifiedName}` : 'macro'
 
-  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
     const bodyStr = printNode(body[0] as AstNode, ind)
     if (allSingleLine(bodyStr)) {
       const flat = `${namePrefix} (${paramStr}) -> ${bodyStr}`
@@ -640,7 +788,7 @@ function printHandlerBody(body: unknown[][], ind: number): string {
   // `with handler...end; body` and `with expr; body` are NOT valid as
   // standalone expressions — they require a `do...end` block context.
   // Treat a single WithHandler node the same as a multi-statement body.
-  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler) {
+  if (body.length === 1 && (body[0] as AstNode)[0] !== NodeTypes.WithHandler && !hasNodeLevelComments((body[0] as AstNode)[2])) {
     return printNode(body[0] as AstNode, ind)
   }
   // Multi-statement or WithHandler: always expand (no mid-line semicolons)

@@ -37,6 +37,8 @@ export interface ExtractedComment {
    * - leading/standalone → line of the following code token
    */
   anchorSourceLine: number
+  /** 0-based column of the code this comment should attach to on anchorSourceLine. */
+  anchorSourceColumn: number
   /**
    * 0-based index of the preceding token in the minified token stream
    * (whitespace and comments removed, sequential numbering starting at 0).
@@ -63,6 +65,11 @@ function tokenLine(token: Token): number {
 
 function tokenColumn(token: Token): number {
   return token[2]?.[1] ?? 0
+}
+
+function tokenText(token: Token | undefined): string | null {
+  if (!token) return null
+  return typeof token[1] === 'string' ? token[1] : null
 }
 
 function isCodeToken(token: Token): boolean {
@@ -142,24 +149,44 @@ export function extractComments(source: string): ExtractCommentsResult {
 
     let placement: CommentPlacement
     let anchorSourceLine: number
+    let anchorSourceColumn: number
 
-    if (prevLine === commentLine && nextLine === commentLine) {
+    const prevTokenText = tokenText(prevCodeToken)
+    const nextTokenText = tokenText(nextCodeToken)
+    const isCollectionLeadingBlockComment =
+      kind === 'block'
+      && prevLine === commentLine
+      && nextLine === commentLine
+      && (prevTokenText === '(' || prevTokenText === ',')
+      && (nextTokenText === '[' || nextTokenText === '{')
+
+    if (isCollectionLeadingBlockComment) {
+      placement = 'leading'
+      anchorSourceLine = nextLine >= 0 ? nextLine : commentLine
+      anchorSourceColumn = nextCodeToken ? tokenColumn(nextCodeToken) : commentColumn
+    } else if (prevLine === commentLine && nextLine === commentLine) {
       // Block comment sandwiched between code tokens on the same line.
       // Line comments can never reach here (// consumes to end-of-line).
       placement = 'inline'
       anchorSourceLine = prevLine
+      anchorSourceColumn = commentColumn
     } else if (prevLine === commentLine) {
       // Code before the comment on the same line → trailing.
       placement = 'trailing'
       anchorSourceLine = prevLine
+      anchorSourceColumn = commentColumn
     } else if (blanksBefore === 0 && blanksAfter === 0) {
       // No blank lines on either side → leading comment for next statement.
       placement = 'leading'
       anchorSourceLine = nextLine >= 0 ? nextLine : commentLine
+      anchorSourceColumn = nextCodeToken ? tokenColumn(nextCodeToken) : commentColumn
     } else {
       // At least one blank line on one side → standalone.
       placement = 'standalone'
       anchorSourceLine = nextLine >= 0 ? nextLine : (prevLine >= 0 ? prevLine : commentLine)
+      anchorSourceColumn = nextCodeToken
+        ? tokenColumn(nextCodeToken)
+        : (prevCodeToken ? tokenColumn(prevCodeToken) : commentColumn)
     }
 
     comments.push({
@@ -168,6 +195,7 @@ export function extractComments(source: string): ExtractCommentsResult {
       placement,
       sourceLine: commentLine,
       sourceColumn: commentColumn,
+      anchorSourceColumn,
       anchorSourceLine,
       prevMinifiedIndex,
     })
