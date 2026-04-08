@@ -116,26 +116,29 @@ function trailingComments(token: CstToken): Doc[] {
  * Containers (program, block body) handle trailing line comments.
  */
 function formatTokenWithTrivia(token: CstToken): Doc {
-  const leading = leadingComments(token)
   const tokenDoc = text(token.text)
 
-  // Only emit block comments from trailing trivia (not line comments)
-  const trailingBlockComments: Doc[] = []
+  // Only emit BLOCK comments from trivia (not line comments).
+  // Line comments force hard breaks that conflict with enclosing layouts.
+  // They are handled by containers (program, body, array, etc.).
+  const leadingBlocks: Doc[] = []
+  for (const t of token.leadingTrivia) {
+    if (t.kind === 'blockComment') leadingBlocks.push(text(t.text))
+  }
+  const trailingBlocks: Doc[] = []
   for (const t of token.trailingTrivia) {
-    if (t.kind === 'blockComment') {
-      trailingBlockComments.push(text(t.text))
-    }
+    if (t.kind === 'blockComment') trailingBlocks.push(text(t.text))
   }
 
-  if (leading.length === 0 && trailingBlockComments.length === 0) return tokenDoc
+  if (leadingBlocks.length === 0 && trailingBlocks.length === 0) return tokenDoc
 
   const parts: Doc[] = []
-  for (const c of leading) {
+  for (const c of leadingBlocks) {
     parts.push(c, text(' '))
   }
   parts.push(tokenDoc)
-  for (const c of trailingBlockComments) {
-    parts.push(text(' '), c)
+  for (const c of trailingBlocks) {
+    parts.push(c, text(' '))
   }
   return concat(...parts)
 }
@@ -309,6 +312,100 @@ function formatBody(stmts: Doc[]): Doc {
   return concat(...parts)
 }
 
+/**
+ * Format a body of statements from an iterator, handling:
+ * - Semicolons between statements (always added)
+ * - Trailing line comments after statements
+ * - Standalone/leading comments between statements
+ * - Blank lines between statements (preserved from source)
+ *
+ * This is the shared logic used by do blocks, if branches, etc.
+ * Returns the body as a single Doc.
+ */
+function formatBodyFromIter(iter: ChildIterator, ...stopTokens: string[]): Doc {
+  const stmts: UntypedCstNode[] = []
+  const semiTokens: CstToken[] = []
+
+  // Collect statements and semicolons until stop token
+  while (!iter.done()) {
+    const child = iter.peek()!
+    if (isToken(child) && stopTokens.includes(child.text)) break
+    if (isToken(child) && child.text === ';') {
+      semiTokens.push(child as CstToken)
+      iter.next()
+      continue
+    }
+    if (isNode(child)) {
+      stmts.push(iter.nextNode())
+    } else {
+      iter.next() // skip unexpected token
+    }
+  }
+
+  if (stmts.length === 0) return text('')
+
+  const parts: Doc[] = []
+  for (let i = 0; i < stmts.length; i++) {
+    const stmt = stmts[i]!
+    parts.push(formatNode(stmt))
+
+    // Add semicolon (except after last statement in body)
+    if (i < stmts.length - 1) {
+      parts.push(text(';'))
+    }
+
+    // Trailing line comment on this statement
+    const stmtTrailingComment = getTrailingLineComment(stmt)
+    const semiTrailingComment = i < semiTokens.length
+      ? semiTokens[i]!.trailingTrivia.find(t => t.kind === 'lineComment')?.text
+      : undefined
+    const trailingLc = stmtTrailingComment ?? semiTrailingComment
+
+    if (trailingLc) {
+      parts.push(text(' '), lineComment(trailingLc))
+    }
+
+    if (i < stmts.length - 1) {
+      // Check for blank lines between statements
+      const nextFirst = firstToken(stmts[i + 1]!)
+      const semi = i < semiTokens.length ? semiTokens[i] : undefined
+      const prevTok = semi ?? lastToken(stmt)
+
+      const hasBlank = hasBlankLineBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
+
+      if (trailingLc) {
+        if (hasBlank) parts.push(hardLine)
+      } else if (hasBlank) {
+        parts.push(hardLine, hardLine)
+      } else {
+        parts.push(hardLine)
+      }
+
+      // Leading comments before next statement
+      const nextTrivia = nextFirst.leadingTrivia
+      for (let t = 0; t < nextTrivia.length; t++) {
+        const tv = nextTrivia[t]!
+        if (tv.kind === 'lineComment') {
+          parts.push(lineComment(tv.text))
+          const nextWs = nextTrivia[t + 1]
+          if (nextWs?.kind === 'whitespace' && triviaHasBlankLine([nextWs])) {
+            parts.push(hardLine)
+          }
+        } else if (tv.kind === 'blockComment') {
+          parts.push(text(tv.text), hardLine)
+        } else if (tv.kind === 'whitespace' && triviaHasBlankLine([tv])) {
+          const nextTv = nextTrivia[t + 1]
+          if (nextTv && (nextTv.kind === 'lineComment' || nextTv.kind === 'blockComment')) {
+            parts.push(hardLine)
+          }
+        }
+      }
+    }
+  }
+
+  return concat(...parts)
+}
+
 // ---------------------------------------------------------------------------
 // Main formatting dispatch
 // ---------------------------------------------------------------------------
@@ -371,6 +468,7 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
   // Trailing line comments go after the `;` on the same line.
   // Preserve blank lines between statements from the original source.
   const semicolonTokens = tokens(program)
+  let lastTrailingComment: string | undefined
   for (let i = 0; i < statements.length; i++) {
     const stmt = statements[i]!
     parts.push(formatNode(stmt))
@@ -382,6 +480,7 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
       ? semicolonTokens[i]!.trailingTrivia.find(t => t.kind === 'lineComment')?.text
       : undefined
     const trailingComment = stmtTrailingComment ?? semiTrailingComment
+    lastTrailingComment = trailingComment
     if (trailingComment) {
       parts.push(text(' '), lineComment(trailingComment))
     }
@@ -438,7 +537,7 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
   const fileTrailingComments = triviaComments(trailingTrivia)
   if (fileTrailingComments.length > 0) {
     // Need a newline between last statement and trailing comments
-    if (!trailingComment) {
+    if (!lastTrailingComment) {
       parts.push(hardLine)
     }
     for (const c of fileTrailingComments) {
@@ -928,28 +1027,27 @@ function formatBlock(node: UntypedCstNode): Doc {
     withClause = concat(text('with '), formatNode(handler), text(';'))
   }
 
-  const body = iter.collectBody('end')
+  const bodyDoc = formatBodyFromIter(iter, 'end')
   iter.expectToken('end')
 
-  if (body.length === 0) {
+  if (bodyDoc.type === 'text' && bodyDoc.text === '') {
     if (withClause) {
       return concat(text('do'), nest(INDENT, concat(hardLine, withClause)), hardLine, text('end'))
     }
     return text('do end')
   }
 
-  // Single-statement bodies try flat: `do expr end`
-  // Multi-statement bodies always expand.
-  if (body.length === 1 && !withClause) {
+  // Single expression without with clause: try flat `do expr end`
+  const bodyStmtCount = countStatementsInNode(node, 'end')
+  if (bodyStmtCount === 1 && !withClause) {
     return group(concat(
       text('do'),
-      nest(INDENT, concat(line, body[0]!)),
+      nest(INDENT, concat(line, bodyDoc)),
       line,
       text('end'),
     ))
   }
 
-  const bodyDoc = formatBody(body)
   const inner = withClause
     ? concat(hardLine, withClause, hardLine, bodyDoc)
     : concat(hardLine, bodyDoc)
@@ -1226,6 +1324,19 @@ function formatFromChildren(node: UntypedCstNode): Doc {
 
 function formatFallback(node: UntypedCstNode): Doc {
   return formatFromChildren(node)
+}
+
+/** Count statement nodes in a node's children before a stop token. */
+function countStatementsInNode(node: UntypedCstNode, stopToken: string): number {
+  let count = 0
+  // Skip the first token (e.g., 'do') and count child nodes before stop token
+  let pastFirst = false
+  for (const child of node.children) {
+    if (!pastFirst && isToken(child)) { pastFirst = true; continue }
+    if (isToken(child) && child.text === stopToken) break
+    if (isNode(child)) count++
+  }
+  return count
 }
 
 /** Check if a token text is punctuation that shouldn't have a space before it. */
