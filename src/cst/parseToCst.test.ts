@@ -221,6 +221,36 @@ result
     const src = '"hello" ++ " world"'
     expect(parseAndPrint(src)).toBe(src)
   })
+
+  it('quote expression', () => {
+    const src = 'quote x + 1 end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
+
+  it('quote with splice', () => {
+    const src = 'quote x + $^{y} end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
+
+  it('quote with multi-caret splice', () => {
+    const src = 'quote quote $^^{z} end end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
+
+  it('quote with splice containing expression', () => {
+    const src = 'quote $^{1 + 2} end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
+
+  it('quote with multiple splices', () => {
+    const src = 'quote $^{a} + $^{b} end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
+
+  it('quote with splice and comments', () => {
+    const src = 'quote /* before */ $^{x} /* after */ end'
+    expect(parseAndPrint(src)).toBe(src)
+  })
 })
 
 describe('parseToCst — tree structure', () => {
@@ -379,6 +409,51 @@ describe('parseToCst — tree structure', () => {
   it('reserved symbol produces ReservedSymbol node', () => {
     const tree = parseTree('true')
     expect(childNode(tree, 0).kind).toBe('ReservedSymbol')
+  })
+
+  it('quote produces Quote node', () => {
+    const tree = parseTree('quote x + 1 end')
+    expect(childNode(tree, 0).kind).toBe('Quote')
+  })
+
+  it('splice inside quote produces Splice child node', () => {
+    const tree = parseTree('quote x + $^{y} end')
+    const quote = childNode(tree, 0)
+    expect(quote.kind).toBe('Quote')
+    // Find the Splice child
+    const spliceNode = quote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
+    expect(spliceNode).toBeDefined()
+    expect((spliceNode as UntypedCstNode).kind).toBe('Splice')
+  })
+
+  it('splice node contains marker, expression tokens, and close brace', () => {
+    const tree = parseTree('quote $^{42} end')
+    const quote = childNode(tree, 0)
+    const splice = quote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice') as UntypedCstNode
+    expect(splice).toBeDefined()
+    // First child should be the marker token $^{
+    const marker = splice.children[0] as CstToken
+    expect(marker.text).toBe('$^{')
+    // Last child should be the close brace }
+    const closeBrace = splice.children[splice.children.length - 1] as CstToken
+    expect(closeBrace.text).toBe('}')
+  })
+
+  it('multiple splices produce multiple Splice nodes', () => {
+    const tree = parseTree('quote $^{a} + $^{b} end')
+    const quote = childNode(tree, 0)
+    const splices = quote.children.filter(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
+    expect(splices).toHaveLength(2)
+  })
+
+  it('multi-caret splice ($^^{}) produces Splice node in outer quote', () => {
+    const tree = parseTree('quote quote $^^{z} end end')
+    const outerQuote = childNode(tree, 0)
+    expect(outerQuote.kind).toBe('Quote')
+    // The $^^{z} belongs to the outer quote, so it should be a Splice child
+    const splice = outerQuote.children.find(c => 'kind' in c && (c as UntypedCstNode).kind === 'Splice')
+    expect(splice).toBeDefined()
+    expect((splice as UntypedCstNode).children[0]).toHaveProperty('text', '$^^{')
   })
 })
 

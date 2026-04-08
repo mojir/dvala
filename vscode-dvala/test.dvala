@@ -3,13 +3,14 @@ let robotify = (input) -> do
 
   let stutter = (word) -> do
     let c = upperCase(word[0]);
-    str(c, "-", c, "-", upperCase(word))
+    str(c, "-", c, "-", upperCase(word));
   end;
 
   let stuttered = map(words, stutter);
 
-  ">>> INITIATING TRANSMISSION... " ++ join(stuttered, "... ") ++ "... BEEP BOOP. END TRANSMISSION <<<"
+  ">>> INITIATING TRANSMISSION... " ++ join(stuttered, "... ") ++
+    "... BEEP BOOP. END TRANSMISSION <<<";
 end;
 
 let input = perform(@dvala.io.read, "Enter a message: ");
-robotify(input)
+robotify(input);

@@ -461,9 +461,8 @@ end;
 The `perform(@set, ["x", 5])` syntax exposes the tuple plumbing. Two small macros hide it:
 
 ```dvala
-let getState = macro ( name) -> quote perform ( @get, $^{ name}) end;
-let setState =
-  macro ( name, v) -> quote perform ( @set, [ $^{ name}, $^{ v}]) end;
+let getState = macro ( name) -> quote perform ( @get, $^{name}) end;
+let setState = macro ( name, v) -> quote perform ( @set, [ $^{name}, $^{v}]) end;
 
 let states = (store) -> handler
   @get(name) -> do

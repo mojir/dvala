@@ -168,6 +168,38 @@ describe('cstFormat — complex constructs', () => {
     expect(result).toContain('with h;')
     expect(result).toContain('end;')
   })
+
+  it('formats quote expression', () => {
+    expect(fmt('quote x + 1 end').trimEnd()).toBe('quote x + 1 end;')
+  })
+
+  it('formats quote with splice', () => {
+    expect(fmt('quote x + $^{y} end').trimEnd()).toBe('quote x + $^{y} end;')
+  })
+
+  it('formats splice tightly — no spaces around braces', () => {
+    // Ensure the splice marker and close brace are tight against the expression
+    const result = fmt('quote $^{  x  } end')
+    expect(result).toContain('$^{')
+    expect(result).toContain('}')
+    // The splice should not introduce extra spaces inside braces
+    expect(result).not.toMatch(/\$\^\{\s{2,}/)
+  })
+
+  it('formats quote with multiple splices', () => {
+    const result = fmt('quote $^{a} + $^{b} end').trimEnd()
+    expect(result).toBe('quote $^{a} + $^{b} end;')
+  })
+
+  it('formats quote with complex splice expression', () => {
+    const result = fmt('quote $^{1 + 2} end').trimEnd()
+    expect(result).toBe('quote $^{1 + 2} end;')
+  })
+
+  it('formats nested quote with multi-caret splice', () => {
+    const result = fmt('quote quote $^^{z} end end').trimEnd()
+    expect(result).toBe('quote quote $^^{z} end end;')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -258,6 +290,9 @@ describe('cstFormat — idempotency', () => {
     '@my.effect;',
     'if true then 1 else 2 end;',
     'do 42 end;',
+    'quote x + 1 end;',
+    'quote $^{y} end;',
+    'quote $^{a} + $^{b} end;',
   ]
 
   for (const source of cases) {

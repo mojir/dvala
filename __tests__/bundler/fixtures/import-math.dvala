@@ -1,2 +1,2 @@
 let m = import("./math.dvala");
-m + 1
+m + 1;

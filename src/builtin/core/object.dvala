@@ -3,28 +3,48 @@
     let fn = last(args);
     let objs = slice(args, 0, count(args) - 1);
     if not(isFunction(fn)) then
-      perform(@dvala.error, { message: str("Expected function, got: ", type(fn)) })
+      perform(
+        @dvala.error,
+        { message: str("Expected function, got: ", type(fn)) }
+      )
     end;
     if count(objs) == 0 then
-      perform(@dvala.error, { message: "Expected at least one object argument" })
+      perform(
+        @dvala.error,
+        { message: "Expected at least one object argument" }
+      )
     end;
-    reduce(rest(objs), (result, obj) -> do
-      if not(isObject(obj)) then
-        perform(@dvala.error, { message: str("Expected object, got: ", type(obj)) })
-      end;
-      reduce(keys(obj), (res, key) -> do
-        if contains(res, key) then
-          assoc(res, key, fn(get(res, key), get(obj, key)))
-        else
-          assoc(res, key, get(obj, key))
-        end
-      end, result)
-    end, do
-      let f = first(objs);
-      if not(isObject(f)) then
-        perform(@dvala.error, { message: str("Expected object, got: ", type(f)) })
-      end;
-      f
-    end)
-  end
-}
+    reduce(
+      rest(objs),
+      (result, obj) -> do
+        if not(isObject(obj)) then
+          perform(
+            @dvala.error,
+            { message: str("Expected object, got: ", type(obj)) }
+          )
+        end;
+        reduce(
+          keys(obj),
+          (res, key) -> do
+            if contains(res, key) then
+              assoc(res, key, fn(get(res, key), get(obj, key)))
+            else
+              assoc(res, key, get(obj, key))
+            end;
+          end,
+          result
+        );
+      end,
+      do
+        let f = first(objs);
+        if not(isObject(f)) then
+          perform(
+            @dvala.error,
+            { message: str("Expected object, got: ", type(f)) }
+          )
+        end;
+        f;
+      end
+    );
+  end,
+};

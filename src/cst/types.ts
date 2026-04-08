@@ -488,9 +488,9 @@ export interface CstQuote {
   span: SourceSpan
 }
 
-// TODO: CstSplice is defined for completeness but not yet emitted by the parser.
-// Splices inside quotes are currently handled at the token level within the Quote node.
-// When the parser gains first-class splice support, this type will be populated.
+// Emitted by parseQuote as a structured child of the Quote CST node.
+// The untyped form (kind: 'Splice', children: [marker, ...exprTokens, closeBrace])
+// is used by the formatter; this typed interface is used by printCst.
 export interface CstSplice {
   kind: 'Splice'
   /** The `$^{`, `$^^{`, etc. splice marker token. */

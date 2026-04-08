@@ -14,7 +14,7 @@ let makeGreeter = (prefix) -> (name) -> prefix ++ " " ++ name;
 let hi = makeGreeter("Hi");
 
 // === 4. Macro definition ===
-let double = macro ( x) -> quote $^{ x} + $^{ x} end;
+let double = macro ( x) -> quote $^{x} + $^{x} end;
 
 // === 5. Object destructuring ===
 let { x, y } = { x: 1, y: 2, z: 3 };

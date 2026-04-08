@@ -1,52 +1,52 @@
 {
   some: (seq, fn) -> do
-    if isNull(seq) then null
-    else do
-      loop (i = 0) -> do
-        if i >= count(seq) then
-          null
-        else do
-          let elem = nth(seq, i);
-          if fn(elem) then elem
-          else recur(i + 1)
-          end
-        end
-        end
+    if isNull(seq) then
+      null
+    else
+      do
+        loop ( i = 0) -> do
+          if i >= count(seq) then
+            null
+          else
+            do
+              let elem = nth(seq, i);
+              if fn(elem) then elem else recur(i + 1) end;
+            end
+          end;
+        end;
       end
-    end
-    end
+    end;
   end,
-
   takeWhile: (seq, fn) -> do
     let isStr = isString(seq);
     let len = count(seq);
-    let idx = loop (i = 0) -> do
-      if i >= len then
-        len
-      else if fn(nth(seq, i)) then
-        recur(i + 1)
-      else
-        i
-      end
-    end;
-    slice(seq, 0, idx)
+    let idx =
+      loop ( i = 0) -> do
+        if i >= len then
+          len
+        else if fn(nth(seq, i)) then
+          recur(i + 1)
+        else
+          i
+        end;
+      end;
+    slice(seq, 0, idx);
   end,
-
   dropWhile: (seq, fn) -> do
     let isStr = isString(seq);
     let len = count(seq);
-    let idx = loop (i = 0) -> do
-      if i >= len then
-        len
-      else if fn(nth(seq, i)) then
-        recur(i + 1)
-      else
-        i
-      end
-    end;
-    slice(seq, idx)
+    let idx =
+      loop ( i = 0) -> do
+        if i >= len then
+          len
+        else if fn(nth(seq, i)) then
+          recur(i + 1)
+        else
+          i
+        end;
+      end;
+    slice(seq, idx);
   end,
-
   sort: (seq, ...args) -> do
     let cmp = if count(args) == 0 then compare else first(args) end;
     let isStr = isString(seq);
@@ -57,38 +57,41 @@
     let mergeArrays = (left, right) -> do
       let leftLen = count(left);
       let rightLen = count(right);
-      loop (result = [], li = 0, ri = 0) -> do
+      loop ( result = [], li = 0, ri = 0) -> do
         if li >= leftLen then
           ++(result, slice(right, ri))
         else if ri >= rightLen then
           ++(result, slice(left, li))
-        else do
-          let l = nth(left, li);
-          let r = nth(right, ri);
-          if cmp(l, r) <= 0 then
-            recur(push(result, l), li + 1, ri)
-          else
-            recur(push(result, r), li, ri + 1)
+        else
+          do
+            let l = nth(left, li);
+            let r = nth(right, ri);
+            if cmp(l, r) <= 0 then
+              recur(push(result, l), li + 1, ri)
+            else
+              recur(push(result, r), li, ri + 1)
+            end;
           end
-        end
-        end
-      end
+        end;
+      end;
     end;
 
     // recursive mergeSort
     let mergeSort = (a) -> do
       let n = count(a);
-      if n <= 1 then a
-      else do
-        let mid = floor(n / 2);
-        let left = mergeSort(slice(a, 0, mid));
-        let right = mergeSort(slice(a, mid));
-        mergeArrays(left, right)
-      end
-      end
+      if n <= 1 then
+        a
+      else
+        do
+          let mid = floor(n / 2);
+          let left = mergeSort(slice(a, 0, mid));
+          let right = mergeSort(slice(a, mid));
+          mergeArrays(left, right);
+        end
+      end;
     end;
 
     let sorted = mergeSort(arr);
-    if isStr then join(sorted, "") else sorted end
-  end
-}
+    if isStr then join(sorted, "") else sorted end;
+  end,
+};

@@ -4,4 +4,4 @@ let greet = (name) -> `Hello, ${name}!`;
 
 let add = (a, b) -> a + b;
 
-{ greet, add }
+{ greet, add };

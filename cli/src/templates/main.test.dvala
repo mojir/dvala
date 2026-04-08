@@ -4,4 +4,4 @@ let { greet, add } = import("../main");
 
 test("greet returns greeting", -> assertEqual(greet("World"), "Hello, World!"));
 
-test("add sums two numbers", -> assertEqual(add(2, 3), 5))
+test("add sums two numbers", -> assertEqual(add(2, 3), 5));
