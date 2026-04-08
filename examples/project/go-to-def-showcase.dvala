@@ -14,7 +14,7 @@ let makeGreeter = (prefix) -> (name) -> prefix ++ " " ++ name;
 let hi = makeGreeter("Hi");
 
 // === 4. Macro definition ===
-let double = macro ( x) -> quote $^{x} + $^{x} end;
+let double = macro(x) -> quote $^{x} + $^{x} end;
 
 // === 5. Object destructuring ===
 let { x, y } = { x: 1, y: 2, z: 3 };
@@ -64,13 +64,13 @@ let guardMatch =
   end;
 
 // === 12. For loop bindings ===
-let doubled = for ( i in [1, 2, 3, 4, 5]) -> multiply(i, 2);
+let doubled = for(i in [1, 2, 3, 4, 5]) -> multiply(i, 2);
 let filtered =
-  for ( i in range(20) let sq = multiply(i, i) when sq > 10 while sq < 200) -> sq;
+  for(i in range(20) let sq = multiply(i, i) when sq > 10 while sq < 200) -> sq;
 
 // === 13. Loop/recur bindings ===
 let factorial =
-  loop ( n = 10, acc = 1) -> do
+  loop(n = 10, acc = 1) -> do
     if n <= 1 then acc else recur(n - 1, multiply(acc, n)) end;
   end;
 

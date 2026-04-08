@@ -33,7 +33,7 @@ let safeDivide = fnull((a, b) -> a / b, 0, 1);
 let doubleThenClamp = comp((x) -> clamp(x, 0, 20), scale);
 
 // --- Macro ---
-let double = macro ( x) -> quote $^{x} + $^{x} end;
+let double = macro(x) -> quote $^{x} + $^{x} end;
 
 // --- Effect and RegExp ---
 let myEffect = @debug.demo;

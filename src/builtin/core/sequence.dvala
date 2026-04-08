@@ -4,7 +4,7 @@
       null
     else
       do
-        loop ( i = 0) -> do
+        loop(i = 0) -> do
           if i >= count(seq) then
             null
           else
@@ -21,7 +21,7 @@
     let isStr = isString(seq);
     let len = count(seq);
     let idx =
-      loop ( i = 0) -> do
+      loop(i = 0) -> do
         if i >= len then
           len
         else if fn(nth(seq, i)) then
@@ -36,7 +36,7 @@
     let isStr = isString(seq);
     let len = count(seq);
     let idx =
-      loop ( i = 0) -> do
+      loop(i = 0) -> do
         if i >= len then
           len
         else if fn(nth(seq, i)) then
@@ -57,7 +57,7 @@
     let mergeArrays = (left, right) -> do
       let leftLen = count(left);
       let rightLen = count(right);
-      loop ( result = [], li = 0, ri = 0) -> do
+      loop(result = [], li = 0, ri = 0) -> do
         if li >= leftLen then
           ++(result, slice(right, ri))
         else if ri >= rightLen then

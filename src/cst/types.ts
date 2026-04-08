@@ -488,7 +488,11 @@ export interface CstQuote {
   span: SourceSpan
 }
 
-// Emitted by parseQuote as a structured child of the Quote CST node.
+// Emitted by parseQuote as a structural child of the Quote CST node.
+// In Pass 1, ALL QuoteSplice tokens produce a Splice CST node regardless of
+// caret level — this reflects physical token grouping, not semantic ownership.
+// (e.g. in `quote quote $^{z} end end`, the $^{z} is a Splice child of the
+// outer Quote even though it semantically belongs to the inner quote.)
 // The untyped form (kind: 'Splice', children: [marker, ...exprTokens, closeBrace])
 // is used by the formatter; this typed interface is used by printCst.
 export interface CstSplice {

@@ -34,7 +34,8 @@ Following [Clojure](https://en.wikipedia.org/wiki/Clojure)'s design ([Hickey](ht
 
 ```dvala
 // Tail-recursive factorial — constant stack space
-loop ( n = 10, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+loop(n = 10, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+
 ```
 
 ## How loop/recur Works
@@ -64,7 +65,8 @@ addUp(100);
 With loop/recur:
 
 ```dvala
-loop ( n = 100, acc = 0) -> if n <= 0 then acc else recur(n - 1, acc + n) end;
+loop(n = 100, acc = 0) -> if n <= 0 then acc else recur(n - 1, acc + n) end;
+
 ```
 
 ### Fibonacci
@@ -79,17 +81,19 @@ fib(10);
 With loop/recur it becomes linear — `O(n)`:
 
 ```dvala
-loop ( n = 10, a = 0, b = 1) -> if n <= 0 then a else recur(n - 1, b, a + b) end;
+loop(n = 10, a = 0, b = 1) -> if n <= 0 then a else recur(n - 1, b, a + b) end;
+
 ```
 
 ### Reverse a List
 
 ```dvala
-loop ( xs = [1, 2, 3, 4, 5], acc = []) -> if isEmpty(xs) then
+loop(xs = [1, 2, 3, 4, 5], acc = []) -> if isEmpty(xs) then
   acc
 else
   recur(dropLast(xs, 1), push(acc, last(xs)))
 end;
+
 ```
 
 ## Self Recursion: When You Don't Need TCO
@@ -113,12 +117,14 @@ Many problems that seem recursive are actually iterations. Dvala's `for` compreh
 
 ```dvala
 // Sum of squares of odd numbers under 10
-for ( x in range(10) when isOdd(x)) -> x * x;
+for(x in range(10) when isOdd(x)) -> x * x;
+
 ```
 
 ```dvala
 // Cartesian product
-for ( i in [1, 2, 3], j in ["a", "b"]) -> `${i}${j}`;
+for(i in [1, 2, 3], j in ["a", "b"]) -> `${i}${j}`;
+
 ```
 
 ## Summary

@@ -5,14 +5,14 @@
       if isNull(seq) then
         null
       else if isString(seq) then
-        for ( i in range(count(seq))) -> nth(seq, i)
+        for(i in range(count(seq))) -> nth(seq, i)
       else
         seq
       end;
     if isNull(items) then
       null
     else
-      loop ( i = 0) -> if i >= count(items) then
+      loop(i = 0) -> if i >= count(items) then
         null
       else if fn(nth(items, i)) then
         i
@@ -24,7 +24,7 @@
   sortBy: (seq, keyfn, ...args) -> do
     let items =
       if isString(seq) then
-        for ( i in range(count(seq))) -> nth(seq, i)
+        for(i in range(count(seq))) -> nth(seq, i)
       else
         [...seq]
       end;
@@ -42,7 +42,7 @@
     let result =
       filter(
         if isString(seq) then
-          for ( i in range(count(seq))) -> nth(seq, i)
+          for(i in range(count(seq))) -> nth(seq, i)
         else
           seq
         end,
@@ -53,12 +53,12 @@
   splitWith: (seq, fn) -> do
     let items =
       if isString(seq) then
-        for ( i in range(count(seq))) -> nth(seq, i)
+        for(i in range(count(seq))) -> nth(seq, i)
       else
         seq
       end;
     let idx =
-      loop ( i = 0) -> if i >= count(items) then
+      loop(i = 0) -> if i >= count(items) then
         -1
       else if not(fn(nth(items, i))) then
         i
@@ -74,7 +74,7 @@
   groupBy: (seq, fn) -> do
     let items =
       if isString(seq) then
-        for ( i in range(count(seq))) -> nth(seq, i)
+        for(i in range(count(seq))) -> nth(seq, i)
       else
         seq
       end;
@@ -95,7 +95,7 @@
   partitionBy: (seq, fn) -> do
     let items =
       if isString(seq) then
-        for ( i in range(count(seq))) -> nth(seq, i)
+        for(i in range(count(seq))) -> nth(seq, i)
       else
         seq
       end;
