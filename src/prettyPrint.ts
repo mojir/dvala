@@ -53,6 +53,18 @@ const NodeTypes = {
 
 type AstNode = [string, unknown, number]
 
+let blankLinesBeforeNodeId = new Map<number, number>()
+
+export function withPrettyPrintBlankLineHints<T>(hints: Map<number, number>, fn: () => T): T {
+  const previousHints = blankLinesBeforeNodeId
+  blankLinesBeforeNodeId = hints
+  try {
+    return fn()
+  } finally {
+    blankLinesBeforeNodeId = previousHints
+  }
+}
+
 // Infix binary operators rendered as `a op b`
 const infixOperators = new Set([
   '+', '-', '*', '/', '^', '%', '==', '!=',
@@ -98,6 +110,26 @@ function fits(text: string, currentIndent: number): boolean {
  */
 function allSingleLine(...strs: string[]): boolean {
   return strs.every(s => !s.includes('\n'))
+}
+
+function getBlankLinesBefore(nodeId: number): number {
+  return blankLinesBeforeNodeId.get(nodeId) ?? 0
+}
+
+function formatStatementLines(nodeIds: number[], lines: string[]): string {
+  let body = ''
+
+  lines.forEach((line, index) => {
+    if (index > 0) {
+      body += ';\n'
+      const blankLines = getBlankLinesBefore(nodeIds[index]!)
+      if (blankLines > 0)
+        body += '\n'.repeat(blankLines)
+    }
+    body += line
+  })
+
+  return `${body};`
 }
 
 // ---------------------------------------------------------------------------
@@ -414,7 +446,7 @@ function printBlock(stmts: unknown[][], ind: number): string {
   // Multiple statements (or single that doesn't fit): always expand.
   // Semicolons appear as the last token on each line (never mid-line).
   const lines = stmts.map(s => `${indent(ind + 1)}${printNode(s as AstNode, ind + 1, true)}`)
-  return `do\n${lines.join(';\n')}\n${indent(ind)}end`
+  return `do\n${formatStatementLines(stmts.map(s => (s as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printLet(payload: [unknown[], unknown[]], ind: number): string {
@@ -446,7 +478,7 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
     }
     // Multi-statement or WithHandler body: always expand (no mid-line semicolons)
     const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-    return `-> do\n${lines.join(';\n')}\n${indent(ind)}end`
+    return `-> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
   }
 
   const paramStr = params.map(p => printBindingTarget(p)).join(', ')
@@ -468,7 +500,7 @@ function printFunction(payload: [unknown[][], unknown[][], unknown?], ind: numbe
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `(${paramStr}) -> do\n${lines.join(';\n')}\n${indent(ind)}end`
+  return `(${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printMacro(payload: [unknown[][], unknown[][], string | null], ind: number): string {
@@ -487,7 +519,7 @@ function printMacro(payload: [unknown[][], unknown[][], string | null], ind: num
 
   // Multi-statement body (or single WithHandler): always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `${namePrefix} (${paramStr}) -> do\n${lines.join(';\n')}\n${indent(ind)}end`
+  return `${namePrefix} (${paramStr}) -> do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printPerform(payload: [unknown[], unknown[] | undefined], ind: number): string {
@@ -519,8 +551,17 @@ function printArray(elements: unknown[][], ind: number): string {
     }
   }
 
-  const lines = elements.map(e => `${indent(ind + 1)}${printNode(e as AstNode, ind + 1)}`)
-  return `[\n${lines.join(',\n')},\n${indent(ind)}]`
+  let body = ''
+  elements.forEach((element, index) => {
+    if (index > 0) {
+      body += ',\n'
+      const blankLines = getBlankLinesBefore((element as AstNode)[2])
+      if (blankLines > 0)
+        body += '\n'.repeat(blankLines)
+    }
+    body += `${indent(ind + 1)}${printNode(element as AstNode, ind + 1)}`
+  })
+  return `[\n${body},\n${indent(ind)}]`
 }
 
 function printObject(entries: unknown[][], ind: number): string {
@@ -536,9 +577,24 @@ function printObject(entries: unknown[][], ind: number): string {
   }
 
   // Multi-line — reformat at deeper indent
-  const multiParts = entries.map(entry => formatObjectEntry(entry, ind + 1))
-  const lines = multiParts.map(p => `${indent(ind + 1)}${p}`)
-  return `{\n${lines.join(',\n')},\n${indent(ind)}}`
+  let body = ''
+  entries.forEach((entry, index) => {
+    if (index > 0) {
+      body += ',\n'
+      const blankLines = getBlankLinesBefore(getObjectEntryNodeId(entry))
+      if (blankLines > 0)
+        body += '\n'.repeat(blankLines)
+    }
+    body += `${indent(ind + 1)}${formatObjectEntry(entry, ind + 1)}`
+  })
+  return `{\n${body},\n${indent(ind)}}`
+}
+
+function getObjectEntryNodeId(entry: unknown[]): number {
+  if (entry[0] === NodeTypes.Spread)
+    return (entry as AstNode)[2]
+
+  return (entry[0] as AstNode)[2]
 }
 
 function formatObjectEntry(entry: unknown[], ind: number): string {
@@ -589,7 +645,7 @@ function printHandlerBody(body: unknown[][], ind: number): string {
   }
   // Multi-statement or WithHandler: always expand (no mid-line semicolons)
   const lines = body.map(b => `${indent(ind + 1)}${printNode(b as AstNode, ind + 1, true)}`)
-  return `do\n${lines.join(';\n')}\n${indent(ind)}end`
+  return `do\n${formatStatementLines(body.map(b => (b as AstNode)[2]), lines)}\n${indent(ind)}end`
 }
 
 function printHandler(payload: [unknown[], unknown], ind: number): string {
@@ -769,10 +825,8 @@ function printCodeTemplate(payload: [unknown[][], unknown[][]], ind: number): st
   }
 
   // Multi-statement, multi-line single statement, or too wide: expand.
-  // join(';\n') on a one-element array produces no semicolons — correct for
-  // a single statement that just didn't fit on one line.
   const lines = bodyParts.map(p => `${indent(ind + 1)}${p}`)
-  return `quote\n${lines.join(';\n')}\nend`
+  return `quote\n${formatStatementLines(bodyAst.map(node => (node as AstNode)[2]), lines)}\nend`
 }
 
 /** Print an AST node, but render Splice nodes as $^{expr} using the splice expressions list. */

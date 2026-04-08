@@ -22,8 +22,10 @@ import type { ExtractedComment } from './extractComments'
 export interface AnchoredComment extends ExtractedComment {
   /** Index into body[] this comment is anchored to. */
   statementIndex: number
-  /** Blank lines to emit before a standalone comment (capped at 1). */
+  /** Blank lines to emit before this comment (capped at 1). */
   blankLinesBefore: number
+  /** Blank lines to emit after this comment before anchored code (capped at 1). */
+  blankLinesAfter: number
   /**
    * Character offset within the formatted statement string at which to insert
    * this inline comment. Undefined means fall back to trailing behaviour.
@@ -51,7 +53,11 @@ export function reinsertComments(
   }
 
   for (const comment of preamble) {
+    if (comment.blankLinesBefore > 0)
+      parts.push('\n'.repeat(comment.blankLinesBefore))
     parts.push(...formatCommentLines(comment, ''))
+    if (comment.blankLinesAfter > 0)
+      parts.push('\n'.repeat(comment.blankLinesAfter))
   }
 
   for (let i = 0; i < statementStrings.length; i++) {
@@ -87,10 +93,13 @@ export function reinsertComments(
       c => c.placement === 'leading' || c.placement === 'standalone',
     )
     for (const comment of leadingComments) {
-      if (comment.placement === 'standalone') {
+      if (comment.blankLinesBefore > 0) {
         parts.push('\n'.repeat(comment.blankLinesBefore))
       }
       parts.push(...formatCommentLines(comment, stmtIndent))
+      if (comment.blankLinesAfter > 0) {
+        parts.push('\n'.repeat(comment.blankLinesAfter))
+      }
     }
 
     // ── statement + trailing ───────────────────────────────────────────────
@@ -127,6 +136,8 @@ export function reinsertComments(
   }
 
   for (const comment of epilogue) {
+    if (comment.blankLinesBefore > 0)
+      parts.push('\n'.repeat(comment.blankLinesBefore))
     parts.push(...formatCommentLines(comment, ''))
   }
 

@@ -85,3 +85,16 @@ describe('round-trip — example project files', () => {
   }
 })
 
+// ---------------------------------------------------------------------------
+// Built-in module source .dvala files
+// ---------------------------------------------------------------------------
+
+describe('round-trip — built-in module source files', () => {
+  for (const filePath of collectFiles(path.join(root, 'src/builtin/modules'), '.dvala').filter(file => !file.endsWith('.test.dvala'))) {
+    it(rel(filePath), () => {
+      const code = fs.readFileSync(filePath, 'utf-8').trimEnd()
+      expect(format(code).trimEnd()).toBe(code)
+    })
+  }
+})
+

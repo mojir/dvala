@@ -26,7 +26,7 @@ You can use `let` to create a **new** binding with the same name in a nested sco
 let x = 10;
 do
   let x = x + 5;
-  x
+  x;
 end;
 ```
 
@@ -39,7 +39,7 @@ let x = 10;
 let getX = () -> x;
 do
   let x = 99;
-  getX()
+  getX();
 end;
 ```
 

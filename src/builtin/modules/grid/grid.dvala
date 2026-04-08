@@ -1,94 +1,85 @@
 do
-let _transpose = (g) ->
-  map(range(count(first(g))), (i) ->
-    map(range(count(g)), (j) -> nth(nth(g, j), i))
-  );
-{
-  "isCellEvery": (grid, predicate) -> do
-    let cells = flatten(grid, 1);
-    loop(i = 0) ->
-      if i >= count(cells) then true
-      else if not(predicate(nth(cells, i))) then false
-      else recur(i + 1)
-      end
-  end,
-  "isSome": (grid, predicate) -> do
-    let cells = flatten(grid, 1);
-    loop(i = 0) ->
-      if i >= count(cells) then false
-      else if predicate(nth(cells, i)) then true
-      else recur(i + 1)
-      end
-  end,
-
-  "isEveryRow": (grid, predicate) ->
-    loop(i = 0) ->
-      if i >= count(grid) then true
-      else if not(predicate(nth(grid, i))) then false
-      else recur(i + 1)
-      end,
-
-  "isSomeRow": (grid, predicate) ->
-    loop(i = 0) ->
-      if i >= count(grid) then false
-      else if predicate(nth(grid, i)) then true
-      else recur(i + 1)
-      end,
-
-  "isEveryCol": (grid, predicate) -> do
-    let cols = _transpose(grid);
-    loop(i = 0) ->
-      if i >= count(cols) then true
-      else if not(predicate(nth(cols, i))) then false
-      else recur(i + 1)
-      end
-  end,
-
-  "isSomeCol": (grid, predicate) -> do
-    let cols = _transpose(grid);
-    loop(i = 0) ->
-      if i >= count(cols) then false
-      else if predicate(nth(cols, i)) then true
-      else recur(i + 1)
-      end
-  end,
-
-  "generate": (rows, cols, generator) ->
-    map(range(rows), (i) -> map(range(cols), (j) -> generator(i, j))),
-
-  "cellMap": (...params) -> do
-    let fn = last(params);
-    let grids = dropLast(params, 1);
-    let rows = count(first(grids));
-    let cols = count(first(first(grids)));
-    map(range(rows), (i) ->
-      map(range(cols), (j) ->
-        apply(fn, map(grids, (g) -> nth(nth(g, i), j)))
-      )
-    )
-  end,
-
-  "cellMapi": (grid, fn) -> do
-    let rows = count(grid);
-    let cols = count(first(grid));
-    map(range(rows), (i) ->
-      map(range(cols), (j) ->
-        fn(nth(nth(grid, i), j), i, j)
-      )
-    )
-  end,
-
-  "cellReduce": (grid, fn, initialValue) ->
-    reduce(flatten(grid, 1), fn, initialValue),
-
-  "cellReducei": (grid, fn, initialValue) -> do
-    let rows = count(grid);
-    let cols = count(first(grid));
-    loop(acc = initialValue, i = 0, j = 0) ->
-      if i >= rows then acc
-      else if j >= cols then recur(acc, i + 1, 0)
-      else recur(fn(acc, nth(nth(grid, i), j), i, j), i, j + 1)
-      end
-  end
-}
+  let _transpose = (g) ->
+    map(
+      range(count(first(g))),
+      (i) -> map(range(count(g)), (j) -> nth(nth(g, j), i)),
+    );
+  {
+    isCellEvery: (grid, predicate) -> do
+      let cells = flatten(grid, 1);
+      loop (i = 0) ->
+        if i >= count(cells) then
+          true
+        else if not(predicate(nth(cells, i))) then false else recur(i + 1) end;
+    end,
+    isSome: (grid, predicate) -> do
+      let cells = flatten(grid, 1);
+      loop (i = 0) ->
+        if i >= count(cells) then
+          false
+        else if predicate(nth(cells, i)) then true else recur(i + 1) end;
+    end,
+    isEveryRow: (grid, predicate) ->
+      loop (i = 0) ->
+        if i >= count(grid) then
+          true
+        else if not(predicate(nth(grid, i))) then false else recur(i + 1) end,
+    isSomeRow: (grid, predicate) ->
+      loop (i = 0) ->
+        if i >= count(grid) then
+          false
+        else if predicate(nth(grid, i)) then true else recur(i + 1) end,
+    isEveryCol: (grid, predicate) -> do
+      let cols = _transpose(grid);
+      loop (i = 0) ->
+        if i >= count(cols) then
+          true
+        else if not(predicate(nth(cols, i))) then false else recur(i + 1) end;
+    end,
+    isSomeCol: (grid, predicate) -> do
+      let cols = _transpose(grid);
+      loop (i = 0) ->
+        if i >= count(cols) then
+          false
+        else if predicate(nth(cols, i)) then true else recur(i + 1) end;
+    end,
+    generate: (rows, cols, generator) ->
+      map(range(rows), (i) -> map(range(cols), (j) -> generator(i, j))),
+    cellMap: (...params) -> do
+      let fn = last(params);
+      let grids = dropLast(params, 1);
+      let rows = count(first(grids));
+      let cols = count(first(first(grids)));
+      map(
+        range(rows),
+        (i) ->
+          map(
+            range(cols),
+            (j) -> apply(fn, map(grids, (g) -> nth(nth(g, i), j))),
+          ),
+      );
+    end,
+    cellMapi: (grid, fn) -> do
+      let rows = count(grid);
+      let cols = count(first(grid));
+      map(
+        range(rows),
+        (i) -> map(range(cols), (j) -> fn(nth(nth(grid, i), j), i, j)),
+      );
+    end,
+    cellReduce: (grid, fn, initialValue) -> reduce(flatten(grid, 1), fn, initialValue),
+    cellReducei: (grid, fn, initialValue) -> do
+      let rows = count(grid);
+      let cols = count(first(grid));
+      loop (acc = initialValue, i = 0, j = 0) ->
+        if i >= rows then
+          acc
+        else if j >= cols then
+          recur(acc, i + 1, 0)
+        else
+          recur(fn(acc, nth(nth(grid, i), j), i, j), i, j + 1)
+        end;
+    end,
+  };
 end;
+

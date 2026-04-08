@@ -27,7 +27,7 @@ withLogging(
       interpolated,
       doubled,
       safe,
-    }
+    };
   end,
 );
 

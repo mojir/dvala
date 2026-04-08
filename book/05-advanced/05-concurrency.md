@@ -15,7 +15,7 @@ do
   with handler @my.val(arg) -> resume(arg * 2) end;
   let a = perform(@my.val, 10);
   let b = perform(@my.val, 20);
-  [a, b]
+  [a, b];
 end;
 ```
 

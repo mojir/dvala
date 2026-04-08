@@ -20,13 +20,13 @@ describe("sum", -> do
   );
   test("of empty", -> assertEqual(sum([]), 0));
   test("of single", -> assertEqual(sum([42]), 42));
-  test("of negatives", -> assertEqual(sum([-1, -2, -3]), -6))
+  test("of negatives", -> assertEqual(sum([-1, -2, -3]), -6));
 end);
 
 describe("average", -> do
   test("simple", -> assertEqual(average([2, 4, 6]), 4));
   test("single value", -> assertEqual(average([7]), 7));
-  test("with negatives", -> assertEqual(average([-2, 2]), 0))
+  test("with negatives", -> assertEqual(average([-2, 2]), 0));
 end);
 
 describe("variance", -> do
@@ -50,6 +50,7 @@ describe("variance", -> do
         ),
         4,
       ),
-  )
+  );
 end);
 // variance of [2, 4, 4, 4, 5, 5, 7, 9] = 4
+

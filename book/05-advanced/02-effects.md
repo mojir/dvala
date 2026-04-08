@@ -135,7 +135,7 @@ let h = handler @dvala.error(err) -> resume(0) end;
 do
   with h;
   let x = 0 / 0;
-  x + 1
+  x + 1;
 end;
 ```
 
@@ -146,7 +146,7 @@ let h = handler @dvala.error(err) -> "caught" end;
 do
   with h;
   let x = 0 / 0;
-  x + 1
+  x + 1;
 end;
 ```
 
@@ -158,7 +158,7 @@ Use `with handler;` inside a `do...end` block to install a handler for the rest 
 do
   with handler @my.double(x) -> resume(x * 2) end;
   let x = perform(@my.double, 21);
-  x + 1
+  x + 1;
 end;
 ```
 
@@ -182,7 +182,7 @@ A single handler can match multiple effects:
 ```dvala
 do
   with handler @a(x) -> resume(x * 2) @b(x) -> resume(x * 3) end;
-  perform(@a, 10) + perform(@b, 20)
+  perform(@a, 10) + perform(@b, 20);
 end;
 ```
 
@@ -194,7 +194,7 @@ Multiple `with` statements install handlers in layers. Inner handlers take prece
 do
   with handler @outer(x) -> resume(`outer: ${x}`) end;
   with handler @inner(x) -> resume(`inner: ${x}`) end;
-  `${perform(@inner, "hi")} ${perform(@outer, "there")}`
+  `${perform(@inner, "hi")} ${perform(@outer, "there")}`;
 end;
 ```
 
@@ -217,7 +217,7 @@ transform
 end;
 do
   with double;
-  21
+  21;
 end;
 ```
 
@@ -263,7 +263,7 @@ end;
 do
   with double;
   with addTen;
-  5
+  5;
 end;
 ```
 
@@ -277,7 +277,7 @@ When a handler calls `resume(value)`, the continuation runs to completion, and `
 // result = what the body evaluates to
 let h = handler @my.eff(x) -> do
   let result = resume(x);
-  result + 100
+  result + 100;
 end
 end;
 
@@ -301,7 +301,7 @@ When `resume` is called, the handler is **reinstalled around the continuation** 
 ```dvala
 let counter = handler @inc() -> do
   let result = resume(null);
-  result + 1
+  result + 1;
 end
 end;
 
@@ -310,7 +310,7 @@ counter(
     perform(@inc);
     perform(@inc);
     perform(@inc);
-    0
+    0;
   end,
 );
 ```
@@ -336,7 +336,7 @@ let state = (s) -> handler @get() -> resume(s) @set(v) -> resume(null) end;
 do
   with state(0);
   perform(@set, 1);
-  perform(@get)
+  perform(@get);
 end;
 ```
 
@@ -357,18 +357,18 @@ let state = (s) ->
   handler
     @get() -> do
       with state(s);
-      resume(s)
+      resume(s);
     end
     @set(v) -> do
       with state(v);
-      resume(null)
+      resume(null);
     end
   end;
 
 do
   with state(0);
   perform(@set, 1);
-  perform(@get)
+  perform(@get);
 end;
 ```
 
@@ -409,12 +409,12 @@ let states = (store) ->
   handler
     @get(name) -> do
       with states(store);
-      resume(get(store, name))
+      resume(get(store, name));
     end
     @set(pair) -> do
       let [name, v] = pair;
       with states(assoc(store, name, v));
-      resume(null)
+      resume(null);
     end
   end;
 
@@ -422,7 +422,7 @@ do
   with states({ x: 0, y: 0 });
   perform(@set, ["x", 5]);
   perform(@set, ["y", 20]);
-  [perform(@get, "x"), perform(@get, "y")]
+  [perform(@get, "x"), perform(@get, "y")];
 end;
 ```
 
@@ -440,12 +440,12 @@ let states = (store) ->
   handler
     @get(name) -> do
       with states(store);
-      resume(get(store, name))
+      resume(get(store, name));
     end
     @set(pair) -> do
       let [name, v] = pair;
       with states(assoc(store, name, v));
-      resume(null)
+      resume(null);
     end
   end;
 
@@ -453,7 +453,7 @@ do
   with states({ x: 0, y: 0 });
   setState("x", 5);
   setState("y", 20);
-  [getState("x"), getState("y")]
+  [getState("x"), getState("y")];
 end;
 ```
 
@@ -489,7 +489,7 @@ do
   perform(@yield, "b");
   perform(@yield, "c");
   perform(@yield, "d");
-  []
+  [];
 end; // never reached
 ```
 
@@ -509,7 +509,7 @@ The simplest multi-shot pattern — call `resume` twice, collect both results:
 let h = handler @flip() -> [resume(true)] ++ [resume(false)] end;
 do
   with h;
-  if perform(@flip) then 1 else 2 end
+  if perform(@flip) then 1 else 2 end;
 end;
 ```
 
@@ -529,7 +529,7 @@ do
   with chooseAll;
   let a = perform(@choose, [1, 2]);
   let b = perform(@choose, [10, 20]);
-  [a, b]
+  [a, b];
 end;
 ```
 
@@ -554,7 +554,7 @@ let h = handler @stop() -> "stopped" end;
 do
   with h;
   perform(@stop);
-  "never reached"
+  "never reached";
 end;
 ```
 
@@ -567,7 +567,7 @@ The combination of `resume`-returns-value + transform enables **pure state accum
 ```dvala
 let logger = handler @log(msg) -> do
   let [result, logs] = resume(null);
-  [result, [msg, ...logs]]
+  [result, [msg, ...logs]];
 end
 transform
   x -> [x, []]
@@ -578,7 +578,7 @@ do
   perform(@log, "start");
   let x = 42;
   perform(@log, `computed: ${x}`);
-  x
+  x;
 end;
 ```
 
@@ -602,7 +602,7 @@ This enables middleware-style handlers that intercept, transform, and forward ef
 ```dvala
 let addAuth = handler @fetch(url) -> do
   let result = perform(@fetch, `${url}?auth=token`);
-  resume(result)
+  resume(result);
 end
 end;
 
@@ -611,7 +611,7 @@ let fetcher = handler @fetch(url) -> resume(`data from ${url}`) end;
 do
   with fetcher;
   with addAuth;
-  perform(@fetch, "/users")
+  perform(@fetch, "/users");
 end;
 ```
 
@@ -628,7 +628,7 @@ To raise an error, perform `dvala.error`:
 ```dvala
 do
   with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
-  perform(@dvala.error, { message: "oops" })
+  perform(@dvala.error, { message: "oops" });
 end;
 ```
 
@@ -637,14 +637,14 @@ Runtime errors — like division by zero or calling a function with invalid argu
 ```dvala
 do
   with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
-  0 / 0
+  0 / 0;
 end;
 ```
 
 ```dvala
 do
   with handler @dvala.error(err) -> resume(`caught: ${err.message}`) end;
-  sqrt(-1)
+  sqrt(-1);
 end;
 ```
 
@@ -657,7 +657,7 @@ do
     @dvala.error(err) -> resume(`error: ${err.message}`)
   end;
   let x = perform(@my.read);
-  sqrt(x * -1)
+  sqrt(x * -1);
 end;
 ```
 
@@ -699,7 +699,7 @@ Returns a handler that catches `@dvala.error` and aborts with `value`:
 let { fallback } = import("effectHandler");
 do
   with fallback(0);
-  0 / 0
+  0 / 0;
 end;
 ```
 
@@ -718,7 +718,7 @@ Retries `bodyFn()` up to `n` times on `@dvala.error`. On final failure, propagat
 let { retry, fallback } = import("effectHandler");
 do
   with handler @dvala.error(msg) -> "gave up" end;
-  retry(3, -> 0 / 0)
+  retry(3, -> 0 / 0);
 end;
 ```
 
@@ -743,7 +743,7 @@ chooseAll(
   -> do
     let a = perform(@choose, [1, 2]);
     let b = perform(@choose, [10, 20]);
-    [a, b]
+    [a, b];
   end,
 );
 ```

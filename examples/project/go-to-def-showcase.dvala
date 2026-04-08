@@ -37,7 +37,7 @@ let { average } = import("./lib/stats");
 // === 8. Do block scoping ===
 let blockResult = do
   let inner = answer * 2;
-  inner + 1
+  inner + 1;
 end;
 
 // === 9. Match — pattern bindings ===
@@ -88,7 +88,7 @@ let logger = handler
   @showcase.log(msg) -> resume("logged: " ++ msg)
   @showcase.double(val) -> do
     let doubled = multiply(val, 2);
-    resume(doubled)
+    resume(doubled);
   end
 transform
   result -> { result, completed: true }
@@ -99,7 +99,7 @@ let handled = do
   with logger;
   let logResult = perform(@showcase.log, greeting);
   let doubleResult = perform(@showcase.double, answer);
-  { logResult, doubleResult }
+  { logResult, doubleResult };
 end;
 
 // === 16. All references — verify everything resolves ===
