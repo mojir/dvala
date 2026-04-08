@@ -118,25 +118,17 @@ function trailingComments(token: CstToken): Doc[] {
 function formatTokenWithTrivia(token: CstToken): Doc {
   const tokenDoc = text(token.text)
 
-  // Only emit BLOCK comments from trivia (not line comments).
-  // Line comments force hard breaks that conflict with enclosing layouts.
-  // They are handled by containers (program, body, array, etc.).
-  const leadingBlocks: Doc[] = []
-  for (const t of token.leadingTrivia) {
-    if (t.kind === 'blockComment') leadingBlocks.push(text(t.text))
-  }
+  // Only emit TRAILING block comments (inline, e.g. `foo(/* arg */ bar)`).
+  // Leading comments (both line and block) are handled by containers
+  // (program, body, array, etc.) to avoid duplicate emission.
   const trailingBlocks: Doc[] = []
   for (const t of token.trailingTrivia) {
     if (t.kind === 'blockComment') trailingBlocks.push(text(t.text))
   }
 
-  if (leadingBlocks.length === 0 && trailingBlocks.length === 0) return tokenDoc
+  if (trailingBlocks.length === 0) return tokenDoc
 
-  const parts: Doc[] = []
-  for (const c of leadingBlocks) {
-    parts.push(c, text(' '))
-  }
-  parts.push(tokenDoc)
+  const parts: Doc[] = [tokenDoc]
   for (const c of trailingBlocks) {
     parts.push(text(' '), c)
   }
@@ -755,9 +747,16 @@ function formatObject(node: UntypedCstNode): Doc {
   iter.expectToken('{')
 
   const entries: Doc[] = []
+  let pendingCommentDocs: Doc[] = []
   while (!iter.done() && !iter.isToken('}')) {
     if (iter.isToken(',')) {
-      iter.next() // skip comma
+      const comma = iter.nextToken()
+      // Check for block comments on comma (e.g., `x: 1, /*y*/ y: 2`)
+      for (const t of comma.trailingTrivia) {
+        if (t.kind === 'blockComment') {
+          pendingCommentDocs.push(text(t.text), text(' '))
+        }
+      }
       continue
     }
     // Spread entry
@@ -787,7 +786,12 @@ function formatObject(node: UntypedCstNode): Doc {
         entryParts.push(formatNode(iter.nextNode()))
       }
     }
-    entries.push(concat(...entryParts))
+    if (pendingCommentDocs.length > 0) {
+      entries.push(concat(...pendingCommentDocs, ...entryParts))
+      pendingCommentDocs = []
+    } else {
+      entries.push(concat(...entryParts))
+    }
   }
 
   iter.expectToken('}')
@@ -801,9 +805,8 @@ function formatObject(node: UntypedCstNode): Doc {
   const trailingComma = ifBreak(text(','), text(''))
   return group(concat(
     text('{'),
-    ifBreak(text(''), text(' ')), // no space in multiline (softLine handles it)
-    nest(INDENT, concat(softLine, join(concat(text(','), line), entries), trailingComma)),
-    softLine,
+    nest(INDENT, concat(line, join(concat(text(','), line), entries), trailingComma)),
+    line,
     text('}'),
   ))
 }
@@ -1160,10 +1163,8 @@ function formatBlock(node: UntypedCstNode): Doc {
   }
 
   const bodyStmtCount = countNodesUntil(iter, 'end')
-  // Single-statement: no trailing ;. Multi-statement: trailing ;
-  const bodyResult = bodyStmtCount <= 1
-    ? formatBodyFromIterNoTrailingSemi(iter, 'end')
-    : formatBodyFromIter(iter, 'end')
+  // Always use trailing ; for expanded blocks
+  const bodyResult = formatBodyFromIter(iter, 'end')
   const bodyDoc = bodyResult.doc
   iter.expectToken('end')
 
@@ -1175,13 +1176,25 @@ function formatBlock(node: UntypedCstNode): Doc {
   }
 
   // Single expression without with clause: try flat `do expr end`
+  // But force expansion if body has leading comments (they'd be lost in flat mode).
   if (bodyStmtCount === 1 && !withClause) {
-    return group(concat(
-      text('do'),
-      nest(INDENT, concat(line, bodyDoc)),
-      line,
-      text('end'),
-    ))
+    // Check if body has leading comments (on the first token of the body statement)
+    const bodyNodes = node.children.filter(isNode).filter(c => (c as UntypedCstNode).kind !== 'Block') as UntypedCstNode[]
+    const bodyFirstTok = bodyNodes.length > 0 ? firstToken(bodyNodes[bodyNodes.length - 1]!) : undefined
+    const hasLeadingComments = bodyFirstTok?.leadingTrivia.some(t => t.kind === 'lineComment' || t.kind === 'blockComment')
+
+    if (!hasLeadingComments) {
+      // Flat: `do expr end`. Expanded: `do\n  expr;\nend`
+      const flatBodyDoc = bodyNodes.length > 0 ? formatNode(bodyNodes[bodyNodes.length - 1]!) : bodyDoc
+      return group(concat(
+        text('do'),
+        nest(INDENT, concat(line, ifBreak(bodyDoc, flatBodyDoc))),
+        bodyResult.lastTrailingComment
+          ? concat(text(' '), text(bodyResult.lastTrailingComment), hardLine)
+          : line,
+        text('end'),
+      ))
+    }
   }
 
   const inner = withClause

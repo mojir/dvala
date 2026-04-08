@@ -67,6 +67,10 @@ export function formatWithCst(source: string): string {
 }
 
 export function format(source: string): string {
+  return formatWithCst(source)
+}
+
+export function formatLegacy(source: string): string {
   if (source.trim() === '') return ''
 
   const fullTokenStream = tokenize(source, true, undefined)
