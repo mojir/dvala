@@ -192,6 +192,7 @@ export function splitSegments(raw: string): Segment[] {
 // ---------------------------------------------------------------------------
 
 export function parseTemplateString(ctx: ParserContext, token: TemplateStringToken): StringNode | TemplateStringNode {
+  ctx.builder?.startNode('TemplateString')
   ctx.advance()
   const debugInfo = token[2]
   const resolvedSci = ctx.resolveTokenDebugInfo(debugInfo)
@@ -205,11 +206,13 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
   if (segments.length === 0) {
     const node = withSourceCodeInfo([NodeTypes.Str, '', 0], debugInfo, ctx) as StringNode
     ctx.setNodeEnd(node[2])
+    ctx.builder?.endNode()
     return node
   }
   if (segments.length === 1 && segments[0]!.type === 'literal') {
     const node = withSourceCodeInfo([NodeTypes.Str, segments[0]!.value, 0], debugInfo, ctx) as StringNode
     ctx.setNodeEnd(node[2])
+    ctx.builder?.endNode()
     return node
   }
 
@@ -243,5 +246,6 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
   const node = withSourceCodeInfo([NodeTypes.TmplStr, segmentNodes, 0], debugInfo, ctx) as TemplateStringNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

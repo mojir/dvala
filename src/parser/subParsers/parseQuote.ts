@@ -23,6 +23,7 @@ export type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], As
 let quoteTemplateCounter = 0
 
 export function parseQuote(ctx: ParserContext): CodeTemplateNode {
+  ctx.builder?.startNode('Quote')
   const token = ctx.peek()
   const debugInfo = token[2]
   ctx.advance() // consume 'quote'
@@ -171,6 +172,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
     ctx,
   ) as CodeTemplateNode
   ctx.setNodeEnd(resultNode[2])
+  ctx.builder?.endNode()
   return resultNode
 }
 

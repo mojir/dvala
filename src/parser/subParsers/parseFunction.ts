@@ -16,6 +16,7 @@ const maxShorthandLambdaArity = 20
 
 // Called after lookahead has confirmed a `->` follows the parameter list.
 export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
+  ctx.builder?.startNode('Function')
   const firstToken = ctx.peek()
   const functionArguments = parseFunctionArguments(ctx)
 
@@ -42,6 +43,7 @@ export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
     0,
   ], firstToken[2], ctx) as LambdaNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
 
@@ -90,6 +92,7 @@ export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {
   return functionArguments
 }
 export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
+  ctx.builder?.startNode('Function')
   const firstToken = ctx.peek()
   ctx.advance()
   // TODO, do not like this...
@@ -139,5 +142,6 @@ export function parseShorthandLambdaFunction(ctx: ParserContext): LambdaNode {
   ], 0], firstToken[2], ctx) as LambdaNode
 
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

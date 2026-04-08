@@ -7,6 +7,7 @@ import { parseBindingTarget } from './parseBindingTarget'
 import { parseImplicitBlock } from './parseImplicitBlock'
 
 export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
+  ctx.builder?.startNode('Match')
   ctx.advance()
   const valueExpression = ctx.parseExpression()
   const params: MatchCase[] = []
@@ -40,5 +41,6 @@ export function parseMatch(ctx: ParserContext, token: SymbolToken): MatchNode {
 
   const node = withSourceCodeInfo([NodeTypes.Match, [valueExpression, params], 0], token[2], ctx) as MatchNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

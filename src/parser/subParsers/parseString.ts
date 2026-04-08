@@ -5,6 +5,7 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
 export function parseString(ctx: ParserContext, token: StringToken): StringNode {
+  ctx.builder?.startNode('StringLiteral')
   ctx.advance()
   const value = token[1].substring(1, token[1].length - 1)
     .replace(
@@ -43,5 +44,6 @@ export function parseString(ctx: ParserContext, token: StringToken): StringNode 
 
   const node = withSourceCodeInfo([NodeTypes.Str, value, 0], token[2], ctx) as StringNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

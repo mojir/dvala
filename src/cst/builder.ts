@@ -71,6 +71,30 @@ export class CstBuilder {
   }
 
   /**
+   * Save a checkpoint at the current position in the current node's children.
+   * Used with `startNodeAt()` to retroactively wrap already-parsed children
+   * in a new node — needed by the Pratt parser for binary operators, property
+   * access, and function calls where the left operand is parsed before the
+   * wrapper node kind is known.
+   */
+  checkpoint(): number {
+    return this.current().children.length
+  }
+
+  /**
+   * Open a new node that retroactively wraps children from a prior checkpoint.
+   * Children from `checkpoint` to the end of the current node's children list
+   * are moved into the new node, which becomes the current node.
+   * Call `endNode()` to close it (like any other node).
+   */
+  startNodeAt(checkpoint: number, kind: string): void {
+    const parent = this.current()
+    const wrapped = parent.children.splice(checkpoint)
+    const node: UntypedCstNode = { kind, children: wrapped }
+    this.stack.push(node)
+  }
+
+  /**
    * Close the current node and attach it as a child of its parent.
    * If this closes the root node, the tree is complete.
    */

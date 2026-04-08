@@ -43,11 +43,16 @@ const validDvalaEffects: ReadonlySet<string> = new Set([
 ])
 
 export function parseOperand(ctx: ParserContext): AstNode {
+  // Save checkpoint before parsing the operand — needed if it turns out to
+  // be the object of a property access, index access, or function call.
+  const checkpoint = ctx.builder?.checkpoint()
+
   let operand: AstNode = parseOperandPart(ctx)
   let token = ctx.tryPeek()
 
   while (isOperatorToken(token, '.') || isLBracketToken(token) || isLParenToken(token)) {
     if (token[1] === '.') {
+      ctx.builder?.startNodeAt(checkpoint!, 'PropertyAccess')
       ctx.advance()
       const symbolToken = ctx.tryPeek()
       if (!isSymbolToken(symbolToken)) {
@@ -56,8 +61,10 @@ export function parseOperand(ctx: ParserContext): AstNode {
       const stringNode: StringNode = withSourceCodeInfo([NodeTypes.Str, symbolToken[1], 0], symbolToken[2], ctx) as StringNode
       operand = createAccessorNode(ctx, operand, stringNode, token[2])
       ctx.advance()
+      ctx.builder?.endNode()
       token = ctx.tryPeek()
     } else if (isLBracketToken(token)) {
+      ctx.builder?.startNodeAt(checkpoint!, 'IndexAccess')
       ctx.advance()
       const expression = ctx.parseExpression()
       if (!isRBracketToken(ctx.tryPeek())) {
@@ -65,11 +72,14 @@ export function parseOperand(ctx: ParserContext): AstNode {
       }
       operand = createAccessorNode(ctx, operand, expression, token[2])
       ctx.advance()
+      ctx.builder?.endNode()
       token = ctx.tryPeek()
     // Defensive: function call chaining is always preceded by accessor or direct call
     /* v8 ignore next 3 */
     } else if (isLParenToken(token)) {
+      ctx.builder?.startNodeAt(checkpoint!, 'Call')
       operand = parseFunctionCall(ctx, operand)
+      ctx.builder?.endNode()
       token = ctx.tryPeek()
     }
   }
@@ -85,6 +95,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     if (looksLikeLambda(ctx)) {
       return parseLambdaFunction(ctx)
     }
+    ctx.builder?.startNode('Parenthesized')
     ctx.advance()
     const expression = ctx.parseExpression()
     if (!isRParenToken(ctx.peek())) {
@@ -92,6 +103,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     }
     ctx.advance()
     ctx.setNodeEnd(expression[2])
+    ctx.builder?.endNode()
     return expression
   } else if (isOperatorToken(token)) {
     const operatorName = token[1]
@@ -109,25 +121,31 @@ function parseOperandPart(ctx: ParserContext): AstNode {
         || nextType === 'string' || nextType === 'EffectName'
         || nextType === 'BasePrefixedNumber'
       if (isUnary) {
+        ctx.builder?.startNode('PrefixOp')
         ctx.advance()
         const operand = parseOperandPart(ctx)
         const zeroNode: AstNode = withSourceCodeInfo([NodeTypes.Num, 0, 0], token[2], ctx)
         const minusSymbol: BuiltinSymbolNode = withSourceCodeInfo([NodeTypes.Builtin, '-', 0], token[2], ctx) as BuiltinSymbolNode
         const node = withSourceCodeInfo([NodeTypes.Call, [minusSymbol, [zeroNode, operand]], 0], token[2], ctx) as NormalExpressionNodeExpression
         ctx.setNodeEnd(node[2])
+        ctx.builder?.endNode()
         return node
       }
     }
 
     if (isBinaryOperator(operatorName)) {
+      // Operator used as a value (e.g. passing `+` as a function argument)
+      ctx.builder?.startNode('Symbol')
       ctx.advance()
       if (specialExpressionTypes[operatorName as SpecialExpressionName] !== undefined) {
         const node = withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[operatorName as SpecialExpressionName], 0], token[2], ctx) as SpecialSymbolNode
         ctx.setNodeEnd(node[2])
+        ctx.builder?.endNode()
         return node
       }
       const node = withSourceCodeInfo([NodeTypes.Builtin, operatorName, 0], token[2], ctx) as BuiltinSymbolNode
       ctx.setNodeEnd(node[2])
+      ctx.builder?.endNode()
       return node
     }
 
@@ -150,6 +168,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 
   // #name expr — prefix macro call, consumes a full expression
   if (token[0] === 'MacroPrefix') {
+    ctx.builder?.startNode('MacroCall')
     const debugInfo = token[2]
     const nodeId = ctx.allocateNodeId(debugInfo)
     ctx.advance()
@@ -157,6 +176,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     const symNode = withSourceCodeInfo([NodeTypes.Sym, token[1], 0], debugInfo, ctx)
     const node: AstNode = [NodeTypes.MacroCall, [symNode, [operand]], nodeId]
     ctx.setNodeEnd(nodeId)
+    ctx.builder?.endNode()
     return node
   }
 
@@ -196,6 +216,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     case 'RegexpShorthand':
       return parseRegexpShorthand(ctx)
     case 'EffectName': {
+      ctx.builder?.startNode('EffectName')
       const effectName = token[1]
       // Validate dvala.* effect names — only known standard effects are allowed.
       // Wildcards (containing *) are exempt since they're patterns, not literal names.
@@ -205,6 +226,7 @@ function parseOperandPart(ctx: ParserContext): AstNode {
       ctx.advance()
       const node = withSourceCodeInfo([NodeTypes.Effect, effectName, 0], token[2], ctx)
       ctx.setNodeEnd(node[2])
+      ctx.builder?.endNode()
       return node
     }
 

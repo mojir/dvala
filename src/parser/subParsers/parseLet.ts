@@ -6,6 +6,7 @@ import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
 
 export function parseLet(ctx: ParserContext, token: SymbolToken): LetNode {
+  ctx.builder?.startNode('Let')
   ctx.advance()
 
   const target = parseBindingTarget(ctx, { requireDefaultValue: true, noRest: true })
@@ -15,5 +16,6 @@ export function parseLet(ctx: ParserContext, token: SymbolToken): LetNode {
 
   const node = withSourceCodeInfo([NodeTypes.Let, [target, value], 0], token[2], ctx) as LetNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

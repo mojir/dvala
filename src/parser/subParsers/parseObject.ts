@@ -9,14 +9,17 @@ import { parseString } from './parseString'
 import { parseTemplateString } from './parseTemplateString'
 
 export function parseObject(ctx: ParserContext): ObjectNode {
+  ctx.builder?.startNode('Object')
   const
     firstToken = asLBraceToken(ctx.tryPeek())
   ctx.advance()
   const entries: ObjectEntry[] = []
   while (!ctx.isAtEnd() && !isRBraceToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
+      ctx.builder?.startNode('Spread')
       ctx.advance()
       entries.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
+      ctx.builder?.endNode()
     } else {
       const token = ctx.tryPeek()
       let keyNode: AstNode
@@ -75,5 +78,6 @@ export function parseObject(ctx: ParserContext): ObjectNode {
 
   const node = withSourceCodeInfo([NodeTypes.Object, entries, 0], firstToken[2], ctx) as ObjectNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

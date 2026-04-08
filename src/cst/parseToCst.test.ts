@@ -222,17 +222,160 @@ result
 })
 
 describe('parseToCst — tree structure', () => {
+  function parseTree(source: string): UntypedCstNode {
+    return parseToCst(tokenize(source, true, undefined)).tree
+  }
+
+  /** Get the nth child node (skipping tokens). */
+  function childNode(node: UntypedCstNode, n: number): UntypedCstNode {
+    let count = 0
+    for (const child of node.children) {
+      if ('kind' in child) {
+        if (count === n) return child as UntypedCstNode
+        count++
+      }
+    }
+    throw new Error(`No child node at index ${n}`)
+  }
+
   it('root node is Program', () => {
-    const fullTokenStream = tokenize('42', true, undefined)
-    const { tree } = parseToCst(fullTokenStream)
-    expect(tree.kind).toBe('Program')
+    expect(parseTree('42').kind).toBe('Program')
   })
 
-  it('program has token children', () => {
-    const fullTokenStream = tokenize('42', true, undefined)
-    const { tree } = parseToCst(fullTokenStream)
-    // At this stage (before sub-parser instrumentation), all tokens are
-    // direct children of Program — no nested nodes yet.
-    expect(tree.children.length).toBeGreaterThan(0)
+  it('number literal produces NumberLiteral node', () => {
+    const tree = parseTree('42')
+    const num = childNode(tree, 0)
+    expect(num.kind).toBe('NumberLiteral')
+  })
+
+  it('string literal produces StringLiteral node', () => {
+    const tree = parseTree('"hello"')
+    expect(childNode(tree, 0).kind).toBe('StringLiteral')
+  })
+
+  it('symbol produces Symbol node', () => {
+    const tree = parseTree('foo')
+    expect(childNode(tree, 0).kind).toBe('Symbol')
+  })
+
+  it('binary op wraps left and right', () => {
+    const tree = parseTree('1 + 2')
+    const binOp = childNode(tree, 0)
+    expect(binOp.kind).toBe('BinaryOp')
+    // Should have: NumberLiteral, operator token, NumberLiteral
+    const childNodes = binOp.children.filter(c => 'kind' in c)
+    expect(childNodes).toHaveLength(2) // two NumberLiteral nodes
+  })
+
+  it('chained binary ops produce left-associative nesting', () => {
+    const tree = parseTree('1 + 2 + 3')
+    const outer = childNode(tree, 0)
+    expect(outer.kind).toBe('BinaryOp')
+    // Left child should be another BinaryOp
+    const inner = childNode(outer, 0)
+    expect(inner.kind).toBe('BinaryOp')
+  })
+
+  it('let binding produces Let node', () => {
+    const tree = parseTree('let x = 42')
+    expect(childNode(tree, 0).kind).toBe('Let')
+  })
+
+  it('array produces Array node', () => {
+    const tree = parseTree('[1, 2, 3]')
+    expect(childNode(tree, 0).kind).toBe('Array')
+  })
+
+  it('object produces Object node', () => {
+    const tree = parseTree('{a: 1}')
+    expect(childNode(tree, 0).kind).toBe('Object')
+  })
+
+  it('property access produces PropertyAccess node', () => {
+    const tree = parseTree('foo.bar')
+    expect(childNode(tree, 0).kind).toBe('PropertyAccess')
+  })
+
+  it('index access produces IndexAccess node', () => {
+    const tree = parseTree('arr[0]')
+    expect(childNode(tree, 0).kind).toBe('IndexAccess')
+  })
+
+  it('function call produces Call node', () => {
+    const tree = parseTree('foo(1, 2)')
+    expect(childNode(tree, 0).kind).toBe('Call')
+  })
+
+  it('if expression produces If node', () => {
+    const tree = parseTree('if true then 1 else 2 end')
+    expect(childNode(tree, 0).kind).toBe('If')
+  })
+
+  it('do block produces Block node', () => {
+    const tree = parseTree('do 1 end')
+    expect(childNode(tree, 0).kind).toBe('Block')
+  })
+
+  it('lambda produces Function node', () => {
+    const tree = parseTree('(x) -> x + 1')
+    expect(childNode(tree, 0).kind).toBe('Function')
+  })
+
+  it('shorthand lambda produces Function node', () => {
+    const tree = parseTree('-> $ + 1')
+    expect(childNode(tree, 0).kind).toBe('Function')
+  })
+
+  it('unary minus produces PrefixOp node', () => {
+    const tree = parseTree('-x')
+    expect(childNode(tree, 0).kind).toBe('PrefixOp')
+  })
+
+  it('parenthesized expression produces Parenthesized node', () => {
+    const tree = parseTree('(1 + 2)')
+    expect(childNode(tree, 0).kind).toBe('Parenthesized')
+  })
+
+  it('match produces Match node', () => {
+    const tree = parseTree('match x case 1 then "one" case _ then "other" end')
+    expect(childNode(tree, 0).kind).toBe('Match')
+  })
+
+  it('for produces For node', () => {
+    const tree = parseTree('for (x in [1, 2]) -> x')
+    expect(childNode(tree, 0).kind).toBe('For')
+  })
+
+  it('loop produces Loop node', () => {
+    const tree = parseTree('loop (i = 0) -> if i >= 10 then i else recur(i + 1) end')
+    expect(childNode(tree, 0).kind).toBe('Loop')
+  })
+
+  it('handler produces Handler node', () => {
+    const tree = parseTree('handler @my.eff(x) -> resume(x) end')
+    expect(childNode(tree, 0).kind).toBe('Handler')
+  })
+
+  it('macro call produces MacroCall node', () => {
+    const tree = parseTree('#debug 42')
+    expect(childNode(tree, 0).kind).toBe('MacroCall')
+  })
+
+  it('effect name produces EffectName node', () => {
+    const tree = parseTree('@my.effect')
+    expect(childNode(tree, 0).kind).toBe('EffectName')
+  })
+
+  it('spread produces Spread node inside array', () => {
+    const tree = parseTree('[...xs]')
+    const arr = childNode(tree, 0)
+    expect(arr.kind).toBe('Array')
+    const spread = childNode(arr, 0)
+    expect(spread.kind).toBe('Spread')
+  })
+
+  it('reserved symbol produces ReservedSymbol node', () => {
+    const tree = parseTree('true')
+    expect(childNode(tree, 0).kind).toBe('ReservedSymbol')
   })
 })
