@@ -271,6 +271,16 @@ class ChildIterator {
     return child !== undefined && isToken(child) && child.text === tokenText
   }
 
+  /** Save the current position for later restore. */
+  save(): number {
+    return this.pos
+  }
+
+  /** Restore to a previously saved position. */
+  restore(savedPos: number): void {
+    this.pos = savedPos
+  }
+
   /** Check if the current child is a node. */
   isNode(): boolean {
     const child = this.peek()
@@ -928,14 +938,16 @@ function formatIf(node: UntypedCstNode): Doc {
   // Children: if, condition, then, body..., [else, [if, condition, then, body...]]..., end
   const iter = new ChildIterator(node.children)
 
-  // Collect all branches for analysis
+  // Collect branches
   interface Branch {
     isElseIf: boolean
-    condition?: Doc
-    body: Doc[]
+    condition: Doc
+    bodyDoc: Doc
+    bodyCount: number
   }
   const branches: Branch[] = []
-  let elseBranch: Doc[] | undefined
+  let elseBranchDoc: Doc | undefined
+  let elseBranchCount = 0
 
   while (!iter.done()) {
     const child = iter.peek()!
@@ -944,10 +956,11 @@ function formatIf(node: UntypedCstNode): Doc {
     if (isToken(child) && child.text === 'else') {
       iter.next() // consume 'else'
       if (iter.isToken('if')) {
-        // else-if: continue to parse
+        // else-if: continue to parse the next if branch
       } else {
-        // Final else branch
-        elseBranch = iter.collectBody('end')
+        // Final else branch — use formatBodyFromIter for comment handling
+        elseBranchCount = countNodesUntil(iter, 'end')
+        elseBranchDoc = formatBodyFromIter(iter, 'end')
         break
       }
     }
@@ -956,28 +969,29 @@ function formatIf(node: UntypedCstNode): Doc {
       iter.next() // consume 'if'
       const condition = iter.nextNode()
       iter.expectToken('then')
-      const body = iter.collectBody('else', 'end')
-      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), body })
+      const bodyCount = countNodesUntil(iter, 'else', 'end')
+      const bodyDoc = formatBodyFromIter(iter, 'else', 'end')
+      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), bodyDoc, bodyCount })
     }
   }
 
   iter.expectToken('end')
 
-  // Simple if/then/else/end with single-expression bodies: try flat
-  if (branches.length === 1 && branches[0]!.body.length === 1
-    && (!elseBranch || elseBranch.length === 1)) {
+  // Simple if/then/[else]/end with single-expression bodies: try flat
+  if (branches.length === 1 && branches[0]!.bodyCount === 1
+    && (elseBranchDoc === undefined || elseBranchCount === 1)) {
     const b = branches[0]!
-    const flatParts = [text('if '), b.condition!, text(' then '), b.body[0]!]
-    if (elseBranch) {
-      flatParts.push(text(' else '), elseBranch[0]!)
+    const flatParts = [text('if '), b.condition, text(' then '), b.bodyDoc]
+    if (elseBranchDoc) {
+      flatParts.push(text(' else '), elseBranchDoc)
     }
     flatParts.push(text(' end'))
 
-    const expandedParts: Doc[] = [text('if '), b.condition!, text(' then')]
-    expandedParts.push(nest(INDENT, concat(hardLine, b.body[0]!)))
-    if (elseBranch) {
+    const expandedParts: Doc[] = [text('if '), b.condition, text(' then')]
+    expandedParts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
+    if (elseBranchDoc) {
       expandedParts.push(hardLine, text('else'))
-      expandedParts.push(nest(INDENT, concat(hardLine, elseBranch[0]!)))
+      expandedParts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
     }
     expandedParts.push(hardLine, text('end'))
 
@@ -988,26 +1002,17 @@ function formatIf(node: UntypedCstNode): Doc {
 
   // Complex if: always expand
   const parts: Doc[] = []
-  for (let i = 0; i < branches.length; i++) {
-    const b = branches[i]!
+  for (const b of branches) {
     if (b.isElseIf) {
-      parts.push(hardLine, text('else if '), b.condition!, text(' then'))
+      parts.push(hardLine, text('else if '), b.condition, text(' then'))
     } else {
-      parts.push(text('if '), b.condition!, text(' then'))
+      parts.push(text('if '), b.condition, text(' then'))
     }
-    if (b.body.length === 1) {
-      parts.push(nest(INDENT, concat(hardLine, b.body[0]!)))
-    } else {
-      parts.push(nest(INDENT, concat(hardLine, formatBody(b.body))))
-    }
+    parts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
   }
-  if (elseBranch) {
+  if (elseBranchDoc) {
     parts.push(hardLine, text('else'))
-    if (elseBranch.length === 1) {
-      parts.push(nest(INDENT, concat(hardLine, elseBranch[0]!)))
-    } else {
-      parts.push(nest(INDENT, concat(hardLine, formatBody(elseBranch))))
-    }
+    parts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
   }
   parts.push(hardLine, text('end'))
   return concat(...parts)
@@ -1324,6 +1329,21 @@ function formatFromChildren(node: UntypedCstNode): Doc {
 
 function formatFallback(node: UntypedCstNode): Doc {
   return formatFromChildren(node)
+}
+
+/** Count child nodes in an iterator until a stop token (without consuming). */
+function countNodesUntil(iter: ChildIterator, ...stopTokens: string[]): number {
+  let count = 0
+  const saved = iter.save()
+  while (!iter.done()) {
+    const child = iter.peek()!
+    if (isToken(child) && stopTokens.includes(child.text)) break
+    if (isToken(child) && child.text === ';') { iter.next(); continue }
+    if (isNode(child)) { count++; iter.next(); continue }
+    iter.next()
+  }
+  iter.restore(saved)
+  return count
 }
 
 /** Count statement nodes in a node's children before a stop token. */
