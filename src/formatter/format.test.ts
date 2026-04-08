@@ -410,8 +410,8 @@ end`,
   let exitsDesc = "Exits: " ++ exits;
 
   // Join all descriptions
+  /* an array */
   filter(
-    /* an array */ 
     [
       description,
       visitedStatus,

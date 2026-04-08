@@ -4,7 +4,7 @@ import { ParseError } from '../../errors'
 import type { AstNode, BindingTarget, UserDefinedSymbolNode } from '../types'
 import { bindingTargetTypes } from '../types'
 import type { TokenDebugInfo } from '../../tokenizer/token'
-import { assertLParenToken, isLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
+import { assertLParenToken, isOperatorToken, isRParenToken, isReservedSymbolToken, isSymbolToken } from '../../tokenizer/token'
 import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
@@ -14,44 +14,35 @@ import { parseSymbol } from './parseSymbol'
 const placeholderRegexp = /^\$([1-9]\d?)?$/
 const maxShorthandLambdaArity = 20
 
-export function parseLambdaFunction(ctx: ParserContext): LambdaNode | null {
+// Called after lookahead has confirmed a `->` follows the parameter list.
+export function parseLambdaFunction(ctx: ParserContext): LambdaNode {
   const firstToken = ctx.peek()
+  const functionArguments = parseFunctionArguments(ctx)
 
-  if (isLParenToken(firstToken)
-    && isSymbolToken(ctx.peekAhead(1))
-    && isOperatorToken(ctx.peekAhead(2), '->')) {
-    return null
+  if (!isOperatorToken(ctx.peek(), '->')) {
+    throw new ParseError('Expected ->', ctx.peekSourceCodeInfo())
+  }
+  ctx.advance()
+
+  let nodes: AstNode[] | undefined
+  if (isReservedSymbolToken(ctx.peek(), 'do')) {
+    const doNode = parseDo(ctx)
+    // Plain do...end: unwrap body expressions for multi-statement lambdas.
+    nodes = doNode[1] as AstNode[]
+  } else {
+    nodes = [ctx.parseExpression()]
   }
 
-  try {
-    const functionArguments = parseFunctionArguments(ctx)
-
-    if (!isOperatorToken(ctx.peek(), '->')) {
-      return null
-    }
-    ctx.advance()
-    let nodes: AstNode[] | undefined
-    if (isReservedSymbolToken(ctx.peek(), 'do')) {
-      const doNode = parseDo(ctx)
-      // Plain do...end: unwrap body expressions for multi-statement lambdas.
-      nodes = doNode[1] as AstNode[]
-    } else {
-      nodes = [ctx.parseExpression()]
-    }
-
-    const node = withSourceCodeInfo([
-      NodeTypes.Function,
-      [
-        functionArguments,
-        nodes,
-      ],
-      0,
-    ], firstToken[2], ctx) as LambdaNode
-    ctx.setNodeEnd(node[2])
-    return node
-  } catch {
-    return null
-  }
+  const node = withSourceCodeInfo([
+    NodeTypes.Function,
+    [
+      functionArguments,
+      nodes,
+    ],
+    0,
+  ], firstToken[2], ctx) as LambdaNode
+  ctx.setNodeEnd(node[2])
+  return node
 }
 
 export function parseFunctionArguments(ctx: ParserContext): BindingTarget[] {

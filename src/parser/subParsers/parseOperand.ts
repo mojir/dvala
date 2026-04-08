@@ -82,12 +82,9 @@ function parseOperandPart(ctx: ParserContext): AstNode {
 
   // Parentheses
   if (isLParenToken(token)) {
-    ctx.storePosition()
-    const lamdaFunction = parseLambdaFunction(ctx)
-    if (lamdaFunction) {
-      return lamdaFunction
+    if (looksLikeLambda(ctx)) {
+      return parseLambdaFunction(ctx)
     }
-    ctx.restorePosition()
     ctx.advance()
     const expression = ctx.parseExpression()
     if (!isRParenToken(ctx.peek())) {
@@ -189,12 +186,9 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     case 'TemplateString':
       return parseTemplateString(ctx, token as TemplateStringToken)
     case 'Symbol': {
-      ctx.storePosition()
-      const lamdaFunction = parseLambdaFunction(ctx)
-      if (lamdaFunction) {
-        return lamdaFunction
+      if (looksLikeLambda(ctx)) {
+        return parseLambdaFunction(ctx)
       }
-      ctx.restorePosition()
       return parseSymbol(ctx)
     }
     case 'ReservedSymbol':
@@ -217,6 +211,32 @@ function parseOperandPart(ctx: ParserContext): AstNode {
     default:
       throw new ParseError(`Unknown token type: ${tokenType}`, ctx.resolveTokenDebugInfo(token[2] as TokenDebugInfo))
   }
+}
+
+// Lookahead to determine if the current position starts a lambda.
+// For `(...)`: scan to find the matching `)`, then check for `->`.
+// For a bare symbol: check if the next token is `->`.
+function looksLikeLambda(ctx: ParserContext): boolean {
+  const token = ctx.peek()
+
+  if (isSymbolToken(token)) {
+    return isOperatorToken(ctx.peekAhead(1), '->')
+  }
+
+  if (isLParenToken(token)) {
+    let depth = 1
+    let offset = 1
+    while (depth > 0) {
+      const t = ctx.peekAhead(offset)
+      if (!t) return false
+      if (isLParenToken(t)) depth++
+      else if (isRParenToken(t)) depth--
+      offset++
+    }
+    return isOperatorToken(ctx.peekAhead(offset), '->')
+  }
+
+  return false
 }
 
 function createAccessorNode(ctx: ParserContext, left: AstNode, right: AstNode, debugInfo: TokenDebugInfo | undefined): NormalExpressionNodeExpression {

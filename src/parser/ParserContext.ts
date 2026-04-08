@@ -7,7 +7,6 @@ import type { AstNode, SourceMap, SourceMapPosition } from './types'
 export class ParserContext {
   private readonly tokens: Token[]
   private position: number
-  private storedPosition: number = 0
   public parseExpression!: (precedence?: number) => AstNode
 
   public readonly sourceMap: SourceMap | undefined
@@ -109,14 +108,6 @@ export class ParserContext {
   /** Convert token debug info to SourceCodeInfo using stored source text. */
   public resolveTokenDebugInfo(debugInfo: TokenDebugInfo | undefined): SourceCodeInfo | undefined {
     return debugInfoToSourceCodeInfo(debugInfo, this.source, this.filePath)
-  }
-
-  public storePosition(): number {
-    return this.storedPosition = this.position
-  }
-
-  public restorePosition(): void {
-    this.position = this.storedPosition
   }
 
   public peekAhead(count: number): Token | undefined {
