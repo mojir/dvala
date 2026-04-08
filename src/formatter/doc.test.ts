@@ -88,7 +88,7 @@ describe('Doc algebra — render', () => {
       text(' '.repeat(80)),
       text(']'),
     ))
-    expect(render(doc, 80)).toBe('[BROKEN' + ' '.repeat(80) + ']')
+    expect(render(doc, 80)).toBe(`[BROKEN${' '.repeat(80)}]`)
   })
 
   it('renders trailingComma in broken group', () => {

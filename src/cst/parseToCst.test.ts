@@ -410,7 +410,7 @@ const dvalaFiles = findDvalaFiles(projectRoot)
 
 describe('parseToCst — corpus losslessness', () => {
   for (const filePath of dvalaFiles) {
-    const relPath = filePath.replace(projectRoot + '/', '')
+    const relPath = filePath.replace(`${projectRoot}/`, '')
     it(`roundtrips ${relPath}`, () => {
       const source = readFileSync(filePath, 'utf-8')
       // Some files may have parse errors — skip those gracefully
