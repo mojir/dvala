@@ -737,9 +737,12 @@ function formatArray(node: UntypedCstNode): Doc {
     innerParts.push(separators[i - 1]!, items[i]!)
   }
 
+  // Trailing comma when array breaks to multiline
+  const trailingComma = ifBreak(text(','), text(''))
+
   return group(concat(
     text('['),
-    nest(INDENT, concat(softLine, concat(...innerParts))),
+    nest(INDENT, concat(softLine, concat(...innerParts), trailingComma)),
     softLine,
     text(']'),
   ))
@@ -794,11 +797,13 @@ function formatObject(node: UntypedCstNode): Doc {
   }
 
   // Objects use spaces inside braces: { a: 1, b: 2 }
+  // Trailing comma in multiline mode
+  const trailingComma = ifBreak(text(','), text(''))
   return group(concat(
     text('{'),
-    text(' '),
-    nest(INDENT, join(concat(text(','), line), entries)),
-    text(' '),
+    ifBreak(text(''), text(' ')), // no space in multiline (softLine handles it)
+    nest(INDENT, concat(softLine, join(concat(text(','), line), entries), trailingComma)),
+    softLine,
     text('}'),
   ))
 }
