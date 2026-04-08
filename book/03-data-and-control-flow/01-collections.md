@@ -7,12 +7,7 @@ Dvala has three collection types: arrays, objects, and strings. All are immutabl
 Arrays are ordered, mixed-type collections. Access elements by index:
 
 ```dvala
-let arr = [
-  10,
-  20,
-  30,
-  40,
-];
+let arr = [10, 20, 30, 40];
 get(arr, 2);
 ```
 
@@ -29,42 +24,15 @@ rest([1, 2, 3]);
 The core trio for transforming collections:
 
 ```dvala
-map(
-  [
-    1,
-    2,
-    3,
-    4,
-  ],
-  -> $ * $,
-);
+map([1, 2, 3, 4], -> $ * $);
 ```
 
 ```dvala
-filter(
-  [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-  ],
-  isEven,
-);
+filter([1, 2, 3, 4, 5, 6], isEven);
 ```
 
 ```dvala
-reduce(
-  [
-    1,
-    2,
-    3,
-    4,
-  ],
-  +,
-  0,
-);
+reduce([1, 2, 3, 4], +, 0);
 ```
 
 ## More Sequence Operations
@@ -72,17 +40,7 @@ reduce(
 Slicing, reversing, sorting, and more:
 
 ```dvala
-slice(
-  [
-    10,
-    20,
-    30,
-    40,
-    50,
-  ],
-  1,
-  4,
-);
+slice([10, 20, 30, 40, 50], 1, 4);
 ```
 
 ```dvala
@@ -90,15 +48,7 @@ reverse([1, 2, 3]);
 ```
 
 ```dvala
-sort(
-  [
-    3,
-    1,
-    4,
-    1,
-    5,
-  ],
-);
+sort([3, 1, 4, 1, 5]);
 ```
 
 ## Building Arrays
@@ -156,15 +106,7 @@ merge({ a: 1, b: 2 }, { b: 3, c: 4 });
 `some` returns the **first element matching a predicate**, or `null` if none match:
 
 ```dvala
-some(
-  [
-    1,
-    3,
-    4,
-    7,
-  ],
-  isEven,
-);
+some([1, 3, 4, 7], isEven);
 ```
 
 ```dvala

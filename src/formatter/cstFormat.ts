@@ -352,7 +352,16 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
       iter.next()
       continue
     }
-    if (isNode(child)) {
+    if (isToken(child) && child.text === 'with') {
+      // `with handler...end` as a body statement — collect `with` token
+      // and attach it as a prefix to the next statement node.
+      iter.next()
+      if (iter.isNode()) {
+        const node = iter.nextNode()
+        // Create a synthetic node that wraps with + handler
+        stmts.push({ kind: 'WithStatement', children: [child, node] } as UntypedCstNode)
+      }
+    } else if (isNode(child)) {
       stmts.push(iter.nextNode())
     } else {
       iter.next() // skip unexpected token
@@ -968,10 +977,16 @@ function formatLet(node: UntypedCstNode): Doc {
   const iter = new ChildIterator(node.children)
   iter.expectToken('let')
 
-  // Collect binding target parts (everything until `=`)
+  // Collect binding target parts (everything until the top-level `=`).
+  // Default values inside binding patterns (e.g. `{ role = "guest" }`)
+  // also use `=`, so we track bracket depth to find the right one.
   const targetParts: Doc[] = []
   let lastTargetText = ''
-  while (!iter.done() && !iter.isToken('=')) {
+  let bracketDepth = 0
+  while (!iter.done() && !(iter.isToken('=') && bracketDepth === 0)) {
+    const peeked = iter.peek()!
+    if (isToken(peeked) && (peeked.text === '[' || peeked.text === '{')) bracketDepth++
+    if (isToken(peeked) && (peeked.text === ']' || peeked.text === '}')) bracketDepth--
     const child = iter.next()
     if (isToken(child)) {
       const t = child.text

@@ -11,19 +11,29 @@ Languages like Haskell, Erlang, Elixir, Rust, and OCaml have made pattern matchi
 `match` evaluates a value against a series of `case` branches. The first matching branch wins:
 
 ```dvala
-match "b" case "a" then "first" case "b" then "second" case "c" then "third" end;
+match "b"
+  case "a" then "first"
+  case "b" then "second"
+  case "c" then "third"
+end;
 ```
 
 All value types work as literal patterns — numbers, strings, booleans, and `null`:
 
 ```dvala
-match true case true then "yes" case false then "no" end;
+match true
+  case true then "yes"
+  case false then "no"
+end;
 ```
 
 If no pattern matches, `match` returns `null`:
 
 ```dvala
-match 42 case 1 then "one" case 2 then "two" end;
+match 42
+  case 1 then "one"
+  case 2 then "two"
+end;
 ```
 
 ## Wildcard
@@ -31,7 +41,11 @@ match 42 case 1 then "one" case 2 then "two" end;
 The wildcard `_` matches anything. Use it as a catch-all at the end:
 
 ```dvala
-match 99 case 1 then "one" case 2 then "two" case _ then "something else" end;
+match 99
+  case 1 then "one"
+  case 2 then "two"
+  case _ then "something else"
+end;
 ```
 
 ## Variable Binding
@@ -39,13 +53,17 @@ match 99 case 1 then "one" case 2 then "two" case _ then "something else" end;
 A name in a pattern binds the matched value to a variable, available in the body:
 
 ```dvala
-match 42 case x then x * 2 end;
+match 42
+  case x then x * 2
+end;
 ```
 
 Variables can have default values. The default is used when the matched value is `null`:
 
 ```dvala
-match null case x = 10 then x * 2 end;
+match null
+  case x = 10 then x * 2
+end;
 ```
 
 ## Array Patterns
@@ -53,13 +71,18 @@ match null case x = 10 then x * 2 end;
 Match arrays by structure. Elements are matched positionally:
 
 ```dvala
-match [10, 20] case [x, y] then x + y end;
+match [10, 20]
+  case [ x, y] then x + y
+end;
 ```
 
 Mix literals and variables — literals must match exactly:
 
 ```dvala
-match [1, 2, 3] case [1, x, 3] then x case _ then "no match" end;
+match [1, 2, 3]
+  case [ 1, x, 3] then x
+  case _ then "no match"
+end;
 ```
 
 ### Rest Patterns
@@ -67,12 +90,9 @@ match [1, 2, 3] case [1, x, 3] then x case _ then "no match" end;
 Use `...name` to capture remaining elements:
 
 ```dvala
-match [
-  1,
-  2,
-  3,
-  4,
-] case [x, ...xs] then xs end;
+match [1, 2, 3, 4]
+  case [ x, ... xs] then xs
+end;
 ```
 
 ### Matching by Length
@@ -80,20 +100,14 @@ match [
 Different cases can match different array shapes:
 
 ```dvala
-let describe = (lst) ->
-  match lst
-    case [] then "empty"
-    case [x] then "one element"
-    case [x, y] then "two elements"
-    case [x, ...xs] then "many elements"
-  end;
+let describe = (lst) -> match lst
+  case [] then "empty"
+  case [ x] then "one element"
+  case [ x, y] then "two elements"
+  case [ x, ... xs] then "many elements"
+end;
 
-[
-  describe([]),
-  describe([1]),
-  describe([1, 2]),
-  describe([1, 2, 3]),
-];
+[describe([]), describe([1]), describe([1, 2]), describe([1, 2, 3])];
 ```
 
 ### Nested Arrays
@@ -101,7 +115,9 @@ let describe = (lst) ->
 Patterns nest arbitrarily:
 
 ```dvala
-match [[1, 2], [3, 4]] case [[a, b], [c, d]] then a + b + c + d end;
+match [[1, 2], [3, 4]]
+  case [ [ a, b], [ c, d]] then a + b + c + d
+end;
 ```
 
 ## Object Patterns
@@ -109,7 +125,9 @@ match [[1, 2], [3, 4]] case [[a, b], [c, d]] then a + b + c + d end;
 Destructure objects by naming the keys you care about:
 
 ```dvala
-match { name: "Alice", age: 30 } case { name, age } then `${name} is ${age}` end;
+match { name: "Alice", age: 30 }
+  case { name, age} then `${name} is ${age}`
+end;
 ```
 
 ### Literal Constraints
@@ -118,8 +136,8 @@ Pin a key to a specific value:
 
 ```dvala
 match { type: "click", x: 10, y: 20 }
-  case { type: "click", x, y } then `Click at ${x}, ${y}`
-  case { type: "keydown", key } then `Key: ${key}`
+  case { type: "click", x, y} then `Click at ${x}, ${y}`
+  case { type: "keydown", key} then `Key: ${key}`
   case _ then "unknown event"
 end;
 ```
@@ -129,7 +147,9 @@ end;
 Provide a fallback when a key is missing or `null`:
 
 ```dvala
-match {} case { name = "Anonymous" } then name end;
+match {}
+  case { name = "Anonymous"} then name
+end;
 ```
 
 ### Renaming with `as`
@@ -137,7 +157,9 @@ match {} case { name = "Anonymous" } then name end;
 Bind a key's value to a different name:
 
 ```dvala
-match { name: "Alice" } case { name as n } then `${n}!` end;
+match { name: "Alice" }
+  case { name as n} then `${n}!`
+end;
 ```
 
 ### Rest in Objects
@@ -145,7 +167,9 @@ match { name: "Alice" } case { name as n } then `${n}!` end;
 Capture remaining keys with `...`:
 
 ```dvala
-match { a: 1, b: 2, c: 3 } case { a, ...r } then r end;
+match { a: 1, b: 2, c: 3 }
+  case { a, ... r} then r
+end;
 ```
 
 ### Nested Objects
@@ -154,7 +178,7 @@ Match deeply nested structures:
 
 ```dvala
 match { user: { name: "Alice", profile: { email: "alice@example.com" } } }
-  case { user: { name, profile: { email } } } then `${name}: ${email}`
+  case { user: { name, profile: { email}}} then `${name}: ${email}`
 end;
 ```
 
@@ -163,14 +187,13 @@ end;
 Dvala is dynamically typed, so branching on a value's type is a common need. Use guards with type predicates:
 
 ```dvala
-let classify = (v) ->
-  match v
-    case x when isNumber(x) then `number: ${x}`
-    case x when isString(x) then `string: "${x}"`
-    case x when isArray(x) then `array of ${count(x)}`
-    case x when isObject(x) then "object"
-    case _ then "null"
-  end;
+let classify = (v) -> match v
+  case x when isNumber(x) then `number: ${x}`
+  case x when isString(x) then `string: "${x}"`
+  case x when isArray(x) then `array of ${count(x)}`
+  case x when isObject(x) then "object"
+  case _ then "null"
+end;
 
 [
   classify(42),
@@ -186,7 +209,9 @@ let classify = (v) ->
 A variable pattern with a default value (`case x = fallback`) matches `null` and substitutes the default. Use this to handle missing or absent data cleanly:
 
 ```dvala
-let greet = (name) -> match name case n = "stranger" then `Hello, ${n}!` end;
+let greet = (name) -> match name
+  case n = "stranger" then `Hello, ${n}!`
+end;
 
 [greet("Alice"), greet(null)];
 ```
@@ -209,8 +234,8 @@ Guards work with destructured patterns too:
 
 ```dvala
 match { role: "admin", name: "Alice" }
-  case { role: "admin", name } when name == "Bob" then "Admin Bob"
-  case { role: "admin", name } then `Admin: ${name}`
+  case { role: "admin", name} when name == "Bob" then "Admin Bob"
+  case { role: "admin", name} then `Admin: ${name}`
   case _ then "unknown"
 end;
 ```
@@ -220,30 +245,23 @@ end;
 ### Recursive List Sum
 
 ```dvala
-let sumList =
-  (lst) -> match lst case [] then 0 case [x, ...xs] then x + sumList(xs) end;
+let sumList = (lst) -> match lst
+  case [] then 0
+  case [ x, ... xs] then x + sumList(xs)
+end;
 
-sumList(
-  [
-    1,
-    2,
-    3,
-    4,
-    5,
-  ],
-);
+sumList([1, 2, 3, 4, 5]);
 ```
 
 ### Coordinate Classification
 
 ```dvala
-let describePoint = (point) ->
-  match point
-    case [0, 0] then "origin"
-    case [0, y] then "y-axis"
-    case [x, 0] then "x-axis"
-    case [x, y] then `point at ${x}, ${y}`
-  end;
+let describePoint = (point) -> match point
+  case [ 0, 0] then "origin"
+  case [ 0, y] then "y-axis"
+  case [ x, 0] then "x-axis"
+  case [ x, y] then `point at ${x}, ${y}`
+end;
 
 [
   describePoint([0, 0]),
@@ -256,13 +274,12 @@ let describePoint = (point) ->
 ### HTTP Response Handling
 
 ```dvala
-let handleResponse = (response) ->
-  match response
-    case { status: 200, body } then `OK: ${body}`
-    case { status: 404 } then "Not found"
-    case { status } when status >= 500 then "Server error"
-    case _ then "Unknown"
-  end;
+let handleResponse = (response) -> match response
+  case { status: 200, body} then `OK: ${body}`
+  case { status: 404} then "Not found"
+  case { status} when status >= 500 then "Server error"
+  case _ then "Unknown"
+end;
 
 handleResponse({ status: 200, body: "Hello" });
 ```

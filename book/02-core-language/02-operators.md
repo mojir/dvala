@@ -130,15 +130,7 @@ max(5, 10);
 ```
 
 ```dvala
-filter(
-  [
-    1,
-    2,
-    3,
-    4,
-  ],
-  isOdd,
-);
+filter([1, 2, 3, 4], isOdd);
 ```
 
 ## Operator Precedence

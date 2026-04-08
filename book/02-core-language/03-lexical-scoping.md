@@ -122,15 +122,7 @@ Closures work naturally with `map`, `filter`, and other higher-order functions:
 
 ```dvala
 let multiplier = 3;
-map(
-  [
-    1,
-    2,
-    3,
-    4,
-  ],
-  (x) -> x * multiplier,
-);
+map([1, 2, 3, 4], (x) -> x * multiplier);
 ```
 
 The lambda captures `multiplier` from the enclosing scope.

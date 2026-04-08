@@ -39,12 +39,11 @@ reduce(_, +, 0)(map(_, -> $ ^ 2)(filter(_, isOdd)(range(1, 11))));
 ## Pattern Matching
 
 ```dvala
-let describe = (val) ->
-  match val
-    case 0 then "zero"
-    case x when x < 0 then "negative"
-    case _ then "positive"
-  end;
+let describe = (val) -> match val
+  case 0 then "zero"
+  case x when x < 0 then "negative"
+  case _ then "positive"
+end;
 
 [describe(-5), describe(0), describe(42)];
 ```

@@ -20,7 +20,13 @@ if false then "nope" end;
 
 ```dvala
 let x = 12;
-if x < 5 then "small" else if x < 15 then "medium" else "large" end;
+if x < 5 then
+  "small"
+else if x < 15 then
+  "medium"
+else
+  "large"
+end;
 ```
 
 ## Match (Pattern Matching)
@@ -29,7 +35,11 @@ if x < 5 then "small" else if x < 15 then "medium" else "large" end;
 
 ```dvala
 let day = 3;
-match day case 1 then "Mon" case 2 then "Tue" case 3 then "Wed" end;
+match day
+  case 1 then "Mon"
+  case 2 then "Tue"
+  case 3 then "Wed"
+end;
 ```
 
 ## Logical Short-circuit
@@ -76,14 +86,18 @@ Use `handler...end` with `do...with` to handle errors. `perform(@dvala.error, { 
 
 ```dvala
 do
-  with handler @dvala.error(arg) -> resume(arg.message) end;
+  with handler
+    @dvala.error(arg) -> resume(arg.message)
+  end;
   perform(@dvala.error, { message: "oops" });
 end;
 ```
 
 ```dvala
 let safeDiv = (a, b) -> do
-  with handler @dvala.error(arg) -> resume("error") end;
+  with handler
+    @dvala.error(arg) -> resume("error")
+  end;
   a / b;
 end;
 safeDiv(10, 0);
