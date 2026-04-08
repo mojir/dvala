@@ -44,7 +44,10 @@ This eliminates the need for explicit `return` statements. The value flows natur
 Pattern matching produces a value directly:
 
 ```dvala
-let describe = (n) -> match n % 2 case 0 then "even" case 1 then "odd" end;
+let describe = (n) -> match n % 2
+  case 0 then "even"
+  case 1 then "odd"
+end;
 describe(7);
 ```
 
@@ -53,10 +56,15 @@ describe(7);
 Multi-branch conditionals are also expressions:
 
 ```dvala
-let grade = (score) ->
-  if score >= 90 then
-    "A"
-  else if score >= 80 then "B" else if score >= 70 then "C" else "F" end;
+let grade = (score) -> if score >= 90 then
+  "A"
+else if score >= 80 then
+  "B"
+else if score >= 70 then
+  "C"
+else
+  "F"
+end;
 grade(85);
 ```
 
@@ -65,8 +73,11 @@ grade(85);
 Even iteration produces a value — the body's value when `recur` is not called:
 
 ```dvala
-let gcd =
-  (a, b) -> loop (x = a, y = b) -> if y == 0 then x else recur(y, x % y) end;
+let gcd = (a, b) -> loop ( x = a, y = b) -> if y == 0 then
+  x
+else
+  recur(y, x % y)
+end;
 gcd(48, 18);
 ```
 
@@ -75,7 +86,7 @@ gcd(48, 18);
 Comprehensions are expressions that produce arrays:
 
 ```dvala
-let squares = for (x in range(6)) -> x * x;
+let squares = for ( x in range(6)) -> x * x;
 squares;
 ```
 
@@ -85,7 +96,9 @@ Even error handling with handlers returns a value:
 
 ```dvala
 let safeSqrt = (x) -> do
-  with handler @dvala.error(arg) -> resume(null) end;
+  with handler
+    @dvala.error(arg) -> resume(null)
+  end;
   sqrt(x);
 end;
 [safeSqrt(16), safeSqrt(-1)];
@@ -104,31 +117,18 @@ In Dvala:
 Because everything is an expression, constructs compose freely. You can nest any expression inside any other:
 
 ```dvala
-map(
-  [
-    1,
-    2,
-    3,
-    4,
-    5,
-  ],
-  (x) -> if isOdd(x) then x * x else x end,
-);
+map([1, 2, 3, 4, 5], (x) -> if isOdd(x) then x * x else x end);
 ```
 
 ```dvala
-let classify = (xs) ->
-  for (x in xs) ->
-    if x < 0 then "negative" else if x == 0 then "zero" else "positive" end;
-classify(
-  [
-    -3,
-    0,
-    5,
-    -1,
-    7,
-  ],
-);
+let classify = (xs) -> for ( x in xs) -> if x < 0 then
+  "negative"
+else if x == 0 then
+  "zero"
+else
+  "positive"
+end;
+classify([-3, 0, 5, -1, 7]);
 ```
 
 ## Summary

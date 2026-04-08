@@ -80,7 +80,10 @@ let greet = (name) -> do
   name;
 end;
 
-let silence = handler @dvala.io.print(msg) -> resume(null) end;
+let silence =
+  handler
+    @dvala.io.print(msg) -> resume(null)
+  end;
 
 do
   with silence;
@@ -97,7 +100,10 @@ let { assertEqual } = import("assertion");
 
 let formatWelcome = -> "Welcome to " ++ perform(@app.config, "appName");
 
-let fakeConfig = handler @app.config(key) -> resume("TestApp") end;
+let fakeConfig =
+  handler
+    @app.config(key) -> resume("TestApp")
+  end;
 
 do
   with fakeConfig;
@@ -115,7 +121,9 @@ Because a failed assertion performs `@dvala.error`, you can catch it with a hand
 let { assertEqual } = import("assertion");
 
 let runTest = (name, fn) -> do
-  with handler @dvala.error(err) -> ["fail", name, err.message] end;
+  with handler
+    @dvala.error(err) -> ["fail", name, err.message]
+  end;
   fn();
   ["pass", name];
 end;

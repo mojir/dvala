@@ -1,100 +1,98 @@
 do
-  let isPrime = (n) ->
-    if n < 2 then
-      false
-    else if n == 2 then
+  let isPrime = (n) -> if n < 2 then
+    false
+  else if n == 2 then
+    true
+  else if n % 2 == 0 then
+    false
+  else
+    loop ( i = 3) -> if i * i > n then
       true
-    else if n % 2 == 0 then
+    else if n % i == 0 then
       false
     else
-      loop (i = 3) ->
-        if i * i > n then
-          true
-        else if n % i == 0 then false else recur(i + 2) end
-    end;
+      recur(i + 2)
+    end
+  end;
 
-  let isPerfectSquare = (n) ->
-    if n < 0 then
-      false
-    else
-      do
-        let s = floor(sqrt(n));
-        s * s == n;
-      end
-    end;
+  let isPerfectSquare = (n) -> if n < 0 then
+    false
+  else
+    do
+      let s = floor(sqrt(n));
+      s * s == n;
+    end
+  end;
   let isPerfectCube = (n) -> do
     let c = round(sign(n) * abs(n) ^ (1 / 3));
     c * c * c == n;
   end;
-  let sumProperDivisors = (n) ->
-    if n <= 1 then
-      0
+  let sumProperDivisors = (n) -> if n <= 1 then
+    0
+  else
+    loop ( i = 2, acc = 1) -> if i * i > n then
+      acc
+    else if n % i == 0 then
+      if i * i == n then
+        recur(i + 1, acc + i)
+      else
+        recur(i + 1, acc + i + n / i)
+      end
     else
-      loop (i = 2, acc = 1) ->
-        if i * i > n then
-          acc
-        else if n % i == 0 then
-          if i * i == n then
-            recur(i + 1, acc + i)
-          else
-            recur(i + 1, acc + i + n / i)
-          end
-        else
-          recur(i + 1, acc)
-        end
-    end;
+      recur(i + 1, acc)
+    end
+  end;
   let isAbundant = (n) -> n > 0 && sumProperDivisors(n) > n;
   let isDeficient = (n) -> n > 0 && sumProperDivisors(n) < n;
   let isComposite = (n) -> n > 1 && not(isPrime(n));
   let isHappy = (n) -> do
-    let sumOfSquaredDigits = (x) ->
-      loop (num = x, acc = 0) ->
-        if num == 0 then
-          acc
-        else
-          do
-            let d = num % 10;
-            recur(floor(num / 10), acc + d * d);
-          end
-        end;
-    loop (slow = n, fast = sumOfSquaredDigits(n)) ->
-      if fast == 1 then
-        true
-      else if slow == fast then
-        false
-      else
-        recur(
-          sumOfSquaredDigits(slow),
-          sumOfSquaredDigits(sumOfSquaredDigits(fast)),
-        )
-      end;
-  end;
-  let countBits = (n) ->
-    loop (x = n, acc = 0) ->
-      if x == 0 then acc else recur(floor(x / 2), acc + x % 2) end;
-  let isPerfectPower = (n) ->
-    if n == 1 then
+    let sumOfSquaredDigits = (x) -> loop ( num = x, acc = 0) -> if num == 0 then
+      acc
+    else
+      do
+        let d = num % 10;
+        recur(floor(num / 10), acc + d * d);
+      end
+    end;
+    loop ( slow = n, fast = sumOfSquaredDigits(n)) -> if fast == 1 then
       true
-    else if n < 2 then
+    else if slow == fast then
       false
     else
-      loop (k = 2) ->
-        if 2 ^ k > n then
-          false
-        else
-          do
-            let b = round(n ^ (1 / k));
-            if b ^ k == n then true else recur(k + 1) end;
-          end
-        end
+      recur(
+        sumOfSquaredDigits(slow),
+        sumOfSquaredDigits(sumOfSquaredDigits(fast))
+      )
     end;
-  let binom = (n, k) ->
-    if k == 0 || k == n then
-      1
+  end;
+  let countBits = (n) -> loop ( x = n, acc = 0) -> if x == 0 then
+    acc
+  else
+    recur(floor(x / 2), acc + x % 2)
+  end;
+  let isPerfectPower = (n) -> if n == 1 then
+    true
+  else if n < 2 then
+    false
+  else
+    loop ( k = 2) -> if 2 ^ k > n then
+      false
     else
-      loop (i = 0, k2 = min(k, n - k), acc = 1) ->
-        if i >= k2 then acc else recur(i + 1, k2, acc * (n - i) / (i + 1)) end
-    end;
+      do
+        let b = round(n ^ (1 / k));
+        if b ^ k == n then true else recur(k + 1) end;
+      end
+    end
+  end;
+  let binom = (n, k) -> if k == 0 || k == n then
+    1
+  else
+    loop ( i = 0, k2 = min(k, n - k), acc = 1) -> if i >= k2 then
+      acc
+    else
+      recur(i + 1, k2, acc * (n - i) / (i + 1))
+    end
+  end;
   let bellNumbers = [
     1,
     2,
@@ -151,34 +149,9 @@ do
     1002242216651368,
     3814986502092304,
   ];
-  let mersenneNumbers = [
-    3,
-    7,
-    31,
-    127,
-    2047,
-    8191,
-    131071,
-    524287,
-    2147483647,
-  ];
-  let perfectNumbers = [
-    6,
-    28,
-    496,
-    8128,
-    33550336,
-    8589869056,
-    137438691328,
-  ];
-  let sylvesterNumbers = [
-    2,
-    6,
-    42,
-    1806,
-    3263442,
-    10650056950806,
-  ];
+  let mersenneNumbers = [3, 7, 31, 127, 2047, 8191, 131071, 524287, 2147483647];
+  let perfectNumbers = [6, 28, 496, 8128, 33550336, 8589869056, 137438691328];
+  let sylvesterNumbers = [2, 6, 42, 1806, 3263442, 10650056950806];
   let luckyNumbers = [
     1,
     3,
@@ -3583,289 +3556,242 @@ do
     8620496275465025,
   ];
   {
-    fibonacciTakeWhile: (fn) ->
-      loop (result = [], a = 0, b = 1, i = 0) ->
-        if fn(a, i) then recur(push(result, a), b, a + b, i + 1) else result end,
-    tribonacciTakeWhile: (fn) ->
-      loop (result = [], a = 0, b = 1, c = 1, i = 0) ->
-        if fn(a, i) then
-          recur(push(result, a), b, c, a + b + c, i + 1)
-        else
-          result
-        end,
-    lucasTakeWhile: (fn) ->
-      loop (result = [], a = 2, b = 1, i = 0) ->
-        if fn(a, i) then recur(push(result, a), b, a + b, i + 1) else result end,
-    pellTakeWhile: (fn) ->
-      loop (result = [], a = 1, b = 2, i = 0) ->
-        if fn(a, i) then
-          recur(push(result, a), b, 2 * b + a, i + 1)
-        else
-          result
-        end,
-    padovanTakeWhile: (fn) ->
-      loop (result = [], a = 1, b = 1, c = 1, i = 0) ->
-        if fn(a, i) then
-          recur(push(result, a), b, c, a + b, i + 1)
-        else
-          result
-        end,
-    factorialTakeWhile: (fn) ->
-      loop (result = [], fact = 1, i = 0) ->
-        if fn(fact, i) then
-          recur(push(result, fact), fact * (i + 1), i + 1)
-        else
-          result
-        end,
-    primeTakeWhile: (fn) ->
-      loop (result = [], n = 2) ->
-        if isPrime(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
-          end
-        else
-          recur(result, n + 1)
-        end,
-    compositeTakeWhile: (fn) ->
-      loop (result = [], n = 4) ->
-        if isComposite(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
-          end
-        else
-          recur(result, n + 1)
-        end,
-    abundantTakeWhile: (fn) ->
-      loop (result = [], n = 12) ->
-        if isAbundant(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
-          end
-        else
-          recur(result, n + 1)
-        end,
-    deficientTakeWhile: (fn) ->
-      loop (result = [], n = 1) ->
-        if isDeficient(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
-          end
-        else
-          recur(result, n + 1)
-        end,
-    perfectSquareTakeWhile: (fn) ->
-      loop (result = [], i = 1) ->
-        do
-          let val = i * i;
-          if fn(val, i - 1) then recur(push(result, val), i + 1) else result end;
-        end,
-    perfectCubeTakeWhile: (fn) ->
-      loop (result = [], i = 1) ->
-        do
-          let val = i * i * i;
-          if fn(val, i - 1) then recur(push(result, val), i + 1) else result end;
-        end,
-    happyTakeWhile: (fn) ->
-      loop (result = [], n = 1) ->
-        if isHappy(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
-          end
-        else
-          recur(result, n + 1)
-        end,
-    arithmeticTakeWhile: (start, step, fn) ->
-      loop (result = [], i = 0) ->
-        do
-          let val = start + i * step;
-          if fn(val, i) then recur(push(result, val), i + 1) else result end;
-        end,
-    geometricTakeWhile: (start, ratio, fn) ->
-      loop (result = [], i = 0) ->
-        do
-          let val = start * ratio ^ i;
-          if fn(val, i) then recur(push(result, val), i + 1) else result end;
-        end,
-    polygonalTakeWhile: (sides, fn) ->
-      loop (result = [], n = 1) ->
-        do
-          let val = (sides - 2) * n * (n - 1) / 2 + n;
-          if fn(val, n - 1) then recur(push(result, val), n + 1) else result end;
-        end,
-    lookAndSayTakeWhile: (fn) -> do
-      let nextTerm = (s) ->
-        loop (result = "", i = 0) ->
-          if i >= count(s) then
-            result
-          else
-            do
-              let ch = nth(s, i);
-              let cnt = loop (c = 1, j = i + 1) ->
-                if j < count(s) && nth(s, j) == ch then
-                  recur(c + 1, j + 1)
-                else
-                  c
-                end;
-              recur(++(result, str(cnt), ch), i + cnt);
-            end
-          end;
-      loop (result = [], term = "1", idx = 0) ->
-        if fn(term, idx) then
-          recur(push(result, term), nextTerm(term), idx + 1)
-        else
-          result
-        end;
+    fibonacciTakeWhile: (fn) -> loop ( result = [], a = 0, b = 1, i = 0) -> if fn(
+      a,
+      i
+    ) then
+      recur(push(result, a), b, a + b, i + 1)
+    else
+      result
     end,
-    bellTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(bellNumbers) then
-          result
-        else if fn(nth(bellNumbers, i), i) then
-          recur(push(result, nth(bellNumbers, i)), i + 1)
-        else
-          result
-        end,
-    catalanTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(catalanNumbers) then
-          result
-        else if fn(nth(catalanNumbers, i), i) then
-          recur(push(result, nth(catalanNumbers, i)), i + 1)
-        else
-          result
-        end,
-    mersenneTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(mersenneNumbers) then
-          result
-        else if fn(nth(mersenneNumbers, i), i) then
-          recur(push(result, nth(mersenneNumbers, i)), i + 1)
-        else
-          result
-        end,
-    partitionTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(partitionNumbers) then
-          result
-        else if fn(nth(partitionNumbers, i), i) then
-          recur(push(result, nth(partitionNumbers, i)), i + 1)
-        else
-          result
-        end,
-    perfectTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(perfectNumbers) then
-          result
-        else if fn(nth(perfectNumbers, i), i) then
-          recur(push(result, nth(perfectNumbers, i)), i + 1)
-        else
-          result
-        end,
-    sylvesterTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(sylvesterNumbers) then
-          result
-        else if fn(nth(sylvesterNumbers, i), i) then
-          recur(push(result, nth(sylvesterNumbers, i)), i + 1)
-        else
-          result
-        end,
-    bernoulliTakeWhile: (fn) ->
-      loop (bArr = [1], n = 1) ->
-        do
-          let bn = if n > 1 && n % 2 == 1 then
-            0
-          else
-            do
-              let s = loop (k = 0, acc = 0) ->
-                if k >= n then
-                  acc
-                else
-                  recur(k + 1, acc + binom(n + 1, k) * nth(bArr, k))
-                end;
-              (-s) / (n + 1);
-            end
-          end;
-          if fn(bn, n) then recur(push(bArr, bn), n + 1) else bArr end;
-        end,
-    golombTakeWhile: (fn) ->
-      if not(fn(1, 0)) then
-        []
+    tribonacciTakeWhile: (fn) -> loop ( result = [], a = 0, b = 1, c = 1, i = 0) -> if fn(
+      a,
+      i
+    ) then
+      recur(push(result, a), b, c, a + b + c, i + 1)
+    else
+      result
+    end,
+    lucasTakeWhile: (fn) -> loop ( result = [], a = 2, b = 1, i = 0) -> if fn(
+      a,
+      i
+    ) then
+      recur(push(result, a), b, a + b, i + 1)
+    else
+      result
+    end,
+    pellTakeWhile: (fn) -> loop ( result = [], a = 1, b = 2, i = 0) -> if fn(
+      a,
+      i
+    ) then
+      recur(push(result, a), b, 2 * b + a, i + 1)
+    else
+      result
+    end,
+    padovanTakeWhile: (fn) -> loop ( result = [], a = 1, b = 1, c = 1, i = 0) -> if fn(
+      a,
+      i
+    ) then
+      recur(push(result, a), b, c, a + b, i + 1)
+    else
+      result
+    end,
+    factorialTakeWhile: (fn) -> loop ( result = [], fact = 1, i = 0) -> if fn(
+      fact,
+      i
+    ) then
+      recur(push(result, fact), fact * (i + 1), i + 1)
+    else
+      result
+    end,
+    primeTakeWhile: (fn) -> loop ( result = [], n = 2) -> if isPrime(n) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
+    compositeTakeWhile: (fn) -> loop ( result = [], n = 4) -> if isComposite(n) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
+    abundantTakeWhile: (fn) -> loop ( result = [], n = 12) -> if isAbundant(n) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
+    deficientTakeWhile: (fn) -> loop ( result = [], n = 1) -> if isDeficient(n) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
+    perfectSquareTakeWhile: (fn) -> loop ( result = [], i = 1) -> do
+      let val = i * i;
+      if fn(val, i - 1) then recur(push(result, val), i + 1) else result end;
+    end,
+    perfectCubeTakeWhile: (fn) -> loop ( result = [], i = 1) -> do
+      let val = i * i * i;
+      if fn(val, i - 1) then recur(push(result, val), i + 1) else result end;
+    end,
+    happyTakeWhile: (fn) -> loop ( result = [], n = 1) -> if isHappy(n) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
+    arithmeticTakeWhile: (start, step, fn) -> loop ( result = [], i = 0) -> do
+      let val = start + i * step;
+      if fn(val, i) then recur(push(result, val), i + 1) else result end;
+    end,
+    geometricTakeWhile: (start, ratio, fn) -> loop ( result = [], i = 0) -> do
+      let val = start * ratio ^ i;
+      if fn(val, i) then recur(push(result, val), i + 1) else result end;
+    end,
+    polygonalTakeWhile: (sides, fn) -> loop ( result = [], n = 1) -> do
+      let val = (sides - 2) * n * (n - 1) / 2 + n;
+      if fn(val, n - 1) then recur(push(result, val), n + 1) else result end;
+    end,
+    lookAndSayTakeWhile: (fn) -> do
+      let nextTerm = (s) -> loop ( result = "", i = 0) -> if i >= count(s) then
+        result
       else
         do
-          loop (gArr = [1], n = 2) ->
-            do
-              let gn1 = nth(gArr, n - 2);
-              let ggn1 = nth(gArr, gn1 - 1);
-              let gval = 1 + nth(gArr, n - 1 - ggn1);
-              if fn(gval, n - 1) then
-                recur(push(gArr, gval), n + 1)
-              else
-                gArr
-              end;
+          let ch = nth(s, i);
+          let cnt =
+            loop ( c = 1, j = i + 1) -> if j < count(s) && nth(s, j) == ch then
+              recur(c + 1, j + 1)
+            else
+              c
             end;
+          recur(++(result, str(cnt), ch), i + cnt);
         end
-      end,
-    luckyTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        if i >= count(luckyNumbers) then
-          result
-        else if fn(nth(luckyNumbers, i), i) then
-          recur(push(result, nth(luckyNumbers, i)), i + 1)
+      end;
+      loop ( result = [], term = "1", idx = 0) -> if fn(term, idx) then
+        recur(push(result, term), nextTerm(term), idx + 1)
+      else
+        result
+      end;
+    end,
+    bellTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(bellNumbers) then
+      result
+    else if fn(nth(bellNumbers, i), i) then
+      recur(push(result, nth(bellNumbers, i)), i + 1)
+    else
+      result
+    end,
+    catalanTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(catalanNumbers) then
+      result
+    else if fn(nth(catalanNumbers, i), i) then
+      recur(push(result, nth(catalanNumbers, i)), i + 1)
+    else
+      result
+    end,
+    mersenneTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(mersenneNumbers) then
+      result
+    else if fn(nth(mersenneNumbers, i), i) then
+      recur(push(result, nth(mersenneNumbers, i)), i + 1)
+    else
+      result
+    end,
+    partitionTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(partitionNumbers) then
+      result
+    else if fn(nth(partitionNumbers, i), i) then
+      recur(push(result, nth(partitionNumbers, i)), i + 1)
+    else
+      result
+    end,
+    perfectTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(perfectNumbers) then
+      result
+    else if fn(nth(perfectNumbers, i), i) then
+      recur(push(result, nth(perfectNumbers, i)), i + 1)
+    else
+      result
+    end,
+    sylvesterTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(sylvesterNumbers) then
+      result
+    else if fn(nth(sylvesterNumbers, i), i) then
+      recur(push(result, nth(sylvesterNumbers, i)), i + 1)
+    else
+      result
+    end,
+    bernoulliTakeWhile: (fn) -> loop ( bArr = [1], n = 1) -> do
+      let bn =
+        if n > 1 && n % 2 == 1 then
+          0
         else
-          result
-        end,
-    perfectPowerTakeWhile: (fn) ->
-      loop (result = [], n = 1) ->
-        if isPerfectPower(n) then
-          if fn(n, count(result)) then
-            recur(push(result, n), n + 1)
-          else
-            result
+          do
+            let s =
+              loop ( k = 0, acc = 0) -> if k >= n then
+                acc
+              else
+                recur(k + 1, acc + binom(n + 1, k) * nth(bArr, k))
+              end;
+            (-s) / (n + 1);
           end
-        else
-          recur(result, n + 1)
-        end,
+        end;
+      if fn(bn, n) then recur(push(bArr, bn), n + 1) else bArr end;
+    end,
+    golombTakeWhile: (fn) -> if not(fn(1, 0)) then
+      []
+    else
+      do
+        loop ( gArr = [1], n = 2) -> do
+          let gn1 = nth(gArr, n - 2);
+          let ggn1 = nth(gArr, gn1 - 1);
+          let gval = 1 + nth(gArr, n - 1 - ggn1);
+          if fn(gval, n - 1) then recur(push(gArr, gval), n + 1) else gArr end;
+        end;
+      end
+    end,
+    luckyTakeWhile: (fn) -> loop ( result = [], i = 0) -> if i >=
+      count(luckyNumbers) then
+      result
+    else if fn(nth(luckyNumbers, i), i) then
+      recur(push(result, nth(luckyNumbers, i)), i + 1)
+    else
+      result
+    end,
+    perfectPowerTakeWhile: (fn) -> loop ( result = [], n = 1) -> if isPerfectPower(
+      n
+    ) then
+      if fn(n, count(result)) then recur(push(result, n), n + 1) else result end
+    else
+      recur(result, n + 1)
+    end,
     recamanTakeWhile: (fn) -> do
-      let inArr = (arr, val) ->
-        loop (i = 0) ->
-          if i >= count(arr) then
-            false
-          else if nth(arr, i) == val then true else recur(i + 1) end;
+      let inArr = (arr, val) -> loop ( i = 0) -> if i >= count(arr) then
+        false
+      else if nth(arr, i) == val then
+        true
+      else
+        recur(i + 1)
+      end;
       if not(fn(0, 0)) then
         []
       else
         do
-          loop (result = [0], n = 1) ->
-            do
-              let prev = nth(result, n - 1);
-              let backward = prev - n;
-              let nxt = if backward > 0 && not(inArr(result, backward)) then
+          loop ( result = [0], n = 1) -> do
+            let prev = nth(result, n - 1);
+            let backward = prev - n;
+            let nxt =
+              if backward > 0 && not(inArr(result, backward)) then
                 backward
               else
                 prev + n
               end;
-              if fn(nxt, n) then recur(push(result, nxt), n + 1) else result end;
-            end;
+            if fn(nxt, n) then recur(push(result, nxt), n + 1) else result end;
+          end;
         end
       end;
     end,
-    thueMorseTakeWhile: (fn) ->
-      loop (result = [], i = 0) ->
-        do
-          let val = countBits(i) % 2;
-          if fn(val, i) then recur(push(result, val), i + 1) else result end;
-        end,
+    thueMorseTakeWhile: (fn) -> loop ( result = [], i = 0) -> do
+      let val = countBits(i) % 2;
+      if fn(val, i) then recur(push(result, val), i + 1) else result end;
+    end,
   };
 end;
 // Helper predicates

@@ -1,42 +1,49 @@
 {
-  fallback: (value) -> handler @dvala.error(msg) -> value end,
-  retry: (n, bodyFn) ->
-    loop (remaining = n) ->
-      do
-        with handler @dvala.error(msg) -> if remaining > 0 then
-          recur(remaining - 1)
-        else
-          perform(@dvala.error, msg)
-        end
-        end;
-        bodyFn();
-      end,
-  chooseAll: (bodyFn) -> do
-    let h = handler @choose(options) -> reduce(options, (acc, x) -> acc ++ resume(x), [])
-    transform
-      result -> [result]
+  fallback: (value) -> handler
+    @dvala.error(msg) -> value
+  end,
+  retry: (n, bodyFn) -> loop ( remaining = n) -> do
+    with handler
+      @dvala.error(msg) -> if remaining > 0 then
+        recur(remaining - 1)
+      else
+        perform(@dvala.error, msg)
+      end
     end;
+    bodyFn();
+  end,
+  chooseAll: (bodyFn) -> do
+    let h =
+      handler
+        @choose(options) -> reduce(options, (acc, x) -> acc ++ resume(x), [])
+        transform result ->  [result]
+      end;
     h(bodyFn);
   end,
   chooseFirst: (bodyFn) -> do
-    let h = handler @choose(options) -> resume(first(options)) end;
+    let h =
+      handler
+        @choose(options) -> resume(first(options))
+      end;
     h(bodyFn);
   end,
   chooseRandom: (bodyFn) -> do
     let h =
-      handler @choose(options) -> resume(perform(@dvala.random.item, options))
+      handler
+        @choose(options) -> resume(perform(@dvala.random.item, options))
       end;
     h(bodyFn);
   end,
   chooseTake: (n, bodyFn) -> do
-    let h = handler @choose(options) -> reduce(
-      options,
-      (acc, x) -> if count(acc) >= n then acc else acc ++ resume(x) end,
-      [],
-    )
-    transform
-      result -> [result]
-    end;
+    let h =
+      handler
+        @choose(options) -> reduce(
+          options,
+          (acc, x) -> if count(acc) >= n then acc else acc ++ resume(x) end,
+          []
+        )
+        transform result ->  [result]
+      end;
     h(bodyFn);
   end,
 };

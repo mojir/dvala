@@ -43,7 +43,9 @@ Define your own effects with `@name` and handle them:
 
 ```dvala
 do
-  with handler @my.double(val) -> resume(val * 2) end;
+  with handler
+    @my.double(val) -> resume(val * 2)
+  end;
   let x = perform(@my.double, 21);
   x;
 end;

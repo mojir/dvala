@@ -66,18 +66,12 @@ y;
 Collect remaining elements with `...`:
 
 ```dvala
-let [head, ...tail] = [
-  1,
-  2,
-  3,
-  4,
-  5,
-];
+let [head, ... tail] = [1, 2, 3, 4, 5];
 tail;
 ```
 
 ```dvala
-let { user, ...others } = { user: "Eve", age: 28, city: "NYC" };
+let { user, ... others } = { user: "Eve", age: 28, city: "NYC" };
 others;
 ```
 
@@ -86,12 +80,12 @@ others;
 Destructure directly in function parameters:
 
 ```dvala
-let greet = ({ name }) -> `Hello, ${name}`;
+let greet = ( {name}) -> `Hello, ${name}`;
 greet({ name: "Pat" });
 ```
 
 ```dvala
-let sumPair = ([a, b]) -> a + b;
+let sumPair = ( [a, b]) -> a + b;
 sumPair([3, 7]);
 ```
 
@@ -100,6 +94,6 @@ sumPair([3, 7]);
 Mix array and object destructuring for complex data:
 
 ```dvala
-let [{ name }, { age }] = [{ name: "Tina" }, { age: 33 }];
+let [ { name },  { age }] = [{ name: "Tina" }, { age: 33 }];
 `${name} is ${age}`;
 ```

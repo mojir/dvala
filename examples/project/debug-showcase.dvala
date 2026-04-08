@@ -33,20 +33,21 @@ let safeDivide = fnull((a, b) -> a / b, 0, 1);
 let doubleThenClamp = comp((x) -> clamp(x, 0, 20), scale);
 
 // --- Macro ---
-let double = macro (x) -> quote $^{x} + $^{x} end;
+let double = macro ( x) -> quote $^{ x} + $^{ x} end;
 
 // --- Effect and RegExp ---
 let myEffect = @debug.demo;
 let pattern = regexp("\\d+", "g");
 
 // --- Handler ---
-let logger = handler @debug.log(msg) -> do
-  perform(@dvala.io.print, "LOG: " ++ msg ++ "\n");
-  resume(null);
-end
-transform
-  result -> { result, logged: true }
-end;
+let logger =
+  handler
+    @debug.log(msg) -> do
+      perform(@dvala.io.print, "LOG: " ++ msg ++ "\n");
+      resume(null);
+    end
+    transform result ->  { result, logged: true }
+  end;
 
 // --- Use the handler (creates Effect Handlers scope) ---
 let result = do
@@ -59,16 +60,7 @@ let result = do
   let doubled = double(5);
   let clamped = doubleThenClamp(8);
   perform(@debug.log, "done");
-  {
-    scaled,
-    added,
-    signs,
-    safe,
-    doubled,
-    clamped,
-    pattern,
-    myEffect,
-  };
+  { scaled, added, signs, safe, doubled, clamped, pattern, myEffect };
 end;
 
 result;

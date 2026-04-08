@@ -53,15 +53,7 @@ In the playground, `dvala.random` resolves instantly. In a different host, the s
 In colored languages, `map` over an async function requires a special `Promise.all(arr.map(...))` pattern. In Dvala, higher-order functions work transparently with async operations:
 
 ```dvala
-map(
-  [
-    1,
-    2,
-    3,
-    4,
-  ],
-  inc,
-);
+map([1, 2, 3, 4], inc);
 ```
 
 Whether `inc` is sync or async under the hood, `map` handles it without any special treatment. The trampoline resolves each step before continuing.
