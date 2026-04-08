@@ -4,6 +4,7 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
 export function parseNumber(ctx: ParserContext): NumberNode {
+  ctx.builder?.startNode('NumberLiteral')
   const token = ctx.peek()
   ctx.advance()
 
@@ -12,5 +13,6 @@ export function parseNumber(ctx: ParserContext): NumberNode {
   const numberString = (negative ? value.substring(1) : value).replace(/_/g, '')
   const node = withSourceCodeInfo([NodeTypes.Num, negative ? -Number(numberString) : Number(numberString), 0], token[2], ctx) as NumberNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

@@ -21,6 +21,9 @@ import { assertNumberOfParams } from '../../utils/arity'
 import { createNamedNormalExpressionNode, withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
+// Note: The CST `Call` node is opened/closed by the caller in parseOperand.ts
+// (via startNodeAt/endNode), not here, because the call-site has access to the
+// checkpoint marking where the callee expression started.
 export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode {
   ctx.advance()
 
@@ -39,8 +42,10 @@ export function parseFunctionCall(ctx: ParserContext, symbol: AstNode): AstNode 
   const params: AstNode[] = []
   while (!ctx.isAtEnd() && !isRParenToken(ctx.tryPeek())) {
     if (isOperatorToken(ctx.tryPeek(), '...')) {
+      ctx.builder?.startNode('Spread')
       ctx.advance()
       params.push(withSourceCodeInfo([NodeTypes.Spread, ctx.parseExpression(), 0], ctx.peekDebugInfo(), ctx))
+      ctx.builder?.endNode()
     } else {
       params.push(ctx.parseExpression())
     }

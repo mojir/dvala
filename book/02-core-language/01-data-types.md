@@ -94,12 +94,7 @@ null;
 Arrays hold ordered collections of any types:
 
 ```dvala
-[
-  1,
-  "two",
-  true,
-  null,
-];
+[1, "two", true, null];
 ```
 
 Accessing out-of-bounds indices returns `null` (no error):
@@ -112,12 +107,7 @@ let arr = [10, 20, 30];
 Use spread to merge arrays:
 
 ```dvala
-[
-  1,
-  2,
-  ...[3, 4],
-  5,
-];
+[1, 2, ...[3, 4], 5];
 ```
 
 ## Objects

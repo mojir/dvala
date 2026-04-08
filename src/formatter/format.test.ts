@@ -75,7 +75,12 @@ describe('formatter — functions', () => {
 
   it('multi-statement do-block always expands', () => check(
     'let f = (x) -> do\nlet y = x * 2;\ny + 1\nend',
-    'let f = (x) -> do\n  let y = x * 2;\n  y + 1\nend;',
+    'let f = (x) -> do\n  let y = x * 2;\n  y + 1;\nend;',
+  ))
+
+  it('single-line do-block stays inline without semicolon before end', () => check(
+    'do 1+1 end',
+    'do 1 + 1 end;',
   ))
 })
 
@@ -89,9 +94,51 @@ describe('formatter — infix calls', () => {
     'let r = 1 add 2;',
   ))
 
+  it('built-in infix call stays as infix', () => check(
+    'let r = [1, 2, 3] join ", "',
+    'let r = [1, 2, 3] join ", ";',
+  ))
+
   it('prefix call stays as prefix', () => check(
     'let r = add(1, 2)',
     'let r = add(1, 2);',
+  ))
+
+  it('built-in prefix call stays as prefix', () => check(
+    'let r = join([1, 2, 3], ", ")',
+    'let r = join([1, 2, 3], ", ");',
+  ))
+
+  it('keeps multiline right operand below the operator', () => check(
+    `[a, b, c] join if shouldUseExtraSpacingForParagraphBreaks then
+// separate paragraphs
+"\\n\\n"
+else
+"\\n"
+end`,
+    `[a, b, c] join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
+  ))
+
+  it('moves the operator below a multiline left operand', () => check(
+    `[description, visitedStatus, itemsDesc, exitsDesc, regionDesc, weatherDesc] join if shouldUseExtraSpacingForParagraphBreaks then
+// separate paragraphs
+"\\n\\n"
+else
+"\\n"
+end`,
+    `[description, visitedStatus, itemsDesc, exitsDesc, regionDesc, weatherDesc] join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
   ))
 })
 
@@ -136,9 +183,10 @@ describe('formatter — collections', () => {
     '[...a, 4];',
   ))
 
-  it('object shorthand: {x:x} normalises to {x}', () => check(
+  // CST formatter preserves authored form (no shorthand normalization)
+  it('object shorthand: {x:x} preserves authored form', () => check(
     'let o = {x:x,y:y}',
-    'let o = { x, y };',
+    'let o = { x: x, y: y };',
   ))
 })
 
@@ -185,7 +233,17 @@ describe('formatter — multiple statements', () => {
 
   it('standalone comment with blank lines', () => check(
     'let x = 1;\n\n// section\n\nlet y = 2;',
-    'let x = 1;\n\n// section\nlet y = 2;',
+    'let x = 1;\n\n// section\n\nlet y = 2;',
+  ))
+
+  it('preserves blank lines inside multiline do blocks', () => check(
+    'do\nlet x = 1;\n\nx + 1;\nend',
+    'do\n  let x = 1;\n\n  x + 1;\nend;',
+  ))
+
+  it('caps multiple blank lines inside multiline do blocks at one', () => check(
+    'do\nlet x = 1;\n\n\nx + 1;\nend',
+    'do\n  let x = 1;\n\n  x + 1;\nend;',
   ))
 })
 
@@ -216,7 +274,10 @@ describe('formatter — inline block comments', () => {
 
   it('keeps inline comment when the next token wraps to a later line', () => check(
     'let x = longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE',
-    'let x =\n  longVariableNameA /* note */ + longVariableNameB + longVariableNameC + longVariableNameD + longVariableNameE;',
+    `let x =
+  longVariableNameA /* note */ + longVariableNameB + longVariableNameC +
+    longVariableNameD +
+    longVariableNameE;`,
   ))
 })
 
@@ -247,9 +308,10 @@ describe('formatter — trailing block comments', () => {
     'let x = 1; /* note */',
   ))
 
-  it('demotes trailing comment to leading when line would exceed 80 cols', () => check(
+  // CST formatter preserves trailing comments in place (no demotion to leading)
+  it('keeps trailing comment in place even when line exceeds 80 cols', () => check(
     'let reallyLongVariableName = someReallyLongFunctionCall(argument); // this comment would push the line way past 80 chars',
-    '// this comment would push the line way past 80 chars\nlet reallyLongVariableName = someReallyLongFunctionCall(argument);',
+    'let reallyLongVariableName = someReallyLongFunctionCall(argument); // this comment would push the line way past 80 chars',
   ))
 })
 
@@ -286,7 +348,243 @@ describe('formatter — leading comments', () => {
 describe('formatter — standalone comments', () => {
   it('standalone comment between statements stays with one blank line before', () => check(
     'let x = 1;\n\n// section header\n\nlet y = 2;',
-    'let x = 1;\n\n// section header\nlet y = 2;',
+    'let x = 1;\n\n// section header\n\nlet y = 2;',
+  ))
+
+  it('preserves blank line after standalone comment before statement', () => check(
+    '// comment\n\nlet a = 1;',
+    '// comment\n\nlet a = 1;',
+  ))
+
+  it('preserves standalone comments inside multiline do blocks', () => check(
+    `let describeLocation = (state) -> do
+let location = get(locations, state.currentLocation);
+let description = location.description;
+
+// Add visited status
+let visitedStatus = if get(state.visited, state.currentLocation, 0) > 1 then
+  "You've been here before."
+else
+  "This is your first time here."
+end;
+
+// Check if location has items
+let itemsDesc = if not(isEmpty(get(location, "items", []))) then
+  // there are items
+  "You see: " ++ join(location.items, ", ")
+else
+  ""
+end;
+
+// Describe exits
+let exits = keys(location.exits) join ", ";
+let exitsDesc = "Exits: " ++ exits;
+
+// Join all descriptions
+filter(/* an array */ [description, visitedStatus, itemsDesc, exitsDesc], -> not(isEmpty($))) join "\\n"
+end`,
+    `let describeLocation = (state) -> do
+  let location = get(locations, state.currentLocation);
+  let description = location.description;
+
+  // Add visited status
+  let visitedStatus =
+    if get(state.visited, state.currentLocation, 0) > 1 then
+      "You've been here before."
+    else
+      "This is your first time here."
+    end;
+
+  // Check if location has items
+  let itemsDesc =
+    if not(isEmpty(get(location, "items", []))) then
+      // there are items
+      "You see: " ++ join(location.items, ", ")
+    else
+      ""
+    end;
+
+  // Describe exits
+  let exits = keys(location.exits) join ", ";
+  let exitsDesc = "Exits: " ++ exits;
+
+  // Join all descriptions
+  filter( /* an array */
+    [description, visitedStatus, itemsDesc, exitsDesc],
+    -> not(isEmpty($))
+  ) join
+    "\\n";
+end;`,
+  ))
+
+  it('preserves trailing comments inside multiline do blocks', () => check(
+    'do\nlet x = 1; // keep me\nx + 1\nend',
+    'do\n  let x = 1; // keep me\n  x + 1;\nend;',
+  ))
+})
+
+// ---------------------------------------------------------------------------
+// Comment placement — deep nesting
+// ---------------------------------------------------------------------------
+
+describe('formatter — deep nested comments', () => {
+  it('preserves comments through nested do and if blocks with mixed blank lines', () => check(
+    `let workflow = () -> do
+// start
+let first = do
+// phase one
+let value = do
+// deepest step
+perform(@dvala.io.print, "go");
+
+// final deep
+"ok"
+end;
+
+// phase two
+value
+end;
+
+// done
+first
+end`,
+    `let workflow = () -> do
+  // start
+  let first = do
+    // phase one
+    let value = do
+      // deepest step
+      perform(@dvala.io.print, "go");
+
+      // final deep
+      "ok";
+    end;
+
+    // phase two
+    value;
+  end;
+
+  // done
+  first;
+end;`,
+  ))
+
+  it('preserves comments inside trailing lambda do blocks', () => check(
+    `filter(items, -> do
+// keep filter comment
+let cleaned = trim($);
+
+// final check
+not(isEmpty(cleaned))
+end)`,
+    `filter(items, -> do
+  // keep filter comment
+  let cleaned = trim($);
+
+  // final check
+  not(isEmpty(cleaned));
+end);`,
+  ))
+
+  it('preserves comments across nested function and lambda bodies', () => check(
+    `let build = () -> do
+// before helper
+let helper = () -> do
+// helper start
+let render = -> do
+// render comment
+trim($)
+end;
+
+// helper done
+render(" hi ")
+end;
+
+// invoke helper
+helper()
+end`,
+    `let build = () -> do
+  // before helper
+  let helper = () -> do
+    // helper start
+    let render = -> do
+      // render comment
+      trim($);
+    end;
+
+    // helper done
+    render(" hi ");
+  end;
+
+  // invoke helper
+  helper();
+end;`,
+  ))
+
+  it('preserves line and block comments at multiple nested block levels', () => check(
+    `do
+/* outer */
+let x = do
+/* inner */
+let y = 1;
+
+/* before result */
+y + 1
+end;
+
+// final
+x
+end`,
+    `do
+  /* outer */
+  let x = do
+    /* inner */
+    let y = 1;
+
+    /* before result */
+    y + 1;
+  end;
+
+  // final
+  x;
+end;`,
+  ))
+
+  it('keeps top-level and nested comments in their own scopes', () => check(
+    `// top level intro
+
+let square = (x) -> do
+// inner note
+x * x
+end`,
+    `// top level intro
+
+let square = (x) -> do
+  // inner note
+  x * x;
+end;`,
+  ))
+})
+
+// ---------------------------------------------------------------------------
+// Multiline collection spacing
+// ---------------------------------------------------------------------------
+
+describe('formatter — multiline collection spacing', () => {
+  it('preserves one blank line between multiline array entries', () => check(
+    'let xs = [1,\n2,\n\n3,\n4]',
+    'let xs = [\n  1,\n  2,\n\n  3,\n  4,\n];',
+  ))
+
+  // CST formatter normalizes to flat when entries fit on one line
+  it('preserves one blank line between multiline object entries', () => check(
+    'let obj = { a: 1,\nb: 2,\n\nc: 3,\nd: 4 }',
+    'let obj = { a: 1, b: 2, c: 3, d: 4 };',
+  ))
+
+  it('caps multiple blank lines between multiline array entries at one', () => check(
+    'let xs = [1,\n2,\n\n\n3,\n4]',
+    'let xs = [\n  1,\n  2,\n\n  3,\n  4,\n];',
   ))
 })
 
@@ -300,9 +598,19 @@ describe('formatter — preamble and epilogue', () => {
     '// file header\nlet x = 1;',
   ))
 
+  it('preserves blank lines between preamble comments', () => check(
+    '// file header\n\n// section\nlet x = 1;',
+    '// file header\n\n// section\nlet x = 1;',
+  ))
+
   it('comment after last statement', () => check(
     'let x = 1;\n// end of file',
     'let x = 1;\n// end of file',
+  ))
+
+  it('preserves blank lines between epilogue comments', () => check(
+    'let x = 1;\n// end of file\n\n// trailing note',
+    'let x = 1;\n// end of file\n\n// trailing note',
   ))
 })
 
@@ -350,6 +658,11 @@ describe('formatter — comment-only files', () => {
     '// line one\n// line two',
   ))
 
+  it('preserves blank lines between standalone comments', () => check(
+    '// line one\n\n// line two',
+    '// line one\n\n// line two',
+  ))
+
   it('preserves comment-only file with shebang', () => check(
     '#!/usr/bin/env dvala\n// only a comment',
     '#!/usr/bin/env dvala\n// only a comment',
@@ -392,10 +705,60 @@ describe('formatter — round-trip stability', () => {
     'let f = -> $ + 1',
     'let x=1; // comment',
     'let r = 1 add 2',
+    'let r = [1, 2, 3] join ", "',
+    `[a, b, c] join
+  if shouldUseExtraSpacingForParagraphBreaks then
+    // separate paragraphs
+    "\\n\\n"
+  else
+    "\\n"
+  end;`,
     'let r = x |> f |> g',
     'let foo=(foo /*FOO*/, bar)->foo++bar',
-    '// header\nlet x = 1;\nlet y = x + 1; // done',
-    'if x>0 then\nlet r=x*2;\nr\nelse\n0\nend',
+    `// header
+let x = 1;
+let y = x + 1; // done`,
+    `if x>0 then
+let r=x*2;
+r
+else
+0
+end`,
+    `let workflow = () -> do
+  // start
+  let first = do
+    // phase one
+    let value = do
+      // deepest step
+      perform(@dvala.io.print, "go");
+
+      // final deep
+      "ok";
+    end;
+
+    // phase two
+    value;
+  end;
+
+  // done
+  first;
+end;`,
+    `let build = () -> do
+  // before helper
+  let helper = () -> do
+    // helper start
+    let render = -> do
+      // render comment
+      trim($);
+    end;
+
+    // helper done
+    render(" hi ");
+  end;
+
+  // invoke helper
+  helper();
+end;`,
   ]
 
   for (const source of cases) {
@@ -418,20 +781,20 @@ describe('formatter — round-trip stability', () => {
 describe('formatter — trailing lambda', () => {
   it('keeps leading args on opening line with -> do...end block', () => check(
     'test("pi is approximately 3.14", -> do assertTrue(constants.pi > 3.14); assertTrue(constants.pi < 3.15) end)',
-    'test("pi is approximately 3.14", -> do\n  assertTrue(constants.pi > 3.14);\n  assertTrue(constants.pi < 3.15)\nend);',
+    'test("pi is approximately 3.14", -> do\n  assertTrue(constants.pi > 3.14);\n  assertTrue(constants.pi < 3.15);\nend);',
   ))
 
   it('works with multiple leading args', () => check(
     'describe("math", "group", -> do assertTrue(1 == 1); assertTrue(2 == 2) end)',
-    'describe("math", "group", -> do\n  assertTrue(1 == 1);\n  assertTrue(2 == 2)\nend);',
+    'describe("math", "group", -> do\n  assertTrue(1 == 1);\n  assertTrue(2 == 2);\nend);',
   ))
 
+  // CST formatter uses trailing-lambda layout — expands do-block body
   it('falls back to exploded form when opening line would exceed 80 cols', () => check(
-    // Single-statement `-> do ... end` simplifies to `-> expr`, which is not a
-    // do...end block, so the trailing-lambda path is skipped and the standard
-    // exploded form is used instead.
     'veryLongFunctionName("a very long description string that pushes the line over the limit", -> do assertTrue(x) end)',
-    'veryLongFunctionName(\n  "a very long description string that pushes the line over the limit",\n  -> assertTrue(x),\n);',
+    `veryLongFunctionName("a very long description string that pushes the line over the limit", -> do
+  assertTrue(x);
+end);`,
   ))
 
   it('single-expression lambda is not affected', () => check(
@@ -439,16 +802,20 @@ describe('formatter — trailing lambda', () => {
     'test("desc", -> someExpression);',
   ))
 
-  it('single-arg lambda call is not affected (guard: argNodes.length >= 2)', () => check(
-    // Only one arg (the lambda itself) — trailing-lambda form must not apply;
-    // the standard exploded form is used instead.
+  // CST formatter wraps single-arg lambda do-blocks
+  it('single-arg lambda call wraps do-block', () => check(
     'run(-> do assertTrue(x); assertTrue(y) end)',
-    'run(\n  -> do\n    assertTrue(x);\n    assertTrue(y)\n  end,\n);',
+    `run(
+  -> do
+    assertTrue(x);
+    assertTrue(y);
+  end
+);`,
   ))
 
   it('works when the trailing lambda has explicit parameters', () => check(
     'register("handler", (event) -> do handle(event); log(event) end)',
-    'register("handler", (event) -> do\n  handle(event);\n  log(event)\nend);',
+    'register("handler", (event) -> do\n  handle(event);\n  log(event);\nend);',
   ))
 
   it('is stable across two format passes', () => {

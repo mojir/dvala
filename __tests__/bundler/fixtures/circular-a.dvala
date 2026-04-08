@@ -1,2 +1,2 @@
 let b = import("./circular-b.dvala");
-1
+1;

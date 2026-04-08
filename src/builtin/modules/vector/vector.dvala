@@ -3,14 +3,11 @@
     if windowSize > count(arr) then
       perform(@dvala.error, "Expected windowSize <= array length")
     end;
-    for (i in range(count(arr) - windowSize + 1)) -> do
-      fn(slice(arr, i, i + windowSize))
-    end
+    for(i in range(count(arr) - windowSize + 1)) -> do
+      fn(slice(arr, i, i + windowSize));
+    end;
   end,
-
-  runningFn: (arr, fn) -> do
-    for (i in range(count(arr))) -> do
-      fn(slice(arr, 0, i + 1))
-    end
-  end
-}
+  runningFn: (arr, fn) -> for(i in range(count(arr))) -> do
+    fn(slice(arr, 0, i + 1));
+  end,
+};

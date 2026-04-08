@@ -15,6 +15,7 @@ import { parseSymbol } from './parseSymbol'
 type InternalLoopBindingDelimiter = 'let' | 'when' | 'while'
 
 export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): ForNode {
+  ctx.builder?.startNode('For')
   ctx.advance()
 
   assertLParenToken(ctx.tryPeek())
@@ -45,6 +46,7 @@ export function parseForOrDoseq(ctx: ParserContext, firstToken: SymbolToken): Fo
 
   const node = withSourceCodeInfo([NodeTypes.For, [forLoopBindings, expression], 0], firstToken[2], ctx) as ForNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
 

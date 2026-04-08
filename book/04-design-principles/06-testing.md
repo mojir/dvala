@@ -48,7 +48,7 @@ let { assertFails, assertFailsWith } = import("assertion");
 
 let divide = (a, b) -> do
   assert(not(b == 0), "Division by zero");
-  a / b
+  a / b;
 end;
 
 assertFailsWith(-> divide(10, 0), "Division by zero");
@@ -66,7 +66,7 @@ Here is a function that performs an effect and then returns a value:
 ```dvala
 let greet = (name) -> do
   perform(@dvala.io.print, "Hello, " ++ name ++ "!");
-  name
+  name;
 end;
 ```
 
@@ -77,14 +77,17 @@ let { assertEqual } = import("assertion");
 
 let greet = (name) -> do
   perform(@dvala.io.print, "Hello, " ++ name ++ "!");
-  name
+  name;
 end;
 
-let silence = handler @dvala.io.print(msg) -> resume(null) end;
+let silence =
+  handler
+    @dvala.io.print(msg) -> resume(null)
+  end;
 
 do
   with silence;
-  assertEqual(greet("Alice"), "Alice")
+  assertEqual(greet("Alice"), "Alice");
 end;
 ```
 
@@ -97,11 +100,14 @@ let { assertEqual } = import("assertion");
 
 let formatWelcome = -> "Welcome to " ++ perform(@app.config, "appName");
 
-let fakeConfig = handler @app.config(key) -> resume("TestApp") end;
+let fakeConfig =
+  handler
+    @app.config(key) -> resume("TestApp")
+  end;
 
 do
   with fakeConfig;
-  assertEqual(formatWelcome(), "Welcome to TestApp")
+  assertEqual(formatWelcome(), "Welcome to TestApp");
 end;
 ```
 
@@ -115,9 +121,11 @@ Because a failed assertion performs `@dvala.error`, you can catch it with a hand
 let { assertEqual } = import("assertion");
 
 let runTest = (name, fn) -> do
-  with handler @dvala.error(err) -> ["fail", name, err.message] end;
+  with handler
+    @dvala.error(err) -> ["fail", name, err.message]
+  end;
   fn();
-  ["pass", name]
+  ["pass", name];
 end;
 
 [

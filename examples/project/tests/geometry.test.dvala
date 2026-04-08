@@ -5,35 +5,32 @@ let { pi, distance, midpoint, circleArea, scale } = import("../lib/geometry");
 describe("distance", -> do
   test("horizontal", -> assertEqual(distance(0, 0, 3, 0), 3));
   test("vertical", -> assertEqual(distance(0, 0, 0, 4), 4));
-  test("diagonal 3-4-5", -> assertEqual(distance(0, 0, 3, 4), 5))
+  test("diagonal 3-4-5", -> assertEqual(distance(0, 0, 3, 4), 5));
 end);
 
 describe(
   "midpoint",
-  ->
-    test("origin to (4, 6)", -> do
-      let m = midpoint(0, 0, 4, 6);
-      assertEqual(m.x, 2);
-      assertEqual(m.y, 3)
-    end),
+  -> test("origin to (4, 6)", -> do
+    let m = midpoint(0, 0, 4, 6);
+    assertEqual(m.x, 2);
+    assertEqual(m.y, 3);
+  end)
 );
 
 describe(
   "circleArea",
-  ->
-    test("unit circle", -> do
-      let a = circleArea(1);
-      assertTrue(a > 3.14);
-      assertTrue(a < 3.15)
-    end),
+  -> test("unit circle", -> do
+    let a = circleArea(1);
+    assertTrue(a > 3.14);
+    assertTrue(a < 3.15);
+  end)
 );
 
 describe(
   "scale",
-  ->
-    test("double a point", -> do
-      let p = scale({ x: 3, y: 4 }, 2);
-      assertEqual(p.x, 6);
-      assertEqual(p.y, 8)
-    end),
+  -> test("double a point", -> do
+    let p = scale({ x: 3, y: 4 }, 2);
+    assertEqual(p.x, 6);
+    assertEqual(p.y, 8);
+  end)
 );

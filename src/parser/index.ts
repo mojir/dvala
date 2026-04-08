@@ -1,11 +1,67 @@
-import type { TokenStream } from '../tokenizer/tokenize'
+import { CstBuilder, type UntypedCstNode } from '../cst/builder'
+import type { TriviaNode } from '../cst/types'
 import { ParseError } from '../errors'
 import { debugInfoToSourceCodeInfo, isOperatorToken } from '../tokenizer/token'
-import type { AstNode, Ast, SourceMap } from './types'
-import { createParserContext, parseExpression } from './subParsers/parseExpression'
+import type { TokenStream } from '../tokenizer/tokenize'
 import type { ParserContext } from './ParserContext'
+import { createParserContext, createCstParserContext, parseExpression } from './subParsers/parseExpression'
+import type { AstNode, Ast, SourceMap } from './types'
 
 export { createParserContext, parseExpression }
+
+// ---------------------------------------------------------------------------
+// CST parsing — produces an untyped CST tree with full trivia
+// ---------------------------------------------------------------------------
+
+export interface ParseToCstResult {
+  /** Untyped CST tree — root node has kind 'Program'. */
+  tree: UntypedCstNode
+  /** Trailing trivia after the last real token (file-level comments, final newlines). */
+  trailingTrivia: TriviaNode[]
+}
+
+/**
+ * Parse the full token stream into an untyped CST tree.
+ *
+ * The token stream must include whitespace and comment tokens (debug mode).
+ * The parser runs in CST mode: every consumed token is wrapped in a CstToken
+ * with attached trivia and fed to the CstBuilder.
+ *
+ * Throws on parse error — no error recovery (CstErrorNode is a future concern).
+ */
+export function parseToCst(fullTokenStream: TokenStream): ParseToCstResult {
+  // Check for tokenizer errors
+  for (const token of fullTokenStream.tokens) {
+    if (token[0] === 'Error') {
+      throw new ParseError(token[3], debugInfoToSourceCodeInfo(token[2], fullTokenStream.source, fullTokenStream.filePath))
+    }
+  }
+
+  const builder = new CstBuilder()
+  let localCounter = 0
+  const ctx = createCstParserContext(fullTokenStream, () => localCounter++, builder)
+
+  builder.startNode('Program')
+
+  while (!ctx.isAtEnd()) {
+    parseExpression(ctx, 0)
+    if (isOperatorToken(ctx.tryPeek(), ';')) {
+      ctx.advance()
+    } else if (!ctx.isAtEnd()) {
+      throw new ParseError('Expected ;', ctx.peekSourceCodeInfo())
+    }
+  }
+
+  builder.endNode()
+  const tree = builder.finish()
+  const trailingTrivia = ctx.getRemainingTrivia()
+
+  return { tree, trailingTrivia }
+}
+
+// ---------------------------------------------------------------------------
+// AST parsing
+// ---------------------------------------------------------------------------
 
 function parseInternal(tokenStream: TokenStream, allocateId?: () => number): { nodes: AstNode[]; sourceMap: SourceMap | undefined } {
   tokenStream.tokens.forEach(token => {

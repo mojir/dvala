@@ -26,7 +26,7 @@ You can use `let` to create a **new** binding with the same name in a nested sco
 let x = 10;
 do
   let x = x + 5;
-  x
+  x;
 end;
 ```
 
@@ -39,7 +39,7 @@ let x = 10;
 let getX = () -> x;
 do
   let x = 99;
-  getX()
+  getX();
 end;
 ```
 
@@ -84,22 +84,7 @@ This property — **referential transparency** — means you can reason about co
 Dvala programs transform data through **pipelines** of pure functions. Each step takes input and produces new output:
 
 ```dvala
-reverse(
-  map(_, -> $ * $)(
-    filter(_, isEven)(
-      [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-      ],
-    ),
-  ),
-);
+reverse(map(_, -> $ * $)(filter(_, isEven)([1, 2, 3, 4, 5, 6, 7, 8])));
 ```
 
 No data was mutated. Each operation produced a fresh value.
@@ -110,22 +95,13 @@ Where imperative code would use a mutable accumulator, Dvala uses `reduce` or `l
 
 ```dvala
 // Sum of squares using reduce
-reduce(
-  [
-    1,
-    2,
-    3,
-    4,
-    5,
-  ],
-  (acc, x) -> acc + x * x,
-  0,
-);
+reduce([1, 2, 3, 4, 5], (acc, x) -> acc + x * x, 0);
 ```
 
 ```dvala
 // Factorial using loop/recur
-loop (n = 6, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+loop(n = 6, acc = 1) -> if n <= 1 then acc else recur(n - 1, acc * n) end;
+
 ```
 
 Each iteration creates new bindings rather than modifying existing ones.

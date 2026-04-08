@@ -74,7 +74,13 @@ This requires special evaluation: `let` must bind `x` before evaluating `x + 5`.
 let temp = 25;
 if temp < 0 then
   "freezing"
-else if temp < 20 then "cold" else if temp < 30 then "pleasant" else "hot" end;
+else if temp < 20 then
+  "cold"
+else if temp < 30 then
+  "pleasant"
+else
+  "hot"
+end;
 ```
 
 ### loop / recur — Tail-Recursive Iteration
@@ -82,7 +88,8 @@ else if temp < 20 then "cold" else if temp < 30 then "pleasant" else "hot" end;
 `loop` creates bindings and `recur` jumps back with new values. Both are special because `recur` must be recognized at the tail position:
 
 ```dvala
-loop (i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
+loop(i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
+
 ```
 
 ### match — Pattern Matching
@@ -91,9 +98,9 @@ loop (i = 0, total = 0) -> if i > 4 then total else recur(i + 1, total + i) end;
 
 ```dvala
 match [1, 2, 3]
-  case [a] then "one"
-  case [a, b] then "two"
-  case [a, b, c] then a + b + c
+  case [ a] then "one"
+  case [ a, b] then "two"
+  case [ a, b, c] then a + b + c
 end;
 ```
 
@@ -102,7 +109,8 @@ end;
 `for` creates a new array from a comprehension:
 
 ```dvala
-for (x in [1, 2, 3] when x > 1) -> x * 10;
+for(x in [1, 2, 3] when x > 1) -> x * 10;
+
 ```
 
 ### @name / perform — Algebraic Effects
@@ -112,8 +120,10 @@ for (x in [1, 2, 3] when x > 1) -> x * 10;
 ```dvala
 let e = @my.double;
 do
-  with handler @my.double(arg) -> resume(arg * 2) end;
-  perform(e, 21)
+  with handler
+    @my.double(arg) -> resume(arg * 2)
+  end;
+  perform(e, 21);
 end;
 ```
 
@@ -125,7 +135,7 @@ end;
 do
   let a = 1;
   let b = 2;
-  a + b
+  a + b;
 end;
 ```
 

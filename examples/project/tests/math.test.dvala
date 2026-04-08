@@ -8,15 +8,15 @@ describe("clamp", -> do
   test("above max", -> assertEqual(clamp(15, 0, 10), 10));
   test("at boundaries", -> do
     assertEqual(clamp(0, 0, 10), 0);
-    assertEqual(clamp(10, 0, 10), 10)
-  end)
+    assertEqual(clamp(10, 0, 10), 10);
+  end);
 end);
 
 describe("lerp", -> do
   test("start", -> assertEqual(lerp(0, 10, 0), 0));
   test("end", -> assertEqual(lerp(0, 10, 1), 10));
   test("midpoint", -> assertEqual(lerp(0, 10, 0.5), 5));
-  test("quarter", -> assertEqual(lerp(0, 100, 0.25), 25))
+  test("quarter", -> assertEqual(lerp(0, 100, 0.25), 25));
 end);
 
 describe("inRange", -> do
@@ -25,6 +25,6 @@ describe("inRange", -> do
   test("above", -> assertFalse(inRange(11, 0, 10)));
   test("at boundaries", -> do
     assertTrue(inRange(0, 0, 10));
-    assertTrue(inRange(10, 0, 10))
-  end)
+    assertTrue(inRange(10, 0, 10));
+  end);
 end);

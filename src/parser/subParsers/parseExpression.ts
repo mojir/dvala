@@ -1,18 +1,19 @@
 import type { SpecialExpressionName } from '../../builtin'
 import { specialExpressionTypes } from '../../builtin/specialExpressionTypes'
 import { NodeTypes } from '../../constants/constants'
+import type { CstBuilder } from '../../cst/builder'
 import { ParseError } from '../../errors'
 import { isFunctionOperator } from '../../tokenizer/operators'
 import { isA_BinaryOperatorToken, isEffectNameToken, isLParenToken, isMacroQualifiedToken, isReservedSymbolToken, isRParenToken, isSymbolToken } from '../../tokenizer/token'
 import type { TokenStream } from '../../tokenizer/tokenize'
 import { isSpecialSymbolNode } from '../../typeGuards/astNode'
 import { binaryFunctionalOperatorPrecedence, createNamedNormalExpressionNode, exponentiationPrecedence, fromBinaryOperatorToNode, isAtExpressionEnd, withSourceCodeInfo } from '../helpers'
+import { getPrecedence } from '../getPrecedence'
 import { ParserContext } from '../ParserContext'
 import type { AstNode, SymbolNode } from '../types'
-import { getPrecedence } from '../getPrecedence'
 import { parseDo } from './parseDo'
-import { parseHandler } from './parseHandler'
 import { parseForOrDoseq } from './parseForOrDoseq'
+import { parseHandler } from './parseHandler'
 import { parseIf } from './parseIf'
 import { parseLet } from './parseLet'
 import { parseLoop } from './parseLoop'
@@ -28,7 +29,16 @@ export function createParserContext(tokenStream: TokenStream, allocateId: () => 
   return ctx
 }
 
+export function createCstParserContext(tokenStream: TokenStream, allocateId: () => number, builder: CstBuilder): ParserContext {
+  const ctx = new ParserContext(tokenStream, allocateId, builder)
+  ctx.parseExpression = (precedence = 0) => parseExpression(ctx, precedence)
+  return ctx
+}
+
 export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
+  // Save checkpoint before left operand — used by startNodeAt if a binary
+  // operator or infix call follows.
+  const checkpoint = ctx.builder?.checkpoint()
   const token = ctx.tryPeek()
 
   let left: AstNode
@@ -63,6 +73,7 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         // `shallow handler ...` — shallow handler expression.
         // Contextual: only triggers when followed by `handler` + a handler start token.
         if (isShallowHandlerStart(ctx)) {
+          ctx.builder?.startNode('Handler')
           ctx.advance() // consume 'shallow'
           left = parseHandler(ctx, true)
         }
@@ -97,12 +108,14 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
         && !(newPrecedece === exponentiationPrecedence && precedence === exponentiationPrecedence)) {
         break
       }
+      ctx.builder?.startNodeAt(checkpoint!, 'BinaryOp')
       const symbol: SymbolNode = specialExpressionTypes[name as SpecialExpressionName]
         ? withSourceCodeInfo([NodeTypes.Special, specialExpressionTypes[name as SpecialExpressionName], 0], operator[2], ctx)
         : withSourceCodeInfo([NodeTypes.Builtin, name, 0], operator[2], ctx)
       ctx.advance()
       const right = parseExpression(ctx, newPrecedece)
       left = fromBinaryOperatorToNode(operator, symbol, left, right, operator[2], ctx)
+      ctx.builder?.endNode()
     } else if (isSymbolToken(operator)) {
       if (!isFunctionOperator(operator[1])) {
         break
@@ -111,12 +124,14 @@ export function parseExpression(ctx: ParserContext, precedence = 0): AstNode {
       if (newPrecedence <= precedence) {
         break
       }
+      ctx.builder?.startNodeAt(checkpoint!, 'BinaryOp')
       const operatorSymbol = parseSymbol(ctx)
       const right = parseExpression(ctx, newPrecedence)
       if (isSpecialSymbolNode(operatorSymbol)) {
         throw new ParseError('Special expressions are not allowed in binary functional operators', ctx.resolveTokenDebugInfo(operator[2]))
       }
       left = createNamedNormalExpressionNode(operatorSymbol, [left, right], operator[2], ctx, { isInfix: true })
+      ctx.builder?.endNode()
     } else {
       break
     }
@@ -188,6 +203,7 @@ function isResumeStart(ctx: ParserContext): boolean {
  * - bare `resume`: special string 'ref' (reference to resume function)
  */
 function parseResume(ctx: ParserContext): AstNode {
+  ctx.builder?.startNode('Resume')
   const token = ctx.tryPeek()!
   ctx.advance() // consume 'resume'
 
@@ -207,11 +223,13 @@ function parseResume(ctx: ParserContext): AstNode {
     ctx.advance() // consume )
     const node = withSourceCodeInfo([NodeTypes.Resume, argNode, 0], token[2], ctx)
     ctx.setNodeEnd(node[2])
+    ctx.builder?.endNode()
     return node
   }
 
   // Bare resume — reference to the resume function value
   const node = withSourceCodeInfo([NodeTypes.Resume, 'ref', 0], token[2], ctx)
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

@@ -33,7 +33,7 @@ function report(rel: string, didChange: boolean): void {
 
 function formatDvalaFile(filePath: string): void {
   const original = fs.readFileSync(filePath, 'utf-8')
-  const formatted = format(original.trimEnd()) + '\n'
+  const formatted = format(original.trimEnd())
   if (formatted !== original) {
     fs.writeFileSync(filePath, formatted, 'utf-8')
     report(path.relative(root, filePath), true)
@@ -98,5 +98,8 @@ for (const f of collectMarkdownFiles(path.join(root, 'playground-www/src/feature
 
 console.log('Formatting example project .dvala files...')
 for (const f of collectDvalaFiles(path.join(root, 'examples'))) formatDvalaFile(f)
+
+console.log('Formatting built-in module source .dvala files...')
+for (const f of collectDvalaFiles(path.join(root, 'src/builtin/modules')).filter(file => !file.endsWith('.test.dvala'))) formatDvalaFile(f)
 
 console.log(`\nDone. ${changed} file(s) changed, ${unchanged} already formatted.`)

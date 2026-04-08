@@ -1,4 +1,6 @@
 {
-  raise: (message, data = null) ->
-    perform(@dvala.error, { type: "UserError", message: message, data: data })
-}
+  raise: (message, data = null) -> perform(
+    @dvala.error,
+    { type: "UserError", message: message, data: data }
+  ),
+};

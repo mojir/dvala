@@ -8,34 +8,39 @@
 
 let askForTests = () -> perform(
   @dvala.io.confirm,
-  { question: "Configure tests?", options: { default: true }}
+  { question: "Configure tests?", options: { default: true } }
 );
 
 let askForRepl = () -> perform(
   @dvala.io.confirm,
-  { question: "Configure REPL?", options: { default: true }}
+  { question: "Configure REPL?", options: { default: true } }
 );
 
 let askForVscode = () -> perform(
   @dvala.io.confirm,
-  { question: "Configure VSCode settings?", options: { default: true }}
+  { question: "Configure VSCode settings?", options: { default: true } }
 );
 
 // If dvala.json exists, ask before overwriting
 if configExists then
-  let overwrite = perform(
-    @dvala.io.confirm,
-    { question: "dvala.json already exists. Overwrite?", options: { default: false }}
-  );
+  let overwrite =
+    perform(
+      @dvala.io.confirm,
+      {
+        question: "dvala.json already exists. Overwrite?",
+        options: { default: false },
+      }
+    );
   if not(overwrite) then raise("Aborted.") end
 end;
 
 let name = perform(@dvala.io.read, `Project name (${dirName}): `) || "";
 
-let entryFile = perform(
-  @dvala.io.confirm,
-  { question: "Create entry file?", options: { default: true } }
-);
+let entryFile =
+  perform(
+    @dvala.io.confirm,
+    { question: "Create entry file?", options: { default: true } }
+  );
 
 let tests = if entryFile then askForTests() else false end;
 
@@ -43,4 +48,4 @@ let repl = if entryFile then askForRepl() else false end;
 
 let vscode = if entryFile then askForVscode() else false end;
 
-{ name, entryFile, tests, repl, vscode }
+{ name, entryFile, tests, repl, vscode };

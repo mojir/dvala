@@ -6,6 +6,7 @@ import { withSourceCodeInfo } from '../helpers'
 import type { ParserContext } from '../ParserContext'
 
 export function parseReservedSymbol(ctx: ParserContext): ReservedNode | NumberNode {
+  ctx.builder?.startNode('ReservedSymbol')
   const token = asReservedSymbolToken(ctx.tryPeek())
   ctx.advance()
 
@@ -13,9 +14,11 @@ export function parseReservedSymbol(ctx: ParserContext): ReservedNode | NumberNo
   if (isNumberReservedSymbol(symbol)) {
     const node = withSourceCodeInfo([NodeTypes.Num, numberReservedSymbolRecord[symbol], 0], token[2], ctx) as NumberNode
     ctx.setNodeEnd(node[2])
+    ctx.builder?.endNode()
     return node
   }
   const node = withSourceCodeInfo([NodeTypes.Reserved, token[1], 0], token[2], ctx) as ReservedNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }

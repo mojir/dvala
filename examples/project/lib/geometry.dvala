@@ -8,11 +8,4 @@ let circleArea = (r) -> pi * r ^ 2;
 
 let scale = (point, factor) -> { x: point.x * factor, y: point.y * factor };
 
-{
-  pi,
-  distance,
-  midpoint,
-  circleArea,
-  scale,
-};
-
+{ pi, distance, midpoint, circleArea, scale };

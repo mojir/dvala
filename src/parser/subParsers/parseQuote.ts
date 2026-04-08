@@ -23,6 +23,7 @@ export type CodeTemplateNode = AstNode<typeof NodeTypes.CodeTmpl, [AstNode[], As
 let quoteTemplateCounter = 0
 
 export function parseQuote(ctx: ParserContext): CodeTemplateNode {
+  ctx.builder?.startNode('Quote')
   const token = ctx.peek()
   const debugInfo = token[2]
   ctx.advance() // consume 'quote'
@@ -42,10 +43,12 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
       continue
     }
 
-    // Skip tokens inside QuoteSplice expressions (brace-matched)
+    // Splice expression (brace-matched) — wrap in a CST Splice node so the
+    // formatter can treat marker + expression + closeBrace as a structured unit.
     if (t[0] === 'QuoteSplice') {
+      ctx.builder?.startNode('Splice')
       bodyTokens.push(t)
-      ctx.advance()
+      ctx.advance() // emit $^{ marker token
       let braceDepth = 1
       while (!ctx.isAtEnd() && braceDepth > 0) {
         const inner = ctx.peek()
@@ -54,6 +57,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
         bodyTokens.push(inner)
         ctx.advance()
       }
+      ctx.builder?.endNode()
       continue
     }
 
@@ -171,6 +175,7 @@ export function parseQuote(ctx: ParserContext): CodeTemplateNode {
     ctx,
   ) as CodeTemplateNode
   ctx.setNodeEnd(resultNode[2])
+  ctx.builder?.endNode()
   return resultNode
 }
 

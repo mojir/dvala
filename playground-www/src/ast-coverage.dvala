@@ -31,7 +31,7 @@ let arr2 = [0, ...arr, 4];
 let obj2 = { ...obj, d: 4 };
 
 // --- Destructuring: array with rest ---
-let [dx, dy, ...dzs] = [10, 20, 30, 40];
+let [dx, dy, ... dzs] = [10, 20, 30, 40];
 
 // --- Destructuring: object ---
 let { a, b, c } = obj;
@@ -41,7 +41,7 @@ let { a as aVal } = obj;
 
 // --- Destructuring: nested ---
 let nested = { user: { name: "Alice", scores: [95, 87] } };
-let { user: { name, scores: [firstScore, ...restScores] } } = nested;
+let { user: { name, scores: [firstScore, ... restScores] } } = nested;
 
 // --- Destructuring: default value ---
 let [dp = 0, dq = 99] = [7];
@@ -49,43 +49,42 @@ let [dp = 0, dq = 99] = [7];
 // --- Block (do...end) ---
 let blockResult = do
   let tmp = 10;
-  tmp + 1
+  tmp + 1;
 end;
 
 // --- If / else if / else ---
-let grade = if num > 90 then "A"
-  else if num > 80 then "B"
-  else if num > 40 then "C"
-  else "F"
-end;
+let grade =
+  if num > 90 then
+    "A"
+  else if num > 80 then
+    "B"
+  else if num > 40 then
+    "C"
+  else
+    "F"
+  end;
 
 // --- Function (lambda) ---
 let myAdd = (a, b) -> a + b;
 let myDouble = (n) -> n * 2;
 
 // --- Function with body block ---
-let factorial = (n) -> do
-  if n <= 1 then 1
-  else n * self(n - 1)
-  end
-end;
+let factorial = (n) -> do if n <= 1 then 1 else n * self(n - 1) end end;
 
 // --- Loop with recur ---
-let loopSum = loop (i = 0, acc = 0) ->
-  if i >= 10 then acc
-  else recur(i + 1, acc + i)
-  end;
+let loopSum =
+  loop(i = 0, acc = 0) -> if i >= 10 then acc else recur(i + 1, acc + i) end;
 
 // --- For comprehension with let, when ---
-let fizz = for (
-  n in range(1, 16)
-  let div3 = isZero(n % 3)
-  let div5 = isZero(n % 5)
-  when div3 || div5
-) -> if div3 && div5 then "FizzBuzz"
-  else if div3 then "Fizz"
-  else "Buzz"
-end;
+let fizz =
+  for(n in range(1, 16) let div3 = isZero(n % 3) let div5 = isZero(n % 5) when div3 ||
+    div5) -> if div3 && div5 then
+    "FizzBuzz"
+  else if div3 then
+    "Fizz"
+  else
+    "Buzz"
+  end;
 
 // --- Match with literal patterns ---
 let describe = (val) -> match val
@@ -103,8 +102,8 @@ end;
 
 // --- Match with destructuring ---
 let getShape = (point) -> match point
-  case { x, y } then `(${x}, ${y})`
-  case [a, b] then `[${a}, ${b}]`
+  case { x, y} then `(${x}, ${y})`
+  case [ a, b] then `[${a}, ${b}]`
   case _ then "unknown"
 end;
 
@@ -116,7 +115,7 @@ let { fallback } = import("effectHandler");
 let handled = do
   with fallback("Green");
   let color = perform(@dvala.io.pick, ["Red", "Green", "Blue"]);
-  color ++ " was chosen"
+  color ++ " was chosen";
 end;
 
 // --- Import ---
@@ -130,18 +129,54 @@ let neg = -num;
 
 // --- Collect all results as array ---
 [
-  num, str1, flag, nothing, greeting, math1, modResult, concatResult,
-  cmp, logic, bits, piped,
-  arr, obj, arr2, obj2,
-  dx, dy, dzs, a, b, c, aVal,
-  name, firstScore, restScores, dp, dq,
-  blockResult, grade,
-  myAdd(1, 2), myDouble(5), factorial(5),
-  loopSum, fizz,
-  describe(0), describe(1), describe(99),
-  classify(-5), classify(0), classify(7),
-  getShape({ x: 1, y: 2 }), getShape([3, 4]), getShape("?"),
-  handled, piped2,
-  mathMod.sin(0), mathMod.cos(0),
-  reResult, neg
-]
+  num,
+  str1,
+  flag,
+  nothing,
+  greeting,
+  math1,
+  modResult,
+  concatResult,
+  cmp,
+  logic,
+  bits,
+  piped,
+  arr,
+  obj,
+  arr2,
+  obj2,
+  dx,
+  dy,
+  dzs,
+  a,
+  b,
+  c,
+  aVal,
+  name,
+  firstScore,
+  restScores,
+  dp,
+  dq,
+  blockResult,
+  grade,
+  myAdd(1, 2),
+  myDouble(5),
+  factorial(5),
+  loopSum,
+  fizz,
+  describe(0),
+  describe(1),
+  describe(99),
+  classify(-5),
+  classify(0),
+  classify(7),
+  getShape({ x: 1, y: 2 }),
+  getShape([3, 4]),
+  getShape("?"),
+  handled,
+  piped2,
+  mathMod.sin(0),
+  mathMod.cos(0),
+  reResult,
+  neg,
+];

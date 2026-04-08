@@ -5,8 +5,7 @@ let average = (arr) -> mySum(arr) / count(arr);
 let variance = (arr) -> do
   let avg = average(arr);
   let squaredDiffs = map(arr, (x) -> (x - avg) ^ 2);
-  average(squaredDiffs)
+  average(squaredDiffs);
 end;
 
 { sum: mySum, average, variance };
-

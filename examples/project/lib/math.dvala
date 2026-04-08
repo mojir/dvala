@@ -2,7 +2,7 @@ let clamp = (value, lo, hi) -> min(max(value, lo), hi);
 
 let lerp = (a, b, t) -> do
   let diff = b - a;
-  a + diff * t
+  a + diff * t;
 end;
 
 let inRange = (value, lo, hi) -> value >= lo && value <= hi;
@@ -12,8 +12,7 @@ let isEven = (n) -> n % 2 == 0;
 // isOdd is defined but not exported — used to test partial coverage detection.
 let isOdd = (numberToCheck) -> do
   let remainderFromDivision = numberToCheck % 2;
-  not(remainderFromDivision == 0)
+  not(remainderFromDivision == 0);
 end;
 
 { clamp, lerp, inRange };
-

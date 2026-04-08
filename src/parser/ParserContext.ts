@@ -3,11 +3,13 @@ import type { SourceCodeInfo, Token, TokenDebugInfo } from '../tokenizer/token'
 import { debugInfoToSourceCodeInfo } from '../tokenizer/token'
 import type { TokenStream } from '../tokenizer/tokenize'
 import type { AstNode, SourceMap, SourceMapPosition } from './types'
+import type { CstBuilder } from '../cst/builder'
+import type { CstToken, TriviaNode } from '../cst/types'
+import { isTrivia, rawTokenText, splitTriviaAtNewline, toTriviaNode } from '../cst/attachTrivia'
 
 export class ParserContext {
   private readonly tokens: Token[]
   private position: number
-  private storedPosition: number = 0
   public parseExpression!: (precedence?: number) => AstNode
 
   public readonly sourceMap: SourceMap | undefined
@@ -18,17 +20,34 @@ export class ParserContext {
   /** Allocates a unique node ID — provided by the caller to scope uniqueness per instance. */
   readonly allocateId: () => number
 
-  constructor(tokenStream: TokenStream, allocateId: () => number) {
+  // -- CST mode fields --
+  /** When present, the parser operates in CST mode on the full token stream. */
+  readonly builder: CstBuilder | undefined
+  /** Leading trivia accumulated for the next token to be consumed. */
+  private pendingLeadingTrivia: TriviaNode[] = []
+  /** Position of the last consumed non-trivia token (for setNodeEnd in CST mode). */
+  private lastNonTriviaPosition = -1
+
+  constructor(tokenStream: TokenStream, allocateId: () => number, builder?: CstBuilder) {
     this.allocateId = allocateId
     this.tokens = tokenStream.tokens
     this.position = 0
     this.source = tokenStream.source
     this.filePath = tokenStream.filePath
+    this.builder = builder
+
     if (tokenStream.source !== undefined) {
       this.sourceMap = {
         sources: [{ path: tokenStream.filePath ?? '<anonymous>', content: tokenStream.source }],
         positions: new Map(),
       }
+    }
+
+    // In CST mode, skip any initial trivia so position points at the first
+    // non-trivia token. Collected trivia becomes leading trivia of the first
+    // real token.
+    if (builder) {
+      this.skipTrivia()
     }
   }
 
@@ -55,8 +74,11 @@ export class ParserContext {
     if (!this.sourceMap) return
     const pos = this.sourceMap.positions.get(nodeId)
     if (!pos) return
-    // The last consumed token is at position - 1
-    const lastToken = this.tokens[this.position - 1]
+
+    // In CST mode, use the tracked last non-trivia position
+    // instead of position - 1 (which might be a trivia token).
+    const lastPos = this.builder ? this.lastNonTriviaPosition : this.position - 1
+    const lastToken = this.tokens[lastPos]
     const debugInfo = lastToken?.[2]
     if (debugInfo) {
       // End is after the last token: same line, column + token value length
@@ -66,7 +88,59 @@ export class ParserContext {
   }
 
   public advance(): void {
+    if (this.builder) {
+      this.advanceCst()
+    } else {
+      this.position += 1
+    }
+  }
+
+  /**
+   * CST-mode advance: consume the current non-trivia token, collect trivia,
+   * create a CstToken, and feed it to the builder.
+   */
+  private advanceCst(): void {
+    const token = this.tokens[this.position]!
+    const cstToken: CstToken = {
+      leadingTrivia: this.pendingLeadingTrivia,
+      text: rawTokenText(token),
+      trailingTrivia: [],
+    }
+    this.lastNonTriviaPosition = this.position
     this.position += 1
+
+    // Collect trivia after the consumed token and split it:
+    // same-line trivia → trailing of this token, next-line → pending for next
+    this.skipTrivia()
+
+    // Split accumulated trivia at the newline boundary:
+    // tokens before the first newline attach as trailing trivia on this token,
+    // tokens after become pending leading trivia for the next token.
+    const collected = this.pendingLeadingTrivia
+    if (collected.length > 0) {
+      const { trailing, leading } = splitTriviaAtNewline(collected)
+      cstToken.trailingTrivia = trailing
+      this.pendingLeadingTrivia = leading
+    } else {
+      cstToken.trailingTrivia = []
+      this.pendingLeadingTrivia = []
+    }
+
+    this.builder!.token(cstToken)
+  }
+
+  /**
+   * Skip trivia tokens from current position, accumulating them in
+   * pendingLeadingTrivia. After this call, position points at the
+   * next non-trivia token (or past end).
+   */
+  private skipTrivia(): void {
+    const trivia: TriviaNode[] = []
+    while (this.position < this.tokens.length && isTrivia(this.tokens[this.position]!)) {
+      trivia.push(toTriviaNode(this.tokens[this.position]!))
+      this.position += 1
+    }
+    this.pendingLeadingTrivia = trivia
   }
 
   public tryPeek(): Token | undefined {
@@ -111,15 +185,21 @@ export class ParserContext {
     return debugInfoToSourceCodeInfo(debugInfo, this.source, this.filePath)
   }
 
-  public storePosition(): number {
-    return this.storedPosition = this.position
-  }
-
-  public restorePosition(): void {
-    this.position = this.storedPosition
-  }
-
   public peekAhead(count: number): Token | undefined {
+    if (this.builder) {
+      // In CST mode, skip trivia tokens when counting ahead
+      let skipped = 0
+      let offset = 1
+      while (this.position + offset < this.tokens.length) {
+        const token = this.tokens[this.position + offset]!
+        if (!isTrivia(token)) {
+          skipped += 1
+          if (skipped === count) return token
+        }
+        offset += 1
+      }
+      return undefined
+    }
     return this.tokens[this.position + count]
   }
 
@@ -129,5 +209,14 @@ export class ParserContext {
 
   public getTokenAt(pos: number): Token | undefined {
     return this.tokens[pos]
+  }
+
+  /**
+   * Get any remaining trivia that hasn't been attached to a token yet.
+   * Called after parsing is complete to get file-trailing trivia.
+   * Only meaningful in CST mode.
+   */
+  public getRemainingTrivia(): TriviaNode[] {
+    return this.pendingLeadingTrivia
   }
 }

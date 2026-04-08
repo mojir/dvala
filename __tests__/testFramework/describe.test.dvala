@@ -7,7 +7,5 @@ let sub = (a, b) -> a - b;
 describe("math", -> do
   test("add", -> assertEqual(add(1, 2), 3));
 
-  describe("subtraction", -> do
-    test("sub", -> assertEqual(sub(3, 1), 2));
-  end);
+  describe("subtraction", -> do test("sub", -> assertEqual(sub(3, 1), 2)) end);
 end);

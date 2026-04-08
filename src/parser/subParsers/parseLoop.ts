@@ -9,6 +9,7 @@ import type { ParserContext } from '../ParserContext'
 import { parseBindingTarget } from './parseBindingTarget'
 
 export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode {
+  ctx.builder?.startNode('Loop')
   ctx.advance()
 
   assertLParenToken(ctx.tryPeek())
@@ -42,5 +43,6 @@ export function parseLoop(ctx: ParserContext, firstToken: SymbolToken): LoopNode
 
   const node = withSourceCodeInfo([NodeTypes.Loop, [bindings, expression], 0], firstToken[2], ctx) as LoopNode
   ctx.setNodeEnd(node[2])
+  ctx.builder?.endNode()
   return node
 }
