@@ -28,4 +28,3 @@ describe("inRange", -> do
     assertTrue(inRange(10, 0, 10));
   end);
 end);
-

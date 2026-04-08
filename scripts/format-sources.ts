@@ -33,7 +33,7 @@ function report(rel: string, didChange: boolean): void {
 
 function formatDvalaFile(filePath: string): void {
   const original = fs.readFileSync(filePath, 'utf-8')
-  const formatted = format(original.trimEnd()) + '\n'
+  const formatted = format(original.trimEnd())
   if (formatted !== original) {
     fs.writeFileSync(filePath, formatted, 'utf-8')
     report(path.relative(root, filePath), true)

@@ -16,4 +16,3 @@ let isOdd = (numberToCheck) -> do
 end;
 
 { clamp, lerp, inRange };
-

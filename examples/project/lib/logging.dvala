@@ -12,4 +12,3 @@ let withLogging = (thunk) -> do
 end;
 
 { withLogging };
-

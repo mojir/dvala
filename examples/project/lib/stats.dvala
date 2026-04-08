@@ -10,4 +10,3 @@ let variance = (arr) -> do
 end;
 
 { sum: mySum, average, variance };
-

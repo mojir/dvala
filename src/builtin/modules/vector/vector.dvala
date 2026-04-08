@@ -8,4 +8,3 @@
   end,
   runningFn: (arr, fn) -> for (i in range(count(arr))) -> do fn(slice(arr, 0, i + 1)) end,
 };
-

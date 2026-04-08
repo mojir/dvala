@@ -16,4 +16,3 @@ describe("constants", -> do
     assertTrue(constants.phi < 1.619);
   end);
 end);
-

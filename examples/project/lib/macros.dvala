@@ -9,4 +9,3 @@ let withDefault = macro (value, fallback) ->
   quote if isNull($^{value}) then $^{fallback} else $^{value} end end;
 
 { double, withDefault };
-
