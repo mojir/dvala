@@ -2,7 +2,7 @@
   "publisher": "mojir",
   "name": "dvala",
   "displayName": "Dvala",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Syntax highlighting and run support for the Dvala programming language",
   "license": "MIT",
   "repository": {
