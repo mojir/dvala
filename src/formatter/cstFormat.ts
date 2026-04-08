@@ -153,6 +153,100 @@ function lastToken(node: UntypedCstNode): CstToken {
 }
 
 // ---------------------------------------------------------------------------
+// ChildIterator — walk untyped tree children by pattern matching
+// ---------------------------------------------------------------------------
+
+/**
+ * Iterator over an UntypedCstNode's children. Provides helpers to consume
+ * tokens by text and collect child nodes, making it easy to destructure
+ * untyped tree children positionally.
+ */
+class ChildIterator {
+  private pos = 0
+  constructor(private readonly children: (CstToken | UntypedCstNode)[]) {}
+
+  /** True if all children have been consumed. */
+  done(): boolean {
+    return this.pos >= this.children.length
+  }
+
+  /** Peek at the current child without consuming it. */
+  peek(): CstToken | UntypedCstNode | undefined {
+    return this.children[this.pos]
+  }
+
+  /** Consume and return the next child (token or node). */
+  next(): CstToken | UntypedCstNode {
+    return this.children[this.pos++]!
+  }
+
+  /** Consume the next child, expecting it to be a token with the given text. */
+  expectToken(tokenText: string): CstToken {
+    const child = this.next()
+    if (!isToken(child) || child.text !== tokenText) {
+      throw new Error(`Expected token '${tokenText}', got ${isToken(child) ? `'${child.text}'` : `node '${(child as UntypedCstNode).kind}'`}`)
+    }
+    return child
+  }
+
+  /** Consume the next child, expecting it to be a token. Returns the token. */
+  nextToken(): CstToken {
+    const child = this.next()
+    if (!isToken(child)) throw new Error(`Expected token, got node '${(child as UntypedCstNode).kind}'`)
+    return child
+  }
+
+  /** Consume the next child, expecting it to be a node. Returns the node. */
+  nextNode(): UntypedCstNode {
+    const child = this.next()
+    if (!isNode(child)) throw new Error(`Expected node, got token '${(child as CstToken).text}'`)
+    return child
+  }
+
+  /** Check if the current child is a token with the given text. */
+  isToken(tokenText: string): boolean {
+    const child = this.peek()
+    return child !== undefined && isToken(child) && child.text === tokenText
+  }
+
+  /** Check if the current child is a node. */
+  isNode(): boolean {
+    const child = this.peek()
+    return child !== undefined && isNode(child)
+  }
+
+  /**
+   * Collect expression nodes and semicolons from a body until a stop token.
+   * Returns the formatted body as a Doc[] (one per statement).
+   * Does NOT consume the stop token.
+   */
+  collectBody(...stopTokens: string[]): Doc[] {
+    const stmts: Doc[] = []
+    while (!this.done()) {
+      const child = this.peek()!
+      if (isToken(child) && stopTokens.includes(child.text)) break
+      if (isToken(child) && child.text === ';') {
+        this.next() // consume semicolon
+        continue
+      }
+      if (isNode(child)) {
+        stmts.push(formatNode(this.nextNode()))
+      } else {
+        this.next() // skip unexpected token
+      }
+    }
+    return stmts
+  }
+}
+
+/** Format a body (list of statements) with semicolon separators. */
+function formatBody(stmts: Doc[]): Doc {
+  if (stmts.length === 0) return text('')
+  if (stmts.length === 1) return stmts[0]!
+  return join(concat(text(';'), hardLine), stmts)
+}
+
+// ---------------------------------------------------------------------------
 // Main formatting dispatch
 // ---------------------------------------------------------------------------
 
@@ -471,16 +565,37 @@ function formatSpread(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatLet(node: UntypedCstNode): Doc {
-  // Children: let keyword, binding tokens/nodes, = token, value node
-  // In the untyped tree: tokens and nodes are interleaved.
-  // The value is the last child node. Everything between let and = is the target.
-  const allTokens = tokens(node)
-  const allChildren = childNodes(node)
+  // Children: `let` token, binding target (tokens/nodes), `=` token, value node
+  // The binding target is everything between `let` and `=`.
+  // The value expression is the last child node.
+  const iter = new ChildIterator(node.children)
+  iter.expectToken('let')
 
-  // Simple case: let x = value (most common)
-  // Reconstruct: "let" + target tokens + "=" + value
-  // For now, rebuild from the raw children in order.
-  return formatFromChildren(node)
+  // Collect binding target parts (everything until `=`)
+  const targetParts: Doc[] = []
+  while (!iter.done() && !iter.isToken('=')) {
+    const child = iter.next()
+    if (isToken(child)) {
+      if (targetParts.length > 0 && !isPunctuation(child.text)) targetParts.push(text(' '))
+      targetParts.push(text(child.text))
+    } else {
+      if (targetParts.length > 0) targetParts.push(text(' '))
+      targetParts.push(formatNode(child))
+    }
+  }
+
+  iter.expectToken('=')
+
+  // Value is the remaining node
+  const value = iter.nextNode()
+
+  return group(concat(
+    text('let'),
+    text(' '),
+    concat(...targetParts),
+    text(' ='),
+    nest(INDENT, concat(line, formatNode(value))),
+  ))
 }
 
 // ---------------------------------------------------------------------------
@@ -488,25 +603,157 @@ function formatLet(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatIf(node: UntypedCstNode): Doc {
-  // if ... then ... [else if ... then ...] [else ...] end
-  return formatFromChildren(node)
+  // Children: if, condition, then, body..., [else, [if, condition, then, body...]]..., end
+  const iter = new ChildIterator(node.children)
+  const parts: Doc[] = []
+
+  // Parse if/else-if branches
+  let isFirst = true
+  while (!iter.done()) {
+    const child = iter.peek()!
+    if (isToken(child) && child.text === 'end') break
+
+    if (isToken(child) && child.text === 'else') {
+      iter.next() // consume 'else'
+      // Check if else-if
+      if (iter.isToken('if')) {
+        parts.push(hardLine, text('else '))
+        // Continue to parse the if branch below
+      } else {
+        // Final else branch
+        const body = iter.collectBody('end')
+        if (body.length === 1) {
+          parts.push(hardLine, text('else'), nest(INDENT, concat(hardLine, body[0]!)))
+        } else {
+          parts.push(hardLine, text('else'), nest(INDENT, concat(hardLine, formatBody(body))))
+        }
+        break
+      }
+    }
+
+    if (isToken(iter.peek()!) && (iter.peek() as CstToken).text === 'if') {
+      iter.next() // consume 'if'
+      const condition = iter.nextNode()
+      iter.expectToken('then')
+      const body = iter.collectBody('else', 'end')
+
+      if (isFirst) {
+        parts.push(text('if '), formatNode(condition), text(' then'))
+      } else {
+        parts.push(text('if '), formatNode(condition), text(' then'))
+      }
+
+      if (body.length === 1) {
+        parts.push(nest(INDENT, concat(hardLine, body[0]!)))
+      } else {
+        parts.push(nest(INDENT, concat(hardLine, formatBody(body))))
+      }
+      isFirst = false
+    }
+  }
+
+  iter.expectToken('end')
+  parts.push(hardLine, text('end'))
+
+  return concat(...parts)
 }
 
 function formatBlock(node: UntypedCstNode): Doc {
-  // do ... end
-  return formatFromChildren(node)
+  // Children: do, [with, handler, ;], body..., end
+  const iter = new ChildIterator(node.children)
+  iter.expectToken('do')
+
+  // Check for `with handler;` clause
+  let withClause: Doc | undefined
+  if (iter.isToken('with')) {
+    iter.next() // consume 'with'
+    const handler = iter.nextNode()
+    iter.expectToken(';')
+    withClause = concat(text('with '), formatNode(handler), text(';'))
+  }
+
+  const body = iter.collectBody('end')
+  iter.expectToken('end')
+
+  if (body.length === 0) {
+    if (withClause) {
+      return concat(text('do'), nest(INDENT, concat(hardLine, withClause)), hardLine, text('end'))
+    }
+    return text('do end')
+  }
+
+  const bodyDoc = formatBody(body)
+  const inner = withClause
+    ? concat(hardLine, withClause, hardLine, bodyDoc)
+    : concat(hardLine, bodyDoc)
+
+  return concat(text('do'), nest(INDENT, inner), hardLine, text('end'))
 }
 
 function formatLoop(node: UntypedCstNode): Doc {
+  // Children: loop, (, bindings..., ), ->, body
   return formatFromChildren(node)
 }
 
 function formatFor(node: UntypedCstNode): Doc {
+  // Children: for, (, bindings..., ), ->, body
   return formatFromChildren(node)
 }
 
 function formatMatch(node: UntypedCstNode): Doc {
-  return formatFromChildren(node)
+  // Children: match, expression, case, pattern, [when, guard], then, body..., ..., end
+  const iter = new ChildIterator(node.children)
+  iter.expectToken('match')
+  const expr = iter.nextNode()
+  const parts: Doc[] = [text('match '), formatNode(expr)]
+
+  // Parse cases
+  while (!iter.done() && !iter.isToken('end')) {
+    if (iter.isToken('case')) {
+      iter.next() // consume 'case'
+
+      // Collect pattern (tokens and nodes until 'when' or 'then')
+      const patternParts: Doc[] = []
+      while (!iter.done() && !iter.isToken('then') && !iter.isToken('when')) {
+        const child = iter.next()
+        if (isToken(child)) {
+          if (patternParts.length > 0 && !isPunctuation(child.text)) patternParts.push(text(' '))
+          patternParts.push(text(child.text))
+        } else {
+          if (patternParts.length > 0) patternParts.push(text(' '))
+          patternParts.push(formatNode(child))
+        }
+      }
+
+      // Optional when guard
+      let guardDoc: Doc | undefined
+      if (iter.isToken('when')) {
+        iter.next() // consume 'when'
+        const guard = iter.nextNode()
+        guardDoc = concat(text(' when '), formatNode(guard))
+      }
+
+      iter.expectToken('then')
+      const body = iter.collectBody('case', 'end')
+
+      parts.push(nest(INDENT, concat(
+        hardLine,
+        text('case '),
+        concat(...patternParts),
+        guardDoc ?? text(''),
+        text(' then'),
+        body.length === 1
+          ? concat(text(' '), body[0]!)
+          : nest(INDENT, concat(hardLine, formatBody(body))),
+      )))
+    } else {
+      iter.next() // skip unexpected
+    }
+  }
+
+  iter.expectToken('end')
+  parts.push(hardLine, text('end'))
+  return concat(...parts)
 }
 
 // ---------------------------------------------------------------------------
@@ -514,15 +761,137 @@ function formatMatch(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatFunction(node: UntypedCstNode): Doc {
-  return formatFromChildren(node)
+  // Children: [(], params..., [)], ->, body
+  // Shorthand: ->, body (no params)
+  // Single param: symbol, ->, body (no parens)
+  const iter = new ChildIterator(node.children)
+
+  // Collect parameter section (everything before `->`)
+  const paramParts: Doc[] = []
+  while (!iter.done() && !iter.isToken('->')) {
+    const child = iter.next()
+    if (isToken(child)) {
+      if (child.text === '(' || child.text === ')') {
+        paramParts.push(text(child.text))
+      } else if (child.text === ',') {
+        paramParts.push(text(','))
+        paramParts.push(text(' '))
+      } else if (child.text === '...') {
+        paramParts.push(text('...'))
+      } else if (child.text === '=') {
+        paramParts.push(text(' = '))
+      } else {
+        if (paramParts.length > 0 && !isPunctuation(child.text)) paramParts.push(text(' '))
+        paramParts.push(text(child.text))
+      }
+    } else {
+      paramParts.push(formatNode(child))
+    }
+  }
+
+  iter.expectToken('->')
+  const body = iter.nextNode()
+
+  return group(concat(
+    ...paramParts,
+    paramParts.length > 0 ? text(' ') : text(''),
+    text('->'),
+    text(' '),
+    formatNode(body),
+  ))
 }
 
 function formatHandler(node: UntypedCstNode): Doc {
-  return formatFromChildren(node)
+  // Children: [shallow], handler, @effect(params) -> body, ..., [transform param -> body], end
+  const iter = new ChildIterator(node.children)
+  const parts: Doc[] = []
+
+  // Optional shallow keyword
+  if (iter.isToken('shallow')) {
+    iter.next()
+    parts.push(text('shallow '))
+  }
+
+  iter.expectToken('handler')
+  parts.push(text('handler'))
+
+  // Parse clauses and transform until `end`
+  const clauseParts: Doc[] = []
+  while (!iter.done() && !iter.isToken('end')) {
+    if (iter.isToken('transform')) {
+      iter.next() // consume 'transform'
+      // Collect transform param and body
+      const transformParts: Doc[] = [text('transform')]
+      while (!iter.done() && !iter.isToken('end')) {
+        const child = iter.next()
+        if (isToken(child)) {
+          if (child.text === '->') {
+            transformParts.push(text(' -> '))
+          } else {
+            transformParts.push(text(' '), text(child.text))
+          }
+        } else {
+          transformParts.push(text(' '), formatNode(child))
+        }
+      }
+      clauseParts.push(concat(...transformParts))
+    } else {
+      // Parse effect clause: @effect(params) -> body
+      const clauseTokens: Doc[] = []
+      while (!iter.done() && !iter.isToken('end') && !iter.isToken('transform')) {
+        const child = iter.peek()!
+        // Check if this is the start of a new clause (@effect)
+        if (isToken(child) && child.text.startsWith('@') && clauseTokens.length > 0) break
+        iter.next()
+        if (isToken(child)) {
+          if (child.text === '->') {
+            clauseTokens.push(text(' -> '))
+          } else if (child.text === ',' || child.text === '(' || child.text === ')') {
+            clauseTokens.push(text(child.text))
+          } else {
+            if (clauseTokens.length > 0) clauseTokens.push(text(' '))
+            clauseTokens.push(text(child.text))
+          }
+        } else {
+          clauseTokens.push(formatNode(child))
+        }
+      }
+      if (clauseTokens.length > 0) {
+        clauseParts.push(concat(...clauseTokens))
+      }
+    }
+  }
+
+  iter.expectToken('end')
+
+  if (clauseParts.length === 0) {
+    return concat(...parts, text(' end'))
+  }
+
+  // Multi-clause: indent each clause
+  return concat(
+    ...parts,
+    nest(INDENT, concat(...clauseParts.map(c => concat(hardLine, c)))),
+    hardLine,
+    text('end'),
+  )
 }
 
 function formatResume(node: UntypedCstNode): Doc {
-  return formatFromChildren(node)
+  // Children: resume, [(, expr, )] or just resume (bare)
+  const iter = new ChildIterator(node.children)
+  iter.expectToken('resume')
+  if (iter.isToken('(')) {
+    iter.next() // consume (
+    if (iter.isNode()) {
+      const arg = iter.nextNode()
+      iter.expectToken(')')
+      return concat(text('resume('), formatNode(arg), text(')'))
+    }
+    iter.expectToken(')')
+    return text('resume()')
+  }
+  return text('resume')
 }
 
 // ---------------------------------------------------------------------------
@@ -530,6 +899,8 @@ function formatResume(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatMacro(node: UntypedCstNode): Doc {
+  // Children: macro (or macro@name), [(], params..., [)], ->, body
+  // Same structure as Function but with macro keyword
   return formatFromChildren(node)
 }
 
@@ -547,6 +918,9 @@ function formatMacroCall(node: UntypedCstNode): Doc {
 // ---------------------------------------------------------------------------
 
 function formatQuote(node: UntypedCstNode): Doc {
+  // Children: quote, body tokens/nodes..., end
+  // Quote collects all internal tokens including nested blocks.
+  // Use the generic fallback for now — quote bodies are complex.
   return formatFromChildren(node)
 }
 
