@@ -177,8 +177,8 @@ function getPlaygroundPanel(): string {
     <div id="editor-top" class="editor-top">
       <div id="side-panel-icons" class="side-panel__icons">
         <button class="side-panel__icon side-panel__icon--active" id="side-icon-files" onclick="Playground.showSideTab('files')" title="Files">${copyIcon}</button>
-        <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
         <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Effect Handlers">${boltIcon}</button>
+        <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
       </div>
 
       <div id="side-panel-header" class="panel-header">
