@@ -231,6 +231,39 @@ export interface HandlerRegistration {
 export type Handlers = HandlerRegistration[]
 
 // ---------------------------------------------------------------------------
+// Host handler utility
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a handler registration for `@dvala.host` from a plain record.
+ *
+ * The returned handler resumes with the record value when the name is found,
+ * or calls `fail()` when it's not. Works with both `run()` (sync) and
+ * `runAsync()` (async).
+ *
+ * @example
+ * ```typescript
+ * import { hostHandler } from '@mojir/dvala'
+ * dvala.runAsync(source, {
+ *   effectHandlers: [hostHandler({ configExists: true, dirName: '/app' })]
+ * })
+ * ```
+ */
+export function hostHandler(values: Record<string, unknown>): HandlerRegistration {
+  return {
+    pattern: 'dvala.host',
+    handler: ({ arg, resume, fail }: EffectContext) => {
+      const name = String(arg)
+      if (name in values) {
+        resume(values[name])
+      } else {
+        fail(`Host binding "${name}" not provided`)
+      }
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pattern matching utilities for wildcard host handlers
 // ---------------------------------------------------------------------------
 
