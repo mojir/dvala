@@ -30,11 +30,11 @@ describe('async support', () => {
     })
   })
 
-  describe('apply via bindings', () => {
-    it('should apply a dvala function via bindings', async () => {
+  describe('apply via scope', () => {
+    it('should apply a dvala function via scope', async () => {
       const dvala = createDvala()
       const fn = dvala.run('-> $ + 1') as DvalaFunction
-      expect(value(await dvala.runAsync('fn(9)', { bindings: { fn } }))).toBe(10)
+      expect(value(await dvala.runAsync('fn(9)', { scope: { fn } }))).toBe(10)
     })
   })
 })

@@ -7,7 +7,7 @@ describe('autoCompleter', () => {
 
   beforeEach(() => {
     params = {
-      bindings: {
+      scope: {
         jsFunc: 42,
         value_1: 1,
         value_2: 'test',

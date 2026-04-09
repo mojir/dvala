@@ -1060,7 +1060,7 @@ describe('stress: host bindings across complex flows', () => {
       let after = prefix ++ x;
       [before, after]
     `, {
-      bindings: { prefix: 'host-' },
+      scope: { prefix: 'host-' },
       effectHandlers: handlers,
     })
     expect(r1.type).toBe('suspended')
@@ -1068,7 +1068,7 @@ describe('stress: host bindings across complex flows', () => {
       return
 
     const r2 = await resumeContinuation(r1.snapshot, 'after', {
-      bindings: { prefix: 'host-' },
+      scope: { prefix: 'host-' },
     })
     expect(r2).toEqual({ type: 'completed', value: ['host-before', 'host-after'] })
   })
@@ -1083,7 +1083,7 @@ describe('stress: host bindings across complex flows', () => {
       let input = perform(@my.wait);
       scale(input)
     `, {
-      bindings: { factor: 7 },
+      scope: { factor: 7 },
       effectHandlers: handlers,
     })
     expect(r1.type).toBe('suspended')
@@ -1091,7 +1091,7 @@ describe('stress: host bindings across complex flows', () => {
       return
 
     const r2 = await resumeContinuation(r1.snapshot, 6, {
-      bindings: { factor: 7 },
+      scope: { factor: 7 },
     })
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })
@@ -1105,7 +1105,7 @@ describe('stress: host bindings across complex flows', () => {
       let x = perform(@my.wait);
       x + offset
     `, {
-      bindings: { offset: 100 },
+      scope: { offset: 100 },
       effectHandlers: handlers,
     })
     expect(r1.type).toBe('suspended')
@@ -1114,7 +1114,7 @@ describe('stress: host bindings across complex flows', () => {
 
     // Resume with different offset
     const r2 = await resumeContinuation(r1.snapshot, 10, {
-      bindings: { offset: 32 },
+      scope: { offset: 32 },
     })
     expect(r2).toEqual({ type: 'completed', value: 42 })
   })

@@ -231,6 +231,42 @@ export interface HandlerRegistration {
 export type Handlers = HandlerRegistration[]
 
 // ---------------------------------------------------------------------------
+// Host handler utility
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a handler registration for `@dvala.host` from a plain record.
+ *
+ * The returned handler resumes with the record value when the name is found,
+ * or calls `fail()` when it's not. Works with both `run()` (sync) and
+ * `runAsync()` (async).
+ *
+ * @example
+ * ```typescript
+ * import { hostHandler } from '@mojir/dvala'
+ * dvala.runAsync(source, {
+ *   effectHandlers: [hostHandler({ configExists: true, dirName: '/app' })]
+ * })
+ * ```
+ */
+export function hostHandler(values: Record<string, unknown>): HandlerRegistration {
+  return {
+    pattern: 'dvala.host',
+    handler: ({ arg, resume, fail }: EffectContext) => {
+      if (typeof arg !== 'string') {
+        fail(`@dvala.host requires a string argument, got ${typeof arg}`)
+        return
+      }
+      if (arg in values) {
+        resume(values[arg])
+      } else {
+        fail(`Host binding "${arg}" not provided`)
+      }
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pattern matching utilities for wildcard host handlers
 // ---------------------------------------------------------------------------
 
@@ -286,7 +322,7 @@ export function findMatchingHandlers(
  * terminal snapshot containing the checkpoint history for debugging/replay.
  */
 export type RunResult =
-  | { type: 'completed'; value: unknown; definedBindings?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
+  | { type: 'completed'; value: unknown; scope?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'halted'; value: unknown; snapshot?: Snapshot; sourceMap?: SourceMap }

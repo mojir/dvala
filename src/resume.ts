@@ -10,6 +10,7 @@ import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-e
 import { deserializeFromObject } from './evaluator/suspension'
 import { fromJS, toJS } from './utils/interop'
 import type { Any } from './interface'
+import type { Context } from './evaluator/interface'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -19,17 +20,17 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 /**
  * Options for `resume()` — resume a suspended continuation.
- * `bindings` are plain values only (no JS functions).
  * All host interaction goes through `handlers`.
  * `modules` must be provided again (they are not in the blob).
  */
 export interface ResumeOptions {
-  bindings?: Record<string, unknown>
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
   disableAutoCheckpoint?: boolean
   terminalSnapshot?: boolean
+  /** New scope values to inject into the computation's globalContext before resuming. */
+  scope?: Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -40,13 +41,10 @@ export interface ResumeOptions {
  * Resume a suspended continuation.
  *
  * Takes a `Snapshot` from a previous `RunResult` of type `'suspended'`, a
- * resume value, and optional handlers/bindings. Re-enters the trampoline at
+ * resume value, and optional handlers. Re-enters the trampoline at
  * the point of suspension with the provided value.
  *
- * `bindings` are plain values only (no JS functions). They are re-injected
- * into the deserialized ContextStacks so that host-bound values remain
- * accessible after resume. `modules` must be provided again if the Dvala
- * program uses `import`.
+ * `modules` must be provided again if the Dvala program uses `import`.
  *
  * Always resolves — never rejects. May return `completed`, `suspended`
  * (if another suspend is hit), or `error`.
@@ -62,14 +60,26 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
       ? new Map(options.modules.map(m => [m.name, m]))
       : undefined
 
+    // Convert a plain scope record to a Context for injection into globalContexts.
+    // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap.
+    let scopeContext: Context | undefined
+    if (options?.scope) {
+      scopeContext = {}
+      for (const [k, v] of Object.entries(options.scope)) {
+        scopeContext[k] = { value: fromJS(v) }
+      }
+    }
+
     // Extract the opaque continuation from the snapshot and deserialize it.
     const deserialized = deserializeFromObject(snapshot.continuation, {
-      values: options?.bindings,
       modules,
+      scope: scopeContext,
     })
 
+    // scope is deliberately excluded here — it was already applied to globalContexts
+    // during deserializeFromObject above. This object is only used for re-deserialization
+    // of nested blobs during parallel execution.
     const deserializeOptions = {
-      values: options?.bindings,
       modules,
     }
 

@@ -150,6 +150,9 @@ type StandardEffectName =
   | 'dvala.time.zone'
   | 'dvala.checkpoint'
   | 'dvala.sleep'
+  | 'dvala.host'
+  | 'dvala.env'
+  | 'dvala.args'
 
 // ---------------------------------------------------------------------------
 // Standard effect definitions (handler + arity + docs)
@@ -625,6 +628,82 @@ const standardEffects: Record<StandardEffectName, StandardEffectDefinition> = {
         { code: 'do perform(@dvala.io.print, "waiting..."); perform(@dvala.sleep, 500); perform(@dvala.io.print, "done!") end', noRun: true },
       ],
       seeAlso: ['-effect-dvala.time.now', 'perform', 'effect'],
+    },
+  },
+
+  // ── Host interaction ────────────────────────────────────────────────────
+
+  'dvala.host': {
+    // No default handler — @dvala.host is dispatched to host-registered handlers only.
+    // If unhandled, dispatchPerform produces a custom error message (not the generic
+    // "Unhandled effect" message). This definition exists for docs and arity validation.
+    arity: toFixedArity(1),
+    docs: {
+      category: 'effect',
+      description: 'Requests a host-injected value by name. The host must install an effect handler for `@dvala.host` that resumes with the value. If no handler is installed, a descriptive error is thrown. Use this to receive configuration and bindings from the host environment.',
+      returns: { type: 'any' },
+      args: {
+        name: { type: 'string', description: 'The name of the host binding to retrieve.' },
+      },
+      variants: [{ argumentNames: ['name'] }],
+      examples: [
+        { code: 'let configExists = perform(@dvala.host, "configExists")', noRun: true },
+      ],
+      seeAlso: ['-effect-dvala.env', '-effect-dvala.args', 'perform', 'effect'],
+    },
+  },
+
+  'dvala.env': {
+    handler: (arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo): Step => {
+      if (typeof arg !== 'string') {
+        throw new TypeError(`@dvala.env requires a string argument, got ${typeof arg}`, sourceCodeInfo)
+      }
+      // Guard for browser: process.env doesn't exist outside Node
+      if (typeof process === 'undefined' || !process.env) {
+        return { type: 'Value', value: null, k }
+      }
+      const value = process.env[arg]
+      return { type: 'Value', value: value ?? null, k }
+    },
+    arity: toFixedArity(1),
+    docs: {
+      category: 'effect',
+      description: 'Reads an environment variable by name. Returns the value as a string, or `null` if the variable is not set. Per-entry only — fetch-all is not supported for security and observability.',
+      returns: { type: ['string', 'null'] },
+      args: {
+        name: { type: 'string', description: 'The environment variable name, e.g. `"HOME"` or `"PATH"`.' },
+      },
+      variants: [{ argumentNames: ['name'] }],
+      examples: [
+        { code: 'perform(@dvala.env, "HOME")', noRun: true },
+        { code: 'let port = perform(@dvala.env, "PORT") ?? "3000"', noRun: true },
+      ],
+      seeAlso: ['-effect-dvala.host', '-effect-dvala.args', 'perform', 'effect'],
+    },
+  },
+
+  'dvala.args': {
+    handler: (_arg: Any, k: ContinuationStack): Step => {
+      // Guard for browser: process.argv doesn't exist outside Node
+      if (typeof process === 'undefined' || !process.argv) {
+        return { type: 'Value', value: PersistentVector.empty(), k }
+      }
+      // Strip node binary and script path — return user args only
+      const args = process.argv.slice(2)
+      return { type: 'Value', value: PersistentVector.from(args), k }
+    },
+    arity: toFixedArity(0),
+    docs: {
+      category: 'effect',
+      description: 'Returns the command-line arguments as an array of strings. The `node` binary and script path are stripped — only user arguments are included. Returns an empty array in non-CLI contexts (e.g. browser).',
+      returns: { type: 'array' },
+      args: {},
+      variants: [{ argumentNames: [] }],
+      examples: [
+        { code: 'let args = perform(@dvala.args)', noRun: true },
+        { code: 'let [filename, ...flags] = perform(@dvala.args)', noRun: true },
+      ],
+      seeAlso: ['-effect-dvala.host', '-effect-dvala.env', 'perform', 'effect'],
     },
   },
 

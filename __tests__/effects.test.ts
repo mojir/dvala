@@ -337,7 +337,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should accept plain value bindings', () => {
       const result = dvala.run('x + y', {
-        bindings: { x: 10, y: 32 },
+        scope: { x: 10, y: 32 },
       })
       expect(result).toBe(42)
     })
@@ -357,7 +357,7 @@ describe('phase 3 — Host Async API', () => {
 
     it('should accept plain value bindings', async () => {
       const result = await dvala.runAsync('x + y', {
-        bindings: { x: 10, y: 32 },
+        scope: { x: 10, y: 32 },
       })
       expect(result).toMatchObject({ type: 'completed', value: 42 })
     })
@@ -782,7 +782,7 @@ describe('phase 3 — Host Async API', () => {
         let result = perform(@my.compute, [x, y]);
         result
       `, {
-        bindings: { x: 10, y: 32 },
+        scope: { x: 10, y: 32 },
         effectHandlers: [
           { pattern: 'my.compute', handler: async ({ arg, resume: doResume }) => {
             const pair = arg as number[]
@@ -1530,7 +1530,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let y = perform(@my.action);
         x + y
       `, {
-        bindings: { x: 100 },
+        scope: { x: 100 },
         effectHandlers: [
           { pattern: 'my.action', handler: async ({ resume: r, snapshots, resumeFrom }) => {
             callCount++
@@ -2343,7 +2343,7 @@ describe('phase 4 — Suspension & Resume', () => {
         let x = perform(@my.wait);
         x + offset
       `, {
-        bindings: { offset: 32 },
+        scope: { offset: 32 },
         effectHandlers: [
           { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
         ],
@@ -2352,9 +2352,9 @@ describe('phase 4 — Suspension & Resume', () => {
       if (r1.type !== 'suspended')
         return
 
-      // Resume with bindings
+      // Resume with scope
       const r2 = await resumeContinuation(r1.snapshot, 10, {
-        bindings: { offset: 32 },
+        scope: { offset: 32 },
       })
       expect(r2).toEqual({ type: 'completed', value: 42 })
     })
@@ -2435,14 +2435,14 @@ describe('phase 4 — Suspension & Resume', () => {
 
   describe('4c: NativeJsFunction not in blob', () => {
     it('should use host values before suspend without them leaking into blob', async () => {
-      // Host values (plain data in bindings) are available during evaluation.
+      // Host values (plain data in scope) are available during evaluation.
       // After suspend, the blob should not contain NativeJsFunctions.
       const r1 = await dvala.runAsync(`
         let doubled = factor * 5;
         let x = perform(@my.wait);
         doubled + x
       `, {
-        bindings: { factor: 2 },
+        scope: { factor: 2 },
         effectHandlers: [
           { pattern: 'my.wait', handler: async ({ suspend }) => { suspend() } },
         ],

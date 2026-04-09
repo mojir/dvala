@@ -24,7 +24,6 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
  * Time travel (auto-checkpointing) is enabled by default. Set `disableAutoCheckpoint: true` to opt out.
  */
 export interface RetriggerOptions {
-  bindings?: Record<string, Any>
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
@@ -72,7 +71,6 @@ export async function retrigger(snapshot: Snapshot, options?: RetriggerOptions):
       : undefined
 
     const deserializeOptions = {
-      values: options?.bindings as Record<string, unknown> | undefined,
       modules,
     }
 

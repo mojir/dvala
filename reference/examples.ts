@@ -8,10 +8,7 @@ export interface Example {
   description: string
   category: string
   code: string
-  context?: {
-    bindings?: Record<string, unknown>
-    effectHandlers?: { pattern: string; handler: string }[]
-  }
+  effectHandlers?: { pattern: string; handler: string }[]
 }
 
 export const examples: Example[] = [
@@ -59,44 +56,39 @@ for (i in range(count(items))) ->
   {
     id: 'simple-context-example',
     name: 'Using context',
-    description: 'Simple example using bindings and a host effect handler.',
+    description: 'Simple example using a host effect handler to perform addition in JavaScript.',
     category: 'Effects & Context',
-    context: {
-      bindings: { x: 15, y: 27 },
-      effectHandlers: [
-        { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
-      ],
-    },
+    effectHandlers: [
+      { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
+    ],
     code: dvala`
-perform(@host.plus, [20, 22])`,
+perform(@host.plus, [15, 27])`,
   },
   {
     id: 'async-example',
     name: 'Async host effects',
     description: 'Demonstrates calling async JavaScript from Dvala via effect handlers.',
     category: 'Effects & Context',
-    context: {
-      effectHandlers: [
-        { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
+    effectHandlers: [
+      { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     const user = await response.json();
     resume({ name: user.name, email: user.email, city: user.address.city });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetchPosts', handler: `async ({ arg: userId, resume, fail }) => {
+      { pattern: 'host.fetchPosts', handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/posts?userId=' + userId);
     const posts = await response.json();
     resume(posts.slice(0, 3).map(p => ({ title: p.title, body: p.body })));
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.delay', handler: `async ({ arg: ms, resume }) => {
+      { pattern: 'host.delay', handler: `async ({ arg: ms, resume }) => {
   await new Promise(resolve => setTimeout(resolve, ms));
   resume(ms);
 }` },
-      ],
-    },
+    ],
     code: dvala`
 // Call async host effects with perform(effect, args...)
 
@@ -121,9 +113,8 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);`,
     name: 'Interactive async',
     description: 'A more complex async example with user interactions. Uses prompt for input and fetch for API calls.',
     category: 'Effects & Context',
-    context: {
-      effectHandlers: [
-        { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
+    effectHandlers: [
+      { pattern: 'host.fetchUser', handler: `async ({ arg: id, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/users/' + id);
     if (!response.ok) { resume(null); return; }
@@ -131,15 +122,14 @@ for (post in posts) -> perform(@dvala.io.print, "- " ++ post.title);`,
     resume({ id: user.id, name: user.name, email: user.email, city: user.address.city, company: user.company.name });
   } catch(e) { fail(e.message) }
 }` },
-        { pattern: 'host.fetchTodos', handler: `async ({ arg: userId, resume, fail }) => {
+      { pattern: 'host.fetchTodos', handler: `async ({ arg: userId, resume, fail }) => {
   try {
     const response = await fetch('https://jsonplaceholder.typicode.com/todos?userId=' + userId);
     const todos = await response.json();
     resume(todos.map(t => ({ title: t.title, completed: t.completed })));
   } catch(e) { fail(e.message) }
 }` },
-      ],
-    },
+    ],
     code: dvala`
 // Interactive async example
 // Uses dvala.io.read for user input and host.fetch-* for API calls
@@ -945,11 +935,9 @@ let neg = -num;
     name: 'Macro toolkit',
     description: 'A reusable toolkit: unless, dbg, assert, thread, tryOr — code generation, AST inspection, and macroexpand.',
     category: 'Macros',
-    context: {
-      effectHandlers: [
-        { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
-      ],
-    },
+    effectHandlers: [
+      { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
+    ],
     code: dvala`
 // ============================================================
 // Macro Toolkit — a practical collection of utility macros
@@ -1135,29 +1123,27 @@ print("── done ──")`,
     name: 'AST coverage (extended)',
     description: 'Comprehensive coverage of operators, destructuring, functions, effects, match patterns, and collections.',
     category: 'Test Fixtures',
-    context: {
-      effectHandlers: [
-        // I/O — deterministic, no console output
-        { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
-        { pattern: 'dvala.io.error', handler: '({ arg, resume }) => { resume(arg) }' },
-        { pattern: 'dvala.io.read', handler: '({ resume }) => { resume("test-input") }' },
-        { pattern: 'dvala.io.pick', handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }' },
-        { pattern: 'dvala.io.confirm', handler: '({ resume }) => { resume(true) }' },
-        { pattern: 'dvala.io.readStdin', handler: '({ resume }) => { resume("stdin-line") }' },
-        // Random — deterministic stubs
-        { pattern: 'dvala.random', handler: '({ resume }) => { resume(0.42) }' },
-        { pattern: 'dvala.random.uuid', handler: '({ resume }) => { resume("00000000-0000-0000-0000-000000000042") }' },
-        { pattern: 'dvala.random.int', handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }' },
-        { pattern: 'dvala.random.shuffle', handler: '({ arg, resume }) => { resume([...arg].reverse()) }' },
-        { pattern: 'dvala.random.item', handler: '({ arg, resume }) => { resume(arg[0]) }' },
-        // Time — deterministic
-        { pattern: 'dvala.time.now', handler: '({ resume }) => { resume(1700000000000) }' },
-        { pattern: 'dvala.time.zone', handler: '({ resume }) => { resume("UTC") }' },
-        // Misc
-        { pattern: 'dvala.sleep', handler: '({ resume }) => { resume(null) }' },
-        { pattern: 'dvala.checkpoint', handler: '({ resume }) => { resume(null) }' },
-      ],
-    },
+    effectHandlers: [
+      // I/O — deterministic, no console output
+      { pattern: 'dvala.io.print', handler: '({ arg, resume }) => { resume(arg) }' },
+      { pattern: 'dvala.io.error', handler: '({ arg, resume }) => { resume(arg) }' },
+      { pattern: 'dvala.io.read', handler: '({ resume }) => { resume("test-input") }' },
+      { pattern: 'dvala.io.pick', handler: '({ arg, resume }) => { const items = Array.isArray(arg) ? arg : arg.items; resume(items[0]) }' },
+      { pattern: 'dvala.io.confirm', handler: '({ resume }) => { resume(true) }' },
+      { pattern: 'dvala.io.readStdin', handler: '({ resume }) => { resume("stdin-line") }' },
+      // Random — deterministic stubs
+      { pattern: 'dvala.random', handler: '({ resume }) => { resume(0.42) }' },
+      { pattern: 'dvala.random.uuid', handler: '({ resume }) => { resume("00000000-0000-0000-0000-000000000042") }' },
+      { pattern: 'dvala.random.int', handler: '({ arg, resume }) => { const [lo, hi] = Array.isArray(arg) ? arg : [0, arg]; resume(lo) }' },
+      { pattern: 'dvala.random.shuffle', handler: '({ arg, resume }) => { resume([...arg].reverse()) }' },
+      { pattern: 'dvala.random.item', handler: '({ arg, resume }) => { resume(arg[0]) }' },
+      // Time — deterministic
+      { pattern: 'dvala.time.now', handler: '({ resume }) => { resume(1700000000000) }' },
+      { pattern: 'dvala.time.zone', handler: '({ resume }) => { resume("UTC") }' },
+      // Misc
+      { pattern: 'dvala.sleep', handler: '({ resume }) => { resume(null) }' },
+      { pattern: 'dvala.checkpoint', handler: '({ resume }) => { resume(null) }' },
+    ],
     code: dvala`
 // === AST Node Coverage (Extended) ===
 // 29 sections — baseline for e2e and performance tests.

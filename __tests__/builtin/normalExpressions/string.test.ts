@@ -8,7 +8,7 @@ describe('string functions', () => {
     describe('str', () => {
       it('samples', () => {
         expect(dvala.run('str({})')).toBe('{}')
-        expect(dvala.run('str(x)', { bindings: { x: null } })).toBe('')
+        expect(dvala.run('str(x)', { scope: { x: null } })).toBe('')
         expect(dvala.run('str()')).toBe('')
         expect(dvala.run('str("")')).toBe('')
         expect(dvala.run('str("1")')).toBe('1')

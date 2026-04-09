@@ -1,12 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { createDvala } from '../src/createDvala'
-import { DvalaError } from '../src/errors'
+import { describe, it } from 'vitest'
 
+// Dotted scope key validation was removed in the bindings → scope migration.
 describe('nativeJsFunction', () => {
-  const dvala = createDvala()
-
-  it('dotted binding keys are rejected', () => {
-    expect(() => dvala.run('1', { bindings: { 'foo.bar': 5 } })).toThrowError(DvalaError)
-    expect(() => dvala.run('1', { bindings: { '.bar': 5 } })).toThrowError(DvalaError)
-  })
+  it.todo('dotted scope keys were once rejected — validation removed')
 })

@@ -321,17 +321,18 @@ export function serializeTerminalSnapshot(
 // Deserialize
 // ---------------------------------------------------------------------------
 
-/** Options for re-injecting host bindings on resume. */
+/** Options for deserialization on resume. */
 export interface DeserializeOptions {
-  values?: Record<string, unknown>
   modules?: Map<string, DvalaModule>
+  /** New scope values to inject into the globalContext of all deserialized ContextStacks. */
+  scope?: Context
 }
 
 /**
  * Deserialize a plain object (as produced by `serializeToObject`) back into
  * a continuation stack and metadata.
  *
- * Reconstructs `ContextStack` instances with fresh host bindings from `options`.
+ * Reconstructs `ContextStack` instances.
  * Handles circular references between ContextStacks and their contained values.
  */
 export function deserializeFromObject(
@@ -373,8 +374,6 @@ export function deserializeFromObject(
     const cs = ContextStackImpl.fromDeserialized({
       contexts: placeholderContexts,
       globalContextIndex: scs.globalContextIndex,
-      values: options?.values,
-
       modules: options?.modules,
       pure: scs.pure,
     })
@@ -437,6 +436,17 @@ export function deserializeFromObject(
       return resolved
     })
     cs.setContextsFromDeserialized(resolvedContexts, scs.globalContextIndex)
+
+    // Override globalContext entries with any new scope values provided at resume time.
+    // This allows the caller to supply updated host values when resuming a suspension.
+    // Applied to all ContextStacks because each shares the same globalContext reference —
+    // inner scopes (from do/with blocks) inherit from globalContext, so injecting here
+    // makes the values visible everywhere as intended.
+    if (options?.scope) {
+      for (const [k, v] of Object.entries(options.scope)) {
+        cs.globalContext[k] = v
+      }
+    }
   }
 
   // Resolve the continuation stack

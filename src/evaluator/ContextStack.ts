@@ -11,7 +11,6 @@ import type { SourceCodeInfo } from '../tokenizer/token'
 import { asNonUndefined } from '../typeGuards'
 import { isBuiltinSymbolNode, isSpecialSymbolNode } from '../typeGuards/astNode'
 import { toAny } from '../utils'
-import { fromJS } from '../utils/interop'
 import { FUNCTION_SYMBOL } from '../utils/symbols'
 import type { Context, LookUpResult } from './interface'
 import { isContextEntry } from './interface'
@@ -19,7 +18,6 @@ import { isContextEntry } from './interface'
 interface CreateContextStackParams {
   globalContext?: Context
   contexts?: Context[]
-  bindings?: Record<string, unknown>
   globalModuleScope?: boolean
 }
 
@@ -44,7 +42,6 @@ export type FileResolver = (importPath: string, fromDir: string) => string
 export class ContextStackImpl {
   private _contexts: Context[]
   public globalContext: Context
-  private values?: Record<string, unknown>
   private modules: Map<string, DvalaModule>
   private valueModules: Map<string, unknown>
   public pure: boolean
@@ -60,7 +57,6 @@ export class ContextStackImpl {
   private _resolvingFiles: Set<string>
   constructor({
     contexts,
-    values: hostValues,
     modules,
     valueModules,
     pure,
@@ -72,7 +68,6 @@ export class ContextStackImpl {
     debug,
   }: {
     contexts: Context[]
-    values?: Record<string, unknown>
     modules?: Map<string, DvalaModule>
     valueModules?: Map<string, unknown>
     pure?: boolean
@@ -85,7 +80,6 @@ export class ContextStackImpl {
   }) {
     this.globalContext = asNonUndefined(contexts[0])
     this._contexts = contexts
-    this.values = hostValues
     this.modules = modules ?? new Map<string, DvalaModule>()
     this.valueModules = valueModules ?? new Map<string, unknown>()
     this.pure = pure ?? false
@@ -106,11 +100,6 @@ export class ContextStackImpl {
   /** Get the raw context chain for serialization. */
   public getContextsRaw(): Context[] {
     return this._contexts
-  }
-
-  /** Get host values (plain bindings passed at creation). */
-  public getHostValues(): Record<string, unknown> | undefined {
-    return this.values
   }
 
   /** Get the top-level module scope as plain key→value bindings. */
@@ -134,20 +123,17 @@ export class ContextStackImpl {
    * Create a ContextStack from deserialized data.
    * `contexts` is the restored context chain (already resolved).
    * `globalContextIndex` identifies which element is the globalContext.
-   * Host bindings (`values`, `modules`) come from resume options.
    */
   // Defensive: only called during deserialization with valid serialized data
   /* v8 ignore next 15 */
   public static fromDeserialized(params: {
     contexts: Context[]
     globalContextIndex: number
-    values?: Record<string, unknown>
     modules?: Map<string, DvalaModule>
     pure: boolean
   }): ContextStackImpl {
     const cs = new ContextStackImpl({
       contexts: params.contexts,
-      values: params.values,
       modules: params.modules,
       pure: params.pure,
     })
@@ -201,7 +187,6 @@ export class ContextStackImpl {
     const globalContext = this.globalContext
     const contextStack = new ContextStackImpl({
       contexts: [context, ...this._contexts],
-      values: this.values,
       modules: this.modules,
       valueModules: this.valueModules,
       pure: this.pure,
@@ -228,7 +213,6 @@ export class ContextStackImpl {
   public withCopiedTopContext(): ContextStack {
     const cs = new ContextStackImpl({
       contexts: [{ ...this._contexts[0] }, ...this._contexts.slice(1)],
-      values: this.values,
       modules: this.modules,
       valueModules: this.valueModules,
       pure: this.pure,
@@ -265,7 +249,7 @@ export class ContextStackImpl {
         return contextEntry.value
     }
 
-    return this.values?.[name]
+    return undefined
   }
 
   public lookUp(node: UserDefinedSymbolNode): LookUpResult {
@@ -277,14 +261,6 @@ export class ContextStackImpl {
       const contextEntry = context[name]
       if (contextEntry)
         return contextEntry
-    }
-    const hostValue = this.values?.[name]
-    if (hostValue !== undefined) {
-      // Apply fromJS so plain JS arrays/objects passed as host bindings are
-      // converted to PersistentVector/PersistentMap before entering the evaluator.
-      return {
-        value: fromJS(hostValue),
-      }
     }
 
     return null
@@ -338,35 +314,13 @@ export class ContextStackImpl {
   }
 }
 
-function assertNotShadowingKeyword(name: string): void {
-  if (specialExpressionKeys.includes(name)) {
-    throw new TypeError(`Cannot shadow special expression "${name}"`, undefined)
-  }
-}
-
 export function createContextStack(params: CreateContextStackParams = {}, modules?: Map<string, DvalaModule>, pure?: boolean, sourceMap?: SourceMap, fileResolver?: FileResolver, currentFileDir?: string, allocateNodeId?: () => number, debug?: boolean): ContextStack {
   const globalContext = params.globalContext ?? {}
   // Contexts are checked from left to right
   const contexts = params.contexts ? [globalContext, ...params.contexts] : [globalContext]
 
-  let hostValues: Record<string, unknown> | undefined
-
-  if (params.bindings) {
-    for (const [identifier, entry] of Object.entries(params.bindings)) {
-      if (identifier.includes('.')) {
-        throw new TypeError(`Dots are not allowed in binding keys: "${identifier}"`, undefined)
-      }
-      assertNotShadowingKeyword(identifier)
-      if (!hostValues) {
-        hostValues = {}
-      }
-      hostValues[identifier] = entry
-    }
-  }
-
   const contextStack = new ContextStackImpl({
     contexts,
-    values: hostValues,
     modules,
     pure,
     sourceMap,

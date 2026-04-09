@@ -12,24 +12,19 @@ describe('createDvala', () => {
       expect(d.run('1 + 2')).toBe(3)
     })
 
-    it('runs with factory bindings', () => {
-      const d = createDvala({ bindings: { x: 10 } })
-      expect(d.run('x * 2')).toBe(20)
-    })
-
-    it('runs with per-run bindings', () => {
+    it('runs with per-run scope', () => {
       const d = createDvala()
-      expect(d.run('x + 1', { bindings: { x: 5 } })).toBe(6)
+      expect(d.run('x + 1', { scope: { x: 5 } })).toBe(6)
     })
 
-    it('per-run bindings shadow factory bindings', () => {
-      const d = createDvala({ bindings: { x: 1 } })
-      expect(d.run('x', { bindings: { x: 99 } })).toBe(99)
+    it('runs with per-run scope returning value directly', () => {
+      const d = createDvala()
+      expect(d.run('x', { scope: { x: 99 } })).toBe(99)
     })
 
-    it('factory and per-run bindings merge', () => {
-      const d = createDvala({ bindings: { x: 1 } })
-      expect(d.run('x + y', { bindings: { y: 2 } })).toBe(3)
+    it('per-run scope provides bindings', () => {
+      const d = createDvala()
+      expect(d.run('x + y', { scope: { x: 1, y: 2 } })).toBe(3)
     })
 
     it('runs with factory modules', () => {
@@ -106,13 +101,13 @@ describe('createDvala', () => {
     it('runs a simple async program', async () => {
       const d = createDvala()
       const result = await d.runAsync('1 + 2')
-      expect(result).toMatchObject({ type: 'completed', value: 3, definedBindings: {} })
+      expect(result).toMatchObject({ type: 'completed', value: 3, scope: {} })
     })
 
-    it('runs with factory bindings', async () => {
-      const d = createDvala({ bindings: { x: 10 } })
-      const result = await d.runAsync('x * 2')
-      expect(result).toMatchObject({ type: 'completed', value: 20, definedBindings: {} })
+    it('runs with per-run scope (async)', async () => {
+      const d = createDvala()
+      const result = await d.runAsync('x * 2', { scope: { x: 10 } })
+      expect(result).toMatchObject({ type: 'completed', value: 20, scope: {} })
     })
 
     it('runs with effectHandlers from factory', async () => {
@@ -122,7 +117,7 @@ describe('createDvala', () => {
         ],
       })
       const result = await d.runAsync('perform(@my.ask)')
-      expect(result).toMatchObject({ type: 'completed', value: 42, definedBindings: {} })
+      expect(result).toMatchObject({ type: 'completed', value: 42, scope: {} })
     })
 
     it('runs with effectHandlers from per-run options', async () => {
@@ -132,7 +127,7 @@ describe('createDvala', () => {
           { pattern: 'my.ask', handler: async ({ resume }) => resume(7) },
         ],
       })
-      expect(result).toMatchObject({ type: 'completed', value: 7, definedBindings: {} })
+      expect(result).toMatchObject({ type: 'completed', value: 7, scope: {} })
     })
 
     it('per-run effectHandlers are stacked on top of factory effectHandlers', async () => {
@@ -146,7 +141,7 @@ describe('createDvala', () => {
           { pattern: 'my.specific', handler: async ({ resume }) => resume('run') },
         ],
       })
-      expect(result).toMatchObject({ type: 'completed', value: 'run', definedBindings: {} })
+      expect(result).toMatchObject({ type: 'completed', value: 'run', scope: {} })
     })
 
     it('returns error result on Dvala error', async () => {
@@ -169,10 +164,10 @@ describe('createDvala', () => {
 
   describe('reuse', () => {
     it('factory can be reused across multiple runs', () => {
-      const d = createDvala({ bindings: { base: 10 } })
-      expect(d.run('base + 1')).toBe(11)
-      expect(d.run('base + 2')).toBe(12)
-      expect(d.run('base + 3')).toBe(13)
+      const d = createDvala()
+      expect(d.run('base + 1', { scope: { base: 10 } })).toBe(11)
+      expect(d.run('base + 2', { scope: { base: 10 } })).toBe(12)
+      expect(d.run('base + 3', { scope: { base: 10 } })).toBe(13)
     })
   })
 
@@ -237,9 +232,9 @@ describe('createDvala', () => {
       expect(symbols).toContain('y')
     })
 
-    it('does not include factory bindings as undefined', () => {
-      const d = createDvala({ bindings: { x: 1 } })
-      const symbols = d.getUndefinedSymbols('x + y')
+    it('does not include scope bindings as undefined', () => {
+      const d = createDvala()
+      const symbols = d.getUndefinedSymbols('x + y', { scope: { x: 1 } })
       expect(symbols).not.toContain('x')
       expect(symbols).toContain('y')
     })

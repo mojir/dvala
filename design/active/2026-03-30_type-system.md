@@ -173,6 +173,78 @@ Not enforced statically. The runtime `resumeConsumed` guard remains the enforcem
 5. Compile effect declarations to runtime descriptors in bundle
 6. Add `resume` value validation in KMP evaluator against bundle descriptors
 
+## Type Annotation Syntax
+
+**Inference-first, annotations optional.** The typechecker infers everything it can. Annotations are voluntary constraints fed into the same unifier.
+
+### Three constructs
+
+```dvala
+type Nullable<T> = T | Null                    // type definition
+let x: Nullable<String> = getName()            // type annotation on let
+effect @llm.complete(String) -> String         // effect signature declaration
+```
+
+### Design decisions
+
+| Question | Decision | Rationale |
+|---|---|---|
+| Annotation syntax | `:` (colon) | Universal, no collision (Dvala uses `as` for object destructuring aliases) |
+| Where to annotate | `let` bindings only | Single parser change point. Unifier propagates constraints downward — function parameter types are inferred from the let-binding's function type |
+| Parameter annotations in lambdas | No | Propagated from `let` type. Keeps lambdas clean |
+| Type system | Structural | Matches Dvala's existing structural semantics. No runtime tagging cost. Nominal types (ADTs) deferred |
+| Value types ↔ effects | One-way: value types appear *inside* effect signatures, never the reverse | Effects are not value types — they live in the effect row dimension of function types |
+| Type-level extraction (`Return<@effect>`) | No | Inference already propagates effect return types. Avoids type-level computation complexity |
+
+### Type grammar
+
+```dvala
+// Primitives
+Number, String, Boolean, Null
+
+// Unions
+String | Null
+Number | String | Null
+
+// Objects (structural)
+{ name: String, age: Number }
+
+// Arrays
+[String]
+
+// Functions (with optional effect row — syntax TBD, see open questions)
+(Number, Number) -> Number
+(String) -> <http.get> String
+
+// Generics
+Nullable<String>
+Result<Number, String>
+
+// Type definitions
+type Name = String
+type Pair<A, B> = [A, B]
+type Result<T, E> = { ok: true, value: T } | { ok: false, error: E }
+```
+
+### Hierarchy
+
+```
+Function type = Value types + Effect row
+                    ↑              ↑
+               type grammar    effect declarations
+               (never mixed with each other)
+```
+
+---
+
 ## Open Questions
 
-- None currently open. All design questions resolved.
+### Effect row syntax in type annotations
+
+The notation `<log, fetch | r>` inside function types is a rough sketch only. The following remain unresolved:
+
+- **Open vs closed rows**: `<log | r>` (open, polymorphic) vs `<log>` (closed, exact). What is the default? Must the user write `| r` explicitly?
+- **Row variables**: Is `r` an implicit ambient variable or an explicit generic parameter? E.g., `type Logger<R> = (String) -> <log | R> Null`?
+- **Row type aliases**: Can you define `type IOEffects = <log, fetch>` and use it inside function types?
+- **Row polymorphism in `type` definitions**: `type Fetcher<R> = (String) -> <http.get | R> String` — is this a type-level generic over rows?
+- **Delimiter / bracket choice**: `< >` may collide with comparison operators in ambiguous parse contexts. Alternatives: `{ }` (conflicts with objects), `[ ]` (conflicts with arrays), or a keyword-based syntax.

@@ -129,7 +129,7 @@ export function renderExampleDetailPage(id: string): string {
   <div class="book-page__content">
     <p class="example-detail__category">${escapeHtml(ex.category)}</p>
     <p class="example-detail__desc">${escapeHtml(ex.description)}</p>
-    ${renderCodeBlock({ code: ex.code })}
+    ${renderCodeBlock({ code: ex.code, contextEffectHandlers: ex.effectHandlers })}
   </div>
 </div>`.trim()
 }

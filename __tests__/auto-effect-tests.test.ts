@@ -957,7 +957,7 @@ describe('auto: runSync constraints', () => {
   })
 
   it('runSync accepts bindings', () => {
-    expect(dvala.run('x + y', { bindings: { x: 10, y: 32 } })).toBe(42)
+    expect(dvala.run('x + y', { scope: { x: 10, y: 32 } })).toBe(42)
   })
 
   it('runSync throws on unhandled effect', () => {

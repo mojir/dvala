@@ -2763,6 +2763,14 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
     throw new UserError(payload.get('message') as string, origin?.sourceCodeInfo ?? sourceCodeInfo)
   }
 
+  // dvala.host is special — validate argument type and provide a descriptive error when no handler is installed.
+  if (effect.name === 'dvala.host') {
+    if (typeof arg !== 'string') {
+      throw new TypeError(`@dvala.host requires a string argument, got ${typeof arg}`, sourceCodeInfo)
+    }
+    throw new RuntimeError(`Host binding "${arg}" not provided. Install a @dvala.host effect handler.`, sourceCodeInfo)
+  }
+
   // No handler at all — unhandled effect.
   throw new RuntimeError(`Unhandled effect: '${effect.name}'`, sourceCodeInfo)
 }

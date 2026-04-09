@@ -82,11 +82,11 @@ server.tool(
   'Execute Dvala code and return the result. The code runs in a sandboxed environment with all modules loaded.',
   {
     code: z.string().describe('Dvala source code to execute'),
-    bindings: z.record(z.string(), z.unknown()).optional().describe('Optional variable bindings available in the code, e.g. {"x": 42}'),
+    scope: z.record(z.string(), z.unknown()).optional().describe('Optional variable scope available in the code, e.g. {"x": 42}'),
   },
-  async ({ code, bindings }) => {
+  async ({ code, scope }) => {
     try {
-      const result = dvala.run(code, bindings ? { bindings } : undefined)
+      const result = dvala.run(code, scope ? { scope } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -101,11 +101,11 @@ server.tool(
   'Execute Dvala code with debug mode enabled (captures source positions for better error messages).',
   {
     code: z.string().describe('Dvala source code to execute'),
-    bindings: z.record(z.string(), z.unknown()).optional().describe('Optional variable bindings available in the code, e.g. {"x": 42}'),
+    scope: z.record(z.string(), z.unknown()).optional().describe('Optional variable scope available in the code, e.g. {"x": 42}'),
   },
-  async ({ code, bindings }) => {
+  async ({ code, scope }) => {
     try {
-      const result = dvalaDebug.run(code, bindings ? { bindings } : undefined)
+      const result = dvalaDebug.run(code, scope ? { scope } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

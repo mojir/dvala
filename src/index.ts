@@ -30,6 +30,7 @@ export { resume } from './resume'
 export type { ResumeOptions } from './resume'
 export { retrigger } from './retrigger'
 export type { RetriggerOptions } from './retrigger'
+export { hostHandler } from './evaluator/effectTypes'
 export type { EffectContext, EffectHandler, Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 // Factory API

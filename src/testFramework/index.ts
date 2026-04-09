@@ -6,6 +6,7 @@ import { allBuiltinModules } from '../allModules'
 import { createTestCollector, createTestModule } from '../builtin/modules/test'
 import type { TestEntry } from '../builtin/modules/test'
 import type { AstNode } from '../parser/types'
+import { hostHandler } from '../evaluator/effectTypes'
 import type { Handlers } from '../evaluator/effectTypes'
 import type { FileResolver } from '../evaluator/ContextStack'
 import type { TestCaseResult, TestRunResult, TestSuiteResult } from './result'
@@ -110,7 +111,7 @@ export async function runTestFile({ testPath: filePath, testNamePattern, coverag
         return { name: test.fullName, status: 'skipped' as const }
       }
       const start = performance.now()
-      const result = await dvala.runAsync('__testBody__()', { bindings: { __testBody__: test.body }, onNodeEval })
+      const result = await dvala.runAsync('let __testBody__ = perform(@dvala.host, "__testBody__"); __testBody__()', { effectHandlers: [hostHandler({ __testBody__: test.body })], onNodeEval })
       const durationMs = performance.now() - start
       if (result.type === 'error') {
         return { name: test.fullName, status: 'failed' as const, error: result.error, durationMs }

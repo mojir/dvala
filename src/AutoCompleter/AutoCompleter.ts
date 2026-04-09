@@ -3,8 +3,8 @@ import { tokenize } from '../tokenizer/tokenize'
 import { reservedSymbolRecord } from '../tokenizer/reservedNames'
 
 export interface AutoCompleterParams {
-  bindings?: Record<string, unknown>
   effectNames?: readonly string[]
+  scope?: Record<string, unknown>
 }
 
 type AutoCompleteSuggestion = {
@@ -181,11 +181,13 @@ export class AutoCompleter {
       }
     })
 
-    Object.keys(params.bindings ?? {})
-      .filter(shouldInclude)
-      .forEach(suggestion => suggestions.add(suggestion))
-
     params.effectNames?.forEach(name => {
+      if (shouldInclude(name)) {
+        suggestions.add(name)
+      }
+    })
+
+    Object.keys(params.scope ?? {}).forEach(name => {
       if (shouldInclude(name)) {
         suggestions.add(name)
       }

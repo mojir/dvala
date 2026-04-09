@@ -204,7 +204,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         }
       },
       runCode: async code => {
-        const result = await getDvala().runAsync(code, { bindings: {}, effectHandlers: [], pure: false })
+        const result = await getDvala().runAsync(code, { scope: {}, effectHandlers: [], pure: false })
         if (result.type === 'error') throw result.error
         if (result.type === 'suspended') throw new Error('File suspended')
         return result.value
@@ -973,6 +973,41 @@ export function toggleRefTocMenu(event: Event): void {
   })
 }
 
+// ─── Examples TOC menu ────────────────────────────────────────────────────────
+
+export function toggleExampleTocMenu(event: Event): void {
+  event.stopPropagation()
+  const data = window.referenceData
+  if (!data) return
+
+  const path = router.currentPath()
+  const currentId = path.startsWith('/examples/') ? path.slice('/examples/'.length) : ''
+
+  // Group examples by category
+  const categoryMap = new Map<string, typeof data.examples>()
+  for (const ex of data.examples) {
+    const cat = ex.category || 'Other'
+    if (!categoryMap.has(cat)) categoryMap.set(cat, [])
+    categoryMap.get(cat)!.push(ex)
+  }
+
+  const tocSections = Array.from(categoryMap.entries()).map(([category, examples]) => ({
+    title: category,
+    items: examples.map(ex => ({
+      label: ex.name,
+      type: 'subitem' as const,
+      active: ex.id === currentId,
+      onSelect: () => router.navigate(`/examples/${ex.id}`),
+    })),
+  }))
+
+  toggleTocDropdown(event.currentTarget as HTMLElement, {
+    id: 'example-toc-dropdown',
+    overview: { label: 'All Examples', onSelect: () => router.navigate('/examples') },
+    sections: tocSections,
+  })
+}
+
 export function showBookPage() {
   router.navigate('/book')
 }
@@ -1435,6 +1470,10 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (normalizedTabId === 'snapshots')
     document.getElementById('side-icon-snapshots')?.classList.remove('side-panel__icon--has-new')
 
+  // Clear the "new context" indicator when entering the context view.
+  if (normalizedTabId === 'context')
+    document.getElementById('side-icon-context')?.classList.remove('side-panel__icon--has-new')
+
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
     if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
@@ -1542,9 +1581,8 @@ function syncCodePanelView(sideTab?: string) {
       emptyView.style.display = 'flex'
       emptyView.innerHTML = `
         <div class="dvala-empty-view__content">
-          <div class="dvala-empty-view__title">No context entries</div>
-          <div class="dvala-empty-view__description">Add a binding or effect handler to set up the execution context.</div>
-          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextBinding()">Add binding</button>
+          <div class="dvala-empty-view__title">No effect handlers</div>
+          <div class="dvala-empty-view__description">Add an effect handler to set up the execution context.</div>
           <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
         </div>
       `
@@ -2567,15 +2605,9 @@ function getContextEffectHandler(context: Record<string, unknown>, pattern: stri
 
 function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
   const runtimeContext = { ...context }
-  const runtimeBindings = Object.fromEntries(
-    Object.entries(getContextBindings(context)).filter(([name]) => isContextBindingActive(context, name)),
-  )
   const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) => isContextEffectHandlerActive(context, pattern))
 
-  if (Object.keys(runtimeBindings).length > 0)
-    runtimeContext.bindings = runtimeBindings
-  else
-    delete runtimeContext.bindings
+  delete runtimeContext.bindings
 
   if (runtimeEffectHandlers.length > 0)
     runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
@@ -2778,18 +2810,6 @@ function syncContextDetailValidity(isValid: boolean) {
   elements.contextDetailTextArea.toggleAttribute('aria-invalid', !isValid)
 }
 
-function isStoredContextBindingJsonValid(value: unknown): boolean {
-  try {
-    const serialized = JSON.stringify(value)
-    if (serialized === undefined)
-      return false
-    JSON.parse(serialized)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function compileContextEffectHandlerSource(value: string): EffectHandler {
   const fn = eval(`(${value})`) as unknown
   if (typeof fn !== 'function')
@@ -2808,20 +2828,6 @@ function isStoredContextEffectHandlerValid(value: unknown): boolean {
   } catch {
     return false
   }
-}
-
-function hasContextBindingParseError(context: Record<string, unknown>, name: string): boolean {
-  const bindings = getContextBindings(context)
-  if (getContextBindingInvalidDraft(context, name) !== null)
-    return true
-
-  if (!Object.prototype.hasOwnProperty.call(bindings, name))
-    return false
-
-  if (activeContextBindingName === name && contextDetailHasParseError)
-    return true
-
-  return !isStoredContextBindingJsonValid(bindings[name])
 }
 
 function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
@@ -2898,85 +2904,48 @@ function renderContextEntryList() {
 
   const items: string[] = [
     `<div class="explorer-group-label explorer-group-label--with-action">
-      <span>Bindings</span>
-      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextBinding()" title="Add binding" aria-label="Add binding">${addIcon}</button>
+      <span>Effect Handlers</span>
+      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
     </div>`,
   ]
-  const bindingNames = getContextBindingNames(context)
-
-  if (bindingNames.length === 0) {
-    items.push('<div class="explorer-empty">No bindings yet</div>')
-  } else {
-    bindingNames.forEach((name, index) => {
-      const isActive = isContextBindingActive(context, name)
-      const hasParseError = hasContextBindingParseError(context, name)
-      const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-      const menuId = `context-binding-menu-${index}`
-      const encodedName = encodeURIComponent(name)
-      const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
-      const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
-      const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
-      const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
-      const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-      ]
-
-      items.push(`
-        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
-          <span class="explorer-item__name">${escapeHtml(name)}</span>
-          ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
-          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-            ${renderEditorMenu({ id: menuId, items: menuItems })}
-          </span>
-        </div>`)
-    })
-  }
-
-  items.push(`<div class="explorer-group-label explorer-group-label--with-action">
-    <span>Effect Handlers</span>
-    <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
-  </div>`)
 
   const effectHandlerNames = getContextEffectHandlerNames(context)
+
   if (effectHandlerNames.length === 0) {
     items.push('<div class="explorer-empty">No effect handlers yet</div>')
-  } else {
-    effectHandlerNames.forEach((pattern, index) => {
-      const isActive = isContextEffectHandlerActive(context, pattern)
-      const hasParseError = hasContextEffectHandlerParseError(context, pattern)
-      const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-      const menuId = `context-effect-handler-menu-${index}`
-      const encodedPattern = encodeURIComponent(pattern)
-      const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
-      const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-      ]
-
-      items.push(`
-        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
-          <span class="explorer-item__name">${escapeHtml(pattern)}</span>
-          ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
-          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-            ${renderEditorMenu({ id: menuId, items: menuItems })}
-          </span>
-        </div>`)
-    })
   }
+
+  effectHandlerNames.forEach((pattern, index) => {
+    const isActive = isContextEffectHandlerActive(context, pattern)
+    const hasParseError = hasContextEffectHandlerParseError(context, pattern)
+    const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+    const menuId = `context-effect-handler-menu-${index}`
+    const encodedPattern = encodeURIComponent(pattern)
+    const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
+    const menuItems: EditorMenuItem[] = [
+      { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+      { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+    ]
+
+    items.push(`
+      <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
+        <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
+        <span class="explorer-item__name">${escapeHtml(pattern)}</span>
+        ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
+        <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+          <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          ${renderEditorMenu({ id: menuId, items: menuItems })}
+        </span>
+      </div>`)
+  })
 
   elements.contextEntryList.innerHTML = items.join('')
 
   // Show a red dot on the sidebar context icon when any entry has a parse error.
   const hasAnyError =
-    getContextBindingNames(context).some(name => hasContextBindingParseError(context, name)) ||
     getContextEffectHandlerNames(context).some(pattern => hasContextEffectHandlerParseError(context, pattern))
   document.getElementById('side-icon-context')?.classList.toggle('side-panel__icon--has-error', hasAnyError)
 }
@@ -4036,7 +4005,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+      autoCompleter = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -4062,7 +4031,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
         // If cursor is directly after non-whitespace, try autocomplete first
         const charBefore = start > 0 ? target.value[start - 1] : ''
         if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+          const completer = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
           if (completer.getSuggestions().length > 0) {
             autoCompleter = completer
             const suggestion = autoCompleter.getNextSuggestion()
@@ -4385,8 +4354,8 @@ export async function run() {
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = await Promise.race([
       getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-        : { bindings: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+        ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+        : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
       ),
       timeoutPromise,
     ])
@@ -4450,14 +4419,12 @@ export function runSync() {
   appendOutput(title, 'comment')
 
   const startTime = performance.now()
-  const dvalaParams = getDvalaParamsFromContext()
-
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
     const result = getDvala().run(code, pure
-      ? { bindings: dvalaParams.bindings, pure: true }
-      : { bindings: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
+      ? { pure: true }
+      : { effectHandlers: getSyncEffectHandlers() },
     )
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
@@ -4480,10 +4447,9 @@ export function analyze() {
 
   appendOutput(title, 'comment')
 
-  const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const result = getUndefinedSymbols(code, { bindings: dvalaParams.bindings })
+    const result = getUndefinedSymbols(code, {})
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
@@ -5564,6 +5530,7 @@ export function showInfoModal(
 
   const messageEl = document.createElement('div')
   messageEl.className = 'modal-body-row'
+  messageEl.style.whiteSpace = 'pre-line'
   messageEl.textContent = message
   body.appendChild(messageEl)
 
@@ -5883,6 +5850,12 @@ function markSnapshotIconNew() {
     document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--has-new')
 }
 
+function markContextIconNew() {
+  // Show a blue dot on the context sidebar icon only when not already viewing context.
+  if (getCurrentSideTab() !== 'context')
+    document.getElementById('side-icon-context')?.classList.add('side-panel__icon--has-new')
+}
+
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
     kind: 'terminal',
@@ -6065,14 +6038,12 @@ export async function resumeSnapshot() {
     const runResult = snapshot.effectName
       ? await retrigger(snapshot, {
         handlers: dvalaParams.effectHandlers,
-        bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
         terminalSnapshot: true,
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
-        bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
         terminalSnapshot: true,
@@ -7155,7 +7126,7 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
   ]
 }
 
-function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: HandlerRegistration[] } {
+function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
     const parsedContext
@@ -7165,7 +7136,6 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
 
     const runtimeContext = getRuntimeContextObject(parsedContext)
     const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
-    const bindings = getContextBindings(runtimeContext)
 
     const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
@@ -7188,10 +7158,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       }
       if (!hasPattern('*'))
         effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
-      return {
-        bindings,
-        effectHandlers,
-      }
+      return { effectHandlers }
     }
 
     if (!hasPattern('dvala.io.pick'))
@@ -7216,14 +7183,11 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     if (!hasPattern('*'))
       effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
 
-    return {
-      bindings,
-      effectHandlers,
-    }
+    return { effectHandlers }
   } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
     const fallback = getState('disable-standard-handlers') ? disabledHandlersFallback : defaultEffectHandler
-    return { bindings: {}, effectHandlers: [{ pattern: '*', handler: fallback }] }
+    return { effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
 }
 function getSelectedDvalaCode(): {
@@ -7482,26 +7446,59 @@ export function loadEncodedCode(encodedCode: string) {
 
 export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
-  const context = example.context
-    ? formatContextJson(example.context as Record<string, unknown>)
-    : ''
   const code = example.code ? example.code : ''
-  const size = Math.max(name.length + 10, 40)
-  const paddingLeft = Math.floor((size - name.length) / 2)
-  const paddingRight = Math.ceil((size - name.length) / 2)
 
-  openScratchInEditor({
-    code: `
+  const loadExample = (contextJson?: string) => {
+    const size = Math.max(name.length + 10, 40)
+    const paddingLeft = Math.floor((size - name.length) / 2)
+    const paddingRight = Math.ceil((size - name.length) / 2)
+
+    openScratchInEditor({
+      code: `
 /*${'*'.repeat(size)}**
  *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
  *${'*'.repeat(size)}**/
 
 ${code}
 `.trimStart(),
-    context,
-    focusCode: true,
-    navigateToPlayground: true,
-    toast: `Example loaded: ${name}`,
+      context: contextJson,
+      focusCode: true,
+      navigateToPlayground: true,
+      toast: `Example loaded: ${name}`,
+    })
+  }
+
+  const exampleHandlers = example.effectHandlers
+  if (!exampleHandlers || exampleHandlers.length === 0) {
+    loadExample('')
+    return
+  }
+
+  // Example has effect handlers — always confirm before installing
+  const currentContext = getParsedContext()
+  const currentHandlers = getContextEffectHandlers(currentContext)
+  const currentPatterns = new Set(currentHandlers.map(h => h.pattern))
+  const examplePatterns = exampleHandlers.map(h => h.pattern)
+  const conflicts = examplePatterns.filter(p => currentPatterns.has(p))
+
+  let message = 'This example will install effect handlers.'
+  if (conflicts.length > 0) {
+    message += '\nThe following will be replaced:\n'
+    message += conflicts.map(p => `  @${p}`).join('\n')
+  }
+  message += '\n\nInstall and load example?'
+
+  void showInfoModal(`Load "${name}"`, message, () => {
+    // Merge example handlers into current context, replacing conflicts
+    const mergedHandlers = [
+      ...currentHandlers.filter(h => !examplePatterns.includes(h.pattern)),
+      ...exampleHandlers,
+    ]
+    const newContext: Record<string, unknown> = { ...currentContext }
+    newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
+    const contextJson = formatContextJson(newContext)
+    markContextIconNew()
+    loadExample(contextJson)
   })
 }
 

@@ -1867,6 +1867,23 @@ a.disabled {
   margin-left: var(--space-2);
 }
 
+.editor-toolbar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.editor-toolbar__icon-btn:hover {
+  color: var(--color-text-bright);
+}
+
 .exec-btn-inline {
   display: inline-flex;
   align-items: center;
@@ -1934,13 +1951,13 @@ a.disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 2rem;
+  height: 2rem;
   border: none;
   background: none;
   border-radius: var(--radius-sm);
   color: var(--color-text-dim);
-  font-size: 1.1rem;
+  font-size: 1.32rem;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
@@ -1953,6 +1970,7 @@ a.disabled {
 .side-panel__icon--active {
   color: var(--color-text-bright);
   background: var(--color-surface-3);
+  box-shadow: inset 0 0 3px var(--color-primary);
 }
 
 .side-panel__icon--has-error,

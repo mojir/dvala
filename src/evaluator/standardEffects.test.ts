@@ -38,6 +38,9 @@ describe('standardEffects', () => {
         'dvala.time.zone',
         'dvala.sleep',
         'dvala.checkpoint',
+        'dvala.host',
+        'dvala.env',
+        'dvala.args',
       ]))
     })
   })
@@ -58,6 +61,12 @@ describe('standardEffects', () => {
       expect(getStandardEffectHandler('dvala.time.now')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.time.zone')).toBeTypeOf('function')
       expect(getStandardEffectHandler('dvala.sleep')).toBeTypeOf('function')
+      expect(getStandardEffectHandler('dvala.env')).toBeTypeOf('function')
+      expect(getStandardEffectHandler('dvala.args')).toBeTypeOf('function')
+    })
+
+    it('should not return a handler for dvala.host (no default handler)', () => {
+      expect(getStandardEffectHandler('dvala.host')).toBeUndefined()
     })
 
     it('should return undefined for unknown effects', () => {
@@ -740,6 +749,40 @@ describe('standardEffects', () => {
       } finally {
         spy.mockRestore()
       }
+    })
+  })
+
+  // ── Host interaction effects ────────────────────────────────────────────
+
+  describe('dvala.env handler', () => {
+    it('should return environment variable value as string', () => {
+      const handler = getStandardEffectHandler('dvala.env')!
+      // HOME is almost universally set in Node
+      const result = handler(asAny('HOME'), emptyK) as { type: string; value: unknown; k: unknown }
+      expect(result.type).toBe('Value')
+      expect(typeof result.value === 'string' || result.value === null).toBe(true)
+    })
+
+    it('should return null for unset environment variables', () => {
+      const handler = getStandardEffectHandler('dvala.env')!
+      const result = handler(asAny('DVALA_TEST_NONEXISTENT_VAR_12345'), emptyK) as { type: string; value: unknown; k: unknown }
+      expect(result.type).toBe('Value')
+      expect(result.value).toBe(null)
+    })
+
+    it('should throw TypeError for non-string argument', () => {
+      const handler = getStandardEffectHandler('dvala.env')!
+      expect(() => handler(asAny(42), emptyK)).toThrow('@dvala.env requires a string argument')
+    })
+  })
+
+  describe('dvala.args handler', () => {
+    it('should return a PersistentVector of strings', () => {
+      const handler = getStandardEffectHandler('dvala.args')!
+      const result = handler(null, emptyK) as { type: string; value: unknown; k: unknown }
+      expect(result.type).toBe('Value')
+      // In test context, process.argv exists — result should be a PersistentVector
+      expect(result.value).toBeDefined()
     })
   })
 })

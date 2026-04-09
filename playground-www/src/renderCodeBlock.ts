@@ -29,18 +29,20 @@ export interface CodeBlockOptions {
   noRun?: boolean
   noEdit?: boolean
   noCopy?: boolean
+  /** Effect handlers from example context — installed when running the code block */
+  contextEffectHandlers?: { pattern: string; handler: string }[]
 }
 
 /** Render a code block with syntax highlighting, optional execution, and action buttons. */
 export function renderCodeBlock(options: CodeBlockOptions): string {
-  const { code, language = 'dvala', noRun = false, noEdit = false, noCopy = false } = options
+  const { code, language = 'dvala', noRun = false, noEdit = false, noCopy = false, contextEffectHandlers } = options
 
   const isDvala = language === 'dvala'
   const highlighted = isDvala ? tokenizeToHtml(code) : escapeHtml(code)
   const encoded = btoa(encodeURIComponent(code))
 
   // Execution output (Dvala only)
-  const output = isDvala && !noRun ? runExampleCode(code) : null
+  const output = isDvala && !noRun ? runExampleCode(code, contextEffectHandlers) : null
   const isError = output !== null && output.startsWith('Error:')
   const outputHtml = output !== null
     ? `<div class="doc-page__example-output${isError ? ' doc-page__example-output--error' : ''}">${formatOutput(output)}</div>`
@@ -49,7 +51,14 @@ export function renderCodeBlock(options: CodeBlockOptions): string {
   // Action buttons
   const buttons: string[] = []
   if (!noEdit) {
-    buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">${playIcon} Load</button>`)
+    if (contextEffectHandlers && contextEffectHandlers.length > 0) {
+      // Example has effect handlers — route through setPlayground for confirmation dialog
+      const exampleData = { code, effectHandlers: contextEffectHandlers }
+      const encodedExample = btoa(encodeURIComponent(JSON.stringify(exampleData)))
+      buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.setPlayground('Example', '${encodedExample}')">${playIcon} Load</button>`)
+    } else {
+      buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">${playIcon} Load</button>`)
+    }
   }
   if (!noCopy) {
     buttons.push(`<button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>`)

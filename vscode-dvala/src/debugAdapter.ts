@@ -161,8 +161,8 @@ class DvalaDebugSession extends DebugSession {
     // Condition evaluator for conditional breakpoints: evaluates a Dvala
     // expression using the current scope's bindings, returns the result value
     const conditionEvaluator = async (expression: string, continuation: Continuation) => {
-      const bindings = Debugger.extractBindings(continuation)
-      const result = await this.evalDvala.runAsync(expression, { bindings, pure: true })
+      const scopeVars = Debugger.extractBindings(continuation)
+      const result = await this.evalDvala.runAsync(expression, { scope: scopeVars, pure: true })
       if (result.type === 'completed') return result.value
       return undefined
     }
@@ -1000,8 +1000,8 @@ class DvalaDebugSession extends DebugSession {
     }
 
     // Evaluate the expression with the current scope's bindings
-    const bindings = Debugger.extractBindings(this.currentContinuation)
-    const result = await this.evalDvala.runAsync(expr, { bindings, pure: true })
+    const scopeVars = Debugger.extractBindings(this.currentContinuation)
+    const result = await this.evalDvala.runAsync(expr, { scope: scopeVars, pure: true })
 
     if (result.type === 'completed') {
       // Make the result expandable for collections and functions

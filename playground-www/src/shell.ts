@@ -10,6 +10,7 @@
 import {
   addIcon,
   analyzeIcon,
+  boltIcon,
   cameraIcon,
   codeIcon,
   copyIcon,
@@ -94,7 +95,6 @@ function getShellHTML(): string {
     </div>
     <div class="tab-bar__icons">
       <button class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-search" onclick="Playground.toggleHeaderSearch(event)" title="Search">${searchIcon}</button>
-      <button class="tab-bar__tab tab-bar__tab--icon" id="tab-btn-settings" onclick="Playground.toggleSettingsDropdown(this)" title="Settings">${gearIcon}</button>
     </div>
   </nav>
   ${getSettingsDropdown()}
@@ -170,14 +170,15 @@ function getPlaygroundPanel(): string {
             ${moreMenu}
           </a>
         </div>
+        <button class="editor-toolbar__icon-btn" id="editor-settings-btn" onclick="Playground.toggleSettingsDropdown(this)" title="Settings">${gearIcon}</button>
       </div>
     </div>
 
     <div id="editor-top" class="editor-top">
       <div id="side-panel-icons" class="side-panel__icons">
         <button class="side-panel__icon side-panel__icon--active" id="side-icon-files" onclick="Playground.showSideTab('files')" title="Files">${copyIcon}</button>
+        <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Effect Handlers">${boltIcon}</button>
         <button class="side-panel__icon" id="side-icon-snapshots" onclick="Playground.showSideTab('snapshots')" title="Snapshots">${cameraIcon}</button>
-        <button class="side-panel__icon" id="side-icon-context" onclick="Playground.showSideTab('context')" title="Context">${codeIcon}</button>
       </div>
 
       <div id="side-panel-header" class="panel-header">
