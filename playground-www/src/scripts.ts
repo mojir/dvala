@@ -5559,6 +5559,7 @@ export function showInfoModal(
 
   const messageEl = document.createElement('div')
   messageEl.className = 'modal-body-row'
+  messageEl.style.whiteSpace = 'pre-line'
   messageEl.textContent = message
   body.appendChild(messageEl)
 
