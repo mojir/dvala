@@ -1940,7 +1940,7 @@ a.disabled {
   background: none;
   border-radius: var(--radius-sm);
   color: var(--color-text-dim);
-  font-size: 1.1rem;
+  font-size: 1.32rem;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
