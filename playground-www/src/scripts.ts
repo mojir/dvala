@@ -1542,9 +1542,9 @@ function syncCodePanelView(sideTab?: string) {
       emptyView.style.display = 'flex'
       emptyView.innerHTML = `
         <div class="dvala-empty-view__content">
-          <div class="dvala-empty-view__title">No context entries</div>
-          <div class="dvala-empty-view__description">Add a binding or effect handler to set up the execution context.</div>
-          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextBinding()">Add binding</button>
+          <div class="dvala-empty-view__title">No effects</div>
+          <div class="dvala-empty-view__description">Add a scope value or effect handler to set up the execution context.</div>
+          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextBinding()">Add scope value</button>
           <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
         </div>
       `
@@ -2896,81 +2896,84 @@ function renderContextEntryList() {
   const context = getParsedContext()
   ensureActiveContextSelection(context)
 
+  // Single "Effects" group — scope values (bindings) and effect handlers are listed together
+  const addMenuId = 'context-add-menu'
+  const addMenuItems: EditorMenuItem[] = [
+    { action: `Playground.closeExplorerMenus();Playground.promptAddContextBinding()`, icon: ICONS.edit, label: 'Add scope value' },
+    { action: `Playground.closeExplorerMenus();Playground.promptAddContextEffectHandler()`, icon: ICONS.edit, label: 'Add effect handler' },
+  ]
   const items: string[] = [
     `<div class="explorer-group-label explorer-group-label--with-action">
-      <span>Bindings</span>
-      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextBinding()" title="Add binding" aria-label="Add binding">${addIcon}</button>
+      <span>Effects</span>
+      <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+        <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${addMenuId}', this)" title="Add" aria-label="Add">${addIcon}</button>
+        ${renderEditorMenu({ id: addMenuId, items: addMenuItems })}
+      </span>
     </div>`,
   ]
+
   const bindingNames = getContextBindingNames(context)
-
-  if (bindingNames.length === 0) {
-    items.push('<div class="explorer-empty">No bindings yet</div>')
-  } else {
-    bindingNames.forEach((name, index) => {
-      const isActive = isContextBindingActive(context, name)
-      const hasParseError = hasContextBindingParseError(context, name)
-      const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-      const menuId = `context-binding-menu-${index}`
-      const encodedName = encodeURIComponent(name)
-      const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
-      const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
-      const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
-      const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
-      const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-      ]
-
-      items.push(`
-        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
-          <span class="explorer-item__name">${escapeHtml(name)}</span>
-          ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
-          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-            ${renderEditorMenu({ id: menuId, items: menuItems })}
-          </span>
-        </div>`)
-    })
-  }
-
-  items.push(`<div class="explorer-group-label explorer-group-label--with-action">
-    <span>Effect Handlers</span>
-    <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
-  </div>`)
-
   const effectHandlerNames = getContextEffectHandlerNames(context)
-  if (effectHandlerNames.length === 0) {
-    items.push('<div class="explorer-empty">No effect handlers yet</div>')
-  } else {
-    effectHandlerNames.forEach((pattern, index) => {
-      const isActive = isContextEffectHandlerActive(context, pattern)
-      const hasParseError = hasContextEffectHandlerParseError(context, pattern)
-      const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-      const menuId = `context-effect-handler-menu-${index}`
-      const encodedPattern = encodeURIComponent(pattern)
-      const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
-      const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
-      const menuItems: EditorMenuItem[] = [
-        { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-        { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-      ]
 
-      items.push(`
-        <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
-          <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
-          <span class="explorer-item__name">${escapeHtml(pattern)}</span>
-          ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
-          <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-            <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-            ${renderEditorMenu({ id: menuId, items: menuItems })}
-          </span>
-        </div>`)
-    })
+  if (bindingNames.length === 0 && effectHandlerNames.length === 0) {
+    items.push('<div class="explorer-empty">No effects yet</div>')
   }
+
+  // Render scope values (bindings)
+  bindingNames.forEach((name, index) => {
+    const isActive = isContextBindingActive(context, name)
+    const hasParseError = hasContextBindingParseError(context, name)
+    const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+    const menuId = `context-binding-menu-${index}`
+    const encodedName = encodeURIComponent(name)
+    const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
+    const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
+    const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
+    const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
+    const menuItems: EditorMenuItem[] = [
+      { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+      { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+    ]
+
+    items.push(`
+      <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
+        <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
+        <span class="explorer-item__name">${escapeHtml(name)}</span>
+        ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
+        <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+          <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          ${renderEditorMenu({ id: menuId, items: menuItems })}
+        </span>
+      </div>`)
+  })
+
+  // Render effect handlers
+  effectHandlerNames.forEach((pattern, index) => {
+    const isActive = isContextEffectHandlerActive(context, pattern)
+    const hasParseError = hasContextEffectHandlerParseError(context, pattern)
+    const itemClass = `${activeContextEntryKind === 'effect-handler' && activeContextBindingName === pattern ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
+    const menuId = `context-effect-handler-menu-${index}`
+    const encodedPattern = encodeURIComponent(pattern)
+    const selectAction = `Playground.selectContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const renameAction = `Playground.renameContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const removeAction = `Playground.removeContextEffectHandler(decodeURIComponent('${encodedPattern}'))`
+    const toggleAction = `Playground.toggleContextEffectHandlerActive(decodeURIComponent('${encodedPattern}'))`
+    const menuItems: EditorMenuItem[] = [
+      { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
+      { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
+    ]
+
+    items.push(`
+      <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(pattern)}">
+        <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(pattern)}">
+        <span class="explorer-item__name">${escapeHtml(pattern)}</span>
+        ${hasParseError ? `<span class="explorer-item__warning" title="Effect handler is invalid">${ICONS.warning}</span>` : ''}
+        <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+          <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
+          ${renderEditorMenu({ id: menuId, items: menuItems })}
+        </span>
+      </div>`)
+  })
 
   elements.contextEntryList.innerHTML = items.join('')
 
