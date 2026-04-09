@@ -174,7 +174,7 @@ describe('examples — run', () => {
       // they take priority over the generic mock handlers.
       const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? []).map(({ pattern, handler: source }) => ({
         pattern,
-        handler: eval(`(${source})`) as HandlerRegistration['handler'], // eslint-disable-line no-eval
+        handler: eval(`(${source})`) as HandlerRegistration['handler'],
       }))
 
       const result = await dvala.runAsync(example.code, {

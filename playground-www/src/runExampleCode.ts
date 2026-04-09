@@ -89,7 +89,7 @@ function compileContextHandlers(handlers?: { pattern: string; handler: string }[
   if (!handlers) return []
   return handlers.map(({ pattern, handler: source }) => ({
     pattern,
-    handler: eval(`(${source})`) as HandlerRegistration['handler'], // eslint-disable-line no-eval
+    handler: eval(`(${source})`) as HandlerRegistration['handler'],
   }))
 }
 

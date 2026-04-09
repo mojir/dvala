@@ -2810,18 +2810,6 @@ function syncContextDetailValidity(isValid: boolean) {
   elements.contextDetailTextArea.toggleAttribute('aria-invalid', !isValid)
 }
 
-function isStoredContextBindingJsonValid(value: unknown): boolean {
-  try {
-    const serialized = JSON.stringify(value)
-    if (serialized === undefined)
-      return false
-    JSON.parse(serialized)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function compileContextEffectHandlerSource(value: string): EffectHandler {
   const fn = eval(`(${value})`) as unknown
   if (typeof fn !== 'function')
@@ -2840,20 +2828,6 @@ function isStoredContextEffectHandlerValid(value: unknown): boolean {
   } catch {
     return false
   }
-}
-
-function hasContextBindingParseError(context: Record<string, unknown>, name: string): boolean {
-  const bindings = getContextBindings(context)
-  if (getContextBindingInvalidDraft(context, name) !== null)
-    return true
-
-  if (!Object.prototype.hasOwnProperty.call(bindings, name))
-    return false
-
-  if (activeContextBindingName === name && contextDetailHasParseError)
-    return true
-
-  return !isStoredContextBindingJsonValid(bindings[name])
 }
 
 function hasContextEffectHandlerParseError(context: Record<string, unknown>, pattern: string): boolean {
@@ -4445,8 +4419,6 @@ export function runSync() {
   appendOutput(title, 'comment')
 
   const startTime = performance.now()
-  const dvalaParams = getDvalaParamsFromContext()
-
   const hijacker = hijackConsole()
   try {
     const pure = getState('pure')
@@ -4475,7 +4447,6 @@ export function analyze() {
 
   appendOutput(title, 'comment')
 
-  const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
     const result = getUndefinedSymbols(code, {})
@@ -7477,7 +7448,7 @@ export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
   const code = example.code ? example.code : ''
 
-  const loadCode = (contextJson?: string) => {
+  const loadExample = (contextJson?: string) => {
     const size = Math.max(name.length + 10, 40)
     const paddingLeft = Math.floor((size - name.length) / 2)
     const paddingRight = Math.ceil((size - name.length) / 2)
@@ -7499,7 +7470,7 @@ ${code}
 
   const exampleHandlers = example.effectHandlers
   if (!exampleHandlers || exampleHandlers.length === 0) {
-    loadCode('')
+    loadExample('')
     return
   }
 
@@ -7512,7 +7483,7 @@ ${code}
 
   let message = 'This example will install effect handlers.'
   if (conflicts.length > 0) {
-    message += `\nThe following will be replaced:\n`
+    message += '\nThe following will be replaced:\n'
     message += conflicts.map(p => `  @${p}`).join('\n')
   }
   message += '\n\nInstall and load example?'
@@ -7527,7 +7498,7 @@ ${code}
     newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
     const contextJson = formatContextJson(newContext)
     markContextIconNew()
-    loadCode(contextJson)
+    loadExample(contextJson)
   })
 }
 
