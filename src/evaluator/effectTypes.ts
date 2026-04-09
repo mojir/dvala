@@ -253,11 +253,14 @@ export function hostHandler(values: Record<string, unknown>): HandlerRegistratio
   return {
     pattern: 'dvala.host',
     handler: ({ arg, resume, fail }: EffectContext) => {
-      const name = String(arg)
-      if (name in values) {
-        resume(values[name])
+      if (typeof arg !== 'string') {
+        fail(`@dvala.host requires a string argument, got ${typeof arg}`)
+        return
+      }
+      if (arg in values) {
+        resume(values[arg])
       } else {
-        fail(`Host binding "${name}" not provided`)
+        fail(`Host binding "${arg}" not provided`)
       }
     },
   }

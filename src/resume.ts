@@ -76,6 +76,9 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
       scope: scopeContext,
     })
 
+    // scope is deliberately excluded here — it was already applied to globalContexts
+    // during deserializeFromObject above. This object is only used for re-deserialization
+    // of nested blobs during parallel execution.
     const deserializeOptions = {
       modules,
     }

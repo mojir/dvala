@@ -66,6 +66,16 @@ describe('host interaction effects', () => {
       }
     })
 
+    it('should error when non-string argument is passed', async () => {
+      const result = await dvala.runAsync('perform(@dvala.host, 42)', {
+        effectHandlers: [hostHandler({ x: 1 })],
+      })
+      expect(result.type).toBe('error')
+      if (result.type === 'error') {
+        expect(result.error.message).toContain('@dvala.host requires a string argument')
+      }
+    })
+
     it('should work with custom host handler function', async () => {
       const result = await dvala.runAsync('perform(@dvala.host, "config")', {
         effectHandlers: [{

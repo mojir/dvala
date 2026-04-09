@@ -439,6 +439,9 @@ export function deserializeFromObject(
 
     // Override globalContext entries with any new scope values provided at resume time.
     // This allows the caller to supply updated host values when resuming a suspension.
+    // Applied to all ContextStacks because each shares the same globalContext reference —
+    // inner scopes (from do/with blocks) inherit from globalContext, so injecting here
+    // makes the values visible everywhere as intended.
     if (options?.scope) {
       for (const [k, v] of Object.entries(options.scope)) {
         cs.globalContext[k] = v

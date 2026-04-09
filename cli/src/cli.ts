@@ -179,7 +179,7 @@ function makeDvala(context: Record<string, unknown>, pure: boolean) {
   return {
     run: (program: string | DvalaBundle) => runner.run(program, pure
       ? { scope: context, pure: true }
-      : { scope: context, effectHandlers: [hostHandler(context)] }),
+      : { scope: context }),
   }
 }
 

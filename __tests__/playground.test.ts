@@ -317,7 +317,7 @@ describe('built-in examples', () => {
 
   for (const example of runnableExamples) {
     it(`runs without error: ${example.name}`, async () => {
-      const result = await dvala.runAsync(example.code, { scope: example.context?.bindings })
+      const result = await dvala.runAsync(example.code, { scope: example.context?.scope })
       expect(result.type).not.toBe('error')
     })
   }

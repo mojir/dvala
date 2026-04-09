@@ -17,7 +17,7 @@ describe('createDvala', () => {
       expect(d.run('x + 1', { scope: { x: 5 } })).toBe(6)
     })
 
-    it('runs with per-run scope', () => {
+    it('runs with per-run scope returning value directly', () => {
       const d = createDvala()
       expect(d.run('x', { scope: { x: 99 } })).toBe(99)
     })

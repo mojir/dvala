@@ -9,7 +9,7 @@ export interface Example {
   category: string
   code: string
   context?: {
-    bindings?: Record<string, unknown>
+    scope?: Record<string, unknown>
     effectHandlers?: { pattern: string; handler: string }[]
   }
 }
@@ -59,16 +59,17 @@ for (i in range(count(items))) ->
   {
     id: 'simple-context-example',
     name: 'Using context',
-    description: 'Simple example using bindings and a host effect handler.',
+    description: 'Simple example using scope and a host effect handler.',
     category: 'Effects & Context',
     context: {
-      bindings: { x: 15, y: 27 },
+      scope: { x: 15, y: 27 },
       effectHandlers: [
         { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
       ],
     },
     code: dvala`
-perform(@host.plus, [20, 22])`,
+let sum = x + y;
+perform(@host.plus, [sum, 0])`,
   },
   {
     id: 'async-example',
