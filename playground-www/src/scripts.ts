@@ -7509,10 +7509,9 @@ ${code}
   const examplePatterns = exampleHandlers.map(h => h.pattern)
   const conflicts = examplePatterns.filter(p => currentPatterns.has(p))
 
-  let message = `This example requires ${exampleHandlers.length} effect handler${exampleHandlers.length > 1 ? 's' : ''}:\n`
-  message += examplePatterns.map(p => `  ${p}`).join('\n')
+  let message = 'This example will install effect handlers.'
   if (conflicts.length > 0) {
-    message += `\n\nThe following will be replaced:\n`
+    message += `\nThe following will be replaced:\n`
     message += conflicts.map(p => `  ${p}`).join('\n')
   }
   message += '\n\nInstall and load example?'
