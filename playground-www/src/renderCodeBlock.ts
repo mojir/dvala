@@ -51,7 +51,14 @@ export function renderCodeBlock(options: CodeBlockOptions): string {
   // Action buttons
   const buttons: string[] = []
   if (!noEdit) {
-    buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">${playIcon} Load</button>`)
+    if (contextEffectHandlers && contextEffectHandlers.length > 0) {
+      // Example has effect handlers — route through setPlayground for confirmation dialog
+      const exampleData = { code, effectHandlers: contextEffectHandlers }
+      const encodedExample = btoa(encodeURIComponent(JSON.stringify(exampleData)))
+      buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.setPlayground('Example', '${encodedExample}')">${playIcon} Load</button>`)
+    } else {
+      buttons.push(`<button class="doc-page__example-action-btn doc-page__example-use-btn" onclick="Playground.loadEncodedCode('${encoded}')">${playIcon} Load</button>`)
+    }
   }
   if (!noCopy) {
     buttons.push(`<button class="doc-page__example-action-btn" title="Copy" onclick="Playground.copyCode('${encoded}')">${copyIcon}</button>`)
