@@ -219,6 +219,15 @@ describe('buildSymbolTable', () => {
       expect(references.find(r => r.name === 'name')?.resolvedDef).not.toBeNull()
     })
 
+    it('reports correct position for symbols inside template interpolations', () => {
+      const { references } = build('let name = "world"; `hello ${name}`')
+      const nameRef = references.find(r => r.name === 'name')
+      expect(nameRef).toBeDefined()
+      // `name` inside the template: backtick at col 20 (0-based), +1 for backtick,
+      // +8 for "hello ${" = col 29 (0-based) → 30 (1-based)
+      expect(nameRef!.location).toEqual({ file: 'test.dvala', line: 1, column: 30 })
+    })
+
     it('walks spread expressions', () => {
       const { references } = build('let xs = [1, 2]; [...xs, 3]')
       expect(references.find(r => r.name === 'xs')?.resolvedDef).not.toBeNull()
