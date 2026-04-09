@@ -86,7 +86,7 @@ server.tool(
   },
   async ({ code, bindings }) => {
     try {
-      const result = dvala.run(code, bindings ? { bindings } : undefined)
+      const result = dvala.run(code, bindings ? { scope: bindings } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -105,7 +105,7 @@ server.tool(
   },
   async ({ code, bindings }) => {
     try {
-      const result = dvalaDebug.run(code, bindings ? { bindings } : undefined)
+      const result = dvalaDebug.run(code, bindings ? { scope: bindings } : undefined)
       return { content: [{ type: 'text', text: stringifyValue(result, false) }] }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

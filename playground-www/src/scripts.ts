@@ -204,7 +204,7 @@ function getPlaygroundEffectHandlers(): HandlerRegistration[] {
         }
       },
       runCode: async code => {
-        const result = await getDvala().runAsync(code, { bindings: {}, effectHandlers: [], pure: false })
+        const result = await getDvala().runAsync(code, { scope: {}, effectHandlers: [], pure: false })
         if (result.type === 'error') throw result.error
         if (result.type === 'suspended') throw new Error('File suspended')
         return result.value
@@ -4036,7 +4036,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+      autoCompleter = getAutoCompleter(target.value, start, { scope: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -4062,7 +4062,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
         // If cursor is directly after non-whitespace, try autocomplete first
         const charBefore = start > 0 ? target.value[start - 1] : ''
         if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, { bindings: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+          const completer = getAutoCompleter(target.value, start, { scope: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
           if (completer.getSuggestions().length > 0) {
             autoCompleter = completer
             const suggestion = autoCompleter.getNextSuggestion()
@@ -4385,8 +4385,8 @@ export async function run() {
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = await Promise.race([
       getDvala().runAsync(code, pure
-        ? { bindings: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-        : { bindings: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+        ? { scope: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+        : { scope: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
       ),
       timeoutPromise,
     ])
@@ -4456,8 +4456,8 @@ export function runSync() {
   try {
     const pure = getState('pure')
     const result = getDvala().run(code, pure
-      ? { bindings: dvalaParams.bindings, pure: true }
-      : { bindings: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
+      ? { scope: dvalaParams.bindings, pure: true }
+      : { scope: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
     )
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
@@ -4483,7 +4483,7 @@ export function analyze() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const result = getUndefinedSymbols(code, { bindings: dvalaParams.bindings })
+    const result = getUndefinedSymbols(code, { scope: dvalaParams.bindings })
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
@@ -6065,14 +6065,13 @@ export async function resumeSnapshot() {
     const runResult = snapshot.effectName
       ? await retrigger(snapshot, {
         handlers: dvalaParams.effectHandlers,
-        bindings: dvalaParams.bindings as Record<string, Any>,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
         terminalSnapshot: true,
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
-        bindings: dvalaParams.bindings as Record<string, Any>,
+        scope: dvalaParams.bindings,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
         terminalSnapshot: true,

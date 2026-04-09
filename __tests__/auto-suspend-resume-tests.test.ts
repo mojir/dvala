@@ -1057,7 +1057,7 @@ describe('auto: checkpoint metadata through JSON round-trip', () => {
         let x = perform(@my.step);
         x
       `, {
-        bindings: { meta },
+        scope: { meta },
         effectHandlers: handlers,
       })
       expect(r1.type).toBe('suspended')

@@ -3,7 +3,7 @@ import { createDvala } from '../src/createDvala'
 import { getUndefinedSymbols, tokenizeSource } from '../src/tooling'
 
 const d = createDvala()
-const run = (src: string, bindings?: Record<string, unknown>) => d.run(src, { bindings })
+const run = (src: string, scope?: Record<string, unknown>) => d.run(src, { scope })
 
 describe('template strings', () => {
   describe('tokenizer', () => {
@@ -113,7 +113,7 @@ describe('template strings', () => {
     })
 
     it('does not report defined symbols', () => {
-      const undefs = getUndefinedSymbols('`hello ${x}`', { bindings: { x: 1 } })
+      const undefs = getUndefinedSymbols('`hello ${x}`', { scope: { x: 1 } })
       expect(undefs.has('x')).toBe(false)
     })
 

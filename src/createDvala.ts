@@ -3,7 +3,6 @@ import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
 import type { Context } from './evaluator/interface'
-import type { Any } from './interface'
 import type { FileResolver } from './evaluator/ContextStack'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evaluator/trampoline-evaluator'
 import { tokenize } from './tokenizer/tokenize'
@@ -16,7 +15,7 @@ import type { DvalaBundle } from './bundler/interface'
 import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
-import { toJS } from './utils/interop'
+import { fromJS, toJS } from './utils/interop'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
@@ -84,7 +83,7 @@ export type DvalaRunAsyncOptions =
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
   runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
-  getUndefinedSymbols: (source: string) => Set<string>
+  getUndefinedSymbols: (source: string, symbolsOptions?: { scope?: Record<string, unknown> }) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
 }
 
@@ -164,11 +163,13 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
   // Convert a plain scope record to a globalContext for createContextStack.
   // Each value is wrapped as { value } to match the Context type.
+  // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap so
+  // the evaluator can operate on them correctly.
   function scopeToGlobalContext(scope?: Record<string, unknown>): Context | undefined {
     if (!scope) return undefined
     const ctx: Context = {}
     for (const [k, v] of Object.entries(scope)) {
-      ctx[k] = { value: v as Any }
+      ctx[k] = { value: fromJS(v) }
     }
     return ctx
   }
@@ -266,9 +267,9 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       }
     },
 
-    getUndefinedSymbols(source: string): Set<string> {
+    getUndefinedSymbols(source: string, symbolsOptions?: { scope?: Record<string, unknown> }): Set<string> {
       const modulesList = modules ? [...modules.values()] : undefined
-      return standaloneGetUndefinedSymbols(source, { modules: modulesList })
+      return standaloneGetUndefinedSymbols(source, { scope: symbolsOptions?.scope, modules: modulesList })
     },
 
     getAutoCompleter(program: string, position: number): AutoCompleter {

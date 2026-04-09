@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { createDvala } from '../src/createDvala'
-import { createContextStack } from '../src/evaluator/ContextStack'
 import { AssertionError, DvalaError } from '../src/errors'
 import { getAutoCompleter, getUndefinedSymbols } from '../src/tooling'
 import { AutoCompleter } from '../src/AutoCompleter/AutoCompleter'
@@ -16,21 +15,6 @@ import type { Snapshot } from '../src/evaluator/effectTypes'
 import '../src/initReferenceData'
 
 const dvala = createDvala({ disableAutoCheckpoint: true })
-
-// ---------------------------------------------------------------------------
-// ContextStack — getHostValues (line 72)
-// ---------------------------------------------------------------------------
-describe('ContextStack.getHostValues', () => {
-  it('should return undefined when no bindings provided', () => {
-    const cs = createContextStack()
-    expect(cs.getHostValues()).toBeUndefined()
-  })
-  it('should return bindings when provided', () => {
-    const bindings = { x: 42, y: 'hello' }
-    const cs = createContextStack({ bindings })
-    expect(cs.getHostValues()).toEqual(bindings)
-  })
-})
 
 // ---------------------------------------------------------------------------
 // resume.ts — modules option (line 61)
@@ -706,7 +690,7 @@ describe('AutoCompleter.ts branch coverage', () => {
   })
 
   it('includes custom bindings in suggestions', () => {
-    const ac = getAutoCompleter('myV', 3, { bindings: { myVar: 42, myVal: 99 } })
+    const ac = getAutoCompleter('myV', 3, { scope: { myVar: 42, myVal: 99 } })
     const suggestions = ac.getSuggestions()
     expect(suggestions).toContain('myVar')
     expect(suggestions).toContain('myVal')
@@ -718,7 +702,7 @@ describe('AutoCompleter.ts branch coverage', () => {
     // Round 2 (startsWith "xy" case-insensitive): no match (doesn't start with it)
     // Round 3 (includes "XY" case-sensitive): no match ("axy" doesn't contain "XY")
     // Round 4 (includes "xy" case-insensitive): MATCH ("axy" contains "xy")
-    const ac = getAutoCompleter('XY', 2, { bindings: { axy: 1 } })
+    const ac = getAutoCompleter('XY', 2, { scope: { axy: 1 } })
     const suggestions = ac.getSuggestions()
     expect(suggestions).toContain('axy')
   })

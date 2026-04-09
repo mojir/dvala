@@ -432,11 +432,11 @@ describe('scoping edge cases', () => {
   })
 
   it('host bindings visible in closures', () => {
-    expect(dvala.run('let f = -> x * 2; f()', { bindings: { x: 21 } })).toBe(42)
+    expect(dvala.run('let f = -> x * 2; f()', { scope: { x: 21 } })).toBe(42)
   })
 
   it('host bindings can be shadowed by let', () => {
-    expect(dvala.run('let x = 100; x', { bindings: { x: 42 } })).toBe(100)
+    expect(dvala.run('let x = 100; x', { scope: { x: 42 } })).toBe(100)
   })
 
   it('recursive closure works correctly', () => {
@@ -511,7 +511,7 @@ describe('pure mode enforcement', () => {
   })
 
   it('pure with host bindings works', () => {
-    expect(dvala.run('x + y', { pure: true, bindings: { x: 10, y: 32 } })).toBe(42)
+    expect(dvala.run('x + y', { pure: true, scope: { x: 10, y: 32 } })).toBe(42)
   })
 
   it('pure async works', async () => {
@@ -541,7 +541,7 @@ describe('getUndefinedSymbols', () => {
   })
 
   it('host bindings resolve undefined symbols', () => {
-    expect(getUndefinedSymbols('x + 1', { bindings: { x: 42 } })).toEqual(new Set())
+    expect(getUndefinedSymbols('x + 1', { scope: { x: 42 } })).toEqual(new Set())
   })
 
   it('nested function parameters are defined', () => {

@@ -1507,15 +1507,11 @@ describe('meta — doc and arity with effects', () => {
 // ContextStack — shadowing builtin (lines 239-240)
 // ---------------------------------------------------------------------------
 
-describe('contextStack — shadowing builtin via bindings', () => {
-  it('should allow shadowing a builtin value via bindings', () => {
-    expect(createDvala().run('self', { bindings: { self: 42 } })).toBe(42)
+describe('contextStack — shadowing builtin via scope', () => {
+  it('should allow shadowing a builtin value via scope', () => {
+    expect(createDvala().run('self', { scope: { self: 42 } })).toBe(42)
   })
 
-  it('should throw when trying to shadow a special expression via bindings', () => {
-    expect(() => createDvala().run('1', { bindings: { for: 42 } }))
-      .toThrow('Cannot shadow')
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1660,28 +1656,6 @@ describe('dvala.async.run — with effect handlers', () => {
       ],
     })
     expect(result.type).toBe('suspended')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Dvala — assertSerializableBindings (lines 282-283)
-// ---------------------------------------------------------------------------
-
-describe('dvala — assertSerializableBindings', () => {
-  it('should throw on non-serializable binding (class instance)', () => {
-    class Foo { x = 1 }
-    const d = createDvala()
-    expect(() => d.run('x', { bindings: { x: new Foo() } })).toThrow('not serializable')
-  })
-
-  it('should throw on non-serializable binding (non-finite number)', () => {
-    const d = createDvala()
-    expect(() => d.run('x', { bindings: { x: Infinity } })).toThrow('not serializable')
-  })
-
-  it('should throw on non-serializable binding (symbol)', () => {
-    const d = createDvala()
-    expect(() => d.run('x', { bindings: { x: Symbol('test') as unknown as string } })).toThrow('not serializable')
   })
 })
 
@@ -2506,9 +2480,9 @@ describe('generateDocString — effect with rest argument', () => {
 
 // ---------------------------------------------------------------------------
 describe('dvala.ts — effect binding in assertSerializable (line 271)', () => {
-  it('should accept effect values in bindings', () => {
+  it('should accept effect values in scope', () => {
     const eff = dvala.run('@test.effect')
-    expect(dvala.run('x', { bindings: { x: eff } })).toBe(eff)
+    expect(dvala.run('x', { scope: { x: eff } })).toBe(eff)
   })
 })
 

@@ -10,6 +10,7 @@ import { continueWithEffects, resumeWithEffects } from './evaluator/trampoline-e
 import { deserializeFromObject } from './evaluator/suspension'
 import { fromJS, toJS } from './utils/interop'
 import type { Any } from './interface'
+import type { Context } from './evaluator/interface'
 
 import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
@@ -28,6 +29,8 @@ export interface ResumeOptions {
   maxSnapshots?: number
   disableAutoCheckpoint?: boolean
   terminalSnapshot?: boolean
+  /** New scope values to inject into the computation's globalContext before resuming. */
+  scope?: Record<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -57,9 +60,20 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
       ? new Map(options.modules.map(m => [m.name, m]))
       : undefined
 
+    // Convert a plain scope record to a Context for injection into globalContexts.
+    // fromJS converts plain JS arrays/objects to PersistentVector/PersistentMap.
+    let scopeContext: Context | undefined
+    if (options?.scope) {
+      scopeContext = {}
+      for (const [k, v] of Object.entries(options.scope)) {
+        scopeContext[k] = { value: fromJS(v) }
+      }
+    }
+
     // Extract the opaque continuation from the snapshot and deserialize it.
     const deserialized = deserializeFromObject(snapshot.continuation, {
       modules,
+      scope: scopeContext,
     })
 
     const deserializeOptions = {

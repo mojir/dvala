@@ -36,13 +36,13 @@ function runValue(result: RunResult): unknown {
 }
 
 /** Parse a JSON context string just like the playground does. */
-function parseContext(contextJson: string): { bindings?: Record<string, unknown> } {
+function parseContext(contextJson: string): { scope?: Record<string, unknown> } {
   if (!contextJson.trim())
     return {}
 
   const parsed = JSON.parse(contextJson) as Record<string, unknown>
   return {
-    bindings: (parsed.bindings ?? {}) as Record<string, unknown>,
+    scope: (parsed.bindings ?? {}) as Record<string, unknown>,
   }
 }
 
@@ -140,7 +140,7 @@ describe('playground workflows', () => {
     })
 
     it('evaluates with context bindings', async () => {
-      const result = runValue(await dvala.runAsync('x + y', { bindings: { x: 15, y: 27 } }))
+      const result = runValue(await dvala.runAsync('x + y', { scope: { x: 15, y: 27 } }))
       expect(result).toBe(42)
     })
 
@@ -187,8 +187,8 @@ describe('playground workflows', () => {
       expect(result.has('y')).toBe(true)
     })
 
-    it('resolves symbols provided via bindings', () => {
-      const result = getUndefinedSymbols('x + y', { bindings: { x: 1, y: 2 } })
+    it('resolves symbols provided via scope', () => {
+      const result = getUndefinedSymbols('x + y', { scope: { x: 1, y: 2 } })
       expect(result.size).toBe(0)
     })
 
@@ -317,7 +317,7 @@ describe('built-in examples', () => {
 
   for (const example of runnableExamples) {
     it(`runs without error: ${example.name}`, async () => {
-      const result = await dvala.runAsync(example.code, { bindings: example.context?.bindings })
+      const result = await dvala.runAsync(example.code, { scope: example.context?.bindings })
       expect(result.type).not.toBe('error')
     })
   }
@@ -334,19 +334,19 @@ describe('context parsing', () => {
 
   it('parses bindings from JSON', () => {
     const ctx = parseContext('{"bindings": {"x": 42, "name": "test"}}')
-    expect(ctx.bindings).toEqual({ x: 42, name: 'test' })
+    expect(ctx.scope).toEqual({ x: 42, name: 'test' })
   })
 
   it('handles missing bindings key', () => {
     const ctx = parseContext('{}')
-    expect(ctx.bindings).toEqual({})
+    expect(ctx.scope).toEqual({})
   })
 
   it('uses bindings in evaluation', async () => {
     const dvala = makePlaygroundDvala()
     const contextJson = '{"bindings": {"items": [1, 2, 3, 4, 5]}}'
     const params = parseContext(contextJson)
-    const result = runValue(await dvala.runAsync('reduce(items, +, 0)', { bindings: params.bindings }))
+    const result = runValue(await dvala.runAsync('reduce(items, +, 0)', { scope: params.scope }))
     expect(result).toBe(15)
   })
 

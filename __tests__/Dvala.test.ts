@@ -18,7 +18,7 @@ describe('all tests', () => {
       expect(autoCompleter.getNextSuggestion()).toBeNull()
     })
     it('should return xxx', () => {
-      const autoCompleter = getAutoCompleter('1 + xx + 2', 6, { bindings: { xxx: 1 } })
+      const autoCompleter = getAutoCompleter('1 + xx + 2', 6, { scope: { xxx: 1 } })
       expect(autoCompleter.getNextSuggestion()).toEqual({
         program: '1 + xxx + 2',
         position: 7,
@@ -31,32 +31,32 @@ describe('all tests', () => {
     beforeEach(() => {
       dvala = createDvala({ debug: true })
     })
-    it('a function via bindings.', () => {
+    it('a function via scope.', () => {
       dvala = createDvala({ cache: 10 })
-      const bindings = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
-      expect(dvala.run('tripple(10)', { bindings })).toBe(30)
-      expect(dvala.run('tripple(10)', { bindings })).toBe(30)
+      const scope = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
+      expect(dvala.run('tripple(10)', { scope })).toBe(30)
+      expect(dvala.run('tripple(10)', { scope })).toBe(30)
     })
 
     it('a function - no cache', () => {
       dvala = createDvala({ debug: true })
-      const bindings = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
-      expect(dvala.run('tripple(10)', { bindings })).toBe(30)
-      expect(dvala.run('tripple(10)', { bindings })).toBe(30)
+      const scope = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
+      expect(dvala.run('tripple(10)', { scope })).toBe(30)
+      expect(dvala.run('tripple(10)', { scope })).toBe(30)
     })
 
     it('a variable.', () => {
-      const bindings = dvala.run('let magicNumber = 42; {magicNumber: magicNumber}') as Record<string, unknown>
-      expect(dvala.run('magicNumber', { bindings })).toBe(42)
+      const scope = dvala.run('let magicNumber = 42; {magicNumber: magicNumber}') as Record<string, unknown>
+      expect(dvala.run('magicNumber', { scope })).toBe(42)
     })
 
     it('a variable - again.', () => {
-      const bindings = dvala.run(`
+      const scope = dvala.run(`
     let isZip = (input) -> do boolean(reMatch(input, #"^\\d{5}$")) end;
     let NAME_LENGTH = 100;
     {isZip: isZip, NAME_LENGTH: NAME_LENGTH}
     `) as Record<string, unknown>
-      expect(dvala.run('NAME_LENGTH', { bindings })).toBe(100)
+      expect(dvala.run('NAME_LENGTH', { scope })).toBe(100)
     })
 
     it('a function with a built in normal expression name', () => {
@@ -68,10 +68,10 @@ describe('all tests', () => {
     })
 
     it('more than one', () => {
-      const bindings1 = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
-      const bindings2 = dvala.run('let magicNumber = 42; {magicNumber: magicNumber}') as Record<string, unknown>
-      const bindings = { ...bindings1, ...bindings2 }
-      expect(dvala.run('tripple(magicNumber)', { bindings })).toBe(126)
+      const scope1 = dvala.run('let tripple = (x) -> do x * 3 end; {tripple: tripple}') as Record<string, unknown>
+      const scope2 = dvala.run('let magicNumber = 42; {magicNumber: magicNumber}') as Record<string, unknown>
+      const scope = { ...scope1, ...scope2 }
+      expect(dvala.run('tripple(magicNumber)', { scope })).toBe(126)
     })
   })
 

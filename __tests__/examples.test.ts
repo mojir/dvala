@@ -170,10 +170,10 @@ describe('examples — run', () => {
 
     testFn(`${example.name} (${example.id})`, async () => {
       const handlers = getMockHandlers()
-      const bindings = example.context?.bindings ?? {}
+      const scope = example.context?.bindings ?? {}
 
       const result = await dvala.runAsync(example.code, {
-        bindings,
+        scope,
         effectHandlers: handlers,
       })
 

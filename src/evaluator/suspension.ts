@@ -324,6 +324,8 @@ export function serializeTerminalSnapshot(
 /** Options for deserialization on resume. */
 export interface DeserializeOptions {
   modules?: Map<string, DvalaModule>
+  /** New scope values to inject into the globalContext of all deserialized ContextStacks. */
+  scope?: Context
 }
 
 /**
@@ -434,6 +436,14 @@ export function deserializeFromObject(
       return resolved
     })
     cs.setContextsFromDeserialized(resolvedContexts, scs.globalContextIndex)
+
+    // Override globalContext entries with any new scope values provided at resume time.
+    // This allows the caller to supply updated host values when resuming a suspension.
+    if (options?.scope) {
+      for (const [k, v] of Object.entries(options.scope)) {
+        cs.globalContext[k] = v
+      }
+    }
   }
 
   // Resolve the continuation stack

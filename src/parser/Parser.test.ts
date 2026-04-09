@@ -923,17 +923,17 @@ foo(1, 2)`)).toBe(3)
         expect(dvala.run(`
           let { children: [{ age as firstChildAge }] } = anObject;
           firstChildAge
-        `, { bindings: values })).toBe(10)
+        `, { scope: values })).toBe(10)
 
         expect(dvala.run(`
           let { children: [{ age as firstChildAge, name }] } = anObject;
           [firstChildAge, name]
-        `, { bindings: values })).toEqual([10, 'Alice'])
+        `, { scope: values })).toEqual([10, 'Alice'])
 
         expect(dvala.run(`
           let { children: [, { age, name }] } = anObject;
           [age, name]
-        `, { bindings: values })).toEqual([7, 'Bob'])
+        `, { scope: values })).toEqual([7, 'Bob'])
 
         expect(dvala.run(`
           let foo = ([a, b] = [1, 2]) -> do
@@ -941,7 +941,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
         foo()
-        `, { bindings: values })).toEqual(3)
+        `, { scope: values })).toEqual(3)
 
         expect(dvala.run(`
           let foo = ([{ value as a }, { value as b }] = [{ value: 1 }, { value: 2 }]) -> do
@@ -949,7 +949,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
           foo()
-          `, { bindings: values })).toEqual(3)
+          `, { scope: values })).toEqual(3)
 
         expect(dvala.run(`
           let foo = ([{ value as a } = { value: 10 }, { value as b } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
@@ -957,7 +957,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
             foo([])
-            `, { bindings: values })).toEqual(30)
+            `, { scope: values })).toEqual(30)
 
         expect(dvala.run(`
           let foo = ({ value = 10 }) -> do
@@ -965,7 +965,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
           foo({})
-          `, { bindings: values })).toEqual(10)
+          `, { scope: values })).toEqual(10)
 
         expect(dvala.run(`
           let foo = ([{ value as a } = { value: 10 }, { value as b = 200 } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
@@ -973,7 +973,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
             foo([{ value: 1 }])
-            `, { bindings: values })).toEqual(21)
+            `, { scope: values })).toEqual(21)
 
         expect(dvala.run(`
           let foo = ([{ value as a } = { value: 10 }, { value as b = 200 } = { value: 20 }] = [{ value: 1 }, { value: 2 }]) -> do
@@ -981,7 +981,7 @@ foo(1, 2)`)).toBe(3)
           end;
 
             foo([{ value: 1 }, { value: 200 }])
-            `, { bindings: values })).toEqual(201)
+            `, { scope: values })).toEqual(201)
       })
     })
     test('complex example with three iterations', () => {

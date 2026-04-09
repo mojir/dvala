@@ -138,12 +138,12 @@ describe('Debugger', () => {
     // Helper: create a condition evaluator using a fresh dvala instance
     async function evalCondition(expression: string, continuation: Parameters<typeof Debugger.getVariables>[0]) {
       const vars = Debugger.getVariables(continuation)
-      const bindings: Record<string, unknown> = {}
+      const scopeVars: Record<string, unknown> = {}
       for (const { name, value } of vars) {
-        bindings[name] = value
+        scopeVars[name] = value
       }
       const evalDvala = createDvala({ modules: allBuiltinModules })
-      const result = await evalDvala.runAsync(expression, { bindings, pure: true })
+      const result = await evalDvala.runAsync(expression, { scope: scopeVars, pure: true })
       if (result.type === 'completed') return result.value
       return undefined
     }
@@ -898,12 +898,12 @@ describe('Debugger', () => {
         const vars = Debugger.getVariables(event.continuation)
         if (vars.some(v => v.name === 'x') && vars.some(v => v.name === 'y')) {
           // Extract bindings and evaluate a new expression
-          const bindings: Record<string, unknown> = {}
+          const scopeVars: Record<string, unknown> = {}
           for (const { name, value } of vars) {
-            bindings[name] = value
+            scopeVars[name] = value
           }
           const evalDvala = createDvala({ modules: allBuiltinModules })
-          const result = await evalDvala.runAsync('x * y + 1', { bindings, pure: true })
+          const result = await evalDvala.runAsync('x * y + 1', { scope: scopeVars, pure: true })
           if (result.type === 'completed') {
             evalResult = result.value
           }
@@ -926,12 +926,12 @@ describe('Debugger', () => {
       const dbg = new Debugger(async event => {
         const vars = Debugger.getVariables(event.continuation)
         if (vars.some(v => v.name === 'a') && vars.some(v => v.name === 'b')) {
-          const bindings: Record<string, unknown> = {}
+          const scopeVars: Record<string, unknown> = {}
           for (const { name, value } of vars) {
-            bindings[name] = value
+            scopeVars[name] = value
           }
           const evalDvala = createDvala({ modules: allBuiltinModules })
-          const result = await evalDvala.runAsync('a * b', { bindings, pure: true })
+          const result = await evalDvala.runAsync('a * b', { scope: scopeVars, pure: true })
           if (result.type === 'completed') {
             evalResult = result.value
           }
@@ -953,12 +953,12 @@ describe('Debugger', () => {
       const dbg = new Debugger(async event => {
         const vars = Debugger.getVariables(event.continuation)
         if (vars.some(v => v.name === 'items')) {
-          const bindings: Record<string, unknown> = {}
+          const scopeVars: Record<string, unknown> = {}
           for (const { name, value } of vars) {
-            bindings[name] = value
+            scopeVars[name] = value
           }
           const evalDvala = createDvala({ modules: allBuiltinModules })
-          const result = await evalDvala.runAsync('count(items)', { bindings, pure: true })
+          const result = await evalDvala.runAsync('count(items)', { scope: scopeVars, pure: true })
           if (result.type === 'completed') {
             evalResult = result.value
           }

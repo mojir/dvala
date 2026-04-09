@@ -178,8 +178,8 @@ function makeDvala(context: Record<string, unknown>, pure: boolean) {
   const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
   return {
     run: (program: string | DvalaBundle) => runner.run(program, pure
-      ? { pure: true }
-      : { effectHandlers: [hostHandler(context)] }),
+      ? { scope: context, pure: true }
+      : { scope: context, effectHandlers: [hostHandler(context)] }),
   }
 }
 
