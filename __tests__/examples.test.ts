@@ -170,9 +170,15 @@ describe('examples — run', () => {
 
     testFn(`${example.name} (${example.id})`, async () => {
       const handlers = getMockHandlers()
+      // Compile the example's own effect handlers (if any) and prepend them so
+      // they take priority over the generic mock handlers.
+      const exampleHandlers: HandlerRegistration[] = (example.effectHandlers ?? []).map(({ pattern, handler: source }) => ({
+        pattern,
+        handler: eval(`(${source})`) as HandlerRegistration['handler'], // eslint-disable-line no-eval
+      }))
 
       const result = await dvala.runAsync(example.code, {
-        effectHandlers: handlers,
+        effectHandlers: [...exampleHandlers, ...handlers],
       })
 
       expect(result.type, `Example "${example.name}" failed: ${result.type === 'error' ? result.error.message : 'suspended'}`).toBe('completed')

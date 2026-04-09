@@ -7464,26 +7464,59 @@ export function loadEncodedCode(encodedCode: string) {
 
 export function setPlayground(name: string, encodedExample: string) {
   const example = JSON.parse(decodeURIComponent(atob(encodedExample))) as Example
-  const context = example.context
-    ? formatContextJson(example.context as Record<string, unknown>)
-    : ''
   const code = example.code ? example.code : ''
-  const size = Math.max(name.length + 10, 40)
-  const paddingLeft = Math.floor((size - name.length) / 2)
-  const paddingRight = Math.ceil((size - name.length) / 2)
 
-  openScratchInEditor({
-    code: `
+  const loadCode = (contextJson?: string) => {
+    const size = Math.max(name.length + 10, 40)
+    const paddingLeft = Math.floor((size - name.length) / 2)
+    const paddingRight = Math.ceil((size - name.length) / 2)
+
+    openScratchInEditor({
+      code: `
 /*${'*'.repeat(size)}**
  *${' '.repeat(paddingLeft)}${name}${' '.repeat(paddingRight)} *
  *${'*'.repeat(size)}**/
 
 ${code}
 `.trimStart(),
-    context,
-    focusCode: true,
-    navigateToPlayground: true,
-    toast: `Example loaded: ${name}`,
+      context: contextJson,
+      focusCode: true,
+      navigateToPlayground: true,
+      toast: `Example loaded: ${name}`,
+    })
+  }
+
+  const exampleHandlers = example.effectHandlers
+  if (!exampleHandlers || exampleHandlers.length === 0) {
+    loadCode('')
+    return
+  }
+
+  // Example has effect handlers — always confirm before installing
+  const currentContext = getParsedContext()
+  const currentHandlers = getContextEffectHandlers(currentContext)
+  const currentPatterns = new Set(currentHandlers.map(h => h.pattern))
+  const examplePatterns = exampleHandlers.map(h => h.pattern)
+  const conflicts = examplePatterns.filter(p => currentPatterns.has(p))
+
+  let message = `This example requires ${exampleHandlers.length} effect handler${exampleHandlers.length > 1 ? 's' : ''}:\n`
+  message += examplePatterns.map(p => `  ${p}`).join('\n')
+  if (conflicts.length > 0) {
+    message += `\n\nThe following will be replaced:\n`
+    message += conflicts.map(p => `  ${p}`).join('\n')
+  }
+  message += '\n\nInstall and load example?'
+
+  void showInfoModal(`Load "${name}"`, message, () => {
+    // Merge example handlers into current context, replacing conflicts
+    const mergedHandlers = [
+      ...currentHandlers.filter(h => !examplePatterns.includes(h.pattern)),
+      ...exampleHandlers,
+    ]
+    const newContext: Record<string, unknown> = { ...currentContext }
+    newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
+    const contextJson = formatContextJson(newContext)
+    loadCode(contextJson)
   })
 }
 

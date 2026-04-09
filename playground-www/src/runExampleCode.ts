@@ -82,13 +82,27 @@ const exampleHandlers: HandlerRegistration[] = [
 ]
 
 /**
+ * Compile context effect handler source strings into HandlerRegistrations.
+ * These come from example context definitions in reference/examples.ts.
+ */
+function compileContextHandlers(handlers?: { pattern: string; handler: string }[]): HandlerRegistration[] {
+  if (!handlers) return []
+  return handlers.map(({ pattern, handler: source }) => ({
+    pattern,
+    handler: eval(`(${source})`) as HandlerRegistration['handler'], // eslint-disable-line no-eval
+  }))
+}
+
+/**
  * Run example code and return formatted output.
  * print/println return their argument. Other effects cause no output.
+ * Optional contextEffectHandlers are installed before the default handlers.
  */
-export function runExampleCode(code: string): string | null {
+export function runExampleCode(code: string, contextEffectHandlers?: { pattern: string; handler: string }[]): string | null {
   try {
+    const contextHandlers = compileContextHandlers(contextEffectHandlers)
     const value = dvala.run(code, {
-      effectHandlers: exampleHandlers,
+      effectHandlers: [...contextHandlers, ...exampleHandlers],
     })
     return stringifyValue(value, false)
   } catch (e) {
