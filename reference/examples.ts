@@ -9,7 +9,6 @@ export interface Example {
   category: string
   code: string
   context?: {
-    scope?: Record<string, unknown>
     effectHandlers?: { pattern: string; handler: string }[]
   }
 }
@@ -59,17 +58,15 @@ for (i in range(count(items))) ->
   {
     id: 'simple-context-example',
     name: 'Using context',
-    description: 'Simple example using scope and a host effect handler.',
+    description: 'Simple example using a host effect handler to perform addition in JavaScript.',
     category: 'Effects & Context',
     context: {
-      scope: { x: 15, y: 27 },
       effectHandlers: [
         { pattern: 'host.plus', handler: 'async ({ arg: [a, b], resume }) => { resume(a + b) }' },
       ],
     },
     code: dvala`
-let sum = x + y;
-perform(@host.plus, [sum, 0])`,
+perform(@host.plus, [15, 27])`,
   },
   {
     id: 'async-example',
