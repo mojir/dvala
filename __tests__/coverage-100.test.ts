@@ -221,34 +221,34 @@ describe('parseTemplateString edge cases', () => {
     // A quoted symbol ('sym) inside interpolation — scanQuotedSymbol skips over it
     // so brace matching works correctly
     const segments = splitSegments("${x.'key'}")
-    expect(segments).toEqual([{ type: 'expression', value: "x.'key'" }])
+    expect(segments).toEqual([{ type: 'expression', value: "x.'key'", offset: 2 }])
   })
 
   it('should handle quoted symbol with escape inside interpolation', () => {
     const segments = splitSegments("${x.'k\\'ey'}")
-    expect(segments).toEqual([{ type: 'expression', value: "x.'k\\'ey'" }])
+    expect(segments).toEqual([{ type: 'expression', value: "x.'k\\'ey'", offset: 2 }])
   })
 
   it('should handle nested template string inside interpolation via splitSegments (scanNestedTemplate)', () => {
     // A nested backtick template inside interpolation
     const segments = splitSegments('${`inner`}')
-    expect(segments).toEqual([{ type: 'expression', value: '`inner`' }])
+    expect(segments).toEqual([{ type: 'expression', value: '`inner`', offset: 2 }])
   })
 
   it('should handle nested template with interpolation via splitSegments', () => {
     const segments = splitSegments('${`${x}`}')
-    expect(segments).toEqual([{ type: 'expression', value: '`${x}`' }])
+    expect(segments).toEqual([{ type: 'expression', value: '`${x}`', offset: 2 }])
   })
 
   it('should handle double-quoted string inside interpolation via splitSegments (scanString)', () => {
     // A double-quoted string inside interpolation — scanString skips over it
     const segments = splitSegments('${concat("hello", "world")}')
-    expect(segments).toEqual([{ type: 'expression', value: 'concat("hello", "world")' }])
+    expect(segments).toEqual([{ type: 'expression', value: 'concat("hello", "world")', offset: 2 }])
   })
 
   it('should handle escaped quotes in string inside interpolation', () => {
     const segments = splitSegments('${concat("he\\"llo")}')
-    expect(segments).toEqual([{ type: 'expression', value: 'concat("he\\"llo")' }])
+    expect(segments).toEqual([{ type: 'expression', value: 'concat("he\\"llo")', offset: 2 }])
   })
 
   it('should skip empty literal segments between adjacent interpolations', () => {
@@ -265,7 +265,7 @@ describe('parseTemplateString edge cases', () => {
     const segments = splitSegments('prefix$${inner}suffix')
     expect(segments).toEqual([
       { type: 'literal', value: 'prefix' },
-      { type: 'deferred', value: 'inner', dollarCount: 2 },
+      { type: 'deferred', value: 'inner', dollarCount: 2, offset: 9 },
       { type: 'literal', value: 'suffix' },
     ])
   })
@@ -273,14 +273,14 @@ describe('parseTemplateString edge cases', () => {
   it('should parse deferred splice with no prefix literal', () => {
     const segments = splitSegments('$${x}')
     expect(segments).toEqual([
-      { type: 'deferred', value: 'x', dollarCount: 2 },
+      { type: 'deferred', value: 'x', dollarCount: 2, offset: 3 },
     ])
   })
 
   it('should parse triple-dollar deferred splice', () => {
     const segments = splitSegments('$$${x}')
     expect(segments).toEqual([
-      { type: 'deferred', value: 'x', dollarCount: 3 },
+      { type: 'deferred', value: 'x', dollarCount: 3, offset: 4 },
     ])
   })
 })

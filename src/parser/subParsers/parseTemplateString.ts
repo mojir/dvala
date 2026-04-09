@@ -9,12 +9,25 @@ import type { AstNode, StringNode, TemplateStringNode } from '../types'
 import { createParserContext, parseExpression } from './parseExpression'
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Count newline characters in a string. */
+function countNewlines(s: string): number {
+  let count = 0
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\n') count++
+  }
+  return count
+}
+
+// ---------------------------------------------------------------------------
 // Segment types
 // ---------------------------------------------------------------------------
 
 type LiteralSegment = { type: 'literal'; value: string }
-type ExpressionSegment = { type: 'expression'; value: string }
-type DeferredSegment = { type: 'deferred'; value: string; dollarCount: number }
+type ExpressionSegment = { type: 'expression'; value: string; offset: number }
+type DeferredSegment = { type: 'deferred'; value: string; dollarCount: number; offset: number }
 export type Segment = LiteralSegment | ExpressionSegment | DeferredSegment
 
 // ---------------------------------------------------------------------------
@@ -159,9 +172,10 @@ export function splitSegments(raw: string): Segment[] {
           literal = ''
         }
         i += 2 // skip ${
+        const exprOffset = i
         const { expr, consumed } = scanExpression(raw, i)
         i += consumed
-        segments.push({ type: 'deferred', value: expr, dollarCount: dollarCount + 1 })
+        segments.push({ type: 'deferred', value: expr, dollarCount: dollarCount + 1, offset: exprOffset })
         continue
       }
 
@@ -171,9 +185,10 @@ export function splitSegments(raw: string): Segment[] {
         literal = ''
       }
       i += 2 // skip `${`
+      const exprOffset = i
       const { expr, consumed } = scanExpression(raw, i)
       i += consumed
-      segments.push({ type: 'expression', value: expr })
+      segments.push({ type: 'expression', value: expr, offset: exprOffset })
     } else {
       literal += raw[i]!
       i++
@@ -228,8 +243,11 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
       if (segment.value.trim().length === 0) {
         throw new ParseError('Empty interpolation in template string', resolvedSci)
       }
-      // Re-tokenize and re-parse the expression
-      const innerStream = tokenize(segment.value, false, resolvedSci?.filePath)
+      // Re-tokenize and re-parse the expression.
+      // Enable debug when the outer context has a sourceMap so that
+      // interpolated expressions carry correct source positions.
+      const hasDebug = ctx.sourceMap !== undefined
+      const innerStream = tokenize(segment.value, hasDebug, resolvedSci?.filePath)
       const minified = minifyTokenStream(innerStream, { removeWhiteSpace: true })
 
       for (const t of minified.tokens) {
@@ -240,6 +258,39 @@ export function parseTemplateString(ctx: ParserContext, token: TemplateStringTok
 
       const innerCtx = createParserContext(minified, ctx.allocateId)
       const expr = parseExpression(innerCtx, 0)
+
+      // Merge inner sourceMap positions into the outer sourceMap,
+      // adjusting from segment-relative to file-absolute coordinates.
+      if (ctx.sourceMap && innerCtx.sourceMap && debugInfo) {
+        // Compute the absolute position of the expression content start
+        // within the original file. `segment.offset` is where the expression
+        // begins inside `raw` (the template content between backticks).
+        const rawBefore = raw.substring(0, segment.offset)
+        const newlinesBefore = countNewlines(rawBefore)
+        const lastNewlineIdx = rawBefore.lastIndexOf('\n')
+
+        // segStart = absolute [line, col] of the first char of the expression
+        const segStartLine = debugInfo[0] + newlinesBefore
+        const segStartCol = newlinesBefore === 0
+          ? debugInfo[1] + 1 + segment.offset // +1 for the opening backtick
+          : segment.offset - lastNewlineIdx - 1
+
+        for (const [nodeId, innerPos] of innerCtx.sourceMap.positions) {
+          ctx.sourceMap.positions.set(nodeId, {
+            source: 0,
+            start: [
+              segStartLine + innerPos.start[0],
+              innerPos.start[0] === 0 ? segStartCol + innerPos.start[1] : innerPos.start[1],
+            ],
+            end: [
+              segStartLine + innerPos.end[0],
+              innerPos.end[0] === 0 ? segStartCol + innerPos.end[1] : innerPos.end[1],
+            ],
+            ...(innerPos.structuralLeaf ? { structuralLeaf: true } : {}),
+          })
+        }
+      }
+
       segmentNodes.push(expr)
     }
   }
