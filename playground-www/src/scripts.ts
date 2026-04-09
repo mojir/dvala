@@ -7513,7 +7513,7 @@ ${code}
   let message = 'This example will install effect handlers.'
   if (conflicts.length > 0) {
     message += `\nThe following will be replaced:\n`
-    message += conflicts.map(p => `  ${p}`).join('\n')
+    message += conflicts.map(p => `  @${p}`).join('\n')
   }
   message += '\n\nInstall and load example?'
 
