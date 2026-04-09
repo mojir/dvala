@@ -15,14 +15,15 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v5
         with:
@@ -55,12 +56,63 @@ jobs:
       - name: Check
         run: npm run check
 
-      # Commit and push directly to main (requires bypass actor in ruleset)
-      - name: Commit and tag
+      # Create release branch, push, and open PR with auto-merge
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          BRANCH="release/v${VERSION}"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add -A
-          git commit -m "release: v${{ steps.bump.outputs.version }}"
-          git tag "v${{ steps.bump.outputs.version }}"
-          git push origin main --tags
+          git commit -m "release: v${VERSION}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "release: v${VERSION}" \
+            --body "Automated version bump to v${VERSION} (${{ inputs.bump }})." \
+            --base main \
+            --head "$BRANCH"
+
+          gh pr merge "$BRANCH" --squash --auto
+
+  # After the release PR is merged, tag main with the version
+  tag:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Wait for merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          BRANCH="release/v${VERSION}"
+          # Poll until the PR is merged (auto-merge needs CI to pass first)
+          for i in $(seq 1 60); do
+            STATE=$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || echo "UNKNOWN")
+            if [ "$STATE" = "MERGED" ]; then
+              echo "PR merged!"
+              exit 0
+            fi
+            echo "Waiting for merge... (attempt $i, state=$STATE)"
+            sleep 10
+          done
+          echo "Timed out waiting for PR merge"
+          exit 1
+
+      - name: Tag and push
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          git fetch origin main
+          git checkout main
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
