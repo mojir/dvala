@@ -1470,6 +1470,10 @@ export function showSideTab(tabId: string, options: { persist?: boolean; syncUrl
   if (normalizedTabId === 'snapshots')
     document.getElementById('side-icon-snapshots')?.classList.remove('side-panel__icon--has-new')
 
+  // Clear the "new context" indicator when entering the context view.
+  if (normalizedTabId === 'context')
+    document.getElementById('side-icon-context')?.classList.remove('side-panel__icon--has-new')
+
   document.querySelectorAll('[id^="side-header-"]').forEach(el => {
     if (el.id === 'side-panel-header') return
     if (el.id.startsWith('side-header-actions-') || el.id.startsWith('side-header-')) {
@@ -5874,6 +5878,12 @@ function markSnapshotIconNew() {
     document.getElementById('side-icon-snapshots')?.classList.add('side-panel__icon--has-new')
 }
 
+function markContextIconNew() {
+  // Show a blue dot on the context sidebar icon only when not already viewing context.
+  if (getCurrentSideTab() !== 'context')
+    document.getElementById('side-icon-context')?.classList.add('side-panel__icon--has-new')
+}
+
 function saveTerminalSnapshot(snapshot: Snapshot, resultType: 'completed' | 'error' | 'halted', result?: string): void {
   const entry: TerminalSnapshotEntry = {
     kind: 'terminal',
@@ -7516,6 +7526,7 @@ ${code}
     const newContext: Record<string, unknown> = { ...currentContext }
     newContext[CONTEXT_EFFECT_HANDLERS_KEY] = mergedHandlers
     const contextJson = formatContextJson(newContext)
+    markContextIconNew()
     loadCode(contextJson)
   })
 }
