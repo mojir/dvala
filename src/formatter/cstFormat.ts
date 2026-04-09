@@ -136,6 +136,26 @@ function formatTokenWithTrivia(token: CstToken): Doc {
 }
 
 /**
+ * Format a closing delimiter token (`end`, `else`, `)`, `}`) with both
+ * leading AND trailing block comments preserved.
+ *
+ * Leading block comments on closing tokens are NOT at statement boundaries
+ * (containers only handle leading trivia on the first token of each statement),
+ * so they must be emitted here to avoid being dropped.
+ */
+function formatClosingToken(token: CstToken): Doc {
+  // Only emit leading BLOCK comments — line comments are handled by containers
+  // at statement boundaries and would be duplicated here.
+  const leadingBlocks: Doc[] = []
+  for (const t of token.leadingTrivia) {
+    if (t.kind === 'blockComment') leadingBlocks.push(text(t.text))
+  }
+  const base = formatTokenWithTrivia(token)
+  if (leadingBlocks.length === 0) return base
+  return concat(...leadingBlocks.flatMap(c => [c, text(' ')]), base)
+}
+
+/**
  * Get the trailing line comment from the last token of a subtree, if any.
  * Used by containers to emit trailing line comments after semicolons.
  */
@@ -283,6 +303,11 @@ class ChildIterator {
   /** Consume a keyword token and return a Doc with trailing block comments preserved. */
   emitToken(tokenText: string): Doc {
     return formatTokenWithTrivia(this.expectToken(tokenText))
+  }
+
+  /** Consume a closing token (end, else, ), }) with both leading and trailing comments. */
+  emitClosing(tokenText: string): Doc {
+    return formatClosingToken(this.expectToken(tokenText))
   }
 
   /** Consume the next token (any text) and return a Doc with trailing block comments preserved. */
@@ -810,11 +835,17 @@ function formatArray(node: UntypedCstNode): Doc {
   // Trailing comma when array breaks to multiline
   const trailingComma = ifBreak(text(','), text(''))
 
+  // Get [ and ] tokens for trivia
+  const openBracketToken = toks.find(t => t.text === '[')
+  const closeBracketToken = toks.find(t => t.text === ']')
+  const openDoc = openBracketToken ? formatTokenWithTrivia(openBracketToken) : text('[')
+  const closeDoc = closeBracketToken ? formatClosingToken(closeBracketToken) : text(']')
+
   return group(concat(
-    text('['),
+    openDoc,
     nest(INDENT, concat(softLine, concat(...innerParts), trailingComma)),
     softLine,
-    text(']'),
+    closeDoc,
   ))
 }
 
@@ -846,11 +877,12 @@ function formatObject(node: UntypedCstNode): Doc {
     // Key-value entry: key [: value] or key [as alias]
     // Key can be a token (symbol) or a node (string, template, computed)
     const entryParts: Doc[] = []
-    // Collect key
+    // Collect key — use formatClosingToken to preserve leading block comments
+    // (object keys are never at statement boundaries, so no duplication risk)
     if (iter.isNode()) {
       entryParts.push(formatExprChild(iter.nextNode()))
     } else {
-      entryParts.push(formatTokenWithTrivia(iter.nextToken()))
+      entryParts.push(formatClosingToken(iter.nextToken()))
     }
     // Check for computed key brackets
     if (iter.isToken('[')) {
@@ -873,7 +905,7 @@ function formatObject(node: UntypedCstNode): Doc {
     }
   }
 
-  iter.expectToken('}')
+  const closeBraceDoc = formatClosingToken(iter.expectToken('}'))
 
   if (entries.length === 0) {
     return text('{}')
@@ -886,7 +918,7 @@ function formatObject(node: UntypedCstNode): Doc {
     text('{'),
     nest(INDENT, concat(line, join(concat(text(','), line), entries), trailingComma)),
     line,
-    text('}'),
+    closeBraceDoc,
   ))
 }
 
@@ -959,7 +991,7 @@ function formatIndexAccess(node: UntypedCstNode): Doc {
     formatNode(object),
     openBracket ? formatTokenWithTrivia(openBracket) : text('['),
     formatNode(index),
-    closeBracket ? formatTokenWithTrivia(closeBracket) : text(']'),
+    closeBracket ? formatClosingToken(closeBracket) : text(']'),
   )
 }
 
@@ -976,7 +1008,7 @@ function formatCall(node: UntypedCstNode): Doc {
     return concat(
       formatNode(fn),
       openParen ? formatTokenWithTrivia(openParen) : text('('),
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     )
   }
 
@@ -1017,7 +1049,7 @@ function formatCall(node: UntypedCstNode): Doc {
       join(concat(text(','), text(' ')), leadingArgDocs),
       text(', '),
       trailingArgDoc,
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     ))
   }
 
@@ -1027,7 +1059,7 @@ function formatCall(node: UntypedCstNode): Doc {
       openDoc,
       nest(INDENT, concat(softLine, join(concat(text(','), line), argDocs))),
       softLine,
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     )),
   )
 }
@@ -1044,7 +1076,7 @@ function formatParenthesized(node: UntypedCstNode): Doc {
   return concat(
     openParen ? formatTokenWithTrivia(openParen) : text('('),
     formatExprChild(inner),
-    closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+    closeParen ? formatClosingToken(closeParen) : text(')'),
   )
 }
 
@@ -1082,17 +1114,17 @@ function formatLet(node: UntypedCstNode): Doc {
       // Special case: `{` and `}` in object destructuring get spaces inside
       if (t === '{') {
         if (targetParts.length > 0) targetParts.push(text(' '))
-        targetParts.push(text('{ '))
+        targetParts.push(formatTokenWithTrivia(child), text(' '))
         lastTargetText = '{ '
         continue
       }
       if (t === '}') {
-        targetParts.push(text(' }'))
+        targetParts.push(text(' '), formatClosingToken(child))
         lastTargetText = '}'
         continue
       }
       if (t === ',') {
-        targetParts.push(text(', '))
+        targetParts.push(formatTokenWithTrivia(child), text(' '))
         lastTargetText = ', '
         continue
       }
@@ -1100,7 +1132,7 @@ function formatLet(node: UntypedCstNode): Doc {
         && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
-      targetParts.push(formatTokenWithTrivia(child))
+      targetParts.push(formatClosingToken(child))
       lastTargetText = t
     } else {
       // Add space before node unless previous was open bracket or already ends with space
@@ -1118,7 +1150,7 @@ function formatLet(node: UntypedCstNode): Doc {
   const value = iter.nextNode()
 
   const header = concat(letDoc, text(' '), concat(...targetParts), text(' '), eqDoc, text(' '))
-  const valueDoc = formatNode(value)
+  const valueDoc = formatExprChild(value)
 
   // For Function/Block values (lambda with do-block), don't break at `=`.
   // The value's internal formatting handles its own indentation.
@@ -1173,7 +1205,7 @@ function formatIf(node: UntypedCstNode): Doc {
     if (isToken(child) && child.text === 'end') break
 
     if (isToken(child) && child.text === 'else') {
-      const elseKwDoc = iter.emitNextToken() // consume 'else'
+      const elseKwDoc = formatClosingToken(iter.nextToken()) // consume 'else'
       if (iter.isToken('if')) {
         // else-if: save the else Doc for the next branch
         pendingElseDoc = elseKwDoc
@@ -1189,9 +1221,9 @@ function formatIf(node: UntypedCstNode): Doc {
     }
 
     if (isToken(iter.peek()!) && (iter.peek() as CstToken).text === 'if') {
-      const ifDoc = iter.emitNextToken() // consume 'if'
+      const ifDoc = formatClosingToken(iter.nextToken()) // consume 'if'
       const condition = iter.nextNode()
-      const thenDoc = iter.emitToken('then')
+      const thenDoc = formatClosingToken(iter.expectToken('then'))
       const bodyCount = countNodesUntil(iter, 'else', 'end')
       const bodyResult = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
       branches.push({
@@ -1208,7 +1240,7 @@ function formatIf(node: UntypedCstNode): Doc {
     }
   }
 
-  const endDoc = iter.emitToken('end')
+  const endDoc = iter.emitClosing('end')
 
   // Simple if/then/[else]/end with single-expression bodies: try flat
   // Collect all trailing comments for emission after `end`
@@ -1277,7 +1309,7 @@ function formatBlock(node: UntypedCstNode): Doc {
   // Check for `with handler;` clause
   let withClause: Doc | undefined
   if (iter.isToken('with')) {
-    const withDoc = iter.emitNextToken() // consume 'with'
+    const withDoc = formatClosingToken(iter.nextToken()) // consume 'with'
     const handler = iter.nextNode()
     const semiDoc = iter.emitToken(';')
     withClause = concat(withDoc, text(' '), formatNode(handler), semiDoc)
@@ -1287,7 +1319,7 @@ function formatBlock(node: UntypedCstNode): Doc {
   // Always use trailing ; for expanded blocks
   const bodyResult = formatBodyFromIter(iter, 'end')
   const bodyDoc = bodyResult.doc
-  const endDoc = iter.emitToken('end')
+  const endDoc = iter.emitClosing('end')
 
   if (bodyDoc.type === 'text' && bodyDoc.text === '') {
     if (withClause) {
@@ -1348,7 +1380,7 @@ function formatMatch(node: UntypedCstNode): Doc {
   // Parse cases
   while (!iter.done() && !iter.isToken('end')) {
     if (iter.isToken('case')) {
-      iter.emitNextToken() // consume 'case'
+      const caseDoc = formatClosingToken(iter.nextToken()) // consume 'case'
 
       // Collect pattern (tokens and nodes until 'when' or 'then')
       const patternParts: Doc[] = []
@@ -1356,30 +1388,30 @@ function formatMatch(node: UntypedCstNode): Doc {
         const child = iter.next()
         if (isToken(child)) {
           if (patternParts.length > 0 && !isPunctuation(child.text)) patternParts.push(text(' '))
-          patternParts.push(formatTokenWithTrivia(child))
+          patternParts.push(formatClosingToken(child))
         } else {
           if (patternParts.length > 0) patternParts.push(text(' '))
-          patternParts.push(formatNode(child))
+          patternParts.push(formatExprChild(child))
         }
       }
 
       // Optional when guard
       let guardDoc: Doc | undefined
       if (iter.isToken('when')) {
-        iter.emitNextToken() // consume 'when'
+        const whenDoc = formatClosingToken(iter.nextToken()) // consume 'when'
         const guard = iter.nextNode()
-        guardDoc = concat(text(' when '), formatNode(guard))
+        guardDoc = concat(text(' '), whenDoc, text(' '), formatExprChild(guard))
       }
 
-      iter.expectToken('then')
+      const thenDoc = formatClosingToken(iter.expectToken('then'))
       const body = iter.collectBody('case', 'end')
 
       parts.push(nest(INDENT, concat(
         hardLine,
-        text('case '),
+        caseDoc, text(' '),
         concat(...patternParts),
         guardDoc ?? text(''),
-        text(' then'),
+        text(' '), thenDoc,
         body.length === 1
           ? concat(text(' '), body[0]!)
           : nest(INDENT, concat(hardLine, formatBody(body))),
@@ -1389,7 +1421,7 @@ function formatMatch(node: UntypedCstNode): Doc {
     }
   }
 
-  const endDoc = iter.emitToken('end')
+  const endDoc = iter.emitClosing('end')
   parts.push(hardLine, endDoc)
   return concat(...parts)
 }
@@ -1497,7 +1529,7 @@ function formatHandler(node: UntypedCstNode): Doc {
     }
   }
 
-  const endDoc = iter.emitToken('end')
+  const endDoc = iter.emitClosing('end')
 
   if (clauseParts.length === 0) {
     return concat(...parts, text(' '), endDoc)
@@ -1520,11 +1552,11 @@ function formatResume(node: UntypedCstNode): Doc {
     iter.next() // consume (
     if (iter.isNode()) {
       const arg = iter.nextNode()
-      iter.expectToken(')')
-      return concat(resumeDoc, text('('), formatNode(arg), text(')'))
+      const closeDoc = iter.emitClosing(')')
+      return concat(resumeDoc, text('('), formatExprChild(arg), closeDoc)
     }
-    iter.expectToken(')')
-    return concat(resumeDoc, text('()'))
+    const closeDoc = iter.emitClosing(')')
+    return concat(resumeDoc, text('('), closeDoc)
   }
   return resumeDoc
 }
@@ -1588,7 +1620,7 @@ function formatFromChildren(node: UntypedCstNode): Doc {
       if (prevText && needsSpaceBetween(prevText, child.text)) {
         parts.push(text(' '))
       }
-      parts.push(formatTokenWithTrivia(child))
+      parts.push(formatClosingToken(child))
       prevText = child.text
     } else {
       // Space before a child node unless preceded by an open bracket or dot
