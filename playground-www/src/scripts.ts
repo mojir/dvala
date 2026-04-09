@@ -1542,9 +1542,8 @@ function syncCodePanelView(sideTab?: string) {
       emptyView.style.display = 'flex'
       emptyView.innerHTML = `
         <div class="dvala-empty-view__content">
-          <div class="dvala-empty-view__title">No effects</div>
-          <div class="dvala-empty-view__description">Add a scope value or effect handler to set up the execution context.</div>
-          <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextBinding()">Add scope value</button>
+          <div class="dvala-empty-view__title">No effect handlers</div>
+          <div class="dvala-empty-view__description">Add an effect handler to set up the execution context.</div>
           <button type="button" class="button button--primary dvala-empty-view__button" onclick="Playground.promptAddContextEffectHandler()">Add effect handler</button>
         </div>
       `
@@ -2567,15 +2566,9 @@ function getContextEffectHandler(context: Record<string, unknown>, pattern: stri
 
 function getRuntimeContextObject(context: Record<string, unknown>): Record<string, unknown> {
   const runtimeContext = { ...context }
-  const runtimeBindings = Object.fromEntries(
-    Object.entries(getContextBindings(context)).filter(([name]) => isContextBindingActive(context, name)),
-  )
   const runtimeEffectHandlers = getContextEffectHandlers(context).filter(({ pattern }) => isContextEffectHandlerActive(context, pattern))
 
-  if (Object.keys(runtimeBindings).length > 0)
-    runtimeContext.bindings = runtimeBindings
-  else
-    delete runtimeContext.bindings
+  delete runtimeContext.bindings
 
   if (runtimeEffectHandlers.length > 0)
     runtimeContext[CONTEXT_EFFECT_HANDLERS_KEY] = runtimeEffectHandlers
@@ -2896,58 +2889,19 @@ function renderContextEntryList() {
   const context = getParsedContext()
   ensureActiveContextSelection(context)
 
-  // Single "Effects" group — scope values (bindings) and effect handlers are listed together
-  const addMenuId = 'context-add-menu'
-  const addMenuItems: EditorMenuItem[] = [
-    { action: `Playground.closeExplorerMenus();Playground.promptAddContextBinding()`, icon: ICONS.edit, label: 'Add scope value' },
-    { action: `Playground.closeExplorerMenus();Playground.promptAddContextEffectHandler()`, icon: ICONS.edit, label: 'Add effect handler' },
-  ]
   const items: string[] = [
     `<div class="explorer-group-label explorer-group-label--with-action">
-      <span>Effects</span>
-      <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-        <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${addMenuId}', this)" title="Add" aria-label="Add">${addIcon}</button>
-        ${renderEditorMenu({ id: addMenuId, items: addMenuItems })}
-      </span>
+      <span>Effect Handlers</span>
+      <button class="explorer-group-label__action" type="button" onmousedown="event.preventDefault();Playground.promptAddContextEffectHandler()" title="Add effect handler" aria-label="Add effect handler">${addIcon}</button>
     </div>`,
   ]
 
-  const bindingNames = getContextBindingNames(context)
   const effectHandlerNames = getContextEffectHandlerNames(context)
 
-  if (bindingNames.length === 0 && effectHandlerNames.length === 0) {
-    items.push('<div class="explorer-empty">No effects yet</div>')
+  if (effectHandlerNames.length === 0) {
+    items.push('<div class="explorer-empty">No effect handlers yet</div>')
   }
 
-  // Render scope values (bindings)
-  bindingNames.forEach((name, index) => {
-    const isActive = isContextBindingActive(context, name)
-    const hasParseError = hasContextBindingParseError(context, name)
-    const itemClass = `${activeContextEntryKind === 'binding' && activeContextBindingName === name ? ' explorer-item--active' : ''}${isActive ? '' : ' explorer-item--inactive'}`
-    const menuId = `context-binding-menu-${index}`
-    const encodedName = encodeURIComponent(name)
-    const selectAction = `Playground.selectContextBinding(decodeURIComponent('${encodedName}'))`
-    const renameAction = `Playground.renameContextBinding(decodeURIComponent('${encodedName}'))`
-    const removeAction = `Playground.removeContextBinding(decodeURIComponent('${encodedName}'))`
-    const toggleAction = `Playground.toggleContextBindingActive(decodeURIComponent('${encodedName}'))`
-    const menuItems: EditorMenuItem[] = [
-      { action: `Playground.closeExplorerMenus();${renameAction}`, icon: ICONS.edit, label: 'Rename' },
-      { action: `Playground.closeExplorerMenus();${removeAction}`, danger: true, icon: ICONS.trash, label: 'Remove' },
-    ]
-
-    items.push(`
-      <div class="explorer-item${itemClass}" onmousedown="event.preventDefault();${selectAction}" title="${escapeHtml(name)}">
-        <input class="explorer-item__checkbox" type="checkbox" ${isActive ? 'checked' : ''} onmousedown="event.preventDefault();event.stopPropagation();${toggleAction}" aria-label="Toggle ${escapeHtml(name)}">
-        <span class="explorer-item__name">${escapeHtml(name)}</span>
-        ${hasParseError ? `<span class="explorer-item__warning" title="Binding JSON is invalid">${ICONS.warning}</span>` : ''}
-        <span class="explorer-item__actions" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
-          <button class="explorer-item__btn" onmousedown="event.preventDefault();event.stopPropagation();Playground.toggleExplorerMenu('${menuId}', this)" title="More actions">${ICONS.menu}</button>
-          ${renderEditorMenu({ id: menuId, items: menuItems })}
-        </span>
-      </div>`)
-  })
-
-  // Render effect handlers
   effectHandlerNames.forEach((pattern, index) => {
     const isActive = isContextEffectHandlerActive(context, pattern)
     const hasParseError = hasContextEffectHandlerParseError(context, pattern)
@@ -2979,7 +2933,6 @@ function renderContextEntryList() {
 
   // Show a red dot on the sidebar context icon when any entry has a parse error.
   const hasAnyError =
-    getContextBindingNames(context).some(name => hasContextBindingParseError(context, name)) ||
     getContextEffectHandlerNames(context).some(pattern => hasContextEffectHandlerParseError(context, pattern))
   document.getElementById('side-icon-context')?.classList.toggle('side-panel__icon--has-error', hasAnyError)
 }
@@ -4039,7 +3992,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
   if (evt.code === 'Space' && evt.altKey) {
     evt.preventDefault()
     if (!autoCompleter) {
-      autoCompleter = getAutoCompleter(target.value, start, { scope: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+      autoCompleter = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
     }
     const suggestion = evt.shiftKey ? autoCompleter.getPreviousSuggestion() : autoCompleter.getNextSuggestion()
     if (suggestion) {
@@ -4065,7 +4018,7 @@ function keydownHandler(evt: KeyboardEvent, onChange: () => void): void {
         // If cursor is directly after non-whitespace, try autocomplete first
         const charBefore = start > 0 ? target.value[start - 1] : ''
         if (charBefore && !/\s/.test(charBefore)) {
-          const completer = getAutoCompleter(target.value, start, { scope: getDvalaParamsFromContext().bindings, effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
+          const completer = getAutoCompleter(target.value, start, { effectNames: getPlaygroundEffectHandlers().map(h => h.pattern) })
           if (completer.getSuggestions().length > 0) {
             autoCompleter = completer
             const suggestion = autoCompleter.getNextSuggestion()
@@ -4388,8 +4341,8 @@ export async function run() {
     const disableAutoCheckpoint = getState('disable-auto-checkpoint')
     const runResult = await Promise.race([
       getDvala().runAsync(code, pure
-        ? { scope: dvalaParams.bindings, pure: true, disableAutoCheckpoint, terminalSnapshot: true }
-        : { scope: dvalaParams.bindings, effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
+        ? { pure: true, disableAutoCheckpoint, terminalSnapshot: true }
+        : { effectHandlers: wrappedHandlers, disableAutoCheckpoint, terminalSnapshot: true },
       ),
       timeoutPromise,
     ])
@@ -4459,8 +4412,8 @@ export function runSync() {
   try {
     const pure = getState('pure')
     const result = getDvala().run(code, pure
-      ? { scope: dvalaParams.bindings, pure: true }
-      : { scope: dvalaParams.bindings, effectHandlers: getSyncEffectHandlers() },
+      ? { pure: true }
+      : { effectHandlers: getSyncEffectHandlers() },
     )
     const content = stringifyValue(result, false)
     appendOutput(content, 'result')
@@ -4486,7 +4439,7 @@ export function analyze() {
   const dvalaParams = getDvalaParamsFromContext()
   const hijacker = hijackConsole()
   try {
-    const result = getUndefinedSymbols(code, { scope: dvalaParams.bindings })
+    const result = getUndefinedSymbols(code, {})
     const unresolvedSymbols = Array.from(result).join(', ')
     const unresolvedSymbolsOutput = `Unresolved symbols: ${unresolvedSymbols || '-'}`
 
@@ -6074,7 +6027,6 @@ export async function resumeSnapshot() {
       })
       : await resume(snapshot, null, {
         handlers: dvalaParams.effectHandlers,
-        scope: dvalaParams.bindings,
         modules: allBuiltinModules,
         disableAutoCheckpoint,
         terminalSnapshot: true,
@@ -7157,7 +7109,7 @@ function getSyncEffectHandlers(): HandlerRegistration[] {
   ]
 }
 
-function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effectHandlers: HandlerRegistration[] } {
+function getDvalaParamsFromContext(): { effectHandlers: HandlerRegistration[] } {
   const contextString = getState('context')
   try {
     const parsedContext
@@ -7167,7 +7119,6 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
 
     const runtimeContext = getRuntimeContextObject(parsedContext)
     const parsedHandlers = (runtimeContext.effectHandlers ?? []) as { pattern: string; handler: unknown }[]
-    const bindings = getContextBindings(runtimeContext)
 
     const effectHandlers: HandlerRegistration[] = parsedHandlers.map(({ pattern, handler: value }) => {
       if (typeof value !== 'string') {
@@ -7190,10 +7141,7 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
       }
       if (!hasPattern('*'))
         effectHandlers.push({ pattern: '*', handler: disabledHandlersFallback })
-      return {
-        bindings,
-        effectHandlers,
-      }
+      return { effectHandlers }
     }
 
     if (!hasPattern('dvala.io.pick'))
@@ -7218,14 +7166,11 @@ function getDvalaParamsFromContext(): { bindings: Record<string, unknown>; effec
     if (!hasPattern('*'))
       effectHandlers.push({ pattern: '*', handler: defaultEffectHandler })
 
-    return {
-      bindings,
-      effectHandlers,
-    }
+    return { effectHandlers }
   } catch (err) {
     appendOutput(`Error: ${(err as Error).message}\nCould not parse context:\n${contextString}`, 'error')
     const fallback = getState('disable-standard-handlers') ? disabledHandlersFallback : defaultEffectHandler
-    return { bindings: {}, effectHandlers: [{ pattern: '*', handler: fallback }] }
+    return { effectHandlers: [{ pattern: '*', handler: fallback }] }
   }
 }
 function getSelectedDvalaCode(): {
