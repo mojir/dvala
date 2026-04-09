@@ -23,18 +23,28 @@ describe('comment preservation', () => {
     expect(inputComments.length).toBeGreaterThan(2000)
   })
 
-  it('formatting preserves block comments', () => {
+  it('formatting preserves all block comments', () => {
     const formatted = format(fixture)
-    const outputSet = new Set(extractCommentNumbers(formatted))
+    const outputComments = extractCommentNumbers(formatted)
+    const outputSet = new Set(outputComments)
 
+    // No comments dropped
     const missing = inputComments.filter(n => !outputSet.has(n))
-
-    // All block comments must be preserved — zero tolerance for drops.
     if (missing.length > 0) {
-      const sample = missing.slice(0, 10)
       expect.fail(
         `${missing.length} of ${inputComments.length} comments were dropped. ` +
-        `First missing: ${sample.join(', ')}`,
+        `First missing: ${missing.slice(0, 10).join(', ')}`,
+      )
+    }
+
+    // No comments duplicated
+    if (outputComments.length !== inputComments.length) {
+      const counts = new Map<number, number>()
+      for (const n of outputComments) counts.set(n, (counts.get(n) ?? 0) + 1)
+      const dupes = [...counts.entries()].filter(([, c]) => c > 1).map(([n, c]) => `/* ${n} */ ×${c}`)
+      expect.fail(
+        `${outputComments.length - inputComments.length} duplicate comments in output. ` +
+        `Duplicates: ${dupes.slice(0, 10).join(', ')}`,
       )
     }
   })

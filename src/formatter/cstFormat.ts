@@ -97,11 +97,6 @@ function triviaComments(trivia: TriviaNode[]): Doc[] {
   return docs
 }
 
-/** Emit leading comment trivia of a token as Docs. */
-function leadingComments(token: CstToken): Doc[] {
-  return triviaComments(token.leadingTrivia)
-}
-
 /** Emit trailing comment trivia of a token as Docs. */
 function trailingComments(token: CstToken): Doc[] {
   return triviaComments(token.trailingTrivia)
@@ -813,7 +808,8 @@ function formatArray(node: UntypedCstNode): Doc {
 
   for (let i = 0; i < children.length; i++) {
     const itemDoc = formatExprChild(children[i]!)
-    // Check for comment trivia on the comma before this element
+    // Trailing block comments on the comma before this element (e.g. `1, /* c */ 2`)
+    // These are distinct from the element's own leading trivia handled by formatExprChild.
     if (i > 0 && i - 1 < commaTokens.length) {
       const comma = commaTokens[i - 1]!
       const trailingCmts = trailingComments(comma)
@@ -821,13 +817,6 @@ function formatArray(node: UntypedCstNode): Doc {
         items.push(concat(...trailingCmts, text(' '), itemDoc))
         continue
       }
-    }
-    // Check for comment trivia on the element's first token
-    const firstTok = firstToken(children[i]!)
-    const leadingCmts = leadingComments(firstTok)
-    if (leadingCmts.length > 0) {
-      items.push(concat(...leadingCmts, text(' '), itemDoc))
-      continue
     }
     items.push(itemDoc)
   }
@@ -1250,7 +1239,9 @@ function formatIf(node: UntypedCstNode): Doc {
     }
 
     if (isToken(iter.peek()!) && (iter.peek() as CstToken).text === 'if') {
-      const ifDoc = iter.emitClosing('if')
+      // First `if` is at statement boundary (container handles leading trivia).
+      // Subsequent `if` (in else-if) is expression-internal — needs leading comments.
+      const ifDoc = branches.length === 0 ? iter.emitToken('if') : iter.emitClosing('if')
       const condition = iter.nextNode()
       const thenDoc = iter.emitClosing('then')
       const bodyCount = countNodesUntil(iter, 'else', 'end')
@@ -1578,14 +1569,14 @@ function formatResume(node: UntypedCstNode): Doc {
   const iter = new ChildIterator(node.children)
   const resumeDoc = iter.emitToken('resume')
   if (iter.isToken('(')) {
-    iter.next() // consume (
+    const openDoc = iter.emitToken('(')
     if (iter.isNode()) {
       const arg = iter.nextNode()
       const closeDoc = iter.emitClosing(')')
-      return concat(resumeDoc, text('('), formatExprChild(arg), closeDoc)
+      return concat(resumeDoc, openDoc, formatExprChild(arg), closeDoc)
     }
     const closeDoc = iter.emitClosing(')')
-    return concat(resumeDoc, text('('), closeDoc)
+    return concat(resumeDoc, openDoc, closeDoc)
   }
   return resumeDoc
 }
@@ -1643,24 +1634,29 @@ function formatSplice(node: UntypedCstNode): Doc {
 function formatFromChildren(node: UntypedCstNode): Doc {
   const parts: Doc[] = []
   let prevText = '' // last emitted token text, or '_' after a child node
+  let isFirst = true // first child may be at a statement boundary — don't double-emit leading trivia
 
   for (const child of node.children) {
     if (isToken(child)) {
       if (prevText && needsSpaceBetween(prevText, child.text)) {
         parts.push(text(' '))
       }
-      parts.push(formatClosingToken(child))
+      // First token uses formatTokenWithTrivia (trailing only) since the container
+      // already handles leading trivia at statement boundaries. Subsequent tokens
+      // use formatClosingToken (leading + trailing) since they're expression-internal.
+      parts.push(isFirst ? formatTokenWithTrivia(child) : formatClosingToken(child))
       prevText = child.text
     } else {
       // Space before a child node unless preceded by an open bracket or dot
       if (prevText && !isOpenBracket(prevText) && prevText !== '.') {
         parts.push(text(' '))
       }
-      parts.push(formatExprChild(child))
+      parts.push(isFirst ? formatNode(child) : formatExprChild(child))
       // After a child node, assume its last token is non-special so the
       // next token gets normal spacing (space before non-punctuation).
       prevText = '_'
     }
+    isFirst = false
   }
 
   return concat(...parts)
