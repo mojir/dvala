@@ -105,9 +105,9 @@ test.describe('code execution', () => {
     expect(output).toContain('30')
   })
 
-  test('runs code with context bindings', async ({ page }) => {
-    await setContext(page, '{"bindings": {"x": 15, "y": 27}}')
-    await setDvalaCode(page, 'x + y')
+  test('runs code with context effect handler', async ({ page }) => {
+    await setContext(page, '{"effectHandlers": [{"pattern": "host.add", "handler": "async ({ arg: [a, b], resume }) => { resume(a + b) }"}]}')
+    await setDvalaCode(page, 'perform(@host.add, [15, 27])')
     await clickRun(page)
     await waitForOutput(page)
 

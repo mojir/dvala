@@ -973,6 +973,41 @@ export function toggleRefTocMenu(event: Event): void {
   })
 }
 
+// ─── Examples TOC menu ────────────────────────────────────────────────────────
+
+export function toggleExampleTocMenu(event: Event): void {
+  event.stopPropagation()
+  const data = window.referenceData
+  if (!data) return
+
+  const path = router.currentPath()
+  const currentId = path.startsWith('/examples/') ? path.slice('/examples/'.length) : ''
+
+  // Group examples by category
+  const categoryMap = new Map<string, typeof data.examples>()
+  for (const ex of data.examples) {
+    const cat = ex.category || 'Other'
+    if (!categoryMap.has(cat)) categoryMap.set(cat, [])
+    categoryMap.get(cat)!.push(ex)
+  }
+
+  const tocSections = Array.from(categoryMap.entries()).map(([category, examples]) => ({
+    title: category,
+    items: examples.map(ex => ({
+      label: ex.name,
+      type: 'subitem' as const,
+      active: ex.id === currentId,
+      onSelect: () => router.navigate(`/examples/${ex.id}`),
+    })),
+  }))
+
+  toggleTocDropdown(event.currentTarget as HTMLElement, {
+    id: 'example-toc-dropdown',
+    overview: { label: 'All Examples', onSelect: () => router.navigate('/examples') },
+    sections: tocSections,
+  })
+}
+
 export function showBookPage() {
   router.navigate('/book')
 }
