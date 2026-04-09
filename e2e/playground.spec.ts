@@ -415,7 +415,7 @@ test.describe('settings', () => {
   test('disable auto checkpoint toggle persists across reload', async ({ page }) => {
     // Toggle is now in the settings dropdown — open it via JS to access the checkbox
     await page.evaluate(() => {
-      const btn = document.getElementById('tab-btn-settings') as HTMLElement | null
+      const btn = document.getElementById('editor-settings-btn') as HTMLElement | null
       if (btn) (window as any).Playground.toggleSettingsDropdown(btn)
     })
     await expect(page.locator('#settings-dropdown')).toBeVisible()
