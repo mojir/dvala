@@ -19,12 +19,10 @@ import type { Handlers, RunResult, Snapshot } from './evaluator/effectTypes'
 
 /**
  * Options for `resume()` — resume a suspended continuation.
- * `bindings` are plain values only (no JS functions).
  * All host interaction goes through `handlers`.
  * `modules` must be provided again (they are not in the blob).
  */
 export interface ResumeOptions {
-  bindings?: Record<string, unknown>
   handlers?: Handlers
   modules?: DvalaModule[]
   maxSnapshots?: number
@@ -40,13 +38,10 @@ export interface ResumeOptions {
  * Resume a suspended continuation.
  *
  * Takes a `Snapshot` from a previous `RunResult` of type `'suspended'`, a
- * resume value, and optional handlers/bindings. Re-enters the trampoline at
+ * resume value, and optional handlers. Re-enters the trampoline at
  * the point of suspension with the provided value.
  *
- * `bindings` are plain values only (no JS functions). They are re-injected
- * into the deserialized ContextStacks so that host-bound values remain
- * accessible after resume. `modules` must be provided again if the Dvala
- * program uses `import`.
+ * `modules` must be provided again if the Dvala program uses `import`.
  *
  * Always resolves — never rejects. May return `completed`, `suspended`
  * (if another suspend is hit), or `error`.
@@ -64,12 +59,10 @@ export async function resume(snapshot: Snapshot, value: unknown, options?: Resum
 
     // Extract the opaque continuation from the snapshot and deserialize it.
     const deserialized = deserializeFromObject(snapshot.continuation, {
-      values: options?.bindings,
       modules,
     })
 
     const deserializeOptions = {
-      values: options?.bindings,
       modules,
     }
 

@@ -319,7 +319,7 @@ export function findMatchingHandlers(
  * terminal snapshot containing the checkpoint history for debugging/replay.
  */
 export type RunResult =
-  | { type: 'completed'; value: unknown; definedBindings?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
+  | { type: 'completed'; value: unknown; scope?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'halted'; value: unknown; snapshot?: Snapshot; sourceMap?: SourceMap }

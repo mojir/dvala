@@ -66,18 +66,17 @@ export function transformSymbols(tokenStream: TokenStream, transformer: (symbol:
  * Get all undefined symbols in a Dvala program.
  *
  * @param source - Dvala source code
- * @param options - optional context to treat as defined
- * @param options.bindings - host bindings to treat as defined
+ * @param options - optional context
  * @param options.modules - modules to treat as available
  */
 export function getUndefinedSymbols(
   source: string,
-  options?: { bindings?: Record<string, unknown>; modules?: DvalaModule[] },
+  options?: { modules?: DvalaModule[] },
 ): Set<string> {
   const modulesMap = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))
     : undefined
-  const contextStack = createContextStack({ bindings: options?.bindings }, modulesMap)
+  const contextStack = createContextStack({}, modulesMap)
   const tokenStream = tokenize(source, false, undefined)
   const minified = minifyTokenStream(tokenStream, { removeWhiteSpace: true })
   const ast: Ast = parseToAst(minified)

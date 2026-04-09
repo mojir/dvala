@@ -150,6 +150,9 @@ type StandardEffectName =
   | 'dvala.time.zone'
   | 'dvala.checkpoint'
   | 'dvala.sleep'
+  | 'dvala.host'
+  | 'dvala.env'
+  | 'dvala.args'
 
 // ---------------------------------------------------------------------------
 // Standard effect definitions (handler + arity + docs)

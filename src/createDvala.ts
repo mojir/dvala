@@ -1,8 +1,9 @@
 import { AutoCompleter } from './AutoCompleter/AutoCompleter'
-import type { AutoCompleterParams } from './AutoCompleter/AutoCompleter'
 import { DvalaError } from './errors'
 import type { DvalaModule } from './builtin/modules/interface'
 import { createContextStack } from './evaluator/ContextStack'
+import type { Context } from './evaluator/interface'
+import type { Any } from './interface'
 import type { FileResolver } from './evaluator/ContextStack'
 import { evaluate, evaluateWithEffects, evaluateWithSyncEffects } from './evaluator/trampoline-evaluator'
 import { tokenize } from './tokenizer/tokenize'
@@ -16,14 +17,10 @@ import { isDvalaBundle } from './bundler/interface'
 import type { Handlers, RunResult, SnapshotState } from './evaluator/effectTypes'
 import { getUndefinedSymbols as standaloneGetUndefinedSymbols } from './tooling'
 import { toJS } from './utils/interop'
-import { isPersistentMap, isPersistentVector } from './utils/persistent'
-import { EFFECT_SYMBOL, FUNCTION_SYMBOL, REGEXP_SYMBOL } from './utils/symbols'
 
 export interface CreateDvalaOptions {
   /** Built-in modules to register (e.g. `allBuiltinModules`). */
   modules?: DvalaModule[]
-  /** Global bindings available to all `run()` / `runAsync()` calls. Must be JSON-serializable. */
-  bindings?: Record<string, unknown>
   /** Factory-level effect handlers, checked after per-call handlers. */
   effectHandlers?: Handlers
   /** Maximum number of cached ASTs. Default: 100. */
@@ -72,8 +69,8 @@ export interface CreateDvalaOptions {
  * Options for `run()`. When `pure` is `true`, `effectHandlers` cannot be provided.
  */
 export type DvalaRunOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; filePath?: string }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; filePath?: string }
+  | { scope?: Record<string, unknown>; pure: true; effectHandlers?: never; filePath?: string }
+  | { scope?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; filePath?: string }
 
 /**
  * Options for `runAsync()`. When `pure` is `true`, `effectHandlers` cannot be provided.
@@ -81,52 +78,14 @@ export type DvalaRunOptions =
  * Set `disableAutoCheckpoint: true` to opt out.
  */
 export type DvalaRunAsyncOptions =
-  | { bindings?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
-  | { bindings?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
+  | { scope?: Record<string, unknown>; pure: true; effectHandlers?: never; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
+  | { scope?: Record<string, unknown>; pure?: false; effectHandlers?: Handlers; maxSnapshots?: number; disableAutoCheckpoint?: boolean; terminalSnapshot?: boolean; onNodeEval?: SnapshotState['onNodeEval']; filePath?: string }
 
 export interface DvalaRunner {
   run: (source: string | DvalaBundle, options?: DvalaRunOptions) => unknown
   runAsync: (source: string | DvalaBundle, options?: DvalaRunAsyncOptions) => Promise<RunResult>
   getUndefinedSymbols: (source: string) => Set<string>
   getAutoCompleter: (program: string, position: number) => AutoCompleter
-}
-
-function assertSerializableBindings(bindings: Record<string, unknown> | undefined): void {
-  if (!bindings)
-    return
-  for (const [key, val] of Object.entries(bindings))
-    assertSerializable(val, `bindings["${key}"]`)
-}
-
-function assertSerializable(val: unknown, path: string): void {
-  if (val === null || val === undefined)
-    return
-  if (typeof val === 'boolean' || typeof val === 'string')
-    return
-  if (typeof val === 'number') {
-    if (!Number.isFinite(val))
-      throw new TypeError(`${path} is not serializable (${val})`)
-    return
-  }
-  if (typeof val === 'function')
-    throw new TypeError(`${path} is not serializable (function)`)
-  if (typeof val === 'object') {
-    if (FUNCTION_SYMBOL in val || REGEXP_SYMBOL in val || EFFECT_SYMBOL in val)
-      return
-    // PersistentVector/PersistentMap are valid Dvala values — accept as-is
-    if (isPersistentVector(val) || isPersistentMap(val))
-      return
-    if (Array.isArray(val)) {
-      val.forEach((item, i) => assertSerializable(item, `${path}[${i}]`))
-      return
-    }
-    if (Object.getPrototypeOf(val) !== Object.prototype)
-      throw new TypeError(`${path} is not serializable (not a plain object)`)
-    for (const [k, v] of Object.entries(val as Record<string, unknown>))
-      assertSerializable(v, `${path}.${k}`)
-    return
-  }
-  throw new TypeError(`${path} is not serializable`)
 }
 
 export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
@@ -139,7 +98,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
   const modules = options?.modules
     ? new Map(options.modules.map(m => [m.name, m]))
     : undefined
-  const factoryBindings = options?.bindings
   const factoryEffectHandlers = options?.effectHandlers
   const factoryDisableTimeTravel = options?.disableAutoCheckpoint ?? false
   const factoryFileResolver = options?.fileResolver
@@ -185,12 +143,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     return ast
   }
 
-  function mergeBindings(runBindings?: Record<string, unknown>): Record<string, unknown> | undefined {
-    if (!factoryBindings && !runBindings)
-      return undefined
-    return { ...factoryBindings, ...runBindings }
-  }
-
   function mergeEffectHandlers(runEffectHandlers?: Handlers): Handlers | undefined {
     if (!factoryEffectHandlers && !runEffectHandlers)
       return undefined
@@ -210,16 +162,25 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     }
   }
 
+  // Convert a plain scope record to a globalContext for createContextStack.
+  // Each value is wrapped as { value } to match the Context type.
+  function scopeToGlobalContext(scope?: Record<string, unknown>): Context | undefined {
+    if (!scope) return undefined
+    const ctx: Context = {}
+    for (const [k, v] of Object.entries(scope)) {
+      ctx[k] = { value: v as Any }
+    }
+    return ctx
+  }
+
   return {
     run(source: string | DvalaBundle, runOptions?: DvalaRunOptions): unknown {
-      assertSerializableBindings(runOptions?.bindings)
-      const bindings = mergeBindings(runOptions?.bindings)
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
 
       assertNotPureWithHandlers(pure, effectHandlers)
 
-      const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
+      const contextStack = createContextStack({ globalContext: scopeToGlobalContext(runOptions?.scope) }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir)
 
       if (isDvalaBundle(source)) {
         // New AST bundle format: single pre-parsed AST with all modules inlined.
@@ -251,8 +212,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
     },
 
     async runAsync(source: string | DvalaBundle, runOptions?: DvalaRunAsyncOptions): Promise<RunResult> {
-      assertSerializableBindings(runOptions?.bindings)
-      const bindings = mergeBindings(runOptions?.bindings)
       const effectHandlers = mergeEffectHandlers(runOptions?.effectHandlers)
       const pure = runOptions?.pure ?? false
 
@@ -261,7 +220,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
       try {
         const forceDebug = !!runOptions?.onNodeEval
         const effectiveDebug = debug || forceDebug
-        const contextStack = createContextStack({ bindings }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir, effectiveDebug ? allocateNodeId : undefined, effectiveDebug)
+        const contextStack = createContextStack({ globalContext: scopeToGlobalContext(runOptions?.scope) }, modules, pure, undefined, factoryFileResolver, factoryFileResolverBaseDir, effectiveDebug ? allocateNodeId : undefined, effectiveDebug)
 
         // For AST bundles, use the pre-parsed AST directly.
         // Force debug (sourceMap building) when onNodeEval is set so nodeIds can be resolved.
@@ -286,7 +245,6 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         const disableAutoCheckpoint = runOptions?.disableAutoCheckpoint ?? factoryDisableTimeTravel
         const terminalSnapshot = runOptions?.terminalSnapshot
         const result = await evaluateWithEffects(ast, contextStack, effectHandlers, runOptions?.maxSnapshots, {
-          values: bindings,
           modules,
         }, !disableAutoCheckpoint, terminalSnapshot, runOptions?.onNodeEval)
         // Include the accumulated sourceMap so callers can resolve nodeIds to positions.
@@ -294,7 +252,7 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
         const sourceMap = accumulatedSourceMap
         if (result.type === 'completed') {
           // Apply toJS to convert PV/PM to plain JS arrays/objects, matching run() semantics
-          return { ...result, value: toJS(result.value as never), definedBindings: contextStack.getModuleScopeBindings(), sourceMap }
+          return { ...result, value: toJS(result.value as never), scope: contextStack.getModuleScopeBindings(), sourceMap }
         }
         return { ...result, sourceMap }
       } catch (error) {
@@ -310,12 +268,11 @@ export function createDvala(options?: CreateDvalaOptions): DvalaRunner {
 
     getUndefinedSymbols(source: string): Set<string> {
       const modulesList = modules ? [...modules.values()] : undefined
-      return standaloneGetUndefinedSymbols(source, { bindings: factoryBindings, modules: modulesList })
+      return standaloneGetUndefinedSymbols(source, { modules: modulesList })
     },
 
     getAutoCompleter(program: string, position: number): AutoCompleter {
-      const params: AutoCompleterParams = { bindings: factoryBindings }
-      return new AutoCompleter(program, position, params)
+      return new AutoCompleter(program, position, {})
     },
 
   }

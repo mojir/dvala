@@ -17,6 +17,7 @@ import { expandMacros } from '../../src/ast/expandMacros'
 import { treeShake } from '../../src/ast/treeShake'
 import { bundle } from '../../src/bundler'
 import { createDvala } from '../../src/createDvala'
+import { hostHandler } from '../../src/evaluator/effectTypes'
 import { polishSymbolCharacterClass, polishSymbolFirstCharacterClass } from '../../src/symbolPatterns'
 import type { CoverageConfig, CoverageReporter, ResolvedConfig } from '../../src/config'
 import { findConfig } from '../../src/config'
@@ -173,10 +174,12 @@ function createFileResolver(): (importPath: string, fromDir: string) => string {
   }
 }
 
-function makeDvala(bindings: Record<string, unknown>, pure: boolean) {
-  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], bindings, fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
+function makeDvala(context: Record<string, unknown>, pure: boolean) {
+  const runner = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules], fileResolver: createFileResolver(), fileResolverBaseDir: process.cwd() })
   return {
-    run: (program: string | DvalaBundle) => runner.run(program, { pure }),
+    run: (program: string | DvalaBundle) => runner.run(program, pure
+      ? { pure: true }
+      : { effectHandlers: [hostHandler(context)] }),
   }
 }
 
@@ -732,11 +735,11 @@ function getCliIoEffectHandlers(readLine: (msg: string) => Promise<string>) {
   ]
 }
 
-async function execute(expression: string, bindings: Record<string, unknown>, readLine: (msg: string) => Promise<string>): Promise<Record<string, unknown>> {
+async function execute(expression: string, scope: Record<string, unknown>, readLine: (msg: string) => Promise<string>): Promise<Record<string, unknown>> {
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   try {
     const runResult = await _dvala.runAsync(expression, {
-      bindings,
+      scope,
       effectHandlers: getCliIoEffectHandlers(readLine),
     })
     if (runResult.type === 'error')
@@ -746,13 +749,13 @@ async function execute(expression: string, bindings: Record<string, unknown>, re
     if (historyResults.length > 9) {
       historyResults.length = 9
     }
-    const newBindings = { ...bindings, ...(runResult.type === 'completed' ? runResult.definedBindings : {}) }
-    setReplHistoryVariables(newBindings)
+    const newScope = { ...scope, ...(runResult.type === 'completed' ? runResult.scope : {}) }
+    setReplHistoryVariables(newScope)
     console.log(stringifyValue(result, false))
-    return newBindings
+    return newScope
   } catch (error) {
     printErrorMessage(`${error}`)
-    return { ...bindings, '*e*': getErrorMessage(error) }
+    return { ...scope, '*e*': getErrorMessage(error) }
   }
 }
 
@@ -775,12 +778,14 @@ async function runInit(): Promise<void> {
 
   // The init script is written in Dvala (init.dvala) — it handles all interactive
   // prompting and returns { name, entryFile, tests }. The TS host provides
-  // bindings and IO effect handlers.
+  // host values and IO effect handlers.
 
   const _dvala = createDvala({ debug: true, modules: [...allBuiltinModules, ...cliModules] })
   const runResult = await _dvala.runAsync(initScript, {
-    bindings: { configExists, dirName },
-    effectHandlers: getCliIoEffectHandlers(readLine),
+    effectHandlers: [
+      hostHandler({ configExists, dirName }),
+      ...getCliIoEffectHandlers(readLine),
+    ],
   })
 
   rl.close()

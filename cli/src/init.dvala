@@ -1,10 +1,13 @@
 // dvala init — interactive project initialization script.
 //
-// Bindings provided by the TS host:
+// Host values (via @dvala.host):
 //   configExists : boolean  — whether dvala.json already exists
 //   dirName      : string   — basename of cwd (default project name)
 //
 // Returns: { name, entryFile, tests, repl, vscode }
+
+let configExists = perform(@dvala.host, "configExists");
+let dirName = perform(@dvala.host, "dirName");
 
 let askForTests = () -> perform(
   @dvala.io.confirm,

@@ -321,9 +321,8 @@ export function serializeTerminalSnapshot(
 // Deserialize
 // ---------------------------------------------------------------------------
 
-/** Options for re-injecting host bindings on resume. */
+/** Options for deserialization on resume. */
 export interface DeserializeOptions {
-  values?: Record<string, unknown>
   modules?: Map<string, DvalaModule>
 }
 
@@ -331,7 +330,7 @@ export interface DeserializeOptions {
  * Deserialize a plain object (as produced by `serializeToObject`) back into
  * a continuation stack and metadata.
  *
- * Reconstructs `ContextStack` instances with fresh host bindings from `options`.
+ * Reconstructs `ContextStack` instances.
  * Handles circular references between ContextStacks and their contained values.
  */
 export function deserializeFromObject(
@@ -373,8 +372,6 @@ export function deserializeFromObject(
     const cs = ContextStackImpl.fromDeserialized({
       contexts: placeholderContexts,
       globalContextIndex: scs.globalContextIndex,
-      values: options?.values,
-
       modules: options?.modules,
       pure: scs.pure,
     })
