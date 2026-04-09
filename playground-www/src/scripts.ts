@@ -4549,7 +4549,6 @@ export function parseCst() {
     const tokenStream = tokenizeSource(code, true)
     const { tree, trailingTrivia } = parseToCst(tokenStream)
     const content = JSON.stringify({ tree, trailingTrivia }, null, 2)
-    console.log({ tree, trailingTrivia })
     showRawJsonModal(content, title)
   } catch (error) {
     addOutputSeparator()
@@ -4569,7 +4568,6 @@ export function docTree() {
     const { tree, trailingTrivia } = parseToCst(tokenStream)
     const doc = buildDocTree(tree, trailingTrivia)
     const content = JSON.stringify(doc, null, 2)
-    console.log(doc)
     showRawJsonModal(content, title)
   } catch (error) {
     addOutputSeparator()

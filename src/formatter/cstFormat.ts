@@ -107,20 +107,43 @@ function trailingComments(token: CstToken): Doc[] {
   return triviaComments(token.trailingTrivia)
 }
 
+// ---------------------------------------------------------------------------
+// Block comment helpers
+// ---------------------------------------------------------------------------
+
+/** Collect leading block comment Docs from a trivia array. */
+function leadingBlockComments(trivia: TriviaNode[]): Doc[] {
+  const docs: Doc[] = []
+  for (const t of trivia) {
+    if (t.kind === 'blockComment') docs.push(text(t.text))
+  }
+  return docs
+}
+
+/** Prepend leading block comments to a Doc. Returns the doc unchanged if none. */
+function withLeadingBlockComments(trivia: TriviaNode[], doc: Doc): Doc {
+  const cmts = leadingBlockComments(trivia)
+  if (cmts.length === 0) return doc
+  return concat(...cmts.flatMap(c => [c, text(' ')]), doc)
+}
+
+// ---------------------------------------------------------------------------
+// Token formatting
+// ---------------------------------------------------------------------------
+
 /**
- * Format a token with its comment trivia preserved.
- * Leading block comments → `/* ... * / token_text`
- * Trailing block comments → `token_text /* ... * /`
- * Trailing line comments are NOT emitted here — they force line breaks
- * that conflict with the enclosing layout (semicolons, statement separators).
- * Containers (program, block body) handle trailing line comments.
+ * Format a token with trailing block comments preserved.
+ *
+ * Only emits TRAILING block comments. Leading block comments are NOT emitted
+ * here — at statement boundaries they're handled by containers (program, body),
+ * and elsewhere by `formatClosingToken` or `formatExprChild`.
+ *
+ * Trailing line comments are NOT emitted — they force line breaks that conflict
+ * with the enclosing layout. Containers handle trailing line comments.
  */
 function formatTokenWithTrivia(token: CstToken): Doc {
   const tokenDoc = text(token.text)
 
-  // Only emit TRAILING block comments (inline, e.g. `foo(/* arg */ bar)`).
-  // Leading block comments are handled by containers (program, body, array,
-  // etc.) at statement boundaries to avoid duplicate emission.
   const trailingBlocks: Doc[] = []
   for (const t of token.trailingTrivia) {
     if (t.kind === 'blockComment') trailingBlocks.push(text(t.text))
@@ -136,23 +159,14 @@ function formatTokenWithTrivia(token: CstToken): Doc {
 }
 
 /**
- * Format a closing delimiter token (`end`, `else`, `)`, `}`) with both
- * leading AND trailing block comments preserved.
+ * Format a token with both leading AND trailing block comments.
  *
- * Leading block comments on closing tokens are NOT at statement boundaries
- * (containers only handle leading trivia on the first token of each statement),
- * so they must be emitted here to avoid being dropped.
+ * Use for tokens that are NOT at statement boundaries — closing delimiters
+ * (`end`, `else`, `)`, `}`), tokens inside binding patterns, and other
+ * expression-internal tokens where no container handles leading trivia.
  */
 function formatClosingToken(token: CstToken): Doc {
-  // Only emit leading BLOCK comments — line comments are handled by containers
-  // at statement boundaries and would be duplicated here.
-  const leadingBlocks: Doc[] = []
-  for (const t of token.leadingTrivia) {
-    if (t.kind === 'blockComment') leadingBlocks.push(text(t.text))
-  }
-  const base = formatTokenWithTrivia(token)
-  if (leadingBlocks.length === 0) return base
-  return concat(...leadingBlocks.flatMap(c => [c, text(' ')]), base)
+  return withLeadingBlockComments(token.leadingTrivia, formatTokenWithTrivia(token))
 }
 
 /**
@@ -168,19 +182,14 @@ function getTrailingLineComment(node: UntypedCstNode): string | undefined {
 }
 
 /**
- * Format a child node inside an expression (call arg, array element, binary
- * operand, etc.) with leading block comments preserved.
+ * Format a child node inside an expression with leading block comments.
  *
- * Containers handle leading trivia at statement boundaries, but inside
- * expressions nobody handles leading block comments. This helper prepends
- * them so they're not dropped.
+ * Use for expression-internal child nodes (call args, array elements, binary
+ * operands, object values) where no container handles leading block comments
+ * on the node's first token.
  */
 function formatExprChild(node: UntypedCstNode): Doc {
-  const first = firstToken(node)
-  const cmts = leadingComments(first)
-  const baseDoc = formatNode(node)
-  if (cmts.length === 0) return baseDoc
-  return concat(...cmts.flatMap(c => [c, text(' ')]), baseDoc)
+  return withLeadingBlockComments(firstToken(node).leadingTrivia, formatNode(node))
 }
 
 /**
@@ -300,19 +309,23 @@ class ChildIterator {
     return child
   }
 
-  /** Consume a keyword token and return a Doc with trailing block comments preserved. */
+  /** Consume a token with known text and return a Doc with trailing block comments. */
   emitToken(tokenText: string): Doc {
     return formatTokenWithTrivia(this.expectToken(tokenText))
   }
 
-  /** Consume a closing token (end, else, ), }) with both leading and trailing comments. */
+  /**
+   * Consume a token with known text and return a Doc with both leading
+   * AND trailing block comments. Use for closing delimiters and tokens
+   * that are NOT at statement boundaries (end, else, case, ), }, etc.).
+   */
   emitClosing(tokenText: string): Doc {
     return formatClosingToken(this.expectToken(tokenText))
   }
 
-  /** Consume the next token (any text) and return a Doc with trailing block comments preserved. */
-  emitNextToken(): Doc {
-    return formatTokenWithTrivia(this.nextToken())
+  /** Consume the next token (unknown text) and return a Doc with both leading and trailing block comments. */
+  emitAnyClosing(): Doc {
+    return formatClosingToken(this.nextToken())
   }
 
   /** Consume the next child, expecting it to be a token. Returns the token. */
@@ -777,6 +790,17 @@ function formatArray(node: UntypedCstNode): Doc {
   const children = childNodes(node)
 
   if (children.length === 0) {
+    // Preserve any block comments inside empty arrays: [ /* c */ ]
+    const allToks = tokens(node)
+    const openTok = allToks.find(t => t.text === '[')
+    const closeTok = allToks.find(t => t.text === ']')
+    const innerComments = [
+      ...(openTok ? leadingBlockComments(openTok.trailingTrivia) : []),
+      ...(closeTok ? leadingBlockComments(closeTok.leadingTrivia) : []),
+    ]
+    if (innerComments.length > 0) {
+      return concat(text('['), ...innerComments.flatMap(c => [text(' '), c]), text(' ]'))
+    }
     return text('[]')
   }
 
@@ -819,7 +843,7 @@ function formatArray(node: UntypedCstNode): Doc {
       : countBlankLinesBetweenTokens(prevLast.trailingTrivia, nextFirst.leadingTrivia)
     if (blankCount > 0) {
       const blanks: Doc[] = [text(','), hardLine]
-      for (let b = 0; b < Math.min(blankCount, MAX_BLANK_LINES); b++) blanks.push(hardLine)
+      pushBlankLines(blanks, blankCount)
       separators.push(concat(...blanks))
     } else {
       separators.push(concat(text(','), line))
@@ -882,7 +906,7 @@ function formatObject(node: UntypedCstNode): Doc {
     if (iter.isNode()) {
       entryParts.push(formatExprChild(iter.nextNode()))
     } else {
-      entryParts.push(formatClosingToken(iter.nextToken()))
+      entryParts.push(iter.emitAnyClosing())
     }
     // Check for computed key brackets
     if (iter.isToken('[')) {
@@ -905,10 +929,15 @@ function formatObject(node: UntypedCstNode): Doc {
     }
   }
 
-  const closeBraceDoc = formatClosingToken(iter.expectToken('}'))
+  const closeBraceDoc = iter.emitClosing('}')
 
   if (entries.length === 0) {
-    return text('{}')
+    // Preserve any block comments inside empty objects: { /* c */ }
+    // openBraceTrivia has trailing comments from `{`, closeBraceDoc has leading comments from `}`
+    if (openBraceTrivia.length > 0) {
+      return concat(text('{'), ...openBraceTrivia.flatMap(c => [text(' '), c]), text(' '), closeBraceDoc)
+    }
+    return concat(text('{'), closeBraceDoc)
   }
 
   // Objects use spaces inside braces: { a: 1, b: 2 }
@@ -952,7 +981,7 @@ function formatBinaryOp(node: UntypedCstNode): Doc {
     return group(concat(
       formatNode(left),
       text(' '),
-      formatNode(op),
+      formatExprChild(op),
       nest(INDENT, concat(line, formatExprChild(right))),
     ))
   }
@@ -964,7 +993,7 @@ function formatBinaryOp(node: UntypedCstNode): Doc {
 function formatPrefixOp(node: UntypedCstNode): Doc {
   const operand = nthChild(node, 0)
   const opToken = nthToken(node, 0)
-  return concat(formatTokenWithTrivia(opToken), formatNode(operand))
+  return concat(formatTokenWithTrivia(opToken), formatExprChild(operand))
 }
 
 // ---------------------------------------------------------------------------
@@ -990,7 +1019,7 @@ function formatIndexAccess(node: UntypedCstNode): Doc {
   return concat(
     formatNode(object),
     openBracket ? formatTokenWithTrivia(openBracket) : text('['),
-    formatNode(index),
+    formatExprChild(index),
     closeBracket ? formatClosingToken(closeBracket) : text(']'),
   )
 }
@@ -1083,7 +1112,7 @@ function formatParenthesized(node: UntypedCstNode): Doc {
 function formatSpread(node: UntypedCstNode): Doc {
   const expr = nthChild(node, 0)
   const dotsToken = nthToken(node, 0)
-  return concat(formatTokenWithTrivia(dotsToken), formatNode(expr))
+  return concat(formatTokenWithTrivia(dotsToken), formatExprChild(expr))
 }
 
 // ---------------------------------------------------------------------------
@@ -1139,7 +1168,7 @@ function formatLet(node: UntypedCstNode): Doc {
       if (targetParts.length > 0 && !isOpenBracket(lastTargetText) && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
-      targetParts.push(formatNode(child))
+      targetParts.push(formatExprChild(child))
       lastTargetText = ''
     }
   }
@@ -1205,7 +1234,7 @@ function formatIf(node: UntypedCstNode): Doc {
     if (isToken(child) && child.text === 'end') break
 
     if (isToken(child) && child.text === 'else') {
-      const elseKwDoc = formatClosingToken(iter.nextToken()) // consume 'else'
+      const elseKwDoc = iter.emitClosing('else')
       if (iter.isToken('if')) {
         // else-if: save the else Doc for the next branch
         pendingElseDoc = elseKwDoc
@@ -1221,16 +1250,16 @@ function formatIf(node: UntypedCstNode): Doc {
     }
 
     if (isToken(iter.peek()!) && (iter.peek() as CstToken).text === 'if') {
-      const ifDoc = formatClosingToken(iter.nextToken()) // consume 'if'
+      const ifDoc = iter.emitClosing('if')
       const condition = iter.nextNode()
-      const thenDoc = formatClosingToken(iter.expectToken('then'))
+      const thenDoc = iter.emitClosing('then')
       const bodyCount = countNodesUntil(iter, 'else', 'end')
       const bodyResult = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
       branches.push({
         isElseIf: branches.length > 0,
         elseDoc: pendingElseDoc,
         ifDoc,
-        condition: formatNode(condition),
+        condition: formatExprChild(condition),
         thenDoc,
         bodyDoc: bodyResult.doc,
         bodyCount,
@@ -1309,10 +1338,10 @@ function formatBlock(node: UntypedCstNode): Doc {
   // Check for `with handler;` clause
   let withClause: Doc | undefined
   if (iter.isToken('with')) {
-    const withDoc = formatClosingToken(iter.nextToken()) // consume 'with'
+    const withDoc = iter.emitClosing('with')
     const handler = iter.nextNode()
     const semiDoc = iter.emitToken(';')
-    withClause = concat(withDoc, text(' '), formatNode(handler), semiDoc)
+    withClause = concat(withDoc, text(' '), formatExprChild(handler), semiDoc)
   }
 
   const bodyStmtCount = countNodesUntil(iter, 'end')
@@ -1338,7 +1367,7 @@ function formatBlock(node: UntypedCstNode): Doc {
 
     if (!hasLeadingComments) {
       // Flat: `do expr end`. Expanded: `do\n  expr;\nend`
-      const flatBodyDoc = bodyNodes.length > 0 ? formatNode(bodyNodes[bodyNodes.length - 1]!) : bodyDoc
+      const flatBodyDoc = bodyNodes.length > 0 ? formatExprChild(bodyNodes[bodyNodes.length - 1]!) : bodyDoc
       return group(concat(
         doDoc,
         nest(INDENT, concat(line, ifBreak(bodyDoc, flatBodyDoc))),
@@ -1375,12 +1404,12 @@ function formatMatch(node: UntypedCstNode): Doc {
   const iter = new ChildIterator(node.children)
   const matchDoc = iter.emitToken('match')
   const expr = iter.nextNode()
-  const parts: Doc[] = [matchDoc, text(' '), formatNode(expr)]
+  const parts: Doc[] = [matchDoc, text(' '), formatExprChild(expr)]
 
   // Parse cases
   while (!iter.done() && !iter.isToken('end')) {
     if (iter.isToken('case')) {
-      const caseDoc = formatClosingToken(iter.nextToken()) // consume 'case'
+      const caseDoc = iter.emitClosing('case')
 
       // Collect pattern (tokens and nodes until 'when' or 'then')
       const patternParts: Doc[] = []
@@ -1398,12 +1427,12 @@ function formatMatch(node: UntypedCstNode): Doc {
       // Optional when guard
       let guardDoc: Doc | undefined
       if (iter.isToken('when')) {
-        const whenDoc = formatClosingToken(iter.nextToken()) // consume 'when'
+        const whenDoc = iter.emitClosing('when')
         const guard = iter.nextNode()
         guardDoc = concat(text(' '), whenDoc, text(' '), formatExprChild(guard))
       }
 
-      const thenDoc = formatClosingToken(iter.expectToken('then'))
+      const thenDoc = iter.emitClosing('then')
       const body = iter.collectBody('case', 'end')
 
       parts.push(nest(INDENT, concat(
@@ -1455,7 +1484,7 @@ function formatFunction(node: UntypedCstNode): Doc {
         paramParts.push(formatTokenWithTrivia(child))
       }
     } else {
-      paramParts.push(formatNode(child))
+      paramParts.push(formatExprChild(child))
     }
   }
 
@@ -1467,7 +1496,7 @@ function formatFunction(node: UntypedCstNode): Doc {
     paramParts.length > 0 ? text(' ') : text(''),
     arrowDoc,
     text(' '),
-    formatNode(body),
+    formatExprChild(body),
   ))
 }
 
@@ -1478,7 +1507,7 @@ function formatHandler(node: UntypedCstNode): Doc {
 
   // Optional shallow keyword
   if (iter.isToken('shallow')) {
-    parts.push(iter.emitNextToken(), text(' '))
+    parts.push(iter.emitClosing('shallow'), text(' '))
   }
 
   parts.push(iter.emitToken('handler'))
@@ -1488,7 +1517,7 @@ function formatHandler(node: UntypedCstNode): Doc {
   while (!iter.done() && !iter.isToken('end')) {
     if (iter.isToken('transform')) {
       // Collect transform param and body
-      const transformParts: Doc[] = [iter.emitNextToken()]
+      const transformParts: Doc[] = [iter.emitClosing('transform')]
       while (!iter.done() && !iter.isToken('end')) {
         const child = iter.next()
         if (isToken(child)) {
@@ -1498,7 +1527,7 @@ function formatHandler(node: UntypedCstNode): Doc {
             transformParts.push(text(' '), formatTokenWithTrivia(child))
           }
         } else {
-          transformParts.push(text(' '), formatNode(child))
+          transformParts.push(text(' '), formatExprChild(child))
         }
       }
       clauseParts.push(concat(...transformParts))
@@ -1520,7 +1549,7 @@ function formatHandler(node: UntypedCstNode): Doc {
             clauseTokens.push(formatTokenWithTrivia(child))
           }
         } else {
-          clauseTokens.push(formatNode(child))
+          clauseTokens.push(formatExprChild(child))
         }
       }
       if (clauseTokens.length > 0) {
@@ -1576,7 +1605,7 @@ function formatMacroCall(node: UntypedCstNode): Doc {
   const prefixToken = nthToken(node, 0)
   const prefixDoc = formatTokenWithTrivia(prefixToken)
   if (children.length > 0) {
-    return concat(prefixDoc, text(' '), formatNode(children[0]!))
+    return concat(prefixDoc, text(' '), formatExprChild(children[0]!))
   }
   return prefixDoc
 }
