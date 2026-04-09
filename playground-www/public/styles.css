@@ -1953,6 +1953,7 @@ a.disabled {
 .side-panel__icon--active {
   color: var(--color-text-bright);
   background: var(--color-surface-3);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 .side-panel__icon--has-error,
