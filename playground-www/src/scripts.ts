@@ -13,7 +13,7 @@ import { retrigger } from '../../src/retrigger'
 import { resume } from '../../src/resume'
 import { asUnknownRecord } from '../../src/typeGuards'
 import type { AutoCompleter } from '../../src/AutoCompleter/AutoCompleter'
-import { formatSource, getAutoCompleter, getUndefinedSymbols, parseTokenStream, tokenizeSource } from '../../src/tooling'
+import { buildDocTree, formatSource, getAutoCompleter, getUndefinedSymbols, parseToCst, parseTokenStream, tokenizeSource } from '../../src/tooling'
 import type { DvalaErrorJSON } from '../../src/errors'
 import { createAstTreeViewer } from './components/astTreeViewer'
 import type { EditorMenuItem } from './editorMenu'
@@ -4538,6 +4538,87 @@ function showAstTreeModal(ast: Ast, title: string) {
   body.appendChild(treeViewer)
 
   pushPanel(panel, title)
+}
+
+export function parseCst() {
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
+  const title = selectedCode.code ? 'CST (selection)' : 'CST'
+
+  try {
+    const tokenStream = tokenizeSource(code, true)
+    const { tree, trailingTrivia } = parseToCst(tokenStream)
+    const content = JSON.stringify({ tree, trailingTrivia }, null, 2)
+    showRawJsonModal(content, title)
+  } catch (error) {
+    addOutputSeparator()
+    appendOutput(title, 'comment')
+    appendOutput(error, 'error')
+    focusDvalaCode()
+  }
+}
+
+export function docTree() {
+  const selectedCode = getSelectedDvalaCode()
+  const code = selectedCode.code || getState('dvala-code')
+  const title = selectedCode.code ? 'Wadler-Lindig Doc tree (selection)' : 'Wadler-Lindig Doc tree'
+
+  try {
+    const tokenStream = tokenizeSource(code, true)
+    const { tree, trailingTrivia } = parseToCst(tokenStream)
+    const doc = buildDocTree(tree, trailingTrivia)
+    const content = JSON.stringify(doc, null, 2)
+    showRawJsonModal(content, title)
+  } catch (error) {
+    addOutputSeparator()
+    appendOutput(title, 'comment')
+    appendOutput(error, 'error')
+    focusDvalaCode()
+  }
+}
+
+function showRawJsonModal(content: string, title: string) {
+  const dismiss = () => { popModal(); focusDvalaCode() }
+
+  const { panel, body } = createModalPanel({
+    size: 'large',
+    footerActions: [
+      {
+        label: 'Copy',
+        action: () => {
+          void navigator.clipboard.writeText(content)
+          showToast(`${title} copied to clipboard`)
+        },
+      },
+      { label: 'Close', action: dismiss },
+    ],
+    onClose: dismiss,
+  })
+
+  const copyButton = panel.querySelector<HTMLButtonElement>('.modal-panel__footer .button')
+  if (copyButton)
+    copyButton.innerHTML = `${copyIcon} Copy`
+
+  body.style.padding = '0'
+
+  const pre = document.createElement('pre')
+  pre.className = 'fancy-scroll'
+  pre.textContent = content
+  pre.tabIndex = 0
+  pre.style.margin = '0'
+  pre.style.minHeight = '26rem'
+  pre.style.height = '60vh'
+  pre.style.padding = 'var(--space-2)'
+  pre.style.overflow = 'auto'
+  pre.style.background = 'var(--color-code-bg)'
+  pre.style.color = 'var(--color-text)'
+  pre.style.fontFamily = 'var(--font-mono)'
+  pre.style.fontSize = 'var(--font-size-sm)'
+  pre.style.whiteSpace = 'pre'
+  body.appendChild(pre)
+
+  pushPanel(panel, title)
+  setTimeout(() => { pre.focus() }, 0)
 }
 
 export function tokenize() {

@@ -87,7 +87,7 @@ function collectDvalaFiles(dir: string): string[] {
     if (EXCLUDED_DIRS.has(entry.name)) continue
     const fullPath = path.join(dir, entry.name)
     if (entry.isDirectory()) results.push(...collectDvalaFiles(fullPath))
-    else if (entry.name.endsWith('.dvala')) results.push(fullPath)
+    else if (entry.name.endsWith('.dvala') && !entry.name.endsWith('.fixture.dvala')) results.push(fullPath)
   }
   return results.sort()
 }

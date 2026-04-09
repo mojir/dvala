@@ -15,7 +15,7 @@
 
 import type { UntypedCstNode } from '../cst/builder'
 import type { CstToken, TriviaNode } from '../cst/types'
-import { MAX_WIDTH } from './config'
+import { MAX_BLANK_LINES, MAX_WIDTH } from './config'
 import {
   type Doc,
   concat,
@@ -97,30 +97,48 @@ function triviaComments(trivia: TriviaNode[]): Doc[] {
   return docs
 }
 
-/** Emit leading comment trivia of a token as Docs. */
-function leadingComments(token: CstToken): Doc[] {
-  return triviaComments(token.leadingTrivia)
-}
-
 /** Emit trailing comment trivia of a token as Docs. */
 function trailingComments(token: CstToken): Doc[] {
   return triviaComments(token.trailingTrivia)
 }
 
+// ---------------------------------------------------------------------------
+// Block comment helpers
+// ---------------------------------------------------------------------------
+
+/** Collect leading block comment Docs from a trivia array. */
+function leadingBlockComments(trivia: TriviaNode[]): Doc[] {
+  const docs: Doc[] = []
+  for (const t of trivia) {
+    if (t.kind === 'blockComment') docs.push(text(t.text))
+  }
+  return docs
+}
+
+/** Prepend leading block comments to a Doc. Returns the doc unchanged if none. */
+function withLeadingBlockComments(trivia: TriviaNode[], doc: Doc): Doc {
+  const cmts = leadingBlockComments(trivia)
+  if (cmts.length === 0) return doc
+  return concat(...cmts.flatMap(c => [c, text(' ')]), doc)
+}
+
+// ---------------------------------------------------------------------------
+// Token formatting
+// ---------------------------------------------------------------------------
+
 /**
- * Format a token with its comment trivia preserved.
- * Leading block comments → `/* ... * / token_text`
- * Trailing block comments → `token_text /* ... * /`
- * Trailing line comments are NOT emitted here — they force line breaks
- * that conflict with the enclosing layout (semicolons, statement separators).
- * Containers (program, block body) handle trailing line comments.
+ * Format a token with trailing block comments preserved.
+ *
+ * Only emits TRAILING block comments. Leading block comments are NOT emitted
+ * here — at statement boundaries they're handled by containers (program, body),
+ * and elsewhere by `formatClosingToken` or `formatExprChild`.
+ *
+ * Trailing line comments are NOT emitted — they force line breaks that conflict
+ * with the enclosing layout. Containers handle trailing line comments.
  */
 function formatTokenWithTrivia(token: CstToken): Doc {
   const tokenDoc = text(token.text)
 
-  // Only emit TRAILING block comments (inline, e.g. `foo(/* arg */ bar)`).
-  // Leading comments (both line and block) are handled by containers
-  // (program, body, array, etc.) to avoid duplicate emission.
   const trailingBlocks: Doc[] = []
   for (const t of token.trailingTrivia) {
     if (t.kind === 'blockComment') trailingBlocks.push(text(t.text))
@@ -136,6 +154,17 @@ function formatTokenWithTrivia(token: CstToken): Doc {
 }
 
 /**
+ * Format a token with both leading AND trailing block comments.
+ *
+ * Use for tokens that are NOT at statement boundaries — closing delimiters
+ * (`end`, `else`, `)`, `}`), tokens inside binding patterns, and other
+ * expression-internal tokens where no container handles leading trivia.
+ */
+function formatClosingToken(token: CstToken): Doc {
+  return withLeadingBlockComments(token.leadingTrivia, formatTokenWithTrivia(token))
+}
+
+/**
  * Get the trailing line comment from the last token of a subtree, if any.
  * Used by containers to emit trailing line comments after semicolons.
  */
@@ -148,41 +177,73 @@ function getTrailingLineComment(node: UntypedCstNode): string | undefined {
 }
 
 /**
- * Check if a trivia array contains a blank line — a whitespace node with
- * two or more newlines. This detects actual blank lines (empty lines with
- * no content) rather than newlines separated by comments.
+ * Format a child node inside an expression with leading block comments.
+ *
+ * Use for expression-internal child nodes (call args, array elements, binary
+ * operands, object values) where no container handles leading block comments
+ * on the node's first token.
  */
-function triviaHasBlankLine(trivia: TriviaNode[]): boolean {
+function formatExprChild(node: UntypedCstNode): Doc {
+  return withLeadingBlockComments(firstToken(node).leadingTrivia, formatNode(node))
+}
+
+/**
+ * Count the number of blank lines in a trivia array.
+ * A blank line is an empty line (two consecutive newlines in a whitespace node).
+ * Returns 0 if no blank lines are found.
+ */
+function countBlankLines(trivia: TriviaNode[]): number {
+  let total = 0
   for (const t of trivia) {
     if (t.kind === 'whitespace') {
       let newlines = 0
       for (const ch of t.text) {
         if (ch === '\n') newlines++
-        if (newlines >= 2) return true
       }
+      // N newlines in a whitespace node = N-1 blank lines
+      if (newlines >= 2) total += newlines - 1
     }
   }
-  return false
+  return total
 }
 
 /**
- * Check if there's a blank line in the gap between two tokens.
- * A blank line occurs when:
- * 1. A single whitespace trivia node has 2+ newlines, OR
- * 2. The trailing trivia ends with a newline AND the leading trivia starts
- *    with a newline (the split convention put one newline on each side)
+ * Count blank lines in the gap between two tokens.
+ *
+ * Trivia split puts some newlines on the trailing side and the rest on the
+ * leading side. To get the true blank-line count we must count all newlines
+ * across both sides and subtract 1 (the statement-separating newline).
  */
-function hasBlankLineBetweenTokens(prevTrailing: TriviaNode[], nextLeading: TriviaNode[]): boolean {
-  if (triviaHasBlankLine(prevTrailing) || triviaHasBlankLine(nextLeading)) return true
+function countBlankLinesBetweenTokens(prevTrailing: TriviaNode[], nextLeading: TriviaNode[]): number {
+  // Count total newlines at the boundary
+  let totalNewlines = 0
 
-  // Check for newline at the boundary: trailing ends with \n and leading starts with \n
+  // Count newlines in trailing trivia (only the last whitespace node matters)
   const lastTrailing = prevTrailing[prevTrailing.length - 1]
-  const firstLeading = nextLeading[0]
-  if (lastTrailing?.kind === 'whitespace' && lastTrailing.text.endsWith('\n')
-    && firstLeading?.kind === 'whitespace' && firstLeading.text.startsWith('\n')) {
-    return true
+  if (lastTrailing?.kind === 'whitespace') {
+    for (const ch of lastTrailing.text) {
+      if (ch === '\n') totalNewlines++
+    }
   }
-  return false
+
+  // Count newlines in leading trivia (only the first whitespace node matters)
+  const firstLeading = nextLeading[0]
+  if (firstLeading?.kind === 'whitespace') {
+    for (const ch of firstLeading.text) {
+      if (ch === '\n') totalNewlines++
+    }
+  }
+
+  // N total newlines across the boundary = N-1 blank lines
+  return Math.max(0, totalNewlines - 1)
+}
+
+/** Push up to MAX_BLANK_LINES extra hardLines into `parts` to represent blank lines. */
+function pushBlankLines(parts: Doc[], count: number): void {
+  const clamped = Math.min(count, MAX_BLANK_LINES)
+  for (let i = 0; i < clamped; i++) {
+    parts.push(hardLine)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +302,25 @@ class ChildIterator {
       throw new Error(`Expected token '${tokenText}', got ${isToken(child) ? `'${child.text}'` : `node '${(child).kind}'`}`)
     }
     return child
+  }
+
+  /** Consume a token with known text and return a Doc with trailing block comments. */
+  emitToken(tokenText: string): Doc {
+    return formatTokenWithTrivia(this.expectToken(tokenText))
+  }
+
+  /**
+   * Consume a token with known text and return a Doc with both leading
+   * AND trailing block comments. Use for closing delimiters and tokens
+   * that are NOT at statement boundaries (end, else, case, ), }, etc.).
+   */
+  emitClosing(tokenText: string): Doc {
+    return formatClosingToken(this.expectToken(tokenText))
+  }
+
+  /** Consume the next token (unknown text) and return a Doc with both leading and trailing block comments. */
+  emitAnyClosing(): Doc {
+    return formatClosingToken(this.nextToken())
   }
 
   /** Consume the next child, expecting it to be a token. Returns the token. */
@@ -406,12 +486,13 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
       const semi = i < semiTokens.length ? semiTokens[i] : undefined
       const prevTok = semi ?? lastToken(stmt)
 
-      const hasBlank = hasBlankLineBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
+      const blankCount = countBlankLinesBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
 
       if (trailingLc) {
-        if (hasBlank) parts.push(hardLine)
-      } else if (hasBlank) {
-        parts.push(hardLine, hardLine)
+        if (blankCount > 0) pushBlankLines(parts, blankCount)
+      } else if (blankCount > 0) {
+        parts.push(hardLine)
+        pushBlankLines(parts, blankCount)
       } else {
         parts.push(hardLine)
       }
@@ -423,15 +504,17 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
         if (tv.kind === 'lineComment') {
           parts.push(lineComment(tv.text))
           const nextWs = nextTrivia[t + 1]
-          if (nextWs?.kind === 'whitespace' && triviaHasBlankLine([nextWs])) {
-            parts.push(hardLine)
+          if (nextWs?.kind === 'whitespace') {
+            const bc = countBlankLines([nextWs])
+            if (bc > 0) pushBlankLines(parts, bc)
           }
         } else if (tv.kind === 'blockComment') {
           parts.push(text(tv.text), hardLine)
-        } else if (tv.kind === 'whitespace' && triviaHasBlankLine([tv])) {
+        } else if (tv.kind === 'whitespace') {
+          const bc = countBlankLines([tv])
           const nextTv = nextTrivia[t + 1]
-          if (nextTv && (nextTv.kind === 'lineComment' || nextTv.kind === 'blockComment')) {
-            parts.push(hardLine)
+          if (bc > 0 && nextTv && (nextTv.kind === 'lineComment' || nextTv.kind === 'blockComment')) {
+            pushBlankLines(parts, bc)
           }
         }
       }
@@ -449,6 +532,14 @@ function formatBodyFromIterInternal(iter: ChildIterator, trailingSemi: boolean, 
 // ---------------------------------------------------------------------------
 // Main formatting dispatch
 // ---------------------------------------------------------------------------
+
+/**
+ * Build the Doc tree for a CST program without rendering it.
+ * Useful for inspecting the formatter's intermediate representation.
+ */
+export function buildDocTree(tree: UntypedCstNode, trailingTrivia: TriviaNode[]): Doc {
+  return formatProgram(tree, trailingTrivia)
+}
 
 export function formatCst(tree: UntypedCstNode, trailingTrivia: TriviaNode[]): string {
   const doc = formatProgram(tree, trailingTrivia)
@@ -475,11 +566,12 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
         parts.push(lineComment(t.text))
       } else if (t.kind === 'blockComment') {
         parts.push(text(t.text), hardLine)
-      } else if (t.kind === 'whitespace' && triviaHasBlankLine([t])) {
+      } else if (t.kind === 'whitespace') {
         // Preserve blank lines between comments
+        const bc = countBlankLines([t])
         const nextT = trailingTrivia[i + 1]
-        if (nextT && (nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
-          parts.push(hardLine)
+        if (bc > 0 && nextT && (nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
+          pushBlankLines(parts, bc)
         }
       }
     }
@@ -535,14 +627,15 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
       const nextFirst = firstToken(statements[i + 1]!)
       const prevTok = semiToken ?? lastTok
 
-      const hasBlank = hasBlankLineBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
+      const blankCount = countBlankLinesBetweenTokens(prevTok.trailingTrivia, nextFirst.leadingTrivia)
 
       // If a trailing line comment was emitted, it already forced a newline.
-      // Only emit an additional hardLine for blank lines.
+      // Only emit blank lines (capped at MAX_BLANK_LINES).
       if (trailingComment) {
-        if (hasBlank) parts.push(hardLine) // one extra = blank line
-      } else if (hasBlank) {
-        parts.push(hardLine, hardLine)
+        if (blankCount > 0) pushBlankLines(parts, blankCount)
+      } else if (blankCount > 0) {
+        parts.push(hardLine)
+        pushBlankLines(parts, blankCount)
       } else {
         parts.push(hardLine)
       }
@@ -555,17 +648,19 @@ function formatProgram(program: UntypedCstNode, trailingTrivia: TriviaNode[]): D
           parts.push(lineComment(trivia.text))
           // Check if there's a blank line after this comment (before the next content)
           const nextWs = nextTrivia[t + 1]
-          if (nextWs && nextWs.kind === 'whitespace' && triviaHasBlankLine([nextWs])) {
-            parts.push(hardLine)
+          if (nextWs && nextWs.kind === 'whitespace') {
+            const bc = countBlankLines([nextWs])
+            if (bc > 0) pushBlankLines(parts, bc)
           }
         } else if (trivia.kind === 'blockComment') {
           parts.push(text(trivia.text), hardLine)
         }
         // Whitespace trivia with blank lines before comments
-        if (trivia.kind === 'whitespace' && triviaHasBlankLine([trivia])) {
+        if (trivia.kind === 'whitespace') {
+          const bc = countBlankLines([trivia])
           const nextTriv = nextTrivia[t + 1]
-          if (nextTriv && (nextTriv.kind === 'lineComment' || nextTriv.kind === 'blockComment')) {
-            parts.push(hardLine) // blank line before the comment
+          if (bc > 0 && nextTriv && (nextTriv.kind === 'lineComment' || nextTriv.kind === 'blockComment')) {
+            pushBlankLines(parts, bc)
           }
         }
       }
@@ -690,6 +785,17 @@ function formatArray(node: UntypedCstNode): Doc {
   const children = childNodes(node)
 
   if (children.length === 0) {
+    // Preserve any block comments inside empty arrays: [ /* c */ ]
+    const allToks = tokens(node)
+    const openTok = allToks.find(t => t.text === '[')
+    const closeTok = allToks.find(t => t.text === ']')
+    const innerComments = [
+      ...(openTok ? leadingBlockComments(openTok.trailingTrivia) : []),
+      ...(closeTok ? leadingBlockComments(closeTok.leadingTrivia) : []),
+    ]
+    if (innerComments.length > 0) {
+      return concat(text('['), ...innerComments.flatMap(c => [text(' '), c]), text(' ]'))
+    }
     return text('[]')
   }
 
@@ -701,8 +807,9 @@ function formatArray(node: UntypedCstNode): Doc {
   const commaTokens = toks.filter(t => t.text === ',')
 
   for (let i = 0; i < children.length; i++) {
-    const itemDoc = formatNode(children[i]!)
-    // Check for comment trivia on the comma before this element
+    const itemDoc = formatExprChild(children[i]!)
+    // Trailing block comments on the comma before this element (e.g. `1, /* c */ 2`)
+    // These are distinct from the element's own leading trivia handled by formatExprChild.
     if (i > 0 && i - 1 < commaTokens.length) {
       const comma = commaTokens[i - 1]!
       const trailingCmts = trailingComments(comma)
@@ -710,13 +817,6 @@ function formatArray(node: UntypedCstNode): Doc {
         items.push(concat(...trailingCmts, text(' '), itemDoc))
         continue
       }
-    }
-    // Check for comment trivia on the element's first token
-    const firstTok = firstToken(children[i]!)
-    const leadingCmts = leadingComments(firstTok)
-    if (leadingCmts.length > 0) {
-      items.push(concat(...leadingCmts, text(' '), itemDoc))
-      continue
     }
     items.push(itemDoc)
   }
@@ -727,10 +827,16 @@ function formatArray(node: UntypedCstNode): Doc {
     const comma = i < commaTokens.length ? commaTokens[i] : undefined
     const prevLast = lastToken(children[i]!)
     const nextFirst = firstToken(children[i + 1]!)
-    const hasBlank = comma
-      ? hasBlankLineBetweenTokens(comma.trailingTrivia, nextFirst.leadingTrivia)
-      : hasBlankLineBetweenTokens(prevLast.trailingTrivia, nextFirst.leadingTrivia)
-    separators.push(hasBlank ? concat(text(','), hardLine, hardLine) : concat(text(','), line))
+    const blankCount = comma
+      ? countBlankLinesBetweenTokens(comma.trailingTrivia, nextFirst.leadingTrivia)
+      : countBlankLinesBetweenTokens(prevLast.trailingTrivia, nextFirst.leadingTrivia)
+    if (blankCount > 0) {
+      const blanks: Doc[] = [text(','), hardLine]
+      pushBlankLines(blanks, blankCount)
+      separators.push(concat(...blanks))
+    } else {
+      separators.push(concat(text(','), line))
+    }
   }
 
   // Join items with their separators
@@ -742,11 +848,17 @@ function formatArray(node: UntypedCstNode): Doc {
   // Trailing comma when array breaks to multiline
   const trailingComma = ifBreak(text(','), text(''))
 
+  // Get [ and ] tokens for trivia
+  const openBracketToken = toks.find(t => t.text === '[')
+  const closeBracketToken = toks.find(t => t.text === ']')
+  const openDoc = openBracketToken ? formatTokenWithTrivia(openBracketToken) : text('[')
+  const closeDoc = closeBracketToken ? formatClosingToken(closeBracketToken) : text(']')
+
   return group(concat(
-    text('['),
+    openDoc,
     nest(INDENT, concat(softLine, concat(...innerParts), trailingComma)),
     softLine,
-    text(']'),
+    closeDoc,
   ))
 }
 
@@ -754,10 +866,11 @@ function formatObject(node: UntypedCstNode): Doc {
   // Object children: {, [key_tok, :, value_node | Spread_node], [,], ..., }
   // Walk children to reconstruct entries.
   const iter = new ChildIterator(node.children)
-  iter.expectToken('{')
+  const openBraceToken = iter.expectToken('{')
+  const openBraceTrivia = trailingComments(openBraceToken)
 
   const entries: Doc[] = []
-  let pendingCommentDocs: Doc[] = []
+  let pendingCommentDocs: Doc[] = [...openBraceTrivia.map(c => concat(c, text(' ')))]
   while (!iter.done() && !iter.isToken('}')) {
     if (iter.isToken(',')) {
       const comma = iter.nextToken()
@@ -771,17 +884,18 @@ function formatObject(node: UntypedCstNode): Doc {
     }
     // Spread entry
     if (iter.isNode() && (iter.peek() as UntypedCstNode).kind === 'Spread') {
-      entries.push(formatNode(iter.nextNode()))
+      entries.push(formatExprChild(iter.nextNode()))
       continue
     }
     // Key-value entry: key [: value] or key [as alias]
     // Key can be a token (symbol) or a node (string, template, computed)
     const entryParts: Doc[] = []
-    // Collect key
+    // Collect key — use formatClosingToken to preserve leading block comments
+    // (object keys are never at statement boundaries, so no duplication risk)
     if (iter.isNode()) {
-      entryParts.push(formatNode(iter.nextNode()))
+      entryParts.push(formatExprChild(iter.nextNode()))
     } else {
-      entryParts.push(text(iter.nextToken().text))
+      entryParts.push(iter.emitAnyClosing())
     }
     // Check for computed key brackets
     if (iter.isToken('[')) {
@@ -789,11 +903,11 @@ function formatObject(node: UntypedCstNode): Doc {
     }
     // Check for colon
     if (iter.isToken(':')) {
-      iter.next() // consume :
-      entryParts.push(text(': '))
+      const colonDoc = formatTokenWithTrivia(iter.nextToken())
+      entryParts.push(colonDoc, text(' '))
       // Value is the next node
       if (iter.isNode()) {
-        entryParts.push(formatNode(iter.nextNode()))
+        entryParts.push(formatExprChild(iter.nextNode()))
       }
     }
     if (pendingCommentDocs.length > 0) {
@@ -804,10 +918,15 @@ function formatObject(node: UntypedCstNode): Doc {
     }
   }
 
-  iter.expectToken('}')
+  const closeBraceDoc = iter.emitClosing('}')
 
   if (entries.length === 0) {
-    return text('{}')
+    // Preserve any block comments inside empty objects: { /* c */ }
+    // openBraceTrivia has trailing comments from `{`, closeBraceDoc has leading comments from `}`
+    if (openBraceTrivia.length > 0) {
+      return concat(text('{'), ...openBraceTrivia.flatMap(c => [text(' '), c]), text(' '), closeBraceDoc)
+    }
+    return concat(text('{'), closeBraceDoc)
   }
 
   // Objects use spaces inside braces: { a: 1, b: 2 }
@@ -817,7 +936,7 @@ function formatObject(node: UntypedCstNode): Doc {
     text('{'),
     nest(INDENT, concat(line, join(concat(text(','), line), entries), trailingComma)),
     line,
-    text('}'),
+    closeBraceDoc,
   ))
 }
 
@@ -833,13 +952,13 @@ function formatBinaryOp(node: UntypedCstNode): Doc {
     // Regular binary operator: [left_node, op_token, right_node]
     const left = children[0]!
     const right = children[1]!
-    const opText = toks[0]!.text
+    const opDoc = formatTokenWithTrivia(toks[0]!)
 
     return group(concat(
       formatNode(left),
       text(' '),
-      text(opText),
-      nest(INDENT, concat(line, formatNode(right))),
+      opDoc,
+      nest(INDENT, concat(line, formatExprChild(right))),
     ))
   }
 
@@ -851,8 +970,8 @@ function formatBinaryOp(node: UntypedCstNode): Doc {
     return group(concat(
       formatNode(left),
       text(' '),
-      formatNode(op),
-      nest(INDENT, concat(line, formatNode(right))),
+      formatExprChild(op),
+      nest(INDENT, concat(line, formatExprChild(right))),
     ))
   }
 
@@ -863,7 +982,7 @@ function formatBinaryOp(node: UntypedCstNode): Doc {
 function formatPrefixOp(node: UntypedCstNode): Doc {
   const operand = nthChild(node, 0)
   const opToken = nthToken(node, 0)
-  return concat(text(opToken.text), formatNode(operand))
+  return concat(formatTokenWithTrivia(opToken), formatExprChild(operand))
 }
 
 // ---------------------------------------------------------------------------
@@ -874,14 +993,24 @@ function formatPropertyAccess(node: UntypedCstNode): Doc {
   const object = nthChild(node, 0)
   const toks = tokens(node)
   // tokens: dot, property name
+  const dotToken = toks[0]!
   const propToken = toks.length >= 2 ? toks[1]! : toks[0]!
-  return concat(formatNode(object), text('.'), text(propToken.text))
+  return concat(formatNode(object), formatTokenWithTrivia(dotToken), toks.length >= 2 ? formatTokenWithTrivia(propToken) : text(''))
 }
 
 function formatIndexAccess(node: UntypedCstNode): Doc {
   const object = nthChild(node, 0)
   const index = nthChild(node, 1)
-  return concat(formatNode(object), text('['), formatNode(index), text(']'))
+  const toks = tokens(node)
+  // tokens: [, ]
+  const openBracket = toks.find(t => t.text === '[')
+  const closeBracket = toks.find(t => t.text === ']')
+  return concat(
+    formatNode(object),
+    openBracket ? formatTokenWithTrivia(openBracket) : text('['),
+    formatExprChild(index),
+    closeBracket ? formatClosingToken(closeBracket) : text(']'),
+  )
 }
 
 function formatCall(node: UntypedCstNode): Doc {
@@ -897,7 +1026,7 @@ function formatCall(node: UntypedCstNode): Doc {
     return concat(
       formatNode(fn),
       openParen ? formatTokenWithTrivia(openParen) : text('('),
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     )
   }
 
@@ -905,7 +1034,7 @@ function formatCall(node: UntypedCstNode): Doc {
   const commaTokens = toks.filter(t => t.text === ',')
   const argDocs: Doc[] = []
   for (let i = 0; i < args.length; i++) {
-    const argDoc = formatNode(args[i]!)
+    const argDoc = formatExprChild(args[i]!)
     // Check for comment trivia on the comma before this arg
     if (i > 0 && i - 1 < commaTokens.length) {
       const comma = commaTokens[i - 1]!
@@ -938,7 +1067,7 @@ function formatCall(node: UntypedCstNode): Doc {
       join(concat(text(','), text(' ')), leadingArgDocs),
       text(', '),
       trailingArgDoc,
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     ))
   }
 
@@ -948,7 +1077,7 @@ function formatCall(node: UntypedCstNode): Doc {
       openDoc,
       nest(INDENT, concat(softLine, join(concat(text(','), line), argDocs))),
       softLine,
-      closeParen ? formatTokenWithTrivia(closeParen) : text(')'),
+      closeParen ? formatClosingToken(closeParen) : text(')'),
     )),
   )
 }
@@ -959,12 +1088,20 @@ function formatCall(node: UntypedCstNode): Doc {
 
 function formatParenthesized(node: UntypedCstNode): Doc {
   const inner = nthChild(node, 0)
-  return concat(text('('), formatNode(inner), text(')'))
+  const toks = tokens(node)
+  const openParen = toks.find(t => t.text === '(')
+  const closeParen = toks.find(t => t.text === ')')
+  return concat(
+    openParen ? formatTokenWithTrivia(openParen) : text('('),
+    formatExprChild(inner),
+    closeParen ? formatClosingToken(closeParen) : text(')'),
+  )
 }
 
 function formatSpread(node: UntypedCstNode): Doc {
   const expr = nthChild(node, 0)
-  return concat(text('...'), formatNode(expr))
+  const dotsToken = nthToken(node, 0)
+  return concat(formatTokenWithTrivia(dotsToken), formatExprChild(expr))
 }
 
 // ---------------------------------------------------------------------------
@@ -976,7 +1113,7 @@ function formatLet(node: UntypedCstNode): Doc {
   // The binding target is everything between `let` and `=`.
   // The value expression is the last child node.
   const iter = new ChildIterator(node.children)
-  iter.expectToken('let')
+  const letDoc = iter.emitToken('let')
 
   // Collect binding target parts (everything until the top-level `=`).
   // Default values inside binding patterns (e.g. `{ role = "guest" }`)
@@ -995,17 +1132,17 @@ function formatLet(node: UntypedCstNode): Doc {
       // Special case: `{` and `}` in object destructuring get spaces inside
       if (t === '{') {
         if (targetParts.length > 0) targetParts.push(text(' '))
-        targetParts.push(text('{ '))
+        targetParts.push(formatTokenWithTrivia(child), text(' '))
         lastTargetText = '{ '
         continue
       }
       if (t === '}') {
-        targetParts.push(text(' }'))
+        targetParts.push(text(' '), formatClosingToken(child))
         lastTargetText = '}'
         continue
       }
       if (t === ',') {
-        targetParts.push(text(', '))
+        targetParts.push(formatTokenWithTrivia(child), text(' '))
         lastTargetText = ', '
         continue
       }
@@ -1013,25 +1150,25 @@ function formatLet(node: UntypedCstNode): Doc {
         && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
-      targetParts.push(text(t))
+      targetParts.push(formatClosingToken(child))
       lastTargetText = t
     } else {
       // Add space before node unless previous was open bracket or already ends with space
       if (targetParts.length > 0 && !isOpenBracket(lastTargetText) && !lastTargetText.endsWith(' ')) {
         targetParts.push(text(' '))
       }
-      targetParts.push(formatNode(child))
+      targetParts.push(formatExprChild(child))
       lastTargetText = ''
     }
   }
 
-  iter.expectToken('=')
+  const eqDoc = iter.emitToken('=')
 
   // Value is the remaining node
   const value = iter.nextNode()
 
-  const header = concat(text('let'), text(' '), concat(...targetParts), text(' = '))
-  const valueDoc = formatNode(value)
+  const header = concat(letDoc, text(' '), concat(...targetParts), text(' '), eqDoc, text(' '))
+  const valueDoc = formatExprChild(value)
 
   // For Function/Block values (lambda with do-block), don't break at `=`.
   // The value's internal formatting handles its own indentation.
@@ -1046,10 +1183,11 @@ function formatLet(node: UntypedCstNode): Doc {
 
   // For other values: try flat, break at `=` if too long
   return group(concat(
-    text('let'),
+    letDoc,
     text(' '),
     concat(...targetParts),
-    text(' ='),
+    text(' '),
+    eqDoc,
     nest(INDENT, concat(line, valueDoc)),
   ))
 }
@@ -1062,10 +1200,13 @@ function formatIf(node: UntypedCstNode): Doc {
   // Children: if, condition, then, body..., [else, [if, condition, then, body...]]..., end
   const iter = new ChildIterator(node.children)
 
-  // Collect branches
+  // Collect branches — capture keyword Docs to preserve trivia (block comments)
   interface Branch {
     isElseIf: boolean
+    elseDoc?: Doc // Doc for the 'else' keyword (only for else-if branches)
+    ifDoc: Doc
     condition: Doc
+    thenDoc: Doc
     bodyDoc: Doc
     bodyCount: number
     lastTrailingComment?: string
@@ -1074,17 +1215,21 @@ function formatIf(node: UntypedCstNode): Doc {
   let elseBranchDoc: Doc | undefined
   let elseBranchCount = 0
   let elseLastComment: string | undefined
+  let elseDoc: Doc | undefined // Doc for the final 'else' keyword
+  let pendingElseDoc: Doc | undefined // Doc for an 'else' that precedes 'if' (else-if)
 
   while (!iter.done()) {
     const child = iter.peek()!
     if (isToken(child) && child.text === 'end') break
 
     if (isToken(child) && child.text === 'else') {
-      iter.next() // consume 'else'
+      const elseKwDoc = iter.emitClosing('else')
       if (iter.isToken('if')) {
-        // else-if: continue to parse the next if branch
+        // else-if: save the else Doc for the next branch
+        pendingElseDoc = elseKwDoc
       } else {
-        // Final else branch — use formatBodyFromIter for comment handling
+        // Final else branch
+        elseDoc = elseKwDoc
         elseBranchCount = countNodesUntil(iter, 'end')
         const elseResult = formatBodyFromIterNoTrailingSemi(iter, 'end')
         elseBranchDoc = elseResult.doc
@@ -1094,16 +1239,28 @@ function formatIf(node: UntypedCstNode): Doc {
     }
 
     if (isToken(iter.peek()!) && (iter.peek() as CstToken).text === 'if') {
-      iter.next() // consume 'if'
+      // First `if` is at statement boundary (container handles leading trivia).
+      // Subsequent `if` (in else-if) is expression-internal — needs leading comments.
+      const ifDoc = branches.length === 0 ? iter.emitToken('if') : iter.emitClosing('if')
       const condition = iter.nextNode()
-      iter.expectToken('then')
+      const thenDoc = iter.emitClosing('then')
       const bodyCount = countNodesUntil(iter, 'else', 'end')
       const bodyResult = formatBodyFromIterNoTrailingSemi(iter, 'else', 'end')
-      branches.push({ isElseIf: branches.length > 0, condition: formatNode(condition), bodyDoc: bodyResult.doc, bodyCount, lastTrailingComment: bodyResult.lastTrailingComment })
+      branches.push({
+        isElseIf: branches.length > 0,
+        elseDoc: pendingElseDoc,
+        ifDoc,
+        condition: formatExprChild(condition),
+        thenDoc,
+        bodyDoc: bodyResult.doc,
+        bodyCount,
+        lastTrailingComment: bodyResult.lastTrailingComment,
+      })
+      pendingElseDoc = undefined
     }
   }
 
-  iter.expectToken('end')
+  const endDoc = iter.emitClosing('end')
 
   // Simple if/then/[else]/end with single-expression bodies: try flat
   // Collect all trailing comments for emission after `end`
@@ -1118,23 +1275,23 @@ function formatIf(node: UntypedCstNode): Doc {
   if (branches.length === 1 && branches[0]!.bodyCount === 1
     && (elseBranchDoc === undefined || elseBranchCount === 1)) {
     const b = branches[0]!
-    const flatParts = [text('if '), b.condition, text(' then '), b.bodyDoc]
-    if (elseBranchDoc) {
-      flatParts.push(text(' else '), elseBranchDoc)
+    const flatParts = [b.ifDoc, text(' '), b.condition, text(' '), b.thenDoc, text(' '), b.bodyDoc]
+    if (elseBranchDoc && elseDoc) {
+      flatParts.push(text(' '), elseDoc, text(' '), elseBranchDoc)
     }
-    flatParts.push(text(' end'), trailingCmtDoc)
+    flatParts.push(text(' '), endDoc, trailingCmtDoc)
 
-    const expandedParts: Doc[] = [text('if '), b.condition, text(' then')]
+    const expandedParts: Doc[] = [b.ifDoc, text(' '), b.condition, text(' '), b.thenDoc]
     expandedParts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
     if (b.lastTrailingComment) {
       expandedParts.push(text(' '), text(b.lastTrailingComment))
     }
-    if (elseBranchDoc) {
-      expandedParts.push(hardLine, text('else'))
+    if (elseBranchDoc && elseDoc) {
+      expandedParts.push(hardLine, elseDoc)
       expandedParts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
       if (elseLastComment) expandedParts.push(text(' '), text(elseLastComment))
     }
-    expandedParts.push(hardLine, text('end'))
+    expandedParts.push(hardLine, endDoc)
 
     return group(concat(
       ifBreak(concat(...expandedParts), concat(...flatParts)),
@@ -1145,9 +1302,9 @@ function formatIf(node: UntypedCstNode): Doc {
   const parts: Doc[] = []
   for (const b of branches) {
     if (b.isElseIf) {
-      parts.push(hardLine, text('else if '), b.condition, text(' then'))
+      parts.push(hardLine, b.elseDoc ?? text('else'), text(' '), b.ifDoc, text(' '), b.condition, text(' '), b.thenDoc)
     } else {
-      parts.push(text('if '), b.condition, text(' then'))
+      parts.push(b.ifDoc, text(' '), b.condition, text(' '), b.thenDoc)
     }
     parts.push(nest(INDENT, concat(hardLine, b.bodyDoc)))
     // Trailing comment from this branch's body
@@ -1156,39 +1313,39 @@ function formatIf(node: UntypedCstNode): Doc {
     }
   }
   if (elseBranchDoc) {
-    parts.push(hardLine, text('else'))
+    parts.push(hardLine, elseDoc ?? text('else'))
     parts.push(nest(INDENT, concat(hardLine, elseBranchDoc)))
     if (elseLastComment) parts.push(text(' '), text(elseLastComment))
   }
-  parts.push(hardLine, text('end'))
+  parts.push(hardLine, endDoc)
   return concat(...parts)
 }
 
 function formatBlock(node: UntypedCstNode): Doc {
   // Children: do, [with, handler, ;], body..., end
   const iter = new ChildIterator(node.children)
-  iter.expectToken('do')
+  const doDoc = iter.emitToken('do')
 
   // Check for `with handler;` clause
   let withClause: Doc | undefined
   if (iter.isToken('with')) {
-    iter.next() // consume 'with'
+    const withDoc = iter.emitClosing('with')
     const handler = iter.nextNode()
-    iter.expectToken(';')
-    withClause = concat(text('with '), formatNode(handler), text(';'))
+    const semiDoc = iter.emitToken(';')
+    withClause = concat(withDoc, text(' '), formatExprChild(handler), semiDoc)
   }
 
   const bodyStmtCount = countNodesUntil(iter, 'end')
   // Always use trailing ; for expanded blocks
   const bodyResult = formatBodyFromIter(iter, 'end')
   const bodyDoc = bodyResult.doc
-  iter.expectToken('end')
+  const endDoc = iter.emitClosing('end')
 
   if (bodyDoc.type === 'text' && bodyDoc.text === '') {
     if (withClause) {
-      return concat(text('do'), nest(INDENT, concat(hardLine, withClause)), hardLine, text('end'))
+      return concat(doDoc, nest(INDENT, concat(hardLine, withClause)), hardLine, endDoc)
     }
-    return text('do end')
+    return concat(doDoc, text(' '), endDoc)
   }
 
   // Single expression without with clause: try flat `do expr end`
@@ -1201,14 +1358,14 @@ function formatBlock(node: UntypedCstNode): Doc {
 
     if (!hasLeadingComments) {
       // Flat: `do expr end`. Expanded: `do\n  expr;\nend`
-      const flatBodyDoc = bodyNodes.length > 0 ? formatNode(bodyNodes[bodyNodes.length - 1]!) : bodyDoc
+      const flatBodyDoc = bodyNodes.length > 0 ? formatExprChild(bodyNodes[bodyNodes.length - 1]!) : bodyDoc
       return group(concat(
-        text('do'),
+        doDoc,
         nest(INDENT, concat(line, ifBreak(bodyDoc, flatBodyDoc))),
         bodyResult.lastTrailingComment
           ? concat(text(' '), text(bodyResult.lastTrailingComment), hardLine)
           : line,
-        text('end'),
+        endDoc,
       ))
     }
   }
@@ -1220,7 +1377,7 @@ function formatBlock(node: UntypedCstNode): Doc {
   const trailingCmt = bodyResult.lastTrailingComment
     ? concat(text(' '), text(bodyResult.lastTrailingComment))
     : text('')
-  return concat(text('do'), nest(INDENT, inner), trailingCmt, hardLine, text('end'))
+  return concat(doDoc, nest(INDENT, inner), trailingCmt, hardLine, endDoc)
 }
 
 function formatLoop(node: UntypedCstNode): Doc {
@@ -1236,14 +1393,14 @@ function formatFor(node: UntypedCstNode): Doc {
 function formatMatch(node: UntypedCstNode): Doc {
   // Children: match, expression, case, pattern, [when, guard], then, body..., ..., end
   const iter = new ChildIterator(node.children)
-  iter.expectToken('match')
+  const matchDoc = iter.emitToken('match')
   const expr = iter.nextNode()
-  const parts: Doc[] = [text('match '), formatNode(expr)]
+  const parts: Doc[] = [matchDoc, text(' '), formatExprChild(expr)]
 
   // Parse cases
   while (!iter.done() && !iter.isToken('end')) {
     if (iter.isToken('case')) {
-      iter.next() // consume 'case'
+      const caseDoc = iter.emitClosing('case')
 
       // Collect pattern (tokens and nodes until 'when' or 'then')
       const patternParts: Doc[] = []
@@ -1251,30 +1408,30 @@ function formatMatch(node: UntypedCstNode): Doc {
         const child = iter.next()
         if (isToken(child)) {
           if (patternParts.length > 0 && !isPunctuation(child.text)) patternParts.push(text(' '))
-          patternParts.push(text(child.text))
+          patternParts.push(formatClosingToken(child))
         } else {
           if (patternParts.length > 0) patternParts.push(text(' '))
-          patternParts.push(formatNode(child))
+          patternParts.push(formatExprChild(child))
         }
       }
 
       // Optional when guard
       let guardDoc: Doc | undefined
       if (iter.isToken('when')) {
-        iter.next() // consume 'when'
+        const whenDoc = iter.emitClosing('when')
         const guard = iter.nextNode()
-        guardDoc = concat(text(' when '), formatNode(guard))
+        guardDoc = concat(text(' '), whenDoc, text(' '), formatExprChild(guard))
       }
 
-      iter.expectToken('then')
+      const thenDoc = iter.emitClosing('then')
       const body = iter.collectBody('case', 'end')
 
       parts.push(nest(INDENT, concat(
         hardLine,
-        text('case '),
+        caseDoc, text(' '),
         concat(...patternParts),
         guardDoc ?? text(''),
-        text(' then'),
+        text(' '), thenDoc,
         body.length === 1
           ? concat(text(' '), body[0]!)
           : nest(INDENT, concat(hardLine, formatBody(body))),
@@ -1284,8 +1441,8 @@ function formatMatch(node: UntypedCstNode): Doc {
     }
   }
 
-  iter.expectToken('end')
-  parts.push(hardLine, text('end'))
+  const endDoc = iter.emitClosing('end')
+  parts.push(hardLine, endDoc)
   return concat(...parts)
 }
 
@@ -1305,32 +1462,32 @@ function formatFunction(node: UntypedCstNode): Doc {
     const child = iter.next()
     if (isToken(child)) {
       if (child.text === '(' || child.text === ')') {
-        paramParts.push(text(child.text))
+        paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === ',') {
-        paramParts.push(text(','))
+        paramParts.push(formatTokenWithTrivia(child))
         paramParts.push(text(' '))
       } else if (child.text === '...') {
-        paramParts.push(text('...'))
+        paramParts.push(formatTokenWithTrivia(child))
       } else if (child.text === '=') {
-        paramParts.push(text(' = '))
+        paramParts.push(text(' '), formatTokenWithTrivia(child), text(' '))
       } else {
         if (paramParts.length > 0 && !isPunctuation(child.text)) paramParts.push(text(' '))
-        paramParts.push(text(child.text))
+        paramParts.push(formatTokenWithTrivia(child))
       }
     } else {
-      paramParts.push(formatNode(child))
+      paramParts.push(formatExprChild(child))
     }
   }
 
-  iter.expectToken('->')
+  const arrowDoc = iter.emitToken('->')
   const body = iter.nextNode()
 
   return group(concat(
     ...paramParts,
     paramParts.length > 0 ? text(' ') : text(''),
-    text('->'),
+    arrowDoc,
     text(' '),
-    formatNode(body),
+    formatExprChild(body),
   ))
 }
 
@@ -1341,30 +1498,27 @@ function formatHandler(node: UntypedCstNode): Doc {
 
   // Optional shallow keyword
   if (iter.isToken('shallow')) {
-    iter.next()
-    parts.push(text('shallow '))
+    parts.push(iter.emitClosing('shallow'), text(' '))
   }
 
-  iter.expectToken('handler')
-  parts.push(text('handler'))
+  parts.push(iter.emitToken('handler'))
 
   // Parse clauses and transform until `end`
   const clauseParts: Doc[] = []
   while (!iter.done() && !iter.isToken('end')) {
     if (iter.isToken('transform')) {
-      iter.next() // consume 'transform'
       // Collect transform param and body
-      const transformParts: Doc[] = [text('transform')]
+      const transformParts: Doc[] = [iter.emitClosing('transform')]
       while (!iter.done() && !iter.isToken('end')) {
         const child = iter.next()
         if (isToken(child)) {
           if (child.text === '->') {
-            transformParts.push(text(' -> '))
+            transformParts.push(text(' '), formatTokenWithTrivia(child), text(' '))
           } else {
-            transformParts.push(text(' '), text(child.text))
+            transformParts.push(text(' '), formatTokenWithTrivia(child))
           }
         } else {
-          transformParts.push(text(' '), formatNode(child))
+          transformParts.push(text(' '), formatExprChild(child))
         }
       }
       clauseParts.push(concat(...transformParts))
@@ -1378,15 +1532,15 @@ function formatHandler(node: UntypedCstNode): Doc {
         iter.next()
         if (isToken(child)) {
           if (child.text === '->') {
-            clauseTokens.push(text(' -> '))
+            clauseTokens.push(text(' '), formatTokenWithTrivia(child), text(' '))
           } else if (child.text === ',' || child.text === '(' || child.text === ')') {
-            clauseTokens.push(text(child.text))
+            clauseTokens.push(formatTokenWithTrivia(child))
           } else {
             if (clauseTokens.length > 0) clauseTokens.push(text(' '))
-            clauseTokens.push(text(child.text))
+            clauseTokens.push(formatTokenWithTrivia(child))
           }
         } else {
-          clauseTokens.push(formatNode(child))
+          clauseTokens.push(formatExprChild(child))
         }
       }
       if (clauseTokens.length > 0) {
@@ -1395,10 +1549,10 @@ function formatHandler(node: UntypedCstNode): Doc {
     }
   }
 
-  iter.expectToken('end')
+  const endDoc = iter.emitClosing('end')
 
   if (clauseParts.length === 0) {
-    return concat(...parts, text(' end'))
+    return concat(...parts, text(' '), endDoc)
   }
 
   // Multi-clause: indent each clause
@@ -1406,25 +1560,25 @@ function formatHandler(node: UntypedCstNode): Doc {
     ...parts,
     nest(INDENT, concat(...clauseParts.map(c => concat(hardLine, c)))),
     hardLine,
-    text('end'),
+    endDoc,
   )
 }
 
 function formatResume(node: UntypedCstNode): Doc {
   // Children: resume, [(, expr, )] or just resume (bare)
   const iter = new ChildIterator(node.children)
-  iter.expectToken('resume')
+  const resumeDoc = iter.emitToken('resume')
   if (iter.isToken('(')) {
-    iter.next() // consume (
+    const openDoc = iter.emitToken('(')
     if (iter.isNode()) {
       const arg = iter.nextNode()
-      iter.expectToken(')')
-      return concat(text('resume('), formatNode(arg), text(')'))
+      const closeDoc = iter.emitClosing(')')
+      return concat(resumeDoc, openDoc, formatExprChild(arg), closeDoc)
     }
-    iter.expectToken(')')
-    return text('resume()')
+    const closeDoc = iter.emitClosing(')')
+    return concat(resumeDoc, openDoc, closeDoc)
   }
-  return text('resume')
+  return resumeDoc
 }
 
 // ---------------------------------------------------------------------------
@@ -1440,10 +1594,11 @@ function formatMacro(node: UntypedCstNode): Doc {
 function formatMacroCall(node: UntypedCstNode): Doc {
   const children = childNodes(node)
   const prefixToken = nthToken(node, 0)
+  const prefixDoc = formatTokenWithTrivia(prefixToken)
   if (children.length > 0) {
-    return concat(text(prefixToken.text), text(' '), formatNode(children[0]!))
+    return concat(prefixDoc, text(' '), formatExprChild(children[0]!))
   }
-  return text(prefixToken.text)
+  return prefixDoc
 }
 
 // ---------------------------------------------------------------------------
@@ -1479,24 +1634,29 @@ function formatSplice(node: UntypedCstNode): Doc {
 function formatFromChildren(node: UntypedCstNode): Doc {
   const parts: Doc[] = []
   let prevText = '' // last emitted token text, or '_' after a child node
+  let isFirst = true // first child may be at a statement boundary — don't double-emit leading trivia
 
   for (const child of node.children) {
     if (isToken(child)) {
       if (prevText && needsSpaceBetween(prevText, child.text)) {
         parts.push(text(' '))
       }
-      parts.push(formatTokenWithTrivia(child))
+      // First token uses formatTokenWithTrivia (trailing only) since the container
+      // already handles leading trivia at statement boundaries. Subsequent tokens
+      // use formatClosingToken (leading + trailing) since they're expression-internal.
+      parts.push(isFirst ? formatTokenWithTrivia(child) : formatClosingToken(child))
       prevText = child.text
     } else {
       // Space before a child node unless preceded by an open bracket or dot
       if (prevText && !isOpenBracket(prevText) && prevText !== '.') {
         parts.push(text(' '))
       }
-      parts.push(formatNode(child))
+      parts.push(isFirst ? formatNode(child) : formatExprChild(child))
       // After a child node, assume its last token is non-special so the
       // next token gets normal spacing (space before non-punctuation).
       prevText = '_'
     }
+    isFirst = false
   }
 
   return concat(...parts)
@@ -1517,12 +1677,13 @@ function emitTriviaWithBlankLines(trivia: TriviaNode[], parts: Doc[]): void {
       parts.push(lineComment(t.text))
     } else if (t.kind === 'blockComment') {
       parts.push(text(t.text), hardLine)
-    } else if (t.kind === 'whitespace' && triviaHasBlankLine([t])) {
+    } else if (t.kind === 'whitespace') {
       // Blank line — emit if followed by a comment OR at end of trivia
       // (at end = blank line between comments and the next statement)
+      const bc = countBlankLines([t])
       const nextT = trivia[i + 1]
-      if (!nextT || nextT.kind === 'lineComment' || nextT.kind === 'blockComment') {
-        parts.push(hardLine)
+      if (bc > 0 && (!nextT || nextT.kind === 'lineComment' || nextT.kind === 'blockComment')) {
+        pushBlankLines(parts, bc)
       }
     }
   }

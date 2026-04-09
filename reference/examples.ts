@@ -68,7 +68,7 @@ for (i in range(count(items))) ->
       ],
     },
     code: dvala`
-perform(@host.plus, [x, y])`,
+perform(@host.plus, [20, 22])`,
   },
   {
     id: 'async-example',

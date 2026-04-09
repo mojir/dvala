@@ -99,3 +99,5 @@ export function getAutoCompleter(program: string, position: number, params: Auto
 }
 
 export { format as formatSource } from './formatter/format'
+export { parseToCst } from './parser'
+export { buildDocTree } from './formatter/cstFormat'
