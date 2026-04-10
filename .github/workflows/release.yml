@@ -107,7 +107,7 @@ jobs:
         run: |
           VERSION="${{ needs.release.outputs.version }}"
           git fetch origin main
-          git checkout main
+          git checkout FETCH_HEAD
           git tag "v${VERSION}"
           git push origin "v${VERSION}"
 
