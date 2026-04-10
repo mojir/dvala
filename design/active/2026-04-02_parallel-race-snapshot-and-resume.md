@@ -1,9 +1,10 @@
 # Parallel and Race: Snapshots, Resume, and Multi-Shot
 
-**Status:** In Progress
+**Status:** Complete ✅
 **Created:** 2026-04-02
 **Revised:** 2026-04-03 — addresses review findings (factual fixes, design gaps, missing considerations)
-**Revised:** 2026-04-10 — finalized design decisions, updated implementation plan
+**Revised:** 2026-04-10 — finalized design decisions, started implementation
+**Completed:** 2026-04-10 — all phases implemented on branch `feat/parallel-snapshot-resume`
 
 ## Goal
 
@@ -568,7 +569,7 @@ See "Backward compatibility for serialized snapshots" in the What Changes sectio
    - Branch checkpoints include pre-parallel snapshots in their timeline
    - Files: `trampoline-evaluator.ts`
 
-### Phase 2: Checkpoint Composition
+### Phase 2: Checkpoint Composition ✅ (2026-04-10)
 
 5. **Checkpoint serialization: replace barrier with ReRunFrame**
    - Extract a `composeCheckpointContinuation(k)` helper that walks the continuation, finds `ParallelBranchBarrierFrame`(s), and replaces each with a `ReRunParallelFrame` built from its `branchCtx`
@@ -582,7 +583,7 @@ See "Backward compatibility for serialized snapshots" in the What Changes sectio
      - Discard sibling branches' intermediate checkpoints — only the suspending branch's checkpoints (which already have correct indices from the shared `nextSnapshotIndex`) are kept
    - Files: `trampoline-evaluator.ts`
 
-### Phase 3: Resume Logic
+### Phase 3: Resume Logic ✅ (2026-04-10)
 
 7. **Implement `ReRunParallelFrame` handler in trampoline**
    - When the trampoline hits this frame with a value (branch completed):
@@ -635,7 +636,7 @@ Tests are written alongside each phase, not in a separate phase. High-level inte
     - Effect handlers inside branches → checkpoint → resume → correct handler scope
     - `resumeFrom()` (time travel) across parallel boundaries
 
-### Phase 5: Race Unification
+### Phase 5: Race Unification ✅ (2026-04-10)
 
 Race unification is separated from parallel because it involves a semantic change and structural reconciliation that should be validated independently after parallel is proven correct.
 
@@ -654,7 +655,7 @@ Race unification is separated from parallel because it involves a semantic chang
     - Race with one branch completing on resume → wins immediately, others aborted
     - Verify host no longer picks winner (semantic change from old race model)
 
-### Phase 6: Cleanup
+### Phase 6: Cleanup ✅ (2026-04-10)
 
 14. **Remove superseded code**
     - Remove or simplify `retriggerParallelGroup` / `retriggerWithEffects` — the frame handlers now handle parallel resume
