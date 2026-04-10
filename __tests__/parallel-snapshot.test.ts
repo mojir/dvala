@@ -192,18 +192,47 @@ describe('Phase 1: BarrierFrame infrastructure', () => {
               handler: async ({ resume, checkpoint }) => {
                 // Take a checkpoint and see how many snapshots exist
                 // (should include pre-parallel auto-checkpoints)
-                const snap = checkpoint('in-branch')
+                checkpoint('in-branch')
                 branchSnapshotCount = 1 // checkpoint succeeded
                 resume('done')
               },
             },
           ],
-          autoCheckpoint: true,
+          disableAutoCheckpoint: false,
         },
       )
 
       expect(result.type).toBe('completed')
       expect(branchSnapshotCount).toBe(1)
+    })
+
+    it('branch checkpoints remain visible after parallel completes', async () => {
+      const snapshotsSeenLater: string[] = []
+
+      const result = await dvala.runAsync(
+        'parallel(perform(@branch), 1); perform(@after)',
+        {
+          effectHandlers: [
+            {
+              pattern: 'branch',
+              handler: async ({ checkpoint, resume }) => {
+                checkpoint('inside-branch')
+                resume('branch-done')
+              },
+            },
+            {
+              pattern: 'after',
+              handler: async ({ snapshots, resume }) => {
+                snapshotsSeenLater.push(...snapshots.map((snapshot: Snapshot) => snapshot.message))
+                resume('after-done')
+              },
+            },
+          ],
+        },
+      )
+
+      expect(result.type).toBe('completed')
+      expect(snapshotsSeenLater).toContain('inside-branch')
     })
   })
 })
@@ -311,7 +340,7 @@ describe('Phase 2: Checkpoint composition', () => {
   it('auto-checkpoint inside parallel branch is composed correctly', async () => {
     // With autoCheckpoint, checkpoints are automatically taken after each effect.
     // Inside a parallel branch, these should be full-program continuations.
-    const dvalaAuto = createDvala({ autoCheckpoint: true })
+    const dvalaAuto = createDvala()
     const result = await dvalaAuto.runAsync(
       'parallel(perform(@eff, "x"), 42)',
       {
@@ -338,7 +367,7 @@ describe('Phase 3: Resume logic', () => {
   it('ResumeParallelFrame: resumed branch completes, siblings re-triggered', async () => {
     // All 3 branches suspend. Resume branch A → siblings B and C are re-triggered.
     const handlers: Handlers = [
-      { pattern: 'task', handler: async ({ arg, suspend, resume }: any) => {
+      { pattern: 'task', handler: async ({ arg, suspend }: any) => {
         if (arg === 'A') suspend({ step: 'A' })
         else if (arg === 'B') suspend({ step: 'B' })
         else suspend({ step: 'C' })
@@ -990,7 +1019,6 @@ describe('Phase 5: Race-specific', () => {
     // The continuation is: [LetBind... → ReRunParallelFrame → AlgebraicHandle(@leak.eff) → outerK]
     // BUG: dispatchPerform walks through ReRunParallelFrame and finds the outer handler.
     // @leak.eff should fall through to host handler instead.
-    hostHandlerCalled = false
     const r2 = await resumeContinuation(branchCp!, 'setup-done', {
       handlers: [
         {
@@ -1030,7 +1058,7 @@ describe('Phase 5: Race-specific', () => {
         effectHandlers: [
           {
             pattern: 'branch.task',
-            handler: async ({ arg, checkpoint, suspend, resume }: any) => {
+            handler: async ({ arg, checkpoint, suspend }: any) => {
               if (arg === 'A') {
                 // Take a checkpoint inside the branch, then suspend
                 checkpoint('branch-A-checkpoint')
@@ -1280,15 +1308,9 @@ describe('Phase 5: Race-specific', () => {
     expect(snapshotsInBlob.length).toBeGreaterThan(0)
   })
 
-  it.skip('BUG: resumeFrom inside branch escapes branch boundary', async () => {
-    // When a host handler inside a branch calls resumeFrom() to a pre-parallel
-    // checkpoint, the restored continuation has no BarrierFrame. The branch's
-    // runEffectLoop continues with the outer program continuation, effectively
-    // running the entire outer program inside the branch's trampoline.
-    //
-    // The branch should NOT be able to time-travel past the BarrierFrame.
-    // Either resumeFrom should reject snapshots from outside the branch,
-    // or the restored continuation should be checked for BarrierFrame presence.
+  it('resumeFrom inside branch cannot cross the branch boundary', async () => {
+    // Handlers running inside a parallel branch can see outer snapshots, but
+    // resumeFrom() must reject jumping to a continuation outside the branch.
 
     let callCount = 0
     const result = await dvala.runAsync(
@@ -1319,12 +1341,10 @@ describe('Phase 5: Race-specific', () => {
       },
     )
 
-    // The correct behavior: the program should complete normally.
-    // Bug behavior: the branch runs the outer program, producing a nested result
-    // like [['normal', 100], 100] instead of ['normal', 100].
-    expect(result.type).toBe('completed')
-    if (result.type === 'completed') {
-      expect(result.value).toEqual(['normal', 100])
+    expect(callCount).toBe(1)
+    expect(result.type).toBe('error')
+    if (result.type === 'error') {
+      expect(result.error.message).toContain('parallel branch boundary')
     }
   })
 

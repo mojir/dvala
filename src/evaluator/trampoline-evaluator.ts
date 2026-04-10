@@ -2657,8 +2657,6 @@ function buildResumeFunction(
   }
 }
 
-
-
 function applyPerformArgs(frame: PerformArgsFrame, value: Any, k: ContinuationStack): Step | Promise<Step> {
   const { argNodes, index, env } = frame
   const newParams = frame.params.append(value)
@@ -2795,6 +2793,36 @@ function truncateAtBarrier(k: ContinuationStack): ContinuationStack {
     result = cons<Frame>(frames[i]!, result)
   }
   return result
+}
+
+function getParallelBoundaryPath(k: ContinuationStack): string[] {
+  const path: string[] = []
+  let node: ContinuationStack = k
+  while (node !== null) {
+    const frame = node.head
+    if (frame.type === 'ParallelBranchBarrier') {
+      path.push(`${frame.branchCtx.mode}:${frame.branchCtx.branchIndex}/${frame.branchCtx.branchCount}`)
+    } else if (frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') {
+      path.push(`${frame.mode}:${frame.branchIndex}/${frame.branchCount}`)
+    }
+    node = node.tail
+  }
+  return path
+}
+
+function sameBoundaryPath(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false
+  for (let i = 0; i < left.length; i++) {
+    if (left[i] !== right[i]) return false
+  }
+  return true
+}
+
+type SnapshotStateSeed = SnapshotState | {
+  snapshots: Snapshot[]
+  nextSnapshotIndex: number
+  maxSnapshots?: number
+  autoCheckpoint?: boolean
 }
 
 function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sourceCodeInfo?: SourceCodeInfo, handlers?: Handlers, signal?: AbortSignal, snapshotState?: SnapshotState): Step | Promise<Step> {
@@ -3076,7 +3104,15 @@ function dispatchHostHandler(
           throw new RuntimeError(`Invalid snapshot: no snapshot with index ${snapshot.index} found in current run`, sourceCodeInfo)
         }
         settled = true
-        outcome = { kind: 'throw', error: new ResumeFromSignal(found.continuation, fromJS(value), found.index) }
+        outcome = {
+          kind: 'throw',
+          error: new ResumeFromSignal(
+            found.continuation,
+            fromJS(value),
+            found.index,
+            getParallelBoundaryPath(k),
+          ),
+        }
       },
       halt: (value: unknown = null) => {
         assertNotSettled('halt')
@@ -3190,18 +3226,11 @@ async function runBranch(
   const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
   const initial: Step = { type: 'Eval', node, env, k: barrierK }
 
-  // Thread outer snapshot state into the branch so pre-parallel checkpoints
-  // are visible in the branch's timeline. Each branch gets a copy (not reference)
-  // to avoid concurrent mutation. The executionId is inherited so resumeFrom()
-  // can find pre-parallel snapshots.
-  const initialSnapshotState = outerSnapshotState
-    ? { snapshots: [...outerSnapshotState.snapshots], nextSnapshotIndex: outerSnapshotState.nextSnapshotIndex }
-    : undefined
   return runEffectLoop(
     initial,
     handlers,
     signal,
-    initialSnapshotState,
+    outerSnapshotState,
     outerSnapshotState?.maxSnapshots,
     undefined, // deserializeOptions
     outerSnapshotState?.autoCheckpoint,
@@ -3210,7 +3239,6 @@ async function runBranch(
     outerSnapshotState?.executionId,
   )
 }
-
 
 /**
  * Execute a `parallel(...)` expression.
@@ -3498,7 +3526,6 @@ async function executeRaceBranches(
   }
 }
 
-
 /**
  * Execute the sibling re-run logic for a `ReRunParallelFrame`.
  *
@@ -3711,18 +3738,12 @@ async function executeResumeParallel(
     // Re-trigger the sibling's effect via retriggerWithEffects if we have
     // the captured effect info. Otherwise fall back to running with null.
     if (sibling.effectName && sibling.effectArg !== undefined) {
-      // Pass the outer snapshot state so the sibling inherits the snapshot
-      // timeline (including pre-parallel checkpoints). The sibling adds its
-      // own checkpoints on top.
-      const siblingSnapshotState = snapshotState
-        ? { snapshots: [...snapshotState.snapshots], nextSnapshotIndex: snapshotState.nextSnapshotIndex }
-        : undefined
       const result = await retriggerWithEffects(
         fullK,
         sibling.effectName,
         sibling.effectArg,
         handlers,
-        siblingSnapshotState,
+        snapshotState,
         undefined, // deserializeOptions
         effectSignal,
         snapshotState?.executionId,
@@ -3735,10 +3756,7 @@ async function executeResumeParallel(
 
     // Fallback: resume with null (sibling had no captured effect)
     const initialStep: Step = { type: 'Value', value: null as Any, k: fullK }
-    const siblingSnapshotState = snapshotState
-      ? { snapshots: [...snapshotState.snapshots], nextSnapshotIndex: snapshotState.nextSnapshotIndex }
-      : undefined
-    const result = await runEffectLoop(initialStep, handlers, effectSignal, siblingSnapshotState, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
+    const result = await runEffectLoop(initialStep, handlers, effectSignal, snapshotState, undefined, undefined, undefined, undefined, undefined, snapshotState?.executionId)
     if (result.type === 'suspended') {
       parallelAbort.abort()
     }
@@ -5401,7 +5419,7 @@ export async function resumeWithEffects(
   k: ContinuationStack,
   value: Any,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
+  initialSnapshotState?: SnapshotStateSeed,
   deserializeOptions?: DeserializeOptions,
 ): Promise<RunResult> {
   const initial: Step = { type: 'Value', value, k }
@@ -5412,7 +5430,7 @@ export async function resumeWithEffects(
 export async function continueWithEffects(
   initial: Step,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
+  initialSnapshotState?: SnapshotStateSeed,
   deserializeOptions?: DeserializeOptions,
   terminalSnapshot?: boolean,
 ): Promise<RunResult> {
@@ -5438,7 +5456,7 @@ export async function retriggerWithEffects(
   effectName: string,
   effectArg: unknown,
   handlers?: Handlers,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number; maxSnapshots?: number; autoCheckpoint?: boolean },
+  initialSnapshotState?: SnapshotStateSeed,
   deserializeOptions?: DeserializeOptions,
   outerSignal?: AbortSignal,
   inheritedExecutionId?: string,
@@ -5448,13 +5466,15 @@ export async function retriggerWithEffects(
     ? combineSignals(outerSignal, abortController.signal)
     : abortController.signal
 
-  const snapshotState: SnapshotState = {
-    snapshots: initialSnapshotState?.snapshots ?? [],
-    nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
-    executionId: inheritedExecutionId ?? generateUUID(),
-    maxSnapshots: initialSnapshotState?.maxSnapshots,
-    autoCheckpoint: initialSnapshotState?.autoCheckpoint,
-  }
+  const snapshotState: SnapshotState = initialSnapshotState && 'executionId' in initialSnapshotState
+    ? initialSnapshotState
+    : {
+      snapshots: initialSnapshotState?.snapshots ?? [],
+      nextSnapshotIndex: initialSnapshotState?.nextSnapshotIndex ?? 0,
+      executionId: inheritedExecutionId ?? generateUUID(),
+      maxSnapshots: initialSnapshotState?.maxSnapshots,
+      autoCheckpoint: initialSnapshotState?.autoCheckpoint,
+    }
 
   const matchingHandlers = findMatchingHandlers(effectName, handlers)
 
@@ -5516,7 +5536,7 @@ async function runEffectLoop(
   initial: Step,
   handlers: Handlers | undefined,
   signal: AbortSignal,
-  initialSnapshotState?: { snapshots: Snapshot[]; nextSnapshotIndex: number },
+  initialSnapshotState?: SnapshotStateSeed,
   maxSnapshots?: number,
   deserializeOptions?: DeserializeOptions,
   autoCheckpoint?: boolean,
@@ -5524,17 +5544,19 @@ async function runEffectLoop(
   onNodeEval?: SnapshotState['onNodeEval'],
   inheritedExecutionId?: string,
 ): Promise<RunResult> {
-  const snapshotState: SnapshotState = {
-    snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
-    nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
-    // Branches inherit the outer executionId so resumeFrom() can find
-    // pre-parallel snapshots. Fresh UUID for top-level runs.
-    executionId: inheritedExecutionId ?? generateUUID(),
-    ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
-    ...(autoCheckpoint ? { autoCheckpoint } : {}),
-    ...(terminalSnapshot ? { terminalSnapshot } : {}),
-    ...(onNodeEval ? { onNodeEval } : {}),
-  }
+  const snapshotState: SnapshotState = initialSnapshotState && 'executionId' in initialSnapshotState
+    ? initialSnapshotState
+    : {
+      snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
+      nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
+      // Branches inherit the outer executionId so resumeFrom() can find
+      // pre-parallel snapshots. Fresh UUID for top-level runs.
+      executionId: inheritedExecutionId ?? generateUUID(),
+      ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
+      ...(autoCheckpoint ? { autoCheckpoint } : {}),
+      ...(terminalSnapshot ? { terminalSnapshot } : {}),
+      ...(onNodeEval ? { onNodeEval } : {}),
+    }
 
   // Capture a snapshot at program start so time travel can rewind to the very beginning.
   if (snapshotState.autoCheckpoint) {
@@ -5626,6 +5648,16 @@ async function runEffectLoop(
     } catch (error) {
       if (isResumeFromSignal(error)) {
         const { k: restoredK } = deserializeFromObject(error.continuation as Record<string, unknown>, deserializeOptions)
+        if (error.boundaryPath.length > 0) {
+          const restoredBoundaryPath = getParallelBoundaryPath(restoredK)
+          if (!sameBoundaryPath(error.boundaryPath, restoredBoundaryPath)) {
+            const runtimeError = new RuntimeError('resumeFrom cannot cross a parallel branch boundary.', undefined)
+            const snapshot = createTerminalSnapshot({ error: runtimeError })
+            return snapshot
+              ? { type: 'error', error: runtimeError, snapshot }
+              : { type: 'error', error: runtimeError }
+          }
+        }
         // Discard all snapshots with index > trimToIndex
         const cutIdx = snapshotState.snapshots.findIndex(s => s.index > error.trimToIndex)
         if (cutIdx !== -1) {

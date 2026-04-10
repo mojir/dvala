@@ -376,6 +376,8 @@ export class ResumeFromSignal {
     public readonly value: Any,
     /** Snapshots with index > trimToIndex will be discarded. */
     public readonly trimToIndex: number,
+    /** Parallel/race branch boundary path at the resumeFrom() call site. */
+    public readonly boundaryPath: string[] = [],
   ) {}
 }
 
