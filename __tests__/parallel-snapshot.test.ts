@@ -901,6 +901,61 @@ describe('Phase 5: Race-specific', () => {
     expect(siblingBExecId).toBe(siblingCExecId)
   })
 
+  it('BUG: re-suspension from frame handler loses snapshot history', async () => {
+    // When executeResumeParallel re-triggers siblings and they re-suspend,
+    // throwSuspension(composedK) creates a SuspensionSignal with snapshots=[]
+    // and nextSnapshotIndex=0. The serialized blob stores these empty values
+    // instead of the real snapshotState.snapshots.
+    //
+    // This means: after re-suspension, the host's snapshot has no checkpoint
+    // history — time travel is broken.
+    //
+    // Setup: take a checkpoint, enter parallel, all suspend, resume primary,
+    // sibling re-suspends. The re-suspension snapshot should preserve the
+    // earlier checkpoint.
+
+    // Step 1: Take a checkpoint before parallel, then all branches suspend
+    let preParallelCp: Snapshot | undefined
+
+    const r1 = await dvala.runAsync(
+      'perform(@setup); parallel(perform(@task, "A"), perform(@task, "B"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'setup',
+            handler: async ({ resume, checkpoint }: any) => {
+              preParallelCp = checkpoint('pre-parallel')
+              resume(null)
+            },
+          },
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+    expect(preParallelCp).toBeDefined()
+
+    // Step 2: Resume primary branch A. Sibling B re-suspends.
+    const r2 = await resumeContinuation(r1.snapshot, 'got-A', {
+      handlers: [
+        { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+      ],
+    })
+    expect(r2.type).toBe('suspended')
+    if (r2.type !== 'suspended') return
+
+    // Step 3: The re-suspension snapshot should contain the pre-parallel
+    // checkpoint in its history. Deserialize and check.
+    const cont = r2.snapshot.continuation as any
+    const snapshotsInBlob = cont.snapshots ?? []
+
+    // BUG: snapshotsInBlob is [] because throwSuspension passes empty snapshots
+    // to SuspensionSignal, and serializeSuspensionBlob stores those.
+    // It should contain at least the pre-parallel checkpoint.
+    expect(snapshotsInBlob.length).toBeGreaterThan(0)
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',

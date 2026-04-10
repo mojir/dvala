@@ -3330,11 +3330,13 @@ async function executeParallelBranches(
     // Rebuild the primary's continuation with the barrier replaced
     const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
 
-    // Use the primary branch's snapshots for the composed timeline.
-    // Sibling branch snapshots are discarded (siblings will be resumed
-    // from their truncated continuations).
-    return throwSuspension(
+    // Throw SuspensionSignal with real snapshot history from this session.
+    // throwSuspension() can't be used — it always passes snapshots=[], losing checkpoint history.
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
+    throw new SuspensionSignal(
       composedK,
+      snapshotState ? snapshotState.snapshots : [],
+      snapshotState ? snapshotState.nextSnapshotIndex : 0,
       primaryRaw.meta,
       primaryRaw.effectName,
       primaryRaw.effectArg,
@@ -3471,7 +3473,15 @@ async function executeRaceBranches(
       }
 
       const composedK = replaceBarrierWithFrame(primaryRaw.k, resumeFrame)
-      return throwSuspension(composedK, primaryRaw.meta, primaryRaw.effectName, primaryRaw.effectArg)
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
+      throw new SuspensionSignal(
+        composedK,
+        snapshotState ? snapshotState.snapshots : [],
+        snapshotState ? snapshotState.nextSnapshotIndex : 0,
+        primaryRaw.meta,
+        primaryRaw.effectName,
+        primaryRaw.effectArg,
+      )
     }
 
     // All branches errored — throw aggregate error
@@ -3589,7 +3599,16 @@ async function executeReRunParallel(
       mode,
     }
     const composedK = cons<Frame>(newFrame, outerK)
-    return throwSuspension(composedK, undefined, primary.effectName, primary.effectArg)
+    // Throw with real snapshot history (same reasoning as executeResumeParallel)
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
+    throw new SuspensionSignal(
+      composedK,
+      snapshotState ? snapshotState.snapshots : [],
+      snapshotState ? snapshotState.nextSnapshotIndex : 0,
+      undefined,
+      primary.effectName,
+      primary.effectArg,
+    )
   }
 
   // All done (or race: at least one completed) — collect results based on mode
@@ -3634,7 +3653,7 @@ async function executeResumeParallel(
   step: Step & { type: 'ResumeParallelExec' },
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
-  _snapshotState?: SnapshotState,
+  snapshotState?: SnapshotState,
 ): Promise<Step> {
   const { resumedBranchValue, frame, k: outerK } = step
   const { branchIndex, branchCount, completedBranches, suspendedBranches, mode } = frame
@@ -3761,7 +3780,18 @@ async function executeResumeParallel(
       mode,
     }
     const composedK = cons<Frame>(newFrame, outerK)
-    return throwSuspension(composedK, undefined, primary.effectName, primary.effectArg)
+    // Throw SuspensionSignal with real snapshot history from the current session.
+    // throwSuspension() can't be used here — it always passes snapshots=[], nextSnapshotIndex=0,
+    // which would lose all accumulated checkpoints.
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- SuspensionSignal is a signaling mechanism
+    throw new SuspensionSignal(
+      composedK,
+      snapshotState ? snapshotState.snapshots : [],
+      snapshotState ? snapshotState.nextSnapshotIndex : 0,
+      undefined,
+      primary.effectName,
+      primary.effectArg,
+    )
   }
 
   // All done — collect results based on mode
