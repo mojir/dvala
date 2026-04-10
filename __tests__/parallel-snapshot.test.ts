@@ -1059,6 +1059,53 @@ describe('Phase 5: Race-specific', () => {
     expect(snapshotsInBlob.length).toBeGreaterThan(0)
   })
 
+  it('BUG: snapshot index collision between branch checkpoint and suspension', async () => {
+    // The outer snapshotState.nextSnapshotIndex is not updated when a branch
+    // creates checkpoints. When the parallel suspends, runEffectLoop assigns
+    // the suspension snapshot index from the OUTER counter, which hasn't
+    // advanced. If the branch took a checkpoint at index N, the suspension
+    // snapshot also gets index N — duplicate indices.
+    //
+    // This breaks time travel: resumeFrom looks up by index, and two snapshots
+    // share the same index.
+
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@branch.task, "A"), perform(@branch.task, "B"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'branch.task',
+            handler: async ({ arg, checkpoint, suspend }: any) => {
+              if (arg === 'A') {
+                // Take a checkpoint, then suspend
+                checkpoint('branch-A-cp')
+                suspend({ branch: 'A' })
+              } else {
+                suspend({ branch: 'B' })
+              }
+            },
+          },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // The suspension snapshot should have a DIFFERENT index than the branch checkpoint.
+    // The branch checkpoint is at some index N. The suspension should be at N+1 or later.
+    const cont = r1.snapshot.continuation as any
+    const snapshotsInBlob = cont.snapshots ?? []
+
+    // Collect all indices: from blob snapshots + the suspension snapshot itself
+    const allIndices = snapshotsInBlob.map((s: any) => s.index)
+    allIndices.push(r1.snapshot.index)
+
+    // All indices should be unique (no duplicates)
+    const uniqueIndices = new Set(allIndices)
+    expect(uniqueIndices.size).toBe(allIndices.length)
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',

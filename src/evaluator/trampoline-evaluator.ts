@@ -5621,6 +5621,13 @@ async function runEffectLoop(
         continue
       }
       if (isSuspensionSignal(error)) {
+        // Advance the outer counter to at least the signal's counter.
+        // Branches may have created checkpoints that advanced their counter
+        // beyond the outer one. Without this, the suspension snapshot would
+        // collide with branch checkpoint indices.
+        if (error.nextSnapshotIndex > snapshotState.nextSnapshotIndex) {
+          snapshotState.nextSnapshotIndex = error.nextSnapshotIndex
+        }
         const continuation = serializeSuspensionBlob(
           error.k,
           error.snapshots,
