@@ -616,6 +616,53 @@ end;
 fizzbuzz join ", "`,
   },
   {
+    id: 'host-values',
+    name: 'Host values',
+    description: 'Request values from the host using @dvala.host. The host provides an effect handler with the values.',
+    category: 'Effects & Context',
+    effectHandlers: [
+      { pattern: 'dvala.host', handler: '({ arg, resume, fail }) => { const values = { greeting: "Hello from the host!", version: 42 }; if (arg in values) resume(values[arg]); else fail("Unknown: " + arg) }' },
+    ],
+    code: dvala`
+let greeting = perform(@dvala.host, "greeting");
+let version = perform(@dvala.host, "version");
+perform(@dvala.io.print, greeting);
+\`Dvala version: \${version}\``,
+  },
+  {
+    id: 'env-variables',
+    name: 'Environment variables',
+    description: 'Read environment variables with @dvala.env. Returns null for unset variables — use ?? for defaults.',
+    category: 'Effects & Context',
+    code: dvala`
+// Read an environment variable (returns null if not set)
+let home = perform(@dvala.env, "HOME") ?? "(not set)";
+let editor = perform(@dvala.env, "EDITOR") ?? "nano";
+let missing = perform(@dvala.env, "DVALA_NONEXISTENT_VAR") ?? "default";
+
+perform(@dvala.io.print, \`HOME: \${home}\`);
+perform(@dvala.io.print, \`EDITOR: \${editor}\`);
+perform(@dvala.io.print, \`Missing: \${missing}\`);
+
+{ home, editor, missing }`,
+  },
+  {
+    id: 'cli-arguments',
+    name: 'CLI arguments',
+    description: 'Read command-line arguments with @dvala.args. Returns an array of strings (node and script path are stripped).',
+    category: 'Effects & Context',
+    code: dvala`
+// Get CLI arguments (empty array in the playground)
+let args = perform(@dvala.args);
+let argCount = count(args);
+
+if argCount == 0 then
+  "No arguments (try: dvala run 'perform(@dvala.args)' -- a b c)"
+else
+  \`Got \${argCount} arguments: \${join(args, ", ")}\`
+end`,
+  },
+  {
     id: 'playground-demo',
     name: 'Playground Effects Demo',
     description: 'Showcases playground.* effects — Dvala code that controls the playground UI. Load this in the playground and press Run.',

@@ -247,3 +247,7 @@ type RunResult =
 * **error** — an unhandled error occurred
 
 The host never has to catch exceptions. All outcomes are data.
+
+## Host Values and Suspension
+
+Host values are provided via the `@dvala.host` effect (see the [Effects chapter](./02-effects.md)). When a program suspends, any host values already retrieved via `let x = perform(@dvala.host, "x")` are preserved in the continuation as regular `let` bindings. On resume, the host only needs to provide effect handlers for effects the resumed program will perform *after* the suspension point.
