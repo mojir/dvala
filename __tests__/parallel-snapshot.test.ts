@@ -1106,6 +1106,80 @@ describe('Phase 5: Race-specific', () => {
     expect(uniqueIndices.size).toBe(allIndices.length)
   })
 
+  it('ResumeParallelFrame survives serialization round-trip', async () => {
+    // Verify that a ResumeParallelFrame with stored sibling continuations
+    // survives serialize → deserialize and produces correct results.
+    // This tests the full round-trip: suspend → serialize → deserialize → resume.
+
+    // All 3 branches suspend. Host gets a snapshot.
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@task, "A"), perform(@task, "B"), perform(@task, "C"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Serialize the snapshot to JSON and back (simulating persistence to disk)
+    const serialized = JSON.stringify(r1.snapshot)
+    const deserialized = JSON.parse(serialized)
+
+    // Resume from the deserialized snapshot
+    const r2 = await resumeContinuation(deserialized, 'got-A', {
+      handlers: [
+        { pattern: 'task', handler: async ({ resume }: any) => { resume('got-sibling') } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toEqual(['got-A', 'got-sibling', 'got-sibling'])
+    }
+  })
+
+  it('nested parallel: re-run sibling that is itself a parallel', async () => {
+    // Branch A takes a checkpoint. Branch B is parallel(b1, b2).
+    // Resume from A's checkpoint → B is re-run from AST → inner parallel runs.
+    let cp: Snapshot | undefined
+
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@cp.task), parallel(perform(@inner, "b1"), perform(@inner, "b2")))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'cp.task',
+            handler: async ({ resume, checkpoint }: any) => {
+              cp = checkpoint('outer-a-cp')
+              resume('a-done')
+            },
+          },
+          { pattern: 'inner', handler: async ({ arg, resume }: any) => { resume(`inner-${arg}`) } },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('completed')
+    if (r1.type === 'completed') {
+      expect(r1.value).toEqual(['a-done', ['inner-b1', 'inner-b2']])
+    }
+    expect(cp).toBeDefined()
+
+    // Resume from checkpoint — sibling is parallel(b1, b2), re-run from AST
+    const r2 = await resumeContinuation(cp!, 'replayed-a', {
+      handlers: [
+        { pattern: 'inner', handler: async ({ arg, resume }: any) => { resume(`re-${arg}`) } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toEqual(['replayed-a', ['re-b1', 're-b2']])
+    }
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',
