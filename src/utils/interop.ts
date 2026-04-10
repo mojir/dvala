@@ -31,8 +31,14 @@ import { isDvalaFunction } from '../typeGuards/dvalaFunction'
  */
 export function assertValidHostValue(value: unknown, context: string, seen = new Set<unknown>(), path: string = ''): void {
   // Primitives
-  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
     return
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value))
+      throw new TypeError(`${context}: ${value}${path ? ` at ${path}` : ''} is not a valid Dvala value. Only finite numbers are allowed.`)
+    return
+  }
 
   if (value === undefined)
     throw new TypeError(`${context}: undefined${path ? ` at ${path}` : ''} is not a valid Dvala value. Use null instead.`)
@@ -56,7 +62,9 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
   if (typeof value !== 'object')
     return
 
-  // Circular reference detection
+  // Circular reference detection (DFS stack: add before recursing, remove after).
+  // This correctly distinguishes true cycles from diamond references (DAGs)
+  // where the same object appears at multiple paths.
   if (seen.has(value))
     throw new TypeError(`${context}: Circular reference${path ? ` at ${path}` : ''} is not supported.`)
   seen.add(value)
@@ -71,14 +79,16 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
   if (value instanceof RegExp)
     throw new TypeError(`${context}: RegExp${path ? ` at ${path}` : ''} is not a valid Dvala value. Use regex("pattern") in Dvala instead.`)
 
-  // Reject class instances (non-plain objects)
+  // Arrays — recurse into elements
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++)
       assertValidHostValue(value[i], context, seen, `${path}[${i}]`)
+    seen.delete(value)
     return
   }
 
-  // Reject non-plain objects (class instances with a non-Object prototype)
+  // Reject non-plain objects (class instances with a non-Object prototype).
+  // Note: proto === null means Object.create(null) which is a valid plain object.
   const proto = Object.getPrototypeOf(value)
   if (proto !== null && proto !== Object.prototype)
     throw new TypeError(`${context}: Class instance (${(value).constructor?.name ?? 'unknown'})${path ? ` at ${path}` : ''} is not a valid Dvala value. Spread to a plain object first: { ...instance }`)
@@ -86,6 +96,7 @@ export function assertValidHostValue(value: unknown, context: string, seen = new
   // Plain object — validate all values
   for (const [k, v] of Object.entries(value as Record<string, unknown>))
     assertValidHostValue(v, context, seen, path ? `${path}.${k}` : `.${k}`)
+  seen.delete(value)
 }
 
 /**

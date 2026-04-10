@@ -116,6 +116,21 @@ describe('host boundary validation', () => {
   // ── Boundary 3: resumeFrom() ───────────────────────────────────────
 
   describe('resumeFrom() in effect handler', () => {
+    it('should accept valid resumeFrom value', async () => {
+      const handlers: Handlers = [
+        { pattern: 'test.action', handler: ctx => {
+          const snapshot = ctx.checkpoint('before')
+          ctx.resumeFrom(snapshot, 99)
+        } },
+      ]
+      const result = await dvala.runAsync('perform(@test.action)', {
+        effectHandlers: handlers,
+      })
+      expect(result.type).toBe('completed')
+      if (result.type === 'completed')
+        expect(result.value).toBe(99)
+    })
+
     it('should reject invalid resumeFrom value', async () => {
       const handlers: Handlers = [
         { pattern: 'test.action', handler: ctx => {

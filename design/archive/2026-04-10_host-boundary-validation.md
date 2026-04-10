@@ -1,6 +1,6 @@
 # Host Boundary Value Validation
 
-**Status:** Draft
+**Status:** Implemented
 **Created:** 2026-04-10
 
 ## Goal
@@ -72,7 +72,7 @@ export function validateFromJS(value: unknown, context: string): Any {
 | Circular ref | Stack overflow | `TypeError: ${context}: Circular references are not supported.` |
 | `Date` | Flattened to empty map | `TypeError: ${context}: Date objects are not valid Dvala values. Use date.toISOString() or date.getTime().` |
 | `Map`/`Set` | Flattened incorrectly | `TypeError: ${context}: Map/Set are not valid Dvala values. Convert to array/object first.` |
-| Class instance | Loses prototype | Allowed (intentional flattening is sometimes useful — but log a warning?) |
+| Class instance | Loses prototype | `TypeError: ${context}: Class instance (ClassName) is not a valid Dvala value. Spread to a plain object first: { ...instance }` |
 
 ### Where to call it
 
@@ -107,19 +107,14 @@ export function validateFromJS(value: unknown, context: string): Any {
 
 `fromJS()` stays as-is for internal use (module functions, JSON.parse, macro expansion) where inputs are known-good. Only host-facing boundaries get the validation wrapper.
 
-## Open Questions
+## Resolved Questions
 
-- **Class instances**: Reject, warn, or allow? Flattening to a map of own properties is sometimes intentional (e.g., `resume(someApiResponse)`). But it can also be a bug. Options:
-  - Reject all non-plain objects (strict — may break existing code)
-  - Allow but warn (pragmatic)
-  - Allow silently (current behavior, just fix the other types)
-  - Recommendation: reject with a clear message. Host code can spread to plain object explicitly: `resume({...instance})`
-
-- **Async resume validation**: When `resume(promise)` is called, the promise resolves later. Should we validate the resolved value too?
-  - Recommendation: yes — wrap the `.then()` callback with validation
-
-- **Performance**: The validation adds a recursive traversal before `fromJS()` does its own recursive traversal. Should we combine them into a single pass?
-  - Recommendation: keep them separate for now. The validation pass is O(n) in value size, and host boundary values are typically small. Optimize only if profiling shows it matters.
+- **Class instances**: **Reject.** Host code must spread to plain object explicitly: `resume({...instance})`.
+- **Async resume validation**: **Yes.** The `.then()` callback validates the resolved value via `validateFromJS()`.
+- **Performance**: **Two passes.** Validation and conversion are kept separate. `fromJS()` stays lean for internal paths. Optimize only if profiling shows it matters.
+- **suspend/checkpoint meta**: **Validate serializability only** (`assertValidHostValue()` directly, no `fromJS()` conversion) — meta is opaque host data, not a Dvala value.
+- **Error type**: **`TypeError`** — host-side programming mistakes, not Dvala runtime errors.
+- **Non-finite numbers**: **Reject.** `NaN`, `Infinity`, and `-Infinity` are not valid Dvala values.
 
 ## Implementation Plan
 

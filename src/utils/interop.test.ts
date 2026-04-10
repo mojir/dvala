@@ -111,6 +111,27 @@ describe('assertValidHostValue', () => {
       expect(() => assertValidHostValue(new Foo(), ctx))
         .toThrow(/Class instance \(Foo\).*Spread to a plain object/)
     })
+
+    it('should reject NaN', () => {
+      expect(() => assertValidHostValue(NaN, ctx))
+        .toThrow(TypeError)
+      expect(() => assertValidHostValue(NaN, ctx))
+        .toThrow(/NaN.*is not a valid Dvala value.*Only finite numbers/)
+    })
+
+    it('should reject Infinity', () => {
+      expect(() => assertValidHostValue(Infinity, ctx))
+        .toThrow(TypeError)
+      expect(() => assertValidHostValue(Infinity, ctx))
+        .toThrow(/Infinity.*is not a valid Dvala value.*Only finite numbers/)
+    })
+
+    it('should reject -Infinity', () => {
+      expect(() => assertValidHostValue(-Infinity, ctx))
+        .toThrow(TypeError)
+      expect(() => assertValidHostValue(-Infinity, ctx))
+        .toThrow(/-Infinity.*is not a valid Dvala value.*Only finite numbers/)
+    })
   })
 
   // ── Circular references ───────────────────────────────────────────────
@@ -128,6 +149,16 @@ describe('assertValidHostValue', () => {
       arr.push(arr)
       expect(() => assertValidHostValue(arr, ctx))
         .toThrow(/Circular reference/)
+    })
+
+    it('should accept diamond references (same object at multiple paths)', () => {
+      const shared = { x: 1 }
+      expect(() => assertValidHostValue({ a: shared, b: shared }, ctx)).not.toThrow()
+    })
+
+    it('should accept diamond references in arrays', () => {
+      const shared = { x: 1 }
+      expect(() => assertValidHostValue([shared, shared], ctx)).not.toThrow()
     })
   })
 
