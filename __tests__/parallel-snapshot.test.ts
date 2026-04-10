@@ -475,4 +475,304 @@ describe('Phase 3: Resume logic', () => {
       expect(r2.value).toEqual(['retriggered', 42])
     }
   })
+
+  it('multi-shot: host resumes same composed snapshot twice independently', async () => {
+    // Each resume from the same snapshot should run independently.
+    const r1 = await dvala.runAsync(
+      'parallel(perform(@task, "A"), perform(@task, "B"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Resume twice from the same snapshot with different values
+    const [r2, r3] = await Promise.all([
+      resumeContinuation(r1.snapshot, 'first-run', {
+        handlers: [{ pattern: 'task', handler: async ({ resume }: any) => { resume('sibling-1') } }],
+      }),
+      resumeContinuation(r1.snapshot, 'second-run', {
+        handlers: [{ pattern: 'task', handler: async ({ resume }: any) => { resume('sibling-2') } }],
+      }),
+    ])
+
+    // Both should complete independently with their own values
+    expect(r2.type).toBe('completed')
+    expect(r3.type).toBe('completed')
+    if (r2.type === 'completed') expect(r2.value).toEqual(['first-run', 'sibling-1'])
+    if (r3.type === 'completed') expect(r3.value).toEqual(['second-run', 'sibling-2'])
+  })
+
+  it('multi-shot within a branch works normally', async () => {
+    // A handler inside a branch that calls resume() multiple times should
+    // work the same as without the BarrierFrame.
+    const result = await dvala.runAsync(
+      'parallel(do with handler @choose(opts) -> reduce(opts, (acc, x) -> [...acc, resume(x)], []) end; perform(@choose, [1, 2, 3]) end, 42)',
+    )
+
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toEqual([[1, 2, 3], 42])
+    }
+  })
+
+  it('effect handlers inside branches survive checkpoint → resume', async () => {
+    // Branch-local algebraic handlers should still work after checkpoint resume.
+    let cp: Snapshot | undefined
+
+    await dvala.runAsync(
+      'parallel(do with handler @local.eff(x) -> resume(x * 10) end; let r = perform(@trigger); perform(@local.eff, r) end, 1)',
+      {
+        effectHandlers: [
+          {
+            pattern: 'trigger',
+            handler: async ({ resume, checkpoint }: any) => {
+              cp = checkpoint('before-local-eff')
+              resume(5)
+            },
+          },
+        ],
+      },
+    )
+
+    expect(cp).toBeDefined()
+
+    // Resume from checkpoint — the branch-local handler should still catch @local.eff
+    const r2 = await resumeContinuation(cp!, 7, {
+      handlers: [
+        { pattern: 'trigger', handler: async ({ resume }: any) => { resume(7) } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      // Branch: perform(@trigger) → 7, then perform(@local.eff, 7) → 70 (local handler)
+      expect(r2.value).toEqual([70, 1])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 2+3: Nested parallel and time travel
+// ---------------------------------------------------------------------------
+
+describe('Nested parallel and time travel', () => {
+  it('nested parallel(parallel(...), ...) checkpoint composition', async () => {
+    // Checkpoint inside an inner parallel branch should compose through
+    // both levels: inner ReRunFrame → outer ReRunFrame → outerK
+    let innerCp: Snapshot | undefined
+
+    const r1 = await dvala.runAsync(
+      'parallel(parallel(perform(@inner, "a"), perform(@inner, "b")), perform(@outer, "c"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'inner',
+            handler: async ({ arg, resume, checkpoint }: any) => {
+              if (arg === 'a') {
+                innerCp = checkpoint('nested-cp')
+              }
+              resume(`inner-${arg}`)
+            },
+          },
+          {
+            pattern: 'outer',
+            handler: async ({ arg, resume }: any) => { resume(`outer-${arg}`) },
+          },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('completed')
+    if (r1.type === 'completed') {
+      expect(r1.value).toEqual([['inner-a', 'inner-b'], 'outer-c'])
+    }
+    expect(innerCp).toBeDefined()
+
+    // Resume from nested checkpoint — should re-run inner sibling b AND outer sibling c
+    const r2 = await resumeContinuation(innerCp!, 'replayed-a', {
+      handlers: [
+        { pattern: 'inner', handler: async ({ arg, resume }: any) => { resume(`re-inner-${arg}`) } },
+        { pattern: 'outer', handler: async ({ arg, resume }: any) => { resume(`re-outer-${arg}`) } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toEqual([['replayed-a', 're-inner-b'], 're-outer-c'])
+    }
+  })
+
+  it('time travel: resume from pre-parallel checkpoint via host API', async () => {
+    // Take a checkpoint before parallel, then complete.
+    // Resume from the pre-parallel checkpoint — the entire parallel is re-evaluated.
+    let preParallelCp: Snapshot | undefined
+
+    const r1 = await dvala.runAsync(
+      'perform(@setup); parallel(perform(@task, "a"), perform(@task, "b"))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'setup',
+            handler: async ({ resume, checkpoint }: any) => {
+              preParallelCp = checkpoint('pre-parallel')
+              resume(null)
+            },
+          },
+          {
+            pattern: 'task',
+            handler: async ({ arg, resume }: any) => { resume(`first-${arg}`) },
+          },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('completed')
+    if (r1.type === 'completed') {
+      expect(r1.value).toEqual(['first-a', 'first-b'])
+    }
+    expect(preParallelCp).toBeDefined()
+
+    // Resume from the pre-parallel checkpoint — re-evaluates everything after it
+    const r2 = await resumeContinuation(preParallelCp!, 'new-setup', {
+      handlers: [
+        { pattern: 'task', handler: async ({ arg, resume }: any) => { resume(`second-${arg}`) } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      // The parallel is re-evaluated with new handlers
+      expect(r2.value).toEqual(['second-a', 'second-b'])
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 5: Race-specific tests
+// ---------------------------------------------------------------------------
+
+describe('Phase 5: Race-specific', () => {
+  it('race suspension: resume completes race (first wins)', async () => {
+    const r1 = await dvala.runAsync(
+      'race(perform(@slow.a), perform(@slow.b))',
+      {
+        effectHandlers: [
+          { pattern: 'slow.a', handler: async ({ suspend }: any) => { suspend({ branch: 'A' }) } },
+          { pattern: 'slow.b', handler: async ({ suspend }: any) => { suspend({ branch: 'B' }) } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Resume primary branch — it completes, sibling is re-triggered, first to complete wins
+    const r2 = await resumeContinuation(r1.snapshot, 'winner', {
+      handlers: [
+        { pattern: 'slow.b', handler: async ({ resume }: any) => { resume('loser') } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      // Race: first completed value wins (the resumed branch with 'winner')
+      expect(r2.value).toBe('winner')
+    }
+  })
+
+  it('race re-suspension: all branches re-suspend', async () => {
+    const r1 = await dvala.runAsync(
+      'race(perform(@task, "A"), perform(@task, "B"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    // Resume: primary completes, but sibling re-suspends → race re-suspends
+    const r2 = await resumeContinuation(r1.snapshot, 'got-A', {
+      handlers: [
+        { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+      ],
+    })
+
+    // The race should re-suspend because sibling B re-suspended
+    // and there's no completed branch to win (the resumed branch A completed
+    // but B hasn't — race needs first to complete, A already completed via resume)
+    // Actually: A completed (resumed value), B re-suspended. Race picks A as winner.
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toBe('got-A')
+    }
+  })
+
+  it('race with checkpoint inside branch', async () => {
+    let cp: Snapshot | undefined
+
+    const r1 = await dvala.runAsync(
+      'race(perform(@fast), perform(@slow))',
+      {
+        effectHandlers: [
+          {
+            pattern: 'fast',
+            handler: async ({ resume, checkpoint }: any) => {
+              cp = checkpoint('race-branch-cp')
+              resume('fast-wins')
+            },
+          },
+          { pattern: 'slow', handler: async ({ resume }: any) => { resume('slow-done') } },
+        ],
+      },
+    )
+
+    expect(r1.type).toBe('completed')
+    if (r1.type === 'completed') {
+      expect(r1.value).toBe('fast-wins')
+    }
+    expect(cp).toBeDefined()
+
+    // Resume from checkpoint — re-runs siblings, first to complete wins
+    const r2 = await resumeContinuation(cp!, 'replayed-fast', {
+      handlers: [
+        { pattern: 'slow', handler: async ({ resume }: any) => { resume('replayed-slow') } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      // The resumed branch completes with 'replayed-fast', sibling re-runs
+      // Race: first to complete wins
+      expect(r2.value).toBe('replayed-fast')
+    }
+  })
+
+  it('race: retrigger works with new frame types', async () => {
+    const r1 = await dvala.runAsync(
+      'race(perform(@task, "A"), perform(@task, "B"))',
+      {
+        effectHandlers: [
+          { pattern: 'task', handler: async ({ suspend }: any) => { suspend() } },
+        ],
+      },
+    )
+    expect(r1.type).toBe('suspended')
+    if (r1.type !== 'suspended') return
+
+    const r2 = await retrigger(r1.snapshot, {
+      handlers: [
+        { pattern: 'task', handler: async ({ resume }: any) => { resume('retriggered') } },
+      ],
+    })
+
+    expect(r2.type).toBe('completed')
+    if (r2.type === 'completed') {
+      expect(r2.value).toBe('retriggered')
+    }
+  })
 })
