@@ -126,7 +126,7 @@ let port = perform(@dvala.env, "PORT") ?? "3000";
 let args = perform(@dvala.args);
 ```
 
-All three are blocked in pure mode.
+Like all effects, these are blocked in pure mode.
 
 ---
 

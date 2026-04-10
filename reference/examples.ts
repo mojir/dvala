@@ -654,12 +654,12 @@ perform(@dvala.io.print, \`Missing: \${missing}\`);
     code: dvala`
 // Get CLI arguments (empty array in the playground)
 let args = perform(@dvala.args);
-let count = count(args);
+let argCount = count(args);
 
-if count == 0 then
-  "No arguments provided (try running from CLI: dvala eval 'perform(@dvala.args)' -- a b c)"
+if argCount == 0 then
+  "No arguments (try: dvala run 'perform(@dvala.args)' -- a b c)"
 else
-  \`Got \${count} arguments: \${join(args, ", ")}\`
+  \`Got \${argCount} arguments: \${join(args, ", ")}\`
 end`,
   },
   {
