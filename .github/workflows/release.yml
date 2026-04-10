@@ -56,10 +56,12 @@ jobs:
       - name: Check
         run: npm run check
 
-      # Create release branch, push, and open PR with auto-merge
+      # Create release branch, push, and open PR with auto-merge.
+      # Uses RELEASE_TOKEN (PAT) so the push triggers CI on the PR.
+      # GITHUB_TOKEN doesn't trigger workflows on events it creates.
       - name: Create release PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           VERSION="${{ steps.bump.outputs.version }}"
           BRANCH="release/v${VERSION}"
@@ -69,6 +71,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add -A
           git commit -m "release: v${VERSION}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push origin "$BRANCH"
 
           gh pr create \
