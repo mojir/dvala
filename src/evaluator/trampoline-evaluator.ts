@@ -2219,7 +2219,7 @@ function tryDispatchDvalaError(
   let _node = k
   while (_node !== null) {
     const frame = _node.head
-    if (frame.type === 'ParallelBranchBarrier') break
+    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') break
     _node = _node.tail
     if (frame.type === 'AlgebraicHandle') {
       if (frame.handler.clauseMap.has('dvala.error')) {
@@ -2826,7 +2826,10 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   let frameIndex = 0
   while (searchNode !== null) {
     const frame = searchNode.head
-    if (frame.type === 'ParallelBranchBarrier') break
+    // Effect boundary: BarrierFrame (live execution) and ReRun/ResumeParallelFrame
+    // (serialized checkpoints/suspensions) all act as boundaries, preserving
+    // effect isolation between branches and the outer scope.
+    if (frame.type === 'ParallelBranchBarrier' || frame.type === 'ReRunParallel' || frame.type === 'ResumeParallel') break
     if (frame.type === 'AlgebraicHandle') {
       // New handler system — try named clause dispatch
       const result = dispatchAlgebraicHandler(frame, effect, arg, k, frameIndex, sourceCodeInfo)

@@ -956,6 +956,62 @@ describe('Phase 5: Race-specific', () => {
     expect(snapshotsInBlob.length).toBeGreaterThan(0)
   })
 
+  it('BUG: effect isolation must hold after checkpoint resume (ReRunParallelFrame)', async () => {
+    // Concrete test: branch does two effects in sequence. First is checkpointed,
+    // second should NOT leak to outer algebraic handler after resume.
+    let branchCp: Snapshot | undefined
+    let hostHandlerCalled = false
+
+    await dvala.runAsync(
+      'do with handler @leak.eff(x) -> resume("LEAKED") end; parallel(do let tmp = perform(@cp.task); perform(@leak.eff, 42) end, 1) end',
+      {
+        effectHandlers: [
+          {
+            pattern: 'cp.task',
+            handler: async ({ resume, checkpoint }: any) => {
+              branchCp = checkpoint('pre-leak')
+              resume('setup-done')
+            },
+          },
+          {
+            pattern: 'leak.eff',
+            handler: async ({ resume }: any) => {
+              hostHandlerCalled = true
+              resume('host-ok')
+            },
+          },
+        ],
+      },
+    )
+
+    expect(branchCp).toBeDefined()
+
+    // Resume from checkpoint. Branch continues: perform(@leak.eff, 42).
+    // The continuation is: [LetBind... → ReRunParallelFrame → AlgebraicHandle(@leak.eff) → outerK]
+    // BUG: dispatchPerform walks through ReRunParallelFrame and finds the outer handler.
+    // @leak.eff should fall through to host handler instead.
+    hostHandlerCalled = false
+    const r2 = await resumeContinuation(branchCp!, 'setup-done', {
+      handlers: [
+        {
+          pattern: 'leak.eff',
+          handler: async ({ resume }: any) => {
+            hostHandlerCalled = true
+            resume('host-ok-2')
+          },
+        },
+      ],
+    })
+
+    if (r2.type === 'error') throw new Error(`Error: ${r2.error.message}`)
+    expect(r2.type).toBe('completed')
+    expect(hostHandlerCalled).toBe(true) // Should be handled by host, not outer algebraic handler
+    if (r2.type === 'completed') {
+      // Branch result should be 'host-ok-2' (from host handler), not 'LEAKED' (from outer handler)
+      expect(r2.value).toEqual(['host-ok-2', 1])
+    }
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',
