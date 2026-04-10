@@ -1212,8 +1212,8 @@ export function loadSavedFile(id: string) {
   activateCurrentFileHistory(false)
   elements.dvalaTextArea.value = file.code
   updateContextState(file.context, false)
-  syntaxOverlay.update()
-  syntaxOverlay.scrollContainer.scrollTo(0, 0)
+  syntaxOverlay?.update()
+  syntaxOverlay?.scrollContainer.scrollTo(0, 0)
   syncCodePanelView('files')
   syncPlaygroundUrlState('files')
   updateCSS()
@@ -3441,7 +3441,7 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   }
 
   elements.dvalaTextArea.value = value
-  syntaxOverlay.update()
+  syntaxOverlay?.update()
 
   if (pushToHistory) {
     saveState({
@@ -3456,9 +3456,9 @@ function setDvalaCode(value: string, pushToHistory: boolean, scroll?: 'top' | 'b
   }
 
   if (scroll === 'top')
-    syntaxOverlay.scrollContainer.scrollTo(0, 0)
+    syntaxOverlay?.scrollContainer.scrollTo(0, 0)
   else if (scroll === 'bottom')
-    syntaxOverlay.scrollContainer.scrollTo({ top: syntaxOverlay.scrollContainer.scrollHeight, behavior: 'smooth' })
+    syntaxOverlay?.scrollContainer.scrollTo({ top: syntaxOverlay.scrollContainer.scrollHeight, behavior: 'smooth' })
 }
 
 export function resetOutput() {
