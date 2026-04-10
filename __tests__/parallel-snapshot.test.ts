@@ -1180,6 +1180,54 @@ describe('Phase 5: Race-specific', () => {
     }
   })
 
+  it.skip('BUG: resumeFrom inside branch escapes branch boundary', async () => {
+    // When a host handler inside a branch calls resumeFrom() to a pre-parallel
+    // checkpoint, the restored continuation has no BarrierFrame. The branch's
+    // runEffectLoop continues with the outer program continuation, effectively
+    // running the entire outer program inside the branch's trampoline.
+    //
+    // The branch should NOT be able to time-travel past the BarrierFrame.
+    // Either resumeFrom should reject snapshots from outside the branch,
+    // or the restored continuation should be checked for BarrierFrame presence.
+
+    let callCount = 0
+    const result = await dvala.runAsync(
+      'perform(@setup); parallel(perform(@branch.task), 100)',
+      {
+        effectHandlers: [
+          {
+            pattern: 'setup',
+            handler: async ({ resume, checkpoint }: any) => {
+              checkpoint('pre-parallel')
+              resume(null)
+            },
+          },
+          {
+            pattern: 'branch.task',
+            handler: async ({ resume, snapshots, resumeFrom }: any) => {
+              callCount++
+              if (callCount === 1 && snapshots.length > 0) {
+                // Time travel to pre-parallel checkpoint from inside a branch.
+                // This should either fail or be handled correctly.
+                resumeFrom(snapshots[0]!, 'time-traveled')
+              } else {
+                resume('normal')
+              }
+            },
+          },
+        ],
+      },
+    )
+
+    // The correct behavior: the program should complete normally.
+    // Bug behavior: the branch runs the outer program, producing a nested result
+    // like [['normal', 100], 100] instead of ['normal', 100].
+    expect(result.type).toBe('completed')
+    if (result.type === 'completed') {
+      expect(result.value).toEqual(['normal', 100])
+    }
+  })
+
   it('race: retrigger works with new frame types', async () => {
     const r1 = await dvala.runAsync(
       'race(perform(@task, "A"), perform(@task, "B"))',
