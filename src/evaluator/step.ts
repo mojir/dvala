@@ -24,7 +24,7 @@ import type { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import type { ContinuationStack, Frame } from './frames'
+import type { ContinuationStack, Frame, ParallelBranchContext, ReRunParallelFrame, ResumeParallelFrame } from './frames'
 import type { ContextStack } from './ContextStack'
 import type { Snapshot } from './effectTypes'
 
@@ -153,6 +153,51 @@ export interface ParallelResumeStep {
 }
 
 /**
+ * A parallel branch has completed — its value reached the BarrierFrame.
+ *
+ * This step is returned by `applyFrame` when a `ParallelBranchBarrierFrame`
+ * receives a value. The trampoline loop (`runEffectLoop`) recognizes this
+ * step type and returns it as a branch result, exiting the branch's
+ * trampoline without flowing into outerK.
+ */
+export interface BranchCompleteStep {
+  type: 'BranchComplete'
+  value: Any
+  branchCtx: ParallelBranchContext
+}
+
+/**
+ * A `ReRunParallelFrame` received a value (the resumed branch completed).
+ *
+ * The trampoline needs to re-run sibling branches from their original AST
+ * concurrently, collect results, and continue with the outer program.
+ * Handled by `tick()` which has access to `handlers` and `signal`.
+ */
+export interface ReRunParallelExecStep {
+  type: 'ReRunParallelExec'
+  resumedBranchValue: Any
+  frame: ReRunParallelFrame
+  k: ContinuationStack
+}
+
+/**
+ * A `ResumeParallelFrame` received a value (the resumed branch completed).
+ *
+ * The trampoline needs to resume suspended siblings concurrently, collect
+ * results, and continue with the outer program. Handled by `tick()` which
+ * has access to `handlers` and `signal`.
+ */
+export interface ResumeParallelExecStep {
+  type: 'ResumeParallelExec'
+  /** The completed value from the resumed branch */
+  resumedBranchValue: Any
+  /** The ResumeParallelFrame with sibling state */
+  frame: ResumeParallelFrame
+  /** Outer continuation (after the frame) */
+  k: ContinuationStack
+}
+
+/**
  * An async operation produced an error that needs to be routed through the
  * effect system.
  *
@@ -192,4 +237,7 @@ export type Step =
   | ParallelStep
   | RaceStep
   | ParallelResumeStep
+  | ReRunParallelExecStep
+  | ResumeParallelExecStep
+  | BranchCompleteStep
   | ErrorStep

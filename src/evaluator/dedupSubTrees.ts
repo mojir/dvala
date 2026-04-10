@@ -12,6 +12,18 @@
 
 import { contentHash } from './contentHash'
 
+/**
+ * Detect nested SuspensionBlobData objects (already-serialized continuation blobs).
+ * These are opaque — the dedup/expand/clone walkers must not recurse into them.
+ * Their internal __poolRef markers belong to a different serialization context.
+ */
+function isSuspensionBlobData(value: unknown): boolean {
+  return value !== null
+    && typeof value === 'object'
+    && '__suspensionBlob' in value
+    && (value as any).__suspensionBlob === true
+}
+
 // ---------------------------------------------------------------------------
 // Pool reference marker
 // ---------------------------------------------------------------------------
@@ -196,6 +208,11 @@ function walkAndCollect(
     return contentHash(value)
   }
 
+  // Opaque blob — don't walk into nested serialized continuations
+  if (isSuspensionBlobData(value)) {
+    return contentHash(value)
+  }
+
   if (Array.isArray(value)) {
     // Walk children first (bottom-up)
     for (let i = 0; i < value.length; i++) {
@@ -262,6 +279,9 @@ export function expandPoolRefs(value: unknown, pool: Record<number, unknown>): u
     return value
   }
 
+  // Opaque blob — don't expand pool refs inside nested serialized continuations
+  if (isSuspensionBlobData(value)) return value
+
   if (isPoolRef(value)) {
     const id = value.__poolRef
     if (!(id in pool)) {
@@ -291,6 +311,9 @@ function deepClone(value: unknown): unknown {
   if (value === null || typeof value !== 'object') {
     return value
   }
+
+  // Opaque blob — return as-is without cloning into it
+  if (isSuspensionBlobData(value)) return value
 
   if (Array.isArray(value)) {
     return value.map(item => deepClone(item))

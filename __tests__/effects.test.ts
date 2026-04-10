@@ -3270,11 +3270,8 @@ describe('phase 6 — Parallel & Race', () => {
       })
       expect(result.type).toBe('suspended')
       if (result.type === 'suspended') {
-        // Meta contains all branch metas
-        expect(result.snapshot.meta).toEqual({
-          type: 'race',
-          branches: [{ branch: 'A' }, { branch: 'B' }],
-        })
+        // Meta is from the primary suspended branch (first to suspend)
+        expect(result.snapshot.meta).toEqual({ branch: 'A' })
       }
     })
 

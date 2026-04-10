@@ -58,6 +58,8 @@ interface SerializedContextStack {
 }
 
 interface SuspensionBlobData {
+  /** Brand marker to distinguish real blobs from objects that happen to have similar fields */
+  __suspensionBlob: true
   version: number
   contextStacks: SerializedContextStack[]
   k: unknown // ContinuationStack with ContextStacks replaced by refs
@@ -86,6 +88,20 @@ function isPVMarker(value: unknown): value is PVMarker {
 }
 function isPMMarker(value: unknown): value is PMMarker {
   return value !== null && typeof value === 'object' && '__pm' in value
+}
+
+/**
+ * Detect nested SuspensionBlobData objects (already-serialized continuation blobs).
+ * These appear inside Snapshot.continuation when Snapshots are embedded in frames
+ * (e.g. ParallelResumeFrame.suspendedBranches[i].snapshot). They must NOT be walked
+ * by the outer serializer/deserializer — their __csRef markers belong to a different
+ * serialization context.
+ */
+function isSuspensionBlobData(value: unknown): value is SuspensionBlobData {
+  return value !== null
+    && typeof value === 'object'
+    && '__suspensionBlob' in value
+    && (value as SuspensionBlobData).__suspensionBlob === true
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +138,9 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown, initialS
       }
       return
     }
+    // Skip already-serialized continuation blobs — their __csRef markers belong
+    // to a different serialization context and must not be walked.
+    if (isSuspensionBlobData(value)) return
     if (Array.isArray(value)) {
       for (const item of value) {
         collectContextStacks(item)
@@ -153,6 +172,8 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown, initialS
     if (value instanceof Map) {
       return null
     }
+    // Already-serialized continuation blobs are opaque — pass through as-is.
+    if (isSuspensionBlobData(value)) return value
 
     // PersistentVector: serialize as { __pv: [...items] }
     if (isPersistentVector(value)) {
@@ -210,6 +231,7 @@ export function serializeToObject(k: ContinuationStack, meta?: unknown, initialS
   const serializedInitialStep = initialStep !== undefined ? serializeValue(initialStep, 'initialStep') : undefined
 
   const blobData: SuspensionBlobData = {
+    __suspensionBlob: true,
     version: SUSPENSION_VERSION,
     contextStacks: serializedContextStacks,
     k: serializedK,
@@ -287,6 +309,7 @@ export function serializeTerminalSnapshot(
   nextSnapshotIndex: number,
 ): SuspensionBlobData {
   const base: SuspensionBlobData = {
+    __suspensionBlob: true,
     version: SUSPENSION_VERSION,
     contextStacks: [],
     k: [], // Empty continuation - terminal state, cannot resume
@@ -389,6 +412,9 @@ export function deserializeFromObject(
       }
       return cs
     }
+    // Already-serialized continuation blobs are opaque — pass through as-is.
+    // Their __csRef markers belong to a different serialization context.
+    if (isSuspensionBlobData(value)) return value
     // Reconstruct PersistentVector from __pv marker
     if (isPVMarker(value)) {
       let pv: PersistentVector = PersistentVector.empty()

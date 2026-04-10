@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type {
   ApplyStep,
+  BranchCompleteStep,
   ErrorStep,
   EvalStep,
   ParallelResumeStep,
   ParallelStep,
   PerformStep,
   RaceStep,
+  ReRunParallelExecStep,
+  ResumeParallelExecStep,
   Step,
   ValueStep,
 } from './step'
@@ -27,9 +30,12 @@ describe('step types', () => {
       Parallel: true,
       Race: true,
       ParallelResume: true,
+      BranchComplete: true,
+      ReRunParallelExec: true,
+      ResumeParallelExec: true,
       Error: true,
     }
-    expect(Object.keys(stepTypes)).toHaveLength(8)
+    expect(Object.keys(stepTypes)).toHaveLength(11)
   })
 
   it('should cover all step type discriminants exhaustively', () => {
@@ -42,6 +48,9 @@ describe('step types', () => {
         case 'Parallel': return 'concurrent'
         case 'Race': return 'concurrent'
         case 'ParallelResume': return 'concurrent'
+        case 'BranchComplete': return 'concurrent'
+        case 'ReRunParallelExec': return 'concurrent'
+        case 'ResumeParallelExec': return 'concurrent'
         case 'Error': return 'error'
         default: {
           const _exhaustive: never = step
@@ -62,11 +71,14 @@ describe('step types', () => {
       'Parallel',
       'Race',
       'ParallelResume',
+      'BranchComplete',
+      'ReRunParallelExec',
+      'ResumeParallelExec',
       'Error',
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(8)
+    expect(uniqueTypes.size).toBe(11)
   })
 
   it('should export individual step interfaces for typed access', () => {
@@ -77,6 +89,9 @@ describe('step types', () => {
     const _parallel: ParallelStep['type'] = 'Parallel'
     const _race: RaceStep['type'] = 'Race'
     const _parallelResume: ParallelResumeStep['type'] = 'ParallelResume'
+    const _branchComplete: BranchCompleteStep['type'] = 'BranchComplete'
+    const _rerunParallelExec: ReRunParallelExecStep['type'] = 'ReRunParallelExec'
+    const _resumeParallelExec: ResumeParallelExecStep['type'] = 'ResumeParallelExec'
     const _error: ErrorStep['type'] = 'Error'
 
     expect(_value).toBe('Value')
@@ -86,6 +101,9 @@ describe('step types', () => {
     expect(_parallel).toBe('Parallel')
     expect(_race).toBe('Race')
     expect(_parallelResume).toBe('ParallelResume')
+    expect(_branchComplete).toBe('BranchComplete')
+    expect(_rerunParallelExec).toBe('ReRunParallelExec')
+    expect(_resumeParallelExec).toBe('ResumeParallelExec')
     expect(_error).toBe('Error')
   })
 })

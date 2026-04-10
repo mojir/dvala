@@ -323,7 +323,7 @@ export function findMatchingHandlers(
  */
 export type RunResult =
   | { type: 'completed'; value: unknown; scope?: Record<string, unknown>; snapshot?: Snapshot; sourceMap?: SourceMap }
-  | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap }
+  | { type: 'suspended'; snapshot: Snapshot; sourceMap?: SourceMap; /** @internal Raw continuation and snapshots from branch suspension — used by executeParallelBranches for composition */ _rawSuspension?: { k: ContinuationStack; snapshots: Snapshot[]; nextSnapshotIndex: number; meta?: unknown; effectName?: string; effectArg?: Any } }
   | { type: 'error'; error: DvalaError; snapshot?: Snapshot; sourceMap?: SourceMap }
   | { type: 'halted'; value: unknown; snapshot?: Snapshot; sourceMap?: SourceMap }
 
@@ -376,6 +376,8 @@ export class ResumeFromSignal {
     public readonly value: Any,
     /** Snapshots with index > trimToIndex will be discarded. */
     public readonly trimToIndex: number,
+    /** Parallel/race branch boundary path at the resumeFrom() call site. */
+    public readonly boundaryPath: string[] = [],
   ) {}
 }
 

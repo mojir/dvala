@@ -31,11 +31,14 @@ import type {
   FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
+  ParallelBranchBarrierFrame,
   ParallelResumeFrame,
   PerformArgsFrame,
   QqFrame,
+  ReRunParallelFrame,
   RecurFrame,
   RecurLoopRebindFrame,
+  ResumeParallelFrame,
   SequenceFrame,
   SomePredFrame,
 } from './frames'
@@ -77,6 +80,9 @@ describe('frame types', () => {
       EveryPred: true,
       SomePred: true,
       ParallelResume: true,
+      ParallelBranchBarrier: true,
+      ReRunParallel: true,
+      ResumeParallel: true,
       EvalArgs: true,
       CallFn: true,
       FnBody: true,
@@ -96,7 +102,7 @@ describe('frame types', () => {
       MacroEval: true,
       CodeTemplateBuild: true,
     }
-    expect(Object.keys(frameTypes)).toHaveLength(44)
+    expect(Object.keys(frameTypes)).toHaveLength(47)
   })
 
   it('should support ContinuationStack as null (empty persistent list)', () => {
@@ -135,6 +141,9 @@ describe('frame types', () => {
         case 'EveryPred': return 'compound'
         case 'SomePred': return 'compound'
         case 'ParallelResume': return 'parallel'
+        case 'ParallelBranchBarrier': return 'parallel'
+        case 'ReRunParallel': return 'parallel'
+        case 'ResumeParallel': return 'parallel'
         case 'EvalArgs': return 'call'
         case 'CallFn': return 'call'
         case 'FnBody': return 'call'
@@ -203,6 +212,9 @@ describe('frame types', () => {
       'EveryPred',
       'SomePred',
       'ParallelResume',
+      'ParallelBranchBarrier',
+      'ReRunParallel',
+      'ResumeParallel',
       'EvalArgs',
       'CallFn',
       'FnBody',
@@ -216,7 +228,7 @@ describe('frame types', () => {
     ]
     const uniqueTypes = new Set(types)
     expect(uniqueTypes.size).toBe(types.length)
-    expect(uniqueTypes.size).toBe(35)
+    expect(uniqueTypes.size).toBe(38)
   })
 
   it('should export individual frame interfaces for typed access', () => {
@@ -247,6 +259,9 @@ describe('frame types', () => {
     const _everyPred: EveryPredFrame['type'] = 'EveryPred'
     const _somePred: SomePredFrame['type'] = 'SomePred'
     const _parallelResume: ParallelResumeFrame['type'] = 'ParallelResume'
+    const _parallelBranchBarrier: ParallelBranchBarrierFrame['type'] = 'ParallelBranchBarrier'
+    const _rerunParallel: ReRunParallelFrame['type'] = 'ReRunParallel'
+    const _resumeParallel: ResumeParallelFrame['type'] = 'ResumeParallel'
     const _evalArgs: EvalArgsFrame['type'] = 'EvalArgs'
     const _callFn: CallFnFrame['type'] = 'CallFn'
     const _fnBody: FnBodyFrame['type'] = 'FnBody'
@@ -284,6 +299,9 @@ describe('frame types', () => {
     expect(_everyPred).toBe('EveryPred')
     expect(_somePred).toBe('SomePred')
     expect(_parallelResume).toBe('ParallelResume')
+    expect(_parallelBranchBarrier).toBe('ParallelBranchBarrier')
+    expect(_rerunParallel).toBe('ReRunParallel')
+    expect(_resumeParallel).toBe('ResumeParallel')
     expect(_evalArgs).toBe('EvalArgs')
     expect(_callFn).toBe('CallFn')
     expect(_fnBody).toBe('FnBody')
