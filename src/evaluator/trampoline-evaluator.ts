@@ -131,6 +131,8 @@ import type {
   FiniteCheckFrame,
   ObjectBuildFrame,
   OrFrame,
+  ParallelBranchBarrierFrame,
+  ParallelBranchContext,
   ParallelResumeFrame,
   PerformArgsFrame,
   QqFrame,
@@ -1411,6 +1413,16 @@ export function applyFrame(frame: Frame, value: Any, k: ContinuationStack): Step
       return applyWithHandlerSetup(frame, value, k)
     case 'ParallelResume':
       return applyParallelResume(frame, value, k)
+    case 'ParallelBranchBarrier':
+      // Branch completed — return BranchComplete step to exit the branch trampoline.
+      // Do NOT flow into outerK; the parallel collector handles result aggregation.
+      return { type: 'BranchComplete', value, branchCtx: frame.branchCtx }
+    case 'ReRunParallel':
+      // TODO Phase 3: implement ReRunParallelFrame handler
+      throw new RuntimeError('ReRunParallelFrame handler not yet implemented', undefined)
+    case 'ResumeParallel':
+      // TODO Phase 3: implement ResumeParallelFrame handler
+      throw new RuntimeError('ResumeParallelFrame handler not yet implemented', undefined)
     case 'EvalArgs':
       return applyEvalArgs(frame, value, k)
     case 'CallFn':
@@ -2200,10 +2212,12 @@ function tryDispatchDvalaError(
   // Convert runtime error to a perform(@dvala.error, { type, message }) if there's a
   // handler that can catch it. Otherwise return null (caller re-throws).
   //
-  // Walk k looking for AlgebraicHandle frames with @dvala.error clauses
+  // Walk k looking for AlgebraicHandle frames with @dvala.error clauses.
+  // Stop at ParallelBranchBarrier — same effect boundary as dispatchPerform.
   let _node = k
   while (_node !== null) {
     const frame = _node.head
+    if (frame.type === 'ParallelBranchBarrier') break
     _node = _node.tail
     if (frame.type === 'AlgebraicHandle') {
       if (frame.handler.clauseMap.has('dvala.error')) {
@@ -2702,10 +2716,13 @@ function dispatchPerform(effect: EffectRef, arg: Any, k: ContinuationStack, sour
   }
 
   // Walk the continuation stack looking for AlgebraicHandleFrame handlers.
+  // Stop at ParallelBranchBarrier — it acts as an effect boundary, preserving
+  // effect isolation between branches and the outer scope (same as reaching k: null).
   let searchNode = k
   let frameIndex = 0
   while (searchNode !== null) {
     const frame = searchNode.head
+    if (frame.type === 'ParallelBranchBarrier') break
     if (frame.type === 'AlgebraicHandle') {
       // New handler system — try named clause dispatch
       const result = dispatchAlgebraicHandler(frame, effect, arg, k, frameIndex, sourceCodeInfo)
@@ -3055,6 +3072,47 @@ async function runBranch(
   env: ContextStack,
   handlers: Handlers | undefined,
   signal: AbortSignal,
+  outerK: ContinuationStack,
+  branchCtx: ParallelBranchContext,
+  outerSnapshotState?: SnapshotState,
+): Promise<RunResult> {
+  // The barrier frame sits between the branch and the outer continuation.
+  // When the branch completes and its value reaches this frame, it returns
+  // a BranchComplete step instead of continuing into outerK.
+  const barrierFrame: ParallelBranchBarrierFrame = { type: 'ParallelBranchBarrier', branchCtx }
+  const barrierK: ContinuationStack = cons<Frame>(barrierFrame, outerK)
+  const initial: Step = { type: 'Eval', node, env, k: barrierK }
+
+  // Thread outer snapshot state into the branch so pre-parallel checkpoints
+  // are visible in the branch's timeline. Each branch gets a copy (not reference)
+  // to avoid concurrent mutation. The executionId is inherited so resumeFrom()
+  // can find pre-parallel snapshots.
+  const initialSnapshotState = outerSnapshotState
+    ? { snapshots: [...outerSnapshotState.snapshots], nextSnapshotIndex: outerSnapshotState.nextSnapshotIndex }
+    : undefined
+  return runEffectLoop(
+    initial,
+    handlers,
+    signal,
+    initialSnapshotState,
+    outerSnapshotState?.maxSnapshots,
+    undefined, // deserializeOptions
+    outerSnapshotState?.autoCheckpoint,
+    undefined, // terminalSnapshot
+    undefined, // onNodeEval
+    outerSnapshotState?.executionId,
+  )
+}
+
+/**
+ * Legacy branch runner for race (no outerK threading, no barrier frame).
+ * Will be removed in Phase 5 when race is unified with parallel.
+ */
+async function runBranchLegacy(
+  node: AstNode,
+  env: ContextStack,
+  handlers: Handlers | undefined,
+  signal: AbortSignal,
 ): Promise<RunResult> {
   const initial: Step = { type: 'Eval', node, env, k: null }
   return runEffectLoop(initial, handlers, signal)
@@ -3079,6 +3137,7 @@ async function executeParallelBranches(
   k: ContinuationStack,
   handlers: Handlers | undefined,
   signal: AbortSignal | undefined,
+  snapshotState?: SnapshotState,
 ): Promise<Step> {
   // AbortController for this parallel group — aborted when any branch suspends,
   // which signals remaining effect handlers to auto-suspend via ctx.signal.
@@ -3087,9 +3146,19 @@ async function executeParallelBranches(
     ? combineSignals(signal, parallelAbort.signal)
     : parallelAbort.signal
 
-  // Run all branches concurrently; abort the group when a branch suspends
+  // Run all branches concurrently; abort the group when a branch suspends.
+  // Each branch gets outerK (the continuation after the parallel) threaded
+  // through a BarrierFrame, so checkpoints inside branches capture the full
+  // program continuation.
   const branchPromises = branches.map(async (branch, i): Promise<{ index: number; result: RunResult }> => {
-    const result = await runBranch(branch, env, handlers, effectSignal)
+    const branchCtx: ParallelBranchContext = {
+      branchIndex: i,
+      branchCount: branches.length,
+      branches,
+      env,
+      mode: 'parallel',
+    }
+    const result = await runBranch(branch, env, handlers, effectSignal, k, branchCtx, snapshotState)
     if (result.type === 'suspended') {
       parallelAbort.abort()
     }
@@ -3193,7 +3262,7 @@ async function executeRaceBranches(
     // Run all branches concurrently, tracking completion order
     const branchPromises = branches.map(async (branch, i) => {
       const branchSignal = branchControllers[i]!.signal
-      const result = await runBranch(branch, env, handlers, branchSignal)
+      const result = await runBranchLegacy(branch, env, handlers, branchSignal)
 
       // First branch to complete wins (JavaScript is single-threaded,
       // so the first resolved promise's continuation runs first)
@@ -4622,11 +4691,16 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       case 'Perform':
         return dispatchPerform(step.effect, step.arg, step.k, step.sourceCodeInfo, handlers, signal, snapshotState)
       case 'Parallel':
-        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal)
+        return executeParallelBranches(step.branches, step.env, step.k, handlers, signal, snapshotState)
       case 'Race':
         return executeRaceBranches(step.branches, step.env, step.k, handlers, signal)
       case 'ParallelResume':
         return handleParallelResume(step, handlers, signal)
+      case 'BranchComplete':
+        // This step should be caught by runEffectLoop, not processed by tick.
+        // If we reach here, something is wrong — the branch trampoline didn't
+        // intercept the BranchComplete step.
+        return step
       case 'Error': {
         const patchedError = patchErrorWithMacroCallSite(step.error, step.k)
         const effectStep = tryDispatchDvalaError(patchedError, step.k)
@@ -4656,9 +4730,14 @@ export function tick(step: Step, handlers?: Handlers, signal?: AbortSignal, snap
       // infinite loop.
       // For Eval/Apply steps, step.k already excludes the frame that caused
       // the error, so no stripping is needed.
-      const kForDispatch = step.type === 'Value'
-        ? step.k?.tail ?? null
-        : step.k
+      // BranchComplete steps have no continuation (the branch is done).
+      // Errors during BranchComplete should not reach here, but handle
+      // gracefully by using null (no handler search possible).
+      const kForDispatch = step.type === 'BranchComplete'
+        ? null
+        : step.type === 'Value'
+          ? step.k?.tail ?? null
+          : step.k
 
       // If the error has no source location and we're inside a macro expansion,
       // patch it with the macro call site so error messages are meaningful.
@@ -5181,11 +5260,14 @@ async function runEffectLoop(
   autoCheckpoint?: boolean,
   terminalSnapshot?: boolean,
   onNodeEval?: SnapshotState['onNodeEval'],
+  inheritedExecutionId?: string,
 ): Promise<RunResult> {
   const snapshotState: SnapshotState = {
     snapshots: initialSnapshotState ? initialSnapshotState.snapshots : [],
     nextSnapshotIndex: initialSnapshotState ? initialSnapshotState.nextSnapshotIndex : 0,
-    executionId: generateUUID(),
+    // Branches inherit the outer executionId so resumeFrom() can find
+    // pre-parallel snapshots. Fresh UUID for top-level runs.
+    executionId: inheritedExecutionId ?? generateUUID(),
     ...(maxSnapshots !== undefined ? { maxSnapshots } : {}),
     ...(autoCheckpoint ? { autoCheckpoint } : {}),
     ...(terminalSnapshot ? { terminalSnapshot } : {}),
@@ -5263,6 +5345,12 @@ async function runEffectLoop(
           return snapshot
             ? { type: 'completed', value: step.value, snapshot }
             : { type: 'completed', value: step.value }
+        }
+
+        // BranchComplete — a parallel branch finished and hit its BarrierFrame.
+        // Return as a completed result without flowing into outerK.
+        if (step.type === 'BranchComplete') {
+          return { type: 'completed', value: step.value }
         }
 
         step = tick(step, handlers, signal, snapshotState)

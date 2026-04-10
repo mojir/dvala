@@ -1,8 +1,9 @@
 # Parallel and Race: Snapshots, Resume, and Multi-Shot
 
-**Status:** Draft (revised)
+**Status:** In Progress
 **Created:** 2026-04-02
 **Revised:** 2026-04-03 — addresses review findings (factual fixes, design gaps, missing considerations)
+**Revised:** 2026-04-10 — finalized design decisions, updated implementation plan
 
 ## Goal
 
@@ -463,16 +464,24 @@ The existing `retriggerParallelGroup` / `retriggerWithEffects` mechanism already
 
 ### Backward compatibility for serialized snapshots
 
-Snapshots serialized with the current `ParallelResumeFrame` format (which uses the set-difference approach for branch identification) must still be deserializable after the new frames are added. Options:
-
-1. **Keep the old `ParallelResumeFrame` deserialization path** alongside the new frame types. Old snapshots deserialize to the old frame; new snapshots use the new frames. This is the safest option.
-2. **Migration on deserialize** — when deserializing a `ParallelResumeFrame`, convert it to a `ResumeParallelFrame` by computing the missing branch index.
-
-Recommend option 1 for the initial implementation, with option 2 as a future cleanup.
+**Decision: break backward compatibility.** This is a pre-1.0 project. Serialized snapshots are ephemeral runtime artifacts, not long-lived data. The old `ParallelResumeFrame` format will be removed entirely. Old snapshots will fail to deserialize with a clear error. No migration path.
 
 ---
 
 ## Design Decisions
+
+### Finalized decisions summary (2026-04-10)
+
+| # | Decision | Choice |
+|---|----------|--------|
+| 1 | Phase ordering | Interleaved — tests written per phase |
+| 2 | BarrierFrame completion signaling | New `BranchComplete` trampoline step type |
+| 3 | Effect boundary implementation | Explicit `frame.type === 'ParallelBranchBarrier'` checks in `dispatchPerform` and `tryDispatchDvalaError` |
+| 4 | Checkpoint serialization | `composeCheckpointContinuation(k)` helper called at all 3 checkpoint sites |
+| 5 | Sibling continuation storage | Truncated at BarrierFrame (strip barrier + outerK tail) |
+| 6 | Orchestration logic sharing | Shared `orchestrateBranches` helper used by `executeParallelBranches` and frame handlers |
+| 7 | Race unification timing | Phase 5, after parallel is fully validated |
+| 8 | Backward compatibility | Break it — remove old `ParallelResumeFrame`, no migration |
 
 ### Nested parallel — pass true outerK
 
@@ -520,21 +529,23 @@ When a `ReRunParallelFrame` or `ResumeParallelFrame` handler re-runs/resumes sib
 
 See "Relationship to `retriggerParallelGroup`" in the What Changes section. The retrigger path is superseded once the new frames are implemented. Cleanup in Phase 6.
 
-### Backward compatibility — keep old deserialization path
+### Backward compatibility — break it, clean slate
 
-See "Backward compatibility for serialized snapshots" in the What Changes section. Keep the old `ParallelResumeFrame` deserialization path alongside the new frame types.
+See "Backward compatibility for serialized snapshots" in the What Changes section. Old `ParallelResumeFrame` format is removed. Pre-1.0 project, no migration needed.
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Infrastructure
+### Phase 1: Infrastructure ✅ (2026-04-10)
+
+**Implementation note**: Threading `outerK` into branches introduced a serialization opacity issue — nested `SuspensionBlobData` objects (branch snapshots inside `ParallelResumeFrame.suspendedBranches`) were corrupted by the outer serializer/deserializer/dedup walking into them. Fixed by adding a `__suspensionBlob` brand marker and opaque checks in `suspension.ts` (`collectContextStacks`, `serializeValue`, `resolveValue`) and `dedupSubTrees.ts` (`walkAndCollect`, `expandPoolRefs`, `deepClone`). Race branches still use legacy `runBranchLegacy` (no outerK) until Phase 5.
 
 1. **Add `ParallelBranchBarrierFrame`**
    - New frame type in `frames.ts` — lightweight marker carrying `ParallelBranchContext`
    - Three roles:
-     - **Completion sentinel**: trampoline handler in `applyFrame` — when a value reaches the barrier, signal branch completion (don't flow into outerK)
-     - **Effect boundary**: `dispatchPerform` must stop walking `k` at the barrier, same as it stops at `null` — this preserves current effect-isolation semantics and prevents multi-shot breakage (see in-depth section)
+     - **Completion sentinel**: trampoline handler in `applyFrame` — when a value reaches the barrier, return a new `{ type: 'BranchComplete', value, branchCtx }` trampoline step. `runEffectLoop` recognizes this step type and returns it as a branch result (no exception-based signaling).
+     - **Effect boundary**: `dispatchPerform` and `tryDispatchDvalaError` must stop walking `k` at the barrier with an explicit `if (frame.type === 'ParallelBranchBarrier') break` check — same effect as reaching `null`. This preserves current effect-isolation semantics and prevents multi-shot breakage (see in-depth section).
      - **Context carrier**: holds `branchCtx` for checkpoint composition
    - Serialization: barrier frames are never serialized directly (replaced during checkpoint serialization)
 
@@ -560,10 +571,8 @@ See "Backward compatibility for serialized snapshots" in the What Changes sectio
 ### Phase 2: Checkpoint Composition
 
 5. **Checkpoint serialization: replace barrier with ReRunFrame**
-   - In every checkpoint creation site (`dvala.checkpoint`, `ctx.checkpoint()`, auto-checkpoint):
-     - Walk the continuation `k`
-     - Find `ParallelBranchBarrierFrame`(s) and replace each with a `ReRunParallelFrame` built from its `branchCtx`
-     - Serialize the modified continuation
+   - Extract a `composeCheckpointContinuation(k)` helper that walks the continuation, finds `ParallelBranchBarrierFrame`(s), and replaces each with a `ReRunParallelFrame` built from its `branchCtx`
+   - All three checkpoint creation sites (`dvala.checkpoint`, `ctx.checkpoint()`, auto-checkpoint) call this helper before serializing: `serializeToObject(composeCheckpointContinuation(k))`
    - Nested parallel: multiple barriers in the stack, each replaced independently
    - Files: `trampoline-evaluator.ts` (all three checkpoint creation sites in `dispatchPerform` and `dispatchHostHandler`)
 
@@ -600,29 +609,31 @@ See "Backward compatibility for serialized snapshots" in the What Changes sectio
    - **Re-suspension handling**: same as step 7. Resumed siblings may re-suspend. The orchestration helper handles this identically — classify results, compose a new `ResumeParallelFrame` if any sibling re-suspends.
    - Files: `trampoline-evaluator.ts`
 
-### Phase 4: Testing (parallel only — before race unification)
+### Testing Strategy: Interleaved (per-phase)
 
-9. **Failing tests first** (write before implementation of Phases 1–3)
+Tests are written alongside each phase, not in a separate phase. High-level integration tests (host API: `run` → checkpoint → `resume`) can be written before internal types exist.
+
+9. **Phase 1 tests** ✅ (10 tests in `__tests__/parallel-snapshot.test.ts`)
+    - BarrierFrame blocks effect propagation: verify `dispatchPerform` stops at the barrier ✅
+    - Effect isolation: algebraic handler wrapping `parallel(perform(@eff, x), ...)` — effect must NOT propagate to outer handler, must fall through to host handlers ✅
+    - dvala.error boundary: outer/inner handler isolation ✅
+    - Pure-computation branches complete correctly ✅
+    - Host effect branches, mixed completion/suspension, all suspended ✅
+    - ExecutionId and snapshot state inheritance ✅
+
+10. **Phase 2 tests** (after checkpoint composition)
     - Host checkpoint inside parallel branch → resume completes full program
-    - Pre-parallel snapshots visible after resuming branch checkpoint
-    - Time travel: resume C, then `resumeFrom(A)` where A is pre-parallel
     - Nested `parallel(parallel(...), ...)` checkpoint composition
-    - Multi-shot resume of branch checkpoint
-    - Re-suspension: sibling re-suspends during `ReRunParallelFrame` handling → produces new composed suspension
+    - Auto-checkpoint + parallel (verify composed checkpoints)
+    - Snapshot index ordering verification (monotonic, no gaps)
+    - Time travel: resume C, then `resumeFrom(A)` where A is pre-parallel
 
-10. **Multi-shot tests**
+11. **Phase 3 tests** (after resume logic)
+    - Re-suspension: sibling re-suspends during `ReRunParallelFrame` handling → produces new composed suspension
     - Multi-shot within a branch (handler inside branch, resume called multiple times) — should work as before
     - Multi-shot on composed snapshot (host calls `resume(snapshot, value)` twice on same snapshot) — each runs independently
-    - Effect isolation: algebraic handler wrapping `parallel(perform(@eff, x), ...)` — effect must NOT propagate to outer handler, must fall through to host handlers (same as current behavior)
-    - BarrierFrame blocks effect propagation: verify `dispatchPerform` stops at the barrier
-
-11. **Integration tests**
-    - Auto-checkpoint + parallel (verify composed checkpoints)
-    - `resumeFrom()` (time travel) across parallel boundaries
-    - Snapshot index ordering verification (monotonic, no gaps)
     - Effect handlers inside branches → checkpoint → resume → correct handler scope
-    - Pure-computation branches (no effects) complete and appear in completedBranches
-    - Backward compatibility: old `ParallelResumeFrame` snapshots still deserialize and resume correctly
+    - `resumeFrom()` (time travel) across parallel boundaries
 
 ### Phase 5: Race Unification
 
@@ -647,5 +658,5 @@ Race unification is separated from parallel because it involves a semantic chang
 
 14. **Remove superseded code**
     - Remove or simplify `retriggerParallelGroup` / `retriggerWithEffects` — the frame handlers now handle parallel resume
-    - Verify old `ParallelResumeFrame` deserialization path still works (backward compat from Phase 4, step 11)
+    - Remove old `ParallelResumeFrame` type and its serialization/deserialization code entirely (no backward compat)
     - Remove the asymmetric "first suspended branch is special" pattern — all branches tracked uniformly by `branchIndex`

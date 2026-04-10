@@ -24,7 +24,7 @@ import type { DvalaError } from '../errors'
 import type { Any } from '../interface'
 import type { AstNode, EffectRef } from '../parser/types'
 import type { SourceCodeInfo } from '../tokenizer/token'
-import type { ContinuationStack, Frame } from './frames'
+import type { ContinuationStack, Frame, ParallelBranchContext } from './frames'
 import type { ContextStack } from './ContextStack'
 import type { Snapshot } from './effectTypes'
 
@@ -153,6 +153,20 @@ export interface ParallelResumeStep {
 }
 
 /**
+ * A parallel branch has completed — its value reached the BarrierFrame.
+ *
+ * This step is returned by `applyFrame` when a `ParallelBranchBarrierFrame`
+ * receives a value. The trampoline loop (`runEffectLoop`) recognizes this
+ * step type and returns it as a branch result, exiting the branch's
+ * trampoline without flowing into outerK.
+ */
+export interface BranchCompleteStep {
+  type: 'BranchComplete'
+  value: Any
+  branchCtx: ParallelBranchContext
+}
+
+/**
  * An async operation produced an error that needs to be routed through the
  * effect system.
  *
@@ -192,4 +206,5 @@ export type Step =
   | ParallelStep
   | RaceStep
   | ParallelResumeStep
+  | BranchCompleteStep
   | ErrorStep

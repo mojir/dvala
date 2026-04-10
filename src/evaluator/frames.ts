@@ -522,6 +522,100 @@ export interface ParallelResumeFrame {
 }
 
 // ---------------------------------------------------------------------------
+// Parallel branch context — shared by barrier and parallel frame types
+// ---------------------------------------------------------------------------
+
+/**
+ * Context describing which parallel/race expression a branch belongs to.
+ * Carried by the `ParallelBranchBarrierFrame` during live execution, and
+ * used to construct `ReRunParallelFrame` or `ResumeParallelFrame` during
+ * checkpoint serialization and final suspension composition.
+ */
+export interface ParallelBranchContext {
+  /** Index of this branch within the parallel/race expression */
+  branchIndex: number
+  /** Total number of branches */
+  branchCount: number
+  /** Original AST nodes for ALL branches (needed for re-run on resume) */
+  branches: AstNode[]
+  /** Environment at the parallel/race call site (needed for re-run) */
+  env: ContextStack
+  /** Result collection strategy: parallel collects all, race picks first */
+  mode: 'parallel' | 'race'
+}
+
+// ---------------------------------------------------------------------------
+// Parallel branch barrier — live execution marker
+// ---------------------------------------------------------------------------
+
+/**
+ * Barrier frame sitting between a branch continuation and the outer program.
+ *
+ * Three roles:
+ * 1. **Completion sentinel**: when the trampoline hits this with a value,
+ *    the branch is complete — returns a `BranchComplete` step instead of
+ *    flowing into outerK.
+ * 2. **Effect boundary**: `dispatchPerform` and `tryDispatchDvalaError` stop
+ *    walking `k` at this frame, preserving effect isolation between branches
+ *    and the outer scope. This prevents algebraic effects from inside a branch
+ *    propagating to outer handlers through outerK.
+ * 3. **Context carrier**: holds `branchCtx` for checkpoint composition —
+ *    checkpoint serialization replaces this frame with a `ReRunParallelFrame`.
+ *
+ * Never serialized directly — always replaced before serialization.
+ */
+export interface ParallelBranchBarrierFrame {
+  type: 'ParallelBranchBarrier'
+  branchCtx: ParallelBranchContext
+}
+
+// ---------------------------------------------------------------------------
+// Parallel snapshot frames — serialized into checkpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * Replaces `ParallelBranchBarrierFrame` in serialized mid-execution checkpoints.
+ *
+ * When a checkpoint is taken inside a running branch (Tier 1), siblings are
+ * still running concurrently and cannot be snapshotted. On resume, this frame
+ * re-runs all sibling branches from their original AST.
+ *
+ * On resume: the branch continues from its `branchK`. When the value reaches
+ * this frame, it re-evaluates all other branches from scratch, collects results
+ * (parallel: array in order, race: first wins), and continues with outerK.
+ */
+export interface ReRunParallelFrame {
+  type: 'ReRunParallel'
+  branchIndex: number
+  branchCount: number
+  branches: AstNode[]
+  env: ContextStack
+  mode: 'parallel' | 'race'
+}
+
+/**
+ * Replaces `ParallelBranchBarrierFrame` in the serialized final suspension.
+ *
+ * When all branches have settled (completed, errored, or force-suspended),
+ * we know their full state. On resume, this frame resumes suspended siblings
+ * from their abort-point continuations and uses completed siblings' cached values.
+ *
+ * Sibling continuations are stored **truncated at the BarrierFrame** — the
+ * barrier and outerK tail are stripped because outerK is the same as the
+ * continuation after this frame. On resume, each sibling gets a fresh
+ * BarrierFrame + outerK reconstructed from the frame's context.
+ */
+export interface ResumeParallelFrame {
+  type: 'ResumeParallel'
+  branchIndex: number
+  branchCount: number
+  completedBranches: { index: number; value: unknown }[]
+  /** Sibling continuations truncated at the BarrierFrame (no barrier or outerK tail) */
+  suspendedBranches: { index: number; k: ContinuationStack }[]
+  mode: 'parallel' | 'race'
+}
+
+// ---------------------------------------------------------------------------
 // Function calls
 // ---------------------------------------------------------------------------
 
@@ -924,6 +1018,10 @@ export type Frame =
   | SomePredFrame
   // Parallel resume
   | ParallelResumeFrame
+  // Parallel branch barrier and snapshot frames
+  | ParallelBranchBarrierFrame
+  | ReRunParallelFrame
+  | ResumeParallelFrame
   // Function calls
   | EvalArgsFrame
   | CallFnFrame
